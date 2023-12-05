@@ -41,7 +41,7 @@
     "@dfinity/candid": "0.20",
     "@dfinity/identity": "^0.20",
     "@dfinity/principal": "^0.20",
-    "@ic-reactor/store": "^0.2.3",
+    "@ic-reactor/store": "^0.0.1",
     "zustand": "4.4"
   },
   "peerDependencies": {
