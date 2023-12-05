@@ -1,0 +1,45 @@
+{
+  "name": "@ic-reactor/store",
+  "version": "0.0.1",
+  "description": "A React library for interacting with Dfinity actors",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:b3hr4d/react-actor.git"
+  },
+  "keywords": [
+    "actor",
+    "react",
+    "candid",
+    "dfinity",
+    "web3",
+    "dapp"
+  ],
+  "author": "b3hr4d",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/b3hr4d/ic-reactor/issues"
+  },
+  "homepage": "https://github.com/b3hr4d/ic-reactor#readme",
+  "peerDependencies": {
+    "@dfinity/agent": "^0.20",
+    "@dfinity/auth-client": "0.20",
+    "@dfinity/candid": "^0.20",
+    "zustand": "^4.4"
+  },
+  "scripts": {
+    "test": "npx jest",
+    "start": "tsc watch",
+    "build": "npx tsc",
+    "clean": "rimraf dist"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "gitHead": "d369c0d5f08f06da8d34e9e71b373165cf080683"
+}

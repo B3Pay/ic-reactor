@@ -1,0 +1,12 @@
+# node
+node_modules
+.DS_Store
+
+# build
+lib
+dist
+.env
+.dfx
+.yarn
+lerna-debug.log
+yarn-error.log

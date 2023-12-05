@@ -1,0 +1,22 @@
+{
+  "name": "hello-world",
+  "version": "0.0.0",
+  "private": true,
+  "main": "src/script.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "sh ./test.sh",
+    "start": "npx jest"
+  },
+  "dependencies": {
+    "@ic-reactor/core": "*",
+    "@ic-reactor/store": "*"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.2",
+    "@babel/preset-env": "^7.23.2",
+    "babel-jest": "^29.7.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  }
+}

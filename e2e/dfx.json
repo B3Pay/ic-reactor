@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "canisters": {
+    "hello_actor": {
+      "type": "rust",
+      "package": "hello_actor",
+      "candid": "src/hello/hello_actor/hello_actor.did",
+      "declarations": {
+        "node_compatibility": true
+      }
+    }
+  },
+  "output_env_file": ".env"
+}

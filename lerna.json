@@ -1,0 +1,13 @@
+{
+  "version": "independent",
+  "packages": [
+    "packages/*"
+  ],
+  "npmClient": "yarn",
+  "ignoreChanges": [
+    "examples/**/*",
+    "**/*.md",
+    "**/*.spec.ts",
+    "**/test/**/*"
+  ]
+}
