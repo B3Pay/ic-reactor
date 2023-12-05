@@ -9,7 +9,7 @@ Re-actor is a TypeScript library designed to simplify interactions between your 
 To install Re-actor, run the following command:
 
 ```bash
-npm install @ic-reactor/core
+npm install @re-actor/core
 ```
 
 ## Features
@@ -24,7 +24,7 @@ npm install @ic-reactor/core
 Here's a simple example to get you started:
 
 ```jsx
-import createReActor from "@ic-reactor/core"
+import createReActor from "@re-actor/core"
 import { canisterId, createActor } from "declaration/actor"
 
 const { ReActorProvider, useActorMethod } = createReActor(() =>

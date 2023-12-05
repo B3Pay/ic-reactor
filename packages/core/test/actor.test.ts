@@ -32,18 +32,19 @@ fetchMock.mockResponse(async (req) => {
 describe("CreateActor", () => {
   const callback = jest.fn()
 
-  const { initializeActor, store, queryCall } = createReActor(
-    (agent) => {
-      return createActor("bd3sg-teaaa-aaaaa-qaaba-cai", {
-        agent,
-      })
-    },
-    {
-      initializeOnMount: false,
-      verifyQuerySignatures: false,
-      host: "https://local-mock",
-    }
-  )
+  const { initializeActor, store, actions, updateCall, queryCall } =
+    createReActor(
+      (agent) => {
+        return createActor("bd3sg-teaaa-aaaaa-qaaba-cai", {
+          agent,
+        })
+      },
+      {
+        initializeOnMount: false,
+        verifyQuerySignatures: false,
+        host: "https://local-mock",
+      }
+    )
 
   const { subscribe, getState } = store
 
