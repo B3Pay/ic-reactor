@@ -5,11 +5,11 @@
 
 ## Introduction
 
-Ic-reactor is a TypeScript library designed to simplify interactions between your frontend application and canisters on the Internet Computer. Leveraging the power of the `zustand` state management library and strong typing, Ic-reactor aims to make your development process smoother and more efficient.
+A TypeScript library designed to simplify interactions between your frontend application and canisters on the Internet Computer. Leveraging the power of the `zustand` state management library and strong typing, ic-reactor aims to make your development process smoother and more efficient.
 
 ## Installation
 
-To install Ic-reactor, run the following command:
+To install ic-reactor, run the following command:
 
 ```bash
 npm install @ic-reactor/core
