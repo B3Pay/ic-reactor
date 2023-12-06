@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/core",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "A React library for interacting with Dfinity actors",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
