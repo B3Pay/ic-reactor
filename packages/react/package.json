@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/react",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "A React library for interacting with Dfinity actors",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
@@ -25,7 +25,7 @@
   "bugs": {
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
-  "homepage": "https://github.com/b3hr4d/ic-reactor#readme",
+  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/react#readme",
   "scripts": {
     "test": "npx jest",
     "start": "tsc watch",
