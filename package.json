@@ -1,5 +1,4 @@
 {
-  "private": true,
   "name": "ic-reactor",
   "version": "0.0.0",
   "description": "A React library for working with Internet computer Actors",
@@ -48,7 +47,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:b3hr4d/react-actor.git"
+    "url": "git@github.com:b3hr4d/ic-reactor.git"
   },
   "engines": {
     "node": ">=16.0.0"
