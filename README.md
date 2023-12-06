@@ -333,9 +333,35 @@ Here's a basic usage example to get started:
    actions.resetState()
    ```
 
-## Contributing
+## We Welcome Feature Requests and Contributions
 
-Contributions to `@ic-reactor/store` are welcome.
+### Feature Requests
+
+Your feedback and ideas are invaluable in helping IC-Reactor evolve and improve. We warmly welcome feature requests and suggestions that can enhance the functionality and usability of our libraries. If there's something you'd like to see added or improved, please feel free to share your thoughts:
+
+- **Submit a Feature Request**: You can use the GitHub Issues section of the respective package repository to submit feature requests. Please provide as much detail as possible about the feature and how it would benefit users.
+
+- **Discussion and Planning**: Our team is open to discussing potential features and their implementation. We value community input and are always looking for ways to make our tools more useful and accessible.
+
+### Contributing to IC-Reactor
+
+IC-Reactor is an open-source project, and we encourage contributions from developers of all skill levels. Whether you're fixing bugs, adding features, or improving documentation, your help is welcome. Here's how you can contribute:
+
+1. **Check the Issues**: Browse the existing issues for bugs or feature requests that interest you. You can also create a new issue if you have a proposal or have identified a bug.
+
+2. **Fork and Clone**: Fork the repository you wish to contribute to, and clone it to your local machine.
+
+3. **Create a Branch**: Make your changes in a new branch. Naming your branch something relevant to your changes can be helpful.
+
+4. **Develop and Test**: Make your changes and test them thoroughly. Ensure you adhere to the existing code style and guidelines.
+
+5. **Submit a Pull Request**: Once you're satisfied with your changes, push your branch to your fork and submit a pull request to the main repository. Provide a clear description of your changes and any relevant issue numbers.
+
+6. **Review and Merge**: The maintainers will review your pull request and either merge it or request changes. If your pull request is merged, you will be credited as a contributor.
+
+### Join Our Community
+
+We believe in the power of community collaboration to create amazing tools. Your contributions, whether code, ideas, or feedback, are crucial to the success and growth of IC-Reactor. Join us in our mission to build effective and user-friendly tools for Internet Computer blockchain development!
 
 ## License
 
