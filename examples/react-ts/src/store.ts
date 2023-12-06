@@ -1,4 +1,3 @@
-import { HttpAgent } from "@dfinity/agent"
 import { createReActor } from "@ic-reactor/react"
 import { createActor } from "./candid"
 
@@ -11,7 +10,7 @@ export const {
   useUpdateCall,
   useAuthClient,
 } = createReActor(
-  (agent: HttpAgent) =>
+  (agent) =>
     createActor("xeka7-ryaaa-aaaal-qb57a-cai", {
       agent,
     }),

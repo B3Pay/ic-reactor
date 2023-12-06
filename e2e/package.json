@@ -9,7 +9,12 @@
     "start": "npx jest"
   },
   "dependencies": {
+    "@dfinity/agent": "^0.20",
+    "@dfinity/candid": "^0.20",
+    "@dfinity/identity": "^0.20",
+    "@dfinity/principal": "^0.20",
     "@ic-reactor/core": "*",
+    "@ic-reactor/react": "*",
     "@ic-reactor/store": "*"
   },
   "devDependencies": {

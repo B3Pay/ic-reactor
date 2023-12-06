@@ -25,7 +25,7 @@ export interface CreateReActorOptions extends HttpAgentOptions {
 const defaultCreateReActorOptions: CreateReActorOptions = {
   initializeOnMount: true,
   host:
-    process.env.NODE_ENV === "production"
+    process.env.NODE_ENV === "production" || process.env.DFX_NETWORK === "ic"
       ? "https://icp-api.io"
       : "http://localhost:4943",
 }
@@ -65,14 +65,15 @@ const createReActor = <A extends ActorSubclass<any>>(
         return state
       }
 
-      const methodState = state.actorState[method] || { states: {} }
-      const currentMethodState = methodState.states[hash] || {}
-      const updatedStates = {
-        ...methodState.states,
-        [hash]: {
-          ...currentMethodState,
-          ...newState,
-        },
+      if (!state.actorState[method]) {
+        console.error(`Method ${String(method)} not found`)
+        return state
+      }
+
+      const currentMethodState = state.actorState[method].states[hash] || {
+        loading: false,
+        data: undefined,
+        error: undefined,
       }
 
       return {
@@ -80,8 +81,14 @@ const createReActor = <A extends ActorSubclass<any>>(
         actorState: {
           ...state.actorState,
           [method]: {
-            ...methodState,
-            states: updatedStates,
+            ...state.actorState[method],
+            states: {
+              ...state.actorState[method].states,
+              [hash]: {
+                ...currentMethodState,
+                ...newState,
+              },
+            },
           },
         },
       }
@@ -95,18 +102,21 @@ const createReActor = <A extends ActorSubclass<any>>(
     try {
       const requestHash = updateMethodState(functionName, args)
 
-      const getState: ReActorGetStateFunction<A, M> = (key) => {
+      const getState: ReActorGetStateFunction<A, M> = (
+        key?: "data" | "loading" | "error"
+      ) => {
         const state =
           store.getState().actorState[functionName].states[requestHash]
 
-        if (key === "data") {
-          return state.data
-        } else if (key === "loading") {
-          return state.loading
-        } else if (key === "error") {
-          return state.error
-        } else {
-          return state
+        switch (key) {
+          case "data":
+            return state.data
+          case "loading":
+            return state.loading
+          case "error":
+            return state.error
+          default:
+            return state as any
         }
       }
 

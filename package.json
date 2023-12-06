@@ -1,6 +1,5 @@
 {
   "name": "ic-reactor",
-  "private": false,
   "description": "A React library for working with Internet computer Actors",
   "author": "Behrad Deylami <b3hr4d@live.com>",
   "license": "MIT",
@@ -59,6 +58,6 @@
   "workspaces": [
     "packages/*",
     "examples/*",
-    "e2e/*"
+    "e2e"
   ]
 }

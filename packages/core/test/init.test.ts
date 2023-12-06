@@ -4,7 +4,9 @@ const mockActor = () => {}
 
 describe("createReActor", () => {
   test("uninitialized", () => {
-    const { store } = createReActor(mockActor, { initializeOnMount: false })
+    const { store } = createReActor(mockActor, {
+      initializeOnMount: false,
+    })
 
     expect(store.getState()).toEqual({
       actorState: {},
@@ -20,7 +22,7 @@ describe("createReActor", () => {
   })
 
   test("initialized", () => {
-    const { initializeActor, store } = createReActor(mockActor)
+    const { initializeActor, queryCall, store } = createReActor(mockActor)
 
     initializeActor()
 

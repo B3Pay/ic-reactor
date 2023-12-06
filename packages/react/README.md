@@ -35,8 +35,8 @@ First, create an actor declaration file:
 import { canisterId, createActor } from "declaration/actor"
 import { createReActor } from "@ic-reactor/core"
 
-export const { ReActorProvider, useQueryCall } = createReActor(() =>
-  createActor(canisterId)
+export const { ReActorProvider, useQueryCall } = createReActor((agent) =>
+  createActor(canisterId, { agent })
 )
 ```
 

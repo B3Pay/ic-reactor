@@ -6,14 +6,12 @@ import {
   ReActorMethodState,
 } from "@ic-reactor/store"
 
-export type ReActorGetStateFunction<A, M extends keyof A> = (
-  key?: keyof ReActorMethodState<A, M>["states"][string]
-) =>
-  | ReActorMethodState<A, M>["states"][string]
-  | ExtractReActorMethodReturnType<A[M]>
-  | boolean
-  | Error
-  | undefined
+export type ReActorGetStateFunction<A, M extends keyof A> = {
+  (key: "data"): ExtractReActorMethodReturnType<A[M]> | undefined
+  (key: "loading"): boolean
+  (key: "error"): Error | undefined
+  (): ReActorMethodState<A, M>["states"][string]
+}
 
 export type ReActorSubscribeFunction<A, M extends keyof A> = (
   callback: (state: ReActorMethodState<A, M>["states"][string]) => void
