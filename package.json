@@ -1,6 +1,6 @@
 {
   "name": "ic-reactor",
-  "private": true,
+  "private": false,
   "description": "A React library for working with Internet computer Actors",
   "author": "Behrad Deylami <b3hr4d@live.com>",
   "license": "MIT",
@@ -44,6 +44,10 @@
     "typescript": "^5.3",
     "whatwg-fetch": "3.6",
     "xmlhttprequest": "^1.8"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "repository": {
     "type": "git",
