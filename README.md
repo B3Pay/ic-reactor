@@ -56,7 +56,7 @@ import { useQueryCall } from "./store"
 
 const Balance = ({ principal }) => {
   const { recall, data, loading, error } = useQueryCall({
-    functionName: "ge_balance",
+    functionName: "get_balance",
     args: [principal],
   })
 
