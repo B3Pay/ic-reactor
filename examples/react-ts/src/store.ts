@@ -6,7 +6,6 @@ export const {
   ReActorProvider,
   useReActor,
   initialize,
-  useActorMethodState,
   useActorState,
   useQueryCall,
   useUpdateCall,
