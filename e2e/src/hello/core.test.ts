@@ -50,7 +50,7 @@ describe("Core Function Test", () => {
   })
 
   it("should call the greet_update function", async () => {
-    const { getState, requestHash, call } = updateCall({
+    const { getState, requestHash, subscribe, call } = updateCall({
       functionName: "greet_update",
       args: ["World"],
     })

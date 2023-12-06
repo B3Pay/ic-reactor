@@ -5,16 +5,15 @@ import { canisterId, createActor } from "../declarations/hello_actor"
 
 describe("React Test", () => {
   it("should initialize", async () => {
-    const { ReActorProvider, initialize, useQueryCall, useReActor } =
-      createReActor(
-        (agent) =>
-          createActor(canisterId, {
-            agent,
-          }),
-        {
-          initializeOnMount: false,
-        }
-      )
+    const { ReActorProvider, initialize, useReActor } = createReActor(
+      (agent) =>
+        createActor(canisterId, {
+          agent,
+        }),
+      {
+        initializeOnMount: false,
+      }
+    )
 
     const TestInitialize = () => {
       const { initialized, initializing } = useReActor()

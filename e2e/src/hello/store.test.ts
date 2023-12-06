@@ -20,11 +20,6 @@ test("Main Function Test", async () => {
 
   expect(store.getState()).toEqual(DEFAULT_STATE)
 
-  //expect throw error if not initialized
-  // const shouldUndefiend = await actions.callMethod("greet", "World")
-  // expect(shouldUndefiend).toEqual(undefined)
-
-  // Initialize the actor
   initializeActor()
 
   const greet = await actions.callMethod("greet", "World")

@@ -29,7 +29,7 @@ fetchMock.mockResponse(async (req) => {
   })
 })
 
-describe("CreateActor", () => {
+describe("Initialize", () => {
   const callback = jest.fn()
 
   const { initializeActor, store, updateCall, queryCall } = createReActor(

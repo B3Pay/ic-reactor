@@ -37,7 +37,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
 
   if (optionsWithDefaults.initializeOnMount) {
     try {
-      initializeActor()
+      initializeActor({ host: optionsWithDefaults.host })
     } catch (e) {
       console.error(e)
     }
