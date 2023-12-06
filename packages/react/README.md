@@ -26,52 +26,55 @@ yarn add @ic-reactor/react
 
 ## Usage
 
-To use `@ic-reactor/react`, start by importing and setting up the `createReActor` function with your actor configurations:
+Here's a simple example to get you started:
 
-```javascript
-import createReActor from '@ic-reactor/react';
+First, create an actor declaration file:
 
-const actorInitializer = /* Your actor initialization logic */;
-const reActorConfig = /* Your ReActor configuration options */;
+```js
+// store.js
+import { canisterId, createActor } from "declaration/actor"
+import { createReActor } from "@ic-reactor/core"
 
-const { ReActorProvider, useReActorQuery, useReActorUpdate, ... } = createReActor(actorInitializer, reActorConfig);
-```
-
-Then, wrap your React application with the `ReActorProvider` component:
-
-```javascript
-const App = () => (
-  <ReActorProvider>
-    <YourApp />
-  </ReActorProvider>
+export const { ReActorProvider, useQueryCall } = createReActor(() =>
+  createActor(canisterId)
 )
 ```
 
-Finally, use the `useReActorQuery` and `useReActorUpdate` hooks to query and update actor state:
+Wrap your app with the `ReActorProvider` component:
 
-### Example: Querying Actor State
+```jsx
+// App.jsx
 
-```javascript
-const { recall, data, loading, error } = useQueryCall({
-  functionName: "fetchData",
-  args: ["arg1", "arg2"],
-  autoRefresh: true, // default: true
-  refreshInterval: 3000, // default: 5000
-  disableInitialCall: false, // default: false
-})
-
-// Use 'data', 'loading', 'error' in your component
+<ReActorProvider>
+  <Balance principal={principal} />
+</ReActorProvider>
 ```
 
-### Example: Updating Actor State
+Then, use the `useQueryCall` hook to call your canister method:
 
-```javascript
-const { call, data, loading, error } = useUpdateCall({
-  functionName: "updateData",
-  args: ["arg1", "arg2"],
-})
+```jsx
+// Balance.jsx
+import { useQueryCall } from "./store"
 
-// Call the 'call' function to trigger an update call
+const Balance = ({ principal }) => {
+  const { recall, data, loading, error } = useQueryCall({
+    functionName: "get_balance",
+    args: [principal],
+  })
+
+  return (
+    <div>
+      <button onClick={() => recall()} disabled={loading}>
+        {loading ? "Loading..." : "Refresh"}
+      </button>
+      {loading && <p>Loading...</p>}
+      {data && <p>Balance: {data}</p>}
+      {error && <p>Error: {error}</p>}
+    </div>
+  )
+}
+
+export default Balance
 ```
 
 ## API Reference
