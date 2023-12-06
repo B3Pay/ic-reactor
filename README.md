@@ -1,15 +1,18 @@
-# Re-Actor
+# IC-ReActor
+
+[![npm version](https://badge.fury.io/js/%40ic-reactor%2Fcore.svg)](https://badge.fury.io/js/%40ic-reactor%2Fcore)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Introduction
 
-Re-actor is a TypeScript library designed to simplify interactions between your frontend application and canisters on the Internet Computer. Leveraging the power of the `zustand` state management library and strong typing, Re-actor aims to make your development process smoother and more efficient.
+Ic-reactor is a TypeScript library designed to simplify interactions between your frontend application and canisters on the Internet Computer. Leveraging the power of the `zustand` state management library and strong typing, Ic-reactor aims to make your development process smoother and more efficient.
 
 ## Installation
 
-To install Re-actor, run the following command:
+To install Ic-reactor, run the following command:
 
 ```bash
-npm install @re-actor/core
+npm install @ic-reactor/core
 ```
 
 ## Features
@@ -19,31 +22,26 @@ npm install @re-actor/core
 - **Easy to Use**: Simplified API for quick integration into your projects.
 - **Flexible**: Compatible with both React and non-React projects.
 
-## Usage
+## React - Usage
 
 Here's a simple example to get you started:
 
-```jsx
-import createReActor from "@re-actor/core"
-import { canisterId, createActor } from "declaration/actor"
+First, create an actor declaration file:
 
-const { ReActorProvider, useActorMethod } = createReActor(() =>
+```js
+// store.js
+import { canisterId, createActor } from "declaration/actor"
+import { createReActor } from "@ic-reactor/core"
+
+export const { ReActorProvider, useQueryCall } = createReActor(() =>
   createActor(canisterId)
 )
+```
 
-const Balance = () => {
-  const { call, data, error, loading } = useActorMethod("get_balance")
+Wrap your app with the `ReActorProvider` component:
 
-  return (
-    <div>
-      <button onClick={() => call()}>Fetch Balance</button>
-      {loading && <p>Loading...</p>}
-      {data && <p>Balance: {data}</p>}
-      {error && <p>Error: {error}</p>}
-    </div>
-  )
-}
-
+```jsx
+// index.jsx
 const App = () => (
   <ReActorProvider>
     <Balance />
@@ -51,23 +49,32 @@ const App = () => (
 )
 ```
 
-For more detailed examples, check the [`examples`](./examples) directory.
+Then, use the `useQueryCall` hook to call your canister method:
 
-## API Reference
+```jsx
+// Balance.jsx
+import { useQueryCall } from "./store"
 
-### `useActorMethod`
+const Balance = ({ principal }) => {
+  const { recall, data, loading, error } = useQueryCall({
+    functionName: "ge_balance",
+    args: [principal],
+  })
 
-This hook allows you to call a method from your canister and manage its state.
+  return (
+    <div>
+      <button onClick={() => recall()} disabled={loading}>
+        {loading ? "Loading..." : "Refresh"}
+      </button>
+      {loading && <p>Loading...</p>}
+      {data && <p>Balance: {data}</p>}
+      {error && <p>Error: {error}</p>}
+    </div>
+  )
+}
 
-```typescript
-const { call, data, error, loading } = useActorMethod("methodName")
+export default Balance
 ```
-
-- `call`: A function that calls the canister method.
-- `data`: The data returned from the canister method.
-- `error`: Any error that occurred while calling the canister method.
-- `types`: The candid types of the canister method.
-- `loading`: A boolean indicating whether the data is being fetched.
 
 ## Examples
 
