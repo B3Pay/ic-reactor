@@ -41,12 +41,11 @@ export const { ReActorProvider, useQueryCall } = createReActor(() =>
 Wrap your app with the `ReActorProvider` component:
 
 ```jsx
-// index.jsx
-const App = () => (
-  <ReActorProvider>
-    <Balance />
-  </ReActorProvider>
-)
+// App.jsx
+
+<ReActorProvider>
+  <Balance principal={principal} />
+</ReActorProvider>
 ```
 
 Then, use the `useQueryCall` hook to call your canister method:
