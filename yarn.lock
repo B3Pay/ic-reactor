@@ -2141,7 +2141,7 @@ __metadata:
     "@dfinity/candid": "npm:0.20"
     "@dfinity/identity": "npm:^0.20"
     "@dfinity/principal": "npm:^0.20"
-    "@ic-reactor/store": "npm:^0.0.2"
+    "@ic-reactor/store": "npm:^0.0.3"
     zustand: "npm:4.4"
   peerDependencies:
     "@peculiar/webcrypto": 1.4
@@ -2157,7 +2157,7 @@ __metadata:
     "@dfinity/candid": "npm:0.20"
     "@dfinity/identity": "npm:^0.20"
     "@dfinity/principal": "npm:^0.20"
-    "@ic-reactor/store": "npm:^0.0.2"
+    "@ic-reactor/store": "npm:^0.0.3"
     zustand: "npm:4.4"
   peerDependencies:
     "@peculiar/webcrypto": 1.4
@@ -2165,7 +2165,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/store@npm:*, @ic-reactor/store@npm:^0.0.2, @ic-reactor/store@workspace:packages/store":
+"@ic-reactor/store@npm:*, @ic-reactor/store@npm:^0.0.3, @ic-reactor/store@workspace:packages/store":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/store@workspace:packages/store"
   dependencies:
