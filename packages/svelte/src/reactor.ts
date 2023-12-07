@@ -60,8 +60,8 @@ export class ReActorManager<A extends ActorSubclass<any>> {
       this.agent = new HttpAgent({
         identity,
         host:
-          process.env.NODE_ENV === "production" ||
-          process.env.DFX_NETWORK === "ic"
+          process?.env.NODE_ENV === "production" ||
+          process?.env.DFX_NETWORK === "ic"
             ? "https://icp-api.io"
             : "http://localhost:4943",
         ...(agentOptions || this.agentOptions),
