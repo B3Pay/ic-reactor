@@ -2184,6 +2184,8 @@ __metadata:
     "@dfinity/auth-client": "npm:0.20"
     "@dfinity/candid": "npm:^0.20"
     "@testing-library/jest-dom": "npm:^6.1"
+  peerDependencies:
+    svelte: ^4.2
   languageName: unknown
   linkType: soft
 

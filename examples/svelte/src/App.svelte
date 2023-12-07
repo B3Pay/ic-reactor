@@ -1,5 +1,5 @@
 <script>
-  import { createReActor } from "@ic-reactor/core"
+  import { createReActor } from "@ic-reactor/svelte"
   import { onDestroy, onMount } from "svelte"
   import { createActor } from "./candid"
 

@@ -28,6 +28,9 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.1"
   },
+  "peerDependencies": {
+    "svelte": "^4.2"
+  },
   "dependencies": {
     "@dfinity/agent": "^0.20",
     "@dfinity/auth-client": "0.20",
