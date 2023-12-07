@@ -4,9 +4,7 @@ import type {
   ReActorMethodState,
   ReActorStore,
 } from "@ic-reactor/store"
-import createActorStoreAndActions, {
-  generateRequestHash,
-} from "@ic-reactor/store"
+import { createReActorStore, generateRequestHash } from "@ic-reactor/store"
 import {
   ReActorCallFunction,
   ReActorGetStateFunction,
@@ -30,7 +28,7 @@ const defaultCreateReActorOptions: CreateReActorOptions = {
       : "http://localhost:4943",
 }
 
-const createReActor = <A extends ActorSubclass<any>>(
+export const createReActor = <A extends ActorSubclass<any>>(
   actorInitializer: (agent: HttpAgent) => A,
   options: CreateReActorOptions = {}
 ) => {
@@ -39,7 +37,7 @@ const createReActor = <A extends ActorSubclass<any>>(
     ...options,
   }
 
-  const { actions, initializeActor, store } = createActorStoreAndActions<A>(
+  const { actions, initializeActor, store } = createReActorStore<A>(
     (agent) => actorInitializer(agent),
     optionsWithDefaults
   )
@@ -199,5 +197,3 @@ const createReActor = <A extends ActorSubclass<any>>(
     updateCall,
   }
 }
-
-export default createReActor

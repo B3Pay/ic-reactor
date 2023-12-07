@@ -1,7 +1,7 @@
 import type { HttpAgent, HttpAgentOptions } from "@dfinity/agent"
 import { AuthClientLoginOptions } from "@dfinity/auth-client"
 import type { ActorSubclass, ReActorStore } from "@ic-reactor/store"
-import createActorStoreAndActions from "@ic-reactor/store"
+import { createReActorStore } from "@ic-reactor/store"
 import { createContext, createElement, useEffect, useState } from "react"
 import { getStateHooks } from "./hooks"
 
@@ -30,7 +30,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
 
   const Context = createContext<ReActorContextType<A> | undefined>(undefined)
 
-  const { actions, initializeActor, store } = createActorStoreAndActions<A>(
+  const { actions, initializeActor, store } = createReActorStore<A>(
     (agent) => actorInitializer(agent),
     optionsWithDefaults
   )
@@ -133,5 +133,3 @@ export const createReActor = <A extends ActorSubclass<any>>(
     useInitializing,
   }
 }
-
-export default createReActor

@@ -1,7 +1,7 @@
 {
-  "name": "@ic-reactor/store",
-  "version": "0.0.2",
-  "description": "A React library for interacting with Dfinity actors",
+  "name": "@ic-reactor/svelte",
+  "version": "0.0.1",
+  "description": "A Svelte library for interacting with Dfinity actors",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -25,11 +25,13 @@
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/store#readme",
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.1"
+  },
   "dependencies": {
     "@dfinity/agent": "^0.20",
-    "@dfinity/auth-client": "^0.20",
-    "@dfinity/candid": "^0.20",
-    "zustand": "^4.4"
+    "@dfinity/auth-client": "0.20",
+    "@dfinity/candid": "^0.20"
   },
   "scripts": {
     "test": "npx jest",
