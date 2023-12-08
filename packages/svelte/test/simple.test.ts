@@ -1,14 +1,17 @@
 import { randomBytes } from "crypto"
 import { createReActorStore } from "../src"
-import { createActor } from "./candid/backend"
+import { idlFactory } from "./candid/backend"
 
 describe("My IC Store and Actions", () => {
-  const { actions } = createReActorStore(
-    (agent) => createActor("xeka7-ryaaa-aaaal-qb57a-cai", { agent }),
-    {
-      host: "https://icp-api.io",
-    }
-  )
+  const { actions } = createReActorStore({
+    canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+    idlFactory: idlFactory,
+    options: {
+      agentOptions: {
+        host: "https://icp-api.io",
+      },
+    },
+  })
 
   afterAll(() => {
     actions.resetState()

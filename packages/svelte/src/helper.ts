@@ -1,7 +1,56 @@
-import { Actor, hash } from "@dfinity/agent"
-import { toHexString } from "@dfinity/candid"
-import { FuncClass } from "@dfinity/candid/lib/cjs/idl"
-import { ActorSubclass, ReActorState } from "./types"
+import type { ActorConfig, Agent, HttpAgentOptions } from "@dfinity/agent"
+import { Actor, HttpAgent, hash } from "@dfinity/agent"
+import { toHexString, type IDL } from "@dfinity/candid"
+import type { FuncClass } from "@dfinity/candid/lib/cjs/idl"
+import type { ActorSubclass, CanisterId, ReActorState } from "./types"
+
+export declare interface CreateActorOptions {
+  agent?: Agent
+  agentOptions?: HttpAgentOptions
+  actorOptions?: ActorConfig
+}
+
+export interface CreateActor extends CreateActorOptions {
+  canisterId: string
+  idlFactory: IDL.InterfaceFactory
+}
+
+export type CreateActorFunctionArgs = {
+  canisterId: CanisterId
+  idlFactory: IDL.InterfaceFactory
+  options: CreateActorOptions
+  isLocalEnv?: boolean
+}
+
+export const createActor = <A extends ActorSubclass<any>>({
+  canisterId,
+  idlFactory,
+  options,
+  isLocalEnv,
+}: CreateActorFunctionArgs): A => {
+  const agent = options.agent || new HttpAgent({ ...options.agentOptions })
+
+  if (options.agent && options.agentOptions) {
+    console.warn(
+      "Detected both agent and agentOptions passed to createActor. Ignoring agentOptions and proceeding with the provided agent."
+    )
+  }
+
+  if (isLocalEnv) {
+    agent.fetchRootKey().catch((err) => {
+      console.warn(
+        "Unable to fetch root key. Check to ensure that your local replica is running"
+      )
+      console.error(err)
+    })
+  }
+
+  return Actor.createActor(idlFactory, {
+    agent,
+    canisterId,
+    ...options.actorOptions,
+  })
+}
 
 export function createActorStates<A extends ActorSubclass<any>>(
   actor: A

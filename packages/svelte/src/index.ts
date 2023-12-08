@@ -1,6 +1,10 @@
 import { ActorSubclass, HttpAgent, HttpAgentOptions } from "@dfinity/agent"
 import { get } from "svelte/store"
-import { generateRequestHash } from "./helper"
+import {
+  CreateActorFunctionArgs,
+  createActor,
+  generateRequestHash,
+} from "./helper"
 import { ReActorManager } from "./reactor"
 import {
   ReActorCallFunction,
@@ -14,10 +18,12 @@ import {
 } from "./types"
 
 export const createReActorStore = <A extends ActorSubclass<any>>(
-  actorInitializer: (agent: HttpAgent) => A,
-  agentOptions?: HttpAgentOptions
+  options: CreateActorFunctionArgs
 ): ReActorManager<A> => {
-  return new ReActorManager<A>(actorInitializer, agentOptions)
+  const actorInitializer = (agent: HttpAgent) => {
+    return createActor<A>(options)
+  }
+  return new ReActorManager<A>(actorInitializer, options.options.agentOptions)
 }
 
 export type ReActorContextType<A = ActorSubclass<any>> = ReActorStore<A>
@@ -31,18 +37,14 @@ const defaultCreateReActorOptions: CreateReActorOptions = {
 }
 
 export const createReActor = <A extends ActorSubclass<any>>(
-  actorInitializer: (agent: HttpAgent) => A,
-  options: CreateReActorOptions = {}
+  options: CreateActorFunctionArgs
 ) => {
   const optionsWithDefaults = {
     ...defaultCreateReActorOptions,
     ...options,
   }
 
-  const { actions, initializeActor, store } = createReActorStore<A>(
-    (agent) => actorInitializer(agent),
-    optionsWithDefaults
-  )
+  const { actions, initializeActor, store } = createReActorStore<A>(options)
 
   if (optionsWithDefaults.initializeOnMount) {
     try {
