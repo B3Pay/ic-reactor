@@ -1,18 +1,8 @@
 module.exports = {
   transform: {
-    "^.+\\.svelte$": "svelte-jester",
-    "^.+\\.ts$": "ts-jest",
-    "^.+\\.js$": "babel-jest",
+    "^.+\\.[t|j]sx?$": "babel-jest",
   },
-  moduleFileExtensions: ["js", "ts", "svelte"],
-  testPathIgnorePatterns: ["node_modules"],
-  bail: false,
-  verbose: true,
-  transformIgnorePatterns: ["node_modules"],
-  setupFilesAfterEnv: ["@testing-library/jest-dom/extend-expect"],
-  globals: {
-    "ts-jest": {
-      tsconfig: "tsconfig.json",
-    },
-  },
+  preset: "ts-jest",
+  testEnvironment: "node",
+  setupFilesAfterEnv: ["./jest.setup.js"],
 }

@@ -1,9 +1,9 @@
 import { randomBytes } from "crypto"
-import createICStoreAndActions from "../src"
+import { createReActorStore } from "../src"
 import { createActor } from "./candid/backend"
 
 describe("My IC Store and Actions", () => {
-  const { actions } = createICStoreAndActions(
+  const { actions } = createReActorStore(
     (agent) => createActor("xeka7-ryaaa-aaaal-qb57a-cai", { agent }),
     {
       host: "https://icp-api.io",

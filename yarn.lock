@@ -2183,7 +2183,7 @@ __metadata:
     "@dfinity/agent": "npm:^0.20"
     "@dfinity/auth-client": "npm:0.20"
     "@dfinity/candid": "npm:^0.20"
-    "@testing-library/jest-dom": "npm:^6.1"
+    svelte-jester: "npm:^3.0"
   peerDependencies:
     svelte: ^4.2
   languageName: unknown
@@ -16695,7 +16695,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"svelte-jester@npm:3.0":
+"svelte-jester@npm:3.0, svelte-jester@npm:^3.0":
   version: 3.0.0
   resolution: "svelte-jester@npm:3.0.0"
   peerDependencies:

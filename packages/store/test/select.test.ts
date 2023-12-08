@@ -1,10 +1,12 @@
-import createICStoreAndActions from "../src"
+import { createReActorStore } from "../src"
 
 const mockActor = () => {}
 
-describe("createICStoreAndActions", () => {
+describe("createReActorStore", () => {
   test("uninitialized", () => {
-    const { store } = createICStoreAndActions(mockActor)
+    const { store } = createReActorStore(mockActor, {
+      host: "https://icp-api.io",
+    })
 
     expect(store.getState()).toEqual({
       actorState: {},
@@ -20,7 +22,7 @@ describe("createICStoreAndActions", () => {
   })
 
   test("initialized", () => {
-    const { initializeActor, store } = createICStoreAndActions(mockActor)
+    const { initializeActor, store } = createReActorStore(mockActor)
 
     initializeActor()
 

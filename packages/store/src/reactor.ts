@@ -44,7 +44,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     this.store = create(() => this.DEFAULT_STATE)
     this.actorInitializer = actorInitializer
     this.agentOptions = agentOptions
-    this.actions = this.createActions(agentOptions)
+    this.actions = this.createActions()
   }
 
   public initializeActor = (
@@ -75,9 +75,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     }
   }
 
-  private createActions(
-    agentOptions?: HttpAgentOptions
-  ): ReActorStoreActions<A> {
+  private createActions(): ReActorStoreActions<A> {
     // Helper function to handle common state updates
     const updateState = (newState: Partial<ReActorState<A>>) => {
       this.store.setState((state) => ({ ...state, ...newState }))
@@ -90,7 +88,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     const initialize = (identity?: Identity) => {
       updateState({ initializing: true })
       try {
-        this.initializeActor(agentOptions, identity)
+        this.initializeActor(undefined, identity)
         if (!this.actor)
           throw new Error("Initialization failed: Actor could not be created.")
 
@@ -115,7 +113,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
 
         this.agent = new HttpAgent({
           identity,
-          ...(agentOptions || this.agentOptions),
+          ...this.agentOptions,
         })
 
         updateState({
