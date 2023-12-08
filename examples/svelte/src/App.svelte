@@ -1,14 +1,6 @@
 <script>
-  import { createReActor } from "@ic-reactor/svelte"
   import { onDestroy, onMount } from "svelte"
-  import { createActor } from "./candid"
-
-  const { actions, initializeActor, queryCall, updateCall } = createReActor(
-    (agent) => createActor("xeka7-ryaaa-aaaal-qb57a-cai", { agent }),
-    {
-      host: "https://icp-api.io",
-    },
-  )
+  import { queryCall } from "./store"
 
   let balance
   let isLoading
