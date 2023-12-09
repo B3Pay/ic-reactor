@@ -6,5 +6,5 @@
     "moduleResolution": "Node",
     "jsx": "react"
   },
-  "exclude": ["**/*.spec.ts", "dist", "test"]
+  "exclude": ["**/*.spec.ts", ".next", "dist", "test", "out", "node_modules"]
 }

@@ -1,0 +1,32 @@
+{
+  "canisters": {
+    "hello": {
+      "main": "backend/hello/main.mo",
+      "type": "motoko",
+      "declarations": {
+        "bindings": null,
+        "env_override": null,
+        "node_compatibility": true,
+        "output": null
+      }
+    },
+    "internet_identity": {
+      "type": "pull",
+      "id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+    },
+    "frontend": {
+      "dependencies": [
+        "hello"
+      ],
+      "frontend": {
+        "entrypoint": "out/index.html"
+      },
+      "source": [
+        "out"
+      ],
+      "type": "assets"
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

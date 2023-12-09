@@ -1,7 +1,7 @@
 import { Cbor } from "@dfinity/agent"
 import { IDL } from "@dfinity/candid"
 import fetchMock from "jest-fetch-mock"
-import createReActor from "../src"
+import { createReActor } from "../src"
 import { createActor } from "./candid/hello"
 
 fetchMock.enableMocks()

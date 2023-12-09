@@ -1,4 +1,4 @@
-import createReActor from "../src"
+import { createReActor } from "../src"
 
 const mockActor = () => {}
 

@@ -1,0 +1,49 @@
+{
+  "name": "ic-rust-nextjs",
+  "version": "1.0.1",
+  "private": true,
+  "author": "b3hr4d <b3hr4d@live.com>",
+  "description": "Internet Computer Rust + NextJS Template",
+  "keywords": [
+    "nextjs",
+    "rust",
+    "internet computer",
+    "icp",
+    "starter",
+    "dfinity"
+  ],
+  "scripts": {
+    "install:all": "(yarn -v && yarn || npm install) && npm run ic-wasm:install && npm run candid:install",
+    "candid:install": "cargo install candid-extractor",
+    "ic-wasm:install": "cargo install ic-wasm",
+    "build": "next build",
+    "start": "next start",
+    "export": "next build",
+    "dev": "next dev",
+    "dfx:start": "dfx start --background --clean",
+    "dfx:stop": "dfx stop",
+    "dfx:build": "sh ./predeploy.sh && dfx build",
+    "predeploy": "sh ./predeploy.sh",
+    "deploy": "sh ./predeploy.sh && dfx deploy",
+    "identity:deploy": "dfx deps deploy internet_identity",
+    "generate": "dfx generate"
+  },
+  "dependencies": {
+    "@dfinity/agent": "^0.20",
+    "@dfinity/auth-client": "^0.20",
+    "@dfinity/candid": "^0.20",
+    "@dfinity/identity": "^0.20",
+    "@dfinity/principal": "^0.20",
+    "@ic-reactor/react": "^*",
+    "@peculiar/webcrypto": "^1.4",
+    "next": "^14.0",
+    "react": "^18.2",
+    "react-dom": "^18.2"
+  },
+  "devDependencies": {
+    "@types/node": "20.9.4",
+    "@types/react": "18.2.38",
+    "dotenv": "16.3.1",
+    "typescript": "5.3.2"
+  }
+}

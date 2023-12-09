@@ -1,0 +1,28 @@
+.env
+.env.local
+# Various IDEs and Editors
+.vscode/
+.idea/
+**/*~
+
+# Mac OSX temporary files
+.DS_Store
+**/.DS_Store
+._.DS_Store
+
+# dfx temporary files
+.dfx/
+.yarn
+canister_ids.json
+
+# frontend code
+node_modules/
+out/
+
+# Next.js
+.next/
+
+# Rust build artifacts
+target/
+Cargo.lock
+

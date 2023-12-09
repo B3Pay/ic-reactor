@@ -13,6 +13,10 @@ export interface CreateReActorOptions extends HttpAgentOptions {
 
 const defaultCreateReActorOptions: CreateReActorOptions = {
   initializeOnMount: true,
+  host:
+    process?.env.NODE_ENV === "production" || process?.env.DFX_NETWORK === "ic"
+      ? "https://icp-api.io"
+      : "http://localhost:4943",
 }
 
 export const createReActor = <A extends ActorSubclass<any>>(
@@ -118,6 +122,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
   return {
     ReActorProvider,
     ...actions,
+    initializeActor,
     useReActor,
     useLoading,
     useError,

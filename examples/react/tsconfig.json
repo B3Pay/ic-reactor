@@ -16,5 +16,14 @@
     "jsx": "react-jsx",
     "baseUrl": "src"
   },
-  "include": ["src", "src/**/*"]
+  "include": ["src", "src/**/*"],
+  "exclude": [
+    "node_modules",
+    "build",
+    "scripts",
+    "acceptance-tests",
+    "webpack",
+    "jest",
+    "src/setupTests.ts"
+  ]
 }
