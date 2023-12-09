@@ -86,8 +86,6 @@ export const getStateHooks = <A extends ActorSubclass<any>>(
             error: error as Error,
             loading: false,
           }))
-
-          throw error
         }
       },
       [args, functionName, onError, onSuccess, onLoading]

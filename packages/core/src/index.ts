@@ -133,14 +133,23 @@ export const createReActor = <A extends ActorSubclass<any>>(
           error: undefined,
         })
 
-        const data = await actions.callMethod(
-          functionName,
-          ...(replaceArgs ?? args)
-        )
+        try {
+          const data = await actions.callMethod(
+            functionName,
+            ...(replaceArgs ?? args)
+          )
 
-        updateMethodState(functionName, args, { data, loading: false })
+          updateMethodState(functionName, args, { data, loading: false })
 
-        return data
+          return data
+        } catch (error) {
+          updateMethodState(functionName, args, {
+            error: error as Error,
+            loading: false,
+          })
+
+          console.error(error)
+        }
       }
 
       return {

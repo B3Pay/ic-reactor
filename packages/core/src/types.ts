@@ -19,7 +19,7 @@ export type ReActorSubscribeFunction<A, M extends keyof A> = (
 
 export type ReActorCallFunction<A, M extends keyof A> = (
   replaceArgs?: ExtractReActorMethodArgs<A[M]>
-) => Promise<ExtractReActorMethodReturnType<A[M]>>
+) => Promise<ExtractReActorMethodReturnType<A[M]> | undefined>
 
 // Type for the return value of a ReActor call
 export type ReActorQueryReturn<A, M extends keyof A> = {
@@ -28,7 +28,7 @@ export type ReActorQueryReturn<A, M extends keyof A> = {
   getState: ReActorGetStateFunction<A, M>
   subscribe: ReActorSubscribeFunction<A, M>
   recall: ReActorCallFunction<A, M>
-  initialData: Promise<ExtractReActorMethodReturnType<A[M]>>
+  initialData: Promise<ExtractReActorMethodReturnType<A[M]> | undefined>
 }
 
 export type ReActorUpdateReturn<A, M extends keyof A> = {
