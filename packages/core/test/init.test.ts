@@ -6,6 +6,7 @@ describe("createReActor", () => {
   test("uninitialized", () => {
     const { store } = createReActor(mockActor, {
       initializeOnMount: false,
+      host: "https://icp-api.io",
     })
 
     expect(store.getState()).toEqual({

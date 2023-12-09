@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto"
-import createReActor from "../src"
+import { createReActor } from "../src"
 import { createActor } from "./candid/backend"
 
 describe("My IC Store and Actions", () => {
