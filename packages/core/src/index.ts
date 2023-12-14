@@ -1,8 +1,8 @@
 import type { HttpAgent, HttpAgentOptions } from "@dfinity/agent"
 import type {
   ActorSubclass,
+  ReActorAuthStore,
   ReActorMethodState,
-  ReActorStore,
 } from "@ic-reactor/store"
 import { createReActorStore, generateRequestHash } from "@ic-reactor/store"
 import {
@@ -14,7 +14,7 @@ import {
   ReActorUpdate,
 } from "./types"
 
-export type ReActorContextType<A = ActorSubclass<any>> = ReActorStore<A>
+export type ReActorContextType<A = ActorSubclass<any>> = ReActorAuthStore<A>
 
 export interface CreateReActorOptions extends HttpAgentOptions {
   initializeOnMount?: boolean
@@ -33,18 +33,10 @@ export const createReActor = <A extends ActorSubclass<any>>(
     ...options,
   }
 
-  const { actions, initializeActor, store } = createReActorStore<A>(
+  const { callMethod, actorStore, authStore, ...rest } = createReActorStore<A>(
     (agent) => actorInitializer(agent),
     optionsWithDefaults
   )
-
-  if (optionsWithDefaults.initializeOnMount) {
-    try {
-      initializeActor()
-    } catch (e) {
-      console.error(e)
-    }
-  }
 
   const updateMethodState = <M extends keyof A>(
     method: M,
@@ -53,18 +45,18 @@ export const createReActor = <A extends ActorSubclass<any>>(
   ) => {
     const hash = generateRequestHash(args)
 
-    store.setState((state) => {
-      if (!state.actorState) {
+    actorStore.setState((state) => {
+      if (!state.methodState) {
         console.error("Actor not initialized")
         return state
       }
 
-      if (!state.actorState[method]) {
+      if (!state.methodState[method]) {
         console.error(`Method ${String(method)} not found`)
         return state
       }
 
-      const currentMethodState = state.actorState[method].states[hash] || {
+      const currentMethodState = state.methodState[method].states[hash] || {
         loading: false,
         data: undefined,
         error: undefined,
@@ -72,12 +64,12 @@ export const createReActor = <A extends ActorSubclass<any>>(
 
       return {
         ...state,
-        actorState: {
-          ...state.actorState,
+        methodState: {
+          ...state.methodState,
           [method]: {
-            ...state.actorState[method],
+            ...state.methodState[method],
             states: {
-              ...state.actorState[method].states,
+              ...state.methodState[method].states,
               [hash]: {
                 ...currentMethodState,
                 ...newState,
@@ -100,7 +92,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
         key?: "data" | "loading" | "error"
       ) => {
         const state =
-          store.getState().actorState[functionName].states[requestHash]
+          actorStore.getState().methodState[functionName].states[requestHash]
 
         switch (key) {
           case "data":
@@ -115,8 +107,8 @@ export const createReActor = <A extends ActorSubclass<any>>(
       }
 
       const subscribe: ReActorSubscribeFunction<A, M> = (callback) => {
-        const unsubscribe = store.subscribe((state) => {
-          const methodState = state.actorState[functionName]
+        const unsubscribe = actorStore.subscribe((state) => {
+          const methodState = state.methodState[functionName]
           const methodStateHash = methodState.states[requestHash]
 
           if (methodStateHash) {
@@ -134,10 +126,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
         })
 
         try {
-          const data = await actions.callMethod(
-            functionName,
-            ...(replaceArgs ?? args)
-          )
+          const data = await callMethod(functionName, ...(replaceArgs ?? args))
 
           updateMethodState(functionName, args, { data, loading: false })
 
@@ -195,10 +184,10 @@ export const createReActor = <A extends ActorSubclass<any>>(
   }
 
   return {
-    store,
-    actions,
-    initializeActor,
+    actorStore,
+    authStore,
     queryCall,
     updateCall,
+    ...rest,
   }
 }

@@ -1,12 +1,12 @@
 import { Actor, hash } from "@dfinity/agent"
 import { toHexString } from "@dfinity/candid"
 import { FuncClass } from "@dfinity/candid/lib/cjs/idl"
-import { ActorSubclass, ReActorState } from "./types"
+import { ActorSubclass, ReActorMethodStates } from "./types"
 
-export function createActorStates<A extends ActorSubclass<any>>(
+export function createMethodStates<A extends ActorSubclass<any>>(
   actor: A
-): ReActorState<A>["actorState"] {
-  const actorState = {} as ReActorState<A>["actorState"]
+): ReActorMethodStates<A> {
+  const actorState = {} as ReActorMethodStates<A>
   const methods: [string, FuncClass][] = Actor.interfaceOf(
     actor as Actor
   )._fields

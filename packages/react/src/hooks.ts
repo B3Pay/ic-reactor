@@ -2,10 +2,8 @@ import {
   ActorSubclass,
   CallMethod,
   ExtractReActorMethodArgs,
-  ReActorState,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { StoreApi, useStore } from "zustand"
 import {
   ReActorCallArgs,
   ReActorHookState,
@@ -13,40 +11,9 @@ import {
   ReActorUseUpdateArgs,
 } from "./types"
 
-export const getStateHooks = <A extends ActorSubclass<any>>(
-  store: StoreApi<ReActorState<A>>,
+export const getCallHooks = <A extends ActorSubclass<any>>(
   callMethod: CallMethod<A>
 ) => {
-  const useReActor = () => {
-    const state = useStore(store)
-    return state
-  }
-
-  const useLoading = () => {
-    const loading = useStore(store, (state) => state.loading)
-    return loading
-  }
-
-  const useError = () => {
-    const error = useStore(store, (state) => state.error)
-    return error
-  }
-
-  const useInitialized = () => {
-    const initialized = useStore(store, (state) => state.initialized)
-    return initialized
-  }
-
-  const useInitializing = () => {
-    const initializing = useStore(store, (state) => state.initializing)
-    return initializing
-  }
-
-  const useActorState = () => {
-    const actorState = useStore(store, (state) => state.actorState)
-    return actorState
-  }
-
   const useReActorCall = <M extends keyof A>({
     onError,
     onSuccess,
@@ -79,6 +46,7 @@ export const getStateHooks = <A extends ActorSubclass<any>>(
 
           return data
         } catch (error) {
+          console.error("Error in call:", error)
           onError?.(error as Error)
           onLoading?.(false)
           setState((prevState) => ({
@@ -132,12 +100,6 @@ export const getStateHooks = <A extends ActorSubclass<any>>(
   }
 
   return {
-    useReActor,
-    useLoading,
-    useError,
-    useInitialized,
-    useInitializing,
-    useActorState,
     useQueryCall,
     useUpdateCall,
   }

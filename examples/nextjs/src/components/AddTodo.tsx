@@ -19,7 +19,7 @@ const AddTodo: React.FC<AddTodoProps> = ({}) => {
     <div>
       <section>
         <h2>AddTodo</h2>
-        <label htmlFor="name">Enter your name: &nbsp;</label>
+        <label htmlFor="name">Todo: &nbsp;</label>
         <input
           id="name"
           alt="Name"

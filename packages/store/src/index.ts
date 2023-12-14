@@ -1,11 +1,12 @@
-import { ActorSubclass, HttpAgent, HttpAgentOptions } from "@dfinity/agent"
+import { ActorSubclass, HttpAgent } from "@dfinity/agent"
 import { ReActorManager } from "./reactor"
+import { ReActorOptions } from "./types"
 
 export const createReActorStore = <A extends ActorSubclass<any>>(
   actorInitializer: (agent: HttpAgent) => A,
-  agentOptions?: HttpAgentOptions
+  reactorConfig?: ReActorOptions
 ): ReActorManager<A> => {
-  return new ReActorManager<A>(actorInitializer, agentOptions)
+  return new ReActorManager<A>(actorInitializer, reactorConfig)
 }
 
 export * from "./helper"

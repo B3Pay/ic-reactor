@@ -1596,6 +1596,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/runtime@npm:^7":
+  version: 7.23.6
+  resolution: "@babel/runtime@npm:7.23.6"
+  dependencies:
+    regenerator-runtime: "npm:^0.14.0"
+  checksum: d886954e985ef8e421222f7a2848884d96a752e0020d3078b920dd104e672fdf23bcc6f51a44313a048796319f1ac9d09c2c88ec8cbb4e1f09174bcd3335b9ff
+  languageName: node
+  linkType: hard
+
 "@babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.16.3, @babel/runtime@npm:^7.23.2, @babel/runtime@npm:^7.8.4, @babel/runtime@npm:^7.9.2":
   version: 7.23.5
   resolution: "@babel/runtime@npm:7.23.5"
@@ -2159,6 +2168,7 @@ __metadata:
     "@dfinity/principal": "npm:^0.20"
     "@ic-reactor/store": "npm:^0.0.6"
     zustand: "npm:4.4"
+    zustand-utils: "npm:^1.3"
   peerDependencies:
     "@peculiar/webcrypto": 1.4
     react: ">=16.8"
@@ -18946,6 +18956,18 @@ __metadata:
   version: 0.1.0
   resolution: "yocto-queue@npm:0.1.0"
   checksum: dceb44c28578b31641e13695d200d34ec4ab3966a5729814d5445b194933c096b7ced71494ce53a0e8820685d1d010df8b2422e5bf2cdea7e469d97ffbea306f
+  languageName: node
+  linkType: hard
+
+"zustand-utils@npm:^1.3":
+  version: 1.3.1
+  resolution: "zustand-utils@npm:1.3.1"
+  dependencies:
+    "@babel/runtime": "npm:^7"
+  peerDependencies:
+    react: ">=16.8"
+    zustand: ">=4.4.1"
+  checksum: 8f4f97b3825a88c29a775f721ed5b41633fb4d4f0dfb80f6f3a269fab8ae59390e85d4e3d5cfdfa0c11193f2dcb1fd0b807e4e28a6aff806ba11bd56e6bb89a1
   languageName: node
   linkType: hard
 

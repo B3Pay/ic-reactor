@@ -2,9 +2,7 @@ import { ToDo } from "declarations/hello/hello.did"
 import React from "react"
 import { useUpdateCall } from "service/hello"
 
-interface TodoProps extends ToDo {
-  id: bigint
-}
+interface TodoProps extends ToDo {}
 
 const Todo: React.FC<TodoProps> = ({ id, completed, description }) => {
   const { call, error, loading } = useUpdateCall({

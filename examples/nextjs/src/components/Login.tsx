@@ -4,7 +4,6 @@ interface LoginProps {}
 
 const Login: React.FC<LoginProps> = ({}) => {
   const {
-    authClient,
     login,
     logout,
     loginLoading,

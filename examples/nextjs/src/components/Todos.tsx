@@ -1,3 +1,4 @@
+import { ToDo } from "declarations/hello/hello.did"
 import React from "react"
 import { useQueryCall } from "service/hello"
 import Todo from "./Todo"
@@ -16,8 +17,10 @@ const Todos: React.FC<TodosProps> = ({}) => {
         <label>Todos: &nbsp;</label>
         {loading ? <span>Loading...</span> : null}
         {error ? <span>Error: {JSON.stringify(error)}</span> : null}
-        {data && data.length > 0
-          ? data.map(([id, todo]) => <Todo {...todo} key={id} id={id} />)
+        {data && data[0] && data[0].length > 0
+          ? data[0].map((todo: ToDo) => (
+              <Todo {...todo} key={todo.id.toString()} />
+            ))
           : null}
       </section>
     </div>

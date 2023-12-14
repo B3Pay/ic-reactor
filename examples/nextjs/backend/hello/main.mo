@@ -1,50 +1,89 @@
+import Array "mo:base/Array";
+import Buffer "mo:base/Buffer";
 import Hash "mo:base/Hash";
-import Map "mo:base/HashMap";
+import HashMap "mo:base/HashMap";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat";
+import Principal "mo:base/Principal";
 import Text "mo:base/Text";
 
 actor ToDoList {
 
   type ToDo = {
+    id : Nat;
     description : Text;
     completed : Bool
   };
 
-  func natHash(n : Nat) : Hash.Hash {
-    Text.hash(Nat.toText(n))
-  };
+  type ToDos = [ToDo];
 
-  var todos = Map.HashMap<Nat, ToDo>(0, Nat.equal, natHash);
+  var userTodos = HashMap.HashMap<Principal.Principal, ToDos>(0, Principal.equal, Principal.hash);
+
   var nextId : Nat = 0;
 
-  public query func getAllTodos() : async [(Nat, ToDo)] {
-    Iter.toArray(todos.entries())
+  public query ({ caller }) func getAllTodos() : async ?ToDos {
+    userTodos.get(caller)
   };
 
-  public func addTodo(description : Text) : async Nat {
+  private func updateTodos(caller : Principal.Principal, todos : ToDos) {
+    userTodos.put(caller, todos)
+  };
+
+  public shared ({ caller }) func addTodo(description : Text) : async Nat {
     let id = nextId;
-    todos.put(id, { description = description; completed = false });
     nextId += 1;
+
+    let newTodo = {
+      id = id;
+      description = description;
+      completed = false
+    };
+
+    let existingTodos = switch (userTodos.get(caller)) {
+      case (null) { [] };
+      case (?todos) { todos }
+    };
+
+    let updatedTodos = Array.append<ToDo>(existingTodos, [newTodo]);
+    updateTodos(caller, updatedTodos);
+
     id
   };
 
-  public func toggleTodo(id : Nat) : async () {
-    ignore do ? {
-      let todo = todos.get(id)!;
-      let description = todo.description;
-      let completed = if (todo.completed) { false } else { true };
-      todos.put(id, { description; completed })
-    }
+  public shared ({ caller }) func toggleTodo(id : Nat) : async Bool {
+    let todos = switch (userTodos.get(caller)) {
+      case (?userTodos) userTodos;
+      case null return false
+    };
+
+    let updatedTodos = Array.map<ToDo, ToDo>(
+      todos,
+      func(todo) {
+        if (todo.id == id) { { todo with completed = not todo.completed } } else {
+          todo
+        }
+      }
+    );
+
+    updateTodos(caller, updatedTodos);
+
+    true
   };
 
-  public func clearComplete() : async () {
-    todos := Map.mapFilter<Nat, ToDo, ToDo>(
+  public shared ({ caller }) func clearComplete() : async () {
+    let todos = switch (userTodos.get(caller)) {
+      case (?userTodos) userTodos;
+      case null return
+    };
+
+    let updatedTodos = Array.filter<ToDo>(
       todos,
-      Nat.equal,
-      natHash,
-      func(_, todo) { if (todo.completed) null else ?todo }
-    )
+      func(todo) {
+        not todo.completed
+      }
+    );
+
+    updateTodos(caller, updatedTodos)
   }
 }

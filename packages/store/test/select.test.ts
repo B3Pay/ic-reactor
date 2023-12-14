@@ -4,38 +4,31 @@ const mockActor = () => {}
 
 describe("createReActorStore", () => {
   test("uninitialized", () => {
-    const { store } = createReActorStore(mockActor, {
+    const { actorStore } = createReActorStore(mockActor, {
       host: "https://icp-api.io",
+      initializeOnMount: false,
     })
 
-    expect(store.getState()).toEqual({
-      actorState: {},
-      authClient: null,
-      authenticated: false,
-      authenticating: false,
+    expect(actorStore.getState()).toEqual({
+      methodState: {},
+      actor: null,
       initialized: false,
       initializing: false,
-      identity: null,
-      loading: false,
       error: undefined,
     })
   })
 
   test("initialized", () => {
-    const { initializeActor, store } = createReActorStore(mockActor)
+    const { initialize, actorStore } = createReActorStore(mockActor)
 
-    initializeActor()
+    initialize()
 
-    expect(store.getState()).toEqual({
-      actorState: {},
-      authClient: null,
-      authenticated: false,
-      authenticating: false,
+    expect(actorStore.getState()).toEqual({
+      methodState: {},
       initialized: false,
       initializing: false,
-      identity: null,
-      loading: false,
-      error: Error("Initialization failed: Actor could not be created."),
+      actor: null,
+      error: Error("Failed to initialize actor"),
     })
   })
 })

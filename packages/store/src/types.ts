@@ -3,13 +3,13 @@ import type {
   ActorMethod,
   ActorSubclass,
   HttpAgent,
+  HttpAgentOptions,
   Identity,
 } from "@dfinity/agent"
 import { AuthClient } from "@dfinity/auth-client"
 import { FuncClass } from "@dfinity/candid/lib/cjs/idl"
 import type { Principal } from "@dfinity/principal"
 import type { StoreApi } from "zustand"
-
 export type {
   ActorMethod,
   ActorSubclass,
@@ -19,6 +19,10 @@ export type {
 
 // Type for identifying a canister
 export type CanisterId = string | Principal
+
+export interface ReActorOptions extends HttpAgentOptions {
+  initializeOnMount?: boolean
+}
 
 // Type for initializing an actor
 export type InitializeActorType = (agent: HttpAgent) => ActorSubclass<any>
@@ -46,21 +50,30 @@ export interface ReActorMethodState<A, M extends keyof A> {
   }
 }
 
-// State structure for an actor in a ReActor
-export type ReActorActorState<A> = {
+export type ReActorMethodStates<A> = {
   [M in keyof A]: ReActorMethodState<A, M>
 }
 
+// State structure for an actor in a ReActor
+export type ReActorActorState<A> = {
+  actor: A | null
+  initialized: boolean
+  initializing: boolean
+  error: Error | undefined
+  methodState: ReActorMethodStates<A>
+}
+
+export type ReActorAgentState = {
+  agentOptions?: HttpAgentOptions
+  agent?: HttpAgent
+}
+
 // Main state structure for a ReActor
-export interface ReActorState<A> {
-  actorState: ReActorActorState<A>
+export interface ReActorAuthState<A> {
   identity: Identity | null
   authClient: AuthClient | null
   authenticating: boolean
   authenticated: boolean
-  initialized: boolean
-  initializing: boolean
-  loading: boolean
   error: Error | undefined
 }
 
@@ -71,21 +84,21 @@ export type CallMethod<A = Record<string, ActorMethod>> = <M extends keyof A>(
 ) => Promise<ExtractReActorMethodReturnType<A[M]>>
 
 // Actions available on a ReActor
-export interface ReActorStoreActions<A extends ActorSubclass<any>> {
+export interface ReActorActions<A extends ActorSubclass<any>> {
   initialize: (identity?: Identity) => void
   authenticate: () => Promise<void>
   resetState: () => void
-  updateState: (newState: Partial<ReActorState<A>>) => void
+  updateState: (newState: Partial<ReActorAuthState<A>>) => void
   callMethod: CallMethod<A>
 }
 
 // Type for the ReActor store
-export type ReActorStore<A extends ActorSubclass<any>> = StoreApi<
-  ReActorState<A>
+export type ReActorAgentStore = StoreApi<ReActorAgentState>
+
+export type ReActorAuthStore<A extends ActorSubclass<any>> = StoreApi<
+  ReActorAuthState<A>
 >
 
-// Type for the ReActor itself, combining state and actions
-export type ReActor<A extends ActorSubclass<any>> = [
-  ReActorState<A>,
-  ReActorStoreActions<A>
-]
+export type ReActorActorStore<A extends ActorSubclass<any>> = StoreApi<
+  ReActorActorState<A>
+>

@@ -5,160 +5,176 @@ import {
   Identity,
 } from "@dfinity/agent"
 import { AuthClient } from "@dfinity/auth-client"
-import { create } from "zustand"
-import { createActorStates } from "./helper"
+import { createStore } from "zustand/vanilla"
+import { createMethodStates } from "./helper"
 import type {
   ExtractReActorMethodArgs,
   ExtractReActorMethodReturnType,
   ReActorActorState,
-  ReActorState,
-  ReActorStore,
-  ReActorStoreActions,
+  ReActorActorStore,
+  ReActorAgentState,
+  ReActorAgentStore,
+  ReActorAuthState,
+  ReActorAuthStore,
+  ReActorMethodStates,
+  ReActorOptions,
 } from "./types"
 
+let unsubscribeAgent: (() => void) | undefined
+
 export class ReActorManager<A extends ActorSubclass<any>> {
-  public actor: A | null = null
-  public store: ReActorStore<A>
-  public actions: ReActorStoreActions<A>
+  public actorStore: ReActorActorStore<A>
+  public authStore: ReActorAuthStore<A>
 
-  private agent: HttpAgent | null = null
-  private agentOptions: HttpAgentOptions | undefined
-  private actorInitializer: (agent: HttpAgent) => A
+  private agentState: ReActorAgentStore
 
-  private DEFAULT_STATE: ReActorState<A> = {
-    actorState: {} as ReActorActorState<A>,
+  private DEFAULT_ACTOR_STATE: ReActorActorState<A> = {
+    methodState: {} as ReActorMethodStates<A>,
+    initializing: false,
+    initialized: false,
+    error: undefined,
+    actor: null,
+  }
+
+  private DEFAULT_AUTH_STATE: ReActorAuthState<A> = {
     identity: null,
     authClient: null,
     authenticating: false,
     authenticated: false,
-    initialized: false,
-    initializing: false,
-    loading: false,
     error: undefined,
+  }
+
+  private DEFAULT_AGENT_STATE: ReActorAgentState = {
+    agentOptions: undefined,
+    agent: undefined,
   }
 
   constructor(
     actorInitializer: (agent: HttpAgent) => A,
-    agentOptions?: HttpAgentOptions
+    reactorConfig?: ReActorOptions
   ) {
-    this.store = create(() => this.DEFAULT_STATE)
-    this.actorInitializer = actorInitializer
-    this.agentOptions = agentOptions
-    this.actions = this.createActions()
+    this.actorStore = createStore(() => this.DEFAULT_ACTOR_STATE)
+    this.authStore = createStore(() => this.DEFAULT_AUTH_STATE)
+    this.agentState = createStore(() => ({
+      ...this.DEFAULT_AGENT_STATE,
+      agentOptions: reactorConfig,
+    }))
+
+    unsubscribeAgent = this.agentState.subscribe(() => {
+      this.createActor(actorInitializer)
+    })
+
+    if (reactorConfig?.initializeOnMount) {
+      this.initialize()
+    }
   }
 
-  public initializeActor = (
+  public unsubscribe = () => {
+    unsubscribeAgent?.()
+  }
+
+  private updateActorState = (newState: Partial<ReActorActorState<A>>) => {
+    this.actorStore.setState((state) => ({ ...state, ...newState }))
+  }
+
+  private updateAuthState = (newState: Partial<ReActorAuthState<A>>) => {
+    this.authStore.setState((state) => ({ ...state, ...newState }))
+  }
+
+  private createActor = (actorInitializer: (agent: HttpAgent) => A) => {
+    this.updateActorState({
+      initializing: true,
+      initialized: false,
+      methodState: {} as any,
+    })
+    const agent = this.agentState.getState().agent
+
+    try {
+      if (!agent) {
+        throw new Error("Agent not initialized")
+      }
+
+      const actor = actorInitializer(agent)
+
+      if (!actor) {
+        throw new Error("Failed to initialize actor")
+      }
+
+      const methodState = createMethodStates(actor)
+
+      this.updateActorState({
+        actor,
+        methodState,
+        initializing: false,
+        initialized: true,
+      })
+    } catch (error) {
+      this.updateActorState({ error: error as Error, initializing: false })
+    }
+  }
+
+  public initialize = (
     agentOptions?: HttpAgentOptions,
     identity?: Identity
   ) => {
-    this.store.setState({ initializing: true })
-    try {
-      this.agent = new HttpAgent({
+    this.agentState.setState((prevState) => {
+      const agent = new HttpAgent({
         identity,
-        ...(agentOptions || this.agentOptions),
+        ...(agentOptions || prevState.agentOptions),
       })
 
-      this.actor = this.actorInitializer(this.agent)
+      return { ...prevState, agent }
+    })
+  }
 
-      if (!this.actor)
-        throw new Error("Initialization failed: Actor could not be created.")
+  public authenticate = async () => {
+    this.updateAuthState({ authenticating: true })
 
-      const actorState = createActorStates(this.actor)
+    try {
+      const authClient = await AuthClient.create()
+      const authenticated = await authClient.isAuthenticated()
 
-      this.store.setState({
-        initialized: true,
-        actorState,
-        initializing: false,
+      const identity = authClient.getIdentity()
+
+      if (!identity) {
+        throw new Error("Identity not found")
+      }
+
+      this.initialize(undefined, identity)
+
+      this.updateAuthState({
+        authClient,
+        authenticated,
+        identity,
+        authenticating: false,
       })
     } catch (error) {
-      this.store.setState({ error: error as Error, initializing: false })
+      this.updateAuthState({ error: error as Error, authenticating: false })
+
+      console.error("Error in authenticate:", error)
     }
   }
 
-  private createActions(): ReActorStoreActions<A> {
-    // Helper function to handle common state updates
-    const updateState = (newState: Partial<ReActorState<A>>) => {
-      this.store.setState((state) => ({ ...state, ...newState }))
+  public callMethod = async <M extends keyof A>(
+    functionName: M,
+    ...args: ExtractReActorMethodArgs<A[M]>
+  ) => {
+    const actor = this.actorStore.getState().actor
+
+    if (!actor) {
+      throw new Error("Actor not initialized")
     }
 
-    const resetState = () => {
-      this.store.setState(this.DEFAULT_STATE)
+    if (!actor[functionName] || typeof actor[functionName] !== "function") {
+      throw new Error(`Method ${String(functionName)} not found`)
     }
 
-    const initialize = (identity?: Identity) => {
-      updateState({ initializing: true })
-      try {
-        this.initializeActor(undefined, identity)
-        if (!this.actor)
-          throw new Error("Initialization failed: Actor could not be created.")
+    const method = actor[functionName] as (
+      ...args: ExtractReActorMethodArgs<A[typeof functionName]>
+    ) => Promise<ExtractReActorMethodReturnType<A[typeof functionName]>>
 
-        updateState({ initialized: true, initializing: false })
-      } catch (error) {
-        updateState({ error: error as Error, initializing: false })
-      }
-    }
+    const data = await method(...args)
 
-    const authenticate = async () => {
-      updateState({ authenticating: true })
-
-      try {
-        const authClient = await AuthClient.create()
-        const authenticated = await authClient.isAuthenticated()
-
-        const identity = authClient.getIdentity()
-
-        if (!identity) {
-          throw new Error("Identity not found")
-        }
-
-        this.agent = new HttpAgent({
-          identity,
-          ...this.agentOptions,
-        })
-
-        updateState({
-          authClient,
-          authenticated,
-          identity,
-          authenticating: false,
-        })
-      } catch (error) {
-        updateState({ error: error as Error, authenticating: false })
-
-        console.error("Error in authenticate:", error)
-      }
-    }
-
-    const callMethod = async <M extends keyof A>(
-      functionName: M,
-      ...args: ExtractReActorMethodArgs<A[M]>
-    ) => {
-      if (!this.actor) {
-        throw new Error("Actor not initialized")
-      }
-
-      if (
-        !this.actor[functionName] ||
-        typeof this.actor[functionName] !== "function"
-      ) {
-        throw new Error(`Method ${String(functionName)} not found`)
-      }
-
-      const method = this.actor[functionName] as (
-        ...args: ExtractReActorMethodArgs<A[typeof functionName]>
-      ) => Promise<ExtractReActorMethodReturnType<A[typeof functionName]>>
-
-      const data = await method(...args)
-
-      return data
-    }
-
-    return {
-      initialize,
-      authenticate,
-      updateState,
-      resetState,
-      callMethod,
-    }
+    return data
   }
 }

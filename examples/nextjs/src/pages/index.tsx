@@ -2,12 +2,15 @@ import Head from "next/head"
 
 import styles from "styles/Home.module.css"
 
-import Greeting from "components/AddTodo"
+import AddTodo from "components/AddTodo"
 import Login from "components/Login"
 import Todos from "components/Todos"
 import Image from "next/image"
+import { useAuthStore } from "service/hello"
 
 function HomePage() {
+  const { error, authenticated } = useAuthStore()
+
   return (
     <div className={styles.container}>
       <Head>
@@ -18,8 +21,18 @@ function HomePage() {
           Welcome to the Internet Computer starter template
         </h3>
         <Login />
-        <Todos />
-        <Greeting />
+        {error ? <div>Error: {JSON.stringify(error)}</div> : null}
+        {authenticated ? (
+          <>
+            <Todos />
+            <AddTodo />
+          </>
+        ) : (
+          <>
+            <Todos />
+            <AddTodo />
+          </>
+        )}
       </main>
       <footer className={styles.footer}>
         <a

@@ -3,11 +3,8 @@ import { createReActor } from "@ic-reactor/react"
 import { canisterId, createActor } from "declarations/hello"
 
 export const {
-  ReActorProvider,
-  initializeActor,
-  useInitialized,
-  useReActor,
-  useActorState,
+  useActorStore,
+  useAuthStore,
   useAuthClient,
   useQueryCall,
   useUpdateCall

@@ -32,7 +32,7 @@ fetchMock.mockResponse(async (req) => {
 describe("CreateActor", () => {
   const callback = jest.fn()
 
-  const { actions, store } = new ReActorManager(
+  const { initialize, callMethod, actorStore } = new ReActorManager(
     (agent) => {
       return createActor("bd3sg-teaaa-aaaaa-qaaba-cai", {
         agent,
@@ -44,8 +44,7 @@ describe("CreateActor", () => {
     }
   )
 
-  const { initialize } = actions
-  const { subscribe, getState } = store
+  const { subscribe, getState } = actorStore
 
   subscribe(callback)
 
@@ -58,7 +57,7 @@ describe("CreateActor", () => {
   })
 
   it("should queryCall the query method", async () => {
-    const data = await actions.callMethod("greet", "World")
+    const data = await callMethod("greet", "World")
 
     expect(data).toEqual(canisterDecodedReturnValue)
   })
