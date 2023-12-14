@@ -22,6 +22,7 @@ export type CanisterId = string | Principal
 
 export interface ReActorOptions extends HttpAgentOptions {
   initializeOnMount?: boolean
+  withDevtools?: boolean
 }
 
 // Type for initializing an actor

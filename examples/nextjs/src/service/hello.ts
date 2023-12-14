@@ -8,8 +8,10 @@ export const {
   useAuthClient,
   useQueryCall,
   useUpdateCall
-} = createReActor(agent =>
-  createActor(canisterId, {
-    agent
-  })
+} = createReActor(
+  agent =>
+    createActor(canisterId, {
+      agent
+    }),
+  { withDevtools: true }
 )

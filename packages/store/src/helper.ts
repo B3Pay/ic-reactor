@@ -1,7 +1,30 @@
 import { Actor, hash } from "@dfinity/agent"
 import { toHexString } from "@dfinity/candid"
 import { FuncClass } from "@dfinity/candid/lib/cjs/idl"
+import { devtools } from "zustand/middleware"
+import { createStore } from "zustand/vanilla"
 import { ActorSubclass, ReActorMethodStates } from "./types"
+
+interface StoreOptions {
+  withDevtools?: boolean
+  store: string
+}
+
+export function createStoreWithOptionalDevtools(
+  initialState: any,
+  options: StoreOptions
+) {
+  if (options.withDevtools) {
+    return createStore(
+      devtools(() => initialState, {
+        name: "ReActor",
+        store: options.store,
+      })
+    )
+  } else {
+    return createStore(() => initialState)
+  }
+}
 
 export function createMethodStates<A extends ActorSubclass<any>>(
   actor: A

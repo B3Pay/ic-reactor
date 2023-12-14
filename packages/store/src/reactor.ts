@@ -6,7 +6,8 @@ import {
 } from "@dfinity/agent"
 import { AuthClient } from "@dfinity/auth-client"
 import { createStore } from "zustand/vanilla"
-import { createMethodStates } from "./helper"
+
+import { createMethodStates, createStoreWithOptionalDevtools } from "./helper"
 import type {
   ExtractReActorMethodArgs,
   ExtractReActorMethodReturnType,
@@ -53,18 +54,28 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     actorInitializer: (agent: HttpAgent) => A,
     reactorConfig?: ReActorOptions
   ) {
-    this.actorStore = createStore(() => this.DEFAULT_ACTOR_STATE)
-    this.authStore = createStore(() => this.DEFAULT_AUTH_STATE)
+    const { withDevtools, initializeOnMount, ...agentOptions } =
+      reactorConfig || {}
+
+    this.actorStore = createStoreWithOptionalDevtools(
+      this.DEFAULT_ACTOR_STATE,
+      { withDevtools, store: "actor" }
+    )
+    this.authStore = createStoreWithOptionalDevtools(this.DEFAULT_AUTH_STATE, {
+      withDevtools,
+      store: "auth",
+    })
+
     this.agentState = createStore(() => ({
       ...this.DEFAULT_AGENT_STATE,
-      agentOptions: reactorConfig,
+      agentOptions,
     }))
 
     unsubscribeAgent = this.agentState.subscribe(() => {
       this.createActor(actorInitializer)
     })
 
-    if (reactorConfig?.initializeOnMount) {
+    if (initializeOnMount) {
       this.initialize()
     }
   }
