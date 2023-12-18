@@ -27,24 +27,21 @@ yarn add @ic-reactor/core
 To get started with ReActor, you'll need to initialize it with your actor configurations. Here's a basic example:
 
 ```javascript
-import createReActor from "@ic-reactor/core"
+import { createReActor } from "@ic-reactor/core"
 
-const { store, actions, initializeActor, queryCall, updateCall } =
-  createReActor(
-    (agent) =>
-      createActor("bd3sg-teaaa-aaaaa-qaaba-cai", {
-        agent,
-      }),
-    {
-      host: "https://localhost:4943",
-    }
-  )
+const { actorStore, authStore, queryCall, updateCall } = createReActor(
+  (agent) => createActor("bd3sg-teaaa-aaaaa-qaaba-cai", { agent }),
+  {
+    host: "https://localhost:4943",
+    initializeOnMount: true,
+  }
+)
 ```
 
 ### Querying Data
 
 ```javascript
-const { recall, subscribe, getState } = queryCall({
+const { recall, subscribe, getState, initialData, intervalId } = queryCall({
   functionName: "yourFunctionName",
   args: ["arg1", "arg2"],
   autoRefresh: true,
@@ -60,12 +57,22 @@ const unsubscribe = subscribe((newState) => {
 recall().then((data) => {
   // Handle initial data
 })
+
+// Get initial data
+initialData.then((data) => {
+  // Handle initial data
+})
+
+// Clear interval if autoRefresh is enabled
+if (intervalId) {
+  clearInterval(intervalId)
+}
 ```
 
 ### Updating Data
 
 ```javascript
-const { call } = updateCall({
+const { call, getState, subscribe } = updateCall({
   functionName: "yourUpdateFunction",
   args: ["arg1", "arg2"],
 })
@@ -73,12 +80,20 @@ const { call } = updateCall({
 call().then((result) => {
   // Handle result
 })
+
+// Get state
+const state = getState()
+
+// Subscribe to changes
+const unsubscribe = subscribe((newState) => {
+  // Handle new state
+})
 ```
 
 ## API Reference
 
-- `queryCall`: Fetches and subscribes to data from an actor method.
-- `updateCall`: Updates data and handles state changes for an actor method.
+- `queryCall`: Fetches and subscribes to data from an actor method. Returns an object containing methods for recalling data, subscribing to changes, getting the current state, and the initial data promise.
+- `updateCall`: Updates data and handles state changes for an actor method. Returns an object containing methods for calling the update function, subscribing to changes, and getting the current state.
 - `getState`: Retrieves the current state based on the request hash.
 - `subscribe`: Allows subscription to state changes.
 

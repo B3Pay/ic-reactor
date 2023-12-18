@@ -32,7 +32,7 @@ fetchMock.mockResponse(async (req) => {
 describe("Initialize", () => {
   const callback = jest.fn()
 
-  const { initializeActor, store, updateCall, queryCall } = createReActor(
+  const { initialize, actorStore, updateCall, queryCall } = createReActor(
     (agent) => {
       return createActor("bd3sg-teaaa-aaaaa-qaaba-cai", {
         agent,
@@ -45,13 +45,13 @@ describe("Initialize", () => {
     }
   )
 
-  const { subscribe, getState } = store
+  const { subscribe, getState } = actorStore
 
   subscribe(callback)
 
   it("should initialize the actor", () => {
     expect(getState().initialized).toEqual(false)
-    initializeActor()
+    initialize()
 
     expect(getState().initialized).toEqual(true)
     expect(callback).toHaveBeenCalledTimes(2)

@@ -3,19 +3,15 @@ import { createReActor } from "../src"
 import { createActor } from "./candid/backend"
 
 describe("My IC Store and Actions", () => {
-  const { actions, initializeActor, queryCall, updateCall } = createReActor(
+  const { queryCall, updateCall } = createReActor(
     (agent) => createActor("xeka7-ryaaa-aaaal-qb57a-cai", { agent }),
     {
       host: "https://icp-api.io",
     }
   )
 
-  afterAll(() => {
-    actions.resetState()
-  })
-
   it("should return the symmetric key verification key", async () => {
-    const { initialData } = queryCall({
+    const { initialData, subscribe } = queryCall({
       functionName: "symmetric_key_verification_key",
     })
 
