@@ -8,26 +8,26 @@ const AddTodo: React.FC<AddTodoProps> = ({}) => {
     functionName: "addTodo"
   })
 
-  const [name, setName] = useState("")
+  const [todo, setTodo] = useState("")
 
   function onChangeName(e: React.ChangeEvent<HTMLInputElement>) {
     const newName = e.target.value
-    setName(newName)
+    setTodo(newName)
   }
 
   return (
     <div>
       <section>
         <h2>AddTodo</h2>
-        <label htmlFor="name">Todo: &nbsp;</label>
+        <label htmlFor="todo">Todo: &nbsp;</label>
         <input
-          id="name"
+          id="todo"
           alt="Name"
           type="text"
-          value={name}
+          value={todo}
           onChange={onChangeName}
         />
-        <button onClick={() => call([name])}>Send</button>
+        <button onClick={() => call([todo])}>Send</button>
       </section>
       <section>
         <label>Response: &nbsp;</label>

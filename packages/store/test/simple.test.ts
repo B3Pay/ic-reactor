@@ -3,17 +3,12 @@ import { createReActorStore } from "../src"
 import { createActor } from "./candid/backend"
 
 describe("My IC Store and Actions", () => {
-  const { resetActorState, initialize, authenticate, callMethod } =
-    createReActorStore(
-      (agent) => createActor("xeka7-ryaaa-aaaal-qb57a-cai", { agent }),
-      {
-        host: "https://icp-api.io",
-      }
-    )
-
-  afterAll(() => {
-    resetActorState()
-  })
+  const { initialize, authenticate, callMethod } = createReActorStore(
+    (agent) => createActor("xeka7-ryaaa-aaaal-qb57a-cai", { agent }),
+    {
+      host: "https://icp-api.io",
+    }
+  )
 
   it("should return the symmetric key verification key", async () => {
     initialize()

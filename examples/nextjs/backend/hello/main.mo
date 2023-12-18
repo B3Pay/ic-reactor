@@ -22,12 +22,12 @@ actor ToDoList {
 
   var nextId : Nat = 0;
 
-  public query ({ caller }) func getAllTodos() : async ?ToDos {
-    userTodos.get(caller)
-  };
-
   private func updateTodos(caller : Principal.Principal, todos : ToDos) {
     userTodos.put(caller, todos)
+  };
+
+  public query ({ caller }) func getAllTodos() : async ?ToDos {
+    userTodos.get(caller)
   };
 
   public shared ({ caller }) func addTodo(description : Text) : async Nat {
