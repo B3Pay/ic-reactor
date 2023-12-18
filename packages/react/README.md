@@ -87,7 +87,3 @@ Contributions to `@ic-reactor/react` are welcome! Please read our [contributing 
 ## License
 
 `@ic-reactor/react` is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
-
----
-
-This README provides a foundational overview of your package. You should expand it with more detailed documentation, examples, and links to additional resources or documentation as needed. Replace placeholders with actual information and links relevant to your project.
