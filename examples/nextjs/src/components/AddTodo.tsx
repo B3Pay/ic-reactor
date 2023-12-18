@@ -27,7 +27,7 @@ const AddTodo: React.FC<AddTodoProps> = ({}) => {
           value={todo}
           onChange={onChangeName}
         />
-        <button onClick={() => call([todo])}>Send</button>
+        <button onClick={() => call([todo])}>Save</button>
       </section>
       <section>
         <label>Response: &nbsp;</label>
