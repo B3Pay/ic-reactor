@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/react",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A React library for interacting with Dfinity actors",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -40,7 +40,7 @@
     "@dfinity/candid": "0.20",
     "@dfinity/identity": "^0.20",
     "@dfinity/principal": "^0.20",
-    "@ic-reactor/store": "^0.1.1",
+    "@ic-reactor/store": "^0.1.2",
     "zustand": "4.4",
     "zustand-utils": "^1.3"
   },
