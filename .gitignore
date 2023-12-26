@@ -12,3 +12,6 @@ dist
 prompt
 lerna-debug.log
 yarn-error.log
+
+pulled.json
+examples/*/deps/candid
