@@ -1,26 +1,24 @@
 import { randomBytes } from "crypto"
 import { createReActorStore } from "../src"
-import { createActor } from "./candid/backend"
+import { idlFactory } from "./candid/backend"
+import { _SERVICE } from "./candid/backend/backend.did"
 
 describe("My IC Store and Actions", () => {
-  const { initialize, authenticate, callMethod } = createReActorStore(
-    (agent) => createActor("xeka7-ryaaa-aaaal-qb57a-cai", { agent }),
+  const { actorStore, authenticate, callMethod } = createReActorStore<_SERVICE>(
     {
+      idlFactory,
+      canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
       host: "https://icp-api.io",
     }
   )
 
   it("should return the symmetric key verification key", async () => {
-    initialize()
-
     const initialData = await callMethod("symmetric_key_verification_key")
 
     expect(initialData).toBeDefined()
   })
 
   it("should return anonymous user data", async () => {
-    initialize()
-
     const mockData = Uint8Array.from(Array(48).fill(0))
     const publicKey = Uint8Array.from(randomBytes(48))
 
@@ -34,13 +32,10 @@ describe("My IC Store and Actions", () => {
   })
 
   it("should return logged user data", async () => {
-    initialize()
     await authenticate()
   })
 
   it("should return timers", async () => {
-    initialize()
-
     const data = await callMethod("timers")
 
     expect(data).toBeDefined()

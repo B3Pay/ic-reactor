@@ -6,8 +6,8 @@ import type {
   HttpAgentOptions,
   Identity,
 } from "@dfinity/agent"
-import { AuthClient } from "@dfinity/auth-client"
-import { FuncClass } from "@dfinity/candid/lib/cjs/idl"
+import type { AuthClient } from "@dfinity/auth-client"
+import type { FuncClass, InterfaceFactory } from "@dfinity/candid/lib/cjs/idl"
 import type { Principal } from "@dfinity/principal"
 import type { StoreApi } from "zustand"
 export type {
@@ -21,8 +21,11 @@ export type {
 export type CanisterId = string | Principal
 
 export interface ReActorOptions extends HttpAgentOptions {
-  initializeOnMount?: boolean
+  idlFactory: InterfaceFactory
+  canisterId: CanisterId
+  isLocal?: boolean
   withDevtools?: boolean
+  initializeOnMount?: boolean
 }
 
 // Type for initializing an actor

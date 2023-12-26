@@ -1,8 +1,8 @@
-import type { HttpAgent, HttpAgentOptions } from "@dfinity/agent"
 import type {
   ActorSubclass,
   ReActorAuthStore,
   ReActorMethodState,
+  ReActorOptions,
 } from "@ic-reactor/store"
 import { createReActorStore, generateRequestHash } from "@ic-reactor/store"
 import {
@@ -16,27 +16,11 @@ import {
 
 export type ReActorContextType<A = ActorSubclass<any>> = ReActorAuthStore<A>
 
-export interface CreateReActorOptions extends HttpAgentOptions {
-  initializeOnMount?: boolean
-}
-
-const defaultCreateReActorOptions: CreateReActorOptions = {
-  initializeOnMount: true,
-}
-
 export const createReActor = <A extends ActorSubclass<any>>(
-  actorInitializer: (agent: HttpAgent) => A,
-  options: CreateReActorOptions = {}
+  options: ReActorOptions
 ) => {
-  const optionsWithDefaults = {
-    ...defaultCreateReActorOptions,
-    ...options,
-  }
-
-  const { callMethod, actorStore, authStore, ...rest } = createReActorStore<A>(
-    (agent) => actorInitializer(agent),
-    optionsWithDefaults
-  )
+  const { callMethod, actorStore, authStore, ...rest } =
+    createReActorStore<A>(options)
 
   const updateMethodState = <M extends keyof A>(
     method: M,

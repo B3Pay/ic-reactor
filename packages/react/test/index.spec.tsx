@@ -5,7 +5,7 @@ import { createActor } from "./candid"
 
 describe("createReActor", () => {
   it("should initialize", async () => {
-    const { ReActorProvider, initialize, useReActor } = createReActor(
+    const { useActorStore } = createReActor(
       (agent) =>
         createActor("xeka7-ryaaa-aaaal-qb57a-cai", {
           agent,
@@ -17,7 +17,7 @@ describe("createReActor", () => {
     )
 
     const TestInitialize = () => {
-      const { initialized, initializing } = useReActor()
+      const { initialized, initialize, initializing } = useActorStore()
       return (
         <div>
           <span>
@@ -32,11 +32,7 @@ describe("createReActor", () => {
       )
     }
 
-    let screen = renderer.create(
-      <ReActorProvider>
-        <TestInitialize />
-      </ReActorProvider>
-    )
+    let screen = renderer.create(<TestInitialize />)
 
     const initializeStatus = () =>
       screen.root.findAllByType("span")[0].props.children
@@ -54,7 +50,7 @@ describe("createReActor", () => {
   })
 
   it("should query", async () => {
-    const { ReActorProvider, useQueryCall } = createReActor(
+    const { useQueryCall } = createReActor(
       (agent) =>
         createActor("xeka7-ryaaa-aaaal-qb57a-cai", {
           agent,
@@ -81,11 +77,7 @@ describe("createReActor", () => {
       )
     }
 
-    let screen = renderer.create(
-      <ReActorProvider>
-        <TestComponent />
-      </ReActorProvider>
-    )
+    let screen = renderer.create(<TestComponent />)
 
     const versionStatus = () => screen.root.findAllByType("span")[0]
 

@@ -1,4 +1,3 @@
-import type { HttpAgent } from "@dfinity/agent"
 import { AuthClientLoginOptions } from "@dfinity/auth-client"
 import type {
   ActorSubclass,
@@ -12,32 +11,35 @@ import { getCallHooks } from "./hooks"
 
 export type ReActorContextType<A = ActorSubclass<any>> = ReActorAuthStore<A>
 
-const defaultCreateReActorOptions: ReActorOptions = {
-  initializeOnMount: true,
-  host:
-    process?.env.NODE_ENV === "production" || process?.env.DFX_NETWORK === "ic"
-      ? "https://icp-api.io"
-      : "http://localhost:4943",
-}
+const isLocal =
+  process?.env.NODE_ENV === "development" ||
+  process?.env.DFX_NETWORK === "local"
 
 export const createReActor = <A extends ActorSubclass<any>>(
-  actorInitializer: (agent: HttpAgent) => A,
-  options: ReActorOptions = {}
+  options: ReActorOptions
 ) => {
-  const optionsWithDefaults = {
-    ...defaultCreateReActorOptions,
+  const {
+    callMethod,
+    unsubscribe,
+    initialize,
+    authenticate,
+    authStore,
+    actorStore,
+  } = createReActorStore<A>({
+    isLocal,
     ...options,
-  }
-
-  const { callMethod, authenticate, authStore, actorStore } =
-    createReActorStore<A>(
-      (agent) => actorInitializer(agent),
-      optionsWithDefaults
-    )
+    initializeOnMount: false,
+  })
 
   const useActorStore = () => {
     const actorState = useStore(actorStore, (state) => state)
-    return actorState
+
+    useEffect(() => {
+      initialize()
+      return unsubscribe
+    }, [])
+
+    return { ...actorState, initialize }
   }
 
   const useAuthStore = () => {

@@ -1,4 +1,5 @@
 import {
+  Actor,
   ActorSubclass,
   HttpAgent,
   HttpAgentOptions,
@@ -9,6 +10,7 @@ import { createStore } from "zustand/vanilla"
 
 import { createMethodStates, createStoreWithOptionalDevtools } from "./helper"
 import type {
+  CanisterId,
   ExtractReActorMethodArgs,
   ExtractReActorMethodReturnType,
   ReActorActorState,
@@ -20,6 +22,7 @@ import type {
   ReActorMethodStates,
   ReActorOptions,
 } from "./types"
+import { InterfaceFactory } from "@dfinity/candid/lib/cjs/idl"
 
 let unsubscribeAgent: (() => void) | undefined
 
@@ -50,17 +53,21 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     agent: undefined,
   }
 
-  constructor(
-    actorInitializer: (agent: HttpAgent) => A,
-    reactorConfig?: ReActorOptions
-  ) {
-    const { withDevtools, initializeOnMount, ...agentOptions } =
-      reactorConfig || {}
+  constructor(reactorConfig: ReActorOptions) {
+    const {
+      withDevtools = false,
+      initializeOnMount = true,
+      isLocal = false,
+      canisterId,
+      idlFactory,
+      ...agentOptions
+    } = reactorConfig
 
     this.actorStore = createStoreWithOptionalDevtools(
       this.DEFAULT_ACTOR_STATE,
       { withDevtools, store: "actor" }
     )
+
     this.authStore = createStoreWithOptionalDevtools(this.DEFAULT_AUTH_STATE, {
       withDevtools,
       store: "auth",
@@ -72,7 +79,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     }))
 
     unsubscribeAgent = this.agentState.subscribe(() => {
-      this.createActor(actorInitializer)
+      this.createActor(idlFactory, canisterId, isLocal)
     })
 
     if (initializeOnMount) {
@@ -92,7 +99,11 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     this.authStore.setState((state) => ({ ...state, ...newState }))
   }
 
-  private createActor = (actorInitializer: (agent: HttpAgent) => A) => {
+  private createActor = async (
+    idlFactory: InterfaceFactory,
+    canisterId: CanisterId,
+    isLocal: boolean
+  ) => {
     this.updateActorState({
       initializing: true,
       initialized: false,
@@ -105,7 +116,14 @@ export class ReActorManager<A extends ActorSubclass<any>> {
         throw new Error("Agent not initialized")
       }
 
-      const actor = actorInitializer(agent)
+      if (isLocal) {
+        await agent.fetchRootKey()
+      }
+
+      const actor = Actor.createActor<A>(idlFactory, {
+        agent,
+        canisterId,
+      })
 
       if (!actor) {
         throw new Error("Failed to initialize actor")

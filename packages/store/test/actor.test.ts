@@ -1,68 +1,38 @@
-import { Cbor } from "@dfinity/agent"
-import { IDL } from "@dfinity/candid"
-import fetchMock from "jest-fetch-mock"
-import { ReActorManager } from "../src/reactor"
-import { createActor } from "./candid/hello"
+import { createReActorStore } from "../src"
+import { canisterId, idlFactory } from "./candid/b3_system"
 
-fetchMock.enableMocks()
-
-const canisterDecodedReturnValue = "Hello, World!"
-const expectedReplyArg = IDL.encode([IDL.Text], [canisterDecodedReturnValue])
-
-fetchMock.mockResponse(async (req) => {
-  if (req.url.endsWith("/call")) {
-    return Promise.resolve({
-      status: 200,
+describe("createReActorStore", () => {
+  test("uninitialized", () => {
+    const { actorStore } = createReActorStore({
+      canisterId,
+      idlFactory,
+      host: "https://icp-api.io",
+      initializeOnMount: false,
     })
-  }
 
-  const responseObj = {
-    status: "replied",
-    reply: {
-      arg: expectedReplyArg,
-    },
-  }
-
-  return Promise.resolve({
-    status: 200,
-    body: Cbor.encode(responseObj),
-  })
-})
-
-describe("CreateActor", () => {
-  const callback = jest.fn()
-
-  const { initialize, callMethod, actorStore } = new ReActorManager(
-    (agent) => {
-      return createActor("bd3sg-teaaa-aaaaa-qaaba-cai", {
-        agent,
-      })
-    },
-    {
-      verifyQuerySignatures: false,
-      host: "https://local-mock",
-    }
-  )
-
-  const { subscribe, getState } = actorStore
-
-  subscribe(callback)
-
-  it("should initialize the actor", () => {
-    expect(getState().initialized).toEqual(false)
-    initialize()
-
-    expect(getState().initialized).toEqual(true)
-    expect(callback).toHaveBeenCalledTimes(4)
+    expect(actorStore.getState()).toEqual({
+      methodState: {},
+      actor: null,
+      initialized: false,
+      initializing: false,
+      error: undefined,
+    })
   })
 
-  it("should queryCall the query method", async () => {
-    const data = await callMethod("greet", "World")
+  test("initialized", () => {
+    const { actorStore, callMethod } = createReActorStore({
+      canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+      idlFactory: () => <any>{},
+      host: "https://icp-api.io",
+      initializeOnMount: true,
+    })
 
-    expect(data).toEqual(canisterDecodedReturnValue)
-  })
-
-  it("should subscribe to the actor state", () => {
-    expect(callback).toHaveBeenCalledTimes(4)
+    expect(actorStore.getState()).toEqual({
+      methodState: {},
+      initialized: false,
+      initializing: false,
+      actor: null,
+      error: Error("service._fields is not iterable"),
+    })
   })
 })

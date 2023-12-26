@@ -1,4 +1,4 @@
-import { useAuthClient } from "service/hello"
+import { useAuthClient } from "service/todo"
 
 interface LoginProps {}
 
@@ -32,7 +32,7 @@ const Login: React.FC<LoginProps> = ({}) => {
                 identityProvider:
                   process.env.DFX_NETWORK === "ic"
                     ? "https://identity.ic0.app/#authorize"
-                    : "http://localhost:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai#authorize"
+                    : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/#authorize"
               })
             }
             disabled={authenticating}

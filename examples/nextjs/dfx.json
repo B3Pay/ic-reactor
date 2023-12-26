@@ -1,7 +1,7 @@
 {
   "canisters": {
-    "hello": {
-      "main": "backend/hello/main.mo",
+    "todo": {
+      "main": "backend/todo/main.mo",
       "type": "motoko",
       "declarations": {
         "bindings": null,
@@ -16,7 +16,7 @@
     },
     "frontend": {
       "dependencies": [
-        "hello"
+        "todo"
       ],
       "frontend": {
         "entrypoint": "out/index.html"

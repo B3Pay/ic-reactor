@@ -1,6 +1,6 @@
-import { ToDo } from "declarations/hello/hello.did"
+import { ToDo } from "declarations/todo/todo.did"
 import React from "react"
-import { useUpdateCall } from "service/hello"
+import { useUpdateCall } from "service/todo"
 
 interface TodoProps extends ToDo {}
 
