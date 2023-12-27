@@ -37,7 +37,7 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
       }
     }, [functionName])
 
-    return { current: field }
+    return field
   }
 
   const useReActorCall = <M extends keyof A>({
