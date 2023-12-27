@@ -16,7 +16,6 @@ const allFunction = actorInterface.map(([methodName, method]) => {
   const { fields, defaultValues } = method.argTypes.reduce(
     (acc, argType, index) => {
       const field = argType.accept(new UIExtract(), argType.name)
-      console.log("field", field)
       acc.fields.push(field)
       acc.defaultValues[`${methodName}-arg${index}`] = field.defaultValues
       return acc

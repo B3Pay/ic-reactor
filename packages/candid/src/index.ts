@@ -1,6 +1,7 @@
 import { Principal } from "@dfinity/principal"
 import { ExtractedField } from "./types"
 import { IDL } from "@dfinity/candid"
+import { validateError } from "./helper"
 export * from "./types"
 
 export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
@@ -8,7 +9,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
     return {
       component: "input",
       type: "text",
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       required: true,
       label: l ?? t.name,
       fields: [],
@@ -16,12 +17,13 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
     }
   }
   public visitNumber<T>(t: IDL.Type<T>, l?: string): ExtractedField {
+    console.log("visitNumber", t, l)
     return {
       component: "input",
       type: "number",
       valueAsNumber: true,
       required: true,
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       label: l ?? t.name,
       fields: [],
       defaultValues: undefined,
@@ -49,7 +51,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
     return {
       component: "input",
       type: "principal",
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       label: t.name,
       fields: [],
       defaultValues: data,
@@ -59,7 +61,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
     return {
       component: "input",
       type: "checkbox",
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       label: l ?? t.name,
       fields: [],
       defaultValues: false,
@@ -70,7 +72,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       component: "span",
       type: "null",
       label: l ?? t.name,
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       fields: [],
       defaultValues: null,
     }
@@ -82,7 +84,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
   ): ExtractedField {
     const { fields, defaultValues } = _fields.reduce(
       (acc, [key, type]) => {
-        const field = this.visitType(type, key)
+        const field = type.accept(this, key)
         acc.fields.push(field)
         acc.defaultValues[key] = field.defaultValues
         return acc
@@ -97,7 +99,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       component: "fieldset",
       type: "record",
       label: l ?? t.name,
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       fields,
       defaultValues,
     }
@@ -109,7 +111,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
   ): ExtractedField {
     const { fields, defaultValues } = components.reduce(
       (acc, type) => {
-        const field = this.visitType(type)
+        const field = type.accept(this, null)
         acc.fields.push(field)
         acc.defaultValues.push(field.defaultValues)
         return acc
@@ -121,7 +123,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       component: "fieldset",
       type: "tuple",
       label: l ?? t.name,
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       fields,
       defaultValues,
     }
@@ -133,7 +135,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
   ): ExtractedField {
     const { fields, defaultValues, options } = _fields.reduce(
       (acc, [label, type]) => {
-        const field = this.visitType(type, label)
+        const field = type.accept(this, label)
 
         acc.fields.push(field)
         acc.options.push(label)
@@ -155,7 +157,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       options,
       defaultValues,
       label: l ?? t.name,
-      validate: validateError(t.covariant),
+      validate: validateError(t),
     }
   }
 
@@ -167,9 +169,9 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
     return {
       component: "span",
       type: "optional",
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       label: l ?? t.name,
-      fields: [this.visitType(ty)],
+      fields: [ty.accept(this, l)],
       defaultValues: [],
     }
   }
@@ -182,9 +184,9 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
     return {
       component: "span",
       type: "vector",
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       label: l ?? t.name,
-      fields: [this.visitType(ty)],
+      fields: [ty.accept(this, l)],
       defaultValues: [],
     }
   }
@@ -198,9 +200,9 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       component: "fieldset",
       type: "recursive",
       label: l ?? t.name,
-      validate: validateError(t.covariant),
+      validate: validateError(t),
       extract: () => {
-        const field = this.visitType(ty)
+        const field = ty.accept(this, null)
         field.fields = [field]
         return field
       },
