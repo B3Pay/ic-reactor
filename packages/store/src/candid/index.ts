@@ -17,7 +17,6 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
     }
   }
   public visitNumber<T>(t: IDL.Type<T>, l?: string): ExtractedField {
-    console.log("visitNumber", t, l)
     return {
       component: "input",
       type: "number",
@@ -201,18 +200,14 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       type: "recursive",
       label: l ?? t.name,
       validate: validateError(t),
-      extract: () => {
-        const field = ty.accept(this, null)
-        field.fields = [field]
-        return field
-      },
+      extract: () => ty.accept(this, null),
       fields: [],
       defaultValues: undefined,
     }
   }
 }
 
-class Parse extends IDL.Visitor<string, any> {
+export class Parse extends IDL.Visitor<string, any> {
   public visitNull(t: IDL.NullClass, v: string): null {
     return null
   }

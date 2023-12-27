@@ -10,6 +10,7 @@ import type { AuthClient } from "@dfinity/auth-client"
 import type { FuncClass, InterfaceFactory } from "@dfinity/candid/lib/cjs/idl"
 import type { Principal } from "@dfinity/principal"
 import type { StoreApi } from "zustand"
+import { ExtractedField } from "./candid"
 export type {
   ActorMethod,
   ActorSubclass,
@@ -43,14 +44,18 @@ export type ExtractReActorMethodReturnType<T> = T extends ActorMethod<
   : never
 
 // State structure for a method in a ReActor
+export interface ReActorMethodField<A, M extends keyof A & string> {
+  functionName: M
+  fields: ExtractedField[]
+  // key should be `${functionName}-arg${index}`
+  defaultValues: { [K in `${M}-arg${number}`]?: any }
+}
+
 export interface ReActorMethodState<A, M extends keyof A> {
-  types: FuncClass
-  states: {
-    [argHash: string]: {
-      data: ExtractReActorMethodReturnType<A[M]> | undefined
-      loading: boolean
-      error: Error | undefined
-    }
+  [argHash: string]: {
+    data: ExtractReActorMethodReturnType<A[M]> | undefined
+    loading: boolean
+    error: Error | undefined
   }
 }
 
@@ -65,6 +70,7 @@ export type ReActorActorState<A> = {
   initializing: boolean
   error: Error | undefined
   methodState: ReActorMethodStates<A>
+  methodFields: ReActorMethodField<A, keyof A & string>[]
 }
 
 export type ReActorAgentState = {

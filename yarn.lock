@@ -2165,7 +2165,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/react@npm:*, @ic-reactor/react@npm:^*, @ic-reactor/react@workspace:packages/react":
+"@ic-reactor/react@npm:*, @ic-reactor/react@npm:^*, @ic-reactor/react@workspace:^, @ic-reactor/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
@@ -6056,6 +6056,7 @@ __metadata:
   resolution: "candid-react@workspace:examples/candid-react"
   dependencies:
     "@ic-reactor/candid": "npm:^0.0.1"
+    "@ic-reactor/react": "workspace:^"
     "@types/node": "npm:^16.18.68"
     "@types/react": "npm:^18.2.45"
     "@types/react-dom": "npm:^18.2.18"

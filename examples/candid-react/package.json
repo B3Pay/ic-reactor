@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@ic-reactor/candid": "^0.0.1",
+    "@ic-reactor/react": "workspace:^",
     "@types/node": "^16.18.68",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",

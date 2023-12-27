@@ -3,7 +3,13 @@ import { toHexString } from "@dfinity/candid"
 import { FuncClass } from "@dfinity/candid/lib/cjs/idl"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import { ActorSubclass, ReActorMethodStates } from "./types"
+import {
+  ActorSubclass,
+  ExtractReActorMethodArgs,
+  ReActorMethodField,
+  ReActorMethodStates,
+} from "./types"
+import { ExtractedField, UIExtract } from "./candid"
 
 interface StoreOptions {
   withDevtools?: boolean
@@ -26,22 +32,30 @@ export function createStoreWithOptionalDevtools(
   }
 }
 
-export function createMethodStates<A extends ActorSubclass<any>>(
+export function extractMethodField<A extends ActorSubclass<any>>(
   actor: A
-): ReActorMethodStates<A> {
-  const actorState = {} as ReActorMethodStates<A>
-  const methods: [string, FuncClass][] = Actor.interfaceOf(
-    actor as Actor
-  )._fields
+): ReActorMethodField<A, keyof A & string>[] {
+  type M = keyof A & string
+  const methods = Actor.interfaceOf(actor as Actor)._fields as [M, FuncClass][]
 
-  for (const [method, types] of methods) {
-    actorState[method as keyof A] = {
-      types,
-      states: {},
-    }
-  }
+  const allFunction = methods.map(([functionName, method]) => {
+    return method.argTypes.reduce(
+      (acc, argType, index) => {
+        const field = argType.accept(new UIExtract(), argType.name)
+        acc.fields.push(field)
+        acc.defaultValues[`${functionName}-arg${index}`] = field.defaultValues
+        acc.functionName = functionName
+        return acc
+      },
+      {
+        fields: [] as ExtractedField[],
+        defaultValues: {} as { [K in `${M}-arg${number}`]?: any },
+        functionName: "" as M,
+      }
+    ) as ReActorMethodField<A, M>
+  })
 
-  return actorState
+  return allFunction
 }
 
 export const generateRequestHash = (args?: any[]) => {

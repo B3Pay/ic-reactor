@@ -8,7 +8,7 @@ import {
 import { AuthClient } from "@dfinity/auth-client"
 import { createStore } from "zustand/vanilla"
 
-import { createMethodStates, createStoreWithOptionalDevtools } from "./helper"
+import { extractMethodField, createStoreWithOptionalDevtools } from "./helper"
 import type {
   CanisterId,
   ExtractReActorMethodArgs,
@@ -34,6 +34,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
 
   private DEFAULT_ACTOR_STATE: ReActorActorState<A> = {
     methodState: {} as ReActorMethodStates<A>,
+    methodFields: [],
     initializing: false,
     initialized: false,
     error: undefined,
@@ -129,11 +130,11 @@ export class ReActorManager<A extends ActorSubclass<any>> {
         throw new Error("Failed to initialize actor")
       }
 
-      const methodState = createMethodStates(actor)
+      const methodFields = extractMethodField(actor)
 
       this.updateActorState({
         actor,
-        methodState,
+        methodFields,
         initializing: false,
         initialized: true,
       })

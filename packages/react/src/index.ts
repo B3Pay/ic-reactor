@@ -11,13 +11,14 @@ import { getCallHooks } from "./hooks"
 
 export type ReActorContextType<A = ActorSubclass<any>> = ReActorAuthStore<A>
 
-const isLocal =
-  process?.env.NODE_ENV === "development" ||
-  process?.env.DFX_NETWORK === "local"
-
 export const createReActor = <A extends ActorSubclass<any>>(
   options: ReActorOptions
 ) => {
+  const isLocal =
+    typeof process !== "undefined" &&
+    (process.env.NODE_ENV === "development" ||
+      process.env.DFX_NETWORK === "local")
+
   const {
     callMethod,
     unsubscribe,

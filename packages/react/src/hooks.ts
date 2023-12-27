@@ -68,7 +68,7 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
     disableInitialCall,
     ...rest
   }: ReActorUseQueryArgs<A, M>) => {
-    const { call: recall, ...state } = useReActorCall(rest)
+    const { call, ...state } = useReActorCall(rest)
 
     let intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
 
@@ -76,13 +76,13 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
       // Auto-refresh logic
       if (autoRefresh) {
         intervalId.current = setInterval(() => {
-          recall()
+          call()
         }, refreshInterval)
       }
 
       // Initial call logic
       if (!disableInitialCall) {
-        recall()
+        call()
       }
 
       return () => {
@@ -90,7 +90,7 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
       }
     }, [disableInitialCall, autoRefresh, refreshInterval])
 
-    return { recall, ...state }
+    return { call, ...state }
   }
 
   const useUpdateCall = <M extends keyof A>(
