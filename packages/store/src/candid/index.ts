@@ -5,7 +5,53 @@ import { validateError } from "./helper"
 export * from "./types"
 
 export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
+  public visitService(t: IDL.ServiceClass, l?: string): ExtractedField {
+    return {
+      component: "div",
+      type: "service",
+      validate: validateError(t),
+      label: l ?? t.name,
+      fields: t._fields.map(([methodName, method]) =>
+        method.accept(this, methodName)
+      ),
+      defaultValues: undefined,
+    }
+  }
+  public visitFunc(t: IDL.FuncClass, functionName: string): ExtractedField {
+    type M = typeof functionName
+    const { fields, defaultValues } = t.argTypes.reduce(
+      (acc, arg, index) => {
+        const field = arg.accept(this, arg.name)
+        acc.fields.push(field)
+        acc.defaultValues[`${functionName}-arg${index}`] = field.defaultValues
+        return acc
+      },
+      {
+        fields: [] as ExtractedField[],
+        defaultValues: {} as { [K in `${M}-arg${number}`]?: any },
+      }
+    )
+
+    return {
+      component: "form",
+      type: "function",
+      validate: validateError(t),
+      label: functionName,
+      fields,
+      defaultValues,
+    }
+  }
   public visitType<T>(t: IDL.Type<T>, l?: string): ExtractedField {
+    return {
+      component: "span",
+      type: "unknown",
+      validate: validateError(t),
+      label: l ?? t.name,
+      fields: [],
+      defaultValues: undefined,
+    }
+  }
+  visitText(t: IDL.TextClass, l?: string): ExtractedField {
     return {
       component: "input",
       type: "text",

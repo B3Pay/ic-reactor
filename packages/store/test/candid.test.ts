@@ -1,6 +1,6 @@
 import { createReActorStore } from "../src"
-import { idlFactory } from "./candid/backend"
-import { _SERVICE } from "./candid/backend/backend.did"
+import { idlFactory } from "./candid/b3_system"
+import { _SERVICE } from "./candid/b3_system/b3_system.did"
 
 describe("My IC Store and Actions", () => {
   const { actorStore } = createReActorStore<_SERVICE>({
@@ -11,6 +11,7 @@ describe("My IC Store and Actions", () => {
 
   it("should return the function fields", () => {
     const fields = actorStore.getState().methodFields
+    console.log(fields)
     expect(fields).toBeDefined()
   })
 })

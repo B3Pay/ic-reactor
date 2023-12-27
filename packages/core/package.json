@@ -35,15 +35,15 @@
     "node": ">=10"
   },
   "dependencies": {
+    "@ic-reactor/store": "^0.2.2"
+  },
+  "peerDependencies": {
     "@dfinity/agent": "^0.20",
     "@dfinity/auth-client": "^0.20",
     "@dfinity/candid": "0.20",
     "@dfinity/identity": "^0.20",
     "@dfinity/principal": "^0.20",
-    "@ic-reactor/store": "^0.2.2",
+    "@peculiar/webcrypto": "1.4",
     "zustand": "4.4"
-  },
-  "peerDependencies": {
-    "@peculiar/webcrypto": "1.4"
   }
 }

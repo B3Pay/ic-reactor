@@ -5,37 +5,29 @@ import {
   ReActorActorStore,
   ReActorMethodField,
 } from "@ic-reactor/store"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ReActorCallArgs,
   ReActorHookState,
   ReActorUseQueryArgs,
   ReActorUseUpdateArgs,
 } from "./types"
+import { useStore } from "zustand"
 
 export const getCallHooks = <A extends ActorSubclass<any>>(
   callMethod: CallMethod<A>,
   actorStore: ReActorActorStore<A>
 ) => {
-  const useField = (functionName: keyof A & string) => {
-    const [field, setField] = useState<ReActorMethodField<A> | undefined>(
-      undefined
-    )
+  const useMethodFields = () => {
+    return useStore(actorStore, (state) => state.methodFields)
+  }
 
-    useEffect(() => {
-      const unsubscribe = actorStore.subscribe((state) => {
-        if (state.methodFields) {
-          const field = state.methodFields.find(
-            (f) => f.functionName === functionName
-          )
-          setField(field)
-        }
-      })
+  const useMethodField = (functionName: keyof A & string) => {
+    const methodFields = useMethodFields()
 
-      return () => {
-        unsubscribe()
-      }
-    }, [functionName])
+    const field = useMemo(() => {
+      return methodFields.find((f) => f.functionName === functionName)
+    }, [methodFields, functionName])
 
     return field
   }
@@ -85,7 +77,7 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
       [args, functionName, onError, onSuccess, onLoading]
     )
 
-    const field = useField(functionName)
+    const field = useMethodField(functionName)
 
     return { call, field, ...state }
   }
@@ -128,8 +120,9 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
   }
 
   return {
-    useField,
     useQueryCall,
     useUpdateCall,
+    useMethodField,
+    useMethodFields,
   }
 }

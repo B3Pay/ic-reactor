@@ -34,20 +34,11 @@ export function extractMethodField<A extends ActorSubclass<any>>(
   const methods = Actor.interfaceOf(actor as Actor)._fields as [M, FuncClass][]
 
   const allFunction = methods.map(([functionName, method]) => {
-    return method.argTypes.reduce(
-      (acc, argType, index) => {
-        const field = argType.accept(new UIExtract(), argType.name)
-        acc.fields.push(field)
-        acc.defaultValues[`${functionName}-arg${index}`] = field.defaultValues
-        acc.functionName = functionName
-        return acc
-      },
-      {
-        fields: [] as ExtractedField[],
-        defaultValues: {} as { [K in `${M}-arg${number}`]?: any },
-        functionName: "" as M,
-      }
-    ) as ReActorMethodField<A>
+    const field = method.accept(new UIExtract(), functionName)
+    return {
+      ...field,
+      functionName,
+    }
   })
 
   return allFunction
