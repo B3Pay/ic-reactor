@@ -43,17 +43,14 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
   public visitFixedNat(t: IDL.FixedNatClass, l?: string): ExtractedField {
     return this.visitNumber(t, l)
   }
-  public visitPrincipal(
-    t: IDL.PrincipalClass,
-    data: string | undefined
-  ): ExtractedField {
+  public visitPrincipal(t: IDL.PrincipalClass, l?: string): ExtractedField {
     return {
       component: "input",
       type: "principal",
       validate: validateError(t),
-      label: t.name,
+      label: l ?? t.name,
       fields: [],
-      defaultValues: data,
+      defaultValues: undefined,
     }
   }
   public visitBool(t: IDL.BoolClass, l?: string): ExtractedField {
