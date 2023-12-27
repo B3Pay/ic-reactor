@@ -34,8 +34,8 @@
   "scripts": {
     "test": "npx jest",
     "start": "tsc watch",
-    "build": "npx tsc",
-    "clean": "rimraf dist"
+    "build": "npx rimraf dist && npx tsc",
+    "clean": "npx rimraf dist"
   },
   "engines": {
     "node": ">=10"

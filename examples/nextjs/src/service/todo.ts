@@ -1,6 +1,6 @@
 "use client"
 import { createReActor } from "@ic-reactor/react"
-import { canisterId, idlFactory } from "declarations/todo"
+import { canisterId, idlFactory, todo } from "declarations/todo"
 
 export const {
   useActorStore,
@@ -8,7 +8,7 @@ export const {
   useAuthClient,
   useQueryCall,
   useUpdateCall
-} = createReActor({
+} = createReActor<typeof todo>({
   idlFactory,
   canisterId,
   withDevtools: true

@@ -1,23 +1,19 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
 import { createReActor } from "../src"
-import { createActor } from "./candid"
+import { backend, canisterId, idlFactory } from "./candid"
 
 describe("createReActor", () => {
   it("should initialize", async () => {
-    const { useActorStore } = createReActor(
-      (agent) =>
-        createActor("xeka7-ryaaa-aaaal-qb57a-cai", {
-          agent,
-        }),
-      {
-        initializeOnMount: false,
-        host: "https://icp-api.io",
-      }
-    )
+    const { useActorStore } = createReActor<typeof backend>({
+      idlFactory,
+      canisterId,
+      initializeOnMount: false,
+    })
 
     const TestInitialize = () => {
       const { initialized, initialize, initializing } = useActorStore()
+
       return (
         <div>
           <span>
@@ -47,18 +43,17 @@ describe("createReActor", () => {
     expect(initializeStatus()).toEqual("Initialized")
 
     expect(screen.toJSON()).toMatchSnapshot()
+
+    console.log(useActorStore().error)
   })
 
   it("should query", async () => {
-    const { useQueryCall } = createReActor(
-      (agent) =>
-        createActor("xeka7-ryaaa-aaaal-qb57a-cai", {
-          agent,
-        }),
-      {
-        host: "https://icp-api.io",
-      }
-    )
+    const { useQueryCall } = createReActor<typeof backend>({
+      canisterId,
+      idlFactory,
+      initializeOnMount: false,
+      host: "https://icp-api.io",
+    })
 
     const TestComponent = () => {
       const {

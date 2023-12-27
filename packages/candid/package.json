@@ -1,6 +1,6 @@
 {
-  "name": "@ic-reactor/core",
-  "version": "0.2.0",
+  "name": "@ic-reactor/candid",
+  "version": "0.0.1",
   "description": "A React library for interacting with Dfinity actors",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,7 +9,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git@github.com:b3hr4d/ic-reactor.git"
+    "url": "git@github.com:B3Pay/ic-reactor.git"
   },
   "keywords": [
     "actor",
@@ -24,7 +24,10 @@
   "bugs": {
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
-  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/core#readme",
+  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/store#readme",
+  "dependencies": {
+    "@dfinity/candid": "^0.20"
+  },
   "scripts": {
     "test": "npx jest",
     "start": "tsc watch",
@@ -33,17 +36,5 @@
   },
   "engines": {
     "node": ">=10"
-  },
-  "dependencies": {
-    "@dfinity/agent": "^0.20",
-    "@dfinity/auth-client": "^0.20",
-    "@dfinity/candid": "0.20",
-    "@dfinity/identity": "^0.20",
-    "@dfinity/principal": "^0.20",
-    "@ic-reactor/store": "^0.2.0",
-    "zustand": "4.4"
-  },
-  "peerDependencies": {
-    "@peculiar/webcrypto": "1.4"
   }
 }
