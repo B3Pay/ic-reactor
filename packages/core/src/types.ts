@@ -10,11 +10,11 @@ export type ReActorGetStateFunction<A, M extends keyof A> = {
   (key: "data"): ExtractReActorMethodReturnType<A[M]> | undefined
   (key: "loading"): boolean
   (key: "error"): Error | undefined
-  (): ReActorMethodState<A, M>["states"][string]
+  (): ReActorMethodState<A, M>[string]
 }
 
 export type ReActorSubscribeFunction<A, M extends keyof A> = (
-  callback: (state: ReActorMethodState<A, M>["states"][string]) => void
+  callback: (state: ReActorMethodState<A, M>[string]) => void
 ) => () => void
 
 export type ReActorCallFunction<A, M extends keyof A> = (

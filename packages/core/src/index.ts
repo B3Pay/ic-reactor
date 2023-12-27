@@ -25,7 +25,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
   const updateMethodState = <M extends keyof A>(
     method: M,
     args: any[] = [],
-    newState?: Partial<ReActorMethodState<A, M>["states"][string]>
+    newState?: Partial<ReActorMethodState<A, M>[string]>
   ) => {
     const hash = generateRequestHash(args)
 
@@ -40,7 +40,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
         return state
       }
 
-      const currentMethodState = state.methodState[method].states[hash] || {
+      const currentMethodState = state.methodState[method][hash] || {
         loading: false,
         data: undefined,
         error: undefined,
@@ -76,7 +76,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
         key?: "data" | "loading" | "error"
       ) => {
         const state =
-          actorStore.getState().methodState[functionName].states[requestHash]
+          actorStore.getState().methodState[functionName][requestHash]
 
         switch (key) {
           case "data":
@@ -93,7 +93,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
       const subscribe: ReActorSubscribeFunction<A, M> = (callback) => {
         const unsubscribe = actorStore.subscribe((state) => {
           const methodState = state.methodState[functionName]
-          const methodStateHash = methodState.states[requestHash]
+          const methodStateHash = methodState[requestHash]
 
           if (methodStateHash) {
             callback(methodStateHash)
