@@ -13,18 +13,32 @@ import {
   ReActorUseUpdateArgs,
 } from "./types"
 
-function findFieldByFunctionName<A>(
-  methodFields: ReActorMethodField<A>[],
-  functionName: keyof A & string
-): ReActorMethodField<A> | undefined {
-  return methodFields.find((f) => f.functionName === functionName)
-}
-
 export const getCallHooks = <A extends ActorSubclass<any>>(
   callMethod: CallMethod<A>,
   actorStore: ReActorActorStore<A>
 ) => {
-  const { methodFields } = actorStore.getState()
+  const useField = (functionName: keyof A & string) => {
+    const [field, setField] = useState<ReActorMethodField<A> | undefined>(
+      undefined
+    )
+
+    useEffect(() => {
+      const unsubscribe = actorStore.subscribe((state) => {
+        if (state.methodFields) {
+          const field = state.methodFields.find(
+            (f) => f.functionName === functionName
+          )
+          setField(field)
+        }
+      })
+
+      return () => {
+        unsubscribe()
+      }
+    }, [functionName])
+
+    return { current: field }
+  }
 
   const useReActorCall = <M extends keyof A>({
     onError,
@@ -71,9 +85,9 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
       [args, functionName, onError, onSuccess, onLoading]
     )
 
-    const field = useRef(findFieldByFunctionName(methodFields, functionName))
+    const field = useField(functionName)
 
-    return { call, field: field.current, ...state }
+    return { call, field, ...state }
   }
 
   const useQueryCall = <M extends keyof A>({
