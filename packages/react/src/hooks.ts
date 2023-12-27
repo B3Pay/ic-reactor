@@ -128,6 +128,7 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
   }
 
   return {
+    useField,
     useQueryCall,
     useUpdateCall,
   }

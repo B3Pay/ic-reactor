@@ -90,12 +90,13 @@ export const createReActor = <A extends ActorSubclass<any>>(
     }
   }
 
-  const { useQueryCall, useUpdateCall } = getCallHooks<A>(
+  const { useQueryCall, useField, useUpdateCall } = getCallHooks<A>(
     callMethod,
     actorStore
   )
 
   return {
+    useField,
     useActorStore,
     useAuthStore,
     useQueryCall,
