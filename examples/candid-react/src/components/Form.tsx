@@ -1,15 +1,10 @@
-import { ExtractedField } from "@ic-reactor/candid"
 import { useCallback, useState } from "react"
 import Button from "./Button"
 import FormField from "./FormField"
 import { FormProvider, useForm } from "react-hook-form"
-import { useQueryCall } from "../App"
+import { DynamicField, useQueryCall } from "../App"
 
-interface FormProps {
-  functionName: string
-  fields: ExtractedField[]
-  defaultValues: any
-}
+interface FormProps extends DynamicField {}
 
 const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
   const [argState, setArgState] = useState<any>(null)
@@ -64,13 +59,13 @@ const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
       setArgState(args)
 
       try {
-        const result = await call(args)
+        const result = await call([args])
         console.log("result", result)
       } catch (error) {
         console.log("error", error)
       }
     },
-    [functionName]
+    [call]
   )
 
   return (

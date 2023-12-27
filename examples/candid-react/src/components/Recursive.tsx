@@ -1,6 +1,6 @@
-import { ExtractedField } from "@ic-reactor/candid"
 import { useState, useEffect } from "react"
 import FormField, { FormFieldsProps } from "./FormField"
+import { ExtractedField } from "@ic-reactor/store/dist/candid"
 
 interface RecursiveProps extends FormFieldsProps {}
 

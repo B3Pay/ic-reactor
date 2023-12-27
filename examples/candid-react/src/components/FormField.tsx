@@ -1,5 +1,4 @@
 import React from "react"
-import { ExtractedField } from "@ic-reactor/candid"
 import Vector from "./Vector"
 import Input from "./Input"
 import Optional from "./Optional"
@@ -9,6 +8,7 @@ import Record from "./Record"
 import Tuple from "./Tuple"
 import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form"
 import Principal from "./Principal"
+import { ExtractedField } from "@ic-reactor/store/dist/candid"
 
 export interface FormFieldsProps {
   field: ExtractedField

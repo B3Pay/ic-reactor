@@ -2141,14 +2141,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/candid@npm:^0.0.1, @ic-reactor/candid@workspace:packages/candid":
-  version: 0.0.0-use.local
-  resolution: "@ic-reactor/candid@workspace:packages/candid"
-  dependencies:
-    "@dfinity/candid": "npm:^0.20"
-  languageName: unknown
-  linkType: soft
-
 "@ic-reactor/core@npm:*, @ic-reactor/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
@@ -2170,7 +2162,6 @@ __metadata:
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
     "@ic-reactor/store": "npm:^0.2.0"
-    zustand: "npm:4.4"
     zustand-utils: "npm:^1.3"
   peerDependencies:
     "@dfinity/agent": ^0.20
@@ -2180,6 +2171,7 @@ __metadata:
     "@dfinity/principal": ^0.20
     "@peculiar/webcrypto": 1.4
     react: ">=16.8"
+    zustand: 4.4
   languageName: unknown
   linkType: soft
 
@@ -2187,10 +2179,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/store@workspace:packages/store"
   dependencies:
-    "@dfinity/agent": "npm:^0.20"
-    "@dfinity/auth-client": "npm:^0.20"
-    "@dfinity/candid": "npm:^0.20"
     zustand: "npm:^4.4"
+  peerDependencies:
+    "@dfinity/agent": ^0.20
+    "@dfinity/auth-client": ^0.20
+    "@dfinity/candid": ^0.20
   languageName: unknown
   linkType: soft
 
@@ -6055,7 +6048,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "candid-react@workspace:examples/candid-react"
   dependencies:
-    "@ic-reactor/candid": "npm:^0.0.1"
     "@ic-reactor/react": "workspace:^"
     "@types/node": "npm:^16.18.68"
     "@types/react": "npm:^18.2.45"

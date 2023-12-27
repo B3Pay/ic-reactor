@@ -43,12 +43,10 @@ export type ExtractReActorMethodReturnType<T> = T extends ActorMethod<
   ? R
   : never
 
-// State structure for a method in a ReActor
-export interface ReActorMethodField<A, M extends keyof A & string> {
-  functionName: M
+export interface ReActorMethodField<A> {
+  functionName: keyof A & string
   fields: ExtractedField[]
-  // key should be `${functionName}-arg${index}`
-  defaultValues: { [K in `${M}-arg${number}`]?: any }
+  defaultValues: { [K in `${Extract<keyof A, string>}-arg${number}`]: any }
 }
 
 export interface ReActorMethodState<A, M extends keyof A> {
@@ -70,7 +68,7 @@ export type ReActorActorState<A> = {
   initializing: boolean
   error: Error | undefined
   methodState: ReActorMethodStates<A>
-  methodFields: ReActorMethodField<A, keyof A & string>[]
+  methodFields: ReActorMethodField<A>[]
 }
 
 export type ReActorAgentState = {

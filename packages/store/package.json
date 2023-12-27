@@ -25,10 +25,12 @@
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/store#readme",
-  "dependencies": {
+  "peerDependencies": {
     "@dfinity/agent": "^0.20",
     "@dfinity/auth-client": "^0.20",
-    "@dfinity/candid": "^0.20",
+    "@dfinity/candid": "^0.20"
+  },
+  "dependencies": {
     "zustand": "^4.4"
   },
   "scripts": {

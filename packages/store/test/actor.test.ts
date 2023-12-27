@@ -12,6 +12,7 @@ describe("createReActorStore", () => {
 
     expect(actorStore.getState()).toEqual({
       methodState: {},
+      methodFields: [],
       actor: null,
       initialized: false,
       initializing: false,
@@ -29,6 +30,7 @@ describe("createReActorStore", () => {
 
     expect(actorStore.getState()).toEqual({
       methodState: {},
+      methodFields: [],
       initialized: false,
       initializing: false,
       actor: null,

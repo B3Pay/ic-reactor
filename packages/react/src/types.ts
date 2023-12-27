@@ -5,7 +5,7 @@ import {
 
 // Type for arguments passed to a ReActor call
 export type ReActorCallArgs<A, M extends keyof A> = {
-  functionName: M
+  functionName: M & string
   args?: ExtractReActorMethodArgs<A[M]>
   onLoading?: (loading: boolean) => void
   onError?: (error: Error | unknown) => void

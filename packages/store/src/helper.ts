@@ -3,12 +3,7 @@ import { toHexString } from "@dfinity/candid"
 import { FuncClass } from "@dfinity/candid/lib/cjs/idl"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import {
-  ActorSubclass,
-  ExtractReActorMethodArgs,
-  ReActorMethodField,
-  ReActorMethodStates,
-} from "./types"
+import { ActorSubclass, ReActorMethodField } from "./types"
 import { ExtractedField, UIExtract } from "./candid"
 
 interface StoreOptions {
@@ -34,7 +29,7 @@ export function createStoreWithOptionalDevtools(
 
 export function extractMethodField<A extends ActorSubclass<any>>(
   actor: A
-): ReActorMethodField<A, keyof A & string>[] {
+): ReActorMethodField<A>[] {
   type M = keyof A & string
   const methods = Actor.interfaceOf(actor as Actor)._fields as [M, FuncClass][]
 
@@ -52,7 +47,7 @@ export function extractMethodField<A extends ActorSubclass<any>>(
         defaultValues: {} as { [K in `${M}-arg${number}`]?: any },
         functionName: "" as M,
       }
-    ) as ReActorMethodField<A, M>
+    ) as ReActorMethodField<A>
   })
 
   return allFunction

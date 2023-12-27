@@ -2,6 +2,8 @@ import {
   ActorSubclass,
   CallMethod,
   ExtractReActorMethodArgs,
+  ReActorActorStore,
+  ReActorMethodField,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
@@ -11,9 +13,19 @@ import {
   ReActorUseUpdateArgs,
 } from "./types"
 
+function findFieldByFunctionName<A>(
+  methodFields: ReActorMethodField<A>[],
+  functionName: keyof A & string
+): ReActorMethodField<A> | undefined {
+  return methodFields.find((f) => f.functionName === functionName)
+}
+
 export const getCallHooks = <A extends ActorSubclass<any>>(
-  callMethod: CallMethod<A>
+  callMethod: CallMethod<A>,
+  actorStore: ReActorActorStore<A>
 ) => {
+  const { methodFields } = actorStore.getState()
+
   const useReActorCall = <M extends keyof A>({
     onError,
     onSuccess,
@@ -59,7 +71,9 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
       [args, functionName, onError, onSuccess, onLoading]
     )
 
-    return { call, ...state }
+    const field = useRef(findFieldByFunctionName(methodFields, functionName))
+
+    return { call, field: field.current, ...state }
   }
 
   const useQueryCall = <M extends keyof A>({
