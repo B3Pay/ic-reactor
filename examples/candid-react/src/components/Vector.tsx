@@ -1,9 +1,9 @@
 import React from "react"
 import { useFieldArray, useFormContext } from "react-hook-form"
 import Button from "./Button"
-import FormField, { FormFieldsProps } from "./FormField"
+import Route, { RouteProps } from "./Route"
 
-interface VectorProps extends FormFieldsProps {}
+interface VectorProps extends RouteProps {}
 
 const Vector: React.FC<VectorProps> = ({ field, errors, registerName }) => {
   const { control } = useFormContext()
@@ -52,7 +52,7 @@ const Vector: React.FC<VectorProps> = ({ field, errors, registerName }) => {
             </button>
           </div>
           <div className="flex-auto">
-            <FormField
+            <Route
               field={field.fields?.[0]}
               errors={errors?.[index as never]}
               registerName={`${registerName}.[${index}]`}

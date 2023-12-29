@@ -16,3 +16,4 @@ export const createReActorStore = <A extends ActorSubclass<any>>(
 export * from "./helper"
 export * from "./reactor"
 export * from "./types"
+export * from "./candid"

@@ -1,13 +1,13 @@
-import FormField, { FormFieldsProps } from './FormField';
+import Route, { RouteProps } from "./Route"
 
-interface TupleProps extends FormFieldsProps {}
+interface TupleProps extends RouteProps {}
 
 const Tuple: React.FC<TupleProps> = ({ field, registerName, errors }) => {
   return (
     <div className="w-full">
       <div className="font-semibold">{field.label}</div>
       {field.fields?.map((field, index) => (
-        <FormField
+        <Route
           key={index}
           registerName={`${registerName}.[${index}]`}
           errors={errors?.[index as never]}
@@ -15,7 +15,7 @@ const Tuple: React.FC<TupleProps> = ({ field, registerName, errors }) => {
         />
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default Tuple;
+export default Tuple

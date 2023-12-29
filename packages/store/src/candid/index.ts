@@ -23,12 +23,15 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       (acc, arg, index) => {
         const field = arg.accept(this, arg.name)
         acc.fields.push(field)
-        acc.defaultValues[`${functionName}-arg${index}`] = field.defaultValues
+        acc.defaultValues.data[`${functionName}-arg${index}`] =
+          field.defaultValues
         return acc
       },
       {
         fields: [] as ExtractedField[],
-        defaultValues: {} as { [K in `${M}-arg${number}`]?: any },
+        defaultValues: { data: {} } as {
+          data: { [K in `${M}-arg${number}`]?: any }
+        },
       }
     )
 

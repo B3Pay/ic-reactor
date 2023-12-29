@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
-import FormField, { FormFieldsProps } from "./FormField"
+import Route, { RouteProps } from "./Route"
 import { ExtractedField } from "@ic-reactor/store/dist/candid"
 
-interface RecursiveProps extends FormFieldsProps {}
+interface RecursiveProps extends RouteProps {}
 
 const Recursive: React.FC<RecursiveProps> = ({
   field,
@@ -17,7 +17,7 @@ const Recursive: React.FC<RecursiveProps> = ({
   }, [field])
 
   return extractedField ? (
-    <FormField
+    <Route
       field={extractedField}
       registerName={registerName}
       errors={errors?.[field.label as never]}

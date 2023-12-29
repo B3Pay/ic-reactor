@@ -1,13 +1,13 @@
-import FormField, { FormFieldsProps } from './FormField';
+import Route, { RouteProps } from "./Route"
 
-interface RecordProps extends FormFieldsProps {}
+interface RecordProps extends RouteProps {}
 
 const Record: React.FC<RecordProps> = ({ field, errors, registerName }) => {
   return (
     <div className="w-full">
       <div className="font-semibold">{field.label}</div>
       {field.fields?.map((field, index) => (
-        <FormField
+        <Route
           key={index}
           registerName={`${registerName}.${field.label}`}
           field={field}
@@ -15,7 +15,7 @@ const Record: React.FC<RecordProps> = ({ field, errors, registerName }) => {
         />
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default Record;
+export default Record

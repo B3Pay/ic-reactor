@@ -4,7 +4,7 @@ import { FuncClass } from "@dfinity/candid/lib/cjs/idl"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 import { ActorSubclass, ReActorMethodField } from "./types"
-import { ExtractedField, UIExtract } from "./candid"
+import { UIExtract } from "./candid"
 
 interface StoreOptions {
   withDevtools?: boolean

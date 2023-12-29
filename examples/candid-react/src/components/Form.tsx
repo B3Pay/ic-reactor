@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react"
 import Button from "./Button"
-import FormField from "./FormField"
+import Route from "./Route"
 import { FormProvider, useForm } from "react-hook-form"
 import { DynamicField, useQueryCall } from "../App"
 
@@ -25,9 +25,10 @@ const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
 
   const onSubmit = useCallback(
     (data: any) => {
+      console.log(data)
       setArgState(null)
       setArgErrorState(null)
-      const args = (Object.values(data) || []) as any[]
+      const args = (Object.values(data.data) || []) as any[]
       console.log("args", args)
 
       let errorMessages = ""
@@ -74,14 +75,27 @@ const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
         onSubmit={methods.handleSubmit(onSubmit)}
         className="border border-gray-500 rounded p-2 mt-2 w-full"
       >
-        <h1 className="text-xl font-bold mb-4">{functionName}</h1>
+        <div className="flex justify-between items-center w-full">
+          <h1 className="text-xl font-bold mb-4">{functionName}</h1>
+          <button
+            className="mb-2 border-red-600 border-2 rounded px-2 py-1 text-red-600 hover:bg-red-600 hover:text-white"
+            type="reset"
+            onClick={() => methods.reset()}
+          >
+            Reset
+          </button>
+        </div>
         {fields?.map((field, index) => {
           return (
             <div key={index} className="mb-2">
-              <FormField
+              <Route
                 field={field}
-                registerName={`${functionName}-arg${index}`}
-                errors={methods.formState.errors[`${functionName}-arg${index}`]}
+                registerName={`data.${functionName}-arg${index}`}
+                errors={
+                  methods.formState.errors?.data?.[
+                    `${functionName}-arg${index}`
+                  ]
+                }
               />
             </div>
           )

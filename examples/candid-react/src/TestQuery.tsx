@@ -1,6 +1,6 @@
 import { FormProvider, useForm } from "react-hook-form"
 import { DynamicField, useQueryCall } from "./App"
-import FormField from "./components/FormField"
+import Route from "./components/Route"
 
 interface TestQueryProps {
   functionName: DynamicField["functionName"]
@@ -25,7 +25,7 @@ const TestQuery: React.FC<TestQueryProps> = ({ functionName }) => {
       <form
         onSubmit={methods.handleSubmit((data) => {
           console.log("data", data)
-          const args = (Object.values(data) || []) as any[]
+          const args = (Object.values(data) || []) as [any]
           console.log("args", args)
           call(args)
         })}
@@ -35,10 +35,12 @@ const TestQuery: React.FC<TestQueryProps> = ({ functionName }) => {
         {field?.fields.map((field, index) => {
           return (
             <div key={index} className="mb-2">
-              <FormField
+              <Route
                 field={field}
                 registerName={`${functionName}-arg${index}`}
-                errors={methods.formState.errors[`${functionName}-arg${index}`]}
+                errors={
+                  methods.formState.errors.data?.[`${functionName}-arg${index}`]
+                }
               />
             </div>
           )

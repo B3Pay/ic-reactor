@@ -1,9 +1,9 @@
 import { cn } from "../utils"
 import { Principal as PrincipalId } from "@dfinity/principal"
 import { useFormContext } from "react-hook-form"
-import { FormFieldsProps } from "./FormField"
+import { RouteProps } from "./Route"
 
-interface PrincipalProps extends FormFieldsProps {}
+interface PrincipalProps extends RouteProps {}
 
 const Principal: React.FC<PrincipalProps> = ({
   registerName,

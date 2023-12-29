@@ -1,8 +1,8 @@
 import { useFieldArray, useFormContext } from "react-hook-form"
-import FormField, { FormFieldsProps } from "./FormField"
+import Route, { RouteProps } from "./Route"
 import { cn } from "../utils"
 
-interface OptionalProps extends FormFieldsProps {}
+interface OptionalProps extends RouteProps {}
 
 const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
   const { control } = useFormContext()
@@ -43,7 +43,7 @@ const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
       </div>
       {fields.length > 0 && (
         <div className="flex justify-between items-start p-1 mb-1 w-full border-dashed border border-gray-400 rounded">
-          <FormField
+          <Route
             field={field.fields?.[0]}
             registerName={`${registerName}.[0]`}
             errors={errors?.[0 as never]}

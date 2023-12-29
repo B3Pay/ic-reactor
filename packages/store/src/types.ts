@@ -7,7 +7,7 @@ import type {
   Identity,
 } from "@dfinity/agent"
 import type { AuthClient } from "@dfinity/auth-client"
-import type { FuncClass, InterfaceFactory } from "@dfinity/candid/lib/cjs/idl"
+import type { InterfaceFactory } from "@dfinity/candid/lib/cjs/idl"
 import type { Principal } from "@dfinity/principal"
 import type { StoreApi } from "zustand"
 import { ExtractedField } from "./candid"
@@ -46,7 +46,9 @@ export type ExtractReActorMethodReturnType<T> = T extends ActorMethod<
 export interface ReActorMethodField<A> {
   functionName: keyof A & string
   fields: ExtractedField[]
-  defaultValues: { [K in `${Extract<keyof A, string>}-arg${number}`]: any }
+  defaultValues: {
+    data: { [K in `${Extract<keyof A, string>}-arg${number}`]: any }
+  }
 }
 
 export interface ReActorMethodState<A, M extends keyof A> {

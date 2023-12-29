@@ -1,8 +1,8 @@
 import { cn } from "../utils"
 import { useFormContext } from "react-hook-form"
-import { FormFieldsProps } from "./FormField"
+import { RouteProps } from "./Route"
 
-interface InputProps extends FormFieldsProps {}
+interface InputProps extends RouteProps {}
 
 const Input: React.FC<InputProps> = ({ registerName, errors, field }) => {
   const { register, resetField, trigger } = useFormContext()
