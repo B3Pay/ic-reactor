@@ -30,31 +30,35 @@ Here's a simple example to get you started:
 
 First, create an actor declaration file:
 
-```js
-// store.js
-import { canisterId, createActor } from "declaration/actor"
+```ts
+// store.ts
+import { canisterId, idlFactory, actor } from "declaration/actor"
 import { createReActor } from "@ic-reactor/core"
 
-export const { useQueryCall, useUpdateCall } = createReActor((agent) =>
-  createActor(canisterId, { agent })
-)
+type Actor = typeof actor
+
+export const { useActorStore, useQueryCall } = createReActor<Actor>({
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  idlFactory,
+  host: "https://localhost:4943",
+})
 ```
 
 Then, use the `useQueryCall` hook to call your canister method:
 
 ```jsx
-// Balance.jsx
+// Balance.tsx
 import { useQueryCall } from "./store"
 
 const Balance = ({ principal }) => {
-  const { recall, data, loading, error } = useQueryCall({
+  const { call, data, loading, error } = useQueryCall({
     functionName: "get_balance",
     args: [principal],
   })
 
   return (
     <div>
-      <button onClick={() => recall()} disabled={loading}>
+      <button onClick={() => call()} disabled={loading}>
         {loading ? "Loading..." : "Refresh"}
       </button>
       {loading && <p>Loading...</p>}

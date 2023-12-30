@@ -33,13 +33,14 @@ fetchMock.mockResponse(async (req) => {
 describe("CreateActor", () => {
   const callback = jest.fn()
 
-  const { initialize, callMethod, actorStore } = new ReActorManager<_SERVICE>({
-    verifyQuerySignatures: false,
-    initializeOnMount: false,
-    canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
-    idlFactory,
-    host: "https://local-mock",
-  })
+  const { initialize, authenticate, callMethod, actorStore } =
+    new ReActorManager<_SERVICE>({
+      verifyQuerySignatures: false,
+      initializeOnMount: false,
+      canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
+      idlFactory,
+      host: "https://local-mock",
+    })
 
   const { subscribe, getState } = actorStore
 
@@ -62,5 +63,9 @@ describe("CreateActor", () => {
 
   it("should subscribe to the actor state", () => {
     expect(callback).toHaveBeenCalledTimes(2)
+  })
+
+  it("should authenticate the actor", async () => {
+    await authenticate()
   })
 })

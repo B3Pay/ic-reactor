@@ -28,27 +28,26 @@ yarn add @ic-reactor/store
 
 To use `@ic-reactor/store`, start by creating a ReActor manager with your actor configurations:
 
-```javascript
+```ts
 import createReActorManager from "@ic-reactor/store"
-import { createActor, canisterId } from "./declarations/actor"
+import { idlFactory, canisterId } from "./declarations/actor"
 
-const reActorManager = createReActorManager((agent) =>
-  createActor(canisterId, {
-    agent,
-  })
-)
+type Actor = typeof actor
+
+const { actorStore, authenticate, callMethod } = createReActorStore<Actor>({
+  idlFactory,
+  canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+  host: "https://icp-api.io",
+})
 ```
 
 ### Managing Actor State
 
 Utilize the ReActor manager to manage the state of your IC actors:
 
-```javascript
-// Initialize your actor
-reActorManager.initializeActor()
-
+```ts
 // Access and update actor state
-const actorState = reActorManager.store.getState().actorState
+const actorState = actorStore.getState()
 ```
 
 ### Handling Authentication
@@ -57,13 +56,30 @@ Manage authentication states and processes:
 
 ```javascript
 // Authenticate with the IC blockchain
-reActorManager.actions
-  .authenticate()
+authenticate()
   .then(() => {
     // Handle successful authentication
   })
   .catch((error) => {
     // Handle authentication errors
+  })
+```
+
+### Calling Actor Methods
+
+Call actor methods and handle the results:
+
+```javascript
+// Call an actor method
+callMethod({
+  functionName: "get_balance",
+  args: [principal],
+})
+  .then((result) => {
+    // Handle successful method call
+  })
+  .catch((error) => {
+    // Handle method call errors
   })
 ```
 

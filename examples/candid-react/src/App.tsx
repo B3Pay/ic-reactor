@@ -3,7 +3,7 @@ import Form from "./components/Form"
 import { createReActor } from "@ic-reactor/react"
 import { ReActorMethodField } from "@ic-reactor/store"
 
-export const { useActorStore, useQueryCall } = createReActor<typeof candid>({
+export const { useActorStore, useQueryCall } = createReActor<CandidMethod>({
   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
   idlFactory,
   host: "https://localhost:4943",
