@@ -16,9 +16,7 @@ const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
   })
 
   const methods = useForm({
-    progressive: false,
-    shouldUseNativeValidation: true,
-    reValidateMode: "onChange",
+    shouldUnregister: true,
     mode: "onChange",
     defaultValues,
   })
@@ -55,12 +53,12 @@ const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
     async (data: any) => {
       setArgState(null)
       setArgErrorState(null)
-      const args = (Object.values(data) || []) as any[]
+      const args = (Object.values(data.data) || []) as [any]
       console.log("args", args)
       setArgState(args)
 
       try {
-        const result = await call([args])
+        const result = await call(args)
         console.log("result", result)
       } catch (error) {
         console.log("error", error)

@@ -1,57 +1,58 @@
-import { useEffect, useState } from "react"
+import React, { useMemo } from "react"
 import Route, { RouteProps } from "./Route"
-import { Controller, useFormContext } from "react-hook-form"
+import { Controller, useFormContext, useWatch } from "react-hook-form"
 
 interface VariantProps extends RouteProps {}
 
+let recursive = 0
+
 const Variant: React.FC<VariantProps> = ({ field, registerName, errors }) => {
-  const { control, setValue, watch } = useFormContext()
-  const [inputValue, setInputValue] = useState<any>(null)
+  const { control, unregister, setValue } = useFormContext()
 
-  const inputName = registerName.replace("data", "input")
+  const selectName = useMemo(() => `select.select${recursive++}`, [])
 
-  const selectedValue = watch(inputName)
+  const selected = useWatch({ name: selectName })
 
-  console.log("selectedValue", selectedValue)
-
-  useEffect(() => {
-    if (selectedValue) {
-      setValue(
-        `${registerName}.${selectedValue}`,
-        field.defaultValues[selectedValue]
-      )
+  const { selectedName, selectedField } = useMemo(() => {
+    if (!selected) {
+      return {}
     }
-  }, [selectedValue])
 
-  const selectedField = field.fields.find((f) => f.label === inputValue)
+    unregister(registerName)
+    const selectedName = `${registerName}.${selected}`
 
-  console.log("selectedField", selectedField)
+    setValue(selectedName, field.defaultValues?.[selected])
+
+    const selectedField = field.fields.find((f) => f.label === selected)
+
+    return { selectedName, selectedField }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, setValue])
+
   return (
     <div className="w-full flex-col">
-      <label className="block mr-2" htmlFor={registerName}>
+      <label className="block mr-2" htmlFor={selectName}>
         {field.label}
       </label>
       <Controller
-        name={inputName}
+        name={selectName}
         control={control}
         rules={{
           required: true,
-          validate: (v) => {
-            console.log("v", v)
-            return typeof v === "string" && v !== "select"
+          validate: (value) => {
+            if (value === "select") {
+              return "Please select one"
+            }
+            return true
           },
         }}
-        render={({ field: renderField }) => (
+        render={({ field: methodField }) => (
           <select
-            {...renderField}
-            id={registerName}
+            id={selectName}
+            {...methodField}
             className="w-full h-8 pl-2 pr-8 border rounded border-gray-300"
-            onChange={(e) => {
-              renderField.onChange(e)
-              setInputValue(e.target.value)
-            }}
           >
-            <option value="select">Select</option>
+            <option value="select">Select one</option>
             {field.options?.map((label, index) => (
               <option key={index} value={label}>
                 {label}
@@ -60,14 +61,12 @@ const Variant: React.FC<VariantProps> = ({ field, registerName, errors }) => {
           </select>
         )}
       />
-      {selectedField ? (
+      {selectedField && (
         <Route
-          registerName={`${registerName}.${selectedValue}`}
-          errors={errors?.[selectedValue as never]}
+          registerName={selectedName}
+          errors={errors?.[selected as never]}
           field={selectedField}
         />
-      ) : (
-        <div className="mt-2">Field not found</div>
       )}
     </div>
   )
