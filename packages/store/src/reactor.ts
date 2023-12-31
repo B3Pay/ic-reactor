@@ -143,7 +143,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     }
   }
 
-  public initialize = (
+  public initialize = async (
     agentOptions?: HttpAgentOptions,
     identity?: Identity
   ) => {
