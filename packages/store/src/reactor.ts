@@ -3,7 +3,6 @@ import {
   ActorSubclass,
   HttpAgent,
   HttpAgentOptions,
-  Identity,
 } from "@dfinity/agent"
 import { AuthClient } from "@dfinity/auth-client"
 import { createStore } from "zustand/vanilla"
@@ -30,6 +29,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
   public actorStore: ReActorActorStore<A>
   public authStore: ReActorAuthStore<A>
 
+  private isLocal: boolean
   private agentState: ReActorAgentStore
 
   private DEFAULT_ACTOR_STATE: ReActorActorState<A> = {
@@ -58,11 +58,13 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     const {
       withDevtools = false,
       initializeOnMount = true,
-      isLocal = false,
+      isLocal,
       canisterId,
       idlFactory,
       ...agentOptions
     } = reactorConfig
+
+    this.isLocal = isLocal || false
 
     this.actorStore = createStoreWithOptionalDevtools(
       this.DEFAULT_ACTOR_STATE,
@@ -80,7 +82,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     }))
 
     unsubscribeAgent = this.agentState.subscribe(() => {
-      this.createActor(idlFactory, canisterId, isLocal)
+      this.createActor(idlFactory, canisterId)
     })
 
     if (initializeOnMount) {
@@ -102,8 +104,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
 
   private createActor = async (
     idlFactory: InterfaceFactory,
-    canisterId: CanisterId,
-    isLocal: boolean
+    canisterId: CanisterId
   ) => {
     this.updateActorState({
       initializing: true,
@@ -117,7 +118,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
         throw new Error("Agent not initialized")
       }
 
-      if (isLocal) {
+      if (this.isLocal) {
         await agent.fetchRootKey()
       }
 
@@ -145,12 +146,14 @@ export class ReActorManager<A extends ActorSubclass<any>> {
 
   public initialize = async (
     agentOptions?: HttpAgentOptions,
-    identity?: Identity
+    isLocal?: boolean
   ) => {
+    this.isLocal = isLocal || this.isLocal
+
     this.agentState.setState((prevState) => {
       const agent = new HttpAgent({
-        identity,
-        ...(agentOptions || prevState.agentOptions),
+        ...prevState.agentOptions,
+        ...agentOptions,
       })
 
       return { ...prevState, agent }
@@ -170,7 +173,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
         throw new Error("Identity not found")
       }
 
-      this.initialize(undefined, identity)
+      this.initialize({ identity })
 
       this.updateAuthState({
         authClient,
