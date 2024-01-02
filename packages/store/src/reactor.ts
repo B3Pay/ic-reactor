@@ -23,16 +23,16 @@ import type {
 } from "./types"
 import { IDL } from "@dfinity/candid"
 
-let unsubscribeAgent: (() => void) | undefined
-
 export class ReActorManager<A extends ActorSubclass<any>> {
   public actorStore: ReActorActorStore<A>
   public authStore: ReActorAuthStore<A>
 
   private isLocal: boolean
   private agentState: ReActorAgentStore
+  public unsubscribe: () => void
 
   private DEFAULT_ACTOR_STATE: ReActorActorState<A> = {
+    canisterId: undefined,
     methodState: {} as ReActorMethodStates<A>,
     methodFields: [],
     initializing: false,
@@ -64,12 +64,19 @@ export class ReActorManager<A extends ActorSubclass<any>> {
       ...agentOptions
     } = reactorConfig
 
+    if (idlFactory === undefined) {
+      throw new Error("idlFactory is required")
+    }
+    if (canisterId === undefined) {
+      throw new Error("canisterId is required")
+    }
+
     this.isLocal = isLocal || false
 
     const methodFields = extractMethodField(idlFactory)
 
     this.actorStore = createStoreWithOptionalDevtools(
-      { ...this.DEFAULT_ACTOR_STATE, methodFields },
+      { ...this.DEFAULT_ACTOR_STATE, canisterId, methodFields },
       { withDevtools, store: "actor" }
     )
 
@@ -83,17 +90,13 @@ export class ReActorManager<A extends ActorSubclass<any>> {
       agentOptions,
     }))
 
-    unsubscribeAgent = this.agentState.subscribe(() => {
-      this.createActor(idlFactory, canisterId)
+    this.unsubscribe = this.agentState.subscribe(() => {
+      this.createActor(idlFactory)
     })
 
     if (initializeOnMount) {
       this.initialize()
     }
-  }
-
-  public unsubscribe = () => {
-    unsubscribeAgent?.()
   }
 
   private updateActorState = (newState: Partial<ReActorActorState<A>>) => {
@@ -106,8 +109,14 @@ export class ReActorManager<A extends ActorSubclass<any>> {
 
   private createActor = async (
     idlFactory: IDL.InterfaceFactory,
-    canisterId: CanisterId
+    canisterId?: CanisterId
   ) => {
+    canisterId = canisterId || this.actorStore.getState().canisterId
+
+    if (!canisterId) {
+      throw new Error("canisterId is required")
+    }
+
     this.updateActorState({
       initializing: true,
       initialized: false,

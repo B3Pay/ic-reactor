@@ -8,6 +8,7 @@ import { createReActorStore } from "@ic-reactor/store"
 import { useEffect, useState } from "react"
 import { useStore } from "zustand"
 import { getCallHooks } from "./hooks"
+export * from "./types"
 
 export type ReActorContextType<A = ActorSubclass<any>> = ReActorAuthStore<A>
 

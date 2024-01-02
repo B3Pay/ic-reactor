@@ -22,8 +22,8 @@ export type {
 export type CanisterId = string | Principal
 
 export interface ReActorOptions extends HttpAgentOptions {
-  idlFactory: InterfaceFactory
-  canisterId: CanisterId
+  idlFactory?: InterfaceFactory
+  canisterId?: CanisterId
   isLocal?: boolean
   withDevtools?: boolean
   initializeOnMount?: boolean
@@ -66,6 +66,7 @@ export type ReActorMethodStates<A> = {
 // State structure for an actor in a ReActor
 export type ReActorActorState<A> = {
   actor: A | null
+  canisterId: CanisterId | undefined
   initialized: boolean
   initializing: boolean
   error: Error | undefined
