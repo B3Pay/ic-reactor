@@ -1,17 +1,15 @@
 import { createReActorStore } from "../src"
-import { idlFactory } from "./candid/b3_system"
-import { _SERVICE } from "./candid/b3_system/b3_system.did"
+import { idlFactory, b3_system } from "./candid/b3_system"
 
 describe("My IC Store and Actions", () => {
-  const { actorStore } = createReActorStore<_SERVICE>({
+  const { actorStore } = createReActorStore<typeof b3_system>({
     idlFactory,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-    host: "https://icp-api.io",
   })
 
   it("should return the function fields", () => {
-    const fields = actorStore.getState().methodFields
-    console.log(fields)
-    expect(fields).toBeDefined()
+    const { methodFields } = actorStore.getState()
+    console.log({ methodFields })
+    expect({ methodFields }).toBeDefined()
   })
 })

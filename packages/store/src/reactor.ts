@@ -7,7 +7,7 @@ import {
 import { AuthClient } from "@dfinity/auth-client"
 import { createStore } from "zustand/vanilla"
 
-import { extractMethodField, createStoreWithOptionalDevtools } from "./helper"
+import { createStoreWithOptionalDevtools, extractMethodField } from "./helper"
 import type {
   CanisterId,
   ExtractReActorMethodArgs,
@@ -21,7 +21,7 @@ import type {
   ReActorMethodStates,
   ReActorOptions,
 } from "./types"
-import { InterfaceFactory } from "@dfinity/candid/lib/cjs/idl"
+import { IDL } from "@dfinity/candid"
 
 let unsubscribeAgent: (() => void) | undefined
 
@@ -66,8 +66,10 @@ export class ReActorManager<A extends ActorSubclass<any>> {
 
     this.isLocal = isLocal || false
 
+    const methodFields = extractMethodField(idlFactory)
+
     this.actorStore = createStoreWithOptionalDevtools(
-      this.DEFAULT_ACTOR_STATE,
+      { ...this.DEFAULT_ACTOR_STATE, methodFields },
       { withDevtools, store: "actor" }
     )
 
@@ -103,7 +105,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
   }
 
   private createActor = async (
-    idlFactory: InterfaceFactory,
+    idlFactory: IDL.InterfaceFactory,
     canisterId: CanisterId
   ) => {
     this.updateActorState({
@@ -131,11 +133,8 @@ export class ReActorManager<A extends ActorSubclass<any>> {
         throw new Error("Failed to initialize actor")
       }
 
-      const methodFields = extractMethodField(actor)
-
       this.updateActorState({
         actor,
-        methodFields,
         initializing: false,
         initialized: true,
       })
@@ -144,10 +143,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     }
   }
 
-  public initialize = async (
-    agentOptions?: HttpAgentOptions,
-    isLocal?: boolean
-  ) => {
+  public initialize = (agentOptions?: HttpAgentOptions, isLocal?: boolean) => {
     this.isLocal = isLocal || this.isLocal
 
     this.agentState.setState((prevState) => {

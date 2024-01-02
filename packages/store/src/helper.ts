@@ -1,6 +1,5 @@
-import { Actor, hash } from "@dfinity/agent"
-import { toHexString } from "@dfinity/candid"
-import { FuncClass } from "@dfinity/candid/lib/cjs/idl"
+import { hash } from "@dfinity/agent"
+import { IDL, toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 import { ActorSubclass, ReActorMethodField } from "./types"
@@ -28,10 +27,10 @@ export function createStoreWithOptionalDevtools(
 }
 
 export function extractMethodField<A extends ActorSubclass<any>>(
-  actor: A
+  idlFactory: IDL.InterfaceFactory
 ): ReActorMethodField<A>[] {
   type M = keyof A & string
-  const methods = Actor.interfaceOf(actor as Actor)._fields as [M, FuncClass][]
+  const methods = idlFactory({ IDL })._fields as [M, IDL.FuncClass][]
 
   const allFunction = methods.map(([functionName, method]) => {
     const field = method.accept(new UIExtract(), functionName)
