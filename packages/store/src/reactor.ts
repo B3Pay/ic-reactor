@@ -123,7 +123,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
       initialized: false,
       methodState: {} as any,
     })
-    const agent = this.agentState.getState().agent
+    const { agent } = this.agentState.getState()
 
     try {
       if (!agent) {

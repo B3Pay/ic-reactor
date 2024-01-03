@@ -2,27 +2,34 @@ import { HttpAgent, HttpAgentOptions } from "@dfinity/agent"
 import { ReActorAuth } from "./auth"
 import { ReActorActor } from "./actor"
 import type { ActorSubclass } from "@dfinity/agent"
-import { ReActorAgentState, ReActorAgentStore, ReActorOptions } from "../types"
-import { createStore } from "zustand"
+import { ReActorOptions } from "../types"
+import { StoreApi, createStore } from "zustand"
+
+export const createReActorStore = <A extends ActorSubclass<any>>(
+  reactorConfig: ReActorOptions
+): ReActorAgentManager<A> => {
+  return new ReActorAgentManager<A>({
+    host: reactorConfig.isLocal
+      ? "http://localhost:4943"
+      : "https://icp-api.io",
+    ...reactorConfig,
+  })
+}
 
 export class ReActorAgentManager<A extends ActorSubclass<any>> {
   private authManager: ReActorAuth<A>
   private actorManager: ReActorActor<A>
 
   private isLocal: boolean
-  private agentState: ReActorAgentStore
-  public unsubscribe: () => void
+  private agent: StoreApi<HttpAgent | undefined>
 
-  private DEFAULT_AGENT_STATE: ReActorAgentState = {
-    agentOptions: undefined,
-    agent: undefined,
-  }
+  public unsubscribe: () => void
 
   constructor(reactorConfig: ReActorOptions) {
     const {
-      withDevtools = false,
       initializeOnMount = true,
-      isLocal,
+      withDevtools = false,
+      isLocal = false,
       canisterId,
       idlFactory,
       ...agentOptions
@@ -32,7 +39,7 @@ export class ReActorAgentManager<A extends ActorSubclass<any>> {
       throw new Error("idlFactory is required")
     }
 
-    this.isLocal = isLocal || false
+    this.isLocal = isLocal
 
     this.authManager = new ReActorAuth<A>(withDevtools)
     this.actorManager = new ReActorActor<A>({
@@ -41,39 +48,47 @@ export class ReActorAgentManager<A extends ActorSubclass<any>> {
       canisterId,
     })
 
-    this.agentState = createStore(() => ({
-      ...this.DEFAULT_AGENT_STATE,
-      agentOptions,
-    }))
+    this.agent = createStore(() => undefined)
 
-    this.unsubscribe = this.agentState.subscribe((state) => {})
+    this.unsubscribe = this.agent.subscribe((agent) => {
+      if (!agent) {
+        return
+      }
+
+      this.actorManager.createActor(agent)
+    })
 
     if (initializeOnMount) {
       this.initialize(agentOptions, isLocal)
     }
 
-    if (canisterId) {
-      const agent = this.agentState.getState().agent
-      if (!agent) {
-        throw new Error("Agent not initialized")
-      }
-
-      this.actorManager.createActor(agent)
-    }
-
     this.authManager.authenticate()
+  }
+
+  private setAgent = (agent: HttpAgent) => {
+    this.agent.setState(agent)
+  }
+
+  public getAuth = () => {
+    return this.authManager
+  }
+
+  public getActor = () => {
+    return this.actorManager
   }
 
   public initialize = (agentOptions?: HttpAgentOptions, isLocal?: boolean) => {
     this.isLocal = isLocal || this.isLocal
 
-    this.agentState.setState((prevState) => {
+    if (this.isLocal) {
       const agent = new HttpAgent({
-        ...prevState.agentOptions,
+        host: "http://localhost:4943",
         ...agentOptions,
       })
-
-      return { ...prevState, agent }
-    })
+      this.setAgent(agent)
+    } else {
+      const agent = new HttpAgent({ ...agentOptions })
+      this.setAgent(agent)
+    }
   }
 }

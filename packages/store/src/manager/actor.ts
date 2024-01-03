@@ -36,9 +36,6 @@ export class ReActorActor<A extends ActorSubclass<any>> {
     idlFactory,
     canisterId,
   }: ReActorOptions) {
-    if (idlFactory === undefined) {
-      throw new Error("idlFactory is required")
-    }
     this.idlFactory = idlFactory
     this.canisterId = canisterId
 
@@ -54,9 +51,11 @@ export class ReActorActor<A extends ActorSubclass<any>> {
     this.actorStore.setState((state) => ({ ...state, ...newState }))
   }
 
-  public createActor = async (agent: HttpAgent) => {
+  public createActor = async (agent: HttpAgent, canisterId?: CanisterId) => {
+    this.canisterId = canisterId || this.canisterId
+
     if (!this.canisterId) {
-      throw new Error("canisterId is required")
+      throw new Error("CanisterId is required")
     }
 
     this.updateActorState({
@@ -89,7 +88,7 @@ export class ReActorActor<A extends ActorSubclass<any>> {
     functionName: M,
     ...args: ExtractReActorMethodArgs<A[M]>
   ): Promise<ExtractReActorMethodReturnType<A[M]>> => {
-    const actor = this.actorStore.getState().actor
+    const { actor } = this.actorStore.getState()
 
     if (!actor) {
       throw new Error("Actor not initialized")
@@ -100,8 +99,8 @@ export class ReActorActor<A extends ActorSubclass<any>> {
     }
 
     const method = actor[functionName] as (
-      ...args: ExtractReActorMethodArgs<A[typeof functionName]>
-    ) => Promise<ExtractReActorMethodReturnType<A[typeof functionName]>>
+      ...args: ExtractReActorMethodArgs<A[M]>
+    ) => Promise<ExtractReActorMethodReturnType<A[M]>>
 
     return await method(...args)
   }
