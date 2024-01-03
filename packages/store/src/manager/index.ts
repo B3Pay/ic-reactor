@@ -58,7 +58,7 @@ export class ReActorAgentManager<A extends ActorSubclass<any>> {
         throw new Error("Agent not initialized")
       }
 
-      this.actorManager.createActor(agent, canisterId)
+      this.actorManager.createActor(agent)
     }
 
     this.authManager.authenticate()

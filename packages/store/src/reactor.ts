@@ -26,13 +26,13 @@ import { IDL } from "@dfinity/candid"
 export class ReActorManager<A extends ActorSubclass<any>> {
   public actorStore: ReActorActorStore<A>
   public authStore: ReActorAuthStore<A>
+  public canisterId: CanisterId | undefined
 
   private isLocal: boolean
   private agentState: ReActorAgentStore
   public unsubscribe: () => void
 
   private DEFAULT_ACTOR_STATE: ReActorActorState<A> = {
-    canisterId: undefined,
     methodState: {} as ReActorMethodStates<A>,
     methodFields: [],
     initializing: false,
@@ -67,11 +67,9 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     if (idlFactory === undefined) {
       throw new Error("idlFactory is required")
     }
-    if (canisterId === undefined) {
-      throw new Error("canisterId is required")
-    }
 
     this.isLocal = isLocal || false
+    this.canisterId = canisterId
 
     const methodFields = extractMethodField(idlFactory)
 
@@ -91,6 +89,9 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     }))
 
     this.unsubscribe = this.agentState.subscribe(() => {
+      if (!this.canisterId) {
+        throw new Error("canisterId is required")
+      }
       this.createActor(idlFactory)
     })
 
@@ -111,7 +112,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     idlFactory: IDL.InterfaceFactory,
     canisterId?: CanisterId
   ) => {
-    canisterId = canisterId || this.actorStore.getState().canisterId
+    canisterId = canisterId || this.canisterId
 
     if (!canisterId) {
       throw new Error("canisterId is required")

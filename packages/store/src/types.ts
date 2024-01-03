@@ -66,7 +66,6 @@ export type ReActorMethodStates<A> = {
 // State structure for an actor in a ReActor
 export type ReActorActorState<A> = {
   actor: A | null
-  canisterId: CanisterId | undefined
   initialized: boolean
   initializing: boolean
   error: Error | undefined

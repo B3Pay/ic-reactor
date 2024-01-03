@@ -23,7 +23,6 @@ export class ReActorActor<A extends ActorSubclass<any>> {
 
   private idlFactory: IDL.InterfaceFactory
   private DEFAULT_ACTOR_STATE: ReActorActorState<A> = {
-    canisterId: undefined,
     methodState: {} as ReActorMethodStates<A>,
     methodFields: [],
     initializing: false,
@@ -55,10 +54,8 @@ export class ReActorActor<A extends ActorSubclass<any>> {
     this.actorStore.setState((state) => ({ ...state, ...newState }))
   }
 
-  public createActor = async (agent: HttpAgent, canisterId?: CanisterId) => {
-    canisterId = canisterId || this.actorStore.getState().canisterId
-
-    if (!canisterId) {
+  public createActor = async (agent: HttpAgent) => {
+    if (!this.canisterId) {
       throw new Error("canisterId is required")
     }
 
@@ -71,7 +68,7 @@ export class ReActorActor<A extends ActorSubclass<any>> {
     try {
       const actor = Actor.createActor<A>(this.idlFactory, {
         agent,
-        canisterId,
+        canisterId: this.canisterId,
       })
 
       if (!actor) {
