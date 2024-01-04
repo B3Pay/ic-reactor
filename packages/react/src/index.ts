@@ -1,15 +1,11 @@
-import { AuthClientLoginOptions } from "@dfinity/auth-client"
-import type {
-  ActorSubclass,
-  ReActorAuthStore,
-  ReActorOptions,
-} from "@ic-reactor/store"
+import type { AuthClientLoginOptions } from "@dfinity/auth-client"
+import type { ActorSubclass, ReActorOptions } from "@ic-reactor/store"
 import { createReActorStore } from "@ic-reactor/store"
 import { useEffect, useState } from "react"
 import { useStore } from "zustand"
 import { getCallHooks } from "./hooks"
 
-export type ReActorContextType<A = ActorSubclass<any>> = ReActorAuthStore<A>
+export * from "./context"
 
 export const createReActor = <A extends ActorSubclass<any>>(
   options: ReActorOptions

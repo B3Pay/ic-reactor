@@ -3,7 +3,6 @@ import {
   CallMethod,
   ExtractReActorMethodArgs,
   ReActorActorStore,
-  ReActorMethodField,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {

@@ -1,5 +1,5 @@
 import { FormProvider, useForm } from "react-hook-form"
-import { DynamicField, useQueryCall } from "./App"
+import { DynamicField, useQueryCall } from "./actor"
 import Route from "./components/Route"
 
 interface TestQueryProps {

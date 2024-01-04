@@ -2,7 +2,9 @@ import { Principal } from "@dfinity/principal"
 import { ExtractedField } from "./types"
 import { IDL } from "@dfinity/candid"
 import { validateError } from "./helper"
+
 export * from "./types"
+export * from "./helper"
 
 export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
   public visitService(t: IDL.ServiceClass, l?: string): ExtractedField {

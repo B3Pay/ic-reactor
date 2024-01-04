@@ -2,18 +2,20 @@ import { useCallback, useState } from "react"
 import Button from "./Button"
 import Route from "./Route"
 import { FormProvider, useForm } from "react-hook-form"
-import { DynamicField, useQueryCall } from "../App"
+import { ReActorMethodField } from "@ic-reactor/store"
 
-interface FormProps extends DynamicField {}
+interface FormProps extends ReActorMethodField<any> {
+  callHandler: (args: [any]) => Promise<any>
+}
 
-const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
+const Form: React.FC<FormProps> = ({
+  callHandler,
+  functionName,
+  defaultValues,
+  fields,
+}) => {
   const [argState, setArgState] = useState<any>(null)
   const [argErrorState, setArgErrorState] = useState<any>(null)
-
-  const { data, loading, error, call } = useQueryCall({
-    functionName,
-    disableInitialCall: true,
-  })
 
   const methods = useForm({
     shouldUnregister: true,
@@ -26,7 +28,7 @@ const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
       console.log(data)
       setArgState(null)
       setArgErrorState(null)
-      const args = (Object.values(data.data) || []) as any[]
+      const args = data.data ? Object.values(data.data) : []
       console.log("args", args)
 
       let errorMessages = ""
@@ -49,22 +51,22 @@ const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
     [fields]
   )
 
-  const callHandler = useCallback(
+  const onSubmitCall = useCallback(
     async (data: any) => {
       setArgState(null)
       setArgErrorState(null)
-      const args = (Object.values(data.data) || []) as [any]
+      const args = data.data ? Object.values(data.data) : []
       console.log("args", args)
       setArgState(args)
 
       try {
-        const result = await call(args)
+        const result = await callHandler(args as [any])
         console.log("result", result)
       } catch (error) {
         console.log("error", error)
       }
     },
-    [call]
+    [callHandler]
   )
 
   return (
@@ -118,37 +120,6 @@ const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
             </span>
           </fieldset>
         )}
-        {error && (
-          <fieldset className="border p-2 my-2 text-red-500 border-red-500 rounded">
-            <legend className="font-semibold">Error</legend>
-            <span className="text-sm">
-              <div>{error.message}</div>
-            </span>
-          </fieldset>
-        )}
-        {loading && (
-          <fieldset className="border p-2 my-2 rounded">
-            <legend className="font-semibold">Loading</legend>
-            <span className="text-sm">Calling...</span>
-          </fieldset>
-        )}
-        {data && (
-          <fieldset className="border p-2 my-2 rounded">
-            <legend className="font-semibold">Results</legend>
-            <span className="text-sm">
-              {!data ? (
-                <div>Calling...</div>
-              ) : (
-                JSON.stringify(
-                  data,
-                  (_, value) =>
-                    typeof value === "bigint" ? value.toString() : value,
-                  2
-                )
-              )}
-            </span>
-          </fieldset>
-        )}
         <div className="flex items-center">
           <Button
             type="submit"
@@ -158,7 +129,7 @@ const Form: React.FC<FormProps> = ({ functionName, defaultValues, fields }) => {
           </Button>
           <Button
             className="mt-2 ml-2 py-2 px-4 text-lg bg-green-500 hover:bg-green-700 text-white font-bold rounded"
-            onClick={methods.handleSubmit(callHandler)}
+            onClick={methods.handleSubmit(onSubmitCall)}
           >
             Call
           </Button>
