@@ -43,7 +43,7 @@ export type ExtractReActorMethodReturnType<T> = T extends ActorMethod<
   ? R
   : never
 
-export interface ReActorMethodField<A> {
+export interface ReActorMethodField<A> extends ExtractedField {
   functionName: keyof A & string
   fields: ExtractedField[]
   defaultValues: {

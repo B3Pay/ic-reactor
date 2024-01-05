@@ -1,11 +1,11 @@
-import {
+import type {
   ActorSubclass,
   CallMethod,
   ExtractReActorMethodArgs,
   ReActorActorStore,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
+import type {
   ReActorCallArgs,
   ReActorHookState,
   ReActorUseQueryArgs,

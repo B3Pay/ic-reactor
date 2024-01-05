@@ -2,6 +2,7 @@ import {
   ExtractReActorMethodArgs,
   ExtractReActorMethodReturnType,
 } from "@ic-reactor/store"
+export * from "@ic-reactor/store"
 
 export type ReActorCallArgs<A, M extends keyof A> = {
   functionName: M & string

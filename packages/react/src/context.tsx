@@ -17,7 +17,7 @@ export type ReActor<A> = ReturnType<typeof createReActor<A>>
 export interface ReActorContextType<A = ActorSubclass<any>>
   extends ReActor<A> {}
 
-const ReActorContext = createContext<ReActorContextType | null>(null)
+export const ReActorContext = createContext<ReActorContextType | null>(null)
 
 export const useReActor = <
   A = ActorSubclass<any>,
