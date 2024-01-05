@@ -20,6 +20,13 @@ export const validateError = (t: IDL.Type<any>) => {
   }
 }
 
+export function is_query(func: IDL.FuncClass): boolean {
+  return (
+    func.annotations.includes("query") ||
+    func.annotations.includes("composite_query")
+  )
+}
+
 export async function getDidJsFromMetadata(
   agent: HttpAgent,
   canisterId: CanisterId

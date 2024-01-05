@@ -1,7 +1,7 @@
 import { Principal } from "@dfinity/principal"
 import { ExtractedField } from "./types"
 import { IDL } from "@dfinity/candid"
-import { validateError } from "./helper"
+import { is_query, validateError } from "./helper"
 
 export * from "./types"
 export * from "./helper"
@@ -20,7 +20,6 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
     }
   }
   public visitFunc(t: IDL.FuncClass, functionName: string): ExtractedField {
-    type M = typeof functionName
     const { fields, defaultValues } = t.argTypes.reduce(
       (acc, arg, index) => {
         const field = arg.accept(this, arg.name)
@@ -32,7 +31,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       {
         fields: [] as ExtractedField[],
         defaultValues: { data: {} } as {
-          data: { [K in `${M}-arg${number}`]?: any }
+          data: { [K in `${typeof functionName}-arg${number}`]?: any }
         },
       }
     )
@@ -41,7 +40,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       component: "form",
       type: "function",
       validate: validateError(t),
-      label: functionName,
+      label: is_query(t) ? "query" : "update",
       fields,
       defaultValues,
     }
