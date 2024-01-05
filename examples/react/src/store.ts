@@ -1,20 +1,9 @@
 import { createReActor } from "@ic-reactor/react"
-import { createActor } from "./candid"
+import { idlFactory, backend } from "./candid"
 
-export const {
-  ReActorProvider,
-  useReActor,
-  initialize,
-  useActorState,
-  useQueryCall,
-  useUpdateCall,
-  useAuthClient,
-} = createReActor(
-  (agent) =>
-    createActor("xeka7-ryaaa-aaaal-qb57a-cai", {
-      agent,
-    }),
-  {
+export const { useQueryCall, useUpdateCall, useActorStore, useAuthClient } =
+  createReActor<typeof backend>({
+    canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+    idlFactory,
     host: "https://icp-api.io",
-  }
-)
+  })

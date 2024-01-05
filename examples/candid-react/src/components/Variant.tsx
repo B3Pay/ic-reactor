@@ -29,22 +29,24 @@ const Variant: React.FC<VariantProps> = ({ field, registerName, errors }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, setValue])
 
+  const errorMessage = errors?.message?.toString()
+
   return (
     <div className="w-full flex-col">
       <label className="block mr-2" htmlFor={selectName}>
         {field.label}
+        <span className="text-red-500">*</span>
+        {errorMessage && (
+          <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
+        )}
       </label>
       <Controller
         name={selectName}
         control={control}
         rules={{
-          required: true,
-          validate: (value) => {
-            if (value === "select") {
-              return "Please select one"
-            }
-            return true
-          },
+          required: "Please select one",
+          validate: (value) =>
+            value === "select" ? "Please select one" : true,
         }}
         render={({ field: methodField }) => (
           <select

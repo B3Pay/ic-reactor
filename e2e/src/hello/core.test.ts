@@ -1,5 +1,5 @@
-import createActorStoreAndActions from "@ic-reactor/core"
-import { canisterId, createActor } from "../declarations/hello_actor/index.js"
+import createReActor from "@ic-reactor/core"
+import { canisterId, idlFactory } from "../declarations/hello_actor/index.js"
 
 const DEFAULT_STATE = {
   loading: false,
@@ -15,7 +15,9 @@ const DEFAULT_STATE = {
 
 describe("Core Function Test", () => {
   const { store, actions, queryCall, updateCall, initializeActor } =
-    createActorStoreAndActions((agent) => createActor(canisterId, { agent }), {
+    createReActor({
+      canisterId,
+      idlFactory,
       initializeOnMount: false,
     })
 

@@ -8,22 +8,14 @@ describe("createReActor", () => {
     const { useActorStore } = createReActor<typeof backend>({
       idlFactory,
       canisterId,
-      initializeOnMount: false,
     })
 
     const TestInitialize = () => {
-      const { initialized, initialize, initializing } = useActorStore()
+      const { initialized } = useActorStore()
 
       return (
         <div>
-          <span>
-            {initializing
-              ? "Initializing"
-              : initialized
-              ? "Initialized"
-              : "Not initialized"}
-          </span>
-          <button onClick={() => initialize()}>Initialize</button>
+          <span>{initialized ? "Initialized" : "Not initialized"}</span>
         </div>
       )
     }
@@ -57,14 +49,14 @@ describe("createReActor", () => {
 
     const TestComponent = () => {
       const {
-        recall,
+        call,
         data: version,
         loading,
       } = useQueryCall({ functionName: "version", disableInitialCall: true })
 
       return (
         <div>
-          <button onClick={() => recall()}>Get Version</button>
+          <button onClick={() => call()}>Get Version</button>
           <span>
             {loading ? "Loading..." : version ? version : "Ready To call"}
           </span>

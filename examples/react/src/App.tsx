@@ -1,6 +1,7 @@
 import Login from "Login"
 import Notes from "Notes"
 import AddNote from "./AddNote"
+import { useActorStore } from "store"
 
 const publicKey = crypto.getRandomValues(new Uint8Array(48))
 

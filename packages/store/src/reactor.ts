@@ -6,7 +6,6 @@ import {
 } from "@dfinity/agent"
 import { AuthClient } from "@dfinity/auth-client"
 import { createStore } from "zustand/vanilla"
-
 import { createStoreWithOptionalDevtools, extractMethodField } from "./helper"
 import type {
   CanisterId,
@@ -14,7 +13,6 @@ import type {
   ExtractReActorMethodReturnType,
   ReActorActorState,
   ReActorActorStore,
-  ReActorAgentState,
   ReActorAgentStore,
   ReActorAuthState,
   ReActorAuthStore,
@@ -23,14 +21,13 @@ import type {
 } from "./types"
 import { IDL } from "@dfinity/candid"
 
-let unsubscribeAgent: (() => void) | undefined
-
 export class ReActorManager<A extends ActorSubclass<any>> {
   public actorStore: ReActorActorStore<A>
   public authStore: ReActorAuthStore<A>
+  public agentStore: ReActorAgentStore
 
   private isLocal: boolean
-  private agentState: ReActorAgentStore
+  private agentOptions: HttpAgentOptions
 
   private DEFAULT_ACTOR_STATE: ReActorActorState<A> = {
     methodState: {} as ReActorMethodStates<A>,
@@ -49,25 +46,32 @@ export class ReActorManager<A extends ActorSubclass<any>> {
     error: undefined,
   }
 
-  private DEFAULT_AGENT_STATE: ReActorAgentState = {
-    agentOptions: undefined,
-    agent: undefined,
+  public unsubscribeAgent: () => void
+
+  private updateActorState = (newState: Partial<ReActorActorState<A>>) => {
+    this.actorStore.setState((state) => ({ ...state, ...newState }))
+  }
+
+  private updateAuthState = (newState: Partial<ReActorAuthState<A>>) => {
+    this.authStore.setState((state) => ({ ...state, ...newState }))
   }
 
   constructor(reactorConfig: ReActorOptions) {
     const {
-      withDevtools = false,
-      initializeOnMount = true,
+      agent,
       isLocal,
       canisterId,
       idlFactory,
+      withDevtools = false,
       ...agentOptions
     } = reactorConfig
 
+    this.agentOptions = agentOptions
     this.isLocal = isLocal || false
 
     const methodFields = extractMethodField(idlFactory)
 
+    // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(
       { ...this.DEFAULT_ACTOR_STATE, methodFields },
       { withDevtools, store: "actor" }
@@ -78,56 +82,45 @@ export class ReActorManager<A extends ActorSubclass<any>> {
       store: "auth",
     })
 
-    this.agentState = createStore(() => ({
-      ...this.DEFAULT_AGENT_STATE,
-      agentOptions,
+    this.agentStore = createStore(() => ({
+      agent: undefined,
+      canisterId,
     }))
 
-    unsubscribeAgent = this.agentState.subscribe(() => {
-      this.createActor(idlFactory, canisterId)
-    })
+    this.unsubscribeAgent = this.agentStore.subscribe(
+      ({ canisterId, agent }) => {
+        if (!canisterId) {
+          throw new Error("Canister ID not found")
+        }
+        console.info("Initializing actor for canister ID:", canisterId)
+        this.initializeActor(idlFactory, canisterId, agent)
+      }
+    )
 
-    if (initializeOnMount) {
-      this.initialize()
+    if (agent) {
+      this.agentStore.setState({ agent })
+    } else {
+      this.initializeAgent()
     }
   }
 
-  public unsubscribe = () => {
-    unsubscribeAgent?.()
-  }
-
-  private updateActorState = (newState: Partial<ReActorActorState<A>>) => {
-    this.actorStore.setState((state) => ({ ...state, ...newState }))
-  }
-
-  private updateAuthState = (newState: Partial<ReActorAuthState<A>>) => {
-    this.authStore.setState((state) => ({ ...state, ...newState }))
-  }
-
-  private createActor = async (
+  private async initializeActor(
     idlFactory: IDL.InterfaceFactory,
-    canisterId: CanisterId
-  ) => {
+    canisterId: CanisterId,
+    agent: HttpAgent | undefined
+  ) {
     this.updateActorState({
       initializing: true,
       initialized: false,
-      methodState: {} as any,
+      methodState: {} as ReActorMethodStates<A>,
     })
-    const agent = this.agentState.getState().agent
 
     try {
       if (!agent) {
         throw new Error("Agent not initialized")
       }
 
-      if (this.isLocal) {
-        await agent.fetchRootKey()
-      }
-
-      const actor = Actor.createActor<A>(idlFactory, {
-        agent,
-        canisterId,
-      })
+      const actor = Actor.createActor<A>(idlFactory, { agent, canisterId })
 
       if (!actor) {
         throw new Error("Failed to initialize actor")
@@ -139,21 +132,27 @@ export class ReActorManager<A extends ActorSubclass<any>> {
         initialized: true,
       })
     } catch (error) {
+      console.error("Error in initializeActor:", error)
       this.updateActorState({ error: error as Error, initializing: false })
     }
   }
 
-  public initialize = (agentOptions?: HttpAgentOptions, isLocal?: boolean) => {
+  public initializeAgent = async (
+    agentOptions?: HttpAgentOptions,
+    isLocal?: boolean
+  ) => {
     this.isLocal = isLocal || this.isLocal
 
-    this.agentState.setState((prevState) => {
-      const agent = new HttpAgent({
-        ...prevState.agentOptions,
-        ...agentOptions,
-      })
-
-      return { ...prevState, agent }
+    const agent = new HttpAgent({
+      ...this.agentOptions,
+      ...agentOptions,
     })
+
+    if (this.isLocal) {
+      await agent.fetchRootKey()
+    }
+
+    this.agentStore.setState(() => ({ agent }))
   }
 
   public authenticate = async () => {
@@ -169,7 +168,15 @@ export class ReActorManager<A extends ActorSubclass<any>> {
         throw new Error("Identity not found")
       }
 
-      this.initialize({ identity })
+      this.agentStore.setState((state) => {
+        if (!state.agent) {
+          throw new Error("Agent not initialized")
+        }
+
+        state.agent.replaceIdentity(identity)
+
+        return state
+      })
 
       this.updateAuthState({
         authClient,

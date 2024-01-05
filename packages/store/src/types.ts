@@ -22,11 +22,11 @@ export type {
 export type CanisterId = string | Principal
 
 export interface ReActorOptions extends HttpAgentOptions {
+  agent?: HttpAgent
   idlFactory: InterfaceFactory
   canisterId: CanisterId
   isLocal?: boolean
   withDevtools?: boolean
-  initializeOnMount?: boolean
 }
 
 // Type for initializing an actor
@@ -73,11 +73,6 @@ export type ReActorActorState<A> = {
   methodFields: ReActorMethodField<A>[]
 }
 
-export type ReActorAgentState = {
-  agentOptions?: HttpAgentOptions
-  agent?: HttpAgent
-}
-
 // Main state structure for a ReActor
 export interface ReActorAuthState<A> {
   identity: Identity | null
@@ -85,6 +80,12 @@ export interface ReActorAuthState<A> {
   authenticating: boolean
   authenticated: boolean
   error: Error | undefined
+}
+
+// Agent state structure for a ReActor
+export interface ReActorAgentState {
+  agent: HttpAgent | undefined
+  canisterId: CanisterId
 }
 
 // Function type for directly calling a method on an actor

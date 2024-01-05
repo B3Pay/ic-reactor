@@ -15,16 +15,29 @@ export const createReActor = <A extends ActorSubclass<any>>(
     (process.env.NODE_ENV === "development" ||
       process.env.DFX_NETWORK === "local")
 
-  const { callMethod, initialize, authenticate, authStore, actorStore } =
-    createReActorStore<A>({
-      isLocal,
-      ...options,
-    })
+  const {
+    unsubscribeAgent,
+    initializeAgent,
+    authenticate,
+    callMethod,
+    authStore,
+    agentStore,
+    actorStore,
+  } = createReActorStore<A>({
+    isLocal,
+    ...options,
+  })
+
+  const useAgentStore = () => {
+    const agentState = useStore(agentStore, (state) => state)
+
+    return { ...agentState, initializeAgent }
+  }
 
   const useActorStore = () => {
     const actorState = useStore(actorStore, (state) => state)
 
-    return { ...actorState, initialize }
+    return { ...actorState }
   }
 
   const useAuthStore = () => {
@@ -90,8 +103,10 @@ export const createReActor = <A extends ActorSubclass<any>>(
     getCallHooks<A>(callMethod, actorStore)
 
   return {
+    unsubscribeAgent,
     useMethodFields,
     useMethodField,
+    useAgentStore,
     useActorStore,
     useAuthStore,
     useQueryCall,

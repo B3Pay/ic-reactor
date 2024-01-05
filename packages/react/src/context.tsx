@@ -102,6 +102,11 @@ export const ReActorProvider: React.FC<ReActorProviderProps> = ({
     }
   }, [config, didJs])
 
+  useEffect(
+    () => reActorHooks?.unsubscribeAgent,
+    [reActorHooks?.unsubscribeAgent]
+  )
+
   return (
     <ReActorContext.Provider value={reActorHooks}>
       {reActorHooks ? children : loadingComponent}

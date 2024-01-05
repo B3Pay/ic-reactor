@@ -33,7 +33,7 @@ const DynamicCandid: React.FC = () => {
         </form>
       </div>
       <ReActorProvider host="https://ic0.app" canisterId={canisterId}>
-        <Test />
+        <CandidForm />
       </ReActorProvider>
     </div>
   )
@@ -41,7 +41,7 @@ const DynamicCandid: React.FC = () => {
 
 export default DynamicCandid
 
-const Test: React.FC = () => {
+const CandidForm: React.FC = () => {
   const { useActorStore } = useReActor()
 
   const { methodFields } = useActorStore()
