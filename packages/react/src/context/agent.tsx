@@ -12,14 +12,16 @@ import {
 } from "@ic-reactor/store"
 import { getAuthHooks } from "../hooks/auth"
 
-export type AgentContextType = ReturnType<typeof getAuthHooks> & {
+export type AgentContextValue = ReturnType<typeof getAuthHooks> & {
   agentManager: AgentManager
 }
 
-export const AgentContext = createContext<AgentContextType | null>(null)
+export type AgentContextType = React.Context<AgentContextValue | null>
 
-export const useAgent = (): AgentContextType => {
-  const context = useContext(AgentContext)
+export const AgentContext = createContext<AgentContextValue | null>(null)
+
+export const useAgent = (agentContext?: AgentContextType) => {
+  const context = useContext(agentContext || AgentContext)
 
   if (!context) {
     throw new Error("useAgent must be used within a AgentProvider")
@@ -28,8 +30,10 @@ export const useAgent = (): AgentContextType => {
   return context
 }
 
-export const useAgentManager = (): AgentManager => {
-  const context = useContext(AgentContext)
+export const useAgentManager = (
+  agentContext?: AgentContextType
+): AgentManager => {
+  const context = useContext(agentContext || AgentContext)
 
   if (!context) {
     throw new Error("useAgentManager must be used within a AgentProvider")

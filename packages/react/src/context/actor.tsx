@@ -15,7 +15,7 @@ import {
   getDidJsFromMetadata,
   getDidJsFromTmpHack,
 } from "@ic-reactor/store"
-import { useAgentManager } from "./agent"
+import { AgentContextType, useAgentManager } from "./agent"
 
 export type ActorContextType<A = ActorSubclass<any>> = ActorHooks<A>
 
@@ -36,6 +36,7 @@ export const useActor: UseActorType = <A extends ActorSubclass<any>>() => {
 interface ActorProviderProps
   extends PropsWithChildren,
     Omit<ActorManagerOptions, "idlFactory" | "agentManager"> {
+  agentContext?: AgentContextType
   idlFactory?: IDL.InterfaceFactory
   loadingComponent?: React.ReactNode
 }
@@ -43,10 +44,11 @@ interface ActorProviderProps
 export const ActorProvider: React.FC<ActorProviderProps> = ({
   children,
   canisterId,
+  agentContext,
   loadingComponent = <div>Loading...</div>,
   ...config
 }) => {
-  const agentManager = useAgentManager()
+  const agentManager = useAgentManager(agentContext)
 
   const [didJs, setDidJS] = useState<{ idlFactory: IDL.InterfaceFactory }>()
   const [fetching, setFetching] = useState(false)
