@@ -19,10 +19,10 @@ export * from "./candid"
 
 export class ActorManager<A extends ActorSubclass<any>> {
   private actor: null | A = null
-  private canisterId: CanisterId
   private idlFactory: IDL.InterfaceFactory
 
   public agentManager: AgentManager
+  public canisterId: CanisterId
   public actorStore: ActorStore<A>
   public methodFields: ActorMethodField<A>[]
 

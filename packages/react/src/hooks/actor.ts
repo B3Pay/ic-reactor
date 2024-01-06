@@ -6,22 +6,23 @@ import type {
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
-  ReActorCallArgs,
-  ReActorHookState,
-  ReActorUseQueryArgs,
-  ReActorUseUpdateArgs,
+  ActorCallArgs,
+  ActorHookState,
+  ActorUseQueryArgs,
+  ActorUseUpdateArgs,
 } from "../types"
 import { useStore } from "zustand"
 
 export const getActorHooks = <A extends ActorSubclass<any>>({
   methodFields,
+  canisterId,
   actorStore,
   callMethod,
 }: ActorManager<A>) => {
   const useActorStore = () => {
     const actorState = useStore(actorStore, (state) => state)
 
-    return { ...actorState }
+    return { ...actorState, canisterId }
   }
 
   const useMethodFields = (): ActorMethodField<A>[] => {
@@ -46,8 +47,8 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     onLoading,
     args = [] as unknown as ExtractActorMethodArgs<A[M]>,
     functionName,
-  }: ReActorCallArgs<A, M>) => {
-    const [state, setState] = useState<ReActorHookState<A, M>>({
+  }: ActorCallArgs<A, M>) => {
+    const [state, setState] = useState<ActorHookState<A, M>>({
       data: undefined,
       error: undefined,
       loading: false,
@@ -95,7 +96,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     refreshInterval = 5000,
     disableInitialCall,
     ...rest
-  }: ReActorUseQueryArgs<A, M>) => {
+  }: ActorUseQueryArgs<A, M>) => {
     const { call, ...state } = useReActorCall(rest)
 
     let intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -121,9 +122,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { call, ...state }
   }
 
-  const useUpdateCall = <M extends keyof A>(
-    args: ReActorUseUpdateArgs<A, M>
-  ) => {
+  const useUpdateCall = <M extends keyof A>(args: ActorUseUpdateArgs<A, M>) => {
     return useReActorCall(args)
   }
 

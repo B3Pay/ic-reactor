@@ -5,60 +5,64 @@ import React, {
   PropsWithChildren,
   useMemo,
   useCallback,
-  useRef,
   useContext,
 } from "react"
-import { createReActor, type ReActorHooks } from "./index"
+import { createReActor, type ActorHooks } from "../index"
 import { IDL } from "@dfinity/candid"
 import {
   ActorSubclass,
-  AgentManager,
-  CreateReActorOptions,
-  createAgentManager,
+  ActorManagerOptions,
   getDidJsFromMetadata,
   getDidJsFromTmpHack,
 } from "@ic-reactor/store"
+import { useAgentManager } from "./agent"
 
-export type ReActorContextType<A = ActorSubclass<any>> = ReActorHooks<A>
+export type ActorContextType<A = ActorSubclass<any>> = ActorHooks<A>
 
-export const ReActorContext = createContext<ReActorContextType | null>(null)
+export const ActorContext = createContext<ActorContextType | null>(null)
 
-export const useReActor = <
-  A = ActorSubclass<any>,
->(): ReActorContextType<A> => {
-  const context = useContext(ReActorContext)
+type UseActorType = <A = ActorSubclass<any>>() => ActorContextType<A>
+
+export const useActor: UseActorType = <A extends ActorSubclass<any>>() => {
+  const context = useContext(ActorContext) as ActorContextType<A>
 
   if (!context) {
-    throw new Error("useReActor must be used within a ReActorProvider")
+    throw new Error("useActor must be used within a ActorProvider")
   }
 
-  return context as ReActorContextType<A>
+  return context
 }
 
-interface ReActorProviderProps
+interface ActorProviderProps
   extends PropsWithChildren,
-    Omit<CreateReActorOptions, "idlFactory"> {
-  agentManager?: AgentManager
+    Omit<ActorManagerOptions, "idlFactory" | "agentManager"> {
   idlFactory?: IDL.InterfaceFactory
   loadingComponent?: React.ReactNode
 }
 
-export const ReActorProvider: React.FC<ReActorProviderProps> = ({
+export const ActorProvider: React.FC<ActorProviderProps> = ({
   children,
   canisterId,
   loadingComponent = <div>Loading...</div>,
   ...config
 }) => {
-  const agentManager = useRef(config.agentManager || createAgentManager(config))
+  const agentManager = useAgentManager()
 
   const [didJs, setDidJS] = useState<{ idlFactory: IDL.InterfaceFactory }>()
+  const [fetching, setFetching] = useState(false)
 
   const fetchDidJs = useCallback(async () => {
     if (!canisterId) {
       throw new Error("canisterId is required")
     }
 
-    const agent = agentManager.current.getAgent()
+    if (fetching) {
+      return
+    }
+
+    setFetching(true)
+
+    const agent = agentManager.getAgent()
 
     getDidJsFromMetadata(agent, canisterId).then(async (idlFactory) => {
       if (!idlFactory) {
@@ -78,10 +82,9 @@ export const ReActorProvider: React.FC<ReActorProviderProps> = ({
         }
       }
       setDidJS(idlFactory)
+      setFetching(false)
     })
-
-    return didJs
-  }, [canisterId])
+  }, [canisterId, agentManager])
 
   useEffect(() => {
     const { idlFactory } = config
@@ -90,7 +93,7 @@ export const ReActorProvider: React.FC<ReActorProviderProps> = ({
       setDidJS({ idlFactory })
       return
     }
-
+    console.log("idlFactory not provided, fetching from canister...")
     fetchDidJs()
   }, [fetchDidJs, config.idlFactory])
 
@@ -101,7 +104,7 @@ export const ReActorProvider: React.FC<ReActorProviderProps> = ({
     try {
       return createReActor<any>({
         idlFactory: didJs.idlFactory,
-        agentManager: agentManager.current,
+        agentManager,
         canisterId,
         withDevtools: config.withDevtools,
       })
@@ -109,11 +112,11 @@ export const ReActorProvider: React.FC<ReActorProviderProps> = ({
       console.error(err)
       return null
     }
-  }, [canisterId, didJs])
+  }, [canisterId, agentManager, didJs])
 
   return (
-    <ReActorContext.Provider value={hooks}>
-      {hooks === null ? loadingComponent : children}
-    </ReActorContext.Provider>
+    <ActorContext.Provider value={hooks}>
+      {fetching || hooks === null ? loadingComponent : children}
+    </ActorContext.Provider>
   )
 }

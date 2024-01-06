@@ -5,12 +5,12 @@ import type {
 } from "@ic-reactor/store"
 import { createReActorStore, generateRequestHash } from "@ic-reactor/store"
 import {
-  ReActorCallFunction,
-  ReActorGetStateFunction,
-  ReActorMethod,
-  ReActorQuery,
-  ReActorSubscribeFunction,
-  ReActorUpdate,
+  ActorCallFunction,
+  ActorGetStateFunction,
+  ActorMethodCall,
+  ActorQuery,
+  ActorSubscribeFunction,
+  ActorUpdate,
 } from "./types"
 
 export const createReActor = <A extends ActorSubclass<any>>(
@@ -66,12 +66,12 @@ export const createReActor = <A extends ActorSubclass<any>>(
     return hash
   }
 
-  const reActorMethod: ReActorMethod<A> = (functionName, ...args) => {
+  const reActorMethod: ActorMethodCall<A> = (functionName, ...args) => {
     type M = typeof functionName
     try {
       const requestHash = updateMethodState(functionName, args)
 
-      const getState: ReActorGetStateFunction<A, M> = (
+      const getState: ActorGetStateFunction<A, M> = (
         key?: "data" | "loading" | "error"
       ) => {
         const state =
@@ -89,7 +89,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
         }
       }
 
-      const subscribe: ReActorSubscribeFunction<A, M> = (callback) => {
+      const subscribe: ActorSubscribeFunction<A, M> = (callback) => {
         const unsubscribe = actorStore.subscribe((state) => {
           const methodState = state.methodState[functionName]
           const methodStateHash = methodState[requestHash]
@@ -102,7 +102,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
         return unsubscribe
       }
 
-      const call: ReActorCallFunction<A, M> = async (replaceArgs) => {
+      const call: ActorCallFunction<A, M> = async (replaceArgs) => {
         updateMethodState(functionName, args, {
           loading: true,
           error: undefined,
@@ -140,7 +140,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
     }
   }
 
-  const queryCall: ReActorQuery<A> = ({
+  const queryCall: ActorQuery<A> = ({
     functionName,
     args = [],
     disableInitialCall = false,
@@ -162,7 +162,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
     return { ...rest, call, initialData, intervalId }
   }
 
-  const updateCall: ReActorUpdate<A> = ({ functionName, args = [] }) => {
+  const updateCall: ActorUpdate<A> = ({ functionName, args = [] }) => {
     return reActorMethod(functionName, ...(args as any))
   }
 

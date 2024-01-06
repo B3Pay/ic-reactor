@@ -18,7 +18,7 @@ export const createAgentManager = ({
   ...options
 }: AgentManagerOptions): AgentManager => {
   return new AgentManager({
-    host: isLocal ? "http://localhost:4943" : "https://icp-api.io",
+    host: isLocal ? "http://127.0.0.1:4943" : "https://icp-api.io",
     ...options,
   })
 }
