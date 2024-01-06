@@ -42,20 +42,27 @@ export const useAgentManager = (
   return context.agentManager
 }
 
-interface ReActorProviderProps extends PropsWithChildren, AgentManagerOptions {
+export const createAgentContext = (
+  config: AgentManagerOptions
+): AgentContextValue => {
+  const agentManager = createAgentManager(config)
+  const hooks = getAuthHooks(agentManager)
+  return { ...hooks, agentManager }
+}
+
+interface AgentProviderProps extends PropsWithChildren, AgentManagerOptions {
   agentManager?: AgentManager
 }
 
-export const AgentProvider: React.FC<ReActorProviderProps> = ({
+export const AgentProvider: React.FC<AgentProviderProps> = ({
   children,
   ...config
 }) => {
-  const agentManager = useRef(config.agentManager || createAgentManager(config))
+  const value = useMemo(() => {
+    const agentManager = config.agentManager || createAgentManager(config)
+    const hooks = getAuthHooks(agentManager)
+    return { ...hooks, agentManager }
+  }, [config])
 
-  const hooks = useMemo(() => {
-    const hooks = getAuthHooks(agentManager.current)
-    return { ...hooks, agentManager: agentManager.current }
-  }, [])
-
-  return <AgentContext.Provider value={hooks}>{children}</AgentContext.Provider>
+  return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>
 }
