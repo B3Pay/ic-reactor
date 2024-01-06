@@ -2,14 +2,9 @@ import type {
   IDL,
   ActorSubclass,
   CanisterId,
-  ActorActions,
   ActorManagerOptions,
 } from "./actor/types"
-import type {
-  AgentActions,
-  AgentManagerOptions,
-  HttpAgentOptions,
-} from "./agent/types"
+import type { AgentManagerOptions, HttpAgentOptions } from "./agent/types"
 
 import { ActorManager } from "./actor"
 import { AgentManager } from "./agent"

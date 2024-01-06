@@ -3,6 +3,12 @@ import { createReActorStore } from "@ic-reactor/store"
 import { getActorHooks } from "./hooks/actor"
 import { getAuthHooks } from "./hooks/auth"
 
+export {
+  createReActorStore,
+  createAgentManager,
+  createActorManager,
+} from "@ic-reactor/store"
+
 export * from "./context"
 
 export type ReActorHooks<A extends ActorSubclass<any>> = ReturnType<
