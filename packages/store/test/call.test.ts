@@ -1,16 +1,20 @@
 import { randomBytes } from "crypto"
-import { createReActorStore } from "../src"
+import { ReActorManager } from "../src"
 import { idlFactory } from "./candid/backend"
 import { _SERVICE } from "./candid/backend/backend.did"
+import AgentManager from "../src/agent"
 
 describe("My IC Store and Actions", () => {
-  const { actorStore, authenticate, callMethod } = createReActorStore<_SERVICE>(
-    {
-      idlFactory,
-      canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-      host: "https://icp-api.io",
-    }
-  )
+  const agentManager = new AgentManager({
+    host: "https://ic0.app",
+    withDevtools: false,
+  })
+
+  const { callMethod } = new ReActorManager<_SERVICE>({
+    agentManager,
+    idlFactory,
+    canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+  })
 
   it("should return the symmetric key verification key", async () => {
     const initialData = await callMethod("symmetric_key_verification_key")
@@ -32,7 +36,7 @@ describe("My IC Store and Actions", () => {
   })
 
   it("should return logged user data", async () => {
-    await authenticate()
+    await agentManager.authenticate()
   })
 
   it("should return timers", async () => {

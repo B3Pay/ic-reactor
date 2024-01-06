@@ -1,5 +1,5 @@
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
-import type { ActorSubclass, ReActorOptions } from "@ic-reactor/store"
+import type { ActorSubclass, CreateReActorConfig } from "@ic-reactor/store"
 import { createReActorStore } from "@ic-reactor/store"
 import { useEffect, useState } from "react"
 import { useStore } from "zustand"
@@ -8,31 +8,20 @@ import { getCallHooks } from "./hooks"
 export * from "./context"
 
 export const createReActor = <A extends ActorSubclass<any>>(
-  options: ReActorOptions
+  options: CreateReActorConfig
 ) => {
   const isLocal =
     typeof process !== "undefined" &&
     (process.env.NODE_ENV === "development" ||
       process.env.DFX_NETWORK === "local")
 
-  const {
-    unsubscribeAgent,
-    initializeAgent,
-    authenticate,
-    callMethod,
-    authStore,
-    agentStore,
-    actorStore,
-  } = createReActorStore<A>({
+  const { actorManager, agentManager } = createReActorStore<A>({
     isLocal,
     ...options,
   })
 
-  const useAgentStore = () => {
-    const agentState = useStore(agentStore, (state) => state)
-
-    return { ...agentState, initializeAgent }
-  }
+  const { callMethod, actorStore } = actorManager
+  const { authenticate, authStore } = agentManager
 
   const useActorStore = () => {
     const actorState = useStore(actorStore, (state) => state)
@@ -103,10 +92,8 @@ export const createReActor = <A extends ActorSubclass<any>>(
     getCallHooks<A>(callMethod, actorStore)
 
   return {
-    unsubscribeAgent,
     useMethodFields,
     useMethodField,
-    useAgentStore,
     useActorStore,
     useAuthStore,
     useQueryCall,

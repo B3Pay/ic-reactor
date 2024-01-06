@@ -11,6 +11,7 @@ import type { InterfaceFactory } from "@dfinity/candid/lib/cjs/idl"
 import type { Principal } from "@dfinity/principal"
 import type { StoreApi } from "zustand"
 import { ExtractedField } from "./candid"
+import AgentManager from "./agent"
 export type {
   ActorMethod,
   ActorSubclass,
@@ -21,11 +22,10 @@ export type {
 // Type for identifying a canister
 export type CanisterId = string | Principal
 
-export interface ReActorOptions extends HttpAgentOptions {
-  agent?: HttpAgent
+export interface ReActorOptions {
+  agentManager: AgentManager
   idlFactory: InterfaceFactory
   canisterId: CanisterId
-  isLocal?: boolean
   withDevtools?: boolean
 }
 
@@ -74,7 +74,7 @@ export type ReActorActorState<A> = {
 }
 
 // Main state structure for a ReActor
-export interface ReActorAuthState<A> {
+export interface ReActorAuthState {
   identity: Identity | null
   authClient: AuthClient | null
   authenticating: boolean
@@ -99,16 +99,14 @@ export interface ReActorActions<A extends ActorSubclass<any>> {
   initialize: (identity?: Identity) => void
   authenticate: () => Promise<void>
   resetState: () => void
-  updateState: (newState: Partial<ReActorAuthState<A>>) => void
+  updateState: (newState: Partial<ReActorAuthState>) => void
   callMethod: CallMethod<A>
 }
 
 // Type for the ReActor store
 export type ReActorAgentStore = StoreApi<ReActorAgentState>
 
-export type ReActorAuthStore<A extends ActorSubclass<any>> = StoreApi<
-  ReActorAuthState<A>
->
+export type ReActorAuthStore = StoreApi<ReActorAuthState>
 
 export type ReActorActorStore<A extends ActorSubclass<any>> = StoreApi<
   ReActorActorState<A>

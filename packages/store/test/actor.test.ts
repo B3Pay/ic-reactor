@@ -1,40 +1,37 @@
-import { createReActorStore } from "../src"
-import { canisterId, idlFactory } from "./candid/b3_system"
+import { ReActorManager } from "../src"
+import AgentManager from "../src/agent"
+import { idlFactory } from "./candid/b3_system"
 
 describe("createReActorStore", () => {
-  test("uninitialized", () => {
-    const { actorStore } = createReActorStore({
-      canisterId,
-      idlFactory,
-      host: "https://icp-api.io",
-      initializeOnMount: false,
-    })
-
-    expect(actorStore.getState()).toEqual({
-      methodState: {},
-      methodFields: [],
-      actor: null,
-      initialized: false,
-      initializing: false,
-      error: undefined,
-    })
+  const agentManager = new AgentManager({
+    host: "https://ic0.app",
+    withDevtools: false,
   })
 
-  test("initialized", () => {
-    const { actorStore, callMethod } = createReActorStore({
-      canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
-      idlFactory: () => <any>{},
-      host: "https://icp-api.io",
-      initializeOnMount: true,
+  test("Initialized", () => {
+    const { actorStore } = new ReActorManager({
+      canisterId: "2vxsx-fae",
+      idlFactory,
+      agentManager,
     })
 
-    expect(actorStore.getState()).toEqual({
+    const {
+      methodState,
+      actor,
+      methodFields,
+      initialized,
+      initializing,
+      error,
+    } = actorStore.getState()
+
+    expect(actor).not.toBeNull()
+    expect(methodFields).toBeDefined()
+
+    expect({ methodState, initialized, initializing, error }).toEqual({
       methodState: {},
-      methodFields: [],
-      initialized: false,
+      initialized: true,
       initializing: false,
-      actor: null,
-      error: Error("service._fields is not iterable"),
+      error: undefined,
     })
   })
 })

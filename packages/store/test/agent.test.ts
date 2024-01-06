@@ -1,22 +1,15 @@
-import { createReActorStore } from "../src"
-import { HttpAgent } from "@dfinity/agent"
-import { idlFactory, b3_system } from "./candid/b3_system"
+import AgentManager from "../src/agent"
 
 describe("My IC Store and Actions", () => {
-  const { agentStore } = createReActorStore<typeof b3_system>({
-    idlFactory,
-    canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+  const agentManager = new AgentManager({
+    host: "https://ic0.app",
+    withDevtools: false,
   })
 
-  it("should return agent store", () => {
-    expect(agentStore).toBeDefined()
+  it("should return agent store", async () => {
+    const { getAgent } = agentManager
 
-    const { agent, canisterId } = agentStore.getState()
-
-    expect(agent).toBeInstanceOf(HttpAgent)
-
-    expect(agent).toHaveProperty("query")
-
-    expect(canisterId).toBe("xeka7-ryaaa-aaaal-qb57a-cai")
+    expect(getAgent().isLocal()).toEqual(false)
+    expect((await getAgent().getPrincipal()).toText()).toEqual("2vxsx-fae")
   })
 })

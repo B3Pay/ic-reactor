@@ -4,6 +4,7 @@ import fetchMock from "jest-fetch-mock"
 import { ReActorManager } from "../src/reactor"
 import { idlFactory } from "./candid/hello"
 import { _SERVICE } from "./candid/hello/hello.did"
+import AgentManager from "../src/agent"
 
 fetchMock.enableMocks()
 
@@ -33,26 +34,26 @@ fetchMock.mockResponse(async (req) => {
 describe("CreateActor", () => {
   const callback = jest.fn()
 
-  const { initialize, authenticate, callMethod, actorStore } =
-    new ReActorManager<_SERVICE>({
-      verifyQuerySignatures: false,
-      initializeOnMount: false,
-      canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
-      idlFactory,
-      host: "https://local-mock",
-    })
+  const agentManager = new AgentManager({
+    host: "https://local-mock",
+    verifyQuerySignatures: false,
+    withDevtools: false,
+  })
 
-  const { subscribe, getState } = actorStore
+  const { callMethod, actorStore } = new ReActorManager<_SERVICE>({
+    agentManager,
+    canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
+    idlFactory,
+  })
+
+  const { subscribe } = agentManager
 
   subscribe(callback)
 
-  it("should initialize the actor", () => {
-    expect(getState().initialized).toEqual(false)
+  it("should initialized the actor", () => {
+    expect(actorStore.getState().initialized).toEqual(true)
 
-    initialize()
-
-    expect(getState().initialized).toEqual(true)
-    expect(callback).toHaveBeenCalledTimes(2)
+    expect(callback).toHaveBeenCalledTimes(0)
   })
 
   it("should queryCall the query method", async () => {
@@ -62,10 +63,12 @@ describe("CreateActor", () => {
   })
 
   it("should subscribe to the actor state", () => {
-    expect(callback).toHaveBeenCalledTimes(2)
+    expect(callback).toHaveBeenCalledTimes(0)
   })
 
   it("should authenticate the actor", async () => {
-    await authenticate()
+    await agentManager.authenticate()
+
+    expect(callback).toHaveBeenCalledTimes(1)
   })
 })
