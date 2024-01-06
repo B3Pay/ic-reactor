@@ -1,8 +1,13 @@
 import { ReActorProvider, useReActor } from "@ic-reactor/react"
 import Form from "./components/Form"
-import { ReActorMethodField } from "@ic-reactor/store"
+import { ActorMethodField, createAgentManager } from "@ic-reactor/store"
 import { useForm } from "react-hook-form"
 import { useState } from "react"
+import { CandidMethod } from "./actor"
+
+const agentManager = createAgentManager({
+  isLocal: false,
+})
 
 const DynamicCandid: React.FC = () => {
   const [canisterId, setCanisterId] = useState("ss2fx-dyaaa-aaaar-qacoq-cai")
@@ -32,7 +37,11 @@ const DynamicCandid: React.FC = () => {
           </button>
         </form>
       </div>
-      <ReActorProvider host="https://ic0.app" canisterId={canisterId}>
+      <ReActorProvider
+        host="https://ic0.app"
+        agentManager={agentManager}
+        canisterId={canisterId}
+      >
         <CandidForm />
       </ReActorProvider>
     </div>
@@ -42,9 +51,9 @@ const DynamicCandid: React.FC = () => {
 export default DynamicCandid
 
 const CandidForm: React.FC = () => {
-  const { useActorStore } = useReActor()
+  const { useMethodFields } = useReActor<CandidMethod>()
 
-  const { methodFields } = useActorStore()
+  const methodFields = useMethodFields()
 
   return (
     <div className="p-2 max-w-3xl mx-auto">
@@ -55,7 +64,7 @@ const CandidForm: React.FC = () => {
   )
 }
 
-const FormFields: React.FC<ReActorMethodField<any>> = ({
+const FormFields: React.FC<ActorMethodField<CandidMethod>> = ({
   functionName,
   ...rest
 }) => {

@@ -1,4 +1,4 @@
-import AgentManager from "../src/agent"
+import { AgentManager } from "../src"
 
 describe("My IC Store and Actions", () => {
   const agentManager = new AgentManager({

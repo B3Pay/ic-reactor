@@ -1,13 +1,13 @@
-import {
-  Actor,
-  ActorMethod,
-  ActorSubclass,
-  CanisterStatus,
-  HttpAgent,
-} from "@dfinity/agent"
+import { Actor, CanisterStatus } from "@dfinity/agent"
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import { CanisterId } from "../types"
+
+import type {
+  ActorSubclass,
+  ActorMethod,
+  CanisterId,
+  HttpAgent,
+} from "../types"
 
 export const validateError = (t: IDL.Type<any>) => {
   return function validate(value: any) {

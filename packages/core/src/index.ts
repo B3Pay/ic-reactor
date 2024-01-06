@@ -1,8 +1,7 @@
 import type {
+  ActorMethodState,
   ActorSubclass,
-  ReActorAuthStore,
-  ReActorMethodState,
-  ReActorOptions,
+  CreateReActorOptions,
 } from "@ic-reactor/store"
 import { createReActorStore, generateRequestHash } from "@ic-reactor/store"
 import {
@@ -14,18 +13,18 @@ import {
   ReActorUpdate,
 } from "./types"
 
-export type ReActorContextType<A = ActorSubclass<any>> = ReActorAuthStore<A>
-
 export const createReActor = <A extends ActorSubclass<any>>(
-  options: ReActorOptions
+  options: CreateReActorOptions
 ) => {
-  const { callMethod, actorStore, authStore, ...rest } =
+  const { agentManager, callMethod, actorStore, ...rest } =
     createReActorStore<A>(options)
+
+  const { authStore, ...agentRest } = agentManager
 
   const updateMethodState = <M extends keyof A>(
     method: M,
     args: any[] = [],
-    newState?: Partial<ReActorMethodState<A, M>[string]>
+    newState?: Partial<ActorMethodState<A, M>[string]>
   ) => {
     const hash = generateRequestHash(args)
 
@@ -160,7 +159,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
     let initialData = Promise.resolve() as ReturnType<typeof call>
     if (!disableInitialCall) initialData = call()
 
-    return { ...rest, recall: call, initialData, intervalId }
+    return { ...rest, call, initialData, intervalId }
   }
 
   const updateCall: ReActorUpdate<A> = ({ functionName, args = [] }) => {
@@ -172,6 +171,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
     authStore,
     queryCall,
     updateCall,
+    ...agentRest,
     ...rest,
   }
 }

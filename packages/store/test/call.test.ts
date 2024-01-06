@@ -1,8 +1,7 @@
 import { randomBytes } from "crypto"
-import { ReActorManager } from "../src"
 import { idlFactory } from "./candid/backend"
 import { _SERVICE } from "./candid/backend/backend.did"
-import AgentManager from "../src/agent"
+import { AgentManager, ActorManager } from "../src"
 
 describe("My IC Store and Actions", () => {
   const agentManager = new AgentManager({
@@ -10,7 +9,7 @@ describe("My IC Store and Actions", () => {
     withDevtools: false,
   })
 
-  const { callMethod } = new ReActorManager<_SERVICE>({
+  const { callMethod } = new ActorManager<_SERVICE>({
     agentManager,
     idlFactory,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",

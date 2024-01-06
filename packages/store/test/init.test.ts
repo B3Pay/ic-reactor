@@ -1,10 +1,9 @@
 import { Cbor } from "@dfinity/agent"
 import { IDL } from "@dfinity/candid"
 import fetchMock from "jest-fetch-mock"
-import { ReActorManager } from "../src/reactor"
+import { ActorManager, AgentManager } from "../src"
 import { idlFactory } from "./candid/hello"
 import { _SERVICE } from "./candid/hello/hello.did"
-import AgentManager from "../src/agent"
 
 fetchMock.enableMocks()
 
@@ -40,15 +39,15 @@ describe("CreateActor", () => {
     withDevtools: false,
   })
 
-  const { callMethod, actorStore } = new ReActorManager<_SERVICE>({
+  const { callMethod, actorStore } = new ActorManager<_SERVICE>({
     agentManager,
     canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
     idlFactory,
   })
 
-  const { subscribe } = agentManager
+  const { subscribeAgent } = agentManager
 
-  subscribe(callback)
+  subscribeAgent(callback)
 
   it("should initialized the actor", () => {
     expect(actorStore.getState().initialized).toEqual(true)

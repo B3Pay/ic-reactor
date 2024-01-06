@@ -1,12 +1,14 @@
-import { Principal } from "@dfinity/principal"
-import { ExtractedField } from "./types"
+import type { ExtractedField } from "./types"
 import { IDL } from "@dfinity/candid"
 import { is_query, validateError } from "./helper"
 
 export * from "./types"
 export * from "./helper"
 
-export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
+export class ExtractField extends IDL.Visitor<
+  string | undefined,
+  ExtractedField
+> {
   public visitService(t: IDL.ServiceClass, l?: string): ExtractedField {
     return {
       component: "div",
@@ -19,6 +21,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues: undefined,
     }
   }
+
   public visitFunc(t: IDL.FuncClass, functionName: string): ExtractedField {
     const { fields, defaultValues } = t.argTypes.reduce(
       (acc, arg, index) => {
@@ -45,6 +48,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues,
     }
   }
+
   public visitType<T>(t: IDL.Type<T>, l?: string): ExtractedField {
     return {
       component: "span",
@@ -55,7 +59,8 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues: undefined,
     }
   }
-  visitText(t: IDL.TextClass, l?: string): ExtractedField {
+
+  public visitText(t: IDL.TextClass, l?: string): ExtractedField {
     return {
       component: "input",
       type: "text",
@@ -66,6 +71,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues: "",
     }
   }
+
   public visitNumber<T>(t: IDL.Type<T>, l?: string): ExtractedField {
     return {
       component: "input",
@@ -78,21 +84,27 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues: undefined,
     }
   }
+
   public visitInt(t: IDL.IntClass, l?: string): ExtractedField {
     return this.visitNumber(t, l)
   }
+
   public visitNat(t: IDL.NatClass, l?: string): ExtractedField {
     return this.visitNumber(t, l)
   }
+
   public visitFloat(t: IDL.FloatClass, l?: string): ExtractedField {
     return this.visitNumber(t, l)
   }
+
   public visitFixedInt(t: IDL.FixedIntClass, l?: string): ExtractedField {
     return this.visitNumber(t, l)
   }
+
   public visitFixedNat(t: IDL.FixedNatClass, l?: string): ExtractedField {
     return this.visitNumber(t, l)
   }
+
   public visitPrincipal(t: IDL.PrincipalClass, l?: string): ExtractedField {
     return {
       component: "input",
@@ -103,6 +115,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues: undefined,
     }
   }
+
   public visitBool(t: IDL.BoolClass, l?: string): ExtractedField {
     return {
       component: "input",
@@ -113,6 +126,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues: false,
     }
   }
+
   public visitNull(t: IDL.NullClass, l?: string): ExtractedField {
     return {
       component: "span",
@@ -123,6 +137,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues: null,
     }
   }
+
   public visitRecord(
     t: IDL.RecordClass,
     _fields: Array<[string, IDL.Type]>,
@@ -150,6 +165,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues,
     }
   }
+
   public visitTuple<T extends any[]>(
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
@@ -174,6 +190,7 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       defaultValues,
     }
   }
+
   public visitVariant(
     t: IDL.VariantClass,
     _fields: Array<[string, IDL.Type]>,
@@ -251,53 +268,5 @@ export class UIExtract extends IDL.Visitor<string | undefined, ExtractedField> {
       fields: [],
       defaultValues: undefined,
     }
-  }
-}
-
-export class Parse extends IDL.Visitor<string, any> {
-  public visitNull(t: IDL.NullClass, v: string): null {
-    return null
-  }
-  public visitBool(t: IDL.BoolClass, v: string): boolean {
-    if (v === "true") {
-      return true
-    }
-    if (v === "false") {
-      return false
-    }
-    throw new Error(`Cannot parse ${v} as boolean`)
-  }
-  public visitText(t: IDL.TextClass, v: string): string {
-    return v
-  }
-  public visitFloat(t: IDL.FloatClass, v: string): number {
-    return parseFloat(v)
-  }
-  public visitFixedInt(t: IDL.FixedIntClass, v: string): number | bigint {
-    if (t._bits <= 32) {
-      return parseInt(v, 10)
-    } else {
-      return BigInt(v)
-    }
-  }
-  public visitFixedNat(t: IDL.FixedNatClass, v: string): number | bigint {
-    if (t._bits <= 32) {
-      return parseInt(v, 10)
-    } else {
-      return BigInt(v)
-    }
-  }
-  public visitNumber(t: IDL.PrimitiveType, v: string): bigint {
-    return BigInt(v)
-  }
-  public visitPrincipal(t: IDL.PrincipalClass, v: string): Principal {
-    return Principal.fromText(v)
-  }
-  public visitService(t: IDL.ServiceClass, v: string): Principal {
-    return Principal.fromText(v)
-  }
-  public visitFunc(t: IDL.FuncClass, v: string): [Principal, string] {
-    const x = v.split(".", 2)
-    return [Principal.fromText(x[0]), x[1]]
   }
 }

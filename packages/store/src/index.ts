@@ -1,18 +1,45 @@
-import { ActorSubclass, HttpAgentOptions } from "@dfinity/agent"
-import { ActorManager } from "./reactor"
-import { CanisterId } from "./types"
-import { InterfaceFactory } from "@dfinity/candid/lib/cjs/idl"
-import AgentManager from "./agent"
+import type {
+  IDL,
+  ActorSubclass,
+  CanisterId,
+  ActorActions,
+  ActorManagerOptions,
+} from "./actor/types"
+import type {
+  AgentActions,
+  AgentManagerOptions,
+  HttpAgentOptions,
+} from "./agent/types"
 
-export interface CreateReActorConfig extends HttpAgentOptions {
-  idlFactory: InterfaceFactory
+import { ActorManager } from "./actor"
+import { AgentManager } from "./agent"
+
+export * from "./helper"
+export * from "./actor"
+export * from "./agent"
+
+export const createAgentManager = ({
+  isLocal,
+  ...options
+}: AgentManagerOptions): AgentManager => {
+  return new AgentManager({
+    host: isLocal ? "http://localhost:4943" : "https://icp-api.io",
+    ...options,
+  })
+}
+
+export const createActorManager = <A extends ActorSubclass<any>>(
+  options: ActorManagerOptions
+): ActorManager<A> => {
+  return new ActorManager<A>(options)
+}
+
+export interface CreateReActorOptions extends HttpAgentOptions {
+  agentManager?: AgentManager
+  idlFactory: IDL.InterfaceFactory
   canisterId: CanisterId
   withDevtools?: boolean
   isLocal?: boolean
-}
-export type CreateReActorStore<A> = {
-  actorManager: ActorManager<A>
-  agentManager: AgentManager
 }
 
 export const createReActorStore = <A extends ActorSubclass<any>>({
@@ -20,28 +47,20 @@ export const createReActorStore = <A extends ActorSubclass<any>>({
   canisterId,
   withDevtools = false,
   isLocal = false,
-  ...agentOptions
-}: CreateReActorConfig): CreateReActorStore<A> => {
-  const agentManager = new AgentManager({
-    host: isLocal ? "http://localhost:4943" : "https://icp-api.io",
-    withDevtools,
-    ...agentOptions,
-  })
+  ...options
+}: CreateReActorOptions): ActorManager<A> => {
+  const agentManager =
+    options.agentManager ||
+    createAgentManager({
+      isLocal,
+      withDevtools,
+      ...options,
+    })
 
-  const actorManager = new ActorManager<A>({
+  return createActorManager<A>({
     idlFactory,
     canisterId,
+    agentManager,
     withDevtools,
-    agentManager,
   })
-
-  return {
-    agentManager,
-    actorManager,
-  }
 }
-
-export * from "./helper"
-export * from "./reactor"
-export * from "./types"
-export * from "./candid"

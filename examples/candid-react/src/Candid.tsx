@@ -1,8 +1,8 @@
 import Form from "./components/Form"
-import { DynamicField, useActorStore, useQueryCall } from "./actor"
+import { DynamicField, useMethodFields, useQueryCall } from "./actor"
 
 const Candid: React.FC = () => {
-  const { methodFields } = useActorStore()
+  const methodFields = useMethodFields()
 
   return (
     <div className="p-2 max-w-3xl mx-auto">

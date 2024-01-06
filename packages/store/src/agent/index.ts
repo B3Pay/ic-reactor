@@ -1,16 +1,21 @@
 import { HttpAgent } from "@dfinity/agent"
 import { AuthClient } from "@dfinity/auth-client"
-import { ReActorAuthState, ReActorAuthStore } from "../types"
 import { createStoreWithOptionalDevtools } from "../helper"
-import { ReActorAgentOptions } from "./types"
+import type {
+  ActorAuthState,
+  AuthenticateStore,
+  AgentManagerOptions,
+} from "./types"
 
-class AgentManager {
+export * from "./types"
+
+export class AgentManager {
   private agent: HttpAgent
   private subscribers: Array<(agent: HttpAgent) => void> = []
 
-  public authStore: ReActorAuthStore
+  public authStore: AuthenticateStore
 
-  private DEFAULT_AUTH_STATE: ReActorAuthState = {
+  private DEFAULT_AUTH_STATE: ActorAuthState = {
     identity: null,
     authClient: null,
     authenticating: false,
@@ -18,11 +23,11 @@ class AgentManager {
     error: undefined,
   }
 
-  private updateAuthState = (newState: Partial<ReActorAuthState>) => {
+  private updateState = (newState: Partial<ActorAuthState>) => {
     this.authStore.setState((state) => ({ ...state, ...newState }))
   }
 
-  constructor({ withDevtools, ...options }: ReActorAgentOptions) {
+  constructor({ withDevtools, ...options }: AgentManagerOptions) {
     this.authStore = createStoreWithOptionalDevtools(this.DEFAULT_AUTH_STATE, {
       withDevtools,
       store: "auth",
@@ -42,12 +47,12 @@ class AgentManager {
     }
   }
 
-  public subscribe = (callback: (agent: HttpAgent) => void) => {
+  public subscribeAgent = (callback: (agent: HttpAgent) => void) => {
     this.subscribers.push(callback)
-    return () => this.unsubscribe(callback)
+    return () => this.unsubscribeAgent(callback)
   }
 
-  private unsubscribe = (callback: (agent: HttpAgent) => void) => {
+  public unsubscribeAgent = (callback: (agent: HttpAgent) => void) => {
     this.subscribers = this.subscribers.filter((sub) => sub !== callback)
   }
 
@@ -61,7 +66,7 @@ class AgentManager {
   }
 
   public authenticate = async () => {
-    this.updateAuthState({ authenticating: true })
+    this.updateState({ authenticating: true })
 
     try {
       const authClient = await AuthClient.create()
@@ -72,14 +77,14 @@ class AgentManager {
       this.agent.replaceIdentity(identity)
       this.notifySubscribers()
 
-      this.updateAuthState({
+      this.updateState({
         authClient,
         authenticated,
         identity,
         authenticating: false,
       })
     } catch (error) {
-      this.updateAuthState({ error: error as Error, authenticating: false })
+      this.updateState({ error: error as Error, authenticating: false })
 
       console.error("Error in authenticate:", error)
     }
@@ -89,5 +94,3 @@ class AgentManager {
     return this.agent
   }
 }
-
-export default AgentManager

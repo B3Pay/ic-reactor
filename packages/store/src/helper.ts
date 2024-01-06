@@ -2,8 +2,9 @@ import { hash } from "@dfinity/agent"
 import { IDL, toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import { ActorSubclass, ReActorMethodField } from "./types"
-import { UIExtract } from "./candid"
+import { ExtractField } from "./actor/candid"
+
+import type { ActorSubclass, ActorMethodField } from "./actor/types"
 
 interface StoreOptions {
   withDevtools?: boolean
@@ -28,12 +29,12 @@ export function createStoreWithOptionalDevtools(
 
 export function extractMethodField<A extends ActorSubclass<any>>(
   idlFactory: IDL.InterfaceFactory
-): ReActorMethodField<A>[] {
+): ActorMethodField<A>[] {
   type M = keyof A & string
   const methods = idlFactory({ IDL })._fields as [M, IDL.FuncClass][]
 
   const allFunction = methods.map(([functionName, method]) => {
-    const field = method.accept(new UIExtract(), functionName)
+    const field = method.accept(new ExtractField(), functionName)
     return {
       ...field,
       functionName,
@@ -49,7 +50,7 @@ export const generateRequestHash = (args?: any[]) => {
       if (typeof arg === "bigint") {
         return arg.toString()
       }
-      // Add more conditions for other special types
+
       return JSON.stringify(arg)
     })
     .join("|")

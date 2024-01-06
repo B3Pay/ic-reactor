@@ -1,5 +1,4 @@
-import { ReActorManager } from "../src"
-import AgentManager from "../src/agent"
+import { AgentManager, ActorManager } from "../src"
 import { idlFactory } from "./candid/b3_system"
 
 describe("createReActorStore", () => {
@@ -9,23 +8,16 @@ describe("createReActorStore", () => {
   })
 
   test("Initialized", () => {
-    const { actorStore } = new ReActorManager({
+    const { actorStore, methodFields } = new ActorManager({
       canisterId: "2vxsx-fae",
       idlFactory,
       agentManager,
     })
 
-    const {
-      methodState,
-      actor,
-      methodFields,
-      initialized,
-      initializing,
-      error,
-    } = actorStore.getState()
-
-    expect(actor).not.toBeNull()
     expect(methodFields).toBeDefined()
+
+    const { methodState, initialized, initializing, error } =
+      actorStore.getState()
 
     expect({ methodState, initialized, initializing, error }).toEqual({
       methodState: {},

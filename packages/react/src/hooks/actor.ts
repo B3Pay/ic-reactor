@@ -1,8 +1,8 @@
 import type {
   ActorSubclass,
-  CallMethod,
-  ExtractReActorMethodArgs,
-  ReActorActorStore,
+  ExtractActorMethodArgs,
+  ActorManager,
+  ActorMethodField,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
@@ -10,18 +10,27 @@ import type {
   ReActorHookState,
   ReActorUseQueryArgs,
   ReActorUseUpdateArgs,
-} from "./types"
+} from "../types"
 import { useStore } from "zustand"
 
-export const getCallHooks = <A extends ActorSubclass<any>>(
-  callMethod: CallMethod<A>,
-  actorStore: ReActorActorStore<A>
-) => {
-  const useMethodFields = () => {
-    return useStore(actorStore, (state) => state.methodFields)
+export const getActorHooks = <A extends ActorSubclass<any>>({
+  methodFields,
+  actorStore,
+  callMethod,
+}: ActorManager<A>) => {
+  const useActorStore = () => {
+    const actorState = useStore(actorStore, (state) => state)
+
+    return { ...actorState }
   }
 
-  const useMethodField = (functionName: keyof A & string) => {
+  const useMethodFields = (): ActorMethodField<A>[] => {
+    return methodFields
+  }
+
+  const useMethodField = (
+    functionName: keyof A & string
+  ): ActorMethodField<A> | undefined => {
     const methodFields = useMethodFields()
 
     const field = useMemo(() => {
@@ -35,7 +44,7 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
     onError,
     onSuccess,
     onLoading,
-    args = [] as unknown as ExtractReActorMethodArgs<A[M]>,
+    args = [] as unknown as ExtractActorMethodArgs<A[M]>,
     functionName,
   }: ReActorCallArgs<A, M>) => {
     const [state, setState] = useState<ReActorHookState<A, M>>({
@@ -45,7 +54,7 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
     })
 
     const call = useCallback(
-      async (replaceArgs?: ExtractReActorMethodArgs<A[M]>) => {
+      async (replaceArgs?: ExtractActorMethodArgs<A[M]>) => {
         onLoading?.(true)
         onError?.(undefined)
         setState((prevState) => ({
@@ -121,6 +130,7 @@ export const getCallHooks = <A extends ActorSubclass<any>>(
   return {
     useQueryCall,
     useUpdateCall,
+    useActorStore,
     useMethodField,
     useMethodFields,
   }

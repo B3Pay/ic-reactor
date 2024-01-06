@@ -2,9 +2,10 @@ import { useCallback, useState } from "react"
 import Button from "./Button"
 import Route from "./Route"
 import { FormProvider, useForm } from "react-hook-form"
-import { ReActorMethodField } from "@ic-reactor/store"
+import { ActorMethodField } from "@ic-reactor/store"
+import { CandidMethod } from "../actor"
 
-interface FormProps extends ReActorMethodField<any> {
+interface FormProps extends ActorMethodField<CandidMethod> {
   callHandler: (args: [any]) => Promise<any>
 }
 

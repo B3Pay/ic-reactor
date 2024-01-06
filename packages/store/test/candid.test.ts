@@ -1,5 +1,4 @@
-import { ReActorManager } from "../src"
-import AgentManager from "../src/agent"
+import { AgentManager, ActorManager } from "../src"
 import { idlFactory, b3_system } from "./candid/b3_system"
 
 describe("My IC Store and Actions", () => {
@@ -8,14 +7,13 @@ describe("My IC Store and Actions", () => {
     withDevtools: false,
   })
 
-  const { actorStore } = new ReActorManager<typeof b3_system>({
+  const { methodFields } = new ActorManager<typeof b3_system>({
     agentManager,
     idlFactory,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
 
   it("should return the function fields", () => {
-    const { methodFields } = actorStore.getState()
     expect({ methodFields }).toBeDefined()
   })
 })
