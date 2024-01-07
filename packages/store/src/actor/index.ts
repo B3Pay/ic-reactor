@@ -45,6 +45,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
       canisterId,
       idlFactory,
       withDevtools = false,
+      initializeOnCreate = true,
     } = reactorConfig
 
     this.agentManager = agentManager
@@ -62,7 +63,9 @@ export class ActorManager<A extends ActorSubclass<any>> {
       { withDevtools, store: "actor" }
     )
 
-    this.initializeActor(agentManager.getAgent())
+    if (initializeOnCreate) {
+      this.initializeActor(agentManager.getAgent())
+    }
   }
 
   private initializeActor = (agent: HttpAgent) => {

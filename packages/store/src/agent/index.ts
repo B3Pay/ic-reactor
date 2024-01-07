@@ -5,6 +5,7 @@ import type {
   ActorAuthState,
   AuthenticateStore,
   AgentManagerOptions,
+  UpdateAgentOptions,
 } from "./types"
 
 export * from "./types"
@@ -17,6 +18,8 @@ export class AgentManager {
 
   private DEFAULT_AUTH_STATE: ActorAuthState = {
     identity: null,
+    initialized: false,
+    initializing: false,
     authClient: null,
     authenticating: false,
     authenticated: false,
@@ -38,10 +41,13 @@ export class AgentManager {
   }
 
   private initializeAgent = async () => {
+    this.updateState({ initializing: true })
     if (this.agent.isLocal()) {
       try {
         await this.agent.fetchRootKey()
+        this.updateState({ initialized: true, initializing: false })
       } catch (error) {
+        this.updateState({ error: error as Error, initializing: false })
         console.error("Error fetching root key:", error)
       }
     }
@@ -60,8 +66,16 @@ export class AgentManager {
     this.subscribers.forEach((callback) => callback(this.agent))
   }
 
-  public updateAgent = (agent: HttpAgent) => {
-    this.agent = agent
+  public updateAgent = async (options?: UpdateAgentOptions) => {
+    const { agent } = options || {}
+
+    if (agent) {
+      this.agent = agent
+    } else if (options) {
+      this.agent = new HttpAgent(options)
+      await this.initializeAgent()
+    }
+
     this.notifySubscribers()
   }
 

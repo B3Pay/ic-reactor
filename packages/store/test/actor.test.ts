@@ -1,19 +1,33 @@
-import { AgentManager, ActorManager } from "../src"
+import { createReActorStore } from "../src"
 import { idlFactory } from "./candid/b3_system"
 
 describe("createReActorStore", () => {
-  const agentManager = new AgentManager({
-    host: "https://ic0.app",
-    withDevtools: false,
+  const { actorStore, agentManager, methodFields } = createReActorStore({
+    canisterId: "2vxsx-fae",
+    idlFactory,
+    initializeOnCreate: false,
   })
 
-  test("Initialized", () => {
-    const { actorStore, methodFields } = new ActorManager({
-      canisterId: "2vxsx-fae",
-      idlFactory,
-      agentManager,
-    })
+  it("should return actor store", () => {
+    expect(actorStore).toBeDefined()
+  })
 
+  test("Uninitialized", () => {
+    expect(methodFields).toBeDefined()
+
+    const { methodState, initialized, initializing, error } =
+      actorStore.getState()
+
+    expect({ methodState, initialized, initializing, error }).toEqual({
+      methodState: {},
+      initialized: false,
+      initializing: false,
+      error: undefined,
+    })
+  })
+
+  test("Initialized", async () => {
+    await agentManager.updateAgent()
     expect(methodFields).toBeDefined()
 
     const { methodState, initialized, initializing, error } =

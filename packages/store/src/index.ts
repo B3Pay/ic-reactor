@@ -35,6 +35,7 @@ export interface CreateReActorOptions extends HttpAgentOptions {
   canisterId: CanisterId
   withDevtools?: boolean
   isLocal?: boolean
+  initializeOnCreate?: boolean
 }
 
 export const createReActorStore = <A extends ActorSubclass<any>>({
@@ -42,6 +43,7 @@ export const createReActorStore = <A extends ActorSubclass<any>>({
   canisterId,
   withDevtools = false,
   isLocal = false,
+  initializeOnCreate = true,
   ...options
 }: CreateReActorOptions): ActorManager<A> => {
   const agentManager =
@@ -57,5 +59,6 @@ export const createReActorStore = <A extends ActorSubclass<any>>({
     canisterId,
     agentManager,
     withDevtools,
+    initializeOnCreate,
   })
 }
