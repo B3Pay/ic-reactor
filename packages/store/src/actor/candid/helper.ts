@@ -75,7 +75,9 @@ export async function getDidJsFromTmpHack(
 
 export async function didTojs(agent: HttpAgent, candid_source: string) {
   // call didjs canister
-  const didjs_id = "a4gq6-oaaaa-aaaab-qaa4q-cai"
+  const didjs_id = agent.isLocal()
+    ? "bd3sg-teaaa-aaaaa-qaaba-cai"
+    : "a4gq6-oaaaa-aaaab-qaa4q-cai"
 
   const didjs_interface: IDL.InterfaceFactory = ({ IDL }) =>
     IDL.Service({
