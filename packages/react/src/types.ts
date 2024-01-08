@@ -8,8 +8,9 @@ export type ActorCallArgs<A, M extends keyof A> = {
   functionName: M & string
   args?: ExtractActorMethodArgs<A[M]>
   onLoading?: (loading: boolean) => void
-  onError?: (error: Error | unknown) => void
+  onError?: (error: Error | undefined) => void
   onSuccess?: (data: ExtractActorMethodReturnType<A[M]> | undefined) => void
+  throwOnError?: boolean
 }
 
 export type ActorHookState<A, M extends keyof A> = {

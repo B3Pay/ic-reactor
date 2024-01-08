@@ -47,6 +47,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     onLoading,
     args = [] as unknown as ExtractActorMethodArgs<A[M]>,
     functionName,
+    throwOnError = false,
   }: ActorCallArgs<A, M>) => {
     const [state, setState] = useState<ActorHookState<A, M>>({
       data: undefined,
@@ -81,6 +82,8 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
             error: error as Error,
             loading: false,
           }))
+
+          if (throwOnError) throw error
         }
       },
       [args, functionName, onError, onSuccess, onLoading]
