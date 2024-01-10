@@ -22,9 +22,9 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ name }) => {
               onClick={() => field.onChange(true)}
               aria-label="Edit field"
               type="button"
-              className="ml-1 rounded px-1"
+              className="h-5 rounded px-1"
             >
-              <span className="w-3 h-3">✎</span>
+              <span className="w-4 h-4">✎</span>
             </button>
           )}
         />
@@ -38,24 +38,24 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ name }) => {
               {...editedLabel}
               type="text"
               placeholder="Edit label"
-              className="flex-grow"
+              className="flex-grow w-full h-6 px-2 rounded border"
             />
             <button
               type="button"
-              className="bg-white rounded px-1 text-green-500"
+              className="bg-white rounded h-6 px-2 text-green-500"
               onClick={() => {
                 setValue(`${name}.label`, editedLabel.value)
                 setValue(`${name}.editing`, false)
               }}
             >
-              <span className="w-3 h-3">✔</span>
+              ✔
             </button>
             <button
               type="button"
-              className="bg-white rounded px-1 text-red-500"
+              className="bg-white rounded h-6 px-2 text-red-500"
               onClick={() => setValue(`${name}.editing`, false)}
             >
-              <span className="w-3 h-3">✖</span>
+              ✖
             </button>
           </div>
         )}

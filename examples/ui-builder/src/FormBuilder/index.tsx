@@ -22,28 +22,11 @@ type Item = {
   color: string
 }
 
-const items: Item[] = [
-  {
-    value: "First Red item ",
-    color: colors.Pink,
-    label: "Item 1",
-    editedLabel: "Item 1",
-  },
-  {
-    value: "Second Green item",
-    color: colors.Red,
-    label: "Item 2",
-    editedLabel: "Item 2",
-  },
-  {
-    value: "Last Item",
-    color: colors.Purple,
-    label: "Item 3",
-    editedLabel: "Item 3",
-  },
-]
+interface FormBuilderProps {
+  items: Item[]
+}
 
-const SimpleFormBuilder = () => {
+const FormBuilder: React.FC<FormBuilderProps> = ({ items }) => {
   const methods = useForm({
     defaultValues: { items },
   })
@@ -132,4 +115,4 @@ const SimpleFormBuilder = () => {
   )
 }
 
-export default SimpleFormBuilder
+export default FormBuilder

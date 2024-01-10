@@ -28,12 +28,14 @@ const FieldEditor: React.FC<FieldEditorProps> = ({
         color
       )}
     >
-      <div className="w-8 h-8 px-1 text-white">┇</div>
+      <div className="w-8 h-14 text-white flex justify-center items-center">
+        ┇
+      </div>
       <div className="flex-1">
         <LabelEditor name={name} />
         <FieldInput name={`${name}.value`} />
       </div>
-      <div className="w-8 h-8 px-1 text-white">...</div>
+      <div className="w-8 h-8 px-2 text-white hidden sm:block">...</div>
       <ColorSelector name={`${name}.color`} />
     </div>
   )
