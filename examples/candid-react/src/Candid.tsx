@@ -1,4 +1,4 @@
-import Form from "./components/Form"
+import MethodForm from "./components/Form"
 import { DynamicField, useMethodFields, useQueryCall } from "./actor"
 
 const Candid: React.FC = () => {
@@ -23,7 +23,7 @@ const FormFields: React.FC<FormFieldProps> = ({ functionName, ...rest }) => {
 
   return (
     <div>
-      <Form callHandler={call} functionName={functionName} {...rest} />
+      <MethodForm callHandler={call} functionName={functionName} {...rest} />
       {error && (
         <fieldset className="border p-2 my-2 text-red-500 border-red-500 rounded">
           <legend className="font-semibold">Error</legend>

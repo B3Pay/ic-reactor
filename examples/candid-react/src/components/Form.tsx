@@ -9,7 +9,7 @@ interface FormProps extends ActorMethodField<CandidMethod> {
   callHandler: (args: [any]) => Promise<any>
 }
 
-const Form: React.FC<FormProps> = ({
+const MethodForm: React.FC<FormProps> = ({
   callHandler,
   functionName,
   defaultValues,
@@ -140,4 +140,4 @@ const Form: React.FC<FormProps> = ({
   )
 }
 
-export default Form
+export default MethodForm

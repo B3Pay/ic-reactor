@@ -1,5 +1,5 @@
 import { ActorProvider, AgentProvider, useActor } from "@ic-reactor/react"
-import Form from "./components/Form"
+import MethodForm from "./components/Form"
 import { ActorMethodField } from "@ic-reactor/store"
 import { useForm } from "react-hook-form"
 import { useState } from "react"
@@ -79,7 +79,7 @@ const FormFields: React.FC<ActorMethodField<CandidMethod>> = ({
 
   return (
     <div>
-      <Form callHandler={call} functionName={functionName} {...rest} />
+      <MethodForm callHandler={call} functionName={functionName} {...rest} />
       <div className="overflow-auto">
         {error && (
           <fieldset className="border p-2 my-2 text-red-500 border-red-500 rounded">
