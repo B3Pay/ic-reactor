@@ -18,7 +18,6 @@ const MethodForm: React.FC<FormProps> = ({
   const [argState, setArgState] = useState<any>(null)
   const [argErrorState, setArgErrorState] = useState<any>(null)
 
-  console.log(defaultValues)
   const methods = useForm({
     shouldUnregister: true,
     mode: "onChange",
@@ -82,12 +81,16 @@ const MethodForm: React.FC<FormProps> = ({
           <button
             className="mb-2 border-red-600 border-2 rounded px-2 py-1 text-red-600 hover:bg-red-600 hover:text-white"
             type="reset"
-            onClick={() => methods.reset()}
+            onClick={() => {
+              setArgState(null)
+              setArgErrorState(null)
+              methods.setValue("data", defaultValues?.data)
+            }}
           >
             Reset
           </button>
         </div>
-        {fields?.map((field, index) => {
+        {fields.map((field, index) => {
           return (
             <div key={index} className="mb-2">
               <Route

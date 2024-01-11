@@ -95,13 +95,13 @@ export const idlFactory = ({ IDL }) => {
     simple_record: IDL.Func(
       [
         IDL.Record({
-          firstField: IDL.Nat8,
-          secondField: IDL.Text,
-          thirdField: IDL.Int16,
-          fourthField: IDL.Variant({
-            Text: IDL.Text,
-            Int: IDL.Int,
-          }),
+          // firstField: IDL.Nat8,
+          // secondField: IDL.Text,
+          thirdField: IDL.Vec(IDL.Int16),
+          // fourthField: IDL.Variant({
+          //   Text: IDL.Text,
+          //   Int: IDL.Int,
+          // }),
         }),
       ],
       [IDL.Vec(IDL.Text)]

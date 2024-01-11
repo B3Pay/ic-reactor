@@ -13,6 +13,8 @@ const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
     name: registerName as never,
   })
 
+  console.log("optional", registerName)
+
   return (
     <div className="flex flex-col">
       <div className="flex h-10 justify-between items-center">
@@ -42,15 +44,18 @@ const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
           </label>
         </div>
       </div>
-      {fields.length > 0 && (
-        <div className="flex justify-between items-start p-1 mb-1 w-full border-dashed border border-gray-400 rounded">
+      {fields.map(({ id }) => (
+        <div
+          key={id}
+          className="flex justify-between items-start p-1 mb-1 w-full border-dashed border border-gray-400 rounded"
+        >
           <Route
             field={field.fields?.[0]}
-            registerName={`${registerName}.[0]`}
             errors={errors?.[0 as never]}
+            registerName={`${registerName}.[0]`}
           />
         </div>
-      )}
+      ))}
     </div>
   )
 }

@@ -37,9 +37,7 @@ const Variant: React.FC<VariantProps> = ({ field, registerName, errors }) => {
             id={selectRegisterName}
             {...selectField}
           >
-            <option value="" disabled>
-              Select one
-            </option>
+            <option value="">Select one</option>
             {field.options.map((label, index) => (
               <option key={index} value={label}>
                 {label}
