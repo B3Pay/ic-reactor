@@ -14,6 +14,7 @@ import type {
   ExtractedVariant,
   ExtractedVector,
   FunctionDefaultValues,
+  DynamicFieldType,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { is_query, validateError } from "./helper"
@@ -85,7 +86,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
         return acc
       },
       {
-        fields: [] as ExtractedField[],
+        fields: [] as DynamicFieldType<IDL.Type>[],
         defaultValues: {} as Record<string, ExtractTypeFromIDLType>,
       }
     )
@@ -117,7 +118,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
         return acc
       },
       {
-        fields: [] as ExtractedField[],
+        fields: [] as DynamicFieldType<IDL.Type>[],
         defaultValues: {} as Record<string, ExtractTypeFromIDLType>,
         options: [] as string[],
       }
@@ -147,7 +148,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
 
         return acc
       },
-      { fields: [] as ExtractedField[], defaultValues: [] as any[] }
+      { fields: [] as DynamicFieldType<IDL.Type>[], defaultValues: [] as any[] }
     )
 
     return {
@@ -168,7 +169,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       type: "optional",
       validate: validateError(t),
       label: l ?? t.name,
-      fields: [ty.accept(this, l)],
+      fields: [ty.accept(this, l) as DynamicFieldType<IDL.Type>],
       defaultValues: [],
     }
   }
@@ -182,7 +183,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       type: "vector",
       validate: validateError(t),
       label: l ?? t.name,
-      fields: [ty.accept(this, l)],
+      fields: [ty.accept(this, l) as DynamicFieldType<IDL.Type>],
       defaultValues: [],
     }
   }
@@ -196,7 +197,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       type: "recursive",
       label: l ?? t.name,
       validate: validateError(t),
-      extract: () => ty.accept(this, null),
+      extract: () => ty.accept(this, null) as DynamicFieldType<IDL.Type>,
       defaultValues: undefined,
     }
   }

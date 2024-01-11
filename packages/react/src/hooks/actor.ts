@@ -2,7 +2,8 @@ import type {
   ActorSubclass,
   ExtractActorMethodArgs,
   ActorManager,
-  ActorMethodField,
+  ExtractedService,
+  ExtractedFunction,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
@@ -14,7 +15,7 @@ import type {
 import { useStore } from "zustand"
 
 export const getActorHooks = <A extends ActorSubclass<any>>({
-  methodFields,
+  serviceFields,
   canisterId,
   actorStore,
   callMethod,
@@ -25,17 +26,23 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { ...actorState, canisterId }
   }
 
-  const useMethodFields = (): ActorMethodField<A>[] => {
-    return methodFields
+  const useServiceField = (): ExtractedService<A> => {
+    return serviceFields
+  }
+
+  const useMethodFields = (): ExtractedFunction<A>[] => {
+    const methodFields = useServiceField()
+
+    return methodFields.fields
   }
 
   const useMethodField = (
     functionName: keyof A & string
-  ): ActorMethodField<A> | undefined => {
+  ): ExtractedFunction<A> | undefined => {
     const methodFields = useMethodFields()
 
     const field = useMemo(() => {
-      return methodFields.find((f) => f.functionName === functionName)
+      return methodFields.find((field) => field.functionName === functionName)
     }, [methodFields, functionName])
 
     return field
@@ -135,5 +142,6 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     useActorStore,
     useMethodField,
     useMethodFields,
+    useServiceField,
   }
 }

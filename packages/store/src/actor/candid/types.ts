@@ -46,6 +46,33 @@ export type AllExtractableType<T extends IDL.Type> =
   | ExtractedVector
   | ExtractedOptional
   | ExtractedRecursive
+  | ExtractedPrincipalField
+  | ExtractedNumberField
+  | ExtractedInputField<T>
+
+export type DynamicFieldType<T extends IDL.Type> = T extends IDL.RecordClass
+  ? ExtractedRecord<T>
+  : T extends IDL.TupleClass<any>
+  ? ExtractedTuple<T>
+  : T extends IDL.VariantClass
+  ? ExtractedVariant<T>
+  : T extends IDL.VecClass<any>
+  ? ExtractedVector
+  : T extends IDL.OptClass<any>
+  ? ExtractedOptional
+  : T extends IDL.RecClass<any>
+  ? ExtractedRecursive
+  : T extends IDL.PrincipalClass
+  ? ExtractedPrincipalField
+  : T extends
+      | IDL.NatClass
+      | IDL.IntClass
+      | IDL.NatClass
+      | IDL.FixedNatClass
+      | IDL.FixedIntClass
+      | IDL.FloatClass
+  ? ExtractedNumberField
+  : ExtractedInputField<T>
 
 export type ExtraInputFormFields = Partial<{
   required: boolean
@@ -74,38 +101,38 @@ export interface ExtractedFunction<A> extends ExtractedField {
 
 export interface ExtractedRecord<T extends IDL.Type> extends ExtractedField {
   type: "record"
-  fields: ExtractedField[]
+  fields: DynamicFieldType<T>[]
   defaultValues: Record<string, ExtractTypeFromIDLType<T>>
 }
 
 export interface ExtractedVariant<T extends IDL.Type> extends ExtractedField {
   type: "variant"
   options: string[]
-  fields: ExtractedField[]
+  fields: DynamicFieldType<T>[]
   defaultValues: Record<string, ExtractTypeFromIDLType<T>>
 }
 
 export interface ExtractedTuple<T extends IDL.Type> extends ExtractedField {
   type: "tuple"
-  fields: ExtractedField[]
+  fields: DynamicFieldType<T>[]
   defaultValues: ExtractTypeFromIDLType<T>[]
 }
 
 export interface ExtractedOptional extends ExtractedField {
   type: "optional"
-  fields: [ExtractedField]
+  fields: [DynamicFieldType<IDL.Type>]
   defaultValues: []
 }
 
 export interface ExtractedVector extends ExtractedField {
   type: "vector"
-  fields: ExtractedField[]
+  fields: DynamicFieldType<IDL.Type>[]
   defaultValues: []
 }
 
 export interface ExtractedRecursive extends ExtractedField {
   type: "recursive"
-  extract: () => ExtractedField
+  extract: () => DynamicFieldType<IDL.Type>
   defaultValues: undefined
 }
 

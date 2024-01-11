@@ -1,6 +1,6 @@
 import { ActorProvider, AgentProvider, useActor } from "@ic-reactor/react"
 import MethodForm from "./components/Form"
-import { ActorMethodField } from "@ic-reactor/store"
+import { ExtractedFunction } from "@ic-reactor/store"
 import { useForm } from "react-hook-form"
 import { useState } from "react"
 import { CandidMethod } from "./actor"
@@ -66,7 +66,7 @@ const CandidForm: React.FC = () => {
   )
 }
 
-const FormFields: React.FC<ActorMethodField<CandidMethod>> = ({
+const FormFields: React.FC<ExtractedFunction<CandidMethod>> = ({
   functionName,
   ...rest
 }) => {

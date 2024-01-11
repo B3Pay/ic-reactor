@@ -1,6 +1,7 @@
+import { IDL } from "@dfinity/candid"
 import Route, { RouteProps } from "./Route"
 
-interface RecordProps extends RouteProps {}
+interface RecordProps extends RouteProps<IDL.RecordClass> {}
 
 const Record: React.FC<RecordProps> = ({ field, errors, registerName }) => {
   return (

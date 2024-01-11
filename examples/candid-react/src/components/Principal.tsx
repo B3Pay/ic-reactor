@@ -2,8 +2,9 @@ import { cn } from "../utils"
 import { Principal as PrincipalId } from "@dfinity/principal"
 import { useFormContext } from "react-hook-form"
 import { RouteProps } from "./Route"
+import { IDL } from "@dfinity/candid"
 
-interface PrincipalProps extends RouteProps {}
+interface PrincipalProps extends RouteProps<IDL.PrincipalClass> {}
 
 const Principal: React.FC<PrincipalProps> = ({
   registerName,

@@ -3,6 +3,7 @@ import type {
   ExtractActorMethodReturnType,
 } from "@ic-reactor/store"
 export type * from "@ic-reactor/store"
+export type * from "@ic-reactor/store/dist/actor/types"
 
 export type ActorCallArgs<A, M extends keyof A> = {
   functionName: M & string

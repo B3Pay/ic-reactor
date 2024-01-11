@@ -1,8 +1,9 @@
 import React, { useMemo } from "react"
 import Route, { RouteProps } from "./Route"
 import { Controller, useFormContext, useWatch } from "react-hook-form"
+import { IDL } from "@dfinity/candid"
 
-interface VariantProps extends RouteProps {}
+interface VariantProps extends RouteProps<IDL.VariantClass> {}
 
 let recursive = 0
 
