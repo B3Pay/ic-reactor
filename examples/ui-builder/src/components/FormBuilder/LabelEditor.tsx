@@ -1,5 +1,5 @@
 import { Controller, useFormContext } from "react-hook-form"
-import { cn } from "../utils"
+import { cn } from "../../utils"
 
 interface LabelEditorProps {
   name: `items.${number}`

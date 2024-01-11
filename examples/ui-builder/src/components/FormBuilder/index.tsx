@@ -2,6 +2,7 @@ import { useForm, useFieldArray, FormProvider } from "react-hook-form"
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
 import { useEffect } from "react"
 import FieldEditor from "./FieldEditor"
+import { cn } from "../../utils"
 
 export const colors = {
   Purple: "bg-purple-500",
@@ -66,6 +67,8 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ items }) => {
     console.log(data.items)
   }
 
+  const touched = methods.formState.touchedFields
+  console.log("touched", touched)
   return (
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit(onSubmit)} className="border p-2 rounded">
@@ -95,7 +98,11 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ items }) => {
           </button>
           <button
             onClick={saveFormState}
-            className="py-1 px-2 w-28 rounded border bg-green-500 text-white"
+            disabled={!touched}
+            className={cn(
+              "py-1 px-2 w-28 rounded border bg-green-500 text-white",
+              !touched && "opacity-50 cursor-not-allowed"
+            )}
           >
             Save
           </button>

@@ -2,7 +2,8 @@
 // import FetchCandid from "./FetchCandid"
 
 // import FormEditor from "./FormBuilder"
-import FormBuilder, { colors } from "./FormBuilder"
+import Candid from "./Candid"
+import FormBuilder, { colors } from "./components/FormBuilder"
 
 interface AppProps {}
 
@@ -32,9 +33,9 @@ const App: React.FC<AppProps> = () => {
         ]}
       />
       {/* <FormEditor /> */}
+      <Candid />
     </div>
   )
-  // return <Candid />
   // return <FetchCandid />
 }
 

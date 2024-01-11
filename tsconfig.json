@@ -4,7 +4,9 @@
     "module": "CommonJS",
     "declaration": true,
     "moduleResolution": "Node",
-    "jsx": "react"
+    "jsx": "react",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "exclude": ["**/*.spec.ts", ".next", "dist", "test", "out", "node_modules"]
 }

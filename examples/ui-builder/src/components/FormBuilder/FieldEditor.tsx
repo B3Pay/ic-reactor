@@ -2,7 +2,7 @@ import { DraggableProvided } from "react-beautiful-dnd"
 import ColorSelector from "./ColorSelector"
 import { useWatch } from "react-hook-form"
 import LabelEditor from "./LabelEditor"
-import { cn } from "../utils"
+import { cn } from "../../utils"
 import FieldInput from "./FieldInput"
 
 interface FieldEditorProps extends DraggableProvided {

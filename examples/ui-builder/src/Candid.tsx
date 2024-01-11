@@ -16,6 +16,8 @@ const Candid: React.FC = () => {
 interface FormFieldProps extends DynamicField {}
 
 const FormFields: React.FC<FormFieldProps> = ({ functionName, ...rest }) => {
+  console.log("functionName", functionName, rest)
+
   const { call, data, loading, error } = useQueryCall({
     functionName,
     disableInitialCall: true,
