@@ -13,8 +13,6 @@ const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
     name: registerName as never,
   })
 
-  console.log("optional", registerName)
-
   return (
     <div className="flex flex-col">
       <div className="flex h-10 justify-between items-center">

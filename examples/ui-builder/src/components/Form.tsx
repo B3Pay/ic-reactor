@@ -84,6 +84,7 @@ const MethodForm: React.FC<FormProps> = ({
             onClick={() => {
               setArgState(null)
               setArgErrorState(null)
+              methods.reset()
               methods.setValue("data", defaultValues?.data)
             }}
           >
