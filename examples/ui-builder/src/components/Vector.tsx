@@ -2,8 +2,9 @@ import React from "react"
 import { useFieldArray, useFormContext } from "react-hook-form"
 import Button from "./Button"
 import Route, { RouteProps } from "./Route"
+import { IDL } from "@dfinity/candid"
 
-interface VectorProps extends RouteProps {}
+interface VectorProps extends RouteProps<IDL.VecClass<any>> {}
 
 const Vector: React.FC<VectorProps> = ({ field, errors, registerName }) => {
   const { control } = useFormContext()

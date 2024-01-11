@@ -1,5 +1,6 @@
 import MethodForm from "./components/Form"
-import { DynamicField, useMethodFields, useQueryCall } from "./actor"
+import { CandidMethod, useMethodFields, useQueryCall } from "./actor"
+import { ExtractedFunction } from "@ic-reactor/react/dist/types"
 
 const Candid: React.FC = () => {
   const methodFields = useMethodFields()
@@ -13,11 +14,9 @@ const Candid: React.FC = () => {
   )
 }
 
-interface FormFieldProps extends DynamicField {}
+interface FormFieldProps extends ExtractedFunction<CandidMethod> {}
 
 const FormFields: React.FC<FormFieldProps> = ({ functionName, ...rest }) => {
-  console.log("functionName", functionName, rest)
-
   const { call, data, loading, error } = useQueryCall({
     functionName,
     disableInitialCall: true,

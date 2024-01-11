@@ -2,10 +2,10 @@ import { useCallback, useState } from "react"
 import Button from "./Button"
 import Route from "./Route"
 import { FormProvider, useForm } from "react-hook-form"
-import { ActorMethodField } from "@ic-reactor/store"
+import { ExtractedFunction } from "@ic-reactor/store"
 import { CandidMethod } from "../actor"
 
-interface FormProps extends ActorMethodField<CandidMethod> {
+interface FormProps extends ExtractedFunction<CandidMethod> {
   callHandler: (args: [any]) => Promise<any>
 }
 
@@ -18,6 +18,7 @@ const MethodForm: React.FC<FormProps> = ({
   const [argState, setArgState] = useState<any>(null)
   const [argErrorState, setArgErrorState] = useState<any>(null)
 
+  console.log(defaultValues)
   const methods = useForm({
     shouldUnregister: true,
     mode: "onChange",

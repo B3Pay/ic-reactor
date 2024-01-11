@@ -1,61 +1,46 @@
 import React, { useMemo } from "react"
+import { useFormContext, Controller, useWatch } from "react-hook-form"
 import Route, { RouteProps } from "./Route"
-import { Controller, useFormContext, useWatch } from "react-hook-form"
+import { IDL } from "@dfinity/candid"
 
-interface VariantProps extends RouteProps {}
+interface VariantProps extends RouteProps<IDL.VariantClass> {}
 
-let recursive = 0
+let generatedId = 0
 
 const Variant: React.FC<VariantProps> = ({ field, registerName, errors }) => {
-  const { control, unregister, setValue } = useFormContext()
+  const { control } = useFormContext()
 
-  const selectName = useMemo(() => `select.select${recursive++}`, [])
+  const selectRegisterName = useMemo(() => {
+    return `select-${generatedId++}`
+  }, [])
 
-  const selected = useWatch({ name: selectName })
+  const selected = useWatch({
+    control,
+    name: selectRegisterName,
+  })
 
-  const { selectedName, selectedField } = useMemo(() => {
-    if (!selected) {
-      return {}
-    }
-
-    unregister(registerName)
-    const selectedName = `${registerName}.${selected}`
-
-    setValue(selectedName, field.defaultValues?.[selected])
-
-    const selectedField = field.fields.find((f) => f.label === selected)
-
-    return { selectedName, selectedField }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, setValue])
-
-  const errorMessage = errors?.message?.toString()
+  console.log(errors)
 
   return (
     <div className="w-full flex-col">
-      <label className="block mr-2" htmlFor={selectName}>
+      <label htmlFor={selectRegisterName} className="block mr-2">
         {field.label}
         <span className="text-red-500">*</span>
-        {errorMessage && (
-          <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
-        )}
       </label>
       <Controller
-        name={selectName}
+        name={selectRegisterName}
         control={control}
-        rules={{
-          required: "Please select one",
-          validate: (value) =>
-            value === "select" ? "Please select one" : true,
-        }}
-        render={({ field: methodField }) => (
+        rules={{ required: "Please select one" }}
+        render={({ field: selectField }) => (
           <select
-            id={selectName}
-            {...methodField}
             className="w-full h-8 pl-2 pr-8 border rounded border-gray-300"
+            id={selectRegisterName}
+            {...selectField}
           >
-            <option value="select">Select one</option>
-            {field.options?.map((label, index) => (
+            <option value="" disabled>
+              Select one
+            </option>
+            {field.options.map((label, index) => (
               <option key={index} value={label}>
                 {label}
               </option>
@@ -63,12 +48,16 @@ const Variant: React.FC<VariantProps> = ({ field, registerName, errors }) => {
           </select>
         )}
       />
-      {selectedField && (
-        <Route
-          registerName={selectedName}
-          errors={errors?.[selected as never]}
-          field={selectedField}
-        />
+      {field.fields.map(
+        (field, index) =>
+          selected === field.label && (
+            <Route
+              key={index}
+              field={field}
+              registerName={`${registerName}.${field.label}`}
+              errors={errors?.[field.label as never]}
+            />
+          )
       )}
     </div>
   )

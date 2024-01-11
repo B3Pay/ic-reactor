@@ -1,8 +1,9 @@
 import { useFieldArray, useFormContext } from "react-hook-form"
 import Route, { RouteProps } from "./Route"
 import { cn } from "../utils"
+import { IDL } from "@dfinity/candid"
 
-interface OptionalProps extends RouteProps {}
+interface OptionalProps extends RouteProps<IDL.OptClass<any>> {}
 
 const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
   const { control } = useFormContext()

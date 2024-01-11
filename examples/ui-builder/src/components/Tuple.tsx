@@ -1,6 +1,7 @@
+import { IDL } from "@dfinity/candid"
 import Route, { RouteProps } from "./Route"
 
-interface TupleProps extends RouteProps {}
+interface TupleProps extends RouteProps<IDL.TupleClass<any>> {}
 
 const Tuple: React.FC<TupleProps> = ({ field, registerName, errors }) => {
   return (

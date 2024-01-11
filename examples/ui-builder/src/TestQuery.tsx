@@ -1,9 +1,10 @@
 import { FormProvider, useForm } from "react-hook-form"
-import { DynamicField, useQueryCall } from "./actor"
+import { CandidMethod, useQueryCall } from "./actor"
 import Route from "./components/Route"
+import { ExtractedFunction } from "@ic-reactor/react/dist/types"
 
 interface TestQueryProps {
-  functionName: DynamicField["functionName"]
+  functionName: ExtractedFunction<CandidMethod>["functionName"]
 }
 
 const TestQuery: React.FC<TestQueryProps> = ({ functionName }) => {
