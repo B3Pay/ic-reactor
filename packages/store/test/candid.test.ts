@@ -32,12 +32,5 @@ describe("My IC Store and Actions", () => {
       expect(field.label).toBeDefined()
       expect(field.defaultValues.data).toBeDefined()
     })
-
-    const testCall = callMethod("version")
-    const testField: ExtractedInputField<IDL.BoolClass> = methodFields.fields[0]
-    testField.defaultValues
-    let testType: ExtractedRecord<IDL.BoolClass> = methodFields.fields
-
-    const [key, value] = Object.entries(testType.defaultValues)[0]
   })
 })
