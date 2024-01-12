@@ -73,8 +73,8 @@ export const idlFactory = ({ IDL }) => {
   })
 
   return IDL.Service({
-    principal: IDL.Func([IDL.Principal], [IDL.Text], ["query"]),
-    // opt_principal: IDL.Func([IDL.Opt(IDL.Principal)], [IDL.Text], ["query"]),
+    // principal: IDL.Func([IDL.Principal], [IDL.Text], ["query"]),
+    opt_principal: IDL.Func([IDL.Opt(IDL.Principal)], [IDL.Text], ["query"]),
     // vec_principal: IDL.Func([IDL.Vec(IDL.Principal)], [IDL.Text], ["query"]),
     // number: IDL.Func([IDL.Nat8], [IDL.Text], ["query"]),
     // number_and_text: IDL.Func([IDL.Nat8, IDL.Text], [IDL.Text], ["query"]),

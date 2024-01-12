@@ -3,6 +3,8 @@ import { Principal as PrincipalId } from "@dfinity/principal"
 import { useFormContext } from "react-hook-form"
 import { RouteProps } from "../Route"
 import { Controller } from "react-hook-form"
+import { useCallback } from "react"
+import LabelEditor from "../../FormBuilder/LabelEditor"
 
 export interface PrincipalProps extends RouteProps<"principal"> {}
 
@@ -13,63 +15,73 @@ const Principal: React.FC<PrincipalProps> = ({
 }) => {
   const { setValue, resetField, setError } = useFormContext()
 
-  const blurHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value === "") {
-      setValue(registerName as never, "" as never)
-      return
-    }
-    const inputValue = e.target.value
-    resetField(registerName as never, { defaultValue: inputValue as never })
-    const isValid = validate(inputValue)
+  const validate = useCallback(
+    (x: any) => {
+      if (x._isPrincipal === true) {
+        return true
+      }
+      try {
+        if (x.length < 7) {
+          throw new Error("Principal is too short")
+        }
+        const principal = PrincipalId.fromText(x)
 
-    if (isValid === true) {
-      const principal = PrincipalId.fromText(inputValue)
+        let validate = extractedField.validate(principal)
 
-      setValue(registerName as never, principal as never)
-    } else {
-      setError(registerName as never, {
-        type: "manual",
-        message: isValid,
+        if (typeof validate === "string") {
+          throw new Error(validate)
+        }
+        return true
+      } catch (error) {
+        return (error as any).message
+      }
+    },
+    [extractedField]
+  )
+
+  const blurHandler = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.value === "") {
+        setValue(`data.${registerName}` as never, "" as never)
+        return
+      }
+      const inputValue = e.target.value
+      resetField(`data.${registerName}` as never, {
+        defaultValue: inputValue as never,
       })
-    }
-  }
+      const isValid = validate(inputValue)
 
-  function validate(x: any) {
-    if (x._isPrincipal === true) {
-      return true
-    }
-    try {
-      if (x.length < 7) {
-        throw new Error("Principal is too short")
+      if (isValid === true) {
+        const principal = PrincipalId.fromText(inputValue)
+
+        setValue(`data.${registerName}` as never, principal as never)
+      } else {
+        setError(`data.${registerName}` as never, {
+          type: "manual",
+          message: isValid,
+        })
       }
-      const principal = PrincipalId.fromText(x)
-
-      let validate = extractedField.validate(principal)
-
-      if (typeof validate === "string") {
-        throw new Error(validate)
-      }
-      return true
-    } catch (error) {
-      return (error as any).message
-    }
-  }
+    },
+    [registerName, resetField, setError, setValue, validate]
+  )
 
   const errorMessage = errors?.message?.toString()
 
   return (
     <div className="w-full p-1">
-      <label className="block" htmlFor={registerName}>
+      <LabelEditor registerName={registerName} label={extractedField.label} />
+      {/* <label className="block" htmlFor={registerName}>
         {extractedField.label}
         <span className="text-red-500">*</span>
         {errorMessage && (
           <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
         )}
-      </label>
+      </label> */}
       <div className="relative">
         <Controller
           shouldUnregister
-          name={registerName}
+          name={`data.${registerName}`}
+          defaultValue={extractedField.defaultValue}
           rules={{ ...extractedField, validate }}
           render={({ field }) => (
             <input
@@ -87,7 +99,7 @@ const Principal: React.FC<PrincipalProps> = ({
         />
         <div
           className="absolute inset-y-0 right-0 flex items-center justify-center w-8 text-red-500 pb-1 px-1 cursor-pointer"
-          onClick={() => setValue(registerName as never, "" as never)}
+          onClick={() => setValue(`data.${registerName}` as never, "" as never)}
         >
           <span className="text-2xl leading-5 font-bold">×</span>
         </div>

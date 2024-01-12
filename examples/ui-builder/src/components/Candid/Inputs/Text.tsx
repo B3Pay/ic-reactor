@@ -1,6 +1,7 @@
 import { cn } from "../../../utils"
 import { Controller, useFormContext } from "react-hook-form"
 import { RouteProps } from "../Route"
+import LabelEditor from "../../FormBuilder/LabelEditor"
 
 export interface TextProps extends RouteProps {}
 
@@ -20,17 +21,18 @@ const Text: React.FC<TextProps> = ({
 
   return (
     <div className="w-full p-1">
-      <label htmlFor={registerName} className="block">
+      <LabelEditor registerName={registerName} label={extractedField.label} />
+      {/* <label htmlFor={registerName} className="block">
         {extractedField.label}
         {extractedField.required && <span className="text-red-500">*</span>}
         {errorMessage && (
           <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
         )}
-      </label>
+      </label> */}
       <div className="relative">
         <Controller
           shouldUnregister
-          name={registerName}
+          name={`data.${registerName}`}
           defaultValue={extractedField.defaultValue}
           rules={extractedField}
           render={({ field }) => (

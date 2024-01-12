@@ -1,6 +1,7 @@
 import { cn } from "../../../utils"
 import { useFormContext } from "react-hook-form"
 import { RouteProps } from "../Route"
+import LabelEditor from "../../FormBuilder/LabelEditor"
 
 export interface NumberProps extends RouteProps<"number"> {}
 
@@ -20,17 +21,18 @@ const Number: React.FC<NumberProps> = ({
 
   return (
     <div className="w-full p-1">
-      <label htmlFor={registerName} className="block">
+      <LabelEditor registerName={registerName} label={extractedField.label} />
+      {/* <label htmlFor={registerName} className="block">
         {extractedField.label}
         {extractedField.required && <span className="text-red-500">*</span>}
         {errorMessage && (
           <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
         )}
-      </label>
+      </label> */}
       <div className="relative">
         <input
           id={registerName}
-          {...register(registerName, {
+          {...register(`data.${registerName}`, {
             ...extractedField,
             shouldUnregister: true,
           })}

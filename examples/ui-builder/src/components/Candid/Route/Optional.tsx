@@ -1,6 +1,7 @@
 import { useFieldArray } from "react-hook-form"
 import Route, { RouteProps } from "."
 import { cn } from "../../../utils"
+import LabelEditor from "../../FormBuilder/LabelEditor"
 
 export interface OptionalProps extends RouteProps<"optional"> {}
 
@@ -10,15 +11,19 @@ const Optional: React.FC<OptionalProps> = ({
   errors,
 }) => {
   const { fields, append, remove } = useFieldArray({
-    name: registerName as never,
+    name: `data.${registerName}` as never,
   })
 
   return (
     <div className="flex flex-col">
       <div className="flex h-10 justify-between items-center">
-        <label className="flex-1  w-full block text-lg font-medium">
+        <LabelEditor
+          registerName={`optional.${registerName}`}
+          label={extractedField.label}
+        />
+        {/* <label className="flex-1  w-full block text-lg font-medium">
           {extractedField.label}
-        </label>
+        </label> */}
         <div className="flex-auto w-18 mt-1">
           <input
             id={registerName}

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Button from "../Button"
 import Route from "./Route"
 import { FormProvider, useForm } from "react-hook-form"
@@ -23,12 +23,34 @@ const MethodForm: React.FC<FormProps> = ({
     defaultValues,
   })
 
+  const loadFromLocalStorage = useCallback(() => {
+    const serializedState = localStorage.getItem(functionName)
+    if (serializedState) {
+      console.log("serializedState", serializedState)
+      methods.setValue("input" as never, JSON.parse(serializedState) as never)
+    } else {
+      console.log("no serializedState")
+    }
+  }, [functionName, methods])
+
+  const saveToLocalStorage = useCallback(
+    (e?: any) => {
+      e?.preventDefault()
+      const fields = methods.getValues("input" as never)
+      const serializedState = JSON.stringify(fields)
+      console.log("serializedState", serializedState)
+      localStorage.setItem(functionName, serializedState)
+    },
+    [functionName, methods]
+  )
+
   const onVerifyArgs = useCallback(
     (data: any) => {
       console.log(data)
       setArgState(null)
       setArgErrorState(null)
       const args = data.data ? Object.values(data.data) : []
+      saveToLocalStorage()
       console.log("args", args)
 
       let errorMessages = ""
@@ -48,7 +70,7 @@ const MethodForm: React.FC<FormProps> = ({
         setArgErrorState(errorMessages)
       }
     },
-    [fields]
+    [fields, saveToLocalStorage]
   )
 
   const onSubmitCall = useCallback(
@@ -68,6 +90,11 @@ const MethodForm: React.FC<FormProps> = ({
     },
     [callHandler]
   )
+
+  useEffect(() => {
+    loadFromLocalStorage()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const resetHandler = useCallback(() => {
     methods.reset(defaultValues)
@@ -96,7 +123,7 @@ const MethodForm: React.FC<FormProps> = ({
             <div key={index} className="mb-2">
               <Route
                 extractedField={field}
-                registerName={`data.${functionName}-arg${index}`}
+                registerName={`${functionName}-arg${index}`}
                 errors={
                   methods.formState.errors?.data?.[
                     `${functionName}-arg${index}`
@@ -126,15 +153,21 @@ const MethodForm: React.FC<FormProps> = ({
             </span>
           </fieldset>
         )}
-        <div className="flex items-center">
+        <div className="mt-2 flex items-center space-x-2">
+          <Button
+            onClick={saveToLocalStorage}
+            className="py-2 px-4 text-lg bg-blue-500 hover:bg-blue-700 text-white font-bold rounded"
+          >
+            Save
+          </Button>
           <Button
             type="submit"
-            className="mt-2 py-2 px-4 text-lg bg-blue-500 hover:bg-blue-700 text-white font-bold rounded"
+            className="py-2 px-4 text-lg bg-blue-500 hover:bg-blue-700 text-white font-bold rounded"
           >
             Verify Args
           </Button>
           <Button
-            className="mt-2 ml-2 py-2 px-4 text-lg bg-green-500 hover:bg-green-700 text-white font-bold rounded"
+            className="py-2 px-4 text-lg bg-green-500 hover:bg-green-700 text-white font-bold rounded"
             onClick={methods.handleSubmit(onSubmitCall)}
           >
             Call
