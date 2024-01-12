@@ -1,4 +1,4 @@
-import MethodForm from "./components/Form"
+import MethodForm from "./components/MethodForm"
 import { useMethodNames, useMethodCall, CandidType } from "./actor"
 import { ServiceMethodType } from "@ic-reactor/react/dist/types"
 

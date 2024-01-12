@@ -1,11 +1,14 @@
 import { useFieldArray, useFormContext } from "react-hook-form"
 import Route, { RouteProps } from "./Route"
 import { cn } from "../utils"
-import { IDL } from "@dfinity/candid"
 
-interface OptionalProps extends RouteProps<IDL.OptClass<any>> {}
+export interface OptionalProps extends RouteProps<"optional"> {}
 
-const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
+const Optional: React.FC<OptionalProps> = ({
+  extractedField,
+  registerName,
+  errors,
+}) => {
   const { control } = useFormContext()
 
   const { fields, append, remove } = useFieldArray({
@@ -17,7 +20,7 @@ const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
     <div className="flex flex-col">
       <div className="flex h-10 justify-between items-center">
         <label className="flex-1  w-full block text-lg font-medium">
-          {field.label}
+          {extractedField.label}
         </label>
         <div className="flex-auto w-18 mt-1">
           <input
@@ -42,15 +45,18 @@ const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
           </label>
         </div>
       </div>
-      {fields.length > 0 && (
-        <div className="flex justify-between items-start p-1 mb-1 w-full border-dashed border border-gray-400 rounded">
+      {fields.map(({ id }) => (
+        <div
+          key={id}
+          className="flex justify-between items-start p-1 mb-1 w-full border-dashed border border-gray-400 rounded"
+        >
           <Route
-            field={field.fields?.[0]}
-            registerName={`${registerName}.[0]`}
+            extractedField={extractedField.fields?.[0]}
             errors={errors?.[0 as never]}
+            registerName={`${registerName}.[0]`}
           />
         </div>
-      )}
+      ))}
     </div>
   )
 }

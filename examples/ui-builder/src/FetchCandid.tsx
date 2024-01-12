@@ -1,5 +1,5 @@
 import { ActorProvider, AgentProvider, useActor } from "@ic-reactor/react"
-import MethodForm from "./components/Form"
+import MethodForm from "./components/MethodForm"
 import { ExtractedFunction } from "@ic-reactor/store"
 import { useForm } from "react-hook-form"
 import { useState } from "react"

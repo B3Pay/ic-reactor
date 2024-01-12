@@ -1,27 +1,26 @@
 import { useState, useEffect } from "react"
 import Route, { RouteProps } from "./Route"
-import { DynamicFieldType, IDL } from "@ic-reactor/react/dist/types"
+import { DynamicFieldType } from "@ic-reactor/react/dist/types"
 
-interface RecursiveProps extends RouteProps<IDL.RecClass> {}
+export interface RecursiveProps extends RouteProps<"recursive"> {}
 
 const Recursive: React.FC<RecursiveProps> = ({
-  field,
+  extractedField,
   errors,
   registerName,
 }) => {
-  const [extractedField, setExtractedFields] =
-    useState<DynamicFieldType<IDL.Type>>()
+  const [recursiveField, setRecursiveFields] = useState<DynamicFieldType>()
 
   useEffect(() => {
-    const fields = field.extract?.()
-    setExtractedFields(fields)
-  }, [field])
+    const fields = extractedField.extract()
+    setRecursiveFields(fields)
+  }, [extractedField])
 
-  return extractedField ? (
+  return recursiveField ? (
     <Route
-      field={extractedField}
+      extractedField={recursiveField}
       registerName={registerName}
-      errors={errors?.[field.label as never]}
+      errors={errors}
     />
   ) : (
     <div>Loading...</div>
