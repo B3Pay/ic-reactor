@@ -1,5 +1,5 @@
 import { ActorProvider, AgentProvider, useActor } from "@ic-reactor/react"
-import MethodForm from "./components/MethodForm"
+import MethodForm from "./components/Candid"
 import { ExtractedFunction } from "@ic-reactor/store"
 import { useForm } from "react-hook-form"
 import { useState } from "react"
@@ -75,7 +75,6 @@ const FormFields: React.FC<ExtractedFunction<CandidType>> = ({
 
   const { call, data, loading, error } = useQueryCall({
     functionName,
-    disableInitialCall: true,
   })
 
   return (

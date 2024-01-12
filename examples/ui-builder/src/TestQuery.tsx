@@ -1,6 +1,6 @@
 import { FormProvider, useForm } from "react-hook-form"
 import { CandidType, useQueryCall } from "./actor"
-import Route from "./components/Route"
+import Route from "./components/Candid/Route"
 import { ExtractedFunction } from "@ic-reactor/react/dist/types"
 
 interface TestQueryProps {

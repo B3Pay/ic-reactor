@@ -73,7 +73,7 @@ export const idlFactory = ({ IDL }) => {
   })
 
   return IDL.Service({
-    // principal: IDL.Func([IDL.Principal], [IDL.Text], ["query"]),
+    principal: IDL.Func([IDL.Principal], [IDL.Text], ["query"]),
     // opt_principal: IDL.Func([IDL.Opt(IDL.Principal)], [IDL.Text], ["query"]),
     // vec_principal: IDL.Func([IDL.Vec(IDL.Principal)], [IDL.Text], ["query"]),
     // number: IDL.Func([IDL.Nat8], [IDL.Text], ["query"]),
@@ -96,11 +96,12 @@ export const idlFactory = ({ IDL }) => {
       [
         IDL.Record({
           firstField: IDL.Nat8,
-          secondField: IDL.Text,
+          // secondField: IDL.Text,
           thirdField: IDL.Vec(IDL.Int16),
           fourthField: IDL.Variant({
             Text: IDL.Text,
             Int: IDL.Int,
+            Bool: IDL.Bool,
           }),
         }),
       ],
@@ -175,7 +176,7 @@ export const idlFactory = ({ IDL }) => {
     // receive: IDL.Func([ReleaseView], [IDL.Text], []),
     // app: IDL.Func([AppArgs], [AppView], []),
     simple_recursive: IDL.Func([SimpleRec], [IDL.Text], []),
-    complex_recursive: IDL.Func([RecursiveRecord], [AppView], []),
+    // complex_recursive: IDL.Func([RecursiveRecord], [AppView], []),
     // recursive_value: IDL.Func([Value], [], []),
   })
 }

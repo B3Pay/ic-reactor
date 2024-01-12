@@ -97,6 +97,8 @@ export interface ExtractedField extends ExtraInputFormFields {
   type: ExtractedFieldType
   label: string
   validate: (value: any) => boolean | string
+  defaultValue?: any
+  defaultValues?: any
 }
 
 export type ServiceMethodType = "query" | "update"
@@ -121,40 +123,39 @@ export interface ExtractedFunction<A> {
 
 export interface ExtractedRecord<T extends IDL.Type> extends ExtractedField {
   type: "record"
-  fields: DynamicFieldTypeByClass<T>[]
+  fields: AllExtractableType<T>[]
   defaultValues: Record<string, ExtractTypeFromIDLType<T>>
 }
 
 export interface ExtractedVariant<T extends IDL.Type> extends ExtractedField {
   type: "variant"
   options: string[]
-  fields: DynamicFieldTypeByClass<T>[]
+  fields: AllExtractableType<T>[]
   defaultValue: string
   defaultValues: ExtractTypeFromIDLType<T>
 }
 
 export interface ExtractedTuple<T extends IDL.Type> extends ExtractedField {
   type: "tuple"
-  fields: DynamicFieldTypeByClass<T>[]
+  fields: AllExtractableType<T>[]
   defaultValues: ExtractTypeFromIDLType<T>[]
 }
 
 export interface ExtractedOptional extends ExtractedField {
   type: "optional"
-  fields: [DynamicFieldTypeByClass<IDL.Type>]
-  defaultValues: []
+  fields: [AllExtractableType<IDL.Type>]
+  defaultValue: []
 }
 
 export interface ExtractedVector extends ExtractedField {
   type: "vector"
-  fields: DynamicFieldTypeByClass<IDL.Type>[]
-  defaultValues: []
+  fields: AllExtractableType<IDL.Type>[]
+  defaultValue: []
 }
 
 export interface ExtractedRecursive extends ExtractedField {
   type: "recursive"
-  extract: () => DynamicFieldTypeByClass<IDL.Type>
-  defaultValues: undefined
+  extract: () => AllExtractableType<IDL.Type>
 }
 
 export interface ExtractedInputField<T extends IDL.Type>
@@ -162,7 +163,7 @@ export interface ExtractedInputField<T extends IDL.Type>
   type: ExtractedFieldType
   label: string
   validate: (value: any) => boolean | string
-  defaultValues: ExtractTypeFromIDLType<T>
+  defaultValue: ExtractTypeFromIDLType<T>
 }
 
 export interface ExtractedPrincipalField extends ExtractedField {
@@ -171,7 +172,7 @@ export interface ExtractedPrincipalField extends ExtractedField {
   maxLength: number
   minLength: number
   validate: (value: any) => boolean | string
-  defaultValues: undefined
+  defaultValue: string
 }
 
 export interface ExtractedNumberField extends ExtractedField {
@@ -181,5 +182,5 @@ export interface ExtractedNumberField extends ExtractedField {
   max?: number | string
   valueAsNumber?: boolean
   validate: (value: any) => boolean | string
-  defaultValues: undefined
+  defaultValue: undefined
 }

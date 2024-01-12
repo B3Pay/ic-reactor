@@ -1,7 +1,7 @@
 import React from "react"
 import { useFieldArray } from "react-hook-form"
-import Button from "./Button"
-import Route, { RouteProps } from "./Route"
+import Button from "../../Button"
+import Route, { RouteProps } from "."
 
 export interface VectorProps extends RouteProps<"vector"> {}
 
@@ -12,6 +12,7 @@ const Vector: React.FC<VectorProps> = ({
 }) => {
   const { fields, append, swap, remove } = useFieldArray({
     name: registerName as never,
+    shouldUnregister: true,
   })
 
   return (

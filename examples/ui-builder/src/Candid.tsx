@@ -1,4 +1,4 @@
-import MethodForm from "./components/MethodForm"
+import MethodForm from "./components/Candid"
 import { useMethodNames, useMethodCall, CandidType } from "./actor"
 import { ServiceMethodType } from "@ic-reactor/react/dist/types"
 
@@ -27,7 +27,6 @@ const FormFields: React.FC<FormFieldProps> = ({ functionName, type }) => {
   const { call, data, loading, error, field } = useMethodCall({
     type,
     functionName,
-    disableInitialCall: true,
   })
 
   return (

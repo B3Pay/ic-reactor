@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react"
-import Button from "./Button"
+import Button from "../Button"
 import Route from "./Route"
 import { FormProvider, useForm } from "react-hook-form"
 import { ExtractedFunction } from "@ic-reactor/store"
-import { CandidType } from "../actor"
+import { CandidType } from "../../actor"
 
 interface FormProps extends ExtractedFunction<CandidType> {
   callHandler: (args: [any]) => Promise<any>
@@ -19,7 +19,6 @@ const MethodForm: React.FC<FormProps> = ({
   const [argErrorState, setArgErrorState] = useState<any>(null)
 
   const methods = useForm({
-    shouldUnregister: true,
     mode: "onChange",
     defaultValues,
   })
@@ -84,9 +83,7 @@ const MethodForm: React.FC<FormProps> = ({
             onClick={() => {
               setArgState(null)
               setArgErrorState(null)
-              methods.reset(undefined, {
-                keepDefaultValues: true,
-              })
+              methods.reset()
             }}
           >
             Reset

@@ -1,4 +1,4 @@
-import Route, { RouteProps } from "./Route"
+import Route, { RouteProps } from "."
 
 export interface TupleProps extends RouteProps<"tuple"> {}
 

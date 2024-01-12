@@ -23,7 +23,7 @@ export type ActorHookState<A, M extends keyof A> = {
 
 export interface ActorUseQueryArgs<A, M extends keyof A>
   extends ActorCallArgs<A, M> {
-  disableInitialCall?: boolean
+  callOnMount?: boolean
   autoRefresh?: boolean
   refreshInterval?: number
 }

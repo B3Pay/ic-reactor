@@ -1,7 +1,8 @@
-import { cn } from "../utils"
+import { cn } from "../../../utils"
 import { Principal as PrincipalId } from "@dfinity/principal"
 import { useFormContext } from "react-hook-form"
-import { RouteProps } from "./Route"
+import { RouteProps } from "../Route"
+import { Controller } from "react-hook-form"
 
 export interface PrincipalProps extends RouteProps<"principal"> {}
 
@@ -10,7 +11,7 @@ const Principal: React.FC<PrincipalProps> = ({
   errors,
   extractedField,
 }) => {
-  const { setValue, register, resetField, setError } = useFormContext()
+  const { setValue, resetField, setError } = useFormContext()
 
   const blurHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.value === "") {
@@ -66,16 +67,23 @@ const Principal: React.FC<PrincipalProps> = ({
         )}
       </label>
       <div className="relative">
-        <input
-          id={registerName}
-          {...register(registerName as never, { ...extractedField, validate })}
-          className={cn(
-            "w-full h-8 pl-2 pr-8 border rounded",
-            !!errors ? "border-red-500" : "border-gray-300"
+        <Controller
+          shouldUnregister
+          name={registerName}
+          rules={{ ...extractedField, validate }}
+          render={({ field }) => (
+            <input
+              id={registerName}
+              {...field}
+              className={cn(
+                "w-full h-8 pl-2 pr-8 border rounded",
+                !!errors ? "border-red-500" : "border-gray-300"
+              )}
+              type="text"
+              placeholder={extractedField.type}
+              onBlur={blurHandler}
+            />
           )}
-          type="text"
-          placeholder={extractedField.type}
-          onBlur={blurHandler}
         />
         <div
           className="absolute inset-y-0 right-0 flex items-center justify-center w-8 text-red-500 pb-1 px-1 cursor-pointer"

@@ -116,9 +116,9 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
   }
 
   const useQueryCall = <M extends keyof A>({
-    autoRefresh,
+    autoRefresh = false,
+    callOnMount = false,
     refreshInterval = 5000,
-    disableInitialCall,
     ...rest
   }: ActorUseQueryArgs<A, M>) => {
     const { call, ...state } = useReActorCall(rest)
@@ -134,14 +134,14 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
       }
 
       // Initial call logic
-      if (!disableInitialCall) {
+      if (callOnMount) {
         call()
       }
 
       return () => {
         clearInterval(intervalId.current)
       }
-    }, [disableInitialCall, autoRefresh, refreshInterval])
+    }, [callOnMount, autoRefresh, refreshInterval])
 
     return { call, ...state }
   }

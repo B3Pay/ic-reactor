@@ -3,14 +3,14 @@
 
 // import FormEditor from "./FormBuilder"
 import Candid from "./Candid"
-// import FormBuilder, { colors } from "./components/FormBuilder"
+import SimpleFormBuilder, { colors } from "./components/SimpleFormBuilder"
 
 interface AppProps {}
 
 const App: React.FC<AppProps> = () => {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      {/* <FormBuilder
+      {/* <SimpleFormBuilder
         items={[
           {
             value: "First Red item ",
@@ -32,7 +32,6 @@ const App: React.FC<AppProps> = () => {
           },
         ]}
       /> */}
-      {/* <FormEditor /> */}
       <Candid />
     </div>
   )

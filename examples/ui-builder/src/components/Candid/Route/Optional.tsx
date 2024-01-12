@@ -1,6 +1,6 @@
-import { useFieldArray, useFormContext } from "react-hook-form"
-import Route, { RouteProps } from "./Route"
-import { cn } from "../utils"
+import { useFieldArray } from "react-hook-form"
+import Route, { RouteProps } from "."
+import { cn } from "../../../utils"
 
 export interface OptionalProps extends RouteProps<"optional"> {}
 
@@ -9,10 +9,7 @@ const Optional: React.FC<OptionalProps> = ({
   registerName,
   errors,
 }) => {
-  const { control } = useFormContext()
-
   const { fields, append, remove } = useFieldArray({
-    control,
     name: registerName as never,
   })
 
