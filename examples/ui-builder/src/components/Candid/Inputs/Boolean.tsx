@@ -13,7 +13,7 @@ const Boolean: React.FC<BooleanProps> = ({ extractedField, registerName }) => {
       <Controller
         shouldUnregister
         name={registerName as never}
-        defaultValue={null as never}
+        defaultValue={false as never}
         render={({ field }) => (
           <input
             {...field}

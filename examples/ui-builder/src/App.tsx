@@ -3,7 +3,7 @@
 
 // import FormEditor from "./FormBuilder"
 import Candid from "./Candid"
-import SimpleFormBuilder, { colors } from "./components/SimpleFormBuilder"
+// import SimpleFormBuilder, { colors } from "./components/SimpleFormBuilder"
 
 interface AppProps {}
 

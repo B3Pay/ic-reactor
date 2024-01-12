@@ -1,5 +1,5 @@
 import { cn } from "../../../utils"
-import { Controller, useFormContext } from "react-hook-form"
+import { useFormContext } from "react-hook-form"
 import { RouteProps } from "../Route"
 
 export interface NumberProps extends RouteProps<"number"> {}
@@ -9,7 +9,12 @@ const Number: React.FC<NumberProps> = ({
   errors,
   extractedField,
 }) => {
-  const { resetField, trigger } = useFormContext()
+  const { register, resetField, trigger } = useFormContext()
+
+  const resetHandler = () => {
+    resetField(registerName as never)
+    trigger(registerName as never, { shouldFocus: true })
+  }
 
   const errorMessage = errors?.message?.toString()
 
@@ -23,28 +28,22 @@ const Number: React.FC<NumberProps> = ({
         )}
       </label>
       <div className="relative">
-        <Controller
-          name={registerName}
-          rules={{ ...extractedField, shouldUnregister: true }}
-          render={({ field }) => (
-            <input
-              id={registerName}
-              {...field}
-              className={cn(
-                "w-full h-8 pl-2 pr-8 border rounded",
-                !!errors ? "border-red-500" : "border-gray-300"
-              )}
-              type="number"
-              placeholder="number"
-            />
+        <input
+          id={registerName}
+          {...register(registerName, {
+            ...extractedField,
+            shouldUnregister: true,
+          })}
+          className={cn(
+            "w-full h-8 pl-2 pr-8 border rounded",
+            !!errors ? "border-red-500" : "border-gray-300"
           )}
+          type="number"
+          placeholder="number"
         />
         <div
           className="absolute inset-y-0 right-0 flex items-center justify-center w-8 text-red-500 pb-1 px-1 cursor-pointer"
-          onClick={() => {
-            resetField(registerName as never)
-            trigger(registerName as never, { shouldFocus: true })
-          }}
+          onClick={resetHandler}
         >
           <span className="text-2xl leading-5 font-bold">×</span>
         </div>

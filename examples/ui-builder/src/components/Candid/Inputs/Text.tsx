@@ -31,6 +31,7 @@ const Text: React.FC<TextProps> = ({
         <Controller
           shouldUnregister
           name={registerName}
+          defaultValue={extractedField.defaultValue}
           rules={extractedField}
           render={({ field }) => (
             <input
