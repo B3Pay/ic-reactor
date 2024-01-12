@@ -69,6 +69,12 @@ const MethodForm: React.FC<FormProps> = ({
     [callHandler]
   )
 
+  const resetHandler = useCallback(() => {
+    methods.reset(defaultValues)
+    setArgState(null)
+    setArgErrorState(null)
+  }, [methods])
+
   return (
     <FormProvider {...methods}>
       <form
@@ -80,11 +86,7 @@ const MethodForm: React.FC<FormProps> = ({
           <button
             className="mb-2 border-red-600 border-2 rounded px-2 py-1 text-red-600 hover:bg-red-600 hover:text-white"
             type="reset"
-            onClick={() => {
-              setArgState(null)
-              setArgErrorState(null)
-              methods.reset()
-            }}
+            onClick={resetHandler}
           >
             Reset
           </button>
