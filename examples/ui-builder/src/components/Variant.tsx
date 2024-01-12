@@ -1,42 +1,42 @@
 import React, { useMemo } from "react"
 import { useFormContext, Controller, useWatch } from "react-hook-form"
 import Route, { RouteProps } from "./Route"
-import { IDL } from "@dfinity/candid"
 
-interface VariantProps extends RouteProps<IDL.VariantClass> {}
+export interface VariantProps extends RouteProps<"variant"> {}
 
 let generatedId = 0
 
-const Variant: React.FC<VariantProps> = ({ field, registerName, errors }) => {
+const Variant: React.FC<VariantProps> = ({
+  extractedField,
+  registerName,
+  errors,
+}) => {
   const { control } = useFormContext()
 
-  const selectRegisterName = useMemo(() => {
-    return `select-${generatedId++}`
-  }, [])
+  const selectRegisterName = useMemo(() => `select-${generatedId++}`, [])
 
-  const selected = useWatch({
+  const selectedOption = useWatch({
     control,
     name: selectRegisterName,
+    defaultValue: extractedField.defaultValue,
   })
 
   return (
     <div className="w-full flex-col">
       <label htmlFor={selectRegisterName} className="block mr-2">
-        {field.label}
-        <span className="text-red-500">*</span>
+        {extractedField.label}
       </label>
       <Controller
+        shouldUnregister
         name={selectRegisterName}
         control={control}
-        rules={{ required: "Please select one" }}
-        render={({ field: selectField }) => (
+        render={({ field }) => (
           <select
             className="w-full h-8 pl-2 pr-8 border rounded border-gray-300"
             id={selectRegisterName}
-            {...selectField}
+            {...field}
           >
-            <option value="">Select one</option>
-            {field.options.map((label, index) => (
+            {extractedField.options.map((label, index) => (
               <option key={index} value={label}>
                 {label}
               </option>
@@ -44,17 +44,20 @@ const Variant: React.FC<VariantProps> = ({ field, registerName, errors }) => {
           </select>
         )}
       />
-      {field.fields.map(
-        (field, index) =>
-          selected === field.label && (
-            <Route
-              key={index}
-              field={field}
-              registerName={`${registerName}.${field.label}`}
-              errors={errors?.[field.label as never]}
-            />
-          )
-      )}
+      <div className="flex">
+        <div className="w-2 h-10 border-l-2 border-b-2 border-gray-300 mt-1 mb-4" />
+        {extractedField.fields.map(
+          (field, index) =>
+            selectedOption === field.label && (
+              <Route
+                key={index}
+                extractedField={field}
+                registerName={`${registerName}.${field.label}`}
+                errors={errors?.[field.label as never]}
+              />
+            )
+        )}
+      </div>
     </div>
   )
 }

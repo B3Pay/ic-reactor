@@ -95,13 +95,13 @@ export const idlFactory = ({ IDL }) => {
     simple_record: IDL.Func(
       [
         IDL.Record({
-          // firstField: IDL.Nat8,
-          // secondField: IDL.Text,
+          firstField: IDL.Nat8,
+          secondField: IDL.Text,
           thirdField: IDL.Vec(IDL.Int16),
-          // fourthField: IDL.Variant({
-          //   Text: IDL.Text,
-          //   Int: IDL.Int,
-          // }),
+          fourthField: IDL.Variant({
+            Text: IDL.Text,
+            Int: IDL.Int,
+          }),
         }),
       ],
       [IDL.Vec(IDL.Text)]
@@ -174,7 +174,7 @@ export const idlFactory = ({ IDL }) => {
     // ),
     // receive: IDL.Func([ReleaseView], [IDL.Text], []),
     // app: IDL.Func([AppArgs], [AppView], []),
-    // simple_recursive: IDL.Func([SimpleRec], [IDL.Text], []),
+    simple_recursive: IDL.Func([SimpleRec], [IDL.Text], []),
     complex_recursive: IDL.Func([RecursiveRecord], [AppView], []),
     // recursive_value: IDL.Func([Value], [], []),
   })

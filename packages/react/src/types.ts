@@ -1,6 +1,7 @@
 import type {
   ExtractActorMethodArgs,
   ExtractActorMethodReturnType,
+  ServiceMethodType,
 } from "@ic-reactor/store"
 export type * from "@ic-reactor/store"
 export type * from "@ic-reactor/store/dist/actor/types"
@@ -29,3 +30,10 @@ export interface ActorUseQueryArgs<A, M extends keyof A>
 
 export interface ActorUseUpdateArgs<A, M extends keyof A>
   extends ActorCallArgs<A, M> {}
+
+export type ActorUseMethodArg<
+  A,
+  T extends ServiceMethodType
+> = T extends "query"
+  ? ActorUseQueryArgs<A, keyof A>
+  : ActorUseUpdateArgs<A, keyof A>

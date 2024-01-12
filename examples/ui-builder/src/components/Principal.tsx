@@ -2,14 +2,13 @@ import { cn } from "../utils"
 import { Principal as PrincipalId } from "@dfinity/principal"
 import { useFormContext } from "react-hook-form"
 import { RouteProps } from "./Route"
-import { IDL } from "@dfinity/candid"
 
-interface PrincipalProps extends RouteProps<IDL.PrincipalClass> {}
+export interface PrincipalProps extends RouteProps<"principal"> {}
 
 const Principal: React.FC<PrincipalProps> = ({
   registerName,
   errors,
-  field,
+  extractedField,
 }) => {
   const { setValue, register, resetField, setError } = useFormContext()
 
@@ -44,7 +43,7 @@ const Principal: React.FC<PrincipalProps> = ({
       }
       const principal = PrincipalId.fromText(x)
 
-      let validate = field.validate(principal)
+      let validate = extractedField.validate(principal)
 
       if (typeof validate === "string") {
         throw new Error(validate)
@@ -60,8 +59,8 @@ const Principal: React.FC<PrincipalProps> = ({
   return (
     <div className="w-full p-1">
       <label className="block" htmlFor={registerName}>
-        {field.label}
-        {field.required && <span className="text-red-500">*</span>}
+        {extractedField.label}
+        {extractedField.required && <span className="text-red-500">*</span>}
         {errorMessage && (
           <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
         )}
@@ -69,13 +68,13 @@ const Principal: React.FC<PrincipalProps> = ({
       <div className="relative">
         <input
           id={registerName}
-          {...register(registerName as never, { ...field, validate })}
+          {...register(registerName as never, { ...extractedField, validate })}
           className={cn(
             "w-full h-8 pl-2 pr-8 border rounded",
             !!errors ? "border-red-500" : "border-gray-300"
           )}
           type="text"
-          placeholder={field.type}
+          placeholder={extractedField.type}
           onBlur={blurHandler}
         />
         <div

@@ -4,15 +4,22 @@ import type {
   ActorManager,
   ExtractedService,
   ExtractedFunction,
+  ServiceMethodType,
+  ServiceMethodTypeAndName,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   ActorCallArgs,
   ActorHookState,
+  ActorUseMethodArg,
   ActorUseQueryArgs,
   ActorUseUpdateArgs,
 } from "../types"
 import { useStore } from "zustand"
+
+export type ActorHooks<A extends ActorSubclass<any>> = ReturnType<
+  typeof getActorHooks<A>
+>
 
 export const getActorHooks = <A extends ActorSubclass<any>>({
   serviceFields,
@@ -26,26 +33,33 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { ...actorState, canisterId }
   }
 
-  const useServiceField = (): ExtractedService<A> => {
+  const useServiceFields = (): ExtractedService<A> => {
     return serviceFields
   }
 
-  const useMethodFields = (): ExtractedFunction<A>[] => {
-    const methodFields = useServiceField()
+  const useMethodNames = (): ServiceMethodTypeAndName<A>[] => {
+    const serviceField = useServiceFields()
 
-    return methodFields.fields
+    return serviceField.methodNames
+  }
+
+  const useMethodFields = (): ExtractedFunction<A>[] => {
+    const methodFields = useServiceFields()
+
+    return useMemo(() => {
+      return Object.values(methodFields.methods)
+    }, [methodFields])
   }
 
   const useMethodField = (
     functionName: keyof A & string
-  ): ExtractedFunction<A> | undefined => {
-    const methodFields = useMethodFields()
+  ): ExtractedFunction<A> => {
+    const serviceMethod = useServiceFields()
 
-    const field = useMemo(() => {
-      return methodFields.find((field) => field.functionName === functionName)
-    }, [methodFields, functionName])
-
-    return field
+    return useMemo(
+      () => serviceMethod.methods[functionName],
+      [functionName, serviceMethod]
+    )
   }
 
   const useReActorCall = <M extends keyof A>({
@@ -136,12 +150,28 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return useReActorCall(args)
   }
 
+  const useMethodCall = <M extends keyof A, T extends ServiceMethodType>({
+    type,
+    ...rest
+  }: ActorUseMethodArg<A, T> & { type: T }) => {
+    switch (type) {
+      case "query":
+        return useQueryCall<M>(rest as unknown as ActorUseQueryArgs<A, M>)
+      case "update":
+        return useUpdateCall<M>(rest as unknown as ActorUseUpdateArgs<A, M>)
+      default:
+        throw new Error(`Invalid type: ${type}`)
+    }
+  }
+
   return {
     useQueryCall,
     useUpdateCall,
+    useMethodCall,
     useActorStore,
     useMethodField,
     useMethodFields,
-    useServiceField,
+    useMethodNames,
+    useServiceFields,
   }
 }

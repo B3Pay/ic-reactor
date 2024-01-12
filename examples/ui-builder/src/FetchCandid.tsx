@@ -3,7 +3,7 @@ import MethodForm from "./components/Form"
 import { ExtractedFunction } from "@ic-reactor/store"
 import { useForm } from "react-hook-form"
 import { useState } from "react"
-import { CandidMethod } from "./actor"
+import { CandidType } from "./actor"
 
 const DynamicCandid: React.FC = () => {
   const [canisterId, setCanisterId] = useState("ss2fx-dyaaa-aaaar-qacoq-cai")
@@ -46,7 +46,7 @@ const DynamicCandid: React.FC = () => {
 export default DynamicCandid
 
 const CandidForm: React.FC = () => {
-  const { useMethodFields, useActorStore } = useActor<CandidMethod>()
+  const { useMethodFields, useActorStore } = useActor<CandidType>()
 
   const methodFields = useMethodFields()
   const { canisterId, initializing } = useActorStore()
@@ -67,7 +67,7 @@ const CandidForm: React.FC = () => {
   )
 }
 
-const FormFields: React.FC<ExtractedFunction<CandidMethod>> = ({
+const FormFields: React.FC<ExtractedFunction<CandidType>> = ({
   functionName,
   ...rest
 }) => {

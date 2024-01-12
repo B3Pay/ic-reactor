@@ -9,7 +9,7 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ name }) => {
   const { control, watch, setValue } = useFormContext()
 
   const field = watch(name)
-
+  console.log(field)
   return (
     <div className="mb-1">
       <div className={field.editing ? "hidden" : ""}>

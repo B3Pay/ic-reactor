@@ -1,10 +1,10 @@
 import { FormProvider, useForm } from "react-hook-form"
-import { CandidMethod, useQueryCall } from "./actor"
+import { CandidType, useQueryCall } from "./actor"
 import Route from "./components/Route"
 import { ExtractedFunction } from "@ic-reactor/react/dist/types"
 
 interface TestQueryProps {
-  functionName: ExtractedFunction<CandidMethod>["functionName"]
+  functionName: ExtractedFunction<CandidType>["functionName"]
 }
 
 const TestQuery: React.FC<TestQueryProps> = ({ functionName }) => {
@@ -37,7 +37,7 @@ const TestQuery: React.FC<TestQueryProps> = ({ functionName }) => {
           return (
             <div key={index} className="mb-2">
               <Route
-                field={field}
+                extractedField={field}
                 registerName={`${functionName}-arg${index}`}
                 errors={
                   methods.formState.errors.data?.[`${functionName}-arg${index}`]

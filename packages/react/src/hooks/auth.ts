@@ -3,6 +3,8 @@ import type { AgentManager } from "@ic-reactor/store"
 import { useEffect, useState } from "react"
 import { useStore } from "zustand"
 
+export type AuthHooks = ReturnType<typeof getAuthHooks>
+
 export const getAuthHooks = (agentManager: AgentManager) => {
   const { authenticate, authStore } = agentManager
 

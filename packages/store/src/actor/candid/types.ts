@@ -1,43 +1,70 @@
 import { IDL } from "@dfinity/candid"
 
-export type ExtractedFieldComponent =
-  | "div"
-  | "form"
-  | "input"
-  | "select"
-  | "option"
-  | "span"
-  | "fieldset"
-
 export type ExtractedFieldType =
-  | "service"
-  | "function"
-  | "optional"
-  | "text"
-  | "number"
-  | "checkbox"
-  | "select"
-  | "textarea"
-  | "recursive"
-  | "reserved"
-  | "vector"
   | "record"
   | "variant"
   | "tuple"
-  | "null"
-  | "empty"
-  | "principal"
+  | "optional"
+  | "vector"
+  | "recursive"
   | "unknown"
+  | "text"
+  | "number"
+  | "principal"
+  | "boolean"
+  | "null"
 
-export type FunctionDefaultValues<M extends string, T = any> = {
-  data: {
-    [K in `${M}-arg${number}`]: ExtractTypeFromIDLType<T>
-  }
-}
+export type DynamicFieldType<T extends ExtractedFieldType = any> =
+  T extends "record"
+    ? ExtractedRecord<IDL.Type>
+    : T extends "variant"
+    ? ExtractedVariant<IDL.Type>
+    : T extends "tuple"
+    ? ExtractedTuple<IDL.Type>
+    : T extends "optional"
+    ? ExtractedOptional
+    : T extends "vector"
+    ? ExtractedVector
+    : T extends "recursive"
+    ? ExtractedRecursive
+    : T extends "unknown"
+    ? ExtractedInputField<IDL.Type>
+    : T extends "text"
+    ? ExtractedInputField<IDL.TextClass>
+    : T extends "number"
+    ? ExtractedNumberField
+    : T extends "principal"
+    ? ExtractedPrincipalField
+    : T extends "boolean"
+    ? ExtractedInputField<IDL.BoolClass>
+    : T extends "null"
+    ? ExtractedInputField<IDL.NullClass>
+    : never
 
-export type ExtractTypeFromIDLType<T = any> = T extends IDL.Type
-  ? ReturnType<T["decodeValue"]>
-  : any
+export type DynamicFieldTypeByClass<T extends IDL.Type> =
+  T extends IDL.RecordClass
+    ? ExtractedRecord<T>
+    : T extends IDL.TupleClass<any>
+    ? ExtractedTuple<T>
+    : T extends IDL.VariantClass
+    ? ExtractedVariant<T>
+    : T extends IDL.VecClass<any>
+    ? ExtractedVector
+    : T extends IDL.OptClass<any>
+    ? ExtractedOptional
+    : T extends IDL.RecClass<any>
+    ? ExtractedRecursive
+    : T extends IDL.PrincipalClass
+    ? ExtractedPrincipalField
+    : T extends
+        | IDL.NatClass
+        | IDL.IntClass
+        | IDL.NatClass
+        | IDL.FixedNatClass
+        | IDL.FixedIntClass
+        | IDL.FloatClass
+    ? ExtractedNumberField
+    : ExtractedInputField<T>
 
 export type AllExtractableType<T extends IDL.Type> =
   | ExtractedRecord<T>
@@ -50,29 +77,15 @@ export type AllExtractableType<T extends IDL.Type> =
   | ExtractedNumberField
   | ExtractedInputField<T>
 
-export type DynamicFieldType<T extends IDL.Type> = T extends IDL.RecordClass
-  ? ExtractedRecord<T>
-  : T extends IDL.TupleClass<any>
-  ? ExtractedTuple<T>
-  : T extends IDL.VariantClass
-  ? ExtractedVariant<T>
-  : T extends IDL.VecClass<any>
-  ? ExtractedVector
-  : T extends IDL.OptClass<any>
-  ? ExtractedOptional
-  : T extends IDL.RecClass<any>
-  ? ExtractedRecursive
-  : T extends IDL.PrincipalClass
-  ? ExtractedPrincipalField
-  : T extends
-      | IDL.NatClass
-      | IDL.IntClass
-      | IDL.NatClass
-      | IDL.FixedNatClass
-      | IDL.FixedIntClass
-      | IDL.FloatClass
-  ? ExtractedNumberField
-  : ExtractedInputField<T>
+export type FunctionDefaultValues<M extends string, T = any> = {
+  data: {
+    [K in `${M}-arg${number}`]: ExtractTypeFromIDLType<T>
+  }
+}
+
+export type ExtractTypeFromIDLType<T = any> = T extends IDL.Type
+  ? ReturnType<T["decodeValue"]>
+  : any
 
 export type ExtraInputFormFields = Partial<{
   required: boolean
@@ -86,53 +99,61 @@ export interface ExtractedField extends ExtraInputFormFields {
   validate: (value: any) => boolean | string
 }
 
-export interface ExtractedService<A> extends ExtractedField {
-  type: "service"
-  fields: ExtractedFunction<A>[]
+export type ServiceMethodType = "query" | "update"
+
+export type ServiceMethodTypeAndName<A> = [ServiceMethodType, keyof A]
+
+export interface ExtractedService<A> {
+  label: string
+  methods: {
+    [K in keyof A]: ExtractedFunction<A>
+  }
+  methodNames: ServiceMethodTypeAndName<A>[]
 }
 
-export interface ExtractedFunction<A> extends ExtractedField {
-  type: "function"
-  label: "query" | "update"
+export interface ExtractedFunction<A> {
+  type: "query" | "update"
   functionName: keyof A & string
   fields: AllExtractableType<IDL.Type<any>>[] | []
   defaultValues: FunctionDefaultValues<keyof A & string>
+  validate: (value: any) => boolean | string
 }
 
 export interface ExtractedRecord<T extends IDL.Type> extends ExtractedField {
   type: "record"
-  fields: DynamicFieldType<T>[]
+  fields: DynamicFieldTypeByClass<T>[]
   defaultValues: Record<string, ExtractTypeFromIDLType<T>>
 }
 
 export interface ExtractedVariant<T extends IDL.Type> extends ExtractedField {
   type: "variant"
   options: string[]
-  fields: DynamicFieldType<T>[]
-  defaultValues: Record<string, ExtractTypeFromIDLType<T>>
+  fields: DynamicFieldTypeByClass<T>[]
+  defaultValue: string
+  defaultValues: ExtractTypeFromIDLType<T>
 }
 
 export interface ExtractedTuple<T extends IDL.Type> extends ExtractedField {
   type: "tuple"
-  fields: DynamicFieldType<T>[]
+  fields: DynamicFieldTypeByClass<T>[]
   defaultValues: ExtractTypeFromIDLType<T>[]
 }
 
 export interface ExtractedOptional extends ExtractedField {
   type: "optional"
-  fields: [DynamicFieldType<IDL.Type>]
+  fields: [DynamicFieldTypeByClass<IDL.Type>]
   defaultValues: []
 }
 
 export interface ExtractedVector extends ExtractedField {
   type: "vector"
-  fields: DynamicFieldType<IDL.Type>[]
+  fields: DynamicFieldTypeByClass<IDL.Type>[]
   defaultValues: []
 }
 
 export interface ExtractedRecursive extends ExtractedField {
   type: "recursive"
-  extract: () => DynamicFieldType<IDL.Type>
+  extract: () => DynamicFieldTypeByClass<IDL.Type>
   defaultValues: undefined
 }
 

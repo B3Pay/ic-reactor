@@ -68,7 +68,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ items }) => {
   }
 
   const touched = methods.formState.touchedFields
-  console.log("touched", touched)
+
   return (
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit(onSubmit)} className="border p-2 rounded">
