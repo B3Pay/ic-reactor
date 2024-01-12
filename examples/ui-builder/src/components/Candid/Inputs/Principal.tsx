@@ -61,7 +61,7 @@ const Principal: React.FC<PrincipalProps> = ({
     <div className="w-full p-1">
       <label className="block" htmlFor={registerName}>
         {extractedField.label}
-        {extractedField.required && <span className="text-red-500">*</span>}
+        <span className="text-red-500">*</span>
         {errorMessage && (
           <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
         )}

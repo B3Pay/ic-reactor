@@ -2,13 +2,21 @@ import { Controller, useFormContext } from "react-hook-form"
 import { cn } from "../../utils"
 
 interface LabelEditorProps {
-  name: `items.${number}`
+  label: string
 }
 
-const LabelEditor: React.FC<LabelEditorProps> = ({ name }) => {
-  const { control, watch, setValue } = useFormContext()
+const defaultValues = (label: string) => ({
+  label,
+  editing: false,
+  editedLabel: label,
+})
 
-  const field = watch(name)
+const name = "label"
+
+const LabelEditor: React.FC<LabelEditorProps> = ({ label }) => {
+  const { setValue, watch } = useFormContext()
+
+  const field = watch(name, defaultValues(label))
   console.log(field)
   return (
     <div className="mb-1">
@@ -16,7 +24,6 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ name }) => {
         <label>{field.label}</label>
         <Controller
           name={`${name}.editing`}
-          control={control}
           render={({ field }) => (
             <button
               onClick={() => field.onChange(true)}
@@ -31,7 +38,6 @@ const LabelEditor: React.FC<LabelEditorProps> = ({ name }) => {
       </div>
       <Controller
         name={`${name}.editedLabel`}
-        control={control}
         render={({ field: editedLabel }) => (
           <div className={cn("flex space-x-1", field.editing ? "" : "hidden")}>
             <input

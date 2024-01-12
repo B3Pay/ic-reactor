@@ -32,7 +32,7 @@ const FieldEditor: React.FC<FieldEditorProps> = ({
         ┇
       </div>
       <div className="flex-1">
-        <LabelEditor name={name} />
+        {/* <LabelEditor name={name} /> */}
         <FieldInput name={`${name}.value`} />
       </div>
       <div className="w-8 h-8 px-2 text-white hidden sm:block">...</div>

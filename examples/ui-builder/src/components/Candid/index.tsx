@@ -73,7 +73,7 @@ const MethodForm: React.FC<FormProps> = ({
     methods.reset(defaultValues)
     setArgState(null)
     setArgErrorState(null)
-  }, [methods])
+  }, [defaultValues, methods])
 
   return (
     <FormProvider {...methods}>
