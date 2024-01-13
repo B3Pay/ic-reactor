@@ -20,6 +20,7 @@ const Optional: React.FC<OptionalProps> = ({
         <LabelEditor
           registerName={`optional.${registerName}`}
           label={extractedField.label}
+          className="flex-1"
         />
         <div className="flex-auto w-18 mt-1">
           <label

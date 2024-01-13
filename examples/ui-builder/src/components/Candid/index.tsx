@@ -27,8 +27,9 @@ const MethodForm: React.FC<FormProps> = ({
   const loadFromLocalStorage = useCallback(() => {
     const serializedState = localStorage.getItem(functionName)
     if (serializedState) {
-      console.log("serializedState", serializedState)
-      methods.setValue("input" as never, JSON.parse(serializedState) as never)
+      const labelInputs = JSON.parse(serializedState)
+      console.log(serializedState)
+      methods.setValue("input" as never, labelInputs as never)
     } else {
       console.log("no serializedState")
     }
@@ -37,9 +38,9 @@ const MethodForm: React.FC<FormProps> = ({
   const saveToLocalStorage = useCallback(
     (e?: any) => {
       e?.preventDefault()
-      const fields = methods.getValues("input" as never)
-      const serializedState = JSON.stringify(fields)
-      console.log("serializedState", serializedState)
+      const labelInputs = methods.getValues("input" as never)
+      console.log("serializedState", labelInputs)
+      const serializedState = JSON.stringify(labelInputs)
       localStorage.setItem(functionName, serializedState)
     },
     [functionName, methods]

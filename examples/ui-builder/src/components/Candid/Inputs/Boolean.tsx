@@ -6,7 +6,7 @@ export interface BooleanProps extends RouteProps<"boolean"> {}
 
 const Boolean: React.FC<BooleanProps> = ({ extractedField, registerName }) => {
   return (
-    <div className="w-full flex items-center">
+    <div className="w-full flex items-center ml-1">
       <LabelEditor registerName={registerName} label={extractedField.label} />
       <Controller
         shouldUnregister

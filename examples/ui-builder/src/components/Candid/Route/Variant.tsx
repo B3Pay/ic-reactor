@@ -1,6 +1,7 @@
 import React, { useMemo } from "react"
 import { Controller, useWatch } from "react-hook-form"
 import Route, { RouteProps } from "."
+import LabelEditor from "../../FormBuilder/LabelEditor"
 
 export interface VariantProps extends RouteProps<"variant"> {}
 
@@ -20,9 +21,10 @@ const Variant: React.FC<VariantProps> = ({
 
   return (
     <div className="w-full flex-col">
-      <label htmlFor={selectRegisterName} className="block mr-2">
-        {extractedField.label}
-      </label>
+      <LabelEditor
+        registerName={`variant.${registerName}`}
+        label={extractedField.label}
+      />
       <Controller
         shouldUnregister
         name={selectRegisterName}

@@ -46,12 +46,12 @@ const LabelEditor: React.FC<LabelEditorProps> = ({
             cancelHandler()
           }
         }
-
+        console.log(value)
         return !editing ? (
           <Cmp
             htmlFor={registerName}
             {...rest}
-            className={cn("flex items-baseline", rest.className)}
+            className={cn("flex items-baseline mr-1", rest.className)}
           >
             {value || label}
             <button
@@ -64,19 +64,21 @@ const LabelEditor: React.FC<LabelEditorProps> = ({
             </button>
           </Cmp>
         ) : (
-          <div className="flex space-x-1">
+          <div
+            className={cn("flex space-x-1 items-center mr-1", rest.className)}
+          >
             <input
               value={editedLabel}
               onChange={(e) => setEditedLabel(e.target.value)}
               onKeyDown={keyDownHandler}
               type="text"
               placeholder="Edit label"
-              className="flex-grow w-full h-6 px-2 rounded border"
+              className="flex-grow w-full h-6 p-1 rounded border"
               autoFocus
             />
             <button
               type="button"
-              className="bg-white rounded h-6 px-2 text-green-500"
+              className="bg-white rounded h-6 w-6 px-1 text-green-500 border border-green-500"
               onClick={() => {
                 onChange(editedLabel)
                 setEditing(false)
@@ -86,7 +88,7 @@ const LabelEditor: React.FC<LabelEditorProps> = ({
             </button>
             <button
               type="button"
-              className="bg-white rounded h-6 px-2 text-red-500"
+              className="bg-white rounded h-6 w-6 px-1 text-red-500 border border-red-500"
               onClick={cancelHandler}
             >
               ✖
