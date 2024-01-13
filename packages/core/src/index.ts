@@ -143,7 +143,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
   const queryCall: ActorQuery<A> = ({
     functionName,
     args = [],
-    disableInitialCall = false,
+    callOnMount = false,
     autoRefresh = false,
     refreshInterval = 5000,
   }) => {
@@ -157,7 +157,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
     }
 
     let initialData = Promise.resolve() as ReturnType<typeof call>
-    if (!disableInitialCall) initialData = call()
+    if (callOnMount) initialData = call()
 
     return { ...rest, call, initialData, intervalId }
   }
