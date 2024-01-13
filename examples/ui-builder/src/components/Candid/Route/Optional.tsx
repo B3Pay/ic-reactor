@@ -21,23 +21,22 @@ const Optional: React.FC<OptionalProps> = ({
           registerName={`optional.${registerName}`}
           label={extractedField.label}
         />
-        {/* <label className="flex-1  w-full block text-lg font-medium">
-          {extractedField.label}
-        </label> */}
         <div className="flex-auto w-18 mt-1">
-          <input
-            id={registerName}
-            className="hidden"
-            type="checkbox"
-            onClick={() => (fields.length === 0 ? append("") : remove(0))}
-          />
           <label
             htmlFor={registerName}
             className={cn(
               "relative inline-block w-12 h-6 rounded-full cursor-pointer transition duration-200",
-              fields.length > 0 ? "bg-green-400" : "bg-gray-600"
+              fields.length > 0 ? "bg-green-400" : "bg-gray-600",
+              "focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-black"
             )}
           >
+            <input
+              id={registerName}
+              className="sr-only"
+              aria-label="toggle"
+              type="checkbox"
+              onClick={() => (fields.length === 0 ? append("") : remove(0))}
+            />
             <span
               className={cn(
                 "absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform transform",

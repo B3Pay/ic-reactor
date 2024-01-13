@@ -22,13 +22,9 @@ const Number: React.FC<NumberProps> = ({
   return (
     <div className="w-full p-1">
       <LabelEditor registerName={registerName} label={extractedField.label} />
-      {/* <label htmlFor={registerName} className="block">
-        {extractedField.label}
-        {extractedField.required && <span className="text-red-500">*</span>}
-        {errorMessage && (
-          <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
-        )}
-      </label> */}
+      {errorMessage && (
+        <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
+      )}
       <div className="relative">
         <input
           id={registerName}

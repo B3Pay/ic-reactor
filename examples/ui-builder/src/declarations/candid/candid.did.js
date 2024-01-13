@@ -73,14 +73,14 @@ export const idlFactory = ({ IDL }) => {
   })
 
   return IDL.Service({
-    // principal: IDL.Func([IDL.Principal], [IDL.Text], ["query"]),
+    principal: IDL.Func([IDL.Principal], [IDL.Text], ["query"]),
     opt_principal: IDL.Func([IDL.Opt(IDL.Principal)], [IDL.Text], ["query"]),
-    // vec_principal: IDL.Func([IDL.Vec(IDL.Principal)], [IDL.Text], ["query"]),
-    // number: IDL.Func([IDL.Nat8], [IDL.Text], ["query"]),
-    // number_and_text: IDL.Func([IDL.Nat8, IDL.Text], [IDL.Text], ["query"]),
-    // name: IDL.Func([IDL.Text], [IDL.Text], ["query"]),
-    // opt_text: IDL.Func([IDL.Opt(IDL.Text)], [IDL.Text], ["query"]),
-    // vec_nat8: IDL.Func([IDL.Vec(IDL.Nat8)], [IDL.Text], ["query"]),
+    vec_principal: IDL.Func([IDL.Vec(IDL.Principal)], [IDL.Text], ["query"]),
+    number: IDL.Func([IDL.Nat8], [IDL.Text], ["query"]),
+    number_and_text: IDL.Func([IDL.Nat8, IDL.Text], [IDL.Text], ["query"]),
+    name: IDL.Func([IDL.Text], [IDL.Text], ["query"]),
+    opt_text: IDL.Func([IDL.Opt(IDL.Text)], [IDL.Text], ["query"]),
+    vec_nat8: IDL.Func([IDL.Vec(IDL.Nat8)], [IDL.Text], ["query"]),
     // opt_number: IDL.Func([IDL.Opt(IDL.Nat16)], [IDL.Text], ["query"]),
     // opt_and_vec: IDL.Func(
     //   [IDL.Opt(IDL.Nat16), IDL.Vec(IDL.Text)],

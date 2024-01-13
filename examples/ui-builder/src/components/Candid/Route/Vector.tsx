@@ -2,6 +2,7 @@ import React from "react"
 import { useFieldArray } from "react-hook-form"
 import Button from "../../Button"
 import Route, { RouteProps } from "."
+import LabelEditor from "../../FormBuilder/LabelEditor"
 
 export interface VectorProps extends RouteProps<"vector"> {}
 
@@ -11,16 +12,18 @@ const Vector: React.FC<VectorProps> = ({
   registerName,
 }) => {
   const { fields, append, swap, remove } = useFieldArray({
-    name: registerName as never,
+    name: `data.${registerName}` as never,
     shouldUnregister: true,
   })
 
   return (
     <div className="w-full box-border">
       <div className="flex justify-between items-center">
-        <label className="flex-1 w-full block text-lg font-medium">
-          {extractedField.label}
-        </label>
+        <LabelEditor
+          className="flex-1"
+          registerName={`vector.${registerName}`}
+          label={extractedField.label}
+        />
         <Button
           className="flex-auto w-18 bg-gray-400 hover:bg-gray-500 mt-1"
           onClick={() => append("")}

@@ -4,6 +4,7 @@ import Route from "./Route"
 import { FormProvider, useForm } from "react-hook-form"
 import { ExtractedFunction } from "@ic-reactor/store"
 import { CandidType } from "../../actor"
+import LabelEditor from "../FormBuilder/LabelEditor"
 
 interface FormProps extends ExtractedFunction<CandidType> {
   callHandler: (args: [any]) => Promise<any>
@@ -109,7 +110,12 @@ const MethodForm: React.FC<FormProps> = ({
         className="border border-gray-500 rounded p-2 mt-2 w-full"
       >
         <div className="flex justify-between items-center w-full">
-          <h1 className="text-xl font-bold mb-4">{functionName}</h1>
+          <LabelEditor
+            as="h1"
+            className="text-xl font-bold mb-4"
+            registerName="title"
+            label={functionName}
+          />
           <button
             className="mb-2 border-red-600 border-2 rounded px-2 py-1 text-red-600 hover:bg-red-600 hover:text-white"
             type="reset"

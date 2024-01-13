@@ -8,10 +8,6 @@ const Boolean: React.FC<BooleanProps> = ({ extractedField, registerName }) => {
   return (
     <div className="w-full flex items-center">
       <LabelEditor registerName={registerName} label={extractedField.label} />
-      {/* <label htmlFor={registerName} className="block">
-        {extractedField.label}
-        <span className="text-red-500">*</span>
-      </label> */}
       <Controller
         shouldUnregister
         name={`data.${registerName}` as never}

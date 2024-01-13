@@ -70,13 +70,9 @@ const Principal: React.FC<PrincipalProps> = ({
   return (
     <div className="w-full p-1">
       <LabelEditor registerName={registerName} label={extractedField.label} />
-      {/* <label className="block" htmlFor={registerName}>
-        {extractedField.label}
-        <span className="text-red-500">*</span>
-        {errorMessage && (
-          <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
-        )}
-      </label> */}
+      {errorMessage && (
+        <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
+      )}
       <div className="relative">
         <Controller
           shouldUnregister
