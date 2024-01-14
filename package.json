@@ -6,7 +6,7 @@
   "scripts": {
     "build": "lerna run build",
     "clean": "lerna run clean",
-    "lerna-publish": "yarn build && lerna publish",
+    "lerna-publish": "yarn clean && yarn build && lerna publish",
     "test": "lerna run test",
     "e2e": "cd e2e && sh ./test.sh"
   },
