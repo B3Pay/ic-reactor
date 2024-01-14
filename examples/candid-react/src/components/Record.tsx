@@ -6,6 +6,7 @@ const Record: React.FC<RecordProps> = ({
   extractedField,
   errors,
   registerName,
+  shouldUnregister,
 }) => {
   return (
     <div className="w-full">
@@ -14,6 +15,7 @@ const Record: React.FC<RecordProps> = ({
         {extractedField.fields.map((field, index) => (
           <Route
             key={index}
+            shouldUnregister={shouldUnregister}
             registerName={`${registerName}.${field.label}`}
             extractedField={field}
             errors={errors?.[field.label as never]}

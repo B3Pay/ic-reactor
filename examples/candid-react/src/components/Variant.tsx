@@ -1,17 +1,15 @@
-import React, { useMemo } from "react"
+import React, { useId } from "react"
 import { Controller, useWatch } from "react-hook-form"
 import Route, { RouteProps } from "./Route"
 
 export interface VariantProps extends RouteProps<"variant"> {}
-
-let generatedId = 0
 
 const Variant: React.FC<VariantProps> = ({
   extractedField,
   registerName,
   errors,
 }) => {
-  const selectRegisterName = useMemo(() => `select-${generatedId++}`, [])
+  const selectRegisterName = useId()
 
   const selectedOption = useWatch({
     name: selectRegisterName,

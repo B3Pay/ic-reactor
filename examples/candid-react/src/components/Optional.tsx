@@ -8,9 +8,11 @@ const Optional: React.FC<OptionalProps> = ({
   extractedField,
   registerName,
   errors,
+  shouldUnregister,
 }) => {
   const { fields, insert, remove } = useFieldArray({
     name: registerName as never,
+    shouldUnregister,
   })
 
   return (

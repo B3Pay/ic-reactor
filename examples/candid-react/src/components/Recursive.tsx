@@ -8,6 +8,7 @@ const Recursive: React.FC<RecursiveProps> = ({
   extractedField,
   errors,
   registerName,
+  shouldUnregister,
 }) => {
   const [recursiveField, setRecursiveFields] = useState<DynamicFieldType>()
 
@@ -18,6 +19,7 @@ const Recursive: React.FC<RecursiveProps> = ({
 
   return recursiveField ? (
     <Route
+      shouldUnregister={shouldUnregister}
       extractedField={recursiveField}
       registerName={registerName}
       errors={errors}

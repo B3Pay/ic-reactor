@@ -6,6 +6,7 @@ const Tuple: React.FC<TupleProps> = ({
   extractedField,
   registerName,
   errors,
+  shouldUnregister,
 }) => {
   return (
     <div className="w-full">
@@ -13,6 +14,7 @@ const Tuple: React.FC<TupleProps> = ({
       {extractedField.fields.map((field, index) => (
         <Route
           key={index}
+          shouldUnregister={shouldUnregister}
           registerName={`${registerName}.[${index}]`}
           errors={errors?.[index as never]}
           extractedField={field}

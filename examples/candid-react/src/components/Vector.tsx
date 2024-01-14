@@ -9,9 +9,11 @@ const Vector: React.FC<VectorProps> = ({
   extractedField,
   errors,
   registerName,
+  shouldUnregister,
 }) => {
   const { fields, append, swap, remove } = useFieldArray({
     name: registerName as never,
+    shouldUnregister,
   })
 
   return (
