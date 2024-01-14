@@ -28,7 +28,7 @@ const MethodForm: React.FC<FormProps> = ({
     const serializedState = localStorage.getItem(functionName)
     if (serializedState) {
       const labelInputs = JSON.parse(serializedState)
-      console.log(serializedState)
+      console.log(labelInputs)
       methods.setValue("input" as never, labelInputs as never)
     } else {
       console.log("no serializedState")
