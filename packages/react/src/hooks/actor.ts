@@ -2,19 +2,28 @@ import type {
   ActorSubclass,
   ExtractActorMethodArgs,
   ActorManager,
-  ActorMethodField,
+  ExtractedService,
+  ExtractedFunction,
+  ServiceMethodType,
+  ServiceMethodTypeAndName,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   ActorCallArgs,
   ActorHookState,
+  ActorUseMethodArg,
   ActorUseQueryArgs,
   ActorUseUpdateArgs,
 } from "../types"
 import { useStore } from "zustand"
 
+export type ActorHooks<A extends ActorSubclass<any>> = ReturnType<
+  typeof getActorHooks<A>
+>
+
 export const getActorHooks = <A extends ActorSubclass<any>>({
-  methodFields,
+  initialize,
+  serviceFields,
   canisterId,
   actorStore,
   callMethod,
@@ -25,20 +34,33 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { ...actorState, canisterId }
   }
 
-  const useMethodFields = (): ActorMethodField<A>[] => {
-    return methodFields
+  const useServiceFields = (): ExtractedService<A> => {
+    return serviceFields
+  }
+
+  const useMethodNames = (): ServiceMethodTypeAndName<A>[] => {
+    const serviceField = useServiceFields()
+
+    return serviceField.methodNames
+  }
+
+  const useMethodFields = (): ExtractedFunction<A>[] => {
+    const methodFields = useServiceFields()
+
+    return useMemo(() => {
+      return Object.values(methodFields.methods)
+    }, [methodFields])
   }
 
   const useMethodField = (
     functionName: keyof A & string
-  ): ActorMethodField<A> | undefined => {
-    const methodFields = useMethodFields()
+  ): ExtractedFunction<A> => {
+    const serviceMethod = useServiceFields()
 
-    const field = useMemo(() => {
-      return methodFields.find((f) => f.functionName === functionName)
-    }, [methodFields, functionName])
-
-    return field
+    return useMemo(
+      () => serviceMethod.methods[functionName],
+      [functionName, serviceMethod]
+    )
   }
 
   const useReActorCall = <M extends keyof A>({
@@ -56,7 +78,9 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     })
 
     const call = useCallback(
-      async (replaceArgs?: ExtractActorMethodArgs<A[M]>) => {
+      async (
+        eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
+      ) => {
         onLoading?.(true)
         onError?.(undefined)
         setState((prevState) => ({
@@ -66,6 +90,13 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
         }))
 
         try {
+          const replaceArgs: ExtractActorMethodArgs<A[M]> | undefined =
+            eventOrReplaceArgs !== undefined
+              ? (eventOrReplaceArgs as ExtractActorMethodArgs<A[M]>).length > 0
+                ? (eventOrReplaceArgs as ExtractActorMethodArgs<A[M]>)
+                : undefined
+              : undefined
+
           const data = await callMethod(functionName, ...(replaceArgs ?? args))
 
           onLoading?.(false)
@@ -95,9 +126,8 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
   }
 
   const useQueryCall = <M extends keyof A>({
-    autoRefresh,
-    refreshInterval = 5000,
-    disableInitialCall,
+    refetchOnMount = false,
+    refetchInterval = false,
     ...rest
   }: ActorUseQueryArgs<A, M>) => {
     const { call, ...state } = useReActorCall(rest)
@@ -106,21 +136,21 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
 
     useEffect(() => {
       // Auto-refresh logic
-      if (autoRefresh) {
+      if (refetchInterval) {
         intervalId.current = setInterval(() => {
           call()
-        }, refreshInterval)
+        }, refetchInterval)
       }
 
       // Initial call logic
-      if (!disableInitialCall) {
+      if (refetchOnMount) {
         call()
       }
 
       return () => {
         clearInterval(intervalId.current)
       }
-    }, [disableInitialCall, autoRefresh, refreshInterval])
+    }, [refetchOnMount, refetchInterval])
 
     return { call, ...state }
   }
@@ -129,11 +159,29 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return useReActorCall(args)
   }
 
+  const useMethodCall = <M extends keyof A, T extends ServiceMethodType>({
+    type,
+    ...rest
+  }: ActorUseMethodArg<A, T> & { type: T }) => {
+    switch (type) {
+      case "query":
+        return useQueryCall<M>(rest as unknown as ActorUseQueryArgs<A, M>)
+      case "update":
+        return useUpdateCall<M>(rest as unknown as ActorUseUpdateArgs<A, M>)
+      default:
+        throw new Error(`Invalid type: ${type}`)
+    }
+  }
+
   return {
+    initialize,
     useQueryCall,
     useUpdateCall,
+    useMethodCall,
     useActorStore,
     useMethodField,
     useMethodFields,
+    useMethodNames,
+    useServiceFields,
   }
 }

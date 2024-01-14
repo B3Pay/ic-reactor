@@ -7,13 +7,28 @@ describe("My IC Store and Actions", () => {
     withDevtools: false,
   })
 
-  const { methodFields } = new ActorManager<typeof b3_system>({
+  const { serviceFields } = new ActorManager<typeof b3_system>({
     agentManager,
     idlFactory,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
 
+  console.log(serviceFields)
+
   it("should return the function fields", () => {
-    expect({ methodFields }).toBeDefined()
+    expect({ serviceFields }).toBeDefined()
+
+    serviceFields.methodNames.forEach(([type, name]) => {
+      expect(type).toBeDefined()
+      expect(name).toBeDefined()
+
+      const { defaultValues, fields, functionName, validate } =
+        serviceFields.methods[name]
+
+      expect(defaultValues).toBeDefined()
+      expect(fields).toBeDefined()
+      expect(functionName).toBeDefined()
+      expect(validate).toBeDefined()
+    })
   })
 })

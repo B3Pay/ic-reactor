@@ -1,11 +1,11 @@
 import { useCallback, useState } from "react"
-import Button from "./Button"
+import Button from "./Inputs/Button"
 import Route from "./Route"
 import { FormProvider, useForm } from "react-hook-form"
-import { ActorMethodField } from "@ic-reactor/store"
-import { CandidMethod } from "../actor"
+import { ExtractedFunction } from "@ic-reactor/store"
+import { CandidType } from "../actor"
 
-interface FormProps extends ActorMethodField<CandidMethod> {
+interface FormProps extends ExtractedFunction<CandidType> {
   callHandler: (args: [any]) => Promise<any>
 }
 
@@ -19,12 +19,11 @@ const MethodForm: React.FC<FormProps> = ({
   const [argErrorState, setArgErrorState] = useState<any>(null)
 
   const methods = useForm({
-    shouldUnregister: true,
     mode: "onChange",
     defaultValues,
   })
 
-  const onSubmit = useCallback(
+  const onVerifyArgs = useCallback(
     (data: any) => {
       console.log(data)
       setArgState(null)
@@ -70,10 +69,16 @@ const MethodForm: React.FC<FormProps> = ({
     [callHandler]
   )
 
+  const resetHandler = useCallback(() => {
+    methods.reset(defaultValues)
+    setArgState(null)
+    setArgErrorState(null)
+  }, [defaultValues, methods])
+
   return (
     <FormProvider {...methods}>
       <form
-        onSubmit={methods.handleSubmit(onSubmit)}
+        onSubmit={methods.handleSubmit(onVerifyArgs)}
         className="border border-gray-500 rounded p-2 mt-2 w-full"
       >
         <div className="flex justify-between items-center w-full">
@@ -81,16 +86,16 @@ const MethodForm: React.FC<FormProps> = ({
           <button
             className="mb-2 border-red-600 border-2 rounded px-2 py-1 text-red-600 hover:bg-red-600 hover:text-white"
             type="reset"
-            onClick={() => methods.reset()}
+            onClick={resetHandler}
           >
             Reset
           </button>
         </div>
-        {fields?.map((field, index) => {
+        {fields.map((field, index) => {
           return (
             <div key={index} className="mb-2">
               <Route
-                field={field}
+                extractedField={field}
                 registerName={`data.${functionName}-arg${index}`}
                 errors={
                   methods.formState.errors?.data?.[

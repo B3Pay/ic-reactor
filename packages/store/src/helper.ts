@@ -2,9 +2,9 @@ import { hash } from "@dfinity/agent"
 import { IDL, toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import { ExtractField } from "./actor/candid"
+import { ExtractField, ExtractedService } from "./actor/candid"
 
-import type { ActorSubclass, ActorMethodField } from "./actor/types"
+import type { ActorSubclass } from "./actor/types"
 
 interface StoreOptions {
   withDevtools?: boolean
@@ -27,21 +27,14 @@ export function createStoreWithOptionalDevtools(
   }
 }
 
-export function extractMethodField<A extends ActorSubclass<any>>(
+export function extractServiceField<A extends ActorSubclass<any>>(
   idlFactory: IDL.InterfaceFactory
-): ActorMethodField<A>[] {
-  type M = keyof A & string
-  const methods = idlFactory({ IDL })._fields as [M, IDL.FuncClass][]
+): ExtractedService<A> {
+  const methods = idlFactory({ IDL })
 
-  const allFunction = methods.map(([functionName, method]) => {
-    const field = method.accept(new ExtractField(), functionName)
-    return {
-      ...field,
-      functionName,
-    }
-  })
+  const extractor = new ExtractField<A>()
 
-  return allFunction
+  return extractor.visitService(methods)
 }
 
 export const generateRequestHash = (args?: any[]) => {

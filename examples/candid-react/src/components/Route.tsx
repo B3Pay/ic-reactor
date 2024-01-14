@@ -1,39 +1,53 @@
 import React from "react"
-import Vector from "./Vector"
-import Input from "./Input"
-import Optional from "./Optional"
-import Variant from "./Variant"
-import Recursive from "./Recursive"
-import Record from "./Record"
-import Tuple from "./Tuple"
+import Tuple, { TupleProps } from "./Tuple"
+import Vector, { VectorProps } from "./Vector"
+import Record, { RecordProps } from "./Record"
+import Variant, { VariantProps } from "./Variant"
+import Optional, { OptionalProps } from "./Optional"
+import Recursive, { RecursiveProps } from "./Recursive"
 import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form"
-import Principal from "./Principal"
-import { ExtractedField } from "@ic-reactor/store/dist/candid"
+import {
+  DynamicFieldType,
+  ExtractedFieldType,
+} from "@ic-reactor/react/dist/types"
 
-export interface RouteProps {
-  field: ExtractedField
+import Principal, { PrincipalProps } from "./Inputs/Principal"
+import Boolean, { BooleanProps } from "./Inputs/Boolean"
+import Number, { NumberProps } from "./Inputs/Number"
+import NullINput, { NullProps } from "./Inputs/Null"
+import Text, { TextProps } from "./Inputs/Text"
+
+export interface RouteProps<T extends ExtractedFieldType = any> {
+  extractedField: DynamicFieldType<T>
   registerName: string
+  shouldUnregister?: boolean
   errors: FieldError | Merge<FieldError, FieldErrorsImpl<any>> | undefined
 }
 
 const Route: React.FC<RouteProps> = (props) => {
-  switch (props.field.type) {
+  switch (props.extractedField.type) {
     case "vector":
-      return <Vector {...props} />
+      return <Vector {...(props as VectorProps)} />
     case "optional":
-      return <Optional {...props} />
+      return <Optional {...(props as OptionalProps)} />
     case "record":
-      return <Record {...props} />
+      return <Record {...(props as RecordProps)} />
     case "tuple":
-      return <Tuple {...props} />
+      return <Tuple {...(props as TupleProps)} />
     case "variant":
-      return <Variant {...props} />
+      return <Variant {...(props as VariantProps)} />
     case "recursive":
-      return <Recursive {...props} />
+      return <Recursive {...(props as RecursiveProps)} />
     case "principal":
-      return <Principal {...props} />
+      return <Principal {...(props as PrincipalProps)} />
+    case "null":
+      return <NullINput {...(props as NullProps)} />
+    case "boolean":
+      return <Boolean {...(props as BooleanProps)} />
+    case "number":
+      return <Number {...(props as NumberProps)} />
     default:
-      return <Input {...props} />
+      return <Text {...(props as TextProps)} />
   }
 }
 

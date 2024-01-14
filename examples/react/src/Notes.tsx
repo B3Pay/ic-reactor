@@ -8,8 +8,8 @@ const Notes: React.FC<NoteProps> = ({ publicKey }) => {
   const { call, data, loading, error } = useQueryCall({
     functionName: "user_simple_notes",
     args: [publicKey],
-    autoRefresh: true,
-    disableInitialCall: false,
+    refetchInterval: 1000,
+    refetchOnMount: true,
     onLoading: () => console.log("Loading..."),
     onSuccess: (data) => console.log("Success!", data),
     onError: (error) => console.log("Error!", error),
@@ -30,7 +30,7 @@ const Notes: React.FC<NoteProps> = ({ publicKey }) => {
             )
           : null}
       </div>
-      <button onClick={() => call()}>Get Notes</button>
+      <button onClick={call}>Get Notes</button>
     </div>
   )
 }

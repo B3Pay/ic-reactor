@@ -7,7 +7,7 @@ import type {
 import type { IDL } from "@dfinity/candid"
 import type { Principal } from "@dfinity/principal"
 import type { StoreApi } from "zustand"
-import type { ExtractedField } from "./candid"
+import type { ExtractedService } from "./candid"
 import type { AgentManager } from "../agent"
 
 export { ActorMethod, IDL, ActorSubclass, Principal, HttpAgent, Identity }
@@ -38,14 +38,6 @@ export type ExtractActorMethodReturnType<T> = T extends ActorMethod<
 >
   ? R
   : never
-
-export interface ActorMethodField<A> extends ExtractedField {
-  functionName: keyof A & string
-  fields: ExtractedField[]
-  defaultValues: {
-    data: { [K in `${Extract<keyof A, string>}-arg${number}`]: any }
-  }
-}
 
 export interface ActorMethodState<A, M extends keyof A> {
   [argHash: string]: {
@@ -81,7 +73,7 @@ export type CallActorMethod<A = Record<string, ActorMethod>> = <
 export interface ActorActions<A extends ActorSubclass<any>> {
   agentManager: AgentManager
   actorStore: ActorStore<A>
-  methodFields: ActorMethodField<A>[]
+  methodFields: ExtractedService<A>
   authenticate: () => Promise<void>
   unsubscribeActor: () => void
   updateMethodState: (newState: Partial<ActorState<A>["methodState"]>) => void

@@ -20,7 +20,7 @@ import {
 export const createReActorStore = <A extends ActorSubclass<any>>(
   options: CreateActorFunctionArgs
 ): ReActorManager<A> => {
-  const actorInitializer = (agent: HttpAgent) => {
+  const actorInitializer = (_agent: HttpAgent) => {
     return createActor<A>(options)
   }
   return new ReActorManager<A>(actorInitializer, options.options.agentOptions)

@@ -1,5 +1,5 @@
 import { Actor } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools, extractMethodField } from "../helper"
+import { createStoreWithOptionalDevtools, extractServiceField } from "../helper"
 import type { ActorSubclass, HttpAgent } from "@dfinity/agent"
 import type {
   CanisterId,
@@ -9,10 +9,10 @@ import type {
   ActorStore,
   ActorMethodStates,
   ActorManagerOptions,
-  ActorMethodField,
 } from "./types"
 import type { IDL } from "@dfinity/candid"
-import type { AgentManager } from "../agent"
+import type { AgentManager, UpdateAgentOptions } from "../agent"
+import { ExtractedService } from "./candid"
 
 export * from "./types"
 export * from "./candid"
@@ -24,7 +24,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
   public agentManager: AgentManager
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
-  public methodFields: ActorMethodField<A>[]
+  public serviceFields: ExtractedService<A>
 
   private DEFAULT_ACTOR_STATE: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
@@ -55,7 +55,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
 
     this.canisterId = canisterId
     this.idlFactory = idlFactory
-    this.methodFields = extractMethodField(idlFactory)
+    this.serviceFields = extractServiceField(idlFactory)
 
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(
@@ -66,6 +66,10 @@ export class ActorManager<A extends ActorSubclass<any>> {
     if (initializeOnCreate) {
       this.initializeActor(agentManager.getAgent())
     }
+  }
+
+  public initialize = async (options?: UpdateAgentOptions) => {
+    await this.agentManager.updateAgent(options)
   }
 
   private initializeActor = (agent: HttpAgent) => {

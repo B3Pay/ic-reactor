@@ -7,7 +7,7 @@ echo "===========SETUP========="
 dfx start --background --clean
 dfx deploy hello_actor 
 dfx generate hello_actor
-source ./.env
+source .env
 yarn install
 echo "===========SETUP DONE========="
 

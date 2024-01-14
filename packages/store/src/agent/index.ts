@@ -2,8 +2,8 @@ import { HttpAgent } from "@dfinity/agent"
 import { AuthClient } from "@dfinity/auth-client"
 import { createStoreWithOptionalDevtools } from "../helper"
 import type {
-  ActorAuthState,
-  AuthenticateStore,
+  AgentAuthState,
+  AgentAuthStore,
   AgentManagerOptions,
   UpdateAgentOptions,
 } from "./types"
@@ -14,9 +14,9 @@ export class AgentManager {
   private agent: HttpAgent
   private subscribers: Array<(agent: HttpAgent) => void> = []
 
-  public authStore: AuthenticateStore
+  public authStore: AgentAuthStore
 
-  private DEFAULT_AUTH_STATE: ActorAuthState = {
+  private DEFAULT_AUTH_STATE: AgentAuthState = {
     identity: null,
     initialized: false,
     initializing: false,
@@ -26,7 +26,7 @@ export class AgentManager {
     error: undefined,
   }
 
-  private updateState = (newState: Partial<ActorAuthState>) => {
+  private updateState = (newState: Partial<AgentAuthState>) => {
     this.authStore.setState((state) => ({ ...state, ...newState }))
   }
 

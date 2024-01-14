@@ -7,7 +7,7 @@ import React, {
   useCallback,
   useContext,
 } from "react"
-import { createReActor, type ActorHooks } from "../index"
+import { createReActor } from "../index"
 import { IDL } from "@dfinity/candid"
 import {
   ActorSubclass,
@@ -16,6 +16,7 @@ import {
   getDidJsFromTmpHack,
 } from "@ic-reactor/store"
 import { AgentContextType, useAgentManager } from "./agent"
+import type { ActorHooks } from "../hooks/actor"
 
 export type ActorContextType<A = ActorSubclass<any>> = ActorHooks<A>
 

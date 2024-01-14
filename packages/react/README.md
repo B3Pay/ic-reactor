@@ -54,6 +54,7 @@ const Balance = ({ principal }) => {
   const { call, data, loading, error } = useQueryCall({
     functionName: "get_balance",
     args: [principal],
+    callOnMount: true,
   })
 
   return (

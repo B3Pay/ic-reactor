@@ -1,14 +1,15 @@
-import { useFieldArray, useFormContext } from "react-hook-form"
+import { useFieldArray } from "react-hook-form"
 import Route, { RouteProps } from "./Route"
 import { cn } from "../utils"
 
-interface OptionalProps extends RouteProps {}
+export interface OptionalProps extends RouteProps<"optional"> {}
 
-const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
-  const { control } = useFormContext()
-
-  const { fields, append, remove } = useFieldArray({
-    control,
+const Optional: React.FC<OptionalProps> = ({
+  extractedField,
+  registerName,
+  errors,
+}) => {
+  const { fields, insert, remove } = useFieldArray({
     name: registerName as never,
   })
 
@@ -16,22 +17,31 @@ const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
     <div className="flex flex-col">
       <div className="flex h-10 justify-between items-center">
         <label className="flex-1  w-full block text-lg font-medium">
-          {field.label}
+          {extractedField.label}
         </label>
         <div className="flex-auto w-18 mt-1">
-          <input
-            id={registerName}
-            className="hidden"
-            type="checkbox"
-            onClick={() => (fields.length === 0 ? append("") : remove(0))}
-          />
           <label
             htmlFor={registerName}
             className={cn(
               "relative inline-block w-12 h-6 rounded-full cursor-pointer transition duration-200",
-              fields.length > 0 ? "bg-green-400" : "bg-gray-600"
+              fields.length > 0 ? "bg-green-400" : "bg-gray-600",
+              "focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-black"
             )}
           >
+            <input
+              id={registerName}
+              className="sr-only"
+              aria-label="toggle"
+              type="checkbox"
+              checked={fields.length > 0}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  insert(0, extractedField.defaultValues)
+                } else {
+                  remove(0)
+                }
+              }}
+            />
             <span
               className={cn(
                 "absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform transform",
@@ -41,15 +51,14 @@ const Optional: React.FC<OptionalProps> = ({ field, registerName, errors }) => {
           </label>
         </div>
       </div>
-      {fields.length > 0 && (
-        <div className="flex justify-between items-start p-1 mb-1 w-full border-dashed border border-gray-400 rounded">
-          <Route
-            field={field.fields?.[0]}
-            registerName={`${registerName}.[0]`}
-            errors={errors?.[0 as never]}
-          />
-        </div>
-      )}
+      {fields.map((field, index) => (
+        <Route
+          key={field.id}
+          extractedField={extractedField.fields?.[index]}
+          errors={errors?.[index as never]}
+          registerName={`${registerName}.[${index}]`}
+        />
+      ))}
     </div>
   )
 }

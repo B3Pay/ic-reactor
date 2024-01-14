@@ -41,7 +41,7 @@ export type ActorUpdateReturn<A, M extends keyof A> = {
 export type ActorQueryArgs<A, M extends keyof A> = {
   functionName: M
   args?: ExtractActorMethodArgs<A[M]>
-  disableInitialCall?: boolean
+  callOnMount?: boolean
   autoRefresh?: boolean
   refreshInterval?: number
 }

@@ -2,10 +2,10 @@ import { IDL } from "@dfinity/candid"
 import { Principal } from "@dfinity/principal"
 
 export class Parse extends IDL.Visitor<string, any> {
-  public visitNull(t: IDL.NullClass, v: string): null {
+  public visitNull(_t: IDL.NullClass, _v: string): null {
     return null
   }
-  public visitBool(t: IDL.BoolClass, v: string): boolean {
+  public visitBool(_t: IDL.BoolClass, v: string): boolean {
     if (v === "true") {
       return true
     }
@@ -14,10 +14,10 @@ export class Parse extends IDL.Visitor<string, any> {
     }
     throw new Error(`Cannot parse ${v} as boolean`)
   }
-  public visitText(t: IDL.TextClass, v: string): string {
+  public visitText(_t: IDL.TextClass, v: string): string {
     return v
   }
-  public visitFloat(t: IDL.FloatClass, v: string): number {
+  public visitFloat(_t: IDL.FloatClass, v: string): number {
     return parseFloat(v)
   }
   public visitFixedInt(t: IDL.FixedIntClass, v: string): number | bigint {
@@ -34,16 +34,16 @@ export class Parse extends IDL.Visitor<string, any> {
       return BigInt(v)
     }
   }
-  public visitNumber(t: IDL.PrimitiveType, v: string): bigint {
+  public visitNumber(_t: IDL.PrimitiveType, v: string): bigint {
     return BigInt(v)
   }
-  public visitPrincipal(t: IDL.PrincipalClass, v: string): Principal {
+  public visitPrincipal(_t: IDL.PrincipalClass, v: string): Principal {
     return Principal.fromText(v)
   }
-  public visitService(t: IDL.ServiceClass, v: string): Principal {
+  public visitService(_t: IDL.ServiceClass, v: string): Principal {
     return Principal.fromText(v)
   }
-  public visitFunc(t: IDL.FuncClass, v: string): [Principal, string] {
+  public visitFunc(_t: IDL.FuncClass, v: string): [Principal, string] {
     const x = v.split(".", 2)
     return [Principal.fromText(x[0]), x[1]]
   }

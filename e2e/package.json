@@ -5,8 +5,8 @@
   "main": "src/script.js",
   "license": "MIT",
   "scripts": {
-    "test": "sh ./test.sh",
-    "start": "npx jest"
+    "start": "sh ./test.sh",
+    "test": "npx jest"
   },
   "dependencies": {
     "@dfinity/agent": "^0.20",

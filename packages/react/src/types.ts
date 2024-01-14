@@ -1,8 +1,10 @@
 import type {
   ExtractActorMethodArgs,
   ExtractActorMethodReturnType,
+  ServiceMethodType,
 } from "@ic-reactor/store"
 export type * from "@ic-reactor/store"
+export type * from "@ic-reactor/store/dist/actor/types"
 
 export type ActorCallArgs<A, M extends keyof A> = {
   functionName: M & string
@@ -21,10 +23,16 @@ export type ActorHookState<A, M extends keyof A> = {
 
 export interface ActorUseQueryArgs<A, M extends keyof A>
   extends ActorCallArgs<A, M> {
-  disableInitialCall?: boolean
-  autoRefresh?: boolean
-  refreshInterval?: number
+  refetchOnMount?: boolean
+  refetchInterval?: number | false
 }
 
 export interface ActorUseUpdateArgs<A, M extends keyof A>
   extends ActorCallArgs<A, M> {}
+
+export type ActorUseMethodArg<
+  A,
+  T extends ServiceMethodType
+> = T extends "query"
+  ? ActorUseQueryArgs<A, keyof A>
+  : ActorUseUpdateArgs<A, keyof A>

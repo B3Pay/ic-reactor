@@ -1,29 +1,37 @@
-import MethodForm from "./components/Form"
-import { DynamicField, useMethodFields, useQueryCall } from "./actor"
+import MethodForm from "./components/MethodForm"
+import { useMethodNames, useMethodCall, CandidType } from "./actor"
+import { ServiceMethodType } from "@ic-reactor/react/dist/types"
 
 const Candid: React.FC = () => {
-  const methodFields = useMethodFields()
+  const methodNames = useMethodNames()
 
   return (
     <div className="p-2 max-w-3xl mx-auto">
-      {methodFields.map((field) => (
-        <FormFields {...field} key={field.functionName} />
+      {methodNames.map(([type, functionName]) => (
+        <FormFields
+          key={functionName}
+          functionName={functionName}
+          type={type}
+        />
       ))}
     </div>
   )
 }
 
-interface FormFieldProps extends DynamicField {}
+interface FormFieldProps {
+  type: ServiceMethodType
+  functionName: keyof CandidType
+}
 
-const FormFields: React.FC<FormFieldProps> = ({ functionName, ...rest }) => {
-  const { call, data, loading, error } = useQueryCall({
+const FormFields: React.FC<FormFieldProps> = ({ functionName, type }) => {
+  const { call, data, loading, error, field } = useMethodCall({
+    type,
     functionName,
-    disableInitialCall: true,
   })
 
   return (
     <div>
-      <MethodForm callHandler={call} functionName={functionName} {...rest} />
+      <MethodForm callHandler={call} {...field} />
       {error && (
         <fieldset className="border p-2 my-2 text-red-500 border-red-500 rounded">
           <legend className="font-semibold">Error</legend>

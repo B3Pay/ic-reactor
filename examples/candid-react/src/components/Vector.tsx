@@ -1,15 +1,16 @@
 import React from "react"
-import { useFieldArray, useFormContext } from "react-hook-form"
-import Button from "./Button"
+import { useFieldArray } from "react-hook-form"
+import Button from "./Inputs/Button"
 import Route, { RouteProps } from "./Route"
 
-interface VectorProps extends RouteProps {}
+export interface VectorProps extends RouteProps<"vector"> {}
 
-const Vector: React.FC<VectorProps> = ({ field, errors, registerName }) => {
-  const { control } = useFormContext()
-
+const Vector: React.FC<VectorProps> = ({
+  extractedField,
+  errors,
+  registerName,
+}) => {
   const { fields, append, swap, remove } = useFieldArray({
-    control,
     name: registerName as never,
   })
 
@@ -17,7 +18,7 @@ const Vector: React.FC<VectorProps> = ({ field, errors, registerName }) => {
     <div className="w-full box-border">
       <div className="flex justify-between items-center">
         <label className="flex-1 w-full block text-lg font-medium">
-          {field.label}
+          {extractedField.label}
         </label>
         <Button
           className="flex-auto w-18 bg-gray-400 hover:bg-gray-500 mt-1"
@@ -53,7 +54,7 @@ const Vector: React.FC<VectorProps> = ({ field, errors, registerName }) => {
           </div>
           <div className="flex-auto">
             <Route
-              field={field.fields?.[0]}
+              extractedField={extractedField.fields?.[0]}
               errors={errors?.[index as never]}
               registerName={`${registerName}.[${index}]`}
             />
