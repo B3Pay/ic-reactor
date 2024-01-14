@@ -1,33 +1,33 @@
-import createReActor from "@ic-reactor/core"
-import { canisterId, idlFactory } from "../declarations/hello_actor/index.js"
+import { createReActor } from "@ic-reactor/core"
+import {
+  canisterId,
+  idlFactory,
+  hello_actor,
+} from "../declarations/hello_actor/index.js"
 
 const DEFAULT_STATE = {
-  loading: false,
   initializing: false,
   initialized: false,
-  authClient: null,
-  authenticated: false,
-  authenticating: false,
-  identity: null,
   error: undefined,
-  actorState: {},
+  methodState: {},
 }
 
 describe("Core Function Test", () => {
-  const { store, actions, queryCall, updateCall, initializeActor } =
-    createReActor({
-      canisterId,
-      idlFactory,
-      initializeOnMount: false,
-    })
+  const { initialize, actorStore, queryCall, updateCall } = createReActor<
+    typeof hello_actor
+  >({
+    canisterId,
+    idlFactory,
+    initializeOnCreate: false,
+  })
 
-  expect(store.getState()).toEqual(DEFAULT_STATE)
+  expect(actorStore.getState()).toEqual(DEFAULT_STATE)
 
   // Initialize the actor
   it("should return the correct initial state", () => {
-    initializeActor()
+    initialize()
 
-    const { initialized } = store.getState()
+    const { initialized } = actorStore.getState()
     expect(initialized).toEqual(true)
   })
 
@@ -52,7 +52,7 @@ describe("Core Function Test", () => {
   })
 
   it("should call the greet_update function", async () => {
-    const { getState, requestHash, subscribe, call } = updateCall({
+    const { getState, requestHash, call } = updateCall({
       functionName: "greet_update",
       args: ["World"],
     })
@@ -75,11 +75,5 @@ describe("Core Function Test", () => {
     expect(loading).toEqual(false)
     expect(data).toEqual("Hello, World!")
     expect(error).toEqual(undefined)
-  })
-
-  it("should reset the state", () => {
-    actions.resetState()
-
-    expect(store.getState()).toEqual(DEFAULT_STATE)
   })
 })

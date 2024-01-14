@@ -75,7 +75,6 @@ const FormFields: React.FC<ExtractedFunction<CandidType>> = ({
 
   const { call, data, loading, error } = useQueryCall({
     functionName,
-    disableInitialCall: true,
   })
 
   return (

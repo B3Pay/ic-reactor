@@ -8,7 +8,7 @@ interface TodosProps {}
 const Todos: React.FC<TodosProps> = ({}) => {
   const { data, error, loading } = useQueryCall({
     functionName: "getAllTodos",
-    autoRefresh: true
+    refetchOnMount: true
   })
 
   return (

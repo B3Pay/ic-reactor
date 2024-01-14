@@ -37,7 +37,7 @@ const AddNote: React.FC<AddNoteProps> = ({ publicKey }) => {
           : null}
       </div>
       <input type="text" value={input} name="note" onChange={onInputChange} />
-      <button onClick={() => call()}>Add Note</button>
+      <button onClick={call}>Add Note</button>
     </div>
   )
 }

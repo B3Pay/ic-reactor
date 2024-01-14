@@ -77,7 +77,9 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     })
 
     const call = useCallback(
-      async (replaceArgs?: ExtractActorMethodArgs<A[M]>) => {
+      async (
+        eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
+      ) => {
         onLoading?.(true)
         onError?.(undefined)
         setState((prevState) => ({
@@ -87,6 +89,11 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
         }))
 
         try {
+          const replaceArgs: ExtractActorMethodArgs<A[M]> | undefined =
+            eventOrReplaceArgs instanceof MouseEvent
+              ? undefined
+              : (eventOrReplaceArgs as ExtractActorMethodArgs<A[M]>)
+
           const data = await callMethod(functionName, ...(replaceArgs ?? args))
 
           onLoading?.(false)
@@ -116,9 +123,8 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
   }
 
   const useQueryCall = <M extends keyof A>({
-    autoRefresh = false,
-    callOnMount = false,
-    refreshInterval = 5000,
+    refetchOnMount = false,
+    refetchInterval = false,
     ...rest
   }: ActorUseQueryArgs<A, M>) => {
     const { call, ...state } = useReActorCall(rest)
@@ -127,21 +133,21 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
 
     useEffect(() => {
       // Auto-refresh logic
-      if (autoRefresh) {
+      if (refetchInterval) {
         intervalId.current = setInterval(() => {
           call()
-        }, refreshInterval)
+        }, refetchInterval)
       }
 
       // Initial call logic
-      if (callOnMount) {
+      if (refetchOnMount) {
         call()
       }
 
       return () => {
         clearInterval(intervalId.current)
       }
-    }, [callOnMount, autoRefresh, refreshInterval])
+    }, [refetchOnMount, refetchInterval])
 
     return { call, ...state }
   }

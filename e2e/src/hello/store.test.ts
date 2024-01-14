@@ -1,5 +1,9 @@
-import createActorStoreAndActions from "@ic-reactor/store"
-import { canisterId, createActor } from "../declarations/hello_actor/index.js"
+import { createReActorStore } from "@ic-reactor/store"
+import {
+  canisterId,
+  hello_actor,
+  idlFactory,
+} from "../declarations/hello_actor/index.js"
 
 const DEFAULT_STATE = {
   loading: false,
@@ -14,21 +18,19 @@ const DEFAULT_STATE = {
 }
 
 test("Main Function Test", async () => {
-  const { store, actions, initializeActor } = createActorStoreAndActions(
-    (agent) => createActor(canisterId, { agent })
-  )
+  const { actorStore, callMethod, initialize } = createReActorStore<
+    typeof hello_actor
+  >({ canisterId, idlFactory })
 
-  expect(store.getState()).toEqual(DEFAULT_STATE)
+  expect(actorStore.getState()).toEqual(DEFAULT_STATE)
 
-  initializeActor()
+  initialize()
 
-  const greet = await actions.callMethod("greet", "World")
+  const greet = await callMethod("greet", "World")
   expect(greet).toEqual("Hello, World!")
 
-  const greetUpdate = await actions.callMethod("greet_update", "World")
+  const greetUpdate = await callMethod("greet_update", "World")
   expect(greetUpdate).toEqual("Hello, World!")
 
-  actions.resetState()
-
-  expect(store.getState()).toEqual(DEFAULT_STATE)
+  expect(actorStore.getState()).toEqual(DEFAULT_STATE)
 })

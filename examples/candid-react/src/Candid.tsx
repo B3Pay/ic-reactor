@@ -27,7 +27,6 @@ const FormFields: React.FC<FormFieldProps> = ({ functionName, type }) => {
   const { call, data, loading, error, field } = useMethodCall({
     type,
     functionName,
-    disableInitialCall: true,
   })
 
   return (

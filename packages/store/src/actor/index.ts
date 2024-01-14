@@ -68,6 +68,10 @@ export class ActorManager<A extends ActorSubclass<any>> {
     }
   }
 
+  public initialize = () => {
+    this.agentManager.updateAgent()
+  }
+
   private initializeActor = (agent: HttpAgent) => {
     console.info(
       `Initializing actor ${this.canisterId} on ${

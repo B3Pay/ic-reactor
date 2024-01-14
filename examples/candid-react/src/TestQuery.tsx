@@ -10,7 +10,6 @@ interface TestQueryProps {
 const TestQuery: React.FC<TestQueryProps> = ({ functionName }) => {
   const { data, loading, error, call, field } = useQueryCall({
     functionName,
-    disableInitialCall: true,
   })
 
   const methods = useForm({
