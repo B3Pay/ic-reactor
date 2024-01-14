@@ -33,7 +33,7 @@ First, create an actor declaration file:
 ```ts
 // store.ts
 import { canisterId, idlFactory, actor } from "declaration/actor"
-import { createReActor } from "@ic-reactor/core"
+import { createReActor } from "@ic-reactor/react"
 
 type Actor = typeof actor
 
