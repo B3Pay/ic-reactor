@@ -14,11 +14,20 @@ export * from "./actor"
 export * from "./agent"
 
 export const createAgentManager = ({
-  isLocal,
+  port = 4943,
+  isLocalEnv,
   ...options
 }: AgentManagerOptions): AgentManager => {
+  const host = isLocalEnv
+    ? `http://127.0.0.1:${port}`
+    : options.host
+    ? options.host.includes("localhost")
+      ? options.host.replace("localhost", "127.0.0.1")
+      : options.host
+    : "https://icp-api.io"
+
   return new AgentManager({
-    host: isLocal ? "http://127.0.0.1:4943" : "https://icp-api.io",
+    host,
     ...options,
   })
 }
@@ -34,23 +43,26 @@ export interface CreateReActorOptions extends HttpAgentOptions {
   idlFactory: IDL.InterfaceFactory
   canisterId: CanisterId
   withDevtools?: boolean
-  isLocal?: boolean
+  isLocalEnv?: boolean
+  port?: number
   initializeOnCreate?: boolean
 }
 
 export const createReActorStore = <A extends ActorSubclass<any>>({
+  port,
   idlFactory,
   canisterId,
   withDevtools = false,
-  isLocal = false,
+  isLocalEnv = false,
   initializeOnCreate = true,
   ...options
 }: CreateReActorOptions): ActorManager<A> => {
   const agentManager =
     options.agentManager ||
     createAgentManager({
-      isLocal,
+      isLocalEnv,
       withDevtools,
+      port,
       ...options,
     })
 

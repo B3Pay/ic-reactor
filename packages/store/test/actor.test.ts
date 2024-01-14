@@ -2,7 +2,7 @@ import { createReActorStore } from "../src"
 import { idlFactory } from "./candid/b3_system"
 
 describe("createReActorStore", () => {
-  const { actorStore, agentManager, methodFields } = createReActorStore({
+  const { actorStore, agentManager, serviceFields } = createReActorStore({
     canisterId: "2vxsx-fae",
     idlFactory,
     initializeOnCreate: false,
@@ -13,7 +13,7 @@ describe("createReActorStore", () => {
   })
 
   test("Uninitialized", () => {
-    expect(methodFields).toBeDefined()
+    expect(serviceFields).toBeDefined()
 
     const { methodState, initialized, initializing, error } =
       actorStore.getState()
@@ -28,7 +28,7 @@ describe("createReActorStore", () => {
 
   test("Initialized", async () => {
     await agentManager.updateAgent()
-    expect(methodFields).toBeDefined()
+    expect(serviceFields).toBeDefined()
 
     const { methodState, initialized, initializing, error } =
       actorStore.getState()

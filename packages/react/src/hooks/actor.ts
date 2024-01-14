@@ -22,6 +22,7 @@ export type ActorHooks<A extends ActorSubclass<any>> = ReturnType<
 >
 
 export const getActorHooks = <A extends ActorSubclass<any>>({
+  initialize,
   serviceFields,
   canisterId,
   actorStore,
@@ -90,9 +91,11 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
 
         try {
           const replaceArgs: ExtractActorMethodArgs<A[M]> | undefined =
-            eventOrReplaceArgs instanceof MouseEvent
-              ? undefined
-              : (eventOrReplaceArgs as ExtractActorMethodArgs<A[M]>)
+            eventOrReplaceArgs !== undefined
+              ? (eventOrReplaceArgs as ExtractActorMethodArgs<A[M]>).length > 0
+                ? (eventOrReplaceArgs as ExtractActorMethodArgs<A[M]>)
+                : undefined
+              : undefined
 
           const data = await callMethod(functionName, ...(replaceArgs ?? args))
 
@@ -171,6 +174,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
   }
 
   return {
+    initialize,
     useQueryCall,
     useUpdateCall,
     useMethodCall,

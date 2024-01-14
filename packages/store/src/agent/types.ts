@@ -5,7 +5,8 @@ import type { StoreApi } from "zustand"
 export { HttpAgentOptions, AuthClient, Identity }
 
 export interface AgentManagerOptions extends HttpAgentOptions {
-  isLocal?: boolean
+  port?: number
+  isLocalEnv?: boolean
   withDevtools?: boolean
 }
 

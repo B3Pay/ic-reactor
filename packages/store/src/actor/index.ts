@@ -11,7 +11,7 @@ import type {
   ActorManagerOptions,
 } from "./types"
 import type { IDL } from "@dfinity/candid"
-import type { AgentManager } from "../agent"
+import type { AgentManager, UpdateAgentOptions } from "../agent"
 import { ExtractedService } from "./candid"
 
 export * from "./types"
@@ -68,8 +68,8 @@ export class ActorManager<A extends ActorSubclass<any>> {
     }
   }
 
-  public initialize = () => {
-    this.agentManager.updateAgent()
+  public initialize = async (options?: UpdateAgentOptions) => {
+    await this.agentManager.updateAgent(options)
   }
 
   private initializeActor = (agent: HttpAgent) => {

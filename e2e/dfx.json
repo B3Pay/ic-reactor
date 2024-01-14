@@ -4,7 +4,7 @@
     "hello_actor": {
       "type": "rust",
       "package": "hello_actor",
-      "candid": "src/hello/hello_actor/hello_actor.did",
+      "candid": "src/actor/hello_actor.did",
       "declarations": {
         "node_compatibility": true
       }

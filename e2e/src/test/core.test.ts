@@ -18,6 +18,7 @@ describe("Core Function Test", () => {
   >({
     canisterId,
     idlFactory,
+    isLocalEnv: true,
     initializeOnCreate: false,
   })
 

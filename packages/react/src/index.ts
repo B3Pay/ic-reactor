@@ -13,17 +13,17 @@ export * from "./context/agent"
 export * from "./context/actor"
 
 export const createReActor = <A extends ActorSubclass<any>>({
-  isLocal,
+  isLocalEnv,
   ...options
 }: CreateReActorOptions): ActorHooks<A> & AuthHooks => {
-  isLocal =
-    isLocal ||
+  isLocalEnv =
+    isLocalEnv ||
     (typeof process !== "undefined" &&
       (process.env.NODE_ENV === "development" ||
         process.env.DFX_NETWORK === "local"))
 
   const actorManager = createReActorStore<A>({
-    isLocal,
+    isLocalEnv,
     ...options,
   })
 
@@ -32,6 +32,7 @@ export const createReActor = <A extends ActorSubclass<any>>({
   )
 
   const {
+    initialize,
     useActorStore,
     useQueryCall,
     useUpdateCall,
@@ -43,6 +44,7 @@ export const createReActor = <A extends ActorSubclass<any>>({
   } = getActorHooks(actorManager)
 
   return {
+    initialize,
     useAgentManager,
     useMethodFields,
     useMethodField,
