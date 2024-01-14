@@ -1,6 +1,6 @@
 import React from "react"
 import { useFieldArray } from "react-hook-form"
-import Button from "./Button"
+import Button from "./Inputs/Button"
 import Route, { RouteProps } from "./Route"
 
 export interface VectorProps extends RouteProps<"vector"> {}

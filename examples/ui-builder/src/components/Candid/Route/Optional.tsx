@@ -12,6 +12,7 @@ const Optional: React.FC<OptionalProps> = ({
 }) => {
   const { fields, append, remove } = useFieldArray({
     name: `data.${registerName}` as never,
+    shouldUnregister: true,
   })
 
   return (

@@ -9,7 +9,6 @@ const DynamicCandid: React.FC = () => {
   const [canisterId, setCanisterId] = useState("ss2fx-dyaaa-aaaar-qacoq-cai")
   const { register, handleSubmit } = useForm({
     shouldUseNativeValidation: true,
-    shouldUnregister: true,
     defaultValues: {
       canisterId,
     },

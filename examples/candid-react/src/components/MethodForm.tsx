@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import Button from "./Button"
+import Button from "./Inputs/Button"
 import Route from "./Route"
 import { FormProvider, useForm } from "react-hook-form"
 import { ExtractedFunction } from "@ic-reactor/store"
@@ -19,7 +19,6 @@ const MethodForm: React.FC<FormProps> = ({
   const [argErrorState, setArgErrorState] = useState<any>(null)
 
   const methods = useForm({
-    shouldUnregister: true,
     mode: "onChange",
     defaultValues,
   })
@@ -70,6 +69,12 @@ const MethodForm: React.FC<FormProps> = ({
     [callHandler]
   )
 
+  const resetHandler = useCallback(() => {
+    methods.reset(defaultValues)
+    setArgState(null)
+    setArgErrorState(null)
+  }, [defaultValues, methods])
+
   return (
     <FormProvider {...methods}>
       <form
@@ -81,13 +86,7 @@ const MethodForm: React.FC<FormProps> = ({
           <button
             className="mb-2 border-red-600 border-2 rounded px-2 py-1 text-red-600 hover:bg-red-600 hover:text-white"
             type="reset"
-            onClick={() => {
-              setArgState(null)
-              setArgErrorState(null)
-              methods.reset(undefined, {
-                keepDefaultValues: true,
-              })
-            }}
+            onClick={resetHandler}
           >
             Reset
           </button>

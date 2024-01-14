@@ -1,4 +1,4 @@
-import { useFieldArray, useFormContext } from "react-hook-form"
+import { useFieldArray } from "react-hook-form"
 import Route, { RouteProps } from "./Route"
 import { cn } from "../utils"
 
@@ -9,10 +9,7 @@ const Optional: React.FC<OptionalProps> = ({
   registerName,
   errors,
 }) => {
-  const { control } = useFormContext()
-
-  const { fields, append, remove } = useFieldArray({
-    control,
+  const { fields, insert, remove } = useFieldArray({
     name: registerName as never,
   })
 
@@ -23,19 +20,28 @@ const Optional: React.FC<OptionalProps> = ({
           {extractedField.label}
         </label>
         <div className="flex-auto w-18 mt-1">
-          <input
-            id={registerName}
-            className="hidden"
-            type="checkbox"
-            onClick={() => (fields.length === 0 ? append("") : remove(0))}
-          />
           <label
             htmlFor={registerName}
             className={cn(
               "relative inline-block w-12 h-6 rounded-full cursor-pointer transition duration-200",
-              fields.length > 0 ? "bg-green-400" : "bg-gray-600"
+              fields.length > 0 ? "bg-green-400" : "bg-gray-600",
+              "focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-black"
             )}
           >
+            <input
+              id={registerName}
+              className="sr-only"
+              aria-label="toggle"
+              type="checkbox"
+              checked={fields.length > 0}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  insert(0, extractedField.defaultValues)
+                } else {
+                  remove(0)
+                }
+              }}
+            />
             <span
               className={cn(
                 "absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform transform",
@@ -45,17 +51,13 @@ const Optional: React.FC<OptionalProps> = ({
           </label>
         </div>
       </div>
-      {fields.map(({ id }) => (
-        <div
-          key={id}
-          className="flex justify-between items-start p-1 mb-1 w-full border-dashed border border-gray-400 rounded"
-        >
-          <Route
-            extractedField={extractedField.fields?.[0]}
-            errors={errors?.[0 as never]}
-            registerName={`${registerName}.[0]`}
-          />
-        </div>
+      {fields.map((field, index) => (
+        <Route
+          key={field.id}
+          extractedField={extractedField.fields?.[index]}
+          errors={errors?.[index as never]}
+          registerName={`${registerName}.[${index}]`}
+        />
       ))}
     </div>
   )
