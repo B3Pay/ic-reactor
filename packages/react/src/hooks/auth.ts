@@ -28,7 +28,7 @@ export const getAuthHooks = (agentManager: AgentManager) => {
     onLoggedOut,
   }: AuthArgs = {}) => {
     const [loginLoading, setLoginLoading] = useState(false)
-    const [loginError, setLoginError] = useState<Error | unknown | null>(null)
+    const [loginError, setLoginError] = useState<Error | null>(null)
     const { authClient, authenticated, authenticating, identity } =
       useAuthStore()
 
@@ -59,28 +59,28 @@ export const getAuthHooks = (agentManager: AgentManager) => {
             throw new Error("Auth client not initialized")
           }
 
-          await authClient.login({
+          return await authClient.login({
             identityProvider: isLocalEnv
               ? "https://identity.ic0.app/#authorize"
               : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/#authorize",
             ...options,
             onSuccess: async () => {
-              setLoginLoading(false)
               await authenticate()
               options?.onSuccess?.()
               onLoginSuccess?.()
             },
             onError: (e) => {
-              setLoginError(e)
-              setLoginLoading(false)
               options?.onError?.(e)
-              onLoginError?.(e)
+              const error = new Error("Login failed:" + e)
+              setLoginError(error)
+              onLoginError?.(error)
             },
           })
         } catch (e) {
+          setLoginError(e as Error)
+          onLoginError?.(e as Error)
+        } finally {
           setLoginLoading(false)
-          setLoginError(e)
-          onLoginError?.(e)
         }
       },
       [authClient, onLogin, onLoginSuccess, onLoginError, isLocalEnv]

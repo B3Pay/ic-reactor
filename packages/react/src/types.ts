@@ -10,9 +10,9 @@ export type * from "@ic-reactor/store/dist/actor/types"
 export type AuthArgs = {
   onAuthentication?: () => void
   onAuthenticationSuccess?: (identity: Identity) => void
-  onAuthenticationFailure?: (error: Error | unknown | null) => void
+  onAuthenticationFailure?: (error: Error | undefined) => void
   onLoginSuccess?: () => void
-  onLoginError?: (error: Error | unknown | null) => void
+  onLoginError?: (error: Error | undefined) => void
   onLogin?: () => void
   onLoggedOut?: () => void
 }
