@@ -6,7 +6,7 @@ import { useStore } from "zustand"
 export type AuthHooks = ReturnType<typeof getAuthHooks>
 
 export const getAuthHooks = (agentManager: AgentManager) => {
-  const { authenticate, authStore } = agentManager
+  const { authenticate, authStore, isLocalEnv } = agentManager
 
   const useAgentManager = () => {
     return agentManager
@@ -29,6 +29,9 @@ export const getAuthHooks = (agentManager: AgentManager) => {
 
       try {
         await authClient?.login({
+          identityProvider: isLocalEnv
+            ? "https://identity.ic0.app/#authorize"
+            : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/#authorize",
           ...options,
           onSuccess: async () => {
             setLoginLoading(false)

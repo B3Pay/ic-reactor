@@ -37,11 +37,12 @@ import { createReActor } from "@ic-reactor/react"
 
 type Actor = typeof actor
 
-export const { useActorStore, useQueryCall } = createReActor<Actor>({
-  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
-  idlFactory,
-  host: "https://localhost:4943",
-})
+export const { useActorStore, useAuthClient, useQueryCall } =
+  createReActor<Actor>({
+    canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+    idlFactory,
+    host: "https://localhost:4943",
+  })
 ```
 
 Then, use the `useQueryCall` hook to call your canister method:
@@ -54,7 +55,11 @@ const Balance = ({ principal }) => {
   const { call, data, loading, error } = useQueryCall({
     functionName: "get_balance",
     args: [principal],
-    callOnMount: true,
+    refetchInterval: 1000,
+    refetchOnMount: true,
+    onLoading: () => console.log("Loading..."),
+    onSuccess: (data) => console.log("Success!", data),
+    onError: (error) => console.log("Error!", error),
   })
 
   return (
@@ -70,6 +75,61 @@ const Balance = ({ principal }) => {
 }
 
 export default Balance
+```
+
+## Authentication
+
+`@ic-reactor/react` provides a custom hook for managing authentication with the IC blockchain. To use it, first create an authentication declaration file:
+
+```jsx
+// Login.tsx
+import { useAuthClient } from "./store"
+
+const Login = () => {
+  const {
+    login,
+    logout,
+    loginLoading,
+    loginError,
+    identity,
+    authenticating,
+    authenticated,
+  } = useAuthClient()
+
+  return (
+    <div>
+      <h2>Login:</h2>
+      <div>
+        {loginLoading && <div>Loading...</div>}
+        {loginError ? <div>{JSON.stringify(loginError)}</div> : null}
+        {identity && <div>{identity.getPrincipal().toText()}</div>}
+      </div>
+      {authenticated ? (
+        <div>
+          <button onClick={() => logout()}>Logout</button>
+        </div>
+      ) : (
+        <div>
+          <button
+            onClick={() =>
+              login({
+                identityProvider:
+                  process.env.DFX_NETWORK === "ic"
+                    ? "https://identity.ic0.app/#authorize"
+                    : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/#authorize",
+              })
+            }
+            disabled={authenticating}
+          >
+            Login
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default Login
 ```
 
 ## API Reference

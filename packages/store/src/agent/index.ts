@@ -15,6 +15,7 @@ export class AgentManager {
   private subscribers: Array<(agent: HttpAgent) => void> = []
 
   public authStore: AgentAuthStore
+  public isLocalEnv: boolean
 
   private DEFAULT_AUTH_STATE: AgentAuthState = {
     identity: null,
@@ -37,12 +38,13 @@ export class AgentManager {
     })
 
     this.agent = new HttpAgent(options)
+    this.isLocalEnv = this.agent.isLocal()
     this.initializeAgent()
   }
 
   private initializeAgent = async () => {
     this.updateState({ initializing: true })
-    if (this.agent.isLocal()) {
+    if (this.isLocalEnv) {
       try {
         await this.agent.fetchRootKey()
         this.updateState({ initialized: true, initializing: false })
@@ -73,6 +75,7 @@ export class AgentManager {
       this.agent = agent
     } else if (options) {
       this.agent = new HttpAgent(options)
+      this.isLocalEnv = this.agent.isLocal()
       await this.initializeAgent()
     }
 
