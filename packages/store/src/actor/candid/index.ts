@@ -207,7 +207,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       type: "optional",
       validate: validateError(t),
       label: l ?? t.name,
-      fields: [ty.accept(this, l) as DynamicFieldTypeByClass<IDL.Type>],
+      field: ty.accept(this, l) as DynamicFieldTypeByClass<IDL.Type>,
       defaultValue: [],
     }
   }
@@ -221,7 +221,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       type: "vector",
       validate: validateError(t),
       label: l ?? t.name,
-      fields: [ty.accept(this, l) as DynamicFieldTypeByClass<IDL.Type>],
+      field: ty.accept(this, l) as DynamicFieldTypeByClass<IDL.Type>,
       defaultValue: [],
     }
   }

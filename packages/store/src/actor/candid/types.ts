@@ -143,13 +143,13 @@ export interface ExtractedTuple<T extends IDL.Type> extends ExtractedField {
 
 export interface ExtractedOptional extends ExtractedField {
   type: "optional"
-  fields: [AllExtractableType<IDL.Type>]
+  field: AllExtractableType<IDL.Type>
   defaultValue: []
 }
 
 export interface ExtractedVector extends ExtractedField {
   type: "vector"
-  fields: AllExtractableType<IDL.Type>[]
+  field: AllExtractableType<IDL.Type>
   defaultValue: []
 }
 
@@ -158,29 +158,22 @@ export interface ExtractedRecursive extends ExtractedField {
   extract: () => AllExtractableType<IDL.Type>
 }
 
-export interface ExtractedInputField<T extends IDL.Type>
-  extends ExtractedField {
-  type: ExtractedFieldType
-  label: string
-  validate: (value: any) => boolean | string
-  defaultValue: ExtractTypeFromIDLType<T>
-}
-
 export interface ExtractedPrincipalField extends ExtractedField {
-  type: ExtractedFieldType
-  label: string
+  type: "principal"
   maxLength: number
   minLength: number
-  validate: (value: any) => boolean | string
   defaultValue: string
 }
 
 export interface ExtractedNumberField extends ExtractedField {
-  type: ExtractedFieldType
-  label: string
+  type: "number"
   min?: number | string
   max?: number | string
   valueAsNumber?: boolean
-  validate: (value: any) => boolean | string
   defaultValue: undefined
+}
+
+export interface ExtractedInputField<T extends IDL.Type>
+  extends ExtractedField {
+  defaultValue: ExtractTypeFromIDLType<T>
 }
