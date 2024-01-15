@@ -100,10 +100,13 @@ export class AgentManager {
         identity,
         authenticating: false,
       })
+
+      return identity
     } catch (error) {
       this.updateState({ error: error as Error, authenticating: false })
 
       console.error("Error in authenticate:", error)
+      throw error
     }
   }
 

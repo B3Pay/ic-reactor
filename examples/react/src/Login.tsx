@@ -9,7 +9,32 @@ const Login = () => {
     identity,
     authenticating,
     authenticated,
-  } = useAuthClient()
+  } = useAuthClient({
+    onLoggedOut() {
+      console.log("🚀 ~ onLoggedOut ~ Logged out!")
+    },
+    onAuthenticationSuccess(identity) {
+      console.log(
+        "🚀 ~ onAuthenticationSuccess ~ identity:",
+        identity.getPrincipal().toText()
+      )
+    },
+    onAuthenticationFailure(error) {
+      console.log("🚀 ~ onAuthenticationFailure ~ error:", error)
+    },
+    onLogin() {
+      console.log("🚀 ~ onLogin ~ Logged in!")
+    },
+    onAuthentication() {
+      console.log("🚀 ~ onAuthentication ~ Authenticating...")
+    },
+    onLoginError(error) {
+      console.log("🚀 ~ onLoginError ~ error:", error)
+    },
+    onLoginSuccess() {
+      console.log("🚀 ~ onLoginSuccess ~ Logged in!")
+    },
+  })
 
   return (
     <div>

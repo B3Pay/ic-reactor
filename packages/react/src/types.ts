@@ -1,10 +1,21 @@
 import type {
   ExtractActorMethodArgs,
   ExtractActorMethodReturnType,
+  Identity,
   ServiceMethodType,
 } from "@ic-reactor/store"
 export type * from "@ic-reactor/store"
 export type * from "@ic-reactor/store/dist/actor/types"
+
+export type AuthArgs = {
+  onAuthentication?: () => void
+  onAuthenticationSuccess?: (identity: Identity) => void
+  onAuthenticationFailure?: (error: Error | unknown | null) => void
+  onLoginSuccess?: () => void
+  onLoginError?: (error: Error | unknown | null) => void
+  onLogin?: () => void
+  onLoggedOut?: () => void
+}
 
 export type ActorCallArgs<A, M extends keyof A> = {
   functionName: M & string
