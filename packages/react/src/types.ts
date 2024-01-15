@@ -2,18 +2,19 @@ import type {
   ExtractActorMethodArgs,
   ExtractActorMethodReturnType,
   Identity,
+  Principal,
   ServiceMethodType,
 } from "@ic-reactor/store"
 export type * from "@ic-reactor/store"
 export type * from "@ic-reactor/store/dist/actor/types"
 
 export type AuthArgs = {
-  onAuthentication?: () => void
+  onAuthentication?: (promise: () => Promise<Identity>) => void
   onAuthenticationSuccess?: (identity: Identity) => void
-  onAuthenticationFailure?: (error: Error | undefined) => void
-  onLoginSuccess?: () => void
-  onLoginError?: (error: Error | undefined) => void
-  onLogin?: () => void
+  onAuthenticationFailure?: (error: Error) => void
+  onLoginSuccess?: (principal: Principal) => void
+  onLoginError?: (error: Error) => void
+  onLogin?: (promise: () => Promise<Principal>) => void
   onLoggedOut?: () => void
 }
 

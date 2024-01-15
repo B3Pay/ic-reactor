@@ -10,6 +10,29 @@ const Login = () => {
     authenticating,
     authenticated,
   } = useAuthClient({
+    onAuthentication(authPromise) {
+      console.log("🚀 ~ onAuthentication ~ Authenticating...")
+      authPromise()
+        .then((identity) => {
+          console.log(
+            "🚀 ~ onAuthentication ~ Authenticated as:",
+            identity.getPrincipal().toText()
+          )
+        })
+        .catch((error) => {
+          console.log("🚀 ~ onAuthentication ~ error:", error)
+        })
+    },
+    onLogin(loginPromise) {
+      console.log("🚀 ~ onLogin ~ Logging in...")
+      loginPromise()
+        .then((principal) => {
+          console.log("🚀 ~ onLogin ~ Logged in as:", principal.toText())
+        })
+        .catch((error) => {
+          console.log("🚀 ~ onLogin ~ error:", error)
+        })
+    },
     onLoggedOut() {
       console.log("🚀 ~ onLoggedOut ~ Logged out!")
     },
@@ -22,17 +45,11 @@ const Login = () => {
     onAuthenticationFailure(error) {
       console.log("🚀 ~ onAuthenticationFailure ~ error:", error)
     },
-    onLogin() {
-      console.log("🚀 ~ onLogin ~ Logged in!")
-    },
-    onAuthentication() {
-      console.log("🚀 ~ onAuthentication ~ Authenticating...")
-    },
     onLoginError(error) {
       console.log("🚀 ~ onLoginError ~ error:", error)
     },
-    onLoginSuccess() {
-      console.log("🚀 ~ onLoginSuccess ~ Logged in!")
+    onLoginSuccess(principal) {
+      console.log("🚀 ~ onLoginSuccess ~ Logged in as:", principal.toText())
     },
   })
 
