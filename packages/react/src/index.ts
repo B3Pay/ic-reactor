@@ -27,9 +27,8 @@ export const createReActor = <A extends ActorSubclass<any>>({
     ...options,
   })
 
-  const { useAuthClient, useAgentManager, useAuthStore } = getAuthHooks(
-    actorManager.agentManager
-  )
+  const { useAuthClient, useUserPrincipal, useAgentManager, useAuthStore } =
+    getAuthHooks(actorManager.agentManager)
 
   const {
     initialize,
@@ -45,6 +44,7 @@ export const createReActor = <A extends ActorSubclass<any>>({
 
   return {
     initialize,
+    useUserPrincipal,
     useAgentManager,
     useMethodFields,
     useMethodField,

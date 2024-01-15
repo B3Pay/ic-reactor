@@ -18,6 +18,12 @@ export const getAuthHooks = (agentManager: AgentManager) => {
     return authState
   }
 
+  const useUserPrincipal = () => {
+    const { identity } = useAuthStore()
+
+    return identity?.getPrincipal()
+  }
+
   const useAuthClient = ({
     onAuthentication,
     onAuthenticationSuccess,
@@ -142,6 +148,7 @@ export const getAuthHooks = (agentManager: AgentManager) => {
   }
 
   return {
+    useUserPrincipal,
     useAgentManager,
     useAuthStore,
     useAuthClient,
