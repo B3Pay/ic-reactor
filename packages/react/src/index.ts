@@ -1,60 +1,33 @@
 import type { ActorSubclass, CreateReActorOptions } from "@ic-reactor/store"
 import { createReActorStore } from "@ic-reactor/store"
-import { ActorHooks, getActorHooks } from "./hooks/actor"
-import { AuthHooks, getAuthHooks } from "./hooks/auth"
+import { getActorHooks } from "./hooks/actor"
+import { getAuthHooks } from "./hooks/auth"
+import { CreateReActor } from "./types"
 
-export {
-  createReActorStore,
-  createAgentManager,
-  createActorManager,
-} from "@ic-reactor/store"
+export * from "@ic-reactor/store"
 
 export * from "./context/agent"
 export * from "./context/actor"
 
-export const createReActor = <A extends ActorSubclass<any>>({
+export const createReActor: CreateReActor = <A extends ActorSubclass<any>>({
   isLocalEnv,
+  withServiceField,
   ...options
-}: CreateReActorOptions): ActorHooks<A> & AuthHooks => {
+}: CreateReActorOptions) => {
   isLocalEnv =
     isLocalEnv ||
     (typeof process !== "undefined" &&
-      (process.env.NODE_ENV === "development" ||
-        process.env.DFX_NETWORK === "local"))
+      (process.env.DFX_NETWORK === "local" ||
+        process.env.NODE_ENV === "development"))
 
   const actorManager = createReActorStore<A>({
     isLocalEnv,
+    withServiceField,
     ...options,
   })
 
-  const { useAuthClient, useUserPrincipal, useAgentManager, useAuthStore } =
-    getAuthHooks(actorManager.agentManager)
-
-  const {
-    initialize,
-    useActorStore,
-    useQueryCall,
-    useUpdateCall,
-    useMethodCall,
-    useMethodField,
-    useMethodFields,
-    useMethodNames,
-    useServiceFields,
-  } = getActorHooks(actorManager)
-
   return {
-    initialize,
-    useUserPrincipal,
-    useAgentManager,
-    useMethodFields,
-    useMethodField,
-    useActorStore,
-    useAuthStore,
-    useQueryCall,
-    useUpdateCall,
-    useMethodCall,
-    useAuthClient,
-    useMethodNames,
-    useServiceFields,
-  }
+    ...getActorHooks(actorManager),
+    ...getAuthHooks(actorManager.agentManager),
+  } as any
 }

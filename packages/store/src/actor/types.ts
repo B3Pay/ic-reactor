@@ -20,8 +20,8 @@ export interface ActorManagerOptions {
   idlFactory: IDL.InterfaceFactory
   canisterId: CanisterId
   withDevtools?: boolean
+  withServiceField?: boolean
   initializeOnCreate?: boolean
-  initializeActor?: InitializeActorType
 }
 
 // Type for initializing an actor

@@ -34,7 +34,7 @@ const DynamicCandid: React.FC = () => {
         </form>
       </div>
       <AgentProvider withDevtools>
-        <ActorProvider canisterId={canisterId} withDevtools>
+        <ActorProvider canisterId={canisterId} withDevtools withServiceField>
           <CandidForm />
         </ActorProvider>
       </AgentProvider>

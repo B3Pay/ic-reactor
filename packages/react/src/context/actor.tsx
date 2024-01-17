@@ -16,9 +16,10 @@ import {
   getDidJsFromTmpHack,
 } from "@ic-reactor/store"
 import { AgentContextType, useAgentManager } from "./agent"
-import type { ActorHooks } from "../hooks/actor"
+import { ActorHooksWithField } from "../types"
 
-export type ActorContextType<A = ActorSubclass<any>> = ActorHooks<A>
+// Update this to reflect the correct ActorHooks type based on withServiceField
+export type ActorContextType<A = ActorSubclass<any>> = ActorHooksWithField<A>
 
 export const ActorContext = createContext<ActorContextType | null>(null)
 
@@ -47,6 +48,7 @@ export const ActorProvider: React.FC<ActorProviderProps> = ({
   canisterId,
   agentContext,
   loadingComponent = <div>Loading...</div>,
+  withServiceField = false,
   ...config
 }) => {
   const agentManager = useAgentManager(agentContext)
@@ -110,6 +112,7 @@ export const ActorProvider: React.FC<ActorProviderProps> = ({
         agentManager,
         canisterId,
         withDevtools: config.withDevtools,
+        withServiceField: withServiceField as true,
       })
     } catch (err) {
       console.error(err)

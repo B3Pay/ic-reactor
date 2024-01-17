@@ -31,29 +31,33 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
   public visitService(t: IDL.ServiceClass, l?: string): ExtractedService<A> {
     type MethodName = keyof A
 
-    const { methods, methodNames } = t._fields.reduce(
+    const { methods, methodFields } = t._fields.reduce(
       (acc, [functionName, func]) => {
-        acc.methodNames.push([
-          is_query(func) ? "query" : "update",
-          functionName as MethodName,
-        ])
-        acc.methods[functionName as MethodName] = func.accept(
+        const functionData = func.accept(
           this,
           functionName
         ) as ExtractedFunction<A>
 
+        acc.methods.push({
+          type: is_query(func) ? "query" : "update",
+          functionName: functionName as MethodName,
+          defaultValues: functionData.defaultValues,
+        })
+
+        acc.methodFields[functionName as MethodName] = functionData
+
         return acc
       },
       {
-        methods: {} as { [K in MethodName]: ExtractedFunction<A> },
-        methodNames: [] as ServiceMethodTypeAndName<A>[],
+        methodFields: {} as { [K in MethodName]: ExtractedFunction<A> },
+        methods: [] as ServiceMethodTypeAndName<A>[],
       }
     )
 
     return {
       label: l ?? t.name,
+      methodFields,
       methods,
-      methodNames,
     }
   }
 
@@ -68,7 +72,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
         >
 
         acc.fields.push(field)
-        acc.defaultValues.data[`${functionName}-arg${index}`] =
+        acc.defaultValues.data[`arg${index}`] =
           field.defaultValue || field.defaultValues
 
         return acc

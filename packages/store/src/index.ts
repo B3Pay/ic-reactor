@@ -1,9 +1,4 @@
-import type {
-  IDL,
-  ActorSubclass,
-  CanisterId,
-  ActorManagerOptions,
-} from "./actor/types"
+import type { ActorSubclass, ActorManagerOptions } from "./actor/types"
 import type { AgentManagerOptions, HttpAgentOptions } from "./agent/types"
 
 import { ActorManager } from "./actor"
@@ -38,14 +33,12 @@ export const createActorManager = <A extends ActorSubclass<any>>(
   return new ActorManager<A>(options)
 }
 
-export interface CreateReActorOptions extends HttpAgentOptions {
+export interface CreateReActorOptions
+  extends HttpAgentOptions,
+    Omit<ActorManagerOptions, "agentManager"> {
   agentManager?: AgentManager
-  idlFactory: IDL.InterfaceFactory
-  canisterId: CanisterId
-  withDevtools?: boolean
   isLocalEnv?: boolean
   port?: number
-  initializeOnCreate?: boolean
 }
 
 export const createReActorStore = <A extends ActorSubclass<any>>({
@@ -55,6 +48,7 @@ export const createReActorStore = <A extends ActorSubclass<any>>({
   withDevtools = false,
   isLocalEnv = false,
   initializeOnCreate = true,
+  withServiceField,
   ...options
 }: CreateReActorOptions): ActorManager<A> => {
   const agentManager =
@@ -71,6 +65,7 @@ export const createReActorStore = <A extends ActorSubclass<any>>({
     canisterId,
     agentManager,
     withDevtools,
+    withServiceField,
     initializeOnCreate,
   })
 }

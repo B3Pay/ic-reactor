@@ -77,9 +77,9 @@ export type AllExtractableType<T extends IDL.Type> =
   | ExtractedNumberField
   | ExtractedInputField<T>
 
-export type FunctionDefaultValues<M extends string, T = any> = {
+export type FunctionDefaultValues<T = any> = {
   data: {
-    [K in `${M}-arg${number}`]: ExtractTypeFromIDLType<T>
+    [key: `arg${number}`]: ExtractTypeFromIDLType<T>
   }
 }
 
@@ -103,21 +103,25 @@ export interface ExtractedField extends ExtraInputFormFields {
 
 export type ServiceMethodType = "query" | "update"
 
-export type ServiceMethodTypeAndName<A> = [ServiceMethodType, keyof A]
+export type ServiceMethodTypeAndName<A> = {
+  type: ServiceMethodType
+  functionName: keyof A
+  defaultValues: FunctionDefaultValues<A[keyof A]>
+}
 
 export interface ExtractedService<A> {
   label: string
-  methods: {
+  methodFields: {
     [K in keyof A]: ExtractedFunction<A>
   }
-  methodNames: ServiceMethodTypeAndName<A>[]
+  methods: ServiceMethodTypeAndName<A>[]
 }
 
 export interface ExtractedFunction<A> {
   type: "query" | "update"
   functionName: keyof A & string
   fields: AllExtractableType<IDL.Type<any>>[] | []
-  defaultValues: FunctionDefaultValues<keyof A & string>
+  defaultValues: FunctionDefaultValues
   validate: (value: any) => boolean | string
 }
 

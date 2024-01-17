@@ -12,12 +12,13 @@ const TestQuery: React.FC<TestQueryProps> = ({ functionName }) => {
     functionName,
   })
 
+  console.log("field", field)
   const methods = useForm({
     progressive: false,
     shouldUseNativeValidation: true,
     reValidateMode: "onChange",
     mode: "onChange",
-    defaultValues: field?.defaultValues,
+    defaultValues: field.defaultValues,
   })
 
   return (
@@ -37,10 +38,8 @@ const TestQuery: React.FC<TestQueryProps> = ({ functionName }) => {
             <div key={index} className="mb-2">
               <Route
                 extractedField={field}
-                registerName={`${functionName}-arg${index}`}
-                errors={
-                  methods.formState.errors.data?.[`${functionName}-arg${index}`]
-                }
+                registerName={`arg${index}`}
+                errors={methods.formState.errors.data?.[`arg${index}`]}
               />
             </div>
           )

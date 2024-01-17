@@ -24,7 +24,9 @@ export class ActorManager<A extends ActorSubclass<any>> {
   public agentManager: AgentManager
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
-  public serviceFields: ExtractedService<A>
+
+  public withServiceField: boolean = false
+  public serviceFields?: ExtractedService<A>
 
   private DEFAULT_ACTOR_STATE: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
@@ -45,17 +47,23 @@ export class ActorManager<A extends ActorSubclass<any>> {
       canisterId,
       idlFactory,
       withDevtools = false,
+      withServiceField,
       initializeOnCreate = true,
     } = reactorConfig
 
+    this.withServiceField = withServiceField || false
     this.agentManager = agentManager
+
     this.unsubscribeActor = this.agentManager.subscribeAgent(
       this.initializeActor
     )
 
     this.canisterId = canisterId
     this.idlFactory = idlFactory
-    this.serviceFields = extractServiceField(idlFactory)
+
+    if (withServiceField) {
+      this.serviceFields = extractServiceField(idlFactory)
+    }
 
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(

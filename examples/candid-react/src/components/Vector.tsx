@@ -56,7 +56,7 @@ const Vector: React.FC<VectorProps> = ({
           </div>
           <div className="flex-auto">
             <Route
-              extractedField={extractedField.fields?.[0]}
+              extractedField={extractedField.field}
               errors={errors?.[index as never]}
               registerName={`${registerName}.[${index}]`}
             />

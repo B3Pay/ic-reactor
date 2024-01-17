@@ -6,11 +6,12 @@ export type CandidType = typeof candid
 export const {
   useActorStore,
   useMethodFields,
-  useMethodNames,
+  useMethods,
   useQueryCall,
   useMethodCall,
 } = createReActor<CandidType>({
   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
   idlFactory,
+  withServiceField: true,
   host: "https://localhost:4943",
 })

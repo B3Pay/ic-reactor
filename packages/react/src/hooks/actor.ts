@@ -11,45 +11,56 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   ActorCallArgs,
   ActorHookState,
+  ActorHooks,
   ActorUseMethodArg,
   ActorUseQueryArgs,
+  ActorUseQueryReturn,
   ActorUseUpdateArgs,
+  ActorUseUpdateReturn,
+  UseActorStoreReturn,
 } from "../types"
 import { useStore } from "zustand"
-
-export type ActorHooks<A extends ActorSubclass<any>> = ReturnType<
-  typeof getActorHooks<A>
->
 
 export const getActorHooks = <A extends ActorSubclass<any>>({
   initialize,
   serviceFields,
+  withServiceField,
   canisterId,
   actorStore,
   callMethod,
-}: ActorManager<A>) => {
-  const useActorStore = () => {
+}: ActorManager<A>): ActorHooks<A, typeof withServiceField> => {
+  type W = typeof withServiceField
+
+  const useActorStore = (): UseActorStoreReturn<A> => {
     const actorState = useStore(actorStore, (state) => state)
 
     return { ...actorState, canisterId }
   }
 
   const useServiceFields = (): ExtractedService<A> => {
+    if (!withServiceField || !serviceFields) {
+      throw new Error(
+        "Service fields not initialized. Pass `withServiceField` to initialize service fields."
+      )
+    }
+
     return serviceFields
   }
 
-  const useMethodNames = (): ServiceMethodTypeAndName<A>[] => {
-    const serviceField = useServiceFields()
+  const useMethods = (): ServiceMethodTypeAndName<A>[] => {
+    const serviceFields = useServiceFields()
 
-    return serviceField.methodNames
+    return useMemo(() => {
+      return Object.values(serviceFields.methods)
+    }, [serviceFields])
   }
 
   const useMethodFields = (): ExtractedFunction<A>[] => {
-    const methodFields = useServiceFields()
+    const serviceFields = useServiceFields()
 
     return useMemo(() => {
-      return Object.values(methodFields.methods)
-    }, [methodFields])
+      return Object.values(serviceFields.methodFields)
+    }, [serviceFields])
   }
 
   const useMethodField = (
@@ -57,10 +68,9 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
   ): ExtractedFunction<A> => {
     const serviceMethod = useServiceFields()
 
-    return useMemo(
-      () => serviceMethod.methods[functionName],
-      [functionName, serviceMethod]
-    )
+    return useMemo(() => {
+      return serviceMethod.methodFields[functionName]
+    }, [functionName, serviceMethod])
   }
 
   const useReActorCall = <M extends keyof A>({
@@ -120,7 +130,9 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
       [args, functionName, onError, onSuccess, onLoading]
     )
 
-    const field = useMethodField(functionName)
+    const field = useMemo(() => {
+      return serviceFields?.methodFields[functionName]
+    }, [functionName]) as ExtractedFunction<A>
 
     return { call, field, ...state }
   }
@@ -129,7 +141,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     refetchOnMount = false,
     refetchInterval = false,
     ...rest
-  }: ActorUseQueryArgs<A, M>) => {
+  }: ActorUseQueryArgs<A, M>): ActorUseQueryReturn<A, M, W> => {
     const { call, ...state } = useReActorCall(rest)
 
     let intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -155,14 +167,18 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { call, ...state }
   }
 
-  const useUpdateCall = <M extends keyof A>(args: ActorUseUpdateArgs<A, M>) => {
+  const useUpdateCall = <M extends keyof A>(
+    args: ActorUseUpdateArgs<A, M>
+  ): ActorUseUpdateReturn<A, M, W> => {
     return useReActorCall(args)
   }
 
   const useMethodCall = <M extends keyof A, T extends ServiceMethodType>({
     type,
     ...rest
-  }: ActorUseMethodArg<A, T> & { type: T }) => {
+  }: ActorUseMethodArg<A, T> & { type: T }): T extends "query"
+    ? ActorUseQueryReturn<A, M, W>
+    : ActorUseUpdateReturn<A, M, W> => {
     switch (type) {
       case "query":
         return useQueryCall<M>(rest as unknown as ActorUseQueryArgs<A, M>)
@@ -175,13 +191,13 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
 
   return {
     initialize,
+    useMethods,
     useQueryCall,
     useUpdateCall,
     useMethodCall,
     useActorStore,
     useMethodField,
     useMethodFields,
-    useMethodNames,
     useServiceFields,
   }
 }
