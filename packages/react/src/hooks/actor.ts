@@ -191,11 +191,11 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
 
   return {
     initialize,
-    useMethods,
     useQueryCall,
     useUpdateCall,
     useMethodCall,
     useActorStore,
+    useMethods,
     useMethodField,
     useMethodFields,
     useServiceFields,

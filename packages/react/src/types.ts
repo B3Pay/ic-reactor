@@ -102,13 +102,13 @@ export interface ActorFieldHooks<A> {
   useServiceFields: () => ExtractedService<A>
   useMethodFields: () => ExtractedFunction<A>[]
   useMethodField: (functionName: keyof A & string) => ExtractedFunction<A>
+  useMethods: () => ServiceMethodTypeAndName<A>[]
 }
 
 export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }
 
 export interface ActorDefaultHooks<A, W extends boolean = false> {
   initialize: () => Promise<void>
-  useMethods: () => ServiceMethodTypeAndName<A>[]
   useActorStore: () => UseActorStoreReturn<A>
   useQueryCall: <M extends keyof A>(
     args: ActorUseQueryArgs<A, M>
