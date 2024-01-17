@@ -25,7 +25,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
 
-  public withServiceField: boolean = false
+  public withServiceFields: boolean = false
   public serviceFields?: ExtractedService<A>
 
   private DEFAULT_ACTOR_STATE: ActorState<A> = {
@@ -47,11 +47,11 @@ export class ActorManager<A extends ActorSubclass<any>> {
       canisterId,
       idlFactory,
       withDevtools = false,
-      withServiceField,
+      withServiceFields,
       initializeOnCreate = true,
     } = reactorConfig
 
-    this.withServiceField = withServiceField || false
+    this.withServiceFields = withServiceFields || false
     this.agentManager = agentManager
 
     this.unsubscribeActor = this.agentManager.subscribeAgent(
@@ -61,7 +61,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
     this.canisterId = canisterId
     this.idlFactory = idlFactory
 
-    if (withServiceField) {
+    if (withServiceFields) {
       this.serviceFields = extractServiceField(idlFactory)
     }
 

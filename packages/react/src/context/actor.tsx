@@ -18,7 +18,7 @@ import {
 import { AgentContextType, useAgentManager } from "./agent"
 import { ActorHooksWithField } from "../types"
 
-// Update this to reflect the correct ActorHooks type based on withServiceField
+// Update this to reflect the correct ActorHooks type based on withServiceFields
 export type ActorContextType<A = ActorSubclass<any>> = ActorHooksWithField<A>
 
 export const ActorContext = createContext<ActorContextType | null>(null)
@@ -48,7 +48,7 @@ export const ActorProvider: React.FC<ActorProviderProps> = ({
   canisterId,
   agentContext,
   loadingComponent = <div>Loading...</div>,
-  withServiceField = false,
+  withServiceFields = false,
   ...config
 }) => {
   const agentManager = useAgentManager(agentContext)
@@ -112,7 +112,7 @@ export const ActorProvider: React.FC<ActorProviderProps> = ({
         agentManager,
         canisterId,
         withDevtools: config.withDevtools,
-        withServiceField: withServiceField as true,
+        withServiceFields: withServiceFields as true,
       })
     } catch (err) {
       console.error(err)

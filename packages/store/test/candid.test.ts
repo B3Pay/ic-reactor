@@ -10,7 +10,7 @@ describe("My IC Store and Actions", () => {
   const { serviceFields } = new ActorManager<typeof b3_system>({
     agentManager,
     idlFactory,
-    withServiceField: true,
+    withServiceFields: true,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
 

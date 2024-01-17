@@ -24,12 +24,12 @@ import { useStore } from "zustand"
 export const getActorHooks = <A extends ActorSubclass<any>>({
   initialize,
   serviceFields,
-  withServiceField,
+  withServiceFields,
   canisterId,
   actorStore,
   callMethod,
-}: ActorManager<A>): ActorHooks<A, typeof withServiceField> => {
-  type W = typeof withServiceField
+}: ActorManager<A>): ActorHooks<A, typeof withServiceFields> => {
+  type W = typeof withServiceFields
 
   const useActorStore = (): UseActorStoreReturn<A> => {
     const actorState = useStore(actorStore, (state) => state)
@@ -38,9 +38,9 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
   }
 
   const useServiceFields = (): ExtractedService<A> => {
-    if (!withServiceField || !serviceFields) {
+    if (!withServiceFields || !serviceFields) {
       throw new Error(
-        "Service fields not initialized. Pass `withServiceField` to initialize service fields."
+        "Service fields not initialized. Pass `withServiceFields` to initialize service fields."
       )
     }
 

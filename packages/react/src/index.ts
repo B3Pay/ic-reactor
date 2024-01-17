@@ -11,7 +11,7 @@ export * from "./context/actor"
 
 export const createReActor: CreateReActor = <A extends ActorSubclass<any>>({
   isLocalEnv,
-  withServiceField,
+  withServiceFields,
   ...options
 }: CreateReActorOptions) => {
   isLocalEnv =
@@ -22,7 +22,7 @@ export const createReActor: CreateReActor = <A extends ActorSubclass<any>>({
 
   const actorManager = createReActorStore<A>({
     isLocalEnv,
-    withServiceField,
+    withServiceFields,
     ...options,
   })
 

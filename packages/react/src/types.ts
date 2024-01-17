@@ -125,9 +125,9 @@ export interface ActorDefaultHooks<A, W extends boolean = false> {
 
 export type CreateReActor = {
   <A extends ActorSubclass<any>>(
-    options: CreateReActorOptions & { withServiceField: true }
+    options: CreateReActorOptions & { withServiceFields: true }
   ): ActorHooksWithField<A> & AuthHooks
   <A extends ActorSubclass<any>>(
-    options: CreateReActorOptions & { withServiceField?: false | undefined }
+    options: CreateReActorOptions & { withServiceFields?: false | undefined }
   ): ActorHooksWithoutField<A> & AuthHooks
 }

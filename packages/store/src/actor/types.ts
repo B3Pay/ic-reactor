@@ -20,7 +20,7 @@ export interface ActorManagerOptions {
   idlFactory: IDL.InterfaceFactory
   canisterId: CanisterId
   withDevtools?: boolean
-  withServiceField?: boolean
+  withServiceFields?: boolean
   initializeOnCreate?: boolean
 }
 

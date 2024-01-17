@@ -12,6 +12,6 @@ export const {
 } = createReActor<CandidType>({
   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
   idlFactory,
-  withServiceField: true,
+  withServiceFields: true,
   host: "https://localhost:4943",
 })

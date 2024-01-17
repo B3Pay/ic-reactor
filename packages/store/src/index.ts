@@ -48,7 +48,7 @@ export const createReActorStore = <A extends ActorSubclass<any>>({
   withDevtools = false,
   isLocalEnv = false,
   initializeOnCreate = true,
-  withServiceField,
+  withServiceFields,
   ...options
 }: CreateReActorOptions): ActorManager<A> => {
   const agentManager =
@@ -65,7 +65,7 @@ export const createReActorStore = <A extends ActorSubclass<any>>({
     canisterId,
     agentManager,
     withDevtools,
-    withServiceField,
+    withServiceFields,
     initializeOnCreate,
   })
 }
