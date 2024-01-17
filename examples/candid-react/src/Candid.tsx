@@ -1,6 +1,6 @@
 import MethodForm from "./components/MethodForm"
 import { useMethods, useMethodCall, CandidType } from "./actor"
-import { ServiceMethodType } from "@ic-reactor/react/dist/types"
+import { ServiceMethodType } from "@ic-reactor/react"
 import { FormProvider, useForm } from "react-hook-form"
 
 const Candid: React.FC = () => {

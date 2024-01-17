@@ -45,5 +45,6 @@
     "@dfinity/principal": "^0.20",
     "@peculiar/webcrypto": "1.4",
     "zustand": "4.4"
-  }
+  },
+  "gitHead": "431ada43e07a49e66bb7e425c8a97521da084354"
 }

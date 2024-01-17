@@ -47,5 +47,6 @@
     "@peculiar/webcrypto": "1.4",
     "react": ">=16.8",
     "zustand": "4.4"
-  }
+  },
+  "gitHead": "431ada43e07a49e66bb7e425c8a97521da084354"
 }
