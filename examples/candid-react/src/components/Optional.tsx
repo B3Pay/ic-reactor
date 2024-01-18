@@ -17,11 +17,14 @@ const Optional: React.FC<OptionalProps> = ({
 
   return (
     <div className="flex flex-col">
-      <div className="flex h-10 justify-between items-center">
-        <label className="flex-1  w-full block text-lg font-medium">
-          {extractedField.label}
-        </label>
-        <div className="flex-auto w-18 mt-1">
+      <div className="w-full flex justify-between items-center">
+        <div className="flex-1 w-full">
+          <label className="block text-lg font-medium">
+            {extractedField.label}
+          </label>
+          <p>{extractedField.description}</p>
+        </div>
+        <div className="flex-1 w-18 mt-1">
           <label
             htmlFor={registerName}
             className={cn(

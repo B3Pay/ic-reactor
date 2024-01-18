@@ -18,12 +18,15 @@ const Vector: React.FC<VectorProps> = ({
 
   return (
     <div className="w-full box-border">
-      <div className="flex justify-between items-center">
-        <label className="flex-1 w-full block text-lg font-medium">
-          {extractedField.label}
-        </label>
+      <div className="w-full flex justify-between items-center">
+        <div className="flex-1 w-full">
+          <label className="block text-lg font-medium">
+            {extractedField.label}
+          </label>
+          <p>{extractedField.description}</p>
+        </div>
         <Button
-          className="flex-auto w-18 bg-gray-400 hover:bg-gray-500 mt-1"
+          className="flex-1 w-18 bg-gray-400 hover:bg-gray-500 mt-1"
           onClick={() => append("")}
         >
           +

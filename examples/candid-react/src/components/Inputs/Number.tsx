@@ -21,9 +21,12 @@ const Number: React.FC<NumberProps> = ({
 
   return (
     <div className="w-full p-1">
-      <label htmlFor={registerName} className="block mr-2">
-        {extractedField.label}
-      </label>
+      <div>
+        <label className="flex-1  w-full block text-lg font-medium">
+          {extractedField.label}
+        </label>
+        <p>{extractedField.description}</p>
+      </div>
       {errorMessage && (
         <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>
       )}

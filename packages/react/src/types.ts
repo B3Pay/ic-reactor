@@ -7,6 +7,7 @@ import type {
   ExtractActorMethodReturnType,
   ExtractedFunction,
   ExtractedService,
+  FunctionMethodDetails,
   HttpAgent,
   Identity,
   Principal,
@@ -101,7 +102,9 @@ export interface ActorFieldHooks<A> {
   useServiceFields: () => ExtractedService<A>
   useMethodFields: () => ExtractedFunction<A>[]
   useMethodField: (functionName: keyof A & string) => ExtractedFunction<A>
-  useMethods: () => ServiceMethodTypeAndName<A>[]
+  useMethodDetails: () => FunctionMethodDetails<keyof A & string>[]
+  useMethodLabel: (functionName: keyof A & string) => FunctionMethodDetails<A>
+  useMethodNames: () => ServiceMethodTypeAndName<A>[]
 }
 
 export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }

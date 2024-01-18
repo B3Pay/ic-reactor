@@ -18,9 +18,6 @@ const Variant: React.FC<VariantProps> = ({
 
   return (
     <div className="w-full flex-col">
-      <label htmlFor={selectRegisterName} className="block mr-2">
-        {extractedField.label}
-      </label>
       <Controller
         name={selectRegisterName}
         render={({ field }) => (

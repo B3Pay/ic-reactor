@@ -8,7 +8,7 @@ export const {
   getServiceFields,
   useActorStore,
   useMethodFields,
-  useMethods,
+  useMethodNames,
   useQueryCall,
   useMethodCall,
 } = createReActor<CandidType>({

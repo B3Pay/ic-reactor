@@ -10,16 +10,23 @@ const Tuple: React.FC<TupleProps> = ({
 }) => {
   return (
     <div className="w-full">
-      <div className="font-semibold">{extractedField.label}</div>
-      {extractedField.fields.map((field, index) => (
-        <Route
-          key={index}
-          shouldUnregister={shouldUnregister}
-          registerName={`${registerName}.[${index}]`}
-          errors={errors?.[index as never]}
-          extractedField={field}
-        />
-      ))}
+      <div>
+        <label className="flex-1  w-full block text-lg font-medium">
+          {extractedField.label}
+        </label>
+        <p>{extractedField.description}</p>
+      </div>
+      <div className="border-l-2 border-gray-400 ml-2 pl-2">
+        {extractedField.fields.map((field, index) => (
+          <Route
+            key={index}
+            shouldUnregister={shouldUnregister}
+            registerName={`${registerName}.[${index}]`}
+            errors={errors?.[index as never]}
+            extractedField={field}
+          />
+        ))}
+      </div>
     </div>
   )
 }

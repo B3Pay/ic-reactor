@@ -16,6 +16,8 @@ import type {
   DynamicFieldTypeByClass,
   ServiceMethodTypeAndName,
   AllExtractableType,
+  MethodDetails,
+  FunctionMethodDetails,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { is_query, validateError } from "./helper"
@@ -25,38 +27,50 @@ export * from "./types"
 export * from "./helper"
 
 export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
-  string | undefined,
+  string,
   ExtractedField | ExtractedService<A> | ExtractedFunction<A>
 > {
-  public visitService(t: IDL.ServiceClass, l?: string): ExtractedService<A> {
+  public visitService(
+    t: IDL.ServiceClass,
+    canisterId: string
+  ): ExtractedService<A> {
     type MethodName = keyof A
 
-    const { methods, methodFields } = t._fields.reduce(
+    const { methodNames, methodFields, methodDetails } = t._fields.reduce(
       (acc, [functionName, func]) => {
         const functionData = func.accept(
           this,
           functionName
         ) as ExtractedFunction<A>
 
-        acc.methods.push({
+        acc.methodNames.push({
           type: is_query(func) ? "query" : "update",
           functionName: functionName as MethodName,
         })
 
         acc.methodFields[functionName as MethodName] = functionData
 
+        acc.methodDetails.push({
+          ...functionData.childDetails,
+          title: functionName,
+          description: func.name,
+        })
+
         return acc
       },
       {
         methodFields: {} as { [K in MethodName]: ExtractedFunction<A> },
-        methods: [] as ServiceMethodTypeAndName<A>[],
+        methodNames: [] as ServiceMethodTypeAndName<A>[],
+        methodDetails: [] as FunctionMethodDetails<keyof A & string>[],
       }
     )
 
     return {
-      label: l ?? t.name,
+      canisterId,
+      description: t.name,
       methodFields,
-      methods,
+      methodNames,
+      methodDetails,
     }
   }
 
@@ -64,21 +78,28 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     t: IDL.FuncClass,
     functionName: keyof A & string
   ): ExtractedFunction<A> {
-    const { fields, defaultValues } = t.argTypes.reduce(
+    const { fields, childDetails, defaultValues } = t.argTypes.reduce(
       (acc, arg, index) => {
-        const field = arg.accept(this, arg.name) as ExtractTypeFromIDLType<
+        const field = arg.accept(this, `arg${index}`) as ExtractTypeFromIDLType<
           typeof arg
         >
 
         acc.fields.push(field)
-        acc.defaultValues.data[`arg${index}`] =
+
+        acc.childDetails[`arg${index}`] = field.childDetails || {
+          label: `arg${index}`,
+          description: arg.name,
+        }
+
+        acc.defaultValues[`arg${index}`] =
           field.defaultValue || field.defaultValues
 
         return acc
       },
       {
         fields: [] as DynamicFieldTypeByClass<IDL.Type<any>>[],
-        defaultValues: { data: {} } as FunctionDefaultValues<keyof A & string>,
+        childDetails: {} as FunctionMethodDetails<keyof A & string>,
+        defaultValues: {} as FunctionDefaultValues<keyof A & string>,
       }
     )
 
@@ -88,42 +109,50 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       functionName,
       fields,
       defaultValues,
+      childDetails,
     }
   }
 
   public visitRecord(
     t: IDL.RecordClass,
     _fields: Array<[string, IDL.Type]>,
-    l?: string
+    label: string
   ): ExtractedRecord<IDL.Type<any>> {
-    const { fields, defaultValues } = _fields.reduce(
+    const { fields, defaultValues, childDetails } = _fields.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllExtractableType<typeof type>
 
         acc.fields.push(field)
         acc.defaultValues[key] = field.defaultValue || field.defaultValues
+        acc.childDetails[key] = (field.childDetails as MethodDetails) || {
+          label: key,
+          description: type.name,
+        }
 
         return acc
       },
       {
         fields: [] as AllExtractableType<IDL.Type>[],
         defaultValues: {} as Record<string, ExtractTypeFromIDLType>,
+        childDetails: {} as Record<string, MethodDetails>,
       }
     )
 
     return {
       type: "record",
-      label: l ?? t.name,
+      label,
+      description: t.name,
       validate: validateError(t),
       fields,
       defaultValues,
+      childDetails,
     }
   }
 
   public visitVariant(
     t: IDL.VariantClass,
     _fields: Array<[string, IDL.Type]>,
-    l?: string
+    label: string
   ): ExtractedVariant<IDL.Type<any>> {
     const { fields, options } = _fields.reduce(
       (acc, [label, type]) => {
@@ -154,7 +183,8 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       options,
       defaultValue,
       defaultValues,
-      label: l ?? t.name,
+      label,
+      description: t.name,
       validate: validateError(t),
     }
   }
@@ -162,28 +192,38 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
   public visitTuple<T extends any[]>(
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
-    l?: string
+    label: string
   ): ExtractedTuple<IDL.Type<any>> {
-    const { fields, defaultValues } = components.reduce(
-      (acc, type) => {
-        const field = type.accept(this, null) as AllExtractableType<typeof type>
+    const { fields, defaultValues, childDetails } = components.reduce(
+      (acc, type, index) => {
+        const field = type.accept(this, `_${index}_`) as AllExtractableType<
+          typeof type
+        >
 
         acc.fields.push(field)
         acc.defaultValues.push(field.defaultValue || field.defaultValues)
+        acc.childDetails[`_${index}_`] =
+          (field.childDetails as MethodDetails) || {
+            label: `_${index}_`,
+            description: type.name,
+          }
 
         return acc
       },
       {
         fields: [] as AllExtractableType<IDL.Type>[],
         defaultValues: [] as any[],
+        childDetails: {} as Record<string, MethodDetails>,
       }
     )
 
     return {
       type: "tuple",
-      label: l ?? t.name,
+      label,
+      description: t.name,
       validate: validateError(t),
       fields,
+      childDetails,
       defaultValues,
     }
   }
@@ -191,26 +231,29 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
   public visitRec<T>(
     t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
-    l?: string
+    label: string
   ): ExtractedRecursive {
     return {
       type: "recursive",
-      label: l ?? t.name,
+      label,
+      description: t.name,
       validate: validateError(t),
-      extract: () => ty.accept(this, null) as DynamicFieldTypeByClass<IDL.Type>,
+      extract: () =>
+        ty.accept(this, label) as DynamicFieldTypeByClass<IDL.Type>,
     }
   }
 
   public visitOpt<T>(
     t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
-    l?: string
+    label: string
   ): ExtractedOptional {
     return {
       type: "optional",
       validate: validateError(t),
-      label: l ?? t.name,
-      field: ty.accept(this, l) as DynamicFieldTypeByClass<IDL.Type>,
+      label,
+      description: t.name,
+      field: ty.accept(this, label) as DynamicFieldTypeByClass<IDL.Type>,
       defaultValue: [],
     }
   }
@@ -218,58 +261,63 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
   public visitVec<T>(
     t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
-    l?: string
+    label: string
   ): ExtractedVector {
     return {
       type: "vector",
       validate: validateError(t),
-      label: l ?? t.name,
-      field: ty.accept(this, l) as DynamicFieldTypeByClass<IDL.Type>,
+      label,
+      description: t.name,
+      field: ty.accept(this, label) as DynamicFieldTypeByClass<IDL.Type>,
       defaultValue: [],
     }
   }
 
-  public visitType<T>(t: IDL.Type<T>, l?: string): ExtractedField {
+  public visitType<T>(t: IDL.Type<T>, label: string): ExtractedField {
     return {
       type: "unknown",
       validate: validateError(t),
-      label: l ?? t.name,
+      label,
+      description: t.name,
     }
   }
 
   public visitPrincipal(
     t: IDL.PrincipalClass,
-    l?: string
+    label: string
   ): ExtractedPrincipalField {
     return {
       type: "principal",
       validate: validateError(t),
       maxLength: 64,
       minLength: 7,
-      label: l ?? t.name,
+      label,
+      description: t.name,
       defaultValue: "",
     }
   }
 
   public visitBool(
     t: IDL.BoolClass,
-    l?: string
+    label: string
   ): ExtractedInputField<typeof t> {
     return {
       type: "boolean",
       validate: validateError(t),
-      label: l ?? t.name,
+      label,
+      description: t.name,
       defaultValue: false,
     }
   }
 
   public visitNull(
     t: IDL.NullClass,
-    l?: string
+    label: string
   ): ExtractedInputField<typeof t> {
     return {
       type: "null",
-      label: l ?? t.name,
+      label,
+      description: t.name,
       validate: validateError(t),
       defaultValue: null,
     }
@@ -277,45 +325,51 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
 
   public visitText(
     t: IDL.TextClass,
-    l?: string
+    label: string
   ): ExtractedInputField<typeof t> {
     return {
       type: "text",
       validate: validateError(t),
-      required: true,
-      label: l ?? t.name,
+      label,
+      description: t.name,
       defaultValue: "",
     }
   }
 
-  public visitNumber<T>(t: IDL.Type<T>, l?: string): ExtractedNumberField {
+  public visitNumber<T>(t: IDL.Type<T>, label: string): ExtractedNumberField {
     return {
       type: "number",
       valueAsNumber: true,
-      required: true,
       validate: validateError(t),
-      label: l ?? t.name,
+      label,
+      description: t.name,
       defaultValue: undefined,
     }
   }
 
-  public visitInt(t: IDL.IntClass, l?: string): ExtractedNumberField {
-    return this.visitNumber(t, l)
+  public visitInt(t: IDL.IntClass, label: string): ExtractedNumberField {
+    return this.visitNumber(t, label)
   }
 
-  public visitNat(t: IDL.NatClass, l?: string): ExtractedNumberField {
-    return this.visitNumber(t, l)
+  public visitNat(t: IDL.NatClass, label: string): ExtractedNumberField {
+    return this.visitNumber(t, label)
   }
 
-  public visitFloat(t: IDL.FloatClass, l?: string): ExtractedNumberField {
-    return this.visitNumber(t, l)
+  public visitFloat(t: IDL.FloatClass, label: string): ExtractedNumberField {
+    return this.visitNumber(t, label)
   }
 
-  public visitFixedInt(t: IDL.FixedIntClass, l?: string): ExtractedNumberField {
-    return this.visitNumber(t, l)
+  public visitFixedInt(
+    t: IDL.FixedIntClass,
+    label: string
+  ): ExtractedNumberField {
+    return this.visitNumber(t, label)
   }
 
-  public visitFixedNat(t: IDL.FixedNatClass, l?: string): ExtractedNumberField {
-    return this.visitNumber(t, l)
+  public visitFixedNat(
+    t: IDL.FixedNatClass,
+    label: string
+  ): ExtractedNumberField {
+    return this.visitNumber(t, label)
   }
 }

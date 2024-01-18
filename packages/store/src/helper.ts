@@ -4,7 +4,7 @@ import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 import { ExtractField, ExtractedService } from "./actor/candid"
 
-import type { ActorSubclass } from "./actor/types"
+import type { ActorSubclass, CanisterId } from "./actor/types"
 
 interface StoreOptions {
   withDevtools?: boolean
@@ -28,13 +28,15 @@ export function createStoreWithOptionalDevtools(
 }
 
 export function extractServiceField<A extends ActorSubclass<any>>(
-  idlFactory: IDL.InterfaceFactory
+  idlFactory: IDL.InterfaceFactory,
+  name: CanisterId
 ): ExtractedService<A> {
+  const canisterId = typeof name === "string" ? name : name.toString()
   const methods = idlFactory({ IDL })
 
   const extractor = new ExtractField<A>()
 
-  return extractor.visitService(methods)
+  return extractor.visitService(methods, canisterId)
 }
 
 export const generateRequestHash = (args?: any[]) => {

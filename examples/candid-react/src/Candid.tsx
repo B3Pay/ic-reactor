@@ -1,10 +1,10 @@
 import MethodForm from "./components/MethodForm"
-import { useMethods, useMethodCall, CandidType } from "./actor"
+import { useMethodNames, useMethodCall, CandidType } from "./actor"
 import { ServiceMethodType } from "@ic-reactor/react"
 import { FormProvider, useForm } from "react-hook-form"
 
 const Candid: React.FC = () => {
-  const defaultValues = useMethods()
+  const defaultValues = useMethodNames()
 
   const { getValues } = useForm({
     mode: "onChange",
@@ -42,7 +42,7 @@ const FormFields: React.FC<FormFieldProps> = ({ functionName, type }) => {
     type,
     functionName,
   })
-
+  console.log("field", field)
   const methods = useForm({
     mode: "onChange",
     defaultValues: field.defaultValues,

@@ -1,5 +1,5 @@
 import { AgentManager, ActorManager } from "../src"
-import { idlFactory, b3_system } from "./candid/b3_system"
+import { idlFactory, candid } from "./candid/candid"
 
 describe("My IC Store and Actions", () => {
   const agentManager = new AgentManager({
@@ -7,19 +7,24 @@ describe("My IC Store and Actions", () => {
     withDevtools: false,
   })
 
-  const { serviceFields } = new ActorManager<typeof b3_system>({
+  const { serviceFields } = new ActorManager<typeof candid>({
     agentManager,
     idlFactory,
     withServiceFields: true,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
 
-  console.log(serviceFields)
+  serviceFields?.methodDetails.forEach((label) => {
+    console.log(label)
+    it(`should return the method label ${label}`, () => {
+      expect(label).toBeDefined()
+    })
+  })
 
   it("should return the function fields", () => {
     expect({ serviceFields }).toBeDefined()
 
-    serviceFields!.methods.forEach(({ type, functionName }) => {
+    serviceFields!.methodNames.forEach(({ type, functionName }) => {
       expect(type).toBeDefined()
       expect(functionName).toBeDefined()
 

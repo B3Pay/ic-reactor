@@ -6,10 +6,7 @@ import Variant, { VariantProps } from "./Variant"
 import Optional, { OptionalProps } from "./Optional"
 import Recursive, { RecursiveProps } from "./Recursive"
 import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form"
-import {
-  DynamicFieldType,
-  ExtractedFieldType,
-} from "@ic-reactor/react/dist/types"
+import { DynamicFieldType, ExtractedFieldType } from "@ic-reactor/react"
 
 import Principal, { PrincipalProps } from "./Inputs/Principal"
 import Boolean, { BooleanProps } from "./Inputs/Boolean"

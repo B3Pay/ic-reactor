@@ -10,9 +10,12 @@ const Boolean: React.FC<BooleanProps> = ({
 }) => {
   return (
     <div className="w-full flex items-center ml-1">
-      <label htmlFor={registerName} className="block mr-2">
-        {extractedField.label}
-      </label>
+      <div>
+        <label className="flex-1  w-full block text-lg font-medium">
+          {extractedField.label}
+        </label>
+        <p>{extractedField.description}</p>
+      </div>
       <Controller
         shouldUnregister={shouldUnregister}
         name={registerName}

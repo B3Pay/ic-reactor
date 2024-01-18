@@ -62,7 +62,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
     this.idlFactory = idlFactory
 
     if (withServiceFields) {
-      this.serviceFields = extractServiceField(idlFactory)
+      this.serviceFields = extractServiceField(idlFactory, canisterId)
     }
 
     // Initialize stores
