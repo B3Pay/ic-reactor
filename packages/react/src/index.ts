@@ -26,7 +26,23 @@ export const createReActor: CreateReActor = <A extends ActorSubclass<any>>({
     ...options,
   })
 
+  const getServiceFields = () => {
+    if (!withServiceFields || !actorManager.serviceFields) {
+      throw new Error(
+        "Service fields not initialized. Pass `withServiceFields` to initialize service fields."
+      )
+    }
+
+    return actorManager.serviceFields
+  }
+
+  const getAgent = () => {
+    return actorManager.agentManager.getAgent()
+  }
+
   return {
+    getAgent,
+    getServiceFields,
     ...getActorHooks(actorManager),
     ...getAuthHooks(actorManager.agentManager),
   } as any

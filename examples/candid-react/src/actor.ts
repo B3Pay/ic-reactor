@@ -4,6 +4,8 @@ import { createReActor } from "@ic-reactor/react"
 export type CandidType = typeof candid
 
 export const {
+  getAgent,
+  getServiceFields,
   useActorStore,
   useMethodFields,
   useMethods,

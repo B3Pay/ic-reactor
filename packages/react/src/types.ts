@@ -7,14 +7,13 @@ import type {
   ExtractActorMethodReturnType,
   ExtractedFunction,
   ExtractedService,
+  HttpAgent,
   Identity,
   Principal,
   ServiceMethodType,
   ServiceMethodTypeAndName,
 } from "@ic-reactor/store"
-import { AuthHooks } from "./hooks/auth"
-export type * from "@ic-reactor/store"
-export type * from "@ic-reactor/store/dist/actor/types"
+import type { AuthHooks } from "./hooks/auth"
 
 export type AuthArgs = {
   onAuthentication?: (promise: () => Promise<Identity>) => void
@@ -123,11 +122,16 @@ export interface ActorDefaultHooks<A, W extends boolean = false> {
     : ActorUseUpdateReturn<A, M, W>
 }
 
+export type GetFunctions<A> = {
+  getAgent: () => HttpAgent
+  getServiceFields: () => ExtractedService<A>
+}
+
 export type CreateReActor = {
   <A extends ActorSubclass<any>>(
     options: CreateReActorOptions & { withServiceFields: true }
-  ): ActorHooksWithField<A> & AuthHooks
+  ): GetFunctions<A> & ActorHooksWithField<A> & AuthHooks
   <A extends ActorSubclass<any>>(
     options: CreateReActorOptions & { withServiceFields?: false | undefined }
-  ): ActorHooksWithoutField<A> & AuthHooks
+  ): GetFunctions<A> & ActorHooksWithoutField<A> & AuthHooks
 }
