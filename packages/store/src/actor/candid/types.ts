@@ -106,7 +106,6 @@ export type ServiceMethodType = "query" | "update"
 export type ServiceMethodTypeAndName<A> = {
   type: ServiceMethodType
   functionName: keyof A
-  defaultValues: FunctionDefaultValues<A[keyof A]>
 }
 
 export interface ExtractedService<A> {

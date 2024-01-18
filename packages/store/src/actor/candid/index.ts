@@ -41,7 +41,6 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
         acc.methods.push({
           type: is_query(func) ? "query" : "update",
           functionName: functionName as MethodName,
-          defaultValues: functionData.defaultValues,
         })
 
         acc.methodFields[functionName as MethodName] = functionData
