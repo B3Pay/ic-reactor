@@ -15,9 +15,8 @@ import type {
   FunctionDefaultValues,
   DynamicFieldTypeByClass,
   AllExtractableType,
-  MethodInformation,
-  FunctionMethodInformation,
-  ServiceMethodInformations,
+  MethodChildDetail as MethodChildDetails,
+  FunctionChildDetails,
   ServiceMethodDetails,
   ServiceMethodFields,
 } from "./types"
@@ -40,7 +39,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
   ): ExtractedService<A> {
     type MethodName = keyof A
 
-    const { methodDetails, methodFields, methodInformation } = t._fields.reduce(
+    const { methodDetails, methodFields } = t._fields.reduce(
       (acc, [functionName, func]) => {
         const order = this.counter++
 
@@ -51,17 +50,12 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
 
         acc.methodFields[functionName as MethodName] = functionData
 
-        acc.methodInformation[functionName as MethodName] = {
-          ...functionData.childInformation,
-          order,
-          label: functionName as MethodName & string,
-          description: func.name,
-        }
-
         acc.methodDetails.push({
           order,
           type: is_query(func) ? "query" : "update",
           functionName: functionName as MethodName,
+          description: func.name,
+          childDetails: functionData.childDetails,
         })
 
         return acc
@@ -69,7 +63,6 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       {
         methodFields: {} as ServiceMethodFields<A>,
         methodDetails: [] as ServiceMethodDetails<A>,
-        methodInformation: {} as ServiceMethodInformations<A>,
       }
     )
 
@@ -78,7 +71,6 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       description: t.name,
       methodFields,
       methodDetails,
-      methodInformation,
     }
   }
 
@@ -86,7 +78,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     t: IDL.FuncClass,
     functionName: keyof A & string
   ): ExtractedFunction<A> {
-    const { fields, childInformation, defaultValues } = t.argTypes.reduce(
+    const { fields, childDetails, defaultValues } = t.argTypes.reduce(
       (acc, arg, index) => {
         const field = arg.accept(this, `arg${index}`) as ExtractTypeFromIDLType<
           typeof arg
@@ -94,7 +86,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
 
         acc.fields.push(field)
 
-        acc.childInformation[`arg${index}`] = field.childInformation || {
+        acc.childDetails[`arg${index}`] = field.childDetails || {
           label: `arg${index}`,
           description: arg.name,
         }
@@ -107,7 +99,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       {
         fields: [] as DynamicFieldTypeByClass<IDL.Type<any>>[],
         defaultValues: {} as FunctionDefaultValues<keyof A & string>,
-        childInformation: {} as FunctionMethodInformation<A>,
+        childDetails: {} as FunctionChildDetails<A>,
       }
     )
 
@@ -118,7 +110,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       description: t.name,
       fields,
       defaultValues,
-      childInformation,
+      childDetails,
     }
   }
 
@@ -127,24 +119,23 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     _fields: Array<[string, IDL.Type]>,
     label: string
   ): ExtractedRecord<IDL.Type<any>> {
-    const { fields, defaultValues, childInformation } = _fields.reduce(
+    const { fields, defaultValues, childDetails } = _fields.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllExtractableType<typeof type>
 
         acc.fields.push(field)
         acc.defaultValues[key] = field.defaultValue || field.defaultValues
-        acc.childInformation[key] =
-          (field.childInformation as MethodInformation) || {
-            label: key,
-            description: type.name,
-          }
+        acc.childDetails[key] = (field.childDetails as MethodChildDetails) || {
+          label: key,
+          description: type.name,
+        }
 
         return acc
       },
       {
         fields: [] as AllExtractableType<IDL.Type>[],
         defaultValues: {} as Record<string, ExtractTypeFromIDLType>,
-        childInformation: {} as Record<string, MethodInformation>,
+        childDetails: {} as Record<string, MethodChildDetails>,
       }
     )
 
@@ -155,7 +146,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       validate: validateError(t),
       fields,
       defaultValues,
-      childInformation,
+      childDetails,
     }
   }
 
@@ -204,7 +195,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     components: IDL.Type[],
     label: string
   ): ExtractedTuple<IDL.Type<any>> {
-    const { fields, defaultValues, childInformation } = components.reduce(
+    const { fields, defaultValues, childDetails } = components.reduce(
       (acc, type, index) => {
         const field = type.accept(this, `_${index}_`) as AllExtractableType<
           typeof type
@@ -212,8 +203,8 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
 
         acc.fields.push(field)
         acc.defaultValues.push(field.defaultValue || field.defaultValues)
-        acc.childInformation.push(
-          (field.childInformation as MethodInformation) || {
+        acc.childDetails.push(
+          (field.childDetails as MethodChildDetails) || {
             label: `_${index}_`,
             description: type.name,
           }
@@ -224,7 +215,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       {
         fields: [] as AllExtractableType<IDL.Type>[],
         defaultValues: [] as any[],
-        childInformation: [] as MethodInformation[],
+        childDetails: [] as MethodChildDetails[],
       }
     )
 
@@ -234,7 +225,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       description: t.name,
       validate: validateError(t),
       fields,
-      childInformation,
+      childDetails,
       defaultValues,
     }
   }

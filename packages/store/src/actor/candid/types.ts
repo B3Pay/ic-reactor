@@ -93,23 +93,19 @@ export interface ExtractedField extends ExtraInputFormFields {
   validate: (value: any) => boolean | string
   defaultValue?: any
   defaultValues?: any
-  childInformation?:
-    | MethodInformation
-    | MethodInformation[]
-    | Record<string, MethodInformation>
+  childDetails?:
+    | MethodChildDetail
+    | MethodChildDetail[]
+    | Record<string, MethodChildDetail>
 }
 
 export type ServiceMethodDetails<A> = ExtractedFunctionDetails<A>[]
-
-export type ServiceMethodInformations<A> = {
-  [K in keyof A]: FunctionMethodInformation<A>
-}
 
 export type ServiceMethodFields<A> = {
   [K in keyof A]: ExtractedFunction<A>
 }
 
-export interface MethodInformation {
+export interface MethodChildDetail {
   label: string
   description: string
 }
@@ -119,7 +115,6 @@ export interface ExtractedService<A> {
   description: string
   methodFields: ServiceMethodFields<A>
   methodDetails: ServiceMethodDetails<A>
-  methodInformation: ServiceMethodInformations<A>
 }
 
 export type ExtractedFunctionType = "query" | "update"
@@ -128,17 +123,18 @@ export type ExtractedFunctionDetails<A> = {
   order: number
   type: ExtractedFunctionType
   functionName: keyof A
+  description: string
+  childDetails: FunctionChildDetails<A>
 }
 
 export type FunctionDefaultValues<T> = {
   [key: `arg${number}`]: ExtractTypeFromIDLType<T>
 }
 
-export type FunctionMethodInformation<A> = {
-  order: number
+export type FunctionChildDetails<A> = {
   label: keyof A & string
   description: string
-  [key: `arg${number}`]: MethodInformation
+  [key: `arg${number}`]: MethodChildDetail
 }
 
 export interface ExtractedFunction<A> {
@@ -148,7 +144,7 @@ export interface ExtractedFunction<A> {
   fields: AllExtractableType<IDL.Type<any>>[] | []
   validate: (value: any) => boolean | string
   defaultValues: FunctionDefaultValues<keyof A>
-  childInformation: FunctionMethodInformation<A>
+  childDetails: FunctionChildDetails<A>
 }
 
 export interface ExtractedRecord<T extends IDL.Type> extends ExtractedField {

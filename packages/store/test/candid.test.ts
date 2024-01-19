@@ -15,7 +15,8 @@ describe("My IC Store and Actions", () => {
   })
   console.log(serviceFields)
 
-  serviceFields!.methodInformation.forEach((label) => {
+  serviceFields!.methodDetails.forEach((label) => {
+    console.log(label)
     it(`should return the method label ${label}`, () => {
       expect(label).toBeDefined()
     })
