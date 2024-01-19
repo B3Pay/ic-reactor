@@ -15,7 +15,7 @@ import type {
   FunctionDefaultValues,
   DynamicFieldTypeByClass,
   AllExtractableType,
-  MethodChildDetail as MethodChildDetails,
+  MethodChildDetail,
   FunctionChildDetails,
   ServiceMethodDetails,
   ServiceMethodFields,
@@ -125,7 +125,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
 
         acc.fields.push(field)
         acc.defaultValues[key] = field.defaultValue || field.defaultValues
-        acc.childDetails[key] = (field.childDetails as MethodChildDetails) || {
+        acc.childDetails[key] = (field.childDetails as MethodChildDetail) || {
           label: key,
           description: type.name,
         }
@@ -135,7 +135,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       {
         fields: [] as AllExtractableType<IDL.Type>[],
         defaultValues: {} as Record<string, ExtractTypeFromIDLType>,
-        childDetails: {} as Record<string, MethodChildDetails>,
+        childDetails: {} as Record<string, MethodChildDetail>,
       }
     )
 
@@ -204,7 +204,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
         acc.fields.push(field)
         acc.defaultValues.push(field.defaultValue || field.defaultValues)
         acc.childDetails.push(
-          (field.childDetails as MethodChildDetails) || {
+          (field.childDetails as MethodChildDetail) || {
             label: `_${index}_`,
             description: type.name,
           }
@@ -215,7 +215,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       {
         fields: [] as AllExtractableType<IDL.Type>[],
         defaultValues: [] as any[],
-        childDetails: [] as MethodChildDetails[],
+        childDetails: [] as MethodChildDetail[],
       }
     )
 
