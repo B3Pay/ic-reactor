@@ -12,6 +12,7 @@ import type {
   Principal,
   ServiceMethodDetails,
   ExtractedFunctionType,
+  ServiceMethodFields,
 } from "@ic-reactor/store"
 import type { AuthHooks } from "./hooks/auth"
 
@@ -99,7 +100,7 @@ export type ActorHooks<
 
 export interface ActorFieldHooks<A> {
   useServiceFields: () => ExtractedService<A>
-  useMethodFields: () => ExtractedFunction<A>[]
+  useMethodFields: () => ServiceMethodFields<A>
   useMethodField: (functionName: keyof A & string) => ExtractedFunction<A>
   useMethodDetails: () => ServiceMethodDetails<A>
   useMethodNames: () => ServiceMethodDetails<A>

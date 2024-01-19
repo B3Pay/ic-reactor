@@ -37,10 +37,11 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     t: IDL.ServiceClass,
     canisterId: string
   ): ExtractedService<A> {
-    type MethodName = keyof A
-
     const { methodDetails, methodFields } = t._fields.reduce(
-      (acc, [functionName, func]) => {
+      (acc, services) => {
+        const functionName = services[0] as keyof A & string
+        const func = services[1]
+
         const order = this.counter++
 
         const functionData = func.accept(
@@ -48,21 +49,20 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
           functionName
         ) as ExtractedFunction<A>
 
-        acc.methodFields[functionName as MethodName] = functionData
+        acc.methodFields[functionName] = functionData
 
-        acc.methodDetails.push({
+        acc.methodDetails[functionName] = {
           order,
           type: is_query(func) ? "query" : "update",
-          functionName: functionName as MethodName,
-          description: func.name,
-          childDetails: functionData.childDetails,
-        })
+          functionName: functionName,
+          ...functionData.childDetails,
+        }
 
         return acc
       },
       {
         methodFields: {} as ServiceMethodFields<A>,
-        methodDetails: [] as ServiceMethodDetails<A>,
+        methodDetails: {} as ServiceMethodDetails<A>,
       }
     )
 
@@ -99,16 +99,18 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       {
         fields: [] as DynamicFieldTypeByClass<IDL.Type<any>>[],
         defaultValues: {} as FunctionDefaultValues<keyof A & string>,
-        childDetails: {} as FunctionChildDetails<A>,
+        childDetails: {
+          label: functionName,
+          description: t.name,
+        } as FunctionChildDetails<A>,
       }
     )
 
     return {
       type: is_query(t) ? "query" : "update",
       validate: validateError(t),
-      functionName,
-      description: t.name,
       fields,
+      functionName,
       defaultValues,
       childDetails,
     }

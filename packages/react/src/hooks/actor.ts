@@ -6,6 +6,7 @@ import type {
   ExtractedFunction,
   ExtractedFunctionType,
   ServiceMethodDetails,
+  ServiceMethodFields,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
@@ -47,11 +48,11 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return serviceFields
   }
 
-  const useMethodFields = (): ExtractedFunction<A>[] => {
+  const useMethodFields = (): ServiceMethodFields<A> => {
     const serviceFields = useServiceFields()
 
     return useMemo(() => {
-      return Object.values(serviceFields.methodFields)
+      return serviceFields.methodFields
     }, [serviceFields])
   }
 

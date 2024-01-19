@@ -15,8 +15,7 @@ describe("My IC Store and Actions", () => {
   })
   console.log(serviceFields)
 
-  serviceFields!.methodDetails.forEach((label) => {
-    console.log(label)
+  Object.keys(serviceFields!.methodDetails).forEach((label) => {
     it(`should return the method label ${label}`, () => {
       expect(label).toBeDefined()
     })
@@ -25,25 +24,27 @@ describe("My IC Store and Actions", () => {
   it("should return the function fields", () => {
     expect({ serviceFields }).toBeDefined()
 
-    serviceFields!.methodDetails.forEach(({ type, functionName }) => {
-      expect(type).toBeDefined()
-      expect(functionName).toBeDefined()
+    Object.values(serviceFields!.methodFields).forEach(
+      ({ type, functionName }) => {
+        expect(type).toBeDefined()
+        expect(functionName).toBeDefined()
 
-      const {
-        defaultValues,
-        fields,
-        functionName: fName,
-        validate,
-      } = serviceFields!.methodFields[functionName]
+        const {
+          defaultValues,
+          fields,
+          functionName: fName,
+          validate,
+        } = serviceFields!.methodFields[functionName]
 
-      expect(defaultValues).toBeDefined()
-      expect(fields).toBeDefined()
+        expect(defaultValues).toBeDefined()
+        expect(fields).toBeDefined()
 
-      expect(functionName).toBeDefined()
-      expect(fName).toBeDefined()
-      expect(fName).toEqual(functionName)
+        expect(functionName).toBeDefined()
+        expect(fName).toBeDefined()
+        expect(fName).toEqual(functionName)
 
-      expect(validate).toBeDefined()
-    })
+        expect(validate).toBeDefined()
+      }
+    )
   })
 })

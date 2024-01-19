@@ -99,7 +99,9 @@ export interface ExtractedField extends ExtraInputFormFields {
     | Record<string, MethodChildDetail>
 }
 
-export type ServiceMethodDetails<A> = ExtractedFunctionDetails<A>[]
+export type ServiceMethodDetails<A> = {
+  [K in keyof A]: ExtractedFunctionDetails<A>
+}
 
 export type ServiceMethodFields<A> = {
   [K in keyof A]: ExtractedFunction<A>
@@ -122,9 +124,10 @@ export type ExtractedFunctionType = "query" | "update"
 export type ExtractedFunctionDetails<A> = {
   order: number
   type: ExtractedFunctionType
+  label: keyof A & string
   functionName: keyof A
   description: string
-  childDetails: FunctionChildDetails<A>
+  [key: `arg${number}`]: MethodChildDetail
 }
 
 export type FunctionDefaultValues<T> = {
@@ -139,10 +142,9 @@ export type FunctionChildDetails<A> = {
 
 export interface ExtractedFunction<A> {
   type: "query" | "update"
-  functionName: keyof A & string
-  description: string
   fields: AllExtractableType<IDL.Type<any>>[] | []
   validate: (value: any) => boolean | string
+  functionName: keyof A
   defaultValues: FunctionDefaultValues<keyof A>
   childDetails: FunctionChildDetails<A>
 }
