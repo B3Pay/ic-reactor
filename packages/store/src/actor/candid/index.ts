@@ -51,12 +51,12 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
 
         acc.methodFields[functionName as MethodName] = functionData
 
-        acc.methodInformation.push({
+        acc.methodInformation[functionName as MethodName] = {
           ...functionData.childInformation,
           order,
           label: functionName as MethodName & string,
           description: func.name,
-        })
+        }
 
         acc.methodDetails.push({
           order,
@@ -69,7 +69,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       {
         methodFields: {} as ServiceMethodFields<A>,
         methodDetails: [] as ServiceMethodDetails<A>,
-        methodInformation: [] as ServiceMethodInformations<A>,
+        methodInformation: {} as ServiceMethodInformations<A>,
       }
     )
 
@@ -303,6 +303,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       maxLength: 64,
       minLength: 7,
       label,
+      required: true,
       description: t.name,
       defaultValue: "",
     }
@@ -316,6 +317,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       type: "boolean",
       validate: validateError(t),
       label,
+      required: true,
       description: t.name,
       defaultValue: false,
     }
@@ -328,6 +330,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     return {
       type: "null",
       label,
+      required: true,
       description: t.name,
       validate: validateError(t),
       defaultValue: null,
@@ -342,6 +345,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       type: "text",
       validate: validateError(t),
       label,
+      required: true,
       description: t.name,
       defaultValue: "",
     }
@@ -350,6 +354,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
   public visitNumber<T>(t: IDL.Type<T>, label: string): ExtractedNumberField {
     return {
       type: "number",
+      required: true,
       valueAsNumber: true,
       validate: validateError(t),
       label,

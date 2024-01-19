@@ -101,7 +101,9 @@ export interface ExtractedField extends ExtraInputFormFields {
 
 export type ServiceMethodDetails<A> = ExtractedFunctionDetails<A>[]
 
-export type ServiceMethodInformations<A> = FunctionMethodInformation<A>[]
+export type ServiceMethodInformations<A> = {
+  [K in keyof A]: FunctionMethodInformation<A>
+}
 
 export type ServiceMethodFields<A> = {
   [K in keyof A]: ExtractedFunction<A>
@@ -189,6 +191,7 @@ export interface ExtractedRecursive extends ExtractedField {
 export interface ExtractedPrincipalField extends ExtractedField {
   type: "principal"
   label: string
+  required: true
   description: string
   maxLength: number
   minLength: number
@@ -201,6 +204,7 @@ export interface ExtractedNumberField extends ExtractedField {
   description: string
   min?: number | string
   max?: number | string
+  required: true
   valueAsNumber: boolean
   defaultValue: undefined
 }
@@ -208,6 +212,7 @@ export interface ExtractedNumberField extends ExtractedField {
 export interface ExtractedInputField<T extends IDL.Type>
   extends ExtractedField {
   label: string
+  required: true
   description: string
   defaultValue: ExtractTypeFromIDLType<T>
 }
