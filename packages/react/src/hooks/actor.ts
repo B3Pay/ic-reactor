@@ -4,9 +4,9 @@ import type {
   ActorManager,
   ExtractedService,
   ExtractedFunction,
-  ExtractedFunctionType,
+  FunctionType,
   ServiceMethodDetails,
-  ServiceMethodFields,
+  ServiceDefaultValues,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
@@ -48,11 +48,19 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return serviceFields
   }
 
-  const useMethodFields = (): ServiceMethodFields<A> => {
+  const useMethodDefaultValues = (): ServiceDefaultValues<A> => {
     const serviceFields = useServiceFields()
 
     return useMemo(() => {
-      return serviceFields.methodFields
+      return serviceFields.methodDefaultValues
+    }, [serviceFields])
+  }
+
+  const useMethodFields = (): ExtractedFunction<A>[] => {
+    const serviceFields = useServiceFields()
+
+    return useMemo(() => {
+      return Object.values(serviceFields.methodFields)
     }, [serviceFields])
   }
 
@@ -129,9 +137,10 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
       [args, functionName, onError, onSuccess, onLoading]
     )
 
-    const field = useMemo(() => {
-      return serviceFields?.methodFields[functionName]
-    }, [functionName]) as ExtractedFunction<A>
+    const field = useMemo(
+      () => serviceFields?.methodFields[functionName],
+      [functionName]
+    ) as ExtractedFunction<A>
 
     return { call, field, ...state }
   }
@@ -172,7 +181,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return useReActorCall(args)
   }
 
-  const useMethodCall = <M extends keyof A, T extends ExtractedFunctionType>({
+  const useMethodCall = <M extends keyof A, T extends FunctionType>({
     type,
     ...rest
   }: ActorUseMethodArg<A, T> & { type: T }): T extends "query"
@@ -195,6 +204,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     useMethodCall,
     useActorStore,
     useMethodDetails,
+    useMethodDefaultValues,
     useMethodField,
     useMethodFields,
     useServiceFields,

@@ -11,8 +11,8 @@ import type {
   Identity,
   Principal,
   ServiceMethodDetails,
-  ExtractedFunctionType,
-  ServiceMethodFields,
+  FunctionType,
+  ServiceDefaultValues,
 } from "@ic-reactor/store"
 import type { AuthHooks } from "./hooks/auth"
 
@@ -78,10 +78,7 @@ export interface ActorUseUpdateReturn<
   loading: boolean
 }
 
-export type ActorUseMethodArg<
-  A,
-  T extends ExtractedFunctionType
-> = T extends "query"
+export type ActorUseMethodArg<A, T extends FunctionType> = T extends "query"
   ? ActorUseQueryArgs<A, keyof A>
   : ActorUseUpdateArgs<A, keyof A>
 
@@ -100,9 +97,10 @@ export type ActorHooks<
 
 export interface ActorFieldHooks<A> {
   useServiceFields: () => ExtractedService<A>
-  useMethodFields: () => ServiceMethodFields<A>
+  useMethodFields: () => ExtractedFunction<A>[]
   useMethodField: (functionName: keyof A & string) => ExtractedFunction<A>
   useMethodDetails: () => ServiceMethodDetails<A>
+  useMethodDefaultValues: () => ServiceDefaultValues<A>
   useMethodNames: () => ServiceMethodDetails<A>
 }
 
@@ -117,7 +115,7 @@ export interface ActorDefaultHooks<A, W extends boolean = false> {
   useUpdateCall: <M extends keyof A>(
     args: ActorUseUpdateArgs<A, M>
   ) => ActorUseUpdateReturn<A, M, W>
-  useMethodCall: <M extends keyof A, T extends ExtractedFunctionType>(
+  useMethodCall: <M extends keyof A, T extends FunctionType>(
     args: ActorUseMethodArg<A, T> & { type: T }
   ) => T extends "query"
     ? ActorUseQueryReturn<A, M, W>

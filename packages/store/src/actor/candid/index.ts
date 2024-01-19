@@ -16,9 +16,10 @@ import type {
   DynamicFieldTypeByClass,
   AllExtractableType,
   MethodChildDetail,
-  FunctionChildDetails,
   ServiceMethodDetails,
   ServiceMethodFields,
+  ServiceDefaultValues,
+  FunctionDetails,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { is_query, validateError } from "./helper"
@@ -37,40 +38,38 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     t: IDL.ServiceClass,
     canisterId: string
   ): ExtractedService<A> {
-    const { methodDetails, methodFields } = t._fields.reduce(
-      (acc, services) => {
-        const functionName = services[0] as keyof A & string
-        const func = services[1]
+    const { methodDetails, methodFields, methodDefaultValues } =
+      t._fields.reduce(
+        (acc, services) => {
+          const functionName = services[0] as keyof A & string
+          const func = services[1]
 
-        const order = this.counter++
+          const functionData = func.accept(
+            this,
+            functionName
+          ) as ExtractedFunction<A>
 
-        const functionData = func.accept(
-          this,
-          functionName
-        ) as ExtractedFunction<A>
+          acc.methodFields[functionName] = functionData
 
-        acc.methodFields[functionName] = functionData
+          acc.methodDefaultValues = functionData.defaultValues
 
-        acc.methodDetails[functionName] = {
-          order,
-          type: is_query(func) ? "query" : "update",
-          functionName: functionName,
-          ...functionData.childDetails,
+          acc.methodDetails = functionData.childDetails
+
+          return acc
+        },
+        {
+          methodFields: {} as ServiceMethodFields<A>,
+          methodDetails: {} as ServiceMethodDetails<A>,
+          methodDefaultValues: {} as ServiceDefaultValues<A>,
         }
-
-        return acc
-      },
-      {
-        methodFields: {} as ServiceMethodFields<A>,
-        methodDetails: {} as ServiceMethodDetails<A>,
-      }
-    )
+      )
 
     return {
       canisterId,
       description: t.name,
       methodFields,
       methodDetails,
+      methodDefaultValues,
     }
   }
 
@@ -78,7 +77,9 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     t: IDL.FuncClass,
     functionName: keyof A & string
   ): ExtractedFunction<A> {
-    const { fields, childDetails, defaultValues } = t.argTypes.reduce(
+    const type = is_query(t) ? "query" : "update"
+
+    const { fields, childDetail, defaultValue } = t.argTypes.reduce(
       (acc, arg, index) => {
         const field = arg.accept(this, `arg${index}`) as ExtractTypeFromIDLType<
           typeof arg
@@ -86,28 +87,39 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
 
         acc.fields.push(field)
 
-        acc.childDetails[`arg${index}`] = field.childDetails || {
+        acc.childDetail[`arg${index}`] = field.childDetail || {
           label: `arg${index}`,
           description: arg.name,
         }
 
-        acc.defaultValues[`arg${index}`] =
-          field.defaultValue || field.defaultValues
+        acc.defaultValue[`arg${index}`] =
+          field.defaultValue || field.defaultValue
 
         return acc
       },
       {
         fields: [] as DynamicFieldTypeByClass<IDL.Type<any>>[],
-        defaultValues: {} as FunctionDefaultValues<keyof A & string>,
-        childDetails: {
+        defaultValue: {} as FunctionDefaultValues<keyof A>,
+        childDetail: {
+          order: this.counter++,
           label: functionName,
           description: t.name,
-        } as FunctionChildDetails<A>,
+          functionName,
+          type,
+        } as FunctionDetails<A>,
       }
     )
 
+    const defaultValues = {
+      [functionName]: defaultValue,
+    } as ServiceDefaultValues<A>
+
+    const childDetails = {
+      [functionName]: childDetail,
+    } as ServiceMethodDetails<A>
+
     return {
-      type: is_query(t) ? "query" : "update",
+      type,
       validate: validateError(t),
       fields,
       functionName,
