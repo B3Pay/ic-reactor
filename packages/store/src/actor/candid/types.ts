@@ -77,15 +77,6 @@ export type AllExtractableType<T extends IDL.Type> =
   | ExtractedNumberField
   | ExtractedInputField<T>
 
-export type FunctionDefaultValues<T> = {
-  [key: `arg${number}`]: ExtractTypeFromIDLType<T>
-}
-export type FunctionMethodDetails<T> = {
-  title: string
-  description: string
-  [key: `arg${number}`]: ExtractTypeFromIDLType<T>
-}
-
 export type ExtractTypeFromIDLType<T = any> = T extends IDL.Type
   ? ReturnType<T["decodeValue"]>
   : any
@@ -102,17 +93,21 @@ export interface ExtractedField extends ExtraInputFormFields {
   validate: (value: any) => boolean | string
   defaultValue?: any
   defaultValues?: any
-  childDetails?: MethodDetails | Record<string, MethodDetails>
+  childInformation?:
+    | MethodInformation
+    | MethodInformation[]
+    | Record<string, MethodInformation>
 }
 
-export type ServiceMethodType = "query" | "update"
+export type ServiceMethodDetails<A> = ExtractedFunctionDetails<A>[]
 
-export type ServiceMethodTypeAndName<A> = {
-  type: ServiceMethodType
-  functionName: keyof A
+export type ServiceMethodInformations<A> = FunctionMethodInformation<A>[]
+
+export type ServiceMethodFields<A> = {
+  [K in keyof A]: ExtractedFunction<A>
 }
 
-export interface MethodDetails {
+export interface MethodInformation {
   label: string
   description: string
 }
@@ -120,20 +115,38 @@ export interface MethodDetails {
 export interface ExtractedService<A> {
   canisterId: string
   description: string
-  methodNames: ServiceMethodTypeAndName<A>[]
-  methodFields: {
-    [K in keyof A]: ExtractedFunction<A>
-  }
-  methodDetails: FunctionMethodDetails<keyof A & string>[]
+  methodFields: ServiceMethodFields<A>
+  methodDetails: ServiceMethodDetails<A>
+  methodInformation: ServiceMethodInformations<A>
+}
+
+export type ExtractedFunctionType = "query" | "update"
+
+export type ExtractedFunctionDetails<A> = {
+  order: number
+  type: ExtractedFunctionType
+  functionName: keyof A
+}
+
+export type FunctionDefaultValues<T> = {
+  [key: `arg${number}`]: ExtractTypeFromIDLType<T>
+}
+
+export type FunctionMethodInformation<A> = {
+  order: number
+  label: keyof A & string
+  description: string
+  [key: `arg${number}`]: MethodInformation
 }
 
 export interface ExtractedFunction<A> {
   type: "query" | "update"
   functionName: keyof A & string
+  description: string
   fields: AllExtractableType<IDL.Type<any>>[] | []
   validate: (value: any) => boolean | string
   defaultValues: FunctionDefaultValues<keyof A>
-  childDetails: FunctionMethodDetails<keyof A>
+  childInformation: FunctionMethodInformation<A>
 }
 
 export interface ExtractedRecord<T extends IDL.Type> extends ExtractedField {

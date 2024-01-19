@@ -13,9 +13,9 @@ describe("My IC Store and Actions", () => {
     withServiceFields: true,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
+  console.log(serviceFields)
 
-  serviceFields?.methodDetails.forEach((label) => {
-    console.log(label)
+  serviceFields!.methodInformation.forEach((label) => {
     it(`should return the method label ${label}`, () => {
       expect(label).toBeDefined()
     })
@@ -24,7 +24,7 @@ describe("My IC Store and Actions", () => {
   it("should return the function fields", () => {
     expect({ serviceFields }).toBeDefined()
 
-    serviceFields!.methodNames.forEach(({ type, functionName }) => {
+    serviceFields!.methodDetails.forEach(({ type, functionName }) => {
       expect(type).toBeDefined()
       expect(functionName).toBeDefined()
 

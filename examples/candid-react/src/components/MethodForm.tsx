@@ -92,7 +92,7 @@ const MethodForm: React.FC<FormProps> = ({
           <div key={index} className="mb-2">
             <Route
               extractedField={field}
-              registerName={`data.arg${index}`}
+              registerName={`arg${index}`}
               errors={formState.errors?.data?.[`arg${index}` as never]}
             />
           </div>

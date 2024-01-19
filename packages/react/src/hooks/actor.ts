@@ -4,9 +4,9 @@ import type {
   ActorManager,
   ExtractedService,
   ExtractedFunction,
-  ServiceMethodType,
-  ServiceMethodTypeAndName,
-  FunctionMethodDetails,
+  ExtractedFunctionType,
+  ServiceMethodInformations,
+  ServiceMethodDetails,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
@@ -48,11 +48,11 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return serviceFields
   }
 
-  const useMethodNames = (): ServiceMethodTypeAndName<A>[] => {
+  const useMethodInformation = (): ServiceMethodInformations<A> => {
     const serviceFields = useServiceFields()
 
     return useMemo(() => {
-      return Object.values(serviceFields.methodNames)
+      return serviceFields.methodInformation
     }, [serviceFields])
   }
 
@@ -74,7 +74,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     }, [functionName, serviceMethod])
   }
 
-  const useMethodDetails = (): FunctionMethodDetails<keyof A & string>[] => {
+  const useMethodDetails = (): ServiceMethodDetails<A> => {
     const serviceFields = useServiceFields()
 
     return serviceFields.methodDetails
@@ -180,7 +180,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return useReActorCall(args)
   }
 
-  const useMethodCall = <M extends keyof A, T extends ServiceMethodType>({
+  const useMethodCall = <M extends keyof A, T extends ExtractedFunctionType>({
     type,
     ...rest
   }: ActorUseMethodArg<A, T> & { type: T }): T extends "query"
@@ -202,7 +202,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     useUpdateCall,
     useMethodCall,
     useActorStore,
-    useMethodNames,
+    useMethodInformation,
     useMethodDetails,
     useMethodField,
     useMethodFields,
