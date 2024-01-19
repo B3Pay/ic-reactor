@@ -38,38 +38,34 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     t: IDL.ServiceClass,
     canisterId: string
   ): ExtractedService<A> {
-    const { methodDetails, methodFields, methodDefaultValues } =
-      t._fields.reduce(
-        (acc, services) => {
-          const functionName = services[0] as keyof A & string
-          const func = services[1]
+    const { methodDetails, methodFields } = t._fields.reduce(
+      (acc, services) => {
+        const functionName = services[0] as keyof A & string
+        const func = services[1]
 
-          const functionData = func.accept(
-            this,
-            functionName
-          ) as ExtractedFunction<A>
+        const functionData = func.accept(
+          this,
+          functionName
+        ) as ExtractedFunction<A>
 
-          acc.methodFields[functionName] = functionData
+        acc.methodFields[functionName] = functionData
 
-          acc.methodDefaultValues = functionData.defaultValues
+        acc.methodDetails[functionName] =
+          functionData.childDetails[functionName]
 
-          acc.methodDetails = functionData.childDetails
-
-          return acc
-        },
-        {
-          methodFields: {} as ServiceMethodFields<A>,
-          methodDetails: {} as ServiceMethodDetails<A>,
-          methodDefaultValues: {} as ServiceDefaultValues<A>,
-        }
-      )
+        return acc
+      },
+      {
+        methodFields: {} as ServiceMethodFields<A>,
+        methodDetails: {} as ServiceMethodDetails<A>,
+      }
+    )
 
     return {
       canisterId,
       description: t.name,
       methodFields,
       methodDetails,
-      methodDefaultValues,
     }
   }
 

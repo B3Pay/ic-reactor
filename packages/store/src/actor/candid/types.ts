@@ -121,7 +121,6 @@ export interface ExtractedService<A> {
   description: string
   methodFields: ServiceMethodFields<A>
   methodDetails: ServiceMethodDetails<A>
-  methodDefaultValues: ServiceDefaultValues<A>
 }
 
 export type FunctionType = "query" | "update"
