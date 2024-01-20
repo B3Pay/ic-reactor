@@ -89,17 +89,11 @@ export type ExtraInputFormFields = Partial<{
 export interface ExtractedField extends ExtraInputFormFields {
   type: ExtractedFieldType
   validate: (value: any) => boolean | string
-  label: string
   defaultValue?: any
   defaultValues?: any
-  childDetails?:
-    | MethodChildDetail
-    | MethodChildDetail[]
-    | Record<string, MethodChildDetail>
-    | Record<string, MethodChildDetail[]>
 }
 
-export type ServiceMethodDetails<A> = {
+export type ServiceFieldDetails<A> = {
   [K in keyof A]: FunctionDetails<A>
 }
 
@@ -111,16 +105,27 @@ export type ServiceDefaultValues<A> = {
   [K in keyof A]: FunctionDefaultValues<K>
 }
 
-export interface MethodChildDetail {
+export interface FieldDetails {
   label: string
   description: string
+}
+
+export interface FieldDetailsWithChild {
+  label: string
+  description: string
+  child:
+    | FieldDetails
+    | FieldDetailsWithChild
+    | Record<string, FieldDetailsWithChild | FieldDetails>
+    | FieldDetailsWithChild[]
+    | FieldDetails[]
 }
 
 export interface ExtractedService<A> {
   canisterId: string
   description: string
   methodFields: ServiceMethodFields<A>
-  methodDetails: ServiceMethodDetails<A>
+  methodDetails: ServiceFieldDetails<A>
 }
 
 export type FunctionType = "query" | "update"
@@ -128,10 +133,11 @@ export type FunctionType = "query" | "update"
 export type FunctionDetails<A> = {
   order: number
   type: FunctionType
-  label: keyof A & string
   functionName: keyof A
+  label: string
   description: string
-  [key: `arg${number}`]: MethodChildDetail
+  child: Record<string, FieldDetailsWithChild | FieldDetails>
+  [key: `arg${number}`]: FieldDetailsWithChild
 }
 
 export type FunctionDefaultValues<T> = {
@@ -144,11 +150,12 @@ export interface ExtractedFunction<A> {
   validate: (value: any) => boolean | string
   functionName: keyof A
   defaultValues: ServiceDefaultValues<A>
-  childDetails: ServiceMethodDetails<A>
+  details: ServiceFieldDetails<A>
 }
 
 export interface ExtractedRecord<T extends IDL.Type> extends ExtractedField {
   type: "record"
+  details: FieldDetailsWithChild
   fields: AllExtractableType<T>[]
   defaultValues: Record<string, ExtractTypeFromIDLType<T>>
 }
@@ -156,39 +163,43 @@ export interface ExtractedRecord<T extends IDL.Type> extends ExtractedField {
 export interface ExtractedVariant<T extends IDL.Type> extends ExtractedField {
   type: "variant"
   options: string[]
-  fields: AllExtractableType<T>[]
   defaultValue: string
+  details: FieldDetailsWithChild
+  fields: AllExtractableType<T>[]
   defaultValues: ExtractTypeFromIDLType<T>
 }
 
 export interface ExtractedTuple<T extends IDL.Type> extends ExtractedField {
   type: "tuple"
+  details: FieldDetailsWithChild
   fields: AllExtractableType<T>[]
   defaultValues: ExtractTypeFromIDLType<T>[]
 }
 
 export interface ExtractedOptional extends ExtractedField {
   type: "optional"
+  details: FieldDetailsWithChild
   field: AllExtractableType<IDL.Type>
   defaultValue: []
 }
 
 export interface ExtractedVector extends ExtractedField {
   type: "vector"
+  details: FieldDetailsWithChild
   field: AllExtractableType<IDL.Type>
   defaultValue: []
 }
 
 export interface ExtractedRecursive extends ExtractedField {
   type: "recursive"
+  details: FieldDetailsWithChild
   extract: () => AllExtractableType<IDL.Type>
 }
 
 export interface ExtractedPrincipalField extends ExtractedField {
   type: "principal"
-  label: string
+  details: FieldDetails
   required: true
-  description: string
   maxLength: number
   minLength: number
   defaultValue: string
@@ -196,8 +207,7 @@ export interface ExtractedPrincipalField extends ExtractedField {
 
 export interface ExtractedNumberField extends ExtractedField {
   type: "number"
-  label: string
-  description: string
+  details: FieldDetails
   min?: number | string
   max?: number | string
   required: true
@@ -207,8 +217,7 @@ export interface ExtractedNumberField extends ExtractedField {
 
 export interface ExtractedInputField<T extends IDL.Type>
   extends ExtractedField {
-  label: string
-  description: string
+  details: FieldDetails
   required: true
   defaultValue: ExtractTypeFromIDLType<T>
 }

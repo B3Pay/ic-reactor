@@ -160,8 +160,8 @@ export const idlFactory = ({ IDL }) => {
     // ),
     // receive: IDL.Func([ReleaseView], [IDL.Text], []),
     // app: IDL.Func([AppArgs], [AppView], []),
-    // simple_recursive: IDL.Func([SimpleRec], [IDL.Text], []),
-    complex_recursive: IDL.Func([RecursiveRecord], [AppView], []),
+    simple_recursive: IDL.Func([SimpleRec], [IDL.Text], []),
+    // complex_recursive: IDL.Func([RecursiveRecord], [AppView], []),
     // recursive_value: IDL.Func([Value], [], []),
   })
 }
