@@ -13,7 +13,8 @@ describe("My IC Store and Actions", () => {
     withServiceFields: true,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
-  console.log(serviceFields)
+  console.log(JSON.stringify(serviceFields!.methodFields, null, 2))
+
   Object.entries(serviceFields!.methodDetails).forEach(([label, details]) => {
     it(`should return the method label ${label}`, () => {
       expect(details).toBeDefined()

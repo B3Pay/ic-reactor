@@ -88,15 +88,15 @@ export type ExtraInputFormFields = Partial<{
 
 export interface ExtractedField extends ExtraInputFormFields {
   type: ExtractedFieldType
-  label: string
-  description: string
   validate: (value: any) => boolean | string
+  label: string
   defaultValue?: any
   defaultValues?: any
   childDetails?:
     | MethodChildDetail
     | MethodChildDetail[]
     | Record<string, MethodChildDetail>
+    | Record<string, MethodChildDetail[]>
 }
 
 export type ServiceMethodDetails<A> = {
@@ -208,7 +208,7 @@ export interface ExtractedNumberField extends ExtractedField {
 export interface ExtractedInputField<T extends IDL.Type>
   extends ExtractedField {
   label: string
-  required: true
   description: string
+  required: true
   defaultValue: ExtractTypeFromIDLType<T>
 }
