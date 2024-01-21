@@ -69,14 +69,13 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
 
         acc.fields.push(field)
 
-        acc.defaultValue[`arg${index}`] =
-          field.defaultValue || field.defaultValue
+        acc.defaultValue.push(field.defaultValue || field.defaultValues)
 
         return acc
       },
       {
         fields: [] as DynamicFieldTypeByClass<IDL.Type<any>>[],
-        defaultValue: {} as FunctionDefaultValues<keyof A>,
+        defaultValue: [] as FunctionDefaultValues<keyof A>,
       }
     )
 
