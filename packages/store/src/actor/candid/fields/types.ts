@@ -93,7 +93,9 @@ export interface ExtractedServiceFields<A> {
   methodFields: ServiceMethodFields<A>
 }
 
-export type FunctionDefaultValues<T> = ExtractTypeFromIDLType<T>[]
+export type FunctionDefaultValues<T> = {
+  [key: `arg${number}`]: ExtractTypeFromIDLType<T>
+}
 
 export interface ExtractedFunction<A> {
   type: FunctionType
