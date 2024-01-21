@@ -16,7 +16,7 @@ import type {
 } from "./types"
 import type { IDL } from "@dfinity/candid"
 import type { AgentManager, UpdateAgentOptions } from "../agent"
-import { ServiceFieldDetails } from "./candid/details"
+import { ExtractedServiceDetails } from "./candid/details"
 import { ExtractedServiceFields } from "./candid/fields"
 
 export * from "./types"
@@ -32,7 +32,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
 
   public withServiceFields: boolean = false
   public serviceFields?: ExtractedServiceFields<A>
-  public serviceDetails?: ServiceFieldDetails<A>
+  public serviceDetails?: ExtractedServiceDetails<A>
 
   private DEFAULT_ACTOR_STATE: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
