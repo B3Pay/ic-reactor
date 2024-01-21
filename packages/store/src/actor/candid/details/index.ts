@@ -1,5 +1,4 @@
 import type {
-  ExtractTypeFromIDLType,
   FieldDetailsWithChild,
   ServiceFieldDetails,
   FieldDetails,
@@ -53,9 +52,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     const type = is_query(t) ? "query" : "update"
 
     const fields = t.argTypes.reduce((acc, arg, index) => {
-      const details = arg.accept(this, `arg${index}`) as ExtractTypeFromIDLType<
-        typeof arg
-      >
+      const details = arg.accept(this, `arg${index}`) as FieldDetailsWithChild
 
       acc.push(details)
 

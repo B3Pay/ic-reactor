@@ -1,22 +1,4 @@
-import { IDL } from "@dfinity/candid"
-
-export type ExtractedFieldType =
-  | "record"
-  | "variant"
-  | "tuple"
-  | "optional"
-  | "vector"
-  | "recursive"
-  | "unknown"
-  | "text"
-  | "number"
-  | "principal"
-  | "boolean"
-  | "null"
-
-export type ExtractTypeFromIDLType<T = any> = T extends IDL.Type
-  ? ReturnType<T["decodeValue"]>
-  : any
+import { FieldType, FunctionType } from "../types"
 
 export interface ExtractedServiceDetails<A> {
   canisterId: string
@@ -31,12 +13,12 @@ export type ServiceFieldDetails<A> = {
 export interface FieldDetails {
   label: string
   description: string
-  type: ExtractedFieldType
+  type: FieldType
 }
 
 export interface FieldDetailsWithChild {
   label: string
-  type: ExtractedFieldType
+  type: FieldType
   description: string
   fields:
     | FieldDetails
@@ -45,8 +27,6 @@ export interface FieldDetailsWithChild {
     | FieldDetailsWithChild[]
     | FieldDetails[]
 }
-
-export type FunctionType = "query" | "update"
 
 export type FunctionDetails<A> = {
   order: number

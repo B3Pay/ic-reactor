@@ -1,45 +1,31 @@
 import { IDL } from "@dfinity/candid"
+import { FieldType, FunctionType } from "../types"
 
-export type ExtractedFieldType =
-  | "record"
-  | "variant"
-  | "tuple"
-  | "optional"
-  | "vector"
-  | "recursive"
-  | "unknown"
-  | "text"
-  | "number"
-  | "principal"
-  | "boolean"
-  | "null"
-
-export type DynamicFieldType<T extends ExtractedFieldType = any> =
-  T extends "record"
-    ? ExtractedRecord<IDL.Type>
-    : T extends "variant"
-    ? ExtractedVariant<IDL.Type>
-    : T extends "tuple"
-    ? ExtractedTuple<IDL.Type>
-    : T extends "optional"
-    ? ExtractedOptional
-    : T extends "vector"
-    ? ExtractedVector
-    : T extends "recursive"
-    ? ExtractedRecursive
-    : T extends "unknown"
-    ? ExtractedInputField<IDL.Type>
-    : T extends "text"
-    ? ExtractedInputField<IDL.TextClass>
-    : T extends "number"
-    ? ExtractedNumberField
-    : T extends "principal"
-    ? ExtractedPrincipalField
-    : T extends "boolean"
-    ? ExtractedInputField<IDL.BoolClass>
-    : T extends "null"
-    ? ExtractedInputField<IDL.NullClass>
-    : never
+export type DynamicFieldType<T extends FieldType = any> = T extends "record"
+  ? ExtractedRecord<IDL.Type>
+  : T extends "variant"
+  ? ExtractedVariant<IDL.Type>
+  : T extends "tuple"
+  ? ExtractedTuple<IDL.Type>
+  : T extends "optional"
+  ? ExtractedOptional
+  : T extends "vector"
+  ? ExtractedVector
+  : T extends "recursive"
+  ? ExtractedRecursive
+  : T extends "unknown"
+  ? ExtractedInputField<IDL.Type>
+  : T extends "text"
+  ? ExtractedInputField<IDL.TextClass>
+  : T extends "number"
+  ? ExtractedNumberField
+  : T extends "principal"
+  ? ExtractedPrincipalField
+  : T extends "boolean"
+  ? ExtractedInputField<IDL.BoolClass>
+  : T extends "null"
+  ? ExtractedInputField<IDL.NullClass>
+  : never
 
 export type DynamicFieldTypeByClass<T extends IDL.Type> =
   T extends IDL.RecordClass
@@ -87,7 +73,7 @@ export type ExtraInputFormFields = Partial<{
 }>
 
 export interface ExtractedField extends ExtraInputFormFields {
-  type: ExtractedFieldType
+  type: FieldType
   label: string
   validate: (value: any) => boolean | string
   defaultValue?: any
@@ -106,8 +92,6 @@ export interface ExtractedServiceFields<A> {
   canisterId: string
   methodFields: ServiceMethodFields<A>
 }
-
-export type FunctionType = "query" | "update"
 
 export type FunctionDefaultValues<T> = {
   [key: `arg${number}`]: ExtractTypeFromIDLType<T>

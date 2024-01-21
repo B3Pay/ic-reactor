@@ -5,8 +5,8 @@ import { createStore } from "zustand/vanilla"
 import {
   ExtractField,
   ExtractedServiceFields,
-  ServiceFieldDetails,
-} from "./actor/candid/fields"
+  ExtractedServiceDetails,
+} from "./actor/candid"
 
 import type { ActorSubclass, CanisterId } from "./actor/types"
 import { ExtractDetails } from "./actor/candid/details"
@@ -47,7 +47,7 @@ export function extractServiceField<A extends ActorSubclass<any>>(
 export function extractServiceDetails<A extends ActorSubclass<any>>(
   idlFactory: IDL.InterfaceFactory,
   name: CanisterId
-): ServiceFieldDetails<A> {
+): ExtractedServiceDetails<A> {
   const canisterId = typeof name === "string" ? name : name.toString()
   const methods = idlFactory({ IDL })
 
