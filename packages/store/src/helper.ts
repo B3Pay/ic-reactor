@@ -70,3 +70,10 @@ export const generateRequestHash = (args?: any[]) => {
   const hashBytes = hash(new TextEncoder().encode(serializedArgs ?? ""))
   return toHexString(hashBytes)
 }
+
+export const generateFieldHash = (field?: any) => {
+  const serializedArgs = JSON.stringify(field)
+
+  const hashBytes = hash(new TextEncoder().encode(serializedArgs ?? ""))
+  return toHexString(hashBytes)
+}
