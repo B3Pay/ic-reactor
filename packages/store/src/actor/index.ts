@@ -20,7 +20,7 @@ import { ExtractedServiceDetails } from "./candid/details"
 import { ExtractedServiceFields } from "./candid/fields"
 
 export * from "./types"
-export * from "./candid/fields"
+export * from "./candid"
 
 export class ActorManager<A extends ActorSubclass<any>> {
   private actor: null | A = null

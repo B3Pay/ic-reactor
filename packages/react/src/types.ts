@@ -6,11 +6,11 @@ import type {
   ExtractActorMethodArgs,
   ExtractActorMethodReturnType,
   ExtractedFunction,
-  ExtractedService,
+  ExtractedServiceFields,
   HttpAgent,
   Identity,
   Principal,
-  ServiceMethodDetails,
+  ExtractedServiceDetails,
   FunctionType,
 } from "@ic-reactor/store"
 import type { AuthHooks } from "./hooks/auth"
@@ -95,11 +95,11 @@ export type ActorHooks<
   : ActorHooksWithField<A> | ActorHooksWithoutField<A>
 
 export interface ActorFieldHooks<A> {
-  useServiceFields: () => ExtractedService<A>
+  useServiceFields: () => ExtractedServiceFields<A>
   useMethodFields: () => ExtractedFunction<A>[]
   useMethodField: (functionName: keyof A & string) => ExtractedFunction<A>
-  useMethodDetails: () => ServiceMethodDetails<A>
-  useMethodNames: () => ServiceMethodDetails<A>
+  useMethodDetails: () => ExtractedServiceDetails<A>
+  useMethodNames: () => ExtractedServiceDetails<A>
 }
 
 export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }
@@ -122,7 +122,7 @@ export interface ActorDefaultHooks<A, W extends boolean = false> {
 
 export type GetFunctions<A> = {
   getAgent: () => HttpAgent
-  getServiceFields: () => ExtractedService<A>
+  getServiceFields: () => ExtractedServiceFields<A>
 }
 
 export type CreateReActor = {

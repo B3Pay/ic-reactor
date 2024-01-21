@@ -2,10 +2,10 @@ import type {
   ActorSubclass,
   ExtractActorMethodArgs,
   ActorManager,
-  ExtractedService,
+  ExtractedServiceFields,
   ExtractedFunction,
   FunctionType,
-  ServiceMethodDetails,
+  ExtractedServiceDetails,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
@@ -24,6 +24,7 @@ import { useStore } from "zustand"
 export const getActorHooks = <A extends ActorSubclass<any>>({
   initialize,
   serviceFields,
+  serviceDetails,
   withServiceFields,
   canisterId,
   actorStore,
@@ -37,7 +38,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { ...actorState, canisterId }
   }
 
-  const useServiceFields = (): ExtractedService<A> => {
+  const useServiceFields = (): ExtractedServiceFields<A> => {
     if (!withServiceFields || !serviceFields) {
       throw new Error(
         "Service fields not initialized. Pass `withServiceFields` to initialize service fields."
@@ -45,6 +46,15 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     }
 
     return serviceFields
+  }
+  const useServiceDetails = (): ExtractedServiceDetails<A> => {
+    if (!withServiceFields || !serviceDetails) {
+      throw new Error(
+        "Service fields not initialized. Pass `withServiceFields` to initialize service fields."
+      )
+    }
+
+    return serviceDetails
   }
 
   const useMethodFields = (): ExtractedFunction<A>[] => {
@@ -65,10 +75,10 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     }, [functionName, serviceMethod])
   }
 
-  const useMethodDetails = (): ServiceMethodDetails<A> => {
-    const serviceFields = useServiceFields()
+  const useMethodDetails = (): ExtractedServiceDetails<A> => {
+    const serviceFields = useServiceDetails()
 
-    return serviceFields.methodDetails
+    return serviceFields
   }
 
   const useReActorCall = <M extends keyof A>({
