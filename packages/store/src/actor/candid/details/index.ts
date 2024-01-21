@@ -19,6 +19,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
   | FieldDetails
 > {
   public counter = 0
+  private visitedRecursive: Record<number, true> = {}
 
   public visitService(
     t: IDL.ServiceClass,
@@ -54,25 +55,25 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     const fields = t.argTypes.reduce((acc, arg, index) => {
       const details = arg.accept(this, `arg${index}`) as FieldDetailsWithChild
 
-      acc.push(details)
+      acc[`arg${index}`] = details
 
       return acc
-    }, [] as FieldDetailsWithChild[] | FieldDetails[])
+    }, {} as Record<`arg${number}`, FieldDetailsWithChild | FieldDetails>)
 
     return {
       order: this.counter++,
-      label: functionName,
-      description: t.name,
       functionName,
       type,
-      fields,
+      __label: functionName,
+      __description: t.name,
+      ...fields,
     }
   }
 
   public visitRecord(
     t: IDL.RecordClass,
     _fields: Array<[string, IDL.Type]>,
-    label: string
+    __label: string
   ): FieldDetailsWithChild {
     const fields = _fields.reduce((acc, [key, type]) => {
       const details = type.accept(this, key) as FieldDetailsWithChild
@@ -83,17 +84,17 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
 
     return {
-      label,
-      type: "record",
-      description: t.name,
-      fields,
+      __label,
+      __description: t.name,
+      __type: "record",
+      ...fields,
     }
   }
 
   public visitVariant(
     t: IDL.VariantClass,
     _fields: Array<[string, IDL.Type]>,
-    label: string
+    __label: string
   ): FieldDetailsWithChild {
     const fields = _fields.reduce((acc, [key, type]) => {
       const details = type.accept(this, key) as FieldDetailsWithChild
@@ -104,17 +105,17 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
 
     return {
-      label,
-      type: "variant",
-      description: t.name,
-      fields,
+      __label,
+      __type: "variant",
+      __description: t.name,
+      ...fields,
     }
   }
 
   public visitTuple<T extends any[]>(
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
-    label: string
+    __label: string
   ): FieldDetailsWithChild {
     const fields = components.reduce((acc, type, index) => {
       const details = type.accept(this, `_${index}_`) as FieldDetailsWithChild
@@ -122,141 +123,115 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
       acc[index] = details
 
       return acc
-    }, [] as (FieldDetailsWithChild | FieldDetails)[])
+    }, {} as Record<number, FieldDetailsWithChild | FieldDetails>)
 
     return {
-      label,
-      type: "tuple",
-      description: t.name,
-      fields,
+      __label,
+      __type: "tuple",
+      __description: t.name,
+      ...fields,
     }
   }
-
-  private recDetails: Record<
-    string,
-    { visited: boolean; details: FieldDetailsWithChild }
-  > = {}
 
   public visitRec<T>(
     t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
-    label: string
+    __label: string
   ): FieldDetailsWithChild {
-    if (!this.recDetails[this.counter]?.visited) {
-      this.recDetails[this.counter] = {
-        visited: true,
-        details: {} as FieldDetailsWithChild,
-      }
+    if (!this.visitedRecursive[this.counter]) {
+      this.visitedRecursive[this.counter] = true
 
-      this.recDetails[this.counter].details = ty.accept(
-        this,
-        label
-      ) as FieldDetailsWithChild
+      return ty.accept(this, __label) as FieldDetailsWithChild
     }
 
     return {
-      label,
-      type: "recursive",
-      description: t.name,
-      fields: this.recDetails[this.counter].details,
+      __label,
+      __type: "recursive",
+      __description: t.name,
     }
   }
 
   public visitOpt<T>(
     t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
-    label: string
+    __label: string
   ): FieldDetailsWithChild {
-    const details = ty.accept(this, label) as FieldDetailsWithChild
+    const details = ty.accept(this, __label) as FieldDetailsWithChild
 
     return {
-      label,
-      type: "optional",
-      description: t.name,
-      fields: [details],
+      __label,
+      __type: "optional",
+      __description: t.name,
+      [0]: details,
     }
   }
 
   public visitVec<T>(
     t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
-    label: string
+    __label: string
   ): FieldDetailsWithChild {
-    const details = ty.accept(this, label) as FieldDetailsWithChild
+    const details = ty.accept(this, __label) as FieldDetailsWithChild
 
     return {
-      label,
-      type: "vector",
-      description: t.name,
-      fields: [details],
+      __label,
+      __type: "vector",
+      __description: t.name,
+      [0]: details,
     }
   }
 
-  public visitType<T>(t: IDL.Type<T>, label: string): FieldDetails {
+  public visitType<T>(t: IDL.Type<T>, __label: string): FieldDetails {
     return {
-      label,
-      type: "unknown",
-      description: t.name,
+      __label,
+      __type: "unknown",
+      __description: t.name,
     }
   }
 
-  public visitPrincipal(t: IDL.PrincipalClass, label: string): FieldDetails {
+  public visitPrincipal(t: IDL.PrincipalClass, __label: string): FieldDetails {
     return {
-      label,
-      type: "principal",
-      description: t.name,
+      __label,
+      __type: "principal",
+      __description: t.name,
     }
   }
 
-  public visitBool(t: IDL.BoolClass, label: string): FieldDetails {
+  public visitBool(t: IDL.BoolClass, __label: string): FieldDetails {
     return {
-      label,
-      type: "boolean",
-      description: t.name,
+      __label,
+      __type: "boolean",
+      __description: t.name,
     }
   }
 
-  public visitNull(t: IDL.NullClass, label: string): FieldDetails {
+  public visitNull(t: IDL.NullClass, __label: string): FieldDetails {
     return {
-      label,
-      type: "null",
-      description: t.name,
+      __label,
+      __type: "null",
+      __description: t.name,
     }
   }
 
-  public visitText(t: IDL.TextClass, label: string): FieldDetails {
+  public visitText(t: IDL.TextClass, __label: string): FieldDetails {
     return {
-      label,
-      type: "text",
-      description: t.name,
+      __label,
+      __type: "text",
+      __description: t.name,
     }
   }
 
-  public visitNumber<T>(t: IDL.Type<T>, label: string): FieldDetails {
+  public visitNumber<T>(t: IDL.Type<T>, __label: string): FieldDetails {
     return {
-      label,
-      type: "number",
-      description: t.name,
+      __label,
+      __type: "number",
+      __description: t.name,
     }
   }
 
-  public visitInt(t: IDL.IntClass, label: string): FieldDetails {
-    return this.visitNumber(t, label)
-  }
-
-  public visitNat(t: IDL.NatClass, label: string): FieldDetails {
-    return this.visitNumber(t, label)
-  }
-
-  public visitFloat(t: IDL.FloatClass, label: string): FieldDetails {
-    return this.visitNumber(t, label)
-  }
-
-  public visitFixedInt(t: IDL.FixedIntClass, label: string): FieldDetails {
-    return this.visitNumber(t, label)
-  }
-
-  public visitFixedNat(t: IDL.FixedNatClass, label: string): FieldDetails {
-    return this.visitNumber(t, label)
-  }
+  public visitInt = this.visitNumber
+  public visitNat = this.visitNumber
+  public visitFloat = this.visitNumber
+  public visitFixedInt = this.visitNumber
+  public visitFixedNat = this.visitNumber
 }

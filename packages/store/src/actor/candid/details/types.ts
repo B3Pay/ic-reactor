@@ -10,30 +10,34 @@ export type ServiceFieldDetails<A> = {
   [K in keyof A]: FunctionDetails<A>
 }
 
-export interface FieldDetails {
-  label: string
-  description: string
-  type: FieldType
+export type FunctionDetails<A> = {
+  type: FunctionType
+  functionName: keyof A
+  order: number
+  __label: string
+  __description: string
+  [key: `arg${number}`]: FieldDetailsWithChild
 }
 
 export interface FieldDetailsWithChild {
-  label: string
-  type: FieldType
-  description: string
-  fields:
+  __label: string
+  __type: FieldType
+  __description: string
+  [key: string]:
+    | string
     | FieldDetails
     | FieldDetailsWithChild
-    | Record<string, FieldDetailsWithChild | FieldDetails>
+    | FieldDetailsWithChild[]
+    | FieldDetails[]
+  [key: number]:
+    | FieldDetails
+    | FieldDetailsWithChild
     | FieldDetailsWithChild[]
     | FieldDetails[]
 }
 
-export type FunctionDetails<A> = {
-  order: number
-  type: FunctionType
-  functionName: keyof A
-  label: string
-  description: string
-  fields: FieldDetailsWithChild[] | FieldDetails[]
-  [key: `arg${number}`]: FieldDetailsWithChild
+export interface FieldDetails {
+  __label: string
+  __description: string
+  __type: FieldType
 }
