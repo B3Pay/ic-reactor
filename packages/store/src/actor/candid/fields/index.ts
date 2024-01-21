@@ -21,6 +21,7 @@ import type {
 import { IDL } from "@dfinity/candid"
 import { is_query, validateError } from "../helper"
 import { ActorSubclass } from "@dfinity/agent"
+import { generateRequestHash } from "../../../helper"
 
 export * from "./types"
 export * from "../helper"
@@ -196,7 +197,11 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       type: "recursive",
       label,
       validate: validateError(t),
-      extract: () => ty.accept(this, label) as ExtractedVariant<IDL.Type>,
+      extract: () => {
+        const field = ty.accept(this, label) as ExtractedVariant<IDL.Type<any>>
+        const hash = generateRequestHash(field.fields)
+        return { field, hash }
+      },
     }
   }
 

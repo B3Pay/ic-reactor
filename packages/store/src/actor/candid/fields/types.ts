@@ -139,7 +139,7 @@ export interface ExtractedVector extends ExtractedField {
 
 export interface ExtractedRecursive extends ExtractedField {
   type: "recursive"
-  extract: () => ExtractedVariant<IDL.Type>
+  extract: () => { field: ExtractedVariant<IDL.Type>; hash: string }
 }
 
 export interface ExtractedPrincipalField extends ExtractedField {
