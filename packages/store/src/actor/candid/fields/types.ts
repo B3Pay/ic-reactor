@@ -88,13 +88,10 @@ export type ExtraInputFormFields = Partial<{
 
 export interface ExtractedField extends ExtraInputFormFields {
   type: ExtractedFieldType
+  label: string
   validate: (value: any) => boolean | string
   defaultValue?: any
   defaultValues?: any
-}
-
-export type ServiceFieldDetails<A> = {
-  [K in keyof A]: FunctionDetails<A>
 }
 
 export type ServiceMethodFields<A> = {
@@ -105,57 +102,27 @@ export type ServiceDefaultValues<A> = {
   [K in keyof A]: FunctionDefaultValues<K>
 }
 
-export interface FieldDetails {
-  label: string
-  description: string
-}
-
-export interface FieldDetailsWithChild {
-  label: string
-  description: string
-  child:
-    | FieldDetails
-    | FieldDetailsWithChild
-    | Record<string, FieldDetailsWithChild | FieldDetails>
-    | FieldDetailsWithChild[]
-    | FieldDetails[]
-}
-
-export interface ExtractedService<A> {
+export interface ExtractedServiceFields<A> {
   canisterId: string
-  description: string
   methodFields: ServiceMethodFields<A>
-  methodDetails: ServiceFieldDetails<A>
 }
 
 export type FunctionType = "query" | "update"
-
-export type FunctionDetails<A> = {
-  order: number
-  type: FunctionType
-  functionName: keyof A
-  label: string
-  description: string
-  child: Record<string, FieldDetailsWithChild | FieldDetails>
-  [key: `arg${number}`]: FieldDetailsWithChild
-}
 
 export type FunctionDefaultValues<T> = {
   [key: `arg${number}`]: ExtractTypeFromIDLType<T>
 }
 
 export interface ExtractedFunction<A> {
-  type: "query" | "update"
+  type: FunctionType
   fields: AllExtractableType<IDL.Type<any>>[] | []
   validate: (value: any) => boolean | string
   functionName: keyof A
   defaultValues: ServiceDefaultValues<A>
-  details: ServiceFieldDetails<A>
 }
 
 export interface ExtractedRecord<T extends IDL.Type> extends ExtractedField {
   type: "record"
-  details: FieldDetailsWithChild
   fields: AllExtractableType<T>[]
   defaultValues: Record<string, ExtractTypeFromIDLType<T>>
 }
@@ -164,41 +131,35 @@ export interface ExtractedVariant<T extends IDL.Type> extends ExtractedField {
   type: "variant"
   options: string[]
   defaultValue: string
-  details: FieldDetailsWithChild
   fields: AllExtractableType<T>[]
   defaultValues: ExtractTypeFromIDLType<T>
 }
 
 export interface ExtractedTuple<T extends IDL.Type> extends ExtractedField {
   type: "tuple"
-  details: FieldDetailsWithChild
   fields: AllExtractableType<T>[]
   defaultValues: ExtractTypeFromIDLType<T>[]
 }
 
 export interface ExtractedOptional extends ExtractedField {
   type: "optional"
-  details: FieldDetailsWithChild
   field: AllExtractableType<IDL.Type>
   defaultValue: []
 }
 
 export interface ExtractedVector extends ExtractedField {
   type: "vector"
-  details: FieldDetailsWithChild
   field: AllExtractableType<IDL.Type>
   defaultValue: []
 }
 
 export interface ExtractedRecursive extends ExtractedField {
   type: "recursive"
-  details: FieldDetailsWithChild
   extract: () => AllExtractableType<IDL.Type>
 }
 
 export interface ExtractedPrincipalField extends ExtractedField {
   type: "principal"
-  details: FieldDetails
   required: true
   maxLength: number
   minLength: number
@@ -207,7 +168,6 @@ export interface ExtractedPrincipalField extends ExtractedField {
 
 export interface ExtractedNumberField extends ExtractedField {
   type: "number"
-  details: FieldDetails
   min?: number | string
   max?: number | string
   required: true
@@ -217,7 +177,6 @@ export interface ExtractedNumberField extends ExtractedField {
 
 export interface ExtractedInputField<T extends IDL.Type>
   extends ExtractedField {
-  details: FieldDetails
   required: true
   defaultValue: ExtractTypeFromIDLType<T>
 }

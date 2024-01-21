@@ -2,9 +2,14 @@ import { hash } from "@dfinity/agent"
 import { IDL, toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import { ExtractField, ExtractedService } from "./actor/candid"
+import {
+  ExtractField,
+  ExtractedServiceFields,
+  ServiceFieldDetails,
+} from "./actor/candid/fields"
 
 import type { ActorSubclass, CanisterId } from "./actor/types"
+import { ExtractDetails } from "./actor/candid/details"
 
 interface StoreOptions {
   withDevtools?: boolean
@@ -30,11 +35,23 @@ export function createStoreWithOptionalDevtools(
 export function extractServiceField<A extends ActorSubclass<any>>(
   idlFactory: IDL.InterfaceFactory,
   name: CanisterId
-): ExtractedService<A> {
+): ExtractedServiceFields<A> {
   const canisterId = typeof name === "string" ? name : name.toString()
   const methods = idlFactory({ IDL })
 
   const extractor = new ExtractField<A>()
+
+  return extractor.visitService(methods, canisterId)
+}
+
+export function extractServiceDetails<A extends ActorSubclass<any>>(
+  idlFactory: IDL.InterfaceFactory,
+  name: CanisterId
+): ServiceFieldDetails<A> {
+  const canisterId = typeof name === "string" ? name : name.toString()
+  const methods = idlFactory({ IDL })
+
+  const extractor = new ExtractDetails<A>()
 
   return extractor.visitService(methods, canisterId)
 }

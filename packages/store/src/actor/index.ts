@@ -1,5 +1,9 @@
 import { Actor } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools, extractServiceField } from "../helper"
+import {
+  createStoreWithOptionalDevtools,
+  extractServiceDetails,
+  extractServiceField,
+} from "../helper"
 import type { ActorSubclass, HttpAgent } from "@dfinity/agent"
 import type {
   CanisterId,
@@ -12,10 +16,11 @@ import type {
 } from "./types"
 import type { IDL } from "@dfinity/candid"
 import type { AgentManager, UpdateAgentOptions } from "../agent"
-import { ExtractedService } from "./candid"
+import { ServiceFieldDetails } from "./candid/details"
+import { ExtractedServiceFields } from "./candid/fields"
 
 export * from "./types"
-export * from "./candid"
+export * from "./candid/fields"
 
 export class ActorManager<A extends ActorSubclass<any>> {
   private actor: null | A = null
@@ -26,7 +31,8 @@ export class ActorManager<A extends ActorSubclass<any>> {
   public actorStore: ActorStore<A>
 
   public withServiceFields: boolean = false
-  public serviceFields?: ExtractedService<A>
+  public serviceFields?: ExtractedServiceFields<A>
+  public serviceDetails?: ServiceFieldDetails<A>
 
   private DEFAULT_ACTOR_STATE: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
@@ -63,6 +69,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
 
     if (withServiceFields) {
       this.serviceFields = extractServiceField(idlFactory, canisterId)
+      this.serviceDetails = extractServiceDetails(idlFactory, canisterId)
     }
 
     // Initialize stores
