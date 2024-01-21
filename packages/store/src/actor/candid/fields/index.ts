@@ -29,8 +29,6 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
   string,
   ExtractedField | ExtractedServiceFields<A> | ExtractedFunction<A>
 > {
-  public counter = 0
-
   public visitService(
     t: IDL.ServiceClass,
     canisterId: string
@@ -198,8 +196,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
       type: "recursive",
       label,
       validate: validateError(t),
-      extract: () =>
-        ty.accept(this, label) as DynamicFieldTypeByClass<IDL.Type>,
+      extract: () => ty.accept(this, label) as ExtractedVariant<IDL.Type>,
     }
   }
 

@@ -19,7 +19,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
   | FieldDetails
 > {
   public counter = 0
-  private visitedRecursive: Record<number, true> = {}
+  private visitedRecursive: Record<string, true> = {}
 
   public visitService(
     t: IDL.ServiceClass,
@@ -120,10 +120,10 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     const fields = components.reduce((acc, type, index) => {
       const details = type.accept(this, `_${index}_`) as FieldDetailsWithChild
 
-      acc[index] = details
+      acc[`_${index}_`] = details
 
       return acc
-    }, {} as Record<number, FieldDetailsWithChild | FieldDetails>)
+    }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
 
     return {
       __label,
@@ -138,8 +138,9 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     ty: IDL.ConstructType<T>,
     __label: string
   ): FieldDetailsWithChild {
-    if (!this.visitedRecursive[this.counter]) {
-      this.visitedRecursive[this.counter] = true
+    const recLabel = `${__label}_${this.counter}`
+    if (!this.visitedRecursive[recLabel]) {
+      this.visitedRecursive[recLabel] = true
 
       return ty.accept(this, __label) as FieldDetailsWithChild
     }
@@ -162,7 +163,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
       __label,
       __type: "optional",
       __description: t.name,
-      [0]: details,
+      optional: details,
     }
   }
 
@@ -177,7 +178,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
       __label,
       __type: "vector",
       __description: t.name,
-      [0]: details,
+      vector: details,
     }
   }
 
