@@ -5,13 +5,15 @@ import type {
   CreateReActorOptions,
   ExtractActorMethodArgs,
   ExtractActorMethodReturnType,
-  ExtractedFunction,
+  MethodFields,
   ExtractedServiceFields,
   HttpAgent,
   Identity,
   Principal,
   ExtractedServiceDetails,
   FunctionType,
+  ServiceDetails,
+  MethodDetails,
 } from "@ic-reactor/store"
 import type { AuthHooks } from "./hooks/auth"
 
@@ -54,7 +56,7 @@ export interface ActorUseQueryReturn<
   call: (
     eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
   ) => Promise<unknown>
-  field: W extends true ? ExtractedFunction<A> : undefined
+  field: W extends true ? MethodFields<A> : undefined
   data: unknown
   error: Error | undefined
   loading: boolean
@@ -71,7 +73,7 @@ export interface ActorUseUpdateReturn<
   call: (
     eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
   ) => Promise<unknown>
-  field: W extends true ? ExtractedFunction<A> : undefined
+  field: W extends true ? MethodFields<A> : undefined
   data: unknown
   error: Error | undefined
   loading: boolean
@@ -96,9 +98,11 @@ export type ActorHooks<
 
 export interface ActorFieldHooks<A> {
   useServiceFields: () => ExtractedServiceFields<A>
-  useMethodFields: () => ExtractedFunction<A>[]
-  useMethodField: (functionName: keyof A & string) => ExtractedFunction<A>
-  useMethodDetails: () => ExtractedServiceDetails<A>
+  useMethodFields: () => MethodFields<A>[]
+  useMethodField: (functionName: keyof A & string) => MethodFields<A>
+  useServiceDetails: () => ExtractedServiceDetails<A>
+  useMethodDetails: () => ServiceDetails<A>
+  useMethodDetail: (functionName: keyof A & string) => MethodDetails<A>
 }
 
 export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }

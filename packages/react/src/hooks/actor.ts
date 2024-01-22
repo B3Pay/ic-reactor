@@ -3,9 +3,11 @@ import type {
   ExtractActorMethodArgs,
   ActorManager,
   ExtractedServiceFields,
-  ExtractedFunction,
+  MethodFields,
   FunctionType,
   ExtractedServiceDetails,
+  ServiceDetails,
+  MethodDetails,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
@@ -47,6 +49,23 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
 
     return serviceFields
   }
+
+  const useMethodFields = (): MethodFields<A>[] => {
+    const serviceFields = useServiceFields()
+
+    return useMemo(() => {
+      return Object.values(serviceFields.methodFields)
+    }, [serviceFields])
+  }
+
+  const useMethodField = (functionName: keyof A & string): MethodFields<A> => {
+    const serviceMethod = useServiceFields()
+
+    return useMemo(() => {
+      return serviceMethod.methodFields[functionName]
+    }, [functionName, serviceMethod])
+  }
+
   const useServiceDetails = (): ExtractedServiceDetails<A> => {
     if (!withServiceFields || !serviceDetails) {
       throw new Error(
@@ -57,28 +76,20 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return serviceDetails
   }
 
-  const useMethodFields = (): ExtractedFunction<A>[] => {
-    const serviceFields = useServiceFields()
-
-    return useMemo(() => {
-      return Object.values(serviceFields.methodFields)
-    }, [serviceFields])
-  }
-
-  const useMethodField = (
-    functionName: keyof A & string
-  ): ExtractedFunction<A> => {
-    const serviceMethod = useServiceFields()
-
-    return useMemo(() => {
-      return serviceMethod.methodFields[functionName]
-    }, [functionName, serviceMethod])
-  }
-
-  const useMethodDetails = (): ExtractedServiceDetails<A> => {
+  const useMethodDetails = (): ServiceDetails<A> => {
     const serviceFields = useServiceDetails()
 
-    return serviceFields
+    return serviceFields.methodDetails
+  }
+
+  const useMethodDetail = (
+    functionName: keyof A & string
+  ): MethodDetails<A> => {
+    const serviceMethod = useServiceDetails()
+
+    return useMemo(() => {
+      return serviceMethod.methodDetails[functionName]
+    }, [functionName, serviceMethod])
   }
 
   const useReActorCall = <M extends keyof A>({
@@ -141,7 +152,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     const field = useMemo(
       () => serviceFields?.methodFields[functionName],
       [functionName]
-    ) as ExtractedFunction<A>
+    ) as MethodFields<A>
 
     return { call, field, ...state }
   }
@@ -204,9 +215,13 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     useUpdateCall,
     useMethodCall,
     useActorStore,
+    // __Details
+    useServiceDetails,
     useMethodDetails,
-    useMethodField,
-    useMethodFields,
+    useMethodDetail,
+    // __Fields
     useServiceFields,
+    useMethodFields,
+    useMethodField,
   }
 }

@@ -1,20 +1,21 @@
 import type {
   FieldDetailsWithChild,
-  ServiceFieldDetails,
+  ServiceDetails,
   FieldDetails,
-  FunctionDetails,
+  MethodDetails,
   ExtractedServiceDetails,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { is_query } from "../helper"
 import { ActorSubclass } from "@dfinity/agent"
+import { FieldType } from "../types"
 
 export * from "./types"
 
 export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
   string,
   | ExtractedServiceDetails<A>
-  | FunctionDetails<A>
+  | MethodDetails<A>
   | FieldDetailsWithChild
   | FieldDetails
 > {
@@ -31,12 +32,12 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
       const functionDetails = func.accept(
         this,
         functionName
-      ) as FunctionDetails<A>
+      ) as MethodDetails<A>
 
       acc[functionName] = functionDetails
 
       return acc
-    }, {} as ServiceFieldDetails<A>)
+    }, {} as ServiceDetails<A>)
 
     return {
       canisterId,
@@ -48,7 +49,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
   public visitFunc(
     t: IDL.FuncClass,
     functionName: keyof A & string
-  ): FunctionDetails<A> {
+  ): MethodDetails<A> {
     const functionType = is_query(t) ? "query" : "update"
 
     const fields = t.argTypes.reduce((acc, arg, index) => {
@@ -83,9 +84,9 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
 
     return {
+      __type: "record",
       __label,
       __description: t.name,
-      __type: "record",
       ...fields,
     }
   }
@@ -104,8 +105,8 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
 
     return {
-      __label,
       __type: "variant",
+      __label,
       __description: t.name,
       ...fields,
     }
@@ -125,8 +126,8 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
 
     return {
-      __label,
       __type: "tuple",
+      __label,
       __description: t.name,
       ...fields,
     }
@@ -146,8 +147,8 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     }
 
     return {
-      __label,
       __type: "recursive",
+      __label,
       __description: t.name,
     }
   }
@@ -160,8 +161,8 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     const details = ty.accept(this, __label) as FieldDetailsWithChild
 
     return {
-      __label,
       __type: "optional",
+      __label,
       __description: t.name,
       optional: details,
     }
@@ -175,59 +176,47 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     const details = ty.accept(this, __label) as FieldDetailsWithChild
 
     return {
-      __label,
       __type: "vector",
+      __label,
       __description: t.name,
       vector: details,
     }
   }
 
-  public visitType<T>(t: IDL.Type<T>, __label: string): FieldDetails {
+  public visiGenericType = <T>(
+    t: IDL.Type<T>,
+    __type: FieldType,
+    __label: string
+  ): FieldDetails => {
     return {
+      __type,
       __label,
-      __type: "unknown",
       __description: t.name,
     }
+  }
+
+  public visitType<T>(t: IDL.Type<T>, __label: string): FieldDetails {
+    return this.visiGenericType(t, "unknown", __label)
   }
 
   public visitPrincipal(t: IDL.PrincipalClass, __label: string): FieldDetails {
-    return {
-      __label,
-      __type: "principal",
-      __description: t.name,
-    }
+    return this.visiGenericType(t, "principal", __label)
   }
 
   public visitBool(t: IDL.BoolClass, __label: string): FieldDetails {
-    return {
-      __label,
-      __type: "boolean",
-      __description: t.name,
-    }
+    return this.visiGenericType(t, "boolean", __label)
   }
 
   public visitNull(t: IDL.NullClass, __label: string): FieldDetails {
-    return {
-      __label,
-      __type: "null",
-      __description: t.name,
-    }
+    return this.visiGenericType(t, "null", __label)
   }
 
-  public visitText(t: IDL.TextClass, __label: string): FieldDetails {
-    return {
-      __label,
-      __type: "text",
-      __description: t.name,
-    }
+  public visitText(t: IDL.TextClass, label: string): FieldDetails {
+    return this.visiGenericType(t, "text", label)
   }
 
   public visitNumber<T>(t: IDL.Type<T>, __label: string): FieldDetails {
-    return {
-      __label,
-      __type: "number",
-      __description: t.name,
-    }
+    return this.visiGenericType(t, "number", __label)
   }
 
   public visitInt = this.visitNumber

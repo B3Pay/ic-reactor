@@ -3,7 +3,7 @@ import { IDL, toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 import {
-  ExtractField,
+  ExtractFields,
   ExtractedServiceFields,
   ExtractedServiceDetails,
 } from "./actor/candid"
@@ -32,14 +32,14 @@ export function createStoreWithOptionalDevtools(
   }
 }
 
-export function extractServiceField<A extends ActorSubclass<any>>(
+export function extractServiceFields<A extends ActorSubclass<any>>(
   idlFactory: IDL.InterfaceFactory,
   name: CanisterId
 ): ExtractedServiceFields<A> {
   const canisterId = typeof name === "string" ? name : name.toString()
   const methods = idlFactory({ IDL })
 
-  const extractor = new ExtractField<A>()
+  const extractor = new ExtractFields<A>()
 
   return extractor.visitService(methods, canisterId)
 }
@@ -67,13 +67,15 @@ export const generateRequestHash = (args?: any[]) => {
     })
     .join("|")
 
-  const hashBytes = hash(new TextEncoder().encode(serializedArgs ?? ""))
-  return toHexString(hashBytes)
+  return stringToHash(serializedArgs ?? "")
 }
 
 export const generateFieldHash = (field?: any) => {
   const serializedArgs = JSON.stringify(field)
+  return stringToHash(serializedArgs ?? "")
+}
 
-  const hashBytes = hash(new TextEncoder().encode(serializedArgs ?? ""))
+export const stringToHash = (str: string) => {
+  const hashBytes = hash(new TextEncoder().encode(str))
   return toHexString(hashBytes)
 }

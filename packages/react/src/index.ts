@@ -45,5 +45,5 @@ export const createReActor: CreateReActor = <A extends ActorSubclass<any>>({
     getServiceFields,
     ...getActorHooks(actorManager),
     ...getAuthHooks(actorManager.agentManager),
-  } as any
+  } as ReturnType<CreateReActor>
 }

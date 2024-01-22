@@ -3,14 +3,14 @@ import { FieldType, FunctionType } from "../types"
 export interface ExtractedServiceDetails<A> {
   canisterId: string
   description: string
-  methodDetails: ServiceFieldDetails<A>
+  methodDetails: ServiceDetails<A>
 }
 
-export type ServiceFieldDetails<A> = {
-  [K in keyof A]: FunctionDetails<A>
+export type ServiceDetails<A> = {
+  [K in keyof A]: MethodDetails<A>
 }
 
-export type FunctionDetails<A> = {
+export type MethodDetails<A> = {
   functionType: FunctionType
   functionName: keyof A
   order: number
@@ -19,25 +19,17 @@ export type FunctionDetails<A> = {
   [key: `arg${number}`]: FieldDetailsWithChild
 }
 
-export interface FieldDetailsWithChild {
+export interface FieldDetails {
   __label: string
   __type: FieldType
   __description: string
+}
+
+export interface FieldDetailsWithChild extends FieldDetails {
   [key: string]:
     | string
     | FieldDetails
     | FieldDetailsWithChild
     | FieldDetailsWithChild[]
     | FieldDetails[]
-  [key: number]:
-    | FieldDetails
-    | FieldDetailsWithChild
-    | FieldDetailsWithChild[]
-    | FieldDetails[]
-}
-
-export interface FieldDetails {
-  __label: string
-  __description: string
-  __type: FieldType
 }

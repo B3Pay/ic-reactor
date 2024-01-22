@@ -10,7 +10,7 @@ import type { StoreApi } from "zustand"
 import type { ExtractedServiceFields } from "./candid/fields"
 import type { AgentManager } from "../agent"
 
-export { ActorMethod, IDL, ActorSubclass, Principal, HttpAgent, Identity }
+export type { ActorMethod, IDL, ActorSubclass, Principal, HttpAgent, Identity }
 
 // Type for identifying a canister
 export type CanisterId = string | Principal
@@ -23,9 +23,6 @@ export interface ActorManagerOptions {
   withServiceFields?: boolean
   initializeOnCreate?: boolean
 }
-
-// Type for initializing an actor
-export type InitializeActorType = (agent: HttpAgent) => ActorSubclass<any>
 
 // Utility types for extracting method arguments and return types
 export type ExtractActorMethodArgs<T> = T extends ActorMethod<infer A>

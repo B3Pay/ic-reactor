@@ -2,7 +2,7 @@ import { Actor } from "@dfinity/agent"
 import {
   createStoreWithOptionalDevtools,
   extractServiceDetails,
-  extractServiceField,
+  extractServiceFields,
 } from "../helper"
 import type { ActorSubclass, HttpAgent } from "@dfinity/agent"
 import type {
@@ -68,7 +68,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
     this.idlFactory = idlFactory
 
     if (withServiceFields) {
-      this.serviceFields = extractServiceField(idlFactory, canisterId)
+      this.serviceFields = extractServiceFields(idlFactory, canisterId)
       this.serviceDetails = extractServiceDetails(idlFactory, canisterId)
     }
 
