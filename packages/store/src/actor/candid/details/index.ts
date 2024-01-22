@@ -19,7 +19,6 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
   | FieldDetails
 > {
   public counter = 0
-  private visitedRecursive: Record<string, true> = {}
 
   public visitService(
     t: IDL.ServiceClass,
@@ -50,7 +49,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     t: IDL.FuncClass,
     functionName: keyof A & string
   ): FunctionDetails<A> {
-    const type = is_query(t) ? "query" : "update"
+    const functionType = is_query(t) ? "query" : "update"
 
     const fields = t.argTypes.reduce((acc, arg, index) => {
       const details = arg.accept(this, `arg${index}`) as FieldDetailsWithChild
@@ -63,7 +62,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     return {
       order: this.counter++,
       functionName,
-      type,
+      functionType,
       __label: functionName,
       __description: t.name,
       ...fields,
@@ -133,6 +132,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     }
   }
 
+  private visitedRecursive: Record<string, true> = {}
   public visitRec<T>(
     t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,

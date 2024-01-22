@@ -11,7 +11,7 @@ export type ServiceFieldDetails<A> = {
 }
 
 export type FunctionDetails<A> = {
-  type: FunctionType
+  functionType: FunctionType
   functionName: keyof A
   order: number
   __label: string

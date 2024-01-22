@@ -98,10 +98,10 @@ export type FunctionDefaultValues<T> = {
 }
 
 export interface ExtractedFunction<A> {
-  type: FunctionType
+  functionName: keyof A
+  functionType: FunctionType
   fields: AllExtractableType<IDL.Type<any>>[] | []
   validate: (value: any) => boolean | string
-  functionName: keyof A
   defaultValues: ServiceDefaultValues<A>
 }
 

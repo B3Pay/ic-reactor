@@ -13,7 +13,7 @@ describe("My IC Store and Actions", () => {
     withServiceFields: true,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
-  // console.log(JSON.stringify(serviceDetails, null, 2))
+  console.log(JSON.stringify(serviceDetails, null, 2))
   console.log(JSON.stringify(serviceFields, null, 2))
 
   Object.entries(serviceFields!.methodFields).forEach(([label, details]) => {

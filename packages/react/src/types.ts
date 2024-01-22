@@ -99,7 +99,6 @@ export interface ActorFieldHooks<A> {
   useMethodFields: () => ExtractedFunction<A>[]
   useMethodField: (functionName: keyof A & string) => ExtractedFunction<A>
   useMethodDetails: () => ExtractedServiceDetails<A>
-  useMethodNames: () => ExtractedServiceDetails<A>
 }
 
 export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }

@@ -57,7 +57,7 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     t: IDL.FuncClass,
     functionName: keyof A & string
   ): ExtractedFunction<A> {
-    const type = is_query(t) ? "query" : "update"
+    const functionType = is_query(t) ? "query" : "update"
 
     const { fields, defaultValue } = t.argTypes.reduce(
       (acc, arg, index) => {
@@ -83,9 +83,9 @@ export class ExtractField<A extends ActorSubclass<any>> extends IDL.Visitor<
     } as ServiceDefaultValues<A>
 
     return {
-      type,
-      validate: validateError(t),
+      functionType,
       functionName,
+      validate: validateError(t),
       defaultValues,
       fields,
     }
