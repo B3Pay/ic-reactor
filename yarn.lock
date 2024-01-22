@@ -15383,9 +15383,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-example@workspace:examples/react":
+"react-example@workspace:examples/react-provider":
   version: 0.0.0-use.local
-  resolution: "react-example@workspace:examples/react"
+  resolution: "react-example@workspace:examples/react-provider"
   dependencies:
     "@ic-reactor/react": "npm:*"
     "@types/react": "npm:^18.2"

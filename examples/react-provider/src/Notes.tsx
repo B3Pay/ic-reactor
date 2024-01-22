@@ -1,4 +1,4 @@
-import { useQueryCall } from "store"
+import { useQueryCall } from "App"
 
 interface NoteProps {
   publicKey: Uint8Array

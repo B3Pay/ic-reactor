@@ -1,6 +1,8 @@
-import { useAuthClient } from "store"
+import { useAgent } from "@ic-reactor/react"
 
 const Login = () => {
+  const { useAuthClient } = useAgent()
+
   const {
     login,
     logout,

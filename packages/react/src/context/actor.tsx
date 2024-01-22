@@ -14,115 +14,199 @@ import {
   ActorManagerOptions,
   getDidJsFromMetadata,
   getDidJsFromTmpHack,
+  FunctionType,
 } from "@ic-reactor/store"
 import { AgentContextType, useAgentManager } from "./agent"
-import { ActorHooksWithField } from "../types"
+import {
+  ActorHooksWithField,
+  ActorHooksWithoutField,
+  ActorUseMethodArg,
+  ActorUseQueryArgs,
+  ActorUseUpdateArgs,
+  GetFunctions,
+} from "../types"
 
-// Update this to reflect the correct ActorHooks type based on withServiceFields
 export type ActorContextType<A = ActorSubclass<any>> = ActorHooksWithField<A>
 
-export const ActorContext = createContext<ActorContextType | null>(null)
-
-type UseActorType = <A = ActorSubclass<any>>() => ActorContextType<A>
-
-export const useActor: UseActorType = <A extends ActorSubclass<any>>() => {
-  const context = useContext(ActorContext) as ActorContextType<A>
-
-  if (!context) {
-    throw new Error("useActor must be used within a ActorProvider")
-  }
-
-  return context
+export interface ActorContextReturnType<A extends ActorSubclass<any>>
+  extends GetFunctions<A> {
+  useActor: <A extends ActorSubclass<any>>() => ActorContextType<A>
+  ActorProvider: React.FC<ActorProviderProps>
 }
 
-interface ActorProviderProps
-  extends PropsWithChildren,
-    Omit<ActorManagerOptions, "idlFactory" | "agentManager"> {
+export type CreateReActorContext = {
+  <A extends ActorSubclass<any>>(
+    options?: Partial<CreateActorOptions> & { withServiceFields: true }
+  ): ActorHooksWithField<A> & ActorContextReturnType<A>
+  <A extends ActorSubclass<any>>(
+    options?: Partial<CreateActorOptions> & {
+      withServiceFields?: false | undefined
+    }
+  ): ActorHooksWithoutField<A> & ActorContextReturnType<A>
+}
+
+export interface CreateActorOptions
+  extends Omit<
+    ActorManagerOptions,
+    "idlFactory" | "agentManager" | "canisterId"
+  > {
+  canisterId?: string
   agentContext?: AgentContextType
   idlFactory?: IDL.InterfaceFactory
   loadingComponent?: React.ReactNode
 }
 
-export const ActorProvider: React.FC<ActorProviderProps> = ({
-  children,
-  canisterId,
-  agentContext,
-  loadingComponent = <div>Loading...</div>,
-  withServiceFields = false,
-  ...config
-}) => {
-  const agentManager = useAgentManager(agentContext)
+export interface ActorProviderProps
+  extends PropsWithChildren,
+    CreateActorOptions {
+  loadingComponent?: React.ReactNode
+}
 
-  const [didJs, setDidJS] = useState<{ idlFactory: IDL.InterfaceFactory }>()
-  const [fetching, setFetching] = useState(false)
+export const createReActorContext: CreateReActorContext = <
+  Actor extends ActorSubclass<any>
+>({
+  canisterId: defaultCanisterId,
+  agentContext: defaultAgentContext,
+  withServiceFields: defaultWithServiceFields = false,
+  ...defaultConfig
+}: Partial<CreateActorOptions> = {}) => {
+  const ActorContext = createContext<ActorContextType | null>(null)
 
-  const fetchDidJs = useCallback(async () => {
+  const ActorProvider: React.FC<ActorProviderProps> = ({
+    children,
+    canisterId = defaultCanisterId,
+    agentContext = defaultAgentContext,
+    loadingComponent = <div>Fetching canister...</div>,
+    withServiceFields = defaultWithServiceFields,
+    ...restConfig
+  }) => {
     if (!canisterId) {
       throw new Error("canisterId is required")
     }
 
-    if (fetching) {
-      return
-    }
+    const config = useMemo(
+      () => ({
+        ...defaultConfig,
+        ...restConfig,
+      }),
+      [defaultConfig, restConfig]
+    )
 
-    setFetching(true)
+    const agentManager = useAgentManager(agentContext)
 
-    const agent = agentManager.getAgent()
+    const [didJs, setDidJS] = useState<{ idlFactory: IDL.InterfaceFactory }>()
+    const [fetching, setFetching] = useState(false)
 
-    getDidJsFromMetadata(agent, canisterId).then(async (idlFactory) => {
-      if (!idlFactory) {
-        try {
-          idlFactory = await getDidJsFromTmpHack(agent, canisterId)
-        } catch (err) {
-          if (/no query method/.test(err as any)) {
-            console.warn(err)
-            idlFactory = undefined
-          } else {
-            throw err
+    const fetchDidJs = useCallback(async () => {
+      if (fetching) {
+        return
+      }
+
+      setFetching(true)
+
+      const agent = agentManager.getAgent()
+
+      getDidJsFromMetadata(agent, canisterId).then(async (idlFactory) => {
+        if (!idlFactory) {
+          try {
+            idlFactory = await getDidJsFromTmpHack(agent, canisterId)
+          } catch (err) {
+            if (/no query method/.test(err as any)) {
+              console.warn(err)
+              idlFactory = undefined
+            } else {
+              throw err
+            }
+          }
+
+          if (!idlFactory) {
+            console.warn("No query method found for canister", canisterId)
           }
         }
-
-        if (!idlFactory) {
-          console.warn("No query method found for canister", canisterId)
-        }
-      }
-      setDidJS(idlFactory)
-      setFetching(false)
-    })
-  }, [canisterId, agentManager])
-
-  useEffect(() => {
-    const { idlFactory } = config
-
-    if (idlFactory) {
-      setDidJS({ idlFactory })
-      return
-    }
-    console.log("idlFactory not provided, fetching from canister...")
-    fetchDidJs()
-  }, [fetchDidJs, config.idlFactory])
-
-  const hooks = useMemo(() => {
-    if (!didJs) {
-      return null
-    }
-    try {
-      return createReActor<any>({
-        idlFactory: didJs.idlFactory,
-        agentManager,
-        canisterId,
-        withDevtools: config.withDevtools,
-        withServiceFields: withServiceFields as true,
+        setDidJS(idlFactory)
+        setFetching(false)
       })
-    } catch (err) {
-      console.error(err)
-      return null
-    }
-  }, [canisterId, agentManager, didJs])
+    }, [canisterId, agentManager])
 
-  return (
-    <ActorContext.Provider value={hooks}>
-      {fetching || hooks === null ? loadingComponent : children}
-    </ActorContext.Provider>
-  )
+    useEffect(() => {
+      const { idlFactory } = config
+
+      if (idlFactory) {
+        setDidJS({ idlFactory })
+        return
+      }
+      console.log("idlFactory not provided, fetching from canister...")
+      fetchDidJs()
+    }, [fetchDidJs, config.idlFactory])
+
+    const hooks = useMemo(() => {
+      if (!didJs) {
+        return null
+      }
+      try {
+        return createReActor<any>({
+          idlFactory: didJs.idlFactory,
+          agentManager,
+          canisterId,
+          withDevtools: config.withDevtools,
+          withServiceFields: withServiceFields as true,
+        })
+      } catch (err) {
+        console.error(err)
+        return null
+      }
+    }, [canisterId, agentManager, didJs])
+
+    return (
+      <ActorContext.Provider value={hooks}>
+        {fetching || hooks === null ? loadingComponent : children}
+      </ActorContext.Provider>
+    )
+  }
+
+  type UseActorType = <A = ActorSubclass<any>>() => ActorContextType<A>
+
+  const useActor: UseActorType = <A extends ActorSubclass<any> = Actor>() => {
+    const context = useContext(ActorContext) as ActorContextType<A>
+
+    if (!context) {
+      throw new Error("useActor must be used within a ActorProvider")
+    }
+
+    return context
+  }
+
+  const useQueryCall = <M extends keyof Actor>(
+    args: ActorUseQueryArgs<Actor, M>
+  ) => useActor().useQueryCall(args)
+  const useUpdateCall = <M extends keyof Actor>(
+    args: ActorUseUpdateArgs<Actor, M>
+  ) => useActor().useUpdateCall(args)
+  const useMethodCall = <T extends FunctionType>(
+    args: ActorUseMethodArg<Actor, T> & { type: T }
+  ) => useActor().useMethodCall(args)
+  const useServiceFields = () => useActor().useServiceFields()
+  const useMethodFields = () => useActor().useMethodFields()
+  const useMethodField = (functionName: keyof Actor & string) =>
+    useActor().useMethodField(functionName)
+  const useServiceDetails = () => useActor().useServiceDetails()
+  const useMethodDetails = () => useActor().useMethodDetails()
+  const useMethodDetail = (functionName: keyof Actor & string) =>
+    useActor().useMethodDetail(functionName)
+
+  return {
+    ActorProvider,
+    useActor,
+    useQueryCall,
+    useUpdateCall,
+    useMethodCall,
+    useServiceFields,
+    useMethodFields,
+    useMethodField,
+    useServiceDetails,
+    useMethodDetails,
+    useMethodDetail,
+  } as any
 }
+
+export const { ActorProvider, useActor } = createReActorContext()

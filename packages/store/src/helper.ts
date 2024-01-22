@@ -70,8 +70,13 @@ export const generateRequestHash = (args?: any[]) => {
   return stringToHash(serializedArgs ?? "")
 }
 
-export const generateFieldHash = (field?: any) => {
+export const generateHash = (field?: any) => {
   const serializedArgs = JSON.stringify(field)
+  return stringToHash(serializedArgs ?? "")
+}
+
+export const generateActorHash = (actor: ActorSubclass<any>) => {
+  const serializedArgs = JSON.stringify(actor)
   return stringToHash(serializedArgs ?? "")
 }
 

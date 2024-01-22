@@ -1,5 +1,5 @@
+import { useUpdateCall } from "App"
 import { useState } from "react"
-import { useUpdateCall } from "store"
 
 interface AddNoteProps {
   publicKey: Uint8Array
