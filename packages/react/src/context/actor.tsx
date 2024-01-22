@@ -176,10 +176,10 @@ export const createReActorContext: CreateReActorContext = <
     return context
   }
 
-  const useQueryCall = <M extends keyof Actor>(
+  const useQueryCall = <M extends keyof Actor & string>(
     args: ActorUseQueryArgs<Actor, M>
   ) => useActor().useQueryCall(args)
-  const useUpdateCall = <M extends keyof Actor>(
+  const useUpdateCall = <M extends keyof Actor & string>(
     args: ActorUseUpdateArgs<Actor, M>
   ) => useActor().useUpdateCall(args)
   const useMethodCall = <T extends FunctionType>(
@@ -209,4 +209,16 @@ export const createReActorContext: CreateReActorContext = <
   } as any
 }
 
-export const { ActorProvider, useActor } = createReActorContext()
+export const {
+  ActorProvider,
+  useActor,
+  useQueryCall,
+  useUpdateCall,
+  useMethodCall,
+  useServiceFields,
+  useMethodFields,
+  useMethodField,
+  useServiceDetails,
+  useMethodDetails,
+  useMethodDetail,
+} = createReActorContext()

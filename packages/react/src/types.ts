@@ -27,7 +27,7 @@ export type AuthArgs = {
   onLoggedOut?: () => void
 }
 
-export type ActorCallArgs<A, M extends keyof A> = {
+export type ActorCallArgs<A, M extends keyof A & string> = {
   functionName: M & string
   args?: ExtractActorMethodArgs<A[M]>
   onLoading?: (loading: boolean) => void
@@ -36,13 +36,13 @@ export type ActorCallArgs<A, M extends keyof A> = {
   throwOnError?: boolean
 }
 
-export type ActorHookState<A, M extends keyof A> = {
+export type ActorHookState<A, M extends keyof A & string> = {
   data: ExtractActorMethodReturnType<A[M]> | undefined
   error: Error | undefined
   loading: boolean
 }
 
-export interface ActorUseQueryArgs<A, M extends keyof A>
+export interface ActorUseQueryArgs<A, M extends keyof A & string>
   extends ActorCallArgs<A, M> {
   refetchOnMount?: boolean
   refetchInterval?: number | false
@@ -50,7 +50,7 @@ export interface ActorUseQueryArgs<A, M extends keyof A>
 
 export interface ActorUseQueryReturn<
   A,
-  M extends keyof A,
+  M extends keyof A & string,
   W extends boolean = false
 > {
   call: (
@@ -62,12 +62,12 @@ export interface ActorUseQueryReturn<
   loading: boolean
 }
 
-export interface ActorUseUpdateArgs<A, M extends keyof A>
+export interface ActorUseUpdateArgs<A, M extends keyof A & string>
   extends ActorCallArgs<A, M> {}
 
 export interface ActorUseUpdateReturn<
   A,
-  M extends keyof A,
+  M extends keyof A & string,
   W extends boolean = false
 > {
   call: (
@@ -80,8 +80,8 @@ export interface ActorUseUpdateReturn<
 }
 
 export type ActorUseMethodArg<A, T extends FunctionType> = T extends "query"
-  ? ActorUseQueryArgs<A, keyof A>
-  : ActorUseUpdateArgs<A, keyof A>
+  ? ActorUseQueryArgs<A, keyof A & string>
+  : ActorUseUpdateArgs<A, keyof A & string>
 
 export type ActorHooksWithField<A> = ActorDefaultHooks<A, true> &
   ActorFieldHooks<A>
@@ -110,13 +110,13 @@ export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }
 export interface ActorDefaultHooks<A, W extends boolean = false> {
   initialize: () => Promise<void>
   useActorStore: () => UseActorStoreReturn<A>
-  useQueryCall: <M extends keyof A>(
+  useQueryCall: <M extends keyof A & string>(
     args: ActorUseQueryArgs<A, M>
   ) => ActorUseQueryReturn<A, M, W>
-  useUpdateCall: <M extends keyof A>(
+  useUpdateCall: <M extends keyof A & string>(
     args: ActorUseUpdateArgs<A, M>
   ) => ActorUseUpdateReturn<A, M, W>
-  useMethodCall: <M extends keyof A, T extends FunctionType>(
+  useMethodCall: <M extends keyof A & string, T extends FunctionType>(
     args: ActorUseMethodArg<A, T> & { type: T }
   ) => T extends "query"
     ? ActorUseQueryReturn<A, M, W>

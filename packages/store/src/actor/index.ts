@@ -126,7 +126,7 @@ export class ActorManager<A extends ActorSubclass<any>> {
     }
   }
 
-  public callMethod = async <M extends keyof A>(
+  public callMethod = async <M extends keyof A & string>(
     functionName: M,
     ...args: ExtractActorMethodArgs<A[M]>
   ) => {

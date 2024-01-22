@@ -92,7 +92,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     }, [functionName, serviceMethod])
   }
 
-  const useReActorCall = <M extends keyof A>({
+  const useReActorCall = <M extends keyof A & string>({
     onError,
     onSuccess,
     onLoading,
@@ -157,7 +157,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { call, field, ...state }
   }
 
-  const useQueryCall = <M extends keyof A>({
+  const useQueryCall = <M extends keyof A & string>({
     refetchOnMount = false,
     refetchInterval = false,
     ...rest
@@ -187,13 +187,13 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { call, ...state }
   }
 
-  const useUpdateCall = <M extends keyof A>(
+  const useUpdateCall = <M extends keyof A & string>(
     args: ActorUseUpdateArgs<A, M>
   ): ActorUseUpdateReturn<A, M, W> => {
     return useReActorCall(args)
   }
 
-  const useMethodCall = <M extends keyof A, T extends FunctionType>({
+  const useMethodCall = <M extends keyof A & string, T extends FunctionType>({
     type,
     ...rest
   }: ActorUseMethodArg<A, T> & { type: T }): T extends "query"
