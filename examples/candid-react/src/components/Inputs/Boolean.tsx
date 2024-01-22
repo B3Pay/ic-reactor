@@ -14,7 +14,6 @@ const Boolean: React.FC<BooleanProps> = ({
         <label className="flex-1  w-full block text-lg font-medium">
           {extractedField.label}
         </label>
-        <p>{extractedField.description}</p>
       </div>
       <Controller
         shouldUnregister={shouldUnregister}

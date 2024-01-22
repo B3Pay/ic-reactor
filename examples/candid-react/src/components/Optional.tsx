@@ -22,7 +22,6 @@ const Optional: React.FC<OptionalProps> = ({
           <label className="block text-lg font-medium">
             {extractedField.label}
           </label>
-          <p>{extractedField.description}</p>
         </div>
         <div className="flex-1 w-18 mt-1">
           <label

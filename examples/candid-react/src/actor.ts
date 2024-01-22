@@ -8,7 +8,6 @@ export const {
   getServiceFields,
   useActorStore,
   useMethodFields,
-  useMethodNames,
   useMethodDetails,
   useQueryCall,
   useMethodCall,

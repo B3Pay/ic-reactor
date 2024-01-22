@@ -1,10 +1,10 @@
 import MethodForm from "./components/MethodForm"
-import { useMethodNames, useMethodCall, CandidType } from "./actor"
-import { ServiceMethodType } from "@ic-reactor/react"
+import { useMethodFields, useMethodCall, CandidType } from "./actor"
+import { FunctionType } from "@ic-reactor/react"
 import { FormProvider, useForm } from "react-hook-form"
 
 const Candid: React.FC = () => {
-  const defaultValues = useMethodNames()
+  const defaultValues = useMethodFields()
 
   const { getValues } = useForm({
     mode: "onChange",
@@ -18,7 +18,11 @@ const Candid: React.FC = () => {
   return (
     <div className="p-2 max-w-3xl mx-auto">
       {defaultValues.map((props) => (
-        <FormFields key={props.functionName} {...props} />
+        <FormFields
+          key={props.functionName}
+          {...props}
+          type={props.functionType}
+        />
       ))}
       <div className="flex justify-end">
         <button
@@ -33,7 +37,7 @@ const Candid: React.FC = () => {
 }
 
 interface FormFieldProps {
-  type: ServiceMethodType
+  type: FunctionType
   functionName: keyof CandidType
 }
 

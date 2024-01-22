@@ -73,7 +73,6 @@ const Principal: React.FC<PrincipalProps> = ({
         <label className="flex-1  w-full block text-lg font-medium">
           {extractedField.label}
         </label>
-        <p>{extractedField.description}</p>
       </div>
       {errorMessage && (
         <span className="text-red-500 text-xs ml-1">( {errorMessage} )</span>

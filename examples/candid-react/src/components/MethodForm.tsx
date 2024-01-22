@@ -2,10 +2,10 @@ import { useCallback, useState } from "react"
 import Button from "./Inputs/Button"
 import Route from "./Route"
 import { useFormContext } from "react-hook-form"
-import { ExtractedFunction } from "@ic-reactor/store"
+import { MethodFields } from "@ic-reactor/store"
 import { CandidType } from "../actor"
 
-interface FormProps extends ExtractedFunction<CandidType> {
+interface FormProps extends MethodFields<CandidType> {
   callHandler: (args: [any]) => Promise<any>
 }
 
