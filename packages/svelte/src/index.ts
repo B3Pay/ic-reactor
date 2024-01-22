@@ -7,6 +7,8 @@ import {
 } from "./helper"
 import { ReActorManager } from "./reactor"
 import {
+  DefaultActorType,
+  FunctionName,
   ReActorCallFunction,
   ReActorGetStateFunction,
   ReActorMethod,
@@ -17,7 +19,9 @@ import {
   ReActorUpdate,
 } from "./types"
 
-export const createReActorStore = <A extends ActorSubclass<any>>(
+export const createReActorStore = <
+  A extends ActorSubclass<any> = DefaultActorType
+>(
   options: CreateActorFunctionArgs
 ): ReActorManager<A> => {
   const actorInitializer = (_agent: HttpAgent) => {
@@ -36,7 +40,7 @@ const defaultCreateReActorOptions: CreateReActorOptions = {
   initializeOnMount: true,
 }
 
-export const createReActor = <A extends ActorSubclass<any>>(
+export const createReActor = <A extends ActorSubclass<any> = DefaultActorType>(
   options: CreateActorFunctionArgs
 ) => {
   const optionsWithDefaults = {
@@ -54,7 +58,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
     }
   }
 
-  const updateMethodState = <M extends keyof A>(
+  const updateMethodState = <M extends FunctionName<A>>(
     method: M,
     args: any[] = [],
     newState?: Partial<ReActorMethodState<A, M>["states"][string]>

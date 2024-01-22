@@ -21,11 +21,15 @@ import type {
 import { IDL } from "@dfinity/candid"
 import { is_query, validateError } from "../helper"
 import { ActorSubclass } from "@dfinity/agent"
+import { FunctionName } from "../types"
+import { DefaultActorType } from "../../types"
 
 export * from "./types"
 export * from "../helper"
 
-export class ExtractFields<A extends ActorSubclass<any>> extends IDL.Visitor<
+export class ExtractFields<
+  A extends ActorSubclass<any> = DefaultActorType
+> extends IDL.Visitor<
   string,
   ExtractedServiceFields<A> | MethodFields<A> | DefaultField
 > {
@@ -34,7 +38,7 @@ export class ExtractFields<A extends ActorSubclass<any>> extends IDL.Visitor<
     canisterId: string
   ): ExtractedServiceFields<A> {
     const methodFields = t._fields.reduce((acc, services) => {
-      const functionName = services[0] as keyof A & string
+      const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
       const functionData = func.accept(this, functionName) as MethodFields<A>
@@ -52,7 +56,7 @@ export class ExtractFields<A extends ActorSubclass<any>> extends IDL.Visitor<
 
   public visitFunc(
     t: IDL.FuncClass,
-    functionName: keyof A & string
+    functionName: FunctionName<A>
   ): MethodFields<A> {
     const functionType = is_query(t) ? "query" : "update"
 
@@ -71,7 +75,7 @@ export class ExtractFields<A extends ActorSubclass<any>> extends IDL.Visitor<
       },
       {
         fields: [] as DynamicFieldTypeByClass<IDL.Type<any>>[],
-        defaultValue: {} as MethodDefaultValues<keyof A>,
+        defaultValue: {} as MethodDefaultValues<FunctionName<A>>,
       }
     )
 

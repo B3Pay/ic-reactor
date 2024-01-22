@@ -13,16 +13,18 @@ import type {
   ActorStore,
   ActorMethodStates,
   ActorManagerOptions,
+  DefaultActorType,
 } from "./types"
 import type { IDL } from "@dfinity/candid"
 import type { AgentManager, UpdateAgentOptions } from "../agent"
 import { ExtractedServiceDetails } from "./candid/details"
 import { ExtractedServiceFields } from "./candid/fields"
+import { FunctionName } from "./candid"
 
 export * from "./types"
 export * from "./candid"
 
-export class ActorManager<A extends ActorSubclass<any>> {
+export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   private actor: null | A = null
   private idlFactory: IDL.InterfaceFactory
 
@@ -126,24 +128,24 @@ export class ActorManager<A extends ActorSubclass<any>> {
     }
   }
 
-  public callMethod = async <M extends keyof A & string>(
+  public callMethod = async <M extends FunctionName<A>>(
     functionName: M,
     ...args: ExtractActorMethodArgs<A[M]>
-  ) => {
+  ): Promise<ExtractActorMethodReturnType<A[M]>> => {
     if (!this.actor) {
       throw new Error("Actor not initialized")
     }
 
     if (
-      !this.actor[functionName] ||
-      typeof this.actor[functionName] !== "function"
+      !this.actor[functionName as keyof A] ||
+      typeof this.actor[functionName as keyof A] !== "function"
     ) {
       throw new Error(`Method ${String(functionName)} not found`)
     }
 
-    const method = this.actor[functionName] as (
-      ...args: ExtractActorMethodArgs<A[typeof functionName]>
-    ) => Promise<ExtractActorMethodReturnType<A[typeof functionName]>>
+    const method = this.actor[functionName as keyof A] as (
+      ...args: ExtractActorMethodArgs<A[M]>
+    ) => Promise<ExtractActorMethodReturnType<A[M]>>
 
     const data = await method(...args)
 

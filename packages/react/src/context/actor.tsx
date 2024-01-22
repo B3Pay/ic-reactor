@@ -15,6 +15,7 @@ import {
   getDidJsFromMetadata,
   getDidJsFromTmpHack,
   FunctionType,
+  DefaultActorType,
 } from "@ic-reactor/store"
 import { AgentContextType, useAgentManager } from "./agent"
 import {
@@ -28,17 +29,20 @@ import {
 
 export type ActorContextType<A = ActorSubclass<any>> = ActorHooksWithField<A>
 
-export interface ActorContextReturnType<A extends ActorSubclass<any>>
-  extends GetFunctions<A> {
-  useActor: <A extends ActorSubclass<any>>() => ActorContextType<A>
+export interface ActorContextReturnType<
+  A extends ActorSubclass<any> = DefaultActorType
+> extends GetFunctions<A> {
+  useActor: <
+    A extends ActorSubclass<any> = DefaultActorType
+  >() => ActorContextType<A>
   ActorProvider: React.FC<ActorProviderProps>
 }
 
 export type CreateReActorContext = {
-  <A extends ActorSubclass<any>>(
+  <A extends ActorSubclass<any> = DefaultActorType>(
     options?: Partial<CreateActorOptions> & { withServiceFields: true }
   ): ActorHooksWithField<A> & ActorContextReturnType<A>
-  <A extends ActorSubclass<any>>(
+  <A extends ActorSubclass<any> = DefaultActorType>(
     options?: Partial<CreateActorOptions> & {
       withServiceFields?: false | undefined
     }
@@ -179,18 +183,25 @@ export const createReActorContext: CreateReActorContext = <
   const useQueryCall = <M extends keyof Actor & string>(
     args: ActorUseQueryArgs<Actor, M>
   ) => useActor().useQueryCall(args)
+
   const useUpdateCall = <M extends keyof Actor & string>(
     args: ActorUseUpdateArgs<Actor, M>
   ) => useActor().useUpdateCall(args)
+
   const useMethodCall = <T extends FunctionType>(
     args: ActorUseMethodArg<Actor, T> & { type: T }
   ) => useActor().useMethodCall(args)
+
   const useServiceFields = () => useActor().useServiceFields()
+
   const useMethodFields = () => useActor().useMethodFields()
+
   const useMethodField = (functionName: keyof Actor & string) =>
     useActor().useMethodField(functionName)
   const useServiceDetails = () => useActor().useServiceDetails()
+
   const useMethodDetails = () => useActor().useMethodDetails()
+
   const useMethodDetail = (functionName: keyof Actor & string) =>
     useActor().useMethodDetail(functionName)
 

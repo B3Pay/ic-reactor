@@ -2,6 +2,8 @@ import type {
   ActorMethodState,
   ActorSubclass,
   CreateReActorOptions,
+  FunctionName,
+  DefaultActorType,
 } from "@ic-reactor/store"
 import { createReActorStore, generateRequestHash } from "@ic-reactor/store"
 import {
@@ -13,7 +15,7 @@ import {
   ActorUpdate,
 } from "./types"
 
-export const createReActor = <A extends ActorSubclass<any>>(
+export const createReActor = <A extends ActorSubclass<any> = DefaultActorType>(
   options: CreateReActorOptions
 ) => {
   const { agentManager, callMethod, actorStore, ...rest } =
@@ -21,7 +23,7 @@ export const createReActor = <A extends ActorSubclass<any>>(
 
   const { authStore, ...agentRest } = agentManager
 
-  const updateMethodState = <M extends keyof A>(
+  const updateMethodState = <M extends FunctionName<A>>(
     method: M,
     args: any[] = [],
     newState?: Partial<ActorMethodState<A, M>[string]>

@@ -9,16 +9,16 @@ describe("My IC Store and Actions", () => {
     withDevtools: false,
   })
 
-  const { callMethod } = new ActorManager<_SERVICE>({
+  const { callMethod } = new ActorManager({
     agentManager,
     idlFactory,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
 
   it("should return the symmetric key verification key", async () => {
-    const initialData = await callMethod("symmetric_key_verification_key")
+    const key = await callMethod("symmetric_key_verification_key")
 
-    expect(initialData).toBeDefined()
+    expect(key).toBeDefined()
   })
 
   it("should return anonymous user data", async () => {

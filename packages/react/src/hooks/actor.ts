@@ -8,6 +8,8 @@ import type {
   ExtractedServiceDetails,
   ServiceDetails,
   MethodDetails,
+  FunctionName,
+  DefaultActorType,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
@@ -23,7 +25,7 @@ import type {
 } from "../types"
 import { useStore } from "zustand"
 
-export const getActorHooks = <A extends ActorSubclass<any>>({
+export const getActorHooks = <A extends ActorSubclass<any> = DefaultActorType>({
   initialize,
   serviceFields,
   serviceDetails,
@@ -58,7 +60,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     }, [serviceFields])
   }
 
-  const useMethodField = (functionName: keyof A & string): MethodFields<A> => {
+  const useMethodField = (functionName: FunctionName<A>): MethodFields<A> => {
     const serviceMethod = useServiceFields()
 
     return useMemo(() => {
@@ -82,9 +84,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return serviceFields.methodDetails
   }
 
-  const useMethodDetail = (
-    functionName: keyof A & string
-  ): MethodDetails<A> => {
+  const useMethodDetail = (functionName: FunctionName<A>): MethodDetails<A> => {
     const serviceMethod = useServiceDetails()
 
     return useMemo(() => {
@@ -92,7 +92,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     }, [functionName, serviceMethod])
   }
 
-  const useReActorCall = <M extends keyof A & string>({
+  const useReActorCall = <M extends FunctionName<A>>({
     onError,
     onSuccess,
     onLoading,
@@ -157,7 +157,7 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { call, field, ...state }
   }
 
-  const useQueryCall = <M extends keyof A & string>({
+  const useQueryCall = <M extends FunctionName<A>>({
     refetchOnMount = false,
     refetchInterval = false,
     ...rest
@@ -187,13 +187,13 @@ export const getActorHooks = <A extends ActorSubclass<any>>({
     return { call, ...state }
   }
 
-  const useUpdateCall = <M extends keyof A & string>(
+  const useUpdateCall = <M extends FunctionName<A>>(
     args: ActorUseUpdateArgs<A, M>
   ): ActorUseUpdateReturn<A, M, W> => {
     return useReActorCall(args)
   }
 
-  const useMethodCall = <M extends keyof A & string, T extends FunctionType>({
+  const useMethodCall = <M extends FunctionName<A>, T extends FunctionType>({
     type,
     ...rest
   }: ActorUseMethodArg<A, T> & { type: T }): T extends "query"

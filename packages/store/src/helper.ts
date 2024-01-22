@@ -8,7 +8,7 @@ import {
   ExtractedServiceDetails,
 } from "./actor/candid"
 
-import type { ActorSubclass, CanisterId } from "./actor/types"
+import type { ActorSubclass, CanisterId, DefaultActorType } from "./actor/types"
 import { ExtractDetails } from "./actor/candid/details"
 
 interface StoreOptions {
@@ -32,7 +32,9 @@ export function createStoreWithOptionalDevtools(
   }
 }
 
-export function extractServiceFields<A extends ActorSubclass<any>>(
+export function extractServiceFields<
+  A extends ActorSubclass<any> = DefaultActorType
+>(
   idlFactory: IDL.InterfaceFactory,
   name: CanisterId
 ): ExtractedServiceFields<A> {
@@ -44,7 +46,9 @@ export function extractServiceFields<A extends ActorSubclass<any>>(
   return extractor.visitService(methods, canisterId)
 }
 
-export function extractServiceDetails<A extends ActorSubclass<any>>(
+export function extractServiceDetails<
+  A extends ActorSubclass<any> = DefaultActorType
+>(
   idlFactory: IDL.InterfaceFactory,
   name: CanisterId
 ): ExtractedServiceDetails<A> {

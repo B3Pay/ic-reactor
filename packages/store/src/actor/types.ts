@@ -9,8 +9,13 @@ import type { Principal } from "@dfinity/principal"
 import type { StoreApi } from "zustand"
 import type { ExtractedServiceFields } from "./candid/fields"
 import type { AgentManager } from "../agent"
+import { FunctionName } from "./candid"
 
 export type { ActorMethod, IDL, ActorSubclass, Principal, HttpAgent, Identity }
+
+export interface DefaultActorType {
+  [key: string]: ActorMethod<any, any>
+}
 
 // Type for identifying a canister
 export type CanisterId = string | Principal
@@ -36,7 +41,7 @@ export type ExtractActorMethodReturnType<T> = T extends ActorMethod<
   ? R
   : never
 
-export interface ActorMethodState<A, M extends keyof A> {
+export interface ActorMethodState<A, M extends FunctionName<A>> {
   [argHash: string]: {
     data: ExtractActorMethodReturnType<A[M]> | undefined
     loading: boolean
@@ -45,7 +50,7 @@ export interface ActorMethodState<A, M extends keyof A> {
 }
 
 export type ActorMethodStates<A> = {
-  [M in keyof A]: ActorMethodState<A, M>
+  [M in FunctionName<A>]: ActorMethodState<A, M>
 }
 
 // State structure for an actor in a ReActor
@@ -56,18 +61,19 @@ export type ActorState<A> = {
   methodState: ActorMethodStates<A>
 }
 
-export type ActorStore<A extends ActorSubclass<any>> = StoreApi<ActorState<A>>
+export type ActorStore<A extends ActorSubclass<any> = DefaultActorType> =
+  StoreApi<ActorState<A>>
 
 // Function type for directly calling a method on an actor
 export type CallActorMethod<A = Record<string, ActorMethod>> = <
-  M extends keyof A
+  M extends FunctionName<A>
 >(
   functionName: M,
   ...args: ExtractActorMethodArgs<A[M]>
 ) => Promise<ExtractActorMethodReturnType<A[M]>>
 
 // Actions available on a ReActor
-export interface ActorActions<A extends ActorSubclass<any>> {
+export interface ActorActions<A extends ActorSubclass<any> = DefaultActorType> {
   agentManager: AgentManager
   actorStore: ActorStore<A>
   methodFields: ExtractedServiceFields<A>

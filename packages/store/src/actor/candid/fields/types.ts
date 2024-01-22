@@ -1,5 +1,5 @@
 import { IDL } from "@dfinity/candid"
-import { FieldType, FunctionType } from "../types"
+import { FieldType, FunctionName, FunctionType } from "../types"
 
 export interface ExtractedServiceFields<A> {
   canisterId: string
@@ -7,11 +7,11 @@ export interface ExtractedServiceFields<A> {
 }
 
 export type ServiceFields<A> = {
-  [K in keyof A]: MethodFields<A>
+  [K in FunctionName<A>]: MethodFields<A>
 }
 
 export type ServiceDefaultValues<A> = {
-  [K in keyof A]: MethodDefaultValues<K>
+  [K in FunctionName<A>]: MethodDefaultValues<K>
 }
 
 export type MethodDefaultValues<T> = {
@@ -19,7 +19,7 @@ export type MethodDefaultValues<T> = {
 }
 
 export interface MethodFields<A> {
-  functionName: keyof A
+  functionName: FunctionName<A>
   functionType: FunctionType
   fields: AllFieldTypes<IDL.Type<any>>[] | []
   validate: (value: any) => boolean | string

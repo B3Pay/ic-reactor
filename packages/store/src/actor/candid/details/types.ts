@@ -1,4 +1,4 @@
-import { FieldType, FunctionType } from "../types"
+import { FieldType, FunctionName, FunctionType } from "../types"
 
 export interface ExtractedServiceDetails<A> {
   canisterId: string
@@ -7,12 +7,12 @@ export interface ExtractedServiceDetails<A> {
 }
 
 export type ServiceDetails<A> = {
-  [K in keyof A]: MethodDetails<A>
+  [K in FunctionName<A>]: MethodDetails<A>
 }
 
 export type MethodDetails<A> = {
   functionType: FunctionType
-  functionName: keyof A
+  functionName: FunctionName<A>
   order: number
   __label: string
   __description: string

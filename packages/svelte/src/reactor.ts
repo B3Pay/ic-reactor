@@ -8,15 +8,17 @@ import { AuthClient } from "@dfinity/auth-client"
 import { writable } from "svelte/store"
 import { createActorStates } from "./helper"
 import type {
+  DefaultActorType,
   ExtractReActorMethodArgs,
   ExtractReActorMethodReturnType,
+  FunctionName,
   ReActorActorState,
   ReActorState,
   ReActorStore,
   ReActorStoreActions,
 } from "./types"
 
-export class ReActorManager<A extends ActorSubclass<any>> {
+export class ReActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   public actor: A | null = null
   public store: ReActorStore<A>
   public actions: ReActorStoreActions<A>
@@ -135,7 +137,7 @@ export class ReActorManager<A extends ActorSubclass<any>> {
       }
     }
 
-    const callMethod = async <M extends keyof A>(
+    const callMethod = async <M extends FunctionName<A>>(
       functionName: M,
       ...args: ExtractReActorMethodArgs<A[M]>
     ) => {

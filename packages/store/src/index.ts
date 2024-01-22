@@ -1,4 +1,8 @@
-import type { ActorSubclass, ActorManagerOptions } from "./actor/types"
+import type {
+  ActorSubclass,
+  ActorManagerOptions,
+  DefaultActorType,
+} from "./actor/types"
 import type { AgentManagerOptions, HttpAgentOptions } from "./agent/types"
 
 import { ActorManager } from "./actor"
@@ -27,7 +31,9 @@ export const createAgentManager = ({
   })
 }
 
-export const createActorManager = <A extends ActorSubclass<any>>(
+export const createActorManager = <
+  A extends ActorSubclass<any> = DefaultActorType
+>(
   options: ActorManagerOptions
 ): ActorManager<A> => {
   return new ActorManager<A>(options)
@@ -41,7 +47,9 @@ export interface CreateReActorOptions
   port?: number
 }
 
-export const createReActorStore = <A extends ActorSubclass<any>>({
+export const createReActorStore = <
+  A extends ActorSubclass<any> = DefaultActorType
+>({
   port,
   idlFactory,
   canisterId,

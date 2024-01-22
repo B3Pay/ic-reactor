@@ -2,7 +2,13 @@ import type { ActorConfig, Agent, HttpAgentOptions } from "@dfinity/agent"
 import { Actor, HttpAgent, hash } from "@dfinity/agent"
 import { toHexString, type IDL } from "@dfinity/candid"
 import type { FuncClass } from "@dfinity/candid/lib/cjs/idl"
-import type { ActorSubclass, CanisterId, ReActorState } from "./types"
+import type {
+  ActorSubclass,
+  CanisterId,
+  DefaultActorType,
+  FunctionName,
+  ReActorState,
+} from "./types"
 
 export declare interface CreateActorOptions {
   agent?: Agent
@@ -22,7 +28,7 @@ export type CreateActorFunctionArgs = {
   isLocalEnv?: boolean
 }
 
-export const createActor = <A extends ActorSubclass<any>>({
+export const createActor = <A extends ActorSubclass<any> = DefaultActorType>({
   canisterId,
   idlFactory,
   options,
@@ -52,16 +58,16 @@ export const createActor = <A extends ActorSubclass<any>>({
   })
 }
 
-export function createActorStates<A extends ActorSubclass<any>>(
-  actor: A
-): ReActorState<A>["actorState"] {
+export function createActorStates<
+  A extends ActorSubclass<any> = DefaultActorType
+>(actor: A): ReActorState<A>["actorState"] {
   const actorState = {} as ReActorState<A>["actorState"]
   const methods: [string, FuncClass][] = Actor.interfaceOf(
     actor as Actor
   )._fields
 
   for (const [method, types] of methods) {
-    actorState[method as keyof A] = {
+    actorState[method as FunctionName<A>] = {
       types,
       states: {},
     }

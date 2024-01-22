@@ -1,4 +1,4 @@
-export type FunctionName<A> = keyof A & string
+export type FunctionName<A = { [key: string]: any }> = keyof A & string
 
 export type FunctionType = "query" | "update"
 

@@ -14,6 +14,8 @@ import type {
   FunctionType,
   ServiceDetails,
   MethodDetails,
+  FunctionName,
+  DefaultActorType,
 } from "@ic-reactor/store"
 import type { AuthHooks } from "./hooks/auth"
 
@@ -27,7 +29,7 @@ export type AuthArgs = {
   onLoggedOut?: () => void
 }
 
-export type ActorCallArgs<A, M extends keyof A & string> = {
+export type ActorCallArgs<A, M extends FunctionName<A>> = {
   functionName: M & string
   args?: ExtractActorMethodArgs<A[M]>
   onLoading?: (loading: boolean) => void
@@ -36,13 +38,13 @@ export type ActorCallArgs<A, M extends keyof A & string> = {
   throwOnError?: boolean
 }
 
-export type ActorHookState<A, M extends keyof A & string> = {
+export type ActorHookState<A, M extends FunctionName<A>> = {
   data: ExtractActorMethodReturnType<A[M]> | undefined
   error: Error | undefined
   loading: boolean
 }
 
-export interface ActorUseQueryArgs<A, M extends keyof A & string>
+export interface ActorUseQueryArgs<A, M extends FunctionName<A>>
   extends ActorCallArgs<A, M> {
   refetchOnMount?: boolean
   refetchInterval?: number | false
@@ -50,7 +52,7 @@ export interface ActorUseQueryArgs<A, M extends keyof A & string>
 
 export interface ActorUseQueryReturn<
   A,
-  M extends keyof A & string,
+  M extends FunctionName<A>,
   W extends boolean = false
 > {
   call: (
@@ -62,12 +64,12 @@ export interface ActorUseQueryReturn<
   loading: boolean
 }
 
-export interface ActorUseUpdateArgs<A, M extends keyof A & string>
+export interface ActorUseUpdateArgs<A, M extends FunctionName<A>>
   extends ActorCallArgs<A, M> {}
 
 export interface ActorUseUpdateReturn<
   A,
-  M extends keyof A & string,
+  M extends FunctionName<A>,
   W extends boolean = false
 > {
   call: (
@@ -80,8 +82,8 @@ export interface ActorUseUpdateReturn<
 }
 
 export type ActorUseMethodArg<A, T extends FunctionType> = T extends "query"
-  ? ActorUseQueryArgs<A, keyof A & string>
-  : ActorUseUpdateArgs<A, keyof A & string>
+  ? ActorUseQueryArgs<A, FunctionName<A>>
+  : ActorUseUpdateArgs<A, FunctionName<A>>
 
 export type ActorHooksWithField<A> = ActorDefaultHooks<A, true> &
   ActorFieldHooks<A>
@@ -99,10 +101,10 @@ export type ActorHooks<
 export interface ActorFieldHooks<A> {
   useServiceFields: () => ExtractedServiceFields<A>
   useMethodFields: () => MethodFields<A>[]
-  useMethodField: (functionName: keyof A & string) => MethodFields<A>
+  useMethodField: (functionName: FunctionName<A>) => MethodFields<A>
   useServiceDetails: () => ExtractedServiceDetails<A>
   useMethodDetails: () => ServiceDetails<A>
-  useMethodDetail: (functionName: keyof A & string) => MethodDetails<A>
+  useMethodDetail: (functionName: FunctionName<A>) => MethodDetails<A>
 }
 
 export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }
@@ -110,13 +112,13 @@ export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }
 export interface ActorDefaultHooks<A, W extends boolean = false> {
   initialize: () => Promise<void>
   useActorStore: () => UseActorStoreReturn<A>
-  useQueryCall: <M extends keyof A & string>(
+  useQueryCall: <M extends FunctionName<A>>(
     args: ActorUseQueryArgs<A, M>
   ) => ActorUseQueryReturn<A, M, W>
-  useUpdateCall: <M extends keyof A & string>(
+  useUpdateCall: <M extends FunctionName<A>>(
     args: ActorUseUpdateArgs<A, M>
   ) => ActorUseUpdateReturn<A, M, W>
-  useMethodCall: <M extends keyof A & string, T extends FunctionType>(
+  useMethodCall: <M extends FunctionName<A>, T extends FunctionType>(
     args: ActorUseMethodArg<A, T> & { type: T }
   ) => T extends "query"
     ? ActorUseQueryReturn<A, M, W>
@@ -129,10 +131,10 @@ export type GetFunctions<A> = {
 }
 
 export type CreateReActor = {
-  <A extends ActorSubclass<any>>(
+  <A extends ActorSubclass<any> = DefaultActorType>(
     options: CreateReActorOptions & { withServiceFields: true }
   ): GetFunctions<A> & ActorHooksWithField<A> & AuthHooks
-  <A extends ActorSubclass<any>>(
+  <A extends ActorSubclass<any> = DefaultActorType>(
     options: CreateReActorOptions & { withServiceFields?: false | undefined }
   ): GetFunctions<A> & ActorHooksWithoutField<A> & AuthHooks
 }

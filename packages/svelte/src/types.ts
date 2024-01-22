@@ -16,8 +16,16 @@ export type {
   Identity,
 } from "@dfinity/agent"
 
+export interface DefaultActorType {
+  [key: string]: ActorMethod<any, any>
+}
+
 // Type for identifying a canister
 export type CanisterId = string | Principal
+
+export type FunctionName<A = {}> = keyof A & string
+
+export type FunctionType = "query" | "update"
 
 // Type for initializing an actor
 export type InitializeActorType = (agent: HttpAgent) => ActorSubclass<any>
@@ -34,7 +42,7 @@ export type ExtractReActorMethodReturnType<T> = T extends ActorMethod<
   : never
 
 // State structure for a method in a ReActor
-export interface ReActorMethodState<A, M extends keyof A> {
+export interface ReActorMethodState<A, M extends FunctionName<A>> {
   types: FuncClass
   states: {
     [argHash: string]: {
@@ -47,7 +55,7 @@ export interface ReActorMethodState<A, M extends keyof A> {
 
 // State structure for an actor in a ReActor
 export type ReActorActorState<A> = {
-  [M in keyof A]: ReActorMethodState<A, M>
+  [M in FunctionName<A>]: ReActorMethodState<A, M>
 }
 
 // Main state structure for a ReActor
@@ -64,13 +72,17 @@ export interface ReActorState<A> {
 }
 
 // Function type for directly calling a method on an actor
-export type CallMethod<A = Record<string, ActorMethod>> = <M extends keyof A>(
+export type CallMethod<A = Record<string, ActorMethod>> = <
+  M extends FunctionName<A>
+>(
   functionName: M,
   ...args: ExtractReActorMethodArgs<A[M]>
 ) => Promise<ExtractReActorMethodReturnType<A[M]>>
 
 // Actions available on a ReActor
-export interface ReActorStoreActions<A extends ActorSubclass<any>> {
+export interface ReActorStoreActions<
+  A extends ActorSubclass<any> = DefaultActorType
+> {
   initialize: (identity?: Identity) => void
   authenticate: () => Promise<void>
   resetState: () => void
@@ -79,33 +91,32 @@ export interface ReActorStoreActions<A extends ActorSubclass<any>> {
 }
 
 // Type for the ReActor store
-export type ReActorStore<A extends ActorSubclass<any>> = Writable<
-  ReActorState<A>
->
+export type ReActorStore<A extends ActorSubclass<any> = DefaultActorType> =
+  Writable<ReActorState<A>>
 
 // Type for the ReActor itself, combining state and actions
-export type ReActor<A extends ActorSubclass<any>> = [
+export type ReActor<A extends ActorSubclass<any> = DefaultActorType> = [
   ReActorState<A>,
   ReActorStoreActions<A>
 ]
 
-export type ReActorGetStateFunction<A, M extends keyof A> = {
+export type ReActorGetStateFunction<A, M extends FunctionName<A>> = {
   (key: "data"): ExtractReActorMethodReturnType<A[M]> | undefined
   (key: "loading"): boolean
   (key: "error"): Error | undefined
   (): ReActorMethodState<A, M>["states"][string]
 }
 
-export type ReActorSubscribeFunction<A, M extends keyof A> = (
+export type ReActorSubscribeFunction<A, M extends FunctionName<A>> = (
   callback: (state: ReActorMethodState<A, M>["states"][string]) => void
 ) => () => void
 
-export type ReActorCallFunction<A, M extends keyof A> = (
+export type ReActorCallFunction<A, M extends FunctionName<A>> = (
   replaceArgs?: ExtractReActorMethodArgs<A[M]>
 ) => Promise<ExtractReActorMethodReturnType<A[M]>>
 
 // Type for the return value of a ReActor call
-export type ReActorQueryReturn<A, M extends keyof A> = {
+export type ReActorQueryReturn<A, M extends FunctionName<A>> = {
   intervalId: NodeJS.Timeout | null
   requestHash: string
   getState: ReActorGetStateFunction<A, M>
@@ -114,14 +125,14 @@ export type ReActorQueryReturn<A, M extends keyof A> = {
   initialData: Promise<ExtractReActorMethodReturnType<A[M]>>
 }
 
-export type ReActorUpdateReturn<A, M extends keyof A> = {
+export type ReActorUpdateReturn<A, M extends FunctionName<A>> = {
   requestHash: string
   getState: ReActorGetStateFunction<A, M>
   subscribe: ReActorSubscribeFunction<A, M>
   call: ReActorCallFunction<A, M>
 }
 
-export type ReActorQueryArgs<A, M extends keyof A> = {
+export type ReActorQueryArgs<A, M extends FunctionName<A>> = {
   functionName: M
   args?: ExtractReActorMethodArgs<A[M]>
   disableInitialCall?: boolean
@@ -129,30 +140,34 @@ export type ReActorQueryArgs<A, M extends keyof A> = {
   refreshInterval?: number
 }
 
-export type ReActorUpdateArgs<A, M extends keyof A> = {
+export type ReActorUpdateArgs<A, M extends FunctionName<A>> = {
   functionName: M
   args?: ExtractReActorMethodArgs<A[M]>
 }
 
 // Function type for calling a ReActor method
 export type ReActorMethod<A = Record<string, ActorMethod>> = <
-  M extends keyof A
+  M extends FunctionName<A>
 >(
   functionName: M,
   ...args: ExtractReActorMethodArgs<A[M]>
 ) => ReActorUpdateReturn<A, M>
 
-export type ReActorQuery<A = Record<string, ActorMethod>> = <M extends keyof A>(
+export type ReActorQuery<A = Record<string, ActorMethod>> = <
+  M extends FunctionName<A>
+>(
   options: ReActorQueryArgs<A, M>
 ) => ReActorQueryReturn<A, M>
 
 export type ReActorUpdate<A = Record<string, ActorMethod>> = <
-  M extends keyof A
+  M extends FunctionName<A>
 >(
   options: ReActorUpdateArgs<A, M>
 ) => ReActorUpdateReturn<A, M>
 
-export interface ReActorCoreActions<A extends ActorSubclass<any>> {
+export interface ReActorCoreActions<
+  A extends ActorSubclass<any> = DefaultActorType
+> {
   queryCall: ReActorQuery<A>
   updateCall: ReActorUpdate<A>
 }

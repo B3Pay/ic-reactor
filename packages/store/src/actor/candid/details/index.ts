@@ -8,11 +8,14 @@ import type {
 import { IDL } from "@dfinity/candid"
 import { is_query } from "../helper"
 import { ActorSubclass } from "@dfinity/agent"
-import { FieldType } from "../types"
+import { FieldType, FunctionName } from "../types"
+import { DefaultActorType } from "../../types"
 
 export * from "./types"
 
-export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
+export class ExtractDetails<
+  A extends ActorSubclass<any> = DefaultActorType
+> extends IDL.Visitor<
   string,
   | ExtractedServiceDetails<A>
   | MethodDetails<A>
@@ -26,7 +29,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
     canisterId: string
   ): ExtractedServiceDetails<A> {
     const methodDetails = t._fields.reduce((acc, services) => {
-      const functionName = services[0] as keyof A & string
+      const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
       const functionDetails = func.accept(
@@ -48,7 +51,7 @@ export class ExtractDetails<A extends ActorSubclass<any>> extends IDL.Visitor<
 
   public visitFunc(
     t: IDL.FuncClass,
-    functionName: keyof A & string
+    functionName: FunctionName<A>
   ): MethodDetails<A> {
     const functionType = is_query(t) ? "query" : "update"
 
