@@ -1,3 +1,4 @@
+import { DefaultActorType } from "../../types"
 import { FieldType, FunctionName, FunctionType } from "../types"
 
 export interface ExtractedServiceDetails<A> {
@@ -6,11 +7,11 @@ export interface ExtractedServiceDetails<A> {
   methodDetails: ServiceDetails<A>
 }
 
-export type ServiceDetails<A> = {
+export type ServiceDetails<A = DefaultActorType> = {
   [K in FunctionName<A>]: MethodDetails<A>
 }
 
-export type MethodDetails<A> = {
+export type MethodDetails<A = DefaultActorType> = {
   functionType: FunctionType
   functionName: FunctionName<A>
   order: number

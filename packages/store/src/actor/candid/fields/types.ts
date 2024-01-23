@@ -1,16 +1,17 @@
 import { IDL } from "@dfinity/candid"
 import { FieldType, FunctionName, FunctionType } from "../types"
+import { DefaultActorType } from "../../types"
 
 export interface ExtractedServiceFields<A> {
   canisterId: string
   methodFields: ServiceFields<A>
 }
 
-export type ServiceFields<A> = {
+export type ServiceFields<A = DefaultActorType> = {
   [K in FunctionName<A>]: MethodFields<A>
 }
 
-export type ServiceDefaultValues<A> = {
+export type ServiceDefaultValues<A = DefaultActorType> = {
   [K in FunctionName<A>]: MethodDefaultValues<K>
 }
 

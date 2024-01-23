@@ -180,6 +180,8 @@ export const createReActorContext: CreateReActorContext = <
     return context
   }
 
+  const useActorStore = () => useActor().useActorStore()
+
   const useQueryCall = <M extends keyof Actor & string>(
     args: ActorUseQueryArgs<Actor, M>
   ) => useActor().useQueryCall(args)
@@ -208,6 +210,7 @@ export const createReActorContext: CreateReActorContext = <
   return {
     ActorProvider,
     useActor,
+    useActorStore,
     useQueryCall,
     useUpdateCall,
     useMethodCall,
@@ -223,6 +226,7 @@ export const createReActorContext: CreateReActorContext = <
 export const {
   ActorProvider,
   useActor,
+  useActorStore,
   useQueryCall,
   useUpdateCall,
   useMethodCall,
