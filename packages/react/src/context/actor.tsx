@@ -12,10 +12,9 @@ import { IDL } from "@dfinity/candid"
 import {
   ActorSubclass,
   ActorManagerOptions,
-  getDidJsFromMetadata,
-  getDidJsFromTmpHack,
   FunctionType,
   DefaultActorType,
+  CandidManager,
 } from "@ic-reactor/store"
 import { AgentContextType, useAgentManager } from "./agent"
 import {
@@ -54,6 +53,7 @@ export interface CreateActorOptions
     ActorManagerOptions,
     "idlFactory" | "agentManager" | "canisterId"
   > {
+  didjsId?: string
   canisterId?: string
   agentContext?: AgentContextType
   idlFactory?: IDL.InterfaceFactory
@@ -69,6 +69,7 @@ export interface ActorProviderProps
 export const createReActorContext: CreateReActorContext = <
   Actor extends ActorSubclass<any>
 >({
+  didjsId,
   canisterId: defaultCanisterId,
   agentContext: defaultAgentContext,
   withServiceFields: defaultWithServiceFields = false,
@@ -103,19 +104,26 @@ export const createReActorContext: CreateReActorContext = <
     const [fetchError, setFetchError] = useState<string | null>(null)
 
     const fetchDidJs = useCallback(async () => {
-      if (fetching) {
-        return
-      }
-
       setFetching(true)
       setFetchError(null)
 
       try {
         const agent = agentManager.getAgent()
-        let idlFactory = await getDidJsFromMetadata(agent, canisterId)
+        const candidManager = new CandidManager(agent, didjsId)
+
+        let idlFactory
+        try {
+          idlFactory = await candidManager.getFromMetadata(canisterId)
+        } catch (err) {
+          console.warn("Error fetching from metadata:", err)
+        }
 
         if (!idlFactory) {
-          idlFactory = await getDidJsFromTmpHack(agent, canisterId)
+          try {
+            idlFactory = await candidManager.getFromTmpHack(canisterId)
+          } catch (err) {
+            console.warn("Error fetching from tmp hack:", err)
+          }
         }
 
         if (!idlFactory) {
@@ -124,17 +132,12 @@ export const createReActorContext: CreateReActorContext = <
           setDidJS(idlFactory)
         }
       } catch (err) {
-        if (/no query method/.test(err as any)) {
-          setFetchError(`No query method found for canister ${canisterId}`)
-          console.warn(err)
-        } else {
-          setFetchError(`Error fetching canister ${canisterId}`)
-          console.error(err)
-        }
+        setFetchError(`Error fetching canister ${canisterId}`)
+        console.error(err)
       } finally {
         setFetching(false)
       }
-    }, [canisterId, agentManager])
+    }, [canisterId, didjsId, agentManager])
 
     useEffect(() => {
       const { idlFactory } = config
