@@ -104,6 +104,7 @@ export const createReActorContext: CreateReActorContext = <
     const [fetchError, setFetchError] = useState<string | null>(null)
 
     const fetchDidJs = useCallback(async () => {
+      setDidJS(undefined)
       setFetching(true)
       setFetchError(null)
 
@@ -111,19 +112,20 @@ export const createReActorContext: CreateReActorContext = <
         const agent = agentManager.getAgent()
         const candidManager = new CandidManager(agent, didjsId)
 
-        let idlFactory
-        try {
-          idlFactory = await candidManager.getFromMetadata(canisterId)
-        } catch (err) {
-          console.warn("Error fetching from metadata:", err)
-        }
+        let idlFactory = await candidManager
+          .getFromMetadata(canisterId)
+          .catch((err) => {
+            console.warn("Error fetching from metadata:", err)
+            return null // Return null to indicate failure
+          })
 
         if (!idlFactory) {
-          try {
-            idlFactory = await candidManager.getFromTmpHack(canisterId)
-          } catch (err) {
-            console.warn("Error fetching from tmp hack:", err)
-          }
+          idlFactory = await candidManager
+            .getFromTmpHack(canisterId)
+            .catch((err) => {
+              console.warn("Error fetching from tmp hack:", err)
+              return null // Return null to indicate failure
+            })
         }
 
         if (!idlFactory) {
