@@ -9,6 +9,20 @@ import type {
   HttpAgent,
 } from "../types"
 
+export const extractAndSortArgs = (argsObject: Record<string, any>) => {
+  if (!argsObject) return []
+
+  const args = []
+  let index = 0
+
+  while (argsObject.hasOwnProperty(`arg${index}`)) {
+    args.push(argsObject[`arg${index}`])
+    index++
+  }
+
+  return args
+}
+
 export const validateError = (t: IDL.Type<any>) => {
   return function validate(value: any) {
     try {
