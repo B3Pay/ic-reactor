@@ -1,7 +1,7 @@
 import { DefaultActorType } from "../../types"
 import { FieldType, FunctionName, FunctionType } from "../types"
 
-export interface ExtractedServiceDetails<A> {
+export interface ExtractedServiceDetails<A = DefaultActorType> {
   canisterId: string
   description: string
   methodDetails: ServiceDetails<A>

@@ -9,14 +9,16 @@ import type {
   HttpAgent,
 } from "../types"
 
-export const extractAndSortArgs = (argsObject: Record<string, any>) => {
-  if (!argsObject) return []
+export const extractAndSortArgs = <T extends Record<string, unknown>>(
+  argsObject: T
+): Array<T[keyof T]> => {
+  if (!argsObject || typeof argsObject !== "object") return []
 
-  const args = []
+  const args: Array<T[keyof T]> = []
   let index = 0
 
   while (argsObject.hasOwnProperty(`arg${index}`)) {
-    args.push(argsObject[`arg${index}`])
+    args.push(argsObject[`arg${index}`] as T[keyof T])
     index++
   }
 

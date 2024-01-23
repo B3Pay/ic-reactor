@@ -1,4 +1,6 @@
-export type FunctionName<A = { [key: string]: any }> = keyof A & string
+import { DefaultActorType } from "../types"
+
+export type FunctionName<A = DefaultActorType> = keyof A & string
 
 export type FunctionType = "query" | "update"
 

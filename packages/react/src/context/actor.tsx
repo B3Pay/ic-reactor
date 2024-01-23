@@ -100,6 +100,7 @@ export const createReActorContext: CreateReActorContext = <
 
     const [didJs, setDidJS] = useState<{ idlFactory: IDL.InterfaceFactory }>()
     const [fetching, setFetching] = useState(false)
+    const [fetchError, setFetchError] = useState<string | null>(null)
 
     const fetchDidJs = useCallback(async () => {
       if (fetching) {
@@ -107,29 +108,32 @@ export const createReActorContext: CreateReActorContext = <
       }
 
       setFetching(true)
+      setFetchError(null)
 
-      const agent = agentManager.getAgent()
+      try {
+        const agent = agentManager.getAgent()
+        let idlFactory = await getDidJsFromMetadata(agent, canisterId)
 
-      getDidJsFromMetadata(agent, canisterId).then(async (idlFactory) => {
         if (!idlFactory) {
-          try {
-            idlFactory = await getDidJsFromTmpHack(agent, canisterId)
-          } catch (err) {
-            if (/no query method/.test(err as any)) {
-              console.warn(err)
-              idlFactory = undefined
-            } else {
-              throw err
-            }
-          }
-
-          if (!idlFactory) {
-            console.warn("No query method found for canister", canisterId)
-          }
+          idlFactory = await getDidJsFromTmpHack(agent, canisterId)
         }
-        setDidJS(idlFactory)
+
+        if (!idlFactory) {
+          setFetchError(`Candid not found for canister ${canisterId}`)
+        } else {
+          setDidJS(idlFactory)
+        }
+      } catch (err) {
+        if (/no query method/.test(err as any)) {
+          setFetchError(`No query method found for canister ${canisterId}`)
+          console.warn(err)
+        } else {
+          setFetchError(`Error fetching canister ${canisterId}`)
+          console.error(err)
+        }
+      } finally {
         setFetching(false)
-      })
+      }
     }, [canisterId, agentManager])
 
     useEffect(() => {
@@ -163,7 +167,7 @@ export const createReActorContext: CreateReActorContext = <
 
     return (
       <ActorContext.Provider value={hooks}>
-        {fetching || hooks === null ? loadingComponent : children}
+        {fetching || hooks === null ? fetchError ?? loadingComponent : children}
       </ActorContext.Provider>
     )
   }
