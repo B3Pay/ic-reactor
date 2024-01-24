@@ -1,11 +1,11 @@
-import Route, { RouteProps } from "./Route"
+import Route, { RouteProps } from "."
 
-export interface TupleProps extends RouteProps<"tuple"> {}
+export interface RecordProps extends RouteProps<"record"> {}
 
-const Tuple: React.FC<TupleProps> = ({
+const Record: React.FC<RecordProps> = ({
   extractedField,
-  registerName,
   errors,
+  registerName,
   shouldUnregister,
 }) => {
   return (
@@ -20,9 +20,9 @@ const Tuple: React.FC<TupleProps> = ({
           <Route
             key={index}
             shouldUnregister={shouldUnregister}
-            registerName={`${registerName}.[${index}]`}
-            errors={errors?.[index as never]}
+            registerName={`${registerName}.${field.label}`}
             extractedField={field}
+            errors={errors?.[field.label as never]}
           />
         ))}
       </div>
@@ -30,4 +30,4 @@ const Tuple: React.FC<TupleProps> = ({
   )
 }
 
-export default Tuple
+export default Record

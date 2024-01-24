@@ -1,5 +1,5 @@
 import { Controller } from "react-hook-form"
-import { RouteProps } from "../Route"
+import { RouteProps } from "../Routes"
 
 export interface BooleanProps extends RouteProps<"boolean"> {}
 

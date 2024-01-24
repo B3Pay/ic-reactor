@@ -1,6 +1,6 @@
 import React, { useId } from "react"
 import { Controller, useWatch } from "react-hook-form"
-import Route, { RouteProps } from "./Route"
+import Route, { RouteProps } from "."
 
 export interface VariantProps extends RouteProps<"variant"> {}
 

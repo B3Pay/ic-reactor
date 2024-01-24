@@ -1,6 +1,6 @@
-import { cn } from "../../utils"
+import { cn } from "../../../utils"
 import { Controller, useFormContext } from "react-hook-form"
-import { RouteProps } from "../Route"
+import { RouteProps } from "../Routes"
 
 export interface TextProps extends RouteProps {}
 

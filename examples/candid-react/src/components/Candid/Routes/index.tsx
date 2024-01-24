@@ -8,11 +8,11 @@ import Recursive, { RecursiveProps } from "./Recursive"
 import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form"
 import { DynamicFieldType, FieldType } from "@ic-reactor/react"
 
-import Principal, { PrincipalProps } from "./Inputs/Principal"
-import Boolean, { BooleanProps } from "./Inputs/Boolean"
-import Number, { NumberProps } from "./Inputs/Number"
-import NullINput, { NullProps } from "./Inputs/Null"
-import Text, { TextProps } from "./Inputs/Text"
+import Principal, { PrincipalProps } from "../Inputs/Principal"
+import Boolean, { BooleanProps } from "../Inputs/Boolean"
+import Number, { NumberProps } from "../Inputs/Number"
+import NullINput, { NullProps } from "../Inputs/Null"
+import Text, { TextProps } from "../Inputs/Text"
 
 export interface RouteProps<T extends FieldType = any> {
   extractedField: DynamicFieldType<T>

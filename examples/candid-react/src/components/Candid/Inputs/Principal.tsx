@@ -1,7 +1,7 @@
-import { cn } from "../../utils"
+import { cn } from "../../../utils"
 import { Principal as PrincipalId } from "@dfinity/principal"
 import { useFormContext } from "react-hook-form"
-import { RouteProps } from "../Route"
+import { RouteProps } from "../Routes"
 import { Controller } from "react-hook-form"
 import { useCallback } from "react"
 

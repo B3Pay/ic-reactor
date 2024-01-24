@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form"
-import { RouteProps } from "../Route"
-import { cn } from "../../utils"
+import { RouteProps } from "../Routes"
+import { cn } from "../../../utils"
 
 export interface NumberProps extends RouteProps<"number"> {}
 

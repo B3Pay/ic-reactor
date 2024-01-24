@@ -1,6 +1,6 @@
 import { useFieldArray } from "react-hook-form"
-import Route, { RouteProps } from "./Route"
-import { cn } from "../utils"
+import Route, { RouteProps } from "."
+import { cn } from "../../../utils"
 
 export interface OptionalProps extends RouteProps<"optional"> {}
 
