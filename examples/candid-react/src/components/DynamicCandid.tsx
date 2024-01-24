@@ -5,13 +5,17 @@ interface DynamicCandidProps {}
 const DynamicCandid: React.FC<DynamicCandidProps> = () => {
   const methodDetails = useMethodFields()
 
-  return methodDetails.map(({ functionName, functionType }) => (
-    <MethodCall
-      functionName={functionName}
-      type={functionType}
-      key={functionName}
-    />
-  ))
+  return (
+    <div className="flex flex-col">
+      {methodDetails.map(({ functionName, functionType }) => (
+        <MethodCall
+          functionName={functionName}
+          type={functionType}
+          key={functionName}
+        />
+      ))}
+    </div>
+  )
 }
 
 export default DynamicCandid

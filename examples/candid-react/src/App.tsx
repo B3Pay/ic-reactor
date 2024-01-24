@@ -34,7 +34,7 @@ const App: React.FC<AppProps> = () => {
 
   return (
     <AgentProvider withDevtools>
-      <div className="py-2">
+      <div className="py-2 max-w-2xl mx-auto">
         <h1 className="text-center text-xl font-bold mb-2">Dynamic Candid</h1>
         <form onSubmit={onSubmit} className="flex justify-center">
           <input

@@ -90,13 +90,14 @@ const MethodForm: React.FC<FormProps> = ({
     <FormProvider {...methods}>
       <form className="border border-gray-500 rounded p-2 mt-2 w-full box-border">
         <div className="flex justify-between items-start w-full space-x-1">
-          <label className="flex-1">{functionName}</label>
-          <Button
-            className="text-xs border-red-600 border-2 px-2 rounded text-red-600 hover:bg-red-600 hover:text-white"
+          <label className="flex-auto">{functionName}</label>
+          <button
+            type="button"
+            className="flex-shrink-0 text-xs border-red-600 border-2 px-2 py-1 rounded text-red-600 hover:bg-red-600 hover:text-white"
             onClick={resetHandler}
           >
-            🔄
-          </Button>
+            Reset
+          </button>
         </div>
         {fields.map((field, index) => (
           <Route
