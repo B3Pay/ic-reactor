@@ -42,6 +42,16 @@ export const createReActor: CreateReActor = <
     return actorManager.serviceFields
   }
 
+  const getServiceDetails = () => {
+    if (!withServiceFields || !actorManager.serviceDetails) {
+      throw new Error(
+        "Service details not initialized. Pass `withServiceFields` to initialize service details."
+      )
+    }
+
+    return actorManager.serviceDetails
+  }
+
   const getAgent = () => {
     return actorManager.agentManager.getAgent()
   }
@@ -49,6 +59,7 @@ export const createReActor: CreateReActor = <
   return {
     getAgent,
     getServiceFields,
+    getServiceDetails,
     ...getActorHooks(actorManager),
     ...getAuthHooks(actorManager.agentManager),
   } as ReturnType<CreateReActor>

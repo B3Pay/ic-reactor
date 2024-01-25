@@ -128,6 +128,7 @@ export interface ActorDefaultHooks<A, W extends boolean = false> {
 export type GetFunctions<A> = {
   getAgent: () => HttpAgent
   getServiceFields: () => ExtractedServiceFields<A>
+  getServiceDetails: () => ExtractedServiceDetails<A>
 }
 
 export type CreateReActor = {
