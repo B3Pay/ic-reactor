@@ -90,7 +90,7 @@ export class ExtractDetails<
     return {
       __type: "record",
       __label,
-      __hidden: true,
+      __hidden: false,
       __description: t.name,
       ...fields,
     }
@@ -134,7 +134,7 @@ export class ExtractDetails<
     return {
       __type: "tuple",
       __label,
-      __hidden: true,
+      __hidden: false,
       __description: t.name,
       ...fields,
     }
@@ -156,7 +156,7 @@ export class ExtractDetails<
     return {
       __type: "recursive",
       __label,
-      __hidden: true,
+      __hidden: false,
       __description: t.name,
     }
   }
@@ -171,7 +171,7 @@ export class ExtractDetails<
     return {
       __type: "optional",
       __label,
-      __hidden: true,
+      __hidden: false,
       __description: t.name,
       optional: details,
     }
@@ -201,7 +201,6 @@ export class ExtractDetails<
     return {
       __type,
       __label,
-      __hidden: false,
       __description: t.name,
     }
   }

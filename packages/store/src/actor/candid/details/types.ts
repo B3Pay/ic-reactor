@@ -22,8 +22,8 @@ export type MethodDetails<A = DefaultActorType> = {
 
 export interface FieldDetails {
   __label: string
-  __hidden: boolean
   __type: FieldType
+  __hidden?: boolean
   __description: string
 }
 
@@ -35,4 +35,5 @@ export interface FieldDetailsWithChild extends FieldDetails {
     | FieldDetailsWithChild[]
     | FieldDetails[]
     | boolean
+    | undefined
 }

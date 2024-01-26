@@ -18,11 +18,10 @@ import type {
   ServiceFields,
   ServiceDefaultValues,
 } from "./types"
-import { IDL } from "@dfinity/candid"
 import { is_query, validateError } from "../helper"
-import { ActorSubclass } from "@dfinity/agent"
-import { FunctionName } from "../types"
-import { DefaultActorType } from "../../types"
+import { IDL } from "@dfinity/candid"
+import type { FunctionName } from "../types"
+import type { ActorSubclass, DefaultActorType } from "../../types"
 
 export * from "./types"
 export * from "../helper"
