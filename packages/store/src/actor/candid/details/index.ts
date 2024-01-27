@@ -170,6 +170,7 @@ export class ExtractDetails<
 
     return {
       __type: "optional",
+      __checked: false,
       __label,
       __hidden: false,
       __description: t.name,

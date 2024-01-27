@@ -24,6 +24,7 @@ export interface FieldDetails {
   __label: string
   __type: FieldType
   __hidden?: boolean
+  __checked?: boolean
   __description: string
 }
 
