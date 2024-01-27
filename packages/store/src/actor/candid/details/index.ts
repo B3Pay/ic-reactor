@@ -4,6 +4,7 @@ import type {
   FieldDetails,
   MethodDetails,
   ExtractedServiceDetails,
+  InputDetails,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { is_query } from "../helper"
@@ -66,6 +67,7 @@ export class ExtractDetails<
 
     return {
       order: this.counter++,
+      category: "home",
       functionName,
       functionType,
       __label: functionName,
@@ -198,7 +200,7 @@ export class ExtractDetails<
     t: IDL.Type<T>,
     __type: FieldType,
     __label: string
-  ): FieldDetails => {
+  ): InputDetails => {
     return {
       __type,
       __label,
@@ -206,27 +208,27 @@ export class ExtractDetails<
     }
   }
 
-  public visitType<T>(t: IDL.Type<T>, __label: string): FieldDetails {
+  public visitType<T>(t: IDL.Type<T>, __label: string): InputDetails {
     return this.visiGenericType(t, "unknown", __label)
   }
 
-  public visitPrincipal(t: IDL.PrincipalClass, __label: string): FieldDetails {
+  public visitPrincipal(t: IDL.PrincipalClass, __label: string): InputDetails {
     return this.visiGenericType(t, "principal", __label)
   }
 
-  public visitBool(t: IDL.BoolClass, __label: string): FieldDetails {
+  public visitBool(t: IDL.BoolClass, __label: string): InputDetails {
     return this.visiGenericType(t, "boolean", __label)
   }
 
-  public visitNull(t: IDL.NullClass, __label: string): FieldDetails {
+  public visitNull(t: IDL.NullClass, __label: string): InputDetails {
     return this.visiGenericType(t, "null", __label)
   }
 
-  public visitText(t: IDL.TextClass, label: string): FieldDetails {
+  public visitText(t: IDL.TextClass, label: string): InputDetails {
     return this.visiGenericType(t, "text", label)
   }
 
-  public visitNumber<T>(t: IDL.Type<T>, __label: string): FieldDetails {
+  public visitNumber<T>(t: IDL.Type<T>, __label: string): InputDetails {
     return this.visiGenericType(t, "number", __label)
   }
 
