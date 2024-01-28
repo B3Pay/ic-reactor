@@ -13728,6 +13728,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"optics-ts@npm:^2.4.1":
+  version: 2.4.1
+  resolution: "optics-ts@npm:2.4.1"
+  checksum: 104865a15a4466a3a4fbb23966118337b0ab89737a599a81ea35d47d7691e96c0c29fa0b8e8f6303b2e772b096deebb126b1ab519cbffaa2ca01b3e220bca252
+  languageName: node
+  linkType: hard
+
 "optionator@npm:^0.8.1":
   version: 0.8.3
   resolution: "optionator@npm:0.8.3"
@@ -18000,6 +18007,7 @@ __metadata:
     clsx: "npm:^2.0.0"
     lodash.get: "npm:^4.4.2"
     lodash.set: "npm:^4.3.2"
+    optics-ts: "npm:^2.4.1"
     react: "npm:^18.2.0"
     react-beautiful-dnd: "npm:^13.1.1"
     react-dom: "npm:^18.2.0"
