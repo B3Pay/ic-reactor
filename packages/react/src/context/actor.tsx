@@ -209,6 +209,7 @@ export const createReActorContext: CreateReActorContext = <
 
   const useMethodField = (functionName: keyof Actor & string) =>
     useActor().useMethodField(functionName)
+
   const useServiceDetails = () => useActor().useServiceDetails()
 
   const useMethodDetails = () => useActor().useMethodDetails()
