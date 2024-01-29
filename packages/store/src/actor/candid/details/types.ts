@@ -27,6 +27,7 @@ export interface FieldDetails {
   __label: string
   __type: FieldType
   __description: string
+  [key: string]: string | boolean | undefined
 }
 
 export interface InputDetails extends FieldDetails {
@@ -34,15 +35,19 @@ export interface InputDetails extends FieldDetails {
   [key: string]: string | boolean | undefined
 }
 
-export interface FieldDetailsWithChild extends FieldDetails {
+export type OtherDetails =
+  | FieldDetails
+  | FieldDetailsWithChild
+  | FieldDetailsWithChild[]
+  | FieldDetails[]
+
+export interface FieldDetailsWithChild {
   __hidden?: boolean
   __checked?: boolean
-  [key: string]:
-    | string
-    | FieldDetails
-    | FieldDetailsWithChild
-    | FieldDetailsWithChild[]
-    | FieldDetails[]
-    | boolean
-    | undefined
+  __label: string
+  __type: FieldType
+  __description: string
+  optional?: OtherDetails
+  vector?: OtherDetails
+  [key: string]: string | boolean | undefined | OtherDetails
 }
