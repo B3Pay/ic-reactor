@@ -1,5 +1,5 @@
-import { DefaultActorType } from "../../types"
 import { FieldType, FunctionName, FunctionType } from "../types"
+import { DefaultActorType } from "../../types"
 
 export type FunctionCategory = "home" | "wallet" | "governance" | "setting"
 
