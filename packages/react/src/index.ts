@@ -18,6 +18,7 @@ export const createReActor: CreateReActor = <
 >({
   isLocalEnv,
   withServiceFields,
+  withServiceDetails,
   ...options
 }: CreateReActorOptions) => {
   isLocalEnv =
@@ -29,6 +30,7 @@ export const createReActor: CreateReActor = <
   const actorManager = createReActorStore<A>({
     isLocalEnv,
     withServiceFields,
+    withServiceDetails,
     ...options,
   })
 
@@ -43,9 +45,9 @@ export const createReActor: CreateReActor = <
   }
 
   const getServiceDetails = () => {
-    if (!withServiceFields || !actorManager.serviceDetails) {
+    if (!withServiceDetails || !actorManager.serviceDetails) {
       throw new Error(
-        "Service details not initialized. Pass `withServiceFields` to initialize service details."
+        "Service details not initialized. Pass `withServiceDetails` to initialize service details."
       )
     }
 

@@ -26,6 +26,7 @@ export interface ActorManagerOptions {
   canisterId: CanisterId
   withDevtools?: boolean
   withServiceFields?: boolean
+  withServiceDetails?: boolean
   initializeOnCreate?: boolean
 }
 

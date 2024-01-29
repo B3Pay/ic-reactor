@@ -41,14 +41,6 @@ export const useAgentManager = (
   return context.agentManager
 }
 
-export const createAgentContext = (
-  config: AgentManagerOptions
-): AgentContextValue => {
-  const agentManager = createAgentManager(config)
-  const hooks = getAuthHooks(agentManager)
-  return { ...hooks, agentManager }
-}
-
 interface AgentProviderProps extends PropsWithChildren, AgentManagerOptions {
   agentManager?: AgentManager
 }
@@ -64,4 +56,12 @@ export const AgentProvider: React.FC<AgentProviderProps> = ({
   }, [config])
 
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>
+}
+
+export const createAgentContext = (
+  config: AgentManagerOptions
+): AgentContextValue => {
+  const agentManager = createAgentManager(config)
+  const hooks = getAuthHooks(agentManager)
+  return { ...hooks, agentManager }
 }

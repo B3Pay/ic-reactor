@@ -30,11 +30,17 @@ export const getActorHooks = <A extends ActorSubclass<any> = DefaultActorType>({
   serviceFields,
   serviceDetails,
   withServiceFields,
+  withServiceDetails,
   canisterId,
   actorStore,
   callMethod,
-}: ActorManager<A>): ActorHooks<A, typeof withServiceFields> => {
-  type W = typeof withServiceFields
+}: ActorManager<A>): ActorHooks<
+  A,
+  typeof withServiceFields,
+  typeof withServiceDetails
+> => {
+  type F = typeof withServiceFields
+  type D = typeof withServiceDetails
 
   const useActorStore = (): UseActorStoreReturn<A> => {
     const actorState = useStore(actorStore, (state) => state)
@@ -69,9 +75,9 @@ export const getActorHooks = <A extends ActorSubclass<any> = DefaultActorType>({
   }
 
   const useServiceDetails = (): ExtractedServiceDetails<A> => {
-    if (!withServiceFields || !serviceDetails) {
+    if (!withServiceDetails || !serviceDetails) {
       throw new Error(
-        "Service fields not initialized. Pass `withServiceFields` to initialize service fields."
+        "Service details not initialized. Pass `withServiceDetails` to initialize service fields."
       )
     }
 
@@ -154,14 +160,19 @@ export const getActorHooks = <A extends ActorSubclass<any> = DefaultActorType>({
       [functionName]
     ) as MethodFields<A>
 
-    return { call, field, ...state }
+    const detail = useMemo(
+      () => serviceDetails?.methodDetails[functionName],
+      [functionName]
+    ) as MethodDetails<A>
+
+    return { call, field, detail, ...state }
   }
 
   const useQueryCall = <M extends FunctionName<A>>({
     refetchOnMount = false,
     refetchInterval = false,
     ...rest
-  }: ActorUseQueryArgs<A, M>): ActorUseQueryReturn<A, M, W> => {
+  }: ActorUseQueryArgs<A, M>): ActorUseQueryReturn<A, M, F, D> => {
     const { call, ...state } = useReActorCall(rest)
 
     let intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -189,7 +200,7 @@ export const getActorHooks = <A extends ActorSubclass<any> = DefaultActorType>({
 
   const useUpdateCall = <M extends FunctionName<A>>(
     args: ActorUseUpdateArgs<A, M>
-  ): ActorUseUpdateReturn<A, M, W> => {
+  ): ActorUseUpdateReturn<A, M, F, D> => {
     return useReActorCall(args)
   }
 
@@ -197,8 +208,8 @@ export const getActorHooks = <A extends ActorSubclass<any> = DefaultActorType>({
     type,
     ...rest
   }: ActorUseMethodArg<A, T> & { type: T }): T extends "query"
-    ? ActorUseQueryReturn<A, M, W>
-    : ActorUseUpdateReturn<A, M, W> => {
+    ? ActorUseQueryReturn<A, M, F, D>
+    : ActorUseUpdateReturn<A, M, F, D> => {
     switch (type) {
       case "query":
         return useQueryCall<M>(rest as unknown as ActorUseQueryArgs<A, M>)

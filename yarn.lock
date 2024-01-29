@@ -12281,13 +12281,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash.get@npm:^4.4.2":
-  version: 4.4.2
-  resolution: "lodash.get@npm:4.4.2"
-  checksum: 48f40d471a1654397ed41685495acb31498d5ed696185ac8973daef424a749ca0c7871bf7b665d5c14f5cc479394479e0307e781f61d5573831769593411be6e
-  languageName: node
-  linkType: hard
-
 "lodash.ismatch@npm:^4.4.0":
   version: 4.4.0
   resolution: "lodash.ismatch@npm:4.4.0"
@@ -12306,13 +12299,6 @@ __metadata:
   version: 4.6.2
   resolution: "lodash.merge@npm:4.6.2"
   checksum: 402fa16a1edd7538de5b5903a90228aa48eb5533986ba7fa26606a49db2572bf414ff73a2c9f5d5fd36b31c46a5d5c7e1527749c07cbcf965ccff5fbdf32c506
-  languageName: node
-  linkType: hard
-
-"lodash.set@npm:^4.3.2":
-  version: 4.3.2
-  resolution: "lodash.set@npm:4.3.2"
-  checksum: c641d31905e51df43170dce8a1d11a1cff11356e2e2e75fe2615995408e9687d58c3e1d64c3c284c2df2bc519f79a98af737d2944d382ff82ffd244ff6075c29
   languageName: node
   linkType: hard
 
@@ -18005,8 +17991,6 @@ __metadata:
     "@types/react-beautiful-dnd": "npm:^13"
     "@types/react-dom": "npm:^18.2.18"
     clsx: "npm:^2.0.0"
-    lodash.get: "npm:^4.4.2"
-    lodash.set: "npm:^4.3.2"
     optics-ts: "npm:^2.4.1"
     react: "npm:^18.2.0"
     react-beautiful-dnd: "npm:^13.1.1"

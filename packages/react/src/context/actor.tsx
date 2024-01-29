@@ -1,10 +1,7 @@
 import React, {
   createContext,
-  useState,
-  useEffect,
   PropsWithChildren,
   useMemo,
-  useCallback,
   useContext,
 } from "react"
 import { createReActor } from "../index"
@@ -14,19 +11,21 @@ import {
   ActorManagerOptions,
   FunctionType,
   DefaultActorType,
-  CandidManager,
 } from "@ic-reactor/store"
 import { AgentContextType, useAgentManager } from "./agent"
 import {
+  ActorDefaultHooks,
+  ActorHooks,
+  ActorHooksWithDetails,
   ActorHooksWithField,
-  ActorHooksWithoutField,
   ActorUseMethodArg,
   ActorUseQueryArgs,
   ActorUseUpdateArgs,
   GetFunctions,
 } from "../types"
+import useIDLFactory from "../hooks/useIDLFactory"
 
-export type ActorContextType<A = ActorSubclass<any>> = ActorHooksWithField<A>
+export type ActorContextType<A = ActorSubclass<any>> = ActorHooks<A, true, true>
 
 export interface ActorContextReturnType<
   A extends ActorSubclass<any> = DefaultActorType
@@ -38,14 +37,39 @@ export interface ActorContextReturnType<
 }
 
 export type CreateReActorContext = {
+  // When both withServiceFields and withServiceDetails are true
   <A extends ActorSubclass<any> = DefaultActorType>(
-    options?: Partial<CreateActorOptions> & { withServiceFields: true }
+    options?: Partial<CreateActorOptions> & {
+      withServiceFields: true
+      withServiceDetails: true
+    }
+  ): ActorHooksWithField<A> &
+    ActorHooksWithDetails<A> &
+    ActorContextReturnType<A>
+
+  // When withServiceFields is true and withServiceDetails is false or undefined
+  <A extends ActorSubclass<any> = DefaultActorType>(
+    options?: Partial<CreateActorOptions> & {
+      withServiceFields: true
+      withServiceDetails?: false | undefined
+    }
   ): ActorHooksWithField<A> & ActorContextReturnType<A>
+
+  // When withServiceFields is false or undefined and withServiceDetails is true
   <A extends ActorSubclass<any> = DefaultActorType>(
     options?: Partial<CreateActorOptions> & {
       withServiceFields?: false | undefined
+      withServiceDetails: true
     }
-  ): ActorHooksWithoutField<A> & ActorContextReturnType<A>
+  ): ActorHooksWithDetails<A> & ActorContextReturnType<A>
+
+  // When both withServiceFields and withServiceDetails are false or undefined
+  <A extends ActorSubclass<any> = DefaultActorType>(
+    options?: Partial<CreateActorOptions> & {
+      withServiceFields?: false | undefined
+      withServiceDetails?: false | undefined
+    }
+  ): ActorDefaultHooks<A, false> & ActorContextReturnType<A>
 }
 
 export interface CreateActorOptions
@@ -73,6 +97,7 @@ export const createReActorContext: CreateReActorContext = <
   canisterId: defaultCanisterId,
   agentContext: defaultAgentContext,
   withServiceFields: defaultWithServiceFields = false,
+  withServiceDetails: defaultWithServiceDetails = false,
   ...defaultConfig
 }: Partial<CreateActorOptions> = {}) => {
   const ActorContext = createContext<ActorContextType | null>(null)
@@ -83,6 +108,7 @@ export const createReActorContext: CreateReActorContext = <
     agentContext = defaultAgentContext,
     loadingComponent = <div>Fetching canister...</div>,
     withServiceFields = defaultWithServiceFields,
+    withServiceDetails = defaultWithServiceDetails,
     ...restConfig
   }) => {
     if (!canisterId) {
@@ -96,79 +122,33 @@ export const createReActorContext: CreateReActorContext = <
       }),
       [defaultConfig, restConfig]
     )
+    const { idlFactory, fetching, fetchError } = useIDLFactory(
+      canisterId,
+      didjsId,
+      config.idlFactory
+    )
 
     const agentManager = useAgentManager(agentContext)
 
-    const [didJs, setDidJS] = useState<{ idlFactory: IDL.InterfaceFactory }>()
-    const [fetching, setFetching] = useState(false)
-    const [fetchError, setFetchError] = useState<string | null>(null)
-
-    const fetchDidJs = useCallback(async () => {
-      setDidJS(undefined)
-      setFetching(true)
-      setFetchError(null)
-
-      try {
-        const agent = agentManager.getAgent()
-        const candidManager = new CandidManager(agent, didjsId)
-
-        let idlFactory = await candidManager
-          .getFromMetadata(canisterId)
-          .catch((err) => {
-            console.warn("Error fetching from metadata:", err)
-            return null // Return null to indicate failure
-          })
-
-        if (!idlFactory) {
-          idlFactory = await candidManager
-            .getFromTmpHack(canisterId)
-            .catch((err) => {
-              console.warn("Error fetching from tmp hack:", err)
-              return null // Return null to indicate failure
-            })
-        }
-
-        if (!idlFactory) {
-          setFetchError(`Candid not found for canister ${canisterId}`)
-        } else {
-          setDidJS(idlFactory)
-        }
-      } catch (err) {
-        setFetchError(`Error fetching canister ${canisterId}`)
-        console.error(err)
-      } finally {
-        setFetching(false)
-      }
-    }, [canisterId, didjsId, agentManager])
-
-    useEffect(() => {
-      const { idlFactory } = config
-
-      if (idlFactory) {
-        setDidJS({ idlFactory })
-        return
-      }
-      console.log("idlFactory not provided, fetching from canister...")
-      fetchDidJs()
-    }, [fetchDidJs, config.idlFactory])
-
     const hooks = useMemo(() => {
-      if (!didJs) {
+      if (!idlFactory) {
         return null
       }
       try {
+        console.log("Creating actor", { withServiceFields, withServiceDetails })
         return createReActor<any>({
-          idlFactory: didJs.idlFactory,
+          idlFactory,
           agentManager,
           canisterId,
           withDevtools: config.withDevtools,
           withServiceFields: withServiceFields as true,
+          withServiceDetails: withServiceDetails as true,
         })
       } catch (err) {
         console.error(err)
         return null
       }
-    }, [canisterId, agentManager, didJs])
+    }, [canisterId, agentManager, idlFactory])
 
     return (
       <ActorContext.Provider value={hooks}>

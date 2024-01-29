@@ -57,6 +57,7 @@ export const createReActorStore = <
   isLocalEnv = false,
   initializeOnCreate = true,
   withServiceFields,
+  withServiceDetails,
   ...options
 }: CreateReActorOptions): ActorManager<A> => {
   const agentManager =
@@ -74,6 +75,7 @@ export const createReActorStore = <
     agentManager,
     withDevtools,
     withServiceFields,
+    withServiceDetails,
     initializeOnCreate,
   })
 }
