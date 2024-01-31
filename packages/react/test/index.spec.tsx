@@ -43,7 +43,7 @@ describe("createReActor", () => {
     const { useQueryCall } = createReActor<typeof backend>({
       canisterId,
       idlFactory,
-      initializeOnMount: false,
+      initializeOnCreate: false,
       host: "https://icp-api.io",
     })
 
@@ -52,13 +52,17 @@ describe("createReActor", () => {
         call,
         data: version,
         loading,
-      } = useQueryCall({ functionName: "version", disableInitialCall: true })
+      } = useQueryCall({ functionName: "version" })
 
       return (
         <div>
           <button onClick={() => call()}>Get Version</button>
           <span>
-            {loading ? "Loading..." : version ? version : "Ready To call"}
+            {loading
+              ? "Loading..."
+              : version
+              ? version.toString()
+              : "Ready To call"}
           </span>
         </div>
       )

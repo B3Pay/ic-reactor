@@ -67,7 +67,9 @@ describe("React Test", () => {
       return (
         <div>
           <button onClick={call}>Say Hello</button>
-          <span>{loading ? "Loading..." : data ? data : "Ready To call"}</span>
+          <span>
+            {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
+          </span>
         </div>
       )
     }
@@ -105,7 +107,9 @@ describe("React Test", () => {
       return (
         <div>
           <button onClick={call}>Say Hello</button>
-          <span>{loading ? "Loading..." : data ? data : "Ready To call"}</span>
+          <span>
+            {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
+          </span>
         </div>
       )
     }

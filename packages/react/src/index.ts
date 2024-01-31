@@ -58,11 +58,14 @@ export const createReActor: CreateReActor = <
     return actorManager.agentManager.getAgent()
   }
 
+  const actorHooks = getActorHooks<A>(actorManager)
+  const authHooks = getAuthHooks(actorManager.agentManager)
+
   return {
     getAgent,
     getServiceFields,
     getServiceDetails,
-    ...getActorHooks(actorManager),
-    ...getAuthHooks(actorManager.agentManager),
-  } as ReturnType<CreateReActor>
+    ...actorHooks,
+    ...authHooks,
+  } as any
 }

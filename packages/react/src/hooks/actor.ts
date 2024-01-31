@@ -1,5 +1,4 @@
 import type {
-  ActorSubclass,
   ExtractActorMethodArgs,
   ActorManager,
   ExtractedServiceFields,
@@ -9,14 +8,14 @@ import type {
   ServiceDetails,
   MethodDetails,
   FunctionName,
-  DefaultActorType,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   ActorCallArgs,
   ActorHookState,
   ActorHooks,
-  ActorUseMethodArg,
+  ActorUseMethodCallArg,
+  ActorUseMethodCallReturn,
   ActorUseQueryArgs,
   ActorUseQueryReturn,
   ActorUseUpdateArgs,
@@ -25,7 +24,7 @@ import type {
 } from "../types"
 import { useStore } from "zustand"
 
-export const getActorHooks = <A extends ActorSubclass<any> = DefaultActorType>({
+export const getActorHooks = <A>({
   initialize,
   serviceFields,
   serviceDetails,
@@ -155,24 +154,14 @@ export const getActorHooks = <A extends ActorSubclass<any> = DefaultActorType>({
       [args, functionName, onError, onSuccess, onLoading]
     )
 
-    const field = useMemo(
-      () => serviceFields?.methodFields[functionName],
-      [functionName]
-    ) as MethodFields<A>
-
-    const detail = useMemo(
-      () => serviceDetails?.methodDetails[functionName],
-      [functionName]
-    ) as MethodDetails<A>
-
-    return { call, field, detail, ...state }
+    return { call, ...state }
   }
 
   const useQueryCall = <M extends FunctionName<A>>({
     refetchOnMount = false,
     refetchInterval = false,
     ...rest
-  }: ActorUseQueryArgs<A, M>): ActorUseQueryReturn<A, M, F, D> => {
+  }: ActorUseQueryArgs<A, M>): ActorUseQueryReturn<A, M> => {
     const { call, ...state } = useReActorCall(rest)
 
     let intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -200,21 +189,40 @@ export const getActorHooks = <A extends ActorSubclass<any> = DefaultActorType>({
 
   const useUpdateCall = <M extends FunctionName<A>>(
     args: ActorUseUpdateArgs<A, M>
-  ): ActorUseUpdateReturn<A, M, F, D> => {
+  ): ActorUseUpdateReturn<A, M> => {
     return useReActorCall(args)
   }
 
-  const useMethodCall = <M extends FunctionName<A>, T extends FunctionType>({
-    type,
-    ...rest
-  }: ActorUseMethodArg<A, T> & { type: T }): T extends "query"
-    ? ActorUseQueryReturn<A, M, F, D>
-    : ActorUseUpdateReturn<A, M, F, D> => {
+  const useMethodCall = <M extends FunctionName<A>, T extends FunctionType>(
+    args: ActorUseMethodCallArg<A, T>
+  ): ActorUseMethodCallReturn<A, M, F, D> => {
+    const { functionName } = args
+
+    const field = useMemo(
+      () => serviceFields?.methodFields[functionName],
+      [functionName]
+    ) as MethodFields<A>
+
+    const detail = useMemo(
+      () => serviceDetails?.methodDetails[functionName],
+      [functionName]
+    ) as MethodDetails<A>
+
+    const type = field.functionType ?? detail.functionType
+
     switch (type) {
       case "query":
-        return useQueryCall<M>(rest as unknown as ActorUseQueryArgs<A, M>)
+        return {
+          field,
+          detail,
+          ...useQueryCall<M>(args as ActorUseQueryArgs<A, M>),
+        }
       case "update":
-        return useUpdateCall<M>(rest as unknown as ActorUseUpdateArgs<A, M>)
+        return {
+          field,
+          detail,
+          ...useUpdateCall<M>(args as ActorUseUpdateArgs<A, M>),
+        }
       default:
         throw new Error(`Invalid type: ${type}`)
     }
