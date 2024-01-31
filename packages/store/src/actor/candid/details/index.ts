@@ -114,7 +114,6 @@ export class ExtractDetails<
     return {
       __type: "variant",
       __label,
-      __hidden: false,
       __description: t.name,
       ...fields,
     }
@@ -190,7 +189,6 @@ export class ExtractDetails<
     return {
       __type: "vector",
       __label,
-      __hidden: false,
       __description: t.name,
       vector: details,
     }
