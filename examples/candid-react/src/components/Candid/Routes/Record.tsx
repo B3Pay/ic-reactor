@@ -11,7 +11,7 @@ const Record: React.FC<RecordProps> = ({
   return (
     <div className="w-full">
       <div>
-        <label className="flex-1  w-full block text-lg font-medium">
+        <label className="flex-1 w-full block text-lg font-medium">
           {extractedField.label}
         </label>
       </div>

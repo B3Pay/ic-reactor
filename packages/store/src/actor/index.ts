@@ -15,11 +15,13 @@ import type {
   ActorManagerOptions,
   DefaultActorType,
 } from "./types"
-import type { IDL } from "@dfinity/candid"
+// import type { IDL } from "@dfinity/candid"
+import { IDL } from "@dfinity/candid"
 import type { AgentManager, UpdateAgentOptions } from "../agent"
 import { ExtractedServiceDetails } from "./candid/details"
 import { ExtractedServiceFields } from "./candid/fields"
 import { FunctionName } from "./candid"
+import { ExtractResult } from "./candid/result"
 
 export * from "./types"
 export * from "./candid"
@@ -156,6 +158,28 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
     const data = await method(...args)
 
     return data
+  }
+
+  public transformResult = <M extends FunctionName<A>>(
+    methodName: M,
+    result: ExtractActorMethodReturnType<A[M]>
+  ) => {
+    if (!this.actor) {
+      throw new Error("Actor not initialized")
+    }
+
+    //@ts-ignore
+    const iface = Actor.interfaceOf(this.actor)._fields.find(
+      (field) => field[0] === methodName
+    )
+
+    if (!iface) {
+      throw new Error(`Method ${String(methodName)} not found`)
+    }
+
+    const classType = new ExtractResult()
+
+    return iface?.[1].accept(classType, { value: result, label: methodName })
   }
 
   public updateMethodState = (

@@ -122,10 +122,10 @@ export class ExtractFields<
 
   public visitVariant(
     t: IDL.VariantClass,
-    _fields: Array<[string, IDL.Type]>,
+    fields_: Array<[string, IDL.Type]>,
     label: string
   ): VariantFields<IDL.Type<any>> {
-    const { fields, options } = _fields.reduce(
+    const { fields, options } = fields_.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllFieldTypes<typeof type>
 
