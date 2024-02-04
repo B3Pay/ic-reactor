@@ -160,6 +160,8 @@ export const createReActorContext: CreateReActorContext = <
     )
   }
 
+  ActorProvider.displayName = "ActorProvider"
+
   type UseActorType = <A = ActorSubclass<any>>() => ActorContextType<A>
 
   const useActor: UseActorType = <A extends ActorSubclass<any> = Actor>() => {

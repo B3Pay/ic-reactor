@@ -45,7 +45,7 @@ interface AgentProviderProps extends PropsWithChildren, AgentManagerOptions {
   agentManager?: AgentManager
 }
 
-export const AgentProvider: React.FC<AgentProviderProps> = ({
+const AgentProvider: React.FC<AgentProviderProps> = ({
   children,
   ...config
 }) => {
@@ -57,6 +57,10 @@ export const AgentProvider: React.FC<AgentProviderProps> = ({
 
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>
 }
+
+AgentProvider.displayName = "AgentProvider"
+
+export { AgentProvider }
 
 export const createAgentContext = (
   config: AgentManagerOptions
