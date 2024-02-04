@@ -24,6 +24,12 @@ import type {
 } from "../types"
 import { useStore } from "zustand"
 
+const DEFAULT_STATE = {
+  data: undefined,
+  error: undefined,
+  loading: false,
+}
+
 export const getActorHooks = <A>({
   initialize,
   serviceFields,
@@ -105,11 +111,9 @@ export const getActorHooks = <A>({
     functionName,
     throwOnError = false,
   }: ActorCallArgs<A, M>) => {
-    const [state, setState] = useState<ActorHookState<A, M>>({
-      data: undefined,
-      error: undefined,
-      loading: false,
-    })
+    const [state, setState] = useState<ActorHookState<A, M>>(DEFAULT_STATE)
+
+    const reset = useCallback(() => setState(DEFAULT_STATE), [])
 
     const call = useCallback(
       async (
@@ -154,7 +158,7 @@ export const getActorHooks = <A>({
       [args, functionName, onError, onSuccess, onLoading]
     )
 
-    return { call, ...state }
+    return { call, reset, ...state }
   }
 
   const useQueryCall = <M extends FunctionName<A>>({

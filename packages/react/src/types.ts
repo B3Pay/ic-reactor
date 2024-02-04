@@ -48,19 +48,11 @@ export interface ActorUseQueryArgs<A, M extends FunctionName<A>>
   refetchInterval?: number | false
 }
 
-export interface ActorUseQueryReturn<A, M extends FunctionName<A>> {
-  call: (
-    eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
-  ) => Promise<ExtractActorMethodReturnType<A[M]> | undefined>
-  data: ExtractActorMethodReturnType<A[M]> | undefined
-  error: Error | undefined
-  loading: boolean
-}
-
 export interface ActorUseUpdateArgs<A, M extends FunctionName<A>>
   extends ActorCallArgs<A, M> {}
 
-export interface ActorUseUpdateReturn<A, M extends FunctionName<A>> {
+export interface SharedActorHookState<A, M extends FunctionName<A>> {
+  reset: () => void
   call: (
     eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
   ) => Promise<ExtractActorMethodReturnType<A[M]> | undefined>
@@ -68,21 +60,21 @@ export interface ActorUseUpdateReturn<A, M extends FunctionName<A>> {
   error: Error | undefined
   loading: boolean
 }
+
+export interface ActorUseQueryReturn<A, M extends FunctionName<A>>
+  extends SharedActorHookState<A, M> {}
+
+export interface ActorUseUpdateReturn<A, M extends FunctionName<A>>
+  extends SharedActorHookState<A, M> {}
 
 export interface ActorUseMethodCallReturn<
   A,
   M extends FunctionName<A>,
   F extends boolean = false,
   D extends boolean = false
-> {
-  call: (
-    eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
-  ) => Promise<ExtractActorMethodReturnType<A[M]> | undefined>
+> extends SharedActorHookState<A, M> {
   field: F extends true ? MethodFields<A> : undefined
   detail: D extends true ? MethodDetails<A> : undefined
-  data: ExtractActorMethodReturnType<A[M]> | undefined
-  error: Error | undefined
-  loading: boolean
 }
 
 export type ActorUseMethodCallArg<A, T extends FunctionType> = T extends "query"
