@@ -10,17 +10,15 @@ import type {
   FunctionName,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type {
-  ActorCallArgs,
+import {
   ActorHookState,
-  ActorHooks,
-  ActorUseMethodCallArg,
-  ActorUseMethodCallReturn,
-  ActorUseQueryArgs,
-  ActorUseQueryReturn,
-  ActorUseUpdateArgs,
-  ActorUseUpdateReturn,
-  UseActorStoreReturn,
+  type ActorCall,
+  type ActorHooks,
+  type ActorUseMethodCallArg,
+  type ActorUseMethodCallReturn,
+  type UseActorStoreReturn,
+  ActorQueryCall,
+  ActorUpdateCall,
 } from "../types"
 import { useStore } from "zustand"
 
@@ -39,6 +37,7 @@ export const getActorHooks = <A>({
   canisterId,
   actorStore,
   callMethod,
+  transformResult,
 }: ActorManager<A>): ActorHooks<
   A,
   typeof withServiceFields,
@@ -103,17 +102,20 @@ export const getActorHooks = <A>({
     }, [functionName, serviceMethod])
   }
 
-  const useReActorCall = <M extends FunctionName<A>>({
+  const useReActorCall: ActorCall<A> = ({
     onError,
     onSuccess,
     onLoading,
-    args = [] as unknown as ExtractActorMethodArgs<A[M]>,
+    args = [] as unknown as ExtractActorMethodArgs<A[any]>,
     functionName,
+    withTransform,
     throwOnError = false,
-  }: ActorCallArgs<A, M>) => {
+  }) => {
+    type M = typeof functionName
+
     const [state, setState] = useState<ActorHookState<A, M>>(DEFAULT_STATE)
 
-    const reset = useCallback(() => setState(DEFAULT_STATE), [])
+    const reset = useCallback(() => setState(DEFAULT_STATE), []) as () => void
 
     const call = useCallback(
       async (
@@ -135,10 +137,17 @@ export const getActorHooks = <A>({
                 : undefined
               : undefined
 
-          const data = await callMethod(functionName, ...(replaceArgs ?? args))
+          const result = await callMethod(
+            functionName,
+            ...(replaceArgs ?? args)
+          )
+
+          const data = withTransform
+            ? transformResult(functionName, result)
+            : result
 
           onLoading?.(false)
-          onSuccess?.(data)
+          onSuccess?.(result)
           setState((prevState) => ({ ...prevState, data, loading: false }))
 
           return data
@@ -158,15 +167,15 @@ export const getActorHooks = <A>({
       [args, functionName, onError, onSuccess, onLoading]
     )
 
-    return { call, reset, ...state }
+    return { call, reset, ...state } as any
   }
 
-  const useQueryCall = <M extends FunctionName<A>>({
+  const useQueryCall: ActorQueryCall<A> = ({
     refetchOnMount = false,
     refetchInterval = false,
     ...rest
-  }: ActorUseQueryArgs<A, M>): ActorUseQueryReturn<A, M> => {
-    const { call, ...state } = useReActorCall(rest)
+  }) => {
+    const { call, ...state } = useReActorCall(rest as any)
 
     let intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
 
@@ -188,13 +197,11 @@ export const getActorHooks = <A>({
       }
     }, [refetchOnMount, refetchInterval])
 
-    return { call, ...state }
+    return { call, ...state } as any
   }
 
-  const useUpdateCall = <M extends FunctionName<A>>(
-    args: ActorUseUpdateArgs<A, M>
-  ): ActorUseUpdateReturn<A, M> => {
-    return useReActorCall(args)
+  const useUpdateCall: ActorUpdateCall<A> = (args) => {
+    return useReActorCall(args as any) as any
   }
 
   const useMethodCall = <M extends FunctionName<A>, T extends FunctionType>(
@@ -219,13 +226,13 @@ export const getActorHooks = <A>({
         return {
           field,
           detail,
-          ...useQueryCall<M>(args as ActorUseQueryArgs<A, M>),
+          ...useQueryCall<M>(args as any),
         }
       case "update":
         return {
           field,
           detail,
-          ...useUpdateCall<M>(args as ActorUseUpdateArgs<A, M>),
+          ...useUpdateCall<M>(args as any),
         }
       default:
         throw new Error(`Invalid type: ${type}`)
@@ -234,8 +241,8 @@ export const getActorHooks = <A>({
 
   return {
     initialize,
-    useQueryCall,
-    useUpdateCall,
+    useQueryCall: useQueryCall as any,
+    useUpdateCall: useUpdateCall as any,
     useMethodCall,
     useActorStore,
     // __Details

@@ -86,5 +86,5 @@ export const generateActorHash = (actor: ActorSubclass<any>) => {
 
 export const stringToHash = (str: string) => {
   const hashBytes = hash(new TextEncoder().encode(str))
-  return toHexString(hashBytes)
+  return `0x${toHexString(hashBytes)}` as `0x${string}`
 }

@@ -43,7 +43,7 @@ export type ExtractActorMethodReturnType<T> = T extends ActorMethod<
   : never
 
 export interface ActorMethodState<A, M extends FunctionName<A>> {
-  [argHash: string]: {
+  [key: string]: {
     data: ExtractActorMethodReturnType<A[M]> | undefined
     loading: boolean
     error: Error | undefined

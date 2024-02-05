@@ -52,7 +52,7 @@ describe("createReActor", () => {
         call,
         data: version,
         loading,
-      } = useQueryCall({ functionName: "version" })
+      } = useQueryCall({ functionName: "version", withTransform: true })
 
       return (
         <div>

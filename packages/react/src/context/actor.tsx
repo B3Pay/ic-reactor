@@ -178,11 +178,11 @@ export const createReActorContext: CreateReActorContext = <
 
   const useQueryCall = <M extends keyof Actor & string>(
     args: ActorUseQueryArgs<Actor, M>
-  ) => useActor().useQueryCall(args)
+  ) => useActor().useQueryCall(args as any)
 
   const useUpdateCall = <M extends keyof Actor & string>(
     args: ActorUseUpdateArgs<Actor, M>
-  ) => useActor().useUpdateCall(args)
+  ) => useActor().useUpdateCall(args as any)
 
   const useMethodCall = <T extends FunctionType>(
     args: ActorUseMethodCallArg<Actor, T>

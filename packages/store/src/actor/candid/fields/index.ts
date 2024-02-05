@@ -85,6 +85,7 @@ export class ExtractFields<
     return {
       functionType,
       functionName,
+      returnType: t.retTypes,
       validate: validateError(t),
       defaultValues,
       fields,

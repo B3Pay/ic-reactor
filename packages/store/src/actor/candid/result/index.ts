@@ -1,229 +1,218 @@
 import { IDL } from "@dfinity/candid"
-import { FieldType } from "../types"
+import type { ActorSubclass } from "@dfinity/agent"
+import type { DefaultActorType } from "../../types"
+import type {
+  ResultData,
+  ResultRecordData,
+  ResultArrayData,
+  ResultUnknownData,
+  MethodResult,
+} from "./types"
 
-export type ResultData = {
-  label?: string
-  value: any
-}
+export * from "./types"
 
-export type ResultArray = {
-  label?: string
-  value: any[]
-}
-
-export type ResultValue = Result | string | number | boolean | null
-
-export type FunctionResult = {
-  description: string
-  functionName: string
-  values: Record<string, Result>
-}
-
-export type Result = {
-  type: FieldType
-  label?: string
-  value?: ResultValue
-  values?: Result[] | Record<string, Result>
-  description: string
-}
-
-export class ExtractResult extends IDL.Visitor<
-  ResultData | ResultArray,
-  Result | FunctionResult
+export class ExtractResult<
+  A extends ActorSubclass<any> = DefaultActorType
+> extends IDL.Visitor<
+  ResultData<A> | ResultRecordData<A> | ResultArrayData<A> | ResultUnknownData,
+  MethodResult<A>
 > {
-  public visitFunc(
-    t: IDL.FuncClass,
-    { label, value }: ResultArray
-  ): FunctionResult {
-    const values = value.reduce((acc, value, index) => {
-      const type = t.argTypes[index]
-      acc[`arg${index}`] = type.accept(this, {
-        label: `arg${index}`,
-        value,
-      })
-
-      return acc
-    }, {} as Result)
-
-    return {
-      functionName: label as string,
-      values,
-      description: "function",
-    }
-  }
-  public visitNumber<T>(t: IDL.Type<T>, { value, label }: ResultData): Result {
-    return {
-      type: "number",
-      label,
-      value: t.valueToString(value),
-      description: "number",
-    }
-  }
-
-  public visitText(_t: IDL.TextClass, { value, label }: ResultData): Result {
-    return {
-      type: "text",
-      label,
-      value,
-      description: "text",
-    }
-  }
-
-  public visitInt(t: IDL.IntClass, data: ResultData): Result {
-    return this.visitNumber(t, data)
-  }
-
-  public visitNat(t: IDL.NatClass, data: ResultData): Result {
-    return this.visitNumber(t, data)
-  }
-
-  public visitFloat(t: IDL.FloatClass, data: ResultData): Result {
-    return this.visitNumber(t, data)
-  }
-
-  public visitFixedInt(t: IDL.FixedIntClass, data: ResultData): Result {
-    return this.visitNumber(t, data)
-  }
-
-  public visitFixedNat(t: IDL.FixedNatClass, data: ResultData): Result {
-    return this.visitNumber(t, data)
-  }
-  public visitType<T>(t: IDL.Type<T>, { value, label }: ResultData): Result {
-    return {
-      type: "unknown",
-      label,
-      value: t.valueToString(value),
-      description: "unknown",
-    }
-  }
-  public visitPrincipal(_t: IDL.PrincipalClass, data: ResultData): Result {
-    return {
-      type: "principal",
-      value: data.toString(),
-      description: "principal",
-    }
-  }
-  private visitedRecursive: Record<string, true> = {}
   public visitRec<T>(
     _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
-    data: ResultData
-  ): Result {
-    const recLabel = `type-${ty.name}`
-    if (!this.visitedRecursive[recLabel]) {
-      this.visitedRecursive[recLabel] = true
-
-      return ty.accept(this, data) as Result
-    }
-
-    return {
-      type: "recursive",
-      label: data.label,
-      value: data.value,
-      description: "recursive",
-    }
+    data: ResultData<A>
+  ): MethodResult<A> {
+    return ty.accept(this, data) as MethodResult<A>
   }
 
   public visitOpt<T>(
-    _t: IDL.OptClass<T>,
+    t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
-    { value, label }: ResultData
-  ): Result {
+    { value, label }: ResultData<A>
+  ): MethodResult<A> {
     return {
       type: "optional",
       label,
-      value: value ? (ty.accept(this, { value, label }) as Result) : null,
-      description: "optional",
+      description: t.name,
+      value: value
+        ? (ty.accept(this, { value, label }) as MethodResult<A>)
+        : null,
     }
   }
 
   public visitRecord(
-    _t: IDL.RecordClass,
+    t: IDL.RecordClass,
     fields: Array<[string, IDL.Type]>,
-    { value, label }: ResultData
-  ): Result {
+    { value, label }: ResultRecordData<A>
+  ): MethodResult<A> {
     const values = fields.reduce((acc, [key, type]) => {
-      acc[key] = type.accept(this, {
+      const field = type.accept(this, {
         label: key,
         value: value[key],
-      }) as Result
+      }) as MethodResult<A>
+
+      acc.push(field)
 
       return acc
-    }, {} as Record<string, Result>)
+    }, [] as Array<MethodResult<A>>)
 
     return {
       type: "record",
       label,
+      description: t.name,
       values,
-      description: "record",
     }
   }
   public visitTuple<T extends any[]>(
-    _t: IDL.TupleClass<T>,
+    t: IDL.TupleClass<T>,
     components: IDL.Type[],
-    { value, label }: ResultData
-  ): Result {
+    { value, label }: ResultArrayData<A>
+  ): MethodResult<A> {
     const values = components.reduce(
       (acc, type, index) => {
         const field = type.accept(this, {
           label: `_${index}_`,
           value: value[index],
-        }) as Result
+        }) as MethodResult<A>
         acc.push(field)
 
         return acc
       },
 
-      [] as Result[]
+      [] as MethodResult<A>[]
     )
 
     return {
       type: "tuple",
       label,
+      description: t.name,
       values,
-      description: "tuple",
     }
   }
   public visitVariant(
-    _t: IDL.VariantClass,
+    t: IDL.VariantClass,
     fields: Array<[string, IDL.Type]>,
-    { value, label }: ResultData
-  ): Result {
-    const values = fields.reduce((acc, [key, type]) => {
-      const field = type.accept(this, {
-        label: key,
-        value: value[key],
-      }) as Result
-
-      acc.push(field)
-
-      return acc
-    }, [] as Result[])
+    { value, label }: ResultRecordData<A>
+  ): MethodResult<A> {
+    // Find the first field that matches and has a value
+    for (const [key, type] of fields) {
+      if (value[key] !== undefined) {
+        return type.accept(this, {
+          label: key,
+          value: value[key],
+        }) as MethodResult<A>
+      }
+    }
 
     return {
       type: "variant",
       label,
-      values,
-      description: "variant",
+      description: t.name,
     }
   }
   public visitVec<T>(
-    _t: IDL.VecClass<T>,
+    t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
-    { value, label }: ResultData
-  ): Result {
-    const values = value.map((value: any) =>
-      ty.accept(this, {
-        label,
-        value,
-      })
+    { value, label }: ResultArrayData<A>
+  ): MethodResult<A> {
+    const values = value.map(
+      (val, index) =>
+        ty.accept(this, {
+          label: `${label}-${index}`,
+          value: val,
+        }) as MethodResult<A>
     )
 
     return {
       type: "vector",
       label,
+      description: t.name,
       values,
-      description: "vector",
+    }
+  }
+
+  public visitNumber<T>(
+    t: IDL.Type<T>,
+    { value, label }: ResultData<A>
+  ): MethodResult<A> {
+    return {
+      type: "number",
+      label,
+      description: t.name,
+      value,
+    }
+  }
+
+  public visitText(
+    t: IDL.TextClass,
+    { value, label }: ResultData<A>
+  ): MethodResult<A> {
+    return {
+      type: "text",
+      label,
+      description: t.name,
+      value,
+    }
+  }
+
+  public visitInt(t: IDL.IntClass, data: ResultData<A>): MethodResult<A> {
+    return this.visitNumber(t, data)
+  }
+
+  public visitNat(t: IDL.NatClass, data: ResultData<A>): MethodResult<A> {
+    return this.visitNumber(t, data)
+  }
+
+  public visitFloat(t: IDL.FloatClass, data: ResultData<A>): MethodResult<A> {
+    return this.visitNumber(t, data)
+  }
+
+  public visitFixedInt(
+    t: IDL.FixedIntClass,
+    data: ResultData<A>
+  ): MethodResult<A> {
+    return this.visitNumber(t, data)
+  }
+
+  public visitFixedNat(
+    t: IDL.FixedNatClass,
+    data: ResultData<A>
+  ): MethodResult<A> {
+    return this.visitNumber(t, data)
+  }
+
+  public visitBool(
+    t: IDL.BoolClass,
+    { value, label }: ResultData<A>
+  ): MethodResult<A> {
+    return {
+      type: "boolean",
+      label,
+      description: t.name,
+      value,
+    }
+  }
+
+  public visitType<T>(
+    t: IDL.Type<T>,
+    { value, label }: ResultUnknownData
+  ): MethodResult<A> {
+    return {
+      type: "unknown",
+      label,
+      description: t.name,
+      value: t.valueToString(value),
+    }
+  }
+  public visitPrincipal(
+    t: IDL.PrincipalClass,
+    data: ResultData<A>
+  ): MethodResult<A> {
+    return {
+      type: "principal",
+      label: data.label,
+      description: t.name,
+      value: data.toString(),
     }
   }
 }

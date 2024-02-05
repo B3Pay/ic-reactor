@@ -1,5 +1,6 @@
 import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
+import type { IDL } from '@dfinity/candid';
 
 export interface AppBug {
   'logs' : Array<string>,
@@ -8,51 +9,15 @@ export interface AppBug {
   'description' : string,
   'version' : string,
 }
-export type AppSystemError = { 'InvalidSigner' : null } |
-  { 'UserAlreadyExists' : null } |
-  { 'WasmGetError' : string } |
-  { 'CreateCanisterError' : string } |
-  { 'UpdateCanisterControllersError' : string } |
-  { 'HelperError' : HelperError } |
-  { 'CanisterIdNotFound' : null } |
-  { 'InvalidWalletCanister' : null } |
-  { 'ValidateSignerError' : string } |
-  { 'AppIdMismatch' : null } |
-  { 'EncodeError' : string } |
-  { 'InstallArgError' : string } |
-  { 'AppAlreadyExists' : null } |
-  { 'OwnerMismatch' : { 'owner' : string, 'user' : string } } |
-  { 'ReleaseNameNotFound' : null } |
-  { 'InvalidAccountIdentifier' : null } |
-  { 'AppNotFound' : null } |
-  { 'WalletCanisterAlreadyInstalled' : null } |
-  { 'WalletCanisterRateError' : string } |
-  { 'WalletCanisterAlreadyExists' : string } |
-  { 'AppIsDeprecated' : null } |
-  { 'RateLimitExceeded' : null } |
-  { 'UpdateControllersError' : string } |
-  { 'WasmHashError' : string } |
-  { 'ReleaseNotFound' : null } |
-  { 'WasmNotFound' : null } |
-  { 'WasmInstallError' : string } |
-  { 'VersionError' : string } |
-  { 'NoCanisterAvailable' : null } |
-  { 'WalletCanisterDoesNotExist' : string } |
-  { 'InstallCodeError' : string } |
-  { 'WalletCanisterNotFound' : null } |
-  { 'CanisterStatusError' : string } |
-  { 'WasmAlreadyLoaded' : null } |
-  { 'InvalidReleaseName' : string } |
-  { 'ReleaseAlreadyExists' : null };
 export interface AppView {
-  'id' : string,
   'updated_at' : bigint,
   'metadata' : Array<[string, Value]>,
   'name' : string,
   'description' : string,
   'created_at' : bigint,
   'created_by' : string,
-  'latest_release' : [] | [ReleaseView],
+  'releases' : Array<ReleaseView>,
+  'app_id' : string,
   'install_count' : bigint,
 }
 export interface CanisterChange {
@@ -98,11 +63,15 @@ export interface CreateAppArgs {
   'description' : string,
 }
 export interface CreateReleaseArgs {
-  'id' : string,
   'features' : string,
   'size' : bigint,
   'version' : string,
+  'app_id' : string,
   'wasm_hash' : Uint8Array | number[],
+}
+export interface CreateUserArgs {
+  'metadata' : Array<[string, Value]>,
+  'canister_id' : [] | [Principal],
 }
 export interface CreationRecord { 'controllers' : Array<Principal> }
 export interface DefiniteCanisterSettings {
@@ -116,24 +85,6 @@ export interface FromCanisterRecord {
   'canister_id' : Principal,
 }
 export interface FromUserRecord { 'user_id' : Principal }
-export type HelperError = { 'CreateCanisterError' : string } |
-  { 'UpdateCanisterControllersError' : string } |
-  { 'ValidateSignerError' : string } |
-  { 'HexStringToVecError' : string } |
-  { 'InvalidHexString' : null } |
-  { 'InvalidSubaccount' : string } |
-  { 'EncodeError' : string } |
-  { 'InvalidAccountIdentifier' : null } |
-  { 'RateLimitExceeded' : null } |
-  { 'WasmHashError' : string } |
-  { 'HexStringToU64Error' : string } |
-  { 'HexStringToNatError' : string } |
-  { 'VersionError' : string } |
-  { 'SignerNotAvailable' : null } |
-  { 'HexStringToU128Error' : string } |
-  { 'InstallCodeError' : string } |
-  { 'CanisterStatusError' : string } |
-  { 'InvalidReleaseName' : string };
 export interface LoadRelease { 'total' : bigint, 'chunks' : bigint }
 export interface QueryStats {
   'response_payload_bytes_total' : bigint,
@@ -148,11 +99,16 @@ export interface ReleaseView {
   'size' : bigint,
   'version' : string,
   'deprecated' : boolean,
+  'wasm_hash' : string,
 }
 export type Result = { 'Ok' : UserView } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : ReleaseView } |
-  { 'Err' : AppSystemError };
+export type Result_1 = { 'Ok' : AppView } |
+  { 'Err' : string };
+export type Result_2 = { 'Ok' : Principal } |
+  { 'Err' : string };
+export type Result_3 = { 'Ok' : ReleaseView } |
+  { 'Err' : string };
 export interface SystemCanisterStatus {
   'user_status' : bigint,
   'status_at' : bigint,
@@ -164,8 +120,7 @@ export interface UserCanisterStatus {
   'canister_status' : CanisterStatusResponse,
 }
 export type UserStatus = { 'Unregistered' : null } |
-  { 'SingleCanister' : Principal } |
-  { 'MultipleCanister' : Array<Principal> } |
+  { 'Applications' : Array<Principal> } |
   { 'Registered' : null };
 export interface UserView {
   'updated_at' : bigint,
@@ -181,38 +136,42 @@ export type Value = { 'Int' : bigint } |
   { 'Text' : string } |
   { 'Array' : Array<Value> };
 export interface _SERVICE {
-  'add_release' : ActorMethod<[string, CreateReleaseArgs], undefined>,
-  'add_user_app' : ActorMethod<[Principal, string], undefined>,
+  'add_release' : ActorMethod<[CreateReleaseArgs], ReleaseView>,
+  'add_user_app' : ActorMethod<[Principal, string], Result>,
   'clear_bugs' : ActorMethod<[Principal], undefined>,
-  'create_app' : ActorMethod<[CreateAppArgs], AppView>,
-  'create_app_canister' : ActorMethod<[string], Result>,
-  'deprecate_release' : ActorMethod<
-    [string, Uint8Array | number[]],
-    ReleaseView
-  >,
+  'create_app' : ActorMethod<[CreateAppArgs], Result_1>,
+  'create_app_canister' : ActorMethod<[string], Result_2>,
+  'create_user' : ActorMethod<[CreateUserArgs], UserView>,
+  'deprecate_release' : ActorMethod<[string, Uint8Array | number[]], undefined>,
+  'get_app' : ActorMethod<[string], Result_1>,
   'get_app_version' : ActorMethod<[Principal], string>,
+  'get_apps' : ActorMethod<[], Array<AppView>>,
   'get_bugs' : ActorMethod<[Principal], Array<AppBug>>,
   'get_canister_info' : ActorMethod<[Principal], CanisterInfoResponse>,
   'get_canisters' : ActorMethod<[], Array<Principal>>,
-  'get_create_canister_app_cycle' : ActorMethod<[], bigint>,
-  'get_latest_release' : ActorMethod<[string], Result_1>,
+  'get_create_canister_app_cycle' : ActorMethod<[], [bigint, bigint]>,
+  'get_latest_release' : ActorMethod<[string], Result_3>,
   'get_release' : ActorMethod<[Uint8Array | number[]], ReleaseView>,
+  'get_release_by_hash_string' : ActorMethod<[string], ReleaseView>,
   'get_states' : ActorMethod<[], UserView>,
   'get_user_app_status' : ActorMethod<[Principal], UserCanisterStatus>,
-  'get_user_ids' : ActorMethod<[], Array<Uint8Array | number[]>>,
+  'get_user_ids' : ActorMethod<[], Array<Principal>>,
   'get_user_states' : ActorMethod<[], Array<UserView>>,
   'get_user_status' : ActorMethod<[], UserStatus>,
   'install_app' : ActorMethod<[Principal, string], Result>,
-  'load_wasm' : ActorMethod<
+  'load_wasm_chunk' : ActorMethod<
     [Uint8Array | number[], Uint8Array | number[]],
     LoadRelease
   >,
   'releases' : ActorMethod<[string], Array<ReleaseView>>,
+  'remove_app' : ActorMethod<[string], undefined>,
   'remove_release' : ActorMethod<[Uint8Array | number[]], undefined>,
   'remove_user' : ActorMethod<[Principal], undefined>,
   'remove_user_app' : ActorMethod<[Principal], undefined>,
   'report_bug' : ActorMethod<[AppBug], undefined>,
   'status' : ActorMethod<[], SystemCanisterStatus>,
-  'update_app' : ActorMethod<[string, CreateAppArgs], AppView>,
+  'uninstall_app' : ActorMethod<[Principal], Result>,
+  'update_app' : ActorMethod<[CreateAppArgs], Result_1>,
   'version' : ActorMethod<[], string>,
 }
+export declare const idlFactory: IDL.InterfaceFactory;

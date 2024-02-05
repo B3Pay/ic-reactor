@@ -53,12 +53,9 @@ export const createReActor = <A extends ActorSubclass<any> = DefaultActorType>(
           ...state.methodState,
           [method]: {
             ...state.methodState[method],
-            states: {
-              ...state.methodState[method].states,
-              [hash]: {
-                ...currentMethodState,
-                ...newState,
-              },
+            [hash]: {
+              ...currentMethodState,
+              ...newState,
             },
           },
         },

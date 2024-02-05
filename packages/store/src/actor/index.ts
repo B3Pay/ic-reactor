@@ -21,7 +21,7 @@ import type { AgentManager, UpdateAgentOptions } from "../agent"
 import { ExtractedServiceDetails } from "./candid/details"
 import { ExtractedServiceFields } from "./candid/fields"
 import { FunctionName } from "./candid"
-import { ExtractResult } from "./candid/result"
+import { ExtractResult, MethodResult } from "./candid/result"
 
 export * from "./types"
 export * from "./candid"
@@ -85,7 +85,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(
       { ...this.DEFAULT_ACTOR_STATE },
-      { withDevtools, store: "actor" }
+      { withDevtools, store: `actor-${String(canisterId)}` }
     )
 
     if (initializeOnCreate) {
@@ -104,13 +104,13 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
       } network`
     )
 
+    const { idlFactory, canisterId } = this
+
     this.updateState({
       initializing: true,
       initialized: false,
       methodState: {} as ActorMethodStates<A>,
     })
-
-    const { idlFactory, canisterId } = this
 
     try {
       if (!agent) {
@@ -162,24 +162,26 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
 
   public transformResult = <M extends FunctionName<A>>(
     methodName: M,
-    result: ExtractActorMethodReturnType<A[M]>
-  ) => {
-    if (!this.actor) {
-      throw new Error("Actor not initialized")
-    }
-
-    //@ts-ignore
-    const iface = Actor.interfaceOf(this.actor)._fields.find(
-      (field) => field[0] === methodName
-    )
+    value: ExtractActorMethodReturnType<A[M]>
+  ): MethodResult<A>[] => {
+    const iface = this.serviceFields?.methodFields[methodName].returnType
 
     if (!iface) {
       throw new Error(`Method ${String(methodName)} not found`)
     }
 
-    const classType = new ExtractResult()
+    const classType = new ExtractResult<A>()
 
-    return iface?.[1].accept(classType, { value: result, label: methodName })
+    return iface.reduce((acc, type, index) => {
+      const field = type.accept(classType, {
+        label: `ret${index}`,
+        value: iface.length > 1 ? (value as any[])[index] : value,
+      })
+
+      acc.push(field)
+
+      return acc
+    }, [] as MethodResult<A>[])
   }
 
   public updateMethodState = (
