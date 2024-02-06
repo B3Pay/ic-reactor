@@ -16,4 +16,5 @@ export type FieldType =
   | "number"
   | "principal"
   | "boolean"
+  | "blob"
   | "null"

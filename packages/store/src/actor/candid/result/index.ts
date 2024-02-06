@@ -28,15 +28,22 @@ export class ExtractResult<
   public visitOpt<T>(
     t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
-    { value, label }: ResultData<A>
+    { value, label }: ResultArrayData<A>
   ): MethodResult<A> {
+    if (value?.length === 0) {
+      return {
+        type: "optional",
+        label,
+        description: t.name,
+        value: null,
+      }
+    }
+
     return {
       type: "optional",
       label,
       description: t.name,
-      value: value
-        ? (ty.accept(this, { value, label }) as MethodResult<A>)
-        : null,
+      value: ty.accept(this, { value: value[0], label }),
     }
   }
 
@@ -45,7 +52,12 @@ export class ExtractResult<
     fields: Array<[string, IDL.Type]>,
     { value, label }: ResultRecordData<A>
   ): MethodResult<A> {
+    console.log("visitRecord", t, fields, value, label)
     const values = fields.reduce((acc, [key, type]) => {
+      if (value[key] === undefined) {
+        return acc
+      }
+
       const field = type.accept(this, {
         label: key,
         value: value[key],
@@ -63,6 +75,7 @@ export class ExtractResult<
       values,
     }
   }
+
   public visitTuple<T extends any[]>(
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
@@ -115,6 +128,15 @@ export class ExtractResult<
     ty: IDL.Type<T>,
     { value, label }: ResultArrayData<A>
   ): MethodResult<A> {
+    if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
+      return {
+        type: "blob",
+        label,
+        description: t.name,
+        value: value as unknown as Uint8Array,
+      }
+    }
+
     const values = value.map(
       (val, index) =>
         ty.accept(this, {
@@ -206,13 +228,13 @@ export class ExtractResult<
   }
   public visitPrincipal(
     t: IDL.PrincipalClass,
-    data: ResultData<A>
+    { value, label }: ResultData<A>
   ): MethodResult<A> {
     return {
       type: "principal",
-      label: data.label,
+      label,
       description: t.name,
-      value: data.toString(),
+      value,
     }
   }
 }

@@ -36,10 +36,18 @@ export interface ResultRecordData<
   value: Record<string, ExtractActorMethodReturnType<A[M]>>
 }
 
-export type MethodResult<A, M extends FunctionName<A> = FunctionName<A>> = {
+export type MethodResult<
+  A = DefaultActorType,
+  M extends FunctionName<A> = FunctionName<A>
+> = {
   type: FieldType
   label: string
-  value?: ExtractActorMethodReturnType<A[M]> | MethodResult<A> | string | null
+  value?:
+    | ExtractActorMethodReturnType<A[M]>
+    | MethodResult<A>
+    | string
+    | Uint8Array
+    | null
   values?: MethodResult<A>[]
   description: string
 }

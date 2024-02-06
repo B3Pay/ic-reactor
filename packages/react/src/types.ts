@@ -148,9 +148,12 @@ export interface ActorUseMethodCallReturn<
   data: ExtractActorMethodReturnType<A[M]> | MethodResult<A, M>[] | undefined
 }
 
-export type ActorUseMethodCallArg<A, T extends FunctionType> = T extends "query"
+export type ActorUseMethodCallArg<
+  A,
+  T extends FunctionType
+> = (T extends "query"
   ? ActorUseQueryArgs<A, FunctionName<A>>
-  : ActorUseUpdateArgs<A, FunctionName<A>>
+  : ActorUseUpdateArgs<A, FunctionName<A>>) & { withTransform?: boolean }
 
 export type ActorHooks<
   A,
