@@ -241,8 +241,8 @@ export const getActorHooks = <A>({
 
   return {
     initialize,
-    useQueryCall: useQueryCall as any,
-    useUpdateCall: useUpdateCall as any,
+    useQueryCall,
+    useUpdateCall,
     useMethodCall,
     useActorStore,
     // __Details
