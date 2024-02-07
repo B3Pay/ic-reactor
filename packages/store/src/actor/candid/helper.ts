@@ -27,9 +27,30 @@ export const validateError = (t: IDL.Type<any>) => {
   }
 }
 
-export function is_query(func: IDL.FuncClass): boolean {
+export function isQuery(func: IDL.FuncClass): boolean {
   return (
     func.annotations.includes("query") ||
     func.annotations.includes("composite_query")
   )
+}
+
+export function isUrl(str: string): boolean {
+  return str.startsWith("http") || str.startsWith("https")
+}
+
+export function isImage(str: string): boolean {
+  // Check if the string starts with 'data:image' (indicating base64-encoded image)
+  if (str.startsWith("data:image")) {
+    return true
+  }
+
+  // List of common image file extensions
+  const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".svg"]
+
+  // Check if the string ends with any of the image extensions (indicating image URL)
+  if (imageExtensions.some((ext) => str.endsWith(ext))) {
+    return true
+  }
+
+  return false
 }

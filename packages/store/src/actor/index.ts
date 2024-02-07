@@ -163,14 +163,14 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   public transformResult = <M extends FunctionName<A>>(
     methodName: M,
     value: ExtractActorMethodReturnType<A[M]>
-  ): MethodResult<A>[] => {
+  ): MethodResult<A, M>[] => {
     const iface = this.serviceFields?.methodFields[methodName].returnType
 
     if (!iface) {
       throw new Error(`Method ${String(methodName)} not found`)
     }
 
-    const classType = new ExtractResult<A>()
+    const classType = new ExtractResult<A, M>()
 
     return iface.reduce((acc, type, index) => {
       const field = type.accept(classType, {
@@ -181,7 +181,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
       acc.push(field)
 
       return acc
-    }, [] as MethodResult<A>[])
+    }, [] as MethodResult<A, M>[])
   }
 
   public updateMethodState = (

@@ -1,35 +1,29 @@
 import { IDL } from "@dfinity/candid"
 import type { ActorSubclass } from "@dfinity/agent"
-import type { DefaultActorType } from "../../types"
-import type {
-  ResultData,
-  ResultRecordData,
-  ResultArrayData,
-  ResultUnknownData,
-  MethodResult,
-} from "./types"
+import type { DefaultActorType, Principal } from "../../types"
+import type { MethodResult, DynamicDataArgs } from "./types"
+import { isImage, isUrl } from "../helper"
+import { FunctionName } from "../types"
 
 export * from "./types"
 
 export class ExtractResult<
-  A extends ActorSubclass<any> = DefaultActorType
-> extends IDL.Visitor<
-  ResultData<A> | ResultRecordData<A> | ResultArrayData<A> | ResultUnknownData,
-  MethodResult<A>
-> {
+  A extends ActorSubclass<any> = DefaultActorType,
+  M extends FunctionName<A> = FunctionName<A>
+> extends IDL.Visitor<DynamicDataArgs, MethodResult<A, M>> {
   public visitRec<T>(
     _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
-    data: ResultData<A>
-  ): MethodResult<A> {
-    return ty.accept(this, data) as MethodResult<A>
+    data: DynamicDataArgs
+  ): MethodResult<A, M> {
+    return ty.accept(this, data) as MethodResult<A, M>
   }
 
   public visitOpt<T>(
     t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
-    { value, label }: ResultArrayData<A>
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs<T[]>
+  ): MethodResult<A, M> {
     if (value?.length === 0) {
       return {
         type: "optional",
@@ -50,8 +44,8 @@ export class ExtractResult<
   public visitRecord(
     t: IDL.RecordClass,
     fields: Array<[string, IDL.Type]>,
-    { value, label }: ResultRecordData<A>
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs<Record<string, unknown>>
+  ): MethodResult<A, M> {
     console.log("visitRecord", t, fields, value, label)
     const values = fields.reduce((acc, [key, type]) => {
       if (value[key] === undefined) {
@@ -61,12 +55,12 @@ export class ExtractResult<
       const field = type.accept(this, {
         label: key,
         value: value[key],
-      }) as MethodResult<A>
+      }) as MethodResult<A, M>
 
       acc.push(field)
 
       return acc
-    }, [] as Array<MethodResult<A>>)
+    }, [] as Array<MethodResult<A, M>>)
 
     return {
       type: "record",
@@ -79,20 +73,20 @@ export class ExtractResult<
   public visitTuple<T extends any[]>(
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
-    { value, label }: ResultArrayData<A>
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs<T>
+  ): MethodResult<A, M> {
     const values = components.reduce(
       (acc, type, index) => {
         const field = type.accept(this, {
           label: `_${index}_`,
           value: value[index],
-        }) as MethodResult<A>
+        }) as MethodResult<A, M>
         acc.push(field)
 
         return acc
       },
 
-      [] as MethodResult<A>[]
+      [] as MethodResult<A, M>[]
     )
 
     return {
@@ -105,15 +99,15 @@ export class ExtractResult<
   public visitVariant(
     t: IDL.VariantClass,
     fields: Array<[string, IDL.Type]>,
-    { value, label }: ResultRecordData<A>
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs<Record<string, unknown>>
+  ): MethodResult<A, M> {
     // Find the first field that matches and has a value
     for (const [key, type] of fields) {
       if (value[key] !== undefined) {
         return type.accept(this, {
           label: key,
           value: value[key],
-        }) as MethodResult<A>
+        }) as MethodResult<A, M>
       }
     }
 
@@ -126,8 +120,8 @@ export class ExtractResult<
   public visitVec<T>(
     t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
-    { value, label }: ResultArrayData<A>
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs<T[]>
+  ): MethodResult<A, M> {
     if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
       return {
         type: "blob",
@@ -142,7 +136,7 @@ export class ExtractResult<
         ty.accept(this, {
           label: `${label}-${index}`,
           value: val,
-        }) as MethodResult<A>
+        }) as MethodResult<A, M>
     )
 
     return {
@@ -155,8 +149,8 @@ export class ExtractResult<
 
   public visitNumber<T>(
     t: IDL.Type<T>,
-    { value, label }: ResultData<A>
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs<number>
+  ): MethodResult<A, M> {
     return {
       type: "number",
       label,
@@ -167,46 +161,58 @@ export class ExtractResult<
 
   public visitText(
     t: IDL.TextClass,
-    { value, label }: ResultData<A>
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs<string>
+  ): MethodResult<A, M> {
+    const isurl = isUrl(value)
+    const isImg = isImage(value)
+
     return {
-      type: "text",
+      type: isImg ? "image" : isurl ? "url" : "text",
       label,
       description: t.name,
       value,
     }
   }
 
-  public visitInt(t: IDL.IntClass, data: ResultData<A>): MethodResult<A> {
+  public visitInt(
+    t: IDL.IntClass,
+    data: DynamicDataArgs<number>
+  ): MethodResult<A, M> {
     return this.visitNumber(t, data)
   }
 
-  public visitNat(t: IDL.NatClass, data: ResultData<A>): MethodResult<A> {
+  public visitNat(
+    t: IDL.NatClass,
+    data: DynamicDataArgs<number>
+  ): MethodResult<A, M> {
     return this.visitNumber(t, data)
   }
 
-  public visitFloat(t: IDL.FloatClass, data: ResultData<A>): MethodResult<A> {
+  public visitFloat(
+    t: IDL.FloatClass,
+    data: DynamicDataArgs<number>
+  ): MethodResult<A, M> {
     return this.visitNumber(t, data)
   }
 
   public visitFixedInt(
     t: IDL.FixedIntClass,
-    data: ResultData<A>
-  ): MethodResult<A> {
+    data: DynamicDataArgs<number>
+  ): MethodResult<A, M> {
     return this.visitNumber(t, data)
   }
 
   public visitFixedNat(
     t: IDL.FixedNatClass,
-    data: ResultData<A>
-  ): MethodResult<A> {
+    data: DynamicDataArgs<number>
+  ): MethodResult<A, M> {
     return this.visitNumber(t, data)
   }
 
   public visitBool(
     t: IDL.BoolClass,
-    { value, label }: ResultData<A>
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs<boolean>
+  ): MethodResult<A, M> {
     return {
       type: "boolean",
       label,
@@ -217,8 +223,8 @@ export class ExtractResult<
 
   public visitType<T>(
     t: IDL.Type<T>,
-    { value, label }: ResultUnknownData
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs
+  ): MethodResult<A, M> {
     return {
       type: "unknown",
       label,
@@ -226,10 +232,11 @@ export class ExtractResult<
       value: t.valueToString(value),
     }
   }
+
   public visitPrincipal(
     t: IDL.PrincipalClass,
-    { value, label }: ResultData<A>
-  ): MethodResult<A> {
+    { value, label }: DynamicDataArgs<Principal>
+  ): MethodResult<A, M> {
     return {
       type: "principal",
       label,

@@ -18,7 +18,7 @@ import type {
   ServiceFields,
   ServiceDefaultValues,
 } from "./types"
-import { is_query, validateError } from "../helper"
+import { isQuery, validateError } from "../helper"
 import { IDL } from "@dfinity/candid"
 import type { FunctionName } from "../types"
 import type { ActorSubclass, DefaultActorType } from "../../types"
@@ -57,7 +57,7 @@ export class ExtractFields<
     t: IDL.FuncClass,
     functionName: FunctionName<A>
   ): MethodFields<A> {
-    const functionType = is_query(t) ? "query" : "update"
+    const functionType = isQuery(t) ? "query" : "update"
 
     const { fields, defaultValue } = t.argTypes.reduce(
       (acc, arg, index) => {

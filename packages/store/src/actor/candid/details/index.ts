@@ -7,7 +7,7 @@ import type {
   InputDetails,
 } from "./types"
 import { IDL } from "@dfinity/candid"
-import { is_query } from "../helper"
+import { isQuery } from "../helper"
 import { ActorSubclass } from "@dfinity/agent"
 import { FieldType, FunctionName } from "../types"
 import { DefaultActorType } from "../../types"
@@ -54,7 +54,7 @@ export class ExtractDetails<
     t: IDL.FuncClass,
     functionName: FunctionName<A>
   ): MethodDetails<A> {
-    const functionType = is_query(t) ? "query" : "update"
+    const functionType = isQuery(t) ? "query" : "update"
 
     const fields = t.argTypes.reduce((acc, arg, index) => {
       acc[`arg${index}`] = arg.accept(

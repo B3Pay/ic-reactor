@@ -2,22 +2,35 @@ import type {
   DefaultActorType,
   ExtractActorMethodReturnType,
   IDL,
+  Principal,
 } from "../../types"
-import type { FieldType, FunctionName } from "../types"
+import type { FunctionName } from "../types"
+
+export type ReturnDataType =
+  | "record"
+  | "variant"
+  | "tuple"
+  | "optional"
+  | "vector"
+  | "recursive"
+  | "unknown"
+  | "text"
+  | "number"
+  | "principal"
+  | "boolean"
+  | "null"
+  | "blob"
+  | "url"
+  | "image"
 
 export interface ExtractedServiceResults<A = DefaultActorType> {
   canisterId: string
   methodResult: { [key in FunctionName<A>]: IDL.Type[] }
 }
 
-export interface ResultUnknownData {
+export interface DynamicDataArgs<V = any> {
   label: string
-  value: any
-}
-
-export interface ResultData<A, M extends FunctionName<A> = FunctionName<A>> {
-  label: string
-  value: ExtractActorMethodReturnType<A[M]>
+  value: V
 }
 
 export interface ResultArrayData<
@@ -36,18 +49,26 @@ export interface ResultRecordData<
   value: Record<string, ExtractActorMethodReturnType<A[M]>>
 }
 
+export type MethodResultValue<
+  A = DefaultActorType,
+  M extends FunctionName<A> = FunctionName<A>
+> =
+  | ExtractActorMethodReturnType<A[M]>
+  | MethodResult<A, M>
+  | number
+  | string
+  | boolean
+  | Principal
+  | Uint8Array
+  | null
+
 export type MethodResult<
   A = DefaultActorType,
   M extends FunctionName<A> = FunctionName<A>
 > = {
-  type: FieldType
+  type: ReturnDataType
   label: string
-  value?:
-    | ExtractActorMethodReturnType<A[M]>
-    | MethodResult<A>
-    | string
-    | Uint8Array
-    | null
-  values?: MethodResult<A>[]
+  value?: MethodResultValue<A, M>
+  values?: MethodResult<A, M>[]
   description: string
 }
