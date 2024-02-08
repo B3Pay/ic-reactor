@@ -138,6 +138,7 @@ export interface ActorUseMethodCallReturn<
   field: F extends true ? MethodFields<A> : undefined
   detail: D extends true ? MethodDetails<A> : undefined
   reset: () => void
+  generate: () => ExtractActorMethodArgs<A[M]>
   error: Error | undefined
   loading: boolean
   call: (

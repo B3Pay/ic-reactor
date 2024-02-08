@@ -81,7 +81,7 @@ export interface NumberField extends DefaultField {
   max?: number | string
   required: true
   valueAsNumber: boolean
-  defaultValue: undefined
+  defaultValue: string
 }
 
 export interface InputField<T extends IDL.Type> extends DefaultField {

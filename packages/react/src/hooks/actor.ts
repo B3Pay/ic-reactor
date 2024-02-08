@@ -1,13 +1,14 @@
-import type {
-  ExtractActorMethodArgs,
-  ActorManager,
-  ExtractedServiceFields,
-  MethodFields,
-  FunctionType,
-  ExtractedServiceDetails,
-  ServiceDetails,
-  MethodDetails,
-  FunctionName,
+import {
+  type ExtractActorMethodArgs,
+  type ActorManager,
+  type ExtractedServiceFields,
+  type MethodFields,
+  type FunctionType,
+  type ExtractedServiceDetails,
+  type ServiceDetails,
+  type MethodDetails,
+  type FunctionName,
+  ExtractRandomArgs,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -219,6 +220,11 @@ export const getActorHooks = <A>({
       [functionName]
     ) as MethodDetails<A>
 
+    const generate = useCallback(() => {
+      const randomClass = new ExtractRandomArgs()
+      return randomClass.generate(field.argTypes, functionName)
+    }, [field, functionName])
+
     const type = field.functionType ?? detail.functionType
 
     switch (type) {
@@ -226,12 +232,14 @@ export const getActorHooks = <A>({
         return {
           field,
           detail,
+          generate,
           ...useQueryCall<M>(args as any),
         }
       case "update":
         return {
           field,
           detail,
+          generate,
           ...useUpdateCall<M>(args as any),
         }
       default:

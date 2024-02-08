@@ -2,7 +2,7 @@ export * from "./details"
 export * from "./fields"
 export * from "./types"
 export * from "./result"
-export * from "./random"
+export * from "./random/args"
 
 import { Actor, CanisterStatus, type HttpAgent } from "@dfinity/agent"
 import { IDL } from "@dfinity/candid"

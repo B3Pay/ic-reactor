@@ -2,23 +2,11 @@ import {
   AgentManager,
   ActorManager,
   IC_HOST_NETWORK,
-  ExtractRandom,
+  ExtractRandomArgs,
 } from "../src"
 import { idlFactory, b3system } from "./candid/b3system"
 
-const randomClass = new ExtractRandom()
-
-function checkKeys(expected, received) {
-  for (const key in expected) {
-    if (typeof expected[key] === "object" && expected[key] !== null) {
-      if (!received.hasOwnProperty(key)) return false
-      if (!checkKeys(expected[key], received[key])) return false
-    } else {
-      if (!received.hasOwnProperty(key)) return false
-    }
-  }
-  return true
-}
+const randomClass = new ExtractRandomArgs()
 
 describe("My IC Store and Actions", () => {
   const agentManager = new AgentManager({
@@ -35,9 +23,9 @@ describe("My IC Store and Actions", () => {
 
   it("should return the service fields", () => {
     Object.entries(serviceFields!.methodFields).map(([label, details]) => {
-      const randomData = randomClass.generate(details.argTypes, label)
+      const randomData = randomClass.generate(details.returnTypes, label)
 
-      console.log(randomData[label], "\n", details.defaultValues[label])
+      console.log(randomData[label], "\n")
       expect(randomData).toBeDefined()
     })
   })

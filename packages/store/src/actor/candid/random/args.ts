@@ -1,9 +1,8 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import crypto from "crypto"
-import { FunctionName } from "./types"
+import { FunctionName } from "../types"
 
-export class ExtractRandom extends IDL.Visitor<any, any> {
+export class ExtractRandomArgs extends IDL.Visitor<any, any> {
   public generate(t: IDL.Type[], functionName: FunctionName): any {
     const defaultValue = t.reduce((acc, arg, index) => {
       acc[`arg${index}`] = arg.accept(this, null)
@@ -53,9 +52,9 @@ export class ExtractRandom extends IDL.Visitor<any, any> {
     data: string
   ): any | null {
     if (Math.random() < 0.5) {
-      return null
+      return []
     } else {
-      return type.accept(this, data)
+      return [type.accept(this, data)]
     }
   }
 
@@ -76,7 +75,7 @@ export class ExtractRandom extends IDL.Visitor<any, any> {
   }
 
   public visitPrincipal(_t: IDL.PrincipalClass) {
-    return Principal.fromUint8Array(crypto.randomBytes(29))
+    return Principal.fromUint8Array(this.generateRandomBytes(29))
   }
 
   public visitNull(_t: IDL.NullClass): null {
@@ -91,20 +90,20 @@ export class ExtractRandom extends IDL.Visitor<any, any> {
   public visitFloat(_t: IDL.FloatClass): number {
     return Math.random()
   }
-  public visitInt(_t: IDL.IntClass): bigint {
-    return BigInt(this.generateNumber(true))
+  public visitInt(_t: IDL.IntClass): number {
+    return this.generateNumber(true)
   }
-  public visitNat(_t: IDL.NatClass): bigint {
-    return BigInt(this.generateNumber(false))
+  public visitNat(_t: IDL.NatClass): number {
+    return this.generateNumber(false)
   }
-  public visitFixedInt(t: IDL.FixedIntClass): number | bigint {
+  public visitFixedInt(t: IDL.FixedIntClass): number | string {
     if (t._bits <= 32) {
       return this.generateNumber(true)
     } else {
       return this.generateBigInteger(t._bits)
     }
   }
-  public visitFixedNat(t: IDL.FixedNatClass): number | bigint {
+  public visitFixedNat(t: IDL.FixedNatClass): number | string {
     if (t._bits <= 32) {
       return this.generateNumber(false)
     } else {
@@ -121,7 +120,7 @@ export class ExtractRandom extends IDL.Visitor<any, any> {
     }
   }
 
-  private generateBigInteger(bits: number): bigint {
+  private generateBigInteger(bits: number): string {
     // Calculate the max value using left-shift and subtraction with BigInt operations
     const max = (BigInt(2) << BigInt(bits - 1)) - BigInt(1)
 
@@ -131,12 +130,26 @@ export class ExtractRandom extends IDL.Visitor<any, any> {
     // Generate random number within the valid range
     let randomBigInt = BigInt(0)
     do {
-      // Use crypto for random bytes, convert to BigInt, and apply mask
-      const randomBytes = crypto.randomBytes(Math.ceil(bits / 8))
+      // Use getRandomBytes for random bytes, convert to BigInt, and apply mask
+      const randomBytes = this.generateRandomBytes(Math.ceil(bits / 8))
       const mask = (BigInt(1) << BigInt(bits)) - BigInt(1)
-      randomBigInt = BigInt(`0x${randomBytes.toString("hex")}`) & mask
+      randomBigInt = BigInt(`0x${this.bytesToHex(randomBytes)}`) & mask
     } while (randomBigInt < min || randomBigInt > max)
 
-    return randomBigInt
+    return randomBigInt.toString()
+  }
+
+  private bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+  }
+
+  private generateRandomBytes(n: number): Uint8Array {
+    const arr = new Uint8Array(n)
+    for (let i = 0; i < n; i++) {
+      arr[i] = Math.floor(Math.random() * 256)
+    }
+    return arr
   }
 }

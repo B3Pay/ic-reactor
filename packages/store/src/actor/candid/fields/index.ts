@@ -292,9 +292,15 @@ export class ExtractFields<
       type: "number",
       required: true,
       valueAsNumber: true,
-      validate: validateError(t),
+      validate: (value: number) => {
+        if (isNaN(value)) {
+          return true
+        }
+
+        return validateError(t)(Number(value))
+      },
       label,
-      defaultValue: undefined,
+      defaultValue: "",
     }
   }
 
