@@ -40,4 +40,4 @@ export const createActor = (canisterId, options = {}) => {
   });
 };
 
-export const internet_identity = createActor(canisterId);
+export const internet_identity = canisterId ? createActor(canisterId) : undefined;

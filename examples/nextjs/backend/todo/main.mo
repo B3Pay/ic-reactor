@@ -85,5 +85,19 @@ actor ToDoList {
     );
 
     updateTodos(caller, updatedTodos)
+  };
+
+  public shared ({ caller }) func showTodoAsTuple() : async [(Nat, Text, Bool)] {
+    let todos = switch (userTodos.get(caller)) {
+      case (?userTodos) userTodos;
+      case null return []
+    };
+
+    let result = Array.map<ToDo, (Nat, Text, Bool)>(
+      todos,
+      func(todo) { (todo.id, todo.description, todo.completed) }
+    );
+
+    result
   }
 }

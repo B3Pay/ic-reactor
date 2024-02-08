@@ -1,4 +1,17 @@
 export const idlFactory = ({ IDL }) => {
+  const SetPermissions = IDL.Record({
+    'prepare' : IDL.Vec(IDL.Principal),
+    'commit' : IDL.Vec(IDL.Principal),
+    'manage_permissions' : IDL.Vec(IDL.Principal),
+  });
+  const UpgradeArgs = IDL.Record({
+    'set_permissions' : IDL.Opt(SetPermissions),
+  });
+  const InitArgs = IDL.Record({});
+  const AssetCanisterArgs = IDL.Variant({
+    'Upgrade' : UpgradeArgs,
+    'Init' : InitArgs,
+  });
   const ClearArguments = IDL.Record({});
   const BatchId = IDL.Nat;
   const Key = IDL.Text;
@@ -255,4 +268,19 @@ export const idlFactory = ({ IDL }) => {
     'validate_take_ownership' : IDL.Func([], [ValidationResult], []),
   });
 };
-export const init = ({ IDL }) => { return []; };
+export const init = ({ IDL }) => {
+  const SetPermissions = IDL.Record({
+    'prepare' : IDL.Vec(IDL.Principal),
+    'commit' : IDL.Vec(IDL.Principal),
+    'manage_permissions' : IDL.Vec(IDL.Principal),
+  });
+  const UpgradeArgs = IDL.Record({
+    'set_permissions' : IDL.Opt(SetPermissions),
+  });
+  const InitArgs = IDL.Record({});
+  const AssetCanisterArgs = IDL.Variant({
+    'Upgrade' : UpgradeArgs,
+    'Init' : InitArgs,
+  });
+  return [IDL.Opt(AssetCanisterArgs)];
+};

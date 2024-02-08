@@ -9,6 +9,11 @@ export const idlFactory = ({ IDL }) => {
     'addTodo' : IDL.Func([IDL.Text], [IDL.Nat], []),
     'clearComplete' : IDL.Func([], [], []),
     'getAllTodos' : IDL.Func([], [IDL.Opt(ToDos)], ['query']),
+    'showTodoAsTuple' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Text, IDL.Bool))],
+        [],
+      ),
     'toggleTodo' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   });
 };

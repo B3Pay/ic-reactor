@@ -9,5 +9,10 @@ service : {
   addTodo: (text) -> (nat);
   clearComplete: () -> ();
   getAllTodos: () -> (opt ToDos) query;
+  showTodoAsTuple: () -> (vec record {
+                                nat;
+                                text;
+                                bool;
+                              });
   toggleTodo: (nat) -> (bool);
 }
