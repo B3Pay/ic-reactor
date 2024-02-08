@@ -46,7 +46,6 @@ export class ExtractResult<
     fields: Array<[string, IDL.Type]>,
     { value, label }: DynamicDataArgs<Record<string, unknown>>
   ): MethodResult<A, M> {
-    console.log("visitRecord", t, fields, value, label)
     const values = fields.reduce((acc, [key, type]) => {
       if (value[key] === undefined) {
         return acc
