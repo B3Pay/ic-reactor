@@ -10,17 +10,16 @@ import {
   ActorManagerOptions,
   FunctionType,
   DefaultActorType,
-  createReActorStore,
 } from "@ic-reactor/store"
-import { AgentContextType, useAgentManager } from "./agent"
+import { AgentContextType } from "./agent"
 import {
   ActorHooks,
   ActorUseMethodCallArg,
   ActorUseQueryArgs,
   ActorUseUpdateArgs,
 } from "../types"
-import useIDLFactory from "../hooks/useIDLFactory"
 import { getActorHooks } from "../hooks/actor"
+import { useActorManager } from "../hooks/useActorManger"
 
 export type ActorContextType<
   Actor = ActorSubclass<any>,
@@ -95,11 +94,7 @@ export interface ActorProviderProps
 export const createReActorContext: CreateReActorContext = <
   Actor extends ActorSubclass<any>
 >({
-  didjsId,
   canisterId: defaultCanisterId,
-  agentContext: defaultAgentContext,
-  withServiceFields: defaultWithServiceFields = false,
-  withServiceDetails: defaultWithServiceDetails = false,
   ...defaultConfig
 }: Partial<CreateActorOptions> = {}) => {
   const ActorContext = createContext<ActorContextType | null>(null)
@@ -107,10 +102,7 @@ export const createReActorContext: CreateReActorContext = <
   const ActorProvider: React.FC<ActorProviderProps> = ({
     children,
     canisterId = defaultCanisterId,
-    agentContext = defaultAgentContext,
     loadingComponent = <div>Fetching canister...</div>,
-    withServiceFields = defaultWithServiceFields,
-    withServiceDetails = defaultWithServiceDetails,
     ...restConfig
   }) => {
     if (!canisterId) {
@@ -124,34 +116,18 @@ export const createReActorContext: CreateReActorContext = <
       }),
       [defaultConfig, restConfig]
     )
-    const { idlFactory, fetching, fetchError } = useIDLFactory(
-      canisterId,
-      didjsId,
-      config.idlFactory
-    )
 
-    const agentManager = useAgentManager(agentContext)
+    const { actorManager, fetchError, fetching } = useActorManager({
+      canisterId,
+      ...config,
+    })
 
     const hooks = useMemo(() => {
-      if (!idlFactory) {
-        return null
-      }
-      try {
-        const actorManager = createReActorStore({
-          idlFactory,
-          agentManager,
-          canisterId,
-          withDevtools: config.withDevtools,
-          withServiceFields,
-          withServiceDetails,
-        })
-
+      if (actorManager) {
         return getActorHooks(actorManager) as ActorContextType
-      } catch (err) {
-        console.error(err)
-        return null
       }
-    }, [canisterId, agentManager, idlFactory])
+      return null
+    }, [actorManager])
 
     return (
       <ActorContext.Provider value={hooks}>

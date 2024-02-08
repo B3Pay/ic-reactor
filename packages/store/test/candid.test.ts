@@ -1,9 +1,9 @@
-import { AgentManager, ActorManager } from "../src"
+import { AgentManager, ActorManager, IC_HOST_NETWORK } from "../src"
 import { idlFactory, candid } from "./candid/candid"
 
 describe("My IC Store and Actions", () => {
   const agentManager = new AgentManager({
-    host: "https://ic0.app",
+    host: IC_HOST_NETWORK,
     withDevtools: false,
   })
 

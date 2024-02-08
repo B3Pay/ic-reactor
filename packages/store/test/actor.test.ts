@@ -1,5 +1,5 @@
 import { createReActorStore } from "../src"
-import { idlFactory } from "./candid/b3_system"
+import { idlFactory } from "./candid/b3system"
 
 describe("createReActorStore", () => {
   const { actorStore, initialize, serviceFields } = createReActorStore({

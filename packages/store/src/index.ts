@@ -12,6 +12,9 @@ export * from "./helper"
 export * from "./actor"
 export * from "./agent"
 
+export const IC_HOST_NETWORK = "https://ic0.app"
+export const LOCAL_HOST_NETWORK = "http://127.0.0.1:4943"
+
 export const createAgentManager = ({
   port = 4943,
   isLocalEnv,
@@ -23,7 +26,7 @@ export const createAgentManager = ({
     ? options.host.includes("localhost")
       ? options.host.replace("localhost", "127.0.0.1")
       : options.host
-    : "https://icp-api.io"
+    : IC_HOST_NETWORK
 
   return new AgentManager({
     host,
