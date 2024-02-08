@@ -1,6 +1,5 @@
 import React, {
   createContext,
-  PropsWithChildren,
   useMemo,
   useContext,
   useState,
@@ -12,13 +11,14 @@ import {
   HttpAgent,
   createAgentManager,
 } from "@ic-reactor/store"
-import { getAuthHooks } from "../hooks/auth"
+import { getAuthHooks } from "../../hooks/auth"
+import {
+  AgentContextValue,
+  AgentContextType,
+  AgentProviderProps,
+} from "./types"
 
-export type AgentContextValue = ReturnType<typeof getAuthHooks> & {
-  agentManager: AgentManager
-}
-
-export type AgentContextType = React.Context<AgentContextValue | null>
+export * from "./types"
 
 export const AgentContext = createContext<AgentContextValue | null>(null)
 
@@ -48,21 +48,18 @@ export const useAgent = (
   agentContext?: AgentContextType
 ): HttpAgent | undefined => {
   const context = useContext(agentContext || AgentContext)
-  const [agent, setAgent] = useState<HttpAgent>()
 
   if (!context) {
     throw new Error("useAgent must be used within a AgentProvider")
   }
 
+  const [agent, setAgent] = useState<HttpAgent | undefined>(
+    context.agentManager.getAgent()
+  )
+
   useEffect(() => context.agentManager.subscribeAgent(setAgent), [])
 
-  console.info("Agent host switched to", agent?.isLocal() ? "local" : "ic")
-
   return agent
-}
-
-interface AgentProviderProps extends PropsWithChildren, AgentManagerOptions {
-  agentManager?: AgentManager
 }
 
 const AgentProvider: React.FC<AgentProviderProps> = ({

@@ -84,7 +84,7 @@ const useDidJs = ({ canisterId, didjsId, idlFactory }: UseIDLFactoryArgs) => {
   }, [canisterId, didjsId, agent])
 
   useEffect(() => {
-    if (!fetching) {
+    if (!fetching && !idlFactory) {
       fetchDidJs()
     }
   }, [fetchDidJs])

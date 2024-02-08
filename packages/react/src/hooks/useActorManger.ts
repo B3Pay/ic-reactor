@@ -58,13 +58,7 @@ export const useActorManager = <
       })
       return manager
     }
-  }, [
-    idlFactory,
-    agentManager,
-    canisterId,
-    withServiceFields,
-    withServiceDetails,
-  ])
+  }, [idlFactory, withServiceFields, withServiceDetails])
 
   return { actorManager, ...rest }
 }

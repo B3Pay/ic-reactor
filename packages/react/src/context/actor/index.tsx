@@ -1,95 +1,20 @@
-import React, {
-  createContext,
-  PropsWithChildren,
-  useMemo,
-  useContext,
-} from "react"
-import { IDL } from "@dfinity/candid"
+import React, { createContext, useMemo, useContext } from "react"
+import { ActorSubclass, FunctionType } from "@ic-reactor/store"
 import {
-  ActorSubclass,
-  ActorManagerOptions,
-  FunctionType,
-  DefaultActorType,
-} from "@ic-reactor/store"
-import { AgentContextType } from "./agent"
-import {
-  ActorHooks,
   ActorUseMethodCallArg,
   ActorUseQueryArgs,
   ActorUseUpdateArgs,
-} from "../types"
-import { getActorHooks } from "../hooks/actor"
-import { useActorManager } from "../hooks/useActorManger"
+} from "../../types"
+import { getActorHooks } from "../../hooks/actor"
+import { useActorManager } from "../../hooks/useActorManger"
+import {
+  CreateReActorContext,
+  CreateActorOptions,
+  ActorContextType,
+  ActorProviderProps,
+} from "./types"
 
-export type ActorContextType<
-  Actor = ActorSubclass<any>,
-  F extends boolean = true,
-  D extends boolean = true
-> = ActorHooks<Actor, F, D> & {
-  useActor: <A extends ActorSubclass<any> = Actor>() => ActorContextType<
-    A,
-    F,
-    D
-  >
-  ActorProvider: React.FC<
-    ActorProviderProps & {
-      withServiceFields?: F
-      withServiceDetails?: D
-    }
-  >
-}
-
-export type CreateReActorContext = {
-  // When both withServiceFields and withServiceDetails are true
-  <A extends ActorSubclass<any> = DefaultActorType>(
-    options?: Partial<CreateActorOptions> & {
-      withServiceFields: true
-      withServiceDetails: true
-    }
-  ): ActorContextType<A, true, true>
-
-  // When withServiceFields is true and withServiceDetails is false or undefined
-  <A extends ActorSubclass<any> = DefaultActorType>(
-    options?: Partial<CreateActorOptions> & {
-      withServiceFields: true
-      withServiceDetails?: false | undefined
-    }
-  ): ActorContextType<A, true, false>
-
-  // When withServiceFields is false or undefined and withServiceDetails is true
-  <A extends ActorSubclass<any> = DefaultActorType>(
-    options?: Partial<CreateActorOptions> & {
-      withServiceFields?: false | undefined
-      withServiceDetails: true
-    }
-  ): ActorContextType<A, false, true>
-
-  // When both withServiceFields and withServiceDetails are false or undefined
-  <A extends ActorSubclass<any> = DefaultActorType>(
-    options?: Partial<CreateActorOptions> & {
-      withServiceFields?: false | undefined
-      withServiceDetails?: false | undefined
-    }
-  ): ActorContextType<A, false, false>
-}
-
-export interface CreateActorOptions
-  extends Omit<
-    ActorManagerOptions,
-    "idlFactory" | "agentManager" | "canisterId"
-  > {
-  didjsId?: string
-  canisterId?: string
-  agentContext?: AgentContextType
-  idlFactory?: IDL.InterfaceFactory
-  loadingComponent?: React.ReactNode
-}
-
-export interface ActorProviderProps
-  extends PropsWithChildren,
-    CreateActorOptions {
-  loadingComponent?: React.ReactNode
-}
+export * from "./types"
 
 export const createReActorContext: CreateReActorContext = <
   Actor extends ActorSubclass<any>
@@ -127,7 +52,7 @@ export const createReActorContext: CreateReActorContext = <
         return getActorHooks(actorManager) as ActorContextType
       }
       return null
-    }, [actorManager])
+    }, [actorManager?.canisterId])
 
     return (
       <ActorContext.Provider value={hooks}>
@@ -179,6 +104,7 @@ export const createReActorContext: CreateReActorContext = <
     useActor().useMethodDetail(functionName)
 
   return {
+    ActorContext,
     ActorProvider,
     useActor,
     useActorStore,
@@ -195,6 +121,7 @@ export const createReActorContext: CreateReActorContext = <
 }
 
 export const {
+  ActorContext,
   ActorProvider,
   useActor,
   useActorStore,
