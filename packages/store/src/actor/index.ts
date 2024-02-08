@@ -164,7 +164,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
     methodName: M,
     value: ExtractActorMethodReturnType<A[M]>
   ): MethodResult<A, M>[] => {
-    const iface = this.serviceFields?.methodFields[methodName].returnType
+    const iface = this.serviceFields?.methodFields[methodName].returnTypes
 
     if (!iface) {
       throw new Error(`Method ${String(methodName)} not found`)

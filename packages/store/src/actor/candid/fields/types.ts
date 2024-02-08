@@ -22,7 +22,8 @@ export type MethodDefaultValues<T = string> = {
 export interface MethodFields<A = DefaultActorType> {
   functionName: FunctionName<A>
   functionType: FunctionType
-  returnType: IDL.Type<any>[]
+  returnTypes: IDL.Type<any>[]
+  argTypes: IDL.Type<any>[]
   fields: AllFieldTypes<IDL.Type<any>>[] | []
   validate: (value: any) => boolean | string
   defaultValues: ServiceDefaultValues<A>
