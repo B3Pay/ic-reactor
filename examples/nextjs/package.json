@@ -24,9 +24,8 @@
     "dfx:stop": "dfx stop",
     "dfx:pull": "dfx deps pull",
     "dfx:identity": "dfx deps deploy internet_identity",
-    "dfx:build": "sh ./predeploy.sh && dfx build",
-    "predeploy": "sh ./predeploy.sh",
-    "deploy": "sh ./predeploy.sh && dfx deploy",
+    "dfx:build": "dfx build",
+    "deploy": "dfx deploy",
     "generate": "dfx generate"
   },
   "dependencies": {
