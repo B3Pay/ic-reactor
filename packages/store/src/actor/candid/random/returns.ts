@@ -50,17 +50,14 @@ export class ExtractRandomReturns extends IDL.Visitor<any, any> {
     return components.map((type) => type.accept(this, null))
   }
 
+  private savedRec: Record<string, any[]> = {}
   public visitRec<T>(_t: IDL.RecClass<T>, ty: IDL.ConstructType<T>): any {
-    return () => ty.accept(this, null)
-  }
-  // private savedRec: Record<string, any[]> = {}
-  // public visitRec<T>(_t: IDL.RecClass<T>, ty: IDL.ConstructType<T>): any {
-  //   if (!this.savedRec[ty.name]) {
-  //     this.savedRec[ty.name] = ty.accept(this, null)
-  //   }
+    if (!this.savedRec[ty.name]) {
+      this.savedRec[ty.name] = ty.accept(this, null)
+    }
 
-  //   return this.savedRec[ty.name]
-  // }
+    return this.savedRec[ty.name]
+  }
 
   public visitPrincipal(_t: IDL.PrincipalClass) {
     return Principal.fromUint8Array(this.generateRandomBytes(29))
