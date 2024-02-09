@@ -4,8 +4,8 @@ import { FunctionName } from "../types"
 
 export class ExtractRandomArgs extends IDL.Visitor<any, any> {
   public generate(t: IDL.Type[], functionName: FunctionName): any {
-    const defaultValue = t.reduce((acc, arg, index) => {
-      acc[`arg${index}`] = arg.accept(this, null)
+    const defaultValue = t.reduce((acc, type, index) => {
+      acc[`arg${index}`] = type.accept(this, null)
 
       return acc
     }, {} as any)
@@ -19,59 +19,50 @@ export class ExtractRandomArgs extends IDL.Visitor<any, any> {
 
   public visitRecord(
     _t: IDL.RecordClass,
-    fields: [string, IDL.Type<any>][],
-    data: string
+    fields: [string, IDL.Type<any>][]
   ): { [key: string]: any } {
     return fields.reduce((acc, [key, type]) => {
-      acc[key] = type.accept(this, data)
+      acc[key] = type.accept(this, null)
       return acc
     }, {} as { [key: string]: any })
   }
 
   public visitVariant(
     _t: IDL.VariantClass,
-    fields: [string, IDL.Type<any>][],
-    data: string
+    fields: [string, IDL.Type<any>][]
   ): { [key: string]: any } {
     const [key, type] = fields[Math.floor(Math.random() * fields.length)]
-    return { [key]: type.accept(this, data) }
+    return { [key]: type.accept(this, null) }
   }
 
-  public visitVec<T>(
-    _t: IDL.VecClass<T>,
-    type: IDL.Type<any>,
-    data: string
-  ): any[] {
+  public visitVec<T>(_t: IDL.VecClass<T>, type: IDL.Type<any>): any[] {
     const length = Math.floor(Math.random() * 10)
-    return Array.from({ length }, () => type.accept(this, data))
+    return Array.from({ length }, () => type.accept(this, null))
   }
 
-  public visitOpt<T>(
-    _t: IDL.OptClass<T>,
-    type: IDL.Type<any>,
-    data: string
-  ): any | null {
+  public visitOpt<T>(_t: IDL.OptClass<T>, type: IDL.Type<any>): any | null {
     if (Math.random() < 0.5) {
       return []
     } else {
-      return [type.accept(this, data)]
+      return [type.accept(this, null)]
     }
-  }
-
-  public visitRec<T>(
-    _t: IDL.RecClass<T>,
-    ty: IDL.ConstructType<T>,
-    data: boolean
-  ): any {
-    return data ? null : ty.accept(this, true)
   }
 
   public visitTuple<T extends any[]>(
     _t: IDL.TupleClass<T>,
-    components: IDL.Type<any>[],
-    data: string
+    components: IDL.Type<any>[]
   ): any[] {
-    return components.map((type) => type.accept(this, data))
+    return components.map((type) => type.accept(this, null))
+  }
+
+  private savedRec: Record<string, any[]> = {}
+
+  public visitRec<T>(_t: IDL.RecClass<T>, ty: IDL.ConstructType<T>): any {
+    if (!this.savedRec[ty.name]) {
+      this.savedRec[ty.name] = ty.accept(this, null)
+    }
+
+    return this.savedRec[ty.name]
   }
 
   public visitPrincipal(_t: IDL.PrincipalClass) {
