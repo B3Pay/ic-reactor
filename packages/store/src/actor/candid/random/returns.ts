@@ -3,69 +3,64 @@ import { IDL } from "@dfinity/candid"
 
 export class ExtractRandomReturns extends IDL.Visitor<any, any> {
   public generate(t: IDL.Type[]): any {
-    return t.reduce((acc, arg) => {
-      acc.push(arg.accept(this, null))
+    const defaultValue = t.reduce((acc, type) => {
+      acc.push(type.accept(this, null))
 
       return acc
-    }, [] as any)
+    }, [] as any[])
+
+    return defaultValue
   }
 
   public visitRecord(
     _t: IDL.RecordClass,
-    fields: [string, IDL.Type<any>][],
-    data: string
+    fields: [string, IDL.Type<any>][]
   ): { [key: string]: any } {
     return fields.reduce((acc, [key, type]) => {
-      acc[key] = type.accept(this, data)
+      acc[key] = type.accept(this, null)
       return acc
     }, {} as { [key: string]: any })
   }
 
   public visitVariant(
     _t: IDL.VariantClass,
-    fields: [string, IDL.Type<any>][],
-    data: string
+    fields: [string, IDL.Type<any>][]
   ): { [key: string]: any } {
     const [key, type] = fields[Math.floor(Math.random() * fields.length)]
-    return { [key]: type.accept(this, data) }
+    return { [key]: type.accept(this, null) }
   }
 
-  public visitVec<T>(
-    _t: IDL.VecClass<T>,
-    type: IDL.Type<any>,
-    data: string
-  ): any[] {
+  public visitVec<T>(_t: IDL.VecClass<T>, type: IDL.Type<any>): any[] {
     const length = Math.floor(Math.random() * 10)
-    return Array.from({ length }, () => type.accept(this, data))
+    return Array.from({ length }, () => type.accept(this, null))
   }
 
-  public visitOpt<T>(
-    _t: IDL.OptClass<T>,
-    type: IDL.Type<any>,
-    data: string
-  ): any | null {
+  public visitOpt<T>(_t: IDL.OptClass<T>, type: IDL.Type<any>): any | null {
     if (Math.random() < 0.5) {
-      return null
+      return []
     } else {
-      return [type.accept(this, data)]
+      return [type.accept(this, null)]
     }
-  }
-
-  public visitRec<T>(
-    _t: IDL.RecClass<T>,
-    ty: IDL.ConstructType<T>,
-    data: boolean
-  ): any {
-    return data ? null : ty.accept(this, true)
   }
 
   public visitTuple<T extends any[]>(
     _t: IDL.TupleClass<T>,
-    components: IDL.Type<any>[],
-    data: string
+    components: IDL.Type<any>[]
   ): any[] {
-    return components.map((type) => type.accept(this, data))
+    return components.map((type) => type.accept(this, null))
   }
+
+  public visitRec<T>(_t: IDL.RecClass<T>, ty: IDL.ConstructType<T>): any {
+    return () => ty.accept(this, null)
+  }
+  // private savedRec: Record<string, any[]> = {}
+  // public visitRec<T>(_t: IDL.RecClass<T>, ty: IDL.ConstructType<T>): any {
+  //   if (!this.savedRec[ty.name]) {
+  //     this.savedRec[ty.name] = ty.accept(this, null)
+  //   }
+
+  //   return this.savedRec[ty.name]
+  // }
 
   public visitPrincipal(_t: IDL.PrincipalClass) {
     return Principal.fromUint8Array(this.generateRandomBytes(29))
@@ -77,60 +72,72 @@ export class ExtractRandomReturns extends IDL.Visitor<any, any> {
   public visitBool(_t: IDL.BoolClass): boolean {
     return Math.random() < 0.5
   }
-  public visitText(_t: IDL.TextClass): string {
+  public visitType<T>(_t: IDL.Type<T>): string {
     return Math.random().toString(36).substring(6)
   }
   public visitFloat(_t: IDL.FloatClass): number {
     return Math.random()
   }
-  public visitInt(_t: IDL.IntClass): bigint {
-    return BigInt(this.generateNumber(true))
+  public visitInt(_t: IDL.IntClass): number {
+    return this.generateNumber(true)
   }
-  public visitNat(_t: IDL.NatClass): bigint {
-    return BigInt(this.generateNumber(false))
+  public visitNat(_t: IDL.NatClass): number {
+    return this.generateNumber(false)
   }
   public visitFixedInt(t: IDL.FixedIntClass): number | bigint {
     if (t._bits <= 32) {
       return this.generateNumber(true)
     } else {
-      return this.generateBigInteger(t._bits)
+      return this.generateBigInteger(t._bits, true)
     }
   }
   public visitFixedNat(t: IDL.FixedNatClass): number | bigint {
     if (t._bits <= 32) {
       return this.generateNumber(false)
     } else {
-      return this.generateBigInteger(t._bits)
+      return this.generateBigInteger(t._bits, false)
     }
   }
 
-  private generateNumber(signed: boolean): number {
+  private generateNumber(isSigned: boolean): number {
     const num = Math.floor(Math.random() * 100)
-    if (signed && Math.random() < 0.5) {
+    if (isSigned && Math.random() < 0.5) {
       return -num
     } else {
       return num
     }
   }
 
-  private generateBigInteger(bits: number): bigint {
-    // Calculate the max value using left-shift and subtraction with BigInt operations
-    const max = (BigInt(2) << BigInt(bits - 1)) - BigInt(1)
+  private generateBigInteger(bits: number, isSigned: boolean): bigint {
+    const max = BigInt(2) << BigInt(bits - 2)
+    const min = isSigned ? -max : BigInt(0)
 
-    // Calculate min value by negating the max and subtracting 1
-    const min = -max - BigInt(1)
-
-    // Generate random number within the valid range
     let randomBigInt = BigInt(0)
-    do {
-      // Use crypto for random bytes, convert to BigInt, and apply mask
+    const maxIterations = 1000
+    for (let i = 0; i < maxIterations; i++) {
       const randomBytes = this.generateRandomBytes(Math.ceil(bits / 8))
       const mask = (BigInt(1) << BigInt(bits)) - BigInt(1)
-      randomBigInt =
-        BigInt(`0x${Buffer.from(randomBytes).toString("hex")}`) & mask
-    } while (randomBigInt < min || randomBigInt > max)
+      randomBigInt = BigInt(`0x${this.bytesToHex(randomBytes)}`) & mask
+      if (randomBigInt >= min && randomBigInt < max) {
+        break
+      }
+    }
+
+    if (randomBigInt >= max || randomBigInt < min) {
+      throw new Error(
+        `Failed to generate BigInt within valid range for ${bits}-bit ${
+          isSigned ? "signed" : "unsigned"
+        } FixedInt`
+      )
+    }
 
     return randomBigInt
+  }
+
+  private bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
   }
 
   private generateRandomBytes(n: number): Uint8Array {

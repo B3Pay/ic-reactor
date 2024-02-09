@@ -112,17 +112,17 @@ export class ExtractRandomArgs extends IDL.Visitor<any, any> {
   }
 
   private generateBigInteger(bits: number, isSigned: boolean): bigint {
-    const max = BigInt(2) << BigInt(bits - 2) // Adjust for signedness?
-    const min = isSigned ? -max : BigInt(0) // Calculate min for signed types
+    const max = BigInt(2) << BigInt(bits - 2)
+    const min = isSigned ? -max : BigInt(0)
 
     let randomBigInt = BigInt(0)
-    const maxIterations = 1000 // Set a maximum number of iterations
+    const maxIterations = 1000
     for (let i = 0; i < maxIterations; i++) {
       const randomBytes = this.generateRandomBytes(Math.ceil(bits / 8))
       const mask = (BigInt(1) << BigInt(bits)) - BigInt(1)
       randomBigInt = BigInt(`0x${this.bytesToHex(randomBytes)}`) & mask
       if (randomBigInt >= min && randomBigInt < max) {
-        break // Exit loop if valid value found
+        break
       }
     }
 

@@ -229,7 +229,8 @@ export const getActorHooks = <A>({
     const generateReturns = useCallback(() => {
       const randomClass = new ExtractRandomReturns()
       const data = randomClass.generate(field.returnTypes)
-      return transformResult(functionName, data)
+      console.log("generateReturns", data, field.returnTypes)
+      return transformResult(functionName, data.length > 1 ? data : data[0])
     }, [field, functionName])
 
     const type = field.functionType ?? detail.functionType
