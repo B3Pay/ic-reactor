@@ -16,6 +16,42 @@ export const extractAndSortArgs = <T extends Record<string, unknown>>(
   return args
 }
 
+export const convertStringToNumber = (value: string) => {
+  const bits = value.length
+  if (bits >= 16) {
+    return BigInt(value)
+  } else {
+    return Number(value)
+  }
+}
+
+export const validateNumberError = (t: IDL.Type) => {
+  return function validate(value: string) {
+    if (value === "") {
+      return true
+    }
+
+    const bits = value.length
+    if (bits >= 16) {
+      try {
+        const valueAsBigInt = BigInt(value)
+        t.covariant(valueAsBigInt)
+        return true
+      } catch (error) {
+        return (error as Error).message || "Failed to convert to BigInt"
+      }
+    } else {
+      try {
+        const valueAsNumber = Number(value)
+        t.covariant(valueAsNumber)
+        return true
+      } catch (error) {
+        return (error as Error).message || "Failed to convert to number"
+      }
+    }
+  }
+}
+
 export const validateError = (t: IDL.Type<any>) => {
   return function validate(value: any) {
     try {

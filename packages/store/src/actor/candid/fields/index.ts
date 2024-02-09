@@ -18,7 +18,7 @@ import type {
   ServiceFields,
   ServiceDefaultValues,
 } from "./types"
-import { isQuery, validateError } from "../helper"
+import { isQuery, validateError, validateNumberError } from "../helper"
 import { IDL } from "@dfinity/candid"
 import type { FunctionName } from "../types"
 import type { ActorSubclass, DefaultActorType } from "../../types"
@@ -291,14 +291,7 @@ export class ExtractFields<
     return {
       type: "number",
       required: true,
-      valueAsNumber: true,
-      validate: (value: number) => {
-        if (isNaN(value)) {
-          return true
-        }
-
-        return validateError(t)(Number(value))
-      },
+      validate: validateNumberError(t),
       label,
       defaultValue: "",
     }

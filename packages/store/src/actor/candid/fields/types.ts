@@ -80,7 +80,6 @@ export interface NumberField extends DefaultField {
   min?: number | string
   max?: number | string
   required: true
-  valueAsNumber: boolean
   defaultValue: string
 }
 
@@ -130,15 +129,17 @@ export type DynamicFieldTypeByClass<T extends IDL.Type> =
     ? RecursiveFields
     : T extends IDL.PrincipalClass
     ? PrincipalField
-    : T extends
-        | IDL.NatClass
-        | IDL.IntClass
-        | IDL.NatClass
-        | IDL.FixedNatClass
-        | IDL.FixedIntClass
-        | IDL.FloatClass
+    : T extends AllNumberTypes
     ? NumberField
     : InputField<T>
+
+export type AllNumberTypes =
+  | IDL.NatClass
+  | IDL.IntClass
+  | IDL.NatClass
+  | IDL.FixedNatClass
+  | IDL.FixedIntClass
+  | IDL.FloatClass
 
 export type AllFieldTypes<T extends IDL.Type> =
   | RecordFields<T>

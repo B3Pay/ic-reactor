@@ -96,47 +96,54 @@ export class ExtractRandomArgs extends IDL.Visitor<any, any> {
   public visitNat(_t: IDL.NatClass): number {
     return this.generateNumber(false)
   }
-  public visitFixedInt(t: IDL.FixedIntClass): number | string {
+  public visitFixedInt(t: IDL.FixedIntClass): number | bigint {
     if (t._bits <= 32) {
       return this.generateNumber(true)
     } else {
-      return this.generateBigInteger(t._bits)
+      return this.generateBigInteger(t._bits, true)
     }
   }
-  public visitFixedNat(t: IDL.FixedNatClass): number | string {
+  public visitFixedNat(t: IDL.FixedNatClass): number | bigint {
     if (t._bits <= 32) {
       return this.generateNumber(false)
     } else {
-      return this.generateBigInteger(t._bits)
+      return this.generateBigInteger(t._bits, false)
     }
   }
 
-  private generateNumber(signed: boolean): number {
+  private generateNumber(isSigned: boolean): number {
     const num = Math.floor(Math.random() * 100)
-    if (signed && Math.random() < 0.5) {
+    if (isSigned && Math.random() < 0.5) {
       return -num
     } else {
       return num
     }
   }
 
-  private generateBigInteger(bits: number): string {
-    // Calculate the max value using left-shift and subtraction with BigInt operations
-    const max = (BigInt(2) << BigInt(bits - 1)) - BigInt(1)
+  private generateBigInteger(bits: number, isSigned: boolean): bigint {
+    const max = BigInt(2) << BigInt(bits - 2) // Adjust for signedness?
+    const min = isSigned ? -max : BigInt(0) // Calculate min for signed types
 
-    // Calculate min value by negating the max and subtracting 1
-    const min = -max - BigInt(1)
-
-    // Generate random number within the valid range
     let randomBigInt = BigInt(0)
-    do {
-      // Use getRandomBytes for random bytes, convert to BigInt, and apply mask
+    const maxIterations = 1000 // Set a maximum number of iterations
+    for (let i = 0; i < maxIterations; i++) {
       const randomBytes = this.generateRandomBytes(Math.ceil(bits / 8))
       const mask = (BigInt(1) << BigInt(bits)) - BigInt(1)
       randomBigInt = BigInt(`0x${this.bytesToHex(randomBytes)}`) & mask
-    } while (randomBigInt < min || randomBigInt > max)
+      if (randomBigInt >= min && randomBigInt < max) {
+        break // Exit loop if valid value found
+      }
+    }
 
-    return randomBigInt.toString()
+    if (randomBigInt >= max || randomBigInt < min) {
+      throw new Error(
+        `Failed to generate BigInt within valid range for ${bits}-bit ${
+          isSigned ? "signed" : "unsigned"
+        } FixedInt`
+      )
+    }
+
+    return randomBigInt
   }
 
   private bytesToHex(bytes: Uint8Array): string {
