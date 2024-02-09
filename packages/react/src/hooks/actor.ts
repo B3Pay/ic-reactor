@@ -9,6 +9,7 @@ import {
   type MethodDetails,
   type FunctionName,
   ExtractRandomArgs,
+  ExtractRandomReturns,
 } from "@ic-reactor/store"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -220,9 +221,15 @@ export const getActorHooks = <A>({
       [functionName]
     ) as MethodDetails<A>
 
-    const generate = useCallback(() => {
+    const generateArgs = useCallback(() => {
       const randomClass = new ExtractRandomArgs()
       return randomClass.generate(field.argTypes, functionName)
+    }, [field, functionName])
+
+    const generateReturns = useCallback(() => {
+      const randomClass = new ExtractRandomReturns()
+      const data = randomClass.generate(field.returnTypes)
+      return transformResult(functionName, data)
     }, [field, functionName])
 
     const type = field.functionType ?? detail.functionType
@@ -232,14 +239,16 @@ export const getActorHooks = <A>({
         return {
           field,
           detail,
-          generate,
+          generateArgs,
+          generateReturns,
           ...useQueryCall<M>(args as any),
         }
       case "update":
         return {
           field,
           detail,
-          generate,
+          generateArgs,
+          generateReturns,
           ...useUpdateCall<M>(args as any),
         }
       default:

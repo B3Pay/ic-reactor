@@ -1,20 +1,13 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import { FunctionName } from "../types"
 
 export class ExtractRandomReturns extends IDL.Visitor<any, any> {
-  public generate(t: IDL.Type[], functionName: FunctionName): any {
-    const defaultValue = t.reduce((acc, arg, index) => {
-      acc[`arg${index}`] = arg.accept(this, null)
+  public generate(t: IDL.Type[]): any {
+    return t.reduce((acc, arg) => {
+      acc.push(arg.accept(this, null))
 
       return acc
-    }, {} as any)
-
-    const defaultValues = {
-      [functionName]: defaultValue,
-    }
-
-    return defaultValues
+    }, [] as any)
   }
 
   public visitRecord(

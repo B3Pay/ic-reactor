@@ -71,10 +71,12 @@ export function isQuery(func: IDL.FuncClass): boolean {
 }
 
 export function isUrl(str: string): boolean {
+  if (typeof str !== "string") return false
   return str.startsWith("http") || str.startsWith("https")
 }
 
 export function isImage(str: string): boolean {
+  if (typeof str !== "string") return false
   // Check if the string starts with 'data:image' (indicating base64-encoded image)
   if (str.startsWith("data:image")) {
     return true
