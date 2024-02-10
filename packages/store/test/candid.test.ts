@@ -3,6 +3,7 @@ import {
   ActorManager,
   IC_HOST_NETWORK,
   ExtractRandomArgs,
+  jsonToString,
 } from "../src"
 import { idlFactory, b3system } from "./candid/b3system"
 
@@ -14,7 +15,7 @@ describe("My IC Store and Actions", () => {
     withDevtools: false,
   })
 
-  const { serviceFields } = new ActorManager<typeof b3system>({
+  const { serviceFields, transformResult } = new ActorManager<typeof b3system>({
     agentManager,
     idlFactory,
     withServiceFields: true,
@@ -31,10 +32,15 @@ describe("My IC Store and Actions", () => {
   // })
 
   it("should return the service fields", () => {
-    const createApp = serviceFields!.methodFields.create_app
-    const randomData = randomClass.generate(createApp.argTypes, "create_app")
+    const createApp = serviceFields!.methodFields.get_apps
+    const randomData = randomClass.generate(createApp.returnTypes, "get_apps")
 
-    console.log(randomData["create_app"].arg0.metadata)
+    const transfromedData = transformResult(
+      "get_apps",
+      randomData["get_apps"].arg0
+    )
+
+    console.log(jsonToString(transfromedData[0]))
     expect(randomData).toBeDefined()
   })
 

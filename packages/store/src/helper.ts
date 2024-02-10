@@ -60,6 +60,14 @@ export function extractServiceDetails<
   return extractor.visitService(methods, canisterId)
 }
 
+export function jsonToString(json: any) {
+  return JSON.stringify(
+    json,
+    (_, value) => (typeof value === "bigint" ? `BigInt(${value})` : value),
+    2
+  )
+}
+
 export const generateRequestHash = (args?: any[]) => {
   const serializedArgs = args
     ?.map((arg) => {

@@ -3,8 +3,8 @@ import type {
   ExtractActorMethodReturnType,
   IDL,
   Principal,
-} from "../../types"
-import type { FunctionName } from "../types"
+} from "../../../types"
+import type { FunctionName } from "../../types"
 
 export type ReturnDataType =
   | "record"
@@ -70,5 +70,5 @@ export type MethodResult<
   label: string
   value?: MethodResultValue<A, M>
   values?: MethodResult<A, M>[]
-  description: string
+  description: string[] | string
 }

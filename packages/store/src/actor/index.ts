@@ -21,7 +21,7 @@ import type { AgentManager, UpdateAgentOptions } from "../agent"
 import { ExtractedServiceDetails } from "./candid/details"
 import { ExtractedServiceFields } from "./candid/fields"
 import { FunctionName } from "./candid"
-import { ExtractResult, MethodResult } from "./candid/result"
+import { ExtractTableResult, MethodResult } from "./candid/result"
 
 export * from "./types"
 export * from "./candid"
@@ -170,7 +170,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
       throw new Error(`Method ${String(methodName)} not found`)
     }
 
-    const classType = new ExtractResult<A, M>()
+    const classType = new ExtractTableResult<A, M>()
 
     return iface.reduce((acc, type, index) => {
       const field = type.accept(classType, {
@@ -181,7 +181,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
       acc.push(field)
 
       return acc
-    }, [] as MethodResult<A, M>[])
+    }, [] as any[])
   }
 
   public updateMethodState = (
