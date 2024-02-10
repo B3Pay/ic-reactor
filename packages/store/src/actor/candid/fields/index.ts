@@ -145,7 +145,7 @@ export class ExtractFields<
     const defaultValue = options[0]
 
     const defaultValues = {
-      [defaultValue]: fields[0].defaultValue || fields[0].defaultValues,
+      [defaultValue]: fields[0].defaultValue || fields[0].defaultValues || {},
     }
 
     return {
