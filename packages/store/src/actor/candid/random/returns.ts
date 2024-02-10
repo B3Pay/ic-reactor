@@ -82,6 +82,10 @@ export class ExtractRandomReturns extends IDL.Visitor<any, any> {
     return this.savedRec[ty.name]
   }
 
+  public visitType<T>(_t: IDL.Type<T>): any {
+    return Math.random().toString(36).substring(6)
+  }
+
   public visitPrincipal(_t: IDL.PrincipalClass): any {
     return Principal.fromUint8Array(this.generateRandomBytes(29))
   }
