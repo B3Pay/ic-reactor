@@ -5,7 +5,7 @@ import { FunctionName } from "../types"
 export class ExtractRandomArgs extends IDL.Visitor<any, any> {
   public generate(t: IDL.Type[], functionName: FunctionName): any {
     const defaultValue = t.reduce((acc, type, index) => {
-      acc[`arg${index}`] = type.accept(this, null)
+      acc[`arg${index}`] = type.accept(this, false)
 
       return acc
     }, {} as any)
@@ -19,74 +19,102 @@ export class ExtractRandomArgs extends IDL.Visitor<any, any> {
 
   public visitRecord(
     _t: IDL.RecordClass,
-    fields: [string, IDL.Type<any>][]
-  ): { [key: string]: any } {
-    return fields.reduce((acc, [key, type]) => {
-      acc[key] = type.accept(this, null)
-      return acc
-    }, {} as { [key: string]: any })
+    fields: [string, IDL.Type<any>][],
+    isRecursive: boolean
+  ): any {
+    const result: { [key: string]: any } = {}
+
+    fields.forEach(([key, type]) => {
+      result[key] = type.accept(this, isRecursive)
+    })
+
+    return result
   }
 
   public visitVariant(
     _t: IDL.VariantClass,
-    fields: [string, IDL.Type<any>][]
-  ): { [key: string]: any } {
+    fields: [string, IDL.Type<any>][],
+    isRecursive: boolean
+  ): any {
     const [key, type] = fields[Math.floor(Math.random() * fields.length)]
-    return { [key]: type.accept(this, null) }
+    const result = { [key]: type.accept(this, isRecursive) }
+
+    return result
   }
 
-  public visitVec<T>(_t: IDL.VecClass<T>, type: IDL.Type<any>): any[] {
-    const length = Math.floor(Math.random() * 10)
-    return Array.from({ length }, () => type.accept(this, null))
+  public visitVec<T>(
+    _t: IDL.VecClass<T>,
+    type: IDL.Type<any>,
+    isRecursive: boolean
+  ): any {
+    if (isRecursive) {
+      const recType = type.accept(this, isRecursive)
+      return [recType]
+    }
+
+    const length = Math.floor(Math.random() * 5)
+
+    return Array.from({ length }, () => type.accept(this, isRecursive))
   }
 
-  public visitOpt<T>(_t: IDL.OptClass<T>, type: IDL.Type<any>): any | null {
+  public visitOpt<T>(
+    _t: IDL.OptClass<T>,
+    type: IDL.Type<any>,
+    isRecursive: boolean
+  ): any {
     if (Math.random() < 0.5) {
       return []
     } else {
-      return [type.accept(this, null)]
+      return [type.accept(this, isRecursive)]
     }
   }
 
   public visitTuple<T extends any[]>(
     _t: IDL.TupleClass<T>,
-    components: IDL.Type<any>[]
-  ): any[] {
-    return components.map((type) => type.accept(this, null))
+    components: IDL.Type<any>[],
+    isRecursive: boolean
+  ): any {
+    return components.map((type) => type.accept(this, isRecursive))
   }
 
-  private savedRec: Record<string, any[]> = {}
+  private savedRec: Record<string, any> = {}
 
   public visitRec<T>(_t: IDL.RecClass<T>, ty: IDL.ConstructType<T>): any {
     if (!this.savedRec[ty.name]) {
-      this.savedRec[ty.name] = ty.accept(this, null)
+      this.savedRec[ty.name] = ty.accept(this, true)
     }
 
     return this.savedRec[ty.name]
   }
 
-  public visitPrincipal(_t: IDL.PrincipalClass) {
+  public visitPrincipal(_t: IDL.PrincipalClass): any {
     return Principal.fromUint8Array(this.generateRandomBytes(29))
   }
 
   public visitNull(_t: IDL.NullClass): null {
     return null
   }
+
   public visitBool(_t: IDL.BoolClass): boolean {
     return Math.random() < 0.5
   }
+
   public visitText(_t: IDL.TextClass): string {
     return Math.random().toString(36).substring(6)
   }
+
   public visitFloat(_t: IDL.FloatClass): number {
     return Math.random()
   }
+
   public visitInt(_t: IDL.IntClass): number {
     return this.generateNumber(true)
   }
+
   public visitNat(_t: IDL.NatClass): number {
     return this.generateNumber(false)
   }
+
   public visitFixedInt(t: IDL.FixedIntClass): number | bigint {
     if (t._bits <= 32) {
       return this.generateNumber(true)
@@ -94,6 +122,7 @@ export class ExtractRandomArgs extends IDL.Visitor<any, any> {
       return this.generateBigInteger(t._bits, true)
     }
   }
+
   public visitFixedNat(t: IDL.FixedNatClass): number | bigint {
     if (t._bits <= 32) {
       return this.generateNumber(false)

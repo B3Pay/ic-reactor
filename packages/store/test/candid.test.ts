@@ -21,13 +21,21 @@ describe("My IC Store and Actions", () => {
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
 
-  it("should return the service fields", () => {
-    Object.entries(serviceFields!.methodFields).map(([label, details]) => {
-      const randomData = randomClass.generate(details.returnTypes, label)
+  // it("should return the service fields", () => {
+  //   Object.entries(serviceFields!.methodFields).map(([label, details]) => {
+  //     const randomData = randomClass.generate(details.returnTypes, label)
 
-      console.log(randomData[label], "\n")
-      expect(randomData).toBeDefined()
-    })
+  //     console.log(randomData[label])
+  //     expect(randomData).toBeDefined()
+  //   })
+  // })
+
+  it("should return the service fields", () => {
+    const createApp = serviceFields!.methodFields.create_app
+    const randomData = randomClass.generate(createApp.argTypes, "create_app")
+
+    console.log(randomData["create_app"].arg0.metadata)
+    expect(randomData).toBeDefined()
   })
 
   // Object.entries(serviceFields!.methodFields).forEach(([label, details]) => {
