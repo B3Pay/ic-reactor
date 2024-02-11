@@ -44,36 +44,36 @@ describe("My IC Store and Actions", () => {
     expect(randomData).toBeDefined()
   })
 
-  // Object.entries(serviceFields!.methodFields).forEach(([label, details]) => {
-  //   it(`should return the method label ${label}`, () => {
-  //     expect(details).toBeDefined()
-  //   })
-  // })
+  Object.entries(serviceFields!.methodFields).forEach(([label, details]) => {
+    it(`should return the method label ${label}`, () => {
+      expect(details).toBeDefined()
+    })
+  })
 
-  // it("should return the function fields", () => {
-  //   expect({ serviceFields }).toBeDefined()
+  it("should return the function fields", () => {
+    expect({ serviceFields }).toBeDefined()
 
-  //   Object.values(serviceFields!.methodFields).forEach(
-  //     ({ type, functionName }) => {
-  //       expect(type).toBeDefined()
-  //       expect(functionName).toBeDefined()
+    Object.values(serviceFields!.methodFields).forEach(
+      ({ functionType, functionName }) => {
+        expect(functionType).toBeDefined()
+        expect(functionName).toBeDefined()
 
-  //       const {
-  //         defaultValues,
-  //         fields,
-  //         functionName: fName,
-  //         validate,
-  //       } = serviceFields!.methodFields[functionName]
+        const {
+          defaultValues,
+          fields,
+          functionName: fName,
+          validate,
+        } = serviceFields!.methodFields[functionName]
 
-  //       expect(defaultValues).toBeDefined()
-  //       expect(fields).toBeDefined()
+        expect(defaultValues).toBeDefined()
+        expect(fields).toBeDefined()
 
-  //       expect(functionName).toBeDefined()
-  //       expect(fName).toBeDefined()
-  //       expect(fName).toEqual(functionName)
+        expect(functionName).toBeDefined()
+        expect(fName).toBeDefined()
+        expect(fName).toEqual(functionName)
 
-  //       expect(validate).toBeDefined()
-  //     }
-  //   )
-  // })
+        expect(validate).toBeDefined()
+      }
+    )
+  })
 })
