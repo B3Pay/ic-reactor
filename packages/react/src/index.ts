@@ -12,6 +12,8 @@ import { getActorHooks } from "./hooks/actor"
 import { getAuthHooks } from "./hooks/auth"
 import { CreateReActor } from "./types"
 
+export * from "@ic-reactor/candid"
+
 export * from "./context/agent"
 export * from "./context/actor"
 

@@ -7,10 +7,12 @@ import {
 import type { ActorCandidManagerOptions } from "./types"
 import { ActorCandidManager } from "./candid"
 
+export * from "@ic-reactor/store"
+
 export * from "./candid"
 export * from "./types"
 
-export const createActorManager = <
+export const createCandidActorManager = <
   A extends ActorSubclass<any> = DefaultActorType
 >(
   options: ActorCandidManagerOptions
@@ -36,7 +38,7 @@ export const createReActorCandidStore = <
   agentManager,
   ...agentOptions
 }: CreateReActorCandidOptions): ActorCandidManager<A> => {
-  return createActorManager<A>({
+  return createCandidActorManager<A>({
     idlFactory,
     canisterId,
     agentManager:
