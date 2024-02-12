@@ -1,26 +1,34 @@
+export * from "./details"
+export * from "./fields"
+export * from "./result"
+export * from "./random/args"
+export * from "./random/returns"
+
+export * from "../types"
+export * from "../candid"
+
 import type {
   ActorSubclass,
   DefaultActorType,
   ExtractActorMethodReturnType,
   FunctionName,
 } from "@ic-reactor/store"
-import { ExtractTableResult, MethodResult } from "./candid/result"
+import { ExtractTableResult, MethodResult } from "../candid/result"
 import { ActorManager } from "@ic-reactor/store"
-import { ActorCandidManagerOptions } from "./types"
+import { ActorCandidManagerOptions } from "../types"
 
 import {
   ExtractDetails,
   ExtractFields,
   ExtractedServiceDetails,
   ExtractedServiceFields,
-} from "./candid"
-
-export * from "./types"
-export * from "./candid"
+} from "../candid"
 
 export class ActorCandidManager<
   A extends ActorSubclass<any> = DefaultActorType
 > extends ActorManager {
+  public withServiceFields = true
+  public withServiceDetails = true
   public serviceFields: ExtractedServiceFields<A>
   public serviceDetails: ExtractedServiceDetails<A>
 

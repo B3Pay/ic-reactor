@@ -3,11 +3,11 @@ import {
   ActorSubclass,
   DefaultActorType,
   IDL,
-  createReActorStore,
 } from "@ic-reactor/store"
 import { useMemo } from "react"
 import { AgentContextType, useAgentManager } from "../context/agent"
 import useDidJs from "./useDidJs"
+import { createReActorCandidStore } from "@ic-reactor/candid"
 
 interface ActorManagerArgs
   extends Omit<
@@ -48,17 +48,15 @@ export const useActorManager = <
     if (!idlFactory) {
       return null
     } else {
-      const manager = createReActorStore<A>({
+      const manager = createReActorCandidStore<A>({
         agentManager,
         idlFactory,
         canisterId,
         withDevtools: config.withDevtools,
-        withServiceFields,
-        withServiceDetails,
       })
       return manager
     }
-  }, [idlFactory, withServiceFields, withServiceDetails])
+  }, [idlFactory])
 
   return { actorManager, ...rest }
 }

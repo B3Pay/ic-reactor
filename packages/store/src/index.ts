@@ -11,6 +11,7 @@ import { AgentManager } from "./agent"
 export * from "./helper"
 export * from "./actor"
 export * from "./agent"
+export * from "./tools"
 
 export const createAgentManager = (
   options: AgentManagerOptions

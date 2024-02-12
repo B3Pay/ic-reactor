@@ -1,20 +1,22 @@
 import type {
+  MethodFields,
+  ExtractedServiceFields,
+  ExtractedServiceDetails,
+  ServiceDetails,
+  MethodDetails,
+  MethodResult,
+} from "@ic-reactor/candid"
+import type {
   ActorState,
   CanisterId,
   CreateReActorOptions,
   ExtractActorMethodArgs,
   ExtractActorMethodReturnType,
-  MethodFields,
-  ExtractedServiceFields,
   HttpAgent,
   Identity,
   Principal,
-  ExtractedServiceDetails,
   FunctionType,
-  ServiceDetails,
-  MethodDetails,
   FunctionName,
-  MethodResult,
 } from "@ic-reactor/store"
 import type { AuthHooks } from "./hooks/auth"
 

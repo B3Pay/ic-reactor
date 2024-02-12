@@ -4,9 +4,11 @@ import {
   type DefaultActorType,
   createAgentManager,
 } from "@ic-reactor/store"
-import { ActorCandidManager, type ActorCandidManagerOptions } from "./actor"
+import type { ActorCandidManagerOptions } from "./types"
+import { ActorCandidManager } from "./candid"
 
-export * from "./actor"
+export * from "./candid"
+export * from "./types"
 
 export const createActorManager = <
   A extends ActorSubclass<any> = DefaultActorType
@@ -16,7 +18,7 @@ export const createActorManager = <
   return new ActorCandidManager<A>(options)
 }
 
-export interface CreateReActorOptions
+export interface CreateReActorCandidOptions
   extends HttpAgentOptions,
     Omit<ActorCandidManagerOptions, "agentManager"> {
   agentManager?: AgentManager
@@ -33,7 +35,7 @@ export const createReActorCandidStore = <
   initializeOnCreate = true,
   agentManager,
   ...agentOptions
-}: ActorCandidManagerOptions): ActorCandidManager<A> => {
+}: CreateReActorCandidOptions): ActorCandidManager<A> => {
   return createActorManager<A>({
     idlFactory,
     canisterId,

@@ -1,16 +1,12 @@
 import {
-  type ExtractActorMethodArgs,
-  type ActorManager,
   type ExtractedServiceFields,
   type MethodFields,
-  type FunctionType,
   type ExtractedServiceDetails,
   type ServiceDetails,
   type MethodDetails,
-  type FunctionName,
   ExtractRandomArgs,
   ExtractRandomReturns,
-} from "@ic-reactor/store"
+} from "@ic-reactor/candid"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActorHookState,
@@ -23,6 +19,12 @@ import {
   ActorUpdateCall,
 } from "../types"
 import { useStore } from "zustand"
+import { ActorCandidManager } from "@ic-reactor/candid"
+import {
+  ExtractActorMethodArgs,
+  FunctionName,
+  FunctionType,
+} from "@ic-reactor/store"
 
 const DEFAULT_STATE = {
   data: undefined,
@@ -40,7 +42,7 @@ export const getActorHooks = <A>({
   actorStore,
   callMethod,
   transformResult,
-}: ActorManager<A>): ActorHooks<
+}: ActorCandidManager<A>): ActorHooks<
   A,
   typeof withServiceFields,
   typeof withServiceDetails
@@ -51,7 +53,7 @@ export const getActorHooks = <A>({
   const useActorStore = (): UseActorStoreReturn<A> => {
     const actorState = useStore(actorStore, (state) => state)
 
-    return { ...actorState, canisterId }
+    return { ...actorState, canisterId } as UseActorStoreReturn<A>
   }
 
   const useServiceFields = (): ExtractedServiceFields<A> => {

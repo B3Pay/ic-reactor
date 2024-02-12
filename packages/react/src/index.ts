@@ -1,17 +1,24 @@
-import type {
-  ActorSubclass,
-  CreateReActorOptions,
-  DefaultActorType,
+import {
+  createReActorStore,
+  type ActorSubclass,
+  type DefaultActorType,
 } from "@ic-reactor/store"
-import { createReActorStore } from "@ic-reactor/store"
+import {
+  createReActorCandidStore,
+  CreateReActorCandidOptions,
+  ActorCandidManager,
+} from "@ic-reactor/candid"
 import { getActorHooks } from "./hooks/actor"
 import { getAuthHooks } from "./hooks/auth"
 import { CreateReActor } from "./types"
 
-export * from "@ic-reactor/store"
-
 export * from "./context/agent"
 export * from "./context/actor"
+
+export interface CreateReactActorOptions extends CreateReActorCandidOptions {
+  withServiceFields?: boolean
+  withServiceDetails?: boolean
+}
 
 export const createReActor: CreateReActor = <
   A extends ActorSubclass<any> = DefaultActorType
@@ -20,19 +27,26 @@ export const createReActor: CreateReActor = <
   withServiceFields,
   withServiceDetails,
   ...options
-}: CreateReActorOptions) => {
+}: CreateReactActorOptions) => {
   isLocalEnv =
     isLocalEnv ||
     (typeof process !== "undefined" &&
       (process.env.DFX_NETWORK === "local" ||
         process.env.NODE_ENV === "development"))
 
-  const actorManager = createReActorStore<A>({
-    isLocalEnv,
-    withServiceFields,
-    withServiceDetails,
-    ...options,
-  })
+  let actorManager: ActorCandidManager<A>
+
+  if (withServiceFields || withServiceDetails) {
+    actorManager = createReActorCandidStore<A>({
+      isLocalEnv,
+      ...options,
+    })
+  } else {
+    actorManager = createReActorStore<A>({
+      isLocalEnv,
+      ...options,
+    }) as unknown as ActorCandidManager<A>
+  }
 
   const getServiceFields = () => {
     if (!withServiceFields || !actorManager.serviceFields) {
