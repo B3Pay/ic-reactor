@@ -10,6 +10,9 @@ import type {
 
 export * from "./types"
 
+export const IC_HOST_NETWORK_URI = "https://ic0.app"
+export const LOCAL_HOST_NETWORK_URI = "http://127.0.0.1:4943"
+
 export class AgentManager {
   private agent: HttpAgent
   private subscribers: Array<(agent: HttpAgent) => void> = []
@@ -31,13 +34,26 @@ export class AgentManager {
     this.authStore.setState((state) => ({ ...state, ...newState }))
   }
 
-  constructor({ withDevtools, ...options }: AgentManagerOptions) {
+  constructor({
+    withDevtools,
+    port = 4943,
+    isLocalEnv,
+    ...options
+  }: AgentManagerOptions) {
+    const host = isLocalEnv
+      ? `http://127.0.0.1:${port}`
+      : options.host
+      ? options.host.includes("localhost")
+        ? options.host.replace("localhost", "127.0.0.1")
+        : options.host
+      : IC_HOST_NETWORK_URI
+
     this.authStore = createStoreWithOptionalDevtools(this.DEFAULT_AUTH_STATE, {
       withDevtools,
       store: "auth",
     })
 
-    this.agent = new HttpAgent(options)
+    this.agent = new HttpAgent({ ...options, host })
     this.isLocalEnv = this.agent.isLocal()
     this.initializeAgent()
   }

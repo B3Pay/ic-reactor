@@ -7,11 +7,13 @@ import type {
 import type { IDL } from "@dfinity/candid"
 import type { Principal } from "@dfinity/principal"
 import type { StoreApi } from "zustand"
-import type { ExtractedServiceFields } from "./candid/fields"
 import type { AgentManager } from "../agent"
-import { FunctionName } from "./candid"
 
 export type { ActorMethod, IDL, ActorSubclass, Principal, HttpAgent, Identity }
+
+export type FunctionName<A = DefaultActorType> = keyof A & string
+
+export type FunctionType = "query" | "update"
 
 export interface DefaultActorType {
   [key: string]: ActorMethod<any, any>
@@ -25,8 +27,6 @@ export interface ActorManagerOptions {
   idlFactory: IDL.InterfaceFactory
   canisterId: CanisterId
   withDevtools?: boolean
-  withServiceFields?: boolean
-  withServiceDetails?: boolean
   initializeOnCreate?: boolean
 }
 
@@ -72,14 +72,3 @@ export type CallActorMethod<A = Record<string, ActorMethod>> = <
   functionName: M,
   ...args: ExtractActorMethodArgs<A[M]>
 ) => Promise<ExtractActorMethodReturnType<A[M]>>
-
-// Actions available on a ReActor
-export interface ActorActions<A extends ActorSubclass<any> = DefaultActorType> {
-  agentManager: AgentManager
-  actorStore: ActorStore<A>
-  methodFields: ExtractedServiceFields<A>
-  authenticate: () => Promise<void>
-  unsubscribeActor: () => void
-  updateMethodState: (newState: Partial<ActorState<A>["methodState"]>) => void
-  callMethod: CallActorMethod<A>
-}

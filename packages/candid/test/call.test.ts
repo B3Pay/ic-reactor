@@ -1,16 +1,19 @@
 import { randomBytes } from "crypto"
 import { idlFactory, backend } from "./candid/backend"
-import { AgentManager, ActorManager, IC_HOST_NETWORK_URI } from "../src"
+import { AgentManager, ActorManager, IC_HOST_NETWORK } from "../src"
 
 describe("My IC Store and Actions", () => {
   const agentManager = new AgentManager({
-    host: IC_HOST_NETWORK_URI,
+    host: IC_HOST_NETWORK,
   })
 
-  const { callMethod } = new ActorManager<typeof backend>({
+  const { callMethod, transformResult, serviceFields } = new ActorManager<
+    typeof backend
+  >({
     agentManager,
     idlFactory,
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+    withServiceFields: true,
   })
 
   it("should return the symmetric key verification key", async () => {
@@ -44,7 +47,10 @@ describe("My IC Store and Actions", () => {
 
   it("should transfrom", async () => {
     const data = await callMethod("anonymous_user_notes", publicKey)
-
+    console.log(
+      "serviceFields",
+      serviceFields?.methodFields.anonymous_user_notes
+    )
     expect(data).toBeDefined()
   })
 })

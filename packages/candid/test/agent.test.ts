@@ -1,8 +1,8 @@
-import { AgentManager, IC_HOST_NETWORK_URI } from "../src"
+import { AgentManager, IC_HOST_NETWORK } from "../src"
 
 describe("My IC Store and Actions", () => {
   const agentManager = new AgentManager({
-    host: IC_HOST_NETWORK_URI,
+    host: IC_HOST_NETWORK,
     withDevtools: false,
   })
 

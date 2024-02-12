@@ -2150,6 +2150,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ic-reactor/candid@workspace:packages/candid":
+  version: 0.0.0-use.local
+  resolution: "@ic-reactor/candid@workspace:packages/candid"
+  dependencies:
+    "@ic-reactor/store": "npm:0.5.3"
+    zustand: "npm:^4.4"
+  peerDependencies:
+    "@dfinity/agent": ^0.20
+    "@dfinity/auth-client": ^0.20
+    "@dfinity/candid": ^0.20
+  languageName: unknown
+  linkType: soft
+
 "@ic-reactor/core@npm:*, @ic-reactor/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
@@ -2184,7 +2197,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/store@npm:*, @ic-reactor/store@npm:^0.5.3, @ic-reactor/store@workspace:packages/store":
+"@ic-reactor/store@npm:*, @ic-reactor/store@npm:0.5.3, @ic-reactor/store@npm:^0.5.3, @ic-reactor/store@workspace:packages/store":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/store@workspace:packages/store"
   dependencies:

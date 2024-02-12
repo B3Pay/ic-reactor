@@ -1,9 +1,5 @@
 import { Actor } from "@dfinity/agent"
-import {
-  createStoreWithOptionalDevtools,
-  extractServiceDetails,
-  extractServiceFields,
-} from "../helper"
+import { createStoreWithOptionalDevtools } from "../helper"
 import type { ActorSubclass, HttpAgent } from "@dfinity/agent"
 import type {
   CanisterId,
@@ -14,17 +10,12 @@ import type {
   ActorMethodStates,
   ActorManagerOptions,
   DefaultActorType,
+  FunctionName,
 } from "./types"
-// import type { IDL } from "@dfinity/candid"
 import { IDL } from "@dfinity/candid"
 import type { AgentManager, UpdateAgentOptions } from "../agent"
-import { ExtractedServiceDetails } from "./candid/details"
-import { ExtractedServiceFields } from "./candid/fields"
-import { FunctionName } from "./candid"
-import { ExtractTableResult, MethodResult } from "./candid/result"
 
 export * from "./types"
-export * from "./candid"
 
 export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   private actor: null | A = null
@@ -33,11 +24,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   public agentManager: AgentManager
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
-
-  public withServiceFields: boolean = false
-  public withServiceDetails: boolean = false
-  public serviceFields?: ExtractedServiceFields<A>
-  public serviceDetails?: ExtractedServiceDetails<A>
+  public service: IDL.ServiceClass
 
   private DEFAULT_ACTOR_STATE: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
@@ -58,15 +45,12 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
       canisterId,
       idlFactory,
       withDevtools = false,
-      withServiceFields,
-      withServiceDetails,
       initializeOnCreate = true,
     } = reactorConfig
 
-    this.withServiceFields = withServiceFields || false
-    this.withServiceDetails = withServiceDetails || false
-
     this.agentManager = agentManager
+
+    this.service = idlFactory({ IDL })
 
     this.unsubscribeAgent = this.agentManager.subscribeAgent(
       this.initializeActor
@@ -74,13 +58,6 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
 
     this.canisterId = canisterId
     this.idlFactory = idlFactory
-
-    if (this.withServiceFields) {
-      this.serviceFields = extractServiceFields(idlFactory, canisterId)
-    }
-    if (this.withServiceDetails) {
-      this.serviceDetails = extractServiceDetails(idlFactory, canisterId)
-    }
 
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(
@@ -160,30 +137,6 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
     return data
   }
 
-  public transformResult = <M extends FunctionName<A>>(
-    methodName: M,
-    value: ExtractActorMethodReturnType<A[M]>
-  ): MethodResult<A, M>[] => {
-    const iface = this.serviceFields?.methodFields[methodName].returnTypes
-
-    if (!iface) {
-      throw new Error(`Method ${String(methodName)} not found`)
-    }
-
-    const classType = new ExtractTableResult<A, M>()
-
-    return iface.reduce((acc, type, index) => {
-      const field = type.accept(classType, {
-        label: `ret${index}`,
-        value: iface.length > 1 ? (value as any[])[index] : value,
-      })
-
-      acc.push(field)
-
-      return acc
-    }, [] as any[])
-  }
-
   public updateMethodState = (
     newState: Partial<ActorState<A>["methodState"]>
   ) => {
@@ -191,5 +144,9 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
       ...state,
       methodState: { ...state.methodState, ...newState },
     }))
+  }
+
+  public getActor = () => {
+    return this.actor
   }
 }

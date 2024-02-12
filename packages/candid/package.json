@@ -1,0 +1,46 @@
+{
+  "name": "@ic-reactor/candid",
+  "version": "0.5.3",
+  "description": "A React library for interacting with Dfinity actors",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:B3Pay/ic-reactor.git"
+  },
+  "keywords": [
+    "actor",
+    "react",
+    "candid",
+    "dfinity",
+    "web3",
+    "dapp"
+  ],
+  "author": "b3hr4d",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/b3hr4d/ic-reactor/issues"
+  },
+  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/store#readme",
+  "peerDependencies": {
+    "@dfinity/agent": "^0.20",
+    "@dfinity/auth-client": "^0.20",
+    "@dfinity/candid": "^0.20"
+  },
+  "dependencies": {
+    "@ic-reactor/store": "0.5.3",
+    "zustand": "^4.4"
+  },
+  "scripts": {
+    "test": "npx jest",
+    "start": "tsc watch",
+    "build": "npx tsc",
+    "clean": "npx rimraf dist"
+  },
+  "engines": {
+    "node": ">=10"
+  }
+}

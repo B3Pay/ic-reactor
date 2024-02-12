@@ -1,40 +1,30 @@
-import type {
-  ActorSubclass,
-  ActorManagerOptions,
-  DefaultActorType,
-} from "./actor/types"
-import type { AgentManagerOptions, HttpAgentOptions } from "./agent/types"
+import type { ActorSubclass, HttpAgentOptions } from "@dfinity/agent"
+import {
+  type AgentManager,
+  type DefaultActorType,
+  createAgentManager,
+} from "@ic-reactor/store"
+import { ActorCandidManager, type ActorCandidManagerOptions } from "./actor"
 
-import { ActorManager } from "./actor"
-import { AgentManager } from "./agent"
-
-export * from "./helper"
 export * from "./actor"
-export * from "./agent"
-
-export const createAgentManager = (
-  options: AgentManagerOptions
-): AgentManager => {
-  return new AgentManager(options)
-}
 
 export const createActorManager = <
   A extends ActorSubclass<any> = DefaultActorType
 >(
-  options: ActorManagerOptions
-): ActorManager<A> => {
-  return new ActorManager<A>(options)
+  options: ActorCandidManagerOptions
+): ActorCandidManager<A> => {
+  return new ActorCandidManager<A>(options)
 }
 
 export interface CreateReActorOptions
   extends HttpAgentOptions,
-    Omit<ActorManagerOptions, "agentManager"> {
+    Omit<ActorCandidManagerOptions, "agentManager"> {
   agentManager?: AgentManager
   isLocalEnv?: boolean
   port?: number
 }
 
-export const createReActorStore = <
+export const createReActorCandidStore = <
   A extends ActorSubclass<any> = DefaultActorType
 >({
   idlFactory,
@@ -43,7 +33,7 @@ export const createReActorStore = <
   initializeOnCreate = true,
   agentManager,
   ...agentOptions
-}: CreateReActorOptions): ActorManager<A> => {
+}: ActorCandidManagerOptions): ActorCandidManager<A> => {
   return createActorManager<A>({
     idlFactory,
     canisterId,

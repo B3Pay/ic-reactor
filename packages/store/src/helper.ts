@@ -1,15 +1,8 @@
 import { hash } from "@dfinity/agent"
-import { IDL, toHexString } from "@dfinity/candid"
+import { toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import {
-  ExtractFields,
-  ExtractedServiceFields,
-  ExtractedServiceDetails,
-} from "./actor/candid"
-
-import type { ActorSubclass, CanisterId, DefaultActorType } from "./actor/types"
-import { ExtractDetails } from "./actor/candid/details"
+import type { ActorSubclass } from "./actor/types"
 
 interface StoreOptions {
   withDevtools?: boolean
@@ -30,34 +23,6 @@ export function createStoreWithOptionalDevtools(
   } else {
     return createStore(() => initialState)
   }
-}
-
-export function extractServiceFields<
-  A extends ActorSubclass<any> = DefaultActorType
->(
-  idlFactory: IDL.InterfaceFactory,
-  name: CanisterId
-): ExtractedServiceFields<A> {
-  const canisterId = typeof name === "string" ? name : name.toString()
-  const methods = idlFactory({ IDL })
-
-  const extractor = new ExtractFields<A>()
-
-  return extractor.visitService(methods, canisterId)
-}
-
-export function extractServiceDetails<
-  A extends ActorSubclass<any> = DefaultActorType
->(
-  idlFactory: IDL.InterfaceFactory,
-  name: CanisterId
-): ExtractedServiceDetails<A> {
-  const canisterId = typeof name === "string" ? name : name.toString()
-  const methods = idlFactory({ IDL })
-
-  const extractor = new ExtractDetails<A>()
-
-  return extractor.visitService(methods, canisterId)
 }
 
 export function jsonToString(json: any) {

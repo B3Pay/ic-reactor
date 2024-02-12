@@ -39,25 +39,20 @@ describe("CreateActor", () => {
     withDevtools: false,
   })
 
+  const { callMethod, actorStore } = new ActorManager<_SERVICE>({
+    agentManager,
+    canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
+    idlFactory,
+  })
+
   const { subscribeAgent } = agentManager
 
   subscribeAgent(callback)
 
-  const { callMethod, initialize, actorStore } = new ActorManager<_SERVICE>({
-    agentManager,
-    canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
-    idlFactory,
-    initializeOnCreate: false,
-  })
-
   it("should initialized the actor", () => {
+    expect(actorStore.getState().initialized).toEqual(true)
+
     expect(callback).toHaveBeenCalledTimes(0)
-
-    expect(actorStore.getState().initialized).toEqual(false)
-
-    initialize()
-
-    expect(callback).toHaveBeenCalledTimes(1)
   })
 
   it("should queryCall the query method", async () => {
@@ -66,9 +61,13 @@ describe("CreateActor", () => {
     expect(data).toEqual(canisterDecodedReturnValue)
   })
 
+  it("should subscribe to the actor state", () => {
+    expect(callback).toHaveBeenCalledTimes(0)
+  })
+
   it("should authenticate the actor", async () => {
     await agentManager.authenticate()
 
-    expect(callback).toHaveBeenCalledTimes(2)
+    expect(callback).toHaveBeenCalledTimes(1)
   })
 })
