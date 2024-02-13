@@ -12,15 +12,9 @@ export interface ExtractedServiceFields<A = DefaultActorType> {
 }
 
 export type ServiceFields<A = DefaultActorType> = {
-  [K in FunctionName<A>]: MethodFields<A>
-}
-
-export type ServiceDefaultValues<A = DefaultActorType> = {
-  [K in FunctionName<A>]: MethodDefaultValues<K>
-}
-
-export type MethodDefaultValues<T = string> = {
-  [key: `arg${number}`]: FieldTypeFromIDLType<T>
+  [K in FunctionName<A>]: <ExtractorClass extends IDL.Visitor<any, any>>(
+    extractorClass?: ExtractorClass
+  ) => MethodFields<A>
 }
 
 export interface MethodFields<A = DefaultActorType> {
@@ -29,6 +23,14 @@ export interface MethodFields<A = DefaultActorType> {
   fields: AllFieldTypes<IDL.Type<any>>[] | []
   validate: (value: any) => boolean | string
   defaultValues: ServiceDefaultValues<A>
+}
+
+export type ServiceDefaultValues<A = DefaultActorType> = {
+  [K in FunctionName<A>]: MethodDefaultValues<K>
+}
+
+export type MethodDefaultValues<T = string> = {
+  [key: `arg${number}`]: FieldTypeFromIDLType<T>
 }
 
 export interface RecordFields<T extends IDL.Type> extends DefaultField {

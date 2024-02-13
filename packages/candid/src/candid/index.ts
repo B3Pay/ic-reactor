@@ -11,6 +11,7 @@ import type {
   ActorSubclass,
   DefaultActorType,
   FunctionName,
+  IDL,
 } from "@ic-reactor/store"
 import { ActorManager } from "@ic-reactor/store"
 import { ActorCandidManagerOptions } from "../types"
@@ -22,7 +23,8 @@ import {
   ExtractedServiceFields,
 } from "../candid"
 import { ExtractedServiceResults } from "./result/types"
-import { ExtractTableResult } from "./result"
+import { ExtractNormalResult } from "./result"
+import { ExtractedService } from "./types"
 
 export class ActorCandidManager<
   A extends ActorSubclass<any> = DefaultActorType
@@ -46,12 +48,32 @@ export class ActorCandidManager<
     this.serviceResult = this.extractServiceResult()
   }
 
+  public extractService<
+    A extends ActorSubclass<any> = DefaultActorType,
+    ExtractorClass extends IDL.Visitor<any, any> = IDL.Visitor<any, any>
+  >(extractor: ExtractorClass): ExtractedService {
+    return this.service._fields.reduce((acc, [functionName, type]) => {
+      acc[functionName as FunctionName<A>] = (extractorClass) => {
+        return type.accept(extractorClass || extractor, functionName as any)
+      }
+
+      return acc
+    }, {} as ExtractedService)
+  }
+
   public extractServiceFields<
     A extends ActorSubclass<any> = DefaultActorType
   >(): ExtractedServiceFields<A> {
     const extractor = new ExtractFields<A>()
 
-    return extractor.visitService(this.service, this.canisterId.toString())
+    const methodFields = this.extractService(
+      extractor
+    ) as unknown as ExtractedServiceFields<A>["methodFields"]
+
+    return {
+      canisterId: this.canisterId.toString(),
+      methodFields,
+    }
   }
 
   public extractServiceDetails<
@@ -59,28 +81,21 @@ export class ActorCandidManager<
   >(): ExtractedServiceDetails<A> {
     const extractor = new ExtractDetails<A>()
 
-    return this.service._fields.reduce(
-      (acc, [functionName, type]) => {
-        acc.methodDetails[functionName as FunctionName<A>] = (
-          extractorClass
-        ) => {
-          return type.accept(extractorClass || extractor, functionName as any)
-        }
+    const methodDetails = this.extractService(
+      extractor
+    ) as unknown as ExtractedServiceDetails<A>["methodDetails"]
 
-        return acc
-      },
-      {
-        canisterId: this.canisterId.toString(),
-        description: this.service.name,
-        methodDetails: {} as ExtractedServiceDetails<A>["methodDetails"],
-      } as ExtractedServiceDetails<A>
-    )
+    return {
+      canisterId: this.canisterId.toString(),
+      description: this.service.name,
+      methodDetails,
+    }
   }
 
   public extractServiceResult<
     A extends ActorSubclass<any> = DefaultActorType
   >(): ExtractedServiceResults<A> {
-    const extractor = new ExtractTableResult<A>()
+    const extractor = new ExtractNormalResult<A>()
 
     return this.service._fields.reduce(
       (acc, [functionName, type]) => {

@@ -43,9 +43,9 @@ export class ExtractFields<
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      const functionData = func.accept(this, functionName) as MethodFields<A>
-
-      acc[functionName] = functionData
+      acc[functionName] = (extractorClass) => {
+        return func.accept(extractorClass || this, functionName)
+      }
 
       return acc
     }, {} as ServiceFields<A>)

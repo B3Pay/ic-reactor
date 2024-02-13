@@ -1,12 +1,11 @@
-import { createReActorStore } from "../src"
+import { ExtractDetails, createReActorCandidStore } from "../src"
 import { idlFactory } from "./candid/b3system"
 
 describe("createReActorStore", () => {
-  const { actorStore, initialize, serviceFields } = createReActorStore({
+  const { actorStore, initialize, serviceFields } = createReActorCandidStore({
     canisterId: "2vxsx-fae",
     idlFactory,
     initializeOnCreate: false,
-    withServiceFields: true,
   })
 
   it("should return actor store", () => {
@@ -14,6 +13,9 @@ describe("createReActorStore", () => {
   })
 
   test("Uninitialized", () => {
+    const extractDetails = new ExtractDetails()
+    console.log(serviceFields.methodFields.get_app())
+    console.log(serviceFields.methodFields.get_app(extractDetails))
     expect(serviceFields).toBeDefined()
 
     const { methodState, initialized, initializing, error } =
