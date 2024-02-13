@@ -2,9 +2,39 @@ import type {
   DefaultActorType,
   ExtractActorMethodReturnType,
   FunctionName,
+  IDL,
   Principal,
 } from "@ic-reactor/store"
-import { ReturnDataType } from "../types"
+
+export type ReturnDataType =
+  | "record"
+  | "variant"
+  | "tuple"
+  | "optional"
+  | "vector"
+  | "recursive"
+  | "unknown"
+  | "text"
+  | "number"
+  | "principal"
+  | "boolean"
+  | "null"
+  | "blob"
+  | "url"
+  | "image"
+  | "table"
+
+export interface ExtractedServiceResults<A = DefaultActorType> {
+  canisterId: string
+  methodResult: ServiceResult<A>
+}
+
+export type ServiceResult<A = DefaultActorType> = {
+  [K in FunctionName<A>]: <ExtractorClass extends IDL.Visitor<any, any>>(
+    data: ResultArrayData<A>,
+    extractorClass?: ExtractorClass
+  ) => MethodResult<A>
+}
 
 export interface DynamicDataArgs<V = any> {
   label: string

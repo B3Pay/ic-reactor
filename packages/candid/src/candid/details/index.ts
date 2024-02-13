@@ -33,12 +33,9 @@ export class ExtractDetails<
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      const functionDetails = func.accept(
-        this,
-        functionName
-      ) as MethodDetails<A>
-
-      acc[functionName] = functionDetails
+      acc[functionName] = (extractorClass) => {
+        return func.accept(extractorClass || this, functionName)
+      }
 
       return acc
     }, {} as ServiceDetails<A>)

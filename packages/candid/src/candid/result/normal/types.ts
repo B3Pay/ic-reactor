@@ -2,7 +2,6 @@ import type {
   DefaultActorType,
   ExtractActorMethodReturnType,
   FunctionName,
-  IDL,
   Principal,
 } from "@ic-reactor/store"
 
@@ -22,11 +21,6 @@ export type ReturnDataType =
   | "blob"
   | "url"
   | "image"
-
-export interface ExtractedServiceResults<A = DefaultActorType> {
-  canisterId: string
-  methodResult: { [key in FunctionName<A>]: IDL.Type[] }
-}
 
 export interface DynamicDataArgs<V = any> {
   label: string
