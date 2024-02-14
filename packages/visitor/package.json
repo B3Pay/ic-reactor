@@ -1,5 +1,5 @@
 {
-  "name": "@ic-reactor/candid",
+  "name": "@ic-reactor/visitor",
   "version": "0.5.3",
   "description": "A React library for interacting with Dfinity actors",
   "main": "dist/index.js",
@@ -31,8 +31,7 @@
     "@dfinity/candid": "^0.20"
   },
   "dependencies": {
-    "@ic-reactor/store": "0.5.3",
-    "zustand": "^4.4"
+    "@ic-reactor/store": "0.5.3"
   },
   "scripts": {
     "test": "npx jest",

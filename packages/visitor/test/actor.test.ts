@@ -1,18 +1,14 @@
+import { createReActorStore } from "@ic-reactor/store"
 import {
   ExtractDetails,
   TransformNormal,
   RandomResponse,
-  createReActorCandidStore,
   ExtractFields,
 } from "../src"
 import { idlFactory } from "./candid/b3system"
 
 describe("createReActorStore", () => {
-  const {
-    actorStore,
-    initialize,
-    visitFunction: serviceFunction,
-  } = createReActorCandidStore({
+  const { actorStore, initialize, visitFunction } = createReActorStore({
     canisterId: "2vxsx-fae",
     idlFactory,
     initializeOnCreate: false,
@@ -23,20 +19,19 @@ describe("createReActorStore", () => {
   })
 
   test("Uninitialized", () => {
-    const field = serviceFunction.get_app(new ExtractFields())
+    const field = visitFunction.get_app(new ExtractFields())
     console.log(field)
-    const details = serviceFunction.get_app(new ExtractDetails())
+    const details = visitFunction.get_app(new ExtractDetails())
     console.log(details)
 
-    const value = serviceFunction.get_app(new RandomResponse())
+    const value = visitFunction.get_app(new RandomResponse())
     console.log(value)
 
-    const transform = serviceFunction.get_app(new TransformNormal(), {
+    const transform = visitFunction.get_app(new TransformNormal(), {
       value,
       label: "test",
     })
     console.log(transform)
-    expect(serviceFunction).toBeDefined()
 
     const { methodState, initialized, initializing, error } =
       actorStore.getState()

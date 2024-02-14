@@ -25,7 +25,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   public agentManager: AgentManager
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
-  public visitFunction?: ExtractedService<A>
+  public visitFunction = {} as ExtractedService<A>
 
   private DEFAULT_ACTOR_STATE: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
@@ -61,6 +61,14 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
 
     if (withVisitor) {
       this.visitFunction = this.extractService()
+    } else {
+      this.visitFunction = new Proxy({} as ExtractedService<A>, {
+        get: function (_, prop) {
+          throw new Error(
+            `Cannot access property ${String(prop)} without withVisitor`
+          )
+        },
+      })
     }
 
     // Initialize stores
