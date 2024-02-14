@@ -35,7 +35,8 @@
     "node": ">=10"
   },
   "dependencies": {
-    "@ic-reactor/candid": "^0.5.3",
+    "@ic-reactor/store": "^0.5.3",
+    "@ic-reactor/visitor": "^0.5.3",
     "zustand-utils": "^1.3"
   },
   "peerDependencies": {

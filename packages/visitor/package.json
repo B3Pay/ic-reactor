@@ -1,7 +1,7 @@
 {
   "name": "@ic-reactor/visitor",
   "version": "0.5.3",
-  "description": "A React library for interacting with Dfinity actors",
+  "description": "Visitor actor for ic-reactor",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
