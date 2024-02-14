@@ -22,6 +22,7 @@ export type ReturnDataType =
   | "blob"
   | "url"
   | "image"
+  | "normal"
   | "table"
 
 export interface ExtractedServiceResults<A = DefaultActorType> {

@@ -2,7 +2,7 @@ import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
 import { FunctionName } from "@ic-reactor/store"
 
-export class ExtractRandomArgs extends IDL.Visitor<any, any> {
+export class RandomArgs extends IDL.Visitor<any, any> {
   public generate(t: IDL.Type[], functionName: FunctionName): any {
     const defaultValue = t.reduce((acc, type, index) => {
       acc[`arg${index}`] = type.accept(this, false)

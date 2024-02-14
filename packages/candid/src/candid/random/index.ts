@@ -1,2 +1,2 @@
 export * from "./args"
-export * from "./returns"
+export * from "./response"

@@ -10,10 +10,29 @@ import type {
 
 export * from "./types"
 
-export class ExtractNormalResult<
+export class TransformNormal<
   A extends ActorSubclass<any> = DefaultActorType,
   M extends FunctionName<A> = FunctionName<A>
 > extends IDL.Visitor<DynamicDataArgs, MethodResult<A, M>> {
+  public visitFunc(
+    t: IDL.FuncClass,
+    { value, label }: DynamicDataArgs<any>
+  ): MethodResult<A, M> {
+    const values = t.argTypes.map((type, index, types) => {
+      return type.accept(this, {
+        label: `ret${index}`,
+        value: types.length > 1 ? (value as any[])[index] : value,
+      }) as MethodResult<A, M>
+    })
+
+    return {
+      type: "normal",
+      label,
+      description: t.name,
+      values,
+    }
+  }
+
   public visitRec<T>(
     _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,

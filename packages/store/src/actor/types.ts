@@ -26,8 +26,19 @@ export interface ActorManagerOptions {
   agentManager: AgentManager
   idlFactory: IDL.InterfaceFactory
   canisterId: CanisterId
+  withVisitor?: boolean
   withDevtools?: boolean
   initializeOnCreate?: boolean
+}
+
+export type ExtractedService<
+  A = DefaultActorType,
+  M extends FunctionName<A> = FunctionName<A>
+> = {
+  [K in M]: <Visitor extends IDL.Visitor<any, any>>(
+    extractorClass: Visitor,
+    data?: Parameters<Visitor["visitFunc"]>[1]
+  ) => ReturnType<Visitor["visitFunc"]>
 }
 
 // Utility types for extracting method arguments and return types

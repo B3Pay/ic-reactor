@@ -11,6 +11,7 @@ import type {
   ActorManagerOptions,
   DefaultActorType,
   FunctionName,
+  ExtractedService,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { AgentManager, UpdateAgentOptions } from "../agent"
@@ -24,7 +25,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   public agentManager: AgentManager
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
-  public service: IDL.ServiceClass
+  public visitFunction?: ExtractedService<A>
 
   private DEFAULT_ACTOR_STATE: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
@@ -44,13 +45,12 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
       agentManager,
       canisterId,
       idlFactory,
+      withVisitor = false,
       withDevtools = false,
       initializeOnCreate = true,
     } = reactorConfig
 
     this.agentManager = agentManager
-
-    this.service = idlFactory({ IDL })
 
     this.unsubscribeAgent = this.agentManager.subscribeAgent(
       this.initializeActor
@@ -58,6 +58,10 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
 
     this.canisterId = canisterId
     this.idlFactory = idlFactory
+
+    if (withVisitor) {
+      this.visitFunction = this.extractService()
+    }
 
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(
@@ -72,6 +76,19 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
 
   public initialize = async (options?: UpdateAgentOptions) => {
     await this.agentManager.updateAgent(options)
+  }
+
+  private extractService<M extends FunctionName<A>>(): ExtractedService<A, M> {
+    return this.idlFactory({ IDL })._fields.reduce(
+      (acc, [functionName, type]) => {
+        acc[functionName as M] = (extractorClass, data) => {
+          return type.accept(extractorClass, data || functionName)
+        }
+
+        return acc
+      },
+      {} as ExtractedService<A, M>
+    )
   }
 
   private initializeActor = (agent: HttpAgent) => {

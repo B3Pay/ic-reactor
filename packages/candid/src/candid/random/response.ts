@@ -1,15 +1,9 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
 
-export class ExtractRandomReturns extends IDL.Visitor<any, any> {
-  public generate(t: IDL.Type[]): any {
-    const defaultValue = t.reduce((acc, type) => {
-      acc.push(type.accept(this, null))
-
-      return acc
-    }, [] as any[])
-
-    return defaultValue
+export class RandomResponse extends IDL.Visitor<any, any> {
+  public visitFunc(t: IDL.FuncClass): any {
+    return t.retTypes.map((type) => type.accept(this, null))
   }
 
   public visitRecord(

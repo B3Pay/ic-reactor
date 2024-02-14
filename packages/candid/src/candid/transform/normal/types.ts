@@ -4,23 +4,7 @@ import type {
   FunctionName,
   Principal,
 } from "@ic-reactor/store"
-
-export type ReturnDataType =
-  | "record"
-  | "variant"
-  | "tuple"
-  | "optional"
-  | "vector"
-  | "recursive"
-  | "unknown"
-  | "text"
-  | "number"
-  | "principal"
-  | "boolean"
-  | "null"
-  | "blob"
-  | "url"
-  | "image"
+import { ReturnDataType } from "../types"
 
 export interface DynamicDataArgs<V = any> {
   label: string
