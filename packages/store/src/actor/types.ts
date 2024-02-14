@@ -31,14 +31,18 @@ export interface ActorManagerOptions {
   initializeOnCreate?: boolean
 }
 
+export type ExtractVisitorType<T> = T extends IDL.Visitor<infer U, infer V>
+  ? { data: U; return: V }
+  : never
+
 export type ExtractedService<
   A = DefaultActorType,
   M extends FunctionName<A> = FunctionName<A>
 > = {
-  [K in M]: <Visitor extends IDL.Visitor<any, any>>(
-    extractorClass: Visitor,
-    data?: Parameters<Visitor["visitFunc"]>[1]
-  ) => ReturnType<Visitor["visitFunc"]>
+  [K in M]: <V extends IDL.Visitor<any, any>>(
+    extractorClass: V,
+    data?: ExtractVisitorType<V>["data"]
+  ) => ReturnType<V["visitFunc"]>
 }
 
 // Utility types for extracting method arguments and return types

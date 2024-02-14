@@ -10,11 +10,11 @@ import { IDL } from "@dfinity/candid"
 import { isQuery } from "../helper"
 import { ActorSubclass } from "@dfinity/agent"
 import { DefaultActorType, FunctionName } from "@ic-reactor/store"
-import { FieldType } from "../../types"
+import { FieldType } from "../types"
 
 export * from "./types"
 
-export class ExtractDetails<
+export class VisitDetails<
   A extends ActorSubclass<any> = DefaultActorType
 > extends IDL.Visitor<
   string,
@@ -24,28 +24,6 @@ export class ExtractDetails<
   | FieldDetails
 > {
   public counter = 0
-
-  public visitService(
-    t: IDL.ServiceClass,
-    canisterId: string
-  ): ExtractedServiceDetails<A> {
-    const methodDetails = t._fields.reduce((acc, services) => {
-      const functionName = services[0] as FunctionName<A>
-      const func = services[1]
-
-      acc[functionName] = (extractorClass) => {
-        return func.accept(extractorClass || this, functionName)
-      }
-
-      return acc
-    }, {} as ServiceDetails<A>)
-
-    return {
-      canisterId,
-      description: t.name,
-      methodDetails,
-    }
-  }
 
   public visitFunc(
     t: IDL.FuncClass,
@@ -232,4 +210,26 @@ export class ExtractDetails<
   public visitFloat = this.visitNumber
   public visitFixedInt = this.visitNumber
   public visitFixedNat = this.visitNumber
+
+  public visitService(
+    t: IDL.ServiceClass,
+    canisterId: string
+  ): ExtractedServiceDetails<A> {
+    const methodDetails = t._fields.reduce((acc, services) => {
+      const functionName = services[0] as FunctionName<A>
+      const func = services[1]
+
+      acc[functionName] = (extractorClass) => {
+        return func.accept(extractorClass || this, functionName)
+      }
+
+      return acc
+    }, {} as ServiceDetails<A>)
+
+    return {
+      canisterId,
+      description: t.name,
+      methodDetails,
+    }
+  }
 }

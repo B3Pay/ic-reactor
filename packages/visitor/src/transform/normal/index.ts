@@ -10,7 +10,7 @@ import type {
 
 export * from "./types"
 
-export class TransformNormal<
+export class VisitTransform<
   A extends ActorSubclass<any> = DefaultActorType,
   M extends FunctionName<A> = FunctionName<A>
 > extends IDL.Visitor<DynamicDataArgs, MethodResult<A, M>> {

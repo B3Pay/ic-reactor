@@ -1,10 +1,16 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import { FunctionName } from "@ic-reactor/store"
+import {
+  ActorSubclass,
+  DefaultActorType,
+  FunctionName,
+} from "@ic-reactor/store"
 
-export class RandomArgs extends IDL.Visitor<any, any> {
-  public generate(t: IDL.Type[], functionName: FunctionName): any {
-    const defaultValue = t.reduce((acc, type, index) => {
+export class VisitRandomArgs<
+  A extends ActorSubclass<any> = DefaultActorType
+> extends IDL.Visitor<any, any> {
+  public visitFunc(t: IDL.FuncClass, functionName: FunctionName<A>) {
+    const defaultValue = t.argTypes.reduce((acc, type, index) => {
       acc[`arg${index}`] = type.accept(this, false)
 
       return acc

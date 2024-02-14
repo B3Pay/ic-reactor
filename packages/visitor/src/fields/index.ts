@@ -29,37 +29,17 @@ import {
 export * from "./types"
 export * from "../helper"
 
-export class ExtractFields<
-  A extends ActorSubclass<any> = DefaultActorType
+export class VisitFields<
+  A extends ActorSubclass<any> = DefaultActorType,
+  M extends FunctionName<A> = FunctionName<A>
 > extends IDL.Visitor<
   string,
-  ExtractedServiceFields<A> | MethodFields<A> | DefaultField
+  ExtractedServiceFields<A> | MethodFields<A, M> | DefaultField
 > {
-  public visitService(
-    t: IDL.ServiceClass,
-    canisterId: string
-  ): ExtractedServiceFields<A> {
-    const methodFields = t._fields.reduce((acc, services) => {
-      const functionName = services[0] as FunctionName<A>
-      const func = services[1]
-
-      acc[functionName] = (extractorClass) => {
-        return func.accept(extractorClass || this, functionName)
-      }
-
-      return acc
-    }, {} as ServiceFields<A>)
-
-    return {
-      canisterId,
-      methodFields,
-    }
-  }
-
-  public visitFunc(
+  public visitFunc<Method extends M>(
     t: IDL.FuncClass,
-    functionName: FunctionName<A>
-  ): MethodFields<A> {
+    functionName: Method
+  ): MethodFields<A, Method> {
     const functionType = isQuery(t) ? "query" : "update"
 
     const { fields, defaultValue } = t.argTypes.reduce(
@@ -77,13 +57,13 @@ export class ExtractFields<
       },
       {
         fields: [] as DynamicFieldTypeByClass<IDL.Type<any>>[],
-        defaultValue: {} as MethodDefaultValues<FunctionName<A>>,
+        defaultValue: {} as MethodDefaultValues<Method>,
       }
     )
 
     const defaultValues = {
       [functionName]: defaultValue,
-    } as ServiceDefaultValues<A>
+    } as ServiceDefaultValues<A, Method>
 
     return {
       functionType,
@@ -316,5 +296,26 @@ export class ExtractFields<
 
   public visitFixedNat(t: IDL.FixedNatClass, label: string): NumberField {
     return this.visitNumber(t, label)
+  }
+
+  public visitService(
+    t: IDL.ServiceClass,
+    canisterId: string
+  ): ExtractedServiceFields<A> {
+    const methodFields = t._fields.reduce((acc, services) => {
+      const functionName = services[0] as FunctionName<A>
+      const func = services[1]
+
+      acc[functionName] = (extractorClass) => {
+        return func.accept(extractorClass || this, functionName)
+      }
+
+      return acc
+    }, {} as ServiceFields<A>)
+
+    return {
+      canisterId,
+      methodFields,
+    }
   }
 }

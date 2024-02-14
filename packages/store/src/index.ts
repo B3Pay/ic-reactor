@@ -42,6 +42,7 @@ export const createReActorStore = <
   canisterId,
   withDevtools = false,
   initializeOnCreate = true,
+  withVisitor = false,
   agentManager,
   ...agentOptions
 }: CreateReActorOptions): ActorManager<A> => {
@@ -54,6 +55,7 @@ export const createReActorStore = <
         withDevtools,
         ...agentOptions,
       }),
+    withVisitor,
     withDevtools,
     initializeOnCreate,
   })

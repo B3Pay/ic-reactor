@@ -1,20 +1,37 @@
+import {
+  VisitDetails,
+  VisitRandomResponse,
+  VisitTransform,
+} from "../../visitor/src"
 import { createReActorStore } from "../src"
-import { idlFactory } from "./candid/b3system"
+import { b3system, idlFactory } from "./candid/b3system"
+
+type B3System = typeof b3system
 
 describe("createReActorStore", () => {
-  const { actorStore, initialize, getActor, service } = createReActorStore({
-    canisterId: "2vxsx-fae",
-    idlFactory,
-    initializeOnCreate: false,
-  })
+  const { actorStore, initialize, getActor, visitFunction } =
+    createReActorStore<B3System>({
+      canisterId: "2vxsx-fae",
+      idlFactory,
+      initializeOnCreate: false,
+      withVisitor: true,
+    })
 
   it("should return actor store", () => {
     expect(actorStore).toBeDefined()
-    expect(service).toBeDefined()
+    expect(visitFunction).toBeDefined()
     expect(getActor()).toBeNull()
   })
 
   test("Uninitialized", () => {
+    const value = visitFunction.get_app(new VisitRandomResponse<B3System>())
+    const data = visitFunction.get_app(new VisitTransform<B3System>(), {
+      value,
+      label: "app",
+    })
+
+    console.log(data.values?.[0].value)
+
     const { methodState, initialized, initializing, error } =
       actorStore.getState()
 

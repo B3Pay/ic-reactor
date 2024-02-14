@@ -4,7 +4,7 @@ import {
   FunctionType,
   IDL,
 } from "@ic-reactor/store"
-import { FieldType } from "../../types"
+import { FieldType } from "../types"
 
 export type FunctionCategory = "home" | "wallet" | "governance" | "setting"
 

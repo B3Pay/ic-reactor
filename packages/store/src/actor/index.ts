@@ -80,16 +80,16 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
     await this.agentManager.updateAgent(options)
   }
 
-  private extractService<M extends FunctionName<A>>(): ExtractedService<A, M> {
+  public extractService(): ExtractedService<A> {
     return this.idlFactory({ IDL })._fields.reduce(
       (acc, [functionName, type]) => {
-        acc[functionName as M] = (extractorClass, data) => {
+        acc[functionName as FunctionName<A>] = (extractorClass, data) => {
           return type.accept(extractorClass, data || functionName)
         }
 
         return acc
       },
-      {} as ExtractedService<A, M>
+      {} as ExtractedService<A>
     )
   }
 
@@ -170,7 +170,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   }
 }
 
-const emptyVisitor = new Proxy({} as ExtractedService, {
+const emptyVisitor = new Proxy({} as ExtractedService<any>, {
   get: function (_, prop) {
     throw new Error(
       `Cannot visit function "${String(

@@ -8,7 +8,7 @@ import type {
   Principal,
 } from "@ic-reactor/store"
 
-export class TransformTable<
+export class VisitTransformTable<
   A extends ActorSubclass<any> = DefaultActorType,
   M extends FunctionName<A> = FunctionName<A>
 > extends IDL.Visitor<DynamicDataArgs, MethodResult<A, M>> {

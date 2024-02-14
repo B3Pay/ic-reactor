@@ -1,8 +1,19 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
+import { ActorSubclass } from "@dfinity/agent"
+import {
+  DefaultActorType,
+  ExtractActorMethodReturnType,
+  FunctionName,
+} from "@ic-reactor/store"
 
-export class RandomResponse extends IDL.Visitor<any, any> {
-  public visitFunc(t: IDL.FuncClass): any {
+export class VisitRandomResponse<
+  A extends ActorSubclass<any> = DefaultActorType,
+  M extends FunctionName<A> = FunctionName<A>
+> extends IDL.Visitor<any, ExtractActorMethodReturnType<A[M]>[] | any> {
+  public visitFunc<Method extends M>(
+    t: IDL.FuncClass
+  ): ExtractActorMethodReturnType<A[Method]>[] {
     return t.retTypes.map((type) => type.accept(this, null))
   }
 
@@ -11,13 +22,10 @@ export class RandomResponse extends IDL.Visitor<any, any> {
     fields: [string, IDL.Type<any>][],
     isRecursive: boolean
   ): any {
-    const result: { [key: string]: any } = {}
-
-    fields.forEach(([key, type]) => {
-      result[key] = type.accept(this, isRecursive)
-    })
-
-    return result
+    return fields.reduce((acc, [key, type]) => {
+      acc[key] = type.accept(this, isRecursive)
+      return acc
+    }, {} as Record<string, any>)
   }
 
   public visitVariant(

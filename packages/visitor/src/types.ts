@@ -1,0 +1,13 @@
+export type FieldType =
+  | "record"
+  | "variant"
+  | "tuple"
+  | "optional"
+  | "vector"
+  | "recursive"
+  | "unknown"
+  | "text"
+  | "number"
+  | "principal"
+  | "boolean"
+  | "null"

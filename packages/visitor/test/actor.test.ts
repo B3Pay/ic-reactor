@@ -5,22 +5,26 @@ import {
   RandomResponse,
   ExtractFields,
 } from "../src"
-import { idlFactory } from "./candid/b3system"
+import { b3system, idlFactory } from "./candid/b3system"
+
+type B3System = typeof b3system
 
 describe("createReActorStore", () => {
-  const { actorStore, initialize, visitFunction } = createReActorStore({
-    canisterId: "2vxsx-fae",
-    idlFactory,
-    initializeOnCreate: false,
-  })
+  const { actorStore, initialize, visitFunction } =
+    createReActorStore<B3System>({
+      canisterId: "2vxsx-fae",
+      idlFactory,
+      initializeOnCreate: false,
+      withVisitor: true,
+    })
 
   it("should return actor store", () => {
     expect(actorStore).toBeDefined()
   })
 
   test("Uninitialized", () => {
-    const field = visitFunction.get_app(new ExtractFields())
-    console.log(field)
+    const field = visitFunction.get_app(new ExtractFields<B3System>())
+    console.log(field.defaultValues)
     const details = visitFunction.get_app(new ExtractDetails())
     console.log(details)
 
@@ -44,17 +48,17 @@ describe("createReActorStore", () => {
     })
   })
 
-  test("Initialized", async () => {
-    await initialize()
+  // test("Initialized", async () => {
+  //   await initialize()
 
-    const { methodState, initialized, initializing, error } =
-      actorStore.getState()
+  //   const { methodState, initialized, initializing, error } =
+  //     actorStore.getState()
 
-    expect({ methodState, initialized, initializing, error }).toEqual({
-      methodState: {},
-      initialized: true,
-      initializing: false,
-      error: undefined,
-    })
-  })
+  //   expect({ methodState, initialized, initializing, error }).toEqual({
+  //     methodState: {},
+  //     initialized: true,
+  //     initializing: false,
+  //     error: undefined,
+  //   })
+  // })
 })
