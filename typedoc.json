@@ -1,0 +1,10 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["./packages/*"],
+  "entryPointStrategy": "packages",
+  "name": "IC ReActor",
+  "plugin": ["@mxssfd/typedoc-theme", "typedoc-plugin-mdn-links"],
+  "defaultCategory": "Other",
+  "githubPages": true,
+  "out": "docs"
+}

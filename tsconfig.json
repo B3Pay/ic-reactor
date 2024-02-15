@@ -8,5 +8,13 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "exclude": ["**/*.spec.ts", ".next", "dist", "test", "out", "node_modules"]
+  "exclude": [
+    "**/*.spec.ts",
+    "examples",
+    ".next",
+    "dist",
+    "test",
+    "out",
+    "node_modules"
+  ]
 }

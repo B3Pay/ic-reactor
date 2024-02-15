@@ -1,15 +1,7 @@
-import type {
-  ActorMethod,
-  ActorSubclass,
-  HttpAgent,
-  Identity,
-} from "@dfinity/agent"
 import type { IDL } from "@dfinity/candid"
-import type { Principal } from "@dfinity/principal"
 import type { StoreApi } from "zustand"
 import type { AgentManager } from "../agent"
-
-export type { ActorMethod, IDL, ActorSubclass, Principal, HttpAgent, Identity }
+import type { ActorMethod, ActorSubclass, Principal } from "../types"
 
 export type FunctionName<A = DefaultActorType> = keyof A & string
 

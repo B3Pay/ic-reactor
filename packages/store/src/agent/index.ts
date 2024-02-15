@@ -34,18 +34,20 @@ export class AgentManager {
     this.authStore.setState((state) => ({ ...state, ...newState }))
   }
 
-  constructor({
-    withDevtools,
-    port = 4943,
-    isLocalEnv,
-    ...options
-  }: AgentManagerOptions) {
+  constructor(options?: AgentManagerOptions) {
+    const {
+      withDevtools,
+      port = 4943,
+      isLocalEnv,
+      host: optionHost,
+      ...agentOptions
+    } = options || {}
     const host = isLocalEnv
       ? `http://127.0.0.1:${port}`
-      : options.host
-      ? options.host.includes("localhost")
-        ? options.host.replace("localhost", "127.0.0.1")
-        : options.host
+      : optionHost
+      ? optionHost.includes("localhost")
+        ? optionHost.replace("localhost", "127.0.0.1")
+        : optionHost
       : IC_HOST_NETWORK_URI
 
     this.authStore = createStoreWithOptionalDevtools(this.DEFAULT_AUTH_STATE, {
@@ -53,7 +55,7 @@ export class AgentManager {
       store: "auth",
     })
 
-    this.agent = new HttpAgent({ ...options, host })
+    this.agent = new HttpAgent({ ...agentOptions, host })
     this.isLocalEnv = this.agent.isLocal()
     this.initializeAgent()
   }

@@ -10,13 +10,12 @@ import { b3system, idlFactory } from "./candid/b3system"
 type B3System = typeof b3system
 
 describe("createReActorStore", () => {
-  const { actorStore, initialize, visitFunction } =
-    createReActorStore<B3System>({
-      canisterId: "2vxsx-fae",
-      idlFactory,
-      initializeOnCreate: false,
-      withVisitor: true,
-    })
+  const { actorStore, visitFunction } = createReActorStore<B3System>({
+    canisterId: "2vxsx-fae",
+    idlFactory,
+    initializeOnCreate: false,
+    withVisitor: true,
+  })
 
   it("should return actor store", () => {
     expect(actorStore).toBeDefined()

@@ -1,11 +1,12 @@
 import { createReActor } from "../src"
-
-const mockActor = () => {}
+import { idlFactory } from "./candid/backend"
 
 describe("createReActor", () => {
   test("uninitialized", () => {
-    const { actorStore } = createReActor(mockActor, {
-      initializeOnMount: false,
+    const { actorStore } = createReActor({
+      initializeOnCreate: false,
+      canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+      idlFactory: idlFactory,
       host: "https://icp-api.io",
     })
 
@@ -19,7 +20,12 @@ describe("createReActor", () => {
   })
 
   test("initialized", () => {
-    const { initialize, actorStore } = createReActor(mockActor)
+    const { initialize, actorStore } = createReActor({
+      initializeOnCreate: false,
+      canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+      idlFactory: idlFactory,
+      host: "https://icp-api.io",
+    })
 
     initialize()
 

@@ -27,13 +27,3 @@ export interface UpdateAgentOptions extends HttpAgentOptions {
 
 // Type for the ReActor store
 export type AgentAuthStore = StoreApi<AgentAuthState>
-
-// Actions available on a ReActor
-export interface AgentActions {
-  getAgent: () => HttpAgent
-  updateAgent: (agent: HttpAgent) => void
-  authStore: AgentAuthStore
-  authenticate: () => Promise<void>
-  subscribeAgent: (callback: (agent: HttpAgent) => void) => () => void
-  unsubscribeAgent: (callback: (agent: HttpAgent) => void) => void
-}

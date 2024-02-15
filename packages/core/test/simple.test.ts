@@ -1,17 +1,15 @@
 import { randomBytes } from "crypto"
 import { createReActor } from "../src"
-import { createActor } from "./candid/backend"
+import { idlFactory } from "./candid/backend"
 
 describe("My IC Store and Actions", () => {
-  const { queryCall, updateCall } = createReActor(
-    (agent) => createActor("xeka7-ryaaa-aaaal-qb57a-cai", { agent }),
-    {
-      host: "https://icp-api.io",
-    }
-  )
+  const { queryCall, updateCall } = createReActor({
+    canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+    idlFactory,
+  })
 
   it("should return the symmetric key verification key", async () => {
-    const { initialData, subscribe } = queryCall({
+    const { initialData } = queryCall({
       functionName: "symmetric_key_verification_key",
     })
 
@@ -24,12 +22,12 @@ describe("My IC Store and Actions", () => {
     const mockData = Uint8Array.from(Array(48).fill(0))
     const publicKey = Uint8Array.from(randomBytes(48))
 
-    const { call, getState } = updateCall({
+    const { call: save_encrypted_text, getState } = updateCall({
       functionName: "save_encrypted_text",
       args: [mockData, [publicKey]],
     })
 
-    const index = await call()
+    const index = await save_encrypted_text()
 
     expect(index).toBeDefined()
 
@@ -38,7 +36,7 @@ describe("My IC Store and Actions", () => {
     expect(stateIndex).toEqual(index)
 
     const {
-      recall,
+      call,
       initialData,
       getState: newGetState,
     } = queryCall({
@@ -52,7 +50,7 @@ describe("My IC Store and Actions", () => {
 
     expect(newGetState("loading")).toEqual(false)
 
-    const data = await recall()
+    const data = await call()
 
     expect(data).toBeDefined()
   })

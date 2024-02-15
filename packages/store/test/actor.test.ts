@@ -1,12 +1,12 @@
 import { VisitRandomResponse, VisitTransform } from "../../visitor/src"
 import { createReActorStore } from "../src"
-import { b3system, idlFactory } from "./candid/b3system"
+import { example, idlFactory } from "./candid/example"
 
-type B3System = typeof b3system
+type Example = typeof example
 
 describe("createReActorStore", () => {
   const { actorStore, initialize, getActor, visitFunction } =
-    createReActorStore<B3System>({
+    createReActorStore<Example>({
       canisterId: "2vxsx-fae",
       idlFactory,
       initializeOnCreate: false,
@@ -20,8 +20,8 @@ describe("createReActorStore", () => {
   })
 
   test("Uninitialized", () => {
-    const value = visitFunction.get_app(new VisitRandomResponse())
-    const data = visitFunction.get_app(new VisitTransform(), {
+    const value = visitFunction.get_app(new VisitRandomResponse<Example>())
+    const data = visitFunction.get_app(new VisitTransform<Example>(), {
       value,
       label: "app",
     })
