@@ -8,7 +8,8 @@
     "clean": "lerna run clean",
     "lerna-publish": "yarn clean && yarn build && lerna publish",
     "test": "lerna run test",
-    "e2e": "cd e2e && sh ./test.sh"
+    "e2e": "cd e2e && sh ./test.sh",
+    "docsMono": "typedoc-pkg --path packages --mono-repo"
   },
   "devDependencies": {
     "@babel/core": "7.23",
@@ -27,6 +28,7 @@
     "@types/react": "18.2",
     "@types/react-test-renderer": "^18.0",
     "@types/xmlhttprequest": "^1",
+    "@typhonjs-typedoc/typedoc-pkg": "^0.0.3",
     "fake-indexeddb": "5.0.1",
     "jest": "29.7",
     "jest-fetch-mock": "^3.0",
@@ -39,6 +41,8 @@
     "svelte-jester": "3.0",
     "text-encoding": "0.7.0",
     "ts-jest": "29.1",
+    "typedoc": "^0.25.8",
+    "typedoc-theme-category-nav": "^0.0.3",
     "typescript": "^5.3",
     "whatwg-fetch": "3.6",
     "xmlhttprequest": "^1.8"
@@ -53,6 +57,20 @@
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "typeDocOptions": {
+    "plugin": [
+      "@typhonjs-typedoc/typedoc-theme-dmt"
+    ],
+    "theme": "default",
+    "dmtLinksService": {
+      "GitHub": "https://github.com/B3Pay/ic-reactor"
+    },
+    "dmtNavigation": {},
+    "dmtSearch": {
+      "fullName": false,
+      "limit": 10
+    }
   },
   "workspaces": [
     "packages/*",

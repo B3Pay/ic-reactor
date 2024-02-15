@@ -1,8 +1,4 @@
-import {
-  VisitDetails,
-  VisitRandomResponse,
-  VisitTransform,
-} from "../../visitor/src"
+import { VisitRandomResponse, VisitTransform } from "../../visitor/src"
 import { createReActorStore } from "../src"
 import { b3system, idlFactory } from "./candid/b3system"
 

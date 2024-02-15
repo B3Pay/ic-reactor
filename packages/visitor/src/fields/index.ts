@@ -20,7 +20,7 @@ import type {
 } from "./types"
 import { isQuery, validateError, validateNumberError } from "../helper"
 import { IDL } from "@dfinity/candid"
-import {
+import type {
   ActorSubclass,
   DefaultActorType,
   FunctionName,
