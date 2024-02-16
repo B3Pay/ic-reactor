@@ -3,7 +3,7 @@ name: Deploy Docs to GitHub Pages
 on:
   push:
     branches:
-      - main # Or your default branch
+      - main
 
 jobs:
   build-and-deploy:
@@ -21,13 +21,13 @@ jobs:
         run: npm install -g yarn
 
       - name: Install dependencies
-        run: yarn install --ignore-optional --frozen-lockfile
+        run: yarn install --frozen-lockfile
 
       - name: Generate Documentation
         run: yarn docs
 
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@4.1.4
+        uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
-          branch: gh-pages
+          branch: main
           folder: docs
