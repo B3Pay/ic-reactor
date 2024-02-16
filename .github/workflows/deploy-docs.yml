@@ -21,10 +21,10 @@ jobs:
         run: npm install -g yarn
 
       - name: Install dependencies
-        run: yarn install --ignore-optional --verbose
+        run: yarn install --ignore-optional --frozen-lockfile
 
       - name: Generate Documentation
-        run: npx typedoc
+        run: yarn docs
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@4.1.4
