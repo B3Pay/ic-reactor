@@ -16,3 +16,4 @@ yarn-error.log
 pulled.json
 examples/*/deps/candid
 docs
+.nx

@@ -26,12 +26,12 @@
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/store#readme",
   "peerDependencies": {
-    "@dfinity/agent": "^0.20",
-    "@dfinity/auth-client": "^0.20",
-    "@dfinity/candid": "^0.20"
+    "@dfinity/agent": "1.0",
+    "@dfinity/auth-client": "^1.0",
+    "@dfinity/candid": "1.0"
   },
   "dependencies": {
-    "zustand": "^4.4"
+    "zustand": "^4.5"
   },
   "scripts": {
     "test": "npx jest",
