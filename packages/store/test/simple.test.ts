@@ -1,4 +1,4 @@
-import { createReActorStore } from "@ic-reactor/store"
+import { createReActorStore } from "../src"
 import { example, canisterId, idlFactory } from "./candid/example"
 
 type Example = typeof example
