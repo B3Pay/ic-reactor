@@ -1,40 +1,36 @@
-import { Actor, CanisterStatus } from "@dfinity/agent"
+import { Actor, CanisterStatus, HttpAgent } from "@dfinity/agent"
 import { IDL } from "@dfinity/candid"
 import { Principal } from "@dfinity/principal"
 import { CanisterId } from "../actor"
-import { AgentManager } from "../agent"
-
-export interface CandidAdapterOptions {
-  agentManager: AgentManager
-  didjsCanisterId?: string
-}
-
-export interface Defenition {
-  idlFactory: IDL.InterfaceFactory
-  init: ({ IDL }: { IDL: any }) => never[]
-}
+import { CandidAdapterOptions, CandidDefenition } from "./types"
 
 export class CandidAdapter {
-  public agentManager: AgentManager
+  public agent: HttpAgent
   public didjsCanisterId: string
 
-  constructor({ agentManager, didjsCanisterId }: CandidAdapterOptions) {
-    this.agentManager = agentManager
+  constructor({ agentManager, agent, didjsCanisterId }: CandidAdapterOptions) {
+    if (agent) {
+      this.agent = agent
+    } else if (agentManager) {
+      this.agent = agentManager.getAgent()
+      agentManager.subscribeAgent((agent) => {
+        this.agent = agent
+        this.didjsCanisterId = didjsCanisterId || this.getDefaultDidJsId()
+      })
+    } else {
+      throw new Error("No agent or agentManager provided")
+    }
 
     this.didjsCanisterId = didjsCanisterId || this.getDefaultDidJsId()
-
-    this.agentManager.subscribeAgent(() => {
-      this.didjsCanisterId = didjsCanisterId || this.getDefaultDidJsId()
-    })
   }
 
   private getDefaultDidJsId() {
-    return this.agentManager.isLocalEnv
+    return this.agent.isLocal()
       ? "bd3sg-teaaa-aaaaa-qaaba-cai"
       : "a4gq6-oaaaa-aaaab-qaa4q-cai"
   }
 
-  async getCandidDefinition(canisterId: CanisterId): Promise<Defenition> {
+  async getCandidDefinition(canisterId: CanisterId): Promise<CandidDefenition> {
     try {
       // First attempt: Try getting Candid definition from metadata
       const fromMetadata = await this.getFromMetadata(canisterId)
@@ -55,15 +51,13 @@ export class CandidAdapter {
 
   async getFromMetadata(
     canisterId: CanisterId
-  ): Promise<Defenition | undefined> {
+  ): Promise<CandidDefenition | undefined> {
     if (typeof canisterId === "string") {
       canisterId = Principal.fromText(canisterId)
     }
 
-    const agent = this.agentManager.getAgent()
-
     const status = await CanisterStatus.request({
-      agent,
+      agent: this.agent,
       canisterId,
       paths: ["candid"],
     })
@@ -74,16 +68,14 @@ export class CandidAdapter {
 
   async getFromTmpHack(
     canisterId: CanisterId
-  ): Promise<Defenition | undefined> {
+  ): Promise<CandidDefenition | undefined> {
     const commonInterface: IDL.InterfaceFactory = ({ IDL }) =>
       IDL.Service({
         __get_candid_interface_tmp_hack: IDL.Func([], [IDL.Text], ["query"]),
       })
 
-    const agent = this.agentManager.getAgent()
-
     const actor = Actor.createActor(commonInterface, {
-      agent,
+      agent: this.agent,
       canisterId,
     })
 
@@ -93,16 +85,14 @@ export class CandidAdapter {
     return data ? this.didTojs(data) : undefined
   }
 
-  async didTojs(candidSource: string): Promise<Defenition> {
+  async didTojs(candidSource: string): Promise<CandidDefenition> {
     const didjsInterface: IDL.InterfaceFactory = ({ IDL }) =>
       IDL.Service({
         did_to_js: IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ["query"]),
       })
 
-    const agent = this.agentManager.getAgent()
-
     const didjs = Actor.createActor(didjsInterface, {
-      agent,
+      agent: this.agent,
       canisterId: this.didjsCanisterId,
     })
 

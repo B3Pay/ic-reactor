@@ -40,7 +40,7 @@ export const useActorManager = <
     ...rest
   } = useDidJs({
     canisterId,
-    didjsId: didjsId,
+    didjsCanisterId: didjsId,
     idlFactory: maybeIdlFactory,
   })
 

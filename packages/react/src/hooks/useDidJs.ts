@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react"
-import { CandidManager } from "@ic-reactor/store"
+import { createCandidAdapter } from "@ic-reactor/store"
 import type { IDL } from "@dfinity/candid"
 import { useAgent } from "../context/agent"
 
@@ -20,11 +20,15 @@ const DEFAULT_STATE: IDLFactoryState = {
 
 interface UseIDLFactoryArgs {
   canisterId: string
-  didjsId?: string
+  didjsCanisterId?: string
   idlFactory?: IDL.InterfaceFactory
 }
 
-const useDidJs = ({ canisterId, didjsId, idlFactory }: UseIDLFactoryArgs) => {
+const useDidJs = ({
+  canisterId,
+  didjsCanisterId,
+  idlFactory,
+}: UseIDLFactoryArgs) => {
   const [{ didJs, fetchError, fetching }, setDidJs] = useState<IDLFactoryState>(
     {
       ...DEFAULT_STATE,
@@ -47,30 +51,15 @@ const useDidJs = ({ canisterId, didjsId, idlFactory }: UseIDLFactoryArgs) => {
     }))
 
     try {
-      const candidManager = new CandidManager(agent, didjsId)
-      let fetchedDidJs = await candidManager
-        .getFromMetadata(canisterId)
-        .catch(() => null)
+      const candidManager = createCandidAdapter({ agent, didjsCanisterId })
 
-      if (!fetchedDidJs) {
-        fetchedDidJs = await candidManager
-          .getFromTmpHack(canisterId)
-          .catch(() => null)
-      }
+      let fetchedDidJs = await candidManager.getCandidDefinition(canisterId)
 
-      if (fetchedDidJs) {
-        setDidJs({
-          didJs: fetchedDidJs,
-          fetching: false,
-          fetchError: null,
-        })
-      } else {
-        setDidJs((prevState) => ({
-          ...prevState,
-          fetchError: `Candid not found for canister ${canisterId}`,
-          fetching: false,
-        }))
-      }
+      setDidJs({
+        didJs: fetchedDidJs,
+        fetching: false,
+        fetchError: null,
+      })
 
       return fetchedDidJs
     } catch (err) {
@@ -81,7 +70,7 @@ const useDidJs = ({ canisterId, didjsId, idlFactory }: UseIDLFactoryArgs) => {
         fetching: false,
       }))
     }
-  }, [canisterId, didjsId, agent])
+  }, [canisterId, didjsCanisterId, agent])
 
   useEffect(() => {
     if (!fetching && !idlFactory) {
