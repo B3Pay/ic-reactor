@@ -3,8 +3,24 @@
   "entryPoints": ["./packages/*"],
   "entryPointStrategy": "packages",
   "name": "IC ReActor",
-  "plugin": ["@mxssfd/typedoc-theme", "typedoc-plugin-mdn-links"],
+  "customTitle": "IC ReActor",
+  "navigationLinks": {
+    "NPM": "https://www.npmjs.com/org/ic-reactor",
+    "GitHub": "https://github.com/B3Pay/ic-reactor"
+  },
+  "sidebarLinks": {
+    "Store": "modules/_ic_reactor_store",
+    "IC ReActor Examples": "https://github.com/B3Pay/ic-reactor/tree/main/examples"
+  },
+  "favicon": "./ic-reactor.png",
+  "footerLastModified": true,
+  "customDescription": "A library for seamless communication between Internet Computer Actors and the frontend.",
+  "plugin": [
+    "@mxssfd/typedoc-theme",
+    "typedoc-plugin-include-example",
+    "typedoc-plugin-mdn-links",
+    "typedoc-plugin-extras"
+  ],
   "defaultCategory": "Other",
-  "githubPages": true,
   "out": "docs"
 }

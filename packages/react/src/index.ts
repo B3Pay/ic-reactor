@@ -1,33 +1,23 @@
-import {
-  createReActorStore,
-  type ActorSubclass,
-  type DefaultActorType,
-} from "@ic-reactor/store"
-import {
-  createReActorCandidStore,
-  CreateReActorCandidOptions,
-  ActorCandidManager,
-} from "@ic-reactor/candid"
+import { type ActorSubclass, type DefaultActorType } from "@ic-reactor/store"
+import { createReActorStore, CreateReActorOptions } from "@ic-reactor/store"
 import { getActorHooks } from "./hooks/actor"
 import { getAuthHooks } from "./hooks/auth"
 import { CreateReActor } from "./types"
 
-export * from "@ic-reactor/candid"
+export * from "@ic-reactor/store"
 
 export * from "./context/agent"
 export * from "./context/actor"
 
-export interface CreateReactActorOptions extends CreateReActorCandidOptions {
-  withServiceFields?: boolean
-  withServiceDetails?: boolean
+export interface CreateReactActorOptions extends CreateReActorOptions {
+  withVisitor?: boolean
 }
 
 export const createReActor: CreateReActor = <
   A extends ActorSubclass<any> = DefaultActorType
 >({
   isLocalEnv,
-  withServiceFields,
-  withServiceDetails,
+  withVisitor,
   ...options
 }: CreateReactActorOptions) => {
   isLocalEnv =
@@ -36,38 +26,19 @@ export const createReActor: CreateReActor = <
       (process.env.DFX_NETWORK === "local" ||
         process.env.NODE_ENV === "development"))
 
-  let actorManager: ActorCandidManager<A>
+  let actorManager = createReActorStore<A>({
+    isLocalEnv,
+    ...options,
+  })
 
-  if (withServiceFields || withServiceDetails) {
-    actorManager = createReActorCandidStore<A>({
-      isLocalEnv,
-      ...options,
-    })
-  } else {
-    actorManager = createReActorStore<A>({
-      isLocalEnv,
-      ...options,
-    }) as unknown as ActorCandidManager<A>
-  }
-
-  const getServiceFields = () => {
-    if (!withServiceFields || !actorManager.serviceFields) {
+  const getVisitFunction = () => {
+    if (!withVisitor) {
       throw new Error(
-        "Service fields not initialized. Pass `withServiceFields` to initialize service fields."
+        "Service fields not initialized. Pass `withVisitor` to initialize service fields."
       )
     }
 
-    return actorManager.serviceFields
-  }
-
-  const getServiceDetails = () => {
-    if (!withServiceDetails || !actorManager.serviceDetails) {
-      throw new Error(
-        "Service details not initialized. Pass `withServiceDetails` to initialize service details."
-      )
-    }
-
-    return actorManager.serviceDetails
+    return actorManager.visitFunction
   }
 
   const getAgent = () => {
@@ -79,9 +50,8 @@ export const createReActor: CreateReActor = <
 
   return {
     getAgent,
-    getServiceFields,
-    getServiceDetails,
+    getVisitFunction,
     ...actorHooks,
     ...authHooks,
-  } as any
+  }
 }

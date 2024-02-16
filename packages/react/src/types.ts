@@ -5,7 +5,7 @@ import type {
   ServiceDetails,
   MethodDetails,
   MethodResult,
-} from "@ic-reactor/candid"
+} from "@ic-reactor/visitor"
 import type {
   ActorState,
   CanisterId,
@@ -17,6 +17,7 @@ import type {
   Principal,
   FunctionType,
   FunctionName,
+  ExtractedService,
 } from "@ic-reactor/store"
 import type { AuthHooks } from "./hooks/auth"
 
@@ -193,40 +194,21 @@ export interface ActorDefaultHooks<A, F extends boolean, D extends boolean> {
 
 export type GetFunctions<A> = {
   getAgent: () => HttpAgent
-  getServiceFields: () => ExtractedServiceFields<A>
-  getServiceDetails: () => ExtractedServiceDetails<A>
+  getVisitFunction: () => ExtractedService<A>
 }
 
 export type CreateReActor = {
-  // When withServiceFields is true and withServiceDetails is true
+  // When withVisitor is true
   <A>(
     options: CreateReActorOptions & {
-      withServiceFields: true
-      withServiceDetails: true
+      withVisitor: true
     }
   ): GetFunctions<A> & ActorHooks<A, true, true> & AuthHooks
 
-  // When withServiceFields is true and withServiceDetails is false or undefined
+  // When withVisitor are false or undefined
   <A>(
     options: CreateReActorOptions & {
-      withServiceFields: true
-      withServiceDetails?: false | undefined
-    }
-  ): GetFunctions<A> & ActorHooks<A, true, false> & AuthHooks
-
-  // When withServiceFields is false or undefined and withServiceDetails is true
-  <A>(
-    options: CreateReActorOptions & {
-      withServiceFields?: false | undefined
-      withServiceDetails: true
-    }
-  ): GetFunctions<A> & ActorHooks<A, false, true> & AuthHooks
-
-  // When both withServiceFields and withServiceDetails are false or undefined
-  <A>(
-    options: CreateReActorOptions & {
-      withServiceFields?: false | undefined
-      withServiceDetails?: false | undefined
+      withVisitor?: false | undefined
     }
   ): GetFunctions<A> & ActorHooks<A, false, false> & AuthHooks
 }

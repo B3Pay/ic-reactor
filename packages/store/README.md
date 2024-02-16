@@ -26,77 +26,76 @@ yarn add @ic-reactor/store
 
 ## Usage
 
-To use `@ic-reactor/store`, start by creating a ReActor manager with your actor configurations:
+You can this packages in two ways:
+
+1. **Automatic Agent Creation**: You can use the `createReActorStore` factory function to create a new ReActor store instance. This will automatically create an agent and manage its state for you.
 
 ```ts
-import createReActorManager from "@ic-reactor/store"
-import { idlFactory, canisterId } from "./declarations/actor"
+import { createReActorStore } from "@ic-reactor/store"
+import { candid, canisterId, idlFactory } from "./candid"
 
-type Actor = typeof actor
+type Candid = typeof candid
 
-const { actorStore, authenticate, callMethod } = createReActorStore<Actor>({
+const { callMethod, agentManager } = createReActorStore<Candid>({
+  canisterId,
   idlFactory,
-  canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-  host: "https://icp-api.io",
 })
+
+// later in your code
+const identity = await agentManager.authenticate()
+const data = await callMethod("version")
 ```
 
-### Managing Actor State
+2. **Manual Agent Creation**: You can use the `createAgentManager` to manually create and manage an agent instance.
 
-Utilize the ReActor manager to manage the state of your IC actors:
+- IC Agent
 
 ```ts
-// Access and update actor state
-const actorState = actorStore.getState()
+// agent.ts
+import { createAgentManager } from "@ic-reactor/store"
+
+export const agentManager = createAgentManager() // connect to the default ic network
+
+// later in your code
+const identity = await agentManager.authenticate()
 ```
 
-### Handling Authentication
+- Local Agent
 
-Manage authentication states and processes:
+```ts
+// agent.ts
+import { createAgentManager } from "@ic-reactor/store"
 
-```javascript
-// Authenticate with the IC blockchain
-authenticate()
-  .then(() => {
-    // Handle successful authentication
-  })
-  .catch((error) => {
-    // Handle authentication errors
-  })
-```
-
-### Calling Actor Methods
-
-Call actor methods and handle the results:
-
-```javascript
-// Call an actor method
-callMethod({
-  functionName: "get_balance",
-  args: [principal],
+export const agentManager = createAgentManager({
+  isLocalEnv: true,
+  port: 8000, // default port is 4943
 })
-  .then((result) => {
-    // Handle successful method call
-  })
-  .catch((error) => {
-    // Handle method call errors
-  })
 ```
 
-## API Reference
+- Or you can use the host option directly
 
-`@ic-reactor/store` provides several key functionalities:
+```ts
+export const agentManager = createAgentManager({
+  host: "http://localhost:8000",
+})
+```
 
-- `ReActorManager`: The main class to manage actor states and interactions.
-- `createReActorManager`: Factory function to create a new ReActor manager instance.
-- State management actions: Methods to initialize actors, handle authentication, and manage global state.
+then you can use the "createActorManager" to create an actor manager
 
-For a detailed API reference, including the complete list of methods and their usage, please refer to the [documentation](#).
+```ts
+// actor.ts
+import { createActorManager } from "@ic-reactor/store"
+import { candid, canisterId, idlFactory } from "./candid"
+import { agentManager } from "./agent"
 
-## Contributing
+type Candid = typeof candid
 
-Contributions to `@ic-reactor/store` are welcome! Please read our [contributing guidelines](#) for more information.
+const actorManager = createActorManager<Candid>({
+  agentManager,
+  canisterId,
+  idlFactory,
+})
 
-## License
-
-`@ic-reactor/store` is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+// later in your code
+const data = await actorManager.callMethod("version")
+```

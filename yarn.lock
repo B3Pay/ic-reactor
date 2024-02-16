@@ -9905,6 +9905,8 @@ __metadata:
     text-encoding: "npm:0.7.0"
     ts-jest: "npm:29.1"
     typedoc: "npm:^0.25.8"
+    typedoc-plugin-extras: "npm:^3.0.0"
+    typedoc-plugin-include-example: "npm:^1.2.0"
     typedoc-plugin-mdn-links: "npm:^3.1.16"
     typescript: "npm:^5.3"
     whatwg-fetch: "npm:3.6"
@@ -18001,6 +18003,24 @@ __metadata:
   version: 0.0.6
   resolution: "typedarray@npm:0.0.6"
   checksum: 6005cb31df50eef8b1f3c780eb71a17925f3038a100d82f9406ac2ad1de5eb59f8e6decbdc145b3a1f8e5836e17b0c0002fb698b9fe2516b8f9f9ff602d36412
+  languageName: node
+  linkType: hard
+
+"typedoc-plugin-extras@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "typedoc-plugin-extras@npm:3.0.0"
+  peerDependencies:
+    typedoc: 0.25.x
+  checksum: 79f2c2cbc9b3a576e1922976306cb8493d132dcb6f831cc75b85712dc8fb2c14af22493a94af23502c8ec47238c846487c55289f5001455e00207ecbf2958da0
+  languageName: node
+  linkType: hard
+
+"typedoc-plugin-include-example@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "typedoc-plugin-include-example@npm:1.2.0"
+  peerDependencies:
+    typedoc: ^0.25.1
+  checksum: 06ab1ccf655bf234f9698cd8a4470db035409c4463b5828c9468edf9c4169116e7996843a96fe3d2cfb087026a1e3e0f7987189b6351faddff3d8e64b944240b
   languageName: node
   linkType: hard
 
