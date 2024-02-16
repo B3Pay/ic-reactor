@@ -53,5 +53,5 @@ export const createReActor: CreateReActor = <
     getVisitFunction,
     ...actorHooks,
     ...authHooks,
-  }
+  } as any
 }

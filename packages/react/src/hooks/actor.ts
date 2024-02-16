@@ -1,30 +1,17 @@
-import {
-  type ExtractedServiceFields,
-  type MethodFields,
-  type ExtractedServiceDetails,
-  type ServiceDetails,
-  type MethodDetails,
-  ExtractRandomArgs,
-  ExtractRandomReturns,
-} from "@ic-reactor/candid"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActorHookState,
   type ActorCall,
-  type ActorHooks,
-  type ActorUseMethodCallArg,
-  type ActorUseMethodCallReturn,
   type UseActorStoreReturn,
   ActorQueryCall,
   ActorUpdateCall,
+  ActorHooks,
+  ActorUseMethodCallReturn,
+  ActorUseMethodCallArg,
 } from "../types"
 import { useStore } from "zustand"
-import { ActorCandidManager } from "@ic-reactor/candid"
-import {
-  ExtractActorMethodArgs,
-  FunctionName,
-  FunctionType,
-} from "@ic-reactor/store"
+import { ActorManager, ExtractedService, FunctionType } from "@ic-reactor/store"
+import { ExtractActorMethodArgs, FunctionName } from "@ic-reactor/store"
 
 const DEFAULT_STATE = {
   data: undefined,
@@ -34,76 +21,29 @@ const DEFAULT_STATE = {
 
 export const getActorHooks = <A>({
   initialize,
-  serviceFields,
-  serviceDetails,
-  withServiceFields,
-  withServiceDetails,
+  visitFunction,
   canisterId,
   actorStore,
   callMethod,
-  transformResult,
-}: ActorCandidManager<A>): ActorHooks<
-  A,
-  typeof withServiceFields,
-  typeof withServiceDetails
-> => {
-  type F = typeof withServiceFields
-  type D = typeof withServiceDetails
-
+}: ActorManager<A>): ActorHooks<A, true> => {
   const useActorStore = (): UseActorStoreReturn<A> => {
     const actorState = useStore(actorStore, (state) => state)
 
     return { ...actorState, canisterId } as UseActorStoreReturn<A>
   }
 
-  const useServiceFields = (): ExtractedServiceFields<A> => {
-    if (!withServiceFields || !serviceFields) {
-      throw new Error(
-        "Service fields not initialized. Pass `withServiceFields` to initialize service fields."
-      )
-    }
-
-    return serviceFields
+  const useVisitFunction = (): ExtractedService<A> => {
+    return visitFunction
   }
 
-  const useMethodFields = (): MethodFields<A>[] => {
-    const serviceFields = useServiceFields()
+  const useMethodField = <M extends FunctionName<A>>(
+    functionName: M
+  ): ExtractedService<A>[M] => {
+    const serviceFields = useVisitFunction()
 
     return useMemo(() => {
-      return Object.values(serviceFields.methodFields)
-    }, [serviceFields])
-  }
-
-  const useMethodField = (functionName: FunctionName<A>): MethodFields<A> => {
-    const serviceMethod = useServiceFields()
-
-    return useMemo(() => {
-      return serviceMethod.methodFields[functionName]
-    }, [functionName, serviceMethod])
-  }
-
-  const useServiceDetails = (): ExtractedServiceDetails<A> => {
-    if (!withServiceDetails || !serviceDetails) {
-      throw new Error(
-        "Service details not initialized. Pass `withServiceDetails` to initialize service fields."
-      )
-    }
-
-    return serviceDetails
-  }
-
-  const useMethodDetails = (): ServiceDetails<A> => {
-    const serviceFields = useServiceDetails()
-
-    return serviceFields.methodDetails
-  }
-
-  const useMethodDetail = (functionName: FunctionName<A>): MethodDetails<A> => {
-    const serviceMethod = useServiceDetails()
-
-    return useMemo(() => {
-      return serviceMethod.methodDetails[functionName]
-    }, [functionName, serviceMethod])
+      return serviceFields[functionName]
+    }, [functionName, serviceFields])
   }
 
   const useReActorCall: ActorCall<A> = ({
@@ -112,7 +52,6 @@ export const getActorHooks = <A>({
     onLoading,
     args = [] as unknown as ExtractActorMethodArgs<A[any]>,
     functionName,
-    withTransform,
     throwOnError = false,
   }) => {
     type M = typeof functionName
@@ -141,17 +80,10 @@ export const getActorHooks = <A>({
                 : undefined
               : undefined
 
-          const result = await callMethod(
-            functionName,
-            ...(replaceArgs ?? args)
-          )
-
-          const data = withTransform
-            ? transformResult(functionName, result)
-            : result
+          const data = await callMethod(functionName, ...(replaceArgs ?? args))
 
           onLoading?.(false)
-          onSuccess?.(result)
+          onSuccess?.(data)
           setState((prevState) => ({ ...prevState, data, loading: false }))
 
           return data
@@ -210,68 +142,57 @@ export const getActorHooks = <A>({
 
   const useMethodCall = <M extends FunctionName<A>, T extends FunctionType>(
     args: ActorUseMethodCallArg<A, T>
-  ): ActorUseMethodCallReturn<A, M, F, D> => {
-    const { functionName } = args
+  ): ActorUseMethodCallReturn<A, M, true> => {
+    //   const { functionName } = args
+    //   const field = useMemo(
+    //     () => serviceFields?.methodFields[functionName],
+    //     [functionName]
+    //   ) as MethodFields<A>
+    //   const detail = useMemo(
+    //     () => serviceDetails?.methodDetails[functionName],
+    //     [functionName]
+    //   ) as MethodDetails<A>
+    //   const generateArgs = useCallback(() => {
+    //     const randomClass = new ExtractRandomArgs()
+    //     return randomClass.generate(field.argTypes, functionName)
+    //   }, [field, functionName])
+    //   const generateReturns = useCallback(() => {
+    //     const randomClass = new ExtractRandomReturns()
+    //     const data = randomClass.generate(field.returnTypes)
+    //     console.log("generateReturns", data, field.returnTypes)
+    //     return transformResult(functionName, data.length > 1 ? data : data[0])
+    //   }, [field, functionName])
+    //   const type = field.functionType ?? detail.functionType
+    //   switch (type) {
+    //     case "query":
+    //       return {
+    //         field,
+    //         detail,
+    //         generateArgs,
+    //         generateReturns,
+    //         ...useQueryCall<M>(args as any),
+    //       }
+    //     case "update":
+    //       return {
+    //         field,
+    //         detail,
+    //         generateArgs,
+    //         generateReturns,
+    //         ...useUpdateCall<M>(args as any),
+    //       }
+    //     default:
+    //       throw new Error(`Invalid type: ${type}`)
+    //   }
 
-    const field = useMemo(
-      () => serviceFields?.methodFields[functionName],
-      [functionName]
-    ) as MethodFields<A>
-
-    const detail = useMemo(
-      () => serviceDetails?.methodDetails[functionName],
-      [functionName]
-    ) as MethodDetails<A>
-
-    const generateArgs = useCallback(() => {
-      const randomClass = new ExtractRandomArgs()
-      return randomClass.generate(field.argTypes, functionName)
-    }, [field, functionName])
-
-    const generateReturns = useCallback(() => {
-      const randomClass = new ExtractRandomReturns()
-      const data = randomClass.generate(field.returnTypes)
-      console.log("generateReturns", data, field.returnTypes)
-      return transformResult(functionName, data.length > 1 ? data : data[0])
-    }, [field, functionName])
-
-    const type = field.functionType ?? detail.functionType
-
-    switch (type) {
-      case "query":
-        return {
-          field,
-          detail,
-          generateArgs,
-          generateReturns,
-          ...useQueryCall<M>(args as any),
-        }
-      case "update":
-        return {
-          field,
-          detail,
-          generateArgs,
-          generateReturns,
-          ...useUpdateCall<M>(args as any),
-        }
-      default:
-        throw new Error(`Invalid type: ${type}`)
-    }
+    return { args } as any
   }
 
   return {
     initialize,
     useQueryCall,
     useUpdateCall,
-    useMethodCall,
-    useActorStore,
-    // __Details
-    useServiceDetails,
-    useMethodDetails,
-    useMethodDetail,
-    // __Fields
-    useServiceFields,
-    useMethodFields,
     useMethodField,
+    useActorStore,
+    useMethodCall,
   }
 }

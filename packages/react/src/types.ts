@@ -1,11 +1,4 @@
-import type {
-  MethodFields,
-  ExtractedServiceFields,
-  ExtractedServiceDetails,
-  ServiceDetails,
-  MethodDetails,
-  MethodResult,
-} from "@ic-reactor/visitor"
+import type { MethodFields, MethodResult } from "@ic-reactor/visitor"
 import type {
   ActorState,
   CanisterId,
@@ -135,11 +128,9 @@ export type ActorUpdateCall<A> = {
 export interface ActorUseMethodCallReturn<
   A,
   M extends FunctionName<A>,
-  F extends boolean = false,
-  D extends boolean = false
+  F extends boolean = false
 > {
   field: F extends true ? MethodFields<A> : undefined
-  detail: D extends true ? MethodDetails<A> : undefined
   reset: () => void
   generateArgs: () => ExtractActorMethodArgs<A[M]>
   generateReturns: () => MethodResult<A, M>[]
@@ -160,36 +151,27 @@ export type ActorUseMethodCallArg<
   ? ActorUseQueryArgs<A, FunctionName<A>>
   : ActorUseUpdateArgs<A, FunctionName<A>>) & { withTransform?: boolean }
 
-export type ActorHooks<
-  A,
-  F extends boolean = false,
-  D extends boolean = false
-> = ActorDefaultHooks<A, F, D> &
-  (F extends true ? ActorFieldHooks<A> : {}) &
-  (D extends true ? ActorDetailHooks<A> : {})
+export type ActorHooks<A, F extends boolean = false> = ActorDefaultHooks<A, F> &
+  (F extends true ? ActorFieldHooks<A> : {})
 
 export interface ActorFieldHooks<A> {
-  useServiceFields: () => ExtractedServiceFields<A>
-  useMethodFields: () => MethodFields<A>[]
-  useMethodField: (functionName: FunctionName<A>) => MethodFields<A>
-}
-
-export interface ActorDetailHooks<A> {
-  useServiceDetails: () => ExtractedServiceDetails<A>
-  useMethodDetails: () => ServiceDetails<A>
-  useMethodDetail: (functionName: FunctionName<A>) => MethodDetails<A>
+  // useServiceFields: () => ExtractedServiceFields<A>
+  // useMethodFields: () => MethodFields<A>[]
+  useMethodField: <M extends FunctionName<A>>(
+    functionName: M
+  ) => ExtractedService<A>[M]
 }
 
 export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }
 
-export interface ActorDefaultHooks<A, F extends boolean, D extends boolean> {
+export interface ActorDefaultHooks<A, F extends boolean> {
   initialize: () => Promise<void>
   useActorStore: () => UseActorStoreReturn<A>
   useQueryCall: ActorQueryCall<A>
   useUpdateCall: ActorUpdateCall<A>
   useMethodCall: <M extends FunctionName<A>, T extends FunctionType>(
     args: ActorUseMethodCallArg<A, T>
-  ) => ActorUseMethodCallReturn<A, M, F, D>
+  ) => ActorUseMethodCallReturn<A, M, F>
 }
 
 export type GetFunctions<A> = {
@@ -203,12 +185,12 @@ export type CreateReActor = {
     options: CreateReActorOptions & {
       withVisitor: true
     }
-  ): GetFunctions<A> & ActorHooks<A, true, true> & AuthHooks
+  ): GetFunctions<A> & ActorHooks<A, true> & AuthHooks
 
   // When withVisitor are false or undefined
   <A>(
     options: CreateReActorOptions & {
       withVisitor?: false | undefined
     }
-  ): GetFunctions<A> & ActorHooks<A, false, false> & AuthHooks
+  ): GetFunctions<A> & ActorHooks<A, false> & AuthHooks
 }

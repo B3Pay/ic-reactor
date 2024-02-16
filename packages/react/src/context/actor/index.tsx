@@ -89,19 +89,8 @@ export const createReActorContext: CreateReActorContext = <
     args: ActorUseMethodCallArg<Actor, T>
   ) => useActor().useMethodCall(args)
 
-  const useServiceFields = () => useActor().useServiceFields()
-
-  const useMethodFields = () => useActor().useMethodFields()
-
   const useMethodField = (functionName: keyof Actor & string) =>
     useActor().useMethodField(functionName)
-
-  const useServiceDetails = () => useActor().useServiceDetails()
-
-  const useMethodDetails = () => useActor().useMethodDetails()
-
-  const useMethodDetail = (functionName: keyof Actor & string) =>
-    useActor().useMethodDetail(functionName)
 
   return {
     ActorContext,
@@ -111,12 +100,7 @@ export const createReActorContext: CreateReActorContext = <
     useQueryCall,
     useUpdateCall,
     useMethodCall,
-    useServiceFields,
-    useMethodFields,
     useMethodField,
-    useServiceDetails,
-    useMethodDetails,
-    useMethodDetail,
   } as any
 }
 
@@ -128,10 +112,5 @@ export const {
   useQueryCall,
   useUpdateCall,
   useMethodCall,
-  useServiceFields,
-  useMethodFields,
   useMethodField,
-  useServiceDetails,
-  useMethodDetails,
-  useMethodDetail,
 } = createReActorContext()
