@@ -19,7 +19,7 @@ export * from "./tools"
  * login and logout to the internet identity.
  *
  * @category Main
- * @includeExample ./packages/store/README.md:57-87
+ * @includeExample ./packages/store/README.md:55-83
  */
 export const createAgentManager = (
   options?: AgentManagerOptions
@@ -34,7 +34,7 @@ export const createAgentManager = (
  * It also provides a way to interact with the actor's state.
  *
  * @category Main
- * @includeExample ./packages/store/README.md:95-112
+ * @includeExample ./packages/store/README.md:91-106
  */
 export const createActorManager = <
   A extends ActorSubclass<any> = DefaultActorType
@@ -50,7 +50,7 @@ export const createActorManager = <
  * It also creates a new actor manager with the given options.
  *
  * @category Main
- * @includeExample ./packages/store/README.md:32-47
+ * @includeExample ./packages/store/README.md:32-45
  */
 export const createReActorStore = <
   A extends ActorSubclass<any> = DefaultActorType
@@ -87,7 +87,7 @@ export const createReActorStore = <
  * If both methods fail, it throws an error.
  *
  * @category Main
- * @includeExample ./packages/store/README.md:175-188
+ * @includeExample ./packages/store/README.md:161-202
  */
 export const createCandidAdapter = (options: CandidAdapterOptions) => {
   return new CandidAdapter(options)

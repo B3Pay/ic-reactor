@@ -14,10 +14,10 @@ interface ActorManagerArgs
     ActorManagerOptions,
     "idlFactory" | "agentManager" | "canisterId"
   > {
-  didjsId?: string
   canisterId: string
   idlFactory?: IDL.InterfaceFactory
   agentContext?: AgentContextType
+  didjsCanisterId?: string
   withServiceFields?: boolean
   withServiceDetails?: boolean
 }
@@ -28,7 +28,7 @@ export const useActorManager = <
   canisterId,
   agentContext,
   idlFactory: maybeIdlFactory,
-  didjsId,
+  didjsCanisterId,
   withServiceFields = false,
   withServiceDetails = false,
   ...config
@@ -40,7 +40,7 @@ export const useActorManager = <
     ...rest
   } = useDidJs({
     canisterId,
-    didjsCanisterId: didjsId,
+    didjsCanisterId,
     idlFactory: maybeIdlFactory,
   })
 

@@ -8,19 +8,13 @@
     "NPM": "https://www.npmjs.com/org/ic-reactor",
     "GitHub": "https://github.com/B3Pay/ic-reactor"
   },
+  "cleanOutputDir": true,
   "navigation": {
     "includeCategories": true,
     "includeGroups": false,
     "includeFolders": false
   },
   "categorizeByGroup": false,
-  "sidebarLinks": {
-    "Store": "/modules/_ic_reactor_store",
-    "Core": "/modules/_ic_reactor_core",
-    "React": "/modules/_ic_reactor_react",
-    "Visitor": "/modules/_ic_reactor_visitor",
-    "Examples": "https://github.com/B3Pay/ic-reactor/tree/main/examples"
-  },
   "favicon": "./ic-reactor.png",
   "footerLastModified": true,
   "customDescription": "A library for seamless communication between Internet Computer Actors and the frontend.",
