@@ -6,6 +6,7 @@ import type {
   Identity,
 } from "@dfinity/agent"
 import type { Principal } from "@dfinity/principal"
+import type { IDL } from "@dfinity/candid"
 import { ActorManagerOptions } from "./actor"
 import { AgentManager } from "./agent"
 
@@ -16,6 +17,7 @@ export type {
   Principal,
   HttpAgent,
   Identity,
+  IDL,
 }
 
 export interface CreateReActorOptions

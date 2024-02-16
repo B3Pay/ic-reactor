@@ -1,5 +1,6 @@
 {
   "name": "ic-reactor",
+  "private": true,
   "description": "A React library for working with Internet computer Actors",
   "author": "Behrad Deylami <b3hr4d@live.com>",
   "license": "MIT",
