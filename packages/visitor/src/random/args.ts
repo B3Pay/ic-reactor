@@ -6,6 +6,12 @@ import {
   FunctionName,
 } from "@ic-reactor/store"
 
+/**
+ * Visit the candid file and extract the fields.
+ * It returns the extracted service fields.
+ *
+ * @category Main
+ */
 export class VisitRandomArgs<
   A extends ActorSubclass<any> = DefaultActorType
 > extends IDL.Visitor<any, any> {

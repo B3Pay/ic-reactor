@@ -5,6 +5,7 @@
   "name": "ic-reactor",
   "customTitle": "ic-reactor",
   "navigationLinks": {
+    "Examples": "https://github.com/B3Pay/ic-reactor/tree/main/examples",
     "NPM": "https://www.npmjs.com/org/ic-reactor",
     "GitHub": "https://github.com/B3Pay/ic-reactor"
   },

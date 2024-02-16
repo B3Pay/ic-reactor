@@ -29,6 +29,12 @@ import type {
 export * from "./types"
 export * from "../helper"
 
+/**
+ * Visit the candid file and extract the fields.
+ * It returns the extracted service fields.
+ *
+ * @category Main
+ */
 export class VisitFields<
   A extends ActorSubclass<any> = DefaultActorType,
   M extends FunctionName<A> = FunctionName<A>

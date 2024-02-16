@@ -8,6 +8,12 @@ import type {
   Principal,
 } from "@ic-reactor/store"
 
+/**
+ * Visit the candid file and extract the fields.
+ * It returns the extracted service fields.
+ *
+ * @category Main
+ */
 export class VisitTransformTable<
   A extends ActorSubclass<any> = DefaultActorType,
   M extends FunctionName<A> = FunctionName<A>

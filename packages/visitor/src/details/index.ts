@@ -14,6 +14,12 @@ import { FieldType } from "../types"
 
 export * from "./types"
 
+/**
+ * Visit the candid file and extract the details.
+ * It returns the extracted service details.
+ *
+ * @category Main
+ */
 export class VisitDetails<
   A extends ActorSubclass<any> = DefaultActorType
 > extends IDL.Visitor<
