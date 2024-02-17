@@ -67,7 +67,6 @@ export class AgentManager {
         this.updateState({ initialized: true, initializing: false })
       } catch (error) {
         this.updateState({ error: error as Error, initializing: false })
-        console.error("Error fetching root key:", error)
       }
     }
   }
@@ -105,6 +104,7 @@ export class AgentManager {
     try {
       const { AuthClient } = await import("@dfinity/auth-client").catch(
         (error) => {
+          // eslint-disable-next-line no-console
           console.error("Failed to import @dfinity/auth-client:", error)
           throw new Error(
             "Authentication failed: @dfinity/auth-client package is missing."
@@ -130,8 +130,6 @@ export class AgentManager {
       return identity
     } catch (error) {
       this.updateState({ error: error as Error, authenticating: false })
-
-      console.error("Error in authenticate:", error)
       throw error
     }
   }

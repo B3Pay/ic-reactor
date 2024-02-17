@@ -2,15 +2,15 @@ import { hash } from "@dfinity/agent"
 import { toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import type { ActorSubclass } from "./types"
+import { BaseActor } from "./actor"
 
 interface StoreOptions {
   withDevtools?: boolean
   store: string
 }
 
-export function createStoreWithOptionalDevtools(
-  initialState: any,
+export function createStoreWithOptionalDevtools<T>(
+  initialState: T,
   options: StoreOptions
 ) {
   if (options.withDevtools) {
@@ -25,7 +25,7 @@ export function createStoreWithOptionalDevtools(
   }
 }
 
-export function jsonToString(json: any) {
+export function jsonToString(json: never) {
   return JSON.stringify(
     json,
     (_, value) => (typeof value === "bigint" ? `BigInt(${value})` : value),
@@ -33,7 +33,7 @@ export function jsonToString(json: any) {
   )
 }
 
-export const generateRequestHash = (args?: any[]) => {
+export const generateRequestHash = (args?: unknown[]) => {
   const serializedArgs = args
     ?.map((arg) => {
       if (typeof arg === "bigint") {
@@ -47,12 +47,12 @@ export const generateRequestHash = (args?: any[]) => {
   return stringToHash(serializedArgs ?? "")
 }
 
-export const generateHash = (field?: any) => {
+export const generateHash = (field?: never) => {
   const serializedArgs = JSON.stringify(field)
   return stringToHash(serializedArgs ?? "")
 }
 
-export const generateActorHash = (actor: ActorSubclass<any>) => {
+export const generateActorHash = (actor: BaseActor) => {
   const serializedArgs = JSON.stringify(actor)
   return stringToHash(serializedArgs ?? "")
 }

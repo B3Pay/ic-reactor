@@ -1,6 +1,6 @@
 import { Actor } from "@dfinity/agent"
 import { createStoreWithOptionalDevtools } from "../helper"
-import type { ActorSubclass, HttpAgent } from "@dfinity/agent"
+import type { HttpAgent } from "@dfinity/agent"
 import type {
   CanisterId,
   ExtractActorMethodArgs,
@@ -9,16 +9,16 @@ import type {
   ActorStore,
   ActorMethodStates,
   ActorManagerOptions,
-  DefaultActorType,
   FunctionName,
   ExtractedService,
+  BaseActor,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { AgentManager, UpdateAgentOptions } from "../agent"
 
 export * from "./types"
 
-export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
+export class ActorManager<A = BaseActor> {
   private actor: null | A = null
   private idlFactory: IDL.InterfaceFactory
 
@@ -67,7 +67,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
 
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(
-      { ...this.DEFAULT_ACTOR_STATE },
+      this.DEFAULT_ACTOR_STATE,
       { withDevtools, store: `actor-${String(canisterId)}` }
     )
 
@@ -81,19 +81,22 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   }
 
   public extractService(): ExtractedService<A> {
-    return this.idlFactory({ IDL })._fields.reduce(
-      (acc, [functionName, type]) => {
-        acc[functionName as FunctionName<A>] = (extractorClass, data) => {
-          return type.accept(extractorClass, data || functionName)
-        }
+    return this.idlFactory({ IDL })._fields.reduce((acc, service) => {
+      const functionName = service[0] as keyof A
+      const type = service[1]
 
-        return acc
-      },
-      {} as ExtractedService<A>
-    )
+      const visit = ((extractorClass, data) => {
+        return type.accept(extractorClass, data || functionName)
+      }) as ExtractedService<A>[typeof functionName]
+
+      acc[functionName] = visit
+
+      return acc
+    }, {} as ExtractedService<A>)
   }
 
   private initializeActor = (agent: HttpAgent) => {
+    // eslint-disable-next-line no-console
     console.info(
       `Initializing actor ${this.canisterId} on ${
         agent.isLocal() ? "local" : "ic"
@@ -127,6 +130,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
         initialized: true,
       })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Error in initializeActor:", error)
       this.updateState({ error: error as Error, initializing: false })
     }
@@ -170,7 +174,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
   }
 }
 
-const emptyVisitor = new Proxy({} as ExtractedService<any>, {
+const emptyVisitor = new Proxy({} as ExtractedService<never>, {
   get: function (_, prop) {
     throw new Error(
       `Cannot visit function "${String(

@@ -9,5 +9,5 @@ export interface CandidAdapterOptions {
 
 export interface CandidDefenition {
   idlFactory: IDL.InterfaceFactory
-  init: ({ IDL }: { IDL: any }) => never[]
+  init: ({ idl }: { idl: typeof IDL }) => never[]
 }

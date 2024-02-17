@@ -3,15 +3,16 @@ import type { StoreApi } from "zustand"
 import type { AgentManager } from "../agent"
 import type { ActorMethod, ActorSubclass, Principal } from "../types"
 
-export type FunctionName<A = DefaultActorType> = keyof A & string
+export interface DefaultActorType {
+  [key: string]: ActorMethod
+}
+
+export type BaseActor<T = DefaultActorType> = ActorSubclass<T>
+
+export type FunctionName<A = BaseActor> = keyof A & string
 
 export type FunctionType = "query" | "update"
 
-export interface DefaultActorType {
-  [key: string]: ActorMethod<any, any>
-}
-
-// Type for identifying a canister
 export type CanisterId = string | Principal
 
 export interface ActorManagerOptions {
@@ -23,33 +24,31 @@ export interface ActorManagerOptions {
   initializeOnCreate?: boolean
 }
 
-export type ExtractVisitorType<T> = T extends IDL.Visitor<infer U, infer V>
-  ? { data: U; return: V }
+export type ExtractVisitorType<V> = V extends IDL.Visitor<infer D, infer R>
+  ? { data: D; returnType: R }
   : never
 
-export type ExtractedService<
-  A = DefaultActorType,
-  M extends FunctionName<A> = FunctionName<A>
-> = {
-  [K in M]: <V extends IDL.Visitor<any, any>>(
+export type ExtractedService<A = BaseActor, M extends keyof A = keyof A> = {
+  [K in M]: <V extends IDL.Visitor<unknown, unknown>>(
     extractorClass: V,
     data?: ExtractVisitorType<V>["data"]
   ) => ReturnType<V["visitFunc"]>
 }
 
-// Utility types for extracting method arguments and return types
-export type ExtractActorMethodArgs<T> = T extends ActorMethod<infer A>
-  ? A
+// Extracts the argument types of an ActorMethod
+export type ExtractActorMethodArgs<T> = T extends ActorMethod<infer Args>
+  ? Args
   : never
 
+// Extracts the return type of an ActorMethod
 export type ExtractActorMethodReturnType<T> = T extends ActorMethod<
-  any,
-  infer R
+  unknown[],
+  infer Ret
 >
-  ? R
+  ? Ret
   : never
 
-export interface ActorMethodState<A, M extends FunctionName<A>> {
+export interface ActorMethodState<A, M extends keyof A> {
   [key: string]: {
     data: ExtractActorMethodReturnType<A[M]> | undefined
     loading: boolean
@@ -58,7 +57,7 @@ export interface ActorMethodState<A, M extends FunctionName<A>> {
 }
 
 export type ActorMethodStates<A> = {
-  [M in FunctionName<A>]: ActorMethodState<A, M>
+  [M in keyof A]: ActorMethodState<A, M>
 }
 
 // State structure for an actor in a ReActor
@@ -69,13 +68,10 @@ export type ActorState<A> = {
   methodState: ActorMethodStates<A>
 }
 
-export type ActorStore<A extends ActorSubclass<any> = DefaultActorType> =
-  StoreApi<ActorState<A>>
+export type ActorStore<A = BaseActor> = StoreApi<ActorState<A>>
 
 // Function type for directly calling a method on an actor
-export type CallActorMethod<A = Record<string, ActorMethod>> = <
-  M extends FunctionName<A>
->(
+export type CallActorMethod<A = BaseActor> = <M extends keyof A>(
   functionName: M,
   ...args: ExtractActorMethodArgs<A[M]>
 ) => Promise<ExtractActorMethodReturnType<A[M]>>

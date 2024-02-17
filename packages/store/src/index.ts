@@ -1,9 +1,9 @@
-import type { ActorManagerOptions, DefaultActorType } from "./actor/types"
+import type { ActorManagerOptions, BaseActor } from "./actor/types"
 import type { AgentManagerOptions } from "./agent/types"
 
 import { ActorManager } from "./actor"
 import { AgentManager } from "./agent"
-import { ActorSubclass, CreateReActorOptions } from "./types"
+import { CreateReActorOptions } from "./types"
 import { CandidAdapter, CandidAdapterOptions } from "./tools"
 
 export * from "./helper"
@@ -36,9 +36,7 @@ export const createAgentManager = (
  * @category Main
  * @includeExample ./packages/store/README.md:91-106
  */
-export const createActorManager = <
-  A extends ActorSubclass<any> = DefaultActorType
->(
+export const createActorManager = <A = BaseActor>(
   options: ActorManagerOptions
 ): ActorManager<A> => {
   return new ActorManager<A>(options)
@@ -52,9 +50,7 @@ export const createActorManager = <
  * @category Main
  * @includeExample ./packages/store/README.md:32-45
  */
-export const createReActorStore = <
-  A extends ActorSubclass<any> = DefaultActorType
->(
+export const createReActorStore = <A = BaseActor>(
   options: CreateReActorOptions
 ): ActorManager<A> => {
   const {
