@@ -1,4 +1,8 @@
-import { VisitRandomResponse, VisitTransform } from "../../visitor/src"
+import {
+  VisitRandomArgs,
+  VisitRandomResponse,
+  VisitTransform,
+} from "../../visitor/src"
 import { createReActorStore } from "../src"
 import { example, idlFactory } from "./candid/example"
 
@@ -20,15 +24,16 @@ describe("createReActorStore", () => {
   })
 
   test("Uninitialized", () => {
-    const value = visitFunction.get_app(
-      new VisitRandomResponse<Example, "get_app">()
-    )
+    const value = visitFunction.get_app(new VisitRandomResponse<Example>())
     const data = visitFunction.get_app(new VisitTransform<Example>(), {
       value,
       label: "app",
     })
 
     console.log(data.values?.[0].value)
+
+    const args = visitFunction.get_app(new VisitRandomArgs<Example>())
+    console.log(args)
 
     const { methodState, initialized, initializing, error } =
       actorStore.getState()

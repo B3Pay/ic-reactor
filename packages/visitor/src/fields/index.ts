@@ -53,7 +53,7 @@ export class VisitFields<
         acc.fields.push(field)
 
         acc.defaultValue[`arg${index}`] =
-          field.defaultValue || field.defaultValues
+          field.defaultValue ?? field.defaultValues ?? {}
 
         return acc
       },

@@ -1,10 +1,7 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import {
-  BaseActor,
-  ExtractActorMethodArgs,
-  FunctionName,
-} from "@ic-reactor/store"
+import { BaseActor, FunctionName } from "@ic-reactor/store"
+import { ServiceDefaultValues } from "../fields"
 
 /**
  * Visit the candid file and extract the fields.
@@ -12,25 +9,25 @@ import {
  *
  * @category Main
  */
-export class VisitRandomArgs<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>
-> extends IDL.Visitor<unknown, ExtractActorMethodArgs<A[M]> | unknown> {
-  public visitFunc<Method extends M>(
+export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
+  unknown,
+  unknown
+> {
+  public visitFunc<Method extends FunctionName<A>>(
     t: IDL.FuncClass,
     functionName: Method
-  ): ExtractActorMethodArgs<A[Method]> {
+  ): ServiceDefaultValues<Method> {
     const defaultValue = t.argTypes.reduce((acc, type, index) => {
       acc[`arg${index}`] = type.accept(this, false)
 
       return acc
     }, {} as Record<string, unknown>)
 
-    const defaultValues = {
+    const result = {
       [functionName]: defaultValue,
     }
 
-    return defaultValues as unknown as ExtractActorMethodArgs<A[Method]>
+    return result as ServiceDefaultValues<Method>
   }
 
   public visitRecord(

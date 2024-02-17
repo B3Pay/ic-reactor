@@ -4,6 +4,7 @@ import {
   VisitTransformTable,
   VisitFields,
   VisitDetails,
+  VisitRandomArgs,
 } from "../src"
 import { b3system, idlFactory } from "./candid/b3system"
 
@@ -23,13 +24,13 @@ describe("createReActorStore", () => {
 
   test("Uninitialized", () => {
     const field = visitFunction.get_app(new VisitFields<B3System>())
-    console.log(field.defaultValues)
+    console.log(field)
+    const args = visitFunction.get_app(new VisitRandomArgs<B3System>())
+    console.log(args)
     const details = visitFunction.get_app(new VisitDetails())
     console.log(details)
 
-    const value = visitFunction.get_app(
-      new VisitRandomResponse<B3System, "get_app">()
-    )
+    const value = visitFunction.get_app(new VisitRandomResponse<B3System>())
     console.log(value)
 
     const transform = visitFunction.get_app(
