@@ -1,8 +1,8 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
 import {
-  ActorSubclass,
-  DefaultActorType,
+  BaseActor,
+  ExtractActorMethodArgs,
   FunctionName,
 } from "@ic-reactor/store"
 
@@ -13,28 +13,32 @@ import {
  * @category Main
  */
 export class VisitRandomArgs<
-  A extends ActorSubclass<any> = DefaultActorType
-> extends IDL.Visitor<any, any> {
-  public visitFunc(t: IDL.FuncClass, functionName: FunctionName<A>) {
+  A = BaseActor,
+  M extends FunctionName<A> = FunctionName<A>
+> extends IDL.Visitor<unknown, ExtractActorMethodArgs<A[M]> | unknown> {
+  public visitFunc<Method extends M>(
+    t: IDL.FuncClass,
+    functionName: Method
+  ): ExtractActorMethodArgs<A[Method]> {
     const defaultValue = t.argTypes.reduce((acc, type, index) => {
       acc[`arg${index}`] = type.accept(this, false)
 
       return acc
-    }, {} as any)
+    }, {} as Record<string, unknown>)
 
     const defaultValues = {
       [functionName]: defaultValue,
     }
 
-    return defaultValues
+    return defaultValues as unknown as ExtractActorMethodArgs<A[Method]>
   }
 
   public visitRecord(
     _t: IDL.RecordClass,
-    fields: [string, IDL.Type<any>][],
+    fields: [string, IDL.Type<unknown>][],
     isRecursive: boolean
-  ): any {
-    const result: { [key: string]: any } = {}
+  ): unknown {
+    const result: { [key: string]: unknown } = {}
 
     fields.forEach(([key, type]) => {
       result[key] = type.accept(this, isRecursive)
@@ -45,9 +49,9 @@ export class VisitRandomArgs<
 
   public visitVariant(
     _t: IDL.VariantClass,
-    fields: [string, IDL.Type<any>][],
+    fields: [string, IDL.Type<unknown>][],
     isRecursive: boolean
-  ): any {
+  ): unknown {
     const [key, type] = fields[Math.floor(Math.random() * fields.length)]
     const result = { [key]: type.accept(this, isRecursive) }
 
@@ -56,9 +60,9 @@ export class VisitRandomArgs<
 
   public visitVec<T>(
     _t: IDL.VecClass<T>,
-    type: IDL.Type<any>,
+    type: IDL.Type<unknown>,
     isRecursive: boolean
-  ): any {
+  ): unknown {
     if (isRecursive) {
       const recType = type.accept(this, isRecursive)
       return [recType]
@@ -71,9 +75,9 @@ export class VisitRandomArgs<
 
   public visitOpt<T>(
     _t: IDL.OptClass<T>,
-    type: IDL.Type<any>,
+    type: IDL.Type<unknown>,
     isRecursive: boolean
-  ): any {
+  ): unknown {
     if (Math.random() < 0.5) {
       return []
     } else {
@@ -81,17 +85,17 @@ export class VisitRandomArgs<
     }
   }
 
-  public visitTuple<T extends any[]>(
+  public visitTuple<T extends unknown[]>(
     _t: IDL.TupleClass<T>,
-    components: IDL.Type<any>[],
+    components: IDL.Type<unknown>[],
     isRecursive: boolean
-  ): any {
+  ): unknown {
     return components.map((type) => type.accept(this, isRecursive))
   }
 
-  private savedRec: Record<string, any> = {}
+  private savedRec: Record<string, unknown> = {}
 
-  public visitRec<T>(_t: IDL.RecClass<T>, ty: IDL.ConstructType<T>): any {
+  public visitRec<T>(_t: IDL.RecClass<T>, ty: IDL.ConstructType<T>): unknown {
     if (!this.savedRec[ty.name]) {
       this.savedRec[ty.name] = ty.accept(this, true)
     }
@@ -99,7 +103,7 @@ export class VisitRandomArgs<
     return this.savedRec[ty.name]
   }
 
-  public visitPrincipal(_t: IDL.PrincipalClass): any {
+  public visitPrincipal(_t: IDL.PrincipalClass): unknown {
     return Principal.fromUint8Array(this.generateRandomBytes(29))
   }
 

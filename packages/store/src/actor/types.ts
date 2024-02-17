@@ -28,7 +28,10 @@ export type ExtractVisitorType<V> = V extends IDL.Visitor<infer D, infer R>
   ? { data: D; returnType: R }
   : never
 
-export type ExtractedService<A = BaseActor, M extends keyof A = keyof A> = {
+export type ExtractedService<
+  A = BaseActor,
+  M extends FunctionName<A> = FunctionName<A>
+> = {
   [K in M]: <V extends IDL.Visitor<unknown, unknown>>(
     extractorClass: V,
     data?: ExtractVisitorType<V>["data"]

@@ -82,7 +82,7 @@ export class ActorManager<A = BaseActor> {
 
   public extractService(): ExtractedService<A> {
     return this.idlFactory({ IDL })._fields.reduce((acc, service) => {
-      const functionName = service[0] as keyof A
+      const functionName = service[0] as FunctionName<A>
       const type = service[1]
 
       const visit = ((extractorClass, data) => {

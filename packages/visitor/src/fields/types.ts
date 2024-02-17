@@ -15,7 +15,7 @@ export type ServiceFields<
   A = DefaultActorType,
   M extends FunctionName<A> = FunctionName<A>
 > = {
-  [key in M]: <ExtractorClass extends IDL.Visitor<any, any>>(
+  [key in M]: <ExtractorClass extends IDL.Visitor<unknown, unknown>>(
     extractorClass?: ExtractorClass
   ) => MethodFields<A, M>
 }
@@ -26,8 +26,8 @@ export interface MethodFields<
 > {
   functionName: M
   functionType: FunctionType
-  fields: AllFieldTypes<IDL.Type<any>>[] | []
-  validate: (value: any) => boolean | string
+  fields: AllFieldTypes<IDL.Type>[] | []
+  validate: (value: FieldTypeFromIDLType<IDL.Type>) => boolean | string
   defaultValues: ServiceDefaultValues<A, M>
 }
 
@@ -101,7 +101,7 @@ export interface InputField<T extends IDL.Type> extends DefaultField {
   defaultValue: FieldTypeFromIDLType<T>
 }
 
-export type DynamicFieldType<T extends FieldType = any> = T extends "record"
+export type DynamicFieldType<T extends FieldType> = T extends "record"
   ? RecordFields<IDL.Type>
   : T extends "variant"
   ? VariantFields<IDL.Type>
@@ -130,15 +130,15 @@ export type DynamicFieldType<T extends FieldType = any> = T extends "record"
 export type DynamicFieldTypeByClass<T extends IDL.Type> =
   T extends IDL.RecordClass
     ? RecordFields<T>
-    : T extends IDL.TupleClass<any>
+    : T extends IDL.TupleClass<IDL.Type[]>
     ? TupleFields<T>
     : T extends IDL.VariantClass
     ? VariantFields<T>
-    : T extends IDL.VecClass<any>
+    : T extends IDL.VecClass<IDL.Type>
     ? VectorFields
-    : T extends IDL.OptClass<any>
+    : T extends IDL.OptClass<IDL.Type>
     ? OptionalFields
-    : T extends IDL.RecClass<any>
+    : T extends IDL.RecClass<IDL.Type>
     ? RecursiveFields
     : T extends IDL.PrincipalClass
     ? PrincipalField
@@ -165,9 +165,9 @@ export type AllFieldTypes<T extends IDL.Type> =
   | NumberField
   | InputField<T>
 
-export type FieldTypeFromIDLType<T = any> = T extends IDL.Type
+export type FieldTypeFromIDLType<T> = T extends IDL.Type
   ? ReturnType<T["decodeValue"]>
-  : any
+  : IDL.Type
 
 export type ExtraInputFormFields = Partial<{
   maxLength: number
@@ -177,7 +177,9 @@ export type ExtraInputFormFields = Partial<{
 export interface DefaultField extends ExtraInputFormFields {
   type: FieldType
   label: string
-  validate: (value: any) => boolean | string
-  defaultValue?: any
-  defaultValues?: any
+  validate: (value: FieldTypeFromIDLType<IDL.Type>) => boolean | string
+  defaultValue?: FieldTypeFromIDLType<IDL.Type>
+  defaultValues?:
+    | FieldTypeFromIDLType<IDL.Type>[]
+    | Record<string, FieldTypeFromIDLType<IDL.Type>>
 }

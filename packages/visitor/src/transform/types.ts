@@ -31,13 +31,15 @@ export interface ExtractedServiceResults<A = DefaultActorType> {
 }
 
 export type ServiceResult<A = DefaultActorType> = {
-  [K in FunctionName<A>]: <ExtractorClass extends IDL.Visitor<any, any>>(
+  [K in FunctionName<A>]: <
+    ExtractorClass extends IDL.Visitor<unknown, unknown>
+  >(
     data: ResultArrayData<A>,
     extractorClass?: ExtractorClass
   ) => MethodResult<A>
 }
 
-export interface DynamicDataArgs<V = any> {
+export interface DynamicDataArgs<V = unknown> {
   label: string
   value: V
 }

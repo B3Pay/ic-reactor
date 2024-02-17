@@ -8,8 +8,7 @@ import type {
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { isQuery } from "../helper"
-import { ActorSubclass } from "@dfinity/agent"
-import { DefaultActorType, FunctionName } from "@ic-reactor/store"
+import { BaseActor, FunctionName } from "@ic-reactor/store"
 import { FieldType } from "../types"
 
 export * from "./types"
@@ -21,7 +20,8 @@ export * from "./types"
  * @category Main
  */
 export class VisitDetails<
-  A extends ActorSubclass<any> = DefaultActorType
+  A = BaseActor,
+  M extends FunctionName<A> = FunctionName<A>
 > extends IDL.Visitor<
   string,
   | ExtractedServiceDetails<A>
@@ -31,9 +31,9 @@ export class VisitDetails<
 > {
   public counter = 0
 
-  public visitFunc(
+  public visitFunc<Method extends M>(
     t: IDL.FuncClass,
-    functionName: FunctionName<A>
+    functionName: Method
   ): MethodDetails<A> {
     const functionType = isQuery(t) ? "query" : "update"
 
@@ -100,7 +100,7 @@ export class VisitDetails<
     }
   }
 
-  public visitTuple<T extends any[]>(
+  public visitTuple<T extends IDL.Type[]>(
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
     __label: string
@@ -225,9 +225,9 @@ export class VisitDetails<
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      acc[functionName] = (extractorClass) => {
+      acc[functionName] = ((extractorClass) => {
         return func.accept(extractorClass || this, functionName)
-      }
+      }) as ServiceDetails<A>[FunctionName<A>]
 
       return acc
     }, {} as ServiceDetails<A>)

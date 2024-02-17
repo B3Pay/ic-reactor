@@ -20,11 +20,7 @@ import type {
 } from "./types"
 import { isQuery, validateError, validateNumberError } from "../helper"
 import { IDL } from "@dfinity/candid"
-import type {
-  ActorSubclass,
-  DefaultActorType,
-  FunctionName,
-} from "@ic-reactor/store"
+import type { BaseActor, FunctionName } from "@ic-reactor/store"
 
 export * from "./types"
 export * from "../helper"
@@ -36,7 +32,7 @@ export * from "../helper"
  * @category Main
  */
 export class VisitFields<
-  A extends ActorSubclass<any> = DefaultActorType,
+  A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
 > extends IDL.Visitor<
   string,
@@ -62,7 +58,7 @@ export class VisitFields<
         return acc
       },
       {
-        fields: [] as DynamicFieldTypeByClass<IDL.Type<any>>[],
+        fields: [] as DynamicFieldTypeByClass<IDL.Type>[],
         defaultValue: {} as MethodDefaultValues<Method>,
       }
     )
@@ -84,7 +80,7 @@ export class VisitFields<
     t: IDL.RecordClass,
     _fields: Array<[string, IDL.Type]>,
     label: string
-  ): RecordFields<IDL.Type<any>> {
+  ): RecordFields<IDL.Type> {
     const { fields, defaultValues } = _fields.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllFieldTypes<typeof type>
@@ -96,7 +92,7 @@ export class VisitFields<
       },
       {
         fields: [] as AllFieldTypes<IDL.Type>[],
-        defaultValues: {} as Record<string, FieldTypeFromIDLType>,
+        defaultValues: {} as Record<string, FieldTypeFromIDLType<IDL.Type>>,
       }
     )
 
@@ -113,7 +109,7 @@ export class VisitFields<
     t: IDL.VariantClass,
     fields_: Array<[string, IDL.Type]>,
     label: string
-  ): VariantFields<IDL.Type<any>> {
+  ): VariantFields<IDL.Type> {
     const { fields, options } = fields_.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllFieldTypes<typeof type>
@@ -146,11 +142,11 @@ export class VisitFields<
     }
   }
 
-  public visitTuple<T extends any[]>(
+  public visitTuple<T extends IDL.Type[]>(
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
     label: string
-  ): TupleFields<IDL.Type<any>> {
+  ): TupleFields<IDL.Type> {
     const { fields, defaultValues } = components.reduce(
       (acc, type, index) => {
         const field = type.accept(this, `_${index}_`) as AllFieldTypes<
@@ -163,7 +159,7 @@ export class VisitFields<
       },
       {
         fields: [] as AllFieldTypes<IDL.Type>[],
-        defaultValues: [] as any[],
+        defaultValues: [] as FieldTypeFromIDLType<IDL.Type>[],
       }
     )
 
@@ -186,7 +182,7 @@ export class VisitFields<
       label,
       validate: validateError(t),
       name: ty.name,
-      extract: () => ty.accept(this, label) as VariantFields<IDL.Type<any>>,
+      extract: () => ty.accept(this, label) as VariantFields<IDL.Type>,
     }
   }
 
@@ -228,7 +224,7 @@ export class VisitFields<
       validate: validateError(t),
       label,
       required: true,
-      defaultValue: undefined as any,
+      defaultValue: undefined as InputField<IDL.Type<T>>["defaultValue"],
     }
   }
 
@@ -312,9 +308,9 @@ export class VisitFields<
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      acc[functionName] = (extractorClass) => {
+      acc[functionName] = ((extractorClass) => {
         return func.accept(extractorClass || this, functionName)
-      }
+      }) as ServiceFields<A>[FunctionName<A>]
 
       return acc
     }, {} as ServiceFields<A>)

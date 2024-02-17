@@ -8,7 +8,7 @@ export const extractAndSortArgs = <T extends Record<string, unknown>>(
   const args: Array<T[keyof T]> = []
   let index = 0
 
-  while (argsObject.hasOwnProperty(`arg${index}`)) {
+  while (Object.prototype.hasOwnProperty.call(argsObject, `arg${index}`)) {
     args.push(argsObject[`arg${index}`] as T[keyof T])
     index++
   }
@@ -52,8 +52,8 @@ export const validateNumberError = (t: IDL.Type) => {
   }
 }
 
-export const validateError = (t: IDL.Type<any>) => {
-  return function validate(value: any) {
+export const validateError = (t: IDL.Type) => {
+  return function validate(value: unknown) {
     try {
       t.covariant(value)
       return true

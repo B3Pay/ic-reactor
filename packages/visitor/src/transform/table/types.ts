@@ -6,7 +6,7 @@ import type {
 } from "@ic-reactor/store"
 import { ReturnDataType } from "../types"
 
-export interface DynamicDataArgs<V = any> {
+export interface DynamicDataArgs<V = unknown> {
   label: string
   value: V
 }

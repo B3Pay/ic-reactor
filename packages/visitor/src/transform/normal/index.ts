@@ -1,12 +1,7 @@
 import { IDL } from "@dfinity/candid"
-import type { ActorSubclass } from "@dfinity/agent"
 import type { MethodResult, DynamicDataArgs } from "./types"
 import { isImage, isUrl } from "../../helper"
-import type {
-  DefaultActorType,
-  FunctionName,
-  Principal,
-} from "@ic-reactor/store"
+import type { BaseActor, FunctionName, Principal } from "@ic-reactor/store"
 
 export * from "./types"
 
@@ -17,17 +12,17 @@ export * from "./types"
  * @category Main
  */
 export class VisitTransform<
-  A extends ActorSubclass<any> = DefaultActorType,
+  A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
 > extends IDL.Visitor<DynamicDataArgs, MethodResult<A, M>> {
   public visitFunc(
     t: IDL.FuncClass,
-    { value, label }: DynamicDataArgs<any>
+    { value, label }: DynamicDataArgs
   ): MethodResult<A, M> {
     const values = t.argTypes.map((type, index, types) => {
       return type.accept(this, {
         label: `ret${index}`,
-        value: types.length > 1 ? (value as any[])[index] : value,
+        value: types.length > 1 ? (value as unknown[])[index] : value,
       }) as MethodResult<A, M>
     })
 
@@ -97,7 +92,7 @@ export class VisitTransform<
     }
   }
 
-  public visitTuple<T extends any[]>(
+  public visitTuple<T extends IDL.Type[]>(
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
     { value, label }: DynamicDataArgs<T>
@@ -250,7 +245,7 @@ export class VisitTransform<
 
   public visitType<T>(
     t: IDL.Type<T>,
-    { value, label }: DynamicDataArgs
+    { value, label }: DynamicDataArgs<T>
   ): MethodResult<A, M> {
     return {
       type: "unknown",

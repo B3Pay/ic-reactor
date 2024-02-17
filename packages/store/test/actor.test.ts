@@ -20,7 +20,9 @@ describe("createReActorStore", () => {
   })
 
   test("Uninitialized", () => {
-    const value = visitFunction.get_app(new VisitRandomResponse<Example>())
+    const value = visitFunction.get_app(
+      new VisitRandomResponse<Example, "get_app">()
+    )
     const data = visitFunction.get_app(new VisitTransform<Example>(), {
       value,
       label: "app",

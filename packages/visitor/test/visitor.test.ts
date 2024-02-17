@@ -27,7 +27,9 @@ describe("createReActorStore", () => {
     const details = visitFunction.get_app(new VisitDetails())
     console.log(details)
 
-    const value = visitFunction.get_app(new VisitRandomResponse())
+    const value = visitFunction.get_app(
+      new VisitRandomResponse<B3System, "get_app">()
+    )
     console.log(value)
 
     const transform = visitFunction.get_app(

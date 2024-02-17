@@ -15,7 +15,9 @@ export interface ExtractedServiceDetails<A = DefaultActorType> {
 }
 
 export type ServiceDetails<A = DefaultActorType> = {
-  [K in FunctionName<A>]: <ExtractorClass extends IDL.Visitor<any, any>>(
+  [K in FunctionName<A>]: <
+    ExtractorClass extends IDL.Visitor<unknown, unknown>
+  >(
     extractorClass?: ExtractorClass
   ) => MethodDetails<A>
 }
