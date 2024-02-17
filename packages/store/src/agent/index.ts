@@ -1,5 +1,4 @@
 import { HttpAgent } from "@dfinity/agent"
-import { AuthClient } from "@dfinity/auth-client"
 import { createStoreWithOptionalDevtools } from "../helper"
 import type {
   AgentAuthState,
@@ -104,6 +103,15 @@ export class AgentManager {
     this.updateState({ authenticating: true })
 
     try {
+      const { AuthClient } = await import("@dfinity/auth-client").catch(
+        (error) => {
+          console.error("Failed to import @dfinity/auth-client:", error)
+          throw new Error(
+            "Authentication failed: @dfinity/auth-client package is missing."
+          )
+        }
+      )
+
       const authClient = await AuthClient.create()
       const authenticated = await authClient.isAuthenticated()
 

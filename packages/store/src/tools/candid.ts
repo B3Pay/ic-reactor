@@ -31,22 +31,16 @@ export class CandidAdapter {
   }
 
   async getCandidDefinition(canisterId: CanisterId): Promise<CandidDefenition> {
-    try {
-      // First attempt: Try getting Candid definition from metadata
-      const fromMetadata = await this.getFromMetadata(canisterId)
-      if (fromMetadata) return fromMetadata
+    // First attempt: Try getting Candid definition from metadata
+    const fromMetadata = await this.getFromMetadata(canisterId)
+    if (fromMetadata) return fromMetadata
 
-      // Second attempt: Try the temporary hack method
-      const fromTmpHack = await this.getFromTmpHack(canisterId)
-      if (fromTmpHack) return fromTmpHack
+    // Second attempt: Try the temporary hack method
+    const fromTmpHack = await this.getFromTmpHack(canisterId)
+    if (fromTmpHack) return fromTmpHack
 
-      // If both attempts fail, throw an error
-      throw new Error("Failed to retrieve Candid definition by any method.")
-    } catch (error) {
-      // Log or handle the error as needed
-      console.error("Error in getCandidDefinition:", error)
-      throw error
-    }
+    // If both attempts fail, throw an error
+    throw new Error("Failed to retrieve Candid definition by any method.")
   }
 
   async getFromMetadata(
@@ -86,23 +80,29 @@ export class CandidAdapter {
   }
 
   async didTojs(candidSource: string): Promise<CandidDefenition> {
+    type DidToJs = {
+      did_to_js: (arg: string) => Promise<[string] | []>
+    }
     const didjsInterface: IDL.InterfaceFactory = ({ IDL }) =>
       IDL.Service({
         did_to_js: IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ["query"]),
       })
 
-    const didjs = Actor.createActor(didjsInterface, {
+    const didjs = Actor.createActor<DidToJs>(didjsInterface, {
       agent: this.agent,
       canisterId: this.didjsCanisterId,
     })
 
-    const js: any = await didjs.did_to_js(candidSource)
+    const js = await didjs.did_to_js(candidSource)
+
     if (JSON.stringify(js) === JSON.stringify([])) {
       throw new Error("Cannot fetch candid file")
     }
 
     const dataUri =
-      "data:text/javascript;charset=utf-8," + encodeURIComponent(js[0])
+      "data:text/javascript;charset=utf-8," +
+      encodeURIComponent(js[0] as string)
+
     return eval('import("' + dataUri + '")')
   }
 }

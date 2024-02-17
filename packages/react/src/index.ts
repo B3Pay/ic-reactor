@@ -9,9 +9,7 @@ export * from "@ic-reactor/store"
 export * from "./context/agent"
 export * from "./context/actor"
 
-export interface CreateReactActorOptions extends CreateReActorOptions {
-  withVisitor?: boolean
-}
+export interface CreateReactActorOptions extends CreateReActorOptions {}
 
 export const createReActor: CreateReActor = <
   A extends ActorSubclass<any> = DefaultActorType
@@ -26,7 +24,7 @@ export const createReActor: CreateReActor = <
       (process.env.DFX_NETWORK === "local" ||
         process.env.NODE_ENV === "development"))
 
-  let actorManager = createReActorStore<A>({
+  const actorManager = createReActorStore<A>({
     isLocalEnv,
     ...options,
   })

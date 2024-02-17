@@ -2,7 +2,7 @@ import Login from "Login"
 import Notes from "Notes"
 import AddNote from "./AddNote"
 import { AgentProvider, createReActorContext } from "@ic-reactor/react"
-import { backend } from "candid"
+import { backend } from "declarations/candid"
 
 const publicKey = crypto.getRandomValues(new Uint8Array(48))
 

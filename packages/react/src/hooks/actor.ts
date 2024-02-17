@@ -113,7 +113,7 @@ export const getActorHooks = <A>({
   }) => {
     const { call, ...state } = useReActorCall(rest as any)
 
-    let intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
+    const intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
 
     useEffect(() => {
       // Auto-refresh logic

@@ -34,7 +34,7 @@ export class ActorManager<A extends ActorSubclass<any> = DefaultActorType> {
     error: undefined,
   }
 
-  public unsubscribeAgent: () => void = () => {}
+  public unsubscribeAgent: () => void
 
   private updateState = (newState: Partial<ActorState<A>>) => {
     this.actorStore.setState((state) => ({ ...state, ...newState }))

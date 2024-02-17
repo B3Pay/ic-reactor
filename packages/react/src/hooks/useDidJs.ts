@@ -53,7 +53,7 @@ const useDidJs = ({
     try {
       const candidManager = createCandidAdapter({ agent, didjsCanisterId })
 
-      let fetchedDidJs = await candidManager.getCandidDefinition(canisterId)
+      const fetchedDidJs = await candidManager.getCandidDefinition(canisterId)
 
       setDidJs({
         didJs: fetchedDidJs,

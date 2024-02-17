@@ -26,9 +26,10 @@
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/store#readme",
   "peerDependencies": {
-    "@dfinity/agent": "1.0",
-    "@dfinity/auth-client": "^1.0",
-    "@dfinity/candid": "1.0"
+    "@dfinity/agent": ">=1.0",
+    "@dfinity/auth-client": ">=1.0",
+    "@dfinity/candid": ">=1.0",
+    "@dfinity/principal": ">=1.0"
   },
   "dependencies": {
     "zustand": "^4.5"
