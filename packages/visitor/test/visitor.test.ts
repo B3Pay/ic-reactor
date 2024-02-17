@@ -24,10 +24,10 @@ describe("createReActorStore", () => {
 
   test("Uninitialized", () => {
     const field = visitFunction.get_app(new VisitFields<B3System>())
-    console.log(field)
+    console.log(field.defaultValues)
     const args = visitFunction.get_app(new VisitRandomArgs<B3System>())
     console.log(args)
-    const details = visitFunction.get_app(new VisitDetails())
+    const details = visitFunction.get_app(new VisitDetails<B3System>())
     console.log(details)
 
     const value = visitFunction.get_app(new VisitRandomResponse<B3System>())

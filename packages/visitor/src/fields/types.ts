@@ -1,18 +1,14 @@
 import { IDL } from "@dfinity/candid"
-import type {
-  DefaultActorType,
-  FunctionName,
-  FunctionType,
-} from "@ic-reactor/store"
+import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/store"
 import { FieldType } from "../types"
 
-export interface ExtractedServiceFields<A = DefaultActorType> {
+export interface ExtractedServiceFields<A = BaseActor> {
   canisterId: string
   methodFields: ServiceFields<A>
 }
 
 export type ServiceFields<
-  A = DefaultActorType,
+  A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
 > = {
   [key in M]: <ExtractorClass extends IDL.Visitor<unknown, unknown>>(
@@ -21,7 +17,7 @@ export type ServiceFields<
 }
 
 export interface MethodFields<
-  A = DefaultActorType,
+  A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
 > {
   functionName: M
@@ -32,7 +28,7 @@ export interface MethodFields<
 }
 
 export type ServiceDefaultValues<
-  A = DefaultActorType,
+  A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
 > = {
   [key in M]: MethodDefaultValues<M>

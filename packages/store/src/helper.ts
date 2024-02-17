@@ -25,7 +25,7 @@ export function createStoreWithOptionalDevtools<T>(
   }
 }
 
-export function jsonToString(json: never) {
+export function jsonToString(json: unknown) {
   return JSON.stringify(
     json,
     (_, value) => (typeof value === "bigint" ? `BigInt(${value})` : value),
@@ -47,7 +47,7 @@ export const generateRequestHash = (args?: unknown[]) => {
   return stringToHash(serializedArgs ?? "")
 }
 
-export const generateHash = (field?: never) => {
+export const generateHash = (field?: unknown) => {
   const serializedArgs = JSON.stringify(field)
   return stringToHash(serializedArgs ?? "")
 }

@@ -19,10 +19,7 @@ export * from "./types"
  *
  * @category Main
  */
-export class VisitDetails<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>
-> extends IDL.Visitor<
+export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   string,
   | ExtractedServiceDetails<A>
   | MethodDetails<A>
@@ -31,7 +28,7 @@ export class VisitDetails<
 > {
   public counter = 0
 
-  public visitFunc<Method extends M>(
+  public visitFunc<Method extends FunctionName<A>>(
     t: IDL.FuncClass,
     functionName: Method
   ): MethodDetails<A> {

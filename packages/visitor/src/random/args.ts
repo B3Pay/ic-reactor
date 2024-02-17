@@ -16,7 +16,7 @@ export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
   public visitFunc<Method extends FunctionName<A>>(
     t: IDL.FuncClass,
     functionName: Method
-  ): ServiceDefaultValues<Method> {
+  ): ServiceDefaultValues<A, Method> {
     const defaultValue = t.argTypes.reduce((acc, type, index) => {
       acc[`arg${index}`] = type.accept(this, false)
 
@@ -27,7 +27,7 @@ export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
       [functionName]: defaultValue,
     }
 
-    return result as ServiceDefaultValues<Method>
+    return result as ServiceDefaultValues<A, Method>
   }
 
   public visitRecord(

@@ -1,20 +1,15 @@
-import {
-  DefaultActorType,
-  FunctionName,
-  FunctionType,
-  IDL,
-} from "@ic-reactor/store"
+import { BaseActor, FunctionName, FunctionType, IDL } from "@ic-reactor/store"
 import { FieldType } from "../types"
 
 export type FunctionCategory = "home" | "wallet" | "governance" | "setting"
 
-export interface ExtractedServiceDetails<A = DefaultActorType> {
+export interface ExtractedServiceDetails<A = BaseActor> {
   canisterId: string
   description: string
   methodDetails: ServiceDetails<A>
 }
 
-export type ServiceDetails<A = DefaultActorType> = {
+export type ServiceDetails<A = BaseActor> = {
   [K in FunctionName<A>]: <
     ExtractorClass extends IDL.Visitor<unknown, unknown>
   >(
@@ -22,7 +17,7 @@ export type ServiceDetails<A = DefaultActorType> = {
   ) => MethodDetails<A>
 }
 
-export type MethodDetails<A = DefaultActorType> = {
+export type MethodDetails<A = BaseActor> = {
   functionType: FunctionType
   functionName: FunctionName<A>
   category: FunctionCategory
