@@ -49,7 +49,7 @@ describe("My IC Store and Actions", () => {
 
     const data = await dataPromise
     console.log(data)
-    const stateData = userState("data")
+    const stateData = userState()
 
     expect(data).toEqual(stateData)
 
@@ -64,6 +64,7 @@ describe("My IC Store and Actions", () => {
     const { intervalId, dataPromise } = queryCall({
       functionName: "timers",
       refetchOnMount: true,
+      refetchInterval: 1000,
     })
 
     expect(intervalId).toBeDefined()

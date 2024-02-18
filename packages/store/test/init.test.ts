@@ -43,7 +43,7 @@ describe("CreateActor", () => {
 
   subscribeAgent(callback)
 
-  const { callMethod, initialize, actorStore } = new ActorManager<_SERVICE>({
+  const { callMethod, initialize, getState } = new ActorManager<_SERVICE>({
     agentManager,
     canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
     idlFactory,
@@ -53,7 +53,7 @@ describe("CreateActor", () => {
   it("should initialized the actor", () => {
     expect(callback).toHaveBeenCalledTimes(0)
 
-    expect(actorStore.getState().initialized).toEqual(false)
+    expect(getState().initialized).toEqual(false)
 
     initialize()
 
@@ -66,8 +66,32 @@ describe("CreateActor", () => {
     expect(data).toEqual(canisterDecodedReturnValue)
   })
 
-  it("should authenticate the actor", async () => {
-    await agentManager.authenticate()
+  it("should have not authenticated the actor", () => {
+    const { authClient, authenticated, authenticating } =
+      agentManager.authStore.getState()
+    expect(authenticating).toEqual(false)
+    expect(authenticated).toEqual(false)
+    expect(authClient).toBeNull()
+  })
+
+  it("should authenticating the actor", async () => {
+    const identity = agentManager.authenticate()
+
+    const { authClient, authenticated, authenticating } =
+      agentManager.authStore.getState()
+    expect(authenticating).toEqual(true)
+    expect(authenticated).toEqual(false)
+    expect(authClient).toBeNull()
+    await identity
+  })
+
+  it("should authenticated the actor", async () => {
+    const { authClient, identity, authenticating } =
+      agentManager.authStore.getState()
+
+    expect(authenticating).toEqual(false)
+    expect(authClient).toBeDefined()
+    expect(identity).toBeDefined()
 
     expect(callback).toHaveBeenCalledTimes(2)
   })

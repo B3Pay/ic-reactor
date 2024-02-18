@@ -24,6 +24,7 @@ export const createReActor: CreateReActor = <A = BaseActor>({
 
   const actorManager = createReActorStore<A>({
     isLocalEnv,
+    withVisitor,
     ...options,
   })
 

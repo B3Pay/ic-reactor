@@ -20,15 +20,15 @@ import type { AgentManager, UpdateAgentOptions } from "../agent"
 export * from "./types"
 
 export class ActorManager<A = BaseActor> {
-  private actor: null | A = null
-  private idlFactory: IDL.InterfaceFactory
+  private _store: ActorStore<A>
+  private _actor: null | A = null
+  private _idlFactory: IDL.InterfaceFactory
 
   public agentManager: AgentManager
   public canisterId: CanisterId
-  public actorStore: ActorStore<A>
   public visitFunction: VisitService<A>
 
-  private DEFAULT_ACTOR_STATE: ActorState<A> = {
+  private initialState: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
     initializing: false,
     initialized: false,
@@ -38,10 +38,10 @@ export class ActorManager<A = BaseActor> {
   public unsubscribeAgent: () => void
 
   private updateState = (newState: Partial<ActorState<A>>) => {
-    this.actorStore.setState((state) => ({ ...state, ...newState }))
+    this._store.setState((state) => ({ ...state, ...newState }))
   }
 
-  constructor(reactorConfig: ActorManagerOptions) {
+  constructor(actorConfig: ActorManagerOptions) {
     const {
       agentManager,
       canisterId,
@@ -49,7 +49,7 @@ export class ActorManager<A = BaseActor> {
       withVisitor = false,
       withDevtools = false,
       initializeOnCreate = true,
-    } = reactorConfig
+    } = actorConfig
 
     this.agentManager = agentManager
 
@@ -58,7 +58,7 @@ export class ActorManager<A = BaseActor> {
     )
 
     this.canisterId = canisterId
-    this.idlFactory = idlFactory
+    this._idlFactory = idlFactory
 
     if (withVisitor) {
       this.visitFunction = this.extractService()
@@ -67,10 +67,10 @@ export class ActorManager<A = BaseActor> {
     }
 
     // Initialize stores
-    this.actorStore = createStoreWithOptionalDevtools(
-      this.DEFAULT_ACTOR_STATE,
-      { withDevtools, store: `actor-${String(canisterId)}` }
-    )
+    this._store = createStoreWithOptionalDevtools(this.initialState, {
+      withDevtools,
+      store: `actor-${String(canisterId)}`,
+    })
 
     if (initializeOnCreate) {
       this.initializeActor(agentManager.getAgent())
@@ -82,7 +82,7 @@ export class ActorManager<A = BaseActor> {
   }
 
   public extractService(): VisitService<A> {
-    return this.idlFactory({ IDL })._fields.reduce((acc, service) => {
+    return this._idlFactory({ IDL })._fields.reduce((acc, service) => {
       const functionName = service[0] as FunctionName<A>
       const type = service[1]
 
@@ -103,7 +103,7 @@ export class ActorManager<A = BaseActor> {
       } network`
     )
 
-    const { idlFactory, canisterId } = this
+    const { _idlFactory: idlFactory, canisterId } = this
 
     this.updateState({
       initializing: true,
@@ -116,12 +116,12 @@ export class ActorManager<A = BaseActor> {
         throw new Error("Agent not initialized")
       }
 
-      this.actor = Actor.createActor<A>(idlFactory, {
+      this._actor = Actor.createActor<A>(idlFactory, {
         agent,
         canisterId,
       })
 
-      if (!this.actor) {
+      if (!this._actor) {
         throw new Error("Failed to initialize actor")
       }
 
@@ -139,18 +139,18 @@ export class ActorManager<A = BaseActor> {
     functionName: M,
     ...args: ActorMethodArgs<A[M]>
   ): Promise<ActorMethodReturnType<A[M]>> => {
-    if (!this.actor) {
+    if (!this._actor) {
       throw new Error("Actor not initialized")
     }
 
     if (
-      !this.actor[functionName as keyof A] ||
-      typeof this.actor[functionName as keyof A] !== "function"
+      !this._actor[functionName as keyof A] ||
+      typeof this._actor[functionName as keyof A] !== "function"
     ) {
       throw new Error(`Method ${String(functionName)} not found`)
     }
 
-    const method = this.actor[functionName as keyof A] as (
+    const method = this._actor[functionName as keyof A] as (
       ...args: ActorMethodArgs<A[M]>
     ) => Promise<ActorMethodReturnType<A[M]>>
 
@@ -159,17 +159,28 @@ export class ActorManager<A = BaseActor> {
     return data
   }
 
-  public updateMethodState = (
-    newState: Partial<ActorState<A>["methodState"]>
-  ) => {
-    this.actorStore.setState((state) => ({
-      ...state,
-      methodState: { ...state.methodState, ...newState },
-    }))
+  get agent() {
+    return this.agentManager.getAgent()
   }
 
-  public getActor = () => {
-    return this.actor
+  public getActor = (): A | null => {
+    return this._actor
+  }
+
+  public getStore = (): ActorStore<A> => {
+    return this._store
+  }
+
+  public getState: ActorStore<A>["getState"] = () => {
+    return this._store.getState()
+  }
+
+  public subscribe: ActorStore<A>["subscribe"] = (listener) => {
+    return this._store.subscribe(listener)
+  }
+
+  public setState: ActorStore<A>["setState"] = (updater) => {
+    return this._store.setState(updater)
   }
 }
 

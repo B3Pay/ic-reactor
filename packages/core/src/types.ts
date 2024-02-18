@@ -3,7 +3,13 @@ import type {
   ActorMethodArgs,
   ActorMethodReturnType,
   ActorMethodState,
+  ActorStore,
+  AgentManager,
+  BaseActor,
+  CanisterId,
   FunctionName,
+  UpdateAgentOptions,
+  VisitService,
 } from "@ic-reactor/store"
 
 export type ActorGetStateFunction<A, M extends FunctionName<A>> = {
@@ -70,7 +76,14 @@ export type ActorUpdate<A = Record<string, ActorMethod>> = <
   options: ActorUpdateArgs<A, M>
 ) => ActorUpdateReturn<A, M>
 
-export interface ActorCoreActions<A> {
+export interface ActorCoreActions<A = BaseActor> {
+  actorStore: ActorStore<A>
+  agentManager: AgentManager
+  canisterId: CanisterId
+  getActor: () => null | A
+  initialize: (options?: UpdateAgentOptions) => Promise<void>
+  unsubscribeAgent: () => void
   queryCall: ActorQuery<A>
   updateCall: ActorUpdate<A>
+  visitFunction: VisitService<A>
 }

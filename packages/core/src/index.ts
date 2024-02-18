@@ -9,6 +9,7 @@ import type {
 import { createReActorStore, generateRequestHash } from "@ic-reactor/store"
 import {
   ActorCallFunction,
+  ActorCoreActions,
   ActorGetStateFunction,
   ActorMethodCall,
   ActorQuery,
@@ -16,9 +17,33 @@ import {
   ActorUpdate,
 } from "./types"
 
-export const createReActor = <A = BaseActor>(options: CreateReActorOptions) => {
+export * from "./types"
+
+/**
+ * Create a new actor manager with the given options.
+ * Its create a new agent manager if not provided.
+ *
+ * @category Main
+ * @includeExample ./packages/core/README.md:30-91
+ */
+
+export const createReActor = <A = BaseActor>({
+  isLocalEnv,
+  withVisitor,
+  ...options
+}: CreateReActorOptions): ActorCoreActions<A> => {
+  isLocalEnv =
+    isLocalEnv ||
+    (typeof process !== "undefined" &&
+      (process.env.DFX_NETWORK === "local" ||
+        process.env.NODE_ENV === "development"))
+
   const { agentManager, callMethod, actorStore, ...rest } =
-    createReActorStore<A>(options)
+    createReActorStore<A>({
+      isLocalEnv,
+      withVisitor,
+      ...options,
+    })
 
   const updateMethodState = <M extends FunctionName<A>>(
     method: M,

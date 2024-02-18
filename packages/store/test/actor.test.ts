@@ -9,7 +9,7 @@ import { example, idlFactory } from "./candid/example"
 type Example = typeof example
 
 describe("createReActorStore", () => {
-  const { actorStore, initialize, getActor, visitFunction } =
+  const { getState, initialize, getActor, visitFunction } =
     createReActorStore<Example>({
       canisterId: "2vxsx-fae",
       idlFactory,
@@ -18,7 +18,7 @@ describe("createReActorStore", () => {
     })
 
   it("should return actor store", () => {
-    expect(actorStore).toBeDefined()
+    expect(getState()).toBeDefined()
     expect(visitFunction).toBeDefined()
     expect(getActor()).toBeNull()
   })
@@ -35,8 +35,7 @@ describe("createReActorStore", () => {
     const args = visitFunction.get_app(new VisitRandomArgs<Example>())
     console.log(args)
 
-    const { methodState, initialized, initializing, error } =
-      actorStore.getState()
+    const { methodState, initialized, initializing, error } = getState()
 
     expect({ methodState, initialized, initializing, error }).toEqual({
       methodState: {},
@@ -49,10 +48,7 @@ describe("createReActorStore", () => {
   test("Initialized", async () => {
     await initialize()
 
-    const { methodState, initialized, initializing, error } =
-      actorStore.getState()
-
-    expect({ methodState, initialized, initializing, error }).toEqual({
+    expect(getState()).toEqual({
       methodState: {},
       initialized: true,
       initializing: false,

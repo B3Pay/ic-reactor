@@ -26,26 +26,31 @@ yarn add @ic-reactor/core
 
 To get started with ReActor, you'll need to initialize it with your actor configurations. Here's a basic example:
 
-```javascript
+```typescript
 import { createReActor } from "@ic-reactor/core"
+import { idlFactory, canisterId } from "./candid/backend"
 
-const { actorStore, authStore, queryCall, updateCall } = createReActor(
-  (agent) => createActor("bd3sg-teaaa-aaaaa-qaaba-cai", { agent }),
-  {
-    host: "https://localhost:4943",
-    initializeOnMount: true,
-  }
-)
+const { actorStore, agentManager, queryCall, updateCall } = createReActor({
+  idlFactory,
+  canisterId,
+  host: "https://localhost:4943",
+})
+```
+
+### Authenticating
+
+```typescript
+const identity = await agentManager.authenticate()
 ```
 
 ### Querying Data
 
-```javascript
-const { recall, subscribe, getState, initialData, intervalId } = queryCall({
-  functionName: "yourFunctionName",
-  args: ["arg1", "arg2"],
-  autoRefresh: true,
-  refreshInterval: 3000,
+```typescript
+const { requestHash, subscribe, dataPromise, call, getState } = queryCall({
+  functionName: "greet",
+  args: ["World"],
+  refetchOnMount: true,
+  refetchInterval: 1000,
 })
 
 // Subscribe to changes
@@ -54,13 +59,13 @@ const unsubscribe = subscribe((newState) => {
 })
 
 // Fetch data
-recall().then((data) => {
-  // Handle initial data
+call().then((data) => {
+  console.log(data)
 })
 
 // Get initial data
-initialData.then((data) => {
-  // Handle initial data
+dataPromise.then((data) => {
+  console.log(data)
 })
 
 // Clear interval if autoRefresh is enabled
@@ -71,22 +76,24 @@ if (intervalId) {
 
 ### Updating Data
 
-```javascript
+```typescript
 const { call, getState, subscribe } = updateCall({
   functionName: "yourUpdateFunction",
   args: ["arg1", "arg2"],
 })
 
-call().then((result) => {
-  // Handle result
-})
-
 // Get state
-const state = getState()
+const { data, loading, error } = getState()
 
 // Subscribe to changes
 const unsubscribe = subscribe((newState) => {
+  console.log(newState)
   // Handle new state
+})
+
+/* it can takes the replacement of the args call([newArg1, newArg2]) */
+call().then((result) => {
+  // Handle result
 })
 ```
 

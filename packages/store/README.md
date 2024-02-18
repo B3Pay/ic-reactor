@@ -55,10 +55,13 @@ If you require more control over the agent's lifecycle or configuration, `@ic-re
 // agent.ts
 import { createAgentManager } from "@ic-reactor/store"
 
-export const agentManager = createAgentManager() // Connects to the default IC network
+export const agentManager = createAgentManager() // Connects to IC network by default
 
 // Usage example
-const identity = await agentManager.authenticate()
+await agentManager.authenticate()
+// Then use the store to access the authClient, identity, and more...
+const { authClient, identity, authenticating } =
+  agentManager.authStore.getState()
 ```
 
 **Local Agent Example:**

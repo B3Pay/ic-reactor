@@ -11,7 +11,8 @@
     "test": "lerna run test",
     "lint": "eslint . --ext .ts",
     "e2e": "cd e2e && sh ./test.sh",
-    "docs": "typedoc --options ./typedoc.json"
+    "docs:build": "typedoc --options ./typedoc.json",
+    "docs:serve": "npx serve@latest ./docs"
   },
   "publishConfig": {
     "access": "public",
