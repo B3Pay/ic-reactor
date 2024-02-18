@@ -23,8 +23,8 @@ export class ActorManager<A = BaseActor> {
   private _store: ActorStore<A>
   private _actor: null | A = null
   private _idlFactory: IDL.InterfaceFactory
+  private _agentManager: AgentManager
 
-  public agentManager: AgentManager
   public canisterId: CanisterId
   public visitFunction: VisitService<A>
 
@@ -51,9 +51,9 @@ export class ActorManager<A = BaseActor> {
       initializeOnCreate = true,
     } = actorConfig
 
-    this.agentManager = agentManager
+    this._agentManager = agentManager
 
-    this.unsubscribeAgent = this.agentManager.subscribeAgent(
+    this.unsubscribeAgent = this._agentManager.subscribeAgent(
       this.initializeActor
     )
 
@@ -78,7 +78,7 @@ export class ActorManager<A = BaseActor> {
   }
 
   public initialize = async (options?: UpdateAgentOptions) => {
-    await this.agentManager.updateAgent(options)
+    await this._agentManager.updateAgent(options)
   }
 
   public extractService(): VisitService<A> {
@@ -158,11 +158,16 @@ export class ActorManager<A = BaseActor> {
 
     return data
   }
-
-  get agent() {
-    return this.agentManager.getAgent()
+  // agent store
+  get agentManager() {
+    return this._agentManager
   }
 
+  public getAgent = (): HttpAgent => {
+    return this._agentManager.getAgent()
+  }
+
+  // actor store
   public getActor = (): A | null => {
     return this._actor
   }
@@ -175,7 +180,7 @@ export class ActorManager<A = BaseActor> {
     return this._store.getState()
   }
 
-  public subscribe: ActorStore<A>["subscribe"] = (listener) => {
+  public subscribeActorState: ActorStore<A>["subscribe"] = (listener) => {
     return this._store.subscribe(listener)
   }
 

@@ -31,33 +31,57 @@ fetchMock.mockResponse(async (req) => {
 })
 
 describe("CreateActor", () => {
-  const callback = jest.fn()
+  const agentCallback = jest.fn()
+  const authCallback = jest.fn()
+  const actorCallback = jest.fn()
 
   const agentManager = new AgentManager({
-    host: "https://local-mock",
     verifyQuerySignatures: false,
     withDevtools: false,
   })
 
-  const { subscribeAgent } = agentManager
+  const { subscribeAgent, subscribeAuthState } = agentManager
 
-  subscribeAgent(callback)
+  subscribeAgent(agentCallback)
+  subscribeAuthState(authCallback)
 
-  const { callMethod, initialize, getState } = new ActorManager<_SERVICE>({
+  const {
+    callMethod,
+    initialize,
+    agentManager: actorAgentManager,
+    getState,
+    subscribeActorState,
+  } = new ActorManager<_SERVICE>({
     agentManager,
     canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
     idlFactory,
     initializeOnCreate: false,
   })
 
-  it("should initialized the actor", () => {
-    expect(callback).toHaveBeenCalledTimes(0)
+  subscribeActorState(actorCallback)
+
+  it("should return the actor agent manager", () => {
+    expect(actorAgentManager).toEqual(agentManager)
+  })
+
+  it("should initialized the actor", async () => {
+    expect(agentCallback).toHaveBeenCalledTimes(0)
+    expect(authCallback).toHaveBeenCalledTimes(0)
+    expect(actorCallback).toHaveBeenCalledTimes(0)
 
     expect(getState().initialized).toEqual(false)
 
-    initialize()
+    const promise = initialize()
 
-    expect(callback).toHaveBeenCalledTimes(1)
+    expect(agentCallback).toHaveBeenCalledTimes(1)
+    expect(authCallback).toHaveBeenCalledTimes(0)
+    expect(actorCallback).toHaveBeenCalledTimes(2)
+
+    await promise
+
+    expect(agentCallback).toHaveBeenCalledTimes(1)
+    expect(authCallback).toHaveBeenCalledTimes(0)
+    expect(actorCallback).toHaveBeenCalledTimes(2)
   })
 
   it("should queryCall the query method", async () => {
@@ -68,7 +92,7 @@ describe("CreateActor", () => {
 
   it("should have not authenticated the actor", () => {
     const { authClient, authenticated, authenticating } =
-      agentManager.authStore.getState()
+      agentManager.getAuthState()
     expect(authenticating).toEqual(false)
     expect(authenticated).toEqual(false)
     expect(authClient).toBeNull()
@@ -77,22 +101,25 @@ describe("CreateActor", () => {
   it("should authenticating the actor", async () => {
     const identity = agentManager.authenticate()
 
+    expect(authCallback).toHaveBeenCalledTimes(1)
+
     const { authClient, authenticated, authenticating } =
-      agentManager.authStore.getState()
+      agentManager.getAuthState()
     expect(authenticating).toEqual(true)
     expect(authenticated).toEqual(false)
     expect(authClient).toBeNull()
     await identity
+    expect(authCallback).toHaveBeenCalledTimes(2)
   })
 
   it("should authenticated the actor", async () => {
-    const { authClient, identity, authenticating } =
-      agentManager.authStore.getState()
+    const { authClient, identity, authenticating } = agentManager.getAuthState()
 
     expect(authenticating).toEqual(false)
     expect(authClient).toBeDefined()
     expect(identity).toBeDefined()
 
-    expect(callback).toHaveBeenCalledTimes(2)
+    expect(agentCallback).toHaveBeenCalledTimes(2)
+    expect(authCallback).toHaveBeenCalledTimes(2)
   })
 })

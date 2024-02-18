@@ -10,11 +10,14 @@ export interface AgentManagerOptions extends HttpAgentOptions {
   withDevtools?: boolean
 }
 
-// Main state structure for a ReActor
-export interface AgentAuthState {
-  identity: Identity | null
+export interface AgentState {
   initialized: boolean
   initializing: boolean
+  error: Error | undefined
+}
+
+export interface AuthState {
+  identity: Identity | null
   authClient: AuthClient | null
   authenticating: boolean
   authenticated: boolean
@@ -26,4 +29,5 @@ export interface UpdateAgentOptions extends HttpAgentOptions {
 }
 
 // Type for the ReActor store
-export type AgentAuthStore = StoreApi<AgentAuthState>
+export type AgentStore = StoreApi<AgentState>
+export type AuthStore = StoreApi<AuthState>

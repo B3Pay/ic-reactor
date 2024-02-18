@@ -1,10 +1,12 @@
 import { HttpAgent } from "@dfinity/agent"
 import { createStoreWithOptionalDevtools } from "../tools/helper"
 import type {
-  AgentAuthState,
-  AgentAuthStore,
+  AgentState,
+  AgentStore,
   AgentManagerOptions,
   UpdateAgentOptions,
+  AuthState,
+  AuthStore,
 } from "./types"
 
 export * from "./types"
@@ -13,24 +15,33 @@ export const IC_HOST_NETWORK_URI = "https://ic0.app"
 export const LOCAL_HOST_NETWORK_URI = "http://127.0.0.1:4943"
 
 export class AgentManager {
-  private agent: HttpAgent
-  private subscribers: Array<(agent: HttpAgent) => void> = []
+  private _agentStore: AgentStore
+  private _authStore: AuthStore
+  private _agent: HttpAgent
+  private _subscribers: Array<(agent: HttpAgent) => void> = []
 
-  public authStore: AgentAuthStore
   public isLocalEnv: boolean
 
-  private DEFAULT_AUTH_STATE: AgentAuthState = {
-    identity: null,
+  private initialAgentState: AgentState = {
     initialized: false,
     initializing: false,
+    error: undefined,
+  }
+
+  private initialAuthState: AuthState = {
+    identity: null,
     authClient: null,
     authenticating: false,
     authenticated: false,
     error: undefined,
   }
 
-  private updateState = (newState: Partial<AgentAuthState>) => {
-    this.authStore.setState((state) => ({ ...state, ...newState }))
+  private updateAgentState = (newState: Partial<AgentState>) => {
+    this._agentStore.setState((state) => ({ ...state, ...newState }))
+  }
+
+  private updateAuthState = (newState: Partial<AuthState>) => {
+    this._authStore.setState((state) => ({ ...state, ...newState }))
   }
 
   constructor(options?: AgentManagerOptions) {
@@ -49,49 +60,54 @@ export class AgentManager {
         : optionHost
       : IC_HOST_NETWORK_URI
 
-    this.authStore = createStoreWithOptionalDevtools(this.DEFAULT_AUTH_STATE, {
+    this._agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
+      withDevtools,
+      store: "agent",
+    })
+
+    this._authStore = createStoreWithOptionalDevtools(this.initialAuthState, {
       withDevtools,
       store: "auth",
     })
 
-    this.agent = new HttpAgent({ ...agentOptions, host })
-    this.isLocalEnv = this.agent.isLocal()
+    this._agent = new HttpAgent({ ...agentOptions, host })
+    this.isLocalEnv = this._agent.isLocal()
     this.initializeAgent()
   }
 
   private initializeAgent = async () => {
-    this.updateState({ initializing: true })
+    this.updateAgentState({ initializing: true })
     if (this.isLocalEnv) {
       try {
-        await this.agent.fetchRootKey()
-        this.updateState({ initialized: true, initializing: false })
+        await this._agent.fetchRootKey()
+        this.updateAgentState({ initialized: true, initializing: false })
       } catch (error) {
-        this.updateState({ error: error as Error, initializing: false })
+        this.updateAgentState({ error: error as Error, initializing: false })
       }
     }
   }
 
   public subscribeAgent = (callback: (agent: HttpAgent) => void) => {
-    this.subscribers.push(callback)
+    this._subscribers.push(callback)
     return () => this.unsubscribeAgent(callback)
   }
 
   public unsubscribeAgent = (callback: (agent: HttpAgent) => void) => {
-    this.subscribers = this.subscribers.filter((sub) => sub !== callback)
+    this._subscribers = this._subscribers.filter((sub) => sub !== callback)
   }
 
   private notifySubscribers = () => {
-    this.subscribers.forEach((callback) => callback(this.agent))
+    this._subscribers.forEach((callback) => callback(this._agent))
   }
 
   public updateAgent = async (options?: UpdateAgentOptions) => {
     const { agent } = options || {}
 
     if (agent) {
-      this.agent = agent
+      this._agent = agent
     } else if (options) {
-      this.agent = new HttpAgent(options)
-      this.isLocalEnv = this.agent.isLocal()
+      this._agent = new HttpAgent(options)
+      this.isLocalEnv = this._agent.isLocal()
       await this.initializeAgent()
     }
 
@@ -99,7 +115,7 @@ export class AgentManager {
   }
 
   public authenticate = async () => {
-    this.updateState({ authenticating: true })
+    this.updateAuthState({ authenticating: true })
 
     try {
       const { AuthClient } = await import("@dfinity/auth-client").catch(
@@ -117,10 +133,10 @@ export class AgentManager {
 
       const identity = authClient.getIdentity()
 
-      this.agent.replaceIdentity(identity)
+      this._agent.replaceIdentity(identity)
       this.notifySubscribers()
 
-      this.updateState({
+      this.updateAuthState({
         authClient,
         authenticated,
         identity,
@@ -129,12 +145,63 @@ export class AgentManager {
 
       return identity
     } catch (error) {
-      this.updateState({ error: error as Error, authenticating: false })
+      this.updateAuthState({ error: error as Error, authenticating: false })
       throw error
     }
   }
 
+  // agent store
   public getAgent = () => {
-    return this.agent
+    return this._agent
+  }
+
+  public getAgentStore = (): AgentStore => {
+    return this._agentStore
+  }
+
+  public getAgentState: AgentStore["getState"] = () => {
+    return this._agentStore.getState()
+  }
+
+  public getAgentError = () => {
+    return this._agentStore.getState().error
+  }
+
+  public isInitialized = () => {
+    return this._agentStore.getState().initialized
+  }
+
+  public isInitializing = () => {
+    return this._agentStore.getState().initializing
+  }
+
+  public subscribeAgentState: AgentStore["subscribe"] = (listener) => {
+    return this._agentStore.subscribe(listener)
+  }
+
+  // auth store
+  public getAuthStore = (): AuthStore => {
+    return this._authStore
+  }
+
+  public getAuthState: AuthStore["getState"] = () => {
+    return this._authStore.getState()
+  }
+
+  public subscribeAuthState: AuthStore["subscribe"] = (listener) => {
+    return this._authStore.subscribe(listener)
+  }
+
+  public getAuthClient = () => {
+    return this._authStore.getState().authClient
+  }
+
+  public getIdentity = () => {
+    return this._authStore.getState().identity
+  }
+
+  public getPrincipal = () => {
+    const identity = this._authStore.getState().identity
+    return identity ? identity.getPrincipal() : null
   }
 }

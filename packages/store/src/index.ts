@@ -47,7 +47,7 @@ export const createReActorStore = <A = BaseActor>(
 }
 
 /**
- * Agent manager handles the lifecycle of the @dfinity/agent.
+ * Agent manager handles the lifecycle of the `@dfinity/agent`.
  * It is responsible for creating agent and managing the agent's state.
  * You can use it to subscribe to the agent changes.
  * login and logout to the internet identity.
