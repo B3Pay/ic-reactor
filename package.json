@@ -62,6 +62,7 @@
     "nx-cloud": "latest",
     "react": "^18.2",
     "react-dom": "^18.2",
+    "react-scripts": "5.0.1",
     "react-test-renderer": "18.2",
     "svelte-jester": "3.0",
     "text-encoding": "0.7.0",
