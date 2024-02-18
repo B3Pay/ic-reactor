@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/react#readme",
   "scripts": {
-    "test": "npx jest",
+    "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
     "start": "tsc watch",
     "build": "npx tsc",
     "clean": "npx rimraf dist"

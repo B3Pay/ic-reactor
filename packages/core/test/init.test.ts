@@ -6,12 +6,11 @@ describe("createReActor", () => {
     const { actorStore } = createReActor({
       initializeOnCreate: false,
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-      idlFactory: idlFactory,
+      idlFactory,
       host: "https://icp-api.io",
     })
 
     expect(actorStore.getState()).toEqual({
-      actor: null,
       initialized: false,
       initializing: false,
       error: undefined,
@@ -20,21 +19,17 @@ describe("createReActor", () => {
   })
 
   test("initialized", () => {
-    const { initialize, actorStore } = createReActor({
-      initializeOnCreate: false,
+    const { actorStore } = createReActor({
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-      idlFactory: idlFactory,
+      idlFactory,
       host: "https://icp-api.io",
     })
 
-    initialize()
-
     expect(actorStore.getState()).toEqual({
-      actor: null,
-      initialized: false,
+      initialized: true,
       initializing: false,
       methodState: {},
-      error: Error("Failed to initialize actor"),
+      error: undefined,
     })
   })
 })

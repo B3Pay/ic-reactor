@@ -1,17 +1,12 @@
-const { Actor, HttpAgent } = require("@dfinity/agent")
+import { Actor, HttpAgent } from "@dfinity/agent"
+import { idlFactory } from "./hello.did.js"
 
-// Imports and re-exports candid interface
-const { idlFactory } = require("./hello.did.js")
+export { idlFactory } from "./hello.did.js"
 
-/* CANISTER_ID is replaced by webpack based on node environment
- * Note: canister environment variable will be standardized as
- * process.env.CANISTER_ID_<CANISTER_NAME_UPPERCASE>
- * beginning in dfx 0.15.0
- */
-exports.canisterId =
+export const canisterId =
   process.env.CANISTER_ID_HELLO || process.env.HELLO_CANISTER_ID
 
-exports.createActor = (canisterId, options = {}) => {
+export const createActor = (canisterId, options = {}) => {
   const agent = options.agent || new HttpAgent({ ...options.agentOptions })
 
   if (options.agent && options.agentOptions) {
@@ -20,7 +15,6 @@ exports.createActor = (canisterId, options = {}) => {
     )
   }
 
-  // Fetch root key for certificate validation during development
   if (process.env.DFX_NETWORK !== "ic") {
     agent.fetchRootKey().catch((err) => {
       console.warn(
@@ -30,7 +24,6 @@ exports.createActor = (canisterId, options = {}) => {
     })
   }
 
-  // Creates an actor with using the candid interface and the HttpAgent
   return Actor.createActor(idlFactory, {
     agent,
     canisterId,

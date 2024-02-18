@@ -2,7 +2,7 @@ import { hash } from "@dfinity/agent"
 import { toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import { BaseActor } from "./actor"
+import { BaseActor } from "../actor"
 
 interface StoreOptions {
   withDevtools?: boolean
@@ -33,9 +33,9 @@ export function jsonToString(json: unknown) {
   )
 }
 
-export const generateRequestHash = (args?: unknown[]) => {
+export const generateRequestHash = (args: unknown[] = []) => {
   const serializedArgs = args
-    ?.map((arg) => {
+    .map((arg) => {
       if (typeof arg === "bigint") {
         return arg.toString()
       }

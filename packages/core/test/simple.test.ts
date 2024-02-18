@@ -1,19 +1,19 @@
 import { randomBytes } from "crypto"
 import { createReActor } from "../src"
-import { idlFactory } from "./candid/backend"
+import { backend, idlFactory } from "./candid/backend"
 
 describe("My IC Store and Actions", () => {
-  const { queryCall, updateCall } = createReActor({
+  const { queryCall, updateCall } = createReActor<typeof backend>({
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
     idlFactory,
   })
 
   it("should return the symmetric key verification key", async () => {
-    const { initialData } = queryCall({
+    const { dataPromise } = queryCall({
       functionName: "symmetric_key_verification_key",
     })
 
-    const data = await initialData
+    const data = await dataPromise
 
     expect(data).toBeDefined()
   })
@@ -37,31 +37,37 @@ describe("My IC Store and Actions", () => {
 
     const {
       call,
-      initialData,
-      getState: newGetState,
+      dataPromise,
+      getState: userState,
     } = queryCall({
-      functionName: "anonymous_user",
+      functionName: "anonymous_user_notes",
       args: [publicKey],
+      refetchOnMount: true,
     })
 
-    expect(newGetState("loading")).toEqual(true)
+    expect(userState("loading")).toEqual(true)
 
-    await initialData
+    const data = await dataPromise
+    console.log(data)
+    const stateData = userState("data")
 
-    expect(newGetState("loading")).toEqual(false)
+    expect(data).toEqual(stateData)
 
-    const data = await call()
+    expect(userState("loading")).toEqual(false)
 
-    expect(data).toBeDefined()
+    const recallData = await call()
+
+    expect(recallData).toBeDefined()
   })
 
   it("should return timers", async () => {
-    const { intervalId } = queryCall({
+    const { intervalId, dataPromise } = queryCall({
       functionName: "timers",
-      autoRefresh: true,
+      refetchOnMount: true,
     })
 
     expect(intervalId).toBeDefined()
+    expect(await dataPromise).toBeDefined()
 
     clearInterval(intervalId as NodeJS.Timeout)
   })

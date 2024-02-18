@@ -6,7 +6,6 @@ import { AgentManager } from "./agent"
 import { CreateReActorOptions } from "./types"
 import { CandidAdapter, CandidAdapterOptions } from "./tools"
 
-export * from "./helper"
 export * from "./types"
 export * from "./actor"
 export * from "./agent"

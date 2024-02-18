@@ -1,5 +1,5 @@
 import { HttpAgent } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools } from "../helper"
+import { createStoreWithOptionalDevtools } from "../tools/helper"
 import type {
   AgentAuthState,
   AgentAuthStore,

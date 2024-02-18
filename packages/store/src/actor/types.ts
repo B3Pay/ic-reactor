@@ -24,36 +24,35 @@ export interface ActorManagerOptions {
   initializeOnCreate?: boolean
 }
 
-export type ExtractVisitorType<V> = V extends IDL.Visitor<infer D, infer R>
+export type VisitorType<V> = V extends IDL.Visitor<infer D, infer R>
   ? { data: D; returnType: R }
   : never
 
-export type ExtractedService<
+export type VisitService<
   A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
 > = {
   [K in M]: <V extends IDL.Visitor<unknown, unknown>>(
     extractorClass: V,
-    data?: ExtractVisitorType<V>["data"]
+    data?: VisitorType<V>["data"]
   ) => ReturnType<V["visitFunc"]>
 }
 
 // Extracts the argument types of an ActorMethod
-export type ExtractActorMethodArgs<T> = T extends ActorMethod<infer Args>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ActorMethodArgs<T> = T extends ActorMethod<infer Args, any>
   ? Args
   : never
 
 // Extracts the return type of an ActorMethod
-export type ExtractActorMethodReturnType<T> = T extends ActorMethod<
-  unknown[],
-  infer Ret
->
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ActorMethodReturnType<T> = T extends ActorMethod<any, infer Ret>
   ? Ret
   : never
 
 export interface ActorMethodState<A, M extends keyof A> {
   [key: string]: {
-    data: ExtractActorMethodReturnType<A[M]> | undefined
+    data: ActorMethodReturnType<A[M]> | undefined
     loading: boolean
     error: Error | undefined
   }
@@ -76,5 +75,5 @@ export type ActorStore<A = BaseActor> = StoreApi<ActorState<A>>
 // Function type for directly calling a method on an actor
 export type CallActorMethod<A = BaseActor> = <M extends keyof A>(
   functionName: M,
-  ...args: ExtractActorMethodArgs<A[M]>
-) => Promise<ExtractActorMethodReturnType<A[M]>>
+  ...args: ActorMethodArgs<A[M]>
+) => Promise<ActorMethodReturnType<A[M]>>

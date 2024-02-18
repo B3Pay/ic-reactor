@@ -1,6 +1,6 @@
 import type {
   DefaultActorType,
-  ExtractActorMethodReturnType,
+  ActorMethodReturnType,
   FunctionName,
   IDL,
   Principal,
@@ -49,7 +49,7 @@ export interface ResultArrayData<
   M extends FunctionName<A> = FunctionName<A>
 > {
   label: string
-  value: ExtractActorMethodReturnType<A[M]>[]
+  value: ActorMethodReturnType<A[M]>[]
 }
 
 export interface ResultRecordData<
@@ -57,14 +57,14 @@ export interface ResultRecordData<
   M extends FunctionName<A> = FunctionName<A>
 > {
   label: string
-  value: Record<string, ExtractActorMethodReturnType<A[M]>>
+  value: Record<string, ActorMethodReturnType<A[M]>>
 }
 
 export type MethodResultValue<
   A = DefaultActorType,
   M extends FunctionName<A> = FunctionName<A>
 > =
-  | ExtractActorMethodReturnType<A[M]>
+  | ActorMethodReturnType<A[M]>
   | MethodResult<A, M>
   | number
   | string

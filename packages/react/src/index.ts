@@ -1,4 +1,4 @@
-import { type ActorSubclass, type DefaultActorType } from "@ic-reactor/store"
+import type { BaseActor } from "@ic-reactor/store"
 import { createReActorStore, CreateReActorOptions } from "@ic-reactor/store"
 import { getActorHooks } from "./hooks/actor"
 import { getAuthHooks } from "./hooks/auth"
@@ -11,9 +11,7 @@ export * from "./context/actor"
 
 export interface CreateReactActorOptions extends CreateReActorOptions {}
 
-export const createReActor: CreateReActor = <
-  A extends ActorSubclass<any> = DefaultActorType
->({
+export const createReActor: CreateReActor = <A = BaseActor>({
   isLocalEnv,
   withVisitor,
   ...options
@@ -51,5 +49,5 @@ export const createReActor: CreateReActor = <
     getVisitFunction,
     ...actorHooks,
     ...authHooks,
-  } as any
+  }
 }

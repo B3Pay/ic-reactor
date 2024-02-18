@@ -1,9 +1,10 @@
+/* eslint-disable no-console */
 import type {
   ActorMethodState,
-  ActorSubclass,
   CreateReActorOptions,
   FunctionName,
-  DefaultActorType,
+  BaseActor,
+  ActorMethodArgs,
 } from "@ic-reactor/store"
 import { createReActorStore, generateRequestHash } from "@ic-reactor/store"
 import {
@@ -15,51 +16,43 @@ import {
   ActorUpdate,
 } from "./types"
 
-export const createReActor = <A extends ActorSubclass<any> = DefaultActorType>(
-  options: CreateReActorOptions
-) => {
+export const createReActor = <A = BaseActor>(options: CreateReActorOptions) => {
   const { agentManager, callMethod, actorStore, ...rest } =
     createReActorStore<A>(options)
 
-  const { authStore, ...agentRest } = agentManager
-
   const updateMethodState = <M extends FunctionName<A>>(
     method: M,
-    args: any[] = [],
-    newState?: Partial<ActorMethodState<A, M>[string]>
+    args: ActorMethodArgs<A[M]>,
+    newState: Partial<ActorMethodState<A, M>[string]> = {}
   ) => {
     const hash = generateRequestHash(args)
 
     actorStore.setState((state) => {
-      if (!state.methodState) {
-        console.error("Actor not initialized")
-        return state
-      }
-
-      if (!state.methodState[method]) {
-        console.error(`Method ${String(method)} not found`)
-        return state
-      }
-
-      const currentMethodState = state.methodState[method][hash] || {
+      // Initialize method state if not already present
+      const methodState = state.methodState[method] || {}
+      // Initialize specific hash state if not already present
+      const hashState = methodState[hash] || {
         loading: false,
         data: undefined,
         error: undefined,
       }
 
-      return {
+      // Update the state with newState values
+      const updatedHashState = { ...hashState, ...newState }
+
+      // Construct the updated state to return
+      const updatedState = {
         ...state,
         methodState: {
           ...state.methodState,
           [method]: {
-            ...state.methodState[method],
-            [hash]: {
-              ...currentMethodState,
-              ...newState,
-            },
+            ...methodState,
+            [hash]: updatedHashState,
           },
         },
       }
+
+      return updatedState
     })
 
     return hash
@@ -70,9 +63,7 @@ export const createReActor = <A extends ActorSubclass<any> = DefaultActorType>(
     try {
       const requestHash = updateMethodState(functionName, args)
 
-      const getState: ActorGetStateFunction<A, M> = (
-        key?: "data" | "loading" | "error"
-      ) => {
+      const getState = ((key?: "data" | "loading" | "error") => {
         const state =
           actorStore.getState().methodState[functionName][requestHash]
 
@@ -84,9 +75,9 @@ export const createReActor = <A extends ActorSubclass<any> = DefaultActorType>(
           case "error":
             return state.error
           default:
-            return state as any
+            return state
         }
-      }
+      }) as ActorGetStateFunction<A, M>
 
       const subscribe: ActorSubscribeFunction<A, M> = (callback) => {
         const unsubscribe = actorStore.subscribe((state) => {
@@ -118,8 +109,7 @@ export const createReActor = <A extends ActorSubclass<any> = DefaultActorType>(
             error: error as Error,
             loading: false,
           })
-
-          console.error(error)
+          throw error
         }
       }
 
@@ -142,35 +132,39 @@ export const createReActor = <A extends ActorSubclass<any> = DefaultActorType>(
   const queryCall: ActorQuery<A> = ({
     functionName,
     args = [],
-    callOnMount = false,
-    autoRefresh = false,
-    refreshInterval = 5000,
+    refetchOnMount = true,
+    refetchInterval = false,
   }) => {
     let intervalId: NodeJS.Timeout | null = null
-    const { call, ...rest } = reActorMethod(functionName, ...(args as any))
+    const { call, ...rest } = reActorMethod(
+      functionName,
+      ...(args as ActorMethodArgs<A[typeof functionName]>)
+    )
 
-    if (autoRefresh) {
+    if (refetchInterval) {
       intervalId = setInterval(() => {
         call()
-      }, refreshInterval)
+      }, refetchInterval)
     }
 
-    let initialData = Promise.resolve() as ReturnType<typeof call>
-    if (callOnMount) initialData = call()
+    let dataPromise = Promise.resolve() as ReturnType<typeof call>
+    if (refetchOnMount) dataPromise = call()
 
-    return { ...rest, call, initialData, intervalId }
+    return { ...rest, call, dataPromise, intervalId }
   }
 
   const updateCall: ActorUpdate<A> = ({ functionName, args = [] }) => {
-    return reActorMethod(functionName, ...(args as any))
+    return reActorMethod(
+      functionName,
+      ...(args as ActorMethodArgs<A[typeof functionName]>)
+    )
   }
 
   return {
     actorStore,
-    authStore,
     queryCall,
     updateCall,
-    ...agentRest,
+    agentManager,
     ...rest,
   }
 }

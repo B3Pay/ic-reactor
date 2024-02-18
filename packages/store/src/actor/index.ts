@@ -1,16 +1,17 @@
+/* eslint-disable no-console */
 import { Actor } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools } from "../helper"
+import { createStoreWithOptionalDevtools } from "../tools/helper"
 import type { HttpAgent } from "@dfinity/agent"
 import type {
   CanisterId,
-  ExtractActorMethodArgs,
-  ExtractActorMethodReturnType,
+  ActorMethodArgs,
+  ActorMethodReturnType,
   ActorState,
   ActorStore,
   ActorMethodStates,
   ActorManagerOptions,
   FunctionName,
-  ExtractedService,
+  VisitService,
   BaseActor,
 } from "./types"
 import { IDL } from "@dfinity/candid"
@@ -25,7 +26,7 @@ export class ActorManager<A = BaseActor> {
   public agentManager: AgentManager
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
-  public visitFunction: ExtractedService<A>
+  public visitFunction: VisitService<A>
 
   private DEFAULT_ACTOR_STATE: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
@@ -80,23 +81,22 @@ export class ActorManager<A = BaseActor> {
     await this.agentManager.updateAgent(options)
   }
 
-  public extractService(): ExtractedService<A> {
+  public extractService(): VisitService<A> {
     return this.idlFactory({ IDL })._fields.reduce((acc, service) => {
       const functionName = service[0] as FunctionName<A>
       const type = service[1]
 
       const visit = ((extractorClass, data) => {
         return type.accept(extractorClass, data || functionName)
-      }) as ExtractedService<A>[typeof functionName]
+      }) as VisitService<A>[typeof functionName]
 
       acc[functionName] = visit
 
       return acc
-    }, {} as ExtractedService<A>)
+    }, {} as VisitService<A>)
   }
 
   private initializeActor = (agent: HttpAgent) => {
-    // eslint-disable-next-line no-console
     console.info(
       `Initializing actor ${this.canisterId} on ${
         agent.isLocal() ? "local" : "ic"
@@ -130,7 +130,6 @@ export class ActorManager<A = BaseActor> {
         initialized: true,
       })
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error("Error in initializeActor:", error)
       this.updateState({ error: error as Error, initializing: false })
     }
@@ -138,8 +137,8 @@ export class ActorManager<A = BaseActor> {
 
   public callMethod = async <M extends FunctionName<A>>(
     functionName: M,
-    ...args: ExtractActorMethodArgs<A[M]>
-  ): Promise<ExtractActorMethodReturnType<A[M]>> => {
+    ...args: ActorMethodArgs<A[M]>
+  ): Promise<ActorMethodReturnType<A[M]>> => {
     if (!this.actor) {
       throw new Error("Actor not initialized")
     }
@@ -152,8 +151,8 @@ export class ActorManager<A = BaseActor> {
     }
 
     const method = this.actor[functionName as keyof A] as (
-      ...args: ExtractActorMethodArgs<A[M]>
-    ) => Promise<ExtractActorMethodReturnType<A[M]>>
+      ...args: ActorMethodArgs<A[M]>
+    ) => Promise<ActorMethodReturnType<A[M]>>
 
     const data = await method(...args)
 
@@ -174,7 +173,7 @@ export class ActorManager<A = BaseActor> {
   }
 }
 
-const emptyVisitor = new Proxy({} as ExtractedService<never>, {
+const emptyVisitor = new Proxy({} as VisitService<never>, {
   get: function (_, prop) {
     throw new Error(
       `Cannot visit function "${String(

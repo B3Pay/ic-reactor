@@ -1,8 +1,8 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import {
+import type {
   BaseActor,
-  ExtractActorMethodReturnType,
+  ActorMethodReturnType,
   FunctionName,
 } from "@ic-reactor/store"
 
@@ -18,10 +18,10 @@ export class VisitRandomResponse<A = BaseActor> extends IDL.Visitor<
 > {
   public visitFunc<Method extends FunctionName<A>>(
     t: IDL.FuncClass
-  ): ExtractActorMethodReturnType<A[Method]> {
+  ): ActorMethodReturnType<A[Method]> {
     return t.retTypes.map((type) =>
       type.accept(this, null)
-    ) as ExtractActorMethodReturnType<A[Method]>
+    ) as ActorMethodReturnType<A[Method]>
   }
 
   public visitRecord(

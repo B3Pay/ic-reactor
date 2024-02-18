@@ -1,13 +1,13 @@
 import type {
   ActorMethod,
-  ExtractActorMethodArgs,
-  ExtractActorMethodReturnType,
+  ActorMethodArgs,
+  ActorMethodReturnType,
   ActorMethodState,
   FunctionName,
 } from "@ic-reactor/store"
 
 export type ActorGetStateFunction<A, M extends FunctionName<A>> = {
-  (key: "data"): ExtractActorMethodReturnType<A[M]> | undefined
+  (key: "data"): ActorMethodReturnType<A[M]>
   (key: "loading"): boolean
   (key: "error"): Error | undefined
   (): ActorMethodState<A, M>[string]
@@ -18,8 +18,8 @@ export type ActorSubscribeFunction<A, M extends FunctionName<A>> = (
 ) => () => void
 
 export type ActorCallFunction<A, M extends FunctionName<A>> = (
-  replaceArgs?: ExtractActorMethodArgs<A[M]>
-) => Promise<ExtractActorMethodReturnType<A[M]> | undefined>
+  replaceArgs?: ActorMethodArgs<A[M]>
+) => Promise<ActorMethodReturnType<A[M]>>
 
 // Type for the return value of a Actor call
 export type ActorQueryReturn<A, M extends FunctionName<A>> = {
@@ -28,7 +28,7 @@ export type ActorQueryReturn<A, M extends FunctionName<A>> = {
   getState: ActorGetStateFunction<A, M>
   subscribe: ActorSubscribeFunction<A, M>
   call: ActorCallFunction<A, M>
-  initialData: Promise<ExtractActorMethodReturnType<A[M]> | undefined>
+  dataPromise: Promise<ActorMethodReturnType<A[M]>>
 }
 
 export type ActorUpdateReturn<A, M extends FunctionName<A>> = {
@@ -40,15 +40,14 @@ export type ActorUpdateReturn<A, M extends FunctionName<A>> = {
 
 export type ActorQueryArgs<A, M extends FunctionName<A>> = {
   functionName: M
-  args?: ExtractActorMethodArgs<A[M]>
-  callOnMount?: boolean
-  autoRefresh?: boolean
-  refreshInterval?: number
+  args?: ActorMethodArgs<A[M]>
+  refetchOnMount?: boolean
+  refetchInterval?: number | false
 }
 
 export type ActorUpdateArgs<A, M extends FunctionName<A>> = {
   functionName: M
-  args?: ExtractActorMethodArgs<A[M]>
+  args?: ActorMethodArgs<A[M]>
 }
 
 // Function type for calling a Actor method
@@ -56,7 +55,7 @@ export type ActorMethodCall<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
   functionName: M,
-  ...args: ExtractActorMethodArgs<A[M]>
+  ...args: ActorMethodArgs<A[M]>
 ) => ActorUpdateReturn<A, M>
 
 export type ActorQuery<A = Record<string, ActorMethod>> = <

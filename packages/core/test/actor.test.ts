@@ -2,7 +2,7 @@ import { Cbor } from "@dfinity/agent"
 import { IDL } from "@dfinity/candid"
 import fetchMock from "jest-fetch-mock"
 import { createReActor } from "../src"
-import { idlFactory, canisterId } from "./candid/hello"
+import { hello, idlFactory } from "./candid/hello"
 
 fetchMock.enableMocks()
 
@@ -32,9 +32,11 @@ fetchMock.mockResponse(async (req) => {
 describe("Initialize", () => {
   const callback = jest.fn()
 
-  const { initialize, actorStore, updateCall, queryCall } = createReActor({
+  const { initialize, actorStore, updateCall, queryCall } = createReActor<
+    typeof hello
+  >({
     idlFactory,
-    canisterId,
+    canisterId: "aaaaa-aa",
     initializeOnCreate: false,
     verifyQuerySignatures: false,
     host: "https://local-mock",
@@ -53,15 +55,15 @@ describe("Initialize", () => {
   })
 
   it("should queryCall the query method", async () => {
-    const { requestHash, initialData, call, getState } = queryCall({
+    const { requestHash, dataPromise, call, getState } = queryCall({
       functionName: "greet",
       args: ["World"],
     })
     expect(requestHash).toEqual(
-      "c102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
+      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
     )
 
-    const data = await initialData
+    const data = await dataPromise
     expect(data).toEqual(canisterDecodedReturnValue)
 
     expect(getState()).toEqual({
@@ -85,7 +87,7 @@ describe("Initialize", () => {
     })
 
     expect(requestHash).toEqual(
-      "c102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
+      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
     )
 
     const loadingBefore = getState("loading")
