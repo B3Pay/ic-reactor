@@ -42,11 +42,11 @@ export class ActorManager<A = BaseActor> {
     this._store.setState((state) => ({ ...state, ...newState }))
   }
 
-  public updateMethodState(
+  public updateMethodState = (
     method: FunctionName<A>,
     hash: string,
     newState: Partial<ActorMethodState<A, typeof method>[string]>
-  ) {
+  ) => {
     this._store.setState((state) => {
       const methodState = state.methodState[method] || {}
       const currentMethodState = methodState[hash] || {

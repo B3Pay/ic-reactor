@@ -1882,23 +1882,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/agent@npm:^0.20, @dfinity/agent@npm:^0.20.2":
-  version: 0.20.2
-  resolution: "@dfinity/agent@npm:0.20.2"
-  dependencies:
-    "@noble/curves": "npm:^1.2.0"
-    "@noble/hashes": "npm:^1.3.1"
-    base64-arraybuffer: "npm:^0.2.0"
-    borc: "npm:^2.1.1"
-    buffer: "npm:^6.0.3"
-    simple-cbor: "npm:^0.4.1"
-  peerDependencies:
-    "@dfinity/candid": ^0.20.2
-    "@dfinity/principal": ^0.20.2
-  checksum: 8b9035a9dd83e0a84b59c1df9386437b868b5503ad4905f9090a288b0b14d1a36df0f22bd63362f2e3d8b777a7c655d91ada009889784abbb4e26203b380882a
-  languageName: node
-  linkType: hard
-
 "@dfinity/agent@npm:^1.0":
   version: 1.0.0
   resolution: "@dfinity/agent@npm:1.0.0"
@@ -1916,19 +1899,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/auth-client@npm:^0.20, @dfinity/auth-client@npm:^0.20.2":
-  version: 0.20.2
-  resolution: "@dfinity/auth-client@npm:0.20.2"
-  dependencies:
-    idb: "npm:^7.0.2"
-  peerDependencies:
-    "@dfinity/agent": ^0.20.2
-    "@dfinity/identity": ^0.20.2
-    "@dfinity/principal": ^0.20.2
-  checksum: 118c3b64ba9c4978a5c4f1a225becfaa0ee8aa269870c6eaef0a8967e4af8202dae85f58051fb5561b1b36e695ac61cc55cd7d55f5dfe606b8598256972f340c
-  languageName: node
-  linkType: hard
-
 "@dfinity/auth-client@npm:^1.0":
   version: 1.0.0
   resolution: "@dfinity/auth-client@npm:1.0.0"
@@ -1942,36 +1912,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/candid@npm:^0.20, @dfinity/candid@npm:^0.20.2":
-  version: 0.20.2
-  resolution: "@dfinity/candid@npm:0.20.2"
-  peerDependencies:
-    "@dfinity/principal": ^0.20.2
-  checksum: b069243683a1e2221b5d88d6a9618e7a786f7fb0a2a588f996e7756827087b2d040c4bc6fe9f2d53c26be82d6219cac0f07337c752ed41b5d1bf99dd330b578f
-  languageName: node
-  linkType: hard
-
 "@dfinity/candid@npm:^1.0":
   version: 1.0.0
   resolution: "@dfinity/candid@npm:1.0.0"
   peerDependencies:
     "@dfinity/principal": ^1.0.0
   checksum: cc7176a8dd329cc9abdaf9e89df5f275b184a52a654cf7c607b4659fe341300bb5d013ad80113d9d21df7501761e143bef127068552358c77d15d94f60927131
-  languageName: node
-  linkType: hard
-
-"@dfinity/identity@npm:^0.20, @dfinity/identity@npm:^0.20.2":
-  version: 0.20.2
-  resolution: "@dfinity/identity@npm:0.20.2"
-  dependencies:
-    "@noble/curves": "npm:^1.2.0"
-    "@noble/hashes": "npm:^1.3.1"
-    borc: "npm:^2.1.1"
-  peerDependencies:
-    "@dfinity/agent": ^0.20.2
-    "@dfinity/principal": ^0.20.2
-    "@peculiar/webcrypto": ^1.4.0
-  checksum: a978bfff5b49bd3bfaae23d9a1667b60b5d4800543198f0726a41b612f7b57fad6731a0792be5b9e4e5d8778f3dc50aab7909aff87e43b63409c41c60e15a14c
   languageName: node
   linkType: hard
 
@@ -1987,15 +1933,6 @@ __metadata:
     "@dfinity/principal": ^1.0.0
     "@peculiar/webcrypto": ^1.4.0
   checksum: 0f7e1f6db67a15196f3734304961841b23088b6ccc742091e534da9c5f188c9058eb0d2d64db2e2bd0445a64c9e43ae5546722efec8c68cfbe3d3d58458c3f23
-  languageName: node
-  linkType: hard
-
-"@dfinity/principal@npm:^0.20, @dfinity/principal@npm:^0.20.2":
-  version: 0.20.2
-  resolution: "@dfinity/principal@npm:0.20.2"
-  dependencies:
-    "@noble/hashes": "npm:^1.3.1"
-  checksum: b777ad7cb6a45ac7e76bda15e8c28d15d46fecaf0eb78b450223d8c6404cff43366ad69e95aed386eefdf8c00ab784082dddcb88cb8900de699964af4e25a084
   languageName: node
   linkType: hard
 
@@ -2236,23 +2173,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/core@npm:*, @ic-reactor/core@workspace:packages/core":
+"@ic-reactor/core@npm:*, @ic-reactor/core@npm:^0.5, @ic-reactor/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
-    "@ic-reactor/store": "npm:^0.5.3"
+    zustand: "npm:^4.5"
   peerDependencies:
-    "@dfinity/agent": ^1.0
-    "@dfinity/auth-client": ^1.0
-    "@dfinity/candid": 1.0
-    "@dfinity/identity": ^1.0
-    "@dfinity/principal": ^1.0
-    "@peculiar/webcrypto": 1.4
-    zustand: 4.4
+    "@dfinity/agent": ">=1.0"
+    "@dfinity/auth-client": ">=1.0"
+    "@dfinity/candid": ">=1.0"
+    "@dfinity/principal": ">=1.0"
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/react@npm:*, @ic-reactor/react@npm:^*, @ic-reactor/react@workspace:^, @ic-reactor/react@workspace:packages/react":
+"@ic-reactor/react@npm:*, @ic-reactor/react@npm:^*, @ic-reactor/react@npm:^0.5.5, @ic-reactor/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
@@ -2271,18 +2205,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/store@npm:*, @ic-reactor/store@npm:0.5.3, @ic-reactor/store@npm:^0.5, @ic-reactor/store@npm:^0.5.3, @ic-reactor/store@workspace:packages/store":
-  version: 0.0.0-use.local
-  resolution: "@ic-reactor/store@workspace:packages/store"
+"@ic-reactor/store@npm:*, @ic-reactor/store@npm:0.5.3, @ic-reactor/store@npm:^0.5.3":
+  version: 0.5.3
+  resolution: "@ic-reactor/store@npm:0.5.3"
   dependencies:
-    zustand: "npm:^4.5"
+    zustand: "npm:^4.4"
   peerDependencies:
-    "@dfinity/agent": ">=1.0"
-    "@dfinity/auth-client": ">=1.0"
-    "@dfinity/candid": ">=1.0"
-    "@dfinity/principal": ">=1.0"
-  languageName: unknown
-  linkType: soft
+    "@dfinity/agent": ^0.20
+    "@dfinity/auth-client": ^0.20
+    "@dfinity/candid": ^0.20
+  checksum: 2b89c851336f3c4e5e780755e99773583993b262216d2a81f254b245771e6508186797267f6a63216bd599ebf51bb0043e4a4164f25e99de496188088ddc99ff
+  languageName: node
+  linkType: hard
 
 "@ic-reactor/visitor@npm:^0.5.3, @ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
@@ -2290,9 +2224,9 @@ __metadata:
   dependencies:
     "@ic-reactor/store": "npm:0.5.3"
   peerDependencies:
-    "@dfinity/agent": ^0.20
-    "@dfinity/auth-client": ^0.20
-    "@dfinity/candid": ^0.20
+    "@dfinity/agent": ^1.0
+    "@dfinity/auth-client": ^1.0
+    "@dfinity/candid": ^1.0
   languageName: unknown
   linkType: soft
 
@@ -7164,7 +7098,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "candid-react@workspace:examples/candid-react"
   dependencies:
-    "@ic-reactor/react": "workspace:^"
+    "@ic-reactor/react": "npm:^0.5.5"
     "@types/node": "npm:^16.18.68"
     "@types/react": "npm:^18.2.45"
     "@types/react-dom": "npm:^18.2.18"
@@ -7172,6 +7106,7 @@ __metadata:
     react: "npm:^18.2.0"
     react-dom: "npm:^18.2.0"
     react-hook-form: "npm:^7.49.2"
+    react-scripts: "npm:5.0.1"
     tailwind-merge: "npm:^2.2.0"
     tailwindcss: "npm:^3.4.0"
     typescript: "npm:^4.9.5"
@@ -11048,10 +10983,10 @@ __metadata:
   dependencies:
     "@babel/core": "npm:^7.23.2"
     "@babel/preset-env": "npm:^7.23.2"
-    "@dfinity/agent": "npm:^0.20"
-    "@dfinity/candid": "npm:^0.20"
-    "@dfinity/identity": "npm:^0.20"
-    "@dfinity/principal": "npm:^0.20"
+    "@dfinity/agent": "npm:^1.0"
+    "@dfinity/candid": "npm:^1.0"
+    "@dfinity/identity": "npm:^1.0"
+    "@dfinity/principal": "npm:^1.0"
     "@ic-reactor/core": "npm:*"
     "@ic-reactor/react": "npm:*"
     "@ic-reactor/store": "npm:*"
@@ -11400,7 +11335,6 @@ __metadata:
     nx-cloud: "npm:latest"
     react: "npm:^18.2"
     react-dom: "npm:^18.2"
-    react-scripts: "npm:5.0.1"
     react-test-renderer: "npm:18.2"
     svelte-jester: "npm:3.0"
     text-encoding: "npm:0.7.0"
@@ -11419,11 +11353,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ic-rust-nextjs@workspace:examples/nextjs"
   dependencies:
-    "@dfinity/agent": "npm:^0.20"
-    "@dfinity/auth-client": "npm:^0.20"
-    "@dfinity/candid": "npm:^0.20"
-    "@dfinity/identity": "npm:^0.20"
-    "@dfinity/principal": "npm:^0.20"
+    "@dfinity/agent": "npm:^1.0"
+    "@dfinity/auth-client": "npm:^1.0"
+    "@dfinity/candid": "npm:^1.0"
+    "@dfinity/identity": "npm:^1.0"
+    "@dfinity/principal": "npm:^1.0"
     "@ic-reactor/react": "npm:^*"
     "@peculiar/webcrypto": "npm:^1.4"
     "@types/node": "npm:20.9.4"
@@ -18302,6 +18236,7 @@ __metadata:
     "@types/react-dom": "npm:^18.2"
     react: "npm:^18.2.0"
     react-dom: "npm:^18.2.0"
+    react-scripts: "npm:5.0.1"
     typescript: "npm:^5.3"
   languageName: unknown
   linkType: soft
@@ -21221,7 +21156,7 @@ __metadata:
   resolution: "typescript-starter@workspace:examples/typescript"
   dependencies:
     "@dfinity/agent": "npm:^1.0"
-    "@ic-reactor/store": "npm:^0.5"
+    "@ic-reactor/core": "npm:^0.5"
     "@types/jest": "npm:^29.5.11"
     "@types/node": "npm:^18.6.1"
     "@typescript-eslint/eslint-plugin": "npm:^5.31.0"
@@ -21317,11 +21252,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ui-builder@workspace:examples/ui-builder"
   dependencies:
-    "@dfinity/agent": "npm:^0.20.2"
-    "@dfinity/auth-client": "npm:^0.20.2"
-    "@dfinity/candid": "npm:^0.20.2"
-    "@dfinity/identity": "npm:^0.20.2"
-    "@dfinity/principal": "npm:^0.20.2"
+    "@dfinity/agent": "npm:^1.0"
+    "@dfinity/auth-client": "npm:^1.0"
+    "@dfinity/candid": "npm:^1.0"
+    "@dfinity/identity": "npm:^1.0"
+    "@dfinity/principal": "npm:^1.0"
     "@ic-reactor/react": "npm:*"
     "@ic-reactor/store": "npm:*"
     "@types/lodash.get": "npm:^4"
@@ -21338,6 +21273,7 @@ __metadata:
     react-dom: "npm:^18.2.0"
     react-hook-form: "npm:^7.49.2"
     react-router-dom: "npm:^6.22.0"
+    react-scripts: "npm:5.0.1"
     tailwind-merge: "npm:^2.2.0"
     tailwindcss: "npm:^3.4.0"
     typescript: "npm:^4.9.5"
@@ -22712,7 +22648,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zustand@npm:^4.5, zustand@npm:^4.5.0":
+"zustand@npm:^4.4, zustand@npm:^4.5, zustand@npm:^4.5.0":
   version: 4.5.1
   resolution: "zustand@npm:4.5.1"
   dependencies:
