@@ -1,6 +1,0 @@
-{
-  "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["./src"],
-  "name": "Store",
-  "sort": ["source-order"]
-}

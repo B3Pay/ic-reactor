@@ -1,114 +1,58 @@
-import { Cbor } from "@dfinity/agent"
-import { IDL } from "@dfinity/candid"
-import fetchMock from "jest-fetch-mock"
-import { createReActor } from "../src"
-import { hello, idlFactory } from "./candid/hello"
+import {
+  VisitRandomArgs,
+  VisitRandomResponse,
+  VisitTransform,
+} from "../../visitor/src"
+import { createReActorStore } from "../src"
+import { example, idlFactory } from "./candid/example"
 
-fetchMock.enableMocks()
+type Example = typeof example
 
-const canisterDecodedReturnValue = "Hello, World!"
-const expectedReplyArg = IDL.encode([IDL.Text], [canisterDecodedReturnValue])
-
-fetchMock.mockResponse(async (req) => {
-  if (req.url.endsWith("/call")) {
-    return Promise.resolve({
-      status: 200,
-    })
-  }
-
-  const responseObj = {
-    status: "replied",
-    reply: {
-      arg: expectedReplyArg,
-    },
-  }
-
-  return Promise.resolve({
-    status: 200,
-    body: Cbor.encode(responseObj),
-  })
-})
-
-describe("Initialize", () => {
-  const callback = jest.fn()
-
-  const { initialize, actorStore, updateCall, queryCall } = createReActor<
-    typeof hello
-  >({
-    idlFactory,
-    canisterId: "aaaaa-aa",
-    initializeOnCreate: false,
-    verifyQuerySignatures: false,
-    host: "https://local-mock",
-  })
-
-  const { subscribe, getState } = actorStore
-
-  subscribe(callback)
-
-  it("should initialize the actor", () => {
-    expect(getState().initialized).toEqual(false)
-    initialize()
-
-    expect(getState().initialized).toEqual(true)
-    expect(callback).toHaveBeenCalledTimes(2)
-  })
-
-  it("should queryCall the query method", async () => {
-    const { requestHash, dataPromise, call, getState } = queryCall({
-      functionName: "greet",
-      args: ["World"],
-    })
-    expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
-    )
-
-    const data = await dataPromise
-    expect(data).toEqual(canisterDecodedReturnValue)
-
-    expect(getState()).toEqual({
-      data: canisterDecodedReturnValue,
-      loading: false,
-      error: undefined,
-    })
-    const res = call()
-
-    expect(res).resolves.toEqual(canisterDecodedReturnValue)
-  })
-
-  it("should subscribe to the actor state", () => {
-    expect(callback).toHaveBeenCalledTimes(7)
-  })
-
-  it("should updateCall the query method", async () => {
-    const { requestHash, call, getState } = updateCall({
-      functionName: "greet",
-      args: ["World"],
+describe("createReActorStore", () => {
+  const { getState, initialize, getActor, visitFunction } =
+    createReActorStore<Example>({
+      canisterId: "2vxsx-fae",
+      idlFactory,
+      initializeOnCreate: false,
+      withVisitor: true,
     })
 
-    expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
-    )
+  it("should return actor store", () => {
+    expect(getState()).toBeDefined()
+    expect(visitFunction).toBeDefined()
+    expect(getActor()).toBeNull()
+  })
 
-    const loadingBefore = getState("loading")
-    expect(loadingBefore).toEqual(false)
+  test("Uninitialized", () => {
+    const value = visitFunction.get_app(new VisitRandomResponse<Example>())
+    const data = visitFunction.get_app(new VisitTransform<Example>(), {
+      value,
+      label: "app",
+    })
 
-    const result = call()
+    console.log(data.values?.[0].value)
 
-    const loadingAfter = getState("loading")
-    expect(loadingAfter).toEqual(true)
+    const args = visitFunction.get_app(new VisitRandomArgs<Example>())
+    console.log(args)
 
-    const data = await result
-    expect(data).toEqual(canisterDecodedReturnValue)
+    const { methodState, initialized, initializing, error } = getState()
 
-    expect(getState()).toEqual({
-      data: canisterDecodedReturnValue,
-      loading: false,
+    expect({ methodState, initialized, initializing, error }).toEqual({
+      methodState: {},
+      initialized: false,
+      initializing: false,
       error: undefined,
     })
   })
 
-  it("should subscribe to the actor state", () => {
-    expect(callback).toHaveBeenCalledTimes(10)
+  test("Initialized", async () => {
+    await initialize()
+
+    expect(getState()).toEqual({
+      methodState: {},
+      initialized: true,
+      initializing: false,
+      error: undefined,
+    })
   })
 })

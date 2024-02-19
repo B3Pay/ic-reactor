@@ -9,7 +9,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git@github.com:b3hr4d/ic-reactor.git"
+    "url": "git@github.com:B3Pay/ic-reactor.git"
   },
   "keywords": [
     "actor",
@@ -24,27 +24,24 @@
   "bugs": {
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
-  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/core#readme",
+  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/store#readme",
+  "peerDependencies": {
+    "@dfinity/agent": ">=1.0",
+    "@dfinity/auth-client": ">=1.0",
+    "@dfinity/candid": ">=1.0",
+    "@dfinity/principal": ">=1.0"
+  },
+  "dependencies": {
+    "zustand": "^4.5"
+  },
   "scripts": {
-    "test": "npx jest",
+    "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
     "start": "tsc watch",
     "build": "npx tsc",
     "clean": "npx rimraf dist"
   },
   "engines": {
     "node": ">=10"
-  },
-  "dependencies": {
-    "@ic-reactor/store": "^0.5.3"
-  },
-  "peerDependencies": {
-    "@dfinity/agent": "^1.0",
-    "@dfinity/auth-client": "^1.0",
-    "@dfinity/candid": "1.0",
-    "@dfinity/identity": "^1.0",
-    "@dfinity/principal": "^1.0",
-    "@peculiar/webcrypto": "1.4",
-    "zustand": "4.4"
   },
   "gitHead": "431ada43e07a49e66bb7e425c8a97521da084354"
 }

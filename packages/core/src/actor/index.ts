@@ -35,7 +35,7 @@ export class ActorManager<A = BaseActor> {
     error: undefined,
   }
 
-  public unsubscribeAgent: () => void
+  public unsubscribeActor: () => void
 
   private updateState = (newState: Partial<ActorState<A>>) => {
     this._store.setState((state) => ({ ...state, ...newState }))
@@ -53,7 +53,7 @@ export class ActorManager<A = BaseActor> {
 
     this._agentManager = agentManager
 
-    this.unsubscribeAgent = this._agentManager.subscribeAgent(
+    this.unsubscribeActor = this._agentManager.subscribeAgent(
       this.initializeActor
     )
 

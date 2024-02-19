@@ -163,18 +163,6 @@ export class AgentManager {
     return this._agentStore.getState()
   }
 
-  public getAgentError = () => {
-    return this._agentStore.getState().error
-  }
-
-  public isInitialized = () => {
-    return this._agentStore.getState().initialized
-  }
-
-  public isInitializing = () => {
-    return this._agentStore.getState().initializing
-  }
-
   public subscribeAgentState: AgentStore["subscribe"] = (listener) => {
     return this._agentStore.subscribe(listener)
   }

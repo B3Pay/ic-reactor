@@ -1,16 +1,42 @@
 import type {
   ActorMethod,
+  ActorSubclass,
+  HttpAgentOptions,
+  HttpAgent,
+  Identity,
+} from "@dfinity/agent"
+import type { Principal } from "@dfinity/principal"
+import type { IDL } from "@dfinity/candid"
+import {
+  ActorManager,
+  ActorManagerOptions,
   ActorMethodArgs,
   ActorMethodReturnType,
   ActorMethodState,
-  ActorStore,
-  AgentManager,
   BaseActor,
-  CanisterId,
   FunctionName,
-  UpdateAgentOptions,
-  VisitService,
-} from "@ic-reactor/store"
+} from "./actor"
+import { AgentManager } from "./agent"
+
+export type {
+  ActorMethod,
+  HttpAgentOptions,
+  ActorSubclass,
+  Principal,
+  HttpAgent,
+  Identity,
+  IDL,
+}
+
+export interface CreateReActorOptions extends CreateReActorStoreOptions {}
+
+export interface CreateReActorStoreOptions
+  extends HttpAgentOptions,
+    Omit<ActorManagerOptions, "agentManager"> {
+  agentManager?: AgentManager
+  isLocalEnv?: boolean
+  port?: number
+}
 
 export type ActorGetStateFunction<A, M extends FunctionName<A>> = {
   (key: "data"): ActorMethodReturnType<A[M]>
@@ -76,14 +102,9 @@ export type ActorUpdate<A = Record<string, ActorMethod>> = <
   options: ActorUpdateArgs<A, M>
 ) => ActorUpdateReturn<A, M>
 
-export interface ActorCoreActions<A = BaseActor> {
-  actorStore: ActorStore<A>
-  agentManager: AgentManager
-  canisterId: CanisterId
-  getActor: () => null | A
-  initialize: (options?: UpdateAgentOptions) => Promise<void>
-  unsubscribeAgent: () => void
+export interface ActorCoreActions<A = BaseActor>
+  extends AgentManager,
+    ActorManager<A> {
   queryCall: ActorQuery<A>
   updateCall: ActorUpdate<A>
-  visitFunction: VisitService<A>
 }
