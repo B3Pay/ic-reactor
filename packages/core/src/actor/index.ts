@@ -13,6 +13,7 @@ import type {
   FunctionName,
   VisitService,
   BaseActor,
+  ActorMethodState,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { AgentManager, UpdateAgentOptions } from "../agent"
@@ -39,6 +40,34 @@ export class ActorManager<A = BaseActor> {
 
   private updateState = (newState: Partial<ActorState<A>>) => {
     this._store.setState((state) => ({ ...state, ...newState }))
+  }
+
+  public updateMethodState(
+    method: FunctionName<A>,
+    hash: string,
+    newState: Partial<ActorMethodState<A, typeof method>[string]>
+  ) {
+    this._store.setState((state) => {
+      const methodState = state.methodState[method] || {}
+      const currentMethodState = methodState[hash] || {
+        loading: false,
+        data: undefined,
+        error: undefined,
+      }
+
+      const updatedMethodState = {
+        ...methodState,
+        [hash]: { ...currentMethodState, ...newState },
+      }
+
+      return {
+        ...state,
+        methodState: {
+          ...state.methodState,
+          [method]: updatedMethodState,
+        },
+      }
+    })
   }
 
   constructor(actorConfig: ActorManagerOptions) {

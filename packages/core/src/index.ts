@@ -51,8 +51,8 @@ export const createReActor = <A = BaseActor>({
 
   const {
     subscribeActorState,
+    updateMethodState,
     callMethod,
-    setState,
     getState,
     agentManager,
     ...rest
@@ -61,48 +61,20 @@ export const createReActor = <A = BaseActor>({
     ...options,
   })
 
-  const updateMethodState = <M extends FunctionName<A>>(
-    method: M,
-    args: ActorMethodArgs<A[M]>,
-    newState: Partial<ActorMethodState<A, M>[string]> = {}
-  ) => {
-    const hash = generateRequestHash(args)
-
-    setState((state) => {
-      // Initialize method state if not already present
-      const methodState = state.methodState[method] || {}
-      // Initialize specific hash state if not already present
-      const hashState = methodState[hash] || {
-        loading: false,
-        data: undefined,
-        error: undefined,
-      }
-
-      // Update the state with newState values
-      const updatedHashState = { ...hashState, ...newState }
-
-      // Construct the updated state to return
-      const updatedState = {
-        ...state,
-        methodState: {
-          ...state.methodState,
-          [method]: {
-            ...methodState,
-            [hash]: updatedHashState,
-          },
-        },
-      }
-
-      return updatedState
-    })
-
-    return hash
-  }
-
   const reActorMethod: ActorMethodCall<A> = (functionName, ...args) => {
+    const updateState = <M extends FunctionName<A>>(
+      newState: Partial<ActorMethodState<A, M>[string]> = {}
+    ) => {
+      const hash = generateRequestHash(args)
+
+      updateMethodState(functionName, hash, newState)
+
+      return hash
+    }
+
     type M = typeof functionName
     try {
-      const requestHash = updateMethodState(functionName, args)
+      const requestHash = generateRequestHash(args)
 
       const methodState = ((key?: "data" | "loading" | "error") => {
         const state = getState().methodState[functionName][requestHash]
@@ -133,7 +105,7 @@ export const createReActor = <A = BaseActor>({
       }
 
       const call: ActorCallFunction<A, M> = async (replaceArgs) => {
-        updateMethodState(functionName, args, {
+        updateState({
           loading: true,
           error: undefined,
         })
@@ -141,11 +113,11 @@ export const createReActor = <A = BaseActor>({
         try {
           const data = await callMethod(functionName, ...(replaceArgs ?? args))
 
-          updateMethodState(functionName, args, { data, loading: false })
+          updateState({ data, loading: false })
 
           return data
         } catch (error) {
-          updateMethodState(functionName, args, {
+          updateState({
             error: error as Error,
             loading: false,
           })
@@ -160,7 +132,7 @@ export const createReActor = <A = BaseActor>({
         call,
       }
     } catch (error) {
-      updateMethodState(functionName, args, {
+      updateState({
         error: error as Error,
         loading: false,
       })
@@ -228,7 +200,6 @@ export const createReActor = <A = BaseActor>({
     updateCall,
     callMethod,
     getState,
-    setState,
     login,
     logout,
     subscribeActorState,

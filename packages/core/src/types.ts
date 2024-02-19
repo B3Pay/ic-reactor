@@ -105,7 +105,7 @@ export type ActorUpdate<A = Record<string, ActorMethod>> = <
 
 export interface ActorCoreActions<A = BaseActor>
   extends AgentManager,
-    ActorManager<A> {
+    Omit<ActorManager<A>, "updateMethodState"> {
   login: (options?: AuthClientLoginOptions) => Promise<void>
   logout: (options?: { returnTo?: string }) => Promise<void>
   queryCall: ActorQuery<A>
