@@ -15,11 +15,11 @@ export const IC_HOST_NETWORK_URI = "https://ic0.app"
 export const LOCAL_HOST_NETWORK_URI = "http://127.0.0.1:4943"
 
 export class AgentManager {
-  private _agentStore: AgentStore
-  private _authStore: AuthStore
   private _agent: HttpAgent
   private _subscribers: Array<(agent: HttpAgent) => void> = []
 
+  public agentStore: AgentStore
+  public authStore: AuthStore
   public isLocalEnv: boolean
 
   private initialAgentState: AgentState = {
@@ -37,11 +37,11 @@ export class AgentManager {
   }
 
   private updateAgentState = (newState: Partial<AgentState>) => {
-    this._agentStore.setState((state) => ({ ...state, ...newState }))
+    this.agentStore.setState((state) => ({ ...state, ...newState }))
   }
 
   private updateAuthState = (newState: Partial<AuthState>) => {
-    this._authStore.setState((state) => ({ ...state, ...newState }))
+    this.authStore.setState((state) => ({ ...state, ...newState }))
   }
 
   constructor(options?: AgentManagerOptions) {
@@ -60,12 +60,12 @@ export class AgentManager {
         : optionHost
       : IC_HOST_NETWORK_URI
 
-    this._agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
+    this.agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
       withDevtools,
       store: "agent",
     })
 
-    this._authStore = createStoreWithOptionalDevtools(this.initialAuthState, {
+    this.authStore = createStoreWithOptionalDevtools(this.initialAuthState, {
       withDevtools,
       store: "auth",
     })
@@ -156,40 +156,36 @@ export class AgentManager {
   }
 
   public getAgentStore = (): AgentStore => {
-    return this._agentStore
+    return this.agentStore
   }
 
   public getAgentState: AgentStore["getState"] = () => {
-    return this._agentStore.getState()
+    return this.agentStore.getState()
   }
 
   public subscribeAgentState: AgentStore["subscribe"] = (listener) => {
-    return this._agentStore.subscribe(listener)
+    return this.agentStore.subscribe(listener)
   }
 
   // auth store
-  public getAuthStore = (): AuthStore => {
-    return this._authStore
-  }
-
   public getAuthState: AuthStore["getState"] = () => {
-    return this._authStore.getState()
+    return this.authStore.getState()
   }
 
   public subscribeAuthState: AuthStore["subscribe"] = (listener) => {
-    return this._authStore.subscribe(listener)
+    return this.authStore.subscribe(listener)
   }
 
   public getAuthClient = () => {
-    return this._authStore.getState().authClient
+    return this.authStore.getState().authClient
   }
 
   public getIdentity = () => {
-    return this._authStore.getState().identity
+    return this.authStore.getState().identity
   }
 
   public getPrincipal = () => {
-    const identity = this._authStore.getState().identity
+    const identity = this.authStore.getState().identity
     return identity ? identity.getPrincipal() : null
   }
 }

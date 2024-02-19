@@ -12,7 +12,7 @@ yarn install
 echo "===========SETUP DONE========="
 
 echo "===========TESTING========="
-jest
+yarn test
 echo "===========TESTING DONE========="
 
 echo "DONE"

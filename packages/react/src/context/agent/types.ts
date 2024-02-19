@@ -1,10 +1,12 @@
 import React, { PropsWithChildren } from "react"
-import { AgentManager, AgentManagerOptions } from "@ic-reactor/store"
+import { AgentManager, AgentManagerOptions } from "@ic-reactor/core"
 import { getAuthHooks } from "../../hooks/auth"
+import { getAgentHooks } from "../../hooks/agent"
 
-export type AgentContextValue = ReturnType<typeof getAuthHooks> & {
-  agentManager: AgentManager
-}
+export type AgentContextValue = ReturnType<typeof getAuthHooks> &
+  ReturnType<typeof getAgentHooks> & {
+    agentManager: AgentManager
+  }
 
 export type AgentContextType = React.Context<AgentContextValue | null>
 

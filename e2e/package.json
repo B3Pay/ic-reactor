@@ -14,8 +14,7 @@
     "@dfinity/identity": "^1.0",
     "@dfinity/principal": "^1.0",
     "@ic-reactor/core": "*",
-    "@ic-reactor/react": "*",
-    "@ic-reactor/store": "*"
+    "@ic-reactor/react": "*"
   },
   "devDependencies": {
     "@babel/core": "^7.23.2",

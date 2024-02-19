@@ -4,6 +4,9 @@ import { Principal } from "@dfinity/principal"
 import { CanisterId } from "../actor"
 import { CandidAdapterOptions, CandidDefenition } from "./types"
 
+export const DEFAULT_LOCAL_DIDJS_ID = "bd3sg-teaaa-aaaaa-qaaba-cai"
+export const DEFAULT_IC_DIDJS_ID = "a4gq6-oaaaa-aaaab-qaa4q-cai"
+
 export class CandidAdapter {
   public agent: HttpAgent
   public didjsCanisterId: string
@@ -25,12 +28,12 @@ export class CandidAdapter {
   }
 
   private getDefaultDidJsId() {
-    return this.agent.isLocal()
-      ? "bd3sg-teaaa-aaaaa-qaaba-cai"
-      : "a4gq6-oaaaa-aaaab-qaa4q-cai"
+    return this.agent.isLocal() ? DEFAULT_LOCAL_DIDJS_ID : DEFAULT_IC_DIDJS_ID
   }
 
-  async getCandidDefinition(canisterId: CanisterId): Promise<CandidDefenition> {
+  public async getCandidDefinition(
+    canisterId: CanisterId
+  ): Promise<CandidDefenition> {
     // First attempt: Try getting Candid definition from metadata
     const fromMetadata = await this.getFromMetadata(canisterId)
     if (fromMetadata) return fromMetadata
@@ -43,7 +46,7 @@ export class CandidAdapter {
     throw new Error("Failed to retrieve Candid definition by any method.")
   }
 
-  async getFromMetadata(
+  public async getFromMetadata(
     canisterId: CanisterId
   ): Promise<CandidDefenition | undefined> {
     if (typeof canisterId === "string") {
@@ -60,7 +63,7 @@ export class CandidAdapter {
     return did ? this.didTojs(did) : undefined
   }
 
-  async getFromTmpHack(
+  public async getFromTmpHack(
     canisterId: CanisterId
   ): Promise<CandidDefenition | undefined> {
     const commonInterface: IDL.InterfaceFactory = ({ IDL }) =>
@@ -79,7 +82,7 @@ export class CandidAdapter {
     return data ? this.didTojs(data) : undefined
   }
 
-  async didTojs(candidSource: string): Promise<CandidDefenition> {
+  public async didTojs(candidSource: string): Promise<CandidDefenition> {
     type DidToJs = {
       did_to_js: (arg: string) => Promise<[string] | []>
     }

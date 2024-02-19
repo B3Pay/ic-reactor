@@ -1,18 +1,17 @@
-import type { MethodFields, MethodResult } from "@ic-reactor/visitor"
 import type {
   ActorState,
   CanisterId,
   CreateReActorOptions,
-  ExtractActorMethodArgs,
-  ExtractActorMethodReturnType,
+  ActorMethodArgs,
+  ActorMethodReturnType,
   HttpAgent,
   Identity,
   Principal,
-  FunctionType,
   FunctionName,
-  ExtractedService,
-} from "@ic-reactor/store"
+  VisitService,
+} from "@ic-reactor/core"
 import type { AuthHooks } from "./hooks/auth"
+import { AgentHooks } from "./hooks/agent"
 
 export type AuthArgs = {
   onAuthentication?: (promise: () => Promise<Identity>) => void
@@ -25,18 +24,16 @@ export type AuthArgs = {
 }
 
 export type ActorCallArgs<A, M extends FunctionName<A>> = {
-  functionName: M & string
-  args?: ExtractActorMethodArgs<A[M]>
+  functionName: M
+  args?: ActorMethodArgs<A[M]>
   onLoading?: (loading: boolean) => void
   onError?: (error: Error | undefined) => void
-  onSuccess?: (
-    data: MethodResult<A, M>[] | ExtractActorMethodReturnType<A[M]> | undefined
-  ) => void
+  onSuccess?: (data: ActorMethodReturnType<A[M]> | undefined) => void
   throwOnError?: boolean
 }
 
 export type ActorHookState<A, M extends FunctionName<A>> = {
-  data: MethodResult<A, M>[] | ExtractActorMethodReturnType<A[M]> | undefined
+  data: ActorMethodReturnType<A[M]> | undefined
   error: Error | undefined
   loading: boolean
 }
@@ -50,133 +47,72 @@ export interface ActorUseQueryArgs<A, M extends FunctionName<A>>
 export interface ActorUseUpdateArgs<A, M extends FunctionName<A>>
   extends ActorCallArgs<A, M> {}
 
-export type ActorCall<A> = {
-  <M extends FunctionName<A>>(
-    args: ActorCallArgs<A, M> & { withTransform: true }
-  ): {
-    reset: () => void
-    error: Error | undefined
-    loading: boolean
-    call: (
-      eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
-    ) => Promise<MethodResult<A, M>[] | undefined>
-    data: MethodResult<A, M>[] | undefined
-  }
-  <M extends FunctionName<A>>(
-    args: ActorCallArgs<A, M> & { withTransform?: false }
-  ): {
-    reset: () => void
-    error: Error | undefined
-    loading: boolean
-    call: (
-      eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
-    ) => Promise<ExtractActorMethodReturnType<A[M]> | undefined>
-    data: ExtractActorMethodReturnType<A[M]> | undefined
-  }
+export type ActorCallReturn<A, M extends FunctionName<A>> = ActorHookState<
+  A,
+  M
+> & {
+  reset: () => void
+  call: (
+    eventOrReplaceArgs?: React.MouseEvent | ActorMethodArgs<A[M]>
+  ) => Promise<ActorMethodReturnType<A[M]> | undefined>
 }
 
-export type ActorQueryCall<A> = {
-  <M extends FunctionName<A>>(
-    args: ActorUseQueryArgs<A, M> & { withTransform: true }
-  ): {
-    reset: () => void
-    error: Error | undefined
-    loading: boolean
-    call: (
-      eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
-    ) => Promise<MethodResult<A, M>[] | undefined>
-    data: MethodResult<A, M>[] | undefined
-  }
-  <M extends FunctionName<A>>(
-    args: ActorUseQueryArgs<A, M> & { withTransform?: false }
-  ): {
-    reset: () => void
-    error: Error | undefined
-    loading: boolean
-    call: (
-      eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
-    ) => Promise<ExtractActorMethodReturnType<A[M]> | undefined>
-    data: ExtractActorMethodReturnType<A[M]> | undefined
-  }
-}
+export type ActorCall<A> = <M extends FunctionName<A>>(
+  args: ActorCallArgs<A, M>
+) => ActorCallReturn<A, M>
 
-export type ActorUpdateCall<A> = {
-  <M extends FunctionName<A>>(
-    args: ActorUseUpdateArgs<A, M> & { withTransform: true }
-  ): {
-    reset: () => void
-    error: Error | undefined
-    loading: boolean
-    call: (
-      eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
-    ) => Promise<MethodResult<A, M>[] | undefined>
-    data: MethodResult<A, M>[] | undefined
-  }
-  <M extends FunctionName<A>>(
-    args: ActorUseUpdateArgs<A, M> & { withTransform?: false }
-  ): {
-    reset: () => void
-    error: Error | undefined
-    loading: boolean
-    call: (
-      eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
-    ) => Promise<ExtractActorMethodReturnType<A[M]> | undefined>
-    data: ExtractActorMethodReturnType<A[M]> | undefined
-  }
-}
+export type ActorQueryCall<A> = <M extends FunctionName<A>>(
+  args: ActorUseQueryArgs<A, M>
+) => ActorCallReturn<A, M>
+
+export type ActorUpdateCall<A> = <M extends FunctionName<A>>(
+  args: ActorUseUpdateArgs<A, M>
+) => ActorCallReturn<A, M>
+
+export type ActorMethodCall<A, M extends FunctionName<A>> = (
+  args: ActorUseMethodCallArg<A, M>
+) => ActorUseMethodCallReturn<A, M>
 
 export interface ActorUseMethodCallReturn<
   A,
   M extends FunctionName<A>,
   F extends boolean = false
-> {
-  field: F extends true ? MethodFields<A> : undefined
+> extends ActorCallReturn<A, M> {
+  visit: F extends true ? VisitService<A>[M] : undefined
   reset: () => void
-  generateArgs: () => ExtractActorMethodArgs<A[M]>
-  generateReturns: () => MethodResult<A, M>[]
   error: Error | undefined
   loading: boolean
-  call: (
-    eventOrReplaceArgs?: React.MouseEvent | ExtractActorMethodArgs<A[M]>
-  ) => Promise<
-    ExtractActorMethodReturnType<A[M]> | MethodResult<A, M>[] | undefined
-  >
-  data: ExtractActorMethodReturnType<A[M]> | MethodResult<A, M>[] | undefined
 }
 
-export type ActorUseMethodCallArg<
+export type ActorUseMethodCallArg<A, M extends FunctionName<A>> = ActorCallArgs<
   A,
-  T extends FunctionType
-> = (T extends "query"
-  ? ActorUseQueryArgs<A, FunctionName<A>>
-  : ActorUseUpdateArgs<A, FunctionName<A>>) & { withTransform?: boolean }
+  M
+>
 
 export type ActorHooks<A, F extends boolean = false> = ActorDefaultHooks<A, F> &
-  (F extends true ? ActorFieldHooks<A> : {})
+  (F extends true ? ActorFieldHooks<A> : object)
 
 export interface ActorFieldHooks<A> {
-  // useServiceFields: () => ExtractedServiceFields<A>
-  // useMethodFields: () => MethodFields<A>[]
-  useMethodField: <M extends FunctionName<A>>(
+  useVisitMethod: <M extends FunctionName<A>>(
     functionName: M
-  ) => ExtractedService<A>[M]
+  ) => VisitService<A>[M]
 }
 
 export type UseActorStoreReturn<A> = ActorState<A> & { canisterId: CanisterId }
 
 export interface ActorDefaultHooks<A, F extends boolean> {
   initialize: () => Promise<void>
-  useActorStore: () => UseActorStoreReturn<A>
+  useActorState: () => UseActorStoreReturn<A>
   useQueryCall: ActorQueryCall<A>
   useUpdateCall: ActorUpdateCall<A>
-  useMethodCall: <M extends FunctionName<A>, T extends FunctionType>(
-    args: ActorUseMethodCallArg<A, T>
+  useMethodCall: <M extends FunctionName<A>>(
+    args: ActorUseMethodCallArg<A, M>
   ) => ActorUseMethodCallReturn<A, M, F>
 }
 
 export type GetFunctions<A> = {
   getAgent: () => HttpAgent
-  getVisitFunction: () => ExtractedService<A>
+  getVisitFunction: () => VisitService<A>
 }
 
 export type CreateReActor = {
@@ -185,12 +121,12 @@ export type CreateReActor = {
     options: CreateReActorOptions & {
       withVisitor: true
     }
-  ): GetFunctions<A> & ActorHooks<A, true> & AuthHooks
+  ): GetFunctions<A> & ActorHooks<A, true> & AuthHooks & AgentHooks
 
   // When withVisitor are false or undefined
   <A>(
     options: CreateReActorOptions & {
       withVisitor?: false | undefined
     }
-  ): GetFunctions<A> & ActorHooks<A, false> & AuthHooks
+  ): GetFunctions<A> & ActorHooks<A, false> & AuthHooks & AgentHooks
 }

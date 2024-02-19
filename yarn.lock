@@ -2173,7 +2173,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/core@npm:*, @ic-reactor/core@npm:^0.5, @ic-reactor/core@workspace:packages/core":
+"@ic-reactor/core@npm:*, @ic-reactor/core@npm:0.5.3, @ic-reactor/core@npm:^0.5, @ic-reactor/core@npm:^0.5.3, @ic-reactor/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
@@ -2190,8 +2190,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
-    "@ic-reactor/store": "npm:^0.5.3"
-    "@ic-reactor/visitor": "npm:^0.5.3"
+    "@ic-reactor/core": "npm:^0.5.3"
     zustand-utils: "npm:^1.3"
   peerDependencies:
     "@dfinity/agent": ^1.0
@@ -2201,28 +2200,15 @@ __metadata:
     "@dfinity/principal": ^1.0
     "@peculiar/webcrypto": 1.4
     react: ">=16.8"
-    zustand: 4.4
+    zustand: 4.5
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/store@npm:*, @ic-reactor/store@npm:0.5.3, @ic-reactor/store@npm:^0.5.3":
-  version: 0.5.3
-  resolution: "@ic-reactor/store@npm:0.5.3"
-  dependencies:
-    zustand: "npm:^4.4"
-  peerDependencies:
-    "@dfinity/agent": ^0.20
-    "@dfinity/auth-client": ^0.20
-    "@dfinity/candid": ^0.20
-  checksum: 2b89c851336f3c4e5e780755e99773583993b262216d2a81f254b245771e6508186797267f6a63216bd599ebf51bb0043e4a4164f25e99de496188088ddc99ff
-  languageName: node
-  linkType: hard
-
-"@ic-reactor/visitor@npm:^0.5.3, @ic-reactor/visitor@workspace:packages/visitor":
+"@ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
-    "@ic-reactor/store": "npm:0.5.3"
+    "@ic-reactor/core": "npm:0.5.3"
   peerDependencies:
     "@dfinity/agent": ^1.0
     "@dfinity/auth-client": ^1.0
@@ -6299,7 +6285,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"available-typed-arrays@npm:^1.0.5, available-typed-arrays@npm:^1.0.6":
+"available-typed-arrays@npm:^1.0.6":
   version: 1.0.6
   resolution: "available-typed-arrays@npm:1.0.6"
   checksum: e427360e68ccb19fa0ea48421f393ef3f3d2c9c561f6a8a0704ff472d58024be3e4101f00565445ba453de723a76f4a650defbacaea663c3fb3be8b8f842e955
@@ -7126,9 +7112,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.0, caniuse-lite@npm:^1.0.30001578, caniuse-lite@npm:^1.0.30001579, caniuse-lite@npm:^1.0.30001587":
-  version: 1.0.30001587
-  resolution: "caniuse-lite@npm:1.0.30001587"
-  checksum: c7a34cb758a24fa1d948e164de3c5873e7e607b46db0e530ba160a281cb619c9d6a1b85bb334894bc8e629a59db99f3de4521593b08142d317a529e80a856385
+  version: 1.0.30001588
+  resolution: "caniuse-lite@npm:1.0.30001588"
+  checksum: f8333cb52e7ebc169d462763cecc33807530f1e04d22ba1084e05a583907aa801fb3c013d60b38d54cb792440f48efcd2a1a68f22d5fce896b5bd0277392347c
   languageName: node
   linkType: hard
 
@@ -8129,9 +8115,9 @@ __metadata:
   linkType: hard
 
 "cssdb@npm:^7.1.0":
-  version: 7.10.0
-  resolution: "cssdb@npm:7.10.0"
-  checksum: 2e0ee41481680515e5d08eabe426fa98d4aa04b8a76fd004b8b0c4fdfbfafc28957d84837542a7e6da8b408b2f1f3fb655a3ce9bc68d5cfa5634895f904910e4
+  version: 7.11.0
+  resolution: "cssdb@npm:7.11.0"
+  checksum: 8a746c561ae12158263f3cf7bdc0abec8a063dc6aac52d4a505e0dcb873e899d84ba8fb1da0fea9732b1b3865893a0792492de89223f3c38a99263f7df7fecfa
   languageName: node
   linkType: hard
 
@@ -10989,7 +10975,6 @@ __metadata:
     "@dfinity/principal": "npm:^1.0"
     "@ic-reactor/core": "npm:*"
     "@ic-reactor/react": "npm:*"
-    "@ic-reactor/store": "npm:*"
     babel-jest: "npm:^29.7.0"
     ts-node: "npm:^10.9.1"
     typescript: "npm:^5.2.2"
@@ -14599,9 +14584,9 @@ __metadata:
   linkType: hard
 
 "lilconfig@npm:^3.0.0":
-  version: 3.1.0
-  resolution: "lilconfig@npm:3.1.0"
-  checksum: cd126834a0e964f4798a0f87245529acc6b3c163ee2dbf6b95b23f024d0a18a361f706ead21052a7f4aefc3a55d6d67217ad3aded30de5b564c19941ec80ea35
+  version: 3.1.1
+  resolution: "lilconfig@npm:3.1.1"
+  checksum: 311b559794546894e3fe176663427326026c1c644145be9e8041c58e268aa9328799b8dfe7e4dd8c6a4ae305feae95a1c9e007db3569f35b42b6e1bc8274754c
   languageName: node
   linkType: hard
 
@@ -21069,15 +21054,16 @@ __metadata:
   linkType: hard
 
 "typed-array-byte-offset@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "typed-array-byte-offset@npm:1.0.0"
+  version: 1.0.1
+  resolution: "typed-array-byte-offset@npm:1.0.1"
   dependencies:
-    available-typed-arrays: "npm:^1.0.5"
-    call-bind: "npm:^1.0.2"
+    available-typed-arrays: "npm:^1.0.6"
+    call-bind: "npm:^1.0.7"
     for-each: "npm:^0.3.3"
+    gopd: "npm:^1.0.1"
     has-proto: "npm:^1.0.1"
-    is-typed-array: "npm:^1.1.10"
-  checksum: 4036ce007ae9752931bed3dd61e0d6de2a3e5f6a5a85a05f3adb35388d2c0728f9b1a1e638d75579f168e49c289bfb5417f00e96d4ab081f38b647fc854ff7a5
+    is-typed-array: "npm:^1.1.13"
+  checksum: d65bd43ca55804d34a7752372abc27ca3b75455e14ebdac4e7648e3aa836455145636421efc9d7ffa020bca895b2f76588efdf3a7a2c21e25dc1cb3fdce60a6a
   languageName: node
   linkType: hard
 
@@ -21257,8 +21243,8 @@ __metadata:
     "@dfinity/candid": "npm:^1.0"
     "@dfinity/identity": "npm:^1.0"
     "@dfinity/principal": "npm:^1.0"
+    "@ic-reactor/core": "npm:*"
     "@ic-reactor/react": "npm:*"
-    "@ic-reactor/store": "npm:*"
     "@types/lodash.get": "npm:^4"
     "@types/lodash.set": "npm:^4"
     "@types/node": "npm:^16.18.68"
@@ -22648,7 +22634,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zustand@npm:^4.4, zustand@npm:^4.5, zustand@npm:^4.5.0":
+"zustand@npm:^4.5, zustand@npm:^4.5.0":
   version: 4.5.1
   resolution: "zustand@npm:4.5.1"
   dependencies:

@@ -1,19 +1,19 @@
 import { useState, useCallback, useEffect } from "react"
-import { createCandidAdapter } from "@ic-reactor/store"
+import { createCandidAdapter } from "@ic-reactor/core"
 import type { IDL } from "@dfinity/candid"
-import { useAgent } from "../context/agent"
+import { useAgentContext } from "../context/agent"
 
 interface IDLFactoryState {
-  didJs: {
-    idlFactory: IDL.InterfaceFactory | undefined
-    init: ({ IDL }: { IDL: any }) => never[]
+  candid: {
+    idlFactory?: IDL.InterfaceFactory
+    init: ({ idl }: { idl: typeof IDL }) => never[]
   }
   fetching: boolean
   fetchError: string | null
 }
 
 const DEFAULT_STATE: IDLFactoryState = {
-  didJs: { idlFactory: undefined, init: () => [] },
+  candid: { idlFactory: undefined, init: () => [] },
   fetching: false,
   fetchError: null,
 }
@@ -24,28 +24,27 @@ interface UseIDLFactoryArgs {
   idlFactory?: IDL.InterfaceFactory
 }
 
-const useDidJs = ({
+export const useCandid = ({
   canisterId,
   didjsCanisterId,
   idlFactory,
 }: UseIDLFactoryArgs) => {
-  const [{ didJs, fetchError, fetching }, setDidJs] = useState<IDLFactoryState>(
-    {
+  const [{ candid, fetchError, fetching }, setCandid] =
+    useState<IDLFactoryState>({
       ...DEFAULT_STATE,
-      didJs: {
+      candid: {
         idlFactory,
         init: () => [],
       },
-    }
-  )
+    })
 
-  const agent = useAgent()
+  const agent = useAgentContext()
 
-  const fetchDidJs = useCallback(async () => {
+  const fetchCandid = useCallback(async () => {
     if (!canisterId || !agent) return
-    setDidJs((prevState) => ({
+    setCandid((prevState) => ({
       ...prevState,
-      didJs: DEFAULT_STATE.didJs,
+      candid: DEFAULT_STATE.candid,
       fetching: true,
       fetchError: null,
     }))
@@ -53,18 +52,19 @@ const useDidJs = ({
     try {
       const candidManager = createCandidAdapter({ agent, didjsCanisterId })
 
-      const fetchedDidJs = await candidManager.getCandidDefinition(canisterId)
+      const fetchedCandid = await candidManager.getCandidDefinition(canisterId)
 
-      setDidJs({
-        didJs: fetchedDidJs,
+      setCandid({
+        candid: fetchedCandid,
         fetching: false,
         fetchError: null,
       })
 
-      return fetchedDidJs
+      return fetchedCandid
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error(err)
-      setDidJs((prevState) => ({
+      setCandid((prevState) => ({
         ...prevState,
         fetchError: `Error fetching canister ${canisterId}`,
         fetching: false,
@@ -74,11 +74,9 @@ const useDidJs = ({
 
   useEffect(() => {
     if (!fetching && !idlFactory) {
-      fetchDidJs()
+      fetchCandid()
     }
-  }, [fetchDidJs])
+  }, [fetchCandid])
 
-  return { fetchDidJs, didJs, fetching, fetchError }
+  return { fetchCandid, candid, fetching, fetchError }
 }
-
-export default useDidJs

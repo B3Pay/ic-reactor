@@ -30,10 +30,10 @@ describe("createReActorStore", () => {
       label: "app",
     })
 
-    console.log(data.values?.[0].value)
+    expect(data).toBeDefined()
 
     const args = visitFunction.get_app(new VisitRandomArgs<Example>())
-    console.log(args)
+    expect(args).toBeDefined()
 
     const { methodState, initialized, initializing, error } = getState()
 

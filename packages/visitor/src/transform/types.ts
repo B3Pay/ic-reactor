@@ -4,7 +4,7 @@ import type {
   FunctionName,
   IDL,
   Principal,
-} from "@ic-reactor/store"
+} from "@ic-reactor/core"
 
 export type ReturnDataType =
   | "record"

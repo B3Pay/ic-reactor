@@ -25,7 +25,7 @@ import {
   CandidAdapterOptions,
   generateRequestHash,
 } from "./tools"
-import { AuthClientLoginOptions } from "@dfinity/auth-client"
+import type { AuthClientLoginOptions } from "@dfinity/auth-client"
 
 export * from "./types"
 export * from "./actor"
@@ -41,13 +41,16 @@ export * from "./tools"
  */
 export const createReActor = <A = BaseActor>({
   isLocalEnv,
+  withProcessEnv = false,
   ...options
 }: CreateReActorOptions): ActorCoreActions<A> => {
   isLocalEnv =
     isLocalEnv ||
-    (typeof process !== "undefined" &&
-      (process.env.DFX_NETWORK === "local" ||
-        process.env.NODE_ENV === "development"))
+    (withProcessEnv
+      ? typeof process !== "undefined" &&
+        (process.env.DFX_NETWORK === "local" ||
+          process.env.NODE_ENV === "development")
+      : false)
 
   const {
     subscribeActorState,
@@ -62,20 +65,18 @@ export const createReActor = <A = BaseActor>({
   })
 
   const reActorMethod: ActorMethodCall<A> = (functionName, ...args) => {
+    const requestHash = generateRequestHash(args)
+
     const updateState = <M extends FunctionName<A>>(
       newState: Partial<ActorMethodState<A, M>[string]> = {}
     ) => {
-      const hash = generateRequestHash(args)
-
-      updateMethodState(functionName, hash, newState)
-
-      return hash
+      updateMethodState(functionName, requestHash, newState)
     }
+
+    updateState()
 
     type M = typeof functionName
     try {
-      const requestHash = generateRequestHash(args)
-
       const methodState = ((key?: "data" | "loading" | "error") => {
         const state = getState().methodState[functionName][requestHash]
 

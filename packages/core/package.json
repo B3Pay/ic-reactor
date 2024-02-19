@@ -1,7 +1,7 @@
 {
   "name": "@ic-reactor/core",
   "version": "0.5.3",
-  "description": "A React library for interacting with Dfinity actors",
+  "description": "A library for intracting with the Internet Computer canisters",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

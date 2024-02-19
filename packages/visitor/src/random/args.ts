@@ -1,6 +1,6 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import { BaseActor, FunctionName } from "@ic-reactor/store"
+import { BaseActor, FunctionName } from "@ic-reactor/core"
 import { ServiceDefaultValues } from "../fields"
 
 /**

@@ -1,29 +1,25 @@
 import { IDL } from "@dfinity/candid"
-import {
-  ActorSubclass,
-  ActorManagerOptions,
-  DefaultActorType,
-} from "@ic-reactor/store"
+import { ActorManagerOptions, BaseActor } from "@ic-reactor/core"
 import { AgentContextType } from "../agent"
 import { ActorHooks } from "../../types"
 
 export type ActorContextType<
-  Actor = ActorSubclass<any>,
+  Actor = BaseActor,
   F extends boolean = true
 > = ActorHooks<Actor, F> & {
   ActorContext: React.Context<ActorContextType<Actor, F> | null>
-  useActor: <A extends ActorSubclass<any> = Actor>() => ActorContextType<A>
+  useActorContext: <A = Actor>() => ActorContextType<A>
   ActorProvider: React.FC<ActorProviderProps>
 }
 
 export type CreateReActorContext = {
-  <A extends ActorSubclass<any> = DefaultActorType>(
+  <A = BaseActor>(
     options?: Partial<CreateActorOptions> & {
       withVisitor: true
     }
   ): ActorContextType<A, true>
 
-  <A extends ActorSubclass<any> = DefaultActorType>(
+  <A = BaseActor>(
     options?: Partial<CreateActorOptions> & {
       withVisitor?: false | undefined
     }

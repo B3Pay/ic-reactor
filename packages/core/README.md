@@ -1,26 +1,26 @@
-# @ic-reactor/store
+# @ic-reactor/core
 
-The `@ic-reactor/store` package provides a streamlined way to interact with the Internet Computer (IC) by simplifying agent and actor management. It offers utilities for creating and managing IC agents, enabling seamless communication with canisters through a friendly API.
+The `@ic-reactor/core` package provides a streamlined way to interact with the Internet Computer (IC) by simplifying agent and actor management. It offers utilities for creating and managing IC agents, enabling seamless communication with canisters through a friendly API.
 
 ## Installation
 
-To get started with `@ic-reactor/store`, you can install the package using npm or Yarn:
+To get started with `@ic-reactor/core`, you can install the package using npm or Yarn:
 
 **Using npm:**
 
 ```bash
-npm install @ic-reactor/store
+npm install @ic-reactor/core
 ```
 
 **Using Yarn:**
 
 ```bash
-yarn add @ic-reactor/store
+yarn add @ic-reactor/core
 ```
 
 ## Usage
 
-`@ic-reactor/store` can be utilized in two primary ways: automatic agent creation and manual agent management. Below are examples of both approaches to suit your project's needs.
+`@ic-reactor/core` can be utilized in two primary ways: automatic agent creation and manual agent management. Below are examples of both approaches to suit your project's needs.
 
 ### Automatic Agent Creation
 
@@ -29,7 +29,7 @@ For ease of use, the `createReActorStore` factory function automatically sets up
 **Example:**
 
 ```typescript
-import { createReActorStore } from "@ic-reactor/store"
+import { createReActorStore } from "@ic-reactor/core"
 import { candid, canisterId, idlFactory } from "./candid"
 
 type Candid = typeof candid
@@ -47,13 +47,13 @@ console.log(data)
 
 ### Manual Agent Creation
 
-If you require more control over the agent's lifecycle or configuration, `@ic-reactor/store` provides the `createAgentManager` function for manual agent instantiation.
+If you require more control over the agent's lifecycle or configuration, `@ic-reactor/core` provides the `createAgentManager` function for manual agent instantiation.
 
 **IC Agent Example:**
 
 ```typescript
 // agent.ts
-import { createAgentManager } from "@ic-reactor/store"
+import { createAgentManager } from "@ic-reactor/core"
 
 export const agentManager = createAgentManager() // Connects to IC network by default
 
@@ -70,7 +70,7 @@ For development purposes, you might want to connect to a local instance of the I
 
 ```typescript
 // agent.ts
-import { createAgentManager } from "@ic-reactor/store"
+import { createAgentManager } from "@ic-reactor/core"
 
 export const agentManager = createAgentManager({
   isLocalEnv: true,
@@ -92,7 +92,7 @@ Once you have an agent manager, use `createActorManager` to instantiate an actor
 
 ```typescript
 // actor.ts
-import { createActorManager } from "@ic-reactor/store"
+import { createActorManager } from "@ic-reactor/core"
 import { candid, canisterId, idlFactory } from "./candid"
 import { agentManager } from "./agent"
 
@@ -111,7 +111,7 @@ console.log(data)
 
 ### Managing Multiple Actors
 
-When interacting with multiple canisters using `@ic-reactor/store`, you can create separate actor managers for each canister. This enables modular interaction with different services on the Internet Computer. Here's how to adjust the example to handle methods that require multiple arguments:
+When interacting with multiple canisters using `@ic-reactor/core`, you can create separate actor managers for each canister. This enables modular interaction with different services on the Internet Computer. Here's how to adjust the example to handle methods that require multiple arguments:
 
 **Creating Actor Managers:**
 
@@ -120,7 +120,7 @@ First, ensure you have your actor managers set up for each canister:
 ```typescript
 // Assuming you've already set up `candidA`, `candidB`, `canisterIdA`, `canisterIdB`, and `agentManager`
 
-import { createActorManager } from "@ic-reactor/store"
+import { createActorManager } from "@ic-reactor/core"
 import { candidA, canisterIdA } from "./candidA"
 import { candidB, canisterIdB } from "./candidB"
 import { agentManager } from "./agent"
@@ -161,7 +161,7 @@ The `CandidAdapter` class is used to interact with a canister and retrieve its C
 If both methods fail, it throws an error.
 
 ```typescript
-import { createCandidAdapter } from "@ic-reactor/store"
+import { createCandidAdapter } from "@ic-reactor/core"
 import { agentManager } from "./agent"
 
 const candidAdapter = createCandidAdapter({ agentManager })
@@ -182,7 +182,7 @@ try {
 You can use the `candidAdapter` to fetch the Candid definition and then pass it to the `createReActorStore` function.
 
 ```typescript
-import { createReActorStore, createCandidAdapter } from "@ic-reactor/store"
+import { createReActorStore, createCandidAdapter } from "@ic-reactor/core"
 import { agentManager } from "./agent"
 
 const candidAdapter = createCandidAdapter({ agentManager })
@@ -207,4 +207,4 @@ try {
 
 ## Conclusion
 
-The `@ic-reactor/store` package offers a flexible and powerful way to interact with the Internet Computer, catering to both straightforward use cases with automatic agent management and more complex scenarios requiring manual control. By abstracting away some of the intricacies of agent and actor management, it enables developers to focus more on building their applications.
+The `@ic-reactor/core` package offers a flexible and powerful way to interact with the Internet Computer, catering to both straightforward use cases with automatic agent management and more complex scenarios requiring manual control. By abstracting away some of the intricacies of agent and actor management, it enables developers to focus more on building their applications.

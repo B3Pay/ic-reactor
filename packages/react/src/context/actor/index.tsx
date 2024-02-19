@@ -1,24 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { createContext, useMemo, useContext } from "react"
-import { ActorSubclass, FunctionType } from "@ic-reactor/store"
+import { ActorSubclass } from "@ic-reactor/core"
 import {
   ActorUseMethodCallArg,
   ActorUseQueryArgs,
   ActorUseUpdateArgs,
 } from "../../types"
 import { getActorHooks } from "../../hooks/actor"
-import { useActorManager } from "../../hooks/useActorManger"
 import {
-  CreateReActorContext,
   CreateActorOptions,
   ActorContextType,
   ActorProviderProps,
 } from "./types"
+import { useActor } from "../../hooks/useActor"
 
 export * from "./types"
 
-export const createReActorContext: CreateReActorContext = <
-  Actor extends ActorSubclass<any>
->({
+export const createReActorContext = <Actor extends ActorSubclass<any>>({
   canisterId: defaultCanisterId,
   ...defaultConfig
 }: Partial<CreateActorOptions> = {}) => {
@@ -42,7 +40,7 @@ export const createReActorContext: CreateReActorContext = <
       [defaultConfig, restConfig]
     )
 
-    const { actorManager, fetchError, fetching } = useActorManager({
+    const { actorManager, fetchError, fetching } = useActor({
       canisterId,
       ...config,
     })
@@ -63,9 +61,7 @@ export const createReActorContext: CreateReActorContext = <
 
   ActorProvider.displayName = "ActorProvider"
 
-  type UseActorType = <A = ActorSubclass<any>>() => ActorContextType<A>
-
-  const useActor: UseActorType = <A extends ActorSubclass<any> = Actor>() => {
+  const useActorContext = <A extends ActorSubclass<any> = Actor>() => {
     const context = useContext(ActorContext) as ActorContextType<A>
 
     if (!context) {
@@ -75,42 +71,45 @@ export const createReActorContext: CreateReActorContext = <
     return context
   }
 
-  const useActorStore = () => useActor().useActorStore()
+  const initialize = () => useActorContext().initialize()
+
+  const useActorState = () => useActorContext().useActorState()
 
   const useQueryCall = <M extends keyof Actor & string>(
     args: ActorUseQueryArgs<Actor, M>
-  ) => useActor().useQueryCall(args as any)
+  ) => useActorContext().useQueryCall(args)
 
   const useUpdateCall = <M extends keyof Actor & string>(
     args: ActorUseUpdateArgs<Actor, M>
-  ) => useActor().useUpdateCall(args as any)
+  ) => useActorContext().useUpdateCall(args)
 
-  const useMethodCall = <T extends FunctionType>(
-    args: ActorUseMethodCallArg<Actor, T>
-  ) => useActor().useMethodCall(args)
+  const useMethodCall = <M extends keyof Actor & string>(
+    args: ActorUseMethodCallArg<Actor, M>
+  ) => useActorContext().useMethodCall(args)
 
-  const useMethodField = (functionName: keyof Actor & string) =>
-    useActor().useMethodField(functionName)
+  const useVisitMethod = (functionName: keyof Actor & string) =>
+    useActorContext().useVisitMethod(functionName)
 
   return {
     ActorContext,
     ActorProvider,
-    useActor,
-    useActorStore,
+    useActorContext,
+    useActorState,
     useQueryCall,
     useUpdateCall,
     useMethodCall,
-    useMethodField,
-  } as any
+    useVisitMethod,
+    initialize,
+  }
 }
 
 export const {
   ActorContext,
   ActorProvider,
-  useActor,
-  useActorStore,
+  useActorContext,
+  useActorState,
   useQueryCall,
   useUpdateCall,
   useMethodCall,
-  useMethodField,
+  useVisitMethod,
 } = createReActorContext()

@@ -35,6 +35,7 @@ export interface CreateReActorStoreOptions
   extends HttpAgentOptions,
     Omit<ActorManagerOptions, "agentManager"> {
   agentManager?: AgentManager
+  withProcessEnv?: boolean
   isLocalEnv?: boolean
   port?: number
 }

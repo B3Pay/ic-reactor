@@ -4,7 +4,7 @@ import type {
   BaseActor,
   ActorMethodReturnType,
   FunctionName,
-} from "@ic-reactor/store"
+} from "@ic-reactor/core"
 
 /**
  * Visit the candid file and extract the fields.

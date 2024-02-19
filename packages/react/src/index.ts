@@ -1,26 +1,31 @@
-import type { BaseActor } from "@ic-reactor/store"
-import { createReActorStore, CreateReActorOptions } from "@ic-reactor/store"
+import {
+  createReActorStore,
+  CreateReActorOptions,
+  BaseActor,
+} from "@ic-reactor/core"
 import { getActorHooks } from "./hooks/actor"
 import { getAuthHooks } from "./hooks/auth"
-import { CreateReActor } from "./types"
 
-export * from "@ic-reactor/store"
+export { createReActor as createReActorCore } from "@ic-reactor/core"
+export * from "@ic-reactor/core"
 
 export * from "./context/agent"
 export * from "./context/actor"
+export * from "./hooks"
 
-export interface CreateReactActorOptions extends CreateReActorOptions {}
-
-export const createReActor: CreateReActor = <A = BaseActor>({
+export const createReActor = <A = BaseActor>({
   isLocalEnv,
   withVisitor,
+  withProcessEnv,
   ...options
-}: CreateReactActorOptions) => {
+}: CreateReActorOptions) => {
   isLocalEnv =
     isLocalEnv ||
-    (typeof process !== "undefined" &&
-      (process.env.DFX_NETWORK === "local" ||
-        process.env.NODE_ENV === "development"))
+    (withProcessEnv
+      ? typeof process !== "undefined" &&
+        (process.env.DFX_NETWORK === "local" ||
+          process.env.NODE_ENV === "development")
+      : false)
 
   const actorManager = createReActorStore<A>({
     isLocalEnv,

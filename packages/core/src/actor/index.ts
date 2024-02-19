@@ -21,12 +21,12 @@ import type { AgentManager, UpdateAgentOptions } from "../agent"
 export * from "./types"
 
 export class ActorManager<A = BaseActor> {
-  private _store: ActorStore<A>
   private _actor: null | A = null
   private _idlFactory: IDL.InterfaceFactory
   private _agentManager: AgentManager
 
   public canisterId: CanisterId
+  public actorStore: ActorStore<A>
   public visitFunction: VisitService<A>
 
   private initialState: ActorState<A> = {
@@ -39,7 +39,7 @@ export class ActorManager<A = BaseActor> {
   public unsubscribeActor: () => void
 
   private updateState = (newState: Partial<ActorState<A>>) => {
-    this._store.setState((state) => ({ ...state, ...newState }))
+    this.actorStore.setState((state) => ({ ...state, ...newState }))
   }
 
   public updateMethodState = (
@@ -47,7 +47,7 @@ export class ActorManager<A = BaseActor> {
     hash: string,
     newState: Partial<ActorMethodState<A, typeof method>[string]>
   ) => {
-    this._store.setState((state) => {
+    this.actorStore.setState((state) => {
       const methodState = state.methodState[method] || {}
       const currentMethodState = methodState[hash] || {
         loading: false,
@@ -96,7 +96,7 @@ export class ActorManager<A = BaseActor> {
     }
 
     // Initialize stores
-    this._store = createStoreWithOptionalDevtools(this.initialState, {
+    this.actorStore = createStoreWithOptionalDevtools(this.initialState, {
       withDevtools,
       store: `actor-${String(canisterId)}`,
     })
@@ -201,20 +201,16 @@ export class ActorManager<A = BaseActor> {
     return this._actor
   }
 
-  public getStore = (): ActorStore<A> => {
-    return this._store
-  }
-
   public getState: ActorStore<A>["getState"] = () => {
-    return this._store.getState()
+    return this.actorStore.getState()
   }
 
   public subscribeActorState: ActorStore<A>["subscribe"] = (listener) => {
-    return this._store.subscribe(listener)
+    return this.actorStore.subscribe(listener)
   }
 
   public setState: ActorStore<A>["setState"] = (updater) => {
-    return this._store.setState(updater)
+    return this.actorStore.setState(updater)
   }
 }
 

@@ -1,5 +1,5 @@
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
-import type { AgentManager, Identity, Principal } from "@ic-reactor/store"
+import type { AgentManager, Identity, Principal } from "@ic-reactor/core"
 import { useCallback, useEffect, useState } from "react"
 import { useStore } from "zustand"
 import { AuthArgs } from "../types"
@@ -8,10 +8,6 @@ export type AuthHooks = ReturnType<typeof getAuthHooks>
 
 export const getAuthHooks = (agentManager: AgentManager) => {
   const { authenticate: authenticator, authStore, isLocalEnv } = agentManager
-
-  const useAgentManager = () => {
-    return agentManager
-  }
 
   const useAuthStore = () => {
     const authState = useStore(authStore, (state) => state)
@@ -40,15 +36,16 @@ export const getAuthHooks = (agentManager: AgentManager) => {
 
     const authenticate = useCallback(async () => {
       const authenticatePromise: Promise<Identity> = new Promise(
-        async (resolve, reject) => {
-          try {
-            const identity = await authenticator()
-            onAuthenticationSuccess?.(identity)
-            resolve(identity)
-          } catch (e) {
-            onAuthenticationFailure?.(e as Error)
-            reject(e)
-          }
+        (resolve, reject) => {
+          authenticator()
+            .then((identity) => {
+              onAuthenticationSuccess?.(identity)
+              resolve(identity)
+            })
+            .catch((e) => {
+              onAuthenticationFailure?.(e as Error)
+              reject(e)
+            })
         }
       )
 
@@ -68,23 +65,30 @@ export const getAuthHooks = (agentManager: AgentManager) => {
         setLoginError(null)
 
         const loginPromise: Promise<Principal> = new Promise(
-          async (resolve, reject) => {
+          (resolve, reject) => {
             try {
               if (!authClient) {
                 throw new Error("Auth client not initialized")
               }
 
-              await authClient.login({
+              authClient.login({
                 identityProvider: isLocalEnv
                   ? "https://identity.ic0.app/#authorize"
                   : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/#authorize",
                 ...options,
-                onSuccess: async () => {
-                  const identity = await authenticate()
-                  const principal = identity.getPrincipal()
-                  options?.onSuccess?.()
-                  onLoginSuccess?.(principal)
-                  resolve(principal)
+                onSuccess: () => {
+                  authenticate()
+                    .then((identity) => {
+                      const principal = identity.getPrincipal()
+                      options?.onSuccess?.()
+                      onLoginSuccess?.(principal)
+                      resolve(principal)
+                    })
+                    .catch((e) => {
+                      setLoginError(e as Error)
+                      onLoginError?.(e as Error)
+                      reject(e)
+                    })
                 },
                 onError: (e) => {
                   options?.onError?.(e)
@@ -149,7 +153,6 @@ export const getAuthHooks = (agentManager: AgentManager) => {
 
   return {
     useUserPrincipal,
-    useAgentManager,
     useAuthStore,
     useAuthClient,
   }

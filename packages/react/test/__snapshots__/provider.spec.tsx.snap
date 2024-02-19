@@ -1,31 +1,5 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`createReActor should initialize 1`] = `
-<div>
-  <span>
-    Not initialized
-  </span>
-  <button
-    onClick={[Function]}
-  >
-    Initialize
-  </button>
-</div>
-`;
-
-exports[`createReActor should initialize 2`] = `
-<div>
-  <span>
-    Initialized
-  </span>
-  <button
-    onClick={[Function]}
-  >
-    Initialize
-  </button>
-</div>
-`;
-
 exports[`createReActor should query 1`] = `
 <div>
   <button

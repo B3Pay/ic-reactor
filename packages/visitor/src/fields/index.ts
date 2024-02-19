@@ -20,7 +20,7 @@ import type {
 } from "./types"
 import { isQuery, validateError, validateNumberError } from "../helper"
 import { IDL } from "@dfinity/candid"
-import type { BaseActor, FunctionName } from "@ic-reactor/store"
+import type { BaseActor, FunctionName } from "@ic-reactor/core"
 
 export * from "./types"
 export * from "../helper"

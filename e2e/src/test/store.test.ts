@@ -1,19 +1,23 @@
 import {
   ActorState,
-  AgentAuthState,
+  AgentState,
+  AuthState,
   createReActorStore,
-} from "@ic-reactor/store"
+} from "@ic-reactor/core"
 import {
   canisterId,
   hello_actor,
   idlFactory,
 } from "../declarations/hello_actor/index.js"
 
-const AUTH_DEFAULT_STATE: AgentAuthState = {
+const AUTH_DEFAULT_STATE: AuthState = {
   identity: null,
   authenticated: false,
   authClient: null,
   authenticating: false,
+  error: undefined,
+}
+const AGENT_DEFAULT_STATE: AgentState = {
   error: undefined,
   initialized: true,
   initializing: false,
@@ -33,6 +37,7 @@ test("Main Function Test", async () => {
       idlFactory,
       isLocalEnv: true,
       initializeOnCreate: false,
+      verifyQuerySignatures: false,
     })
 
   expect(actorStore.getState()).toEqual(ACTOR_DEFAULT_STATE)
@@ -52,5 +57,6 @@ test("Main Function Test", async () => {
   const greetUpdate = await callMethod("greet_update", "World")
   expect(greetUpdate).toEqual("Hello, World!")
 
-  expect(agentManager.authStore.getState()).toEqual(AUTH_DEFAULT_STATE)
+  expect(agentManager.getAuthState()).toEqual(AUTH_DEFAULT_STATE)
+  expect(agentManager.getAgentState()).toEqual(AGENT_DEFAULT_STATE)
 })

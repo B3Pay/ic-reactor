@@ -1,4 +1,4 @@
-import { FunctionName, FunctionType } from "@ic-reactor/store"
+import { FunctionName, FunctionType } from "@ic-reactor/core"
 import MethodForm from "./MethodForm"
 import { useMethodCall } from "@ic-reactor/react"
 

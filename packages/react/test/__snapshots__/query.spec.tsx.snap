@@ -1,0 +1,51 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`createReActor should query manually 1`] = `
+<div>
+  <button
+    onClick={[Function]}
+  >
+    Get Version
+  </button>
+  <span>
+    Ready To call
+  </span>
+</div>
+`;
+
+exports[`createReActor should query manually 2`] = `
+<div>
+  <button
+    onClick={[Function]}
+  >
+    Get Version
+  </button>
+  <span>
+    0.2.0
+  </span>
+</div>
+`;
+
+exports[`createReActor should query on mount 1`] = `
+<div>
+  <span>
+    Ready To call
+  </span>
+</div>
+`;
+
+exports[`createReActor should query on mount 2`] = `
+<div>
+  <span>
+    Loading...
+  </span>
+</div>
+`;
+
+exports[`createReActor should query on mount 3`] = `
+<div>
+  <span>
+    0.2.0
+  </span>
+</div>
+`;

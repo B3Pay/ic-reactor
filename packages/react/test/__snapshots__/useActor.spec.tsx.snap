@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`createReActor should query 1`] = `
+<div>
+  <span>
+    Ready To call
+  </span>
+</div>
+`;
+
+exports[`createReActor should query 2`] = `
+<div>
+  <span>
+    Loading...
+  </span>
+</div>
+`;
+
+exports[`createReActor should query 3`] = `
+<div>
+  <span>
+    0.2.0
+  </span>
+</div>
+`;

@@ -1,15 +1,14 @@
 import {
   ActorManagerOptions,
-  ActorSubclass,
-  DefaultActorType,
+  BaseActor,
   IDL,
   createReActorStore,
-} from "@ic-reactor/store"
+} from "@ic-reactor/core"
 import { useMemo } from "react"
 import { AgentContextType, useAgentManager } from "../context/agent"
-import useDidJs from "./useDidJs"
+import { useCandid } from "./useCandid"
 
-interface ActorManagerArgs
+interface DynamicActorArgs
   extends Omit<
     ActorManagerOptions,
     "idlFactory" | "agentManager" | "canisterId"
@@ -18,27 +17,21 @@ interface ActorManagerArgs
   idlFactory?: IDL.InterfaceFactory
   agentContext?: AgentContextType
   didjsCanisterId?: string
-  withServiceFields?: boolean
-  withServiceDetails?: boolean
 }
 
-export const useActorManager = <
-  A extends ActorSubclass<any> = DefaultActorType
->({
+export const useActor = <A = BaseActor>({
   canisterId,
   agentContext,
   idlFactory: maybeIdlFactory,
   didjsCanisterId,
-  withServiceFields = false,
-  withServiceDetails = false,
   ...config
-}: ActorManagerArgs) => {
+}: DynamicActorArgs) => {
   const agentManager = useAgentManager(agentContext)
 
   const {
-    didJs: { idlFactory },
+    candid: { idlFactory },
     ...rest
-  } = useDidJs({
+  } = useCandid({
     canisterId,
     didjsCanisterId,
     idlFactory: maybeIdlFactory,

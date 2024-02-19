@@ -9,7 +9,7 @@ import {
 
 describe("React Test", () => {
   it("should initialize", async () => {
-    const { useActorStore, initialize } = createReActor<typeof hello_actor>({
+    const { useActorState, initialize } = createReActor<typeof hello_actor>({
       canisterId,
       idlFactory,
       initializeOnCreate: false,
@@ -17,7 +17,7 @@ describe("React Test", () => {
     })
 
     const TestInitialize = () => {
-      const { initialized, initializing } = useActorStore()
+      const { initialized, initializing } = useActorState()
 
       return (
         <div>

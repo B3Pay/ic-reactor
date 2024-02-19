@@ -8,7 +8,7 @@ import type {
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { isQuery } from "../helper"
-import { BaseActor, FunctionName } from "@ic-reactor/store"
+import { BaseActor, FunctionName } from "@ic-reactor/core"
 import { FieldType } from "../types"
 
 export * from "./types"

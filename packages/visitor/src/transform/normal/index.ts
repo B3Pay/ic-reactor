@@ -1,7 +1,7 @@
 import { IDL } from "@dfinity/candid"
 import type { MethodResult, DynamicDataArgs } from "./types"
 import { isImage, isUrl } from "../../helper"
-import type { BaseActor, FunctionName, Principal } from "@ic-reactor/store"
+import type { BaseActor, FunctionName, Principal } from "@ic-reactor/core"
 
 export * from "./types"
 

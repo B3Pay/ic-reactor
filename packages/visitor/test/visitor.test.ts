@@ -1,4 +1,4 @@
-import { createReActorStore } from "@ic-reactor/store"
+import { createReActorStore } from "@ic-reactor/core"
 import {
   VisitRandomResponse,
   VisitTransformTable,

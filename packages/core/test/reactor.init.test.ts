@@ -3,7 +3,7 @@ import { idlFactory } from "./candid/backend"
 
 describe("createReActor", () => {
   test("uninitialized", () => {
-    const { getState } = createReActor({
+    const { getState, actorStore } = createReActor({
       initializeOnCreate: false,
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
       idlFactory,
@@ -16,10 +16,17 @@ describe("createReActor", () => {
       error: undefined,
       methodState: {},
     })
+
+    expect(actorStore.getState()).toEqual({
+      initialized: false,
+      initializing: false,
+      error: undefined,
+      methodState: {},
+    })
   })
 
   test("initialized", () => {
-    const { getState } = createReActor({
+    const { getState, actorStore } = createReActor({
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
       idlFactory,
       host: "https://icp-api.io",
@@ -31,5 +38,7 @@ describe("createReActor", () => {
       methodState: {},
       error: undefined,
     })
+
+    expect(actorStore.getState()).toEqual(getState())
   })
 })

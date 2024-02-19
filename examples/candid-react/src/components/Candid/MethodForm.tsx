@@ -6,7 +6,7 @@ import {
   MethodFields,
   ServiceDefaultValues,
   extractAndSortArgs,
-} from "@ic-reactor/store"
+} from "@ic-reactor/core"
 
 interface FormProps extends MethodFields {
   callHandler: (args: never) => Promise<any>

@@ -14,7 +14,7 @@ Aimed at React developers, this library integrates seamlessly with React applica
 
 The core library serves as the foundation for managing and interacting with IC actors. It provides essential functionalities like actor initialization, state tracking, and simplified methods for queries and updates. It's a versatile toolkit that can be utilized in various JavaScript environments, ensuring flexibility across different front-end development scenarios.
 
-### 3. `@ic-reactor/store`
+### 3. `@ic-reactor/core`
 
 This package is the backbone of the IC-Reactor suite. It provides a simple yet powerful state management utility for IC actors. It's designed to be used in conjunction with the other packages, but it can also be used independently in any JavaScript application.
 
@@ -82,9 +82,9 @@ yarn add @ic-reactor/core
 
 ## [Usage](./packages/core/README.md)
 
-# @ic-reactor/store [![@ic-reactor/store](https://badge.fury.io/js/@ic-reactor%2Fstore.svg)](https://www.npmjs.com/package/@ic-reactor/store)
+# @ic-reactor/core [![@ic-reactor/core](https://badge.fury.io/js/@ic-reactor%2Fstore.svg)](https://www.npmjs.com/package/@ic-reactor/core)
 
-`@ic-reactor/store` is a state management utility designed for applications working with the Internet Computer (IC) blockchain. It provides a simplified way to manage actor states, handle asynchronous calls, and maintain global state in your IC blockchain applications.
+`@ic-reactor/core` is a state management utility designed for applications working with the Internet Computer (IC) blockchain. It provides a simplified way to manage actor states, handle asynchronous calls, and maintain global state in your IC blockchain applications.
 
 ## Key Features
 
@@ -95,16 +95,16 @@ yarn add @ic-reactor/core
 
 ## Installation
 
-To install `@ic-reactor/store`, use npm:
+To install `@ic-reactor/core`, use npm:
 
 ```bash
-npm install @ic-reactor/store
+npm install @ic-reactor/core
 ```
 
 Or with yarn:
 
 ```bash
-yarn add @ic-reactor/store
+yarn add @ic-reactor/core
 ```
 
 ## [Usage](./packages/store/README.md)
