@@ -14,10 +14,6 @@ Aimed at React developers, this library integrates seamlessly with React applica
 
 The core library serves as the foundation for managing and interacting with IC actors. It provides essential functionalities like actor initialization, state tracking, and simplified methods for queries and updates. It's a versatile toolkit that can be utilized in various JavaScript environments, ensuring flexibility across different front-end development scenarios.
 
-### 3. `@ic-reactor/core`
-
-This package is the backbone of the IC-Reactor suite. It provides a simple yet powerful state management utility for IC actors. It's designed to be used in conjunction with the other packages, but it can also be used independently in any JavaScript application.
-
 ## Versatility Across Front-End Development
 
 Whether you're building a simple vanilla JavaScript application, a complex React project, or anything in between, the IC-Reactor suite is equipped to support your development process. By abstracting the complexities of blockchain interactions and state management, these libraries allow developers to focus on building feature-rich, responsive, and user-friendly front-end applications on the Internet Computer platform.
@@ -81,33 +77,6 @@ yarn add @ic-reactor/core
 ```
 
 ## [Usage](./packages/core/README.md)
-
-# @ic-reactor/core [![@ic-reactor/core](https://badge.fury.io/js/@ic-reactor%2Fstore.svg)](https://www.npmjs.com/package/@ic-reactor/core)
-
-`@ic-reactor/core` is a state management utility designed for applications working with the Internet Computer (IC) blockchain. It provides a simplified way to manage actor states, handle asynchronous calls, and maintain global state in your IC blockchain applications.
-
-## Key Features
-
-- **Simplified Actor State Management**: Manage the state of your actors with ease.
-- **Asynchronous Call Handling**: Facilitate asynchronous calls to IC actors.
-- **Error and Loading State Management**: Easily track loading and error states across your application.
-- **Default State Template**: Start with a predefined default state structure.
-
-## Installation
-
-To install `@ic-reactor/core`, use npm:
-
-```bash
-npm install @ic-reactor/core
-```
-
-Or with yarn:
-
-```bash
-yarn add @ic-reactor/core
-```
-
-## [Usage](./packages/store/README.md)
 
 ## We Welcome Feature Requests and Contributions
 

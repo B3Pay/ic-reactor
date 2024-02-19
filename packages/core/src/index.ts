@@ -215,7 +215,7 @@ export const createReActor = <A = BaseActor>({
  * It also creates a new actor manager with the given options.
  *
  * @category Main
- * @includeExample ./packages/store/README.md:32-45
+ * @includeExample ./packages/core/README.md:32-45
  */
 export const createReActorStore = <A = BaseActor>(
   options: CreateReActorStoreOptions
@@ -256,7 +256,7 @@ export const createReActorStore = <A = BaseActor>(
  * login and logout to the internet identity.
  *
  * @category Main
- * @includeExample ./packages/store/README.md:55-86
+ * @includeExample ./packages/core/README.md:55-86
  */
 export const createAgentManager = (
   options?: AgentManagerOptions
@@ -271,7 +271,7 @@ export const createAgentManager = (
  * It also provides a way to interact with the actor's state.
  *
  * @category Main
- * @includeExample ./packages/store/README.md:94-109
+ * @includeExample ./packages/core/README.md:94-109
  */
 export const createActorManager = <A = BaseActor>(
   options: ActorManagerOptions
@@ -285,7 +285,7 @@ export const createActorManager = <A = BaseActor>(
  * If both methods fail, it throws an error.
  *
  * @category Main
- * @includeExample ./packages/store/README.md:164-205
+ * @includeExample ./packages/core/README.md:164-205
  */
 export const createCandidAdapter = (options: CandidAdapterOptions) => {
   return new CandidAdapter(options)

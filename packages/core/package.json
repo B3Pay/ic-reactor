@@ -24,7 +24,7 @@
   "bugs": {
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
-  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/store#readme",
+  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/core#readme",
   "peerDependencies": {
     "@dfinity/agent": ">=1.0",
     "@dfinity/auth-client": ">=1.0",
