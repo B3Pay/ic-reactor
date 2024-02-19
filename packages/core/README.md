@@ -34,13 +34,13 @@ import { candid, canisterId, idlFactory } from "./candid"
 
 type Candid = typeof candid
 
-const { callMethod, agentManager } = createReActorStore<Candid>({
+const { callMethod, authenticate } = createReActor<Candid>({
   canisterId,
   idlFactory,
 })
 
 // Usage example
-const identity = await agentManager.authenticate()
+const identity = await authenticate()
 const data = await callMethod("version")
 console.log(data)
 ```

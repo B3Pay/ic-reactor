@@ -25,6 +25,7 @@ import {
   CandidAdapterOptions,
   generateRequestHash,
 } from "./tools"
+import { AuthClientLoginOptions } from "@dfinity/auth-client"
 
 export * from "./types"
 export * from "./actor"
@@ -49,11 +50,11 @@ export const createReActor = <A = BaseActor>({
         process.env.NODE_ENV === "development"))
 
   const {
-    agentManager,
-    callMethod,
     subscribeActorState,
+    callMethod,
     setState,
     getState,
+    agentManager,
     ...rest
   } = createReActorStore<A>({
     isLocalEnv,
@@ -199,12 +200,37 @@ export const createReActor = <A = BaseActor>({
     )
   }
 
+  const login = async (options?: AuthClientLoginOptions) => {
+    const authClient = agentManager.getAuthClient()
+    if (!authClient) {
+      await agentManager.authenticate()
+    }
+
+    await authClient!.login({
+      identityProvider: isLocalEnv
+        ? "https://identity.ic0.app/#authorize"
+        : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/#authorize",
+      ...options,
+    })
+  }
+
+  const logout = async (options?: { returnTo?: string }) => {
+    const authClient = agentManager.getAuthClient()
+    if (!authClient) {
+      throw new Error("Auth client not initialized")
+    }
+    await authClient.logout(options)
+    await agentManager.authenticate()
+  }
+
   return {
     queryCall,
     updateCall,
     callMethod,
     getState,
     setState,
+    login,
+    logout,
     subscribeActorState,
     ...agentManager,
     ...rest,

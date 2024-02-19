@@ -7,7 +7,7 @@ import type {
 } from "@dfinity/agent"
 import type { Principal } from "@dfinity/principal"
 import type { IDL } from "@dfinity/candid"
-import {
+import type {
   ActorManager,
   ActorManagerOptions,
   ActorMethodArgs,
@@ -16,7 +16,8 @@ import {
   BaseActor,
   FunctionName,
 } from "./actor"
-import { AgentManager } from "./agent"
+import type { AgentManager } from "./agent"
+import type { AuthClientLoginOptions } from "@dfinity/auth-client"
 
 export type {
   ActorMethod,
@@ -105,6 +106,8 @@ export type ActorUpdate<A = Record<string, ActorMethod>> = <
 export interface ActorCoreActions<A = BaseActor>
   extends AgentManager,
     ActorManager<A> {
+  login: (options?: AuthClientLoginOptions) => Promise<void>
+  logout: (options?: { returnTo?: string }) => Promise<void>
   queryCall: ActorQuery<A>
   updateCall: ActorUpdate<A>
 }
