@@ -1,18 +1,10 @@
+<p align="center">
+  <img src="./ic-reactor.png" width="200" height="200"/>
+</p>
+
 # IC-Reactor: A Suite of Frontend Utilities for Internet Computer (IC) Development
 
 Welcome to IC-Reactor, a comprehensive collection of JavaScript libraries designed to simplify and enhance frontend development on the Internet Computer (IC) blockchain platform. This project provides a set of tools that cater to various aspects of frontend development, ranging from vanilla JavaScript applications to sophisticated React-based projects.
-
-## Packages Overview
-
-IC-Reactor comprises the following packages, each tailored for specific needs and use cases within the IC ecosystem:
-
-### 1. `@ic-reactor/react`
-
-Aimed at React developers, this library integrates seamlessly with React applications, providing custom hooks and context for managing blockchain interactions. Whether you're querying data from IC actors, updating states, or handling authentication, `@ic-reactor/react` streamlines these processes in a React-friendly way.
-
-### 2. `@ic-reactor/core`
-
-The core library serves as the foundation for managing and interacting with IC actors. It provides essential functionalities like actor initialization, state tracking, and simplified methods for queries and updates. It's a versatile toolkit that can be utilized in various JavaScript environments, ensuring flexibility across different front-end development scenarios.
 
 ## Versatility Across Front-End Development
 
@@ -31,21 +23,7 @@ Leveraging the power of these libraries, developers can efficiently handle a ran
 - **Simplified Actor Interaction**: Streamlines the process of querying and updating data from IC actors.
 - **Efficient State Management**: Manages loading, error, and data states efficiently within React components.
 
-## Installation
-
-To install `@ic-reactor/react`, run the following command:
-
-```bash
-npm install @ic-reactor/react
-```
-
-Or using yarn:
-
-```bash
-yarn add @ic-reactor/react
-```
-
-## [Usage](./packages/react/README.md)
+## [Read Docs](https://b3pay.github.io/ic-reactor/modules/Core.html)
 
 ## Examples
 
@@ -62,21 +40,7 @@ For more complex examples, refer to the [`examples`](./examples) directory.
 - **Query and Update Functionality**: Simplified methods for querying data from actors and updating actor states.
 - **Testability**: Built with testing in mind, allowing you to easily test actor interactions.
 
-## Installation
-
-To install `@ic-reactor/core`, run:
-
-```bash
-npm install @ic-reactor/core
-```
-
-Or with yarn:
-
-```bash
-yarn add @ic-reactor/core
-```
-
-## [Usage](./packages/core/README.md)
+## [Read Docs](https://b3pay.github.io/ic-reactor/modules/Core.html)
 
 ## We Welcome Feature Requests and Contributions
 
