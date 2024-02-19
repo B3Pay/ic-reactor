@@ -1,7 +1,7 @@
 import React, { createContext, useMemo } from "react"
 import { createAgentManager } from "@ic-reactor/core"
-import { getAgentHooks } from "../../hooks/agent"
-import { getAuthHooks } from "../../hooks/auth"
+import { getAgentHooks } from "../../helpers/agent"
+import { getAuthHooks } from "../../helpers/auth"
 import type { AgentManagerOptions } from "@ic-reactor/core/dist/types"
 import type { AgentContextValue, AgentProviderProps } from "./types"
 
@@ -20,7 +20,9 @@ AgentProvider.displayName = "AgentProvider"
 
 export { AgentProvider }
 
-const createAgentContext = (config: AgentManagerOptions): AgentContextValue => {
+export const createAgentContext = (
+  config: AgentManagerOptions
+): AgentContextValue => {
   const agentManager = createAgentManager(config)
   const agenthooks = getAgentHooks(agentManager)
   const authHooks = getAuthHooks(agentManager)

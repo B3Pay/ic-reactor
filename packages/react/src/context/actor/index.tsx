@@ -5,7 +5,7 @@ import {
   ActorUseQueryArgs,
   ActorUseUpdateArgs,
 } from "../../types"
-import { getActorHooks } from "../../hooks/actor"
+import { getActorHooks } from "../../helpers/actor"
 import {
   CreateActorOptions,
   ActorContextType,

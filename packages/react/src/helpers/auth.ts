@@ -8,13 +8,12 @@ import { AuthArgs } from "../types"
 export const getAuthHooks = (agentManager: AgentManager) => {
   const { authenticate: authenticator, authStore, isLocalEnv } = agentManager
 
-  const useAuthStore = () => {
-    const authState = useStore(authStore, (state) => state)
-    return authState
+  const useAuthState = () => {
+    return useStore(authStore, (state) => state)
   }
 
   const useUserPrincipal = () => {
-    const { identity } = useAuthStore()
+    const { identity } = useAuthState()
 
     return identity?.getPrincipal()
   }
@@ -31,7 +30,7 @@ export const getAuthHooks = (agentManager: AgentManager) => {
     const [loginLoading, setLoginLoading] = useState(false)
     const [loginError, setLoginError] = useState<Error | null>(null)
     const { authClient, authenticated, authenticating, identity } =
-      useAuthStore()
+      useAuthState()
 
     const authenticate = useCallback(async () => {
       const authenticatePromise: Promise<Identity> = new Promise(
@@ -152,7 +151,7 @@ export const getAuthHooks = (agentManager: AgentManager) => {
 
   return {
     useUserPrincipal,
-    useAuthStore,
+    useAuthState,
     useAuthClient,
   }
 }

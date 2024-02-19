@@ -25,8 +25,8 @@ export const useAgentManager = (
 export const useAgent = (agentContext?: AgentContextType) =>
   useAgentManagerContext(agentContext).useAgent()
 
-export const useAuthStore = (agentContext?: AgentContextType) =>
-  useAgentManagerContext(agentContext).useAuthStore()
+export const useAuthState = (agentContext?: AgentContextType) =>
+  useAgentManagerContext(agentContext).useAuthState()
 
 export const useAgentState = (agentContext?: AgentContextType) =>
   useAgentManagerContext(agentContext).useAgentState()

@@ -1,6 +1,6 @@
 import { createReActorStore } from "@ic-reactor/core"
-import { getActorHooks } from "./hooks/actor"
-import { getAuthHooks } from "./hooks/auth"
+import { getActorHooks } from "./helpers/actor"
+import { getAuthHooks } from "./helpers/auth"
 import { BaseActor, CreateReActorOptions } from "@ic-reactor/core/dist/types"
 
 export const createReActor = <A = BaseActor>({
@@ -48,7 +48,8 @@ export const createReActor = <A = BaseActor>({
   }
 }
 
-export * as agent from "./context/agent"
-export * as actor from "./context/actor"
+export * from "./context/agent"
+export * from "./context/actor"
+export * as helpers from "./helpers"
 export * as hooks from "./hooks"
 export * as types from "./types"

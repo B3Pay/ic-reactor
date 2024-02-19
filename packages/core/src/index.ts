@@ -276,7 +276,7 @@ export const createCandidAdapter = (options: CandidAdapterOptions) => {
   return new CandidAdapter(options)
 }
 
+export * from "./actor"
+export * from "./agent"
 export * as types from "./types"
-export * as actor from "./actor"
-export * as agent from "./agent"
 export * as tools from "./tools"
