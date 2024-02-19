@@ -1,17 +1,7 @@
-import {
-  createReActorStore,
-  CreateReActorOptions,
-  BaseActor,
-} from "@ic-reactor/core"
+import { createReActorStore } from "@ic-reactor/core"
 import { getActorHooks } from "./hooks/actor"
 import { getAuthHooks } from "./hooks/auth"
-
-export { createReActor as createReActorCore } from "@ic-reactor/core"
-export * from "@ic-reactor/core"
-
-export * from "./context/agent"
-export * from "./context/actor"
-export * from "./hooks"
+import { BaseActor, CreateReActorOptions } from "@ic-reactor/core/dist/types"
 
 export const createReActor = <A = BaseActor>({
   isLocalEnv,
@@ -57,3 +47,8 @@ export const createReActor = <A = BaseActor>({
     ...authHooks,
   }
 }
+
+export * as agent from "./context/agent"
+export * as actor from "./context/actor"
+export * as hooks from "./hooks"
+export * as types from "./types"

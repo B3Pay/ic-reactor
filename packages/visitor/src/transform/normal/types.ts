@@ -3,7 +3,7 @@ import type {
   ActorMethodReturnType,
   FunctionName,
   Principal,
-} from "@ic-reactor/core"
+} from "@ic-reactor/core/dist/types"
 import { ReturnDataType } from "../types"
 
 export interface DynamicDataArgs<V = unknown> {

@@ -2,6 +2,14 @@
   "extends": "../../tsconfig.json",
   "include": ["./src"],
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@ic-reactor/core/agent": ["dist/agent"],
+      "@ic-reactor/core/actor": ["dist/actor"],
+      "@ic-reactor/core/types": ["dist/types"],
+      "@ic-reactor/core/tools": ["dist/tools"],
+      "@ic-reactor/core": ["dist"]
+    },
     "outDir": "./dist"
   }
 }

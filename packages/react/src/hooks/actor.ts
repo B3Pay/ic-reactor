@@ -1,5 +1,12 @@
 /* eslint-disable no-console */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import {
   ActorHookState,
   type ActorCall,
@@ -11,8 +18,12 @@ import {
   ActorUseMethodCallArg,
 } from "../types"
 import { useStore } from "zustand"
-import { ActorManager, VisitService } from "@ic-reactor/core"
-import { ActorMethodArgs, FunctionName } from "@ic-reactor/core"
+import type {
+  VisitService,
+  ActorMethodArgs,
+  FunctionName,
+} from "@ic-reactor/core/dist/types"
+import type { ActorManager } from "@ic-reactor/core/dist/actor"
 
 const DEFAULT_STATE = {
   data: undefined,
@@ -83,7 +94,6 @@ export const getActorHooks = <A>({
             functionName,
             ...((replaceArgs ?? args) as ActorMethodArgs<A[M]>)
           )
-
           onLoading?.(false)
           onSuccess?.(data)
           setState((prevState) => ({ ...prevState, data, loading: false }))
@@ -125,15 +135,16 @@ export const getActorHooks = <A>({
         }, refetchInterval)
       }
 
-      // Initial call logic
-      if (refetchOnMount) {
-        call()
-      }
-
       return () => {
         clearInterval(intervalId.current)
       }
-    }, [refetchOnMount, refetchInterval])
+    }, [refetchInterval])
+
+    useLayoutEffect(() => {
+      if (refetchOnMount) {
+        call()
+      }
+    }, [])
 
     return { call, ...state }
   }

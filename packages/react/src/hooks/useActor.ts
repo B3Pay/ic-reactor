@@ -1,12 +1,10 @@
-import {
-  ActorManagerOptions,
-  BaseActor,
-  IDL,
-  createReActorStore,
-} from "@ic-reactor/core"
+import { createReActorStore } from "@ic-reactor/core"
 import { useMemo } from "react"
-import { AgentContextType, useAgentManager } from "../context/agent"
+import { useAgentManager } from "../context/agent"
 import { useCandid } from "./useCandid"
+import { IDL } from "@dfinity/candid"
+import { ActorManagerOptions, BaseActor } from "@ic-reactor/core/dist/types"
+import { AgentContextType } from "../types"
 
 interface DynamicActorArgs
   extends Omit<
@@ -19,6 +17,11 @@ interface DynamicActorArgs
   didjsCanisterId?: string
 }
 
+/**
+ * A hook to create an actor manager and fetch the actor's candid interface.
+ *
+ * @category Hooks
+ */
 export const useActor = <A = BaseActor>({
   canisterId,
   agentContext,

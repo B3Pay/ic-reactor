@@ -1,4 +1,9 @@
-import { BaseActor, FunctionName, FunctionType, IDL } from "@ic-reactor/core"
+import {
+  BaseActor,
+  FunctionName,
+  FunctionType,
+  IDL,
+} from "@ic-reactor/core/dist/types"
 import { FieldType } from "../types"
 
 export type FunctionCategory = "home" | "wallet" | "governance" | "setting"

@@ -2,7 +2,7 @@ import { useAuthClient } from "service/todo"
 
 interface LoginProps {}
 
-const Login: React.FC<LoginProps> = ({}) => {
+const Login: React.FC<LoginProps> = () => {
   const {
     login,
     logout,

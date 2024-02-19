@@ -3,7 +3,7 @@ import { useUpdateCall } from "service/todo"
 
 interface AddTodoProps {}
 
-const AddTodo: React.FC<AddTodoProps> = ({}) => {
+const AddTodo: React.FC<AddTodoProps> = () => {
   const { call, error, loading } = useUpdateCall({
     functionName: "addTodo"
   })

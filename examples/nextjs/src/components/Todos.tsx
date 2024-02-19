@@ -5,7 +5,7 @@ import Todo from "./Todo"
 
 interface TodosProps {}
 
-const Todos: React.FC<TodosProps> = ({}) => {
+const Todos: React.FC<TodosProps> = () => {
   const { data, error, loading } = useQueryCall({
     functionName: "getAllTodos",
     refetchOnMount: true

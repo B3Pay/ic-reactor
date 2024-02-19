@@ -1,8 +1,11 @@
 import { Actor, CanisterStatus, HttpAgent } from "@dfinity/agent"
 import { IDL } from "@dfinity/candid"
 import { Principal } from "@dfinity/principal"
-import { CanisterId } from "../actor"
-import { CandidAdapterOptions, CandidDefenition } from "./types"
+import type {
+  CanisterId,
+  CandidAdapterOptions,
+  CandidDefenition,
+} from "../types"
 
 export const DEFAULT_LOCAL_DIDJS_ID = "bd3sg-teaaa-aaaaa-qaaba-cai"
 export const DEFAULT_IC_DIDJS_ID = "a4gq6-oaaaa-aaaab-qaa4q-cai"

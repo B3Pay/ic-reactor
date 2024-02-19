@@ -16,9 +16,8 @@ import type {
   ActorMethodState,
 } from "./types"
 import { IDL } from "@dfinity/candid"
-import type { AgentManager, UpdateAgentOptions } from "../agent"
-
-export * from "./types"
+import type { AgentManager } from "../agent"
+import type { UpdateAgentOptions } from "../types"
 
 export class ActorManager<A = BaseActor> {
   private _actor: null | A = null

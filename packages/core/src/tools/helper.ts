@@ -2,7 +2,7 @@ import { hash } from "@dfinity/agent"
 import { toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import { BaseActor } from "../actor"
+import { BaseActor } from "../types"
 
 interface StoreOptions {
   withDevtools?: boolean

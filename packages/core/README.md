@@ -1,5 +1,3 @@
-# @ic-reactor/core
-
 The `@ic-reactor/core` package provides a streamlined way to interact with the Internet Computer (IC) by simplifying agent and actor management. It offers utilities for creating and managing IC agents, enabling seamless communication with canisters through a friendly API.
 
 ## Installation
@@ -204,7 +202,3 @@ try {
   console.error(error)
 }
 ```
-
-## Conclusion
-
-The `@ic-reactor/core` package offers a flexible and powerful way to interact with the Internet Computer, catering to both straightforward use cases with automatic agent management and more complex scenarios requiring manual control. By abstracting away some of the intricacies of agent and actor management, it enables developers to focus more on building their applications.

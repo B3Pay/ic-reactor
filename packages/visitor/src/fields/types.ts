@@ -1,5 +1,9 @@
 import { IDL } from "@dfinity/candid"
-import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
+import type {
+  BaseActor,
+  FunctionName,
+  FunctionType,
+} from "@ic-reactor/core/dist/types"
 import { FieldType } from "../types"
 
 export interface ExtractedServiceFields<A = BaseActor> {

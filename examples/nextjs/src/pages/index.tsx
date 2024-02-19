@@ -6,11 +6,10 @@ import AddTodo from "components/AddTodo"
 import Login from "components/Login"
 import Todos from "components/Todos"
 import Image from "next/image"
-import { useActorStore, useAuthStore } from "service/todo"
+import { useAuthStore } from "service/todo"
 
 function HomePage() {
-  const { error } = useAuthStore()
-  const { initialized } = useActorStore()
+  const { error, authenticated } = useAuthStore()
 
   return (
     <div className={styles.container}>
@@ -23,7 +22,7 @@ function HomePage() {
         </h3>
         <Login />
         {error ? <div>Error: {JSON.stringify(error)}</div> : null}
-        {initialized && (
+        {authenticated && (
           <div>
             <Todos />
             <AddTodo />

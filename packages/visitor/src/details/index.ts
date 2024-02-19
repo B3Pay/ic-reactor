@@ -8,16 +8,13 @@ import type {
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { isQuery } from "../helper"
-import { BaseActor, FunctionName } from "@ic-reactor/core"
+import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
 import { FieldType } from "../types"
-
-export * from "./types"
 
 /**
  * Visit the candid file and extract the details.
  * It returns the extracted service details.
  *
- * @category Main
  */
 export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   string,

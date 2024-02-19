@@ -9,8 +9,6 @@ import type {
   AuthStore,
 } from "./types"
 
-export * from "./types"
-
 export const IC_HOST_NETWORK_URI = "https://ic0.app"
 export const LOCAL_HOST_NETWORK_URI = "http://127.0.0.1:4943"
 

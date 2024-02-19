@@ -3,7 +3,7 @@ import { createReActor } from "@ic-reactor/react"
 import { canisterId, idlFactory, todo } from "declarations/todo"
 
 export const {
-  useActorStore,
+  useActorState,
   useAuthStore,
   useAuthClient,
   useQueryCall,
@@ -12,5 +12,5 @@ export const {
   idlFactory,
   canisterId,
   withDevtools: true,
-  withServiceFields: true
+  withProcessEnv: true
 })

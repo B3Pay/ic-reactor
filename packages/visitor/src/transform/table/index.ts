@@ -1,13 +1,16 @@
 import { IDL } from "@dfinity/candid"
 import type { MethodResult, DynamicDataArgs } from "./types"
 import { isImage, isUrl } from "../../helper"
-import type { BaseActor, FunctionName, Principal } from "@ic-reactor/core"
+import type {
+  BaseActor,
+  FunctionName,
+  Principal,
+} from "@ic-reactor/core/dist/types"
 
 /**
  * Visit the candid file and extract the fields.
  * It returns the extracted service fields.
  *
- * @category Main
  */
 export class VisitTransformTable<
   A = BaseActor,

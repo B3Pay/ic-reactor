@@ -52,7 +52,7 @@ const App: React.FC<AppProps> = () => {
           </button>
         </form>
         {canisterId && (
-          <ActorProvider canisterId={canisterId} withDevtools withServiceFields>
+          <ActorProvider canisterId={canisterId} withDevtools withVisitor>
             <DynamicCandid />
           </ActorProvider>
         )}

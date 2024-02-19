@@ -9,9 +9,13 @@ import type {
   Principal,
   FunctionName,
   VisitService,
-} from "@ic-reactor/core"
-import type { AuthHooks } from "./hooks/auth"
-import { AgentHooks } from "./hooks/agent"
+} from "@ic-reactor/core/dist/types"
+import type { AgentHooks, AuthHooks } from "./hooks/types"
+
+export * from "@ic-reactor/core/dist/types"
+export * from "./context/agent/types"
+export * from "./context/actor/types"
+export * from "./hooks/types"
 
 export type AuthArgs = {
   onAuthentication?: (promise: () => Promise<Identity>) => void

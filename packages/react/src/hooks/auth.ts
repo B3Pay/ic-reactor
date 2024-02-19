@@ -1,10 +1,9 @@
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
-import type { AgentManager, Identity, Principal } from "@ic-reactor/core"
+import type { Identity, Principal } from "@ic-reactor/core/dist/types"
+import type { AgentManager } from "@ic-reactor/core/dist/agent"
 import { useCallback, useEffect, useState } from "react"
 import { useStore } from "zustand"
 import { AuthArgs } from "../types"
-
-export type AuthHooks = ReturnType<typeof getAuthHooks>
 
 export const getAuthHooks = (agentManager: AgentManager) => {
   const { authenticate: authenticator, authStore, isLocalEnv } = agentManager

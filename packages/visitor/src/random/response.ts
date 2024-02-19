@@ -4,13 +4,12 @@ import type {
   BaseActor,
   ActorMethodReturnType,
   FunctionName,
-} from "@ic-reactor/core"
+} from "@ic-reactor/core/dist/types"
 
 /**
  * Visit the candid file and extract the fields.
  * It returns the extracted service fields.
  *
- * @category Main
  */
 export class VisitRandomResponse<A = BaseActor> extends IDL.Visitor<
   unknown,

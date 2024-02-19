@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react"
 import { createCandidAdapter } from "@ic-reactor/core"
 import type { IDL } from "@dfinity/candid"
-import { useAgentContext } from "../context/agent"
+import { useAgent } from "../context/agent"
 
 interface IDLFactoryState {
   candid: {
@@ -38,7 +38,7 @@ export const useCandid = ({
       },
     })
 
-  const agent = useAgentContext()
+  const agent = useAgent()
 
   const fetchCandid = useCallback(async () => {
     if (!canisterId || !agent) return

@@ -20,16 +20,12 @@ import type {
 } from "./types"
 import { isQuery, validateError, validateNumberError } from "../helper"
 import { IDL } from "@dfinity/candid"
-import type { BaseActor, FunctionName } from "@ic-reactor/core"
-
-export * from "./types"
-export * from "../helper"
+import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
 
 /**
  * Visit the candid file and extract the fields.
  * It returns the extracted service fields.
  *
- * @category Main
  */
 export class VisitFields<
   A = BaseActor,

@@ -1,5 +1,3 @@
-# IC-ReActor - React
-
 `@ic-reactor/react` is a comprehensive React library designed to streamline interactions with the Internet Computer (IC) blockchain. It provides React hooks and utilities for efficient state management, authentication, and interaction with IC actors.
 
 ## Features
@@ -131,24 +129,3 @@ const Login = () => {
 
 export default Login
 ```
-
-## API Reference
-
-The library provides various hooks and utilities for interacting with IC actors:
-
-- `useActorStore`: Hook for managing actor states.
-- `useAuthStore` Hook for managing authentication states.
-- `useAuthClient`: Hook for managing authentication with the IC blockchain.
-- `useQueryCall`: Hook for querying data from an actor.
-- `useUpdateCall`: Hook for updating data in an actor.
-- Additional hooks for handling loading, errors, authentication, and more.
-
-For detailed API usage and options, please refer to the [documentation](#).
-
-## Contributing
-
-Contributions to `@ic-reactor/react` are welcome! Please read our [contributing guidelines](#) for more information.
-
-## License
-
-`@ic-reactor/react` is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.

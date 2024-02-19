@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { createContext, useMemo, useContext } from "react"
-import { ActorSubclass } from "@ic-reactor/core"
 import {
   ActorUseMethodCallArg,
   ActorUseQueryArgs,
@@ -13,13 +12,23 @@ import {
   ActorProviderProps,
 } from "./types"
 import { useActor } from "../../hooks/useActor"
+import type { ActorSubclass } from "@dfinity/agent"
 
-export * from "./types"
+export const {
+  ActorContext,
+  ActorProvider,
+  useActorContext,
+  useActorState,
+  useQueryCall,
+  useUpdateCall,
+  useMethodCall,
+  useVisitMethod,
+} = createReActorContext()
 
-export const createReActorContext = <Actor extends ActorSubclass<any>>({
+export function createReActorContext<Actor extends ActorSubclass<any>>({
   canisterId: defaultCanisterId,
   ...defaultConfig
-}: Partial<CreateActorOptions> = {}) => {
+}: Partial<CreateActorOptions> = {}) {
   const ActorContext = createContext<ActorContextType | null>(null)
 
   const ActorProvider: React.FC<ActorProviderProps> = ({
@@ -102,14 +111,3 @@ export const createReActorContext = <Actor extends ActorSubclass<any>>({
     initialize,
   }
 }
-
-export const {
-  ActorContext,
-  ActorProvider,
-  useActorContext,
-  useActorState,
-  useQueryCall,
-  useUpdateCall,
-  useMethodCall,
-  useVisitMethod,
-} = createReActorContext()

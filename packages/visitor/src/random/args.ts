@@ -1,13 +1,12 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import { BaseActor, FunctionName } from "@ic-reactor/core"
-import { ServiceDefaultValues } from "../fields"
+import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
+import type { ServiceDefaultValues } from "../types"
 
 /**
  * Visit the candid file and extract the fields.
  * It returns the extracted service fields.
  *
- * @category Main
  */
 export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
   unknown,

@@ -1,7 +1,6 @@
 import { IDL } from "@dfinity/candid"
-import { ActorManagerOptions, BaseActor } from "@ic-reactor/core"
-import { AgentContextType } from "../agent"
-import { ActorHooks } from "../../types"
+import { ActorManagerOptions, BaseActor } from "@ic-reactor/core/dist/types"
+import { ActorHooks, AgentContextType } from "../../types"
 
 export type ActorContextType<
   Actor = BaseActor,

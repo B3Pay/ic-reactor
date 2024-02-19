@@ -1,7 +1,18 @@
-import { useState, useEffect } from "react"
-import { AgentManager, HttpAgent } from "@ic-reactor/core"
-import { AgentContextType } from "./types"
-import { useAgentManagerContext } from "."
+import { useContext } from "react"
+import { AgentManager } from "@ic-reactor/core/dist/agent"
+import { AgentContext } from "./context"
+import type { AgentContextType } from "./types"
+import { AuthArgs } from "../../types"
+
+export const useAgentManagerContext = (agentContext?: AgentContextType) => {
+  const context = useContext(agentContext || AgentContext)
+
+  if (!context) {
+    throw new Error("Agent context must be used within a AgentProvider")
+  }
+
+  return context
+}
 
 export const useAgentManager = (
   agentContext?: AgentContextType
@@ -11,16 +22,23 @@ export const useAgentManager = (
   return context.agentManager
 }
 
-export const useAgentContext = (
-  agentContext?: AgentContextType
-): HttpAgent | undefined => {
-  const agentManager = useAgentManager(agentContext)
+export const useAgent = (agentContext?: AgentContextType) =>
+  useAgentManagerContext(agentContext).useAgent()
 
-  const [agent, setAgent] = useState<HttpAgent | undefined>(
-    agentManager.getAgent()
-  )
+export const useAuthStore = (agentContext?: AgentContextType) =>
+  useAgentManagerContext(agentContext).useAuthStore()
 
-  useEffect(() => agentManager.subscribeAgent(setAgent), [])
+export const useAgentState = (agentContext?: AgentContextType) =>
+  useAgentManagerContext(agentContext).useAgentState()
 
-  return agent
+export const useAuthClient = ({
+  agentContext,
+  ...args
+}: AuthArgs & { agentContext?: AgentContextType }) => {
+  const context = useAgentManagerContext(agentContext)
+
+  return context.useAuthClient(args)
 }
+
+export const useUserPrincipal = (agentContext?: AgentContextType) =>
+  useAgentManagerContext(agentContext).useUserPrincipal()

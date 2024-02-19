@@ -24,7 +24,7 @@
   "bugs": {
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
-  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/react#readme",
+  "homepage": "https://b3pay.github.io/ic-reactor/modules/react.html",
   "scripts": {
     "test": "npx jest",
     "start": "tsc watch",
