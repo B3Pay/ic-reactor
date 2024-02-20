@@ -3,13 +3,15 @@ import { getActorHooks } from "./helpers/actor"
 import { getAuthHooks } from "./helpers/auth"
 
 import { isInLocalOrDevelopment } from "@ic-reactor/core/dist/tools"
-import { CreateReactor } from "./types"
+import { BaseActor, CreateReactorReturn, CreateReactorOptions } from "./types"
 import { getAgentHooks } from "./helpers"
 
-export const createReactor: CreateReactor = (options) => {
+export const createReactor = <A = BaseActor>(
+  options: CreateReactorOptions
+): CreateReactorReturn<A> => {
   const { isLocalEnv, withVisitor, withProcessEnv, ...args } = options
 
-  const actorManager = createReactorStore({
+  const actorManager = createReactorStore<A>({
     isLocalEnv:
       isLocalEnv || (withProcessEnv ? isInLocalOrDevelopment() : false),
     withVisitor,

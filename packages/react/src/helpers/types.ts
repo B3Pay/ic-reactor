@@ -11,9 +11,7 @@ import type {
   FunctionName,
   VisitService,
   AuthClient,
-  BaseActor,
 } from "@ic-reactor/core/dist/types"
-import { ActorManager } from "@ic-reactor/core"
 
 export type AgentHooks = ReturnType<typeof getAgentHooks>
 
@@ -85,19 +83,19 @@ export interface ReactorCallReturn<
   ) => Promise<ActorMethodReturnType<A[M]> | undefined>
 }
 
-export type ReactorCall<A = BaseActor> = <M extends FunctionName<A>>(
+export type ReactorCall<A> = <M extends FunctionName<A>>(
   args: ReactorCallArgs<A, M>
 ) => ReactorCallReturn<A, M>
 
-export type UseQueryCall<A = BaseActor> = <M extends FunctionName<A>>(
+export type UseQueryCall<A> = <M extends FunctionName<A>>(
   args: UseQueryCallArgs<A, M>
 ) => ReactorCallReturn<A, M>
 
-export type UseUpdateCall<A = BaseActor> = <M extends FunctionName<A>>(
+export type UseUpdateCall<A> = <M extends FunctionName<A>>(
   args: UseUpdateCallArgs<A, M>
 ) => ReactorCallReturn<A, M>
 
-export type UseMethodCall<A = BaseActor> = <M extends FunctionName<A>>(
+export type UseMethodCall<A> = <M extends FunctionName<A>>(
   args: UseMethodCallArg<A, M>
 ) => UseMethodCallReturn<A, M>
 
@@ -119,12 +117,6 @@ export type UseMethodCallArg<A, M extends FunctionName<A>> = ReactorCallArgs<
 export interface UseActorState extends Omit<ActorState, "methodState"> {
   canisterId: CanisterId
 }
-
-export type ExtractActorType<T> = T extends ActorManager<infer A> ? A : never
-
-export type GetActorHooks = <A = BaseActor>(
-  actorManager: ActorManager<A>
-) => ActorHooks<A>
 
 export interface ActorHooks<A> {
   initialize: () => Promise<void>
