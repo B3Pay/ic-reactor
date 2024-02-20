@@ -6,9 +6,7 @@ import type {
   CandidAdapterOptions,
   CandidDefenition,
 } from "../types"
-
-export const DEFAULT_LOCAL_DIDJS_ID = "bd3sg-teaaa-aaaaa-qaaba-cai"
-export const DEFAULT_IC_DIDJS_ID = "a4gq6-oaaaa-aaaab-qaa4q-cai"
+import { DEFAULT_IC_DIDJS_ID, DEFAULT_LOCAL_DIDJS_ID } from "../tools/constants"
 
 export class CandidAdapter {
   public agent: HttpAgent

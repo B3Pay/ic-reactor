@@ -2,6 +2,7 @@ import { createReActorStore } from "@ic-reactor/core"
 import { getActorHooks } from "./helpers/actor"
 import { getAuthHooks } from "./helpers/auth"
 import { BaseActor, CreateReActorOptions } from "@ic-reactor/core/dist/types"
+import { isInLocalOrDevelopment } from "@ic-reactor/core/dist/tools"
 
 export const createReActor = <A = BaseActor>({
   isLocalEnv,
@@ -9,13 +10,7 @@ export const createReActor = <A = BaseActor>({
   withProcessEnv,
   ...options
 }: CreateReActorOptions) => {
-  isLocalEnv =
-    isLocalEnv ||
-    (withProcessEnv
-      ? typeof process !== "undefined" &&
-        (process.env.DFX_NETWORK === "local" ||
-          process.env.NODE_ENV === "development")
-      : false)
+  isLocalEnv = isLocalEnv || (withProcessEnv ? isInLocalOrDevelopment() : false)
 
   const actorManager = createReActorStore<A>({
     isLocalEnv,

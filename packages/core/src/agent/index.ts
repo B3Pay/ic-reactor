@@ -8,9 +8,7 @@ import type {
   AuthState,
   AuthStore,
 } from "./types"
-
-export const IC_HOST_NETWORK_URI = "https://ic0.app"
-export const LOCAL_HOST_NETWORK_URI = "http://127.0.0.1:4943"
+import { IC_HOST_NETWORK_URI } from "../tools/constants"
 
 export class AgentManager {
   private _agent: HttpAgent

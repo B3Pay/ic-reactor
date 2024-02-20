@@ -1,6 +1,10 @@
 import { ActorManager } from "./actor"
 import { AgentManager } from "./agent"
-import { CandidAdapter, generateRequestHash } from "./tools"
+import {
+  IC_INTERNET_IDENTITY_PROVIDER,
+  LOCAL_INTERNET_IDENTITY_PROVIDER,
+} from "./tools/constants"
+import { generateRequestHash, isInLocalOrDevelopment } from "./tools"
 
 import type {
   ActorManagerOptions,
@@ -21,11 +25,13 @@ import type {
   CandidAdapterOptions,
 } from "./types"
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
+import { CandidAdapter } from "./candid"
 
 /**
  * Create a new actor manager with the given options.
  * Its create a new agent manager if not provided.
  *
+ * @category Main
  * @includeExample ./packages/core/README.md:30-91
  */
 export const createReActor = <A = BaseActor>({
@@ -33,13 +39,7 @@ export const createReActor = <A = BaseActor>({
   withProcessEnv = false,
   ...options
 }: CreateReActorOptions): ActorCoreActions<A> => {
-  isLocalEnv =
-    isLocalEnv ||
-    (withProcessEnv
-      ? typeof process !== "undefined" &&
-        (process.env.DFX_NETWORK === "local" ||
-          process.env.NODE_ENV === "development")
-      : false)
+  isLocalEnv = isLocalEnv || (withProcessEnv ? isInLocalOrDevelopment() : false)
 
   const {
     subscribeActorState,
@@ -168,10 +168,14 @@ export const createReActor = <A = BaseActor>({
       await agentManager.authenticate()
     }
 
-    await authClient!.login({
+    if (!authClient) {
+      throw new Error("Auth client not initialized")
+    }
+
+    await authClient.login({
       identityProvider: isLocalEnv
-        ? "https://identity.ic0.app/#authorize"
-        : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/#authorize",
+        ? IC_INTERNET_IDENTITY_PROVIDER
+        : LOCAL_INTERNET_IDENTITY_PROVIDER,
       ...options,
     })
   }
@@ -203,6 +207,7 @@ export const createReActor = <A = BaseActor>({
  * Its create a new agent manager if not provided.
  * It also creates a new actor manager with the given options.
  *
+ * @category Main
  * @includeExample ./packages/core/README.md:32-45
  */
 export const createReActorStore = <A = BaseActor>(
@@ -243,6 +248,7 @@ export const createReActorStore = <A = BaseActor>(
  * You can use it to subscribe to the agent changes.
  * login and logout to the internet identity.
  *
+ * @category Main
  * @includeExample ./packages/core/README.md:55-86
  */
 export const createAgentManager = (
@@ -257,6 +263,7 @@ export const createAgentManager = (
  * You can use it to call and visit the actor's methods.
  * It also provides a way to interact with the actor's state.
  *
+ * @category Main
  * @includeExample ./packages/core/README.md:94-109
  */
 export const createActorManager = <A = BaseActor>(
@@ -270,6 +277,7 @@ export const createActorManager = <A = BaseActor>(
  * It provides methods to fetch the Candid definition either from the canister's metadata or by using a temporary hack method.
  * If both methods fail, it throws an error.
  *
+ * @category Main
  * @includeExample ./packages/core/README.md:164-205
  */
 export const createCandidAdapter = (options: CandidAdapterOptions) => {
@@ -278,5 +286,6 @@ export const createCandidAdapter = (options: CandidAdapterOptions) => {
 
 export * from "./actor"
 export * from "./agent"
+export * from "./candid"
 export * as types from "./types"
 export * as tools from "./tools"

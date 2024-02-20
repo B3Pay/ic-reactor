@@ -25,7 +25,15 @@ export function createStoreWithOptionalDevtools<T>(
   }
 }
 
-export function jsonToString(json: unknown) {
+export const isInLocalOrDevelopment = () => {
+  return (
+    typeof process !== "undefined" &&
+    (process.env.DFX_NETWORK === "local" ||
+      process.env.NODE_ENV === "development")
+  )
+}
+
+export const jsonToString = (json: unknown) => {
   return JSON.stringify(
     json,
     (_, value) => (typeof value === "bigint" ? `BigInt(${value})` : value),

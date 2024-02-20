@@ -8,7 +8,6 @@
         <p>
         A Suite of Frontend Utilities for Internet Computer (IC) Development
         </p>
-        <hr/>
         <a href="https://b3pay.github.io/ic-reactor/">Documentation</a>
         -
         <a href="https://www.npmjs.com/org/ic-reactor">Packages</a>
