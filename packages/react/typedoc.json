@@ -2,5 +2,30 @@
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["./src"],
   "name": "react",
-  "sort": ["kind", "instance-first", "source-order"]
+  "kindSortOrder": [
+    "Reference",
+    "Project",
+    "Module",
+    "Function",
+    "Variable",
+    "Class",
+    "Namespace",
+    "Enum",
+    "EnumMember",
+    "Interface",
+    "TypeAlias",
+    "Constructor",
+    "Property",
+    "Accessor",
+    "Method",
+    "Parameter",
+    "TypeParameter",
+    "TypeLiteral",
+    "CallSignature",
+    "ConstructorSignature",
+    "IndexSignature",
+    "GetSignature",
+    "SetSignature"
+  ],
+  "sort": ["kind", "source-order", "instance-first"]
 }

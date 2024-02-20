@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react"
 import { createCandidAdapter } from "@ic-reactor/core"
 import type { IDL } from "@dfinity/candid"
-import { useAgent } from "../context/agent"
+import { useAgent } from "../provider/agent"
 
 interface IDLFactoryState {
   candid: {

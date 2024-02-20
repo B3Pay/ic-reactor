@@ -33,13 +33,14 @@ export type {
   IDL,
 }
 
-export interface CreateReactorOptions extends CreateReactorStoreOptions {}
+export interface CreateReactorOptions extends CreateReactorStoreOptions {
+  withProcessEnv?: boolean
+}
 
 export interface CreateReactorStoreOptions
   extends HttpAgentOptions,
     Omit<ActorManagerOptions, "agentManager"> {
   agentManager?: AgentManager
-  withProcessEnv?: boolean
   isLocalEnv?: boolean
   port?: number
 }

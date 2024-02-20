@@ -11357,6 +11357,7 @@ __metadata:
     text-encoding: "npm:0.7.0"
     ts-jest: "npm:29.1"
     typedoc: "npm:^0.25"
+    typedoc-plugin-coverage: "npm:^3.1.0"
     typedoc-plugin-extras: "npm:^3.0.0"
     typedoc-plugin-include-example: "npm:^1.2.0"
     typedoc-plugin-mdn-links: "npm:^3.1.16"
@@ -21133,6 +21134,15 @@ __metadata:
   version: 0.0.6
   resolution: "typedarray@npm:0.0.6"
   checksum: 6005cb31df50eef8b1f3c780eb71a17925f3038a100d82f9406ac2ad1de5eb59f8e6decbdc145b3a1f8e5836e17b0c0002fb698b9fe2516b8f9f9ff602d36412
+  languageName: node
+  linkType: hard
+
+"typedoc-plugin-coverage@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "typedoc-plugin-coverage@npm:3.1.0"
+  peerDependencies:
+    typedoc: 0.25.x
+  checksum: 2cada342ffdc1879fdf647a199b3c06b99d8e5654407e2592f3f22349ac2cbf64910093b454ab2eb47297514f2a637a224ef333b242f95620fd8047a6958adf8
   languageName: node
   linkType: hard
 

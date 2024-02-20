@@ -35,8 +35,6 @@ export class ActorManager<A = BaseActor> {
     error: undefined,
   }
 
-  public unsubscribeActor: () => void
-
   private updateState = (newState: Partial<ActorState<A>>) => {
     this.actorStore.setState((state) => ({ ...state, ...newState }))
   }
@@ -48,11 +46,7 @@ export class ActorManager<A = BaseActor> {
   ) => {
     this.actorStore.setState((state) => {
       const methodState = state.methodState[method] || {}
-      const currentMethodState = methodState[hash] || {
-        loading: false,
-        data: undefined,
-        error: undefined,
-      }
+      const currentMethodState = methodState[hash] || DEFAULT_STATE
 
       const updatedMethodState = {
         ...methodState,
@@ -81,15 +75,13 @@ export class ActorManager<A = BaseActor> {
 
     this._agentManager = agentManager
 
-    this.unsubscribeActor = this._agentManager.subscribeAgent(
-      this.initializeActor
-    )
+    this._agentManager.subscribeAgent(this.initializeActor)
 
     this.canisterId = canisterId
     this._idlFactory = idlFactory
 
     if (withVisitor) {
-      this.visitFunction = this.extractService()
+      this.visitFunction = withVisitor ? this.extractService() : emptyVisitor
     } else {
       this.visitFunction = emptyVisitor
     }
@@ -186,13 +178,10 @@ export class ActorManager<A = BaseActor> {
 
     return data
   }
+
   // agent store
   get agentManager() {
     return this._agentManager
-  }
-
-  public getAgent = (): HttpAgent => {
-    return this._agentManager.getAgent()
   }
 
   // actor store
@@ -222,3 +211,5 @@ const emptyVisitor = new Proxy({} as VisitService<never>, {
     )
   },
 })
+
+const DEFAULT_STATE = { data: undefined, error: undefined, loading: false }

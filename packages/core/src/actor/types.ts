@@ -50,7 +50,10 @@ export type ActorMethodReturnType<T> = T extends ActorMethod<any, infer Ret>
   ? Ret
   : never
 
-export interface ActorMethodState<A, M extends keyof A> {
+export interface ActorMethodState<
+  A = BaseActor,
+  M extends FunctionName<A> = FunctionName<A>
+> {
   [key: string]: {
     data: ActorMethodReturnType<A[M]> | undefined
     loading: boolean
@@ -58,12 +61,12 @@ export interface ActorMethodState<A, M extends keyof A> {
   }
 }
 
-export type ActorMethodStates<A> = {
-  [M in keyof A]: ActorMethodState<A, M>
+export type ActorMethodStates<A = BaseActor> = {
+  [M in FunctionName<A>]: ActorMethodState<A, M>
 }
 
 // State structure for an actor in a Reactor
-export type ActorState<A> = {
+export type ActorState<A = BaseActor> = {
   initialized: boolean
   initializing: boolean
   error: Error | undefined
@@ -73,7 +76,9 @@ export type ActorState<A> = {
 export type ActorStore<A = BaseActor> = StoreApi<ActorState<A>>
 
 // Function type for directly calling a method on an actor
-export type CallActorMethod<A = BaseActor> = <M extends keyof A>(
+export type CallActorMethod<A = BaseActor> = <
+  M extends FunctionName<A> = FunctionName<A>
+>(
   functionName: M,
   ...args: ActorMethodArgs<A[M]>
 ) => Promise<ActorMethodReturnType<A[M]>>

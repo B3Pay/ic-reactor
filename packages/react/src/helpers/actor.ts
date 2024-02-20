@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {
   useCallback,
   useEffect,
@@ -7,157 +6,124 @@ import {
   useRef,
   useState,
 } from "react"
-import {
-  ActorHookState,
-  type ActorCall,
-  type UseActorStoreReturn,
-  ActorQueryCall,
-  ActorUpdateCall,
-  ActorHooks,
-  ActorUseMethodCallReturn,
-  ActorUseMethodCallArg,
-} from "../types"
 import { useStore } from "zustand"
+import type {
+  ActorCallState,
+  ReactorCall,
+  UseActorState,
+  UseQueryCall,
+  UseUpdateCall,
+  UseMethodCallReturn,
+  UseMethodCallArg,
+  GetActorHooks,
+  ExtractActorType,
+} from "../types"
 import type {
   VisitService,
   ActorMethodArgs,
   FunctionName,
 } from "@ic-reactor/core/dist/types"
-import type { ActorManager } from "@ic-reactor/core/dist/actor"
 
-const DEFAULT_STATE = {
+const DEFAULT_STATE: ActorCallState<never, never> = {
   data: undefined,
   error: undefined,
   loading: false,
 }
 
-export const getActorHooks = <A>({
-  initialize,
-  canisterId,
-  actorStore,
-  callMethod,
-  visitFunction,
-}: ActorManager<A>): ActorHooks<A, true> => {
-  const useActorState = (): UseActorStoreReturn<A> => {
-    const actorState = useStore(actorStore, (state) => state)
+export const getActorHooks: GetActorHooks = (actorManager) => {
+  type A = ExtractActorType<typeof actorManager>
 
-    return { ...actorState, canisterId } as UseActorStoreReturn<A>
-  }
+  const { actorStore, canisterId, visitFunction, callMethod, initialize } =
+    actorManager
 
-  const useVisitFunction = (): VisitService<A> => {
-    return visitFunction
-  }
+  const useActorState = (): UseActorState => ({
+    ...useStore(actorStore),
+    canisterId,
+  })
 
   const useVisitMethod = <M extends FunctionName<A>>(
     functionName: M
   ): VisitService<A>[M] => {
-    const serviceFields = useVisitFunction()
-
-    return useMemo(() => {
-      return serviceFields[functionName]
-    }, [functionName, serviceFields])
+    return useMemo(() => visitFunction[functionName], [functionName])
   }
-
-  const useReactorCall: ActorCall<A> = ({
-    onError,
-    onSuccess,
-    onLoading,
+  const useReactorCall: ReactorCall<A> = ({
     args = [],
     functionName,
     throwOnError = false,
+    ...events
   }) => {
-    type M = typeof functionName
-
-    const [state, setState] = useState<ActorHookState<A, M>>(DEFAULT_STATE)
-
-    const reset = useCallback(() => setState(DEFAULT_STATE), []) as () => void
+    const [state, setState] =
+      useState<ActorCallState<A, typeof functionName>>(DEFAULT_STATE)
+    const reset = useCallback(() => setState(DEFAULT_STATE), [])
 
     const call = useCallback(
-      async (eventOrReplaceArgs?: React.MouseEvent | ActorMethodArgs<A[M]>) => {
-        onLoading?.(true)
-        onError?.(undefined)
-        setState((prevState) => ({
-          ...prevState,
-          loading: true,
-          error: undefined,
-        }))
+      async (
+        eventOrReplaceArgs?:
+          | React.MouseEvent
+          | ActorMethodArgs<A[typeof functionName]>
+      ) => {
+        setState({ data: undefined, error: undefined, loading: true })
+        events?.onLoading?.(true)
 
         try {
-          const replaceArgs: ActorMethodArgs<A[M]> | undefined =
-            eventOrReplaceArgs !== undefined
-              ? (eventOrReplaceArgs as ActorMethodArgs<A[M]>).length > 0
-                ? (eventOrReplaceArgs as ActorMethodArgs<A[M]>)
-                : undefined
-              : undefined
-
+          const replaceArgs =
+            eventOrReplaceArgs instanceof Array ? eventOrReplaceArgs : args
           const data = await callMethod(
             functionName,
-            ...((replaceArgs ?? args) as ActorMethodArgs<A[M]>)
+            ...(replaceArgs as ActorMethodArgs<A[typeof functionName]>)
           )
-          onLoading?.(false)
-          onSuccess?.(data)
-          setState((prevState) => ({ ...prevState, data, loading: false }))
 
+          setState({ data, error: undefined, loading: false })
+          events?.onSuccess?.(data)
+          events?.onLoading?.(false)
           return data
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Error in call:", error)
-          onError?.(error as Error)
-          onLoading?.(false)
           setState((prevState) => ({
             ...prevState,
             error: error as Error,
             loading: false,
           }))
+          events?.onError?.(error as Error)
+          events?.onLoading?.(false)
 
           if (throwOnError) throw error
         }
       },
-      [args, functionName, onError, onSuccess, onLoading]
+      [args, functionName, events, callMethod]
     )
 
     return { call, reset, ...state }
   }
 
-  const useQueryCall: ActorQueryCall<A> = ({
+  const useQueryCall: UseQueryCall<A> = ({
     refetchOnMount = true,
     refetchInterval = false,
     ...rest
   }) => {
     const { call, ...state } = useReactorCall(rest)
-
-    const intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
+    const intervalId = useRef<NodeJS.Timeout>()
 
     useEffect(() => {
-      // Auto-refresh logic
-      if (refetchInterval) {
-        intervalId.current = setInterval(() => {
-          call()
-        }, refetchInterval)
-      }
-
-      return () => {
-        clearInterval(intervalId.current)
-      }
-    }, [refetchInterval])
+      if (refetchInterval)
+        intervalId.current = setInterval(call, refetchInterval)
+      return () => clearInterval(intervalId.current)
+    }, [refetchInterval, call])
 
     useLayoutEffect(() => {
-      if (refetchOnMount) {
-        call()
-      }
-    }, [])
+      if (refetchOnMount) call()
+    }, [call, refetchOnMount])
 
     return { call, ...state }
   }
 
-  const useUpdateCall: ActorUpdateCall<A> = (args) => {
-    return useReactorCall(args)
-  }
+  const useUpdateCall: UseUpdateCall<A> = useReactorCall
 
   const useMethodCall = <M extends FunctionName<A>>(
-    args: ActorUseMethodCallArg<A, M>
-  ): ActorUseMethodCallReturn<A, M, true> => {
-    const visit = visitFunction[args.functionName]
-
+    args: UseMethodCallArg<A, M>
+  ): UseMethodCallReturn<A, M> => {
+    const visit = useVisitMethod(args.functionName)
     return { visit, ...useReactorCall(args) }
   }
 
@@ -165,8 +131,8 @@ export const getActorHooks = <A>({
     initialize,
     useQueryCall,
     useUpdateCall,
-    useVisitMethod,
     useActorState,
     useMethodCall,
+    useVisitMethod,
   }
 }

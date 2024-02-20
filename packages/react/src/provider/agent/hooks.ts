@@ -2,9 +2,9 @@ import { useContext } from "react"
 import { AgentManager } from "@ic-reactor/core/dist/agent"
 import { AgentContext } from "./context"
 import type { AgentContextType } from "./types"
-import { AuthArgs } from "../../types"
+import { UseAuthClientArgs } from "../../types"
 
-export const useAgentManagerContext = (agentContext?: AgentContextType) => {
+export const useAgentContext = (agentContext?: AgentContextType) => {
   const context = useContext(agentContext || AgentContext)
 
   if (!context) {
@@ -17,28 +17,28 @@ export const useAgentManagerContext = (agentContext?: AgentContextType) => {
 export const useAgentManager = (
   agentContext?: AgentContextType
 ): AgentManager => {
-  const context = useAgentManagerContext(agentContext)
+  const context = useAgentContext(agentContext)
 
   return context.agentManager
 }
 
 export const useAgent = (agentContext?: AgentContextType) =>
-  useAgentManagerContext(agentContext).useAgent()
+  useAgentContext(agentContext).useAgent()
 
 export const useAuthState = (agentContext?: AgentContextType) =>
-  useAgentManagerContext(agentContext).useAuthState()
+  useAgentContext(agentContext).useAuthState()
 
 export const useAgentState = (agentContext?: AgentContextType) =>
-  useAgentManagerContext(agentContext).useAgentState()
+  useAgentContext(agentContext).useAgentState()
 
 export const useAuthClient = ({
   agentContext,
   ...args
-}: AuthArgs & { agentContext?: AgentContextType }) => {
-  const context = useAgentManagerContext(agentContext)
+}: UseAuthClientArgs & { agentContext?: AgentContextType }) => {
+  const context = useAgentContext(agentContext)
 
   return context.useAuthClient(args)
 }
 
 export const useUserPrincipal = (agentContext?: AgentContextType) =>
-  useAgentManagerContext(agentContext).useUserPrincipal()
+  useAgentContext(agentContext).useUserPrincipal()

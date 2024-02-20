@@ -1,9 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { createContext, useMemo, useContext } from "react"
 import {
-  ActorUseMethodCallArg,
-  ActorUseQueryArgs,
-  ActorUseUpdateArgs,
+  BaseActor,
+  FunctionName,
+  UseMethodCallArg,
+  UseQueryCallArgs,
+  UseUpdateCallArgs,
 } from "../../types"
 import { getActorHooks } from "../../helpers/actor"
 import {
@@ -12,7 +13,6 @@ import {
   ActorProviderProps,
 } from "./types"
 import { useActor } from "../../hooks/useActor"
-import type { ActorSubclass } from "@dfinity/agent"
 
 export const {
   ActorContext,
@@ -25,7 +25,7 @@ export const {
   useVisitMethod,
 } = createReactorContext()
 
-export function createReactorContext<Actor extends ActorSubclass<any>>({
+export function createReactorContext<Actor = BaseActor>({
   canisterId: defaultCanisterId,
   ...defaultConfig
 }: Partial<CreateActorOptions> = {}) {
@@ -70,8 +70,8 @@ export function createReactorContext<Actor extends ActorSubclass<any>>({
 
   ActorProvider.displayName = "ActorProvider"
 
-  const useActorContext = <A extends ActorSubclass<any> = Actor>() => {
-    const context = useContext(ActorContext) as ActorContextType<A>
+  const useActorContext = () => {
+    const context = useContext(ActorContext) as ActorContextType<Actor> | null
 
     if (!context) {
       throw new Error("useActor must be used within a ActorProvider")
@@ -84,19 +84,19 @@ export function createReactorContext<Actor extends ActorSubclass<any>>({
 
   const useActorState = () => useActorContext().useActorState()
 
-  const useQueryCall = <M extends keyof Actor & string>(
-    args: ActorUseQueryArgs<Actor, M>
+  const useQueryCall = <M extends FunctionName<Actor>>(
+    args: UseQueryCallArgs<Actor, M>
   ) => useActorContext().useQueryCall(args)
 
-  const useUpdateCall = <M extends keyof Actor & string>(
-    args: ActorUseUpdateArgs<Actor, M>
+  const useUpdateCall = <M extends FunctionName<Actor>>(
+    args: UseUpdateCallArgs<Actor, M>
   ) => useActorContext().useUpdateCall(args)
 
-  const useMethodCall = <M extends keyof Actor & string>(
-    args: ActorUseMethodCallArg<Actor, M>
+  const useMethodCall = <M extends FunctionName<Actor>>(
+    args: UseMethodCallArg<Actor, M>
   ) => useActorContext().useMethodCall(args)
 
-  const useVisitMethod = (functionName: keyof Actor & string) =>
+  const useVisitMethod = (functionName: FunctionName<Actor>) =>
     useActorContext().useVisitMethod(functionName)
 
   return {

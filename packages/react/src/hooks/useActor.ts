@@ -1,6 +1,6 @@
 import { createReactorStore } from "@ic-reactor/core"
 import { useMemo } from "react"
-import { useAgentManager } from "../context/agent"
+import { useAgentManager } from "../provider/agent"
 import { useCandid } from "./useCandid"
 import { IDL } from "@dfinity/candid"
 import { ActorManagerOptions, BaseActor } from "@ic-reactor/core/dist/types"

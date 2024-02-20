@@ -4,16 +4,14 @@ import { useEffect, useState } from "react"
 import { useStore } from "zustand"
 
 export const getAgentHooks = (agentManager: AgentManager) => {
-  const { agentStore, getAgent } = agentManager
+  const { agentStore, getAgent, subscribeAgent } = agentManager
 
-  const useAgentState = () => {
-    return useStore(agentStore, (state) => state)
-  }
+  const useAgentState = () => useStore(agentStore)
 
   const useAgent = (): HttpAgent | undefined => {
-    const [agent, setAgent] = useState<HttpAgent | undefined>(getAgent())
+    const [agent, setAgent] = useState<HttpAgent | undefined>(getAgent)
 
-    useEffect(() => agentManager.subscribeAgent(setAgent), [])
+    useEffect(() => subscribeAgent(setAgent), [subscribeAgent])
 
     return agent
   }
