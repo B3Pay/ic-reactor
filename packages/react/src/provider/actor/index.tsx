@@ -12,7 +12,7 @@ import {
   ActorContextType,
   ActorProviderProps,
 } from "./types"
-import { useActor } from "../../hooks/useActor"
+import { useReactor } from "../../hooks/useReactor"
 
 export const {
   ActorContext,
@@ -49,7 +49,7 @@ export function createReactorContext<Actor = BaseActor>({
       [defaultConfig, restConfig]
     )
 
-    const { actorManager, fetchError, fetching } = useActor({
+    const { actorManager, fetchError, fetching } = useReactor({
       canisterId,
       ...config,
     })

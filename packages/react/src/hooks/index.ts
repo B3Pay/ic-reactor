@@ -1,2 +1,2 @@
-export * from "./useActor"
+export * from "./useReactor"
 export * from "./useCandid"

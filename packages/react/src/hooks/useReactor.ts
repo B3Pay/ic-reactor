@@ -19,10 +19,8 @@ interface DynamicActorArgs
 
 /**
  * A hook to create an actor manager and fetch the actor's candid interface.
- *
- * @category Hooks
  */
-export const useActor = <A = BaseActor>({
+export const useReactor = <A = BaseActor>({
   canisterId,
   agentContext,
   idlFactory: maybeIdlFactory,
