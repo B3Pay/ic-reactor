@@ -1,4 +1,4 @@
-The `@ic-reactor/core` package provides a streamlined way to interact with the Internet Computer (IC) by simplifying agent and actor management. It offers utilities for creating and managing IC agents, enabling seamless communication with canisters through a friendly API.
+The `@ic-reactor/core` package provides a streamlined way to interact with the Internet Computer (IC). It simplifies agent and actor management, ensuring type-safe communication with canisters. This package offers utilities for creating and managing IC agents, enabling seamless interaction through a friendly API.
 
 ## Installation
 
@@ -16,111 +16,92 @@ npm install @ic-reactor/core
 yarn add @ic-reactor/core
 ```
 
-## Usage
+### Using `createReactorCore`
 
-`@ic-reactor/core` can be utilized in two primary ways: automatic agent creation and manual agent management. Below are examples of both approaches to suit your project's needs.
-
-### Automatic Agent Creation
-
-For ease of use, the `createReActorStore` factory function automatically sets up a new ReActor store instance, managing the agent and its state internally.
+For ease of use, the `createReactorCore` factory function automatically sets up a new Reactor instance, managing the agent and its state internally, and providing a simple API for authenticating, querying, and updating actors.
 
 **Example:**
 
 ```typescript
-import { createReActorStore } from "@ic-reactor/core"
-import { candid, canisterId, idlFactory } from "./candid"
+import { createReactorCore } from "@ic-reactor/core"
+import { candid, canisterId, idlFactory } from "./declarations/candid"
 
 type Candid = typeof candid
 
-const { callMethod, authenticate } = createReActor<Candid>({
-  canisterId,
-  idlFactory,
-})
-
-// Usage example
-const identity = await authenticate()
-const data = await callMethod("version")
-console.log(data)
+const { queryCall, updateCall, getPrincipal, login } =
+  createReactorCore<Candid>({
+    canisterId,
+    idlFactory,
+    withProcessEnv: true, // will use process.env.DFX_NETWORK
+  })
 ```
 
-### Manual Agent Creation
+You can find All available methods are returned from the `createReactorCore` function here: [ReactorCore](https://b3pay.github.io/ic-reactor/interfaces/core.types.ReactorCore.html)
 
-If you require more control over the agent's lifecycle or configuration, `@ic-reactor/core` provides the `createAgentManager` function for manual agent instantiation.
+```typescript
+// later in your code
+await login({
+  onSuccess: () => {
+    console.log("Logged in successfully")
+  },
+  onError: (error) => {
+    console.error("Failed to login:", error)
+  },
+})
 
-**IC Agent Example:**
+// queryCall, will automatically call and return a promise with the result
+const { dataPromise, call } = queryCall({
+  functionName: "icrc1_balance_of",
+  args: [{ owner: getPrincipal(), subaccount: [] }],
+})
+
+console.log(await dataPromise)
+
+// updateCall
+const { call, subscribe } = updateCall({
+  functionName: "icrc1_transfer",
+  args: [
+    {
+      to: { owner: getPrincipal(), subaccount: [] },
+      amount: BigInt(10000000000),
+      fee: [],
+      memo: [],
+      created_at_time: [],
+      from_subaccount: [],
+    },
+  ],
+})
+// subscribe to the update call
+subscribe(({ loading, error, data }) => {
+  console.log({ loading, error, data })
+})
+
+const result = await call()
+console.log(result)
+```
+
+### Managing Multiple Actors
+
+When interacting with multiple canisters using `@ic-reactor/core`, you need one agent manager for each canister. This way, you can create separate reactor for each canister. This enables modular interaction with different services on the Internet Computer,
+and allows you to manage the state of each actor independently.
+Here's how to adjust the example to handle methods that require multiple arguments:
+
+Fist you need to create a agent manager:
 
 ```typescript
 // agent.ts
 import { createAgentManager } from "@ic-reactor/core"
 
 export const agentManager = createAgentManager() // Connects to IC network by default
-
-// Usage example
-await agentManager.authenticate()
-// Then use the store to access the authClient, identity, and more...
-const { authClient, identity, authenticating } =
-  agentManager.authStore.getState()
 ```
 
-**Local Agent Example:**
-
-For development purposes, you might want to connect to a local instance of the IC network:
+Then you can create a reactor for each canister:
 
 ```typescript
-// agent.ts
-import { createAgentManager } from "@ic-reactor/core"
-
-export const agentManager = createAgentManager({
-  isLocalEnv: true,
-  port: 8000, // Default port is 4943
-})
-```
-
-Alternatively, you can specify a host directly:
-
-```typescript
-export const agentManager = createAgentManager({
-  host: "http://localhost:8000",
-})
-```
-
-### Creating an Actor Manager
-
-Once you have an agent manager, use `createActorManager` to instantiate an actor manager for calling methods on your canisters.
-
-```typescript
-// actor.ts
+// Assuming you've already set up `candidA`, `candidB`, and `agentManager`
 import { createActorManager } from "@ic-reactor/core"
-import { candid, canisterId, idlFactory } from "./candid"
-import { agentManager } from "./agent"
-
-type Candid = typeof candid
-
-const candidActor = createActorManager<Candid>({
-  agentManager,
-  canisterId,
-  idlFactory,
-})
-
-// Usage example
-const data = await candidActor.callMethod("version")
-console.log(data)
-```
-
-### Managing Multiple Actors
-
-When interacting with multiple canisters using `@ic-reactor/core`, you can create separate actor managers for each canister. This enables modular interaction with different services on the Internet Computer. Here's how to adjust the example to handle methods that require multiple arguments:
-
-**Creating Actor Managers:**
-
-First, ensure you have your actor managers set up for each canister:
-
-```typescript
-// Assuming you've already set up `candidA`, `candidB`, `canisterIdA`, `canisterIdB`, and `agentManager`
-
-import { createActorManager } from "@ic-reactor/core"
-import { candidA, canisterIdA } from "./candidA"
-import { candidB, canisterIdB } from "./candidB"
+import candidA from "./declarations/candidA"
+import candidB from "./declarations/candidB"
 import { agentManager } from "./agent"
 
 type CandidA = typeof candidA
@@ -139,18 +120,20 @@ const actorB = createActorManager<CandidB>({
 })
 ```
 
-### Using `callMethod` with Multiple Arguments
-
-To call a method on a canister that requires multiple arguments, pass the method name followed by the arguments as separate parameters to `callMethod`:
+You can now use the `actorA` and `actorB` instances to interact with their respective canisters:
 
 ```typescript
 // Example usage with CanisterA calling a method that requires one argument
-const responseA = await actorA.callMethod("otherMethod", "arg1")
-console.log("Response from CanisterA method:", responseA)
+const { dataPromise: versionActorA } = actorA.queryCall({
+  functionName: "version",
+})
+console.log("Response from CanisterA method:", await versionActorA)
 
 // Example usage with CanisterB calling a different method also with two arguments
-const responseB = await actorB.callMethod("anotherMethod", "arg1", "arg2")
-console.log("Response from CanisterB method:", responseB)
+const { dataPromise: versionActorB } = actorB.queryCall({
+  functionName: "version",
+})
+console.log("Response from CanisterB method:", await versionActorB)
 ```
 
 ### Using Candid Adapter
@@ -175,12 +158,12 @@ try {
 }
 ```
 
-### Using `createReActorStore` with `CandidAdapter`
+### Using `createReactorCore` with `CandidAdapter`
 
-You can use the `candidAdapter` to fetch the Candid definition and then pass it to the `createReActorStore` function.
+You can use the `candidAdapter` to fetch the Candid definition and then pass it to the `createReactorCore` function.
 
 ```typescript
-import { createReActorStore, createCandidAdapter } from "@ic-reactor/core"
+import { createReactorCore, createCandidAdapter } from "@ic-reactor/core"
 import { agentManager } from "./agent"
 
 const candidAdapter = createCandidAdapter({ agentManager })
@@ -190,7 +173,7 @@ const canisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai" // NNS ICP Ledger Canister
 // Usage example
 try {
   const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
-  const { callMethod } = createReActorStore({
+  const { callMethod } = createReactorCore({
     agentManager,
     canisterId,
     idlFactory,
@@ -201,4 +184,95 @@ try {
 } catch (error) {
   console.error(error)
 }
+```
+
+### Using store to lower level control
+
+If you require more control over the state management, you can use the `createReactorStore` function to create a store that provides methods for querying and updating actors.
+
+```typescript
+import { createReactorStore } from "@ic-reactor/core"
+import { candid, canisterId, idlFactory } from "./declarations/candid"
+
+type Candid = typeof candid
+
+const { agentManager, callMethod } = createReactorStore<Candid>({
+  canisterId,
+  idlFactory,
+})
+
+// Usage example
+await agentManager.authenticate()
+const authClient = agentManager.getAuthClient()
+
+authClient?.login({
+  onSuccess: () => {
+    console.log("Logged in successfully")
+  },
+  onError: (error) => {
+    console.error("Failed to login:", error)
+  },
+})
+
+// Call a method
+const version = callMethod("version")
+
+console.log("Response from version method:", await version)
+```
+
+**IC Agent Example:**
+
+```typescript
+// agent.ts
+import { createAgentManager } from "@ic-reactor/core"
+
+export const agentManager = createAgentManager() // Connects to IC network by default
+```
+
+**Local Agent Example:**
+
+For development purposes, you might want to connect to a local instance of the IC network:
+
+```typescript
+// agent.ts
+import { createAgentManager } from "@ic-reactor/core"
+
+export const agentManager = createAgentManager({
+  isLocalEnv: true,
+  port: 8000, // Default port is 4943
+})
+```
+
+Alternatively, you can specify a host directly:
+
+```typescript
+// agent.ts
+import { createAgentManager } from "@ic-reactor/core"
+
+export const agentManager = createAgentManager({
+  host: "http://localhost:8000",
+})
+```
+
+### Creating an Actor Manager
+
+You can use Actor Managers to create your implementation of an actor. This allows you to manage the actor's lifecycle and state, as well as interact with the actor's methods.
+
+```typescript
+// actor.ts
+import { createActorManager } from "@ic-reactor/core"
+import { candid, canisterId, idlFactory } from "./declarations/candid"
+import { agentManager } from "./agent"
+
+type Candid = typeof candid
+
+const candidActor = createActorManager<Candid>({
+  agentManager,
+  canisterId,
+  idlFactory,
+})
+
+// Usage example
+const data = await candidActor.callMethod("version")
+console.log(data)
 ```

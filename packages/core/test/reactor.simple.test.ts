@@ -1,9 +1,9 @@
 import { randomBytes } from "crypto"
-import { createReActor } from "../src"
+import { createReactorCore } from "../src"
 import { backend, idlFactory } from "./candid/backend"
 
 describe("My IC Store and Actions", () => {
-  const { queryCall, updateCall } = createReActor<typeof backend>({
+  const { queryCall, updateCall } = createReactorCore<typeof backend>({
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
     idlFactory,
   })

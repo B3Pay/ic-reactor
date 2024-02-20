@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`createReActor should query manually 1`] = `
+exports[`createReactor should query manually 1`] = `
 <div>
   <button
     onClick={[Function]}
@@ -13,7 +13,7 @@ exports[`createReActor should query manually 1`] = `
 </div>
 `;
 
-exports[`createReActor should query manually 2`] = `
+exports[`createReactor should query manually 2`] = `
 <div>
   <button
     onClick={[Function]}
@@ -26,7 +26,7 @@ exports[`createReActor should query manually 2`] = `
 </div>
 `;
 
-exports[`createReActor should query on mount 1`] = `
+exports[`createReactor should query on mount 1`] = `
 <div>
   <span>
     Ready To call
@@ -34,7 +34,7 @@ exports[`createReActor should query on mount 1`] = `
 </div>
 `;
 
-exports[`createReActor should query on mount 2`] = `
+exports[`createReactor should query on mount 2`] = `
 <div>
   <span>
     Loading...
@@ -42,7 +42,7 @@ exports[`createReActor should query on mount 2`] = `
 </div>
 `;
 
-exports[`createReActor should query on mount 3`] = `
+exports[`createReactor should query on mount 3`] = `
 <div>
   <span>
     0.2.0

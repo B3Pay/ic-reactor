@@ -31,12 +31,12 @@ First, create an actor declaration file:
 ```ts
 // store.ts
 import { canisterId, idlFactory, actor } from "declaration/actor"
-import { createReActor } from "@ic-reactor/react"
+import { createReactor } from "@ic-reactor/react"
 
 type Actor = typeof actor
 
 export const { useActorStore, useAuthClient, useQueryCall } =
-  createReActor<Actor>({
+  createReactor<Actor>({
     canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
     idlFactory,
     host: "https://localhost:4943",

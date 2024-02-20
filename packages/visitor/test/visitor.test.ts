@@ -1,4 +1,4 @@
-import { createReActorStore } from "@ic-reactor/core"
+import { createReactorStore } from "@ic-reactor/core"
 import {
   VisitRandomResponse,
   VisitTransformTable,
@@ -10,8 +10,8 @@ import { b3system, idlFactory } from "./candid/b3system"
 
 type B3System = typeof b3system
 
-describe("createReActorStore", () => {
-  const { actorStore, visitFunction } = createReActorStore<B3System>({
+describe("createReactorStore", () => {
+  const { actorStore, visitFunction } = createReactorStore<B3System>({
     canisterId: "2vxsx-fae",
     idlFactory,
     initializeOnCreate: false,

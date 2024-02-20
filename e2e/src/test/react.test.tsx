@@ -1,4 +1,3 @@
-import { createReActor } from "@ic-reactor/react"
 import React from "react"
 import renderer, { act } from "react-test-renderer"
 import {
@@ -6,17 +5,18 @@ import {
   idlFactory,
   hello_actor,
 } from "../declarations/hello_actor"
+import { createReactor } from "@ic-reactor/react"
 
 describe("React Test", () => {
   it("should initialize", async () => {
-    const { useActorState, initialize } = createReActor<typeof hello_actor>({
+    const { useActorState, initialize } = createReactor<typeof hello_actor>({
       canisterId,
       idlFactory,
       initializeOnCreate: false,
       isLocalEnv: true,
     })
 
-    const TestInitialize = () => {
+    const Initialize = () => {
       const { initialized, initializing } = useActorState()
 
       return (
@@ -33,7 +33,7 @@ describe("React Test", () => {
       )
     }
 
-    let screen = renderer.create(<TestInitialize />)
+    let screen = renderer.create(<Initialize />)
 
     const initializeStatus = () =>
       screen.root.findAllByType("span")[0].props.children
@@ -51,14 +51,14 @@ describe("React Test", () => {
   })
 
   it("should call query method", async () => {
-    const { useQueryCall } = createReActor<typeof hello_actor>({
+    const { useQueryCall } = createReactor<typeof hello_actor>({
       canisterId,
       idlFactory,
       isLocalEnv: true,
       verifyQuerySignatures: false,
     })
 
-    const TestComponent = () => {
+    const HelloComponent = () => {
       const { call, data, loading } = useQueryCall({
         functionName: "greet",
         args: ["Query Call"],
@@ -74,7 +74,7 @@ describe("React Test", () => {
       )
     }
 
-    let screen = renderer.create(<TestComponent />)
+    let screen = renderer.create(<HelloComponent />)
 
     const data = () => screen.root.findAllByType("span")[0]
 
@@ -92,13 +92,13 @@ describe("React Test", () => {
   })
 
   it("should call update method", async () => {
-    const { useUpdateCall } = createReActor<typeof hello_actor>({
+    const { useUpdateCall } = createReactor<typeof hello_actor>({
       canisterId,
       idlFactory,
       isLocalEnv: true,
     })
 
-    const TestComponent = () => {
+    const HelloComponent = () => {
       const { call, data, loading } = useUpdateCall({
         functionName: "greet_update",
         args: ["Update Call"],
@@ -114,7 +114,7 @@ describe("React Test", () => {
       )
     }
 
-    let screen = renderer.create(<TestComponent />)
+    let screen = renderer.create(<HelloComponent />)
 
     const data = () => screen.root.findAllByType("span")[0]
 

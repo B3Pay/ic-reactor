@@ -16,7 +16,7 @@ export function createStoreWithOptionalDevtools<T>(
   if (options.withDevtools) {
     return createStore(
       devtools(() => initialState, {
-        name: "ReActor",
+        name: "Reactor",
         store: options.store,
       })
     )

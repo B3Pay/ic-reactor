@@ -14,31 +14,32 @@ import type {
   FunctionName,
   AgentManagerOptions,
   ActorCallFunction,
-  ActorCoreActions,
+  ReactorCore,
   ActorGetStateFunction,
   ActorMethodCall,
   ActorQuery,
   ActorSubscribeFunction,
   ActorUpdate,
-  CreateReActorOptions,
-  CreateReActorStoreOptions,
+  CreateReactorOptions,
+  CreateReactorStoreOptions,
   CandidAdapterOptions,
 } from "./types"
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
 import { CandidAdapter } from "./candid"
 
 /**
+ * The Core module is the main entry point for the library.
  * Create a new actor manager with the given options.
  * Its create a new agent manager if not provided.
  *
  * @category Main
- * @includeExample ./packages/core/README.md:30-91
+ * @includeExample ./packages/core/README.md:26-80
  */
-export const createReActor = <A = BaseActor>({
+export const createReactorCore = <A = BaseActor>({
   isLocalEnv,
   withProcessEnv = false,
   ...options
-}: CreateReActorOptions): ActorCoreActions<A> => {
+}: CreateReactorOptions): ReactorCore<A> => {
   isLocalEnv = isLocalEnv || (withProcessEnv ? isInLocalOrDevelopment() : false)
 
   const {
@@ -48,7 +49,7 @@ export const createReActor = <A = BaseActor>({
     getState,
     agentManager,
     ...rest
-  } = createReActorStore<A>({
+  } = createReactorStore<A>({
     isLocalEnv,
     ...options,
   })
@@ -199,7 +200,19 @@ export const createReActor = <A = BaseActor>({
     subscribeActorState,
     ...agentManager,
     ...rest,
-  } as ActorCoreActions<A>
+  } as ReactorCore<A>
+}
+
+/**
+ * The `CandidAdapter` class is used to interact with a canister and retrieve its Candid interface definition.
+ * It provides methods to fetch the Candid definition either from the canister's metadata or by using a temporary hack method.
+ * If both methods fail, it throws an error.
+ *
+ * @category Main
+ * @includeExample ./packages/core/README.md:145-186
+ */
+export const createCandidAdapter = (options: CandidAdapterOptions) => {
+  return new CandidAdapter(options)
 }
 
 /**
@@ -208,10 +221,10 @@ export const createReActor = <A = BaseActor>({
  * It also creates a new actor manager with the given options.
  *
  * @category Main
- * @includeExample ./packages/core/README.md:32-45
+ * @includeExample ./packages/core/README.md:194-220
  */
-export const createReActorStore = <A = BaseActor>(
-  options: CreateReActorStoreOptions
+export const createReactorStore = <A = BaseActor>(
+  options: CreateReactorStoreOptions
 ): ActorManager<A> => {
   const {
     idlFactory,
@@ -249,7 +262,7 @@ export const createReActorStore = <A = BaseActor>(
  * login and logout to the internet identity.
  *
  * @category Main
- * @includeExample ./packages/core/README.md:55-86
+ * @includeExample ./packages/core/README.md:226-254
  */
 export const createAgentManager = (
   options?: AgentManagerOptions
@@ -264,24 +277,12 @@ export const createAgentManager = (
  * It also provides a way to interact with the actor's state.
  *
  * @category Main
- * @includeExample ./packages/core/README.md:94-109
+ * @includeExample ./packages/core/README.md:262-277
  */
 export const createActorManager = <A = BaseActor>(
   options: ActorManagerOptions
 ): ActorManager<A> => {
   return new ActorManager<A>(options)
-}
-
-/**
- * The `CandidAdapter` class is used to interact with a canister and retrieve its Candid interface definition.
- * It provides methods to fetch the Candid definition either from the canister's metadata or by using a temporary hack method.
- * If both methods fail, it throws an error.
- *
- * @category Main
- * @includeExample ./packages/core/README.md:164-205
- */
-export const createCandidAdapter = (options: CandidAdapterOptions) => {
-  return new CandidAdapter(options)
 }
 
 export * from "./actor"

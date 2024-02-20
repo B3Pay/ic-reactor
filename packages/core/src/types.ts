@@ -33,9 +33,9 @@ export type {
   IDL,
 }
 
-export interface CreateReActorOptions extends CreateReActorStoreOptions {}
+export interface CreateReactorOptions extends CreateReactorStoreOptions {}
 
-export interface CreateReActorStoreOptions
+export interface CreateReactorStoreOptions
   extends HttpAgentOptions,
     Omit<ActorManagerOptions, "agentManager"> {
   agentManager?: AgentManager
@@ -108,7 +108,7 @@ export type ActorUpdate<A = Record<string, ActorMethod>> = <
   options: ActorUpdateArgs<A, M>
 ) => ActorUpdateReturn<A, M>
 
-export interface ActorCoreActions<A = BaseActor>
+export interface ReactorCore<A = BaseActor>
   extends AgentManager,
     Omit<ActorManager<A>, "updateMethodState"> {
   login: (options?: AuthClientLoginOptions) => Promise<void>

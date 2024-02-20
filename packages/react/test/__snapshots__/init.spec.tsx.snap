@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`createReActor should initialize 1`] = `
+exports[`createReactor should initialize 1`] = `
 <div>
   <span>
     Not initialized
@@ -13,7 +13,7 @@ exports[`createReActor should initialize 1`] = `
 </div>
 `;
 
-exports[`createReActor should initialize 2`] = `
+exports[`createReactor should initialize 2`] = `
 <div>
   <span>
     Initialized

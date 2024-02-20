@@ -11,7 +11,7 @@ export type ActorContextType<
   ActorProvider: React.FC<ActorProviderProps>
 }
 
-export type CreateReActorContext = {
+export type CreateReactorContext = {
   <A = BaseActor>(
     options?: Partial<CreateActorOptions> & {
       withVisitor: true

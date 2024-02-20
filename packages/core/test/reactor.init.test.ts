@@ -1,9 +1,9 @@
-import { createReActor } from "../src"
+import { createReactorCore } from "../src"
 import { idlFactory } from "./candid/backend"
 
-describe("createReActor", () => {
+describe("createReactorCore", () => {
   test("uninitialized", () => {
-    const { getState, actorStore } = createReActor({
+    const { getState, actorStore } = createReactorCore({
       initializeOnCreate: false,
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
       idlFactory,
@@ -26,7 +26,7 @@ describe("createReActor", () => {
   })
 
   test("initialized", () => {
-    const { getState, actorStore } = createReActor({
+    const { getState, actorStore } = createReactorCore({
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
       idlFactory,
       host: "https://icp-api.io",

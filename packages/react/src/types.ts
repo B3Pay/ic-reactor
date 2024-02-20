@@ -1,7 +1,7 @@
 import type {
   ActorState,
   CanisterId,
-  CreateReActorOptions,
+  CreateReactorOptions,
   ActorMethodArgs,
   ActorMethodReturnType,
   HttpAgent,
@@ -119,17 +119,17 @@ export type GetFunctions<A> = {
   getVisitFunction: () => VisitService<A>
 }
 
-export type CreateReActor = {
+export type CreateReactor = {
   // When withVisitor is true
   <A>(
-    options: CreateReActorOptions & {
+    options: CreateReactorOptions & {
       withVisitor: true
     }
   ): GetFunctions<A> & ActorHooks<A, true> & AuthHooks & AgentHooks
 
   // When withVisitor are false or undefined
   <A>(
-    options: CreateReActorOptions & {
+    options: CreateReactorOptions & {
       withVisitor?: false | undefined
     }
   ): GetFunctions<A> & ActorHooks<A, false> & AuthHooks & AgentHooks

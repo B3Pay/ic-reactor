@@ -23,9 +23,9 @@ export const {
   useUpdateCall,
   useMethodCall,
   useVisitMethod,
-} = createReActorContext()
+} = createReactorContext()
 
-export function createReActorContext<Actor extends ActorSubclass<any>>({
+export function createReactorContext<Actor extends ActorSubclass<any>>({
   canisterId: defaultCanisterId,
   ...defaultConfig
 }: Partial<CreateActorOptions> = {}) {

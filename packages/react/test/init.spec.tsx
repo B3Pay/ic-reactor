@@ -1,11 +1,11 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
-import { createReActor } from "../src"
+import { createReactor } from "../src"
 import { backend, idlFactory } from "./candid"
 
-describe("createReActor", () => {
+describe("createReactor", () => {
   it("should initialize", async () => {
-    const { useActorState, initialize } = createReActor<typeof backend>({
+    const { useActorState, initialize } = createReactor<typeof backend>({
       idlFactory,
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
       initializeOnCreate: false,

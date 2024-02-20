@@ -1,11 +1,11 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
-import { createReActor } from "../src"
+import { createReactor } from "../src"
 import { backend, idlFactory } from "./candid"
 
-describe("createReActor", () => {
+describe("createReactor", () => {
   it("should query on mount", async () => {
-    const { useQueryCall } = createReActor<typeof backend>({
+    const { useQueryCall } = createReactor<typeof backend>({
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
       idlFactory,
     })
@@ -47,7 +47,7 @@ describe("createReActor", () => {
   })
 
   it("should query manually", async () => {
-    const { useQueryCall } = createReActor<typeof backend>({
+    const { useQueryCall } = createReactor<typeof backend>({
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
       idlFactory,
     })

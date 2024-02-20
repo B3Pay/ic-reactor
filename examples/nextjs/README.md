@@ -60,4 +60,4 @@ Running Next.js app:
 - [Next.js](https://nextjs.org/)
 - [ic-wasm](https://github.com/dfinity/ic-wasm)
 - [candid-extractor](https://github.com/dfinity/cdk-rs/tree/main/src/candid-extractor)
-- [ReActor](https://github.com/B3Pay/re-actor)
+- [Reactor](https://github.com/B3Pay/re-actor)

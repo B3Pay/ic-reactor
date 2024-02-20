@@ -62,7 +62,7 @@ export type ActorMethodStates<A> = {
   [M in keyof A]: ActorMethodState<A, M>
 }
 
-// State structure for an actor in a ReActor
+// State structure for an actor in a Reactor
 export type ActorState<A> = {
   initialized: boolean
   initializing: boolean

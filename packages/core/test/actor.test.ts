@@ -3,14 +3,14 @@ import {
   VisitRandomResponse,
   VisitTransform,
 } from "../../visitor/src"
-import { createReActorStore } from "../src"
+import { createReactorStore } from "../src"
 import { example, idlFactory } from "./candid/example"
 
 type Example = typeof example
 
-describe("createReActorStore", () => {
+describe("createReactorStore", () => {
   const { getState, initialize, getActor, visitFunction } =
-    createReActorStore<Example>({
+    createReactorStore<Example>({
       canisterId: "2vxsx-fae",
       idlFactory,
       initializeOnCreate: false,

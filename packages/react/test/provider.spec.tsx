@@ -1,11 +1,11 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
 import { backend, idlFactory } from "./candid"
-import { AgentProvider, createReActorContext } from "../src"
+import { AgentProvider, createReactorContext } from "../src"
 
-describe("createReActor", () => {
+describe("createReactor", () => {
   it("should query", async () => {
-    const { ActorProvider, useQueryCall } = createReActorContext<
+    const { ActorProvider, useQueryCall } = createReactorContext<
       typeof backend
     >({
       canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",

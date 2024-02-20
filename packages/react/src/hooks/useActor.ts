@@ -1,4 +1,4 @@
-import { createReActorStore } from "@ic-reactor/core"
+import { createReactorStore } from "@ic-reactor/core"
 import { useMemo } from "react"
 import { useAgentManager } from "../context/agent"
 import { useCandid } from "./useCandid"
@@ -44,7 +44,7 @@ export const useActor = <A = BaseActor>({
     if (!idlFactory) {
       return null
     } else {
-      const manager = createReActorStore<A>({
+      const manager = createReactorStore<A>({
         agentManager,
         idlFactory,
         canisterId,

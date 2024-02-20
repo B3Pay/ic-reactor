@@ -6,10 +6,10 @@ import AddTodo from "components/AddTodo"
 import Login from "components/Login"
 import Todos from "components/Todos"
 import Image from "next/image"
-import { useAuthStore } from "service/todo"
+import { useAuthState } from "service/todo"
 
 function HomePage() {
-  const { error, authenticated } = useAuthStore()
+  const { error, authenticated } = useAuthState()
 
   return (
     <div className={styles.container}>

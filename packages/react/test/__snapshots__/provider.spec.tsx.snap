@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`createReActor should query 1`] = `
+exports[`createReactor should query 1`] = `
 <div>
   <button
     onClick={[Function]}
@@ -13,7 +13,7 @@ exports[`createReActor should query 1`] = `
 </div>
 `;
 
-exports[`createReActor should query 2`] = `
+exports[`createReactor should query 2`] = `
 <div>
   <button
     onClick={[Function]}

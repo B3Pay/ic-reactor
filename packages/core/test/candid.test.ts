@@ -1,7 +1,7 @@
-import { createReActorStore } from "../dist"
+import { createReactorStore } from "../dist"
 import { createCandidAdapter, createAgentManager } from "../src"
 
-describe("createReActorStore", () => {
+describe("createReactorStore", () => {
   const agentManager = createAgentManager()
 
   const candidAdapter = createCandidAdapter({ agentManager })
@@ -19,7 +19,7 @@ describe("createReActorStore", () => {
   it("should return fetch candid definition and callMethod", async () => {
     const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
 
-    const { callMethod } = createReActorStore({
+    const { callMethod } = createReactorStore({
       canisterId,
       idlFactory,
     })

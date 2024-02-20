@@ -1,14 +1,14 @@
-import {
-  ActorState,
-  AgentState,
-  AuthState,
-  createReActorStore,
-} from "@ic-reactor/core"
+import { createReactorStore } from "@ic-reactor/core"
 import {
   canisterId,
   hello_actor,
   idlFactory,
 } from "../declarations/hello_actor/index.js"
+import type {
+  AuthState,
+  ActorState,
+  AgentState,
+} from "@ic-reactor/core/dist/types.js"
 
 const AUTH_DEFAULT_STATE: AuthState = {
   identity: null,
@@ -32,7 +32,7 @@ const ACTOR_DEFAULT_STATE: ActorState<typeof hello_actor> = {
 
 test("Main Function Test", async () => {
   const { actorStore, agentManager, callMethod, initialize } =
-    createReActorStore<typeof hello_actor>({
+    createReactorStore<typeof hello_actor>({
       canisterId,
       idlFactory,
       isLocalEnv: true,

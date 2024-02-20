@@ -4,7 +4,7 @@ import { backend, idlFactory } from "./candid"
 import { useActor } from "../src/hooks/useActor"
 import { getActorHooks, AgentProvider, ActorManager } from "../src"
 
-describe("createReActor", () => {
+describe("createReactor", () => {
   it("should query", async () => {
     const BackendActor = () => {
       const { actorManager } = useActor<typeof backend>({

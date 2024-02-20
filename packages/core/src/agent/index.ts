@@ -151,10 +151,6 @@ export class AgentManager {
     return this._agent
   }
 
-  public getAgentStore = (): AgentStore => {
-    return this.agentStore
-  }
-
   public getAgentState: AgentStore["getState"] = () => {
     return this.agentStore.getState()
   }

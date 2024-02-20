@@ -1,7 +1,7 @@
 import { Cbor } from "@dfinity/agent"
 import { IDL } from "@dfinity/candid"
 import fetchMock from "jest-fetch-mock"
-import { createReActor } from "../src"
+import { createReactorCore } from "../src"
 import { hello, idlFactory } from "./candid/hello"
 
 fetchMock.enableMocks()
@@ -33,7 +33,7 @@ describe("Initialize", () => {
   const callback = jest.fn()
 
   const { initialize, subscribeActorState, getState, updateCall, queryCall } =
-    createReActor<typeof hello>({
+    createReactorCore<typeof hello>({
       idlFactory,
       canisterId: "aaaaa-aa",
       initializeOnCreate: false,

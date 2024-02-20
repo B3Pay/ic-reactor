@@ -28,6 +28,6 @@ export interface UpdateAgentOptions extends HttpAgentOptions {
   agent?: HttpAgent
 }
 
-// Type for the ReActor store
+// Type for the Reactor store
 export type AgentStore = StoreApi<AgentState>
 export type AuthStore = StoreApi<AuthState>

@@ -58,7 +58,7 @@ export const getActorHooks = <A>({
     }, [functionName, serviceFields])
   }
 
-  const useReActorCall: ActorCall<A> = ({
+  const useReactorCall: ActorCall<A> = ({
     onError,
     onSuccess,
     onLoading,
@@ -123,7 +123,7 @@ export const getActorHooks = <A>({
     refetchInterval = false,
     ...rest
   }) => {
-    const { call, ...state } = useReActorCall(rest)
+    const { call, ...state } = useReactorCall(rest)
 
     const intervalId = useRef<NodeJS.Timeout | undefined>(undefined)
 
@@ -150,7 +150,7 @@ export const getActorHooks = <A>({
   }
 
   const useUpdateCall: ActorUpdateCall<A> = (args) => {
-    return useReActorCall(args)
+    return useReactorCall(args)
   }
 
   const useMethodCall = <M extends FunctionName<A>>(
@@ -158,7 +158,7 @@ export const getActorHooks = <A>({
   ): ActorUseMethodCallReturn<A, M, true> => {
     const visit = visitFunction[args.functionName]
 
-    return { visit, ...useReActorCall(args) }
+    return { visit, ...useReactorCall(args) }
   }
 
   return {

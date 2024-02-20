@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`createReActor should query 1`] = `
+exports[`createReactor should query 1`] = `
 <div>
   <span>
     Ready To call
@@ -8,7 +8,7 @@ exports[`createReActor should query 1`] = `
 </div>
 `;
 
-exports[`createReActor should query 2`] = `
+exports[`createReactor should query 2`] = `
 <div>
   <span>
     Loading...
@@ -16,7 +16,7 @@ exports[`createReActor should query 2`] = `
 </div>
 `;
 
-exports[`createReActor should query 3`] = `
+exports[`createReactor should query 3`] = `
 <div>
   <span>
     0.2.0

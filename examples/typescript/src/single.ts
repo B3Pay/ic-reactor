@@ -3,14 +3,14 @@ import { candid, canisterId, idlFactory } from './declarations/candid';
 
 type Candid = typeof candid;
 
-const store = createReactorStore<Candid>({
+const { agentManager, callMethod } = createReactorStore<Candid>({
   canisterId,
   idlFactory,
 });
 
 // Usage example
-await store.authenticate();
-const { authClient } = store.getAuthState();
+await agentManager.authenticate();
+const authClient = agentManager.getAuthClient();
 
 authClient?.login({
   onSuccess: () => {
@@ -20,3 +20,8 @@ authClient?.login({
     console.error('Failed to login:', error);
   },
 });
+
+// Call a method
+const version = callMethod('version');
+
+console.log('Response from version method:', await version);
