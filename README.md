@@ -24,19 +24,6 @@ Whether you're building a simple vanilla JavaScript application, a complex React
 
 IC-Reactor is heavily typed and provides type safety, ensuring that your code is robust and free from common errors. With strong typing, you can catch potential issues at compile-time and benefit from better code completion and documentation, developers can efficiently handle a range of tasks from querying and displaying blockchain data to managing user authentication states - all within the familiar ecosystem of JavaScript and React.
 
-# @ic-reactor/react [![@ic-reactor/react](https://badge.fury.io/js/@ic-reactor%2Freact.svg)](https://www.npmjs.com/package/@ic-reactor/react)
-
-`@ic-reactor/react` is a React library designed to seamlessly integrate Internet Computer (IC) blockchain interactions into your React applications. It simplifies the process of managing actor states, performing queries, and handling updates within the IC blockchain ecosystem.
-
-## Key Features
-
-- **React Context Integration**: Utilizes React Context for managing global state related to IC actors.
-- **Custom React Hooks**: Provides custom hooks (`useQueryCall`, `useUpdateCall`, `useAuthClient`) for easy interaction with IC actors.
-- **Simplified Actor Interaction**: Streamlines the process of querying and updating data from IC actors.
-- **Efficient State Management**: Manages loading, error, and data states efficiently within React components.
-
-### [Read Docs](https://b3pay.github.io/ic-reactor/modules/core.html)
-
 # @ic-reactor/core [![npm version](https://badge.fury.io/js/@ic-reactor%2Fcore.svg)](https://www.npmjs.com/package/@ic-reactor/core)
 
 `@ic-reactor/core` is a foundational library for managing and interacting with Internet Computer (IC) blockchain actors within your application. It simplifies the process of initializing actors, handling state, authentication, performing queries and updates.
@@ -48,7 +35,20 @@ IC-Reactor is heavily typed and provides type safety, ensuring that your code is
 - **Query and Update Functionality**: Simplified methods for querying data from actors and updating actor states.
 - **Testability**: Built with testing in mind, allowing you to easily test actor interactions.
 
-### [Read Docs](https://b3pay.github.io/ic-reactor/modules/react.html)
+[Read Docs](https://b3pay.github.io/ic-reactor/modules/core.html)
+
+# @ic-reactor/react [![@ic-reactor/react](https://badge.fury.io/js/@ic-reactor%2Freact.svg)](https://www.npmjs.com/package/@ic-reactor/react)
+
+`@ic-reactor/react` is a React library designed to seamlessly integrate Internet Computer (IC) blockchain interactions into your React applications. It simplifies the process of managing actor states, performing queries, and handling updates within the IC blockchain ecosystem.
+
+## Key Features
+
+- **React Context Integration**: Utilizes React Context for managing global state related to IC actors.
+- **Custom React Hooks**: Provides custom hooks (`useQueryCall`, `useUpdateCall`, `useAuthClient`) for easy interaction with IC actors.
+- **Simplified Actor Interaction**: Streamlines the process of querying and updating data from IC actors.
+- **Efficient State Management**: Manages loading, error, and data states efficiently within React components.
+
+[Read Docs](https://b3pay.github.io/ic-reactor/modules/react.html)
 
 ## We Welcome Feature Requests and Contributions
 
