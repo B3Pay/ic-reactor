@@ -1,12 +1,13 @@
-import { createReactorContext } from "./context"
+import { createActorContext } from "./context"
 
 export const {
-  ActorProvider,
+  ActorProvider: ActorProvider,
   useActorState,
   useQueryCall,
   useUpdateCall,
   useMethodCall,
   useVisitMethod,
-} = createReactorContext()
+} = createActorContext()
 
-export { createReactorContext, extractActorHooks } from "./context"
+export * from "./context"
+export * from "./hooks"

@@ -1,16 +1,19 @@
-import { extractActorHooks, useReactor } from "@ic-reactor/react"
-import { ActorContextType } from "@ic-reactor/react/dist/types"
+import { AgentProvider, extractActorHooks, useReactor } from "@ic-reactor/react"
 import { createContext } from "react"
+import type { ActorHooks } from "@ic-reactor/react/dist/types"
+import type { Ledger } from "../declarations/ledger"
 
-const ActorContext = createContext<ActorContextType | null>(null)
+const ActorContext = createContext<ActorHooks<Ledger> | null>(null)
 
-const CandidViewer = () => {
-  const { hooks, fetching, fetchError } = useReactor({
+const { useQueryCall } = extractActorHooks(ActorContext)
+
+const Reactor = () => {
+  const { hooks, fetching, fetchError } = useReactor<Ledger>({
     canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   })
 
   return (
-    <ActorContext.Provider value={hooks as ActorContextType}>
+    <ActorContext.Provider value={hooks}>
       <h2>IC Canister Interaction</h2>
       {fetching && <p>Loading Candid interface...</p>}
       {fetchError && <p>Error: {fetchError}</p>}
@@ -18,8 +21,6 @@ const CandidViewer = () => {
     </ActorContext.Provider>
   )
 }
-
-const { useQueryCall } = extractActorHooks(ActorContext)
 
 const CanisterName = () => {
   const { data } = useQueryCall({
@@ -34,4 +35,10 @@ const CanisterName = () => {
   )
 }
 
-export default CandidViewer
+const App = () => (
+  <AgentProvider withDevtools>
+    <Reactor />
+  </AgentProvider>
+)
+
+export default App

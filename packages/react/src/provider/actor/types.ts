@@ -1,30 +1,24 @@
 import { IDL } from "@dfinity/candid"
 import { ActorManagerOptions, BaseActor } from "@ic-reactor/core/dist/types"
-import { ActorHooks, AgentContextType } from "../../types"
+import { ActorHooks, AgentContext } from "../../types"
 
-export interface ActorContextType<Actor = BaseActor> extends ActorHooks<Actor> {
-  ActorContext: React.Context<ActorContextType<Actor> | null>
-  useActorContext: <A = Actor>() => ActorContextType<A>
+export interface CreateActorContextReturn<A = BaseActor> extends ActorHooks<A> {
   ActorProvider: React.FC<ActorProviderProps>
 }
 
-export type CreateReactorContext = <A = BaseActor>(
-  options?: Partial<CreateActorOptions>
-) => ActorContextType<A>
-
-export interface CreateActorOptions
+export interface CreateActorContextOptions
   extends Omit<
     ActorManagerOptions,
     "idlFactory" | "agentManager" | "canisterId"
   > {
   didjsId?: string
   canisterId?: string
-  agentContext?: AgentContextType
+  agentContext?: React.Context<AgentContext | null>
   idlFactory?: IDL.InterfaceFactory
   loadingComponent?: React.ReactNode
 }
 
-export interface ActorProviderProps extends CreateActorOptions {
+export interface ActorProviderProps extends CreateActorContextOptions {
   children?: React.ReactNode | undefined
   loadingComponent?: React.ReactNode
 }

@@ -1,15 +1,18 @@
-import React, { PropsWithChildren } from "react"
+import { PropsWithChildren } from "react"
 import type { AgentManagerOptions } from "@ic-reactor/core/dist/types"
 import type { AgentManager } from "@ic-reactor/core/dist/agent"
-import type { getAuthHooks } from "../../helpers/auth"
-import type { getAgentHooks } from "../../helpers/agent"
+import { AgentHooks, AuthHooks } from "../../types"
 
-export type AgentContextValue = ReturnType<typeof getAuthHooks> &
-  ReturnType<typeof getAgentHooks> & {
-    agentManager: AgentManager
-  }
+export interface AgentContext extends AgentHooks, AuthHooks {
+  agentManager: AgentManager
+}
 
-export type AgentContextType = React.Context<AgentContextValue | null>
+export interface CreateAgentContextReturn extends AgentHooks, AuthHooks {
+  useAgentManager: (
+    agentContext?: React.Context<AgentContext | null>
+  ) => AgentManager
+  AgentProvider: React.FC<AgentProviderProps>
+}
 
 export interface AgentProviderProps
   extends PropsWithChildren,

@@ -1,6 +1,6 @@
 import { IDL } from "@dfinity/candid"
 import { ActorManagerOptions, BaseActor } from "@ic-reactor/core/dist/types"
-import { ActorHooks, AgentContextType } from "../types"
+import { ActorHooks, AgentContext } from "../types"
 
 export interface UseReactorOptions
   extends Omit<
@@ -9,7 +9,7 @@ export interface UseReactorOptions
   > {
   canisterId: string
   idlFactory?: IDL.InterfaceFactory
-  agentContext?: AgentContextType
+  agentContext?: React.Context<AgentContext | null>
   didjsCanisterId?: string
 }
 
