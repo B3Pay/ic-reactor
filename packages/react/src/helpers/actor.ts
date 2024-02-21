@@ -30,7 +30,23 @@ const DEFAULT_STATE: ActorCallState<never, never> = {
   error: undefined,
   loading: false,
 }
-
+/**
+ * Provides a set of React hooks designed for interacting with actors in an Internet Computer (IC) project using the React framework and Zustand for state management.
+ *
+ * @param actorManager An instance of ActorManager containing methods and properties to manage actors, including the actorStore, canisterId, visitFunction, callMethod, and initialize function.
+ * @returns An object containing several hooks and utility functions for interacting with actors, managing state, and invoking actor methods.
+ *
+ * Hooks included:
+ * - initialize: Function to initialize actor management.
+ * - useActorState: Hook for accessing the actor's state including the canister ID.
+ * - useVisitMethod: Hook for memoizing a method visit service for a given actor method name.
+ * - useReactorCall: Hook for making calls to actor methods with support for loading states, errors, and custom event handlers.
+ * - useQueryCall: Hook specifically designed for query calls to actors with features such as automatic refetching on mount and at specified intervals.
+ * - useUpdateCall: Alias for useReactorCall, tailored for update calls to actors.
+ * - useMethodCall: Combines useVisitMethod and useReactorCall for a streamlined experience when calling actor methods, including visitation and state management.
+ *
+ * Each hook is designed to simplify the process of interacting with actors in IC projects by abstracting away the complexity of state management, error handling, and method invocation.
+ */
 export const getActorHooks = <A = BaseActor>(
   actorManager: ActorManager<A>
 ): ActorHooks<A> => {
@@ -47,6 +63,7 @@ export const getActorHooks = <A = BaseActor>(
   ): VisitService<A>[M] => {
     return useMemo(() => visitFunction[functionName], [functionName])
   }
+
   const useReactorCall: ReactorCall<A> = ({
     args = [],
     functionName,
