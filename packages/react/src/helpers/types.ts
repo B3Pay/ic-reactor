@@ -1,6 +1,4 @@
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
-import type { getAgentHooks } from "./agent"
-import type { getAuthHooks } from "./auth"
 import type {
   ActorState,
   CanisterId,
@@ -11,11 +9,32 @@ import type {
   FunctionName,
   VisitService,
   AuthClient,
+  AuthState,
+  HttpAgent,
+  AgentState,
 } from "@ic-reactor/core/dist/types"
 
-export type AgentHooks = ReturnType<typeof getAgentHooks>
+export interface AgentHooks {
+  useAgent: () => HttpAgent | undefined
+  useAgentState: () => AgentState
+}
 
-export type AuthHooks = ReturnType<typeof getAuthHooks>
+export interface AuthHooks {
+  useUserPrincipal: () => Principal | undefined
+  useAuthState: () => AuthState
+  useAuthClient: (events?: UseAuthClientArgs) => UseAuthClientReturn
+}
+
+export interface ActorHooks<A> {
+  initialize: () => Promise<void>
+  useActorState: () => UseActorState
+  useQueryCall: UseQueryCall<A>
+  useUpdateCall: UseUpdateCall<A>
+  useMethodCall: UseMethodCall<A>
+  useVisitMethod: <M extends FunctionName<A>>(
+    functionName: M
+  ) => VisitService<A>[M]
+}
 
 export interface UseAuthClientArgs {
   onAuthentication?: (promise: () => Promise<Identity>) => void
@@ -116,15 +135,4 @@ export type UseMethodCallArg<A, M extends FunctionName<A>> = ReactorCallArgs<
 
 export interface UseActorState extends Omit<ActorState, "methodState"> {
   canisterId: CanisterId
-}
-
-export interface ActorHooks<A> {
-  initialize: () => Promise<void>
-  useActorState: () => UseActorState
-  useQueryCall: UseQueryCall<A>
-  useUpdateCall: UseUpdateCall<A>
-  useMethodCall: UseMethodCall<A>
-  useVisitMethod: <M extends FunctionName<A>>(
-    functionName: M
-  ) => VisitService<A>[M]
 }

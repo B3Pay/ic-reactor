@@ -6,7 +6,6 @@ import {
   UseQueryCallArgs,
   UseUpdateCallArgs,
 } from "../../types"
-import { getActorHooks } from "../../helpers/actor"
 import {
   CreateActorOptions,
   ActorContextType,
@@ -14,22 +13,11 @@ import {
 } from "./types"
 import { useReactor } from "../../hooks/useReactor"
 
-export const {
-  ActorContext,
-  ActorProvider,
-  useActorContext,
-  useActorState,
-  useQueryCall,
-  useUpdateCall,
-  useMethodCall,
-  useVisitMethod,
-} = createReactorContext()
-
-export function createReactorContext<Actor = BaseActor>({
+export function createReactorContext<A = BaseActor>({
   canisterId: defaultCanisterId,
   ...defaultConfig
 }: Partial<CreateActorOptions> = {}) {
-  const ActorContext = createContext<ActorContextType | null>(null)
+  const ActorContext = createContext<ActorContextType<A> | null>(null)
 
   const ActorProvider: React.FC<ActorProviderProps> = ({
     children,
@@ -49,20 +37,13 @@ export function createReactorContext<Actor = BaseActor>({
       [defaultConfig, restConfig]
     )
 
-    const { actorManager, fetchError, fetching } = useReactor({
+    const { fetchError, fetching, hooks } = useReactor<A>({
       canisterId,
       ...config,
     })
 
-    const hooks = useMemo(() => {
-      if (actorManager) {
-        return getActorHooks(actorManager) as ActorContextType
-      }
-      return null
-    }, [actorManager?.canisterId])
-
     return (
-      <ActorContext.Provider value={hooks}>
+      <ActorContext.Provider value={hooks as ActorContextType<A>}>
         {fetching || hooks === null ? fetchError ?? loadingComponent : children}
       </ActorContext.Provider>
     )
@@ -70,8 +51,34 @@ export function createReactorContext<Actor = BaseActor>({
 
   ActorProvider.displayName = "ActorProvider"
 
+  return {
+    ActorProvider,
+    ...extractActorHooks<A>(ActorContext),
+  }
+}
+
+export function extractActorHooks<A = BaseActor>(
+  ActorContext: React.Context<ActorContextType<A> | null>
+) {
+  /**
+   * Hook for accessing the actor context, including the actor manager and state.
+   * @returns The actor context, including the actor manager and state.
+   * @example
+   * ```tsx
+   * function ActorComponent() {
+   *  const { initialize, useActorState, useQueryCall, useUpdateCall, useMethodCall, useVisitMethod } = useActorContext();
+   *  const { canisterId } = useActorState();
+   *
+   *  return (
+   *   <div>
+   *     <p>Canister ID: {canisterId}</p>
+   *   </div>
+   *  );
+   * }
+   * ```
+   */
   const useActorContext = () => {
-    const context = useContext(ActorContext) as ActorContextType<Actor> | null
+    const context = useContext(ActorContext) as ActorContextType<A> | null
 
     if (!context) {
       throw new Error("useActor must be used within a ActorProvider")
@@ -80,6 +87,9 @@ export function createReactorContext<Actor = BaseActor>({
     return context
   }
 
+  /**
+   * Initializes the actor manager, setting up the actor's state.
+   */
   const initialize = () => useActorContext().initialize()
 
   /**
@@ -130,8 +140,8 @@ export function createReactorContext<Actor = BaseActor>({
    * }
    * ```
    */
-  const useQueryCall = <M extends FunctionName<Actor>>(
-    args: UseQueryCallArgs<Actor, M>
+  const useQueryCall = <M extends FunctionName<A>>(
+    args: UseQueryCallArgs<A, M>
   ) => useActorContext().useQueryCall(args)
 
   /**
@@ -161,8 +171,8 @@ export function createReactorContext<Actor = BaseActor>({
    * }
    * ```
    */
-  const useUpdateCall = <M extends FunctionName<Actor>>(
-    args: UseUpdateCallArgs<Actor, M>
+  const useUpdateCall = <M extends FunctionName<A>>(
+    args: UseUpdateCallArgs<A, M>
   ) => useActorContext().useUpdateCall(args)
 
   /**
@@ -171,8 +181,8 @@ export function createReactorContext<Actor = BaseActor>({
    * @param args Configuration object including the function name and arguments for the actor method call.
    * @returns An object containing the visit function for the method and the current call state (data, error, loading).
    */
-  const useMethodCall = <M extends FunctionName<Actor>>(
-    args: UseMethodCallArg<Actor, M>
+  const useMethodCall = <M extends FunctionName<A>>(
+    args: UseMethodCallArg<A, M>
   ) => useActorContext().useMethodCall(args)
 
   /**
@@ -181,13 +191,10 @@ export function createReactorContext<Actor = BaseActor>({
    * @param functionName The name of the actor method to visit.
    * @returns The visit service function for the specified method.
    */
-  const useVisitMethod = (functionName: FunctionName<Actor>) =>
+  const useVisitMethod = (functionName: FunctionName<A>) =>
     useActorContext().useVisitMethod(functionName)
 
   return {
-    ActorContext,
-    ActorProvider,
-    useActorContext,
     useActorState,
     useQueryCall,
     useUpdateCall,

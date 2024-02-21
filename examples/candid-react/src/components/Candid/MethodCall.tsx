@@ -1,4 +1,4 @@
-import { FunctionName, FunctionType } from "@ic-reactor/core"
+import { FunctionName, FunctionType } from "@ic-reactor/core/dist/types"
 import MethodForm from "./MethodForm"
 import { useMethodCall } from "@ic-reactor/react"
 
@@ -7,9 +7,8 @@ export interface FormFieldsProps {
   type: FunctionType
 }
 
-const MethodCall: React.FC<FormFieldsProps> = ({ functionName, type }) => {
-  const { call, data, loading, error, field } = useMethodCall({
-    type,
+const MethodCall: React.FC<FormFieldsProps> = ({ functionName }) => {
+  const { call, data, loading, error, visit } = useMethodCall({
     functionName,
   })
 

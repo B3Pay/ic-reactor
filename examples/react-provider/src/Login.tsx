@@ -1,4 +1,4 @@
-import { useAuthClient } from "@ic-reactor/react/dist/context/agent"
+import { useAuthClient } from "@ic-reactor/react"
 
 const Login = () => {
   const {

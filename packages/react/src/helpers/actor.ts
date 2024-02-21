@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useStore } from "zustand"
 import type {
   ActorCallState,
@@ -72,6 +65,7 @@ export const getActorHooks = <A = BaseActor>(
   }) => {
     const [state, setState] =
       useState<ActorCallState<A, typeof functionName>>(DEFAULT_STATE)
+
     const reset = useCallback(() => setState(DEFAULT_STATE), [])
 
     const call = useCallback(
@@ -109,7 +103,7 @@ export const getActorHooks = <A = BaseActor>(
           if (throwOnError) throw error
         }
       },
-      [args, functionName, events, callMethod]
+      [args, functionName, events]
     )
 
     return { call, reset, ...state }
@@ -124,14 +118,16 @@ export const getActorHooks = <A = BaseActor>(
     const intervalId = useRef<NodeJS.Timeout>()
 
     useEffect(() => {
-      if (refetchInterval)
+      if (refetchInterval) {
         intervalId.current = setInterval(call, refetchInterval)
-      return () => clearInterval(intervalId.current)
-    }, [refetchInterval, call])
+      }
 
-    useLayoutEffect(() => {
-      if (refetchOnMount) call()
-    }, [call, refetchOnMount])
+      if (refetchOnMount) {
+        call()
+      }
+
+      return () => clearInterval(intervalId.current)
+    }, [refetchInterval, refetchOnMount])
 
     return { call, ...state }
   }
