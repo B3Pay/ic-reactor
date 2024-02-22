@@ -1,12 +1,11 @@
-import { useQueryCall } from "@ic-reactor/react"
-import { Backend } from "App"
+import { useNoteQueryCall } from "NoteActor"
 
 interface NoteProps {
   publicKey: Uint8Array
 }
 
 const Notes: React.FC<NoteProps> = ({ publicKey }) => {
-  const { call, data, loading, error } = useQueryCall({
+  const { call, data, loading, error } = useNoteQueryCall({
     functionName: "user_simple_notes",
     args: [publicKey],
     refetchInterval: 10000,
