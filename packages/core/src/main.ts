@@ -33,9 +33,7 @@ export const createReactorCore = <A = BaseActor>(
   options: ReactorCoreParameters
 ): ReactorCoreReturnType<A> => {
   const { withProcessEnv = false, ...config } = options
-  const isLocalEnv = withProcessEnv
-    ? isInLocalOrDevelopment()
-    : config.isLocalEnv
+  const isLocalEnv = withProcessEnv ? isInLocalOrDevelopment() : undefined
 
   const {
     subscribeActorState,
