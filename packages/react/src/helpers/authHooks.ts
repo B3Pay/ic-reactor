@@ -4,10 +4,11 @@ import type {
   AgentManager,
   UseAuthClientParameters,
   LogoutParameters,
-  UseAuthClientReturnType,
   LoginParameters,
-  LoginState,
   AuthHooksReturnType,
+  Principal,
+  Identity,
+  LoginState,
 } from "../types"
 import {
   IC_INTERNET_IDENTITY_PROVIDER,
@@ -21,66 +22,105 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
 
   const useUserPrincipal = () => useAuthState()?.identity?.getPrincipal()
 
-  const useAuthClient = (
-    events?: UseAuthClientParameters
-  ): UseAuthClientReturnType => {
+  const useAuthClient = ({
+    onAuthentication,
+    onAuthenticationSuccess,
+    onAuthenticationFailure,
+    onLogin,
+    onLoginSuccess,
+    onLoginError,
+    onLoggedOut,
+  }: UseAuthClientParameters = {}) => {
     const [loginState, setLoginState] = useState<LoginState>({
       loading: false,
       error: null,
     })
-    const { authClient, authenticated, authenticating, identity, error } =
+    const { authClient, authenticated, authenticating, error, identity } =
       useAuthState()
 
     const authenticate = useCallback(async () => {
-      try {
-        const identity = await authenticator()
-        events?.onAuthenticationSuccess?.(identity)
-        return identity
-      } catch (e) {
-        events?.onAuthenticationFailure?.(e as Error)
-        throw e
-      }
-    }, [authenticator, events])
+      const authenticatePromise: Promise<Identity> = new Promise(
+        (resolve, reject) => {
+          authenticator()
+            .then((identity) => {
+              onAuthenticationSuccess?.(identity)
+              resolve(identity)
+            })
+            .catch((e) => {
+              onAuthenticationFailure?.(e as Error)
+              reject(e)
+            })
+        }
+      )
+
+      onAuthentication?.(() => authenticatePromise)
+
+      return authenticatePromise
+    }, [
+      authenticator,
+      onAuthentication,
+      onAuthenticationSuccess,
+      onAuthenticationFailure,
+    ])
 
     const login = useCallback(
       async (options?: LoginParameters) => {
-        if (!authClient) {
-          throw new Error("Auth client not initialized")
-        }
+        setLoginState({ loading: true, error: null })
 
-        try {
-          setLoginState({ loading: true, error: null })
-          await authClient.login({
-            identityProvider: isLocalEnv
-              ? LOCAL_INTERNET_IDENTITY_PROVIDER
-              : IC_INTERNET_IDENTITY_PROVIDER,
-            ...options,
-            onSuccess: async () => {
-              try {
-                const identity = await authenticate()
-                const principal = identity.getPrincipal()
-                options?.onSuccess?.()
-                events?.onLoginSuccess?.(principal)
-                setLoginState({ loading: false, error: null })
-              } catch (e) {
-                const error = e as Error
-                setLoginState({ loading: false, error })
-                events?.onLoginError?.(error)
+        const loginPromise: Promise<Principal> = new Promise(
+          (resolve, reject) => {
+            try {
+              if (!authClient) {
+                throw new Error("Auth client not initialized")
               }
-            },
-            onError: (e) => {
-              const error = new Error(`Login failed: ${e}`)
+
+              authClient.login({
+                identityProvider: isLocalEnv
+                  ? IC_INTERNET_IDENTITY_PROVIDER
+                  : LOCAL_INTERNET_IDENTITY_PROVIDER,
+                ...options,
+                onSuccess: () => {
+                  authenticate()
+                    .then((identity) => {
+                      const principal = identity.getPrincipal()
+                      options?.onSuccess?.()
+                      onLoginSuccess?.(principal)
+                      resolve(principal)
+                    })
+                    .catch((e) => {
+                      const error = e as Error
+                      setLoginState({ loading: false, error })
+                      onLoginError?.(error)
+                      reject(error)
+                    })
+                },
+                onError: (e) => {
+                  options?.onError?.(e)
+                  const error = new Error("Login failed: " + e)
+                  setLoginState({ loading: false, error })
+                  onLoginError?.(error)
+                  reject(error)
+                },
+              })
+            } catch (e) {
+              const error = e as Error
               setLoginState({ loading: false, error })
-              events?.onLoginError?.(error)
-            },
-          })
-        } catch (e) {
-          const error = e as Error
-          setLoginState({ loading: false, error })
-          events?.onLoginError?.(error)
-        }
+              onLoginError?.(error)
+              reject(error)
+            }
+          }
+        )
+
+        onLogin?.(() => loginPromise)
       },
-      [authClient, authenticate, isLocalEnv, events]
+      [
+        authClient,
+        onLogin,
+        onLoginSuccess,
+        onLoginError,
+        isLocalEnv,
+        authenticate,
+      ]
     )
 
     const logout = useCallback(
@@ -90,24 +130,23 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
         }
         await authClient.logout(options)
         await authenticate()
-        events?.onLoggedOut?.()
+        onLoggedOut?.()
       },
-      [authClient, authenticate, events]
+      [authClient, onLoggedOut]
     )
 
     useEffect(() => {
-      if (!authClient) {
-        // eslint-disable-next-line no-console
-        authenticate().catch(console.error)
+      if (!authClient && !authenticating) {
+        authenticate()
       }
-    }, [authClient, authenticate])
+    }, [authClient, authenticating])
 
     return {
-      error,
       authClient,
       authenticated,
       authenticating,
       identity,
+      error,
       login,
       logout,
       authenticate,

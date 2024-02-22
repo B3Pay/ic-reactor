@@ -59,16 +59,14 @@ export const actorHooks = <A = BaseActor>(
     throwOnError = false,
     ...events
   }) => {
-    const [state, setState] =
-      useState<ActorCallState<A, typeof functionName>>(DEFAULT_STATE)
+    type M = typeof functionName
+    const [state, setState] = useState<ActorCallState<A, M>>(DEFAULT_STATE)
 
     const reset = useCallback(() => setState(DEFAULT_STATE), [])
 
     const call = useCallback(
       async (
-        eventOrReplaceArgs?:
-          | React.MouseEvent
-          | ActorMethodParameters<A[typeof functionName]>
+        eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
       ) => {
         setState((prev) => ({ ...prev, error: undefined, loading: true }))
         events?.onLoading?.(true)
@@ -78,7 +76,7 @@ export const actorHooks = <A = BaseActor>(
             eventOrReplaceArgs instanceof Array ? eventOrReplaceArgs : args
           const data = await callMethod(
             functionName,
-            ...(replaceArgs as ActorMethodParameters<A[typeof functionName]>)
+            ...(replaceArgs as ActorMethodParameters<A[M]>)
           )
 
           setState({ data, error: undefined, loading: false })

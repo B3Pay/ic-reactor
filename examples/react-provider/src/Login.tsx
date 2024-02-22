@@ -67,14 +67,7 @@ const Login = () => {
         </div>
       ) : (
         <div>
-          <button
-            onClick={() =>
-              login({
-                identityProvider: "https://identity.ic0.app/#authorize",
-              })
-            }
-            disabled={authenticating}
-          >
+          <button onClick={() => login()} disabled={authenticating}>
             Login
           </button>
         </div>

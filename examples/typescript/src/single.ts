@@ -1,27 +1,34 @@
-import { createReactorStore } from '@ic-reactor/core';
-import { candid, canisterId, idlFactory } from './declarations/candid';
+import { createCandidAdapter, createActorManager } from '@ic-reactor/core';
+import { _SERVICE } from './declarations/icp-ledger';
+import { agentManager } from './agent';
 
-type Candid = typeof candid;
+const candidAdapter = createCandidAdapter({ agentManager });
 
-const { agentManager, callMethod } = createReactorStore<Candid>({
-  canisterId,
-  idlFactory,
-});
+const canisterId = 'ryjl3-tyaaa-aaaaa-aaaba-cai';
 
-// Usage example
-await agentManager.authenticate();
-const authClient = agentManager.getAuthClient();
+(async () => {
+  const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId);
 
-authClient?.login({
-  onSuccess: () => {
-    console.log('Logged in successfully');
-  },
-  onError: (error) => {
-    console.error('Failed to login:', error);
-  },
-});
+  const { callMethod } = createActorManager<_SERVICE>({
+    agentManager,
+    canisterId,
+    idlFactory,
+  });
 
-// Call a method
-const version = callMethod('version');
+  // await agentManager.authenticate();
+  // const authClient = agentManager.getAuthClient();
 
-console.log('Response from version method:', await version);
+  // authClient?.login({
+  //   onSuccess: () => {
+  //     console.log('Logged in successfully');
+  //   },
+  //   onError: (error) => {
+  //     console.error('Failed to login:', error);
+  //   },
+  // });
+
+  // Call a method
+  const version = callMethod('name');
+
+  console.log('Response from version method:', await version);
+})();

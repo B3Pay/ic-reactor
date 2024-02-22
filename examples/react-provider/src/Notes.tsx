@@ -1,4 +1,5 @@
-import { useQueryCall } from "App"
+import { useQueryCall } from "@ic-reactor/react"
+import { Backend } from "App"
 
 interface NoteProps {
   publicKey: Uint8Array
@@ -8,7 +9,7 @@ const Notes: React.FC<NoteProps> = ({ publicKey }) => {
   const { call, data, loading, error } = useQueryCall({
     functionName: "user_simple_notes",
     args: [publicKey],
-    refetchInterval: 5000,
+    refetchInterval: 10000,
     refetchOnMount: true,
     onLoading: () => console.log("Loading..."),
     onSuccess: (data) => console.log("Success!", data),

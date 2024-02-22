@@ -14,8 +14,8 @@
   "footerLastModified": true,
   "customDescription": "A library for seamless communication between Internet Computer Actors and the frontend.",
   "plugin": [
-    "typedoc-plugin-coverage",
     "@mxssfd/typedoc-theme",
+    "typedoc-plugin-coverage",
     "typedoc-plugin-include-example",
     "typedoc-plugin-mdn-links",
     "typedoc-plugin-extras"

@@ -1,4 +1,5 @@
-import { useUpdateCall } from "App"
+import { useUpdateCall } from "@ic-reactor/react"
+import { Backend } from "App"
 import { useState } from "react"
 
 interface AddNoteProps {
@@ -8,7 +9,7 @@ interface AddNoteProps {
 const AddNote: React.FC<AddNoteProps> = ({ publicKey }) => {
   const [input, setInput] = useState("")
 
-  const { call, data, loading, error } = useUpdateCall({
+  const { call, data, loading, error } = useUpdateCall<Backend>({
     functionName: "add_simple_note",
     args: [publicKey, input],
   })
