@@ -21,12 +21,12 @@ export interface AgentHooksReturnType {
 }
 
 export interface AuthHooksReturnType {
-  useUserPrincipal: () => Principal | undefined
+  useAuth: (args?: UseAuthParameters) => UseAuthReturnType
   useAuthState: () => AuthState
-  useAuthClient: (args?: UseAuthClientParameters) => UseAuthClientReturnType
+  useUserPrincipal: () => Principal | undefined
 }
 
-export interface UseAuthClientParameters {
+export interface UseAuthParameters {
   onAuthentication?: (promise: () => Promise<Identity>) => void
   onAuthenticationSuccess?: (identity: Identity) => void
   onAuthenticationFailure?: (error: Error) => void
@@ -36,7 +36,7 @@ export interface UseAuthClientParameters {
   onLoggedOut?: () => void
 }
 
-export interface UseAuthClientReturnType {
+export interface UseAuthReturnType {
   error: Error | undefined
   authClient: AuthClient | null
   authenticated: boolean

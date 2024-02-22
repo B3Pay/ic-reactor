@@ -1,7 +1,7 @@
 import { AgentHooks } from "../../agentHooks"
 
 /**
- * `useAuthClient` is a custom React hook designed to manage authentication processes in applications interacting with the Internet Computer (IC).
+ * `useAuth` is a custom React hook designed to manage authentication processes in applications interacting with the Internet Computer (IC).
  * It encapsulates the logic for logging in, logging out, and maintaining the authentication state, leveraging an authentication client.
  *
  * Parameters (`UseAuthClientParameters`):
@@ -31,7 +31,7 @@ import { AgentHooks } from "../../agentHooks"
  * Example:
  * ```jsx
  * const YourComponent = () => {
- *   const { login, logout, authenticated, identity, loginError } = useAuthClient({
+ *   const { login, logout, authenticated, identity, loginError } = useAuth({
  *     onLoginSuccess: (principal) => console.log(`Logged in as ${principal}`),
  *     onLoginError: (error) => console.error(`Login failed: ${error.message}`),
  *   });
@@ -57,4 +57,4 @@ import { AgentHooks } from "../../agentHooks"
  *
  * This hook simplifies integrating authentication flows into your IC application, providing hooks for various stages of the authentication process.
  */
-export const useAuthClient = AgentHooks.useAuthClient
+export const useAuth = AgentHooks.useAuth

@@ -3,7 +3,7 @@ import type {
   AgentManager,
   AgentContext,
   CreateAgentContextReturnType,
-  UseAuthClientParameters,
+  UseAuthParameters,
 } from "../types"
 
 /**
@@ -60,8 +60,8 @@ export const extractAgentContext = (
 
   const useAgentState = () => useAgentContext().useAgentState()
 
-  const useAuthClient = (args?: UseAuthClientParameters) =>
-    useAgentContext().useAuthClient(args)
+  const useAuthClient = (args?: UseAuthParameters) =>
+    useAgentContext().useAuth(args)
 
   const useUserPrincipal = () => useAgentContext().useUserPrincipal()
 
@@ -69,7 +69,7 @@ export const extractAgentContext = (
     useAgent,
     useAuthState,
     useAgentState,
-    useAuthClient,
+    useAuth: useAuthClient,
     useAgentManager,
     useUserPrincipal,
   }

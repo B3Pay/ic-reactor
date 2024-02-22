@@ -1,23 +1,16 @@
 import { AgentHooks } from "../../agentHooks"
 
 /**
- * Accesses the current state of the agent.
+ * Accesses the current agent instance.
  *
  * @example
- * ```jsx
- * function AgentStateComponent() {
- *  const { initialized, initializing } = useAgentState();
+ *```jsx
+ *  function AgentComponent() {
+ *    const agent = useAgent();
  *
- *  return (
- *   <div>
- *    {initialized
- *      ? 'Agent is initialized.'
- *        : initializing
- *        ? 'Agent is initializing...'
- *        : 'Agent is not initialized.'}
- *   </div>
- *  );
- * }
- * ```
+ *    // Use agent for interacting with the Internet Computer.
+ *    return <div>{agent.isLocal() ? 'Local' : 'Remote'}</div>;
+ *  }
+ *```
  */
-export const useAgentState = AgentHooks.useAgentState
+export const useAgent = AgentHooks.useAgent

@@ -2,7 +2,7 @@ import { useStore } from "zustand"
 import { useCallback, useEffect, useState } from "react"
 import type {
   AgentManager,
-  UseAuthClientParameters,
+  UseAuthParameters,
   LogoutParameters,
   LoginParameters,
   AuthHooksReturnType,
@@ -30,7 +30,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
     onLoginSuccess,
     onLoginError,
     onLoggedOut,
-  }: UseAuthClientParameters = {}) => {
+  }: UseAuthParameters = {}) => {
     const [loginState, setLoginState] = useState<LoginState>({
       loading: false,
       error: null,
@@ -158,6 +158,6 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   return {
     useUserPrincipal,
     useAuthState,
-    useAuthClient,
+    useAuth: useAuthClient,
   }
 }
