@@ -1,6 +1,6 @@
 import type {
   HttpAgent,
-  ReactorCoreParameters,
+  CreateReactorCoreParameters,
   VisitService,
 } from "@ic-reactor/core/dist/types"
 import type {
@@ -9,9 +9,9 @@ import type {
   AuthHooksReturnType,
 } from "./helpers/types"
 
-export interface ReactorParameters extends ReactorCoreParameters {}
+export interface CreateReactorParameters extends CreateReactorCoreParameters {}
 
-export interface ReactorReturnType<A>
+export interface CreateReactorReturnType<A>
   extends ActorHooksReturnType<A>,
     AuthHooksReturnType,
     AgentHooksReturnType {

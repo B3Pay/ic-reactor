@@ -11,13 +11,13 @@ interface StoreParameters {
 
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
-  options: StoreParameters
+  config: StoreParameters
 ) {
-  if (options.withDevtools) {
+  if (config.withDevtools) {
     return createStore(
       devtools(() => initialState, {
         name: "Reactor",
-        store: options.store,
+        store: config.store,
       })
     )
   } else {

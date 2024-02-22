@@ -2,7 +2,7 @@ import React, { createContext, useMemo } from "react"
 import { ActorHooksReturnType, BaseActor } from "../types"
 import {
   CreateActorContextParameters,
-  CreateActorContextReturn,
+  CreateActorContextReturnType,
   ActorProviderProps,
 } from "./types"
 import { useActor } from "./hooks/useActor"
@@ -69,9 +69,9 @@ import { extractActorContext } from "../helpers/extractActorContext"
  * managing IC agents and actors, providing a simple, declarative API for developers.
  */
 export function createActorContext<A = BaseActor>(
-  reactorParameters: Partial<CreateActorContextParameters> = {}
-): CreateActorContextReturn<A> {
-  const { canisterId: defaultCanisterId, ...defaultConfig } = reactorParameters
+  config: CreateActorContextParameters = {}
+): CreateActorContextReturnType<A> {
+  const { canisterId: defaultCanisterId, ...defaultConfig } = config
 
   const ActorContext = createContext<ActorHooksReturnType<A> | null>(null)
 

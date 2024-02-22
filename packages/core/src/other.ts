@@ -16,8 +16,8 @@ import {
  * @category Main
  * @includeExample ./packages/core/README.md:145-186
  */
-export const createCandidAdapter = (options: CandidAdapterParameters) => {
-  return new CandidAdapter(options)
+export const createCandidAdapter = (config: CandidAdapterParameters) => {
+  return new CandidAdapter(config)
 }
 
 /**
@@ -29,8 +29,8 @@ export const createCandidAdapter = (options: CandidAdapterParameters) => {
  * @category Main
  * @includeExample ./packages/core/README.md:226-254
  */
-export const createAgentManager = (options?: AgentManagerParameters) => {
-  return new AgentManager(options)
+export const createAgentManager = (config?: AgentManagerParameters) => {
+  return new AgentManager(config)
 }
 
 /**
@@ -43,7 +43,7 @@ export const createAgentManager = (options?: AgentManagerParameters) => {
  * @includeExample ./packages/core/README.md:262-277
  */
 export const createActorManager = <A = BaseActor>(
-  options: ActorManagerParameters
+  config: ActorManagerParameters
 ) => {
-  return new ActorManager<A>(options)
+  return new ActorManager<A>(config)
 }

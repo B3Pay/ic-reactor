@@ -3,11 +3,11 @@ import type {
   ActorHooksReturnType,
   AgentHooksReturnType,
   AuthHooksReturnType,
-  ActorManagerParameters,
   BaseActor,
+  ActorManagerParameters,
   AgentManagerParameters,
 } from "../types"
-import type { AgentManager } from "@ic-reactor/core/dist/agent"
+import type { AgentManager } from "@ic-reactor/core"
 import type { PropsWithChildren } from "react"
 
 export * from "./hooks/types"
@@ -18,7 +18,7 @@ export interface AgentContext
   agentManager: AgentManager
 }
 
-export interface CreateAgentContextReturn
+export interface CreateAgentContextReturnType
   extends AgentHooksReturnType,
     AuthHooksReturnType {
   useAgentManager: (
@@ -33,7 +33,7 @@ export interface AgentProviderProps
   agentManager?: AgentManager
 }
 
-export interface CreateActorContextReturn<A = BaseActor>
+export interface CreateActorContextReturnType<A = BaseActor>
   extends ActorHooksReturnType<A> {
   ActorProvider: React.FC<ActorProviderProps>
 }

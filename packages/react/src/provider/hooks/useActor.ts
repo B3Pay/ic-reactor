@@ -66,15 +66,16 @@ import type { UseActorParameters, UseActorReturn } from "./types"
  * ```
  */
 export const useActor = <A = BaseActor>(
-  options: UseActorParameters
+  config: UseActorParameters
 ): UseActorReturn<A> => {
   const {
     canisterId,
     idlFactory: maybeIdlFactory,
     agentContext,
     didjsCanisterId,
-    ...config
-  } = options
+    ...actorConfig
+  } = config
+
   const [{ idlFactory, fetching, fetchError }, setState] = useState({
     idlFactory: maybeIdlFactory,
     fetching: false,
@@ -131,7 +132,7 @@ export const useActor = <A = BaseActor>(
       agentManager,
       idlFactory,
       canisterId,
-      ...config,
+      ...actorConfig,
     })
 
     return actorHooks(actorManager)

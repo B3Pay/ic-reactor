@@ -2,7 +2,7 @@ import {
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "./tools/constants"
-import { generateRequestHash, isInLocalOrDevelopment } from "./tools"
+import { generateRequestHash } from "./tools"
 
 import type {
   ActorMethodParameters,
@@ -30,11 +30,8 @@ import { createReactorStore } from "./store"
  * @includeExample ./packages/core/README.md:26-80
  */
 export const createReactorCore = <A = BaseActor>(
-  options: CreateReactorCoreParameters
+  config: CreateReactorCoreParameters
 ): CreateReactorCoreReturnType<A> => {
-  const { withProcessEnv = false, ...config } = options
-  const isLocalEnv = withProcessEnv ? isInLocalOrDevelopment() : undefined
-
   const {
     subscribeActorState,
     updateMethodState,
@@ -42,10 +39,7 @@ export const createReactorCore = <A = BaseActor>(
     getState,
     agentManager,
     ...rest
-  } = createReactorStore<A>({
-    isLocalEnv,
-    ...config,
-  })
+  } = createReactorStore<A>(config)
 
   const actorMethod: ActorMethodCall<A> = (functionName, ...args) => {
     const requestHash = generateRequestHash(args)
@@ -167,7 +161,7 @@ export const createReactorCore = <A = BaseActor>(
     }
 
     await authClient.login({
-      identityProvider: isLocalEnv
+      identityProvider: agentManager.isLocalEnv
         ? IC_INTERNET_IDENTITY_PROVIDER
         : LOCAL_INTERNET_IDENTITY_PROVIDER,
       ...options,

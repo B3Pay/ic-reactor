@@ -2,7 +2,7 @@ import { useContext } from "react"
 import type {
   ActorHooksReturnType,
   BaseActor,
-  CreateActorContextReturn,
+  CreateActorContextReturnType,
   FunctionName,
   UseQueryCall,
   UseUpdateCall,
@@ -10,7 +10,7 @@ import type {
 
 export function extractActorContext<A = BaseActor>(
   actorContext: React.Context<ActorHooksReturnType<A> | null>
-): Omit<CreateActorContextReturn<A>, "ActorProvider"> {
+): Omit<CreateActorContextReturnType<A>, "ActorProvider"> {
   /**
    * Hook for accessing the actor context, including the actor manager and state.
    * @returns The actor context, including the actor manager and state.

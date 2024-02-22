@@ -4,7 +4,7 @@ import { agentHooks } from "../helpers/agentHooks"
 import { authHooks } from "../helpers/authHooks"
 import type { AgentManagerParameters } from "@ic-reactor/core/dist/types"
 import type {
-  CreateAgentContextReturn,
+  CreateAgentContextReturnType,
   AgentProviderProps,
   AgentContext,
 } from "./types"
@@ -53,8 +53,8 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  * facilitating interaction with the Internet Computer blockchain.
  */
 export const createAgentContext = (
-  agentParameters: Partial<AgentManagerParameters> = {}
-): CreateAgentContextReturn => {
+  config: AgentManagerParameters = {}
+): CreateAgentContextReturnType => {
   const AgentContext = createContext<AgentContext | null>(null)
 
   const AgentProvider: React.FC<AgentProviderProps> = ({
@@ -64,8 +64,7 @@ export const createAgentContext = (
   }) => {
     const hooks = useMemo(() => {
       const agentManager =
-        mybeAgentManager ??
-        createAgentManager({ ...options, ...agentParameters })
+        mybeAgentManager ?? createAgentManager({ ...options, ...config })
 
       return {
         ...agentHooks(agentManager),

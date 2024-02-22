@@ -37,6 +37,7 @@ export interface CreateReactorStoreParameters
   extends HttpAgentOptions,
     Omit<ActorManagerParameters, "agentManager"> {
   agentManager?: AgentManager
+  withProcessEnv?: boolean
   isLocalEnv?: boolean
   port?: number
 }
@@ -96,13 +97,13 @@ export type ActorMethodCall<A = Record<string, ActorMethod>> = <
 export type ActorQuery<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
-  options: ActorQueryParameters<A, M>
+  config: ActorQueryParameters<A, M>
 ) => ActorQueryReturnType<A, M>
 
 export type ActorUpdate<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
-  options: ActorUpdateParameters<A, M>
+  config: ActorUpdateParameters<A, M>
 ) => ActorUpdateReturnType<A, M>
 
 export interface CreateReactorCoreParameters
@@ -113,8 +114,8 @@ export interface CreateReactorCoreParameters
 export interface CreateReactorCoreReturnType<A = BaseActor>
   extends AgentManager,
     Omit<ActorManager<A>, "updateMethodState"> {
-  login: (options?: AuthClientLoginOptions) => Promise<void>
-  logout: (options?: { returnTo?: string }) => Promise<void>
+  login: (config?: AuthClientLoginOptions) => Promise<void>
+  logout: (config?: { returnTo?: string }) => Promise<void>
   queryCall: ActorQuery<A>
   updateCall: ActorUpdate<A>
 }

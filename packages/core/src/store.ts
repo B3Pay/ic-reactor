@@ -1,6 +1,7 @@
 import { createActorManager, createAgentManager } from "./other"
 import { ActorManager } from "./actor"
 import type { BaseActor, CreateReactorStoreParameters } from "./types"
+import { isInLocalOrDevelopment } from "./tools"
 
 /**
  * Create a new actor manager with the given options.
@@ -11,8 +12,12 @@ import type { BaseActor, CreateReactorStoreParameters } from "./types"
  * @includeExample ./packages/core/README.md:194-220
  */
 export const createReactorStore = <A = BaseActor>(
-  options: CreateReactorStoreParameters
+  config: CreateReactorStoreParameters
 ): ActorManager<A> => {
+  const isLocalEnv = config.withProcessEnv
+    ? isInLocalOrDevelopment()
+    : undefined
+
   const {
     idlFactory,
     canisterId,
@@ -21,12 +26,13 @@ export const createReactorStore = <A = BaseActor>(
     withVisitor = false,
     agentManager: maybeAgentManager,
     ...agentParameters
-  } = options
+  } = config
 
   const agentManager =
     maybeAgentManager ||
     createAgentManager({
       withDevtools,
+      isLocalEnv,
       ...agentParameters,
     })
 

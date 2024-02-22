@@ -2,7 +2,7 @@ import { useContext } from "react"
 import type { AgentManager } from "@ic-reactor/core/dist/agent"
 import type {
   AgentContext,
-  CreateAgentContextReturn,
+  CreateAgentContextReturnType,
   UseAuthClientParameters,
 } from "../types"
 
@@ -33,7 +33,7 @@ import type {
  */
 export const extractAgentContext = (
   agentContext: React.Context<AgentContext | null>
-): Omit<CreateAgentContextReturn, "AgentProvider"> => {
+): Omit<CreateAgentContextReturnType, "AgentProvider"> => {
   const useAgentContext = (
     mybeAgentContext?: React.Context<AgentContext | null>
   ) => {
