@@ -7,11 +7,13 @@ import type {
   UpdateAgentParameters,
   AuthState,
   AuthStore,
+  AuthClient,
 } from "./types"
 import { IC_HOST_NETWORK_URI } from "../../tools/constants"
 
 export class AgentManager {
   private _agent: HttpAgent
+  private _auth: AuthClient | null = null
   private _subscribers: Array<(agent: HttpAgent) => void> = []
 
   public agentStore: AgentStore
@@ -26,7 +28,6 @@ export class AgentManager {
 
   private initialAuthState: AuthState = {
     identity: null,
-    authClient: null,
     authenticating: false,
     authenticated: false,
     error: undefined,
@@ -124,16 +125,15 @@ export class AgentManager {
         }
       )
 
-      const authClient = await AuthClient.create()
-      const authenticated = await authClient.isAuthenticated()
+      this._auth = await AuthClient.create()
+      const authenticated = await this._auth.isAuthenticated()
 
-      const identity = authClient.getIdentity()
+      const identity = this._auth.getIdentity()
 
       this._agent.replaceIdentity(identity)
       this.notifySubscribers()
 
       this.updateAuthState({
-        authClient,
         authenticated,
         identity,
         authenticating: false,
@@ -168,8 +168,8 @@ export class AgentManager {
     return this.authStore.subscribe(listener)
   }
 
-  public getAuthClient = () => {
-    return this.authStore.getState().authClient
+  public getAuth = () => {
+    return this._auth
   }
 
   public getIdentity = () => {

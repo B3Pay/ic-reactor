@@ -13,7 +13,6 @@ import type {
 const AUTH_DEFAULT_STATE: AuthState = {
   identity: null,
   authenticated: false,
-  authClient: null,
   authenticating: false,
   error: undefined,
 }

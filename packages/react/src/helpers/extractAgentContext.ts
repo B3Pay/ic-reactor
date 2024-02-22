@@ -16,7 +16,7 @@ import type {
  *  - useAgent: Hook for accessing the current agent instance.
  *  - useAuthState: Hook for accessing the current authentication state.
  *  - useAgentState: Hook for accessing the current state of the agent.
- *  - useAuthClient: Hook for accessing the authentication client, optionally accepting arguments for configuration.
+ *  - useAuth: Hook for accessing the authentication client, optionally accepting arguments for configuration.
  *  - useAgentManager: Hook for accessing the AgentManager instance.
  *  - useUserPrincipal: Hook for accessing the user's principal.
  *
@@ -60,8 +60,7 @@ export const extractAgentContext = (
 
   const useAgentState = () => useAgentContext().useAgentState()
 
-  const useAuthClient = (args?: UseAuthParameters) =>
-    useAgentContext().useAuth(args)
+  const useAuth = (args?: UseAuthParameters) => useAgentContext().useAuth(args)
 
   const useUserPrincipal = () => useAgentContext().useUserPrincipal()
 
@@ -69,7 +68,7 @@ export const extractAgentContext = (
     useAgent,
     useAuthState,
     useAgentState,
-    useAuth: useAuthClient,
+    useAuth: useAuth,
     useAgentManager,
     useUserPrincipal,
   }

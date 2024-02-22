@@ -21,7 +21,7 @@ import { extractAgentContext } from "../../helpers/extractAgentContext"
  *
  * Usage:
  * - `AgentProvider`: React component to provide agent context to your application.
- * - `useAgent`, `useAuthClient`, `useAuthState`, `useAgentState`, `useAgentManager`, `useUserPrincipal`: Hooks extracted from the created context for managing agent and authentication state within components.
+ * - `useAgent`, `useAuth`, `useAuthState`, `useAgentState`, `useAgentManager`, `useUserPrincipal`: Hooks extracted from the created context for managing agent and authentication state within components.
  *
  * @example
  * ```tsx
@@ -40,7 +40,7 @@ import { extractAgentContext } from "../../helpers/extractAgentContext"
  * export const {
  *   AgentProvider,
  *   useAgent,
- *   useAuthClient,
+ *   useAuth,
  *   useAuthState,
  *   useAgentState,
  *   useAgentManager,
@@ -61,7 +61,7 @@ import { extractAgentContext } from "../../helpers/extractAgentContext"
  * );
  *
  * const Login = () => {
- *  const { login } = useAuthClient()
+ *  const { login } = useAuth()
  *  const principal = useUserPrincipal()
  *
  *  return (

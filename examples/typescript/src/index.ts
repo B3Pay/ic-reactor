@@ -11,7 +11,7 @@ const store = createReactorCore<Candid>({
 // Usage example
 (async () => {
   await store.authenticate();
-  const { authClient } = store.getAuthState();
+  const authClient = store.getAuth();
 
   authClient?.login({
     onSuccess: () => {

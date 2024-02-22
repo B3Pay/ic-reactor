@@ -152,7 +152,7 @@ export const createReactorCore = <A = BaseActor>(
   }
 
   const login = async (options?: AuthClientLoginOptions) => {
-    const authClient = agentManager.getAuthClient()
+    const authClient = agentManager.getAuth()
     if (!authClient) {
       await agentManager.authenticate()
     }
@@ -170,7 +170,7 @@ export const createReactorCore = <A = BaseActor>(
   }
 
   const logout = async (options?: { returnTo?: string }) => {
-    const authClient = agentManager.getAuthClient()
+    const authClient = agentManager.getAuth()
     if (!authClient) {
       throw new Error("Auth client not initialized")
     }

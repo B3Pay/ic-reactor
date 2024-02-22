@@ -1,8 +1,8 @@
 import { IC_HOST_NETWORK_URI } from "../src/tools"
-import { AgentManager, createAgentManager } from "../src"
+import { createAgentManager } from "../src"
 
 describe("My IC Network agent", () => {
-  const agentManager = new AgentManager({
+  const agentManager = createAgentManager({
     host: IC_HOST_NETWORK_URI,
     withDevtools: false,
   })

@@ -5,7 +5,7 @@ import { canisterId, idlFactory, todo } from "declarations/todo"
 export const {
   useActorState,
   useAuthState,
-  useAuthClient,
+  useAuth,
   useQueryCall,
   useUpdateCall
 } = createReactor<typeof todo>({

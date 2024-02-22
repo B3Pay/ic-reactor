@@ -13,7 +13,7 @@ fetchMock.mockResponse(async () => {
 
 const {
   AgentProvider: LocalAgentProvider,
-  useAuthClient: useLocalAuthClient,
+  useAuth: useLocalAuthClient,
   useUserPrincipal: useLocalUserPrincipal,
   useAgent: useLocalAgent,
 } = createAgentContext({

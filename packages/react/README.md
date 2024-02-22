@@ -36,12 +36,11 @@ import { createReactor } from "@ic-reactor/react"
 
 type Actor = typeof actor
 
-export const { useActorStore, useAuthClient, useQueryCall } =
-  createReactor<Actor>({
-    canisterId,
-    idlFactory,
-    host: "https://localhost:4943",
-  })
+export const { useActorStore, useAuth, useQueryCall } = createReactor<Actor>({
+  canisterId,
+  idlFactory,
+  host: "https://localhost:4943",
+})
 ```
 
 Then, use the `useQueryCall` hook to call your canister method:
@@ -82,7 +81,7 @@ export default Balance
 
 ```jsx
 // Login.tsx
-import { useAuthClient } from "./actor"
+import { useAuth } from "./actor"
 
 const Login = () => {
   const {
@@ -93,7 +92,7 @@ const Login = () => {
     identity,
     authenticating,
     authenticated,
-  } = useAuthClient()
+  } = useAuth()
 
   return (
     <div>

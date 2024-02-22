@@ -9,7 +9,7 @@ const config: CreateReactorCoreParameters = {
   idlFactory,
 }
 
-const { useAuthClient, useQueryCall, useUpdateCall } =
+const { useAuth, useQueryCall, useUpdateCall } =
   createReactor<typeof backend>(config)
 
 describe("createReactor", () => {

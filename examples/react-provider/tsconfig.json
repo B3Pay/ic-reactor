@@ -21,6 +21,7 @@
     "node_modules",
     "build",
     "scripts",
+    "src/declarations",
     "acceptance-tests",
     "webpack",
     "jest",

@@ -6,7 +6,7 @@ import candidB from './declarations/candidB';
 import { agentManager } from './agent';
 
 await agentManager.authenticate();
-const { authClient } = agentManager.getAuthState();
+const authClient = agentManager.getAuth();
 
 authClient?.login({
   onSuccess: () => {

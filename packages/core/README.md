@@ -203,7 +203,7 @@ const { agentManager, callMethod } = createReactorStore<Candid>({
 
 // Usage example
 await agentManager.authenticate()
-const authClient = agentManager.getAuthClient()
+const authClient = agentManager.getAuth()
 
 authClient?.login({
   onSuccess: () => {

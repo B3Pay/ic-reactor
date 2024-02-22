@@ -1,9 +1,9 @@
 import { Cbor } from "@dfinity/agent"
 import { IDL } from "@dfinity/candid"
 import fetchMock from "jest-fetch-mock"
-import { ActorManager, AgentManager } from "../src"
 import { idlFactory } from "./candid/hello"
 import { _SERVICE } from "./candid/hello/hello.did"
+import { createActorManager, createAgentManager } from "../src"
 
 fetchMock.enableMocks()
 
@@ -35,7 +35,7 @@ describe("CreateActor", () => {
   const authCallback = jest.fn()
   const actorCallback = jest.fn()
 
-  const agentManager = new AgentManager({
+  const agentManager = createAgentManager({
     verifyQuerySignatures: false,
     withDevtools: false,
   })
@@ -51,7 +51,7 @@ describe("CreateActor", () => {
     agentManager: actorAgentManager,
     getState,
     subscribeActorState,
-  } = new ActorManager<_SERVICE>({
+  } = createActorManager({
     agentManager,
     canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
     idlFactory,
@@ -91,8 +91,9 @@ describe("CreateActor", () => {
   })
 
   it("should have not authenticated the actor", () => {
-    const { authClient, authenticated, authenticating } =
-      agentManager.getAuthState()
+    const { authenticated, authenticating } = agentManager.getAuthState()
+    const authClient = agentManager.getAuth()
+
     expect(authenticating).toEqual(false)
     expect(authenticated).toEqual(false)
     expect(authClient).toBeNull()
@@ -103,8 +104,9 @@ describe("CreateActor", () => {
 
     expect(authCallback).toHaveBeenCalledTimes(1)
 
-    const { authClient, authenticated, authenticating } =
-      agentManager.getAuthState()
+    const { authenticated, authenticating } = agentManager.getAuthState()
+    const authClient = agentManager.getAuth()
+
     expect(authenticating).toEqual(true)
     expect(authenticated).toEqual(false)
     expect(authClient).toBeNull()
@@ -113,7 +115,8 @@ describe("CreateActor", () => {
   })
 
   it("should authenticated the actor", async () => {
-    const { authClient, identity, authenticating } = agentManager.getAuthState()
+    const { identity, authenticating } = agentManager.getAuthState()
+    const authClient = agentManager.getAuth()
 
     expect(authenticating).toEqual(false)
     expect(authClient).toBeDefined()

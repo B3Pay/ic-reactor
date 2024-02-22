@@ -18,7 +18,6 @@ export interface AgentState {
 
 export interface AuthState {
   identity: Identity | null
-  authClient: AuthClient | null
   authenticating: boolean
   authenticated: boolean
   error: Error | undefined

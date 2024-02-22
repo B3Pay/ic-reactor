@@ -39,7 +39,7 @@ import type {
  *
  * export type YourActor = typeof yourActor;
  *
- * export const { useAuthClient, useQueryCall, useUpdateCall } = createReactor<YourActor>(config);
+ * export const { useAuth, useQueryCall, useUpdateCall } = createReactor<YourActor>(config);
  * // Now you can use the returned hooks in your React components
  * ```
  */

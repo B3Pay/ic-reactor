@@ -1,4 +1,4 @@
-import { useAuthClient } from "@ic-reactor/react"
+import { useAuth } from "@ic-reactor/react"
 
 const Login = () => {
   const {
@@ -9,7 +9,7 @@ const Login = () => {
     identity,
     authenticating,
     authenticated,
-  } = useAuthClient({
+  } = useAuth({
     onAuthentication(authPromise) {
       console.log("🚀 ~ onAuthentication ~ Authenticating...")
       authPromise()

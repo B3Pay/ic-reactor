@@ -8,7 +8,6 @@ import type {
   Principal,
   FunctionName,
   VisitService,
-  AuthClient,
   AuthState,
   HttpAgent,
   AgentState,
@@ -38,7 +37,6 @@ export interface UseAuthParameters {
 
 export interface UseAuthReturnType {
   error: Error | undefined
-  authClient: AuthClient | null
   authenticated: boolean
   authenticating: boolean
   identity: Identity | null

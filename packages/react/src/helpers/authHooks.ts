@@ -16,13 +16,18 @@ import {
 } from "@ic-reactor/core/dist/tools"
 
 export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
-  const { authenticate: authenticator, authStore, isLocalEnv } = agentManager
+  const {
+    authenticate: authenticator,
+    getAuth,
+    authStore,
+    isLocalEnv,
+  } = agentManager
 
   const useAuthState = () => useStore(authStore)
 
   const useUserPrincipal = () => useAuthState()?.identity?.getPrincipal()
 
-  const useAuthClient = ({
+  const useAuth = ({
     onAuthentication,
     onAuthenticationSuccess,
     onAuthenticationFailure,
@@ -35,8 +40,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
       loading: false,
       error: null,
     })
-    const { authClient, authenticated, authenticating, error, identity } =
-      useAuthState()
+    const { authenticated, authenticating, error, identity } = useAuthState()
 
     const authenticate = useCallback(async () => {
       const authenticatePromise: Promise<Identity> = new Promise(
@@ -70,6 +74,8 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
         const loginPromise: Promise<Principal> = new Promise(
           (resolve, reject) => {
             try {
+              const authClient = getAuth()
+
               if (!authClient) {
                 throw new Error("Auth client not initialized")
               }
@@ -86,6 +92,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
                       options?.onSuccess?.()
                       onLoginSuccess?.(principal)
                       resolve(principal)
+                      setLoginState({ loading: false, error: null })
                     })
                     .catch((e) => {
                       const error = e as Error
@@ -113,18 +120,13 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
 
         onLogin?.(() => loginPromise)
       },
-      [
-        authClient,
-        onLogin,
-        onLoginSuccess,
-        onLoginError,
-        isLocalEnv,
-        authenticate,
-      ]
+      [onLogin, onLoginSuccess, onLoginError, isLocalEnv, authenticate]
     )
 
     const logout = useCallback(
       async (options?: LogoutParameters) => {
+        const authClient = getAuth()
+
         if (!authClient) {
           throw new Error("Auth client not initialized")
         }
@@ -132,17 +134,18 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
         await authenticate()
         onLoggedOut?.()
       },
-      [authClient, onLoggedOut]
+      [onLoggedOut]
     )
 
     useEffect(() => {
+      const authClient = getAuth()
+
       if (!authClient && !authenticating) {
         authenticate()
       }
-    }, [authClient, authenticating])
+    }, [authenticating])
 
     return {
-      authClient,
       authenticated,
       authenticating,
       identity,
@@ -158,6 +161,6 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   return {
     useUserPrincipal,
     useAuthState,
-    useAuth: useAuthClient,
+    useAuth,
   }
 }
