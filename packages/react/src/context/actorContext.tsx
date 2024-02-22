@@ -1,19 +1,19 @@
 import React, { createContext, useMemo } from "react"
-import { ActorHooks, BaseActor } from "../../types"
+import { GetActorHooks, BaseActor } from "../types"
 import {
   CreateActorContextOptions,
   CreateActorContextReturn,
   ActorProviderProps,
 } from "./types"
-import { useActor } from "../../hooks/useActor"
-import { extractActorHooks } from "./hooks"
+import { useActor } from "../hooks/useActor"
+import { extractActorContext } from "../helpers/extractActor"
 
 export function createActorContext<A = BaseActor>(
   reactorOptions: Partial<CreateActorContextOptions> = {}
 ): CreateActorContextReturn<A> {
   const { canisterId: defaultCanisterId, ...defaultConfig } = reactorOptions
 
-  const ActorContext = createContext<ActorHooks<A> | null>(null)
+  const ActorContext = createContext<GetActorHooks<A> | null>(null)
 
   const ActorProvider: React.FC<ActorProviderProps> = ({
     children,
@@ -49,6 +49,6 @@ export function createActorContext<A = BaseActor>(
 
   return {
     ActorProvider: ActorProvider,
-    ...extractActorHooks<A>(ActorContext),
+    ...extractActorContext<A>(ActorContext),
   }
 }

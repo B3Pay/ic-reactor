@@ -15,18 +15,18 @@ import type {
   BaseActor,
 } from "@ic-reactor/core/dist/types"
 
-export interface AgentHooks {
+export interface GetAgentHooks {
   useAgent: () => HttpAgent | undefined
   useAgentState: () => AgentState
 }
 
-export interface AuthHooks {
+export interface GetAuthHooks {
   useUserPrincipal: () => Principal | undefined
   useAuthState: () => AuthState
   useAuthClient: (args?: UseAuthClientArgs) => UseAuthClientReturn
 }
 
-export interface ActorHooks<A = BaseActor> {
+export interface GetActorHooks<A = BaseActor> {
   initialize: () => Promise<void>
   useActorState: () => UseActorState
   useQueryCall: UseQueryCall<A>

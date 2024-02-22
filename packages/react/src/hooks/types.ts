@@ -1,6 +1,6 @@
 import { IDL } from "@dfinity/candid"
 import { ActorManagerOptions, BaseActor } from "@ic-reactor/core/dist/types"
-import { ActorHooks, AgentContext } from "../types"
+import { GetActorHooks, AgentContext } from "../types"
 
 export interface UseActorOptions
   extends Omit<
@@ -14,7 +14,7 @@ export interface UseActorOptions
 }
 
 export interface UseActorReturn<A = BaseActor> {
-  hooks: ActorHooks<A> | null
+  hooks: GetActorHooks<A> | null
   fetching: boolean
   fetchError: string | null
 }

@@ -1,7 +1,10 @@
 import { useContext } from "react"
-import { AgentManager } from "@ic-reactor/core/dist/agent"
-import type { AgentContext, CreateAgentContextReturn } from "./types"
-import { UseAuthClientArgs } from "../../types"
+import type { AgentManager } from "@ic-reactor/core/dist/agent"
+import type {
+  AgentContext,
+  CreateAgentContextReturn,
+  UseAuthClientArgs,
+} from "../types"
 
 /**
  * This function facilitates the use of contextually provided agent functionalities,
@@ -28,7 +31,7 @@ import { UseAuthClientArgs } from "../../types"
  * To use these hooks, ensure your components are wrapped in an `AgentProvider` that you've set up to supply the `AgentContext`.
  * This context provides the necessary agent functionalities and state management capabilities required by the hooks.
  */
-export const extractAgentHooks = (
+export const extractAgentContext = (
   agentContext: React.Context<AgentContext | null>
 ): Omit<CreateAgentContextReturn, "AgentProvider"> => {
   const useAgentContext = (

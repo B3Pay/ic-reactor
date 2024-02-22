@@ -8,7 +8,7 @@ import type {
   UseUpdateCall,
   UseMethodCallReturn,
   UseMethodCallArg,
-  ActorHooks,
+  GetActorHooks,
 } from "../types"
 import type {
   VisitService,
@@ -16,7 +16,7 @@ import type {
   FunctionName,
   BaseActor,
 } from "@ic-reactor/core/dist/types"
-import { ActorManager } from "@ic-reactor/core"
+import type { ActorManager } from "@ic-reactor/core"
 
 const DEFAULT_STATE: ActorCallState<never, never> = {
   data: undefined,
@@ -42,7 +42,7 @@ const DEFAULT_STATE: ActorCallState<never, never> = {
  */
 export const getActorHooks = <A = BaseActor>(
   actorManager: ActorManager<A>
-): ActorHooks<A> => {
+): GetActorHooks<A> => {
   const { actorStore, canisterId, visitFunction, callMethod, initialize } =
     actorManager
 

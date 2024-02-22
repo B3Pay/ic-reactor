@@ -7,14 +7,14 @@ import type {
   UseAuthClientReturn,
   LoginOptions,
   LoginState,
-  AuthHooks,
+  GetAuthHooks,
 } from "../types"
 import {
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "@ic-reactor/core/dist/tools"
 
-export const getAuthHooks = (agentManager: AgentManager): AuthHooks => {
+export const getAuthHooks = (agentManager: AgentManager): GetAuthHooks => {
   const { authenticate: authenticator, authStore, isLocalEnv } = agentManager
 
   const useAuthState = () => useStore(authStore)

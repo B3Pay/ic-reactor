@@ -1,6 +1,6 @@
 import { createReactorStore } from "@ic-reactor/core"
-import { getActorHooks } from "./helpers/actor"
-import { getAuthHooks } from "./helpers/auth"
+import { getActorHooks } from "./helpers/getActor"
+import { getAuthHooks } from "./helpers/getAuth"
 
 import { isInLocalOrDevelopment } from "@ic-reactor/core/dist/tools"
 import { BaseActor, CreateReactorReturn, CreateReactorOptions } from "./types"
