@@ -1,9 +1,9 @@
 import { createActorManager, createCandidAdapter } from "@ic-reactor/core"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useAgentManager } from "../context"
-import { BaseActor } from "../types"
-import { UseActorOptions, UseActorReturn } from "./types"
-import { getActorHooks } from "../helpers"
+import { useAgentManager } from ".."
+import { getActorHooks } from "../../helpers"
+import type { BaseActor } from "../../types"
+import type { UseActorOptions, UseActorReturn } from "./types"
 
 /**
  * A comprehensive hook that manages both the fetching of Candid interfaces

@@ -6,9 +6,8 @@ import type {
 } from "./helpers/types"
 
 export * from "@ic-reactor/core/dist/types"
-export * from "./context/types"
+export * from "./provider/types"
 export * from "./helpers/types"
-export * from "./hooks/types"
 
 export interface CreateReactorReturn<A>
   extends GetActorHooks<A>,

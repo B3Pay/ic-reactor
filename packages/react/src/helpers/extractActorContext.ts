@@ -4,7 +4,6 @@ import type {
   BaseActor,
   CreateActorContextReturn,
   FunctionName,
-  UseMethodCall,
   UseQueryCall,
   UseUpdateCall,
 } from "../types"
@@ -27,13 +26,21 @@ export function extractActorContext<A = BaseActor>(
    *   </div>
    *  );
    * }
+   *
+   * function App() {
+   *  return (
+   *   <ActorProvider canisterId="rrkah-fqaaa-aaaaa-aaaaq-cai">
+   *     <ActorComponent />
+   *   </ActorProvider>
+   *  );
+   * }
    * ```
    */
   const useActorContext = () => {
     const context = useContext(actorContext)
 
     if (!context) {
-      throw new Error("useActor must be used within a ActorProvider")
+      throw new Error("Actor hooks must be used within a ActorProvider")
     }
 
     return context
@@ -126,15 +133,6 @@ export function extractActorContext<A = BaseActor>(
     useActorContext().useUpdateCall(args)
 
   /**
-   * Hook that combines useVisitMethod and useReactorCall for calling actor methods. It provides both the visit service for the method and the ability to make actor calls with state management.
-   *
-   * @param args Configuration object including the function name and arguments for the actor method call.
-   * @returns An object containing the visit function for the method and the current call state (data, error, loading).
-   */
-  const useMethodCall: UseMethodCall<A> = (args) =>
-    useActorContext().useMethodCall(args)
-
-  /**
    * Memoizes and returns a visit service function for a specific actor method.
    *
    * @param functionName The name of the actor method to visit.
@@ -147,7 +145,6 @@ export function extractActorContext<A = BaseActor>(
     useActorState,
     useQueryCall,
     useUpdateCall,
-    useMethodCall,
     useVisitMethod,
     initialize,
   }

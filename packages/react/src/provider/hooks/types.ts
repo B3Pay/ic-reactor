@@ -1,6 +1,6 @@
-import { IDL } from "@dfinity/candid"
-import { ActorManagerOptions, BaseActor } from "@ic-reactor/core/dist/types"
-import { GetActorHooks, AgentContext } from "../types"
+import type { IDL } from "@dfinity/candid"
+import { AgentContext } from "../types"
+import { GetActorHooks, ActorManagerOptions, BaseActor } from "../../types"
 
 export interface UseActorOptions
   extends Omit<

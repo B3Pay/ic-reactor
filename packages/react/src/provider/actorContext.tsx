@@ -5,8 +5,8 @@ import {
   CreateActorContextReturn,
   ActorProviderProps,
 } from "./types"
-import { useActor } from "../hooks/useActor"
-import { extractActorContext } from "../helpers/extractActor"
+import { useActor } from "./hooks/useActor"
+import { extractActorContext } from "../helpers/extractActorContext"
 
 export function createActorContext<A = BaseActor>(
   reactorOptions: Partial<CreateActorContextOptions> = {}

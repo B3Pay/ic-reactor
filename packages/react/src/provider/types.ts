@@ -10,6 +10,8 @@ import type {
 import type { AgentManager } from "@ic-reactor/core/dist/agent"
 import type { PropsWithChildren } from "react"
 
+export * from "./hooks/types"
+
 export interface AgentContext extends GetAgentHooks, GetAuthHooks {
   agentManager: AgentManager
 }

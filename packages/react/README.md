@@ -38,7 +38,7 @@ type Actor = typeof actor
 
 export const { useActorStore, useAuthClient, useQueryCall } =
   createReactor<Actor>({
-    canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+    canisterId,
     idlFactory,
     host: "https://localhost:4943",
   })

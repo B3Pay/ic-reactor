@@ -31,7 +31,6 @@ export interface GetActorHooks<A = BaseActor> {
   useActorState: () => UseActorState
   useQueryCall: UseQueryCall<A>
   useUpdateCall: UseUpdateCall<A>
-  useMethodCall: UseMethodCall<A>
   useVisitMethod: <M extends FunctionName<A>>(
     functionName: M
   ) => VisitService<A>[M]
@@ -69,7 +68,7 @@ export type LoginOptions = AuthClientLoginOptions
 
 export type LogoutOptions = { returnTo?: string }
 
-export type ReactorCallArgs<A, M extends FunctionName<A>> = {
+export type SharedCallArgs<A, M extends FunctionName<A>> = {
   functionName: M
   args?: ActorMethodArgs<A[M]>
   onLoading?: (loading: boolean) => void
@@ -85,15 +84,15 @@ export type ActorCallState<A, M extends FunctionName<A>> = {
 }
 
 export interface UseQueryCallArgs<A, M extends FunctionName<A>>
-  extends ReactorCallArgs<A, M> {
+  extends SharedCallArgs<A, M> {
   refetchOnMount?: boolean
   refetchInterval?: number | false
 }
 
 export interface UseUpdateCallArgs<A, M extends FunctionName<A>>
-  extends ReactorCallArgs<A, M> {}
+  extends SharedCallArgs<A, M> {}
 
-export interface ReactorCallReturn<
+export interface SharedCallReturn<
   A,
   M extends FunctionName<A> = FunctionName<A>
 > extends ActorCallState<A, M> {
@@ -103,36 +102,17 @@ export interface ReactorCallReturn<
   ) => Promise<ActorMethodReturnType<A[M]> | undefined>
 }
 
-export type ReactorCall<A> = <M extends FunctionName<A>>(
-  args: ReactorCallArgs<A, M>
-) => ReactorCallReturn<A, M>
+export type SharedCall<A> = <M extends FunctionName<A>>(
+  args: SharedCallArgs<A, M>
+) => SharedCallReturn<A, M>
 
 export type UseQueryCall<A> = <M extends FunctionName<A>>(
   args: UseQueryCallArgs<A, M>
-) => ReactorCallReturn<A, M>
+) => SharedCallReturn<A, M>
 
 export type UseUpdateCall<A> = <M extends FunctionName<A>>(
   args: UseUpdateCallArgs<A, M>
-) => ReactorCallReturn<A, M>
-
-export type UseMethodCall<A> = <M extends FunctionName<A>>(
-  args: UseMethodCallArg<A, M>
-) => UseMethodCallReturn<A, M>
-
-export interface UseMethodCallReturn<
-  A,
-  M extends FunctionName<A> = FunctionName<A>
-> extends ReactorCallReturn<A, M> {
-  visit: VisitService<A>[M]
-  reset: () => void
-  error: Error | undefined
-  loading: boolean
-}
-
-export type UseMethodCallArg<A, M extends FunctionName<A>> = ReactorCallArgs<
-  A,
-  M
->
+) => SharedCallReturn<A, M>
 
 export interface UseActorState extends Omit<ActorState, "methodState"> {
   canisterId: CanisterId

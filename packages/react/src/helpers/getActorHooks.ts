@@ -2,12 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useStore } from "zustand"
 import type {
   ActorCallState,
-  ReactorCall,
+  SharedCall,
   UseActorState,
   UseQueryCall,
   UseUpdateCall,
-  UseMethodCallReturn,
-  UseMethodCallArg,
   GetActorHooks,
 } from "../types"
 import type {
@@ -57,7 +55,7 @@ export const getActorHooks = <A = BaseActor>(
     return useMemo(() => visitFunction[functionName], [functionName])
   }
 
-  const useReactorCall: ReactorCall<A> = ({
+  const useReactorCall: SharedCall<A> = ({
     args = [],
     functionName,
     throwOnError = false,
@@ -134,19 +132,11 @@ export const getActorHooks = <A = BaseActor>(
 
   const useUpdateCall: UseUpdateCall<A> = useReactorCall
 
-  const useMethodCall = <M extends FunctionName<A>>(
-    args: UseMethodCallArg<A, M>
-  ): UseMethodCallReturn<A, M> => {
-    const visit = useVisitMethod(args.functionName)
-    return { visit, ...useReactorCall(args) }
-  }
-
   return {
     initialize,
     useQueryCall,
     useUpdateCall,
     useActorState,
-    useMethodCall,
     useVisitMethod,
   }
 }

@@ -6,7 +6,6 @@ export const {
   useActorState,
   useQueryCall,
   useUpdateCall,
-  useMethodCall,
   useVisitMethod,
 } = createActorContext()
 
@@ -23,3 +22,5 @@ export const {
 } = createAgentContext()
 
 export { createAgentContext }
+
+export * from "./hooks"
