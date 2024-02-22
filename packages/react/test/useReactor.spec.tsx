@@ -1,27 +1,28 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
 import { backend, idlFactory } from "./candid"
-import { useActor } from "../src/hooks/useActor"
-import { getActorHooks, AgentProvider, ActorManager } from "../src"
+import { useReactor } from "../src"
+import { AgentProvider } from "../src"
+import { ActorHooks } from "../src/types"
 
 describe("createReactor", () => {
   it("should query", async () => {
     const BackendActor = () => {
-      const { actorManager } = useActor<typeof backend>({
+      const { hooks, fetchError, fetching } = useReactor<typeof backend>({
         canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
         idlFactory,
       })
 
-      return actorManager && <TestComponent actorManager={actorManager} />
+      return fetching ? (
+        <p>Loading Candid interface...</p>
+      ) : fetchError ? (
+        <p>Error: {fetchError}</p>
+      ) : (
+        hooks && <TestComponent {...hooks} />
+      )
     }
 
-    const TestComponent = ({
-      actorManager,
-    }: {
-      actorManager: ActorManager<typeof backend>
-    }) => {
-      const { useQueryCall } = getActorHooks<typeof backend>(actorManager)
-
+    const TestComponent = ({ useQueryCall }: ActorHooks<typeof backend>) => {
       const { data: version, loading } = useQueryCall({
         functionName: "version",
       })

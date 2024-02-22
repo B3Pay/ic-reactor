@@ -11,9 +11,7 @@ import { getActorHooks } from "../helpers"
  * It simplifies the process of interacting with canisters by encapsulating
  * the logic for Candid retrieval and actor store management.
  *
- * By using this hook, you can create have full control over the lifecycle of
- * the actor store and the Candid interface. This hook is useful when you need
- * to manage the lifecycle of the actor store and Candid interface yourself.
+ * You can use react context to share the actor hooks across your application.
  *
  * @example
  * ```tsx
@@ -27,11 +25,11 @@ import { getActorHooks } from "../helpers"
  *
  * const ActorContext = createContext<ActorHooks<Ledger> | null>(null)
  *
- * const { useQueryCall } = extractActorHooks(ActorContext)
+ * export const { useQueryCall, useUpdateCall } = extractActorHooks(ActorContext)
  *
  * const Reactor = () => {
  *   const { hooks, fetching, fetchError } = useReactor<Ledger>({
- *     canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+ *     canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger canister
  *   })
  *
  *   return (
@@ -43,7 +41,7 @@ import { getActorHooks } from "../helpers"
  *     </ActorContext.Provider>
  *   )
  * }
- *
+ * // later in the code
  * const CanisterName = () => {
  *   const { data } = useQueryCall({
  *     functionName: "name",
@@ -67,13 +65,16 @@ import { getActorHooks } from "../helpers"
  *
  * ```
  */
-export const useReactor = <A = BaseActor>({
-  canisterId,
-  agentContext,
-  idlFactory: maybeIdlFactory,
-  didjsCanisterId,
-  ...config
-}: UseReactorOptions): UseReactorReturn<A> => {
+export const useReactor = <A = BaseActor>(
+  options: UseReactorOptions
+): UseReactorReturn<A> => {
+  const {
+    canisterId,
+    idlFactory: maybeIdlFactory,
+    agentContext,
+    didjsCanisterId,
+    ...config
+  } = options
   const [{ idlFactory, fetching, fetchError }, setState] =
     useState<UseReactorState>({
       idlFactory: maybeIdlFactory,

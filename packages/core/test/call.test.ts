@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto"
 import { idlFactory, backend } from "./candid/backend"
-import { AgentManager, ActorManager, IC_HOST_NETWORK_URI } from "../src"
+import { AgentManager, ActorManager } from "../src"
+import { IC_HOST_NETWORK_URI } from "../src/tools"
 
 describe("My IC Store and Actions", () => {
   const agentManager = new AgentManager({

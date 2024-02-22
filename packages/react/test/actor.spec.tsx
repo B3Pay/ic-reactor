@@ -1,17 +1,15 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
 import { backend, idlFactory } from "./candid"
-import { AgentProvider, createReactorContext } from "../src"
+import { AgentProvider, createActorContext } from "../src"
+
+const { ActorProvider, useQueryCall } = createActorContext<typeof backend>({
+  canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+  idlFactory,
+})
 
 describe("createReactor", () => {
   it("should query", async () => {
-    const { ActorProvider, useQueryCall } = createReactorContext<
-      typeof backend
-    >({
-      canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-      idlFactory,
-    })
-
     const TestComponent = ({}) => {
       const {
         call,
@@ -21,7 +19,7 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <button onClick={() => call()}>Get Version</button>
+          <button onClick={call}>Get Version</button>
           <span>
             {loading
               ? "Loading..."

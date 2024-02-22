@@ -5,11 +5,11 @@ import type { Ledger } from "../declarations/ledger"
 
 const ActorContext = createContext<ActorHooks<Ledger> | null>(null)
 
-const { useQueryCall } = extractActorHooks(ActorContext)
+export const { useQueryCall, useUpdateCall } = extractActorHooks(ActorContext)
 
 const Reactor = () => {
   const { hooks, fetching, fetchError } = useReactor<Ledger>({
-    canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+    canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger canister
   })
 
   return (

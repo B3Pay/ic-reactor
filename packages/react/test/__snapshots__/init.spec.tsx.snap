@@ -10,6 +10,16 @@ exports[`createReactor should initialize 1`] = `
   >
     Initialize
   </button>
+  <div>
+    <button
+      onClick={[Function]}
+    >
+      Get Version
+    </button>
+    <span>
+      Ready To call
+    </span>
+  </div>
 </div>
 `;
 
@@ -23,5 +33,61 @@ exports[`createReactor should initialize 2`] = `
   >
     Initialize
   </button>
+  <div>
+    <button
+      onClick={[Function]}
+    >
+      Get Version
+    </button>
+    <span>
+      Ready To call
+    </span>
+  </div>
+</div>
+`;
+
+exports[`createReactor should initialize 3`] = `
+<div>
+  <span>
+    Initialized
+  </span>
+  <button
+    onClick={[Function]}
+  >
+    Initialize
+  </button>
+  <div>
+    <button
+      onClick={[Function]}
+    >
+      Get Version
+    </button>
+    <span>
+      Ready To call
+    </span>
+  </div>
+</div>
+`;
+
+exports[`createReactor should initialize 4`] = `
+<div>
+  <span>
+    Initialized
+  </span>
+  <button
+    onClick={[Function]}
+  >
+    Initialize
+  </button>
+  <div>
+    <button
+      onClick={[Function]}
+    >
+      Get Version
+    </button>
+    <span>
+      0.2.0
+    </span>
+  </div>
 </div>
 `;

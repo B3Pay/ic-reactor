@@ -3,13 +3,13 @@ import renderer, { act } from "react-test-renderer"
 import { createReactor } from "../src"
 import { backend, idlFactory } from "./candid"
 
+const { useQueryCall } = createReactor<typeof backend>({
+  canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+  idlFactory,
+})
+
 describe("createReactor", () => {
   it("should query on mount", async () => {
-    const { useQueryCall } = createReactor<typeof backend>({
-      canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-      idlFactory,
-    })
-
     const TestComponent = () => {
       const { data, loading } = useQueryCall({
         functionName: "version",
@@ -47,11 +47,6 @@ describe("createReactor", () => {
   })
 
   it("should query manually", async () => {
-    const { useQueryCall } = createReactor<typeof backend>({
-      canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-      idlFactory,
-    })
-
     const TestComponent = () => {
       const { call, data, loading } = useQueryCall({
         functionName: "version",
@@ -60,7 +55,7 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <button onClick={() => call()}>Get Version</button>
+          <button onClick={call}>Get Version</button>
           <span>
             {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
           </span>

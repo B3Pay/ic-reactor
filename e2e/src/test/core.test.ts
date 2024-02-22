@@ -1,4 +1,4 @@
-import { createReactor } from "@ic-reactor/core"
+import { createReactorCore } from "@ic-reactor/core"
 import {
   canisterId,
   idlFactory,
@@ -13,7 +13,7 @@ const DEFAULT_STATE = {
 }
 
 describe("Core Function Test", () => {
-  const { initialize, getState, queryCall, updateCall } = createReactor<
+  const { initialize, getState, queryCall, updateCall } = createReactorCore<
     typeof hello_actor
   >({
     canisterId,
