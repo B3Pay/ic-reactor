@@ -2,12 +2,12 @@ import Login from "Login"
 import Notes from "Notes"
 import AddNote from "./AddNote"
 import { backend } from "declarations/candid"
-import { AgentProvider, createReactorContext } from "@ic-reactor/react"
+import { AgentProvider, createActorContext } from "@ic-reactor/react"
 
 const publicKey = crypto.getRandomValues(new Uint8Array(48))
 
 export const { ActorProvider, useQueryCall, useUpdateCall } =
-  createReactorContext<typeof backend>({
+  createActorContext<typeof backend>({
     canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   })
 

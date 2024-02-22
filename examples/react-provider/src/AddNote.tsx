@@ -19,8 +19,6 @@ const AddNote: React.FC<AddNoteProps> = ({ publicKey }) => {
     setInput(note)
   }
 
-  console.log(data, loading, error)
-
   return (
     <div>
       <h2>Add Note:</h2>

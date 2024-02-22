@@ -58,7 +58,7 @@ const Login = () => {
       <h2>Login:</h2>
       <div>
         {loginLoading && <div>Loading...</div>}
-        {loginError ? <div>{JSON.stringify(loginError)}</div> : null}
+        {loginError ? <div>{loginError.message}</div> : null}
         {identity && <div>{identity.getPrincipal().toText()}</div>}
       </div>
       {authenticated ? (

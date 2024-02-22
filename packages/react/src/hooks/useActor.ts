@@ -2,7 +2,7 @@ import { createActorManager, createCandidAdapter } from "@ic-reactor/core"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAgentManager } from "../provider/agent"
 import { BaseActor } from "../types"
-import { UseReactorOptions, UseReactorReturn, UseReactorState } from "./types"
+import { UseActorOptions, UseActorReturn } from "./types"
 import { getActorHooks } from "../helpers"
 
 /**
@@ -15,7 +15,7 @@ import { getActorHooks } from "../helpers"
  *
  * @example
  * ```tsx
- * import { AgentProvider, extractActorHooks, useReactor } from "@ic-reactor/react"
+ * import { AgentProvider, extractActorHooks, useActor } from "@ic-reactor/react"
  * import { createContext } from "react"
  * import type { ActorHooks } from "@ic-reactor/react/dist/types"
  * // With this import, you can have type safety for the actor's interface.
@@ -27,8 +27,8 @@ import { getActorHooks } from "../helpers"
  *
  * export const { useQueryCall, useUpdateCall } = extractActorHooks(ActorContext)
  *
- * const Reactor = () => {
- *   const { hooks, fetching, fetchError } = useReactor<Ledger>({
+ * const LedgerActor = () => {
+ *   const { hooks, fetching, fetchError } = useActor<Ledger>({
  *     canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger canister
  *   })
  *
@@ -57,7 +57,7 @@ import { getActorHooks } from "../helpers"
  *
  * const App = () => (
  *   <AgentProvider withDevtools>
- *     <Reactor />
+ *     <LedgerActor />
  *   </AgentProvider>
  * )
  *
@@ -65,9 +65,9 @@ import { getActorHooks } from "../helpers"
  *
  * ```
  */
-export const useReactor = <A = BaseActor>(
-  options: UseReactorOptions
-): UseReactorReturn<A> => {
+export const useActor = <A = BaseActor>(
+  options: UseActorOptions
+): UseActorReturn<A> => {
   const {
     canisterId,
     idlFactory: maybeIdlFactory,
@@ -75,12 +75,11 @@ export const useReactor = <A = BaseActor>(
     didjsCanisterId,
     ...config
   } = options
-  const [{ idlFactory, fetching, fetchError }, setState] =
-    useState<UseReactorState>({
-      idlFactory: maybeIdlFactory,
-      fetching: false,
-      fetchError: null,
-    })
+  const [{ idlFactory, fetching, fetchError }, setState] = useState({
+    idlFactory: maybeIdlFactory,
+    fetching: false,
+    fetchError: null as string | null,
+  })
 
   const agentManager = useAgentManager(agentContext)
 

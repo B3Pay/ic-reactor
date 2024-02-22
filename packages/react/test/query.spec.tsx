@@ -2,11 +2,14 @@ import React from "react"
 import renderer, { act } from "react-test-renderer"
 import { createReactor } from "../src"
 import { backend, idlFactory } from "./candid"
+import { CreateReactorOptions } from "../src/types"
 
-const { useQueryCall } = createReactor<typeof backend>({
+const options: CreateReactorOptions = {
   canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   idlFactory,
-})
+}
+
+const { useQueryCall } = createReactor<typeof backend>(options)
 
 describe("createReactor", () => {
   it("should query on mount", async () => {

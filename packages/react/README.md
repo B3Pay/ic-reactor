@@ -3,6 +3,7 @@
 ## Features
 
 - **React Hooks Integration**: Custom hooks for managing blockchain actor states and authentication within React applications.
+- **Type-Safe Actor Interactions**: Type-safe interaction with IC actors using the provided actor declaration file.
 - **Efficient State Management**: Utilize the power of Zustand for global state management in React components.
 - **Asynchronous Data Handling**: Easy handling of asynchronous operations related to IC actors.
 - **Authentication Support**: Integrated hooks for managing authentication with the IC blockchain.
@@ -29,7 +30,7 @@ Here's a simple example to get you started:
 First, create an actor declaration file:
 
 ```ts
-// store.ts
+// actor.ts
 import { canisterId, idlFactory, actor } from "declaration/actor"
 import { createReactor } from "@ic-reactor/react"
 
@@ -47,7 +48,7 @@ Then, use the `useQueryCall` hook to call your canister method:
 
 ```jsx
 // Balance.tsx
-import { useQueryCall } from "./store"
+import { useQueryCall } from "./actor"
 
 const Balance = ({ principal }) => {
   const { call, data, loading, error } = useQueryCall({
@@ -62,7 +63,7 @@ const Balance = ({ principal }) => {
 
   return (
     <div>
-      <button onClick={() => call()} disabled={loading}>
+      <button onClick={call} disabled={loading}>
         {loading ? "Loading..." : "Refresh"}
       </button>
       {loading && <p>Loading...</p>}
@@ -81,7 +82,7 @@ export default Balance
 
 ```jsx
 // Login.tsx
-import { useAuthClient } from "./store"
+import { useAuthClient } from "./actor"
 
 const Login = () => {
   const {
@@ -104,7 +105,7 @@ const Login = () => {
       </div>
       {authenticated ? (
         <div>
-          <button onClick={() => logout()}>Logout</button>
+          <button onClick={logout}>Logout</button>
         </div>
       ) : (
         <div>

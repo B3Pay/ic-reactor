@@ -1,1 +1,1 @@
-export * from "./useReactor"
+export * from "./useActor"

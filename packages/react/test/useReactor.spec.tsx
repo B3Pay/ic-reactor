@@ -1,14 +1,14 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
 import { backend, idlFactory } from "./candid"
-import { useReactor } from "../src"
+import { useActor } from "../src"
 import { AgentProvider } from "../src"
 import { ActorHooks } from "../src/types"
 
 describe("createReactor", () => {
   it("should query", async () => {
     const BackendActor = () => {
-      const { hooks, fetchError, fetching } = useReactor<typeof backend>({
+      const { hooks, fetchError, fetching } = useActor<typeof backend>({
         canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
         idlFactory,
       })

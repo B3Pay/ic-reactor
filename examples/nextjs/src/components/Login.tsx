@@ -26,17 +26,7 @@ const Login: React.FC<LoginProps> = () => {
         </div>
       ) : (
         <div>
-          <button
-            onClick={() =>
-              login({
-                identityProvider:
-                  process.env.DFX_NETWORK === "ic"
-                    ? "https://identity.ic0.app/#authorize"
-                    : "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/#authorize"
-              })
-            }
-            disabled={authenticating}
-          >
+          <button onClick={() => login()} disabled={authenticating}>
             Login
           </button>
         </div>
