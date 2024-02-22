@@ -2204,7 +2204,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/visitor@npm:^*, @ic-reactor/visitor@workspace:packages/visitor":
+"@ic-reactor/visitor@npm:*, @ic-reactor/visitor@npm:^*, @ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
@@ -18228,6 +18228,7 @@ __metadata:
   resolution: "react-example@workspace:examples/react-provider"
   dependencies:
     "@ic-reactor/react": "npm:*"
+    "@ic-reactor/visitor": "npm:*"
     "@types/react": "npm:^18.2"
     "@types/react-dom": "npm:^18.2"
     react: "npm:^18.2.0"

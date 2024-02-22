@@ -1,0 +1,64 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`createReactor should query 1`] = `
+<div>
+  <span>
+    Ready To call
+  </span>
+</div>
+`;
+
+exports[`createReactor should query 2`] = `
+<div>
+  <span>
+    Loading...
+  </span>
+</div>
+`;
+
+exports[`createReactor should query 3`] = `
+<div>
+  <span>
+    0.2.0
+  </span>
+</div>
+`;
+
+exports[`createReactor should query with error 1`] = `
+[
+  <h2>
+    IC Canister Interaction
+  </h2>,
+  <div>
+    <span>
+      Ready To call
+    </span>
+  </div>,
+]
+`;
+
+exports[`createReactor should query with error 2`] = `
+[
+  <h2>
+    IC Canister Interaction
+  </h2>,
+  <div>
+    <span>
+      Loading...
+    </span>
+  </div>,
+]
+`;
+
+exports[`createReactor should query with error 3`] = `
+[
+  <h2>
+    IC Canister Interaction
+  </h2>,
+  <div>
+    <span>
+      0.2.0
+    </span>
+  </div>,
+]
+`;

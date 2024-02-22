@@ -1,1 +1,6 @@
 export * from "./useActor"
+export * from "./actor/useUpdateCall"
+export * from "./actor/useQueryCall"
+export * from "./actor/useVisitMethod"
+export * from "./actor/useActorState"
+export * from "./useActor"

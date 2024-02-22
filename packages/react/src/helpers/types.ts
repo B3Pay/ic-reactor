@@ -26,16 +26,6 @@ export interface AuthHooksReturnType {
   useAuthClient: (args?: UseAuthClientParameters) => UseAuthClientReturnType
 }
 
-export interface ActorHooksReturnType<A = BaseActor> {
-  initialize: () => Promise<void>
-  useActorState: () => UseActorState
-  useQueryCall: UseQueryCall<A>
-  useUpdateCall: UseUpdateCall<A>
-  useVisitMethod: <M extends FunctionName<A>>(
-    functionName: M
-  ) => VisitService<A>[M]
-}
-
 export interface UseAuthClientParameters {
   onAuthentication?: (promise: () => Promise<Identity>) => void
   onAuthenticationSuccess?: (identity: Identity) => void
@@ -67,6 +57,10 @@ export type LoginState = {
 export type LoginParameters = AuthClientLoginOptions
 
 export type LogoutParameters = { returnTo?: string }
+
+export interface UseActorState extends Omit<ActorState, "methodState"> {
+  canisterId: CanisterId
+}
 
 export type UseMethodCallParameters<A, M extends FunctionName<A>> = {
   functionName: M
@@ -114,6 +108,14 @@ export type UseUpdateCall<A> = <M extends FunctionName<A>>(
   args: UseUpdateCallParameters<A, M>
 ) => UseMethodCallReturnType<A, M>
 
-export interface UseActorState extends Omit<ActorState, "methodState"> {
-  canisterId: CanisterId
+export type UseVisitMethod<A> = <M extends FunctionName<A>>(
+  functionName: M
+) => VisitService<A>[M]
+
+export interface ActorHooksReturnType<A = BaseActor> {
+  initialize: () => Promise<void>
+  useActorState: () => UseActorState
+  useQueryCall: UseQueryCall<A>
+  useUpdateCall: UseUpdateCall<A>
+  useVisitMethod: UseVisitMethod<A>
 }

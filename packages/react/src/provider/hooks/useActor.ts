@@ -1,6 +1,6 @@
 import { createActorManager, createCandidAdapter } from "@ic-reactor/core"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useAgentManager } from ".."
+import { useAgentManager } from "./agent/useAgentManager"
 import { actorHooks } from "../../helpers"
 import type { BaseActor } from "../../types"
 import type { UseActorParameters, UseActorReturn } from "./types"
@@ -27,7 +27,7 @@ import type { UseActorParameters, UseActorReturn } from "./types"
  *
  * export const { useQueryCall, useUpdateCall } = extractActorHooks(ActorContext)
  *
- * const LedgerActor = () => {
+ * const LedgerActor = ({ children }) => {
  *   const { hooks, fetching, fetchError } = useActor<Ledger>({
  *     canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger canister
  *   })
@@ -37,7 +37,7 @@ import type { UseActorParameters, UseActorReturn } from "./types"
  *       <h2>IC Canister Interaction</h2>
  *       {fetching && <p>Loading Candid interface...</p>}
  *       {fetchError && <p>Error: {fetchError}</p>}
- *       {hooks && <CanisterName />}
+ *       {hooks && children}
  *     </ActorContext.Provider>
  *   )
  * }
@@ -57,7 +57,9 @@ import type { UseActorParameters, UseActorReturn } from "./types"
  *
  * const App = () => (
  *   <AgentProvider withDevtools>
- *     <LedgerActor />
+ *     <LedgerActor>
+ *       <CanisterName />
+ *     </LedgerActor>
  *   </AgentProvider>
  * )
  *

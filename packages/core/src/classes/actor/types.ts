@@ -9,7 +9,7 @@ export interface DefaultActorType {
 
 export type BaseActor<T = DefaultActorType> = ActorSubclass<T>
 
-export type FunctionName<A = BaseActor> = keyof A & string
+export type FunctionName<A = BaseActor> = Extract<keyof A, string>
 
 export type FunctionType = "query" | "update"
 

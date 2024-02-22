@@ -46,19 +46,6 @@ export const extractAgentContext = (
     return context
   }
 
-  /**
-   * Accesses the `AgentManager` instance for managing agent configurations and state.
-   *
-   * @example
-   *```jsx
-   *  function AgentManagerComponent() {
-   *    const agentManager = useAgentManager();
-   *
-   *    // Use agentManager for managing agent configurations, etc.
-   *    return <div>Agent Manager ready.</div>;
-   *  }
-   *```
-   */
   const useAgentManager = (
     agentContext?: React.Context<AgentContext | null>
   ): AgentManager => {
@@ -67,80 +54,15 @@ export const extractAgentContext = (
     return context.agentManager
   }
 
-  /**
-   * Accesses the current agent instance.
-   *
-   * @example
-   *```jsx
-   *  function AgentComponent() {
-   *    const agent = useAgent();
-   *
-   *    // Use agent for interacting with the Internet Computer.
-   *    return <div>Agent ready.</div>;
-   *  }
-   *```
-   */
   const useAgent = () => useAgentContext().useAgent()
 
-  /**
-   * Accesses the current authentication state.
-   *
-   * @example
-   * ```jsx
-   * function AuthStateComponent() {
-   *   const { isAuthenticated, user } = useAuthState();
-   *
-   *   return (
-   *     <div>
-   *       {isAuthenticated ? `User ${user} is authenticated.` : 'User is not authenticated.'}
-   *     </div>
-   *   );
-   * }
-   * ```
-   */
   const useAuthState = () => useAgentContext().useAuthState()
 
-  /**
-   * Accesses the current state of the agent.
-   *
-   * @example
-   * ```jsx
-   * function AgentStateComponent() {
-   *  const { initialized, initializing } = useAgentState();
-   *
-   *  return (
-   *   <div>
-   *    {initialized
-   *      ? 'Agent is initialized.'
-   *        : initializing
-   *        ? 'Agent is initializing...'
-   *        : 'Agent is not initialized.'}
-   *   </div>
-   *  );
-   * }
-   * ```
-   */
   const useAgentState = () => useAgentContext().useAgentState()
 
   const useAuthClient = (args?: UseAuthClientParameters) =>
     useAgentContext().useAuthClient(args)
 
-  /**
-   * Accesses the user's principal.
-   *
-   * @example
-   * ```jsx
-   * function UserPrincipalComponent() {
-   *   const userPrincipal = useUserPrincipal();
-   *
-   *   return (
-   *     <div>
-   *       {userPrincipal ? `User principal: ${userPrincipal}` : 'User principal not found.'}
-   *     </div>
-   *   );
-   * }
-   * ```
-   */
   const useUserPrincipal = () => useAgentContext().useUserPrincipal()
 
   return {

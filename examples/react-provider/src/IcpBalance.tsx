@@ -1,9 +1,14 @@
 import { useQueryCall, useUserPrincipal } from "@ic-reactor/react"
+import { ICPLedger } from "./declarations/icp-ledger"
+import { Principal } from "@ic-reactor/react/dist/types"
 
-export const ICPLedger = () => {
-  const principal = useUserPrincipal()
+export const ICPBalance = () => {
+  const principal = useUserPrincipal() as Principal
 
-  const { call, data, loading, error } = useQueryCall({
+  const { call, data, loading, error } = useQueryCall<
+    ICPLedger,
+    "icrc1_balance_of"
+  >({
     functionName: "icrc1_balance_of",
     args: [{ owner: principal, subaccount: [] }],
   })

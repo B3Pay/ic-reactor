@@ -3,7 +3,7 @@ import Notes from "Notes"
 import AddNote from "./AddNote"
 import { AgentProvider, ActorProvider } from "@ic-reactor/react"
 import { NoteActorProvider } from "NoteActor"
-import { ICPLedger } from "IcpBalance"
+import { ICPBalance } from "IcpBalance"
 import { ICPTransfer } from "IcpTransfer"
 
 const publicKey = crypto.getRandomValues(new Uint8Array(48))
@@ -17,7 +17,7 @@ const App = () => {
         canisterId="ryjl3-tyaaa-aaaaa-aaaba-cai"
         loadingComponent={<div>Loading Icp Ledger...</div>}
       >
-        <ICPLedger />
+        <ICPBalance />
         <ICPTransfer />
       </ActorProvider>
       <NoteActorProvider loadingComponent={<div>Loading Note Actor...</div>}>
