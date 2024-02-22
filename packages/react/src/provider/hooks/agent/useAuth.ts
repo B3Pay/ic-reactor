@@ -4,7 +4,7 @@ import { AgentHooks } from "../../agentHooks"
  * `useAuth` is a custom React hook designed to manage authentication processes in applications interacting with the Internet Computer (IC).
  * It encapsulates the logic for logging in, logging out, and maintaining the authentication state, leveraging an authentication client.
  *
- * Parameters (`UseAuthClientParameters`):
+ * @param options - An optional object containing the following properties:
  * - `onAuthentication`: Callback function triggered before authentication starts.
  * - `onAuthenticationSuccess`: Callback function triggered on successful authentication, receives the authenticated `Identity`.
  * - `onAuthenticationFailure`: Callback function triggered on authentication failure, receives the error.
@@ -13,8 +13,7 @@ import { AgentHooks } from "../../agentHooks"
  * - `onLoginError`: Callback function triggered on login error, receives the error.
  * - `onLoggedOut`: Callback function triggered after logging out.
  *
- * The hook returns an object containing:
- * - `authClient`: The authentication client used for managing IC interactions.
+ * @returns An object containing the following properties:
  * - `authenticated`: Boolean indicating if the user is currently authenticated.
  * - `authenticating`: Boolean indicating if an authentication process is currently underway.
  * - `identity`: The authenticated user's `Identity`, if available.

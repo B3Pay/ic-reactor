@@ -20,7 +20,7 @@ export interface AgentHooksReturnType {
 }
 
 export interface AuthHooksReturnType {
-  useAuth: (args?: UseAuthParameters) => UseAuthReturnType
+  useAuth: (options?: UseAuthParameters) => UseAuthReturnType
   useAuthState: () => AuthState
   useUserPrincipal: () => Principal | undefined
 }
