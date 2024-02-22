@@ -11,10 +11,14 @@ fetchMock.mockResponse(async () => {
   })
 })
 
-const { AgentProvider: LocalAgentProvider, useAgent: useLocalAgent } =
-  createAgentContext({
-    isLocalEnv: true,
-  })
+const {
+  AgentProvider: LocalAgentProvider,
+  useAuthClient: useLocalAuthClient,
+  useUserPrincipal: useLocalUserPrincipal,
+  useAgent: useLocalAgent,
+} = createAgentContext({
+  isLocalEnv: true,
+})
 
 describe("createReactor", () => {
   it("should query", async () => {
@@ -23,16 +27,17 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <span>{agent?.isLocal()}</span>
+          <span>{agent?.isLocal().toString()}</span>
         </div>
       )
     }
+
     const TestLocalComponent = ({}) => {
       const agent = useLocalAgent()
 
       return (
         <div>
-          <span>{agent?.isLocal()}</span>
+          <span>{agent?.isLocal().toString()}</span>
         </div>
       )
     }
@@ -53,8 +58,8 @@ describe("createReactor", () => {
     const localAgentStatus = () =>
       screen.root.findAllByType("span")[1].props.children
 
-    expect(agentStatus()).toEqual(false)
-    expect(localAgentStatus()).toEqual(true)
+    expect(agentStatus()).toEqual("false")
+    expect(localAgentStatus()).toEqual("true")
 
     expect(screen.toJSON()).toMatchSnapshot()
   })

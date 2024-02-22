@@ -96,11 +96,11 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
     )
 
     useEffect(() => {
-      if (!authClient && !authenticating) {
+      if (!authClient) {
         // eslint-disable-next-line no-console
         authenticate().catch(console.error)
       }
-    }, [authClient, authenticating, authenticate])
+    }, [authClient, authenticate])
 
     return {
       error,

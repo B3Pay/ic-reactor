@@ -23,8 +23,8 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  * - `AgentProvider`: React component to provide agent context to your application.
  * - `useAgent`, `useAuthClient`, `useAuthState`, `useAgentState`, `useAgentManager`, `useUserPrincipal`: Hooks extracted from the created context for managing agent and authentication state within components.
  *
- * @example:
- * ```typescript
+ * @example
+ * ```tsx
  * // agent.ts
  * import { createAgentContext } from "@ic-reactor/react";
  * import { CreateAgentParameters } from "@ic-reactor/react/dist/types";
@@ -46,11 +46,37 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  *   useAgentManager,
  *   useUserPrincipal,
  * } = createAgentContext(agentConfig);
+ *
+ * // Now you can use the returned hooks in your React components
+ *
+ * // App.tsx
+ * import React from 'react';
+ * import { AgentProvider } from './agent';
+ *
+ * const App = () => (
+ *   <AgentProvider>
+ *     <Login />
+ *     <YourActor />
+ *   </AgentProvider>
+ * );
+ *
+ * const Login = () => {
+ *  const { login } = useAuthClient()
+ *  const principal = useUserPrincipal()
+ *
+ *  return (
+ *    <div>
+ *      <button onClick={() => login()}>Login</button>
+ *      <p>User: {principal?.toText()}</p>
+ *    </div>
+ *  )
+ * };
+ *
  * ```
  *
  * This setup allows you to use the agent and authentication hooks within
- * the components wrapped by `AgentProvider` and `ActorProvider`,
- * facilitating interaction with the Internet Computer blockchain.
+ * the components wrapped by `AgentProvider`, facilitating interaction
+ * with the Internet Computer blockchain.
  */
 export const createAgentContext = (
   config: AgentManagerParameters = {}

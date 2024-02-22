@@ -40,7 +40,7 @@ export const extractAgentContext = (
     const context = useContext(mybeAgentContext || agentContext)
 
     if (!context) {
-      throw new Error("Agent context must be used within a AgentProvider")
+      throw new Error("Agent hooks must be used within a AgentProvider")
     }
 
     return context

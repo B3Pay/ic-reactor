@@ -3,7 +3,7 @@ import renderer, { act } from "react-test-renderer"
 import { backend, idlFactory } from "./candid"
 import { useActor } from "../src"
 import { AgentProvider } from "../src"
-import { ActorHooks } from "../src/types"
+import { ActorHooksReturnType } from "../src/types"
 
 describe("createReactor", () => {
   it("should query", async () => {
@@ -22,7 +22,9 @@ describe("createReactor", () => {
       )
     }
 
-    const TestComponent = ({ useQueryCall }: ActorHooks<typeof backend>) => {
+    const TestComponent = ({
+      useQueryCall,
+    }: ActorHooksReturnType<typeof backend>) => {
       const { data: version, loading } = useQueryCall({
         functionName: "version",
       })

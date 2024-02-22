@@ -25,18 +25,21 @@ import type {
  * @example
  * ```typescript
  * import { createReactor } from "@ic-reactor/react";
- * import { ReactorCoreParameters } from "@ic-reactor/react/dist/types";
- * import { canisterId, idlFactory, actor } from "declaration/actor"
+ * import type { CreateReactorCoreParameters } from "@ic-reactor/react/dist/types";
+ * import { canisterId, idlFactory, yourActor } from "./declaration/yourActor"
  *
- * const config: ReactorCoreParameters = {
- *   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
- *   idlFactory: YOUR_IDL_FACTORY, // Your canister's IDL factory
+ * const config: CreateReactorCoreParameters = {
+ *   canisterId,
+ *   idlFactory,
  *   host: "https://localhost:8000", // IC network host         |
  *   isLocalEnv: true, // Set true for local network            | one of these
  *   withProcessEnv: true, // Use process.env to determine host |
+ *   port: 8000, // Port number for local network               |
  * };
  *
- * const { useActorStore, useAuthClient, useQueryCall } = createReactor(config);
+ * export type YourActor = typeof yourActor;
+ *
+ * export const { useAuthClient, useQueryCall, useUpdateCall } = createReactor<YourActor>(config);
  * // Now you can use the returned hooks in your React components
  * ```
  */
