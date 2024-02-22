@@ -7,7 +7,6 @@ import type {
 } from "@dfinity/agent"
 import type { Principal } from "@dfinity/principal"
 import type { IDL } from "@dfinity/candid"
-import type { ActorManager } from "./actor"
 import type {
   ActorManagerParameters,
   ActorMethodParameters,
@@ -15,16 +14,20 @@ import type {
   ActorMethodState,
   BaseActor,
   FunctionName,
-} from "./actor/types"
-import type { AgentManager } from "./agent"
+} from "./classes/actor/types"
+import type { ActorManager } from "./classes/actor"
+import type { AgentManager } from "./classes/agent"
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
 
-export * from "./agent/types"
-export * from "./actor/types"
-export * from "./candid/types"
+export * from "./classes/agent/types"
+export * from "./classes/actor/types"
+export * from "./classes/candid/types"
+
+export type { ActorManager, AgentManager }
 
 export type {
   ActorMethod,
+  AuthClientLoginOptions,
   HttpAgentOptions,
   ActorSubclass,
   Principal,

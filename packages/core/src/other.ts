@@ -1,11 +1,11 @@
-import { ActorManager } from "./actor"
-import { AgentManager } from "./agent"
-import { CandidAdapter } from "./candid"
+import { ActorManager } from "./classes/actor"
+import { AgentManager } from "./classes/agent"
+import { CandidAdapter } from "./classes/candid"
 import {
+  CandidAdapterParameters,
   ActorManagerParameters,
   AgentManagerParameters,
   BaseActor,
-  CandidAdapterParameters,
 } from "./types"
 
 /**

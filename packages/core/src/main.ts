@@ -5,20 +5,21 @@ import {
 import { generateRequestHash } from "./tools"
 
 import type {
-  ActorMethodParameters,
   ActorMethodState,
   BaseActor,
   FunctionName,
-  ActorCallFunction,
-  CreateReactorCoreReturnType,
-  ActorGetStateFunction,
-  ActorMethodCall,
   ActorQuery,
-  ActorSubscribeFunction,
   ActorUpdate,
+  ActorMethodCall,
+  ActorCallFunction,
+  ActorGetStateFunction,
+  ActorSubscribeFunction,
+  AuthClientLoginOptions,
+  ActorMethodParameters,
   CreateReactorCoreParameters,
+  CreateReactorCoreReturnType,
 } from "./types"
-import type { AuthClientLoginOptions } from "@dfinity/auth-client"
+import type {} from "@dfinity/auth-client"
 import { createReactorStore } from "./store"
 
 /**

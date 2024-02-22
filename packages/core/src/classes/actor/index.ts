@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { Actor } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools } from "../tools/helper"
+import { createStoreWithOptionalDevtools } from "../../tools/helper"
 import type { HttpAgent } from "@dfinity/agent"
 import type {
   CanisterId,
@@ -17,7 +17,7 @@ import type {
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
-import type { UpdateAgentParameters } from "../types"
+import type { UpdateAgentParameters } from "../../types"
 
 export class ActorManager<A = BaseActor> {
   private _actor: null | A = null

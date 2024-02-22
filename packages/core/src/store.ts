@@ -1,5 +1,5 @@
 import { createActorManager, createAgentManager } from "./other"
-import { ActorManager } from "./actor"
+import { ActorManager } from "./classes/actor"
 import type { BaseActor, CreateReactorStoreParameters } from "./types"
 import { isInLocalOrDevelopment } from "./tools"
 

@@ -2,7 +2,7 @@ import React, { createContext, useMemo } from "react"
 import { createAgentManager } from "@ic-reactor/core"
 import { agentHooks } from "../helpers/agentHooks"
 import { authHooks } from "../helpers/authHooks"
-import type { AgentManagerParameters } from "@ic-reactor/core/dist/types"
+import type { AgentManagerParameters } from "../types"
 import type {
   CreateAgentContextReturnType,
   AgentProviderProps,

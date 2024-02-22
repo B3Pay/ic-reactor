@@ -5,8 +5,11 @@ import type {
   CanisterId,
   CandidAdapterParameters,
   CandidDefenition,
-} from "../types"
-import { DEFAULT_IC_DIDJS_ID, DEFAULT_LOCAL_DIDJS_ID } from "../tools/constants"
+} from "../../types"
+import {
+  DEFAULT_IC_DIDJS_ID,
+  DEFAULT_LOCAL_DIDJS_ID,
+} from "../../tools/constants"
 
 export class CandidAdapter {
   public agent: HttpAgent

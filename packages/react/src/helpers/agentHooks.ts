@@ -1,5 +1,4 @@
-import type { AgentManager } from "@ic-reactor/core/dist/agent"
-import type { HttpAgent } from "@ic-reactor/core/dist/types"
+import type { HttpAgent, AgentManager } from "@ic-reactor/core/dist/types"
 import type { AgentHooksReturnType } from "./types"
 import { useEffect, useState } from "react"
 import { useStore } from "zustand"

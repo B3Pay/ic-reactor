@@ -1,7 +1,7 @@
 import { useStore } from "zustand"
 import { useCallback, useEffect, useState } from "react"
-import type { AgentManager } from "@ic-reactor/core/dist/agent"
 import type {
+  AgentManager,
   UseAuthClientParameters,
   LogoutParameters,
   UseAuthClientReturnType,

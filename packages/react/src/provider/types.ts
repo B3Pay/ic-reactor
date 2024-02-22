@@ -4,10 +4,10 @@ import type {
   AgentHooksReturnType,
   AuthHooksReturnType,
   BaseActor,
+  AgentManager,
   ActorManagerParameters,
   AgentManagerParameters,
 } from "../types"
-import type { AgentManager } from "@ic-reactor/core"
 import type { PropsWithChildren } from "react"
 
 export * from "./hooks/types"

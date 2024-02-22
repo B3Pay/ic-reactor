@@ -1,7 +1,7 @@
-import type { AuthClientLoginOptions } from "@dfinity/auth-client"
 import type {
   ActorState,
   CanisterId,
+  AuthClientLoginOptions,
   ActorMethodParameters,
   ActorMethodReturnType,
   Identity,

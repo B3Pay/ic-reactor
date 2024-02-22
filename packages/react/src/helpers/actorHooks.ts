@@ -12,9 +12,9 @@ import type {
   VisitService,
   ActorMethodParameters,
   FunctionName,
+  ActorManager,
   BaseActor,
 } from "@ic-reactor/core/dist/types"
-import type { ActorManager } from "@ic-reactor/core"
 
 const DEFAULT_STATE: ActorCallState<never, never> = {
   data: undefined,
