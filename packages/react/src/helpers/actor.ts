@@ -74,7 +74,7 @@ export const getActorHooks = <A = BaseActor>(
           | React.MouseEvent
           | ActorMethodArgs<A[typeof functionName]>
       ) => {
-        setState({ data: undefined, error: undefined, loading: true })
+        setState((prev) => ({ ...prev, error: undefined, loading: true }))
         events?.onLoading?.(true)
 
         try {
