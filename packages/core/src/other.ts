@@ -2,10 +2,10 @@ import { ActorManager } from "./actor"
 import { AgentManager } from "./agent"
 import { CandidAdapter } from "./candid"
 import {
-  ActorManagerOptions,
-  AgentManagerOptions,
+  ActorManagerParameters,
+  AgentManagerParameters,
   BaseActor,
-  CandidAdapterOptions,
+  CandidAdapterParameters,
 } from "./types"
 
 /**
@@ -16,7 +16,7 @@ import {
  * @category Main
  * @includeExample ./packages/core/README.md:145-186
  */
-export const createCandidAdapter = (options: CandidAdapterOptions) => {
+export const createCandidAdapter = (options: CandidAdapterParameters) => {
   return new CandidAdapter(options)
 }
 
@@ -29,9 +29,7 @@ export const createCandidAdapter = (options: CandidAdapterOptions) => {
  * @category Main
  * @includeExample ./packages/core/README.md:226-254
  */
-export const createAgentManager = (
-  options?: AgentManagerOptions
-): AgentManager => {
+export const createAgentManager = (options?: AgentManagerParameters) => {
   return new AgentManager(options)
 }
 
@@ -45,7 +43,7 @@ export const createAgentManager = (
  * @includeExample ./packages/core/README.md:262-277
  */
 export const createActorManager = <A = BaseActor>(
-  options: ActorManagerOptions
-): ActorManager<A> => {
+  options: ActorManagerParameters
+) => {
   return new ActorManager<A>(options)
 }

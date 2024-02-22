@@ -2,26 +2,28 @@ import { useStore } from "zustand"
 import { useCallback, useEffect, useState } from "react"
 import type { AgentManager } from "@ic-reactor/core/dist/agent"
 import type {
-  UseAuthClientArgs,
-  LogoutOptions,
-  UseAuthClientReturn,
-  LoginOptions,
+  UseAuthClientParameters,
+  LogoutParameters,
+  UseAuthClientReturnType,
+  LoginParameters,
   LoginState,
-  GetAuthHooks,
+  AuthHooksReturnType,
 } from "../types"
 import {
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "@ic-reactor/core/dist/tools"
 
-export const getAuthHooks = (agentManager: AgentManager): GetAuthHooks => {
+export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   const { authenticate: authenticator, authStore, isLocalEnv } = agentManager
 
   const useAuthState = () => useStore(authStore)
 
   const useUserPrincipal = () => useAuthState()?.identity?.getPrincipal()
 
-  const useAuthClient = (events?: UseAuthClientArgs): UseAuthClientReturn => {
+  const useAuthClient = (
+    events?: UseAuthClientParameters
+  ): UseAuthClientReturnType => {
     const [loginState, setLoginState] = useState<LoginState>({
       loading: false,
       error: null,
@@ -41,7 +43,7 @@ export const getAuthHooks = (agentManager: AgentManager): GetAuthHooks => {
     }, [authenticator, events])
 
     const login = useCallback(
-      async (options?: LoginOptions) => {
+      async (options?: LoginParameters) => {
         if (!authClient) {
           throw new Error("Auth client not initialized")
         }
@@ -82,7 +84,7 @@ export const getAuthHooks = (agentManager: AgentManager): GetAuthHooks => {
     )
 
     const logout = useCallback(
-      async (options?: LogoutOptions) => {
+      async (options?: LogoutParameters) => {
         if (!authClient) {
           throw new Error("Auth client not initialized")
         }

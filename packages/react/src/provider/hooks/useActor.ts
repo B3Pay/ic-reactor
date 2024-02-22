@@ -1,9 +1,9 @@
 import { createActorManager, createCandidAdapter } from "@ic-reactor/core"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAgentManager } from ".."
-import { getActorHooks } from "../../helpers"
+import { actorHooks } from "../../helpers"
 import type { BaseActor } from "../../types"
-import type { UseActorOptions, UseActorReturn } from "./types"
+import type { UseActorParameters, UseActorReturn } from "./types"
 
 /**
  * A comprehensive hook that manages both the fetching of Candid interfaces
@@ -66,7 +66,7 @@ import type { UseActorOptions, UseActorReturn } from "./types"
  * ```
  */
 export const useActor = <A = BaseActor>(
-  options: UseActorOptions
+  options: UseActorParameters
 ): UseActorReturn<A> => {
   const {
     canisterId,
@@ -134,7 +134,7 @@ export const useActor = <A = BaseActor>(
       ...config,
     })
 
-    return getActorHooks(actorManager)
+    return actorHooks(actorManager)
   }, [idlFactory])
 
   return { hooks, fetching, fetchError }

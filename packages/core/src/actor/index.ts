@@ -4,12 +4,12 @@ import { createStoreWithOptionalDevtools } from "../tools/helper"
 import type { HttpAgent } from "@dfinity/agent"
 import type {
   CanisterId,
-  ActorMethodArgs,
+  ActorMethodParameters,
   ActorMethodReturnType,
   ActorState,
   ActorStore,
   ActorMethodStates,
-  ActorManagerOptions,
+  ActorManagerParameters,
   FunctionName,
   VisitService,
   BaseActor,
@@ -17,7 +17,7 @@ import type {
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
-import type { UpdateAgentOptions } from "../types"
+import type { UpdateAgentParameters } from "../types"
 
 export class ActorManager<A = BaseActor> {
   private _actor: null | A = null
@@ -63,7 +63,7 @@ export class ActorManager<A = BaseActor> {
     })
   }
 
-  constructor(actorConfig: ActorManagerOptions) {
+  constructor(actorConfig: ActorManagerParameters) {
     const {
       agentManager,
       canisterId,
@@ -97,7 +97,7 @@ export class ActorManager<A = BaseActor> {
     }
   }
 
-  public initialize = async (options?: UpdateAgentOptions) => {
+  public initialize = async (options?: UpdateAgentParameters) => {
     await this._agentManager.updateAgent(options)
   }
 
@@ -157,7 +157,7 @@ export class ActorManager<A = BaseActor> {
 
   public callMethod = async <M extends FunctionName<A>>(
     functionName: M,
-    ...args: ActorMethodArgs<A[M]>
+    ...args: ActorMethodParameters<A[M]>
   ): Promise<ActorMethodReturnType<A[M]>> => {
     if (!this._actor) {
       throw new Error("Actor not initialized")
@@ -171,7 +171,7 @@ export class ActorManager<A = BaseActor> {
     }
 
     const method = this._actor[functionName as keyof A] as (
-      ...args: ActorMethodArgs<A[M]>
+      ...args: ActorMethodParameters<A[M]>
     ) => Promise<ActorMethodReturnType<A[M]>>
 
     const data = await method(...args)

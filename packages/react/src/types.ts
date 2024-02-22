@@ -1,18 +1,25 @@
-import type { HttpAgent, VisitService } from "@ic-reactor/core/dist/types"
 import type {
-  GetActorHooks,
-  GetAgentHooks,
-  GetAuthHooks,
+  HttpAgent,
+  ReactorCoreParameters,
+  VisitService,
+} from "@ic-reactor/core/dist/types"
+import type {
+  ActorHooksReturnType,
+  AgentHooksReturnType,
+  AuthHooksReturnType,
 } from "./helpers/types"
 
-export * from "@ic-reactor/core/dist/types"
-export * from "./provider/types"
-export * from "./helpers/types"
+export interface ReactorParameters extends ReactorCoreParameters {}
 
-export interface CreateReactorReturn<A>
-  extends GetActorHooks<A>,
-    GetAuthHooks,
-    GetAgentHooks {
+export interface ReactorReturnType<A>
+  extends ActorHooksReturnType<A>,
+    AuthHooksReturnType,
+    AgentHooksReturnType {
   getAgent: () => HttpAgent
   getVisitFunction: () => VisitService<A>
 }
+
+export * from "./provider/types"
+export * from "./helpers/types"
+
+export * from "@ic-reactor/core/dist/types"

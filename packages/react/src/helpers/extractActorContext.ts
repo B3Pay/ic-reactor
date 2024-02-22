@@ -1,6 +1,6 @@
 import { useContext } from "react"
 import type {
-  GetActorHooks,
+  ActorHooksReturnType,
   BaseActor,
   CreateActorContextReturn,
   FunctionName,
@@ -9,7 +9,7 @@ import type {
 } from "../types"
 
 export function extractActorContext<A = BaseActor>(
-  actorContext: React.Context<GetActorHooks<A> | null>
+  actorContext: React.Context<ActorHooksReturnType<A> | null>
 ): Omit<CreateActorContextReturn<A>, "ActorProvider"> {
   /**
    * Hook for accessing the actor context, including the actor manager and state.

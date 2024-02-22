@@ -1,8 +1,8 @@
 import React, { createContext, useMemo } from "react"
 import { createAgentManager } from "@ic-reactor/core"
-import { getAgentHooks } from "../helpers/getAgentHooks"
-import { getAuthHooks } from "../helpers/getAuthHooks"
-import type { AgentManagerOptions } from "@ic-reactor/core/dist/types"
+import { agentHooks } from "../helpers/agentHooks"
+import { authHooks } from "../helpers/authHooks"
+import type { AgentManagerParameters } from "@ic-reactor/core/dist/types"
 import type {
   CreateAgentContextReturn,
   AgentProviderProps,
@@ -14,7 +14,7 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  * Creates a React context for managing IC agent and authentication states, providing hooks for interacting with the IC blockchain.
  * This function initializes an `AgentContext` with a set of utilities and hooks based on the provided agent configuration.
  *
- * @param agentOptions A partial configuration object for the agent manager, allowing customization of the agent's behavior.
+ * @param agentParameters A partial configuration object for the agent manager, allowing customization of the agent's behavior.
  *
  * @returns An object containing the `AgentProvider` component and various hooks for interacting with the agent and authentication state.
  * The `AgentProvider` component is a React context provider that should wrap your app or components needing access to agent functionalities.
@@ -27,10 +27,10 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  * ```typescript
  * // agent.ts
  * import { createAgentContext } from "@ic-reactor/react";
- * import { CreateAgentOptions } from "@ic-reactor/react/dist/types";
+ * import { CreateAgentParameters } from "@ic-reactor/react/dist/types";
  *
  * // Optional: Define custom agent configuration
- * const agentConfig: CreateAgentOptions = {
+ * const agentConfig: CreateAgentParameters = {
  *   host: "https://localhost:8000",
  *   // or
  *   // isLocalEnv: true,
@@ -53,7 +53,7 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  * facilitating interaction with the Internet Computer blockchain.
  */
 export const createAgentContext = (
-  agentOptions: Partial<AgentManagerOptions> = {}
+  agentParameters: Partial<AgentManagerParameters> = {}
 ): CreateAgentContextReturn => {
   const AgentContext = createContext<AgentContext | null>(null)
 
@@ -64,11 +64,12 @@ export const createAgentContext = (
   }) => {
     const hooks = useMemo(() => {
       const agentManager =
-        mybeAgentManager ?? createAgentManager({ ...options, ...agentOptions })
+        mybeAgentManager ??
+        createAgentManager({ ...options, ...agentParameters })
 
       return {
-        ...getAgentHooks(agentManager),
-        ...getAuthHooks(agentManager),
+        ...agentHooks(agentManager),
+        ...authHooks(agentManager),
         agentManager,
       }
     }, [options])

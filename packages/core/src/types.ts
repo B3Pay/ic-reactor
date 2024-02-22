@@ -9,8 +9,8 @@ import type { Principal } from "@dfinity/principal"
 import type { IDL } from "@dfinity/candid"
 import type { ActorManager } from "./actor"
 import type {
-  ActorManagerOptions,
-  ActorMethodArgs,
+  ActorManagerParameters,
+  ActorMethodParameters,
   ActorMethodReturnType,
   ActorMethodState,
   BaseActor,
@@ -33,13 +33,13 @@ export type {
   IDL,
 }
 
-export interface CreateReactorOptions extends CreateReactorStoreOptions {
+export interface ReactorCoreParameters extends ReactorStoreParameters {
   withProcessEnv?: boolean
 }
 
-export interface CreateReactorStoreOptions
+export interface ReactorStoreParameters
   extends HttpAgentOptions,
-    Omit<ActorManagerOptions, "agentManager"> {
+    Omit<ActorManagerParameters, "agentManager"> {
   agentManager?: AgentManager
   isLocalEnv?: boolean
   port?: number
@@ -57,11 +57,11 @@ export type ActorSubscribeFunction<A, M extends FunctionName<A>> = (
 ) => () => void
 
 export type ActorCallFunction<A, M extends FunctionName<A>> = (
-  replaceArgs?: ActorMethodArgs<A[M]>
+  replaceArgs?: ActorMethodParameters<A[M]>
 ) => Promise<ActorMethodReturnType<A[M]>>
 
 // Type for the return value of a Actor call
-export type ActorQueryReturn<A, M extends FunctionName<A>> = {
+export type ActorQueryReturnType<A, M extends FunctionName<A>> = {
   intervalId: NodeJS.Timeout | null
   requestHash: string
   getState: ActorGetStateFunction<A, M>
@@ -70,23 +70,23 @@ export type ActorQueryReturn<A, M extends FunctionName<A>> = {
   dataPromise: Promise<ActorMethodReturnType<A[M]>>
 }
 
-export type ActorUpdateReturn<A, M extends FunctionName<A>> = {
+export type ActorUpdateReturnType<A, M extends FunctionName<A>> = {
   requestHash: string
   getState: ActorGetStateFunction<A, M>
   subscribe: ActorSubscribeFunction<A, M>
   call: ActorCallFunction<A, M>
 }
 
-export type ActorQueryArgs<A, M extends FunctionName<A>> = {
+export type ActorQueryParameters<A, M extends FunctionName<A>> = {
   functionName: M
-  args?: ActorMethodArgs<A[M]>
+  args?: ActorMethodParameters<A[M]>
   refetchOnMount?: boolean
   refetchInterval?: number | false
 }
 
-export type ActorUpdateArgs<A, M extends FunctionName<A>> = {
+export type ActorUpdateParameters<A, M extends FunctionName<A>> = {
   functionName: M
-  args?: ActorMethodArgs<A[M]>
+  args?: ActorMethodParameters<A[M]>
 }
 
 // Function type for calling a Actor method
@@ -94,22 +94,22 @@ export type ActorMethodCall<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
   functionName: M,
-  ...args: ActorMethodArgs<A[M]>
-) => ActorUpdateReturn<A, M>
+  ...args: ActorMethodParameters<A[M]>
+) => ActorUpdateReturnType<A, M>
 
 export type ActorQuery<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
-  options: ActorQueryArgs<A, M>
-) => ActorQueryReturn<A, M>
+  options: ActorQueryParameters<A, M>
+) => ActorQueryReturnType<A, M>
 
 export type ActorUpdate<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
-  options: ActorUpdateArgs<A, M>
-) => ActorUpdateReturn<A, M>
+  options: ActorUpdateParameters<A, M>
+) => ActorUpdateReturnType<A, M>
 
-export interface ReactorCore<A = BaseActor>
+export interface ReactorCoreReturnType<A = BaseActor>
   extends AgentManager,
     Omit<ActorManager<A>, "updateMethodState"> {
   login: (options?: AuthClientLoginOptions) => Promise<void>

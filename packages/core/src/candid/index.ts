@@ -3,7 +3,7 @@ import { IDL } from "@dfinity/candid"
 import { Principal } from "@dfinity/principal"
 import type {
   CanisterId,
-  CandidAdapterOptions,
+  CandidAdapterParameters,
   CandidDefenition,
 } from "../types"
 import { DEFAULT_IC_DIDJS_ID, DEFAULT_LOCAL_DIDJS_ID } from "../tools/constants"
@@ -12,7 +12,11 @@ export class CandidAdapter {
   public agent: HttpAgent
   public didjsCanisterId: string
 
-  constructor({ agentManager, agent, didjsCanisterId }: CandidAdapterOptions) {
+  constructor({
+    agentManager,
+    agent,
+    didjsCanisterId,
+  }: CandidAdapterParameters) {
     if (agent) {
       this.agent = agent
     } else if (agentManager) {

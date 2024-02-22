@@ -1,5 +1,5 @@
-import { createActorContext } from "./actorContext"
-import { createAgentContext } from "./agentContext"
+import { createActorContext } from "./actor"
+import { createAgentContext } from "./agent"
 
 export const {
   ActorProvider,

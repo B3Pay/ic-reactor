@@ -5,18 +5,18 @@ import {
 import { generateRequestHash, isInLocalOrDevelopment } from "./tools"
 
 import type {
-  ActorMethodArgs,
+  ActorMethodParameters,
   ActorMethodState,
   BaseActor,
   FunctionName,
   ActorCallFunction,
-  ReactorCore,
+  ReactorCoreReturnType,
   ActorGetStateFunction,
   ActorMethodCall,
   ActorQuery,
   ActorSubscribeFunction,
   ActorUpdate,
-  CreateReactorOptions,
+  ReactorCoreParameters,
 } from "./types"
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
 import { createReactorStore } from "./store"
@@ -29,12 +29,13 @@ import { createReactorStore } from "./store"
  * @category Main
  * @includeExample ./packages/core/README.md:26-80
  */
-export const createReactorCore = <A = BaseActor>({
-  isLocalEnv,
-  withProcessEnv = false,
-  ...options
-}: CreateReactorOptions): ReactorCore<A> => {
-  isLocalEnv = isLocalEnv || (withProcessEnv ? isInLocalOrDevelopment() : false)
+export const createReactorCore = <A = BaseActor>(
+  options: ReactorCoreParameters
+): ReactorCoreReturnType<A> => {
+  const { withProcessEnv = false, ...config } = options
+  const isLocalEnv = withProcessEnv
+    ? isInLocalOrDevelopment()
+    : config.isLocalEnv
 
   const {
     subscribeActorState,
@@ -45,10 +46,10 @@ export const createReactorCore = <A = BaseActor>({
     ...rest
   } = createReactorStore<A>({
     isLocalEnv,
-    ...options,
+    ...config,
   })
 
-  const reActorMethod: ActorMethodCall<A> = (functionName, ...args) => {
+  const actorMethod: ActorMethodCall<A> = (functionName, ...args) => {
     const requestHash = generateRequestHash(args)
 
     const updateState = <M extends FunctionName<A>>(
@@ -133,9 +134,9 @@ export const createReactorCore = <A = BaseActor>({
     refetchInterval = false,
   }) => {
     let intervalId: NodeJS.Timeout | null = null
-    const { call, ...rest } = reActorMethod(
+    const { call, ...rest } = actorMethod(
       functionName,
-      ...(args as ActorMethodArgs<A[typeof functionName]>)
+      ...(args as ActorMethodParameters<A[typeof functionName]>)
     )
 
     if (refetchInterval) {
@@ -151,9 +152,9 @@ export const createReactorCore = <A = BaseActor>({
   }
 
   const updateCall: ActorUpdate<A> = ({ functionName, args = [] }) => {
-    return reActorMethod(
+    return actorMethod(
       functionName,
-      ...(args as ActorMethodArgs<A[typeof functionName]>)
+      ...(args as ActorMethodParameters<A[typeof functionName]>)
     )
   }
 
@@ -194,5 +195,5 @@ export const createReactorCore = <A = BaseActor>({
     subscribeActorState,
     ...agentManager,
     ...rest,
-  } as ReactorCore<A>
+  } as ReactorCoreReturnType<A>
 }

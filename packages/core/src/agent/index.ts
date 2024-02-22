@@ -3,8 +3,8 @@ import { createStoreWithOptionalDevtools } from "../tools/helper"
 import type {
   AgentState,
   AgentStore,
-  AgentManagerOptions,
-  UpdateAgentOptions,
+  AgentManagerParameters,
+  UpdateAgentParameters,
   AuthState,
   AuthStore,
 } from "./types"
@@ -40,13 +40,13 @@ export class AgentManager {
     this.authStore.setState((state) => ({ ...state, ...newState }))
   }
 
-  constructor(options?: AgentManagerOptions) {
+  constructor(options?: AgentManagerParameters) {
     const {
       withDevtools,
       port = 4943,
       isLocalEnv,
       host: optionHost,
-      ...agentOptions
+      ...agentParameters
     } = options || {}
     const host = isLocalEnv
       ? `http://127.0.0.1:${port}`
@@ -66,7 +66,7 @@ export class AgentManager {
       store: "auth",
     })
 
-    this._agent = new HttpAgent({ ...agentOptions, host })
+    this._agent = new HttpAgent({ ...agentParameters, host })
     this.isLocalEnv = this._agent.isLocal()
     this.initializeAgent()
   }
@@ -96,7 +96,7 @@ export class AgentManager {
     this._subscribers.forEach((callback) => callback(this._agent))
   }
 
-  public updateAgent = async (options?: UpdateAgentOptions) => {
+  public updateAgent = async (options?: UpdateAgentParameters) => {
     const { agent } = options || {}
 
     if (agent) {

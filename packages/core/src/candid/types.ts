@@ -1,7 +1,7 @@
 import type { AgentManager } from "../agent"
 import type { IDL, HttpAgent } from "../types"
 
-export interface CandidAdapterOptions {
+export interface CandidAdapterParameters {
   agentManager?: AgentManager
   agent?: HttpAgent
   didjsCanisterId?: string

@@ -15,7 +15,7 @@ export type FunctionType = "query" | "update"
 
 export type CanisterId = string | Principal
 
-export interface ActorManagerOptions {
+export interface ActorManagerParameters {
   agentManager: AgentManager
   idlFactory: IDL.InterfaceFactory
   canisterId: CanisterId
@@ -40,7 +40,7 @@ export type VisitService<
 
 // Extracts the argument types of an ActorMethod
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ActorMethodArgs<T> = T extends ActorMethod<infer Args, any>
+export type ActorMethodParameters<T> = T extends ActorMethod<infer Args, any>
   ? Args
   : never
 
@@ -80,5 +80,5 @@ export type CallActorMethod<A = BaseActor> = <
   M extends FunctionName<A> = FunctionName<A>
 >(
   functionName: M,
-  ...args: ActorMethodArgs<A[M]>
+  ...args: ActorMethodParameters<A[M]>
 ) => Promise<ActorMethodReturnType<A[M]>>

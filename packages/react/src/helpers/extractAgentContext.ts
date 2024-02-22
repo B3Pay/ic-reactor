@@ -3,7 +3,7 @@ import type { AgentManager } from "@ic-reactor/core/dist/agent"
 import type {
   AgentContext,
   CreateAgentContextReturn,
-  UseAuthClientArgs,
+  UseAuthClientParameters,
 } from "../types"
 
 /**
@@ -122,7 +122,7 @@ export const extractAgentContext = (
    */
   const useAgentState = () => useAgentContext().useAgentState()
 
-  const useAuthClient = (args?: UseAuthClientArgs) =>
+  const useAuthClient = (args?: UseAuthClientParameters) =>
     useAgentContext().useAuthClient(args)
 
   /**

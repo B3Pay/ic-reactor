@@ -1,22 +1,26 @@
 import type {
   IDL,
-  GetActorHooks,
-  GetAgentHooks,
-  GetAuthHooks,
-  ActorManagerOptions,
+  ActorHooksReturnType,
+  AgentHooksReturnType,
+  AuthHooksReturnType,
+  ActorManagerParameters,
   BaseActor,
-  AgentManagerOptions,
+  AgentManagerParameters,
 } from "../types"
 import type { AgentManager } from "@ic-reactor/core/dist/agent"
 import type { PropsWithChildren } from "react"
 
 export * from "./hooks/types"
 
-export interface AgentContext extends GetAgentHooks, GetAuthHooks {
+export interface AgentContext
+  extends AgentHooksReturnType,
+    AuthHooksReturnType {
   agentManager: AgentManager
 }
 
-export interface CreateAgentContextReturn extends GetAgentHooks, GetAuthHooks {
+export interface CreateAgentContextReturn
+  extends AgentHooksReturnType,
+    AuthHooksReturnType {
   useAgentManager: (
     agentContext?: React.Context<AgentContext | null>
   ) => AgentManager
@@ -25,28 +29,28 @@ export interface CreateAgentContextReturn extends GetAgentHooks, GetAuthHooks {
 
 export interface AgentProviderProps
   extends PropsWithChildren,
-    AgentManagerOptions {
+    AgentManagerParameters {
   agentManager?: AgentManager
 }
 
 export interface CreateActorContextReturn<A = BaseActor>
-  extends GetActorHooks<A> {
+  extends ActorHooksReturnType<A> {
   ActorProvider: React.FC<ActorProviderProps>
 }
 
-export interface CreateActorContextOptions
+export interface ActorProviderProps extends CreateActorContextParameters {
+  children?: React.ReactNode | undefined
+  loadingComponent?: React.ReactNode
+}
+
+export interface CreateActorContextParameters
   extends Omit<
-    ActorManagerOptions,
+    ActorManagerParameters,
     "idlFactory" | "agentManager" | "canisterId"
   > {
   didjsId?: string
   canisterId?: string
   agentContext?: React.Context<AgentContext | null>
   idlFactory?: IDL.InterfaceFactory
-  loadingComponent?: React.ReactNode
-}
-
-export interface ActorProviderProps extends CreateActorContextOptions {
-  children?: React.ReactNode | undefined
   loadingComponent?: React.ReactNode
 }

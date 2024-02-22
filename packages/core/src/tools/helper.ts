@@ -2,16 +2,16 @@ import { hash } from "@dfinity/agent"
 import { toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import { BaseActor } from "../types"
+import type { BaseActor } from "../types"
 
-interface StoreOptions {
+interface StoreParameters {
   withDevtools?: boolean
   store: string
 }
 
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
-  options: StoreOptions
+  options: StoreParameters
 ) {
   if (options.withDevtools) {
     return createStore(

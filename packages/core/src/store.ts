@@ -1,6 +1,6 @@
 import { createActorManager, createAgentManager } from "./other"
 import { ActorManager } from "./actor"
-import type { BaseActor, CreateReactorStoreOptions } from "./types"
+import type { BaseActor, ReactorStoreParameters } from "./types"
 
 /**
  * Create a new actor manager with the given options.
@@ -11,7 +11,7 @@ import type { BaseActor, CreateReactorStoreOptions } from "./types"
  * @includeExample ./packages/core/README.md:194-220
  */
 export const createReactorStore = <A = BaseActor>(
-  options: CreateReactorStoreOptions
+  options: ReactorStoreParameters
 ): ActorManager<A> => {
   const {
     idlFactory,
@@ -20,14 +20,14 @@ export const createReactorStore = <A = BaseActor>(
     initializeOnCreate = true,
     withVisitor = false,
     agentManager: maybeAgentManager,
-    ...agentOptions
+    ...agentParameters
   } = options
 
   const agentManager =
     maybeAgentManager ||
     createAgentManager({
       withDevtools,
-      ...agentOptions,
+      ...agentParameters,
     })
 
   const actorManager = createActorManager<A>({

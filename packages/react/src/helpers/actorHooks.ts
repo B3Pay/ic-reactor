@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useStore } from "zustand"
 import type {
   ActorCallState,
-  SharedCall,
+  UseMethodCall,
   UseActorState,
   UseQueryCall,
   UseUpdateCall,
-  GetActorHooks,
+  ActorHooksReturnType,
 } from "../types"
 import type {
   VisitService,
-  ActorMethodArgs,
+  ActorMethodParameters,
   FunctionName,
   BaseActor,
 } from "@ic-reactor/core/dist/types"
@@ -31,16 +31,14 @@ const DEFAULT_STATE: ActorCallState<never, never> = {
  * - initialize: Function to initialize actor management.
  * - useActorState: Hook for accessing the actor's state including the canister ID.
  * - useVisitMethod: Hook for memoizing a method visit service for a given actor method name.
- * - useReactorCall: Hook for making calls to actor methods with support for loading states, errors, and custom event handlers.
  * - useQueryCall: Hook specifically designed for query calls to actors with features such as automatic refetching on mount and at specified intervals.
- * - useUpdateCall: Alias for useReactorCall, tailored for update calls to actors.
- * - useMethodCall: Combines useVisitMethod and useReactorCall for a streamlined experience when calling actor methods, including visitation and state management.
+ * - useUpdateCall: Hook specifically designed for update calls to actors with features such as error handling and loading state management.
  *
  * Each hook is designed to simplify the process of interacting with actors in IC projects by abstracting away the complexity of state management, error handling, and method invocation.
  */
-export const getActorHooks = <A = BaseActor>(
+export const actorHooks = <A = BaseActor>(
   actorManager: ActorManager<A>
-): GetActorHooks<A> => {
+): ActorHooksReturnType<A> => {
   const { actorStore, canisterId, visitFunction, callMethod, initialize } =
     actorManager
 
@@ -55,7 +53,7 @@ export const getActorHooks = <A = BaseActor>(
     return useMemo(() => visitFunction[functionName], [functionName])
   }
 
-  const useReactorCall: SharedCall<A> = ({
+  const useMethodCall: UseMethodCall<A> = ({
     args = [],
     functionName,
     throwOnError = false,
@@ -70,7 +68,7 @@ export const getActorHooks = <A = BaseActor>(
       async (
         eventOrReplaceArgs?:
           | React.MouseEvent
-          | ActorMethodArgs<A[typeof functionName]>
+          | ActorMethodParameters<A[typeof functionName]>
       ) => {
         setState((prev) => ({ ...prev, error: undefined, loading: true }))
         events?.onLoading?.(true)
@@ -80,7 +78,7 @@ export const getActorHooks = <A = BaseActor>(
             eventOrReplaceArgs instanceof Array ? eventOrReplaceArgs : args
           const data = await callMethod(
             functionName,
-            ...(replaceArgs as ActorMethodArgs<A[typeof functionName]>)
+            ...(replaceArgs as ActorMethodParameters<A[typeof functionName]>)
           )
 
           setState({ data, error: undefined, loading: false })
@@ -112,7 +110,7 @@ export const getActorHooks = <A = BaseActor>(
     refetchInterval = false,
     ...rest
   }) => {
-    const { call, ...state } = useReactorCall(rest)
+    const { call, ...state } = useMethodCall(rest)
     const intervalId = useRef<NodeJS.Timeout>()
 
     useEffect(() => {
@@ -130,7 +128,7 @@ export const getActorHooks = <A = BaseActor>(
     return { call, ...state }
   }
 
-  const useUpdateCall: UseUpdateCall<A> = useReactorCall
+  const useUpdateCall: UseUpdateCall<A> = useMethodCall
 
   return {
     initialize,

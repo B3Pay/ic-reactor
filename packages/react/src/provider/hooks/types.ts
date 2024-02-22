@@ -1,10 +1,14 @@
 import type { IDL } from "@dfinity/candid"
 import { AgentContext } from "../types"
-import { GetActorHooks, ActorManagerOptions, BaseActor } from "../../types"
+import {
+  ActorHooksReturnType,
+  ActorManagerParameters,
+  BaseActor,
+} from "../../types"
 
-export interface UseActorOptions
+export interface UseActorParameters
   extends Omit<
-    ActorManagerOptions,
+    ActorManagerParameters,
     "idlFactory" | "agentManager" | "canisterId"
   > {
   canisterId: string
@@ -14,7 +18,7 @@ export interface UseActorOptions
 }
 
 export interface UseActorReturn<A = BaseActor> {
-  hooks: GetActorHooks<A> | null
+  hooks: ActorHooksReturnType<A> | null
   fetching: boolean
   fetchError: string | null
 }
