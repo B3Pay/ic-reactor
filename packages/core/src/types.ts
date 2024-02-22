@@ -33,11 +33,7 @@ export type {
   IDL,
 }
 
-export interface ReactorCoreParameters extends ReactorStoreParameters {
-  withProcessEnv?: boolean
-}
-
-export interface ReactorStoreParameters
+export interface CreateReactorStoreParameters
   extends HttpAgentOptions,
     Omit<ActorManagerParameters, "agentManager"> {
   agentManager?: AgentManager
@@ -109,7 +105,12 @@ export type ActorUpdate<A = Record<string, ActorMethod>> = <
   options: ActorUpdateParameters<A, M>
 ) => ActorUpdateReturnType<A, M>
 
-export interface ReactorCoreReturnType<A = BaseActor>
+export interface CreateReactorCoreParameters
+  extends CreateReactorStoreParameters {
+  withProcessEnv?: boolean
+}
+
+export interface CreateReactorCoreReturnType<A = BaseActor>
   extends AgentManager,
     Omit<ActorManager<A>, "updateMethodState"> {
   login: (options?: AuthClientLoginOptions) => Promise<void>

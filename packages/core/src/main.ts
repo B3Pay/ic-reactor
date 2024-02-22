@@ -10,13 +10,13 @@ import type {
   BaseActor,
   FunctionName,
   ActorCallFunction,
-  ReactorCoreReturnType,
+  CreateReactorCoreReturnType,
   ActorGetStateFunction,
   ActorMethodCall,
   ActorQuery,
   ActorSubscribeFunction,
   ActorUpdate,
-  ReactorCoreParameters,
+  CreateReactorCoreParameters,
 } from "./types"
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
 import { createReactorStore } from "./store"
@@ -30,8 +30,8 @@ import { createReactorStore } from "./store"
  * @includeExample ./packages/core/README.md:26-80
  */
 export const createReactorCore = <A = BaseActor>(
-  options: ReactorCoreParameters
-): ReactorCoreReturnType<A> => {
+  options: CreateReactorCoreParameters
+): CreateReactorCoreReturnType<A> => {
   const { withProcessEnv = false, ...config } = options
   const isLocalEnv = withProcessEnv ? isInLocalOrDevelopment() : undefined
 
@@ -193,5 +193,5 @@ export const createReactorCore = <A = BaseActor>(
     subscribeActorState,
     ...agentManager,
     ...rest,
-  } as ReactorCoreReturnType<A>
+  } as CreateReactorCoreReturnType<A>
 }
