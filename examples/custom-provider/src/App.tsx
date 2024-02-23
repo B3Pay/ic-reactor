@@ -1,4 +1,4 @@
-import { useAgentManager } from "@ic-reactor/react"
+import { useAgentManager, useUserPrincipal } from "@ic-reactor/react"
 import LedgerProvider from "./ICRC1Provider"
 import ICRC1Call from "./ICRC1Call"
 import { FunctionName } from "@ic-reactor/react/dist/types"
@@ -9,6 +9,8 @@ import {
   IC_HOST_NETWORK_URI,
   LOCAL_HOST_NETWORK_URI,
 } from "@ic-reactor/core/dist/utils"
+import UserWallet from "./UserWallet"
+import Login from "./Login"
 
 interface AppProps {}
 
@@ -49,9 +51,12 @@ const App: React.FC<AppProps> = () => {
     }
   }
 
+  const principal = useUserPrincipal()
+
   return (
     <div>
       <h1>ICRC Token</h1>
+      <Login />
       <form onSubmit={onSubmit}>
         <select ref={networkRef}>
           <option value="ic">IC</option>
@@ -69,6 +74,7 @@ const App: React.FC<AppProps> = () => {
         {functionNames.map((functionName) => (
           <ICRC1Call key={functionName} functionName={functionName} />
         ))}
+        {principal && <UserWallet principal={principal} />}
       </LedgerProvider>
     </div>
   )

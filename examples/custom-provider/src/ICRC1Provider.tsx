@@ -22,7 +22,7 @@ const ICRC1Provider: React.FC<ICRC1ActorProps> = ({ children, canisterId }) => {
 
   return (
     <ActorContext.Provider value={hooks}>
-      <h2>ICRC1 Actor({canisterId})</h2>
+      <h2>ICRC1({canisterId})</h2>
       {fetching && <p>Loading Candid interface...</p>}
       {fetchError && <p>Error: {fetchError}</p>}
       {hooks && children}
