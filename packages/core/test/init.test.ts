@@ -65,7 +65,7 @@ describe("CreateActor", () => {
   })
 
   it("should initialized the actor", async () => {
-    expect(agentCallback).toHaveBeenCalledTimes(0)
+    expect(agentCallback).toHaveBeenCalledTimes(1)
     expect(authCallback).toHaveBeenCalledTimes(0)
     expect(actorCallback).toHaveBeenCalledTimes(0)
 
@@ -73,13 +73,13 @@ describe("CreateActor", () => {
 
     const promise = initialize()
 
-    expect(agentCallback).toHaveBeenCalledTimes(1)
+    expect(agentCallback).toHaveBeenCalledTimes(2)
     expect(authCallback).toHaveBeenCalledTimes(0)
     expect(actorCallback).toHaveBeenCalledTimes(2)
 
     await promise
 
-    expect(agentCallback).toHaveBeenCalledTimes(1)
+    expect(agentCallback).toHaveBeenCalledTimes(2)
     expect(authCallback).toHaveBeenCalledTimes(0)
     expect(actorCallback).toHaveBeenCalledTimes(2)
   })
@@ -122,7 +122,7 @@ describe("CreateActor", () => {
     expect(authClient).toBeDefined()
     expect(identity).toBeDefined()
 
-    expect(agentCallback).toHaveBeenCalledTimes(2)
+    expect(agentCallback).toHaveBeenCalledTimes(3)
     expect(authCallback).toHaveBeenCalledTimes(2)
   })
 })

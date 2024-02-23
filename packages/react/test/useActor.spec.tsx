@@ -79,7 +79,7 @@ describe("createReactor", () => {
 
     const { useQueryCall } = extractActorContext(ActorContext)
 
-    const LedgerActor = ({ children }) => {
+    const BackendActor = ({ children }) => {
       const { hooks, fetching, fetchError } = useActor<Backend>({
         canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
         idlFactory,
@@ -115,9 +115,9 @@ describe("createReactor", () => {
 
     let screen = renderer.create(
       <AgentProvider withDevtools>
-        <LedgerActor>
+        <BackendActor>
           <CanisterName />
-        </LedgerActor>
+        </BackendActor>
       </AgentProvider>
     )
 

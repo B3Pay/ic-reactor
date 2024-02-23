@@ -8,7 +8,7 @@ import { useRef, useState } from "react"
 import {
   IC_HOST_NETWORK_URI,
   LOCAL_HOST_NETWORK_URI,
-} from "@ic-reactor/core/dist/tools"
+} from "@ic-reactor/core/dist/utils"
 
 interface AppProps {}
 

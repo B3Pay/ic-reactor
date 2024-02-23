@@ -1,4 +1,4 @@
-import { IC_HOST_NETWORK_URI } from "../src/tools"
+import { IC_HOST_NETWORK_URI } from "../src/utils"
 import { createAgentManager } from "../src"
 
 describe("My IC Network agent", () => {

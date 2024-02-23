@@ -127,7 +127,7 @@ export const useActor = <A = BaseActor>(
 
   // Automatically fetch Candid if not already fetched or provided.
   useEffect(
-    () => agentManager.subscribeAgent(fetchCandid),
+    () => agentManager.subscribeAgent(fetchCandid, !maybeIdlFactory),
     [fetchCandid, agentManager]
   )
 
