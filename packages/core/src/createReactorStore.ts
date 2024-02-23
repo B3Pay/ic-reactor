@@ -15,7 +15,7 @@ import { createAgentManager } from "./createAgentManager"
 export const createReactorStore = <A = BaseActor>(
   config: CreateReactorStoreParameters
 ): ActorManager<A> => {
-  const isLocalEnv = config.withProcessEnv
+  const withLocalEnv = config.withProcessEnv
     ? isInLocalOrDevelopment()
     : undefined
 
@@ -33,7 +33,7 @@ export const createReactorStore = <A = BaseActor>(
     maybeAgentManager ||
     createAgentManager({
       withDevtools,
-      isLocalEnv,
+      withLocalEnv,
       ...agentParameters,
     })
 

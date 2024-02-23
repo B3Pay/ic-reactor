@@ -18,7 +18,7 @@ export class AgentManager {
 
   public agentStore: AgentStore
   public authStore: AuthStore
-  public isLocalEnv: boolean
+  public withLocalEnv: boolean
 
   private initialAgentState: AgentState = {
     initialized: false,
@@ -45,11 +45,11 @@ export class AgentManager {
     const {
       withDevtools,
       port = 4943,
-      isLocalEnv,
+      withLocalEnv,
       host: optionHost,
       ...agentParameters
     } = options || {}
-    const host = isLocalEnv
+    const host = withLocalEnv
       ? `http://127.0.0.1:${port}`
       : optionHost
       ? optionHost.includes("localhost")
@@ -68,13 +68,13 @@ export class AgentManager {
     })
 
     this._agent = new HttpAgent({ ...agentParameters, host })
-    this.isLocalEnv = this._agent.isLocal()
+    this.withLocalEnv = this._agent.isLocal()
     this.initializeAgent()
   }
 
   private initializeAgent = async () => {
     this.updateAgentState({ initializing: true })
-    if (this.isLocalEnv) {
+    if (this.withLocalEnv) {
       try {
         await this._agent.fetchRootKey()
         this.updateAgentState({ initialized: true, initializing: false })
@@ -110,7 +110,7 @@ export class AgentManager {
       this._agent = agent
     } else if (options) {
       this._agent = new HttpAgent(options)
-      this.isLocalEnv = this._agent.isLocal()
+      this.withLocalEnv = this._agent.isLocal()
       await this.initializeAgent()
     }
 

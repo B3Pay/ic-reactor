@@ -13,7 +13,7 @@ import type {
  *
  * @param config Configuration {@link CreateReactorParameters} for the reactor, including:
  *  - `withProcessEnv` (optional): Specifies whether to use process environment variables to determine if the environment is local or development. Defaults to false.
- *  - `isLocalEnv` (optional): Indicates if the current environment is local or development, influencing the agent and actor behavior. Useful for testing or development.
+ *  - `withLocalEnv` (optional): Indicates if the current environment is local or development, influencing the agent and actor behavior. Useful for testing or development.
  *  - `port` (optional): Port number for the local or development environment.
  *
  * @returns An object containing {@link CreateReactorReturnType} hooks and utilities:
@@ -43,7 +43,7 @@ import type {
  *   canisterId,
  *   idlFactory,
  *   host: "https://localhost:8000", // IC network host         |
- *   isLocalEnv: true, // Set true for local network            | one of these
+ *   withLocalEnv: true, // Set true for local network            | one of these
  *   withProcessEnv: true, // Use process.env to determine host |
  *   port: 8000, // Port number for local network               |
  * };

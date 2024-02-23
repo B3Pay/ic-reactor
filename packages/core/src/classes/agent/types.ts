@@ -6,7 +6,7 @@ export { HttpAgentOptions, AuthClient, Identity }
 
 export interface AgentManagerParameters extends HttpAgentOptions {
   port?: number
-  isLocalEnv?: boolean
+  withLocalEnv?: boolean
   withDevtools?: boolean
 }
 

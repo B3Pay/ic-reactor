@@ -17,7 +17,7 @@ const {
   useUserPrincipal: useLocalUserPrincipal,
   useAgent: useLocalAgent,
 } = createAgentContext({
-  isLocalEnv: true,
+  withLocalEnv: true,
 })
 
 describe("createReactor", () => {

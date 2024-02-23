@@ -13,7 +13,7 @@ describe("React Test", () => {
       canisterId,
       idlFactory,
       initializeOnCreate: false,
-      isLocalEnv: true,
+      withLocalEnv: true,
     })
 
     const Initialize = () => {
@@ -54,7 +54,7 @@ describe("React Test", () => {
     const { useQueryCall } = createReactor<typeof hello_actor>({
       canisterId,
       idlFactory,
-      isLocalEnv: true,
+      withLocalEnv: true,
       verifyQuerySignatures: false,
     })
 
@@ -95,7 +95,7 @@ describe("React Test", () => {
     const { useUpdateCall } = createReactor<typeof hello_actor>({
       canisterId,
       idlFactory,
-      isLocalEnv: true,
+      withLocalEnv: true,
     })
 
     const HelloComponent = () => {

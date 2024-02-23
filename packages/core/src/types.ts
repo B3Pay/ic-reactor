@@ -41,7 +41,7 @@ export interface CreateReactorStoreParameters
     Omit<ActorManagerParameters, "agentManager"> {
   agentManager?: AgentManager
   withProcessEnv?: boolean
-  isLocalEnv?: boolean
+  withLocalEnv?: boolean
   port?: number
 }
 

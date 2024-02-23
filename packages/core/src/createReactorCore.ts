@@ -164,7 +164,7 @@ export const createReactorCore = <A = BaseActor>(
     }
 
     await authClient.login({
-      identityProvider: agentManager.isLocalEnv
+      identityProvider: agentManager.withLocalEnv
         ? LOCAL_INTERNET_IDENTITY_PROVIDER
         : IC_INTERNET_IDENTITY_PROVIDER,
       ...options,

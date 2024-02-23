@@ -36,7 +36,7 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  * const agentConfig: CreateAgentCotextParameters = {
  *   host: "https://localhost:8000",
  *   // or
- *   // isLocalEnv: true,
+ *   // withLocalEnv: true,
  *   // port: 8000,
  * };
  *

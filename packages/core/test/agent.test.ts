@@ -18,7 +18,7 @@ describe("My IC Network agent", () => {
 describe("My Local Network agent", () => {
   const agentManager = createAgentManager({
     withDevtools: false,
-    isLocalEnv: true,
+    withLocalEnv: true,
   })
 
   it("should return agent store", async () => {

@@ -238,7 +238,7 @@ For development purposes, you might want to connect to a local instance of the I
 import { createAgentManager } from "@ic-reactor/core"
 
 export const agentManager = createAgentManager({
-  isLocalEnv: true,
+  withLocalEnv: true,
   port: 8000, // Default port is 4943
 })
 ```
