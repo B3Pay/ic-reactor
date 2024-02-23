@@ -1,7 +1,8 @@
-import { createActorManager, createAgentManager } from "./other"
 import { ActorManager } from "./classes/actor"
 import type { BaseActor, CreateReactorStoreParameters } from "./types"
-import { isInLocalOrDevelopment } from "./tools"
+import { isInLocalOrDevelopment } from "./utils"
+import { createActorManager } from "./createActorManager"
+import { createAgentManager } from "./createAgentManager"
 
 /**
  * Create a new actor manager with the given options.

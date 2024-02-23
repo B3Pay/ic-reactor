@@ -1,5 +1,5 @@
 import { HttpAgent } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools } from "../../tools/helper"
+import { createStoreWithOptionalDevtools } from "../../utils/helper"
 import type {
   AgentState,
   AgentStore,
@@ -9,7 +9,7 @@ import type {
   AuthStore,
   AuthClient,
 } from "./types"
-import { IC_HOST_NETWORK_URI } from "../../tools/constants"
+import { IC_HOST_NETWORK_URI } from "../../utils/constants"
 
 export class AgentManager {
   private _agent: HttpAgent

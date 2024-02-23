@@ -10,8 +10,6 @@ import type {
 } from "../types"
 import type { PropsWithChildren } from "react"
 
-export * from "./hooks/types"
-
 export interface AgentContext
   extends AgentHooksReturnType,
     AuthHooksReturnType {

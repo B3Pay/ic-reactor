@@ -1,12 +1,12 @@
 import React, { createContext, useMemo } from "react"
-import { ActorHooksReturnType, BaseActor } from "../../types"
+import { ActorHooksReturnType, BaseActor } from "../types"
 import {
   CreateActorContextParameters,
   CreateActorContextReturnType,
   ActorProviderProps,
-} from "../types"
+} from "./types"
 import { useActor } from "../hooks/useActor"
-import { extractActorContext } from "../../helpers/extractActorContext"
+import { extractActorContext } from "../helpers/extractActorContext"
 /**
  * Creates a React context specifically designed for managing the state and interactions with an actor on the Internet Computer (IC) blockchain.
  * This context facilitates the dynamic creation and management of IC actors within React applications, leveraging the provided configuration options.

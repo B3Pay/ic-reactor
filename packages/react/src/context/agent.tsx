@@ -1,14 +1,14 @@
 import React, { createContext, useMemo } from "react"
 import { createAgentManager } from "@ic-reactor/core"
-import { agentHooks } from "../../helpers/agentHooks"
-import { authHooks } from "../../helpers/authHooks"
-import type { AgentManagerParameters } from "../../types"
+import { agentHooks } from "../helpers/agentHooks"
+import { authHooks } from "../helpers/authHooks"
+import type { AgentManagerParameters } from "../types"
 import type {
   CreateAgentContextReturnType,
   AgentProviderProps,
   AgentContext,
-} from "../types"
-import { extractAgentContext } from "../../helpers/extractAgentContext"
+} from "./types"
+import { extractAgentContext } from "../helpers/extractAgentContext"
 
 /**
  * Creates a React context for managing IC agent and authentication states, providing hooks for interacting with the IC blockchain.

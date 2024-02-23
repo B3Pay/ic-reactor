@@ -9,7 +9,7 @@ import type {
 import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
-} from "../../tools/constants"
+} from "../../utils/constants"
 
 export class CandidAdapter {
   public agent: HttpAgent

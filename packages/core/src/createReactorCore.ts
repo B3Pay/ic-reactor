@@ -1,8 +1,8 @@
 import {
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
-} from "./tools/constants"
-import { generateRequestHash } from "./tools"
+} from "./utils/constants"
+import { generateRequestHash } from "./utils"
 
 import type {
   ActorMethodState,
@@ -20,7 +20,7 @@ import type {
   CreateReactorCoreReturnType,
 } from "./types"
 import type {} from "@dfinity/auth-client"
-import { createReactorStore } from "./store"
+import { createReactorStore } from "./createReactorStore"
 
 /**
  * The Core module is the main entry point for the library.

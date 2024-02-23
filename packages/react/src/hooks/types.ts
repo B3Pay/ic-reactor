@@ -1,10 +1,10 @@
 import type { IDL } from "@dfinity/candid"
-import { AgentContext } from "../types"
+import { AgentContext } from "../context/types"
 import {
   ActorHooksReturnType,
   ActorManagerParameters,
   BaseActor,
-} from "../../types"
+} from "../types"
 
 export interface UseActorParameters
   extends Omit<

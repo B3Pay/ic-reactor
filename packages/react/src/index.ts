@@ -1,5 +1,9 @@
-export * from "./main"
-export * from "./provider"
+export * from "./createReactor"
+export * from "./context/actor"
+export * from "./context/agent"
+export * from "./provider/actor"
+export * from "./provider/agent"
+export * from "./hooks"
 
 export * as helpers from "./helpers"
 export * as types from "./types"

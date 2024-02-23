@@ -1,8 +1,8 @@
 import { createActorManager, createCandidAdapter } from "@ic-reactor/core"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAgentManager } from "./agent/useAgentManager"
-import { actorHooks } from "../../helpers"
-import type { BaseActor, HttpAgent } from "../../types"
+import { actorHooks } from "../helpers"
+import type { BaseActor, HttpAgent } from "../types"
 import type { UseActorParameters, UseActorReturn } from "./types"
 
 /**

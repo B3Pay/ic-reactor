@@ -3,8 +3,8 @@ import {
   FunctionName,
   UseUpdateCall,
   UseUpdateCallParameters,
-} from "../../../types"
-import { ActorHooks } from "../../actorHooks"
+} from "../../types"
+import { ActorHooks } from "./hooks"
 
 /**
  * Hook for making update calls to actors, handling loading states, and managing errors. It supports custom event handlers for loading, success, and error events.

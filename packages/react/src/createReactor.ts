@@ -12,23 +12,35 @@ import type {
  * It encapsulates the creation of actors, authentication, and agent management, offering a streamlined interface for blockchain interactions.
  *
  * @param config Configuration config for the reactor, including:
- *  - withProcessEnv (optional): Specifies whether to use process environment variables to determine if the environment is local or development. Defaults to false.
- *  - isLocalEnv (optional): Indicates if the current environment is local or development, influencing the agent and actor behavior. Useful for testing or development.
- *  - port (optional): Port number for the local or development environment.
+ *  - `withProcessEnv` (optional): Specifies whether to use process environment variables to determine if the environment is local or development. Defaults to false.
+ *  - `isLocalEnv` (optional): Indicates if the current environment is local or development, influencing the agent and actor behavior. Useful for testing or development.
+ *  - `port` (optional): Port number for the local or development environment.
  *  Extends `CreateReactorStoreParameters` which includes HTTP agent config, actor manager config (excluding `agentManager`), and an optional custom agent manager.
  *
  * @returns An object containing various hooks and utilities:
- *  - getAgent: Function to retrieve the configured IC agent.
- *  - getVisitFunction: Function to access the visit function from the actor manager, used for visitor pattern implementations.
- *  - Includes actor, auth, and agent hooks for state management, authentication, and agent operations.
+ *  - {@link getAgent} - Returns the current agent instance.
+ *  - {@link getVisitFunction} - Returns the visit function for the actor.
+ *  - {@link useQueryCall} - A hook for querying actor methods.
+ *  - {@link useUpdateCall} - A hook for updating actor methods.
+ *  - {@link useAuth} - A hook for managing authentication and user principal.
+ *  - {@link useActor} - A hook for managing actors and their methods.
+ *  - {@link useActorManager} - A hook for managing actor manager and its methods.
+ *  - {@link useAgentManager} - A hook for managing agent manager and its methods.
+ *  - {@link initialize} - A function to initialize the actor manager if not initialized.
+ *  - {@link useActorState} - A hook for managing actor state.
+ *  - {@link useAgent} - A hook for managing agent and its methods.
+ *  - {@link useAuthState} - A hook for managing authentication state.
+ *  - {@link useAgentState} - A hook for managing agent state.
+ *  - {@link useUserPrincipal} - A hook for managing user principal.
+ *  - {@link useVisitMethod} - A hook for visiting actor methods.
  *
  * @example
  * ```typescript
  * import { createReactor } from "@ic-reactor/react";
- * import type { CreateReactorCoreParameters } from "@ic-reactor/react/dist/types";
+ * import type { CreateReactorParameters } from "@ic-reactor/react/dist/types";
  * import { canisterId, idlFactory, yourActor } from "./declaration/yourActor"
  *
- * const config: CreateReactorCoreParameters = {
+ * const config: CreateReactorParameters = {
  *   canisterId,
  *   idlFactory,
  *   host: "https://localhost:8000", // IC network host         |

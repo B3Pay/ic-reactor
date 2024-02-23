@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { Actor } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools } from "../../tools/helper"
+import { createStoreWithOptionalDevtools } from "../../utils/helper"
 import type { HttpAgent } from "@dfinity/agent"
 import type {
   CanisterId,

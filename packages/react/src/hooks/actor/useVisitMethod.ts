@@ -1,5 +1,5 @@
-import { BaseActor, FunctionName } from "../../../types"
-import { ActorHooks } from "../../actorHooks"
+import { BaseActor, FunctionName } from "../../types"
+import { ActorHooks } from "./hooks"
 
 /**
  * Memoizes and returns a visit service function for a specific actor method.
