@@ -1,10 +1,10 @@
 import { Actor, CanisterStatus, HttpAgent } from "@dfinity/agent"
-import { Principal } from "@dfinity/principal"
 import type {
   CanisterId,
   CandidAdapterParameters,
   CandidDefenition,
   IDL,
+  Principal,
 } from "../../types"
 import {
   DEFAULT_IC_DIDJS_ID,
@@ -57,13 +57,9 @@ export class CandidAdapter {
   public async getFromMetadata(
     canisterId: CanisterId
   ): Promise<CandidDefenition | undefined> {
-    if (typeof canisterId === "string") {
-      canisterId = Principal.fromText(canisterId)
-    }
-
     const status = await CanisterStatus.request({
       agent: this.agent,
-      canisterId,
+      canisterId: canisterId as Principal,
       paths: ["candid"],
     })
 
