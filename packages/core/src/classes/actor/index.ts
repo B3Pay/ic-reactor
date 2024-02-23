@@ -77,12 +77,6 @@ export class ActorManager<A = BaseActor> {
     this._idlFactory = idlFactory
     this._agentManager = agentManager
 
-    if (withVisitor) {
-      this.visitFunction = withVisitor ? this.extractService() : emptyVisitor
-    } else {
-      this.visitFunction = emptyVisitor
-    }
-
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(this.initialState, {
       withDevtools,
@@ -90,25 +84,38 @@ export class ActorManager<A = BaseActor> {
     })
 
     this._agentManager.subscribeAgent(this.initializeActor, initializeOnCreate)
+
+    if (withVisitor) {
+      this.visitFunction = this.extractService()
+    } else {
+      this.visitFunction = emptyVisitor
+    }
   }
 
   public initialize = async (options?: UpdateAgentParameters) => {
     await this._agentManager.updateAgent(options)
   }
 
-  public extractService(): VisitService<A> {
-    return this._idlFactory({ IDL })._fields.reduce((acc, service) => {
-      const functionName = service[0] as FunctionName<A>
-      const type = service[1]
+  public extractService = (): VisitService<A> => {
+    if (this._actor === null) {
+      throw new Error("For extracting service, actor must be initialized")
+    }
 
-      const visit = ((extractorClass, data) => {
-        return type.accept(extractorClass, data || functionName)
-      }) as VisitService<A>[typeof functionName]
+    return Actor.interfaceOf(this._actor as Actor)._fields.reduce(
+      (acc, service) => {
+        const functionName = service[0] as FunctionName<A>
+        const type = service[1]
 
-      acc[functionName] = visit
+        const visit = ((extractorClass, data) => {
+          return type.accept(extractorClass, data || functionName)
+        }) as VisitService<A>[typeof functionName]
 
-      return acc
-    }, {} as VisitService<A>)
+        acc[functionName] = visit
+
+        return acc
+      },
+      {} as VisitService<A>
+    )
   }
 
   private initializeActor = (agent: HttpAgent) => {

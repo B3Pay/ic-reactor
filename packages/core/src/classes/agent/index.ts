@@ -18,7 +18,7 @@ export class AgentManager {
 
   public agentStore: AgentStore
   public authStore: AuthStore
-  public withLocalEnv: boolean
+  public isLocalEnv: boolean
 
   private initialAgentState: AgentState = {
     initialized: false,
@@ -68,13 +68,13 @@ export class AgentManager {
     })
 
     this._agent = new HttpAgent({ ...agentParameters, host })
-    this.withLocalEnv = this._agent.isLocal()
+    this.isLocalEnv = this._agent.isLocal()
     this.initializeAgent()
   }
 
   private initializeAgent = async () => {
     this.updateAgentState({ initializing: true })
-    if (this.withLocalEnv) {
+    if (this.isLocalEnv) {
       try {
         await this._agent.fetchRootKey()
         this.updateAgentState({ initialized: true, initializing: false })
@@ -99,8 +99,10 @@ export class AgentManager {
     this._subscribers = this._subscribers.filter((sub) => sub !== callback)
   }
 
-  private notifySubscribers = () => {
-    this._subscribers.forEach((callback) => callback(this._agent))
+  private notifySubscribers = async () => {
+    await Promise.all(
+      this._subscribers.map(async (callback) => callback(this._agent))
+    )
   }
 
   public updateAgent = async (options?: UpdateAgentParameters) => {
@@ -110,11 +112,11 @@ export class AgentManager {
       this._agent = agent
     } else if (options) {
       this._agent = new HttpAgent(options)
-      this.withLocalEnv = this._agent.isLocal()
+      this.isLocalEnv = this._agent.isLocal()
       await this.initializeAgent()
     }
 
-    this.notifySubscribers()
+    await this.notifySubscribers()
   }
 
   public authenticate = async () => {

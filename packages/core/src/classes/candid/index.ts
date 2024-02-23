@@ -1,10 +1,10 @@
 import { Actor, CanisterStatus, HttpAgent } from "@dfinity/agent"
-import { IDL } from "@dfinity/candid"
 import { Principal } from "@dfinity/principal"
 import type {
   CanisterId,
   CandidAdapterParameters,
   CandidDefenition,
+  IDL,
 } from "../../types"
 import {
   DEFAULT_IC_DIDJS_ID,

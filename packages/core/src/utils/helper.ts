@@ -1,5 +1,4 @@
 import { hash } from "@dfinity/agent"
-import { toHexString } from "@dfinity/candid"
 import { devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 import type { BaseActor } from "../types"
@@ -68,4 +67,11 @@ export const generateActorHash = (actor: BaseActor) => {
 export const stringToHash = (str: string) => {
   const hashBytes = hash(new TextEncoder().encode(str))
   return `0x${toHexString(hashBytes)}` as `0x${string}`
+}
+
+function toHexString(bytes: ArrayBuffer) {
+  return new Uint8Array(bytes).reduce(
+    (str, byte) => str + byte.toString(16).padStart(2, "0"),
+    ""
+  )
 }
