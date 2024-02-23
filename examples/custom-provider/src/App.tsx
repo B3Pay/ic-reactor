@@ -4,7 +4,7 @@ import ICRC1Call from "./ICRC1Call"
 import { FunctionName } from "@ic-reactor/react/dist/types"
 import { ICRC1 } from "./declarations/icrc1"
 import { Principal } from "@dfinity/principal"
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState } from "react"
 import {
   IC_HOST_NETWORK_URI,
   LOCAL_HOST_NETWORK_URI,
