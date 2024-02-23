@@ -8,7 +8,7 @@ export interface FormFieldsProps {
 }
 
 const MethodCall: React.FC<FormFieldsProps> = ({ functionName }) => {
-  const { call, data, loading, error, visit } = useMethodCall({
+  const { call, data, loading, error } = useMethodCall({
     functionName,
   })
 

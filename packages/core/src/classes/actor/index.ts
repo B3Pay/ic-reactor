@@ -73,10 +73,6 @@ export class ActorManager<A = BaseActor> {
       initializeOnCreate = true,
     } = actorConfig
 
-    this._agentManager = agentManager
-
-    this._agentManager.subscribeAgent(this.initializeActor)
-
     this.canisterId = canisterId
     this._idlFactory = idlFactory
 
@@ -92,9 +88,9 @@ export class ActorManager<A = BaseActor> {
       store: `actor-${String(canisterId)}`,
     })
 
-    if (initializeOnCreate) {
-      this.initializeActor(agentManager.getAgent())
-    }
+    this._agentManager = agentManager
+
+    this._agentManager.subscribeAgent(this.initializeActor, initializeOnCreate)
   }
 
   public initialize = async (options?: UpdateAgentParameters) => {

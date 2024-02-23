@@ -2,7 +2,7 @@ import { createActorManager, createCandidAdapter } from "@ic-reactor/core"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAgentManager } from "./agent/useAgentManager"
 import { actorHooks } from "../../helpers"
-import type { BaseActor } from "../../types"
+import type { BaseActor, HttpAgent } from "../../types"
 import type { UseActorParameters, UseActorReturn } from "./types"
 
 /**
@@ -86,46 +86,51 @@ export const useActor = <A = BaseActor>(
 
   const agentManager = useAgentManager(agentContext)
 
-  const fetchCandid = useCallback(async () => {
-    if (!canisterId) return
-
-    setState({
-      idlFactory: undefined,
-      fetching: true,
-      fetchError: null,
-    })
-
-    try {
-      const candidManager = createCandidAdapter({
-        agentManager,
-        didjsCanisterId,
-      })
-      const { idlFactory } = await candidManager.getCandidDefinition(canisterId)
+  const fetchCandid = useCallback(
+    async (agent: HttpAgent) => {
+      if (!canisterId) return
 
       setState({
-        idlFactory,
-        fetching: false,
+        idlFactory: undefined,
+        fetching: true,
         fetchError: null,
       })
 
-      return idlFactory
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error(err)
-      setState({
-        idlFactory: undefined,
-        fetchError: `Error fetching canister ${canisterId}`,
-        fetching: false,
-      })
-    }
-  }, [canisterId, didjsCanisterId, agentManager])
+      try {
+        const candidManager = createCandidAdapter({
+          agent,
+          didjsCanisterId,
+        })
+        const { idlFactory } = await candidManager.getCandidDefinition(
+          canisterId
+        )
+
+        setState({
+          idlFactory,
+          fetching: false,
+          fetchError: null,
+        })
+
+        return idlFactory
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(err)
+        setState({
+          idlFactory: undefined,
+          fetchError: `Error fetching canister ${canisterId}`,
+          fetching: false,
+        })
+      }
+    },
+    [canisterId, didjsCanisterId]
+  )
 
   // Automatically fetch Candid if not already fetched or provided.
   useEffect(() => {
-    if (!fetching && !idlFactory) {
-      fetchCandid()
-    }
-  }, [fetchCandid])
+    if (fetching) return
+
+    return agentManager.subscribeAgent(fetchCandid)
+  }, [fetchCandid, agentManager])
 
   const hooks = useMemo(() => {
     if (!idlFactory) return null
@@ -138,7 +143,7 @@ export const useActor = <A = BaseActor>(
     })
 
     return actorHooks(actorManager)
-  }, [idlFactory])
+  }, [canisterId, idlFactory])
 
   return { hooks, fetching, fetchError }
 }

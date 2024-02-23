@@ -2,11 +2,7 @@ import { useCallback, useState } from "react"
 import Button from "../Button"
 import Route from "./Routes"
 import { FormProvider, useForm } from "react-hook-form"
-import {
-  MethodFields,
-  ServiceDefaultValues,
-  extractAndSortArgs,
-} from "@ic-reactor/core"
+import { MethodFields } from "@ic-reactor/visitor/dist/types"
 
 interface FormProps extends MethodFields {
   callHandler: (args: never) => Promise<any>

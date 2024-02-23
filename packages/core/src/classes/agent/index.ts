@@ -84,7 +84,13 @@ export class AgentManager {
     }
   }
 
-  public subscribeAgent = (callback: (agent: HttpAgent) => void) => {
+  public subscribeAgent = (
+    callback: (agent: HttpAgent) => void,
+    initialize = true
+  ) => {
+    if (initialize) {
+      callback(this._agent)
+    }
     this._subscribers.push(callback)
     return () => this.unsubscribeAgent(callback)
   }

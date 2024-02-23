@@ -44,6 +44,7 @@ IC-Reactor is heavily typed and provides type safety, ensuring that your code is
 ## Key Features
 
 - **React Context Integration**: Utilizes React Context for managing global state related to IC actors.
+- **Type-Safe Actor Interactions**: Type-safe interaction with IC actors using the provided actor declaration file.
 - **Custom React Hooks**: Provides custom hooks (`useQueryCall`, `useUpdateCall`, `useAuth`) for easy interaction with IC actors.
 - **Simplified Actor Interaction**: Streamlines the process of querying and updating data from IC actors.
 - **Efficient State Management**: Manages loading, error, and data states efficiently within React components.

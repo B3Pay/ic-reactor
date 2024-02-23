@@ -6,10 +6,8 @@ import { ActorHooksReturnType } from "@ic-reactor/react/dist/types"
 
 const ActorContext = createContext<ActorHooksReturnType<Ledger> | null>(null)
 
-export const {
-  useLedgerQueryCall: useQueryCall,
-  useLedgerUpdateCall: useUpdateCall,
-} = extractActorContext(ActorContext)
+export const { useLedgerQueryCall: useQueryCall, useUpdateCall } =
+  extractActorContext(ActorContext)
 
 const Reactor = () => {
   const { hooks, fetching, fetchError } = useActor<Ledger>({

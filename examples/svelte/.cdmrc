@@ -1,2 +1,0 @@
-tabs: ["src/App.svelte"]
-terminals: ["yarn install && yarn dev"]
