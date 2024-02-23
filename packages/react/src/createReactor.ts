@@ -11,13 +11,12 @@ import type {
  * Initializes and configures the reactor environment for interacting with the Internet Computer (IC) blockchain within a React application.
  * It encapsulates the creation of actors, authentication, and agent management, offering a streamlined interface for blockchain interactions.
  *
- * @param config Configuration config for the reactor, including:
+ * @param config Configuration {@link CreateReactorParameters} for the reactor, including:
  *  - `withProcessEnv` (optional): Specifies whether to use process environment variables to determine if the environment is local or development. Defaults to false.
  *  - `isLocalEnv` (optional): Indicates if the current environment is local or development, influencing the agent and actor behavior. Useful for testing or development.
  *  - `port` (optional): Port number for the local or development environment.
- *  Extends `CreateReactorStoreParameters` which includes HTTP agent config, actor manager config (excluding `agentManager`), and an optional custom agent manager.
  *
- * @returns An object containing various hooks and utilities:
+ * @returns An object containing {@link CreateReactorReturnType} hooks and utilities:
  *  - {@link getAgent} - Returns the current agent instance.
  *  - {@link getVisitFunction} - Returns the visit function for the actor.
  *  - {@link useQueryCall} - A hook for querying actor methods.

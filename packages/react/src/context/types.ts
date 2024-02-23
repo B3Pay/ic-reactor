@@ -16,6 +16,8 @@ export interface AgentContext
   agentManager: AgentManager
 }
 
+export interface CreateAgentCotextParameters extends AgentManagerParameters {}
+
 export interface CreateAgentContextReturnType
   extends AgentHooksReturnType,
     AuthHooksReturnType {

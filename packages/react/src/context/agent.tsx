@@ -2,11 +2,11 @@ import React, { createContext, useMemo } from "react"
 import { createAgentManager } from "@ic-reactor/core"
 import { agentHooks } from "../helpers/agentHooks"
 import { authHooks } from "../helpers/authHooks"
-import type { AgentManagerParameters } from "../types"
 import type {
   CreateAgentContextReturnType,
   AgentProviderProps,
   AgentContext,
+  CreateAgentCotextParameters,
 } from "./types"
 import { extractAgentContext } from "../helpers/extractAgentContext"
 
@@ -14,23 +14,26 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  * Creates a React context for managing IC agent and authentication states, providing hooks for interacting with the IC blockchain.
  * This function initializes an `AgentContext` with a set of utilities and hooks based on the provided agent configuration.
  *
- * @param agentParameters A partial configuration object for the agent manager, allowing customization of the agent's behavior.
+ * @param config A partial configuration object {@link CreateAgentCotextParameters}, allowing customization of the agent's behavior.
  *
- * @returns An object containing the `AgentProvider` component and various hooks for interacting with the agent and authentication state.
- * The `AgentProvider` component is a React context provider that should wrap your app or components needing access to agent functionalities.
+ * @returns
+ * An object containing the {@link AgentProvider} component and various hooks for interacting with the agent and authentication state.
+ * The {@link AgentProvider} component is a React context provider that should wrap your app or components needing access to agent functionalities.
  *
  * Usage:
- * - `AgentProvider`: React component to provide agent context to your application.
- * - `useAgent`, `useAuth`, `useAuthState`, `useAgentState`, `useAgentManager`, `useUserPrincipal`: Hooks extracted from the created context for managing agent and authentication state within components.
+ * - {@link AgentProvider}: React component to provide agent context to your application.
+ * - {@link useAgent}, {@link useAuth}, {@link useAuthState},
+ *   {@link useAgentState}, {@link useAgentManager}, {@link useUserPrincipal}:
+ *  Hooks extracted from the created context for managing agent and authentication state within components.
  *
  * @example
+ * agent.ts
  * ```tsx
- * // agent.ts
  * import { createAgentContext } from "@ic-reactor/react";
- * import { CreateAgentParameters } from "@ic-reactor/react/dist/types";
+ * import { CreateAgentCotextParameters } from "@ic-reactor/react/dist/types";
  *
  * // Optional: Define custom agent configuration
- * const agentConfig: CreateAgentParameters = {
+ * const agentConfig: CreateAgentCotextParameters = {
  *   host: "https://localhost:8000",
  *   // or
  *   // isLocalEnv: true,
@@ -48,8 +51,9 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  * } = createAgentContext(agentConfig);
  *
  * // Now you can use the returned hooks in your React components
- *
- * // App.tsx
+ *```
+ * App.tsx
+ * ```tsx
  * import React from 'react';
  * import { AgentProvider } from './agent';
  *
@@ -75,11 +79,11 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
  * ```
  *
  * This setup allows you to use the agent and authentication hooks within
- * the components wrapped by `AgentProvider`, facilitating interaction
+ * the components wrapped by {@link AgentProvider}, facilitating interaction
  * with the Internet Computer blockchain.
  */
 export const createAgentContext = (
-  config: AgentManagerParameters = {}
+  config: CreateAgentCotextParameters = {}
 ): CreateAgentContextReturnType => {
   const AgentContext = createContext<AgentContext | null>(null)
 
