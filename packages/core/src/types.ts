@@ -117,8 +117,6 @@ export interface CreateReactorCoreParameters
 export interface CreateReactorCoreReturnType<A = BaseActor>
   extends AgentManager,
     Omit<ActorManager<A>, "updateMethodState"> {
-  login: (config?: AuthClientLoginOptions) => Promise<void>
-  logout: (config?: { returnTo?: string }) => Promise<void>
   queryCall: ActorQuery<A>
   updateCall: ActorUpdate<A>
 }

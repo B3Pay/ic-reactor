@@ -9,7 +9,12 @@ import type {
   AuthStore,
   AuthClient,
 } from "./types"
-import { IC_HOST_NETWORK_URI } from "../../utils/constants"
+import {
+  IC_HOST_NETWORK_URI,
+  IC_INTERNET_IDENTITY_PROVIDER,
+  LOCAL_INTERNET_IDENTITY_PROVIDER,
+} from "../../utils/constants"
+import { AuthClientLoginOptions } from "@dfinity/auth-client"
 
 export class AgentManager {
   private _agent: HttpAgent
@@ -152,6 +157,39 @@ export class AgentManager {
       this.updateAuthState({ error: error as Error, authenticating: false })
       throw error
     }
+  }
+
+  public login = async (options?: AuthClientLoginOptions) => {
+    this.updateAuthState({ authenticating: true })
+    if (!this._auth) {
+      await this.authenticate()
+    }
+
+    if (!this._auth) {
+      throw new Error("Auth client not initialized")
+    }
+
+    await this._auth.login({
+      identityProvider: this.isLocalEnv
+        ? LOCAL_INTERNET_IDENTITY_PROVIDER
+        : IC_INTERNET_IDENTITY_PROVIDER,
+      ...options,
+      onSuccess: async () => {
+        await this.authenticate()
+        options?.onSuccess?.()
+      },
+      onError: (e) => {
+        options?.onError?.(e)
+      },
+    })
+  }
+
+  public logout = async (options?: { returnTo?: string }) => {
+    if (!this._auth) {
+      throw new Error("Auth client not initialized")
+    }
+    await this._auth.logout(options)
+    await this.authenticate()
   }
 
   // agent store

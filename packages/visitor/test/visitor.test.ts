@@ -14,15 +14,10 @@ describe("createReactorStore", () => {
   const { actorStore, visitFunction } = createReactorStore<B3System>({
     canisterId: "2vxsx-fae",
     idlFactory,
-    initializeOnCreate: false,
     withVisitor: true,
   })
 
-  it("should return actor store", () => {
-    expect(actorStore).toBeDefined()
-  })
-
-  test("Uninitialized", () => {
+  it("should visitFunction", () => {
     const field = visitFunction.get_app(new VisitFields<B3System>())
     console.log(field.defaultValues)
     const args = visitFunction.get_app(new VisitRandomArgs<B3System>())
@@ -47,23 +42,9 @@ describe("createReactorStore", () => {
 
     expect({ methodState, initialized, initializing, error }).toEqual({
       methodState: {},
-      initialized: false,
+      initialized: true,
       initializing: false,
       error: undefined,
     })
   })
-
-  // test("Initialized", async () => {
-  //   await initialize()
-
-  //   const { methodState, initialized, initializing, error } =
-  //     actorStore.getState()
-
-  //   expect({ methodState, initialized, initializing, error }).toEqual({
-  //     methodState: {},
-  //     initialized: true,
-  //     initializing: false,
-  //     error: undefined,
-  //   })
-  // })
 })

@@ -24,6 +24,9 @@ export class ActorManager<A = BaseActor> {
   private _idlFactory: IDL.InterfaceFactory
   private _agentManager: AgentManager
 
+  private _unsubscribeAgent: () => void
+  private _subscribers: Array<() => void> = []
+
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
   public visitFunction: VisitService<A>
@@ -83,7 +86,10 @@ export class ActorManager<A = BaseActor> {
       store: `actor-${String(canisterId)}`,
     })
 
-    this._agentManager.subscribeAgent(this.initializeActor, initializeOnCreate)
+    this._unsubscribeAgent = this._agentManager.subscribeAgent(
+      this.initializeActor,
+      initializeOnCreate
+    )
 
     if (withVisitor) {
       this.visitFunction = this.extractService()
@@ -125,7 +131,7 @@ export class ActorManager<A = BaseActor> {
       } network`
     )
 
-    const { _idlFactory: idlFactory, canisterId } = this
+    const { _idlFactory, canisterId } = this
 
     this.updateState({
       initializing: true,
@@ -138,7 +144,7 @@ export class ActorManager<A = BaseActor> {
         throw new Error("Agent not initialized")
       }
 
-      this._actor = Actor.createActor<A>(idlFactory, {
+      this._actor = Actor.createActor<A>(_idlFactory, {
         agent,
         canisterId,
       })
@@ -196,11 +202,18 @@ export class ActorManager<A = BaseActor> {
   }
 
   public subscribeActorState: ActorStore<A>["subscribe"] = (listener) => {
-    return this.actorStore.subscribe(listener)
+    const unsubscribe = this.actorStore.subscribe(listener)
+    this._subscribers.push(unsubscribe)
+    return unsubscribe
   }
 
   public setState: ActorStore<A>["setState"] = (updater) => {
     return this.actorStore.setState(updater)
+  }
+
+  public cleanup = () => {
+    this._unsubscribeAgent()
+    this._subscribers.forEach((unsubscribe) => unsubscribe())
   }
 }
 

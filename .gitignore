@@ -18,3 +18,4 @@ examples/candid-ui
 examples/*/deps/candid
 docs
 .nx
+.parcel-cache

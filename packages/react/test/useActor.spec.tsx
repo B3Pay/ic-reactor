@@ -56,7 +56,7 @@ describe("createReactor", () => {
     expect(versionStatus().props.children).toEqual("Ready To call")
 
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 100))
+      await new Promise((r) => setTimeout(r))
     })
 
     expect(screen.toJSON()).toMatchSnapshot()
@@ -128,7 +128,7 @@ describe("createReactor", () => {
     expect(versionStatus().props.children).toEqual("Ready To call")
 
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 100))
+      await new Promise((r) => setTimeout(r))
     })
 
     expect(screen.toJSON()).toMatchSnapshot()

@@ -1,7 +1,3 @@
-import {
-  IC_INTERNET_IDENTITY_PROVIDER,
-  LOCAL_INTERNET_IDENTITY_PROVIDER,
-} from "./utils/constants"
 import { generateRequestHash } from "./utils"
 
 import type {
@@ -14,7 +10,6 @@ import type {
   ActorCallFunction,
   ActorGetStateFunction,
   ActorSubscribeFunction,
-  AuthClientLoginOptions,
   ActorMethodParameters,
   CreateReactorCoreParameters,
   CreateReactorCoreReturnType,
@@ -153,40 +148,11 @@ export const createReactorCore = <A = BaseActor>(
     )
   }
 
-  const login = async (options?: AuthClientLoginOptions) => {
-    const authClient = agentManager.getAuth()
-    if (!authClient) {
-      await agentManager.authenticate()
-    }
-
-    if (!authClient) {
-      throw new Error("Auth client not initialized")
-    }
-
-    await authClient.login({
-      identityProvider: agentManager.isLocalEnv
-        ? LOCAL_INTERNET_IDENTITY_PROVIDER
-        : IC_INTERNET_IDENTITY_PROVIDER,
-      ...options,
-    })
-  }
-
-  const logout = async (options?: { returnTo?: string }) => {
-    const authClient = agentManager.getAuth()
-    if (!authClient) {
-      throw new Error("Auth client not initialized")
-    }
-    await authClient.logout(options)
-    await agentManager.authenticate()
-  }
-
   return {
     queryCall,
     updateCall,
     callMethod,
     getState,
-    login,
-    logout,
     subscribeActorState,
     ...agentManager,
     ...rest,

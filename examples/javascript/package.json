@@ -1,0 +1,15 @@
+{
+  "name": "ic-reactor-template",
+  "packageManager": "yarn@4.0.2",
+  "scripts": {
+    "start": "parcel src/index.html"
+  },
+  "dependencies": {
+    "@ic-reactor/core": "^*"
+  },
+  "devDependencies": {
+    "@parcel/resolver-default": "^2.11.0",
+    "parcel": "^2.11.0",
+    "process": "^0.11.10"
+  }
+}
