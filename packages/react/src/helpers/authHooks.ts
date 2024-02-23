@@ -13,7 +13,7 @@ import type {
 import {
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
-} from "@ic-reactor/core/dist/tools"
+} from "@ic-reactor/core/dist/utils"
 
 export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   const {
