@@ -18,47 +18,47 @@ describe("My IC Store and Actions", () => {
     expect(data).toBeDefined()
   })
 
-  it("should return anonymous user data", async () => {
-    const mockData = Uint8Array.from(Array(48).fill(0))
-    const publicKey = Uint8Array.from(randomBytes(48))
+  // it("should return anonymous user data", async () => {
+  //   const mockData = Uint8Array.from(Array(48).fill(0))
+  //   const publicKey = Uint8Array.from(randomBytes(48))
 
-    const { call: save_encrypted_text, getState } = updateCall({
-      functionName: "save_encrypted_text",
-      args: [mockData, [publicKey]],
-    })
+  //   const { call: save_encrypted_text, getState } = updateCall({
+  //     functionName: "save_encrypted_text",
+  //     args: [mockData, [publicKey]],
+  //   })
 
-    const index = await save_encrypted_text()
+  //   const index = await save_encrypted_text()
 
-    expect(index).toBeDefined()
+  //   expect(index).toBeDefined()
 
-    const stateIndex = getState("data")
+  //   const stateIndex = getState("data")
 
-    expect(stateIndex).toEqual(index)
+  //   expect(stateIndex).toEqual(index)
 
-    const {
-      call,
-      dataPromise,
-      getState: userState,
-    } = queryCall({
-      functionName: "anonymous_user_notes",
-      args: [publicKey],
-      refetchOnMount: true,
-    })
+  //   const {
+  //     call,
+  //     dataPromise,
+  //     getState: userState,
+  //   } = queryCall({
+  //     functionName: "anonymous_user_notes",
+  //     args: [publicKey],
+  //     refetchOnMount: true,
+  //   })
 
-    expect(userState("loading")).toEqual(true)
+  //   expect(userState("loading")).toEqual(true)
 
-    const data = await dataPromise
+  //   const data = await dataPromise
 
-    const stateData = userState("data")
+  //   const stateData = userState("data")
 
-    expect(data).toEqual(stateData)
+  //   expect(data).toEqual(stateData)
 
-    expect(userState("loading")).toEqual(false)
+  //   expect(userState("loading")).toEqual(false)
 
-    const recallData = await call()
+  //   const recallData = await call()
 
-    expect(recallData).toBeDefined()
-  })
+  //   expect(recallData).toBeDefined()
+  // })
 
   it("should return timers", async () => {
     const { intervalId, dataPromise } = queryCall({

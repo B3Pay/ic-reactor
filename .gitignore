@@ -14,7 +14,7 @@ lerna-debug.log
 yarn-error.log
 
 pulled.json
-examples/candid-react
+examples/candid-ui
 examples/*/deps/candid
 docs
 .nx

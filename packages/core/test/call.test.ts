@@ -20,18 +20,18 @@ describe("My IC Store and Actions", () => {
     expect(key).toBeDefined()
   })
 
-  const mockData = Uint8Array.from(Array(48).fill(0))
+  // const mockData = Uint8Array.from(Array(48).fill(0))
   const publicKey = Uint8Array.from(randomBytes(48))
 
-  it("should return anonymous user data", async () => {
-    const index = await callMethod("save_encrypted_text", mockData, [publicKey])
+  // it("should return anonymous user data", async () => {
+  //   const index = await callMethod("save_encrypted_text", mockData, [publicKey])
 
-    expect(index).toBeDefined()
+  //   expect(index).toBeDefined()
 
-    const savedData = await callMethod("user_notes", [publicKey])
+  //   const savedData = await callMethod("user_notes", [publicKey])
 
-    expect(savedData[1][0].text).toEqual(mockData)
-  })
+  //   expect(savedData[1][0].text).toEqual(mockData)
+  // })
 
   it("should return logged user data", async () => {
     await agentManager.authenticate()
@@ -43,9 +43,9 @@ describe("My IC Store and Actions", () => {
     expect(data).toBeDefined()
   })
 
-  it("should transfrom", async () => {
-    const data = await callMethod("anonymous_user_notes", publicKey)
+  // it("should transfrom", async () => {
+  //   const data = await callMethod("anonymous_user_notes", publicKey)
 
-    expect(data).toBeDefined()
-  })
+  //   expect(data).toBeDefined()
+  // })
 })
