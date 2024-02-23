@@ -82,8 +82,8 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
 
               authClient.login({
                 identityProvider: isLocalEnv
-                  ? IC_INTERNET_IDENTITY_PROVIDER
-                  : LOCAL_INTERNET_IDENTITY_PROVIDER,
+                  ? LOCAL_INTERNET_IDENTITY_PROVIDER
+                  : IC_INTERNET_IDENTITY_PROVIDER,
                 ...options,
                 onSuccess: () => {
                   authenticate()

@@ -11,6 +11,5 @@ export const {
 } = createReactor<typeof todo>({
   idlFactory,
   canisterId,
-  withDevtools: true,
   withProcessEnv: true
 })

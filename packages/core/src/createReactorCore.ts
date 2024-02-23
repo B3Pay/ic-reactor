@@ -71,6 +71,8 @@ export const createReactorCore = <A = BaseActor>(
       }) as ActorGetStateFunction<A, M>
 
       const subscribe: ActorSubscribeFunction<A, M> = (callback) => {
+        callback(methodState())
+
         const unsubscribe = subscribeActorState((state) => {
           const methodState = state.methodState[functionName]
           const methodStateHash = methodState[requestHash]
@@ -163,8 +165,8 @@ export const createReactorCore = <A = BaseActor>(
 
     await authClient.login({
       identityProvider: agentManager.isLocalEnv
-        ? IC_INTERNET_IDENTITY_PROVIDER
-        : LOCAL_INTERNET_IDENTITY_PROVIDER,
+        ? LOCAL_INTERNET_IDENTITY_PROVIDER
+        : IC_INTERNET_IDENTITY_PROVIDER,
       ...options,
     })
   }
