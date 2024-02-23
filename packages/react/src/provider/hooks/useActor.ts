@@ -88,7 +88,7 @@ export const useActor = <A = BaseActor>(
 
   const fetchCandid = useCallback(
     async (agent: HttpAgent) => {
-      if (!canisterId) return
+      if (!canisterId || fetching) return
 
       setState({
         idlFactory: undefined,
@@ -126,11 +126,10 @@ export const useActor = <A = BaseActor>(
   )
 
   // Automatically fetch Candid if not already fetched or provided.
-  useEffect(() => {
-    if (fetching) return
-
-    return agentManager.subscribeAgent(fetchCandid)
-  }, [fetchCandid, agentManager])
+  useEffect(
+    () => agentManager.subscribeAgent(fetchCandid),
+    [fetchCandid, agentManager]
+  )
 
   const hooks = useMemo(() => {
     if (!idlFactory) return null

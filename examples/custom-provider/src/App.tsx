@@ -24,34 +24,39 @@ const functionNames: FunctionName<ICRC1>[] = [
 
 const App: React.FC<AppProps> = () => {
   const inputRef = useRef<HTMLInputElement>(null)
+  const networkRef = useRef<HTMLSelectElement>(null)
   const [canisterId, setCanisterId] = useState<string>(
     "ryjl3-tyaaa-aaaaa-aaaba-cai"
   )
-  const [network, setNetwork] = useState<string>("ic")
-  const agentManager = useAgentManager()
+
+  const { updateAgent } = useAgentManager()
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     try {
       const principal = Principal.fromText(inputRef.current?.value || "")
+      console.log(networkRef.current?.value)
+
+      updateAgent({
+        host:
+          networkRef.current?.value === "local"
+            ? LOCAL_HOST_NETWORK_URI
+            : IC_HOST_NETWORK_URI,
+      })
       setCanisterId(principal.toText())
-      localStorage.setItem("dynamicCanisterId", principal.toText())
     } catch (e) {
       console.error(e)
     }
   }
 
-  useEffect(() => {
-    console.log("updating agent", network)
-    agentManager.updateAgent({
-      host: network === "local" ? LOCAL_HOST_NETWORK_URI : IC_HOST_NETWORK_URI,
-    })
-  }, [agentManager, network])
-
   return (
     <div>
       <h1>ICRC Token</h1>
       <form onSubmit={onSubmit}>
+        <select ref={networkRef}>
+          <option value="ic">IC</option>
+          <option value="local">Local</option>
+        </select>
         <input
           id="canisterId"
           required
@@ -60,17 +65,11 @@ const App: React.FC<AppProps> = () => {
         />
         <button type="submit">Fetch</button>
       </form>
-      <select value={network} onChange={(e) => setNetwork(e.target.value)}>
-        <option value="ic">IC</option>
-        <option value="local">Local</option>
-      </select>
-      {canisterId && (
-        <LedgerProvider canisterId={canisterId}>
-          {functionNames.map((functionName) => (
-            <ICRC1Call key={functionName} functionName={functionName} />
-          ))}
-        </LedgerProvider>
-      )}
+      <LedgerProvider canisterId={canisterId}>
+        {functionNames.map((functionName) => (
+          <ICRC1Call key={functionName} functionName={functionName} />
+        ))}
+      </LedgerProvider>
     </div>
   )
 }

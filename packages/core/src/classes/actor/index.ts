@@ -75,6 +75,7 @@ export class ActorManager<A = BaseActor> {
 
     this.canisterId = canisterId
     this._idlFactory = idlFactory
+    this._agentManager = agentManager
 
     if (withVisitor) {
       this.visitFunction = withVisitor ? this.extractService() : emptyVisitor
@@ -87,8 +88,6 @@ export class ActorManager<A = BaseActor> {
       withDevtools,
       store: `actor-${String(canisterId)}`,
     })
-
-    this._agentManager = agentManager
 
     this._agentManager.subscribeAgent(this.initializeActor, initializeOnCreate)
   }
