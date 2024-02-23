@@ -1,5 +1,7 @@
 import { HttpAgent } from "@dfinity/agent"
 import { createStoreWithOptionalDevtools } from "../../utils/helper"
+import { AuthClient } from "@dfinity/auth-client"
+import type { AuthClientLoginOptions } from "../../types"
 import type {
   AgentState,
   AgentStore,
@@ -7,14 +9,12 @@ import type {
   UpdateAgentParameters,
   AuthState,
   AuthStore,
-  AuthClient,
 } from "./types"
 import {
   IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "../../utils/constants"
-import { AuthClientLoginOptions } from "@dfinity/auth-client"
 
 export class AgentManager {
   private _agent: HttpAgent
@@ -128,16 +128,6 @@ export class AgentManager {
     this.updateAuthState({ authenticating: true })
 
     try {
-      const { AuthClient } = await import("@dfinity/auth-client").catch(
-        (error) => {
-          // eslint-disable-next-line no-console
-          console.error("Failed to import @dfinity/auth-client:", error)
-          throw new Error(
-            "Authentication failed: @dfinity/auth-client package is missing."
-          )
-        }
-      )
-
       this._auth = await AuthClient.create()
       const authenticated = await this._auth.isAuthenticated()
 
@@ -177,9 +167,6 @@ export class AgentManager {
       onSuccess: async () => {
         await this.authenticate()
         options?.onSuccess?.()
-      },
-      onError: (e) => {
-        options?.onError?.(e)
       },
     })
   }

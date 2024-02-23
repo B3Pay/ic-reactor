@@ -1,6 +1,5 @@
 {
-  "name": "ic-reactor-template",
-  "packageManager": "yarn@4.0.2",
+  "name": "javacript",
   "scripts": {
     "start": "parcel src/index.html"
   },
