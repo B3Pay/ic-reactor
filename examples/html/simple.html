@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IC Reactor Example</title>
+</head>
+
+<body>
+    <h1>Authenticate and Fetch Data from the ICP blockchain</h1>
+    <div id="userInfo"></div>
+    <button id="loginBtn">Login</button>
+    <div id="canisterData"></div>
+
+    <!-- ic-reactor-core UMD build -->
+    <script src="https://github.com/B3Pay/ic-reactor/releases/download/1.0.8/ic-reactor-core.min.js"></script>
+    <script>
+        const loginBtn = document.getElementById('loginBtn');
+        const userInfo = document.getElementById('userInfo');
+        // Initialize the Agent Manager
+        const agentManager = Reactor.createAgentManager();
+
+        agentManager.subscribeAuthState(({ identity, authenticating, authenticated }) => {
+            if (authenticating) {
+                loginBtn.innerText = 'Authenticating...';
+            } else if (authenticated) {
+                loginBtn.onclick = agentManager.logout
+                loginBtn.innerText = 'Logout';
+            } else {
+                loginBtn.onclick = agentManager.login
+                loginBtn.innerText = 'Login';
+            }
+
+            userInfo.innerText = identity?.getPrincipal().toText();
+        });
+
+        agentManager.authenticate();
+
+        async function fetchDataFromCanister(canisterId) {
+            const candidAdapter = Reactor.createCandidAdapter({ agentManager });
+            const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId);
+            const reactorCore = Reactor.createReactorCore({ agentManager, canisterId, idlFactory });
+
+            const data = await reactorCore.callMethod('icrc1_name');
+            document.getElementById("canisterData").innerText =
+                Reactor.utils.jsonToString(data)
+        }
+
+        fetchDataFromCanister('ryjl3-tyaaa-aaaaa-aaaba-cai');
+    </script>
+</body>
+
+</html>

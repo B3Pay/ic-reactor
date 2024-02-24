@@ -19,9 +19,7 @@ import type { ActorManager } from "./classes/actor"
 import type { AgentManager } from "./classes/agent"
 import type { AuthClientLoginOptions } from "@dfinity/auth-client"
 
-export * from "./classes/agent/types"
-export * from "./classes/actor/types"
-export * from "./classes/candid/types"
+export * from "./classes/types"
 
 export type { ActorManager, AgentManager }
 

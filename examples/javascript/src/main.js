@@ -69,7 +69,7 @@ agentManager.subscribeAuthState(
 agentManager.authenticate()
 
 const renderActor = async (event) => {
-  event.preventDefault()
+  event?.preventDefault()
   previousActorCleanup?.()
   balanceUnsub?.()
   transferUnsub?.()
@@ -91,6 +91,7 @@ const renderActor = async (event) => {
     agentManager,
     canisterId,
     idlFactory,
+    withDevtools: true,
   })
 
   previousActorCleanup = reactor.cleanup

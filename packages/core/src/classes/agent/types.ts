@@ -1,6 +1,6 @@
 import type { HttpAgent, HttpAgentOptions, Identity } from "@dfinity/agent"
 import type { AuthClient } from "@dfinity/auth-client"
-import type { StoreApi } from "zustand"
+import { StoreApiWithDevtools } from "../types"
 
 export { HttpAgentOptions, AuthClient, Identity }
 
@@ -28,5 +28,5 @@ export interface UpdateAgentParameters extends HttpAgentOptions {
 }
 
 // Type for the Reactor store
-export type AgentStore = StoreApi<AgentState>
-export type AuthStore = StoreApi<AuthState>
+export type AgentStore = StoreApiWithDevtools<AgentState>
+export type AuthStore = StoreApiWithDevtools<AuthState>

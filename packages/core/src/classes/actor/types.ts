@@ -1,7 +1,7 @@
 import type { IDL } from "@dfinity/candid"
-import type { StoreApi } from "zustand"
 import type { AgentManager } from "../agent"
 import type { ActorMethod, ActorSubclass, Principal } from "../../types"
+import { StoreApiWithDevtools } from "../types"
 
 export interface DefaultActorType {
   [key: string]: ActorMethod
@@ -73,7 +73,7 @@ export type ActorState<A = BaseActor> = {
   methodState: ActorMethodStates<A>
 }
 
-export type ActorStore<A = BaseActor> = StoreApi<ActorState<A>>
+export type ActorStore<A = BaseActor> = StoreApiWithDevtools<ActorState<A>>
 
 // Function type for directly calling a method on an actor
 export type CallActorMethod<A = BaseActor> = <

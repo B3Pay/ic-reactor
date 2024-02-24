@@ -90,7 +90,8 @@
         </fieldset>
     </div>
 
-    <script src="../../packages/core/umd/core.js"></script>
+    <script src="https://github.com/B3Pay/ic-reactor/releases/download/1.0.8/ic-reactor-core.min.js"></script>
+    <!-- <script src="../../packages/core/umd/development/ic-reactor-core.js"></script> -->
     <script>
         const agentManager = Reactor.createAgentManager({ withDevtools: true })
         const candidAdapter = Reactor.createCandidAdapter({ agentManager })
@@ -151,12 +152,10 @@
         agentManager.authenticate()
 
         const renderActor = async (event) => {
-            if (event) {
-                event.preventDefault()
-                // previousActorCleanup?.()
-                balanceUnsub?.()
-                transferUnsub?.()
-            }
+            event?.preventDefault()
+            previousActorCleanup?.()
+            balanceUnsub?.()
+            transferUnsub?.()
 
             agentManager.updateAgent({
                 host:

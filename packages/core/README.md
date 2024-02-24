@@ -16,6 +16,12 @@ npm install @ic-reactor/core
 yarn add @ic-reactor/core
 ```
 
+or you can use the UMD version:
+
+```html
+<script src="https://github.com/B3Pay/ic-reactor/releases/download/1.0.8/ic-reactor-core.min.js"></script>
+```
+
 ### Using `createReactorCore`
 
 For ease of use, the `createReactorCore` factory function automatically sets up a new Reactor instance, managing the agent and its state internally, and providing a simple API for authenticating, querying, and updating actors.

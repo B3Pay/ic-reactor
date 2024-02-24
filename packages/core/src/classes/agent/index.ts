@@ -38,12 +38,23 @@ export class AgentManager {
     error: undefined,
   }
 
-  private updateAgentState = (newState: Partial<AgentState>) => {
-    this.agentStore.setState((state) => ({ ...state, ...newState }))
+  private updateAgentState = (
+    newState: Partial<AgentState>,
+    action?: string
+  ) => {
+    this.agentStore.setState(
+      (state) => ({ ...state, ...newState }),
+      false,
+      action
+    )
   }
 
-  private updateAuthState = (newState: Partial<AuthState>) => {
-    this.authStore.setState((state) => ({ ...state, ...newState }))
+  private updateAuthState = (newState: Partial<AuthState>, action?: string) => {
+    this.authStore.setState(
+      (state) => ({ ...state, ...newState }),
+      false,
+      action
+    )
   }
 
   constructor(options?: AgentManagerParameters) {

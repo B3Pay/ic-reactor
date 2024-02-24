@@ -38,8 +38,12 @@ export class ActorManager<A = BaseActor> {
     error: undefined,
   }
 
-  private updateState = (newState: Partial<ActorState<A>>) => {
-    this.actorStore.setState((state) => ({ ...state, ...newState }))
+  private updateState = (newState: Partial<ActorState<A>>, action?: string) => {
+    this.actorStore.setState(
+      (state) => ({ ...state, ...newState }),
+      false,
+      action
+    )
   }
 
   public updateMethodState = (
@@ -47,23 +51,27 @@ export class ActorManager<A = BaseActor> {
     hash: string,
     newState: Partial<ActorMethodState<A, typeof method>[string]>
   ) => {
-    this.actorStore.setState((state) => {
-      const methodState = state.methodState[method] || {}
-      const currentMethodState = methodState[hash] || DEFAULT_STATE
+    this.actorStore.setState(
+      (state) => {
+        const methodState = state.methodState[method] || {}
+        const currentMethodState = methodState[hash] || DEFAULT_STATE
 
-      const updatedMethodState = {
-        ...methodState,
-        [hash]: { ...currentMethodState, ...newState },
-      }
+        const updatedMethodState = {
+          ...methodState,
+          [hash]: { ...currentMethodState, ...newState },
+        }
 
-      return {
-        ...state,
-        methodState: {
-          ...state.methodState,
-          [method]: updatedMethodState,
-        },
-      }
-    })
+        return {
+          ...state,
+          methodState: {
+            ...state.methodState,
+            [method]: updatedMethodState,
+          },
+        }
+      },
+      false,
+      method
+    )
   }
 
   constructor(actorConfig: ActorManagerParameters) {

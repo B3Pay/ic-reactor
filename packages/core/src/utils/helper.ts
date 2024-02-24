@@ -17,6 +17,10 @@ export function createStoreWithOptionalDevtools<T>(
       devtools(() => initialState, {
         name: "Reactor",
         store: config.store,
+        serialize: {
+          replacer: (_: string, value: unknown) =>
+            typeof value === "bigint" ? value.toString() : value,
+        },
       })
     )
   } else {

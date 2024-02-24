@@ -14,7 +14,7 @@ module.exports = (env, argv) => {
         "umd",
         isProduction ? "production" : "development"
       ),
-      filename: isProduction ? "index.min.js" : "index.js",
+      filename: isProduction ? "ic-reactor-core.min.js" : "ic-reactor-core.js",
       library: {
         name: "Reactor",
         type: "umd",
