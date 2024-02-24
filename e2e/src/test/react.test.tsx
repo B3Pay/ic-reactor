@@ -13,7 +13,7 @@ describe("React Test", () => {
       canisterId,
       idlFactory,
       initializeOnCreate: false,
-      withLocalEnv: true,
+      withProcessEnv: true,
     })
 
     const Initialize = () => {

@@ -2,6 +2,8 @@
 node_modules
 # don't lint build output (make sure it's set to your correct build folder name)
 build
+# don't lint e2e
+e2e
 # don't lint examples
 examples
 # don't lint nyc coverage output

@@ -8,12 +8,12 @@
     "bundle": "lerna run bundle",
     "build": "lerna run build",
     "clean": "lerna run clean",
-    "lerna-publish": "yarn clean && yarn build && lerna publish",
     "test": "lerna run test",
     "lint": "eslint . --ext .ts",
     "e2e": "cd e2e && sh ./test.sh",
+    "docs:serve": "npx serve@latest ./docs",
     "docs:build": "typedoc --options ./typedoc.json",
-    "docs:serve": "npx serve@latest ./docs"
+    "lerna-publish": "yarn clean && yarn build && lerna publish"
   },
   "publishConfig": {
     "access": "public",

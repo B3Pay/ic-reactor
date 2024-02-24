@@ -34,7 +34,7 @@ test("Main Function Test", async () => {
     createReactorStore<typeof hello_actor>({
       canisterId,
       idlFactory,
-      withLocalEnv: true,
+      withProcessEnv: true,
       initializeOnCreate: false,
       verifyQuerySignatures: false,
     })
