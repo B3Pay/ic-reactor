@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const path = require("path")
 
+/** @type {import("webpack").Configuration} */
 module.exports = {
   entry: "./src/index.ts", // Your entry point file
   output: {
     path: path.resolve(__dirname, "bundle"),
     filename: "bundle.js", // Output file
     library: {
-      name: "@ic-reactor", // Exported library name
-      type: "umd", // Universal module definition
+      name: "reactor", // Exported library name
+      type: "window", // Universal module definition
     },
   },
   module: {

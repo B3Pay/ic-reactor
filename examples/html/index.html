@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IC Reactor Example</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            align-items: center;
+        }
+
+        .flex-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        input,
+        select,
+        fieldset,
+        button {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            max-height: 30px;
+            min-width: 30px;
+            cursor: pointer;
+        }
+
+        #balance {
+            display: flex;
+            gap: 10px;
+        }
+
+        #transferResult {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <h1>ICRC Token</h1>
+
+        <form id="canisterForm">
+            <div class="flex-row">
+                <select id="networkSelect" style="width: 20%;">
+                    <option value="ic">IC</option>
+                    <option value="local">Local</option>
+                </select>
+                <input id="canisterIdInput" style="width: 50%;" required value="ryjl3-tyaaa-aaaaa-aaaba-cai" />
+                <button type="submit" style="width: 30%;">Fetch</button>
+            </div>
+        </form>
+        <hr />
+        <div id="result" style="margin-top: 10px;margin-bottom: 10px;"></div>
+        <fieldset class="flex-column" style="padding: 10px;">
+            <legend id="user"></legend>
+            <div id="userForm" class="flex-column" style="display: none;">
+                <label for="balance">Balance</label>
+                <div id="balance" class="flex-row"></div>
+                <label for="transferForm">Transfer</label>
+                <form id="transferForm" class="flex-row">
+                    <input id="to" placeholder="To" style="width: 50%;" />
+                    <input id="amount" placeholder="Amount" style="width: 30%;" />
+                    <button id="transferButton" style="width: 20%;">Transfer</button>
+                </form>
+                <div id="transferResult"></div>
+            </div>
+            <button id="loginButton">Login</button>
+        </fieldset>
+    </div>
+
+    <script src="../../packages/core/bundle/bundle.js"></script>
+    <script>
+        const agentManager = reactor.createAgentManager({ withDevtools: true })
+        const candidAdapter = reactor.createCandidAdapter({ agentManager })
+
+        let previousActorCleanup = null
+        let balanceUnsub = null
+        let transferUnsub = null
+
+        const canisterForm = document.getElementById("canisterForm")
+
+        document.addEventListener("DOMContentLoaded", function () {
+            canisterForm.addEventListener("submit", renderActor, false)
+        })
+
+        const canisterIdInput = document.getElementById("canisterIdInput")
+        const networkSelect = document.getElementById("networkSelect")
+        const userPara = document.getElementById("user")
+        const loginButton = document.getElementById("loginButton")
+        const resultDiv = document.getElementById("result")
+        const userForm = document.getElementById("userForm")
+        const balanceDiv = document.getElementById("balance")
+        const transferForm = document.getElementById("transferForm")
+        const transferResult = document.getElementById("transferResult")
+
+        loginButton.addEventListener("click", login, false)
+
+        function login() {
+            const { authenticated } = agentManager.getAuthState()
+
+            if (authenticated) {
+                balanceUnsub?.()
+                transferUnsub?.()
+                agentManager.logout()
+                userForm.style.display = "none"
+            } else {
+                agentManager.login({
+                    onSuccess: () => {
+                        renderActor()
+                    },
+                })
+            }
+        }
+
+        agentManager.subscribeAuthState(
+            ({ identity, authenticating, authenticated }) => {
+                const userPrincipal = identity?.getPrincipal().toText()
+
+                loginButton.textContent = authenticating
+                    ? "Authenticating..."
+                    : authenticated
+                        ? "Logout"
+                        : "Login"
+
+                userPara.textContent = `${userPrincipal || "Not logged in"}`
+            }
+        )
+
+        agentManager.authenticate()
+
+        const renderActor = async (event) => {
+            if (event) {
+                event.preventDefault()
+                // previousActorCleanup?.()
+                balanceUnsub?.()
+                transferUnsub?.()
+            }
+
+            agentManager.updateAgent({
+                host:
+                    networkSelect.value === "local"
+                        ? reactor.utils.LOCAL_HOST_NETWORK_URI
+                        : reactor.utils.IC_HOST_NETWORK_URI,
+            })
+
+            const canisterId = canisterIdInput.value
+
+            resultDiv.innerHTML = `Loading ${canisterId}`
+            const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
+            resultDiv.innerHTML = `Loaded ${canisterId}`
+
+            const reactorCore = reactor.createReactorCore({
+                agentManager,
+                canisterId,
+                idlFactory,
+            })
+
+            previousActorCleanup = reactorCore.cleanup
+            resultDiv.innerHTML = ""
+            balanceDiv.innerHTML = ""
+
+            tokenDetails(reactorCore)
+            userWallet(reactorCore)
+        }
+
+        const tokenDetails = async ({ queryCall }) => {
+            // Function names as per your React component
+            const functionNames = [
+                "icrc1_decimals",
+                "icrc1_fee",
+                "icrc1_metadata",
+                "icrc1_minting_account",
+                "icrc1_name",
+                "icrc1_supported_standards",
+                "icrc1_symbol",
+                "icrc1_total_supply",
+            ]
+
+            functionNames.forEach((functionName) => {
+                const { subscribe, call } = queryCall({ functionName })
+                const container = document.createElement("div")
+                container.className = "flex-row"
+                const resultPara = document.createElement("p")
+
+                const refreshButton = document.createElement("button")
+                refreshButton.textContent = "↻"
+                refreshButton.onclick = () => call()
+
+                container.appendChild(refreshButton)
+                container.appendChild(resultPara)
+
+                subscribe(({ data, loading, error }) => {
+                    resultPara.textContent = loading
+                        ? "Loading..."
+                        : error
+                            ? `Error: ${error.message}`
+                            : `${functionName}: ${reactor.utils.jsonToString(data)}`
+                })
+
+                resultDiv.appendChild(container)
+            })
+        }
+
+        const userWallet = async ({ getPrincipal, queryCall, updateCall }) => {
+            userForm.style.display = "flex"
+
+            const owner = getPrincipal()
+
+            const { subscribe: balanceSubscribe, call: balanceCall } = queryCall({
+                functionName: "icrc1_balance_of",
+                args: [{ owner, subaccount: [] }],
+            })
+
+            const { subscribe: transferSubscribe, call: transferCall } = updateCall({
+                functionName: "icrc1_transfer",
+            })
+
+            const refreshButton = document.createElement("button")
+            refreshButton.textContent = "↻"
+            refreshButton.onclick = () => balanceCall()
+
+            balanceDiv.appendChild(refreshButton)
+
+            const balancePara = document.createElement("p")
+            balanceDiv.appendChild(balancePara)
+
+            balanceUnsub = balanceSubscribe(({ data, loading, error }) => {
+                balancePara.innerHTML = loading
+                    ? "Loading..."
+                    : error
+                        ? `Error: ${error.message}`
+                        : reactor.utils.jsonToString(data)
+            })
+
+            transferUnsub = transferSubscribe(({ data, loading, error }) => {
+                transferResult.innerHTML = loading
+                    ? "Loading..."
+                    : error
+                        ? `Error: ${error.message}`
+                        : data
+                            ? `Transfer Result: ${reactor.utils.jsonToString(data)}`
+                            : ""
+            })
+
+            transferForm.addEventListener("submit", (event) => {
+                event.preventDefault()
+
+                const owner = Principal.fromText(event.target.elements.to.value)
+                const amount = BigInt(event.target.elements.amount.value)
+
+                transferCall([
+                    {
+                        to: { owner, subaccount: [] },
+                        amount,
+                        created_at_time: [],
+                        fee: [],
+                        memo: [],
+                        from_subaccount: [],
+                    },
+                ])
+            })
+        }
+
+    </script>
+</body>
+
+</html>
