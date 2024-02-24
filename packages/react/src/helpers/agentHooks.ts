@@ -1,6 +1,6 @@
+import React from "react"
 import type { HttpAgent, AgentManager } from "@ic-reactor/core/dist/types"
 import type { AgentHooksReturnType } from "./types"
-import { useEffect, useState } from "react"
 import { useStore } from "zustand"
 
 export const agentHooks = (
@@ -11,9 +11,9 @@ export const agentHooks = (
   const useAgentState = () => useStore(agentStore)
 
   const useAgent = (): HttpAgent | undefined => {
-    const [agent, setAgent] = useState<HttpAgent | undefined>(getAgent)
+    const [agent, setAgent] = React.useState<HttpAgent | undefined>(getAgent)
 
-    useEffect(() => subscribeAgent(setAgent), [subscribeAgent])
+    React.useEffect(() => subscribeAgent(setAgent), [subscribeAgent])
 
     return agent
   }

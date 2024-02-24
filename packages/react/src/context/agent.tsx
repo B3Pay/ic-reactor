@@ -1,4 +1,4 @@
-import React, { createContext, useMemo } from "react"
+import React from "react"
 import { createAgentManager } from "@ic-reactor/core"
 import { agentHooks } from "../helpers/agentHooks"
 import { authHooks } from "../helpers/authHooks"
@@ -85,14 +85,14 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
 export const createAgentContext = (
   config: CreateAgentCotextParameters = {}
 ): CreateAgentContextReturnType => {
-  const AgentContext = createContext<AgentContext | null>(null)
+  const AgentContext = React.createContext<AgentContext | null>(null)
 
   const AgentProvider: React.FC<AgentProviderProps> = ({
     children,
     agentManager: mybeAgentManager,
     ...options
   }) => {
-    const hooks = useMemo(() => {
+    const hooks = React.useMemo(() => {
       const agentManager =
         mybeAgentManager ?? createAgentManager({ ...options, ...config })
 

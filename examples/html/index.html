@@ -90,10 +90,10 @@
         </fieldset>
     </div>
 
-    <script src="../../packages/core/bundle/bundle.js"></script>
+    <script src="../../packages/core/umd/core.js"></script>
     <script>
-        const agentManager = reactor.createAgentManager({ withDevtools: true })
-        const candidAdapter = reactor.createCandidAdapter({ agentManager })
+        const agentManager = Reactor.createAgentManager({ withDevtools: true })
+        const candidAdapter = Reactor.createCandidAdapter({ agentManager })
 
         let previousActorCleanup = null
         let balanceUnsub = null
@@ -161,8 +161,8 @@
             agentManager.updateAgent({
                 host:
                     networkSelect.value === "local"
-                        ? reactor.utils.LOCAL_HOST_NETWORK_URI
-                        : reactor.utils.IC_HOST_NETWORK_URI,
+                        ? Reactor.utils.LOCAL_HOST_NETWORK_URI
+                        : Reactor.utils.IC_HOST_NETWORK_URI,
             })
 
             const canisterId = canisterIdInput.value
@@ -171,7 +171,7 @@
             const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
             resultDiv.innerHTML = `Loaded ${canisterId}`
 
-            const reactorCore = reactor.createReactorCore({
+            const reactorCore = Reactor.createReactorCore({
                 agentManager,
                 canisterId,
                 idlFactory,
@@ -216,7 +216,7 @@
                         ? "Loading..."
                         : error
                             ? `Error: ${error.message}`
-                            : `${functionName}: ${reactor.utils.jsonToString(data)}`
+                            : `${functionName}: ${Reactor.utils.jsonToString(data)}`
                 })
 
                 resultDiv.appendChild(container)
@@ -251,7 +251,7 @@
                     ? "Loading..."
                     : error
                         ? `Error: ${error.message}`
-                        : reactor.utils.jsonToString(data)
+                        : Reactor.utils.jsonToString(data)
             })
 
             transferUnsub = transferSubscribe(({ data, loading, error }) => {
@@ -260,7 +260,7 @@
                     : error
                         ? `Error: ${error.message}`
                         : data
-                            ? `Transfer Result: ${reactor.utils.jsonToString(data)}`
+                            ? `Transfer Result: ${Reactor.utils.jsonToString(data)}`
                             : ""
             })
 

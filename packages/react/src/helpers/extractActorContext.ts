@@ -1,4 +1,4 @@
-import { useContext } from "react"
+import React from "react"
 import type {
   ActorHooksReturnType,
   BaseActor,
@@ -37,7 +37,7 @@ export function extractActorContext<A = BaseActor>(
    * ```
    */
   const useActorContext = () => {
-    const context = useContext(actorContext)
+    const context = React.useContext(actorContext)
 
     if (!context) {
       throw new Error("Actor hooks must be used within a ActorProvider")

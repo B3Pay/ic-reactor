@@ -23,7 +23,7 @@ module.exports = (env, argv) => {
     module: {
       rules: [
         {
-          test: /\.ts/,
+          test: /\.tsx?$/,
           use: {
             loader: "babel-loader",
             options: {
@@ -35,10 +35,12 @@ module.exports = (env, argv) => {
       ],
     },
     resolve: {
-      extensions: [".ts", ".js"],
+      extensions: [".tsx", ".ts", ".js"],
       modules: [path.resolve(__dirname, "node_modules"), "node_modules"],
     },
-    externals: {},
+    externals: {
+      react: "React",
+    },
     // Add source maps in development for easier debugging
     devtool: isProduction ? false : "source-map",
     // Additional production optimizations could be added here

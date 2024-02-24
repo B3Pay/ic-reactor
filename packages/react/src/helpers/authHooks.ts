@@ -1,5 +1,5 @@
+import React from "react"
 import { useStore } from "zustand"
-import { useCallback, useEffect, useState } from "react"
 import type {
   AgentManager,
   UseAuthParameters,
@@ -36,13 +36,13 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
     onLoginError,
     onLoggedOut,
   }: UseAuthParameters = {}) => {
-    const [loginState, setLoginState] = useState<LoginState>({
+    const [loginState, setLoginState] = React.useState<LoginState>({
       loading: false,
       error: null,
     })
     const { authenticated, authenticating, error, identity } = useAuthState()
 
-    const authenticate = useCallback(async () => {
+    const authenticate = React.useCallback(async () => {
       const authenticatePromise: Promise<Identity> = new Promise(
         (resolve, reject) => {
           authenticator()
@@ -67,7 +67,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
       onAuthenticationFailure,
     ])
 
-    const login = useCallback(
+    const login = React.useCallback(
       async (options?: LoginParameters) => {
         setLoginState({ loading: true, error: null })
 
@@ -123,7 +123,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
       [onLogin, onLoginSuccess, onLoginError, isLocalEnv, authenticate]
     )
 
-    const logout = useCallback(
+    const logout = React.useCallback(
       async (options?: LogoutParameters) => {
         const authClient = getAuth()
 
@@ -137,7 +137,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
       [onLoggedOut]
     )
 
-    useEffect(() => {
+    React.useEffect(() => {
       const authClient = getAuth()
 
       if (!authClient && !authenticating) {

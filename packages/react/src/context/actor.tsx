@@ -1,4 +1,4 @@
-import React, { createContext, useMemo } from "react"
+import React from "react"
 import { ActorHooksReturnType, BaseActor } from "../types"
 import {
   CreateActorContextParameters,
@@ -73,7 +73,7 @@ export function createActorContext<A = BaseActor>(
 ): CreateActorContextReturnType<A> {
   const { canisterId: defaultCanisterId, ...defaultConfig } = config
 
-  const ActorContext = createContext<ActorHooksReturnType<A> | null>(null)
+  const ActorContext = React.createContext<ActorHooksReturnType<A> | null>(null)
 
   const ActorProvider: React.FC<ActorProviderProps> = ({
     children,
@@ -85,7 +85,7 @@ export function createActorContext<A = BaseActor>(
       throw new Error("canisterId is required")
     }
 
-    const config = useMemo(
+    const config = React.useMemo(
       () => ({
         ...defaultConfig,
         ...restConfig,

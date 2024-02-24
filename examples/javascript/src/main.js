@@ -69,12 +69,10 @@ agentManager.subscribeAuthState(
 agentManager.authenticate()
 
 const renderActor = async (event) => {
-  if (event) {
-    event.preventDefault()
-    // previousActorCleanup?.()
-    balanceUnsub?.()
-    transferUnsub?.()
-  }
+  event.preventDefault()
+  previousActorCleanup?.()
+  balanceUnsub?.()
+  transferUnsub?.()
 
   agentManager.updateAgent({
     host:

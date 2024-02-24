@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React from "react"
 import { useStore } from "zustand"
 import type {
   ActorCallState,
@@ -50,7 +50,7 @@ export const actorHooks = <A = BaseActor>(
   const useVisitMethod = <M extends FunctionName<A>>(
     functionName: M
   ): VisitService<A>[M] => {
-    return useMemo(() => visitFunction[functionName], [functionName])
+    return React.useMemo(() => visitFunction[functionName], [functionName])
   }
 
   const useMethodCall: UseMethodCall<A> = ({
@@ -60,11 +60,12 @@ export const actorHooks = <A = BaseActor>(
     ...events
   }) => {
     type M = typeof functionName
-    const [state, setState] = useState<ActorCallState<A, M>>(DEFAULT_STATE)
+    const [state, setState] =
+      React.useState<ActorCallState<A, M>>(DEFAULT_STATE)
 
-    const reset = useCallback(() => setState(DEFAULT_STATE), [])
+    const reset = React.useCallback(() => setState(DEFAULT_STATE), [])
 
-    const call = useCallback(
+    const call = React.useCallback(
       async (
         eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
       ) => {
@@ -109,9 +110,9 @@ export const actorHooks = <A = BaseActor>(
     ...rest
   }) => {
     const { call, ...state } = useMethodCall(rest)
-    const intervalId = useRef<NodeJS.Timeout>()
+    const intervalId = React.useRef<NodeJS.Timeout>()
 
-    useEffect(() => {
+    React.useEffect(() => {
       if (refetchInterval) {
         intervalId.current = setInterval(call, refetchInterval)
       }

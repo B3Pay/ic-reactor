@@ -29,7 +29,10 @@
     "test": "npx jest",
     "start": "tsc watch",
     "build": "npx tsc",
-    "clean": "npx rimraf dist"
+    "bundle": "npm run bundle:dev && npm run bundle:prod",
+    "bundle:dev": "npx webpack --mode development",
+    "bundle:prod": "npx webpack --mode production",
+    "clean": "npx rimraf dist && npx rimraf umd"
   },
   "engines": {
     "node": ">=10"

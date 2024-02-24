@@ -1,4 +1,4 @@
-import { useContext } from "react"
+import React from "react"
 import type {
   AgentManager,
   AgentContext,
@@ -37,7 +37,7 @@ export const extractAgentContext = (
   const useAgentContext = (
     mybeAgentContext?: React.Context<AgentContext | null>
   ) => {
-    const context = useContext(mybeAgentContext || agentContext)
+    const context = React.useContext(mybeAgentContext || agentContext)
 
     if (!context) {
       throw new Error("Agent hooks must be used within a AgentProvider")
