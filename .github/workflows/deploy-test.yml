@@ -25,6 +25,11 @@ jobs:
       - name: Build
         run: yarn build
 
+      - name: Get version from package
+        id: package_version
+        run: echo "::set-output name=VERSION::$(jq -r '.version' ./packages/core/package.json)"
+        shell: bash
+
       - name: Copy File to Temp Location
         run: cp ./packages/core/umd/production/ic-reactor-core.min.js ./temp-ic-reactor-core.min.js
 
@@ -33,7 +38,7 @@ jobs:
         uses: djnicholson/release-action@v2.10
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
-          release-name: Core Bundle ${{ github.ref }}
-          tag-name: ${{ github.ref }}
+          release-name: Core Bundle ${{ steps.package_version.outputs.VERSION }}
+          tag-name: v${{ steps.package_version.outputs.VERSION }}
           asset-name: "ic-reactor-core.min.js"
           file: "./temp-ic-reactor-core.min.js"
