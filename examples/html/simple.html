@@ -14,12 +14,13 @@
     <div id="canisterData"></div>
 
     <!-- ic-reactor-core UMD build -->
-    <script src="https://github.com/B3Pay/ic-reactor/releases/download/1.1.0/ic-reactor-core.min.js"></script>
+    <!-- <script src="https://github.com/B3Pay/ic-reactor/releases/download/v1.1.0/ic-reactor-core.js"></script> -->
+    <script src="../../packages/core/umd/development/ic-reactor-core.js"></script>
     <script>
         const loginBtn = document.getElementById('loginBtn');
         const userInfo = document.getElementById('userInfo');
         // Initialize the Agent Manager
-        const agentManager = Reactor.createAgentManager();
+        const agentManager = Reactor.createAgentManager({ withDevtools: true });
 
         agentManager.subscribeAuthState(({ identity, authenticating, authenticated }) => {
             if (authenticating) {
@@ -40,11 +41,11 @@
         async function fetchDataFromCanister(canisterId) {
             const candidAdapter = Reactor.createCandidAdapter({ agentManager });
             const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId);
-            const reactorCore = Reactor.createReactorCore({ agentManager, canisterId, idlFactory });
+            const reactorCore = Reactor.createReactorCore({ agentManager, canisterId, idlFactory, withDevtools: true });
 
-            const data = await reactorCore.callMethod('icrc1_name');
+            const { dataPromise } = await reactorCore.queryCall({ functionName: 'icrc1_name' });
             document.getElementById("canisterData").innerText =
-                Reactor.utils.jsonToString(data)
+                Reactor.utils.jsonToString(await dataPromise)
         }
 
         fetchDataFromCanister('ryjl3-tyaaa-aaaaa-aaaba-cai');

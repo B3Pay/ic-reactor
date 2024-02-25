@@ -63,7 +63,7 @@ export class AgentManager {
       port = 4943,
       withLocalEnv,
       host: optionHost,
-      ...agentParameters
+      ...agentOptions
     } = options || {}
     const host = withLocalEnv
       ? `http://127.0.0.1:${port}`
@@ -75,29 +75,37 @@ export class AgentManager {
 
     this.agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
       withDevtools,
+      name: "Reactor-Agent",
       store: "agent",
     })
 
     this.authStore = createStoreWithOptionalDevtools(this.initialAuthState, {
       withDevtools,
+      name: "Reactor-Agent",
       store: "auth",
     })
 
-    this._agent = new HttpAgent({ ...agentParameters, host })
+    this._agent = new HttpAgent({ ...agentOptions, host })
     this.isLocalEnv = this._agent.isLocal()
     this.initializeAgent()
   }
 
   private initializeAgent = async () => {
-    this.updateAgentState({ initializing: true })
+    this.updateAgentState({ initializing: true }, "initializing")
     if (this.isLocalEnv) {
       try {
         await this._agent.fetchRootKey()
-        this.updateAgentState({ initialized: true, initializing: false })
       } catch (error) {
-        this.updateAgentState({ error: error as Error, initializing: false })
+        this.updateAgentState(
+          { error: error as Error, initializing: false },
+          "error"
+        )
       }
     }
+    this.updateAgentState(
+      { initialized: true, initializing: false },
+      "initialized"
+    )
   }
 
   public subscribeAgent = (
@@ -136,7 +144,7 @@ export class AgentManager {
   }
 
   public authenticate = async () => {
-    this.updateAuthState({ authenticating: true })
+    this.updateAuthState({ authenticating: true }, "authenticating")
 
     try {
       this._auth = await AuthClient.create()
@@ -147,21 +155,27 @@ export class AgentManager {
       this._agent.replaceIdentity(identity)
       this.notifySubscribers()
 
-      this.updateAuthState({
-        authenticated,
-        identity,
-        authenticating: false,
-      })
+      this.updateAuthState(
+        {
+          authenticated,
+          identity,
+          authenticating: false,
+        },
+        "authenticated"
+      )
 
       return identity
     } catch (error) {
-      this.updateAuthState({ error: error as Error, authenticating: false })
+      this.updateAuthState(
+        { error: error as Error, authenticating: false },
+        "error"
+      )
       throw error
     }
   }
 
   public login = async (options?: AuthClientLoginOptions) => {
-    this.updateAuthState({ authenticating: true })
+    this.updateAuthState({ authenticating: true }, "login")
     if (!this._auth) {
       await this.authenticate()
     }

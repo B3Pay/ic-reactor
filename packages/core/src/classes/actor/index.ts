@@ -91,7 +91,8 @@ export class ActorManager<A = BaseActor> {
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(this.initialState, {
       withDevtools,
-      store: `actor-${String(canisterId)}`,
+      name: "Reactor-Actor",
+      store: canisterId.toString(),
     })
 
     this._unsubscribeAgent = this._agentManager.subscribeAgent(
@@ -141,11 +142,14 @@ export class ActorManager<A = BaseActor> {
 
     const { _idlFactory, canisterId } = this
 
-    this.updateState({
-      initializing: true,
-      initialized: false,
-      methodState: {} as ActorMethodStates<A>,
-    })
+    this.updateState(
+      {
+        initializing: true,
+        initialized: false,
+        methodState: {} as ActorMethodStates<A>,
+      },
+      "initializing"
+    )
 
     try {
       if (!agent) {
@@ -161,13 +165,16 @@ export class ActorManager<A = BaseActor> {
         throw new Error("Failed to initialize actor")
       }
 
-      this.updateState({
-        initializing: false,
-        initialized: true,
-      })
+      this.updateState(
+        {
+          initializing: false,
+          initialized: true,
+        },
+        "initialized"
+      )
     } catch (error) {
       console.error("Error in initializeActor:", error)
-      this.updateState({ error: error as Error, initializing: false })
+      this.updateState({ error: error as Error, initializing: false }, "error")
     }
   }
 

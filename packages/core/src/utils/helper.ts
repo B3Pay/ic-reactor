@@ -1,26 +1,20 @@
 import { hash } from "@dfinity/agent"
-import { devtools } from "zustand/middleware"
+import { DevtoolsOptions, devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 import type { BaseActor } from "../types"
 
-interface StoreParameters {
-  withDevtools?: boolean
-  store: string
-}
-
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
-  config: StoreParameters
+  config: DevtoolsOptions
 ) {
   if (config.withDevtools) {
     return createStore(
       devtools(() => initialState, {
-        name: "Reactor",
-        store: config.store,
         serialize: {
           replacer: (_: string, value: unknown) =>
             typeof value === "bigint" ? value.toString() : value,
         },
+        ...config,
       })
     )
   } else {
@@ -36,11 +30,11 @@ export const isInLocalOrDevelopment = () => {
   )
 }
 
-export const jsonToString = (json: unknown) => {
+export const jsonToString = (json: unknown, space = 2) => {
   return JSON.stringify(
     json,
     (_, value) => (typeof value === "bigint" ? `BigInt(${value})` : value),
-    2
+    space
   )
 }
 
