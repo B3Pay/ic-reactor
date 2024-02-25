@@ -5,11 +5,15 @@ on:
   push:
     tags:
       - "v*"
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
@@ -19,13 +23,13 @@ jobs:
       - name: Install Yarn
         run: npm install -g yarn
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: yarn install
 
       - name: Build
         run: yarn build
 
-      - name: Get version from package
+      - name: Get Version from Package
         id: package_version
         run: echo "::set-output name=VERSION::$(jq -r '.version' ./packages/core/package.json)"
         shell: bash
@@ -33,12 +37,11 @@ jobs:
       - name: List Files in Directory
         run: ls -la ./packages/core/umd/production/
 
-      - uses: actions/checkout@v3
-      - name: Release file
+      - name: Release File
         uses: djnicholson/release-action@v2.10
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
-          release-name: Core Bundle ${{ steps.package_version.outputs.VERSION }}
-          tag-name: v${{ steps.package_version.outputs.VERSION }}
+          release-name: "Core Bundle ${{ steps.package_version.outputs.VERSION }}"
+          tag-name: "v${{ steps.package_version.outputs.VERSION }}"
           asset-name: "ic-reactor-core.min.js"
           file: "./packages/core/umd/production/ic-reactor-core.min.js"
