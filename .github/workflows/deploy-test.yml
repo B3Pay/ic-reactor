@@ -37,13 +37,17 @@ jobs:
         run: ls -la ./packages/core/umd/production/
 
       - name: Print release details
-        run: echo "CORE_VERSION=${CORE_VERSION}" && echo "${{ github.event_name }}" && echo "${{ github.ref }}" && echo "${{ github.sha }}"
+        run: echo "CORE_VERSION=${{ env.CORE_VERSION }}" && echo "${{ github.event_name }}" && echo "${{ github.ref }}" && echo "${{ github.sha }}"
 
-      - name: Release File
-        uses: djnicholson/release-action@v2.10
+      - name: Release
+        uses: softprops/action-gh-release@v1
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
-          release-name: "Core Bundle v${{ env.CORE_VERSION }}"
-          tag-name: "v${{ env.CORE_VERSION }}"
-          asset-name: "ic-reactor-core.min.js"
-          file: "./packages/core/umd/production/ic-reactor-core.min.js"
+          files: |
+            ./packages/core/umd/production/ic-reactor-core.min.js
+          tag_name: "v${{ env.CORE_VERSION }}"
+          release_name: "Core Bundle v${{ env.CORE_VERSION }}"
+          body: "https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/ic-reactor-core.min.js"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
