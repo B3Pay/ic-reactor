@@ -39,7 +39,15 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN }}
           name: "Core Bundle v${{ env.CORE_VERSION }}"
           tag_name: "v${{ env.CORE_VERSION }}"
-          body: "https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/ic-reactor-core.min.js"
+          body: |
+            For production use:
+            ```html
+            <script src="https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/ic-reactor-core.min.js"></script>
+            ```
+            For development use:
+            ```html
+            <script src="https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/ic-reactor-core.js"></script>
+            ```
           files: |
             ./packages/core/umd/production/ic-reactor-core.min.js
             ./packages/core/umd/development/ic-reactor-core.js
