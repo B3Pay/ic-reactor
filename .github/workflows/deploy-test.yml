@@ -35,6 +35,9 @@ jobs:
       - name: List Files in Directory
         run: ls -la ./packages/core/umd/production/
 
+      - name: Print release details
+        run: echo "CORE_VERSION=${CORE_VERSION}" && echo "${{ github.event_name }}" && echo "${{ github.ref }}" && echo "${{ github.sha }}"
+
       - name: Release File
         uses: djnicholson/release-action@v2.10
         with:
@@ -43,5 +46,3 @@ jobs:
           tag-name: "v${{ env.CORE_VERSION }}"
           asset-name: "ic-reactor-core.min.js"
           file: "./packages/core/umd/production/ic-reactor-core.min.js"
-          prerelease: false
-          draft: false
