@@ -1,10 +1,9 @@
 name: Build and Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
-      - "v*"
+      - "@ic-reactor/core@*"
 
 jobs:
   build-and-release:
@@ -29,10 +28,9 @@ jobs:
       - name: Build
         run: yarn build
 
-      - name: Get Version from Package
-        id: package_version
-        run: echo "::set-output name=VERSION::$(jq -r '.version' ./packages/core/package.json)"
-        shell: bash
+      - name: Get Core Package Version
+        id: core-version
+        run: echo "CORE_VERSION=$(jq -r '.version' ./packages/core/package.json)" >> $GITHUB_ENV
 
       - name: List Files in Directory
         run: ls -la ./packages/core/umd/production/
@@ -41,7 +39,9 @@ jobs:
         uses: djnicholson/release-action@v2.10
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
-          release-name: "Core Bundle ${{ steps.package_version.outputs.VERSION }}"
-          tag-name: "v${{ steps.package_version.outputs.VERSION }}"
+          release-name: "Core Bundle v${{ env.CORE_VERSION }}"
+          tag-name: "v${{ env.CORE_VERSION }}"
           asset-name: "ic-reactor-core.min.js"
           file: "./packages/core/umd/production/ic-reactor-core.min.js"
+          prerelease: false
+          draft: false
