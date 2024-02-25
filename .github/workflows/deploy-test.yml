@@ -42,6 +42,8 @@ jobs:
           body: "https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/ic-reactor-core.min.js"
           files: |
             ./packages/core/umd/production/ic-reactor-core.min.js
+            ./packages/core/umd/development/ic-reactor-core.js
+            ./packages/core/umd/development/ic-reactor-core.js.map
           draft: false
           prerelease: false
           generate_release_notes: true

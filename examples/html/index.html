@@ -90,8 +90,8 @@
         </fieldset>
     </div>
 
-    <script src="https://github.com/B3Pay/ic-reactor/releases/download/1.0.8/ic-reactor-core.min.js"></script>
-    <!-- <script src="../../packages/core/umd/development/ic-reactor-core.js"></script> -->
+    <!-- <script src="https://github.com/B3Pay/ic-reactor/releases/download/v1.1.0/ic-reactor-core.js"></script> -->
+    <script src="../../packages/core/umd/development/ic-reactor-core.js"></script>
     <script>
         const agentManager = Reactor.createAgentManager({ withDevtools: true })
         const candidAdapter = Reactor.createCandidAdapter({ agentManager })
@@ -174,6 +174,7 @@
                 agentManager,
                 canisterId,
                 idlFactory,
+                withDevtools: true
             })
 
             previousActorCleanup = reactorCore.cleanup
@@ -266,7 +267,7 @@
             transferForm.addEventListener("submit", (event) => {
                 event.preventDefault()
 
-                const owner = Principal.fromText(event.target.elements.to.value)
+                const owner = Reactor.utils.Principal.fromText(event.target.elements.to.value)
                 const amount = BigInt(event.target.elements.amount.value)
 
                 transferCall([
