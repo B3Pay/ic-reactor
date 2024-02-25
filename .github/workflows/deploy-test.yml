@@ -25,12 +25,15 @@ jobs:
       - name: Build
         run: yarn build
 
+      - name: Copy File to Temp Location
+        run: cp ./packages/core/umd/production/ic-reactor-core.min.js ./temp-ic-reactor-core.min.js
+
       - uses: actions/checkout@v3
       - name: Release file
         uses: djnicholson/release-action@v2.10
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
-          release_name: Core Bundle ${{ github.ref }}
-          release_tag: ${{ github.ref }}
+          release-name: Core Bundle ${{ github.ref }}
+          tag-name: ${{ github.ref }}
           asset-name: "ic-reactor-core.min.js"
-          file: "./packages/core/umd/production/ic-reactor-core.min.js"
+          file: "./temp-ic-reactor-core.min.js"
