@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IC Reactor Example</title>
+</head>
+
+<body>
+    <h1>Authenticate and Fetch Data from the ICP blockchain</h1>
+    <div id="userInfo"></div>
+    <button id="loginBtn">Login</button>
+    <div id="canisterData"></div>
+    <button id="refetchBtn">Refetch</button>
+
+</body>
+<script src="https://github.com/B3Pay/ic-reactor/releases/download/v1.1.1/ic-reactor-core.js"></script>
+<script>
+    const loginBtn = document.getElementById('loginBtn');
+    const userInfo = document.getElementById('userInfo');
+    const canisterData = document.getElementById('canisterData');
+    const refetchBtn = document.getElementById('refetchBtn');
+
+    const agentManager = Reactor.createAgentManager({ withDevtools: true });
+
+    agentManager.subscribeAuthState(({ identity, authenticating, authenticated }) => {
+        if (authenticating) {
+            loginBtn.innerText = 'Authenticating...';
+        } else if (authenticated) {
+            loginBtn.onclick = agentManager.logout
+            loginBtn.innerText = 'Logout';
+        } else {
+            loginBtn.onclick = agentManager.login
+            loginBtn.innerText = 'Login';
+        }
+
+        userInfo.innerText = identity?.getPrincipal().toText();
+    });
+
+    agentManager.authenticate()
+
+    const candidAdapter = Reactor.createCandidAdapter({ agentManager });
+
+    async function createReactor(canisterId) {
+        const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId);
+
+        return Reactor.createReactorCore({
+            agentManager,
+            canisterId,
+            idlFactory,
+            withDevtools: true
+        });
+    }
+
+    createReactor('ryjl3-tyaaa-aaaaa-aaaba-cai').then(reactor => {
+        const owner = agentManager.getPrincipal()
+        const { subscribe, call } = reactor.queryCall({
+            functionName: 'icrc1_balance_of',
+            args: [{ owner, subaccount: [] }]
+        });
+
+        refetchBtn.onclick = () => {
+            const owner = agentManager.getPrincipal()
+            call([{ owner, subaccount: [] }]);
+        }
+
+        subscribe(({ data, loading, error }) => {
+            if (loading) {
+                canisterData.innerText = 'Loading...';
+            } else if (error) {
+                canisterData.innerText = error.message;
+            } else {
+                canisterData.innerText = Reactor.utils.jsonToString(data);
+            }
+        });
+    });
+
+</script>
+
+</html>
