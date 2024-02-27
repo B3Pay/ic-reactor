@@ -1,4 +1,9 @@
-import { FunctionName, UseQueryCall, UseQueryCallParameters } from "../../types"
+import {
+  BaseActor,
+  FunctionName,
+  UseQueryCall,
+  UseQueryCallParameters,
+} from "../../types"
 import { ActorHooks } from "./hooks"
 
 /**
@@ -27,8 +32,9 @@ import { ActorHooks } from "./hooks"
  * }
  * ```
  */
-export function useQueryCall<A, M extends FunctionName<A> = FunctionName<A>>(
-  args: UseQueryCallParameters<A, M>
-) {
+export function useQueryCall<
+  A = BaseActor,
+  M extends FunctionName<A> = FunctionName<A>
+>(args: UseQueryCallParameters<A, M>) {
   return (ActorHooks.useQueryCall as UseQueryCall<A>)(args)
 }
