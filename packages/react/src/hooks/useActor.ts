@@ -4,6 +4,7 @@ import { useAgentManager } from "./agent/useAgentManager"
 import { actorHooks } from "../helpers"
 import type { BaseActor, HttpAgent } from "../types"
 import type { UseActorParameters, UseActorReturn } from "./types"
+import { useAuthState } from "./agent"
 
 /**
  * A comprehensive hook that manages both the fetching of Candid interfaces
@@ -74,6 +75,7 @@ export const useActor = <A = BaseActor>(
     canisterId,
     idlFactory: maybeIdlFactory,
     agentContext,
+    fetchOnMount = true,
     didjsCanisterId,
     ...actorConfig
   } = config
@@ -125,14 +127,26 @@ export const useActor = <A = BaseActor>(
     [canisterId, didjsCanisterId]
   )
 
-  // Automatically fetch Candid if not already fetched or provided.
-  useEffect(
-    () => agentManager.subscribeAgent(fetchCandid, !maybeIdlFactory),
-    [fetchCandid, agentManager]
-  )
+  useEffect(() => {
+    if (maybeIdlFactory) {
+      setState(() => ({
+        idlFactory: maybeIdlFactory,
+        fetching: false,
+        fetchError: null,
+      }))
+      return
+    }
+
+    const unsubscribe = agentManager.subscribeAgent(fetchCandid, fetchOnMount)
+
+    return unsubscribe
+  }, [agentManager, fetchOnMount])
+
+  const authenticating = useAuthState().authenticating
 
   const hooks = useMemo(() => {
     if (!idlFactory) return null
+    if (authenticating) return null
 
     const actorManager = createActorManager<A>({
       agentManager,
@@ -142,7 +156,7 @@ export const useActor = <A = BaseActor>(
     })
 
     return actorHooks(actorManager)
-  }, [canisterId, idlFactory])
+  }, [canisterId, authenticating, idlFactory])
 
-  return { hooks, fetching, fetchError }
+  return { hooks, authenticating, fetching, fetchError }
 }

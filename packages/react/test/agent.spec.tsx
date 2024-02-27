@@ -11,14 +11,10 @@ fetchMock.mockResponse(async () => {
   })
 })
 
-const {
-  AgentProvider: LocalAgentProvider,
-  useAuth: useLocalAuthClient,
-  useUserPrincipal: useLocalUserPrincipal,
-  useAgent: useLocalAgent,
-} = createAgentContext({
-  withLocalEnv: true,
-})
+const { AgentProvider: LocalAgentProvider, useAgent: useLocalAgent } =
+  createAgentContext({
+    withLocalEnv: true,
+  })
 
 describe("createReactor", () => {
   it("should query", async () => {

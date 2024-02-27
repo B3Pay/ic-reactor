@@ -14,6 +14,7 @@ export interface UseActorParameters
   canisterId: string
   idlFactory?: IDL.InterfaceFactory
   agentContext?: React.Context<AgentContext | null>
+  fetchOnMount?: boolean
   didjsCanisterId?: string
 }
 
@@ -21,4 +22,5 @@ export interface UseActorReturn<A = BaseActor> {
   hooks: ActorHooksReturnType<A> | null
   fetching: boolean
   fetchError: string | null
+  authenticating: boolean
 }

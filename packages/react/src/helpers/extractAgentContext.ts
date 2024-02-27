@@ -68,7 +68,7 @@ export const extractAgentContext = (
     useAgent,
     useAuthState,
     useAgentState,
-    useAuth: useAuth,
+    useAuth,
     useAgentManager,
     useUserPrincipal,
   }

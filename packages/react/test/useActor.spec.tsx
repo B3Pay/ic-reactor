@@ -9,14 +9,16 @@ import { extractActorContext } from "../src/helpers"
 type Backend = typeof backend
 
 describe("createReactor", () => {
-  it("should query", async () => {
+  it("should query 1", async () => {
     const BackendActor = () => {
-      const { hooks, fetchError, fetching } = useActor<Backend>({
-        canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-        idlFactory,
-      })
+      const { hooks, fetchError, authenticating, fetching } = useActor<Backend>(
+        {
+          canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+          idlFactory,
+        }
+      )
 
-      return fetching ? (
+      return fetching || authenticating ? (
         <p>Loading Candid interface...</p>
       ) : fetchError ? (
         <p>Error: {fetchError}</p>
@@ -53,10 +55,8 @@ describe("createReactor", () => {
 
     expect(screen.toJSON()).toMatchSnapshot()
 
-    expect(versionStatus().props.children).toEqual("Ready To call")
-
     await act(async () => {
-      await new Promise((r) => setTimeout(r))
+      await new Promise((r) => setTimeout(r, 1000))
     })
 
     expect(screen.toJSON()).toMatchSnapshot()
@@ -72,7 +72,7 @@ describe("createReactor", () => {
     expect(screen.toJSON()).toMatchSnapshot()
   })
 
-  it("should query with error", async () => {
+  it("should query 2", async () => {
     const ActorContext = createContext<ActorHooksReturnType<Backend> | null>(
       null
     )
@@ -80,15 +80,17 @@ describe("createReactor", () => {
     const { useQueryCall } = extractActorContext(ActorContext)
 
     const BackendActor = ({ children }) => {
-      const { hooks, fetching, fetchError } = useActor<Backend>({
-        canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-        idlFactory,
-      })
+      const { hooks, fetching, authenticating, fetchError } = useActor<Backend>(
+        {
+          canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+          idlFactory,
+        }
+      )
 
       return (
         <ActorContext.Provider value={hooks}>
           <h2>IC Canister Interaction</h2>
-          {fetching && <p>Loading Candid interface...</p>}
+          {(fetching || authenticating) && <p>Loading Candid interface...</p>}
           {fetchError && <p>Error: {fetchError}</p>}
           {hooks && children}
         </ActorContext.Provider>
@@ -125,10 +127,8 @@ describe("createReactor", () => {
 
     expect(screen.toJSON()).toMatchSnapshot()
 
-    expect(versionStatus().props.children).toEqual("Ready To call")
-
     await act(async () => {
-      await new Promise((r) => setTimeout(r))
+      await new Promise((r) => setTimeout(r, 1000))
     })
 
     expect(screen.toJSON()).toMatchSnapshot()

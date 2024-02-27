@@ -85,16 +85,24 @@ import { extractAgentContext } from "../helpers/extractAgentContext"
 export const createAgentContext = (
   config: CreateAgentCotextParameters = {}
 ): CreateAgentContextReturnType => {
+  const { disableAuthenticateOnMount: defaultDisable, ...contextOptions } =
+    config
   const AgentContext = React.createContext<AgentContext | null>(null)
 
   const AgentProvider: React.FC<AgentProviderProps> = ({
     children,
     agentManager: mybeAgentManager,
+    disableAuthenticateOnMount = defaultDisable ?? false,
     ...options
   }) => {
     const hooks = React.useMemo(() => {
       const agentManager =
-        mybeAgentManager ?? createAgentManager({ ...options, ...config })
+        mybeAgentManager ??
+        createAgentManager({ ...options, ...contextOptions })
+
+      if (!disableAuthenticateOnMount) {
+        agentManager.authenticate()
+      }
 
       return {
         ...agentHooks(agentManager),

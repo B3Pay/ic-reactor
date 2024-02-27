@@ -1,14 +1,12 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`createReactor should query 1`] = `
-<div>
-  <span>
-    Ready To call
-  </span>
-</div>
+exports[`createReactor should query 1 1`] = `
+<p>
+  Loading Candid interface...
+</p>
 `;
 
-exports[`createReactor should query 2`] = `
+exports[`createReactor should query 1 2`] = `
 <div>
   <span>
     Loading...
@@ -16,7 +14,7 @@ exports[`createReactor should query 2`] = `
 </div>
 `;
 
-exports[`createReactor should query 3`] = `
+exports[`createReactor should query 1 3`] = `
 <div>
   <span>
     0.2.0
@@ -24,20 +22,18 @@ exports[`createReactor should query 3`] = `
 </div>
 `;
 
-exports[`createReactor should query with error 1`] = `
+exports[`createReactor should query 2 1`] = `
 [
   <h2>
     IC Canister Interaction
   </h2>,
-  <div>
-    <span>
-      Ready To call
-    </span>
-  </div>,
+  <p>
+    Loading Candid interface...
+  </p>,
 ]
 `;
 
-exports[`createReactor should query with error 2`] = `
+exports[`createReactor should query 2 2`] = `
 [
   <h2>
     IC Canister Interaction
@@ -50,7 +46,7 @@ exports[`createReactor should query with error 2`] = `
 ]
 `;
 
-exports[`createReactor should query with error 3`] = `
+exports[`createReactor should query 2 3`] = `
 [
   <h2>
     IC Canister Interaction

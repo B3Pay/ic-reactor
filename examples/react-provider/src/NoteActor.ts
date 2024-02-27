@@ -8,6 +8,5 @@ export const {
   useQueryCall: useNoteQueryCall,
   useUpdateCall: useNoteUpdateCall,
 } = createActorContext<Backend>({
-  canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   idlFactory,
 })

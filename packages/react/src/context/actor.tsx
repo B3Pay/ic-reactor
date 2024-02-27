@@ -79,6 +79,7 @@ export function createActorContext<A = BaseActor>(
     children,
     canisterId = defaultCanisterId,
     loadingComponent = <div>Fetching canister...</div>,
+    authenticatingComponent = <div>Authenticating...</div>,
     ...restConfig
   }) => {
     if (!canisterId) {
@@ -93,14 +94,19 @@ export function createActorContext<A = BaseActor>(
       [defaultConfig, restConfig]
     )
 
-    const { fetchError, fetching, hooks } = useActor<A>({
+    const { fetchError, authenticating, hooks } = useActor<A>({
       canisterId,
+      fetchOnMount: false,
       ...config,
     })
 
     return (
       <ActorContext.Provider value={hooks}>
-        {fetching || hooks === null ? fetchError ?? loadingComponent : children}
+        {hooks === null
+          ? fetchError ?? authenticating
+            ? authenticatingComponent
+            : loadingComponent
+          : children}
       </ActorContext.Provider>
     )
   }

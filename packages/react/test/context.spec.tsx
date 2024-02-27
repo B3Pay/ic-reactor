@@ -1,11 +1,10 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
-import { backend, idlFactory } from "./candid"
+import { backend } from "./candid"
 import { AgentProvider, createActorContext } from "../src"
 
 const { ActorProvider, useQueryCall } = createActorContext<typeof backend>({
   canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
-  idlFactory,
 })
 
 describe("createReactor", () => {
@@ -15,7 +14,7 @@ describe("createReactor", () => {
         call,
         data: version,
         loading,
-      } = useQueryCall({ functionName: "version" })
+      } = useQueryCall({ functionName: "version", refetchOnMount: false })
 
       return (
         <div>
@@ -39,11 +38,17 @@ describe("createReactor", () => {
       </AgentProvider>
     )
 
+    expect(screen.toJSON()).toMatchSnapshot()
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 3000))
+    })
+
+    expect(screen.toJSON()).toMatchSnapshot()
+
     const versionStatus = () => screen.root.findAllByType("span")[0]
 
     const versionButton = () => screen.root.findAllByType("button")[0]
-
-    expect(screen.toJSON()).toMatchSnapshot()
 
     expect(versionStatus().props.children).toEqual("Ready To call")
 

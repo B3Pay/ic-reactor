@@ -16,7 +16,9 @@ export interface AgentContext
   agentManager: AgentManager
 }
 
-export interface CreateAgentCotextParameters extends AgentManagerParameters {}
+export interface CreateAgentCotextParameters extends AgentManagerParameters {
+  disableAuthenticateOnMount?: boolean
+}
 
 export interface CreateAgentContextReturnType
   extends AgentHooksReturnType,
@@ -29,7 +31,7 @@ export interface CreateAgentContextReturnType
 
 export interface AgentProviderProps
   extends PropsWithChildren,
-    AgentManagerParameters {
+    CreateAgentCotextParameters {
   agentManager?: AgentManager
 }
 
@@ -41,6 +43,7 @@ export interface CreateActorContextReturnType<A = BaseActor>
 export interface ActorProviderProps extends CreateActorContextParameters {
   children?: React.ReactNode | undefined
   loadingComponent?: React.ReactNode
+  authenticatingComponent?: React.ReactNode
 }
 
 export interface CreateActorContextParameters

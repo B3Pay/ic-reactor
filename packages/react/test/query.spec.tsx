@@ -36,13 +36,6 @@ describe("createReactor", () => {
     expect(screen.toJSON()).toMatchSnapshot()
 
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 100))
-    })
-
-    expect(versionStatus().props.children).toEqual("Loading...")
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    await act(async () => {
       await new Promise((r) => setTimeout(r, 1000))
     })
 

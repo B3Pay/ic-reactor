@@ -26,7 +26,7 @@
   },
   "homepage": "https://b3pay.github.io/ic-reactor/modules/react.html",
   "scripts": {
-    "test": "npx jest",
+    "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
     "start": "tsc watch",
     "build": "npx tsc",
     "clean": "npx rimraf dist && npx rimraf umd"

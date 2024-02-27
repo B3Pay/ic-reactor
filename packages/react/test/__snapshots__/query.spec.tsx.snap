@@ -37,14 +37,6 @@ exports[`createReactor should query on mount 1`] = `
 exports[`createReactor should query on mount 2`] = `
 <div>
   <span>
-    Loading...
-  </span>
-</div>
-`;
-
-exports[`createReactor should query on mount 3`] = `
-<div>
-  <span>
     0.2.0
   </span>
 </div>

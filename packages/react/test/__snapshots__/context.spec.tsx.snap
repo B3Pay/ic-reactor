@@ -2,6 +2,12 @@
 
 exports[`createReactor should query 1`] = `
 <div>
+  Authenticating...
+</div>
+`;
+
+exports[`createReactor should query 2`] = `
+<div>
   <button
     onClick={[Function]}
   >
@@ -13,7 +19,7 @@ exports[`createReactor should query 1`] = `
 </div>
 `;
 
-exports[`createReactor should query 2`] = `
+exports[`createReactor should query 3`] = `
 <div>
   <button
     onClick={[Function]}

@@ -8,7 +8,7 @@ const Notes: React.FC<NoteProps> = ({ publicKey }) => {
   const { call, data, loading, error } = useNoteQueryCall({
     functionName: "user_simple_notes",
     args: [publicKey],
-    refetchInterval: 10000,
+    // refetchInterval: 10000,
     refetchOnMount: true,
     onLoading: () => console.log("Loading..."),
     onSuccess: (data) => console.log("Success!", data),
