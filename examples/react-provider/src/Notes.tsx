@@ -1,3 +1,4 @@
+import { jsonToString } from "@ic-reactor/react/dist/utils"
 import { useNoteQueryCall } from "NoteActor"
 
 interface NoteProps {
@@ -23,12 +24,7 @@ const Notes: React.FC<NoteProps> = ({ publicKey }) => {
         <br />
         Error: {error?.toString()}
         <br />
-        Data:{" "}
-        {data
-          ? JSON.stringify(data, (_, v) =>
-              typeof v === "bigint" ? v.toString() : v
-            )
-          : null}
+        Data: {data ? jsonToString(data) : null}
       </div>
       <button onClick={call}>Get Notes</button>
     </div>
