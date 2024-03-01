@@ -6,36 +6,20 @@ import type {
 } from "@ic-reactor/core/dist/types"
 import { FieldType } from "../types"
 
-export interface ExtractedServiceFields<A = BaseActor> {
-  canisterId: string
-  methodFields: ServiceFields<A>
+export type ServiceFields<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodFields<A>
 }
 
-export type ServiceFields<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>
-> = {
-  [key in M]: <ExtractorClass extends IDL.Visitor<unknown, unknown>>(
-    extractorClass?: ExtractorClass
-  ) => MethodFields<A, M>
-}
-
-export interface MethodFields<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>
-> {
-  functionName: M
+export interface MethodFields<A = BaseActor> {
+  functionName: FunctionName<A>
   functionType: FunctionType
   fields: AllFieldTypes<IDL.Type>[] | []
   validate: (value: FieldTypeFromIDLType<IDL.Type>) => boolean | string
-  defaultValues: ServiceDefaultValues<A, M>
+  defaultValues: ServiceDefaultValues<A>
 }
 
-export type ServiceDefaultValues<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>
-> = {
-  [key in M]: MethodDefaultValues<M>
+export type ServiceDefaultValues<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodDefaultValues<K>
 }
 
 export type MethodDefaultValues<T = string> = {

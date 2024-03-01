@@ -3,7 +3,6 @@ import type {
   ServiceDetails,
   FieldDetails,
   MethodDetails,
-  ExtractedServiceDetails,
   InputDetails,
 } from "./types"
 import { IDL } from "@dfinity/candid"
@@ -18,10 +17,7 @@ import { FieldType } from "../types"
  */
 export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   string,
-  | ExtractedServiceDetails<A>
-  | MethodDetails<A>
-  | FieldDetailsWithChild
-  | FieldDetails
+  MethodDetails<A> | FieldDetailsWithChild | FieldDetails | ServiceDetails<A>
 > {
   public counter = 0
 
@@ -211,25 +207,16 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   public visitFixedInt = this.visitNumber
   public visitFixedNat = this.visitNumber
 
-  public visitService(
-    t: IDL.ServiceClass,
-    canisterId: string
-  ): ExtractedServiceDetails<A> {
+  public visitService(t: IDL.ServiceClass): ServiceDetails<A> {
     const methodDetails = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      acc[functionName] = ((extractorClass) => {
-        return func.accept(extractorClass || this, functionName)
-      }) as ServiceDetails<A>[FunctionName<A>]
+      acc[functionName] = func.accept(this, functionName) as MethodDetails<A>
 
       return acc
     }, {} as ServiceDetails<A>)
 
-    return {
-      canisterId,
-      description: t.name,
-      methodDetails,
-    }
+    return methodDetails
   }
 }

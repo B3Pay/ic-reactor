@@ -8,7 +8,6 @@ import type {
   OptionalFields,
   RecordFields,
   RecursiveFields,
-  ExtractedServiceFields,
   TupleFields,
   VariantFields,
   VectorFields,
@@ -27,17 +26,14 @@ import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
  * It returns the extracted service fields.
  *
  */
-export class VisitFields<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>
-> extends IDL.Visitor<
+export class VisitFields<A = BaseActor> extends IDL.Visitor<
   string,
-  ExtractedServiceFields<A> | MethodFields<A, M> | DefaultField
+  MethodFields<A> | DefaultField | ServiceFields<A>
 > {
-  public visitFunc<Method extends M>(
+  public visitFunc(
     t: IDL.FuncClass,
-    functionName: Method
-  ): MethodFields<A, Method> {
+    functionName: FunctionName<A>
+  ): MethodFields<A> {
     const functionType = isQuery(t) ? "query" : "update"
 
     const { fields, defaultValue } = t.argTypes.reduce(
@@ -55,13 +51,13 @@ export class VisitFields<
       },
       {
         fields: [] as DynamicFieldTypeByClass<IDL.Type>[],
-        defaultValue: {} as MethodDefaultValues<Method>,
+        defaultValue: {} as MethodDefaultValues<FunctionName<A>>,
       }
     )
 
     const defaultValues = {
       [functionName]: defaultValue,
-    } as ServiceDefaultValues<A, Method>
+    } as ServiceDefaultValues<A>
 
     return {
       functionType,
@@ -296,24 +292,16 @@ export class VisitFields<
     return this.visitNumber(t, label)
   }
 
-  public visitService(
-    t: IDL.ServiceClass,
-    canisterId: string
-  ): ExtractedServiceFields<A> {
+  public visitService(t: IDL.ServiceClass): ServiceFields<A> {
     const methodFields = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      acc[functionName] = ((extractorClass) => {
-        return func.accept(extractorClass || this, functionName)
-      }) as ServiceFields<A>[FunctionName<A>]
+      acc[functionName] = func.accept(this, functionName) as MethodFields<A>
 
       return acc
     }, {} as ServiceFields<A>)
 
-    return {
-      canisterId,
-      methodFields,
-    }
+    return methodFields
   }
 }
