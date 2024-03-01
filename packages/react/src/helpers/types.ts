@@ -94,6 +94,21 @@ export interface UseMethodCallReturnType<
   ) => Promise<ActorMethodReturnType<A[M]> | undefined>
 }
 
+export interface UseMethodReturnType<
+  A,
+  M extends FunctionName<A> = FunctionName<A>
+> extends ActorCallState<A, M> {
+  visit: VisitService<A>[M]
+  reset: () => void
+  call: (
+    eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
+  ) => Promise<ActorMethodReturnType<A[M]> | undefined>
+}
+
+export type UseMethod<A> = <M extends FunctionName<A>>(
+  args: UseMethodCallParameters<A, M>
+) => UseMethodReturnType<A, M>
+
 export type UseMethodCall<A> = <M extends FunctionName<A>>(
   args: UseMethodCallParameters<A, M>
 ) => UseMethodCallReturnType<A, M>
@@ -115,6 +130,7 @@ export type UseVisitService<A> = () => VisitService<A>
 export interface ActorHooksReturnType<A = BaseActor> {
   initialize: () => Promise<void>
   useActorState: () => UseActorState
+  useMethod: UseMethod<A>
   useQueryCall: UseQueryCall<A>
   useUpdateCall: UseUpdateCall<A>
   useVisitMethod: UseVisitMethod<A>

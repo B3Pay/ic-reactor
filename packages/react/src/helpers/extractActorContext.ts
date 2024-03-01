@@ -4,6 +4,7 @@ import type {
   BaseActor,
   CreateActorContextReturnType,
   FunctionName,
+  UseMethod,
   UseQueryCall,
   UseUpdateCall,
   UseVisitMethod,
@@ -52,6 +53,8 @@ export function extractActorContext<A = BaseActor>(
 
   const useActorState = () => useActorContext().useActorState()
 
+  const useMethod: UseMethod<A> = (args) => useActorContext().useMethod(args)
+
   const useQueryCall: UseQueryCall<A> = (args) =>
     useActorContext().useQueryCall(args)
 
@@ -66,6 +69,7 @@ export function extractActorContext<A = BaseActor>(
 
   return {
     useActorState,
+    useMethod,
     useQueryCall,
     useUpdateCall,
     useVisitMethod,

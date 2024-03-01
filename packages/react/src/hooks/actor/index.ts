@@ -1,3 +1,4 @@
+export * from "./useMethod"
 export * from "./useActorState"
 export * from "./useQueryCall"
 export * from "./useUpdateCall"

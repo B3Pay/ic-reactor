@@ -7,6 +7,7 @@ import type {
   UseQueryCall,
   UseUpdateCall,
   ActorHooksReturnType,
+  UseMethod,
 } from "../types"
 import type {
   VisitService,
@@ -133,8 +134,18 @@ export const actorHooks = <A = BaseActor>(
 
   const useUpdateCall: UseUpdateCall<A> = useMethodCall
 
+  const useMethod: UseMethod<A> = (args) => {
+    const visit = useVisitMethod(args.functionName)
+
+    return {
+      visit,
+      ...useMethodCall(args),
+    }
+  }
+
   return {
     initialize,
+    useMethod,
     useQueryCall,
     useUpdateCall,
     useActorState,
