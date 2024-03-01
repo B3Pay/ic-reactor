@@ -2056,7 +2056,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/visitor@npm:^*, @ic-reactor/visitor@workspace:packages/visitor":
+"@ic-reactor/visitor@npm:*, @ic-reactor/visitor@npm:^*, @ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
@@ -21244,8 +21244,8 @@ __metadata:
     "@dfinity/candid": "npm:^1.0"
     "@dfinity/identity": "npm:^1.0"
     "@dfinity/principal": "npm:^1.0"
-    "@ic-reactor/core": "npm:*"
     "@ic-reactor/react": "npm:*"
+    "@ic-reactor/visitor": "npm:*"
     "@types/lodash.get": "npm:^4"
     "@types/lodash.set": "npm:^4"
     "@types/node": "npm:^16.18.68"
