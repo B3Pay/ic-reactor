@@ -16,6 +16,7 @@ import type {
   ActorManager,
   BaseActor,
 } from "@ic-reactor/core/dist/types"
+import { ServiceClass } from "@dfinity/candid/lib/cjs/idl"
 
 const DEFAULT_STATE: ActorCallState<never, never> = {
   data: undefined,
@@ -40,13 +41,23 @@ const DEFAULT_STATE: ActorCallState<never, never> = {
 export const actorHooks = <A = BaseActor>(
   actorManager: ActorManager<A>
 ): ActorHooksReturnType<A> => {
-  const { actorStore, canisterId, visitFunction, callMethod, initialize } =
-    actorManager
+  const {
+    actorStore,
+    canisterId,
+    visitFunction,
+    extractInterface,
+    callMethod,
+    initialize,
+  } = actorManager
 
   const useActorState = (): UseActorState => ({
     ...useStore(actorStore),
     canisterId,
   })
+
+  const useActorInterface = (): ServiceClass => {
+    return extractInterface()
+  }
 
   const useVisitService = (): VisitService<A> => {
     return visitFunction
@@ -151,5 +162,6 @@ export const actorHooks = <A = BaseActor>(
     useActorState,
     useVisitMethod,
     useVisitService,
+    useActorInterface,
   }
 }

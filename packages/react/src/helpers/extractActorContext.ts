@@ -67,6 +67,8 @@ export function extractActorContext<A = BaseActor>(
   const useVisitService: UseVisitService<A> = () =>
     useActorContext().useVisitService()
 
+  const useActorInterface = () => useActorContext().useActorInterface()
+
   return {
     useActorState,
     useMethod,
@@ -74,6 +76,7 @@ export function extractActorContext<A = BaseActor>(
     useUpdateCall,
     useVisitMethod,
     useVisitService,
+    useActorInterface,
     initialize,
   }
 }

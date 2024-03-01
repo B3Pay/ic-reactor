@@ -112,25 +112,28 @@ export class ActorManager<A = BaseActor> {
   }
 
   public extractService = (): VisitService<A> => {
+    const iface = this.extractInterface()
+
+    return iface._fields.reduce((acc, service) => {
+      const functionName = service[0] as FunctionName<A>
+      const type = service[1]
+
+      const visit = ((extractorClass, data) => {
+        return type.accept(extractorClass, data || functionName)
+      }) as VisitService<A>[typeof functionName]
+
+      acc[functionName] = visit
+
+      return acc
+    }, {} as VisitService<A>)
+  }
+
+  public extractInterface = () => {
     if (this._actor === null) {
-      throw new Error("For extracting service, actor must be initialized")
+      throw new Error("For extracting interface, actor must be initialized")
     }
 
-    return Actor.interfaceOf(this._actor as Actor)._fields.reduce(
-      (acc, service) => {
-        const functionName = service[0] as FunctionName<A>
-        const type = service[1]
-
-        const visit = ((extractorClass, data) => {
-          return type.accept(extractorClass, data || functionName)
-        }) as VisitService<A>[typeof functionName]
-
-        acc[functionName] = visit
-
-        return acc
-      },
-      {} as VisitService<A>
-    )
+    return Actor.interfaceOf(this._actor as Actor)
   }
 
   private initializeActor = (agent: HttpAgent) => {

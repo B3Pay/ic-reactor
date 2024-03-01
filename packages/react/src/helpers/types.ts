@@ -1,3 +1,4 @@
+import type { ServiceClass } from "@dfinity/candid/lib/cjs/idl"
 import type {
   ActorState,
   CanisterId,
@@ -130,6 +131,7 @@ export type UseVisitService<A> = () => VisitService<A>
 export interface ActorHooksReturnType<A = BaseActor> {
   initialize: () => Promise<void>
   useActorState: () => UseActorState
+  useActorInterface: () => ServiceClass
   useMethod: UseMethod<A>
   useQueryCall: UseQueryCall<A>
   useUpdateCall: UseUpdateCall<A>
