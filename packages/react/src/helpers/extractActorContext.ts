@@ -6,6 +6,8 @@ import type {
   FunctionName,
   UseQueryCall,
   UseUpdateCall,
+  UseVisitMethod,
+  UseVisitService,
 } from "../types"
 
 export function extractActorContext<A = BaseActor>(
@@ -56,14 +58,18 @@ export function extractActorContext<A = BaseActor>(
   const useUpdateCall: UseUpdateCall<A> = (args) =>
     useActorContext().useUpdateCall(args)
 
-  const useVisitMethod = (functionName: FunctionName<A>) =>
+  const useVisitMethod: UseVisitMethod<A> = (functionName: FunctionName<A>) =>
     useActorContext().useVisitMethod(functionName)
+
+  const useVisitService: UseVisitService<A> = () =>
+    useActorContext().useVisitService()
 
   return {
     useActorState,
     useQueryCall,
     useUpdateCall,
     useVisitMethod,
+    useVisitService,
     initialize,
   }
 }

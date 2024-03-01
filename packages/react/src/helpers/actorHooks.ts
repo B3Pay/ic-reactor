@@ -47,6 +47,10 @@ export const actorHooks = <A = BaseActor>(
     canisterId,
   })
 
+  const useVisitService = (): VisitService<A> => {
+    return visitFunction
+  }
+
   const useVisitMethod = <M extends FunctionName<A>>(
     functionName: M
   ): VisitService<A>[M] => {
@@ -135,5 +139,6 @@ export const actorHooks = <A = BaseActor>(
     useUpdateCall,
     useActorState,
     useVisitMethod,
+    useVisitService,
   }
 }

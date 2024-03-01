@@ -110,10 +110,13 @@ export type UseVisitMethod<A> = <M extends FunctionName<A>>(
   functionName: M
 ) => VisitService<A>[M]
 
+export type UseVisitService<A> = () => VisitService<A>
+
 export interface ActorHooksReturnType<A = BaseActor> {
   initialize: () => Promise<void>
   useActorState: () => UseActorState
   useQueryCall: UseQueryCall<A>
   useUpdateCall: UseUpdateCall<A>
   useVisitMethod: UseVisitMethod<A>
+  useVisitService: UseVisitService<A>
 }
