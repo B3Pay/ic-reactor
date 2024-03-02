@@ -1,4 +1,4 @@
-import type { ServiceClass } from "@dfinity/candid/lib/cjs/idl"
+import type { ServiceClass, Visitor } from "@dfinity/candid/lib/cjs/idl"
 import type {
   ActorState,
   CanisterId,
@@ -61,7 +61,7 @@ export interface UseActorState extends Omit<ActorState, "methodState"> {
   canisterId: CanisterId
 }
 
-export type UseMethodCallParameters<A, M extends FunctionName<A>> = {
+export type UseSharedCallParameters<A, M extends FunctionName<A>> = {
   functionName: M
   args?: ActorMethodParameters<A[M]>
   onLoading?: (loading: boolean) => void
@@ -70,35 +70,61 @@ export type UseMethodCallParameters<A, M extends FunctionName<A>> = {
   throwOnError?: boolean
 }
 
-export type ActorCallState<A, M extends FunctionName<A>> = {
+export type UseSharedCallState<A, M extends FunctionName<A>> = {
   data: ActorMethodReturnType<A[M]> | undefined
   error: Error | undefined
   loading: boolean
 }
 
-export interface UseQueryCallParameters<A, M extends FunctionName<A>>
-  extends UseMethodCallParameters<A, M> {
-  refetchOnMount?: boolean
-  refetchInterval?: number | false
-}
-
-export interface UseUpdateCallParameters<A, M extends FunctionName<A>>
-  extends UseMethodCallParameters<A, M> {}
-
-export interface UseMethodCallReturnType<
+export interface UseSharedCallReturnType<
   A,
   M extends FunctionName<A> = FunctionName<A>
-> extends ActorCallState<A, M> {
+> extends UseSharedCallState<A, M> {
   reset: () => void
   call: (
     eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
   ) => Promise<ActorMethodReturnType<A[M]> | undefined>
 }
 
+export type UseSharedCall<A> = <M extends FunctionName<A>>(
+  args: UseSharedCallParameters<A, M>
+) => UseSharedCallReturnType<A, M>
+
+export interface UseQueryCallParameters<A, M extends FunctionName<A>>
+  extends UseSharedCallParameters<A, M> {
+  refetchOnMount?: boolean
+  refetchInterval?: number | false
+}
+
+export type UseQueryCall<A> = <M extends FunctionName<A>>(
+  args: UseQueryCallParameters<A, M>
+) => UseSharedCallReturnType<A, M>
+
+export interface UseUpdateCallParameters<A, M extends FunctionName<A>>
+  extends UseSharedCallParameters<A, M> {}
+
+export type UseUpdateCall<A> = <M extends FunctionName<A>>(
+  args: UseUpdateCallParameters<A, M>
+) => UseSharedCallReturnType<A, M>
+
+export interface DynamicDataArgs<V = unknown> {
+  label: string
+  value: V
+}
+
+export interface UseMethodParameters<A, M extends FunctionName<A>, T = unknown>
+  extends UseSharedCallParameters<A, M> {
+  transform?: Visitor<DynamicDataArgs, T>
+}
+
 export interface UseMethodReturnType<
   A,
-  M extends FunctionName<A> = FunctionName<A>
-> extends ActorCallState<A, M> {
+  M extends FunctionName<A> = FunctionName<A>,
+  T = unknown
+> {
+  loading: boolean
+  error: Error | undefined
+  data: T | ActorMethodReturnType<A[M]> | undefined
   visit: VisitService<A>[M]
   reset: () => void
   call: (
@@ -106,21 +132,23 @@ export interface UseMethodReturnType<
   ) => Promise<ActorMethodReturnType<A[M]> | undefined>
 }
 
-export type UseMethod<A> = <M extends FunctionName<A>>(
-  args: UseMethodCallParameters<A, M>
-) => UseMethodReturnType<A, M>
+export type UseMethod<A> = {
+  <M extends FunctionName<A>, T = unknown>({
+    transform,
+  }: {
+    transform: Visitor<DynamicDataArgs, T>
+  } & UseMethodParameters<A, M, T>): {
+    data: T | undefined
+  } & UseMethodReturnType<A, M, T>
 
-export type UseMethodCall<A> = <M extends FunctionName<A>>(
-  args: UseMethodCallParameters<A, M>
-) => UseMethodCallReturnType<A, M>
-
-export type UseQueryCall<A> = <M extends FunctionName<A>>(
-  args: UseQueryCallParameters<A, M>
-) => UseMethodCallReturnType<A, M>
-
-export type UseUpdateCall<A> = <M extends FunctionName<A>>(
-  args: UseUpdateCallParameters<A, M>
-) => UseMethodCallReturnType<A, M>
+  <M extends FunctionName<A>, T = unknown>({
+    transform,
+  }: {
+    transform?: undefined
+  } & UseMethodParameters<A, M, T>): {
+    data: ActorMethodReturnType<A[M]> | undefined
+  } & UseMethodReturnType<A, M, T>
+}
 
 export type UseVisitMethod<A> = <M extends FunctionName<A>>(
   functionName: M

@@ -13,14 +13,14 @@ import type {
  */
 export class VisitRandomResponse<A = BaseActor> extends IDL.Visitor<
   unknown,
-  unknown
+  ActorMethodReturnType<A[FunctionName<A>]> | unknown
 > {
-  public visitFunc<Method extends FunctionName<A>>(
+  public visitFunc(
     t: IDL.FuncClass
-  ): ActorMethodReturnType<A[Method]> {
+  ): ActorMethodReturnType<A[FunctionName<A>]> {
     return t.retTypes.map((type) =>
       type.accept(this, null)
-    ) as ActorMethodReturnType<A[Method]>
+    ) as ActorMethodReturnType<A[FunctionName<A>]>
   }
 
   public visitRecord(

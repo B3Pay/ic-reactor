@@ -1,13 +1,15 @@
-import React from "react"
+import React, { useMemo } from "react"
 import { useStore } from "zustand"
 import type {
-  ActorCallState,
-  UseMethodCall,
+  UseSharedCallState,
+  UseSharedCall,
   UseActorState,
   UseQueryCall,
   UseUpdateCall,
   ActorHooksReturnType,
   UseMethod,
+  UseMethodParameters,
+  UseMethodReturnType,
 } from "../types"
 import type {
   VisitService,
@@ -18,7 +20,7 @@ import type {
 } from "@ic-reactor/core/dist/types"
 import { ServiceClass } from "@dfinity/candid/lib/cjs/idl"
 
-const DEFAULT_STATE: ActorCallState<never, never> = {
+const DEFAULT_STATE: UseSharedCallState<never, never> = {
   data: undefined,
   error: undefined,
   loading: false,
@@ -69,23 +71,23 @@ export const actorHooks = <A = BaseActor>(
     return React.useMemo(() => visitFunction[functionName], [functionName])
   }
 
-  const useMethodCall: UseMethodCall<A> = ({
+  const useSharedCall: UseSharedCall<A> = ({
     args = [],
     functionName,
     throwOnError = false,
     ...events
   }) => {
     type M = typeof functionName
-    const [state, setState] =
-      React.useState<ActorCallState<A, M>>(DEFAULT_STATE)
+    const [sharedState, setSharedState] =
+      React.useState<UseSharedCallState<A, M>>(DEFAULT_STATE)
 
-    const reset = React.useCallback(() => setState(DEFAULT_STATE), [])
+    const reset = React.useCallback(() => setSharedState(DEFAULT_STATE), [])
 
     const call = React.useCallback(
       async (
         eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
       ) => {
-        setState((prev) => ({ ...prev, error: undefined, loading: true }))
+        setSharedState((prev) => ({ ...prev, error: undefined, loading: true }))
         events?.onLoading?.(true)
 
         try {
@@ -96,14 +98,14 @@ export const actorHooks = <A = BaseActor>(
             ...(replaceArgs as ActorMethodParameters<A[M]>)
           )
 
-          setState({ data, error: undefined, loading: false })
+          setSharedState({ data, error: undefined, loading: false })
           events?.onSuccess?.(data)
           events?.onLoading?.(false)
           return data
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error("Error in call:", error)
-          setState((prevState) => ({
+          setSharedState((prevState) => ({
             ...prevState,
             error: error as Error,
             loading: false,
@@ -117,7 +119,7 @@ export const actorHooks = <A = BaseActor>(
       [args, functionName, events]
     )
 
-    return { call, reset, ...state }
+    return { call, reset, ...sharedState }
   }
 
   const useQueryCall: UseQueryCall<A> = ({
@@ -125,7 +127,7 @@ export const actorHooks = <A = BaseActor>(
     refetchInterval = false,
     ...rest
   }) => {
-    const { call, ...state } = useMethodCall(rest)
+    const { call, ...state } = useSharedCall(rest)
     const intervalId = React.useRef<NodeJS.Timeout>()
 
     React.useEffect(() => {
@@ -143,14 +145,32 @@ export const actorHooks = <A = BaseActor>(
     return { call, ...state }
   }
 
-  const useUpdateCall: UseUpdateCall<A> = useMethodCall
+  const useUpdateCall: UseUpdateCall<A> = useSharedCall
 
-  const useMethod: UseMethod<A> = (args) => {
+  const useMethod: UseMethod<A> = <M extends FunctionName<A>, T>(
+    args: UseMethodParameters<A, M, T>
+  ): UseMethodReturnType<A, M, T> => {
+    const { call, data, ...state } = useSharedCall(args)
     const visit = useVisitMethod(args.functionName)
 
+    const transformedData = useMemo(() => {
+      if (data === undefined) return data
+
+      if (args.transform) {
+        return visit(args.transform, {
+          value: data,
+          label: args.functionName,
+        }) as T
+      }
+
+      return data
+    }, [data, args.transform, visit])
+
     return {
+      call,
       visit,
-      ...useMethodCall(args),
+      data: transformedData,
+      ...state,
     }
   }
 

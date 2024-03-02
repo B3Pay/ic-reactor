@@ -20,10 +20,12 @@ export class VisitTransformTable<
     t: IDL.FuncClass,
     { value, label }: DynamicDataArgs
   ): MethodResult<A, M> {
-    const values = t.argTypes.map((type, index, types) => {
+    const dataValues = Array.isArray(value) ? value : [value]
+
+    const values = t.retTypes.map((type, index) => {
       return type.accept(this, {
         label: `ret${index}`,
-        value: types.length > 1 ? (value as unknown[])[index] : value,
+        value: dataValues[index],
       }) as MethodResult<A, M>
     })
 

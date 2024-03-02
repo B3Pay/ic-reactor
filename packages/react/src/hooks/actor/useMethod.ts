@@ -1,9 +1,3 @@
-import {
-  BaseActor,
-  FunctionName,
-  UseMethod,
-  UseMethodCallParameters,
-} from "../../types"
 import { ActorHooks } from "./hooks"
 
 /**
@@ -33,9 +27,4 @@ import { ActorHooks } from "./hooks"
  * }
  * ```
  */
-export function useMethod<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>
->(args: UseMethodCallParameters<A, M>) {
-  return (ActorHooks.useMethod as UseMethod<A>)(args)
-}
+export const useMethod = ActorHooks.useMethod

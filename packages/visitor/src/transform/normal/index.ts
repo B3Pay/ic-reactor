@@ -20,10 +20,11 @@ export class VisitTransform<
     t: IDL.FuncClass,
     { value, label }: DynamicDataArgs
   ): MethodResult<A, M> {
-    const values = t.argTypes.map((type, index, types) => {
+    const dataValues = Array.isArray(value) ? value : [value]
+    const values = t.retTypes.map((type, index) => {
       return type.accept(this, {
         label: `ret${index}`,
-        value: types.length > 1 ? (value as unknown[])[index] : value,
+        value: dataValues[index],
       }) as MethodResult<A, M>
     })
 
@@ -71,10 +72,6 @@ export class VisitTransform<
     { value, label }: DynamicDataArgs<Record<string, unknown>>
   ): MethodResult<A, M> {
     const values = fields.reduce((acc, [key, type]) => {
-      if (value[key] === undefined) {
-        return acc
-      }
-
       const field = type.accept(this, {
         label: key,
         value: value[key],
