@@ -1,13 +1,10 @@
 import type {
-  DefaultActorType,
+  BaseActor,
   ActorMethodReturnType,
   FunctionName,
   IDL,
   Principal,
 } from "@ic-reactor/core/dist/types"
-
-export * from "./normal/types"
-export * from "./table/types"
 
 export type ReturnDataType =
   | "record"
@@ -28,12 +25,12 @@ export type ReturnDataType =
   | "normal"
   | "table"
 
-export interface ExtractedServiceResults<A = DefaultActorType> {
+export interface ExtractedServiceResults<A = BaseActor> {
   canisterId: string
   methodResult: ServiceResult<A>
 }
 
-export type ServiceResult<A = DefaultActorType> = {
+export type ServiceResult<A = BaseActor> = {
   [K in FunctionName<A>]: <
     ExtractorClass extends IDL.Visitor<unknown, unknown>
   >(
@@ -64,7 +61,7 @@ export interface ResultRecordData<
 }
 
 export type MethodResultValue<
-  A = DefaultActorType,
+  A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
 > =
   | ActorMethodReturnType<A[M]>
@@ -77,7 +74,7 @@ export type MethodResultValue<
   | null
 
 export type MethodResult<
-  A = DefaultActorType,
+  A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
 > = {
   type: ReturnDataType

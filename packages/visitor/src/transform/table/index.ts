@@ -1,5 +1,5 @@
 import { IDL } from "@dfinity/candid"
-import type { MethodResult, DynamicDataArgs } from "./types"
+import type { MethodResult, DynamicDataArgs } from "../types"
 import { isImage, isUrl } from "../../helper"
 import type {
   BaseActor,
