@@ -17,6 +17,9 @@ jobs:
         run: |
           sed -i "s/releases\/download\/.*\/ic-reactor-core.min.js/releases\/download\/v1.1.2\/ic-reactor-core.min.js/" ./packages/core/README.md
 
+      - name: Debugging - Show README content
+        run: cat ./packages/core/README.md
+
       - name: Add & Commit
         uses: EndBug/add-and-commit@v9
         with:
