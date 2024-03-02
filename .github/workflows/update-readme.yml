@@ -23,7 +23,4 @@ jobs:
           git config --local user.name "GitHub Action"
           git add ./packages/core/README.md
           git commit -m "Update README.md to point to the latest release(v1.1.2)"
-          git push
-
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.RELEASE_TOKEN }}" push
