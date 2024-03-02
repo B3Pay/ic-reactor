@@ -58,12 +58,12 @@ jobs:
 
       - name: Update README.md
         run: |
-          sed -i "s/releases\/download\/.*\/ic-reactor-core.min.js/releases\/download\/v${{ env.CORE_VERSION }}\/ic-reactor-core.min.js/" README.md
+          sed -i "s/releases\/download\/.*\/ic-reactor-core.min.js/releases\/download\/v${{ env.CORE_VERSION }}\/ic-reactor-core.min.js/" ./packages/core/README.md
 
       - name: Commit and Push if changed
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add README.md
-          git diff --staged --quiet || git commit -m "Update README.md to point to the latest release"
+          git add ./packages/core/README.md
+          git diff --staged --quiet || git commit -m "Update README.md to point to the latest release(v${{ env.CORE_VERSION }})"
           git diff --staged --quiet || git push
