@@ -10,7 +10,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          token: ${{ secrets.PAT }}
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Debugging - Show README content
         run: cat ./packages/core/README.md
