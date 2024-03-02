@@ -19,7 +19,7 @@ yarn add @ic-reactor/core
 or you can use the UMD version:
 
 ```html
-<script src="https://github.com/B3Pay/ic-reactor/releases/download/1.0.8/ic-reactor-core.min.js"></script>
+<script src="https://github.com/B3Pay/ic-reactor/releases/download/v1.1.2/ic-reactor-core.min.js"></script>
 ```
 
 ### Using `createReactorCore`
