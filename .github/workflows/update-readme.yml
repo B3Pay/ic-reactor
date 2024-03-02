@@ -28,4 +28,3 @@ jobs:
           add: "./packages/core/README.md"
           default_author: github_actions
           message: "Update README.md to point to the latest release(v1.1.2)"
-          github_token: ${{ secrets.RELEASE_TOKEN }}
