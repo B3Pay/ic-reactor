@@ -1,0 +1,27 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Debugging - Show README content
+        run: cat ./packages/core/README.md
+
+      - name: Update README
+        run: |
+          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+          LATEST_RELEASE_NOTES=$(gh release view $LATEST_TAG --json body -q .body)
+          sed -i "/^## Latest Release/c\## Latest Release\n\n$LATEST_RELEASE_NOTES" ./packages/core/README.md
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -am "Update README with the latest release info"
+          git push
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
