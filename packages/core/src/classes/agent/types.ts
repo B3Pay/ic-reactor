@@ -14,6 +14,7 @@ export interface AgentState {
   initialized: boolean
   initializing: boolean
   error: Error | undefined
+  network: string
 }
 
 export interface AuthState {

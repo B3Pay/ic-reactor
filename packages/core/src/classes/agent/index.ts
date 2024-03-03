@@ -29,6 +29,7 @@ export class AgentManager {
     initialized: false,
     initializing: false,
     error: undefined,
+    network: "ic",
   }
 
   private initialAuthState: AuthState = {
@@ -91,7 +92,14 @@ export class AgentManager {
   }
 
   private initializeAgent = async () => {
-    this.updateAgentState({ initializing: true }, "initializing")
+    this.updateAgentState(
+      {
+        initializing: true,
+        error: undefined,
+        network: this.isLocalEnv ? "local" : "ic",
+      },
+      "initializing"
+    )
     if (this.isLocalEnv) {
       try {
         await this._agent.fetchRootKey()
