@@ -15,6 +15,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v2
@@ -58,6 +59,11 @@ jobs:
           prerelease: false
           generate_release_notes: true
 
+      - name: Manually Checkout to a Branch
+        run: |
+          git checkout main || git switch -c main
+          git pull origin main
+
       - name: Update README.md
         run: |
           sed -i "s/releases\/download\/.*\/ic-reactor-core.min.js/releases\/download\/v${{ env.CORE_VERSION }}\/ic-reactor-core.min.js/" ./packages/core/README.md
@@ -68,4 +74,3 @@ jobs:
           add: "./packages/core/README.md"
           default_author: github_actions
           message: "Update README.md to point to the latest release(v${{ env.CORE_VERSION }})"
-          branch: main
