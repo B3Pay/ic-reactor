@@ -133,21 +133,27 @@ export interface UseMethodReturnType<
 }
 
 export type UseMethod<A> = {
-  <M extends FunctionName<A>, T = unknown>({
+  <
+    M extends FunctionName<A>,
+    V extends Visitor<DynamicDataArgs, unknown> = Visitor<
+      DynamicDataArgs,
+      unknown
+    >
+  >({
     transform,
   }: {
-    transform: Visitor<DynamicDataArgs, T>
-  } & UseMethodParameters<A, M, T>): {
-    data: T | undefined
-  } & UseMethodReturnType<A, M, T>
+    transform: V
+  } & UseMethodParameters<A, M>): {
+    data: ReturnType<V["visitFunc"]> | undefined
+  } & UseMethodReturnType<A, M>
 
-  <M extends FunctionName<A>, T = unknown>({
+  <M extends FunctionName<A>>({
     transform,
   }: {
     transform?: undefined
-  } & UseMethodParameters<A, M, T>): {
+  } & UseMethodParameters<A, M>): {
     data: ActorMethodReturnType<A[M]> | undefined
-  } & UseMethodReturnType<A, M, T>
+  } & UseMethodReturnType<A, M>
 }
 
 export type UseVisitMethod<A> = <M extends FunctionName<A>>(
