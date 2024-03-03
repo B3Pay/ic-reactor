@@ -132,7 +132,6 @@ export const useActor = <A = BaseActor>(
 
     fetchCandid().then((idlFactory) => {
       if (!idlFactory) return
-      console.log("Creating actor manager", canisterId)
       actorManager.current = createActorManager<A>({
         agentManager,
         idlFactory,

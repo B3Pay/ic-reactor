@@ -128,9 +128,7 @@ export class AgentManager {
   }
 
   public unsubscribeAgent = (callback: (agent: HttpAgent) => void) => {
-    console.log("Unsubscribing", callback)
     this._subscribers = this._subscribers.filter((sub) => sub !== callback)
-    console.log("Subscribers", this._subscribers.length)
   }
 
   private notifySubscribers = async () => {
