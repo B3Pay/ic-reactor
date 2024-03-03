@@ -17,3 +17,16 @@ exports[`createReactor should query 3`] = `
   Fetching canister...
 </div>
 `;
+
+exports[`createReactor should query 4`] = `
+<div>
+  <button
+    onClick={[Function]}
+  >
+    Get Version
+  </button>
+  <span>
+    ckETH
+  </span>
+</div>
+`;

@@ -128,7 +128,7 @@ describe("createReactor", () => {
     expect(screen.toJSON()).toMatchSnapshot()
 
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 1000))
+      await new Promise((r) => setTimeout(r, 100))
     })
 
     expect(screen.toJSON()).toMatchSnapshot()

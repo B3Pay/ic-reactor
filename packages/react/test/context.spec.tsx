@@ -1,10 +1,9 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
-import { backend } from "./candid"
 import { AgentProvider, createActorContext } from "../src"
 
-const { ActorProvider, useQueryCall } = createActorContext<typeof backend>({
-  canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
+const { ActorProvider, useQueryCall } = createActorContext({
+  canisterId: "ss2fx-dyaaa-aaaar-qacoq-cai",
 })
 
 describe("createReactor", () => {
@@ -14,7 +13,7 @@ describe("createReactor", () => {
         call,
         data: version,
         loading,
-      } = useQueryCall({ functionName: "version", refetchOnMount: false })
+      } = useQueryCall({ functionName: "icrc1_name", refetchOnMount: false })
 
       return (
         <div>
@@ -37,12 +36,12 @@ describe("createReactor", () => {
         </ActorProvider>
       </AgentProvider>
     )
-
     expect(screen.toJSON()).toMatchSnapshot()
 
     await act(async () => {
       await new Promise((r) => setTimeout(r, 1000))
     })
+
     expect(screen.toJSON()).toMatchSnapshot()
 
     await act(async () => {
@@ -58,7 +57,7 @@ describe("createReactor", () => {
 
     await act(() => versionButton().props.onClick())
 
-    expect(versionStatus().props.children).toEqual("0.2.0")
+    expect(versionStatus().props.children).toEqual("ckETH")
 
     expect(screen.toJSON()).toMatchSnapshot()
   })

@@ -1,5 +1,5 @@
 import { createActorManager, createCandidAdapter } from "@ic-reactor/core"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAgentManager } from "./agent/useAgentManager"
 import { actorHooks } from "../helpers"
 import { useAuthState } from "./agent"
@@ -83,7 +83,7 @@ export const useActor = <A = BaseActor>(
     throw new Error("canisterId is required")
   }
 
-  const actorManager = useRef<ActorManager<A> | null>(null)
+  const [actorManager, setActorManager] = useState<ActorManager<A>>()
 
   const [{ fetching, fetchError }, setState] = useState({
     fetching: false,
@@ -127,33 +127,37 @@ export const useActor = <A = BaseActor>(
 
   useEffect(() => {
     if (maybeIdlFactory) {
-      actorManager.current = createActorManager<A>({
+      const actorManager = createActorManager<A>({
         agentManager,
         idlFactory: maybeIdlFactory,
         canisterId,
         ...actorConfig,
       })
+      setActorManager(() => actorManager)
     } else {
       fetchCandid().then((idlFactory) => {
         if (!idlFactory) return
-        actorManager.current = createActorManager<A>({
+
+        const actorManager = createActorManager<A>({
           agentManager,
           idlFactory,
           canisterId,
           ...actorConfig,
         })
+
+        setActorManager(() => actorManager)
       })
     }
 
-    return actorManager.current?.cleanup()
+    return actorManager?.cleanup()
   }, [fetchCandid, maybeIdlFactory, canisterId, agentManager])
 
   const hooks = useMemo(() => {
     if (fetching) return null
-    if (actorManager.current === null) return null
+    if (!actorManager) return null
 
-    return actorHooks(actorManager.current)
-  }, [canisterId, authenticating, actorManager.current, fetching])
+    return actorHooks(actorManager)
+  }, [canisterId, authenticating, actorManager, fetching])
 
   return { hooks, authenticating, fetching, fetchError }
 }
