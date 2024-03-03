@@ -79,6 +79,10 @@ export const useActor = <A = BaseActor>(
     ...actorConfig
   } = config
 
+  if (!canisterId) {
+    throw new Error("canisterId is required")
+  }
+
   const actorManager = useRef<ActorManager<A> | null>(null)
 
   const [{ fetching, fetchError }, setState] = useState({
@@ -87,9 +91,10 @@ export const useActor = <A = BaseActor>(
   })
 
   const agentManager = useAgentManager(agentContext)
+  const authenticating = useAuthState().authenticating
 
   const fetchCandid = useCallback(async () => {
-    if (!canisterId || fetching) return
+    if (fetching || authenticating) return
 
     setState({
       fetching: true,
@@ -118,7 +123,7 @@ export const useActor = <A = BaseActor>(
         fetching: false,
       })
     }
-  }, [canisterId, didjsCanisterId])
+  }, [canisterId, authenticating, didjsCanisterId])
 
   useEffect(() => {
     if (maybeIdlFactory) {
@@ -128,25 +133,22 @@ export const useActor = <A = BaseActor>(
         canisterId,
         ...actorConfig,
       })
+    } else {
+      fetchCandid().then((idlFactory) => {
+        if (!idlFactory) return
+        actorManager.current = createActorManager<A>({
+          agentManager,
+          idlFactory,
+          canisterId,
+          ...actorConfig,
+        })
+      })
     }
 
-    fetchCandid().then((idlFactory) => {
-      if (!idlFactory) return
-      actorManager.current = createActorManager<A>({
-        agentManager,
-        idlFactory,
-        canisterId,
-        ...actorConfig,
-      })
-    })
-
     return actorManager.current?.cleanup()
-  }, [fetchCandid, canisterId, agentManager])
-
-  const authenticating = useAuthState().authenticating
+  }, [fetchCandid, maybeIdlFactory, canisterId, agentManager])
 
   const hooks = useMemo(() => {
-    if (authenticating) return null
     if (fetching) return null
     if (actorManager.current === null) return null
 

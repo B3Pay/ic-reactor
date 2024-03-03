@@ -12,6 +12,7 @@ import type {
   UnknownMethodResult,
   PrincipalMethodResult,
   OptionalMethodResult,
+  NullMethodResult,
 } from "../types"
 import { isImage, isUrl } from "../../helper"
 import type { Principal } from "@ic-reactor/core/dist/types"
@@ -79,6 +80,9 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     { value, label }: DynamicDataArgs<Record<string, unknown>>
   ): RecordMethodResult {
     const values = fields.reduce((acc, [key, type]) => {
+      if (value[key] === undefined) {
+        return acc
+      }
       const field = type.accept(this, {
         label: key,
         value: value[key],
@@ -171,12 +175,12 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       }
     }
 
-    const values = value.map((val, index) =>
-      ty.accept(this, {
+    const values = value.map((val, index) => {
+      return ty.accept(this, {
         label: `${label}-${index}`,
         value: val,
       })
-    )
+    })
 
     return {
       type: "vector",
@@ -184,18 +188,6 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       label,
       description: t.name,
       values,
-    }
-  }
-
-  public visitNumber<T>(
-    t: IDL.Type<T>,
-    { value, label }: DynamicDataArgs<number>
-  ): NumberMethodResult {
-    return {
-      type: "number",
-      label,
-      description: t.name,
-      value,
     }
   }
 
@@ -209,6 +201,18 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     return {
       type: "text",
       componentType: isImg ? "image" : isurl ? "url" : "normal",
+      label,
+      description: t.name,
+      value,
+    }
+  }
+
+  public visitNumber<T>(
+    t: IDL.Type<T>,
+    { value, label }: DynamicDataArgs<number>
+  ): NumberMethodResult {
+    return {
+      type: "number",
       label,
       description: t.name,
       value,
@@ -248,6 +252,25 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     data: DynamicDataArgs<number>
   ): NumberMethodResult {
     return this.visitNumber(t, data)
+  }
+
+  public visitPrimitive<T>(
+    t: IDL.PrimitiveType<T>,
+    data: DynamicDataArgs<unknown>
+  ): MethodResult {
+    return this.visitType(t, data)
+  }
+
+  public visitNull(
+    t: IDL.NullClass,
+    data: DynamicDataArgs<unknown>
+  ): NullMethodResult {
+    return {
+      type: "null",
+      value: null,
+      label: data.label,
+      description: t.name,
+    }
   }
 
   public visitBool(

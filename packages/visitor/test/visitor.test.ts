@@ -1,10 +1,10 @@
 import { createReactorStore } from "@ic-reactor/core"
 import {
   VisitRandomResponse,
-  VisitTransformTable,
   VisitFields,
   VisitDetails,
   VisitRandomArgs,
+  VisitTransform,
 } from "../src"
 import { b3system, idlFactory } from "./candid/b3system"
 
@@ -28,14 +28,11 @@ describe("createReactorStore", () => {
     const value = visitFunction.get_app(new VisitRandomResponse<B3System>())
     console.log(value)
 
-    const transform = visitFunction.get_app(
-      new VisitTransformTable<B3System>(),
-      {
-        value,
-        label: "test",
-      }
-    )
-    console.log(transform.values?.[0].value)
+    const transform = visitFunction.get_app(new VisitTransform(), {
+      value,
+      label: "test",
+    })
+    console.log(transform.values)
 
     const { methodState, initialized, initializing, error } =
       actorStore.getState()

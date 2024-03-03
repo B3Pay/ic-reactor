@@ -69,9 +69,9 @@ import { extractActorContext } from "../helpers/extractActorContext"
  * managing IC agents and actors, providing a simple, declarative API for developers.
  */
 export function createActorContext<A = BaseActor>(
-  config: CreateActorContextParameters = {}
+  contextConfig: CreateActorContextParameters = {}
 ): CreateActorContextReturnType<A> {
-  const { canisterId: defaultCanisterId, ...defaultConfig } = config
+  const { canisterId: defaultCanisterId, ...defaultConfig } = contextConfig
 
   const ActorContext = React.createContext<ActorHooksReturnType<A> | null>(null)
 

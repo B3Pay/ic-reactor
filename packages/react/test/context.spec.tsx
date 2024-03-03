@@ -41,9 +41,13 @@ describe("createReactor", () => {
     expect(screen.toJSON()).toMatchSnapshot()
 
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 3000))
+      await new Promise((r) => setTimeout(r, 1000))
     })
+    expect(screen.toJSON()).toMatchSnapshot()
 
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 1000))
+    })
     expect(screen.toJSON()).toMatchSnapshot()
 
     const versionStatus = () => screen.root.findAllByType("span")[0]
