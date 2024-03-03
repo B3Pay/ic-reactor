@@ -38,7 +38,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   }: UseAuthParameters = {}) => {
     const [loginState, setLoginState] = React.useState<LoginState>({
       loading: false,
-      error: null,
+      error: undefined,
     })
     const { authenticated, authenticating, error, identity } = useAuthState()
 
@@ -51,7 +51,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
               resolve(identity)
             })
             .catch((e) => {
-              onAuthenticationFailure?.(e as Error)
+              onAuthenticationFailure?.(e)
               reject(e)
             })
         }
@@ -69,7 +69,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
 
     const login = React.useCallback(
       async (options?: LoginParameters) => {
-        setLoginState({ loading: true, error: null })
+        setLoginState({ loading: true, error: undefined })
 
         const loginPromise: Promise<Principal> = new Promise(
           (resolve, reject) => {
@@ -92,25 +92,23 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
                       options?.onSuccess?.()
                       onLoginSuccess?.(principal)
                       resolve(principal)
-                      setLoginState({ loading: false, error: null })
+                      setLoginState({ loading: false, error: undefined })
                     })
-                    .catch((e) => {
-                      const error = e as Error
+                    .catch((error) => {
                       setLoginState({ loading: false, error })
                       onLoginError?.(error)
                       reject(error)
                     })
                 },
-                onError: (e) => {
-                  options?.onError?.(e)
-                  const error = new Error("Login failed: " + e)
+                onError: (error) => {
+                  options?.onError?.(error)
                   setLoginState({ loading: false, error })
                   onLoginError?.(error)
                   reject(error)
                 },
               })
             } catch (e) {
-              const error = e as Error
+              const error = e as string
               setLoginState({ loading: false, error })
               onLoginError?.(error)
               reject(error)

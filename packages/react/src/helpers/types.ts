@@ -29,9 +29,9 @@ export interface AuthHooksReturnType {
 export interface UseAuthParameters {
   onAuthentication?: (promise: () => Promise<Identity>) => void
   onAuthenticationSuccess?: (identity: Identity) => void
-  onAuthenticationFailure?: (error: Error) => void
+  onAuthenticationFailure?: (error: string | undefined) => void
   onLoginSuccess?: (principal: Principal) => void
-  onLoginError?: (error: Error) => void
+  onLoginError?: (error: string | undefined) => void
   onLogin?: (promise: () => Promise<Principal>) => void
   onLoggedOut?: () => void
 }
@@ -45,12 +45,12 @@ export interface UseAuthReturnType {
   logout: (options?: LogoutParameters) => Promise<void>
   authenticate: () => Promise<Identity>
   loginLoading: boolean
-  loginError: Error | null
+  loginError: string | undefined
 }
 
 export type LoginState = {
   loading: boolean
-  error: Error | null
+  error: string | undefined
 }
 
 export type LoginParameters = AuthClientLoginOptions
