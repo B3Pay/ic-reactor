@@ -1,4 +1,4 @@
-import type { ServiceClass, Visitor } from "@dfinity/candid/lib/cjs/idl"
+import type { ServiceClass } from "@dfinity/candid/lib/cjs/idl"
 import type {
   ActorState,
   CanisterId,
@@ -112,19 +112,16 @@ export interface DynamicDataArgs<V = unknown> {
   value: V
 }
 
-export interface UseMethodParameters<A, M extends FunctionName<A>, T = unknown>
-  extends UseSharedCallParameters<A, M> {
-  transform?: Visitor<DynamicDataArgs, T>
-}
+export interface UseMethodParameters<A, M extends FunctionName<A>>
+  extends UseSharedCallParameters<A, M> {}
 
 export interface UseMethodReturnType<
   A,
-  M extends FunctionName<A> = FunctionName<A>,
-  T = unknown
+  M extends FunctionName<A> = FunctionName<A>
 > {
   loading: boolean
   error: Error | undefined
-  data: T | ActorMethodReturnType<A[M]> | undefined
+  data: ActorMethodReturnType<A[M]> | undefined
   visit: VisitService<A>[M]
   reset: () => void
   call: (
@@ -132,29 +129,9 @@ export interface UseMethodReturnType<
   ) => Promise<ActorMethodReturnType<A[M]> | undefined>
 }
 
-export type UseMethod<A> = {
-  <
-    M extends FunctionName<A>,
-    V extends Visitor<DynamicDataArgs, unknown> = Visitor<
-      DynamicDataArgs,
-      unknown
-    >
-  >({
-    transform,
-  }: {
-    transform: V
-  } & UseMethodParameters<A, M>): {
-    data: ReturnType<V["visitFunc"]> | undefined
-  } & UseMethodReturnType<A, M>
-
-  <M extends FunctionName<A>>({
-    transform,
-  }: {
-    transform?: undefined
-  } & UseMethodParameters<A, M>): {
-    data: ActorMethodReturnType<A[M]> | undefined
-  } & UseMethodReturnType<A, M>
-}
+export type UseMethod<A> = <M extends FunctionName<A>>(
+  args: UseMethodParameters<A, M>
+) => UseMethodReturnType<A, M>
 
 export type UseVisitMethod<A> = <M extends FunctionName<A>>(
   functionName: M

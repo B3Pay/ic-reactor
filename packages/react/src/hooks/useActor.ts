@@ -1,9 +1,9 @@
 import { createActorManager, createCandidAdapter } from "@ic-reactor/core"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useAgentManager } from "./agent/useAgentManager"
 import { actorHooks } from "../helpers"
 import { useAuthState } from "./agent"
-import type { BaseActor, HttpAgent } from "../types"
+import { ActorManager, type BaseActor } from "../types"
 import type { UseActorParameters, UseActorReturn } from "./types"
 
 /**
@@ -75,88 +75,84 @@ export const useActor = <A = BaseActor>(
     canisterId,
     idlFactory: maybeIdlFactory,
     agentContext,
-    fetchOnMount = true,
     didjsCanisterId,
     ...actorConfig
   } = config
 
-  const [{ idlFactory, fetching, fetchError }, setState] = useState({
-    idlFactory: maybeIdlFactory,
+  const actorManager = useRef<ActorManager<A> | null>(null)
+
+  const [{ fetching, fetchError }, setState] = useState({
     fetching: false,
     fetchError: null as string | null,
   })
 
   const agentManager = useAgentManager(agentContext)
 
-  const fetchCandid = useCallback(
-    async (agent: HttpAgent) => {
-      if (!canisterId || fetching) return
+  const fetchCandid = useCallback(async () => {
+    if (!canisterId || fetching) return
+
+    setState({
+      fetching: true,
+      fetchError: null,
+    })
+
+    const agent = agentManager.getAgent()
+    try {
+      const candidManager = createCandidAdapter({
+        agent,
+        didjsCanisterId,
+      })
+      const { idlFactory } = await candidManager.getCandidDefinition(canisterId)
 
       setState({
-        idlFactory: undefined,
-        fetching: true,
+        fetching: false,
         fetchError: null,
       })
 
-      try {
-        const candidManager = createCandidAdapter({
-          agent,
-          didjsCanisterId,
-        })
-        const { idlFactory } = await candidManager.getCandidDefinition(
-          canisterId
-        )
-
-        setState({
-          idlFactory,
-          fetching: false,
-          fetchError: null,
-        })
-
-        return idlFactory
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error(err)
-        setState({
-          idlFactory: undefined,
-          fetchError: `Error fetching canister ${canisterId}`,
-          fetching: false,
-        })
-      }
-    },
-    [canisterId, didjsCanisterId]
-  )
+      return idlFactory
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err)
+      setState({
+        fetchError: `Error fetching canister ${canisterId}`,
+        fetching: false,
+      })
+    }
+  }, [canisterId, didjsCanisterId])
 
   useEffect(() => {
     if (maybeIdlFactory) {
-      setState(() => ({
+      actorManager.current = createActorManager<A>({
+        agentManager,
         idlFactory: maybeIdlFactory,
-        fetching: false,
-        fetchError: null,
-      }))
-      return
+        canisterId,
+        ...actorConfig,
+      })
     }
 
-    const unsubscribe = agentManager.subscribeAgent(fetchCandid, fetchOnMount)
+    fetchCandid().then((idlFactory) => {
+      if (!idlFactory) return
+      console.log("Creating actor manager", canisterId)
+      actorManager.current = createActorManager<A>({
+        agentManager,
+        idlFactory,
+        canisterId,
+        ...actorConfig,
+      })
+    })
 
-    return unsubscribe
-  }, [agentManager, fetchOnMount])
+    return actorManager.current?.cleanup()
+  }, [fetchCandid, canisterId, agentManager])
 
   const authenticating = useAuthState().authenticating
 
   const hooks = useMemo(() => {
-    if (!idlFactory) return null
     if (authenticating) return null
+    if (fetching) return null
+    if (actorManager.current === null) return null
 
-    const actorManager = createActorManager<A>({
-      agentManager,
-      idlFactory,
-      canisterId,
-      ...actorConfig,
-    })
-
-    return actorHooks(actorManager)
-  }, [canisterId, authenticating, idlFactory])
+    return actorHooks(actorManager.current)
+  }, [canisterId, authenticating, actorManager.current, fetching])
 
   return { hooks, authenticating, fetching, fetchError }
 }

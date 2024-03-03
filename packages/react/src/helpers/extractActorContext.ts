@@ -53,7 +53,6 @@ export function extractActorContext<A = BaseActor>(
 
   const useActorState = () => useActorContext().useActorState()
 
-  // @ts-ignore
   const useMethod: UseMethod<A> = (args) => useActorContext().useMethod(args)
 
   const useQueryCall: UseQueryCall<A> = (args) =>

@@ -15,6 +15,8 @@ export class CandidAdapter {
   public agent: HttpAgent
   public didjsCanisterId: string
 
+  public unsubscribeAgent: () => void = () => {}
+
   constructor({
     agentManager,
     agent,
@@ -24,7 +26,7 @@ export class CandidAdapter {
       this.agent = agent
     } else if (agentManager) {
       this.agent = agentManager.getAgent()
-      agentManager.subscribeAgent((agent) => {
+      this.unsubscribeAgent = agentManager.subscribeAgent((agent) => {
         this.agent = agent
         this.didjsCanisterId = didjsCanisterId || this.getDefaultDidJsId()
       })
@@ -42,16 +44,24 @@ export class CandidAdapter {
   public async getCandidDefinition(
     canisterId: CanisterId
   ): Promise<CandidDefenition> {
-    // First attempt: Try getting Candid definition from metadata
-    const fromMetadata = await this.getFromMetadata(canisterId)
-    if (fromMetadata) return fromMetadata
+    try {
+      // First attempt: Try getting Candid definition from metadata
+      const fromMetadata = await this.getFromMetadata(canisterId).catch(() => {
+        return undefined
+      })
+      if (fromMetadata) return fromMetadata
 
-    // Second attempt: Try the temporary hack method
-    const fromTmpHack = await this.getFromTmpHack(canisterId)
-    if (fromTmpHack) return fromTmpHack
+      // Second attempt: Try the temporary hack method
+      const fromTmpHack = await this.getFromTmpHack(canisterId).catch(() => {
+        return undefined
+      })
+      if (fromTmpHack) return fromTmpHack
 
-    // If both attempts fail, throw an error
-    throw new Error("Failed to retrieve Candid definition by any method.")
+      // If both attempts fail, throw an error
+      throw "Failed to retrieve Candid definition by any method."
+    } catch (err) {
+      throw new Error(`Error fetching canister ${canisterId}: ${err}`)
+    }
   }
 
   public async getFromMetadata(

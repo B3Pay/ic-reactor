@@ -96,7 +96,6 @@ export function createActorContext<A = BaseActor>(
 
     const { fetchError, authenticating, hooks } = useActor<A>({
       canisterId,
-      fetchOnMount: false,
       ...config,
     })
 

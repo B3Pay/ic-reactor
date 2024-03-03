@@ -1,4 +1,4 @@
-import React, { useMemo } from "react"
+import React from "react"
 import { useStore } from "zustand"
 import type {
   UseSharedCallState,
@@ -68,7 +68,13 @@ export const actorHooks = <A = BaseActor>(
   const useVisitMethod = <M extends FunctionName<A>>(
     functionName: M
   ): VisitService<A>[M] => {
-    return React.useMemo(() => visitFunction[functionName], [functionName])
+    return React.useMemo(() => {
+      if (!visitFunction[functionName]) {
+        throw new Error(`Method ${functionName} not found`)
+      }
+
+      return visitFunction[functionName]
+    }, [functionName])
   }
 
   const useSharedCall: UseSharedCall<A> = ({
@@ -147,29 +153,15 @@ export const actorHooks = <A = BaseActor>(
 
   const useUpdateCall: UseUpdateCall<A> = useSharedCall
 
-  const useMethod: UseMethod<A> = <M extends FunctionName<A>, T>(
-    args: UseMethodParameters<A, M, T>
-  ): UseMethodReturnType<A, M, T> => {
-    const { call, data, ...state } = useSharedCall(args)
+  const useMethod: UseMethod<A> = <M extends FunctionName<A>>(
+    args: UseMethodParameters<A, M>
+  ): UseMethodReturnType<A, M> => {
+    const { call, ...state } = useSharedCall(args)
     const visit = useVisitMethod(args.functionName)
-
-    const transformedData = useMemo(() => {
-      if (data === undefined) return data
-
-      if (args.transform) {
-        return visit(args.transform, {
-          value: data,
-          label: args.functionName,
-        }) as T
-      }
-
-      return data
-    }, [data, args.transform, visit])
 
     return {
       call,
       visit,
-      data: transformedData,
       ...state,
     }
   }

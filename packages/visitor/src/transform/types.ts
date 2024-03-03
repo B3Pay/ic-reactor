@@ -1,8 +1,4 @@
-import type {
-  ActorMethodReturnType,
-  FunctionName,
-  Principal,
-} from "@ic-reactor/core/dist/types"
+import type { Principal } from "@ic-reactor/core/dist/types"
 
 export type ReturnDataType =
   | "record"
@@ -15,27 +11,8 @@ export type ReturnDataType =
   | "principal"
   | "boolean"
   | "null"
-  | "blob"
-  | "url"
-  | "image"
   | "normal"
   | "table"
-
-export interface ArrayResultData<
-  A,
-  M extends FunctionName<A> = FunctionName<A>
-> {
-  label: string
-  value: ActorMethodReturnType<A[M]>[]
-}
-
-export interface RecordResultData<
-  A,
-  M extends FunctionName<A> = FunctionName<A>
-> {
-  label: string
-  value: Record<string, ActorMethodReturnType<A[M]>>
-}
 
 export interface DynamicDataArgs<V = unknown> {
   label: string
@@ -45,10 +22,10 @@ export interface DynamicDataArgs<V = unknown> {
 export type DefaultMethodResult = {
   type: ReturnDataType
   label: string
-  description: string[] | string
+  description: string
 }
 
-export type MethodResult<T extends ReturnDataType = "normal"> =
+export type MethodResult<T extends ReturnDataType = ReturnDataType> =
   T extends "normal"
     ? NormalMethodResult
     : T extends "record"
@@ -69,8 +46,6 @@ export type MethodResult<T extends ReturnDataType = "normal"> =
     ? PrincipalMethodResult
     : T extends "null"
     ? NullMethodResult
-    : T extends "blob"
-    ? BlobMethodResult
     : T extends "unknown"
     ? UnknownMethodResult
     : never
@@ -95,14 +70,15 @@ export interface OptionalMethodResult extends DefaultMethodResult {
   value: MethodResult<ReturnDataType> | null
 }
 
-export type VectorMethodResult = DefaultMethodResult &
-  (
+export type VectorMethodResult = DefaultMethodResult & {
+  type: "vector"
+} & (
     | {
-        type: "blob"
-        value: Uint8Array
+        componentType: "blob"
+        value: ArrayBuffer
       }
     | {
-        type: "vector"
+        componentType: "normal"
         values: Array<MethodResult<ReturnDataType>>
       }
   )
@@ -113,7 +89,8 @@ export interface NumberMethodResult extends DefaultMethodResult {
 }
 
 export interface TextMethodResult extends DefaultMethodResult {
-  type: "text" | "url" | "image"
+  type: "text"
+  componentType: "url" | "image" | "normal"
   value: string
 }
 
@@ -130,11 +107,6 @@ export interface PrincipalMethodResult extends DefaultMethodResult {
 export interface NullMethodResult extends DefaultMethodResult {
   type: "null"
   value: null
-}
-
-export interface BlobMethodResult extends DefaultMethodResult {
-  type: "blob"
-  value: Uint8Array
 }
 
 export interface UnknownMethodResult extends DefaultMethodResult {

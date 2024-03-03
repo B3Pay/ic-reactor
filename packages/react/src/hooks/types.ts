@@ -14,7 +14,6 @@ export interface UseActorParameters
   canisterId: string
   idlFactory?: IDL.InterfaceFactory
   agentContext?: React.Context<AgentContext | null>
-  fetchOnMount?: boolean
   didjsCanisterId?: string
 }
 

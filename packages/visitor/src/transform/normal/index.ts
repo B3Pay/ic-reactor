@@ -2,7 +2,6 @@ import { IDL } from "@dfinity/candid"
 import type {
   MethodResult,
   DynamicDataArgs,
-  ReturnDataType,
   NormalMethodResult,
   RecordMethodResult,
   TupleMethodResult,
@@ -12,6 +11,7 @@ import type {
   BooleanMethodResult,
   UnknownMethodResult,
   PrincipalMethodResult,
+  OptionalMethodResult,
 } from "../types"
 import { isImage, isUrl } from "../../helper"
 import type { Principal } from "@ic-reactor/core/dist/types"
@@ -21,20 +21,18 @@ import type { Principal } from "@ic-reactor/core/dist/types"
  * It returns the extracted service fields.
  *
  */
-export class VisitTransform extends IDL.Visitor<
-  DynamicDataArgs,
-  MethodResult<ReturnDataType>
-> {
+export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
   public visitFunc(
     t: IDL.FuncClass,
     { value, label }: DynamicDataArgs
   ): NormalMethodResult {
-    const dataValues = Array.isArray(value) ? value : [value]
+    const dataValues = t.retTypes.length === 1 ? [value] : (value as unknown[])
+
     const values = t.retTypes.map((type, index) => {
       return type.accept(this, {
         label: `ret${index}`,
         value: dataValues[index],
-      }) as MethodResult<ReturnDataType>
+      }) as MethodResult
     })
 
     return {
@@ -49,7 +47,7 @@ export class VisitTransform extends IDL.Visitor<
     _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     data: DynamicDataArgs
-  ): MethodResult<ReturnDataType> {
+  ): MethodResult {
     return ty.accept(this, data)
   }
 
@@ -57,7 +55,7 @@ export class VisitTransform extends IDL.Visitor<
     t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
     { value, label }: DynamicDataArgs<T[]>
-  ): MethodResult<"optional"> {
+  ): OptionalMethodResult {
     if (value?.length === 0) {
       return {
         type: "optional",
@@ -89,7 +87,7 @@ export class VisitTransform extends IDL.Visitor<
       acc.push(field)
 
       return acc
-    }, [] as Array<MethodResult<ReturnDataType>>)
+    }, [] as Array<MethodResult>)
 
     return {
       type: "record",
@@ -102,8 +100,18 @@ export class VisitTransform extends IDL.Visitor<
   public visitTuple<T extends IDL.Type[]>(
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
-    { value, label }: DynamicDataArgs<T>
-  ): TupleMethodResult {
+    { value, label }: DynamicDataArgs<unknown[]>
+  ): TupleMethodResult | RecordMethodResult {
+    if (value.length === 2) {
+      const [first, second] = value
+      if (typeof first === "string") {
+        return this.visitRecord(t, [[first, components[1] as IDL.Type]], {
+          value: { [first]: second },
+          label: first,
+        })
+      }
+    }
+
     const values = components.reduce(
       (acc, type, index) => {
         const field = type.accept(this, {
@@ -129,7 +137,7 @@ export class VisitTransform extends IDL.Visitor<
     t: IDL.VariantClass,
     fields: Array<[string, IDL.Type]>,
     { value, label }: DynamicDataArgs<Record<string, unknown>>
-  ): MethodResult<ReturnDataType> {
+  ): MethodResult {
     // Find the first field that matches and has a value
     for (const [key, type] of fields) {
       if (value[key] !== undefined) {
@@ -155,10 +163,11 @@ export class VisitTransform extends IDL.Visitor<
   ): VectorMethodResult {
     if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
       return {
-        type: "blob",
+        type: "vector",
+        componentType: "blob",
         label,
         description: t.name,
-        value: value as unknown as Uint8Array,
+        value: t.encodeValue(value),
       }
     }
 
@@ -171,6 +180,7 @@ export class VisitTransform extends IDL.Visitor<
 
     return {
       type: "vector",
+      componentType: "normal",
       label,
       description: t.name,
       values,
@@ -197,7 +207,8 @@ export class VisitTransform extends IDL.Visitor<
     const isImg = isImage(value)
 
     return {
-      type: isImg ? "image" : isurl ? "url" : "text",
+      type: "text",
+      componentType: isImg ? "image" : isurl ? "url" : "normal",
       label,
       description: t.name,
       value,
