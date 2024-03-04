@@ -16,6 +16,19 @@ export const extractAndSortArgs = <T extends Record<string, unknown>>(
   return args
 }
 
+export const convertNanoToDate = (nano: bigint) => {
+  return new Date(Number(nano) / 1000000)
+}
+
+export const convertToCycle = (cycles: bigint) => {
+  const mcycles = cycles / BigInt(1_000_000)
+  if (mcycles >= BigInt(1_000_000)) {
+    const tcycles = mcycles / BigInt(1_000_000)
+    return `${tcycles.toLocaleString()} T`
+  }
+  return `${mcycles.toLocaleString()} M`
+}
+
 export const convertStringToNumber = (value: string) => {
   const bits = value.length
   if (bits >= 16) {

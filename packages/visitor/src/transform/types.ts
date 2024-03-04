@@ -15,14 +15,13 @@ export type ReturnDataType =
   | "table"
 
 export interface DynamicDataArgs<V = unknown> {
-  label?: string
+  label: string
   value: V
 }
 
 export type DefaultMethodResult = {
   type: ReturnDataType
-  label?: string
-  description: string
+  label: string
 }
 
 export type MethodResult<T extends ReturnDataType = ReturnDataType> =
@@ -83,10 +82,19 @@ export type VectorMethodResult = DefaultMethodResult & {
       }
   )
 
-export interface NumberMethodResult extends DefaultMethodResult {
-  type: "number"
-  value: number
-}
+export type NumberMethodResult = DefaultMethodResult &
+  (
+    | {
+        type: "number"
+        componentType: "timestamp" | "cycle" | "bigInt"
+        value: bigint
+      }
+    | {
+        type: "number"
+        componentType: "normal"
+        value: number
+      }
+  )
 
 export interface TextMethodResult extends DefaultMethodResult {
   type: "text"
