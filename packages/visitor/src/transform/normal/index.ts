@@ -105,21 +105,29 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
     { value, label }: DynamicDataArgs<unknown[]>
-  ): TupleMethodResult | RecordMethodResult {
+  ): TupleMethodResult {
     if (value.length === 2) {
-      const [first, second] = value
-      if (typeof first === "string") {
-        return this.visitRecord(t, [[first, components[1] as IDL.Type]], {
-          value: { [first]: second },
-          label: first,
+      const { value: textValue, label } = components[0].accept(this, {
+        value: value[0],
+      }) as TextMethodResult
+
+      const labelValue =
+        typeof textValue === "string" ? textValue : (label as string)
+
+      if (labelValue) {
+        const { values } = this.visitRecord(t, [[labelValue, components[1]]], {
+          value: { [labelValue]: value[1] },
+          label,
         })
+        console.log(values[0])
+        return values[0] as TupleMethodResult
       }
     }
 
     const values = components.reduce(
       (acc, type, index) => {
         const field = type.accept(this, {
-          label: `_${index}_`,
+          label,
           value: value[index],
         }) as MethodResult
         acc.push(field)
@@ -146,7 +154,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     for (const [key, type] of fields) {
       if (value[key] !== undefined) {
         return type.accept(this, {
-          label,
+          label: label ? `${label}.${key}` : key,
           value: value[key],
         })
       }
@@ -175,10 +183,9 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       }
     }
 
-    const values = value.map((val, index) => {
+    const values = value.map((value) => {
       return ty.accept(this, {
-        label: `${label}-${index}`,
-        value: val,
+        value,
       })
     })
 

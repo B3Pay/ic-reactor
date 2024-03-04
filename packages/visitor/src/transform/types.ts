@@ -15,13 +15,13 @@ export type ReturnDataType =
   | "table"
 
 export interface DynamicDataArgs<V = unknown> {
-  label: string
+  label?: string
   value: V
 }
 
 export type DefaultMethodResult = {
   type: ReturnDataType
-  label: string
+  label?: string
   description: string
 }
 
