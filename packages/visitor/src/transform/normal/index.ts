@@ -146,7 +146,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     for (const [key, type] of fields) {
       if (value[key] !== undefined) {
         return type.accept(this, {
-          label: key,
+          label,
           value: value[key],
         })
       }
