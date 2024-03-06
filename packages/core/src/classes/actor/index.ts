@@ -27,6 +27,7 @@ export class ActorManager<A = BaseActor> {
   private _unsubscribeAgent: () => void
   private _subscribers: Array<() => void> = []
 
+  public methods: Array<FunctionName<A>> = []
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
   public visitFunction: VisitService<A>
@@ -88,9 +89,10 @@ export class ActorManager<A = BaseActor> {
       throw new Error("CanisterId is required!")
     }
 
+    this._agentManager = agentManager
+
     this.canisterId = canisterId
     this._idlFactory = idlFactory
-    this._agentManager = agentManager
 
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(this.initialState, {
@@ -113,6 +115,12 @@ export class ActorManager<A = BaseActor> {
 
   public initialize = async (options?: UpdateAgentParameters) => {
     await this._agentManager.updateAgent(options)
+  }
+
+  public extractMethodNames = (): Array<FunctionName<A>> => {
+    const iface = this.extractInterface()
+
+    return iface._fields.map((service) => service[0] as FunctionName<A>)
   }
 
   public extractService = (): VisitService<A> => {
@@ -171,6 +179,8 @@ export class ActorManager<A = BaseActor> {
       if (!this._actor) {
         throw new Error("Failed to initialize actor")
       }
+
+      this.methods = this.extractMethodNames()
 
       this.updateState(
         {

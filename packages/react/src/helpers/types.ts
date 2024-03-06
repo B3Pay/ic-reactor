@@ -143,6 +143,7 @@ export interface ActorHooksReturnType<A = BaseActor> {
   initialize: () => Promise<void>
   useActorState: () => UseActorState
   useActorInterface: () => ServiceClass
+  useMethodNames: () => FunctionName<A>[]
   useMethod: UseMethod<A>
   useQueryCall: UseQueryCall<A>
   useUpdateCall: UseUpdateCall<A>

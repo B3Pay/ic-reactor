@@ -1,15 +1,10 @@
-import {
-  VisitRandomArgs,
-  VisitRandomResponse,
-  VisitTransform,
-} from "../../visitor/src"
 import { createReactorStore } from "../src"
 import { example, idlFactory } from "./candid/example"
 
 type Example = typeof example
 
 describe("createReactorStore", () => {
-  const { getState, initialize, getActor, visitFunction } =
+  const { getState, initialize, getActor, extractMethods, visitFunction } =
     createReactorStore<Example>({
       canisterId: "2vxsx-fae",
       idlFactory,
@@ -34,6 +29,7 @@ describe("createReactorStore", () => {
   test("Initialized", async () => {
     await initialize()
 
+    expect(extractMethods()).toBeDefined()
     expect(getState()).toEqual({
       methodState: {},
       initialized: true,

@@ -48,6 +48,7 @@ export const actorHooks = <A = BaseActor>(
     canisterId,
     visitFunction,
     extractInterface,
+    extractMethodNames,
     callMethod,
     initialize,
   } = actorManager
@@ -57,8 +58,12 @@ export const actorHooks = <A = BaseActor>(
     canisterId,
   })
 
+  const useMethodNames = (): FunctionName<A>[] => {
+    return React.useMemo(() => extractMethodNames(), [])
+  }
+
   const useActorInterface = (): IDL.ServiceClass => {
-    return extractInterface()
+    return React.useMemo(() => extractInterface(), [])
   }
 
   const useVisitService = (): VisitService<A> => {
@@ -169,6 +174,7 @@ export const actorHooks = <A = BaseActor>(
   return {
     initialize,
     useMethod,
+    useMethodNames,
     useQueryCall,
     useUpdateCall,
     useActorState,
