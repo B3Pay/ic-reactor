@@ -17,8 +17,8 @@ import type {
   FunctionName,
   ActorManager,
   BaseActor,
+  IDL,
 } from "@ic-reactor/core/dist/types"
-import { ServiceClass } from "@dfinity/candid/lib/cjs/idl"
 
 const DEFAULT_STATE: UseSharedCallState<never, never> = {
   data: undefined,
@@ -57,7 +57,7 @@ export const actorHooks = <A = BaseActor>(
     canisterId,
   })
 
-  const useActorInterface = (): ServiceClass => {
+  const useActorInterface = (): IDL.ServiceClass => {
     return extractInterface()
   }
 

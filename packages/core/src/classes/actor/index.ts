@@ -128,7 +128,7 @@ export class ActorManager<A = BaseActor> {
     }, {} as VisitService<A>)
   }
 
-  public extractInterface = () => {
+  public extractInterface = (): IDL.ServiceClass => {
     if (this._actor === null) {
       throw new Error("For extracting interface, actor must be initialized")
     }
