@@ -84,6 +84,10 @@ export class ActorManager<A = BaseActor> {
       initializeOnCreate = true,
     } = actorConfig
 
+    if (!canisterId) {
+      throw new Error("CanisterId is required!")
+    }
+
     this.canisterId = canisterId
     this._idlFactory = idlFactory
     this._agentManager = agentManager
