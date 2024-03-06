@@ -8,7 +8,7 @@ import { ActorManagerParameters, BaseActor } from "./types"
  * It also provides a way to interact with the actor's state.
  *
  * @category Main
- * @includeExample ./packages/core/README.md:262-277
+ * @includeExample ./packages/core/README.md:268-283
  */
 export const createActorManager = <A = BaseActor>(
   config: ActorManagerParameters

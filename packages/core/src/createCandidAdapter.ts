@@ -7,7 +7,7 @@ import { CandidAdapterParameters } from "./types"
  * If both methods fail, it throws an error.
  *
  * @category Main
- * @includeExample ./packages/core/README.md:145-186
+ * @includeExample ./packages/core/README.md:151-192
  */
 export const createCandidAdapter = (config: CandidAdapterParameters) => {
   return new CandidAdapter(config)

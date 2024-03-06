@@ -8,7 +8,7 @@ import { AgentManagerParameters } from "./types"
  * login and logout to the internet identity.
  *
  * @category Main
- * @includeExample ./packages/core/README.md:226-254
+ * @includeExample ./packages/core/README.md:232-260
  */
 export const createAgentManager = (config?: AgentManagerParameters) => {
   return new AgentManager(config)

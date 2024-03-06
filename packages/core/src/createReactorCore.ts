@@ -23,7 +23,7 @@ import { createReactorStore } from "./createReactorStore"
  * Its create a new agent manager if not provided.
  *
  * @category Main
- * @includeExample ./packages/core/README.md:26-80
+ * @includeExample ./packages/core/README.md:32-86
  */
 export const createReactorCore = <A = BaseActor>(
   config: CreateReactorCoreParameters
