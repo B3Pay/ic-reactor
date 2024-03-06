@@ -1882,7 +1882,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/agent@npm:^1.0":
+"@dfinity/agent@npm:>=1.0, @dfinity/agent@npm:^1.0":
   version: 1.0.1
   resolution: "@dfinity/agent@npm:1.0.1"
   dependencies:
@@ -1899,7 +1899,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/auth-client@npm:^1.0":
+"@dfinity/auth-client@npm:>=1.0, @dfinity/auth-client@npm:^1.0":
   version: 1.0.1
   resolution: "@dfinity/auth-client@npm:1.0.1"
   dependencies:
@@ -1912,7 +1912,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/candid@npm:^1.0":
+"@dfinity/candid@npm:>=1.0, @dfinity/candid@npm:^1.0":
   version: 1.0.1
   resolution: "@dfinity/candid@npm:1.0.1"
   peerDependencies:
@@ -1936,7 +1936,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/principal@npm:^1.0":
+"@dfinity/principal@npm:>=1.0, @dfinity/principal@npm:^1.0":
   version: 1.0.1
   resolution: "@dfinity/principal@npm:1.0.1"
   dependencies:
@@ -2026,10 +2026,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/core@npm:*, @ic-reactor/core@npm:^*, @ic-reactor/core@npm:^1.1.3, @ic-reactor/core@workspace:packages/core":
+"@ic-reactor/core@npm:*, @ic-reactor/core@npm:^*, @ic-reactor/core@npm:^1.2.0, @ic-reactor/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
+    "@dfinity/agent": "npm:>=1.0"
+    "@dfinity/auth-client": "npm:>=1.0"
+    "@dfinity/candid": "npm:>=1.0"
+    "@dfinity/principal": "npm:>=1.0"
     zustand: "npm:^4.5"
   peerDependencies:
     "@dfinity/agent": ">=1.0"
@@ -2043,13 +2047,16 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
-    "@ic-reactor/core": "npm:^1.1.3"
+    "@dfinity/agent": "npm:>=1.0"
+    "@dfinity/auth-client": "npm:>=1.0"
+    "@dfinity/candid": "npm:>=1.0"
+    "@dfinity/principal": "npm:>=1.0"
+    "@ic-reactor/core": "npm:^1.2.0"
     zustand-utils: "npm:^1.3"
   peerDependencies:
     "@dfinity/agent": ">=1.0"
     "@dfinity/auth-client": ">=1.0"
     "@dfinity/candid": ">=1.0"
-    "@dfinity/identity": ^1.0
     "@dfinity/principal": ">=1.0"
     react: ">=16.8"
     zustand: 4.5
@@ -2060,7 +2067,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
-    "@ic-reactor/core": "npm:^1.1.3"
+    "@ic-reactor/core": "npm:^1.2.0"
   peerDependencies:
     "@dfinity/agent": ^1.0
     "@dfinity/auth-client": ^1.0
