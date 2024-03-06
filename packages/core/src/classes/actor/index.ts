@@ -27,7 +27,6 @@ export class ActorManager<A = BaseActor> {
   private _unsubscribeAgent: () => void
   private _subscribers: Array<() => void> = []
 
-  public methods: Array<FunctionName<A>> = []
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
   public visitFunction: VisitService<A>
@@ -179,8 +178,6 @@ export class ActorManager<A = BaseActor> {
       if (!this._actor) {
         throw new Error("Failed to initialize actor")
       }
-
-      this.methods = this.extractMethodNames()
 
       this.updateState(
         {

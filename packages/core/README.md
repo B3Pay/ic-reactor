@@ -42,7 +42,7 @@ const { queryCall, updateCall, getPrincipal, login } =
   })
 ```
 
-You can find All available methods are returned from the `createReactorCore` function here: [ReactorCore](https://b3pay.github.io/ic-reactor/interfaces/core.types.ReactorCore.html)
+You can find All available methods are returned from the `createReactorCore` function [here](https://b3pay.github.io/ic-reactor/interfaces/core.types.CreateReactorCoreReturnType.html).
 
 ```typescript
 // later in your code
