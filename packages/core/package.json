@@ -29,12 +29,14 @@
     "@dfinity/agent": ">=1.0",
     "@dfinity/auth-client": ">=1.0",
     "@dfinity/candid": ">=1.0",
+    "@dfinity/identity": ">=1.0",
     "@dfinity/principal": ">=1.0"
   },
   "dependencies": {
     "@dfinity/agent": ">=1.0",
     "@dfinity/auth-client": ">=1.0",
     "@dfinity/candid": ">=1.0",
+    "@dfinity/identity": ">=1.0",
     "@dfinity/principal": ">=1.0",
     "zustand": "^4.5"
   },
