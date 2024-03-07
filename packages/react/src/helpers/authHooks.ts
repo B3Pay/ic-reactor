@@ -18,9 +18,9 @@ import {
 export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   const {
     authenticate: authenticator,
+    getIsLocal,
     getAuth,
     authStore,
-    isLocalEnv,
   } = agentManager
 
   const useAuthState = () => useStore(authStore)
@@ -81,7 +81,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
               }
 
               authClient.login({
-                identityProvider: isLocalEnv
+                identityProvider: getIsLocal()
                   ? LOCAL_INTERNET_IDENTITY_PROVIDER
                   : IC_INTERNET_IDENTITY_PROVIDER,
                 ...options,
@@ -118,7 +118,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
 
         onLogin?.(() => loginPromise)
       },
-      [onLogin, onLoginSuccess, onLoginError, isLocalEnv, authenticate]
+      [onLogin, onLoginSuccess, onLoginError, authenticate]
     )
 
     const logout = React.useCallback(

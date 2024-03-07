@@ -23,7 +23,6 @@ export class AgentManager {
 
   public agentStore: AgentStore
   public authStore: AuthStore
-  public isLocalEnv: boolean
 
   private initialAgentState: AgentState = {
     initialized: false,
@@ -87,20 +86,20 @@ export class AgentManager {
     })
 
     this._agent = new HttpAgent({ ...agentOptions, host })
-    this.isLocalEnv = this._agent.isLocal()
     this.initializeAgent()
   }
 
   private initializeAgent = async () => {
+    const isLocalEnv = this.getIsLocal()
     this.updateAgentState(
       {
         initializing: true,
         error: undefined,
-        network: this.isLocalEnv ? "local" : "ic",
+        network: isLocalEnv ? "local" : "ic",
       },
       "initializing"
     )
-    if (this.isLocalEnv) {
+    if (isLocalEnv) {
       try {
         await this._agent.fetchRootKey()
       } catch (error) {
@@ -144,7 +143,6 @@ export class AgentManager {
       this._agent = agent
     } else if (options) {
       this._agent = new HttpAgent(options)
-      this.isLocalEnv = this._agent.isLocal()
       await this.initializeAgent()
     }
 
@@ -193,7 +191,7 @@ export class AgentManager {
     }
 
     await this._auth.login({
-      identityProvider: this.isLocalEnv
+      identityProvider: this.getIsLocal()
         ? LOCAL_INTERNET_IDENTITY_PROVIDER
         : IC_INTERNET_IDENTITY_PROVIDER,
       ...options,
@@ -215,6 +213,10 @@ export class AgentManager {
   // agent store
   public getAgent = () => {
     return this._agent
+  }
+
+  public getIsLocal = () => {
+    return this._agent.isLocal()
   }
 
   public getAgentState: AgentStore["getState"] = () => {
