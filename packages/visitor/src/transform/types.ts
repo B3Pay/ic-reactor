@@ -98,7 +98,7 @@ export type NumberMethodResult = DefaultMethodResult &
 
 export interface TextMethodResult extends DefaultMethodResult {
   type: "text"
-  componentType: "url" | "image" | "normal"
+  componentType: "url" | "image" | "null" | "normal"
   value: string
 }
 
