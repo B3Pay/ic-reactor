@@ -12,6 +12,7 @@ import type {
   UnknownMethodResult,
   PrincipalMethodResult,
   OptionalMethodResult,
+  TransfromArgs,
 } from "../types"
 import { isImage, isUrl } from "../../helper"
 import type { Principal } from "@ic-reactor/core/dist/types"
@@ -22,23 +23,30 @@ import { TAMESTAMP_KEYS } from "../../constants"
  * It returns the extracted service fields.
  *
  */
-export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
+export class VisitTransform extends IDL.Visitor<
+  DynamicDataArgs | TransfromArgs,
+  MethodResult
+> {
   public visitFunc(
     t: IDL.FuncClass,
-    { value, label }: DynamicDataArgs | { value: undefined; label: string }
+    { functionName, value }: TransfromArgs
   ): NormalMethodResult {
     const dataValues = t.retTypes.length === 1 ? [value] : (value as unknown[])
 
-    const values = t.retTypes.map((type, index, array) => {
-      return type.accept(this, {
-        label: array.length === 1 ? label : `${label}.${index}`,
+    const values = t.retTypes.reduce((acc, type, index) => {
+      const value = type.accept(this, {
         value: dataValues[index],
-      }) as MethodResult
-    })
+      })
+
+      acc[`ret${index}`] = value
+
+      return acc
+    }, {} as Record<`ret${number}`, MethodResult>)
 
     return {
-      label,
       values,
+      functionName,
+      label: functionName,
       type: "normal",
     }
   }
@@ -46,33 +54,33 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
   public visitRec<T>(
     _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
-    data: DynamicDataArgs
+    data: DynamicDataArgs<T>
   ): MethodResult {
     return ty.accept(this, data)
   }
 
   public visitOpt<T>(
-    _t: IDL.OptClass<T>,
+    t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
-    { value, label }: DynamicDataArgs<T[]>
+    { value, label }: DynamicDataArgs<T[] | null>
   ): OptionalMethodResult {
-    if (value?.length === 0) {
+    if (value?.length === 1) {
       return {
+        label: label ?? t.name,
         type: "optional",
-        label,
-        value: null,
+        value: ty.accept(this, { value: value[0], label }),
       }
     }
 
     return {
-      label,
-      value: ty.accept(this, { value: value[0], label }),
+      value: null,
+      label: label ?? t.name,
       type: "optional",
     }
   }
 
   public visitRecord(
-    _t: IDL.RecordClass,
+    t: IDL.RecordClass,
     fields: Array<[string, IDL.Type]>,
     { value, label }: DynamicDataArgs<Record<string, unknown>>
   ): RecordMethodResult {
@@ -86,15 +94,15 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
         value: value[key],
       })
 
-      acc.push(field)
+      acc[key] = field
 
       return acc
-    }, [] as Array<MethodResult>)
+    }, {} as Record<string, MethodResult>)
 
     return {
-      label,
-      values,
+      label: label ?? t.name,
       type: "record",
+      values,
     }
   }
 
@@ -102,31 +110,22 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
     { value, label }: DynamicDataArgs<unknown[]>
-  ): TupleMethodResult {
+  ): TupleMethodResult | RecordMethodResult {
     if (value.length === 2) {
       const compResult = components[0].accept(this, {
-        label: "",
         value: value[0],
       }) as TextMethodResult | PrincipalMethodResult
+
       const textValue = compResult.value?.toString()
       const textLabel = compResult.label
         ? `${compResult.label}.${textValue}`
         : textValue
 
       if (textValue) {
-        const { label, values } = this.visitRecord(
-          t,
-          [[textValue, components[1]]],
-          {
-            value: { [textValue]: value[1] },
-            label: textLabel,
-          }
-        )
-
-        return {
-          ...values[0],
-          label,
-        } as TupleMethodResult
+        return this.visitRecord(t, [[textValue, components[1]]], {
+          value: { [textValue]: value[1] },
+          label: textLabel,
+        })
       }
     }
 
@@ -135,14 +134,14 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     )
 
     return {
-      label,
+      label: label ?? t.name,
       values,
       type: "tuple",
     }
   }
 
   public visitVariant(
-    _t: IDL.VariantClass,
+    t: IDL.VariantClass,
     fields: Array<[string, IDL.Type]>,
     { value, label }: DynamicDataArgs<Record<string, unknown>>
   ): MethodResult {
@@ -150,14 +149,14 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     for (const [key, type] of fields) {
       if (value[key] !== undefined) {
         return type.accept(this, {
-          label: label === "" ? key : label,
+          label: label ?? key,
           value: value[key] === null ? key : value[key],
         })
       }
     }
 
     return {
-      label,
+      label: label ?? t.name,
       value: "No matching variant",
       type: "unknown",
     }
@@ -170,22 +169,21 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
   ): VectorMethodResult {
     if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
       return {
-        label,
+        label: label ?? t.name,
         value: t.encodeValue(value),
         type: "vector",
         componentType: "blob",
       }
     }
 
-    const values = value.map((value, index) => {
+    const values = value.map((value) => {
       return ty.accept(this, {
-        label: `${label}.${index}`,
         value,
       })
     })
 
     return {
-      label,
+      label: label ?? t.name,
       values,
       type: "vector",
       componentType: "normal",
@@ -193,14 +191,14 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
   }
 
   public visitText(
-    _t: IDL.TextClass,
+    t: IDL.TextClass,
     { value, label }: DynamicDataArgs<string>
   ): TextMethodResult {
     const isurl = isUrl(value)
     const isImg = isImage(value)
 
     return {
-      label,
+      label: label ?? t.name,
       value,
       type: "text",
       componentType: isImg ? "image" : isurl ? "url" : "normal",
@@ -208,20 +206,22 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
   }
 
   public visitNumber<T>(
-    _t: IDL.Type<T>,
+    t: IDL.Type<T>,
     { value, label }: DynamicDataArgs<number | bigint>
   ): NumberMethodResult {
     const isBigInt = typeof value === "bigint"
     const componentType = isBigInt
-      ? TAMESTAMP_KEYS.includes(label)
-        ? "timestamp"
-        : label === "cycle"
-        ? "cycle"
-        : "bigInt"
+      ? label
+        ? TAMESTAMP_KEYS.includes(label)
+          ? "timestamp"
+          : label === "cycle"
+          ? "cycle"
+          : "bigInt"
+        : "normal"
       : "normal"
 
     return {
-      label,
+      label: label ?? t.name,
       value,
       type: "number",
       componentType,
@@ -271,33 +271,34 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
   }
 
   public visitNull(
-    _t: IDL.NullClass,
-    data: DynamicDataArgs<string>
+    t: IDL.NullClass,
+    { value, label }: DynamicDataArgs<string>
   ): TextMethodResult {
     return {
-      ...data,
+      label: label ?? t.name,
+      value,
       type: "text",
       componentType: "null",
     }
   }
 
   public visitBool(
-    _t: IDL.BoolClass,
+    t: IDL.BoolClass,
     { value, label }: DynamicDataArgs<boolean>
   ): BooleanMethodResult {
     return {
-      label,
+      label: label ?? t.name,
       value,
       type: "boolean",
     }
   }
 
   public visitPrincipal(
-    _t: IDL.PrincipalClass,
+    t: IDL.PrincipalClass,
     { value, label }: DynamicDataArgs<Principal>
   ): PrincipalMethodResult {
     return {
-      label,
+      label: label ?? t.name,
       value,
       type: "principal",
     }
@@ -308,7 +309,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     { value, label }: DynamicDataArgs<T>
   ): UnknownMethodResult {
     return {
-      label,
+      label: label ?? t.name,
       value: t.valueToString(value),
       type: "unknown",
     }

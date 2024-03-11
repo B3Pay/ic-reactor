@@ -21,9 +21,9 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
 > {
   public counter = 0
 
-  public visitFunc<Method extends FunctionName<A>>(
+  public visitFunc<M extends FunctionName<A>>(
     t: IDL.FuncClass,
-    functionName: Method
+    functionName: M
   ): MethodDetails<A> {
     const functionType = isQuery(t) ? "query" : "update"
 
