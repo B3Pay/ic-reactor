@@ -11,6 +11,7 @@ import type {
   BooleanMethodResult,
   UnknownMethodResult,
   PrincipalMethodResult,
+  OptionalMethodResult,
 } from "../types"
 import { isImage, isUrl } from "../../helper"
 import type { Principal } from "@ic-reactor/core/dist/types"
@@ -54,8 +55,20 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     _t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
     { value, label }: DynamicDataArgs<T[]>
-  ): MethodResult {
-    return ty.accept(this, { value: value[0], label })
+  ): OptionalMethodResult {
+    if (value?.length === 0) {
+      return {
+        type: "optional",
+        label,
+        value: null,
+      }
+    }
+
+    return {
+      label,
+      value: ty.accept(this, { value: value[0], label }),
+      type: "optional",
+    }
   }
 
   public visitRecord(
