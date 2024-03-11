@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { Actor } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools } from "../../utils/helper"
+import { createStoreWithOptionalDevtools, isQuery } from "../../utils/helper"
 import type { HttpAgent } from "@dfinity/agent"
 import type {
   CanisterId,
@@ -14,6 +14,8 @@ import type {
   VisitService,
   BaseActor,
   ActorMethodState,
+  MethodAttributes,
+  FunctionType,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
@@ -30,6 +32,7 @@ export class ActorManager<A = BaseActor> {
   public canisterId: CanisterId
   public actorStore: ActorStore<A>
   public visitFunction: VisitService<A>
+  public methodAttributes: MethodAttributes<A>
 
   private initialState: ActorState<A> = {
     methodState: {} as ActorMethodStates<A>,
@@ -87,11 +90,19 @@ export class ActorManager<A = BaseActor> {
     if (!canisterId) {
       throw new Error("CanisterId is required!")
     }
-
-    this._agentManager = agentManager
-
     this.canisterId = canisterId
+
+    if (!idlFactory) {
+      throw new Error("IDL factory is required!")
+    }
+
     this._idlFactory = idlFactory
+    this.methodAttributes = this.extractMethodAttributes()
+
+    if (!agentManager) {
+      throw new Error("Agent manager is required!")
+    }
+    this._agentManager = agentManager
 
     // Initialize stores
     this.actorStore = createStoreWithOptionalDevtools(this.initialState, {
@@ -106,7 +117,7 @@ export class ActorManager<A = BaseActor> {
     )
 
     if (withVisitor) {
-      this.visitFunction = this.extractService()
+      this.visitFunction = this.extractVisitor()
     } else {
       this.visitFunction = emptyVisitor
     }
@@ -116,13 +127,37 @@ export class ActorManager<A = BaseActor> {
     await this._agentManager.updateAgent(options)
   }
 
-  public extractMethodNames = (): Array<FunctionName<A>> => {
-    const iface = this.extractInterface()
-
-    return iface._fields.map((service) => service[0] as FunctionName<A>)
+  public extractInterface = (): IDL.ServiceClass => {
+    return this._idlFactory({ IDL })
   }
 
-  public extractService = (): VisitService<A> => {
+  public extractMethodAttributes = (): MethodAttributes<A> => {
+    const iface = this.extractInterface()
+
+    const methodAttributesArray = iface._fields.map(([name, func]) => ({
+      name: name as FunctionName<A>,
+      attributes: {
+        numberOfArgs: func.argTypes.length,
+        type: (isQuery(func) ? "query" : "update") as FunctionType,
+        validate: (arg: never) =>
+          func.argTypes.some((t, i) => t.covariant(arg[i])),
+      },
+    }))
+
+    methodAttributesArray.sort((a, b) => {
+      if (a.attributes.type === b.attributes.type) {
+        return a.attributes.numberOfArgs - b.attributes.numberOfArgs
+      }
+      return a.attributes.type === "query" ? -1 : 1
+    })
+
+    return methodAttributesArray.reduce((acc, { name, attributes }) => {
+      acc[name] = attributes
+      return acc
+    }, {} as MethodAttributes<A>)
+  }
+
+  public extractVisitor = (): VisitService<A> => {
     const iface = this.extractInterface()
 
     return iface._fields.reduce((acc, service) => {
@@ -137,14 +172,6 @@ export class ActorManager<A = BaseActor> {
 
       return acc
     }, {} as VisitService<A>)
-  }
-
-  public extractInterface = (): IDL.ServiceClass => {
-    if (this._actor === null) {
-      throw new Error("For extracting interface, actor must be initialized")
-    }
-
-    return Actor.interfaceOf(this._actor as Actor)
   }
 
   private initializeActor = (agent: HttpAgent) => {

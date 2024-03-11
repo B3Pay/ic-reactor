@@ -135,6 +135,7 @@ export const useActor = <A = BaseActor>(
       })
       setActorManager(() => actorManager)
     } else {
+      setActorManager(undefined)
       fetchCandid().then((idlFactory) => {
         if (!idlFactory) return
 

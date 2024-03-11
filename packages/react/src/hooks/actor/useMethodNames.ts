@@ -1,3 +1,4 @@
+import { BaseActor } from "../../types"
 import { ActorHooks } from "./hooks"
 
 /**
@@ -5,4 +6,5 @@ import { ActorHooks } from "./hooks"
  *
  * @returns An array of method names for the actor.
  */
-export const useMethodNames = ActorHooks.useMethodNames
+export const useMethodNames = <A = BaseActor>() =>
+  ActorHooks.useMethodNames<A>()

@@ -102,7 +102,9 @@ export function createActorContext<A = BaseActor>(
     return (
       <ActorContext.Provider value={hooks}>
         {hooks === null
-          ? fetchError ?? authenticating
+          ? fetchError
+            ? fetchError
+            : authenticating
             ? authenticatingComponent
             : loadingComponent
           : children}

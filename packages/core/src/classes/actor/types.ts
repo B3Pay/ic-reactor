@@ -82,3 +82,12 @@ export type CallActorMethod<A = BaseActor> = <
   functionName: M,
   ...args: ActorMethodParameters<A[M]>
 ) => Promise<ActorMethodReturnType<A[M]>>
+
+export type MethodAttributes<A = BaseActor> = Record<
+  FunctionName<A>,
+  {
+    type: FunctionType
+    numberOfArgs: number
+    validate: (arg: never) => boolean
+  }
+>

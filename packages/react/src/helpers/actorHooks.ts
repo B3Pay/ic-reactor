@@ -47,8 +47,9 @@ export const actorHooks = <A = BaseActor>(
     actorStore,
     canisterId,
     visitFunction,
+    methodAttributes,
+    extractMethodAttributes,
     extractInterface,
-    extractMethodNames,
     callMethod,
     initialize,
   } = actorManager
@@ -58,8 +59,11 @@ export const actorHooks = <A = BaseActor>(
     canisterId,
   })
 
-  const useMethodNames = (): FunctionName<A>[] => {
-    return React.useMemo(() => extractMethodNames(), [])
+  const useMethodNames = <Actor = A>(): FunctionName<Actor>[] => {
+    return React.useMemo(
+      () => Object.keys(extractMethodAttributes()) as FunctionName<Actor>[],
+      []
+    )
   }
 
   const useActorInterface = (): IDL.ServiceClass => {
@@ -161,13 +165,39 @@ export const actorHooks = <A = BaseActor>(
   const useMethod: UseMethod<A> = <M extends FunctionName<A>>(
     args: UseMethodParameters<A, M>
   ): UseMethodReturnType<A, M> => {
-    const { call, ...state } = useSharedCall(args)
     const visit = useVisitMethod(args.functionName)
 
-    return {
-      call,
-      visit,
-      ...state,
+    const attributes = methodAttributes[args.functionName]
+
+    let refetchOnMount = args.refetchOnMount
+    let refetchInterval = args.refetchInterval
+    let formRequired = true
+
+    switch (attributes.type) {
+      case "query":
+        try {
+          if (attributes.numberOfArgs > 0 && args.args === undefined) {
+            throw new Error("Args required")
+          }
+          attributes.validate((args.args || []) as never)
+          formRequired = false
+        } catch (error) {
+          refetchOnMount = false
+          refetchInterval = false
+        }
+        return {
+          visit,
+          ...useQueryCall({
+            ...args,
+            refetchOnMount,
+            refetchInterval,
+          }),
+          formRequired,
+        }
+      case "update":
+        return { visit, ...useUpdateCall(args), formRequired }
+      default:
+        throw new Error(`Method type ${attributes.type} not found`)
     }
   }
 

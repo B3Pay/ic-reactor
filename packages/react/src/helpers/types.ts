@@ -113,13 +113,14 @@ export interface DynamicDataArgs<V = unknown> {
 }
 
 export interface UseMethodParameters<A, M extends FunctionName<A>>
-  extends UseSharedCallParameters<A, M> {}
+  extends UseQueryCallParameters<A, M> {}
 
 export interface UseMethodReturnType<
   A,
   M extends FunctionName<A> = FunctionName<A>
 > {
   loading: boolean
+  formRequired: boolean
   error: Error | undefined
   data: ActorMethodReturnType<A[M]> | undefined
   visit: VisitService<A>[M]
@@ -143,7 +144,7 @@ export interface ActorHooksReturnType<A = BaseActor> {
   initialize: () => Promise<void>
   useActorState: () => UseActorState
   useActorInterface: () => ServiceClass
-  useMethodNames: () => FunctionName<A>[]
+  useMethodNames: <Actor = A>() => FunctionName<Actor>[]
   useMethod: UseMethod<A>
   useQueryCall: UseQueryCall<A>
   useUpdateCall: UseUpdateCall<A>

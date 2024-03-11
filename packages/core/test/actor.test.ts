@@ -4,7 +4,7 @@ import { example, idlFactory } from "./candid/example"
 type Example = typeof example
 
 describe("createReactorStore", () => {
-  const { getState, initialize, getActor, extractMethods, visitFunction } =
+  const { getState, initialize, getActor, methodAttributes, visitFunction } =
     createReactorStore<Example>({
       canisterId: "2vxsx-fae",
       idlFactory,
@@ -12,6 +12,7 @@ describe("createReactorStore", () => {
     })
 
   it("should return actor store", () => {
+    expect(methodAttributes).toBeDefined()
     expect(getState()).toBeDefined()
     expect(visitFunction).toBeDefined()
     expect(getActor()).toBeNull()
@@ -29,7 +30,6 @@ describe("createReactorStore", () => {
   test("Initialized", async () => {
     await initialize()
 
-    expect(extractMethods()).toBeDefined()
     expect(getState()).toEqual({
       methodState: {},
       initialized: true,

@@ -51,7 +51,8 @@ export function extractActorContext<A = BaseActor>(
 
   const initialize = () => useActorContext().initialize()
 
-  const useMethodNames = () => useActorContext().useMethodNames()
+  const useMethodNames = <Actor = A>() =>
+    useActorContext().useMethodNames<Actor>()
 
   const useActorState = () => useActorContext().useActorState()
 

@@ -1,7 +1,7 @@
 import { hash } from "@dfinity/agent"
 import { DevtoolsOptions, devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import type { BaseActor } from "../types"
+import type { BaseActor, IDL } from "../types"
 
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
@@ -27,6 +27,13 @@ export const isInLocalOrDevelopment = () => {
     typeof process !== "undefined" &&
     (process.env.DFX_NETWORK === "local" ||
       process.env.NODE_ENV === "development")
+  )
+}
+
+export function isQuery(func: IDL.FuncClass): boolean {
+  return (
+    func.annotations.includes("query") ||
+    func.annotations.includes("composite_query")
   )
 }
 

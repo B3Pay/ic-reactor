@@ -11,7 +11,6 @@ import type {
   BooleanMethodResult,
   UnknownMethodResult,
   PrincipalMethodResult,
-  OptionalMethodResult,
 } from "../types"
 import { isImage, isUrl } from "../../helper"
 import type { Principal } from "@ic-reactor/core/dist/types"
@@ -25,13 +24,13 @@ import { TAMESTAMP_KEYS } from "../../constants"
 export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
   public visitFunc(
     t: IDL.FuncClass,
-    { value, label }: DynamicDataArgs
+    { value, label }: DynamicDataArgs | { value: undefined; label: string }
   ): NormalMethodResult {
     const dataValues = t.retTypes.length === 1 ? [value] : (value as unknown[])
 
-    const values = t.retTypes.map((type, index) => {
+    const values = t.retTypes.map((type, index, array) => {
       return type.accept(this, {
-        label: `ret${index}`,
+        label: array.length === 1 ? label : `${label}.${index}`,
         value: dataValues[index],
       }) as MethodResult
     })
@@ -55,20 +54,8 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     _t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
     { value, label }: DynamicDataArgs<T[]>
-  ): OptionalMethodResult {
-    if (value?.length === 0) {
-      return {
-        type: "optional",
-        label,
-        value: null,
-      }
-    }
-
-    return {
-      label,
-      value: ty.accept(this, { value: value[0], label }),
-      type: "optional",
-    }
+  ): MethodResult {
+    return ty.accept(this, { value: value[0], label })
   }
 
   public visitRecord(
