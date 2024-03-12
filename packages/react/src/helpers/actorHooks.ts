@@ -180,7 +180,7 @@ export const actorHooks = <A = BaseActor>(
             throw new Error("Args required")
           }
           attributes.validate((args.args || []) as never)
-          formRequired = false
+          formRequired = args.refetchOnMount === false ? true : false
         } catch (error) {
           refetchOnMount = false
           refetchInterval = false
