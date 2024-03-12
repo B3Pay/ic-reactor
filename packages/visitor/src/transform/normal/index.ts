@@ -12,7 +12,6 @@ import type {
   UnknownMethodResult,
   PrincipalMethodResult,
   OptionalMethodResult,
-  TransfromArgs,
 } from "../types"
 import { isImage, isUrl } from "../../helper"
 import type { Principal } from "@ic-reactor/core/dist/types"
@@ -23,13 +22,10 @@ import { TAMESTAMP_KEYS } from "../../constants"
  * It returns the extracted service fields.
  *
  */
-export class VisitTransform extends IDL.Visitor<
-  DynamicDataArgs | TransfromArgs,
-  MethodResult
-> {
+export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
   public visitFunc(
     t: IDL.FuncClass,
-    { functionName, value }: TransfromArgs
+    { label, value }: DynamicDataArgs
   ): NormalMethodResult {
     const dataValues = t.retTypes.length === 1 ? [value] : (value as unknown[])
 
@@ -45,8 +41,7 @@ export class VisitTransform extends IDL.Visitor<
 
     return {
       values,
-      functionName,
-      label: functionName,
+      label: label ?? t.name,
       type: "normal",
     }
   }

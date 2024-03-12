@@ -1,4 +1,4 @@
-import type { FunctionName, Principal } from "@ic-reactor/core/dist/types"
+import type { Principal } from "@ic-reactor/core/dist/types"
 
 export type ReturnDataType =
   | "record"
@@ -13,11 +13,6 @@ export type ReturnDataType =
   | "null"
   | "normal"
   | "table"
-
-export interface TransfromArgs<V = unknown> {
-  functionName: FunctionName
-  value: V
-}
 
 export interface DynamicDataArgs<V = unknown> {
   label?: string
@@ -57,7 +52,6 @@ export type MethodResult<T extends ReturnDataType = ReturnDataType> =
 export interface NormalMethodResult {
   type: "normal"
   label: string
-  functionName: FunctionName
   values: Record<`ret${number}`, MethodResult<ReturnDataType>>
 }
 
