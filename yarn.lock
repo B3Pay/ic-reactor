@@ -3027,6 +3027,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@juggle/resize-observer@npm:^3.3.1":
+  version: 3.4.0
+  resolution: "@juggle/resize-observer@npm:3.4.0"
+  checksum: 12930242357298c6f2ad5d4ec7cf631dfb344ca7c8c830ab7f64e6ac11eb1aae486901d8d880fd08fb1b257800c160a0da3aee1e7ed9adac0ccbb9b7c5d93347
+  languageName: node
+  linkType: hard
+
 "@leichtgewicht/ip-codec@npm:^2.0.1":
   version: 2.0.4
   resolution: "@leichtgewicht/ip-codec@npm:2.0.4"
@@ -3828,6 +3835,37 @@ __metadata:
   version: 1.1.0
   resolution: "@protobufjs/utf8@npm:1.1.0"
   checksum: a3fe31fe3fa29aa3349e2e04ee13dc170cc6af7c23d92ad49e3eeaf79b9766264544d3da824dba93b7855bd6a2982fb40032ef40693da98a136d835752beb487
+  languageName: node
+  linkType: hard
+
+"@react-hook/latest@npm:^1.0.2":
+  version: 1.0.3
+  resolution: "@react-hook/latest@npm:1.0.3"
+  peerDependencies:
+    react: ">=16.8"
+  checksum: d6a166c21121da519a516e8089ba28a2779d37b6017732ab55476c0d354754ad215394135765254f8752a7c6661c3fb868d088769a644848602f00f8821248ed
+  languageName: node
+  linkType: hard
+
+"@react-hook/passive-layout-effect@npm:^1.2.0":
+  version: 1.2.1
+  resolution: "@react-hook/passive-layout-effect@npm:1.2.1"
+  peerDependencies:
+    react: ">=16.8"
+  checksum: 5c9e6b3df1c91fc2b1d4f711ca96b5f8cb3f6a13a2e97dac7cce623e58d7ee57999c45db3778d0af0b2522b3a5b7463232ef21cb3ee9900437172d48f766d933
+  languageName: node
+  linkType: hard
+
+"@react-hook/resize-observer@npm:^1.2.6":
+  version: 1.2.6
+  resolution: "@react-hook/resize-observer@npm:1.2.6"
+  dependencies:
+    "@juggle/resize-observer": "npm:^3.3.1"
+    "@react-hook/latest": "npm:^1.0.2"
+    "@react-hook/passive-layout-effect": "npm:^1.2.0"
+  peerDependencies:
+    react: ">=16.8"
+  checksum: 6ebe4ded4dc4602906c4c727871f93ea73754dd5758f90d50e5fc7382b1844324a46a4c2e0842d8ad5bf95886091ba8a0c9d3a1ef0f10bd0c9e011ecd7aeea42
   languageName: node
   linkType: hard
 
@@ -7010,6 +7048,7 @@ __metadata:
   dependencies:
     "@ic-reactor/react": "npm:^*"
     "@ic-reactor/visitor": "npm:^*"
+    "@react-hook/resize-observer": "npm:^1.2.6"
     "@types/node": "npm:^16.18.68"
     "@types/react": "npm:^18.2.45"
     "@types/react-dom": "npm:^18.2.18"
