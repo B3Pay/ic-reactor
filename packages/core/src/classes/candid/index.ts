@@ -113,7 +113,7 @@ export class CandidAdapter {
     const js = await didjs.did_to_js(candidSource)
 
     if (JSON.stringify(js) === JSON.stringify([])) {
-      throw new Error("Cannot fetch candid file")
+      throw new Error("Cannot compile Candid to JavaScript")
     }
 
     const dataUri =
