@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAgentManager } from "./agent/useAgentManager"
 import { actorHooks } from "../helpers"
 import { useAuthState } from "./agent"
-import { ActorManager, type BaseActor } from "../types"
+import { ActorManager, IDL, type BaseActor } from "../types"
 import type { UseActorParameters, UseActorReturn } from "./types"
 
 /**
@@ -125,40 +125,40 @@ export const useActor = <A = BaseActor>(
     }
   }, [canisterId, authenticating, didjsCanisterId])
 
-  useEffect(() => {
-    if (maybeIdlFactory) {
+  const initialActorManager = useCallback(
+    (idlFactory: IDL.InterfaceFactory) => {
+      if (authenticating) return
       const actorManager = createActorManager<A>({
         agentManager,
-        idlFactory: maybeIdlFactory,
+        idlFactory,
         canisterId,
         ...actorConfig,
       })
+
       setActorManager(() => actorManager)
+    },
+    [canisterId, agentManager, authenticating]
+  )
+
+  useEffect(() => {
+    if (maybeIdlFactory) {
+      initialActorManager(maybeIdlFactory)
     } else {
       setActorManager(undefined)
       fetchCandid().then((idlFactory) => {
         if (!idlFactory) return
-
-        const actorManager = createActorManager<A>({
-          agentManager,
-          idlFactory,
-          canisterId,
-          ...actorConfig,
-        })
-
-        setActorManager(() => actorManager)
+        initialActorManager(idlFactory)
       })
     }
 
     return actorManager?.cleanup()
-  }, [fetchCandid, maybeIdlFactory, canisterId, agentManager])
+  }, [fetchCandid, maybeIdlFactory, initialActorManager])
 
   const hooks = useMemo(() => {
-    if (fetching) return null
     if (!actorManager) return null
 
     return actorHooks(actorManager)
-  }, [canisterId, authenticating, actorManager, fetching])
+  }, [actorManager])
 
   return { hooks, authenticating, fetching, fetchError }
 }
