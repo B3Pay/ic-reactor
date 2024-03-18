@@ -87,7 +87,7 @@ export type NumberMethodResult = DefaultMethodResult &
   (
     | {
         type: "number"
-        componentType: "timestamp" | "cycle" | "bigInt"
+        componentType: "timestamp" | "cycle" | "bigInt" | "value"
         value: bigint
       }
     | {

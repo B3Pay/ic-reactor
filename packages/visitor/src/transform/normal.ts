@@ -12,10 +12,10 @@ import type {
   UnknownMethodResult,
   PrincipalMethodResult,
   OptionalMethodResult,
-} from "../types"
-import { isImage, isUrl } from "../../helper"
+} from "./types"
+import { isImage, isUrl } from "../helper"
 import type { Principal } from "@ic-reactor/core/dist/types"
-import { TAMESTAMP_KEYS } from "../../constants"
+import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "../constants"
 
 /**
  * Visit the candid file and extract the fields.
@@ -207,8 +207,10 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     const isBigInt = typeof value === "bigint"
     const componentType = isBigInt
       ? label
-        ? TAMESTAMP_KEYS.includes(label)
+        ? TAMESTAMP_KEYS_REGEX.test(label)
           ? "timestamp"
+          : VALUE_KEYS_REGEX.test(label)
+          ? "value"
           : label === "cycle"
           ? "cycle"
           : "bigInt"

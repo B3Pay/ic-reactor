@@ -1,11 +1,22 @@
-import {
+import type {
   BaseActor,
   FunctionName,
   FunctionType,
 } from "@ic-reactor/core/dist/types"
-import { FieldType } from "../types"
+import type { FieldType } from "../types"
 
 export type FunctionCategory = "home" | "wallet" | "governance" | "setting"
+
+export interface GridLayout {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface GridLayouts {
+  [key: string]: GridLayout
+}
 
 export type ServiceDetails<A = BaseActor> = {
   [K in FunctionName<A>]: MethodDetails<A>
@@ -16,6 +27,7 @@ export type MethodDetails<A = BaseActor> = {
   functionName: FunctionName<A>
   category: FunctionCategory
   order: number
+  layouts: GridLayouts
   __label: string
   __description: string
   [key: `arg${number}`]: FieldDetailsWithChild
