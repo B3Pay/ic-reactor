@@ -14,8 +14,6 @@ export type ServiceDetails<A = BaseActor> = {
 export type MethodDetails<A = BaseActor> = {
   functionType: FunctionType
   functionName: FunctionName<A>
-  category: FunctionCategory
-  order: number
   __label: string
   __description: string
   [key: `arg${number}`]: FieldDetailsWithChild

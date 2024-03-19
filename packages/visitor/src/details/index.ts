@@ -36,9 +36,9 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       return acc
     }, {} as Record<`arg${number}`, FieldDetailsWithChild | FieldDetails>)
 
+    this.counter++
+
     return {
-      order: this.counter++,
-      category: "home",
       functionName,
       functionType,
       __label: functionName,
