@@ -12,7 +12,8 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
   string,
   ServiceLayouts<A> | number | void
 > {
-  private height = 0
+  public counter = 0
+  public height = 0
 
   public visitFunc(t: IDL.FuncClass): number {
     this.height = 5
@@ -104,13 +105,11 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
   public visitFixedInt = this.visitNumber
   public visitFixedNat = this.visitNumber
 
-  public counter = 0
-  private savedY = new Map<string, Map<number, number>>()
-  private breakpoints = [
-    { name: "xl", size: 6 },
-    { name: "md", size: 4 },
-    { name: "xs", size: 2 },
-  ]
+  private breakpoints = DEFAULT_LAYOUTS
+
+  private savedY = Object.fromEntries(
+    this.breakpoints.map(({ name }) => [name, new Map<number, number>()])
+  )
 
   public visitService(t: IDL.ServiceClass): ServiceLayouts<A> {
     const layouts = t._fields.reduce((acc, services) => {
@@ -124,8 +123,8 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
       this.breakpoints.forEach(({ name, size }) => {
         const w = 2
         const x = (this.counter * w) % size
-        const y = this.savedY.get(name)?.get(x) || 0
-        const minW = h >= 10 ? 2 : 1
+        const y = this.savedY[name].get(x) || 0
+        const minW = h >= 9 ? 2 : 1
 
         acc[category][name].push({
           i: functionName,
@@ -136,10 +135,8 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
           minW,
           minH: h,
         })
-        this.savedY.set(
-          name,
-          this.savedY.get(name)?.set(x, y + h) || new Map([[x, y + h]])
-        )
+
+        this.savedY[name].set(x, y + h)
       })
 
       this.counter++
@@ -151,9 +148,15 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
   }
 }
 
+const DEFAULT_LAYOUTS = [
+  { name: "xl", size: 6 },
+  { name: "md", size: 4 },
+  { name: "xs", size: 2 },
+] as const
+
 const DEFAULT_SERVICE_LAYOUTS = {
-  home: { xs: [], md: [], xl: [] },
-  wallet: { xs: [], md: [], xl: [] },
-  governance: { xs: [], md: [], xl: [] },
-  setting: { xs: [], md: [], xl: [] },
+  home: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
+  wallet: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
+  governance: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
+  setting: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
 }
