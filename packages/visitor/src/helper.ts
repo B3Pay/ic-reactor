@@ -8,6 +8,7 @@ export const findCategory = (name: string): FunctionCategory => {
       name: "setting",
       test: [
         "setting",
+        "version",
         "set",
         "update",
         "change",
@@ -23,6 +24,8 @@ export const findCategory = (name: string): FunctionCategory => {
         "renew",
         "replace",
         "upgrade",
+        "load",
+        "upload",
         "downgrade",
         "install",
         "uninstall",

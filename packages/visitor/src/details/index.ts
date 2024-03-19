@@ -4,7 +4,6 @@ import type {
   FieldDetails,
   MethodDetails,
   InputDetails,
-  GridLayout,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { isQuery } from "../helper"
@@ -21,13 +20,6 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   MethodDetails<A> | FieldDetailsWithChild | FieldDetails | ServiceDetails<A>
 > {
   public counter = 0
-  private height = 0
-  private savedY = new Map<string, Map<number, number>>()
-  private breakpoints = [
-    { name: "xl", size: 6 },
-    { name: "md", size: 4 },
-    { name: "xs", size: 2 },
-  ]
 
   public visitFunc<M extends FunctionName<A>>(
     t: IDL.FuncClass,
@@ -35,9 +27,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   ): MethodDetails<A> {
     const functionType = isQuery(t) ? "query" : "update"
 
-    this.height = 5
     const fields = t.argTypes.reduce((acc, arg, index) => {
-      this.height += 2
       acc[`arg${index}`] = arg.accept(
         this,
         `arg${index}`
@@ -46,29 +36,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       return acc
     }, {} as Record<`arg${number}`, FieldDetailsWithChild | FieldDetails>)
 
-    const h = this.height + 2
-    const layouts = this.breakpoints.reduce((acc, { name, size }) => {
-      const w = 2
-      const x = (this.counter * w) % size
-      const y = this.savedY.get(name)?.get(x) || 0
-      acc[name] = {
-        x,
-        w,
-        y,
-        h,
-        minH: h,
-        minW: 1,
-      }
-      this.savedY.set(
-        name,
-        this.savedY.get(name)?.set(x, y + h) || new Map([[x, y + h]])
-      )
-
-      return acc
-    }, {} as Record<string, GridLayout>)
-
     return {
-      layouts,
       order: this.counter++,
       category: "home",
       functionName,
@@ -85,7 +53,6 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     __label: string
   ): FieldDetailsWithChild {
     const fields = _fields.reduce((acc, [key, type]) => {
-      this.height += 2
       const details = type.accept(this, key) as FieldDetailsWithChild
 
       acc[key] = details
@@ -107,18 +74,12 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     _fields: Array<[string, IDL.Type]>,
     __label: string
   ): FieldDetailsWithChild {
-    this.height += 2
-    let saveHeight = this.height
-
-    const fields = _fields.reduce((acc, [key, type], index) => {
+    const fields = _fields.reduce((acc, [key, type]) => {
       const details = type.accept(this, key) as FieldDetailsWithChild
-      saveHeight = index === 0 ? this.height + 2 : saveHeight
       acc[key] = details
 
       return acc
     }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
-
-    this.height = saveHeight
 
     return {
       __type: "variant",
@@ -134,7 +95,6 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     __label: string
   ): FieldDetailsWithChild {
     const fields = components.reduce((acc, type, index) => {
-      this.height += 2
       const details = type.accept(this, `_${index}_`) as FieldDetailsWithChild
 
       acc[`_${index}_`] = details
@@ -177,9 +137,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     __label: string
   ): FieldDetailsWithChild {
-    const saveHeight = this.height
     const details = ty.accept(this, __label) as FieldDetailsWithChild
-    this.height = saveHeight
     return {
       __type: "optional",
       __checked: false,
@@ -195,9 +153,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     __label: string
   ): FieldDetailsWithChild {
-    const saveHeight = this.height
     const details = ty.accept(this, __label) as FieldDetailsWithChild
-    this.height = saveHeight
     return {
       __type: "vector",
       __label,
@@ -211,7 +167,6 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     __type: FieldType,
     __label: string
   ): InputDetails => {
-    this.height += 2
     return {
       __type,
       __label,
@@ -220,12 +175,10 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitBool(t: IDL.BoolClass, __label: string): InputDetails {
-    this.height -= 2
     return this.visiGenericType(t, "boolean", __label)
   }
 
   public visitNull(t: IDL.NullClass, __label: string): InputDetails {
-    this.height -= 2
     return this.visiGenericType(t, "null", __label)
   }
 

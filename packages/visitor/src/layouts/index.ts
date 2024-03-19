@@ -125,6 +125,7 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
         const w = 2
         const x = (this.counter * w) % size
         const y = this.savedY.get(name)?.get(x) || 0
+        const minW = h >= 10 ? 2 : 1
 
         acc[category][name].push({
           i: functionName,
@@ -132,8 +133,8 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
           w,
           y,
           h,
+          minW,
           minH: h,
-          minW: 1,
         })
         this.savedY.set(
           name,
@@ -145,21 +146,6 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
 
       return acc
     }, DEFAULT_SERVICE_LAYOUTS as ServiceLayouts<A>)
-    // const methodDetails = t._fields.reduce(
-    //   (acc, services) => {
-    //     const functionName = services[0] as FunctionName<A>
-    //     const func = services[1]
-
-    //     acc["home"]["md"].push(func.accept(this, functionName) as GridLayout<A>)
-
-    //     return acc
-    //   },
-    //   {
-    //     home: {
-    //       md: [],
-    //     },
-    //   } as ServiceLayouts<A>
-    // )
 
     return layouts
   }
