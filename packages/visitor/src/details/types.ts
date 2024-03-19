@@ -12,6 +12,8 @@ export interface GridLayout {
   y: number
   w: number
   h: number
+  minH?: number
+  minW?: number
 }
 
 export interface GridLayouts {

@@ -1,4 +1,57 @@
 import { IDL } from "@dfinity/candid"
+import { FunctionCategory } from "./layouts/types"
+
+export const findCategory = (name: string): FunctionCategory => {
+  const categories = [
+    { name: "home", test: [] },
+    {
+      name: "setting",
+      test: [
+        "setting",
+        "set",
+        "update",
+        "change",
+        "modify",
+        "edit",
+        "remove",
+        "delete",
+        "add",
+        "create",
+        "clear",
+        "reset",
+        "revoke",
+        "renew",
+        "replace",
+        "upgrade",
+        "downgrade",
+        "install",
+        "uninstall",
+        "enable",
+        "disable",
+        "activate",
+        "deactivate",
+        "suspend",
+        "resume",
+        "pause",
+        "start",
+        "stop",
+        "restart",
+        "refresh",
+        "reload",
+        "reboot",
+        "shutdown",
+        "terminate",
+        "kill",
+        "abort",
+        "cancel",
+      ],
+    },
+  ]
+  const category = categories.find((c) =>
+    c.test.some((t) => name.toLowerCase().includes(t))
+  )?.name as FunctionCategory
+  return category || "home"
+}
 
 export const extractAndSortArgs = <T extends Record<string, unknown>>(
   argsObject: T

@@ -4,6 +4,7 @@ import type {
   FieldDetails,
   MethodDetails,
   InputDetails,
+  GridLayout,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import { isQuery } from "../helper"
@@ -55,6 +56,8 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
         w,
         y,
         h,
+        minH: h,
+        minW: 1,
       }
       this.savedY.set(
         name,
@@ -62,7 +65,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       )
 
       return acc
-    }, {} as Record<string, { x: number; y: number; w: number; h: number }>)
+    }, {} as Record<string, GridLayout>)
 
     return {
       layouts,

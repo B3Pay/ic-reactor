@@ -5,6 +5,7 @@ import {
   VisitDetails,
   VisitRandomArgs,
   VisitTransform,
+  VisitLayouts,
 } from "../src"
 import { b3system, idlFactory } from "./candid/b3system"
 import { ServiceDetails } from "../src/types"
@@ -22,7 +23,7 @@ describe("createReactorStore", () => {
 
   const visitedService = () => {
     const iface = extractInterface()
-    const fieldsVisitor = new VisitDetails()
+    const fieldsVisitor = new VisitLayouts()
     return fieldsVisitor.visitService(iface)
   }
 
@@ -32,10 +33,7 @@ describe("createReactorStore", () => {
     // const args = visitFunction.get_app(new VisitRandomArgs<B3System>())
     // console.log(args)
     const details = visitedService()
-    const allLayouts = Object.values(details).map((method) => ({
-      [method.functionName]: method.layouts,
-    }))
-    console.log(jsonToString(allLayouts))
+    console.log(jsonToString(details))
 
     // const value = visitFunction.get_app(new VisitRandomResponse<B3System>())
     // console.log(value)
