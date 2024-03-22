@@ -2,6 +2,7 @@ import type { Principal } from "@ic-reactor/core/dist/types"
 
 export type ReturnDataType =
   | "record"
+  | "variant"
   | "tuple"
   | "optional"
   | "vector"
@@ -29,6 +30,8 @@ export type MethodResult<T extends ReturnDataType = ReturnDataType> =
     ? NormalMethodResult
     : T extends "record"
     ? RecordMethodResult
+    : T extends "variant"
+    ? VariantMethodResult
     : T extends "tuple"
     ? TupleMethodResult
     : T extends "optional"
@@ -55,6 +58,14 @@ export interface NormalMethodResult {
   values: Record<`ret${number}`, MethodResult<ReturnDataType>>
 }
 
+export interface VariantMethodResult
+  extends Omit<DefaultMethodResult, "label"> {
+  type: "variant"
+  variant: string
+  label?: string
+  value?: MethodResult<ReturnDataType>
+}
+
 export interface RecordMethodResult extends DefaultMethodResult {
   type: "record"
   values: Record<string, MethodResult<ReturnDataType>>
@@ -63,6 +74,7 @@ export interface RecordMethodResult extends DefaultMethodResult {
 export interface TupleMethodResult extends DefaultMethodResult {
   type: "tuple"
   values: Array<MethodResult<ReturnDataType>>
+  record: RecordMethodResult | null
 }
 
 export interface OptionalMethodResult extends DefaultMethodResult {
@@ -78,8 +90,13 @@ export type VectorMethodResult = DefaultMethodResult & {
         value: ArrayBuffer
       }
     | {
-        componentType: "normal" | "list"
+        componentType: "normal"
         values: Array<MethodResult<ReturnDataType>>
+      }
+    | {
+        componentType: "list"
+        labelList: string[]
+        values: Array<RecordMethodResult>
       }
   )
 

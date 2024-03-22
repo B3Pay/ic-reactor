@@ -12,6 +12,7 @@ import type {
   UnknownMethodResult,
   PrincipalMethodResult,
   OptionalMethodResult,
+  VariantMethodResult,
 } from "./types"
 import { isImage, isUrl } from "../helper"
 import type { Principal } from "@ic-reactor/core/dist/types"
@@ -106,21 +107,23 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     components: IDL.Type[],
     { value, label }: DynamicDataArgs<unknown[]>
   ): TupleMethodResult | RecordMethodResult {
+    let record: RecordMethodResult | null = null
+    // If the tuple has only two elements, we can assume it's a key-value pair
     if (value.length === 2) {
       const compResult = components[0].accept(this, {
         value: value[0],
-      }) as TextMethodResult | PrincipalMethodResult
+      }) as PrincipalMethodResult | TextMethodResult | VariantMethodResult
 
-      const textValue = compResult.value?.toString()
-      const textLabel = compResult.label
-        ? `${compResult.label}.${textValue}`
-        : textValue
-
-      if (textValue) {
-        return this.visitRecord(t, [[textValue, components[1]]], {
-          value: { [textValue]: value[1] },
-          label: textLabel,
-        })
+      if (compResult.type === "principal" || compResult.type === "text") {
+        record = components[1].accept(this, {
+          label: compResult.value.toString(),
+          value: value[1],
+        }) as RecordMethodResult
+      } else if (compResult.type === "variant") {
+        record = components[1].accept(this, {
+          label: compResult.variant,
+          value: value[1],
+        }) as RecordMethodResult
       }
     }
 
@@ -131,6 +134,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     return {
       label: label ?? t.name,
       values,
+      record,
       type: "tuple",
     }
   }
@@ -139,21 +143,27 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     t: IDL.VariantClass,
     fields: Array<[string, IDL.Type]>,
     { value, label }: DynamicDataArgs<Record<string, unknown>>
-  ): MethodResult {
+  ): VariantMethodResult | MethodResult {
     // Find the first field that matches and has a value
     for (const [key, type] of fields) {
       if (value[key] !== undefined) {
-        return type.accept(this, {
-          label: label ?? key,
-          value: value[key] === null ? key : value[key],
-        })
+        return value[key] === null
+          ? {
+              label,
+              type: "variant",
+              variant: key,
+            }
+          : type.accept(this, {
+              label: key,
+              value: value[key],
+            })
       }
     }
 
     return {
       label: label ?? t.name,
-      value: "No matching variant",
-      type: "unknown",
+      type: "variant",
+      variant: "unknown",
     }
   }
 
@@ -177,11 +187,24 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       })
     })
 
+    if (ty instanceof IDL.RecordClass && values?.length > 10) {
+      const labelList = Object.keys(
+        (values as Array<RecordMethodResult>)[0].values
+      )
+      return {
+        label: label ?? t.name,
+        labelList,
+        values: values as Array<RecordMethodResult>,
+        type: "vector",
+        componentType: "list",
+      }
+    }
+
     return {
       label: label ?? t.name,
       values,
       type: "vector",
-      componentType: values.length > 10 ? "list" : "normal",
+      componentType: "normal",
     }
   }
 

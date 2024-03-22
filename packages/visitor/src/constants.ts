@@ -3,6 +3,7 @@ const TAMESTAMP_KEYS = [
   "date",
   "deadline",
   "timestamp",
+  "timestamp_nanos",
   "statusAt",
   "createdAt",
   "updatedAt",
