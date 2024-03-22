@@ -1594,12 +1594,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7, @babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.15.4, @babel/runtime@npm:^7.16.3, @babel/runtime@npm:^7.23.2, @babel/runtime@npm:^7.23.7, @babel/runtime@npm:^7.8.4, @babel/runtime@npm:^7.9.2":
+"@babel/runtime@npm:^7, @babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.16.3, @babel/runtime@npm:^7.23.2, @babel/runtime@npm:^7.23.7, @babel/runtime@npm:^7.8.4, @babel/runtime@npm:^7.9.2":
   version: 7.23.9
   resolution: "@babel/runtime@npm:7.23.9"
   dependencies:
     regenerator-runtime: "npm:^0.14.0"
   checksum: e71205fdd7082b2656512cc98e647d9ea7e222e4fe5c36e9e5adc026446fcc3ba7b3cdff8b0b694a0b78bb85db83e7b1e3d4c56ef90726682b74f13249cf952d
+  languageName: node
+  linkType: hard
+
+"@babel/runtime@npm:^7.15.4":
+  version: 7.24.1
+  resolution: "@babel/runtime@npm:7.24.1"
+  dependencies:
+    regenerator-runtime: "npm:^0.14.0"
+  checksum: 500c6a99ddd84f37c7bc5dbc84777af47b1372b20e879941670451d55484faf18a673c5ebee9ca2b0f36208a729417873b35b1b92e76f811620f6adf7b8cb0f1
   languageName: node
   linkType: hard
 
@@ -2062,7 +2071,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/visitor@npm:*, @ic-reactor/visitor@npm:^*, @ic-reactor/visitor@workspace:packages/visitor":
+"@ic-reactor/visitor@npm:^*, @ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
@@ -3869,10 +3878,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@remix-run/router@npm:1.15.1":
-  version: 1.15.1
-  resolution: "@remix-run/router@npm:1.15.1"
-  checksum: 2f84d998defe9943a40fd5bf8794ee6ede521116ff24275cc2294830adb039ef86e34dbdd6555300600016fd8a58a244d4f4df73ff0b2cec7bd749f63d172587
+"@remix-run/router@npm:1.15.3":
+  version: 1.15.3
+  resolution: "@remix-run/router@npm:1.15.3"
+  checksum: aea197447cee21e137d70f0c93e00de70c64fcfae20ae349ade9dc4202e782bd94dbc88be7302d13b6aa6cde38a701b074cd8e09a161d14cecda832a36dd2695
   languageName: node
   linkType: hard
 
@@ -4662,28 +4671,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/lodash.get@npm:^4":
-  version: 4.4.9
-  resolution: "@types/lodash.get@npm:4.4.9"
-  dependencies:
-    "@types/lodash": "npm:*"
-  checksum: 934ae4f02831afdb9216cb5fcb702f8f4e0b45e13f2d10ed9c7ce7e891800e5dea726b513c98b8370d6292d42ad7745c622ae75733676746b711bea95b6259d5
-  languageName: node
-  linkType: hard
-
-"@types/lodash.set@npm:^4":
-  version: 4.3.9
-  resolution: "@types/lodash.set@npm:4.3.9"
-  dependencies:
-    "@types/lodash": "npm:*"
-  checksum: d7f3c3da593582e48b351fec2361b1aa551e6a7e6a387bdcc3a0c9a00eb2d8336f1dd911f619685d6c5875a404f97dc4fa0b1b5a7a25bc9145eaca1940071627
-  languageName: node
-  linkType: hard
-
-"@types/lodash@npm:*":
-  version: 4.14.202
-  resolution: "@types/lodash@npm:4.14.202"
-  checksum: 6064d43c8f454170841bd67c8266cc9069d9e570a72ca63f06bceb484cb4a3ee60c9c1f305c1b9e3a87826049fd41124b8ef265c4dd08b00f6766609c7fe9973
+"@types/lodash@npm:^4.17.0":
+  version: 4.17.0
+  resolution: "@types/lodash@npm:4.17.0"
+  checksum: 4c5b41c9a6c41e2c05d08499e96f7940bcf194dcfa84356235b630da920c2a5e05f193618cea76006719bec61c76617dff02defa9d29934f9f6a76a49291bd8f
   languageName: node
   linkType: hard
 
@@ -7049,15 +7040,21 @@ __metadata:
     "@ic-reactor/react": "npm:^*"
     "@ic-reactor/visitor": "npm:^*"
     "@react-hook/resize-observer": "npm:^1.2.6"
+    "@types/lodash": "npm:^4.17.0"
     "@types/node": "npm:^16.18.68"
     "@types/react": "npm:^18.2.45"
+    "@types/react-beautiful-dnd": "npm:^13"
     "@types/react-dom": "npm:^18.2.18"
     "@types/react-grid-layout": "npm:^1"
     clsx: "npm:^2.0.0"
+    optics-ts: "npm:^2.4.1"
     react: "npm:^18.2.0"
+    react-beautiful-dnd: "npm:^13.1.1"
     react-dom: "npm:^18.2.0"
     react-grid-layout: "npm:^1.4.4"
     react-hook-form: "npm:^7.49.2"
+    react-router: "npm:^6.22.3"
+    react-router-dom: "npm:^6.22.3"
     react-scripts: "npm:5.0.1"
     tailwind-merge: "npm:^2.2.0"
     tailwindcss: "npm:^3.4.0"
@@ -11404,13 +11401,6 @@ __metadata:
   version: 5.3.1
   resolution: "ignore@npm:5.3.1"
   checksum: 703f7f45ffb2a27fb2c5a8db0c32e7dee66b33a225d28e8db4e1be6474795f606686a6e3bcc50e1aa12f2042db4c9d4a7d60af3250511de74620fbed052ea4cd
-  languageName: node
-  linkType: hard
-
-"immer@npm:^10.0.3":
-  version: 10.0.3
-  resolution: "immer@npm:10.0.3"
-  checksum: 282a4f8479a40f7d12b2b3243c095e3e892bf99058e2ffcdd6b8e9fd143e6a90f2717ab9b6c8b97c927ffb8054465c8f647056f41660dbfd672e240cf1063503
   languageName: node
   linkType: hard
 
@@ -18419,27 +18409,27 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-router-dom@npm:^6.22.0":
-  version: 6.22.1
-  resolution: "react-router-dom@npm:6.22.1"
+"react-router-dom@npm:^6.22.3":
+  version: 6.22.3
+  resolution: "react-router-dom@npm:6.22.3"
   dependencies:
-    "@remix-run/router": "npm:1.15.1"
-    react-router: "npm:6.22.1"
+    "@remix-run/router": "npm:1.15.3"
+    react-router: "npm:6.22.3"
   peerDependencies:
     react: ">=16.8"
     react-dom: ">=16.8"
-  checksum: 1e6ec4596f134204934d4f701b8acc426867532342c8aec1b5c4ffeaf23afa0099727f58ab8687f7838db069616b8d6ed05a065570f23b3b60cbff405b3fbccd
+  checksum: 39b0472db5d153cbbbf4f5df5c0b26f2b75ffd7b857d7b67d17e03f4618d806b957cf033fbeb265bb317ade951e6ce0d576311bdf6eb15a7013203079cfadf03
   languageName: node
   linkType: hard
 
-"react-router@npm:6.22.1":
-  version: 6.22.1
-  resolution: "react-router@npm:6.22.1"
+"react-router@npm:6.22.3, react-router@npm:^6.22.3":
+  version: 6.22.3
+  resolution: "react-router@npm:6.22.3"
   dependencies:
-    "@remix-run/router": "npm:1.15.1"
+    "@remix-run/router": "npm:1.15.3"
   peerDependencies:
     react: ">=16.8"
-  checksum: bb33c3a6457e73fa9977133be0c27b60accfc6452cc5d7b62c729cdd2d091a1345a9567cf852c651315548f1f16adac258eeab8ad193b46e4ce926c911dc857c
+  checksum: a2c85c3d1fa93585e312b1f7e6e21d1ca421875013a8d879e109d3ed41fb035bc93faef4cd42b354ea18d039bc50b679bf752679ad83ac26a986e3432fbd0462
   languageName: node
   linkType: hard
 
@@ -21358,32 +21348,22 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ui-builder@workspace:examples/ui-builder"
   dependencies:
-    "@dfinity/agent": "npm:^1.0"
-    "@dfinity/auth-client": "npm:^1.0"
-    "@dfinity/candid": "npm:^1.0"
-    "@dfinity/identity": "npm:^1.0"
-    "@dfinity/principal": "npm:^1.0"
-    "@ic-reactor/react": "npm:*"
-    "@ic-reactor/visitor": "npm:*"
-    "@types/lodash.get": "npm:^4"
-    "@types/lodash.set": "npm:^4"
+    "@ic-reactor/react": "npm:^*"
+    "@ic-reactor/visitor": "npm:^*"
+    "@react-hook/resize-observer": "npm:^1.2.6"
     "@types/node": "npm:^16.18.68"
     "@types/react": "npm:^18.2.45"
-    "@types/react-beautiful-dnd": "npm:^13"
     "@types/react-dom": "npm:^18.2.18"
+    "@types/react-grid-layout": "npm:^1"
     clsx: "npm:^2.0.0"
-    immer: "npm:^10.0.3"
-    optics-ts: "npm:^2.4.1"
     react: "npm:^18.2.0"
-    react-beautiful-dnd: "npm:^13.1.1"
     react-dom: "npm:^18.2.0"
+    react-grid-layout: "npm:^1.4.4"
     react-hook-form: "npm:^7.49.2"
-    react-router-dom: "npm:^6.22.0"
     react-scripts: "npm:5.0.1"
     tailwind-merge: "npm:^2.2.0"
     tailwindcss: "npm:^3.4.0"
     typescript: "npm:^4.9.5"
-    zustand: "npm:^4.5.0"
   languageName: unknown
   linkType: soft
 
@@ -22857,7 +22837,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zustand@npm:^4.5, zustand@npm:^4.5.0":
+"zustand@npm:^4.5":
   version: 4.5.1
   resolution: "zustand@npm:4.5.1"
   dependencies:
