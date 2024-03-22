@@ -78,7 +78,7 @@ export type VectorMethodResult = DefaultMethodResult & {
         value: ArrayBuffer
       }
     | {
-        componentType: "normal"
+        componentType: "normal" | "list"
         values: Array<MethodResult<ReturnDataType>>
       }
   )

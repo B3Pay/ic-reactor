@@ -1,4 +1,5 @@
 const TAMESTAMP_KEYS = [
+  "time",
   "date",
   "deadline",
   "timestamp",

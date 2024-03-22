@@ -181,7 +181,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       label: label ?? t.name,
       values,
       type: "vector",
-      componentType: "normal",
+      componentType: values.length > 10 ? "list" : "normal",
     }
   }
 
