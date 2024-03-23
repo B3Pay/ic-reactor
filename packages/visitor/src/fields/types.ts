@@ -58,6 +58,12 @@ export interface VectorFields extends DefaultField {
   defaultValue: []
 }
 
+export interface BlobFields extends DefaultField {
+  type: "blob"
+  field: AllFieldTypes<IDL.Type>
+  defaultValue: []
+}
+
 export interface RecursiveFields extends DefaultField {
   type: "recursive"
   name: string
@@ -95,6 +101,8 @@ export type DynamicFieldType<T extends FieldType> = T extends "record"
   ? OptionalFields
   : T extends "vector"
   ? VectorFields
+  : T extends "blob"
+  ? BlobFields
   : T extends "recursive"
   ? RecursiveFields
   : T extends "unknown"

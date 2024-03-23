@@ -16,6 +16,7 @@ import type {
   AllFieldTypes,
   ServiceFields,
   ServiceDefaultValues,
+  BlobFields,
 } from "./types"
 import { isQuery, validateError, validateNumberError } from "../helper"
 import { IDL } from "@dfinity/candid"
@@ -198,8 +199,18 @@ export class VisitFields<A = BaseActor> extends IDL.Visitor<
     t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): VectorFields {
+  ): VectorFields | BlobFields {
     const field = ty.accept(this, label) as DynamicFieldTypeByClass<typeof ty>
+
+    if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
+      return {
+        type: "blob",
+        field,
+        defaultValue: [],
+        validate: validateError(t),
+        label,
+      }
+    }
 
     return {
       type: "vector",
