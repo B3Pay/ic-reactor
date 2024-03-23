@@ -22,7 +22,7 @@ export interface DynamicDataArgs<V = unknown> {
 
 export type DefaultMethodResult = {
   type: ReturnDataType
-  label: string
+  label?: string
 }
 
 export type MethodResult<T extends ReturnDataType = ReturnDataType> =
@@ -54,7 +54,7 @@ export type MethodResult<T extends ReturnDataType = ReturnDataType> =
 
 export interface NormalMethodResult {
   type: "normal"
-  label: string
+  label?: string
   values: Record<`ret${number}`, MethodResult<ReturnDataType>>
 }
 
@@ -73,8 +73,8 @@ export interface RecordMethodResult extends DefaultMethodResult {
 
 export interface TupleMethodResult extends DefaultMethodResult {
   type: "tuple"
+  componentType: "normal" | "keyValue"
   values: Array<MethodResult<ReturnDataType>>
-  record: RecordMethodResult | null
 }
 
 export interface OptionalMethodResult extends DefaultMethodResult {
