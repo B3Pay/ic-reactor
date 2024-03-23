@@ -107,17 +107,32 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     components: IDL.Type[],
     { value, label }: DynamicDataArgs<unknown[]>
   ): TupleMethodResult {
-    let componentType: TupleMethodResult["componentType"] = "normal"
     // If the tuple has only two elements, we can assume it's a key-value pair
     if (value.length === 2) {
-      const compResult = components[0].accept(this, {
+      const keyResult = components[0].accept(this, {
         value: value[0],
-      }) as PrincipalMethodResult | TextMethodResult | VariantMethodResult
+      })
 
-      const types = ["principal", "text", "variant"]
+      const keyTypes = ["principal", "text", "number", "variant"]
+      const valueTypes = ["principal", "text", "variant", "number", "boolean"]
 
-      if (types.includes(compResult.type)) {
-        componentType = "keyValue"
+      if (keyTypes.includes(keyResult.type)) {
+        const valueResult = components[1].accept(this, {
+          value: value[1],
+        }) as PrincipalMethodResult | TextMethodResult | VariantMethodResult
+
+        if (
+          valueTypes.includes(valueResult.type) ||
+          (keyResult.type === "vector" && keyResult.componentType === "blob")
+        ) {
+          return {
+            label,
+            key: keyResult,
+            value: valueResult,
+            type: "tuple",
+            componentType: "keyValue",
+          }
+        }
       }
     }
 
@@ -129,7 +144,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       label,
       values,
       type: "tuple",
-      componentType,
+      componentType: "normal",
     }
   }
 

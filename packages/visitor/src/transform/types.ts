@@ -71,11 +71,21 @@ export interface RecordMethodResult extends DefaultMethodResult {
   values: Record<string, MethodResult<ReturnDataType>>
 }
 
-export interface TupleMethodResult extends DefaultMethodResult {
-  type: "tuple"
-  componentType: "normal" | "keyValue"
-  values: Array<MethodResult<ReturnDataType>>
-}
+export type TupleMethodResult =
+  | DefaultMethodResult &
+      (
+        | {
+            type: "tuple"
+            componentType: "normal"
+            values: Array<MethodResult<ReturnDataType>>
+          }
+        | {
+            type: "tuple"
+            componentType: "keyValue"
+            key: MethodResult<ReturnDataType>
+            value: MethodResult<ReturnDataType>
+          }
+      )
 
 export interface OptionalMethodResult extends DefaultMethodResult {
   type: "optional"
