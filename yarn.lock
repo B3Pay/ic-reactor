@@ -2045,7 +2045,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/react@npm:*, @ic-reactor/react@npm:1.3.1, @ic-reactor/react@npm:^*, @ic-reactor/react@workspace:packages/react":
+"@ic-reactor/react@npm:*, @ic-reactor/react@npm:^*, @ic-reactor/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
@@ -2061,6 +2061,24 @@ __metadata:
     zustand: 4.5
   languageName: unknown
   linkType: soft
+
+"@ic-reactor/react@npm:1.3.1":
+  version: 1.3.1
+  resolution: "@ic-reactor/react@npm:1.3.1"
+  dependencies:
+    "@ic-reactor/core": "npm:^1.3.1"
+    zustand-utils: "npm:^1.3"
+  peerDependencies:
+    "@dfinity/agent": ">=1.0"
+    "@dfinity/auth-client": ">=1.0"
+    "@dfinity/candid": ">=1.0"
+    "@dfinity/identity": ">=1.0"
+    "@dfinity/principal": ">=1.0"
+    react: ">=16.8"
+    zustand: 4.5
+  checksum: 4ad9d818ebf1d57b387312952ff6354c81c6dff68002209f30e61474edc14a692b71d3bd251e0b82aabc13d36ec9e39e28f51e221b40c1f56dcddacecf38fb79
+  languageName: node
+  linkType: hard
 
 "@ic-reactor/visitor@npm:^*, @ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
