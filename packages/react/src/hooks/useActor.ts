@@ -83,7 +83,7 @@ export const useActor = <A = BaseActor>(
     throw new Error("canisterId is required")
   }
 
-  const [actorManager, setActorManager] = useState<ActorManager<A>>()
+  const [actorManager, setActorManager] = useState<ActorManager<A> | null>(null)
 
   const [{ fetching, fetchError }, setState] = useState({
     fetching: false,
@@ -135,7 +135,7 @@ export const useActor = <A = BaseActor>(
         ...actorConfig,
       })
 
-      setActorManager(() => actorManager)
+      setActorManager(actorManager)
     },
     [canisterId, agentManager, authenticating]
   )
@@ -144,7 +144,10 @@ export const useActor = <A = BaseActor>(
     if (maybeIdlFactory) {
       initialActorManager(maybeIdlFactory)
     } else {
-      setActorManager(undefined)
+      setActorManager((agentManager) => {
+        agentManager?.cleanup()
+        return null
+      })
       fetchCandid().then((idlFactory) => {
         if (!idlFactory) return
         initialActorManager(idlFactory)
