@@ -1,10 +1,11 @@
-import { createActorManager, createCandidAdapter } from "@ic-reactor/core"
+import { createActorManager } from "@ic-reactor/core"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAgentManager } from "./agent/useAgentManager"
 import { actorHooks } from "../helpers"
 import { useAuthState } from "./agent"
-import { ActorManager, IDL, type BaseActor } from "../types"
+import type { ActorManager, IDL, BaseActor } from "../types"
 import type { UseActorParameters, UseActorReturn } from "./types"
+import { useCandidAdapter } from "./agent/useCandidAdapter"
 
 /**
  * A comprehensive hook that manages both the fetching of Candid interfaces
@@ -85,29 +86,35 @@ export const useActor = <A = BaseActor>(
 
   const [actorManager, setActorManager] = useState<ActorManager<A> | null>(null)
 
+  useEffect(() => {
+    if (actorManager?.canisterId !== canisterId) {
+      setActorManager(null)
+    }
+    return actorManager?.cleanup()
+  }, [canisterId, actorManager])
+
   const [{ fetching, fetchError }, setState] = useState({
     fetching: false,
     fetchError: null as string | null,
   })
 
-  const agentManager = useAgentManager(agentContext)
+  const candidAdapter = useCandidAdapter({
+    agentContext,
+    didjsCanisterId,
+  })
+
   const authenticating = useAuthState().authenticating
 
   const fetchCandid = useCallback(async () => {
-    if (fetching || authenticating) return
+    if (fetching || authenticating || !candidAdapter) return
 
     setState({
       fetching: true,
       fetchError: null,
     })
 
-    const agent = agentManager.getAgent()
     try {
-      const candidManager = createCandidAdapter({
-        agent,
-        didjsCanisterId,
-      })
-      const { idlFactory } = await candidManager.getCandidDefinition(canisterId)
+      const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
 
       setState({
         fetching: false,
@@ -123,7 +130,9 @@ export const useActor = <A = BaseActor>(
         fetching: false,
       })
     }
-  }, [canisterId, authenticating, didjsCanisterId])
+  }, [canisterId, candidAdapter, authenticating, didjsCanisterId])
+
+  const agentManager = useAgentManager(agentContext)
 
   const initialActorManager = useCallback(
     (idlFactory: IDL.InterfaceFactory) => {
@@ -144,17 +153,11 @@ export const useActor = <A = BaseActor>(
     if (maybeIdlFactory) {
       initialActorManager(maybeIdlFactory)
     } else {
-      setActorManager((agentManager) => {
-        agentManager?.cleanup()
-        return null
-      })
       fetchCandid().then((idlFactory) => {
         if (!idlFactory) return
         initialActorManager(idlFactory)
       })
     }
-
-    return actorManager?.cleanup()
   }, [fetchCandid, maybeIdlFactory, initialActorManager])
 
   const hooks = useMemo(() => {
