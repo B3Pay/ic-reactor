@@ -5,6 +5,45 @@ export const findCategory = (name: string): FunctionCategory => {
   const categories = [
     { name: "home", test: [] },
     {
+      name: "wallet",
+      test: [
+        "wallet",
+        "balance",
+        "transfer",
+        "send",
+        "topup",
+        "receive",
+        "deposit",
+        "withdraw",
+        "pay",
+        "claim",
+        "refund",
+        "reward",
+        "tip",
+        "buy",
+        "sell",
+        "purchase",
+        "order",
+        "checkout",
+        "cart",
+        "invoice",
+        "payment",
+        "credit",
+        "debit",
+        "transaction",
+        "history",
+        "statement",
+        "account",
+        "address",
+        "fund",
+        "staking",
+        "bond",
+        "unbond",
+        "delegate",
+        "undelegate",
+      ],
+    },
+    {
       name: "setting",
       test: [
         "setting",
@@ -49,6 +88,7 @@ export const findCategory = (name: string): FunctionCategory => {
         "cancel",
       ],
     },
+    { name: "governance", test: ["governance", "vote", "poll", "proposal"] },
   ]
   const category = categories.find((c) =>
     c.test.some((t) => name.toLowerCase().includes(t))
