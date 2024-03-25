@@ -41,6 +41,8 @@ export const findCategory = (name: string): FunctionCategory => {
         "unbond",
         "delegate",
         "undelegate",
+        "approve",
+        "allowance",
       ],
     },
     {
