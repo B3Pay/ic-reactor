@@ -9,16 +9,25 @@ export interface UseCandidAdapterParams {
   didjsCanisterId?: string
 }
 /**
- * Accesses the `AgentManager` instance for managing agent configurations and state.
+ * Accesses the `CandidAdapter` to download the actor's Candid interface.
+ *
+ * @param config - `UseCandidAdapterParams` The configuration object.
+ * @returns The `CandidAdapter` instance.
  *
  * @example
- *```jsx
- *  function AgentManagerComponent() {
- *    const agentManager = useAgentManager();
+ * ```jsx
+ * function CandidAdapterComponent() {
+ *   const candidAdapter = useCandidAdapter();
  *
- *    // Use agentManager for managing agent configurations, etc.
- *    return <div>Agent Manager ready.</div>;
- *  }
+ *   const getActor = async () => {
+ *      const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
+ *      console.log(idlFactory)
+ *   }
+ *
+ *   return (
+ *       <button onClick={getActor}>Get Actor</button>
+ *   );
+ * }
  *```
  */
 export const useCandidAdapter = (config: UseCandidAdapterParams) => {
