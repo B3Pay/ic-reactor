@@ -1,4 +1,4 @@
-import React from "react"
+import React = require("react")
 import { useStore } from "zustand"
 import type {
   AgentManager,
@@ -14,6 +14,7 @@ import {
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "@ic-reactor/core/dist/utils"
+import { InternetIdentityAuthResponseSuccess } from "@dfinity/auth-client"
 
 export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   const {
@@ -85,11 +86,11 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
                   ? LOCAL_INTERNET_IDENTITY_PROVIDER
                   : IC_INTERNET_IDENTITY_PROVIDER,
                 ...options,
-                onSuccess: () => {
+                onSuccess: (msg: InternetIdentityAuthResponseSuccess) => {
                   authenticate()
                     .then((identity) => {
                       const principal = identity.getPrincipal()
-                      options?.onSuccess?.()
+                      options?.onSuccess?.(msg)
                       onLoginSuccess?.(principal)
                       resolve(principal)
                       setLoginState({ loading: false, error: undefined })

@@ -26,18 +26,18 @@
   },
   "homepage": "https://b3pay.github.io/ic-reactor/modules/core.html",
   "peerDependencies": {
-    "@dfinity/agent": ">=1.0",
-    "@dfinity/auth-client": ">=1.0",
-    "@dfinity/candid": ">=1.0",
-    "@dfinity/identity": ">=1.0",
-    "@dfinity/principal": ">=1.0"
+    "@dfinity/agent": "^1.2",
+    "@dfinity/auth-client": "^1.2",
+    "@dfinity/candid": "^1.2",
+    "@dfinity/identity": "^1.2",
+    "@dfinity/principal": "^1.2"
   },
   "dependencies": {
-    "@dfinity/agent": ">=1.0",
-    "@dfinity/auth-client": ">=1.0",
-    "@dfinity/candid": ">=1.0",
-    "@dfinity/identity": ">=1.0",
-    "@dfinity/principal": ">=1.0",
+    "@dfinity/agent": "^1.2",
+    "@dfinity/auth-client": "^1.2",
+    "@dfinity/candid": "^1.2",
+    "@dfinity/identity": "^1.2",
+    "@dfinity/principal": "^1.2",
     "zustand": "^4.5"
   },
   "scripts": {
@@ -47,7 +47,7 @@
     "bundle:dev": "npx webpack --mode development",
     "bundle:prod": "npx webpack --mode production",
     "build": "npx tsc && npm run bundle",
-    "clean": "npx rimraf dist"
+    "clean": "npx rimraf dist && npx rimraf umd && npx rimraf node_modules"
   },
   "engines": {
     "node": ">=10"

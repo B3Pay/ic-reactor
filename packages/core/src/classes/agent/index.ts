@@ -195,11 +195,9 @@ export class AgentManager {
         ? LOCAL_INTERNET_IDENTITY_PROVIDER
         : IC_INTERNET_IDENTITY_PROVIDER,
       ...options,
-      onSuccess: async () => {
-        await this.authenticate()
-        options?.onSuccess?.()
-      },
     })
+
+    await this.authenticate()
   }
 
   public logout = async (options?: { returnTo?: string }) => {
