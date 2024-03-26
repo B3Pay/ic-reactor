@@ -1,7 +1,7 @@
 import type { ServiceLayouts } from "./types"
 import { IDL } from "@dfinity/candid"
 import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import { findCategory } from "../helper"
+import { findCategory } from "./helpers"
 
 /**
  * Visit the candid file and extract the details.
@@ -159,4 +159,5 @@ const DEFAULT_SERVICE_LAYOUTS = {
   wallet: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
   governance: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
   setting: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
+  status: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
 }
