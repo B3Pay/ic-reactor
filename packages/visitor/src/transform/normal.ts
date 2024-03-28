@@ -119,7 +119,10 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       if (keyTypes.includes(keyResult.type)) {
         const valueResult = components[1].accept(this, {
           value: value[1],
-        }) as PrincipalMethodResult | TextMethodResult | VariantMethodResult
+          label:
+            (keyResult as TextMethodResult).value ||
+            (keyResult as VariantMethodResult).variant,
+        })
 
         if (
           valueTypes.includes(valueResult.type) ||
@@ -131,6 +134,13 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
             value: valueResult,
             type: "tuple",
             componentType: "keyValue",
+          }
+        } else {
+          return {
+            label,
+            values: [keyResult, valueResult],
+            type: "tuple",
+            componentType: "normal",
           }
         }
       }
@@ -181,7 +191,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     ty: IDL.Type<T>,
     { value, label }: DynamicDataArgs<T[]>
   ): VectorMethodResult {
-    if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
+    if ("_bits" in ty && ty._bits === 8) {
       return {
         label,
         value: t.encodeValue(value),

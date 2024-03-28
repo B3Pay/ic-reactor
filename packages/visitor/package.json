@@ -25,11 +25,6 @@
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/visit#readme",
-  "peerDependencies": {
-    "@dfinity/agent": "^1.0",
-    "@dfinity/auth-client": "^1.0",
-    "@dfinity/candid": "^1.0"
-  },
   "dependencies": {
     "@ic-reactor/core": "^1.4.0"
   },
