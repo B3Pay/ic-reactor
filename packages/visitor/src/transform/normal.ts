@@ -113,15 +113,12 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
         value: value[0],
       })
 
-      const keyTypes = ["principal", "text", "number", "variant"]
+      const keyTypes = ["principal", "text", "variant"]
       const valueTypes = ["principal", "text", "variant", "number", "boolean"]
 
       if (keyTypes.includes(keyResult.type)) {
         const valueResult = components[1].accept(this, {
           value: value[1],
-          label:
-            (keyResult as TextMethodResult).value ||
-            (keyResult as VariantMethodResult).variant,
         })
 
         if (
@@ -136,6 +133,12 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
             componentType: "keyValue",
           }
         } else {
+          const valueResult = components[1].accept(this, {
+            value: value[1],
+            label:
+              (keyResult as TextMethodResult).value.toString() ||
+              (keyResult as VariantMethodResult).variant,
+          })
           return {
             label,
             values: [keyResult, valueResult],
