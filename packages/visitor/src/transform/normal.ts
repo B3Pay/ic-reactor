@@ -114,37 +114,23 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       })
 
       const keyTypes = ["principal", "text", "variant"]
-      const valueTypes = ["principal", "text", "variant", "number", "boolean"]
 
       if (keyTypes.includes(keyResult.type)) {
         const valueResult = components[1].accept(this, {
           value: value[1],
         })
+        const valueTypes = ["principal", "text", "variant", "number", "boolean"]
 
-        if (
+        const isKeyValue =
           valueTypes.includes(valueResult.type) ||
           (keyResult.type === "vector" && keyResult.componentType === "blob")
-        ) {
-          return {
-            label,
-            key: keyResult,
-            value: valueResult,
-            type: "tuple",
-            componentType: "keyValue",
-          }
-        } else {
-          const valueResult = components[1].accept(this, {
-            value: value[1],
-            label:
-              (keyResult as TextMethodResult).value.toString() ||
-              (keyResult as VariantMethodResult).variant,
-          })
-          return {
-            label,
-            values: [keyResult, valueResult],
-            type: "tuple",
-            componentType: "normal",
-          }
+
+        return {
+          label,
+          key: keyResult,
+          value: valueResult,
+          type: "tuple",
+          componentType: isKeyValue ? "keyValue" : "record",
         }
       }
     }
@@ -209,7 +195,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       })
     })
 
-    if (ty instanceof IDL.RecordClass && values?.length > 10) {
+    if (ty instanceof IDL.RecordClass && values?.length > 5) {
       const labelList = Object.keys(
         (values as Array<RecordMethodResult>)[0].values
       )
