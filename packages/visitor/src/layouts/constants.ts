@@ -59,6 +59,7 @@ export const SETTING_TEST = [
   "upload",
   "downgrade",
   "install",
+  "role",
   "uninstall",
   "enable",
   "disable",
