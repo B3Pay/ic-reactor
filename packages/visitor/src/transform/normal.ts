@@ -121,16 +121,17 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
         })
         const valueTypes = ["principal", "text", "variant", "number", "boolean"]
 
-        const isKeyValue =
-          valueTypes.includes(valueResult.type) ||
-          (keyResult.type === "vector" && keyResult.componentType === "blob")
+        const isBlob =
+          keyResult.type === "vector" && keyResult.componentType === "blob"
+
+        const isKeyValue = valueTypes.includes(valueResult.type) || isBlob
 
         return {
           label,
-          title: keyResult.label,
+          title: keyResult.label || (keyResult as VariantMethodResult).variant,
+          type: "tuple",
           key: keyResult,
           value: valueResult,
-          type: "tuple",
           componentType: isKeyValue ? "keyValue" : "record",
         }
       }
