@@ -195,7 +195,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       })
     })
 
-    if (ty instanceof IDL.RecordClass && values?.length > 5) {
+    if (values?.length > 5 && values[0].type === "record") {
       const labelList = Object.keys(
         (values as Array<RecordMethodResult>)[0].values
       )
