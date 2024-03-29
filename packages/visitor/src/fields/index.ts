@@ -202,7 +202,7 @@ export class VisitFields<A = BaseActor> extends IDL.Visitor<
   ): VectorFields | BlobFields {
     const field = ty.accept(this, label) as DynamicFieldTypeByClass<typeof ty>
 
-    if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
+    if ("_bits" in ty && ty._bits === 8) {
       return {
         type: "blob",
         field,
