@@ -81,6 +81,7 @@ export type TupleMethodResult =
           }
         | {
             type: "tuple"
+            title: string | undefined
             componentType: "record"
             key: MethodResult<ReturnDataType>
             value: MethodResult<ReturnDataType>

@@ -127,6 +127,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
 
         return {
           label,
+          title: keyResult.label,
           key: keyResult,
           value: valueResult,
           type: "tuple",
