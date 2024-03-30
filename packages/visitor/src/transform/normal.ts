@@ -17,6 +17,7 @@ import type {
 import { isImage, isUrl } from "../helper"
 import type { Principal } from "@ic-reactor/core/dist/types"
 import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "../constants"
+import { isValueInTable } from "./helpers"
 
 /**
  * Visit the candid file and extract the fields.
@@ -212,7 +213,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       const labelList: string[] = []
 
       const isList = values[0].values.every((value) => {
-        if (["record", "tuple", "vector"].includes(value.type)) {
+        if (isValueInTable(value)) {
           if (value.label) {
             labelList.push(value.label)
             return true
