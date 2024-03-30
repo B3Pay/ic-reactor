@@ -90,10 +90,10 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
         value: value[key],
       })
 
-      acc[key] = field
+      acc.push(field)
 
       return acc
-    }, {} as Record<string, MethodResult>)
+    }, [] as Array<MethodResult>)
 
     return {
       label,
@@ -113,7 +113,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
         value: value[0],
       })
 
-      const keyTypes = ["principal", "text", "variant"]
+      const keyTypes = ["principal", "number", "text", "variant"]
 
       if (keyTypes.includes(keyResult.type)) {
         const valueResult = components[1].accept(this, {
@@ -125,14 +125,25 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
           keyResult.type === "vector" && keyResult.componentType === "blob"
 
         const isKeyValue = valueTypes.includes(valueResult.type) || isBlob
-
-        return {
-          label,
-          title: keyResult.label || (keyResult as VariantMethodResult).variant,
-          type: "tuple",
-          key: keyResult,
-          value: valueResult,
-          componentType: isKeyValue ? "keyValue" : "record",
+        const title =
+          keyResult.label || (keyResult as VariantMethodResult).variant
+        if (title) {
+          return {
+            label,
+            title,
+            type: "tuple",
+            key: keyResult,
+            value: valueResult,
+            componentType: isKeyValue ? "keyValue" : "record",
+          }
+        } else {
+          return {
+            label,
+            title: (keyResult as PrincipalMethodResult).value.toString(),
+            type: "tuple",
+            value: valueResult,
+            componentType: "title",
+          }
         }
       }
     }
@@ -198,19 +209,33 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     })
 
     if (values?.length > 5 && values[0].type === "record") {
-      const labelList = Object.keys(
-        (values as Array<RecordMethodResult>)[0].values
-      )
-      return {
-        label,
-        labelList,
-        values: values as Array<RecordMethodResult>,
-        type: "vector",
-        componentType: "list",
+      const labelList: string[] = []
+
+      const isList = values[0].values.every((value) => {
+        if (["record", "tuple", "vector"].includes(value.type)) {
+          if (value.label) {
+            labelList.push(value.label)
+            return true
+          }
+        }
+        return false
+      })
+
+      if (isList) {
+        return {
+          label,
+          labelList,
+          values: values as Array<RecordMethodResult>,
+          type: "vector",
+          componentType: "list",
+        }
       }
     }
 
+    const needTitle = values.some((value) => Boolean(value.title))
+
     return {
+      title: needTitle ? label : undefined,
       label,
       values,
       type: "vector",
