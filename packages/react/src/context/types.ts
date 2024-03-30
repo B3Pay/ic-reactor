@@ -17,6 +17,7 @@ export interface AgentContext
 }
 
 export interface CreateAgentCotextParameters extends AgentManagerParameters {
+  withProcessEnv?: boolean
   disableAuthenticateOnMount?: boolean
 }
 
