@@ -9,8 +9,9 @@ import { ICPTransfer } from "IcpTransfer"
 const publicKey = crypto.getRandomValues(new Uint8Array(48))
 
 const App = () => {
+  console.log(process.env.DFX_NETWORK === "local")
   return (
-    <AgentProvider withDevtools>
+    <AgentProvider withDevtools withLocalEnv>
       <Login />
       {/*  idlFactory can be fetched from the network if you not provide it */}
       <ActorProvider

@@ -93,17 +93,16 @@ export const createAgentContext = (
   const AgentProvider: React.FC<AgentProviderProps> = ({
     children,
     agentManager: mybeAgentManager,
+    withProcessEnv = config.withProcessEnv,
     disableAuthenticateOnMount = defaultDisable ?? false,
     ...options
   }) => {
     const hooks = React.useMemo(() => {
-      const withLocalEnv = config.withProcessEnv
-        ? isInLocalOrDevelopment()
-        : undefined
+      const withLocalEnv = withProcessEnv ? isInLocalOrDevelopment() : undefined
 
       const agentManager =
         mybeAgentManager ??
-        createAgentManager({ ...options, ...contextOptions, withLocalEnv })
+        createAgentManager({ withLocalEnv, ...options, ...contextOptions })
 
       if (!disableAuthenticateOnMount) {
         agentManager.authenticate()

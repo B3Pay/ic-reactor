@@ -8,6 +8,35 @@ exports[`createReactor should query 1`] = `
     </span>
   </div>,
   <div>
+    <button
+      onClick={[Function]}
+    >
+      Switch
+    </button>
+  </div>,
+  <div>
+    <span>
+      true
+    </span>
+  </div>,
+]
+`;
+
+exports[`createReactor should query 2`] = `
+[
+  <div>
+    <span>
+      true
+    </span>
+  </div>,
+  <div>
+    <button
+      onClick={[Function]}
+    >
+      Switch
+    </button>
+  </div>,
+  <div>
     <span>
       true
     </span>
