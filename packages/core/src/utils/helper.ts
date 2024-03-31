@@ -23,11 +23,7 @@ export function createStoreWithOptionalDevtools<T>(
 }
 
 export const isInLocalOrDevelopment = () => {
-  return (
-    typeof process !== "undefined" &&
-    (process.env.DFX_NETWORK === "local" ||
-      process.env.NODE_ENV === "development")
-  )
+  return typeof process !== "undefined" && process.env.DFX_NETWORK === "local"
 }
 
 export function isQuery(func: IDL.FuncClass): boolean {
