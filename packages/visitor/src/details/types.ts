@@ -45,6 +45,7 @@ export interface FieldDetailsWithChild {
   __label: string
   __type: FieldType
   __description: string
+  __show_description?: boolean
   optional?: OtherDetails
   vector?: OtherDetails
   [key: string]: string | boolean | undefined | OtherDetails
