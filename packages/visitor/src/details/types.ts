@@ -16,7 +16,7 @@ export type MethodDetails<A = BaseActor> = {
   functionName: FunctionName<A>
   __label: string
   __description: string
-  __description_hidden?: boolean
+  __show_description?: boolean
   [key: `arg${number}`]: FieldDetailsWithChild
 }
 
@@ -24,7 +24,7 @@ export interface FieldDetails {
   __label: string
   __type: FieldType
   __description: string
-  __description_hidden?: boolean
+  __show_description?: boolean
   [key: string]: string | boolean | undefined
 }
 
