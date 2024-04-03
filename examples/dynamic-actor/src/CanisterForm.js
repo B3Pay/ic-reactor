@@ -50,7 +50,6 @@ const CanisterForm = ({ setCanisterId }) => {
       localStorage.setItem("dynamicNetwork", network)
       localStorage.setItem("dynamicCanisterId", principal.toText())
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error(e)
     }
   }
