@@ -1,5 +1,4 @@
 import type { IDL } from "@dfinity/candid"
-import { AgentContext } from "../context/types"
 import {
   ActorHooksReturnType,
   ActorManagerParameters,
@@ -13,7 +12,6 @@ export interface UseActorParameters
   > {
   canisterId: string
   idlFactory?: IDL.InterfaceFactory
-  agentContext?: React.Context<AgentContext | null>
   didjsCanisterId?: string
 }
 

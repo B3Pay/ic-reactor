@@ -24,9 +24,7 @@ export interface CreateAgentCotextParameters extends AgentManagerParameters {
 export interface CreateAgentContextReturnType
   extends AgentHooksReturnType,
     AuthHooksReturnType {
-  useAgentManager: (
-    agentContext?: React.Context<AgentContext | null>
-  ) => AgentManager
+  useAgentManager: () => AgentManager
   AgentProvider: React.FC<AgentProviderProps>
 }
 
@@ -54,7 +52,6 @@ export interface CreateActorContextParameters
   > {
   didjsId?: string
   canisterId?: string
-  agentContext?: React.Context<AgentContext | null>
   idlFactory?: IDL.InterfaceFactory
   loadingComponent?: React.ReactNode
 }

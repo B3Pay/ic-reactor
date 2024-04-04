@@ -34,10 +34,8 @@ import type {
 export const extractAgentContext = (
   agentContext: React.Context<AgentContext | null>
 ): Omit<CreateAgentContextReturnType, "AgentProvider"> => {
-  const useAgentContext = (
-    mybeAgentContext?: React.Context<AgentContext | null>
-  ) => {
-    const context = React.useContext(mybeAgentContext || agentContext)
+  const useAgentContext = () => {
+    const context = React.useContext(agentContext)
 
     if (!context) {
       throw new Error("Agent hooks must be used within a AgentProvider")
@@ -46,10 +44,8 @@ export const extractAgentContext = (
     return context
   }
 
-  const useAgentManager = (
-    agentContext?: React.Context<AgentContext | null>
-  ): AgentManager => {
-    const context = useAgentContext(agentContext)
+  const useAgentManager = (): AgentManager => {
+    const context = useAgentContext()
 
     return context.agentManager
   }

@@ -37,6 +37,8 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
     onLoginError,
     onLoggedOut,
   }: UseAuthParameters = {}) => {
+    const network = React.useRef("ic")
+
     const [loginState, setLoginState] = React.useState<LoginState>({
       loading: false,
       error: undefined,
@@ -136,11 +138,16 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
       [onLoggedOut]
     )
 
-    React.useEffect(() => {
-      if (!authenticating && !authenticated) {
-        authenticate()
-      }
-    }, [])
+    React.useEffect(
+      () =>
+        agentManager.subscribeAgentState((state) => {
+          if (network.current !== state.network) {
+            network.current = state.network
+            authenticate()
+          }
+        }),
+      []
+    )
 
     return {
       authenticated,

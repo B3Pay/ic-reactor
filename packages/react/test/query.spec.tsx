@@ -9,8 +9,7 @@ const config: CreateReactorCoreParameters = {
   idlFactory,
 }
 
-const { useAuth, useQueryCall, useUpdateCall } =
-  createReactor<typeof backend>(config)
+const { useQueryCall } = createReactor<typeof backend>(config)
 
 describe("createReactor", () => {
   it("should query on mount", async () => {
