@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { HttpAgent } from "@dfinity/agent"
 import { createStoreWithOptionalDevtools } from "../../utils/helper"
 import { AuthClient } from "@dfinity/auth-client"
@@ -150,12 +151,14 @@ export class AgentManager {
   }
 
   public authenticate = async () => {
+    console.log(
+      `Authenticating on ${this.getIsLocal() ? "local" : "ic"} network`
+    )
     this.updateAuthState({ authenticating: true }, "authenticating")
 
     try {
       this._auth = await AuthClient.create()
       const authenticated = await this._auth.isAuthenticated()
-
       const identity = this._auth.getIdentity()
 
       this._agent.replaceIdentity(identity)
@@ -195,9 +198,11 @@ export class AgentManager {
         ? LOCAL_INTERNET_IDENTITY_PROVIDER
         : IC_INTERNET_IDENTITY_PROVIDER,
       ...options,
+      onSuccess: async (msg) => {
+        await this.authenticate()
+        options?.onSuccess?.(msg)
+      },
     })
-
-    await this.authenticate()
   }
 
   public logout = async (options?: { returnTo?: string }) => {

@@ -137,12 +137,10 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
     )
 
     React.useEffect(() => {
-      const authClient = getAuth()
-
-      if (!authClient && !authenticating) {
+      if (!authenticating && !authenticated) {
         authenticate()
       }
-    }, [authenticating])
+    }, [])
 
     return {
       authenticated,

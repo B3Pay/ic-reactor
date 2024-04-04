@@ -14,7 +14,14 @@ exports[`createReactor should query 2`] = `
 
 exports[`createReactor should query 3`] = `
 <div>
-  Fetching canister...
+  <button
+    onClick={[Function]}
+  >
+    Get Version
+  </button>
+  <span>
+    Ready To call
+  </span>
 </div>
 `;
 
