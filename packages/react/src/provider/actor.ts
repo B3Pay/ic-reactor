@@ -5,10 +5,12 @@ import { ActorHooks } from "../hooks/actor/hooks"
  * It wraps child components, providing them access to actor-specific hooks and functionalities based on the provided canister ID and configuration.
  *
  * Props:
- * - `children`: React Node - The child components that will have access to the actor context.
  * - `canisterId` (optional): string - The Canister ID for actor interactions. If not provided, the default from `createActorContext` is used.
+ * - `idlFactory` (optional): IDL.InterfaceFactory - The IDL factory for the actor interface. If not provided, the default from `createActorContext` is used.
+ * - `didjsId` (optional): string - The DID.js ID for authentication. If not provided, the default from `createActorContext` is used.
  * - `loadingComponent` (optional): React Node - A component displayed during the loading/fetching state. Defaults to a simple message.
- * - `...restConfig`: Additional configuration options that will be merged with the default configuration provided during context creation.
+ * - `authenticatingComponent` (optional): React Node - A component displayed during the authentication state. Defaults to a simple message.
+ * - `children`: React Node - The child components that will have access to the actor context.
  *
  * Behavior:
  * - Validates the presence of a `canisterId`. Throws an error if it is missing, ensuring that a valid canister ID is always used for actor operations.

@@ -53,5 +53,4 @@ export interface CreateActorContextParameters
   didjsId?: string
   canisterId?: string
   idlFactory?: IDL.InterfaceFactory
-  loadingComponent?: React.ReactNode
 }

@@ -64,9 +64,8 @@ import { extractActorContext } from "../helpers/extractActorContext"
  * };
  * ```
  *
- * This function streamlines the process of setting up a context for IC actor interactions within a React app, making it easier
- * to manage actor state and perform actions such as queries or updates. It abstracts away the complexities involved in directly
- * managing IC agents and actors, providing a simple, declarative API for developers.
+ * This function streamlines the process of setting up a context for IC actor interactions within a React app,
+ * it provides a type-safe and efficient way to manage actor state and interactions.
  */
 export function createActorContext<A = BaseActor>(
   contextConfig: CreateActorContextParameters = {}

@@ -28,8 +28,8 @@ import { isInLocalOrDevelopment } from "../utils"
  *  Hooks extracted from the created context for managing agent and authentication state within components.
  *
  * @example
- * agent.ts
  * ```tsx
+ * // agent.ts
  * import { createAgentContext } from "@ic-reactor/react";
  * import { CreateAgentCotextParameters } from "@ic-reactor/react/dist/types";
  *
@@ -50,11 +50,11 @@ import { isInLocalOrDevelopment } from "../utils"
  *   useAgentManager,
  *   useUserPrincipal,
  * } = createAgentContext(agentConfig);
- *
- * // Now you can use the returned hooks in your React components
  *```
- * App.tsx
+ * Now you can use the returned hooks in your React components
+ *
  * ```tsx
+ * // App.tsx
  * import React from 'react';
  * import { AgentProvider } from './agent';
  *
