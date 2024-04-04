@@ -16,18 +16,18 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
   public height = 0
 
   public visitFunc(t: IDL.FuncClass): number {
-    this.height = 5
+    this.height = 10
     t.argTypes.forEach((arg, index) => {
-      this.height += 2
+      this.height += 4
       arg.accept(this, `arg${index}`)
     })
 
-    return this.height + 2
+    return this.height + 4
   }
 
   public visitRecord(_t: IDL.RecordClass, _fields: Array<[string, IDL.Type]>) {
     _fields.forEach(([key, type]) => {
-      this.height += 2
+      this.height += 4
       type.accept(this, key)
     })
   }
@@ -36,12 +36,12 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
     _t: IDL.VariantClass,
     _fields: Array<[string, IDL.Type]>
   ) {
-    this.height += 2
+    this.height += 4
     let saveHeight = this.height
 
     _fields.forEach(([key, type], index) => {
       type.accept(this, key)
-      saveHeight = index === 0 ? this.height + 2 : saveHeight
+      saveHeight = index === 0 ? this.height + 4 : saveHeight
     })
 
     this.height = saveHeight
@@ -52,7 +52,7 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
     components: IDL.Type[]
   ) {
     components.forEach((type, index) => {
-      this.height += 2
+      this.height += 4
       type.accept(this, `_${index}_`)
     })
   }
@@ -88,15 +88,15 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitPrincipal(_t: IDL.PrincipalClass) {
-    this.height += 2
+    this.height += 4
   }
 
   public visitText(_t: IDL.TextClass) {
-    this.height += 2
+    this.height += 4
   }
 
   public visitNumber<T>(_t: IDL.Type<T>) {
-    this.height += 2
+    this.height += 4
   }
 
   public visitInt = this.visitNumber
@@ -108,7 +108,12 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
   private breakpoints = DEFAULT_LAYOUTS
 
   private savedY = Object.fromEntries(
-    this.breakpoints.map(({ name }) => [name, new Map<number, number>()])
+    DEFAULT_CATEGORIES.map((category) => [
+      category,
+      Object.fromEntries(
+        DEFAULT_LAYOUTS.map(({ name }) => [name, new Map<number, number>()])
+      ),
+    ])
   )
 
   public visitService(t: IDL.ServiceClass): ServiceLayouts<A> {
@@ -121,10 +126,11 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
       const h = func.accept(this, functionName) as number
 
       this.breakpoints.forEach(({ name, size }) => {
+        const length = acc[category][name].length
         const w = 2
-        const x = (this.counter * w) % size
-        const y = this.savedY[name].get(x) || 0
-        const minW = h >= 9 ? 2 : 1
+        const x = (length * w) % size
+        const y = this.savedY[category][name].get(x) || 0
+        const minW = h >= 18 ? 2 : 1
 
         acc[category][name].push({
           i: functionName,
@@ -136,7 +142,7 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
           minH: h,
         })
 
-        this.savedY[name].set(x, y + h)
+        this.savedY[category][name].set(x, y + h)
       })
 
       this.counter++
@@ -154,10 +160,20 @@ const DEFAULT_LAYOUTS = [
   { name: "xs", size: 2 },
 ] as const
 
-const DEFAULT_SERVICE_LAYOUTS = {
-  home: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
-  wallet: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
-  governance: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
-  setting: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
-  status: Object.fromEntries(DEFAULT_LAYOUTS.map(({ name }) => [name, []])),
-}
+const DEFAULT_CATEGORIES = [
+  "home",
+  "wallet",
+  "governance",
+  "setting",
+  "status",
+] as const
+
+const DEFAULT_SERVICE_LAYOUTS = DEFAULT_CATEGORIES.reduce(
+  (acc, category) => ({
+    ...acc,
+    [category]: Object.fromEntries(
+      DEFAULT_LAYOUTS.map(({ name }) => [name, []])
+    ),
+  }),
+  {}
+)
