@@ -1,11 +1,11 @@
 import { createReactorStore } from "@ic-reactor/core"
 import {
   VisitRandomResponse,
-  VisitFields,
   VisitDetails,
   VisitRandomArgs,
   VisitTransform,
   VisitLayouts,
+  VisitReturns,
 } from "../src"
 import { b3wallet, idlFactory } from "./candid/b3wallet"
 import { ServiceDetails } from "../src/types"
@@ -41,9 +41,14 @@ describe("createReactorStore", () => {
     return visitFunction.get_account_views(fieldsVisitor)
   }
 
+  const visitedReturns = () => {
+    const fieldsVisitor = new VisitReturns()
+    return visitFunction.get_account_views(fieldsVisitor)
+  }
+
   it("should visitFunction", () => {
     // console.log(jsonToString(visitedTransform()))
-    console.log(jsonToString(visitedDetail()))
+    console.log(jsonToString(visitedReturns()))
 
     // const args = visitFunction.get_app(new VisitRandomArgs<B3Wallet>())
     // console.log(args)
