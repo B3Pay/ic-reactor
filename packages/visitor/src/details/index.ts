@@ -27,7 +27,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   ): MethodDetails<A> {
     const functionType = isQuery(t) ? "query" : "update"
 
-    const fields = t.argTypes.reduce((acc, arg, index) => {
+    const argFields = t.argTypes.reduce((acc, arg, index) => {
       acc[`arg${index}`] = arg.accept(
         this,
         `arg${index}`
@@ -36,19 +36,28 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       return acc
     }, {} as Record<`arg${number}`, FieldDetailsWithChild | FieldDetails>)
 
+    const retFields = t.retTypes.reduce((acc, ret, index) => {
+      acc[`ret${index}`] = ret.accept(
+        this,
+        `ret${index}`
+      ) as FieldDetailsWithChild
+
+      return acc
+    }, {} as Record<`ret${number}`, FieldDetailsWithChild | FieldDetails>)
+
     this.counter++
 
     return {
       functionName,
       functionType,
       __label: functionName,
-      __description: t.name,
-      ...fields,
+      ...argFields,
+      ...retFields,
     }
   }
 
   public visitRecord(
-    t: IDL.RecordClass,
+    _t: IDL.RecordClass,
     _fields: Array<[string, IDL.Type]>,
     __label: string
   ): FieldDetailsWithChild {
@@ -64,13 +73,12 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       __type: "record",
       __label,
       __hidden: false,
-      __description: t.name,
       ...fields,
     }
   }
 
   public visitVariant(
-    t: IDL.VariantClass,
+    _t: IDL.VariantClass,
     _fields: Array<[string, IDL.Type]>,
     __label: string
   ): FieldDetailsWithChild {
@@ -84,13 +92,12 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     return {
       __type: "variant",
       __label,
-      __description: t.name,
       ...fields,
     }
   }
 
   public visitTuple<T extends IDL.Type[]>(
-    t: IDL.TupleClass<T>,
+    _t: IDL.TupleClass<T>,
     components: IDL.Type[],
     __label: string
   ): FieldDetailsWithChild {
@@ -106,14 +113,13 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       __type: "tuple",
       __label,
       __hidden: false,
-      __description: t.name,
       ...fields,
     }
   }
 
   private visitedRecursive: Record<string, true> = {}
   public visitRec<T>(
-    t: IDL.RecClass<T>,
+    _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     __label: string
   ): FieldDetailsWithChild {
@@ -128,12 +134,11 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       __type: "recursive",
       __label,
       __hidden: false,
-      __description: t.name,
     }
   }
 
   public visitOpt<T>(
-    t: IDL.OptClass<T>,
+    _t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
     __label: string
   ): FieldDetailsWithChild {
@@ -143,13 +148,12 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       __checked: false,
       __label,
       __hidden: false,
-      __description: t.name,
       optional: details,
     }
   }
 
   public visitVec<T>(
-    t: IDL.VecClass<T>,
+    _t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
     __label: string
   ): FieldDetailsWithChild {
@@ -157,20 +161,18 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     return {
       __type: "vector",
       __label,
-      __description: t.name,
       vector: details,
     }
   }
 
   private visiGenericType = <T>(
-    t: IDL.Type<T>,
+    _t: IDL.Type<T>,
     __type: FieldType,
     __label: string
   ): InputDetails => {
     return {
       __type,
       __label,
-      __description: t.name,
     }
   }
 

@@ -7,15 +7,16 @@ import {
   VisitTransform,
   VisitLayouts,
 } from "../src"
-import { b3system, idlFactory } from "./candid/b3system"
+import { b3wallet, idlFactory } from "./candid/b3wallet"
 import { ServiceDetails } from "../src/types"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
+import accountView from "./account_view.json"
 
-type B3System = typeof b3system
+type B3Wallet = typeof b3wallet
 
 describe("createReactorStore", () => {
   const { actorStore, extractInterface, visitFunction } =
-    createReactorStore<B3System>({
+    createReactorStore<B3Wallet>({
       canisterId: "2vxsx-fae",
       idlFactory,
       withVisitor: true,
@@ -27,15 +28,29 @@ describe("createReactorStore", () => {
     return fieldsVisitor.visitService(iface)
   }
 
-  it("should visitFunction", () => {
-    // const field = visitFunction.get_app(new VisitFields<B3System>())
-    // console.log(field.defaultValues)
-    // const args = visitFunction.get_app(new VisitRandomArgs<B3System>())
-    // console.log(args)
-    const details = visitedService()
-    console.log(jsonToString(details))
+  const visitedTransform = () => {
+    const fieldsVisitor = new VisitTransform()
+    return visitFunction.get_account_views(fieldsVisitor, {
+      label: "accountView",
+      value: accountView,
+    })
+  }
 
-    // const value = visitFunction.get_app(new VisitRandomResponse<B3System>())
+  const visitedDetail = () => {
+    const fieldsVisitor = new VisitDetails()
+    return visitFunction.get_account_views(fieldsVisitor)
+  }
+
+  it("should visitFunction", () => {
+    // console.log(jsonToString(visitedTransform()))
+    console.log(jsonToString(visitedDetail()))
+
+    // const args = visitFunction.get_app(new VisitRandomArgs<B3Wallet>())
+    // console.log(args)
+    // const details = visitedService()
+    // console.log(jsonToString(details))
+
+    // const value = visitFunction.get_app(new VisitRandomResponse<B3Wallet>())
     // console.log(value)
 
     // const transform = visitFunction.get_app(new VisitTransform(), {

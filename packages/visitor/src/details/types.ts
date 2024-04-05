@@ -15,16 +15,14 @@ export type MethodDetails<A = BaseActor> = {
   functionType: FunctionType
   functionName: FunctionName<A>
   __label: string
-  __description: string
-  __show_description?: boolean
+  __description?: string
   [key: `arg${number}`]: FieldDetailsWithChild
 }
 
 export interface FieldDetails {
   __label: string
   __type: FieldType
-  __description: string
-  __show_description?: boolean
+  __description?: string
   [key: string]: string | boolean | undefined
 }
 
@@ -44,8 +42,7 @@ export interface FieldDetailsWithChild {
   __checked?: boolean
   __label: string
   __type: FieldType
-  __description: string
-  __show_description?: boolean
+  __description?: string
   optional?: OtherDetails
   vector?: OtherDetails
   [key: string]: string | boolean | undefined | OtherDetails
