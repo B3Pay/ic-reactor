@@ -101,27 +101,27 @@ import { createAgentManager } from "@ic-reactor/core"
 export const agentManager = createAgentManager() // Connects to IC network by default
 ```
 
-Then you can create a reactor for each canister:
+Then you can create a Actor for each canister:
 
 ```typescript
 // Assuming you've already set up `candidA`, `candidB`, and `agentManager`
 import { createActorManager } from "@ic-reactor/core"
-import candidA from "./declarations/candidA"
-import candidB from "./declarations/candidB"
+import * as candidA from "./declarations/candidA"
+import * as candidB from "./declarations/candidB"
 import { agentManager } from "./agent"
 
-type CandidA = typeof candidA
-type CandidB = typeof candidB
+type CandidA = typeof candidA.candidA
+type CandidB = typeof candidB.candidB
 
 const actorA = createActorManager<CandidA>({
   agentManager,
-  canisterId: canisterIdA,
+  canisterId: candidA.canisterId,
   idlFactory: candidA.idlFactory,
 })
 
 const actorB = createActorManager<CandidB>({
   agentManager,
-  canisterId: canisterIdB,
+  canisterId: candidB.canisterId,
   idlFactory: candidB.idlFactory,
 })
 ```
@@ -129,17 +129,16 @@ const actorB = createActorManager<CandidB>({
 You can now use the `actorA` and `actorB` instances to interact with their respective canisters:
 
 ```typescript
-// Example usage with CanisterA calling a method that requires one argument
-const { dataPromise: versionActorA } = actorA.queryCall({
+const { dataPromise: version } = actorA.queryCall({
   functionName: "version",
 })
-console.log("Response from CanisterA method:", await versionActorA)
+console.log("Response from CanisterA method:", await version)
 
-// Example usage with CanisterB calling a different method also with two arguments
-const { dataPromise: versionActorB } = actorB.queryCall({
-  functionName: "version",
+const { dataPromise: balance } = actorB.queryCall({
+  functionName: "balance",
+  args: [principal, []],
 })
-console.log("Response from CanisterB method:", await versionActorB)
+console.log("Response from CanisterB method:", await balance)
 ```
 
 ### Using Candid Adapter
