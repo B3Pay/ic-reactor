@@ -210,48 +210,77 @@ export const actorHooks = <A = BaseActor>(
   const useUpdateCall: UseUpdateCall<A> = useSharedCall
 
   const useMethod: UseMethod<A> = <M extends FunctionName<A>>(
-    args: UseMethodParameters<A, M>
+    params: UseMethodParameters<A, M>
   ): UseMethodReturnType<A, M> => {
     const visit: VisitService<A>[M] = React.useCallback(
       (extractorClass, data) => {
-        if (!visitFunction[args.functionName]) {
-          throw new Error(`Method ${args.functionName} not found`)
+        if (!visitFunction[params.functionName]) {
+          throw new Error(`Method ${params.functionName} not found`)
         }
 
-        return visitFunction[args.functionName](extractorClass, data)
+        return visitFunction[params.functionName](extractorClass, data)
       },
-      [args.functionName]
+      [params.functionName]
     )
 
-    const attributes = methodAttributes[args.functionName]
+    const attributes = React.useMemo(
+      () => methodAttributes[params.functionName],
+      [params.functionName]
+    )
 
-    let refetchOnMount = args.refetchOnMount
-    let refetchInterval = args.refetchInterval
+    const validateArgs = React.useCallback(
+      (
+        args?: ActorMethodParameters<A[M]> | undefined,
+        throwOnError = false
+      ) => {
+        if (attributes.numberOfArgs > 0) {
+          if (args === undefined || args.length === 0) {
+            if (throwOnError) {
+              throw new Error(
+                `Method ${params.functionName} requires ${attributes.numberOfArgs} arguments, but none were provided.`
+              )
+            }
+            return false
+          }
+          try {
+            attributes.validate(args as never)
+            return true
+          } catch (error) {
+            if (throwOnError) {
+              throw error
+            }
+            return false
+          }
+        }
+        return true
+      },
+      [attributes]
+    )
+
+    let refetchOnMount = params.refetchOnMount
+    let refetchInterval = params.refetchInterval
     let formRequired = true
 
     switch (attributes.type) {
       case "query":
-        try {
-          if (attributes.numberOfArgs > 0 && args.args === undefined) {
-            throw new Error("Args required")
-          }
-          attributes.validate((args.args || []) as never)
-          formRequired = args.refetchOnMount === false ? true : false
-        } catch (error) {
+        if (validateArgs(params.args)) {
+          formRequired = params.refetchOnMount === false ? true : false
+        } else {
           refetchOnMount = false
           refetchInterval = false
         }
         return {
           visit,
+          validateArgs,
           ...useQueryCall({
-            ...args,
+            ...params,
             refetchOnMount,
             refetchInterval,
           }),
           formRequired,
         }
       case "update":
-        return { visit, ...useUpdateCall(args), formRequired }
+        return { visit, validateArgs, ...useUpdateCall(params), formRequired }
       default:
         throw new Error(`Method type ${attributes.type} not found`)
     }

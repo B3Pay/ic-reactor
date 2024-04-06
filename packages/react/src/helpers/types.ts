@@ -126,6 +126,7 @@ export interface UseMethodReturnType<
   requestKey: string
   error: Error | undefined
   data: ActorMethodReturnType<A[M]> | undefined
+  validateArgs: (args?: ActorMethodParameters<A[M]> | undefined) => boolean
   visit: VisitService<A>[M]
   reset: () => void
   call: (
