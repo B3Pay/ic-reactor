@@ -1,11 +1,40 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`createReactor should query manually 1`] = `
+exports[`createReactor should have cached 1`] = `
+<span>
+  0.2.0
+</span>
+`;
+
+exports[`createReactor should have refetch 1`] = `
 <div>
   <button
     onClick={[Function]}
   >
     Get Version
+  </button>
+  <button
+    onClick={[Function]}
+  >
+    Reset
+  </button>
+  <span>
+    0.2.0
+  </span>
+</div>
+`;
+
+exports[`createReactor should have refetch 2`] = `
+<div>
+  <button
+    onClick={[Function]}
+  >
+    Get Version
+  </button>
+  <button
+    onClick={[Function]}
+  >
+    Reset
   </button>
   <span>
     Ready To call
@@ -13,12 +42,17 @@ exports[`createReactor should query manually 1`] = `
 </div>
 `;
 
-exports[`createReactor should query manually 2`] = `
+exports[`createReactor should have refetch 3`] = `
 <div>
   <button
     onClick={[Function]}
   >
     Get Version
+  </button>
+  <button
+    onClick={[Function]}
+  >
+    Reset
   </button>
   <span>
     0.2.0

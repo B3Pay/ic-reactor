@@ -3,7 +3,7 @@ import renderer, { act } from "react-test-renderer"
 import { AgentProvider, createActorContext } from "../src"
 
 const { ActorProvider, useQueryCall } = createActorContext({
-  canisterId: "ss2fx-dyaaa-aaaar-qacoq-cai",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
 })
 
 describe("createReactor", () => {
@@ -47,6 +47,7 @@ describe("createReactor", () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 1000))
     })
+
     expect(screen.toJSON()).toMatchSnapshot()
 
     const versionStatus = () => screen.root.findAllByType("span")[0]
