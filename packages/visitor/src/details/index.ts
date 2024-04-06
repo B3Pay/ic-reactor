@@ -8,7 +8,6 @@ import type {
 import { IDL } from "@dfinity/candid"
 import { isQuery } from "../helper"
 import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import { FieldType } from "../types"
 
 /**
  * Visit the candid file and extract the details.
@@ -70,7 +69,6 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
 
     return {
-      __type: "record",
       __label,
       __hidden: false,
       ...fields,
@@ -90,7 +88,6 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
 
     return {
-      __type: "variant",
       __label,
       ...fields,
     }
@@ -110,7 +107,6 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     }, {} as Record<string, FieldDetailsWithChild | FieldDetails>)
 
     return {
-      __type: "tuple",
       __label,
       __hidden: false,
       ...fields,
@@ -131,7 +127,6 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     }
 
     return {
-      __type: "recursive",
       __label,
       __hidden: false,
     }
@@ -144,7 +139,6 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   ): FieldDetailsWithChild {
     const details = ty.accept(this, __label) as FieldDetailsWithChild
     return {
-      __type: "optional",
       __checked: false,
       __label,
       __hidden: false,
@@ -159,45 +153,39 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   ): FieldDetailsWithChild {
     const details = ty.accept(this, __label) as FieldDetailsWithChild
     return {
-      __type: "vector",
       __label,
       vector: details,
     }
   }
 
-  private visiGenericType = <T>(
-    _t: IDL.Type<T>,
-    __type: FieldType,
-    __label: string
-  ): InputDetails => {
+  private visiGenericType = (__label: string): InputDetails => {
     return {
-      __type,
       __label,
     }
   }
 
-  public visitBool(t: IDL.BoolClass, __label: string): InputDetails {
-    return this.visiGenericType(t, "boolean", __label)
+  public visitBool(_t: IDL.BoolClass, __label: string): InputDetails {
+    return this.visiGenericType(__label)
   }
 
-  public visitNull(t: IDL.NullClass, __label: string): InputDetails {
-    return this.visiGenericType(t, "null", __label)
+  public visitNull(_t: IDL.NullClass, __label: string): InputDetails {
+    return this.visiGenericType(__label)
   }
 
-  public visitType<T>(t: IDL.Type<T>, __label: string): InputDetails {
-    return this.visiGenericType(t, "unknown", __label)
+  public visitType<T>(_t: IDL.Type<T>, __label: string): InputDetails {
+    return this.visiGenericType(__label)
   }
 
-  public visitPrincipal(t: IDL.PrincipalClass, __label: string): InputDetails {
-    return this.visiGenericType(t, "principal", __label)
+  public visitPrincipal(_t: IDL.PrincipalClass, __label: string): InputDetails {
+    return this.visiGenericType(__label)
   }
 
-  public visitText(t: IDL.TextClass, label: string): InputDetails {
-    return this.visiGenericType(t, "text", label)
+  public visitText(_t: IDL.TextClass, label: string): InputDetails {
+    return this.visiGenericType(label)
   }
 
-  public visitNumber<T>(t: IDL.Type<T>, __label: string): InputDetails {
-    return this.visiGenericType(t, "number", __label)
+  public visitNumber<T>(_t: IDL.Type<T>, __label: string): InputDetails {
+    return this.visiGenericType(__label)
   }
 
   public visitInt = this.visitNumber

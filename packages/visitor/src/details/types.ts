@@ -3,7 +3,6 @@ import type {
   FunctionName,
   FunctionType,
 } from "@ic-reactor/core/dist/types"
-import type { FieldType } from "../types"
 
 export type FunctionCategory = "home" | "wallet" | "governance" | "setting"
 
@@ -21,7 +20,6 @@ export type MethodDetails<A = BaseActor> = {
 
 export interface FieldDetails {
   __label: string
-  __type: FieldType
   __description?: string
   [key: string]: string | boolean | undefined
 }
@@ -41,7 +39,6 @@ export interface FieldDetailsWithChild {
   __hidden?: boolean
   __checked?: boolean
   __label: string
-  __type: FieldType
   __description?: string
   optional?: OtherDetails
   vector?: OtherDetails

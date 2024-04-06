@@ -258,7 +258,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "number",
       label,
-      defaultValue: 0o00,
+      defaultValue: 0,
     }
   }
 
