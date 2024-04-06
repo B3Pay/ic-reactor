@@ -5,158 +5,150 @@ import type {
   FunctionType,
   Principal,
 } from "@ic-reactor/core/dist/types"
-import type { FieldType } from "../types"
+import type { AllNumberTypes, FieldType } from "../types"
 
-export type ServiceFields<A = BaseActor> = {
-  [K in FunctionName<A>]: MethodFields<A>
+export type ServiceReturns<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodReturns<A>
 }
 
-export interface MethodFields<A = BaseActor> {
+export interface MethodReturns<A = BaseActor> {
   functionName: FunctionName<A>
   functionType: FunctionType
-  fields: AllFieldTypes<IDL.Type>[] | []
-  defaultValues: ServiceDefaultValues<A>
+  fields: AllReturnTypes<IDL.Type>[] | []
+  defaultValues: ReturnDefaultValues<A>
 }
 
-export type ServiceDefaultValues<A = BaseActor> = {
-  [K in FunctionName<A>]: MethodDefaultValues<K>
+export type ReturnDefaultValues<A = BaseActor> = {
+  [K in FunctionName<A>]: ReturnMethodDefaultValues<K>
 }
 
-export type MethodDefaultValues<T = string> = {
-  [key: `ret${number}`]: FieldTypeFromIDLType<T>
+export type ReturnMethodDefaultValues<T = string> = {
+  [key: `ret${number}`]: ReturnTypeFromIDLType<T>
 }
 
-export interface RecordFields<T extends IDL.Type> extends DefaultField {
+export interface RecordReturns<T extends IDL.Type> extends DefaultReturn {
   type: "record"
-  fields: AllFieldTypes<T>[]
-  defaultValues: Record<string, FieldTypeFromIDLType<T>>
+  fields: AllReturnTypes<T>[]
+  defaultValues: Record<string, ReturnTypeFromIDLType<T>>
 }
 
-export interface VariantFields<T extends IDL.Type> extends DefaultField {
+export interface VariantReturns<T extends IDL.Type> extends DefaultReturn {
   type: "variant"
   options: string[]
   defaultValue: string
-  fields: AllFieldTypes<T>[]
-  defaultValues: FieldTypeFromIDLType<T>
+  fields: AllReturnTypes<T>[]
+  defaultValues: ReturnTypeFromIDLType<T>
 }
 
-export interface TupleFields<T extends IDL.Type> extends DefaultField {
+export interface TupleReturns<T extends IDL.Type> extends DefaultReturn {
   type: "tuple"
-  fields: AllFieldTypes<T>[]
-  defaultValues: FieldTypeFromIDLType<T>[]
+  fields: AllReturnTypes<T>[]
+  defaultValues: ReturnTypeFromIDLType<T>[]
 }
 
-export interface OptionalFields extends DefaultField {
+export interface OptionalReturns extends DefaultReturn {
   type: "optional"
-  field: AllFieldTypes<IDL.Type>
-  defaultValue: []
+  field: AllReturnTypes<IDL.Type>
+  defaultValue: [IDL.Type]
 }
 
-export interface VectorFields extends DefaultField {
+export interface VectorReturns extends DefaultReturn {
   type: "vector"
-  field: AllFieldTypes<IDL.Type>
-  defaultValue: []
+  field: AllReturnTypes<IDL.Type>
+  defaultValue: [IDL.Type]
 }
 
-export interface BlobFields extends DefaultField {
+export interface BlobReturns extends DefaultReturn {
   type: "blob"
-  defaultValue: [0, 1, 2, 3, 4, 5]
+  defaultValue: number[]
 }
 
-export interface RecursiveFields extends DefaultField {
+export interface RecursiveReturns extends DefaultReturn {
   type: "recursive"
   name: string
-  extract: () => VariantFields<IDL.Type>
+  extract: () => VariantReturns<IDL.Type>
 }
 
-export interface PrincipalField extends DefaultField {
+export interface PrincipalReturn extends DefaultReturn {
   type: "principal"
   defaultValue: Principal
 }
 
-export interface NumberField extends DefaultField {
+export interface NumberReturn extends DefaultReturn {
   type: "number"
   defaultValue: number
 }
 
-export interface InputField<T extends IDL.Type> extends DefaultField {
-  defaultValue: FieldTypeFromIDLType<T>
+export interface InputReturn<T extends IDL.Type> extends DefaultReturn {
+  defaultValue: ReturnTypeFromIDLType<T>
 }
-export type DynamicFieldType<T extends FieldType> = T extends "record"
-  ? RecordFields<IDL.Type>
+export type DynamicReturnType<T extends FieldType> = T extends "record"
+  ? RecordReturns<IDL.Type>
   : T extends "variant"
-  ? VariantFields<IDL.Type>
+  ? VariantReturns<IDL.Type>
   : T extends "tuple"
-  ? TupleFields<IDL.Type>
+  ? TupleReturns<IDL.Type>
   : T extends "optional"
-  ? OptionalFields
+  ? OptionalReturns
   : T extends "vector"
-  ? VectorFields
+  ? VectorReturns
   : T extends "blob"
-  ? BlobFields
+  ? BlobReturns
   : T extends "recursive"
-  ? RecursiveFields
+  ? RecursiveReturns
   : T extends "unknown"
-  ? InputField<IDL.Type>
+  ? InputReturn<IDL.Type>
   : T extends "text"
-  ? InputField<IDL.TextClass>
+  ? InputReturn<IDL.TextClass>
   : T extends "number"
-  ? NumberField
+  ? NumberReturn
   : T extends "principal"
-  ? PrincipalField
+  ? PrincipalReturn
   : T extends "boolean"
-  ? InputField<IDL.BoolClass>
+  ? InputReturn<IDL.BoolClass>
   : T extends "null"
-  ? InputField<IDL.NullClass>
+  ? InputReturn<IDL.NullClass>
   : never
 
-export type DynamicFieldTypeByClass<T extends IDL.Type> =
+export type DynamicReturnTypeByClass<T extends IDL.Type> =
   T extends IDL.RecordClass
-    ? RecordFields<T>
+    ? RecordReturns<T>
     : T extends IDL.TupleClass<IDL.Type[]>
-    ? TupleFields<T>
+    ? TupleReturns<T>
     : T extends IDL.VariantClass
-    ? VariantFields<T>
+    ? VariantReturns<T>
     : T extends IDL.VecClass<IDL.Type>
-    ? VectorFields
+    ? VectorReturns
     : T extends IDL.OptClass<IDL.Type>
-    ? OptionalFields
+    ? OptionalReturns
     : T extends IDL.RecClass<IDL.Type>
-    ? RecursiveFields
+    ? RecursiveReturns
     : T extends IDL.PrincipalClass
-    ? PrincipalField
+    ? PrincipalReturn
     : T extends AllNumberTypes
-    ? NumberField
-    : InputField<T>
+    ? NumberReturn
+    : InputReturn<T>
 
-export type AllNumberTypes =
-  | IDL.NatClass
-  | IDL.IntClass
-  | IDL.NatClass
-  | IDL.FixedNatClass
-  | IDL.FixedIntClass
-  | IDL.FloatClass
+export type AllReturnTypes<T extends IDL.Type> =
+  | RecordReturns<T>
+  | TupleReturns<T>
+  | VariantReturns<T>
+  | VectorReturns
+  | OptionalReturns
+  | RecursiveReturns
+  | PrincipalReturn
+  | NumberReturn
+  | InputReturn<T>
 
-export type AllFieldTypes<T extends IDL.Type> =
-  | RecordFields<T>
-  | TupleFields<T>
-  | VariantFields<T>
-  | VectorFields
-  | OptionalFields
-  | RecursiveFields
-  | PrincipalField
-  | NumberField
-  | InputField<T>
-
-export type FieldTypeFromIDLType<T> = T extends IDL.Type
+export type ReturnTypeFromIDLType<T> = T extends IDL.Type
   ? ReturnType<T["decodeValue"]>
   : IDL.Type
 
-export interface DefaultField {
+export interface DefaultReturn {
   type: FieldType
   label: string
-  defaultValue?: FieldTypeFromIDLType<IDL.Type>
+  defaultValue?: ReturnTypeFromIDLType<IDL.Type>
   defaultValues?:
-    | FieldTypeFromIDLType<IDL.Type>[]
-    | Record<string, FieldTypeFromIDLType<IDL.Type>>
+    | ReturnTypeFromIDLType<IDL.Type>[]
+    | Record<string, ReturnTypeFromIDLType<IDL.Type>>
 }

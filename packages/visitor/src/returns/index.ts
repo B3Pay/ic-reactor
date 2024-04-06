@@ -1,26 +1,26 @@
 import type {
-  FieldTypeFromIDLType,
-  DefaultField,
-  MethodFields,
-  NumberField,
-  PrincipalField,
-  OptionalFields,
-  RecordFields,
-  RecursiveFields,
-  TupleFields,
-  VariantFields,
-  VectorFields,
-  DynamicFieldTypeByClass,
-  AllFieldTypes,
-  ServiceFields,
-  BlobFields,
-  MethodDefaultValues,
-  InputField,
+  ReturnTypeFromIDLType,
+  DefaultReturn,
+  MethodReturns,
+  NumberReturn,
+  PrincipalReturn,
+  OptionalReturns,
+  RecordReturns,
+  RecursiveReturns,
+  TupleReturns,
+  VariantReturns,
+  VectorReturns,
+  DynamicReturnTypeByClass,
+  AllReturnTypes,
+  ServiceReturns,
+  BlobReturns,
+  ReturnMethodDefaultValues,
+  InputReturn,
 } from "./types"
-import { isQuery } from "../helper"
 import { IDL } from "@dfinity/candid"
 import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import { ServiceDefaultValues } from "./types"
+import { ReturnDefaultValues } from "./types"
+import { isQuery } from "../helper"
 
 /**
  * Visit the candid file and extract the fields.
@@ -29,17 +29,16 @@ import { ServiceDefaultValues } from "./types"
  */
 export class VisitReturns<A = BaseActor> extends IDL.Visitor<
   string,
-  MethodFields<A> | DefaultField | ServiceFields<A>
+  MethodReturns<A> | DefaultReturn | ServiceReturns<A>
 > {
   public visitFunc(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
-  ): MethodFields<A> {
+  ): MethodReturns<A> {
     const functionType = isQuery(t) ? "query" : "update"
-
     const { fields, defaultValue } = t.retTypes.reduce(
       (acc, arg, index) => {
-        const field = arg.accept(this, `ret${index}`) as FieldTypeFromIDLType<
+        const field = arg.accept(this, `ret${index}`) as ReturnTypeFromIDLType<
           typeof arg
         >
 
@@ -51,18 +50,18 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
         return acc
       },
       {
-        fields: [] as DynamicFieldTypeByClass<IDL.Type>[],
-        defaultValue: {} as MethodDefaultValues<FunctionName<A>>,
+        fields: [] as DynamicReturnTypeByClass<IDL.Type>[],
+        defaultValue: {} as ReturnMethodDefaultValues<FunctionName<A>>,
       }
     )
 
     const defaultValues = {
       [functionName]: defaultValue,
-    } as ServiceDefaultValues<A>
+    } as ReturnDefaultValues<A>
 
     return {
-      functionType,
       functionName,
+      functionType,
       defaultValues,
       fields,
     }
@@ -72,10 +71,10 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.RecordClass,
     _fields: Array<[string, IDL.Type]>,
     label: string
-  ): RecordFields<IDL.Type> {
+  ): RecordReturns<IDL.Type> {
     const { fields, defaultValues } = _fields.reduce(
       (acc, [key, type]) => {
-        const field = type.accept(this, key) as AllFieldTypes<typeof type>
+        const field = type.accept(this, key) as AllReturnTypes<typeof type>
 
         acc.fields.push(field)
         acc.defaultValues[key] = field.defaultValue || field.defaultValues
@@ -83,8 +82,8 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
         return acc
       },
       {
-        fields: [] as AllFieldTypes<IDL.Type>[],
-        defaultValues: {} as Record<string, FieldTypeFromIDLType<IDL.Type>>,
+        fields: [] as AllReturnTypes<IDL.Type>[],
+        defaultValues: {} as Record<string, ReturnTypeFromIDLType<IDL.Type>>,
       }
     )
 
@@ -100,10 +99,10 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.VariantClass,
     fields_: Array<[string, IDL.Type]>,
     label: string
-  ): VariantFields<IDL.Type> {
+  ): VariantReturns<IDL.Type> {
     const { fields, options } = fields_.reduce(
       (acc, [key, type]) => {
-        const field = type.accept(this, key) as AllFieldTypes<typeof type>
+        const field = type.accept(this, key) as AllReturnTypes<typeof type>
 
         acc.fields.push(field)
         acc.options.push(key)
@@ -111,7 +110,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
         return acc
       },
       {
-        fields: [] as AllFieldTypes<IDL.Type>[],
+        fields: [] as AllReturnTypes<IDL.Type>[],
         options: [] as string[],
       }
     )
@@ -119,7 +118,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     const defaultValue = options[0]
 
     const defaultValues = {
-      [defaultValue]: fields[0].defaultValue || fields[0].defaultValues || {},
+      [defaultValue]: fields[0].defaultValue ?? fields[0].defaultValues ?? {},
     }
 
     return {
@@ -136,10 +135,10 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.TupleClass<T>,
     components: IDL.Type[],
     label: string
-  ): TupleFields<IDL.Type> {
+  ): TupleReturns<IDL.Type> {
     const { fields, defaultValues } = components.reduce(
       (acc, type, index) => {
-        const field = type.accept(this, `_${index}_`) as AllFieldTypes<
+        const field = type.accept(this, `_${index}_`) as AllReturnTypes<
           typeof type
         >
         acc.fields.push(field)
@@ -148,8 +147,8 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
         return acc
       },
       {
-        fields: [] as AllFieldTypes<IDL.Type>[],
-        defaultValues: [] as FieldTypeFromIDLType<IDL.Type>[],
+        fields: [] as AllReturnTypes<IDL.Type>[],
+        defaultValues: [] as ReturnTypeFromIDLType<IDL.Type>[],
       }
     )
 
@@ -165,12 +164,12 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     label: string
-  ): RecursiveFields {
+  ): RecursiveReturns {
     return {
       type: "recursive",
       label,
       name: ty.name,
-      extract: () => ty.accept(this, label) as VariantFields<IDL.Type>,
+      extract: () => ty.accept(this, label) as VariantReturns<IDL.Type>,
     }
   }
 
@@ -178,13 +177,13 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): OptionalFields {
-    const field = ty.accept(this, label) as DynamicFieldTypeByClass<typeof ty>
+  ): OptionalReturns {
+    const field = ty.accept(this, label) as DynamicReturnTypeByClass<typeof ty>
 
     return {
       type: "optional",
       field,
-      defaultValue: [],
+      defaultValue: [field.defaultValue as never],
       label,
     }
   }
@@ -193,13 +192,13 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): VectorFields | BlobFields {
-    const field = ty.accept(this, label) as DynamicFieldTypeByClass<typeof ty>
+  ): VectorReturns | BlobReturns {
+    const field = ty.accept(this, label) as DynamicReturnTypeByClass<typeof ty>
 
     if ("_bits" in ty && ty._bits === 8) {
       return {
         type: "blob",
-        defaultValue: [0, 1, 2, 3, 4, 5],
+        defaultValue: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
         label,
       }
     }
@@ -207,20 +206,23 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "vector",
       field,
-      defaultValue: [],
+      defaultValue: [field.defaultValue as never],
       label,
     }
   }
 
-  public visitType<T>(_t: IDL.Type<T>, label: string): DefaultField {
+  public visitType<T>(_t: IDL.Type<T>, label: string): DefaultReturn {
     return {
       type: "unknown",
       label,
-      defaultValue: undefined as InputField<IDL.Type<T>>["defaultValue"],
+      defaultValue: undefined as InputReturn<IDL.Type<T>>["defaultValue"],
     }
   }
 
-  public visitPrincipal(_t: IDL.PrincipalClass, label: string): PrincipalField {
+  public visitPrincipal(
+    _t: IDL.PrincipalClass,
+    label: string
+  ): PrincipalReturn {
     return {
       type: "principal",
       label,
@@ -229,7 +231,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitBool(_t: IDL.BoolClass, label: string): DefaultField {
+  public visitBool(_t: IDL.BoolClass, label: string): DefaultReturn {
     return {
       type: "boolean",
       label,
@@ -237,7 +239,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitNull(_t: IDL.NullClass, label: string): DefaultField {
+  public visitNull(_t: IDL.NullClass, label: string): DefaultReturn {
     return {
       type: "null",
       label,
@@ -245,51 +247,51 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitText(_t: IDL.TextClass, label: string): DefaultField {
+  public visitText(_t: IDL.TextClass, label: string): DefaultReturn {
     return {
       type: "text",
       label,
-      defaultValue: "[Text]",
+      defaultValue: "abcdefghij",
     }
   }
 
-  public visitNumber<T>(_t: IDL.Type<T>, label: string): NumberField {
+  public visitNumber<T>(_t: IDL.Type<T>, label: string): NumberReturn {
     return {
       type: "number",
       label,
-      defaultValue: 0,
+      defaultValue: 1234567890,
     }
   }
 
-  public visitInt(t: IDL.IntClass, label: string): NumberField {
+  public visitInt(t: IDL.IntClass, label: string): NumberReturn {
     return this.visitNumber(t, label)
   }
 
-  public visitNat(t: IDL.NatClass, label: string): NumberField {
+  public visitNat(t: IDL.NatClass, label: string): NumberReturn {
     return this.visitNumber(t, label)
   }
 
-  public visitFloat(t: IDL.FloatClass, label: string): NumberField {
+  public visitFloat(t: IDL.FloatClass, label: string): NumberReturn {
     return this.visitNumber(t, label)
   }
 
-  public visitFixedInt(t: IDL.FixedIntClass, label: string): NumberField {
+  public visitFixedInt(t: IDL.FixedIntClass, label: string): NumberReturn {
     return this.visitNumber(t, label)
   }
 
-  public visitFixedNat(t: IDL.FixedNatClass, label: string): NumberField {
+  public visitFixedNat(t: IDL.FixedNatClass, label: string): NumberReturn {
     return this.visitNumber(t, label)
   }
 
-  public visitService(t: IDL.ServiceClass): ServiceFields<A> {
+  public visitService(t: IDL.ServiceClass): ServiceReturns<A> {
     const methodFields = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      acc[functionName] = func.accept(this, functionName) as MethodFields<A>
+      acc[functionName] = func.accept(this, functionName) as MethodReturns<A>
 
       return acc
-    }, {} as ServiceFields<A>)
+    }, {} as ServiceReturns<A>)
 
     return methodFields
   }
