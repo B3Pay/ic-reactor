@@ -60,8 +60,7 @@ export interface VectorFields extends DefaultField {
 
 export interface BlobFields extends DefaultField {
   type: "blob"
-  field: AllFieldTypes<IDL.Type>
-  defaultValue: []
+  defaultValue: [0, 1, 2, 3, 4, 5]
 }
 
 export interface RecursiveFields extends DefaultField {

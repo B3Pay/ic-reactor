@@ -199,8 +199,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     if ("_bits" in ty && ty._bits === 8) {
       return {
         type: "blob",
-        field,
-        defaultValue: [],
+        defaultValue: [0, 1, 2, 3, 4, 5],
         label,
       }
     }
