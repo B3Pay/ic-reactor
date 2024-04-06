@@ -16,7 +16,7 @@ const Login = () => {
       <h2>Login:</h2>
       <div>
         {loginLoading && <div>Loading...</div>}
-        {loginError ? <div>{loginError.message}</div> : null}
+        {loginError ? <div>{loginError}</div> : null}
         {identity && <div>{identity.getPrincipal().toText()}</div>}
       </div>
       {authenticated ? (

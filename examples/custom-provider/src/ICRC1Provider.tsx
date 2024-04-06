@@ -18,6 +18,7 @@ interface ICRC1ActorProps extends PropsWithChildren {
 const ICRC1Provider: React.FC<ICRC1ActorProps> = ({ children, canisterId }) => {
   const { hooks, fetching, fetchError } = useActor<ICRC1>({
     canisterId,
+    withDevtools: true,
   })
 
   return (
