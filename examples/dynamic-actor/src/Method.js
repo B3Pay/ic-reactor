@@ -5,23 +5,24 @@ import { JsonView, defaultStyles } from "react-json-view-lite"
 const renderCounter = new Map()
 
 export const Method = ({ functionName, type }) => {
-  const renderCount = renderCounter.get(functionName) || 0
-
-  const { loading, error, data, call } = useMethod({
+  const { requestKey, loading, error, data, call } = useMethod({
     functionName,
   })
 
-  renderCounter.set(functionName, renderCount + 1)
+  const renderKey = `${functionName}-${requestKey}`
+
+  const renderCount = renderCounter.get(renderKey) || 1
+
+  renderCounter.set(renderKey, renderCount + 1)
 
   return (
-    <pre
-      className="json-view"
-      style={{ textAlign: "left", opacity: loading ? 0.5 : 1 }}
-    >
-      <button onClick={call}>&#x21BB;</button>
+    <pre className="json-view" style={{ textAlign: "left" }}>
+      <div>
+        {functionName}
+        <button onClick={call}>&#x21BB;</button>
+      </div>
       <JsonView
         data={{
-          functionName,
           renderCount,
           loading,
           error,

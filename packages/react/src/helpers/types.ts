@@ -81,6 +81,7 @@ export interface UseSharedCallReturnType<
   A,
   M extends FunctionName<A> = FunctionName<A>
 > extends UseSharedCallState<A, M> {
+  requestKey: string
   reset: () => void
   call: (
     eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
@@ -122,6 +123,7 @@ export interface UseMethodReturnType<
 > {
   loading: boolean
   formRequired: boolean
+  requestKey: string
   error: Error | undefined
   data: ActorMethodReturnType<A[M]> | undefined
   visit: VisitService<A>[M]

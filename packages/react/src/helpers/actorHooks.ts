@@ -72,13 +72,24 @@ export const actorHooks = <A = BaseActor>(
   const useMethodState = <M extends FunctionName<A>>(
     functionName: M,
     requestKey: string
-  ): ActorMethodState<A, M>[string] => {
-    return (
+  ): [
+    ActorMethodState<A, M>[string],
+    (newState: Partial<ActorMethodState<A, M>[string]>) => void
+  ] => {
+    const state =
       useStore(
         actorStore,
         useShallow((state) => state.methodState[functionName]?.[requestKey])
       ) || DEFAULT_STATE
+
+    const setSharedState = React.useCallback(
+      (newState: Partial<ActorMethodState<A, M>[string]>) => {
+        updateMethodState(functionName, requestKey, newState)
+      },
+      [functionName, requestKey]
     )
+
+    return [state, setSharedState]
   }
 
   const useMethodAttributes = <Actor = A>(): MethodAttributes<Actor> => {
@@ -125,21 +136,13 @@ export const actorHooks = <A = BaseActor>(
 
     const requestKey = React.useMemo(() => generateRequestHash(args), [args])
 
-    React.useEffect(() => {
-      updateMethodState(functionName, requestKey, DEFAULT_STATE)
-    }, [functionName, requestKey])
-
-    const sharedState = useMethodState(functionName, requestKey)
+    const [sharedState, setSharedState] = useMethodState(
+      functionName,
+      requestKey
+    )
 
     const reset = React.useCallback(
       () => updateMethodState(functionName, requestKey, DEFAULT_STATE),
-      [functionName, requestKey]
-    )
-
-    const setSharedState = React.useCallback(
-      (newState: Partial<ActorMethodState<A, M>[string]>) => {
-        updateMethodState(functionName, requestKey, newState)
-      },
       [functionName, requestKey]
     )
 
@@ -178,7 +181,7 @@ export const actorHooks = <A = BaseActor>(
       [args, functionName, events]
     )
 
-    return { call, reset, ...sharedState }
+    return { call, reset, requestKey, ...sharedState }
   }
 
   const useQueryCall: UseQueryCall<A> = ({
@@ -194,7 +197,7 @@ export const actorHooks = <A = BaseActor>(
         intervalId.current = setInterval(call, refetchInterval)
       }
 
-      if (refetchOnMount) {
+      if (refetchOnMount && state.data === undefined) {
         call()
       }
 
