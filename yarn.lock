@@ -2082,7 +2082,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
+    "@dfinity/principal": "npm:^1.2"
     "@ic-reactor/core": "npm:^1.4.2"
+  peerDependencies:
+    "@dfinity/principal": ^1.2
+    "@ic-reactor/core": ^1.4.2
   languageName: unknown
   linkType: soft
 
@@ -10968,10 +10972,10 @@ __metadata:
   dependencies:
     "@babel/core": "npm:^7.23.2"
     "@babel/preset-env": "npm:^7.23.2"
-    "@dfinity/agent": "npm:^1.0"
-    "@dfinity/candid": "npm:^1.0"
-    "@dfinity/identity": "npm:^1.0"
-    "@dfinity/principal": "npm:^1.0"
+    "@dfinity/agent": "npm:^1.2"
+    "@dfinity/candid": "npm:^1.2"
+    "@dfinity/identity": "npm:^1.2"
+    "@dfinity/principal": "npm:^1.2"
     "@ic-reactor/core": "npm:*"
     "@ic-reactor/react": "npm:*"
     babel-jest: "npm:^29.7.0"
