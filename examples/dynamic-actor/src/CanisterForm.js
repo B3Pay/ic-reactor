@@ -50,7 +50,7 @@ const CanisterForm = ({ setCanisterId }) => {
       localStorage.setItem("dynamicNetwork", network)
       localStorage.setItem("dynamicCanisterId", principal.toText())
     } catch (e) {
-      console.error(e)
+      throw new Error(e)
     }
   }
   return (
