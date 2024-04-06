@@ -1,4 +1,3 @@
-import "./styles.css"
 import CanisterForm from "./CanisterForm"
 import { useState } from "react"
 import { ActorProvider } from "@ic-reactor/react"
@@ -11,7 +10,7 @@ export default function App() {
     <div className="App">
       <CanisterForm setCanisterId={setCanisterId} />
       {canisterId && (
-        <ActorProvider canisterId={canisterId}>
+        <ActorProvider canisterId={canisterId} withDevtools>
           <Actor />
         </ActorProvider>
       )}

@@ -13,6 +13,7 @@ import type {
   HttpAgent,
   AgentState,
   BaseActor,
+  MethodAttributes,
 } from "@ic-reactor/core/dist/types"
 
 export interface AgentHooksReturnType {
@@ -145,6 +146,7 @@ export interface ActorHooksReturnType<A = BaseActor> {
   useActorState: () => UseActorState
   useActorInterface: () => ServiceClass
   useMethodNames: <Actor = A>() => FunctionName<Actor>[]
+  useMethodAttributes: <Actor = A>() => MethodAttributes<Actor>
   useMethod: UseMethod<A>
   useQueryCall: UseQueryCall<A>
   useUpdateCall: UseUpdateCall<A>

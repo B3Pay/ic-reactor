@@ -1,9 +1,8 @@
-import React from "react"
+import * as React from "react"
 import { useStore } from "zustand"
 import type {
   UseSharedCallState,
   UseSharedCall,
-  UseActorState,
   UseQueryCall,
   UseUpdateCall,
   ActorHooksReturnType,
@@ -18,7 +17,11 @@ import type {
   ActorManager,
   BaseActor,
   IDL,
+  MethodAttributes,
+  ActorMethodState,
 } from "@ic-reactor/core/dist/types"
+import { generateRequestHash } from "../utils"
+import { useShallow } from "zustand/react/shallow"
 
 const DEFAULT_STATE: UseSharedCallState<never, never> = {
   data: undefined,
@@ -48,16 +51,42 @@ export const actorHooks = <A = BaseActor>(
     canisterId,
     visitFunction,
     methodAttributes,
+    updateMethodState,
     extractMethodAttributes,
     extractInterface,
     callMethod,
     initialize,
   } = actorManager
 
-  const useActorState = (): UseActorState => ({
-    ...useStore(actorStore),
-    canisterId,
-  })
+  const useActorState = () =>
+    useStore(
+      actorStore,
+      useShallow((state) => ({
+        error: state.error,
+        initialized: state.initialized,
+        initializing: state.initializing,
+        canisterId,
+      }))
+    )
+
+  const useMethodState = <M extends FunctionName<A>>(
+    functionName: M,
+    requestKey: string
+  ): ActorMethodState<A, M>[string] => {
+    return (
+      useStore(
+        actorStore,
+        useShallow((state) => state.methodState[functionName]?.[requestKey])
+      ) || DEFAULT_STATE
+    )
+  }
+
+  const useMethodAttributes = <Actor = A>(): MethodAttributes<Actor> => {
+    return React.useMemo(
+      extractMethodAttributes,
+      []
+    ) as unknown as MethodAttributes<Actor>
+  }
 
   const useMethodNames = <Actor = A>(): FunctionName<Actor>[] => {
     return React.useMemo(
@@ -93,16 +122,32 @@ export const actorHooks = <A = BaseActor>(
     ...events
   }) => {
     type M = typeof functionName
-    const [sharedState, setSharedState] =
-      React.useState<UseSharedCallState<A, M>>(DEFAULT_STATE)
 
-    const reset = React.useCallback(() => setSharedState(DEFAULT_STATE), [])
+    const requestKey = React.useMemo(() => generateRequestHash(args), [args])
+
+    React.useEffect(() => {
+      updateMethodState(functionName, requestKey, DEFAULT_STATE)
+    }, [functionName, requestKey])
+
+    const sharedState = useMethodState(functionName, requestKey)
+
+    const reset = React.useCallback(
+      () => updateMethodState(functionName, requestKey, DEFAULT_STATE),
+      [functionName, requestKey]
+    )
+
+    const setSharedState = React.useCallback(
+      (newState: Partial<ActorMethodState<A, M>[string]>) => {
+        updateMethodState(functionName, requestKey, newState)
+      },
+      [functionName, requestKey]
+    )
 
     const call = React.useCallback(
       async (
         eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
       ) => {
-        setSharedState((prev) => ({ ...prev, error: undefined, loading: true }))
+        setSharedState({ error: undefined, loading: true })
         events?.onLoading?.(true)
 
         try {
@@ -120,11 +165,10 @@ export const actorHooks = <A = BaseActor>(
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error("Error in call:", error)
-          setSharedState((prevState) => ({
-            ...prevState,
+          setSharedState({
             error: error as Error,
             loading: false,
-          }))
+          })
           events?.onError?.(error as Error)
           events?.onLoading?.(false)
 
@@ -165,7 +209,16 @@ export const actorHooks = <A = BaseActor>(
   const useMethod: UseMethod<A> = <M extends FunctionName<A>>(
     args: UseMethodParameters<A, M>
   ): UseMethodReturnType<A, M> => {
-    const visit = useVisitMethod(args.functionName)
+    const visit: VisitService<A>[M] = React.useCallback(
+      (extractorClass, data) => {
+        if (!visitFunction[args.functionName]) {
+          throw new Error(`Method ${args.functionName} not found`)
+        }
+
+        return visitFunction[args.functionName](extractorClass, data)
+      },
+      [args.functionName]
+    )
 
     const attributes = methodAttributes[args.functionName]
 
@@ -203,8 +256,9 @@ export const actorHooks = <A = BaseActor>(
 
   return {
     initialize,
-    useMethod,
+    useMethodAttributes,
     useMethodNames,
+    useMethod,
     useQueryCall,
     useUpdateCall,
     useActorState,
