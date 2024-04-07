@@ -29,7 +29,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     const argFields = t.argTypes.reduce((acc, arg, index) => {
       acc[`arg${index}`] = arg.accept(
         this,
-        `arg${index}`
+        `__arg${index}`
       ) as FieldDetailsWithChild
 
       return acc
@@ -38,7 +38,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     const retFields = t.retTypes.reduce((acc, ret, index) => {
       acc[`ret${index}`] = ret.accept(
         this,
-        `ret${index}`
+        `__ret${index}`
       ) as FieldDetailsWithChild
 
       return acc
@@ -70,7 +70,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __hidden: false,
+      __hidden: /^__arg|^__ret/.test(__label),
       ...fields,
     }
   }
