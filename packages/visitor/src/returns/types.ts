@@ -3,7 +3,6 @@ import type {
   BaseActor,
   FunctionName,
   FunctionType,
-  Principal,
 } from "@ic-reactor/core/dist/types"
 import type { AllNumberTypes, FieldType } from "../types"
 
@@ -15,7 +14,6 @@ export interface MethodReturns<A = BaseActor> {
   functionName: FunctionName<A>
   functionType: FunctionType
   fields: AllReturnTypes<IDL.Type>[] | []
-  defaultValues: ReturnDefaultValues<A>
   transformData: (data: unknown | unknown[]) => ReturnDefaultValues<A>
 }
 
@@ -30,38 +28,32 @@ export type ReturnMethodDefaultValues<T = string> = {
 export interface RecordReturns<T extends IDL.Type> extends DefaultReturn {
   type: "record"
   fields: AllReturnTypes<T>[]
-  defaultValues: Record<string, ReturnTypeFromIDLType<T>>
 }
 
 export interface VariantReturns<T extends IDL.Type> extends DefaultReturn {
   type: "variant"
   options: string[]
-  defaultValue: string
+  selected: string
   fields: AllReturnTypes<T>[]
-  defaultValues: ReturnTypeFromIDLType<T>
 }
 
 export interface TupleReturns<T extends IDL.Type> extends DefaultReturn {
   type: "tuple"
   fields: AllReturnTypes<T>[]
-  defaultValues: ReturnTypeFromIDLType<T>[]
 }
 
 export interface OptionalReturns extends DefaultReturn {
   type: "optional"
   field: AllReturnTypes<IDL.Type>
-  defaultValue: [IDL.Type]
 }
 
 export interface VectorReturns extends DefaultReturn {
   type: "vector"
   field: AllReturnTypes<IDL.Type>
-  defaultValue: [IDL.Type]
 }
 
 export interface BlobReturns extends DefaultReturn {
   type: "blob"
-  defaultValue: number[]
 }
 
 export interface RecursiveReturns extends DefaultReturn {
@@ -72,17 +64,14 @@ export interface RecursiveReturns extends DefaultReturn {
 
 export interface PrincipalReturn extends DefaultReturn {
   type: "principal"
-  defaultValue: Principal
 }
 
 export interface NumberReturn extends DefaultReturn {
   type: "number"
-  defaultValue: number
 }
 
-export interface InputReturn<T extends IDL.Type> extends DefaultReturn {
-  defaultValue: ReturnTypeFromIDLType<T>
-}
+export interface InputReturn extends DefaultReturn {}
+
 export type DynamicReturnType<T extends FieldType> = T extends "record"
   ? RecordReturns<IDL.Type>
   : T extends "variant"
@@ -98,17 +87,17 @@ export type DynamicReturnType<T extends FieldType> = T extends "record"
   : T extends "recursive"
   ? RecursiveReturns
   : T extends "unknown"
-  ? InputReturn<IDL.Type>
+  ? InputReturn
   : T extends "text"
-  ? InputReturn<IDL.TextClass>
+  ? InputReturn
   : T extends "number"
   ? NumberReturn
   : T extends "principal"
   ? PrincipalReturn
   : T extends "boolean"
-  ? InputReturn<IDL.BoolClass>
+  ? InputReturn
   : T extends "null"
-  ? InputReturn<IDL.NullClass>
+  ? InputReturn
   : never
 
 export type DynamicReturnTypeByClass<T extends IDL.Type> =
@@ -128,7 +117,7 @@ export type DynamicReturnTypeByClass<T extends IDL.Type> =
     ? PrincipalReturn
     : T extends AllNumberTypes
     ? NumberReturn
-    : InputReturn<T>
+    : InputReturn
 
 export type AllReturnTypes<T extends IDL.Type> =
   | RecordReturns<T>
@@ -139,7 +128,7 @@ export type AllReturnTypes<T extends IDL.Type> =
   | RecursiveReturns
   | PrincipalReturn
   | NumberReturn
-  | InputReturn<T>
+  | InputReturn
 
 export type ReturnTypeFromIDLType<T> = T extends IDL.Type
   ? ReturnType<T["decodeValue"]>
@@ -148,8 +137,4 @@ export type ReturnTypeFromIDLType<T> = T extends IDL.Type
 export interface DefaultReturn {
   type: FieldType
   label: string
-  defaultValue?: ReturnTypeFromIDLType<IDL.Type>
-  defaultValues?:
-    | ReturnTypeFromIDLType<IDL.Type>[]
-    | Record<string, ReturnTypeFromIDLType<IDL.Type>>
 }

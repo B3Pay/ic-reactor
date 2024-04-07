@@ -14,14 +14,11 @@ import type {
   AllReturnTypes,
   ServiceReturns,
   BlobReturns,
-  ReturnMethodDefaultValues,
-  InputReturn,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
 import { ReturnDefaultValues } from "./types"
 import { isQuery } from "../helper"
-import { Principal } from "@dfinity/principal"
 
 /**
  * Visit the candid file and extract the fields.
@@ -37,7 +34,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     functionName: FunctionName<A>
   ): MethodReturns<A> {
     const functionType = isQuery(t) ? "query" : "update"
-    const { fields, defaultValue } = t.retTypes.reduce(
+    const { fields } = t.retTypes.reduce(
       (acc, arg, index) => {
         const field = arg.accept(this, `ret${index}`) as ReturnTypeFromIDLType<
           typeof arg
@@ -45,20 +42,12 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
 
         acc.fields.push(field)
 
-        acc.defaultValue[`ret${index}`] =
-          field.defaultValue ?? field.defaultValues
-
         return acc
       },
       {
         fields: [] as DynamicReturnTypeByClass<IDL.Type>[],
-        defaultValue: {} as ReturnMethodDefaultValues<FunctionName<A>>,
       }
     )
-
-    const defaultValues = {
-      [functionName]: defaultValue,
-    } as ReturnDefaultValues<A>
 
     const transformData = (
       data: unknown | unknown[]
@@ -83,7 +72,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       functionName,
       functionType,
-      defaultValues,
       transformData,
       fields,
     }
@@ -94,12 +82,11 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _fields: Array<[string, IDL.Type]>,
     label: string
   ): RecordReturns<IDL.Type> {
-    const { fields, defaultValues } = _fields.reduce(
+    const { fields } = _fields.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllReturnTypes<typeof type>
 
         acc.fields.push(field)
-        acc.defaultValues[key] = field.defaultValue ?? field.defaultValues
 
         return acc
       },
@@ -113,7 +100,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
       type: "record",
       label,
       fields,
-      defaultValues,
     }
   }
 
@@ -137,19 +123,12 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
       }
     )
 
-    const defaultValue = options[0]
-
-    const defaultValues = {
-      [defaultValue]: fields[0].defaultValue ?? fields[0].defaultValues,
-    }
-
     return {
       type: "variant",
       fields,
       options,
+      selected: options[0],
       label,
-      defaultValue,
-      defaultValues,
     }
   }
 
@@ -158,13 +137,12 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     components: IDL.Type[],
     label: string
   ): TupleReturns<IDL.Type> {
-    const { fields, defaultValues } = components.reduce(
+    const { fields } = components.reduce(
       (acc, type, index) => {
         const field = type.accept(this, `_${index}_`) as AllReturnTypes<
           typeof type
         >
         acc.fields.push(field)
-        acc.defaultValues.push(field.defaultValue || field.defaultValues)
 
         return acc
       },
@@ -178,7 +156,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
       type: "tuple",
       fields,
       label,
-      defaultValues,
     }
   }
 
@@ -205,7 +182,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "optional",
       field,
-      defaultValue: [field.defaultValue as never],
       label,
     }
   }
@@ -220,7 +196,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     if ("_bits" in ty && ty._bits === 8) {
       return {
         type: "blob",
-        defaultValue: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
+
         label,
       }
     }
@@ -228,7 +204,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "vector",
       field,
-      defaultValue: [(field.defaultValue ?? field.defaultValues) as never],
       label,
     }
   }
@@ -237,7 +212,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "unknown",
       label,
-      defaultValue: undefined as InputReturn<IDL.Type<T>>["defaultValue"],
     }
   }
 
@@ -248,7 +222,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "principal",
       label,
-      defaultValue: Principal.managementCanister(),
     }
   }
 
@@ -256,7 +229,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "boolean",
       label,
-      defaultValue: false,
     }
   }
 
@@ -264,7 +236,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "null",
       label,
-      defaultValue: null,
     }
   }
 
@@ -272,7 +243,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "text",
       label,
-      defaultValue: "abcdefghij",
     }
   }
 
@@ -280,7 +250,6 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "number",
       label,
-      defaultValue: 1234567890,
     }
   }
 
