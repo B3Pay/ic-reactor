@@ -21,6 +21,7 @@ import { IDL } from "@dfinity/candid"
 import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
 import { ReturnDefaultValues } from "./types"
 import { isQuery } from "../helper"
+import { Principal } from "@dfinity/principal"
 
 /**
  * Visit the candid file and extract the fields.
@@ -45,7 +46,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
         acc.fields.push(field)
 
         acc.defaultValue[`ret${index}`] =
-          field.defaultValue ?? field.defaultValues ?? {}
+          field.defaultValue ?? field.defaultValues
 
         return acc
       },
@@ -62,21 +63,21 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     const transformData = (
       data: unknown | unknown[]
     ): ReturnDefaultValues<A> => {
-      if (!Array.isArray(data)) {
+      if (t.retTypes.length === 1) {
         return {
           [functionName]: {
             ret0: data,
-          },
-        } as unknown as ReturnDefaultValues<A>
+          } as Record<`ret${number}`, unknown>,
+        } as ReturnDefaultValues<A>
       }
 
       const returnData = t.argTypes.reduce((acc, _, index) => {
-        acc[`ret${index}`] = data[index]
+        acc[`ret${index}`] = (data as unknown[])[index]
 
         return acc
-      }, {} as Record<`ret${number}`, ReturnTypeFromIDLType<IDL.Type>>)
+      }, {} as Record<`ret${number}`, unknown>)
 
-      return { [functionName]: returnData } as unknown as ReturnDefaultValues<A>
+      return { [functionName]: returnData } as ReturnDefaultValues<A>
     }
 
     return {
@@ -98,7 +99,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
         const field = type.accept(this, key) as AllReturnTypes<typeof type>
 
         acc.fields.push(field)
-        acc.defaultValues[key] = field.defaultValue || field.defaultValues
+        acc.defaultValues[key] = field.defaultValue ?? field.defaultValues
 
         return acc
       },
@@ -139,7 +140,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     const defaultValue = options[0]
 
     const defaultValues = {
-      [defaultValue]: fields[0].defaultValue ?? fields[0].defaultValues ?? {},
+      [defaultValue]: fields[0].defaultValue ?? fields[0].defaultValues,
     }
 
     return {
@@ -227,7 +228,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "vector",
       field,
-      defaultValue: [field.defaultValue as never],
+      defaultValue: [(field.defaultValue ?? field.defaultValues) as never],
       label,
     }
   }
@@ -247,8 +248,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return {
       type: "principal",
       label,
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      defaultValue: require("@dfinity/principal").Principal.anonymous(),
+      defaultValue: Principal.managementCanister(),
     }
   }
 
