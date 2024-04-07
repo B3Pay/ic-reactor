@@ -10,7 +10,7 @@ import { createAgentManager } from "./createAgentManager"
  * It also creates a new actor manager with the given options.
  *
  * @category Main
- * @includeExample ./packages/core/README.md:200-226
+ * @includeExample ./packages/core/README.md:200-225
  */
 export const createReactorStore = <A = BaseActor>(
   config: CreateReactorStoreParameters
