@@ -18,7 +18,12 @@ import type {
   ServiceDefaultValues,
   BlobFields,
 } from "./types"
-import { isQuery, validateError, validateNumberError } from "../helper"
+import {
+  extractAndSortArgs,
+  isQuery,
+  validateError,
+  validateNumberError,
+} from "../helper"
 import { IDL } from "@dfinity/candid"
 import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
 
@@ -60,10 +65,32 @@ export class VisitFields<A = BaseActor> extends IDL.Visitor<
       [functionName]: defaultValue,
     } as ServiceDefaultValues<A>
 
+    const validateAndReturnArgs = (data: ServiceDefaultValues<A>) => {
+      const argsObject = data[functionName]
+      const args = extractAndSortArgs(argsObject)
+
+      let errorMessages = ""
+
+      const isValid = args.some((arg, i) => {
+        const validateArg = fields[i]?.validate(arg)
+        if (typeof validateArg === "string") {
+          errorMessages = validateArg
+          return false
+        }
+        return true
+      })
+
+      if (isValid === true) {
+        return args
+      } else {
+        throw new Error(errorMessages)
+      }
+    }
+
     return {
       functionType,
       functionName,
-      validate: validateError(t),
+      validateAndReturnArgs,
       defaultValues,
       fields,
     }

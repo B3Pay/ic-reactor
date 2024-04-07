@@ -14,7 +14,9 @@ export interface MethodFields<A = BaseActor> {
   functionName: FunctionName<A>
   functionType: FunctionType
   fields: AllFieldTypes<IDL.Type>[] | []
-  validate: (value: FieldTypeFromIDLType<IDL.Type>) => boolean | string
+  validateAndReturnArgs: (
+    data: ServiceDefaultValues<A>
+  ) => ServiceDefaultValues<A>[FunctionName<A>][keyof ServiceDefaultValues<A>[FunctionName<A>]][]
   defaultValues: ServiceDefaultValues<A>
 }
 

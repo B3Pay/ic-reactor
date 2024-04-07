@@ -59,10 +59,31 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
       [functionName]: defaultValue,
     } as ReturnDefaultValues<A>
 
+    const transformData = (
+      data: unknown | unknown[]
+    ): ReturnDefaultValues<A> => {
+      if (!Array.isArray(data)) {
+        return {
+          [functionName]: {
+            ret0: data,
+          },
+        } as unknown as ReturnDefaultValues<A>
+      }
+
+      const returnData = t.argTypes.reduce((acc, _, index) => {
+        acc[`ret${index}`] = data[index]
+
+        return acc
+      }, {} as Record<`ret${number}`, ReturnTypeFromIDLType<IDL.Type>>)
+
+      return { [functionName]: returnData } as unknown as ReturnDefaultValues<A>
+    }
+
     return {
       functionName,
       functionType,
       defaultValues,
+      transformData,
       fields,
     }
   }

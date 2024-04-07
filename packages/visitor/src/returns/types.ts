@@ -16,6 +16,7 @@ export interface MethodReturns<A = BaseActor> {
   functionType: FunctionType
   fields: AllReturnTypes<IDL.Type>[] | []
   defaultValues: ReturnDefaultValues<A>
+  transformData: (data: unknown | unknown[]) => ReturnDefaultValues<A>
 }
 
 export type ReturnDefaultValues<A = BaseActor> = {
