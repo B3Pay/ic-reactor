@@ -19,7 +19,7 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
     this.height = 10
     t.argTypes.forEach((arg, index) => {
       this.height += 4
-      arg.accept(this, `arg${index}`)
+      arg.accept(this, `__arg${index}`)
     })
 
     return this.height + 4

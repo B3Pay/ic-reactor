@@ -1,11 +1,6 @@
-import type { IDL } from "@dfinity/candid"
-import type {
-  BaseActor,
-  FunctionName,
-  FunctionType,
-} from "@ic-reactor/core/dist/types"
-import type { AllReturnTypes, ReturnMethodFieldValues } from "./returns/types"
-import type { AllArgTypes, ArgsDefaultValues } from "./args/types"
+import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
+import type { MethodReturns } from "./returns/types"
+import type { MethodArgs } from "./args/types"
 
 export * from "./args/types"
 export * from "./returns/types"
@@ -14,14 +9,13 @@ export type ServiceFields<A = BaseActor> = {
   [K in FunctionName<A>]: MethodFields<A>
 }
 
-export interface MethodFields<A = BaseActor> {
-  functionName: FunctionName<A>
-  functionType: FunctionType
-  argFields: AllArgTypes<IDL.Type>[] | []
-  retFields: AllReturnTypes<IDL.Type>[] | []
-  transformData: (data: unknown | unknown[]) => ReturnMethodFieldValues<A>
-  validateAndReturnArgs: (
-    data: ArgsDefaultValues<A>
-  ) => ArgsDefaultValues<A>[FunctionName<A>][keyof ArgsDefaultValues<A>[FunctionName<A>]][]
-  defaultValues: ArgsDefaultValues<A>
+export interface MethodFields<A = BaseActor>
+  extends Omit<MethodArgs<A>, "fields" | "defaultValues">,
+    Omit<MethodReturns<A>, "fields" | "defaultValues"> {
+  argFields: MethodArgs<A>["fields"]
+  defaultValues: {
+    args: MethodArgs<A>["defaultValues"]
+    rets: MethodReturns<A>["defaultValues"]
+  }
+  retFields: MethodReturns<A>["fields"]
 }

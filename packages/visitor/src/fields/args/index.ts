@@ -15,7 +15,6 @@ import type {
   DynamicArgTypeByClass,
   AllArgTypes,
   ServiceArgs,
-  ArgsDefaultValues,
   BlobArgs,
 } from "./types"
 import {
@@ -42,32 +41,27 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
   ): MethodArgs<A> {
     const functionType = isQuery(t) ? "query" : "update"
 
-    const { fields, defaultValue } = t.argTypes.reduce(
+    const { fields, defaultValues } = t.argTypes.reduce(
       (acc, arg, index) => {
-        const field = arg.accept(this, `arg${index}`) as ArgTypeFromIDLType<
+        const field = arg.accept(this, `__arg${index}`) as ArgTypeFromIDLType<
           typeof arg
         >
 
         acc.fields.push(field)
 
-        acc.defaultValue[`arg${index}`] =
+        acc.defaultValues[`arg${index}`] =
           field.defaultValue ?? field.defaultValues ?? {}
 
         return acc
       },
       {
         fields: [] as DynamicArgTypeByClass<IDL.Type>[],
-        defaultValue: {} as MethodArgsDefaultValues<FunctionName<A>>,
+        defaultValues: {} as MethodArgsDefaultValues<FunctionName<A>>,
       }
     )
 
-    const defaultValues = {
-      [functionName]: defaultValue,
-    } as ArgsDefaultValues<A>
-
-    const validateAndReturnArgs = (data: ArgsDefaultValues<A>) => {
-      const argsObject = data[functionName]
-      const args = extractAndSortArgs(argsObject)
+    const validateAndReturnArgs = (data: MethodArgsDefaultValues<A>) => {
+      const args = extractAndSortArgs(data)
 
       let errorMessages = ""
 

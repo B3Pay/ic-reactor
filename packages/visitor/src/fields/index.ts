@@ -18,16 +18,27 @@ export class VisitFields<A = BaseActor> extends IDL.Visitor<
     t: IDL.FuncClass,
     functionName: FunctionName<A>
   ): MethodFields<A> {
-    const { fields: argFields, ...restArgs } = this.argsVisitor.visitFunc(
-      t,
-      functionName
-    )
-    const { fields: retFields, ...restRets } = this.returnsVisitor.visitFunc(
-      t,
-      functionName
-    )
+    const {
+      fields: argFields,
+      defaultValues: argDefaultValues,
+      ...restArgs
+    } = this.argsVisitor.visitFunc(t, functionName)
+    const {
+      fields: retFields,
+      defaultValues: retDefaultValues,
+      ...restRets
+    } = this.returnsVisitor.visitFunc(t, functionName)
 
-    return { retFields, argFields, ...restArgs, ...restRets }
+    return {
+      argFields,
+      retFields,
+      defaultValues: {
+        args: argDefaultValues,
+        rets: retDefaultValues,
+      },
+      ...restRets,
+      ...restArgs,
+    }
   }
 
   public visitService(t: IDL.ServiceClass): ServiceFields<A> {

@@ -14,14 +14,11 @@ export interface MethodReturns<A = BaseActor> {
   functionName: FunctionName<A>
   functionType: FunctionType
   fields: AllReturnTypes<IDL.Type>[] | []
-  transformData: (data: unknown) => ReturnMethodValues<A>
+  defaultValues: MethodReturnValues<FunctionName<A>>
+  transformData: (data: unknown) => MethodReturnValues<FunctionName<A>>
 }
 
-export type ReturnMethodValues<A = BaseActor> = {
-  [K in FunctionName<A>]: ReturnMethodFieldValues<K>
-}
-
-export type ReturnMethodFieldValues<T = string> = {
+export type MethodReturnValues<T = string> = {
   [key: `ret${number}`]: ReturnTypeFromIDLType<T>
 }
 

@@ -14,7 +14,7 @@ import type {
   AllReturnTypes,
   ServiceReturns,
   BlobReturns,
-  ReturnMethodValues,
+  MethodReturnValues,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
@@ -34,44 +34,44 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     functionName: FunctionName<A>
   ): MethodReturns<A> {
     const functionType = isQuery(t) ? "query" : "update"
-    const { fields } = t.retTypes.reduce(
-      (acc, arg, index) => {
-        const field = arg.accept(this, `ret${index}`) as ReturnTypeFromIDLType<
-          typeof arg
-        >
+    const { fields, defaultValues } = t.retTypes.reduce(
+      (acc, ret, index) => {
+        const field = ret.accept(
+          this,
+          `__ret${index}`
+        ) as ReturnTypeFromIDLType<typeof ret>
 
         acc.fields.push(field)
+        acc.defaultValues[`ret${index}`] = undefined as ReturnTypeFromIDLType<
+          typeof ret
+        >
 
         return acc
       },
       {
         fields: [] as DynamicReturnTypeByClass<IDL.Type>[],
+        defaultValues: {} as MethodReturnValues<FunctionName<A>>,
       }
     )
 
-    const transformData = (
-      data: unknown | unknown[]
-    ): ReturnMethodValues<A> => {
+    const transformData = (data: unknown | unknown[]): MethodReturnValues => {
       if (t.retTypes.length === 1) {
         return {
-          [functionName]: {
-            ret0: data,
-          } as Record<`ret${number}`, unknown>,
-        } as ReturnMethodValues<A>
+          ret0: data,
+        } as MethodReturnValues
       }
 
-      const returnData = t.argTypes.reduce((acc, _, index) => {
-        acc[`ret${index}`] = (data as unknown[])[index]
+      return t.argTypes.reduce((acc, _, index) => {
+        acc[`ret${index}`] = (data as ReturnTypeFromIDLType<IDL.Type>[])[index]
 
         return acc
-      }, {} as Record<`ret${number}`, unknown>)
-
-      return { [functionName]: returnData } as ReturnMethodValues<A>
+      }, {} as MethodReturnValues)
     }
 
     return {
       functionName,
       functionType,
+      defaultValues,
       transformData,
       fields,
     }

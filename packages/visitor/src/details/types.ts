@@ -15,7 +15,8 @@ export type MethodDetails<A = BaseActor> = {
   functionName: FunctionName<A>
   __label: string
   __description?: string
-  [key: `arg${number}`]: FieldDetailsWithChild
+  args: { [key: `arg${number}`]: FieldDetailsWithChild }
+  rets: { [key: `ret${number}`]: FieldDetailsWithChild }
 }
 
 export interface FieldDetails {

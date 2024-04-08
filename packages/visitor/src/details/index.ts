@@ -50,8 +50,8 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       functionName,
       functionType,
       __label: functionName,
-      ...argFields,
-      ...retFields,
+      args: argFields,
+      rets: retFields,
     }
   }
 
