@@ -1,7 +1,7 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
 import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import type { ServiceDefaultValues } from "../types"
+import type { ArgsDefaultValues } from "../types"
 
 /**
  * Visit the candid file and extract the fields.
@@ -15,7 +15,7 @@ export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
   public visitFunc(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
-  ): ServiceDefaultValues<A> {
+  ): ArgsDefaultValues<A> {
     const defaultValue = t.argTypes.reduce((acc, type, index) => {
       acc[`arg${index}`] = type.accept(this, false)
 
@@ -26,7 +26,7 @@ export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
       [functionName]: defaultValue,
     }
 
-    return result as ServiceDefaultValues<A>
+    return result as ArgsDefaultValues<A>
   }
 
   public visitRecord(

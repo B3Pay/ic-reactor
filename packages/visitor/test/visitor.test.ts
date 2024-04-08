@@ -5,7 +5,7 @@ import {
   VisitRandomArgs,
   VisitTransform,
   VisitLayouts,
-  VisitReturns,
+  VisitFields,
 } from "../src"
 import { b3wallet, idlFactory } from "./candid/b3wallet"
 import { ServiceDetails } from "../src/types"
@@ -38,17 +38,17 @@ describe("createReactorStore", () => {
 
   const visitedDetail = () => {
     const fieldsVisitor = new VisitDetails()
-    return visitFunction.get_account_views(fieldsVisitor)
+    return visitFunction.account_create(fieldsVisitor)
   }
 
-  const visitedReturns = () => {
-    const fieldsVisitor = new VisitReturns()
-    return visitFunction.get_account_views(fieldsVisitor)
+  const visitedFields = () => {
+    const fieldsVisitor = new VisitFields()
+    return visitFunction.account_swap_btc_to_ckbtc(fieldsVisitor)
   }
 
   it("should visitFunction", () => {
     // console.log(jsonToString(visitedTransform()))
-    console.log(jsonToString(visitedReturns()))
+    console.log(jsonToString(visitedFields()))
 
     // const args = visitFunction.get_app(new VisitRandomArgs<B3Wallet>())
     // console.log(args)

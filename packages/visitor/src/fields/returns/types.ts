@@ -4,7 +4,7 @@ import type {
   FunctionName,
   FunctionType,
 } from "@ic-reactor/core/dist/types"
-import type { AllNumberTypes, FieldType } from "../types"
+import type { AllNumberTypes, FieldType } from "../../types"
 
 export type ServiceReturns<A = BaseActor> = {
   [K in FunctionName<A>]: MethodReturns<A>
@@ -14,14 +14,14 @@ export interface MethodReturns<A = BaseActor> {
   functionName: FunctionName<A>
   functionType: FunctionType
   fields: AllReturnTypes<IDL.Type>[] | []
-  transformData: (data: unknown | unknown[]) => ReturnDefaultValues<A>
+  transformData: (data: unknown) => ReturnMethodValues<A>
 }
 
-export type ReturnDefaultValues<A = BaseActor> = {
-  [K in FunctionName<A>]: ReturnMethodDefaultValues<K>
+export type ReturnMethodValues<A = BaseActor> = {
+  [K in FunctionName<A>]: ReturnMethodFieldValues<K>
 }
 
-export type ReturnMethodDefaultValues<T = string> = {
+export type ReturnMethodFieldValues<T = string> = {
   [key: `ret${number}`]: ReturnTypeFromIDLType<T>
 }
 

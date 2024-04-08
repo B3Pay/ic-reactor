@@ -14,11 +14,11 @@ import type {
   AllReturnTypes,
   ServiceReturns,
   BlobReturns,
+  ReturnMethodValues,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import { ReturnDefaultValues } from "./types"
-import { isQuery } from "../helper"
+import { isQuery } from "../../helper"
 
 /**
  * Visit the candid file and extract the fields.
@@ -51,13 +51,13 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
 
     const transformData = (
       data: unknown | unknown[]
-    ): ReturnDefaultValues<A> => {
+    ): ReturnMethodValues<A> => {
       if (t.retTypes.length === 1) {
         return {
           [functionName]: {
             ret0: data,
           } as Record<`ret${number}`, unknown>,
-        } as ReturnDefaultValues<A>
+        } as ReturnMethodValues<A>
       }
 
       const returnData = t.argTypes.reduce((acc, _, index) => {
@@ -66,7 +66,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
         return acc
       }, {} as Record<`ret${number}`, unknown>)
 
-      return { [functionName]: returnData } as ReturnDefaultValues<A>
+      return { [functionName]: returnData } as ReturnMethodValues<A>
     }
 
     return {

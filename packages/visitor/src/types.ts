@@ -1,6 +1,7 @@
+import { IDL } from "@ic-reactor/core/dist/types"
+
 export * from "./transform/types"
 export * from "./fields/types"
-export * from "./returns/types"
 export * from "./details/types"
 
 export type FieldType =
@@ -17,3 +18,11 @@ export type FieldType =
   | "principal"
   | "boolean"
   | "null"
+
+export type AllNumberTypes =
+  | IDL.NatClass
+  | IDL.IntClass
+  | IDL.NatClass
+  | IDL.FixedNatClass
+  | IDL.FixedIntClass
+  | IDL.FloatClass
