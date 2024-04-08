@@ -15,8 +15,8 @@ export interface MethodArgs<A = BaseActor> {
   functionType: FunctionType
   fields: AllArgTypes<IDL.Type>[] | []
   validateAndReturnArgs: (
-    data: MethodArgsDefaultValues<A>
-  ) => ArgTypeFromIDLType<A>[]
+    data: MethodArgsDefaultValues<FunctionName<A>>
+  ) => ArgTypeFromIDLType<FunctionName<A>>[]
   defaultValues: MethodArgsDefaultValues<FunctionName<A>>
 }
 

@@ -60,7 +60,9 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
       }
     )
 
-    const validateAndReturnArgs = (data: MethodArgsDefaultValues<A>) => {
+    const validateAndReturnArgs = (
+      data: MethodArgsDefaultValues<FunctionName<A>>
+    ): ArgTypeFromIDLType<FunctionName<A>>[] => {
       const args = extractAndSortArgs(data)
 
       let errorMessages = ""
