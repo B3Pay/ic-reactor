@@ -71,19 +71,21 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
 
       let errorMessages = ""
 
-      const isValid = args.some((arg, i) => {
-        const validateArg = fields[i]?.validate(arg)
-        if (typeof validateArg === "string") {
-          errorMessages = validateArg
+      const isValid = args.every((arg, i) => {
+        const validationResponse = fields[i].validate(arg)
+
+        if (typeof validationResponse === "string") {
+          errorMessages = validationResponse
           return false
         }
+
         return true
       })
 
       if (isValid === true) {
         return args
       } else {
-        throw new Error(errorMessages)
+        throw new Error(errorMessages || "Failed to validate the arguments.")
       }
     }
 

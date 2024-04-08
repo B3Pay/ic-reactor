@@ -4,6 +4,9 @@ import { MethodFields, ServiceFields } from "./types"
 import { VisitReturns } from "./returns"
 import { VisitArgs } from "./args"
 
+export * from "./returns"
+export * from "./args"
+
 export class VisitFields<A = BaseActor> extends IDL.Visitor<
   string,
   ServiceFields<A> | MethodFields<A>

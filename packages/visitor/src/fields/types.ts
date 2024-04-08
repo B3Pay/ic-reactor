@@ -7,6 +7,9 @@ import type {
 import type { AllReturnTypes, ReturnMethodFieldValues } from "./returns/types"
 import type { AllArgTypes, ArgsDefaultValues } from "./args/types"
 
+export * from "./args/types"
+export * from "./returns/types"
+
 export type ServiceFields<A = BaseActor> = {
   [K in FunctionName<A>]: MethodFields<A>
 }
