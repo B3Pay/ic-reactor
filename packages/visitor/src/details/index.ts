@@ -1,6 +1,6 @@
 import { IDL } from "@dfinity/candid"
 import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import { MethodFields, ServiceFields } from "./types"
+import { MethodDetails, ServiceDetails } from "./types"
 import { VisitReturnDetails } from "./returns"
 import { VisitArgDetails } from "./args"
 
@@ -9,7 +9,7 @@ export * from "./args"
 
 export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   string,
-  ServiceFields<A> | MethodFields<A>
+  ServiceDetails<A> | MethodDetails<A>
 > {
   private argsVisitor = new VisitArgDetails<A>()
   private returnsVisitor = new VisitReturnDetails<A>()
@@ -17,7 +17,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
   public visitFunc(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
-  ): MethodFields<A> {
+  ): MethodDetails<A> {
     const { details: argDetails, ...restArgs } = this.argsVisitor.visitFunc(
       t,
       functionName
@@ -35,15 +35,15 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitService(t: IDL.ServiceClass): ServiceFields<A> {
+  public visitService(t: IDL.ServiceClass): ServiceDetails<A> {
     const methodFields = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      acc[functionName] = func.accept(this, functionName) as MethodFields<A>
+      acc[functionName] = func.accept(this, functionName) as MethodDetails<A>
 
       return acc
-    }, {} as ServiceFields<A>)
+    }, {} as ServiceDetails<A>)
 
     return methodFields
   }
