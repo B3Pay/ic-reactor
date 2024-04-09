@@ -1,47 +1,19 @@
-import type {
-  BaseActor,
-  FunctionName,
-  FunctionType,
-} from "@ic-reactor/core/dist/types"
+import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
+import type { MethodReturnDetails } from "./returns/types"
+import type { MethodArgDetails } from "./args/types"
+
+export * from "./args/types"
+export * from "./returns/types"
 
 export type FunctionCategory = "home" | "wallet" | "governance" | "setting"
 
-export type ServiceDetails<A = BaseActor> = {
-  [K in FunctionName<A>]: MethodDetails<A>
+export type ServiceFields<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodFields<A>
 }
 
-export type MethodDetails<A = BaseActor> = {
-  functionType: FunctionType
-  functionName: FunctionName<A>
-  __label: string
-  __description?: string
-  args: { [key: `arg${number}`]: FieldDetailsWithChild }
-  rets: { [key: `ret${number}`]: FieldDetailsWithChild }
-}
-
-export interface FieldDetails {
-  __label: string
-  __description?: string
-  [key: string]: string | boolean | undefined
-}
-
-export interface InputDetails extends FieldDetails {
-  __checked?: boolean
-  [key: string]: string | boolean | undefined
-}
-
-export type OtherDetails =
-  | FieldDetails
-  | FieldDetailsWithChild
-  | FieldDetailsWithChild[]
-  | FieldDetails[]
-
-export interface FieldDetailsWithChild {
-  __hidden?: boolean
-  __checked?: boolean
-  __label: string
-  __description?: string
-  optional?: OtherDetails
-  vector?: OtherDetails
-  [key: string]: string | boolean | undefined | OtherDetails
+export interface MethodFields<A = BaseActor>
+  extends Omit<MethodArgDetails<A>, "details" | "defaultValues">,
+    Omit<MethodReturnDetails<A>, "details" | "defaultValues"> {
+  argDetails: MethodArgDetails<A>["details"]
+  retDetails: MethodReturnDetails<A>["details"]
 }

@@ -12,10 +12,10 @@ export type ServiceFields<A = BaseActor> = {
 export interface MethodFields<A = BaseActor>
   extends Omit<MethodArgs<A>, "fields" | "defaultValues">,
     Omit<MethodReturns<A>, "fields" | "defaultValues"> {
-  argFields: MethodArgs<A>["fields"]
   defaultValues: {
     args: MethodArgs<A>["defaultValues"]
     rets: MethodReturns<A>["defaultValues"]
   }
+  argFields: MethodArgs<A>["fields"]
   retFields: MethodReturns<A>["fields"]
 }

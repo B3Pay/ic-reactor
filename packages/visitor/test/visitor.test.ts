@@ -8,7 +8,6 @@ import {
   VisitFields,
 } from "../src"
 import { b3wallet, idlFactory } from "./candid/b3wallet"
-import { ServiceDetails } from "../src/types"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 import accountView from "./account_view.json"
 
@@ -48,7 +47,7 @@ describe("createReactorStore", () => {
 
   it("should visitFunction", () => {
     // console.log(jsonToString(visitedTransform()))
-    console.log(jsonToString(visitedFields()))
+    console.log(jsonToString(visitedDetail()))
 
     // const args = visitFunction.get_app(new VisitRandomArgs<B3Wallet>())
     // console.log(args)
