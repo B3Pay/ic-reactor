@@ -34,11 +34,11 @@ export type OtherInputDetails =
   | ArgFieldDetails[]
 
 export interface ArgDetailsWithChild {
-  __hidden?: boolean
-  __checked?: boolean
   __label: string
+  __checked?: boolean
+  __hide_label?: boolean
   __description?: string
-  optional?: OtherInputDetails
   vector?: OtherInputDetails
+  optional?: OtherInputDetails
   [key: string]: string | boolean | undefined | OtherInputDetails
 }

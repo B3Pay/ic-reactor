@@ -37,7 +37,7 @@ describe("createReactorStore", () => {
 
   const visitedDetail = () => {
     const fieldsVisitor = new VisitDetails()
-    return visitFunction.account_create(fieldsVisitor)
+    return visitFunction.print_log_entries(fieldsVisitor)
   }
 
   const visitedFields = () => {

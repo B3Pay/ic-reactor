@@ -4,6 +4,11 @@ import type {
   FunctionType,
 } from "@ic-reactor/core/dist/types"
 
+export type ReturnDetailsParams<A = BaseActor, M = FunctionName<A>> = {
+  __label: M
+  __show_label?: boolean
+}
+
 export type ReturnDetails<A = BaseActor> = {
   [K in FunctionName<A>]: MethodReturnDetails<A>
 }
@@ -34,9 +39,9 @@ export type OtherOutputDetails =
   | ReturnFieldDetails[]
 
 export interface ReturnDetailsWithChild {
-  __hidden?: boolean
-  __checked?: boolean
   __label: string
+  __hidden?: boolean
+  __show_label?: boolean
   __description?: string
   optional?: OtherOutputDetails
   vector?: OtherOutputDetails

@@ -60,7 +60,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __hidden: /^__arg|^__ret/.test(__label),
+      __hide_label: /^__arg|^__ret/.test(__label),
       ...fields,
     }
   }
@@ -98,7 +98,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __hidden: false,
+      __hide_label: false,
       ...fields,
     }
   }
@@ -118,7 +118,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __hidden: false,
+      __hide_label: false,
     }
   }
 
@@ -131,7 +131,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     return {
       __checked: false,
       __label,
-      __hidden: false,
+      __hide_label: false,
       optional: details,
     }
   }
