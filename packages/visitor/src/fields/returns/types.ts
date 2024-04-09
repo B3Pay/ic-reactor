@@ -49,6 +49,12 @@ export interface VectorReturns extends DefaultReturn {
   field: AllReturnTypes<IDL.Type>
 }
 
+export interface ListReturns extends DefaultReturn {
+  type: "list"
+  labelList: string[]
+  fields: AllReturnTypes<IDL.Type>[]
+}
+
 export interface BlobReturns extends DefaultReturn {
   type: "blob"
 }
@@ -65,6 +71,7 @@ export interface PrincipalReturn extends DefaultReturn {
 
 export interface NumberReturn extends DefaultReturn {
   type: "number"
+  componentType: "timestamp" | "cycle" | "value" | "normal"
 }
 
 export interface InputReturn extends DefaultReturn {}
@@ -79,6 +86,8 @@ export type DynamicReturnType<T extends FieldType> = T extends "record"
   ? OptionalReturns
   : T extends "vector"
   ? VectorReturns
+  : T extends "list"
+  ? ListReturns
   : T extends "blob"
   ? BlobReturns
   : T extends "recursive"

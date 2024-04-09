@@ -15,10 +15,13 @@ import type {
   ServiceReturns,
   BlobReturns,
   MethodReturnValues,
+  ListReturns,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
 import { isQuery } from "../../helper"
+import { isFieldInTable } from "./helpers"
+import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "../../constants"
 
 /**
  * Visit the candid file and extract the fields.
@@ -190,14 +193,38 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): VectorReturns | BlobReturns {
+  ): VectorReturns | BlobReturns | ListReturns {
     const field = ty.accept(this, label) as DynamicReturnTypeByClass<typeof ty>
 
     if ("_bits" in ty && ty._bits === 8) {
       return {
         type: "blob",
-
         label,
+      }
+    }
+
+    if (field.type === "record") {
+      const labelList: string[] = []
+
+      const isList = (field as RecordReturns<IDL.Type>).fields.every(
+        (field) => {
+          if (isFieldInTable(field)) {
+            if (field.label) {
+              labelList.push(field.label)
+              return true
+            }
+          }
+          return false
+        }
+      )
+
+      if (isList) {
+        return {
+          type: "list",
+          label,
+          labelList,
+          fields: (field as RecordReturns<IDL.Type>).fields,
+        }
       }
     }
 
@@ -247,8 +274,19 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitNumber<T>(_t: IDL.Type<T>, label: string): NumberReturn {
+    const componentType = label
+      ? TAMESTAMP_KEYS_REGEX.test(label)
+        ? "timestamp"
+        : VALUE_KEYS_REGEX.test(label)
+        ? "value"
+        : label === "cycle"
+        ? "cycle"
+        : "normal"
+      : "normal"
+
     return {
       type: "number",
+      componentType,
       label,
     }
   }
