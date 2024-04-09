@@ -33,7 +33,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     params: ReturnDetailsParams<A>
   ): MethodReturnDetails<A> {
     const functionType = isQuery(t) ? "query" : "update"
-    console.log(t.display())
+
     const details = t.retTypes.reduce((acc, ret, index) => {
       acc[`ret${index}`] = ret.accept(this, {
         __label: `__ret${index}`,
