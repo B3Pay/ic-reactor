@@ -102,7 +102,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const fields = components.reduce((acc, type, index) => {
       const details = type.accept(this, {
         __label: `_${index}_`,
-        __status: Status.HIDE_LABEL,
+        __status: Status.HideLabel,
       }) as ReturnDetailsWithChild
 
       acc[`_${index}_`] = details
@@ -171,7 +171,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
       if (isList) {
         const list = ty.accept(this, {
           __label: params.__label,
-          __status: Status.DISABLED,
+          __status: Status.Disabled,
         }) as ReturnDetailsWithChild
 
         return {
@@ -188,7 +188,8 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     }) as ReturnDetailsWithChild
 
     return {
-      ...params,
+      __status: Status.Disabled,
+      __label: params.__label,
       vector,
     }
   }
