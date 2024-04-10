@@ -1,6 +1,6 @@
 import { IDL } from "@dfinity/candid"
 import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import { MethodDetails, ServiceDetails, Status } from "./types"
+import { MethodDetails, ServiceDetails } from "./types"
 import { VisitReturnDetails } from "./returns"
 import { VisitArgDetails } from "./args"
 
@@ -24,7 +24,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     )
     const { details: retDetails, ...restRets } = this.returnsVisitor.visitFunc(
       t,
-      { __label: functionName, __status: Status.Hidden }
+      functionName
     )
 
     return {

@@ -5,11 +5,8 @@ import type {
 } from "@ic-reactor/core/dist/types"
 
 export enum Status {
-  Enabled = 0, // Default
-  Disabled = 1,
-  Hidden = 2,
-  HideLabel = 3,
-  Table = 4,
+  Default = 0, // Default
+  Hidden = 1,
 }
 
 export type ReturnDetailsParams<A = BaseActor, M = FunctionName<A>> = {
