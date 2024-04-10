@@ -10,7 +10,7 @@ import { IDL } from "@dfinity/candid"
 import { isQuery } from "../../helper"
 import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
 import { VisitReturns } from "../../fields"
-import { DynamicReturnType } from "../../types"
+import { DynamicReturnType, Status } from "../../types"
 import { isFieldInTable } from "../../fields/returns/helpers"
 
 /**
@@ -58,14 +58,10 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     params: ReturnDetailsParams
   ): ReturnDetailsWithChild {
     const fields = _fields.reduce((acc, [key, type]) => {
-      const details = type.accept(
-        this,
-        params.__hide_label === true
-          ? ({} as ReturnDetailsParams)
-          : {
-              __label: key,
-            }
-      ) as ReturnDetailsWithChild
+      const details = type.accept(this, {
+        ...params,
+        __label: key,
+      }) as ReturnDetailsWithChild
 
       acc[key] = details
 
@@ -81,12 +77,11 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
   public visitVariant(
     _t: IDL.VariantClass,
     _fields: Array<[string, IDL.Type]>,
-    { __label, __hide_label }: ReturnDetailsParams
+    params: ReturnDetailsParams
   ): ReturnDetailsWithChild {
     const fields = _fields.reduce((acc, [key, type]) => {
       const details = type.accept(this, {
         __label: key,
-        __hide_label,
       }) as ReturnDetailsWithChild
       acc[key] = details
 
@@ -94,7 +89,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     }, {} as Record<string, ReturnDetailsWithChild | ReturnFieldDetails>)
 
     return {
-      __label,
+      ...params,
       ...fields,
     }
   }
@@ -107,6 +102,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const fields = components.reduce((acc, type, index) => {
       const details = type.accept(this, {
         __label: `_${index}_`,
+        __status: Status.HIDE_LABEL,
       }) as ReturnDetailsWithChild
 
       acc[`_${index}_`] = details
@@ -144,7 +140,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const details = ty.accept(this, params) as ReturnDetailsWithChild
 
     return {
-      __label: params.__label,
+      ...params,
       optional: details,
     }
   }
@@ -175,7 +171,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
       if (isList) {
         const list = ty.accept(this, {
           __label: params.__label,
-          __hide_label: true,
+          __status: Status.DISABLED,
         }) as ReturnDetailsWithChild
 
         return {
@@ -197,19 +193,19 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     }
   }
 
+  public visitNull(
+    _t: IDL.NullClass,
+    params: ReturnDetailsParams
+  ): OutputDetails {
+    return params
+  }
+
   private visiGenericType = (params: ReturnDetailsParams): OutputDetails => {
     return params
   }
 
   public visitBool(
     _t: IDL.BoolClass,
-    params: ReturnDetailsParams
-  ): OutputDetails {
-    return this.visiGenericType(params)
-  }
-
-  public visitNull(
-    _t: IDL.NullClass,
     params: ReturnDetailsParams
   ): OutputDetails {
     return this.visiGenericType(params)
