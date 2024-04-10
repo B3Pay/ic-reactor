@@ -61,6 +61,8 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     _fields: Array<[string, IDL.Type]>,
     __label: string
   ): ReturnDetailsWithChild {
+    const __status = this.Status
+
     const fields = _fields.reduce((acc, [key, type]) => {
       this.Status = Status.Default
       const details = type.accept(this, key) as ReturnDetailsWithChild
@@ -72,7 +74,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __status: Status.Hidden,
+      __status: this.isTable ? Status.Hidden : __status,
       ...fields,
     }
   }
@@ -86,8 +88,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     const fields = _fields.reduce((acc, [key, type]) => {
       this.Status = Status.Default
-      const details = type.accept(this, key) as ReturnDetailsWithChild
-      acc[key] = details
+      acc[key] = type.accept(this, key) as ReturnDetailsWithChild
 
       return acc
     }, {} as Record<string, ReturnDetailsWithChild | ReturnFieldDetails>)
@@ -178,7 +179,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
       if (isList) {
         this.isTable = true
         const list = ty.accept(this, __label) as ReturnDetailsWithChild
-
+        this.isTable = false
         return {
           type: "list",
           __status: Status.Hidden,
@@ -189,12 +190,20 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
       }
     }
 
+    this.Status = Status.Hidden
     const vector = ty.accept(this, __label) as ReturnDetailsWithChild
 
     return {
       __status: Status.Default,
       __label,
       vector,
+    }
+  }
+
+  public visitNull(_t: IDL.NullClass, __label: string): OutputDetails {
+    return {
+      __label,
+      __status: Status.Default,
     }
   }
 
@@ -205,13 +214,6 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     return {
       __label,
       __status: this.Status,
-    }
-  }
-
-  public visitNull(_t: IDL.NullClass, __label: string): OutputDetails {
-    return {
-      __label,
-      __status: Status.Default,
     }
   }
 
