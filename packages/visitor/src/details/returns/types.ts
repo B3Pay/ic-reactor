@@ -6,7 +6,7 @@ import type {
 
 export type ReturnDetailsParams<A = BaseActor, M = FunctionName<A>> = {
   __label: M
-  __show_label?: boolean
+  __hide_label?: boolean
 }
 
 export type ReturnDetails<A = BaseActor> = {
@@ -41,9 +41,11 @@ export type OtherOutputDetails =
 export interface ReturnDetailsWithChild {
   __label: string
   __hidden?: boolean
-  __show_label?: boolean
+  __hide_label?: boolean
   __description?: string
   optional?: OtherOutputDetails
   vector?: OtherOutputDetails
-  [key: string]: string | boolean | undefined | OtherOutputDetails
+  list?: OtherOutputDetails
+  labelList?: string[]
+  [key: string]: string[] | string | boolean | undefined | OtherOutputDetails
 }

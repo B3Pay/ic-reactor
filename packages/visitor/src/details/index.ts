@@ -24,7 +24,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     )
     const { details: retDetails, ...restRets } = this.returnsVisitor.visitFunc(
       t,
-      { __label: functionName, __show_label: false }
+      { __label: functionName, __hide_label: false }
     )
 
     return {

@@ -60,11 +60,10 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const fields = _fields.reduce((acc, [key, type]) => {
       const details = type.accept(
         this,
-        params.__show_label === false
+        params.__hide_label === true
           ? ({} as ReturnDetailsParams)
           : {
               __label: key,
-              __show_label: true,
             }
       ) as ReturnDetailsWithChild
 
@@ -82,11 +81,12 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
   public visitVariant(
     _t: IDL.VariantClass,
     _fields: Array<[string, IDL.Type]>,
-    params: ReturnDetailsParams
+    { __label, __hide_label }: ReturnDetailsParams
   ): ReturnDetailsWithChild {
     const fields = _fields.reduce((acc, [key, type]) => {
       const details = type.accept(this, {
         __label: key,
+        __hide_label,
       }) as ReturnDetailsWithChild
       acc[key] = details
 
@@ -94,7 +94,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     }, {} as Record<string, ReturnDetailsWithChild | ReturnFieldDetails>)
 
     return {
-      ...params,
+      __label,
       ...fields,
     }
   }
@@ -160,9 +160,12 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     ) as DynamicReturnType<"record">
 
     if (field.type === "record") {
+      const labelList: string[] = []
+
       const isList = field.fields.every((field) => {
         if (isFieldInTable(field)) {
           if (field.label) {
+            labelList.push(field.label)
             return true
           }
         }
@@ -170,13 +173,16 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
       })
 
       if (isList) {
-        const vector = ty.accept(this, {
+        const list = ty.accept(this, {
           __label: params.__label,
-          __show_label: false,
+          __hide_label: true,
         }) as ReturnDetailsWithChild
+
         return {
+          type: "list",
           __label: params.__label,
-          vector,
+          labelList,
+          list,
         }
       }
     }
