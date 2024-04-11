@@ -209,7 +209,9 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
   private visiGenericType = (__label: string): OutputDetails => {
     if (this.isTable) {
-      return {} as OutputDetails
+      return {
+        __status: Status.Disabled,
+      } as OutputDetails
     }
     return {
       __label,

@@ -7,6 +7,7 @@ import type {
 export enum Status {
   Default = 0, // Default
   Hidden = 1,
+  Disabled = 2,
 }
 
 export type ReturnDetailsParams<A = BaseActor, M = FunctionName<A>> = {
