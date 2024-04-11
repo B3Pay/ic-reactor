@@ -1,11 +1,5 @@
 import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-
-export type FunctionCategory =
-  | "home"
-  | "wallet"
-  | "governance"
-  | "setting"
-  | "status"
+import { FunctionCategory } from "../types"
 
 export interface GridLayout<A = BaseActor> {
   i: FunctionName<A>

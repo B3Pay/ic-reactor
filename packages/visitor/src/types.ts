@@ -1,6 +1,7 @@
 import { IDL } from "@ic-reactor/core/dist/types"
 
 export * from "./transform/types"
+export * from "./layouts/types"
 export * from "./fields/types"
 export * from "./details/types"
 
