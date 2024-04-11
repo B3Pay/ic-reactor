@@ -75,7 +75,8 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __status: this.isTable ? Status.Hidden : __status,
+      __status:
+        this.isTable || /^__ret/.test(__label) ? Status.Hidden : __status,
       ...fields,
     }
   }

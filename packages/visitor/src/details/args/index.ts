@@ -60,7 +60,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __hide_label: /^__arg|^__ret/.test(__label),
+      __hide_label: /^__arg|/.test(__label),
       ...fields,
     }
   }
