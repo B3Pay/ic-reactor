@@ -26,7 +26,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 > {
   private visitReturnField = new VisitReturns()
   public counter = 0
-  private Status = Status.Default
+  private Status = Status.Visible
   private isTable = false
 
   public visitFunc<M extends FunctionName<A>>(
@@ -36,7 +36,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const functionType = isQuery(t) ? "query" : "update"
 
     const details = t.retTypes.reduce((acc, ret, index) => {
-      this.Status = Status.Default
+      this.Status = Status.Visible
       this.isTable = false
       acc[`ret${index}`] = ret.accept(
         this,
@@ -50,6 +50,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label: functionName,
+      __status: Status.Visible,
       functionName,
       functionType,
       details,
@@ -64,10 +65,33 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const __status = this.Status
 
     const fields = _fields.reduce((acc, [key, type]) => {
-      this.Status = Status.Default
+      this.Status = Status.Visible
       const details = type.accept(this, key) as ReturnDetailsWithChild
 
       acc[key] = details
+
+      return acc
+    }, {} as Record<string, ReturnDetailsWithChild | ReturnFieldDetails>)
+
+    return {
+      __label,
+      __status: this.isTable ? Status.Hidden : __status,
+      ...fields,
+    }
+  }
+
+  public visitTuple<T extends IDL.Type[]>(
+    _t: IDL.TupleClass<T>,
+    components: IDL.Type[],
+    __label: string
+  ): ReturnDetailsWithChild {
+    const __status = this.Status
+
+    const fields = components.reduce((acc, type, index) => {
+      this.Status = Status.Hidden
+      const details = type.accept(this, `_${index}_`) as ReturnDetailsWithChild
+
+      acc[`_${index}_`] = details
 
       return acc
     }, {} as Record<string, ReturnDetailsWithChild | ReturnFieldDetails>)
@@ -87,7 +111,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const __status = this.Status
 
     const fields = _fields.reduce((acc, [key, type]) => {
-      this.Status = Status.Default
+      this.Status = Status.Visible
       acc[key] = type.accept(this, key) as ReturnDetailsWithChild
 
       return acc
@@ -95,28 +119,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __status: this.isTable ? Status.Hidden : __status,
-      ...fields,
-    }
-  }
-
-  public visitTuple<T extends IDL.Type[]>(
-    _t: IDL.TupleClass<T>,
-    components: IDL.Type[],
-    __label: string
-  ): ReturnDetailsWithChild {
-    const fields = components.reduce((acc, type, index) => {
-      this.Status = Status.Hidden
-      const details = type.accept(this, `_${index}_`) as ReturnDetailsWithChild
-
-      acc[`_${index}_`] = details
-
-      return acc
-    }, {} as Record<string, ReturnDetailsWithChild | ReturnFieldDetails>)
-
-    return {
-      __label,
-      __status: Status.Hidden,
+      __status: this.isTable ? Status.Table : __status,
       ...fields,
     }
   }
@@ -149,6 +152,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
+      __status: this.isTable ? Status.Table : Status.Visible,
       optional: details,
     }
   }
@@ -192,9 +196,9 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     this.Status = Status.Hidden
     const vector = ty.accept(this, __label) as ReturnDetailsWithChild
-
+    this.Status = Status.Visible
     return {
-      __status: Status.Default,
+      __status: Status.Visible,
       __label,
       vector,
     }
@@ -203,14 +207,15 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
   public visitNull(_t: IDL.NullClass, __label: string): OutputDetails {
     return {
       __label,
-      __status: Status.Default,
+      __status: Status.Visible,
     }
   }
 
   private visiGenericType = (__label: string): OutputDetails => {
     if (this.isTable) {
       return {
-        __status: Status.Disabled,
+        __label,
+        __status: Status.Table,
       } as OutputDetails
     }
     return {
