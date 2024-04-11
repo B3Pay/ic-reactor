@@ -5,6 +5,8 @@ export * from "./layouts/types"
 export * from "./fields/types"
 export * from "./details/types"
 
+export type FunctionCategory = "home" | "wallet" | "governance" | "setting"
+
 export type FieldType =
   | "record"
   | "variant"

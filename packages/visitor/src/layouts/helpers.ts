@@ -4,7 +4,7 @@ import {
   STATUS_TEST,
   WALLET_TEST,
 } from "./constants"
-import { FunctionCategory } from "./types"
+import { FunctionCategory } from "../types"
 
 export const findCategory = (name: string): FunctionCategory => {
   const categories = [

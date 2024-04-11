@@ -5,8 +5,6 @@ import type { MethodArgDetails } from "./args/types"
 export * from "./args/types"
 export * from "./returns/types"
 
-export type FunctionCategory = "home" | "wallet" | "governance" | "setting"
-
 export type ServiceDetails<A = BaseActor> = {
   [K in FunctionName<A>]: MethodDetails<A>
 }
