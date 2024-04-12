@@ -48,23 +48,8 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
     error: mintFromICPError,
   } = useICDVUpdateCall({
     functionName: "mintFromICP",
-  })
-
-  const {
-    call: transfer,
-    loading: transferLoading,
-    data: transferResult,
-  } = useICRC2UpdateCall({
-    functionName: "icrc1_transfer",
     onSuccess: () => {
       refetchBalance()
-      mintFromICP([
-        {
-          amount: BigInt(amountRef.current?.value || "0"),
-          source_subaccount: [],
-          target: [],
-        },
-      ])
     },
   })
 
@@ -76,17 +61,11 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
     functionName: "icrc2_approve",
     onSuccess: () => {
       refetchAllowance()
-      transfer([
+      mintFromICP([
         {
-          to: {
-            owner: icdvCanisterId,
-            subaccount: [],
-          },
           amount: BigInt(amountRef.current?.value || "0"),
-          fee: [],
-          memo: [],
-          created_at_time: [],
-          from_subaccount: [],
+          source_subaccount: [],
+          target: [],
         },
       ])
     },
@@ -143,21 +122,14 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
           <strong>Donate Result</strong>:
           {approveLoading ? (
             <div>Approving...</div>
-          ) : transferLoading ? (
-            <div>
-              <div>Approve Result: {jsonToString(approveResult)}</div>
-              Transfering...
-            </div>
           ) : mintFromICPLoading ? (
             <div>
               <div>Approve Result: {jsonToString(approveResult)}</div>
-              <div>Transfer Result: {jsonToString(transferResult)}</div>
               Minting...
             </div>
           ) : mintFromICPLoading || mintFromICPResult || mintFromICPError ? (
             <div>
               <div>Approve Result: {jsonToString(approveResult)}</div>
-              <div>Transfer Result: {jsonToString(transferResult)}</div>
               {mintFromICPResult ? (
                 <div>
                   Thanks for your donation! : {jsonToString(mintFromICPResult)}

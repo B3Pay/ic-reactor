@@ -11,12 +11,6 @@ import { ICDV } from "./declarations/icdv"
 
 interface AppProps {}
 
-const functionNames: FunctionName<ICRC2 | ICDV>[] = [
-  "icrc1_name",
-  "icrc1_symbol",
-  "icrc1_decimals",
-]
-
 const App: React.FC<AppProps> = () => {
   const principal = useUserPrincipal()
 
@@ -25,19 +19,9 @@ const App: React.FC<AppProps> = () => {
       <h1>ICDEV Donation</h1>
       <Login />
       <ICRC2Provider>
-        <h2>ICP</h2>
-        <div style={{ display: "flex", gap: "1rem" }}>
-          {functionNames.map((functionName) => (
-            <ICRC1Call key={functionName} functionName={functionName} />
-          ))}
-        </div>
+        <ICRC1Call functionName="icrc1_name" />
         <ICDVProvider>
-          <h2>ICDV</h2>
-          <div style={{ display: "flex", gap: "1rem" }}>
-            {functionNames.map((functionName) => (
-              <ICDVToken key={functionName} functionName={functionName} />
-            ))}
-          </div>
+          <ICDVToken functionName="icrc1_name" />
           {principal && <Donation principal={principal} />}
         </ICDVProvider>
       </ICRC2Provider>
