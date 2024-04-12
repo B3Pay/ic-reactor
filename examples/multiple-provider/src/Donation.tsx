@@ -1,5 +1,5 @@
 import { jsonToString } from "@ic-reactor/core/dist/utils"
-import { useICRC2QueryCall, useICRC2UpdateCall } from "./ICRC2Provider"
+import { useICPQueryCall, useICPUpdateCall } from "./ICPProvider"
 import { Principal } from "@dfinity/principal"
 import { useRef } from "react"
 import { useICDVState, useICDVUpdateCall } from "./ICDVProvider"
@@ -19,7 +19,7 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
     call: refetchBalance,
     data: balance,
     loading: balanceLoading,
-  } = useICRC2QueryCall({
+  } = useICPQueryCall({
     functionName: "icrc1_balance_of",
     args: [{ owner: principal, subaccount: [] }],
   })
@@ -28,7 +28,7 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
     call: refetchAllowance,
     data: allowance,
     loading: allowanceLoading,
-  } = useICRC2QueryCall({
+  } = useICPQueryCall({
     functionName: "icrc2_allowance",
     args: [
       {
@@ -57,7 +57,7 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
     call: approve,
     loading: approveLoading,
     data: approveResult,
-  } = useICRC2UpdateCall({
+  } = useICPUpdateCall({
     functionName: "icrc2_approve",
     onSuccess: () => {
       refetchAllowance()

@@ -4,6 +4,7 @@ import { createActorContext } from "@ic-reactor/react"
 export const {
   ActorProvider: ICDVProvider,
   useActorState: useICDVState,
+  useMethod: useICDVMethod,
   useQueryCall: useICDVQueryCall,
   useUpdateCall: useICDVUpdateCall,
 } = createActorContext<ICDV>({
