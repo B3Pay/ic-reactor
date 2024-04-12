@@ -219,7 +219,7 @@ export class AgentManager {
   }
 
   public getIsLocal = () => {
-    return this._agent.isLocal()
+    return this._agent.isLocal?.() || false
   }
 
   public getAgentState: AgentStore["getState"] = () => {

@@ -38,7 +38,7 @@ export class CandidAdapter {
   }
 
   private getDefaultDidJsId() {
-    return this.agent.isLocal() ? DEFAULT_LOCAL_DIDJS_ID : DEFAULT_IC_DIDJS_ID
+    return this.agent.isLocal?.() ? DEFAULT_LOCAL_DIDJS_ID : DEFAULT_IC_DIDJS_ID
   }
 
   public async getCandidDefinition(
