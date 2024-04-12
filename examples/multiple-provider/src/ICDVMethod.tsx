@@ -1,21 +1,18 @@
-import { FunctionName } from "@ic-reactor/react/dist/types"
+import { FunctionName, UseMethodParameters } from "@ic-reactor/react/dist/types"
 import { useICDVQueryCall } from "./ICDVProvider"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 import { ICDV } from "./declarations/icdv"
 
-interface ICDVTokenProps {
-  functionName: FunctionName<ICDV>
-}
+interface ICDVMethodProps
+  extends UseMethodParameters<ICDV, FunctionName<ICDV>> {}
 
-const ICDVToken: React.FC<ICDVTokenProps> = ({ functionName }) => {
-  const { call, data, loading } = useICDVQueryCall({
-    functionName,
-  })
+const ICDVMethod: React.FC<ICDVMethodProps> = (props) => {
+  const { call, data, loading } = useICDVQueryCall(props)
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <div>
-        <strong>{functionName}</strong>:{" "}
+        <strong>{props.functionName}</strong>:{" "}
         <button onClick={call} disabled={loading}>
           ↻
         </button>
@@ -25,4 +22,4 @@ const ICDVToken: React.FC<ICDVTokenProps> = ({ functionName }) => {
   )
 }
 
-export default ICDVToken
+export default ICDVMethod

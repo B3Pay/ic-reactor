@@ -1,10 +1,10 @@
 import { useUserPrincipal } from "@ic-reactor/react"
-import ICRC1Call from "./ICRC2Call"
+import ICPMethod from "./ICPMethod"
 import Donation from "./Donation"
 import Login from "./Login"
 import { ICRC2Provider } from "./ICRC2Provider"
 import { ICDVProvider } from "./ICDVProvider"
-import ICDVToken from "./ICDVToken"
+import ICDVMethod from "./ICDVMethod"
 
 interface AppProps {}
 
@@ -16,9 +16,9 @@ const App: React.FC<AppProps> = () => {
       <h1>ICDEV Donation</h1>
       <Login />
       <ICRC2Provider>
-        <ICRC1Call functionName="icrc1_name" />
+        <ICPMethod functionName="icrc1_name" />
         <ICDVProvider>
-          <ICDVToken functionName="icrc1_name" />
+          <ICDVMethod functionName="icrc1_name" />
           {principal && <Donation principal={principal} />}
         </ICDVProvider>
       </ICRC2Provider>

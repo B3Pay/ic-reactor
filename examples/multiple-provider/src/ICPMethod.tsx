@@ -1,13 +1,12 @@
-import { FunctionName } from "@ic-reactor/react/dist/types"
+import { FunctionName, UseMethodParameters } from "@ic-reactor/react/dist/types"
 import { useICRC2QueryCall } from "./ICRC2Provider"
 import { ICRC2 } from "./declarations/icrc2"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 
-interface ICPTokenProps {
-  functionName: FunctionName<ICRC2>
-}
+interface ICPMethodProps
+  extends UseMethodParameters<ICRC2, FunctionName<ICRC2>> {}
 
-const ICPToken: React.FC<ICPTokenProps> = ({ functionName }) => {
+const ICPMethod: React.FC<ICPMethodProps> = ({ functionName }) => {
   const { call, data, loading } = useICRC2QueryCall({
     functionName,
   })
@@ -25,4 +24,4 @@ const ICPToken: React.FC<ICPTokenProps> = ({ functionName }) => {
   )
 }
 
-export default ICPToken
+export default ICPMethod
