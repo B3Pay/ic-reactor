@@ -177,7 +177,7 @@ export class ActorManager<A = BaseActor> {
   private initializeActor = (agent: HttpAgent) => {
     console.info(
       `Initializing actor ${this.canisterId} on ${
-        agent.isLocal?.() ? "local" : "ic"
+        agent.isLocal?.() === true ? "local" : "ic"
       } network`
     )
 
