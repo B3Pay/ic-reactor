@@ -1,6 +1,6 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
+import type { BaseActor } from "@ic-reactor/core/dist/types"
 import { ArgTypeFromIDLType, MethodArgsDefaultValues } from "../types"
 
 /**
@@ -12,7 +12,7 @@ export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
   unknown,
   unknown
 > {
-  public visitFunc(t: IDL.FuncClass, functionName: FunctionName<A>) {
+  public visitFunc(t: IDL.FuncClass) {
     const defaultValue = t.argTypes.reduce((acc, type, index) => {
       acc[`arg${index}`] = type.accept(this, false) as ArgTypeFromIDLType<
         typeof type
@@ -21,11 +21,7 @@ export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
       return acc
     }, {} as MethodArgsDefaultValues<A>)
 
-    const result = {
-      [functionName]: defaultValue,
-    }
-
-    return result
+    return defaultValue
   }
 
   public visitRecord(
@@ -61,6 +57,10 @@ export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
     if (isRecursive) {
       const recType = type.accept(this, isRecursive)
       return [recType]
+    }
+
+    if ("_bits" in type && type._bits === 8) {
+      return Array.from(this.generateRandomBytes(33))
     }
 
     const length = Math.floor(Math.random() * 5)
