@@ -1,8 +1,8 @@
 import { jsonToString } from "@ic-reactor/core/dist/utils"
-import { useICPQueryCall, useICPUpdateCall } from "./ICPProvider"
+import { useICPQueryCall, useICPUpdateCall } from "./ICP"
 import { Principal } from "@dfinity/principal"
 import { useRef } from "react"
-import { useICDVState, useICDVUpdateCall } from "./ICDVProvider"
+import { useICDVState, useICDVUpdateCall } from "./ICDV"
 
 interface DonationProps {
   principal: Principal
@@ -11,7 +11,7 @@ interface DonationProps {
 const Donation: React.FC<DonationProps> = ({ principal }) => {
   const { canisterId } = useICDVState()
 
-  const icdvCanisterId = Principal.fromText(canisterId.toString())
+  const icdvCanisterId = Principal.fromText(canisterId)
 
   const amountRef = useRef<HTMLInputElement>(null)
 

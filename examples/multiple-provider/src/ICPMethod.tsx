@@ -1,5 +1,5 @@
 import { FunctionName, UseMethodParameters } from "@ic-reactor/react/dist/types"
-import { useICPMethod } from "./ICPProvider"
+import { useICPMethod } from "./ICP"
 import { ICRC2 } from "./declarations/icrc2"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 

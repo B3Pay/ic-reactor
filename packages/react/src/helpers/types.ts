@@ -1,7 +1,6 @@
 import type { ServiceClass } from "@dfinity/candid/lib/cjs/idl"
 import type {
   ActorState,
-  CanisterId,
   AuthClientLoginOptions,
   ActorMethodParameters,
   ActorMethodReturnType,
@@ -59,7 +58,7 @@ export type LoginParameters = AuthClientLoginOptions
 export type LogoutParameters = { returnTo?: string }
 
 export interface UseActorState extends Omit<ActorState, "methodState"> {
-  canisterId: CanisterId
+  canisterId: string
 }
 
 export type UseSharedCallParameters<A, M extends FunctionName<A>> = {

@@ -1,5 +1,5 @@
 import { FunctionName, UseMethodParameters } from "@ic-reactor/react/dist/types"
-import { useICDVMethod } from "./ICDVProvider"
+import { useICDVMethod } from "./ICDV"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 import { ICDV } from "./declarations/icdv"
 

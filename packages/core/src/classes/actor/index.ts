@@ -3,7 +3,6 @@ import { Actor } from "@dfinity/agent"
 import { createStoreWithOptionalDevtools, isQuery } from "../../utils/helper"
 import type { HttpAgent } from "@dfinity/agent"
 import type {
-  CanisterId,
   ActorMethodParameters,
   ActorMethodReturnType,
   ActorState,
@@ -29,7 +28,7 @@ export class ActorManager<A = BaseActor> {
   private _unsubscribeAgent: () => void
   private _subscribers: Array<() => void> = []
 
-  public canisterId: CanisterId
+  public canisterId: string
   public actorStore: ActorStore<A>
   public visitFunction: VisitService<A>
   public methodAttributes: MethodAttributes<A>
@@ -90,7 +89,7 @@ export class ActorManager<A = BaseActor> {
     if (!canisterId) {
       throw new Error("CanisterId is required!")
     }
-    this.canisterId = canisterId
+    this.canisterId = canisterId.toString()
 
     if (!idlFactory) {
       throw new Error("IDL factory is required!")

@@ -2,8 +2,8 @@ import { useUserPrincipal } from "@ic-reactor/react"
 import ICPMethod from "./ICPMethod"
 import Donation from "./Donation"
 import Login from "./Login"
-import { ICPProvider } from "./ICPProvider"
-import { ICDVProvider } from "./ICDVProvider"
+import { ICPProvider } from "./ICP"
+import { ICDVProvider } from "./ICDV"
 import ICDVMethod from "./ICDVMethod"
 
 interface AppProps {}
