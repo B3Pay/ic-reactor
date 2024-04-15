@@ -3,6 +3,7 @@ import {
   ActorHooksReturnType,
   ActorManagerParameters,
   BaseActor,
+  CanisterId,
 } from "../types"
 
 export interface UseActorParameters
@@ -10,7 +11,7 @@ export interface UseActorParameters
     ActorManagerParameters,
     "idlFactory" | "agentManager" | "canisterId"
   > {
-  canisterId: string
+  canisterId: CanisterId
   idlFactory?: IDL.InterfaceFactory
   didjsCanisterId?: string
 }

@@ -86,7 +86,7 @@ export const useActor = <A = BaseActor>(
   const [actorManager, setActorManager] = useState<ActorManager<A> | null>(null)
 
   useEffect(() => {
-    if (actorManager?.canisterId !== canisterId) {
+    if (actorManager?.canisterId !== canisterId.toString()) {
       setActorManager(null)
     }
     return actorManager?.cleanup()

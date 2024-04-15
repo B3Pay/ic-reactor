@@ -7,6 +7,7 @@ import type {
   AgentManager,
   ActorManagerParameters,
   AgentManagerParameters,
+  CanisterId,
 } from "../types"
 import type { PropsWithChildren } from "react"
 
@@ -51,6 +52,6 @@ export interface CreateActorContextParameters
     "idlFactory" | "agentManager" | "canisterId"
   > {
   didjsId?: string
-  canisterId?: string
+  canisterId?: CanisterId
   idlFactory?: IDL.InterfaceFactory
 }
