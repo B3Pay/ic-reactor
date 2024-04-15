@@ -60,7 +60,7 @@ export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
     }
 
     if ("_bits" in type && type._bits === 8) {
-      return Array.from(this.generateRandomBytes(33))
+      return Array.from(this.generateRandomBytes(32))
     }
 
     const length = Math.floor(Math.random() * 5)
