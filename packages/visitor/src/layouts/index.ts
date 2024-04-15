@@ -2,6 +2,7 @@ import type { ServiceLayouts } from "./types"
 import { IDL } from "@dfinity/candid"
 import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
 import { findCategory } from "./helpers"
+import { DEFAULT_CATEGORIES, DEFAULT_LAYOUTS } from "./constants"
 
 /**
  * Visit the candid file and extract the details.
@@ -116,6 +117,16 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
     ])
   )
 
+  private DEFAULTLAYOUT = DEFAULT_CATEGORIES.reduce(
+    (acc, category) => ({
+      ...acc,
+      [category]: Object.fromEntries(
+        DEFAULT_LAYOUTS.map(({ name }) => [name, []])
+      ),
+    }),
+    {}
+  )
+
   public visitService(t: IDL.ServiceClass): ServiceLayouts<A> {
     const layouts = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
@@ -148,32 +159,8 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
       this.counter++
 
       return acc
-    }, DEFAULT_SERVICE_LAYOUTS as ServiceLayouts<A>)
+    }, this.DEFAULTLAYOUT as ServiceLayouts<A>)
 
     return layouts
   }
 }
-
-const DEFAULT_LAYOUTS = [
-  { name: "xl", size: 6 },
-  { name: "md", size: 4 },
-  { name: "xs", size: 2 },
-] as const
-
-const DEFAULT_CATEGORIES = [
-  "home",
-  "wallet",
-  "governance",
-  "setting",
-  "status",
-] as const
-
-const DEFAULT_SERVICE_LAYOUTS = DEFAULT_CATEGORIES.reduce(
-  (acc, category) => ({
-    ...acc,
-    [category]: Object.fromEntries(
-      DEFAULT_LAYOUTS.map(({ name }) => [name, []])
-    ),
-  }),
-  {}
-)

@@ -103,3 +103,17 @@ export const STATUS_TEST = [
 ]
 
 export const GOVERNANCE_TEST = ["governance", "vote", "poll", "proposal"]
+
+export const DEFAULT_LAYOUTS = [
+  { name: "xl", size: 6 },
+  { name: "md", size: 4 },
+  { name: "xs", size: 2 },
+] as const
+
+export const DEFAULT_CATEGORIES = [
+  "home",
+  "wallet",
+  "governance",
+  "setting",
+  "status",
+] as const
