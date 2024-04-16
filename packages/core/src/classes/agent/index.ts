@@ -15,6 +15,7 @@ import {
   IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
+  REMOTE_HOSTS,
 } from "../../utils/constants"
 
 export class AgentManager {
@@ -218,8 +219,24 @@ export class AgentManager {
     return this._agent
   }
 
+  public getAgentHost = () => {
+    return (this._agent as unknown as { _host: URL })._host
+  }
+
   public getIsLocal = () => {
     return this._agent.isLocal?.() === true
+  }
+
+  public getNetwork = () => {
+    const hostname = this.getAgentHost().hostname
+
+    if (hostname === "127.0.0.1" || hostname.endsWith("127.0.0.1")) {
+      return "local"
+    } else if (REMOTE_HOSTS.some((host) => hostname.endsWith(host))) {
+      return "remote"
+    } else {
+      return "ic"
+    }
   }
 
   public getAgentState: AgentStore["getState"] = () => {

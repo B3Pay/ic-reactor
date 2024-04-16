@@ -4,7 +4,6 @@ import { createAgentManager } from "../src"
 describe("My IC Network agent", () => {
   const agentManager = createAgentManager({
     host: IC_HOST_NETWORK_URI,
-    withDevtools: false,
   })
 
   it("should return agent store", async () => {
@@ -17,7 +16,6 @@ describe("My IC Network agent", () => {
 
 describe("My Local Network agent", () => {
   const agentManager = createAgentManager({
-    withDevtools: false,
     withLocalEnv: true,
   })
 
