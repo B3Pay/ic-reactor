@@ -12,7 +12,6 @@ import type {
   AuthStore,
 } from "./types"
 import {
-  IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
   REMOTE_HOSTS,
@@ -67,13 +66,11 @@ export class AgentManager {
       host: optionHost,
       ...agentOptions
     } = options || {}
-    const host = withLocalEnv
-      ? `http://127.0.0.1:${port}`
-      : optionHost
-      ? optionHost.includes("localhost")
-        ? optionHost.replace("localhost", "127.0.0.1")
-        : optionHost
-      : IC_HOST_NETWORK_URI
+    let host = optionHost
+
+    if (withLocalEnv) {
+      host = `http://127.0.0.1:${port}`
+    }
 
     this.agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
       withDevtools,
