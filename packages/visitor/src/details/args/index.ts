@@ -148,6 +148,13 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     }
   }
 
+  public visitNull(_t: IDL.NullClass, __label: string): InputDetails {
+    return {
+      __label,
+      __hide_label: true,
+    }
+  }
+
   private visiGenericType = (__label: string): InputDetails => {
     return {
       __label,
@@ -155,10 +162,6 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitBool(_t: IDL.BoolClass, __label: string): InputDetails {
-    return this.visiGenericType(__label)
-  }
-
-  public visitNull(_t: IDL.NullClass, __label: string): InputDetails {
     return this.visiGenericType(__label)
   }
 
