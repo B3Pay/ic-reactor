@@ -92,16 +92,16 @@ export class AgentManager {
   }
 
   private initializeAgent = async () => {
-    const isLocalEnv = this.getIsLocal()
+    const network = this.getNetwork()
     this.updateAgentState(
       {
         initializing: true,
         error: undefined,
-        network: isLocalEnv ? "local" : "ic",
+        network,
       },
       "initializing"
     )
-    if (isLocalEnv) {
+    if (network !== "ic") {
       try {
         await this._agent.fetchRootKey()
       } catch (error) {
