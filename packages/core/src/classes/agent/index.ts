@@ -1,6 +1,9 @@
 /* eslint-disable no-console */
 import { HttpAgent } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools } from "../../utils/helper"
+import {
+  createStoreWithOptionalDevtools,
+  getProcessEnvNetwork,
+} from "../../utils/helper"
 import { AuthClient } from "@dfinity/auth-client"
 import type { AuthClientLoginOptions } from "../../types"
 import type {
@@ -12,6 +15,7 @@ import type {
   AuthStore,
 } from "./types"
 import {
+  IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
   REMOTE_HOSTS,
@@ -63,14 +67,24 @@ export class AgentManager {
       withDevtools,
       port = 4943,
       withLocalEnv,
+      withProcessEnv,
       host: optionHost,
       ...agentOptions
     } = options || {}
     let host = optionHost
 
-    if (withLocalEnv) {
+    if (withProcessEnv) {
+      const processNetwork = getProcessEnvNetwork()
+      host =
+        processNetwork === "ic"
+          ? IC_HOST_NETWORK_URI
+          : `http://127.0.0.1:${port}`
+    } else if (withLocalEnv) {
       host = `http://127.0.0.1:${port}`
+    } else {
+      host = IC_HOST_NETWORK_URI
     }
+    console.log("🚀 ~ AgentManager ~ constructor ~ host:", host)
 
     this.agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
       withDevtools,
@@ -149,9 +163,7 @@ export class AgentManager {
   }
 
   public authenticate = async () => {
-    console.log(
-      `Authenticating on ${this.getIsLocal() ? "local" : "ic"} network`
-    )
+    console.log(`Authenticating on ${this.getNetwork()} network`)
     this.updateAuthState({ authenticating: true }, "authenticating")
 
     try {

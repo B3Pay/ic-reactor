@@ -43,9 +43,9 @@ import type {
  *   canisterId,
  *   idlFactory,
  *   host: "https://localhost:8000", // IC network host         |
- *   withLocalEnv: true, // Set true for local network            | one of these
+ *   withLocalEnv: true, // Set true for local network          | one of these
  *   withProcessEnv: true, // Use process.env to determine host |
- *   port: 8000, // Port number for local network               |
+ *   port: 8000, // Port number for local network
  * };
  *
  * export type YourActor = typeof yourActor;

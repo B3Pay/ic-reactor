@@ -26,6 +26,11 @@ export const isInLocalOrDevelopment = () => {
   return typeof process !== "undefined" && process.env.DFX_NETWORK === "local"
 }
 
+export const getProcessEnvNetwork = () => {
+  if (typeof process === "undefined") return "ic"
+  else return process.env.DFX_NETWORK ?? "ic"
+}
+
 export function isQuery(func: IDL.FuncClass): boolean {
   return (
     func.annotations.includes("query") ||

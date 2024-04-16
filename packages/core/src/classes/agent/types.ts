@@ -8,6 +8,7 @@ export interface AgentManagerParameters extends HttpAgentOptions {
   port?: number
   withLocalEnv?: boolean
   withDevtools?: boolean
+  withProcessEnv?: boolean
 }
 
 export interface AgentState {

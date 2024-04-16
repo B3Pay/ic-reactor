@@ -9,7 +9,6 @@ import type {
   CreateAgentCotextParameters,
 } from "./types"
 import { extractAgentContext } from "../helpers/extractAgentContext"
-import { isInLocalOrDevelopment } from "../utils"
 
 /**
  * Creates a React context for managing IC agent and authentication states, providing hooks for interacting with the IC blockchain.
@@ -93,16 +92,13 @@ export const createAgentContext = (
   const AgentProvider: React.FC<AgentProviderProps> = ({
     children,
     agentManager: mybeAgentManager,
-    withProcessEnv = config.withProcessEnv,
     disableAuthenticateOnMount = defaultDisable ?? false,
     ...options
   }) => {
     const hooks = React.useMemo(() => {
-      const withLocalEnv = withProcessEnv ? isInLocalOrDevelopment() : undefined
-
       const agentManager =
         mybeAgentManager ??
-        createAgentManager({ withLocalEnv, ...options, ...contextOptions })
+        createAgentManager({ ...options, ...contextOptions })
 
       if (!disableAuthenticateOnMount) {
         agentManager.authenticate()

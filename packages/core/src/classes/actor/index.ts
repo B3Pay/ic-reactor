@@ -175,9 +175,9 @@ export class ActorManager<A = BaseActor> {
 
   private initializeActor = (agent: HttpAgent) => {
     console.info(
-      `Initializing actor ${this.canisterId} on ${
-        agent.isLocal?.() === true ? "local" : "ic"
-      } network`
+      `Initializing actor ${
+        this.canisterId
+      } on ${this._agentManager.getNetwork()} network`
     )
 
     const { _idlFactory, canisterId } = this

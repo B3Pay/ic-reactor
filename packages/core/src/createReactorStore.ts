@@ -1,6 +1,5 @@
 import { ActorManager } from "./classes/actor"
 import type { BaseActor, CreateReactorStoreParameters } from "./types"
-import { isInLocalOrDevelopment } from "./utils"
 import { createActorManager } from "./createActorManager"
 import { createAgentManager } from "./createAgentManager"
 
@@ -15,10 +14,6 @@ import { createAgentManager } from "./createAgentManager"
 export const createReactorStore = <A = BaseActor>(
   config: CreateReactorStoreParameters
 ): ActorManager<A> => {
-  const withLocalEnv = config.withProcessEnv
-    ? isInLocalOrDevelopment()
-    : undefined
-
   const {
     idlFactory,
     canisterId,
@@ -33,7 +28,6 @@ export const createReactorStore = <A = BaseActor>(
     maybeAgentManager ||
     createAgentManager({
       withDevtools,
-      withLocalEnv,
       ...agentParameters,
     })
 
