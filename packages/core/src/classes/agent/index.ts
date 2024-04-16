@@ -71,20 +71,16 @@ export class AgentManager {
       host: optionHost,
       ...agentOptions
     } = options || {}
-    let host = optionHost
+    let host: string | undefined
 
     if (withProcessEnv) {
       const processNetwork = getProcessEnvNetwork()
-      host =
-        processNetwork === "ic"
-          ? IC_HOST_NETWORK_URI
-          : `http://127.0.0.1:${port}`
+      host = processNetwork === "ic" ? IC_HOST_NETWORK_URI : undefined
     } else if (withLocalEnv) {
       host = `http://127.0.0.1:${port}`
     } else {
-      host = IC_HOST_NETWORK_URI
+      host = optionHost ?? IC_HOST_NETWORK_URI
     }
-    console.log("🚀 ~ AgentManager ~ constructor ~ host:", host)
 
     this.agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
       withDevtools,
