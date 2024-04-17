@@ -1,3 +1,6 @@
+import { config } from "dotenv"
+config().parsed
+
 import { createReactorStore } from "@ic-reactor/core"
 import {
   canisterId,
@@ -20,6 +23,7 @@ const AGENT_DEFAULT_STATE: AgentState = {
   error: undefined,
   initialized: true,
   initializing: false,
+  network: "local",
 }
 
 const ACTOR_DEFAULT_STATE: ActorState<typeof hello_actor> = {
