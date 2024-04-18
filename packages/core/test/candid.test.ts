@@ -1,6 +1,5 @@
 import {
   createActorManager,
-  createReactorStore,
   createCandidAdapter,
   createAgentManager,
 } from "../src"

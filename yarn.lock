@@ -2071,6 +2071,7 @@ __metadata:
     "@dfinity/candid": "npm:^1.2"
     "@dfinity/identity": "npm:^1.2"
     "@dfinity/principal": "npm:^1.2"
+    wasm-didjs: "file:../../rust/didjs/pkg/wasm-didjs-0.1.0.tgz"
     zustand: "npm:^4.5"
   peerDependencies:
     "@dfinity/agent": ^1.2
@@ -11374,6 +11375,7 @@ __metadata:
     typedoc-plugin-include-example: "npm:^1.2.0"
     typedoc-plugin-mdn-links: "npm:^3.1.16"
     typescript: "npm:^5.4"
+    wasm-didjs: "file:rust/didjs/pkg/wasm-didjs-0.1.0.tgz"
     webpack: "npm:^5.90.3"
     webpack-cli: "npm:^5.1.4"
     webpack-dev-server: "npm:^5.0.2"
@@ -21784,6 +21786,20 @@ __metadata:
   dependencies:
     makeerror: "npm:1.0.12"
   checksum: a17e037bccd3ca8a25a80cb850903facdfed0de4864bd8728f1782370715d679fa72e0a0f5da7c1c1379365159901e5935f35be531229da53bbfc0efdabdb48e
+  languageName: node
+  linkType: hard
+
+"wasm-didjs@file:../../rust/didjs/pkg/wasm-didjs-0.1.0.tgz::locator=%40ic-reactor%2Fcore%40workspace%3Apackages%2Fcore":
+  version: 0.1.0
+  resolution: "wasm-didjs@file:../../rust/didjs/pkg/wasm-didjs-0.1.0.tgz#../../rust/didjs/pkg/wasm-didjs-0.1.0.tgz::hash=531c79&locator=%40ic-reactor%2Fcore%40workspace%3Apackages%2Fcore"
+  checksum: 00412a38ac4f65aeb48b3763f047ff608ddc3e8d5994ea56235521ca804c05924ab0ef511c471e13b427a5f8440855ad1ad378a394f57cb047e7000aafa4dba7
+  languageName: node
+  linkType: hard
+
+"wasm-didjs@file:rust/didjs/pkg/wasm-didjs-0.1.0.tgz::locator=ic-reactor%40workspace%3A.":
+  version: 0.1.0
+  resolution: "wasm-didjs@file:rust/didjs/pkg/wasm-didjs-0.1.0.tgz#rust/didjs/pkg/wasm-didjs-0.1.0.tgz::hash=531c79&locator=ic-reactor%40workspace%3A."
+  checksum: 00412a38ac4f65aeb48b3763f047ff608ddc3e8d5994ea56235521ca804c05924ab0ef511c471e13b427a5f8440855ad1ad378a394f57cb047e7000aafa4dba7
   languageName: node
   linkType: hard
 

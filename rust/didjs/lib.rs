@@ -55,7 +55,9 @@ pub fn subtype(new: String, old: String) -> Result<(), String> {
 pub fn check(prog: String) -> Result<(), String> {
     let ast = prog.parse::<IDLProg>().unwrap();
     let mut env = TypeEnv::new();
-    check_prog(&mut env, &ast).map_err(|e| e.to_string())
+    check_prog(&mut env, &ast)
+        .map_err(|e| e.to_string())
+        .map(|_| ())
 }
 
 #[cfg_attr(feature = "js", wasm_bindgen)]
@@ -105,23 +107,5 @@ pub fn idl_to_did(prog: String) -> Option<String> {
         }
     });
     let res = candid::pretty::candid::compile(&env, &actor);
-    Some(res)
-}
-
-#[cfg_attr(feature = "js", wasm_bindgen)]
-pub fn idl_to_wasm(prog: String) -> Option<String> {
-    let ast = prog.parse::<IDLProg>().ok()?;
-    let mut env = TypeEnv::new();
-    let actor = check_prog(&mut env, &ast).ok()?;
-    let res = candid_parser::bindings::wasm::compile(&env, &actor);
-    Some(res)
-}
-
-#[cfg_attr(feature = "js", wasm_bindgen)]
-pub fn idl_to_rust(prog: String) -> Option<String> {
-    let ast = prog.parse::<IDLProg>().ok()?;
-    let mut env = TypeEnv::new();
-    let actor = check_prog(&mut env, &ast).ok()?;
-    let res = candid_parser::bindings::rust::compile(&env, &actor);
     Some(res)
 }

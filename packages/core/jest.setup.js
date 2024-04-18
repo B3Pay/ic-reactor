@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import { Crypto } from "@peculiar/webcrypto"
 import "fake-indexeddb/auto"
 global.crypto = new Crypto()
