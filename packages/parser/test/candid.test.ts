@@ -1,3 +1,4 @@
+import { createActorManager } from "@ic-reactor/core"
 import { CandidAdapter } from "../src"
 import { createAgentManager } from "@ic-reactor/core"
 
@@ -10,7 +11,16 @@ describe("createReactorStore", () => {
     const candid = await candidAdapter.didTojs(
       `service:{icrc1_name:()->(text) query;}`
     )
-    console.log("🚀 ~ it ~ candid:", candid)
+
+    const { callMethod } = createActorManager({
+      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+      idlFactory: candid.idlFactory,
+      agentManager,
+    })
+
+    const name = await callMethod("icrc1_name")
+
+    expect(name).toEqual("Internet Computer")
   })
 
   // it("should return candid idlFactory", async () => {

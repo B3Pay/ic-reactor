@@ -5,7 +5,7 @@ import {
 } from "@ic-reactor/core/dist/utils/constants"
 import { CandidAdapterParameters, CandidDefenition } from "./types"
 import { CanisterId, IDL, Principal } from "@ic-reactor/core/dist/types"
-import { did_to_js } from "../rust/pkg/didjs"
+import { did_to_js } from "../pkg/didjs"
 
 export class CandidAdapter {
   public agent: HttpAgent
@@ -109,7 +109,6 @@ export class CandidAdapter {
     // })
 
     const js = did_to_js(candidSource)
-    console.log("🚀 ~ CandidAdapter ~ didTojs ~ js:", js)
 
     const dataUri =
       "data:text/javascript;charset=utf-8," + encodeURIComponent(js as string)
