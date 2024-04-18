@@ -24,6 +24,9 @@ module.exports = {
     compress: true,
     port: 3000,
   },
+  experiments: {
+    asyncWebAssembly: true,
+  },
   module: {
     rules: [
       // You can add loaders here for other file types (CSS, SASS, images, etc.)

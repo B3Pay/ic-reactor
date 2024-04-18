@@ -6,7 +6,8 @@
     "build": "webpack --mode production"
   },
   "dependencies": {
-    "@ic-reactor/core": "^*"
+    "@ic-reactor/core": "^*",
+    "@ic-reactor/parser": "^*"
   },
   "devDependencies": {
     "html-webpack-plugin": "^5.0.0",

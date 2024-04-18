@@ -32,6 +32,7 @@
         }
 
         input,
+        textarea,
         select,
         fieldset,
         button {
@@ -71,6 +72,12 @@
                 <button type="submit" style="width: 30%;">Fetch</button>
             </div>
         </form>
+        <form id="candidForm">
+            <div class="flex-row">
+                <textarea id="candidInput" rows="3" style="width: 70%;" required>icrc1_name:()->(text) query</textarea>
+                <button type="submit" style="width: 30%;">Compile</button>
+            </div>
+        </form>
         <hr />
         <div id="result" style="margin-top: 10px;margin-bottom: 10px;"></div>
         <fieldset class="flex-column" style="padding: 10px;">
@@ -89,8 +96,6 @@
             <button id="loginButton">Login</button>
         </fieldset>
     </div>
-
-    <script type="module" src="./main.js"></script>
 </body>
 
 </html>

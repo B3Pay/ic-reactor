@@ -3,24 +3,35 @@ import {
   LOCAL_HOST_NETWORK_URI,
   jsonToString,
 } from "@ic-reactor/core/dist/utils"
-import {
-  createCandidAdapter,
-  createAgentManager,
-  createReactorCore,
-} from "@ic-reactor/core"
+import { createAgentManager, createReactorCore } from "@ic-reactor/core"
 import { Principal } from "@dfinity/principal"
+import { CandidAdapter } from "@ic-reactor/parser"
 
 const agentManager = createAgentManager({ withDevtools: true })
-const candidAdapter = createCandidAdapter({ agentManager })
+const candidAdapter = new CandidAdapter({ agentManager })
 
 let previousActorCleanup = null
 let balanceUnsub = null
 let transferUnsub = null
 
 const canisterForm = document.getElementById("canisterForm")
+const candidForm = document.getElementById("candidForm")
 
 document.addEventListener("DOMContentLoaded", function () {
   canisterForm.addEventListener("submit", renderActor, false)
+})
+document.addEventListener("DOMContentLoaded", function () {
+  candidForm.addEventListener(
+    "submit",
+    async (e) => {
+      e?.preventDefault()
+      const text = e.target.elements.candidInput.textContent
+
+      const idlFactory = candidAdapter.didTojs(text)
+      console.log("🚀 ~ idlFactory:", idlFactory)
+    },
+    false
+  )
 })
 
 const canisterIdInput = document.getElementById("canisterIdInput")
