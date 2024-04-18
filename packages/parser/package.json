@@ -1,0 +1,45 @@
+{
+  "name": "@ic-reactor/parser",
+  "version": "0.0.0-beta.0",
+  "description": "A parser for the DFINITY Candid language",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:B3Pay/ic-reactor.git"
+  },
+  "keywords": [
+    "actor",
+    "react",
+    "candid",
+    "dfinity",
+    "web3",
+    "dapp"
+  ],
+  "author": "b3hr4d",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/b3hr4d/ic-reactor/issues"
+  },
+  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/visit#readme",
+  "dependencies": {
+    "@dfinity/principal": "^1.2",
+    "@ic-reactor/core": "^1.5.4-beta.0"
+  },
+  "peerDependencies": {
+    "@dfinity/principal": "^1.2",
+    "@ic-reactor/core": "^1.4.2"
+  },
+  "scripts": {
+    "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
+    "start": "tsc watch",
+    "build": "npx tsc",
+    "clean": "npx rimraf dist"
+  },
+  "engines": {
+    "node": ">=10"
+  }
+}

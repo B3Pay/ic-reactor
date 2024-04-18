@@ -2071,7 +2071,6 @@ __metadata:
     "@dfinity/candid": "npm:^1.2"
     "@dfinity/identity": "npm:^1.2"
     "@dfinity/principal": "npm:^1.2"
-    wasm-didjs: "file:../../rust/didjs/pkg/wasm-didjs-0.1.0.tgz"
     zustand: "npm:^4.5"
   peerDependencies:
     "@dfinity/agent": ^1.2
@@ -2079,6 +2078,18 @@ __metadata:
     "@dfinity/candid": ^1.2
     "@dfinity/identity": ^1.2
     "@dfinity/principal": ^1.2
+  languageName: unknown
+  linkType: soft
+
+"@ic-reactor/parser@workspace:packages/parser":
+  version: 0.0.0-use.local
+  resolution: "@ic-reactor/parser@workspace:packages/parser"
+  dependencies:
+    "@dfinity/principal": "npm:^1.2"
+    "@ic-reactor/core": "npm:^1.5.4-beta.0"
+  peerDependencies:
+    "@dfinity/principal": ^1.2
+    "@ic-reactor/core": ^1.4.2
   languageName: unknown
   linkType: soft
 
@@ -11375,7 +11386,7 @@ __metadata:
     typedoc-plugin-include-example: "npm:^1.2.0"
     typedoc-plugin-mdn-links: "npm:^3.1.16"
     typescript: "npm:^5.4"
-    wasm-didjs: "file:rust/didjs/pkg/wasm-didjs-0.1.0.tgz"
+    wasm-didjs: "file:packages/parser/rust/pkg/didjs-0.0.1.tgz"
     webpack: "npm:^5.90.3"
     webpack-cli: "npm:^5.1.4"
     webpack-dev-server: "npm:^5.0.2"
@@ -21789,17 +21800,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"wasm-didjs@file:../../rust/didjs/pkg/wasm-didjs-0.1.0.tgz::locator=%40ic-reactor%2Fcore%40workspace%3Apackages%2Fcore":
-  version: 0.1.0
-  resolution: "wasm-didjs@file:../../rust/didjs/pkg/wasm-didjs-0.1.0.tgz#../../rust/didjs/pkg/wasm-didjs-0.1.0.tgz::hash=531c79&locator=%40ic-reactor%2Fcore%40workspace%3Apackages%2Fcore"
-  checksum: 00412a38ac4f65aeb48b3763f047ff608ddc3e8d5994ea56235521ca804c05924ab0ef511c471e13b427a5f8440855ad1ad378a394f57cb047e7000aafa4dba7
-  languageName: node
-  linkType: hard
-
-"wasm-didjs@file:rust/didjs/pkg/wasm-didjs-0.1.0.tgz::locator=ic-reactor%40workspace%3A.":
-  version: 0.1.0
-  resolution: "wasm-didjs@file:rust/didjs/pkg/wasm-didjs-0.1.0.tgz#rust/didjs/pkg/wasm-didjs-0.1.0.tgz::hash=531c79&locator=ic-reactor%40workspace%3A."
-  checksum: 00412a38ac4f65aeb48b3763f047ff608ddc3e8d5994ea56235521ca804c05924ab0ef511c471e13b427a5f8440855ad1ad378a394f57cb047e7000aafa4dba7
+"wasm-didjs@file:packages/parser/rust/pkg/didjs-0.0.1.tgz::locator=ic-reactor%40workspace%3A.":
+  version: 0.0.1
+  resolution: "wasm-didjs@file:packages/parser/rust/pkg/didjs-0.0.1.tgz#packages/parser/rust/pkg/didjs-0.0.1.tgz::hash=b6cfb3&locator=ic-reactor%40workspace%3A."
+  checksum: bb36a75cfd2d3c04f919f0ed073e4e80a2252edc5dc9a9ad1b2db26182b438c3f5c3ae4678715f6d4c5b05dcef72e991a4f8a72ebe43f3aaa28e9479b90dd458
   languageName: node
   linkType: hard
 
