@@ -36,7 +36,9 @@
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
-    "build": "npx webpack --mode production",
+    "build:node": "npx rimraf src/pkg dist && wasm-pack build --no-pack --target nodejs --out-dir src/pkg --out-name index&& npx tsc && cp -r src/pkg dist",
+    "build:browser": "npx rimraf src/pkg dist && wasm-pack build --no-pack --target web --out-dir src/pkg --out-name index && npx tsc && cp -r src/pkg dist",
+    "build": "npx rimraf src/pkg dist && wasm-pack build --no-pack --out-dir src/pkg --out-name index && npx tsc && cp -r src/pkg dist",
     "start": "tsc watch",
     "clean": "npx rimraf dist"
   },

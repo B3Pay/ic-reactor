@@ -5,11 +5,10 @@ import {
 } from "@ic-reactor/core/dist/utils"
 import { createAgentManager, createReactorCore } from "@ic-reactor/core"
 import { Principal } from "@dfinity/principal"
-import { CandidAdapter } from "@ic-reactor/parser"
-console.log("🚀 ~ candid:", candid)
+import * as candid from "@ic-reactor/parser"
 
 const agentManager = createAgentManager({ withDevtools: true })
-const candidAdapter = new CandidAdapter({ agentManager })
+const candidAdapter = new candid.CandidAdapter({ agentManager })
 
 let previousActorCleanup = null
 let balanceUnsub = null
@@ -28,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
       e?.preventDefault()
       const text = e.target.elements.candidInput.textContent
 
-      const idlFactory = candidAdapter.didTojs(text)
+      const idlFactory = await candidAdapter.didTojs(text)
       console.log("🚀 ~ idlFactory:", idlFactory)
     },
     false

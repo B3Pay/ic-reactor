@@ -20,6 +20,5 @@ examples/*/deps/candid
 docs
 .nx
 umd
-nodejs
 
 packages/svelte
