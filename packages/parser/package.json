@@ -27,7 +27,8 @@
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/visit#readme",
   "dependencies": {
     "@dfinity/principal": "^1.2",
-    "@ic-reactor/core": "^1.5.4-beta.1"
+    "@ic-reactor/core": "^1.5.4-beta.1",
+    "@wasm-tool/wasm-pack-plugin": "^1.7.0"
   },
   "peerDependencies": {
     "@dfinity/principal": "^1.2",
@@ -35,9 +36,7 @@
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
-    "build:node": "npx rimraf src/pkg dist && wasm-pack build --no-pack --target nodejs --out-dir src/pkg && npx tsc && cp -r src/pkg dist",
-    "build:browser": "npx rimraf src/pkg dist && wasm-pack build --no-pack --target web --out-dir src/pkg && npx tsc && cp -r src/pkg dist",
-    "build": "npx rimraf src/pkg dist && wasm-pack build --no-pack --out-dir src/pkg && npx tsc && cp -r src/pkg dist",
+    "build": "npx webpack --mode production",
     "start": "tsc watch",
     "clean": "npx rimraf dist"
   },

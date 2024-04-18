@@ -6,6 +6,7 @@ import {
 import { createAgentManager, createReactorCore } from "@ic-reactor/core"
 import { Principal } from "@dfinity/principal"
 import { CandidAdapter } from "@ic-reactor/parser"
+console.log("🚀 ~ candid:", candid)
 
 const agentManager = createAgentManager({ withDevtools: true })
 const candidAdapter = new CandidAdapter({ agentManager })
