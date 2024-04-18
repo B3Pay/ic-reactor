@@ -12,6 +12,8 @@ describe("createReactorStore", () => {
       `service:{icrc1_name:()->(text) query;}`
     )
 
+    console.log("🚀 ~ it ~ candid:", candid)
+
     const { callMethod } = createActorManager({
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       idlFactory: candid.idlFactory,

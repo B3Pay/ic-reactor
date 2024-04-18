@@ -5,7 +5,6 @@ import {
 } from "@ic-reactor/core/dist/utils/constants"
 import { CandidAdapterParameters, CandidDefenition } from "./types"
 import { CanisterId, IDL, Principal } from "@ic-reactor/core/dist/types"
-import { did_to_js } from "../pkg/didjs"
 
 export class CandidAdapter {
   public agent: HttpAgent
@@ -95,20 +94,9 @@ export class CandidAdapter {
   }
 
   public async didTojs(candidSource: string): Promise<CandidDefenition> {
-    // type DidToJs = {
-    //   did_to_js: (arg: string) => Promise<[string] | []>
-    // }
-    // const didjsInterface: IDL.InterfaceFactory = ({ IDL }) =>
-    //   IDL.Service({
-    //     did_to_js: IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ["query"]),
-    //   })
-
-    // const didjs = Actor.createActor<DidToJs>(didjsInterface, {
-    //   agent: this.agent,
-    //   canisterId: this.didjsCanisterId,
-    // })
-
-    const js = did_to_js(candidSource)
+    const js = await import("../pkg/didjs").then(({ did_to_js }) =>
+      did_to_js(candidSource)
+    )
 
     const dataUri =
       "data:text/javascript;charset=utf-8," + encodeURIComponent(js as string)
