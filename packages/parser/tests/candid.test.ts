@@ -1,14 +1,14 @@
+import { createCandidAdapter } from "@ic-reactor/core"
 import { createActorManager } from "@ic-reactor/core"
-import { CandidAdapter } from "../src"
 import { createAgentManager } from "@ic-reactor/core"
 
 describe("createReactorStore", () => {
   const agentManager = createAgentManager()
 
-  const candidAdapter = new CandidAdapter({ agentManager })
+  const candidAdapter = createCandidAdapter({ agentManager })
 
   it("compile the candid string", async () => {
-    const candid = await candidAdapter.didTojs(
+    const candid = await candidAdapter.evaluateJs(
       `service:{icrc1_name:()->(text) query;}`
     )
 

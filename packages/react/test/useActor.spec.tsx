@@ -79,7 +79,7 @@ describe("createReactor", () => {
 
     const { useQueryCall } = extractActorContext(ActorContext)
 
-    const BackendActor = ({ children }) => {
+    const BackendActor = ({ children }: any) => {
       const { hooks, fetching, authenticating, fetchError } = useActor<Backend>(
         {
           canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",

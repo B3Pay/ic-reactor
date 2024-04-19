@@ -1,4 +1,3 @@
-import { randomBytes } from "crypto"
 import { createReactorCore } from "../src"
 import { backend, idlFactory } from "./candid/backend"
 
