@@ -2,10 +2,10 @@
   "name": "@ic-reactor/parser",
   "version": "0.0.0-beta.1",
   "description": "A parser for the DFINITY Candid language",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "pkg/didjs.js",
+  "types": "pkg/didjs.d.ts",
   "files": [
-    "dist/*"
+    "pkg/*"
   ],
   "repository": {
     "type": "git",
@@ -36,7 +36,8 @@
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
-    "build": "npx rimraf src/pkg dist && node build && npx tsc",
+    "build": "wasm-pack build --release --target web",
+    "build:node": "wasm-pack build --release --target nodejs",
     "start": "tsc watch",
     "clean": "npx rimraf dist src/pkg"
   },

@@ -51,13 +51,13 @@ export class CandidAdapter {
       const fromMetadata = await this.getFromMetadata(canisterId).catch(() => {
         return undefined
       })
-      if (fromMetadata) return fromMetadata
+      if (fromMetadata) return this.evaluateJs(fromMetadata as string)
 
       // Second attempt: Try the temporary hack method
       const fromTmpHack = await this.getFromTmpHack(canisterId).catch(() => {
         return undefined
       })
-      if (fromTmpHack) return fromTmpHack
+      if (fromTmpHack) return this.evaluateJs(fromTmpHack as string)
 
       // If both attempts fail, throw an error
       throw "Failed to retrieve Candid definition by any method."
@@ -68,20 +68,19 @@ export class CandidAdapter {
 
   public async getFromMetadata(
     canisterId: CanisterId
-  ): Promise<CandidDefenition | undefined> {
+  ): Promise<string | undefined> {
     const status = await CanisterStatus.request({
       agent: this.agent,
       canisterId: canisterId as Principal,
       paths: ["candid"],
     })
 
-    const did = status.get("candid") as string | null
-    return did ? this.didTojs(did) : undefined
+    return status.get("candid") as string
   }
 
   public async getFromTmpHack(
     canisterId: CanisterId
-  ): Promise<CandidDefenition | undefined> {
+  ): Promise<string | undefined> {
     const commonInterface: IDL.InterfaceFactory = ({ IDL }) =>
       IDL.Service({
         __get_candid_interface_tmp_hack: IDL.Func([], [IDL.Text], ["query"]),
@@ -92,15 +91,36 @@ export class CandidAdapter {
       canisterId,
     })
 
-    const data = (await actor.__get_candid_interface_tmp_hack()) as
-      | string
-      | null
-    return data ? this.didTojs(data) : undefined
+    return (await actor.__get_candid_interface_tmp_hack()) as string
   }
 
-  public async didTojs(candidSource: string): Promise<CandidDefenition> {
+  public async evaluateJs(data: string): Promise<CandidDefenition> {
+    try {
+      let candidDef: string | [] = ""
+
+      try {
+        candidDef = await this.parseDidToJs(data)
+      } catch (error) {
+        candidDef = await this.fetchDidTojs(data)
+      }
+
+      if (JSON.stringify(candidDef) === JSON.stringify([])) {
+        throw new Error("Cannot compile Candid to JavaScript")
+      }
+
+      const dataUri =
+        "data:text/javascript;charset=utf-8," +
+        encodeURIComponent(candidDef[0] as string)
+
+      return eval('import("' + dataUri + '")')
+    } catch (error) {
+      throw new Error("Error evaluating Candid definition")
+    }
+  }
+
+  public async fetchDidTojs(candidSource: string): Promise<string | []> {
     type DidToJs = {
-      did_to_js: (arg: string) => Promise<[string] | []>
+      did_to_js: (arg: string) => Promise<string | []>
     }
     const didjsInterface: IDL.InterfaceFactory = ({ IDL }) =>
       IDL.Service({
@@ -112,16 +132,16 @@ export class CandidAdapter {
       canisterId: this.didjsCanisterId,
     })
 
-    const js = await didjs.did_to_js(candidSource)
+    return didjs.did_to_js(candidSource)
+  }
 
-    if (JSON.stringify(js) === JSON.stringify([])) {
-      throw new Error("Cannot compile Candid to JavaScript")
+  public async parseDidToJs(candidSource: string): Promise<string> {
+    try {
+      const parser = await import("@ic-reactor/parser")
+      return parser.did_to_js(candidSource)
+    } catch (error) {
+      console.log("Error parsing candid", error)
+      throw new Error("@ic-reactor/parser module is not available")
     }
-
-    const dataUri =
-      "data:text/javascript;charset=utf-8," +
-      encodeURIComponent(js[0] as string)
-
-    return eval('import("' + dataUri + '")')
   }
 }

@@ -10,9 +10,10 @@ describe("createReactorStore", () => {
   const candidAdapter = createCandidAdapter({ agentManager })
 
   it("compile the candid string", async () => {
-    const candid = await candidAdapter.didTojs(
+    const candid = await candidAdapter.evaluateJs(
       `service:{icrc1_name:()->(text) query;}`
     )
+    console.log("🚀 ~ it ~ candid:", candid)
 
     const { callMethod } = createActorManager({
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
