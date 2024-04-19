@@ -7133,6 +7133,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "candid-react@workspace:examples/candid-ui"
   dependencies:
+    "@ic-reactor/parser": "workspace:^"
     "@ic-reactor/react": "npm:^*"
     "@ic-reactor/visitor": "npm:^*"
     "@react-hook/resize-observer": "npm:^1.2.6"
@@ -12463,7 +12464,6 @@ __metadata:
   dependencies:
     "@ic-reactor/core": "workspace:^"
     "@ic-reactor/parser": "workspace:^"
-    "@ic-reactor/visitor": "workspace:^"
     copy-webpack-plugin: "npm:^12.0.2"
     html-webpack-plugin: "npm:^5.0.0"
     webpack: "npm:^5.0.0"
