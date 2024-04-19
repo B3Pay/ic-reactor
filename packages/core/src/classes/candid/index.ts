@@ -136,6 +136,7 @@ export class CandidAdapter {
 
   public async parseDidToJs(candidSource: string): Promise<string> {
     try {
+      // This is a dynamic import if the module is available in the environment
       const parser = await import("@ic-reactor/parser")
       await parser.default()
       return parser.did_to_js(candidSource)
