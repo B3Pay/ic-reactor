@@ -2125,7 +2125,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/react@workspace:packages/react":
+"@ic-reactor/react@npm:1.5.5-beta.1, @ic-reactor/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
@@ -2155,7 +2155,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/visitor@workspace:packages/visitor":
+"@ic-reactor/visitor@npm:1.6.8-beta.1, @ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
@@ -7134,8 +7134,8 @@ __metadata:
   resolution: "candid-react@workspace:examples/candid-ui"
   dependencies:
     "@ic-reactor/parser": "npm:0.0.0-beta.1"
-    "@ic-reactor/react": "npm:*"
-    "@ic-reactor/visitor": "npm:*"
+    "@ic-reactor/react": "npm:1.5.5-beta.1"
+    "@ic-reactor/visitor": "npm:1.6.8-beta.1"
     "@react-hook/resize-observer": "npm:^1.2.6"
     "@types/lodash": "npm:^4.17.0"
     "@types/node": "npm:^16.18.68"

@@ -39,7 +39,7 @@
     "build": "wasm-pack build --release --target web",
     "build:node": "wasm-pack build --release --target nodejs",
     "start": "tsc watch",
-    "clean": "npx rimraf dist src/pkg"
+    "clean": "npx rimraf dist pkg"
   },
   "engines": {
     "node": ">=10"

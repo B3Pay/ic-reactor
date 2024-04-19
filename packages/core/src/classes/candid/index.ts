@@ -101,7 +101,7 @@ export class CandidAdapter {
       try {
         candidDef = await this.parseDidToJs(data)
       } catch (error) {
-        candidDef = await this.fetchDidTojs(data)
+        candidDef = (await this.fetchDidTojs(data))[0]
       }
 
       if (JSON.stringify(candidDef) === JSON.stringify([])) {
@@ -109,8 +109,7 @@ export class CandidAdapter {
       }
 
       const dataUri =
-        "data:text/javascript;charset=utf-8," +
-        encodeURIComponent(candidDef[0] as string)
+        "data:text/javascript;charset=utf-8," + encodeURIComponent(candidDef)
 
       return eval('import("' + dataUri + '")')
     } catch (error) {
@@ -118,9 +117,9 @@ export class CandidAdapter {
     }
   }
 
-  public async fetchDidTojs(candidSource: string): Promise<string | []> {
+  public async fetchDidTojs(candidSource: string): Promise<[string]> {
     type DidToJs = {
-      did_to_js: (arg: string) => Promise<string | []>
+      did_to_js: (arg: string) => Promise<[string]>
     }
     const didjsInterface: IDL.InterfaceFactory = ({ IDL }) =>
       IDL.Service({
@@ -138,9 +137,9 @@ export class CandidAdapter {
   public async parseDidToJs(candidSource: string): Promise<string> {
     try {
       const parser = await import("@ic-reactor/parser")
+      await parser.default()
       return parser.did_to_js(candidSource)
     } catch (error) {
-      console.log("Error parsing candid", error)
       throw new Error("@ic-reactor/parser module is not available")
     }
   }

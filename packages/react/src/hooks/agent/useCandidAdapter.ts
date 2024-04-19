@@ -28,7 +28,7 @@ export interface UseCandidAdapterParams {
  * }
  *```
  */
-export const useCandidAdapter = (config: UseCandidAdapterParams) => {
+export const useCandidAdapter = (config: UseCandidAdapterParams = {}) => {
   const [candidAdapter, setCandidAdapter] = useState<CandidAdapter>()
 
   const agent = useAgent()
