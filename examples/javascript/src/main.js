@@ -25,10 +25,26 @@ function listener() {
     async (e) => {
       console.log("🚀 ~ e:", e)
       e?.preventDefault()
-      const text = e.target.elements.candidInput.textContent
+      const text = e.target.elements.candidInput.value
+      const canisterId = e.target.elements.canisterId.value
+      const functionName = e.target.elements.functionName.value
 
-      const idlFactory = await candidAdapter.didTojs(text)
+      const { idlFactory } = await candidAdapter.didTojs(`service:{${text}}`)
       console.log("🚀 ~ idlFactory:", idlFactory)
+
+      const reactor = createReactorCore({
+        agentManager,
+        canisterId,
+        idlFactory,
+        withDevtools: true,
+        withVisitor: true,
+      })
+
+      const { dataPromise } = reactor.queryCall({ functionName })
+
+      dataPromise.then((result) => {
+        candidResultDiv.innerHTML = jsonToString(result)
+      })
     },
     false
   )
@@ -38,6 +54,7 @@ const canisterIdInput = document.getElementById("canisterIdInput")
 const networkSelect = document.getElementById("networkSelect")
 const userPara = document.getElementById("user")
 const loginButton = document.getElementById("loginButton")
+const candidResultDiv = document.getElementById("candidResult")
 const resultDiv = document.getElementById("result")
 const userForm = document.getElementById("userForm")
 const balanceDiv = document.getElementById("balance")
