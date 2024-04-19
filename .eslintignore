@@ -12,5 +12,6 @@ coverage
 declarations
 # don't lint test
 test
+tests
 # don't lint dist output
 dist
