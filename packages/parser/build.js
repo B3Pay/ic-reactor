@@ -4,14 +4,21 @@ const { execSync } = require("child_process")
 const fs = require("fs")
 const path = require("path")
 
-// Run TypeScript compiler
-execSync("npx tsc")
+// get the arguments
+const args = process.argv.slice(2)
+const isRelease = args.includes("--release")
+const target = args[0] ?? "bundler"
 
+console.log(`Building for target: ${target}...`)
 // Run wasm-pack build
 execSync(
-  "wasm-pack build --no-pack --target web --out-dir src/pkg --out-name index",
+  `wasm-pack build --${
+    isRelease ? "release" : "dev"
+  } --target ${target} --out-dir src/pkg --out-name index`,
   { stdio: "inherit" }
 )
+
+execSync("npx tsc", { stdio: "inherit" })
 
 const srcDir = "./src/pkg"
 const destDir = "./dist/pkg"

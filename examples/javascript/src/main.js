@@ -8,7 +8,7 @@ import { Principal } from "@dfinity/principal"
 import * as candid from "@ic-reactor/parser"
 
 const agentManager = createAgentManager({ withDevtools: true })
-const candidAdapter = new candid.CandidAdapter({ agentManager })
+const candidAdapter = candid.createCandidAdapter({ agentManager })
 
 let previousActorCleanup = null
 let balanceUnsub = null
@@ -16,14 +16,14 @@ let transferUnsub = null
 
 const canisterForm = document.getElementById("canisterForm")
 const candidForm = document.getElementById("candidForm")
+document.addEventListener("DOMContentLoaded", listener)
 
-document.addEventListener("DOMContentLoaded", function () {
+function listener() {
   canisterForm.addEventListener("submit", renderActor, false)
-})
-document.addEventListener("DOMContentLoaded", function () {
   candidForm.addEventListener(
     "submit",
     async (e) => {
+      console.log("🚀 ~ e:", e)
       e?.preventDefault()
       const text = e.target.elements.candidInput.textContent
 
@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", function () {
     },
     false
   )
-})
+}
 
 const canisterIdInput = document.getElementById("canisterIdInput")
 const networkSelect = document.getElementById("networkSelect")

@@ -1,21 +1,22 @@
 const path = require("path")
-const HtmlWebpackPlugin = require("html-webpack-plugin")
+const CopyWebpackPlugin = require("copy-webpack-plugin")
 
 /** @type {import("webpack").Configuration} */
 module.exports = {
   entry: "./src/main.js",
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "bundle.js",
+    filename: "main.js",
   },
+  mode: "development",
   plugins: [
-    new HtmlWebpackPlugin({
-      template: "src/index.html", // Update this to point to your HTML file
+    new CopyWebpackPlugin({
+      patterns: [{ from: "./src/index.html" }],
     }),
   ],
-  resolve: {
-    extensions: [".tsx", ".ts", ".js"],
-    modules: [path.resolve(__dirname, "node_modules"), "node_modules"],
+  resolve: { fallback: { path: false } },
+  experiments: {
+    asyncWebAssembly: true,
   },
   devServer: {
     static: {
@@ -23,9 +24,6 @@ module.exports = {
     },
     compress: true,
     port: 3000,
-  },
-  experiments: {
-    asyncWebAssembly: true,
   },
   module: {
     rules: [

@@ -5,7 +5,7 @@ import {
 } from "@ic-reactor/core/dist/utils/constants"
 import { CandidAdapterParameters, CandidDefenition } from "./types"
 import { CanisterId, IDL, Principal } from "@ic-reactor/core/dist/types"
-import { did_to_js } from "./pkg"
+import * as wasm from "./wasm"
 
 export const createCandidAdapter = (params: CandidAdapterParameters) => {
   return new CandidAdapter(params)
@@ -99,8 +99,7 @@ export class CandidAdapter {
   }
 
   public didTojs(candidSource: string): Promise<CandidDefenition> {
-    const js = did_to_js(candidSource)
-    console.log("🚀 ~ CandidAdapter ~ didTojs ~ js:", js)
+    const js = wasm.did_to_js(candidSource)
 
     const dataUri =
       "data:text/javascript;charset=utf-8," + encodeURIComponent(js as string)
