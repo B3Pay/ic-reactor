@@ -14,6 +14,7 @@ prompt
 lerna-debug.log
 yarn-error.log
 
+target
 pulled.json
 examples/*/deps/candid
 docs

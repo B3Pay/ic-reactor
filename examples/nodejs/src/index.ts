@@ -1,11 +1,8 @@
-import {
-  createCandidAdapter,
-  createActorManager,
-  createReactorCore,
-} from '@ic-reactor/core';
+import { createActorManager, createReactorCore } from '@ic-reactor/core';
 import { _SERVICE } from './declarations/icp-ledger';
 import { agentManager } from './agent';
 import { InterfaceFactory } from '@dfinity/candid/lib/cjs/idl';
+import { createCandidAdapter } from '@ic-reactor/parser';
 
 const candidAdapter = createCandidAdapter({ agentManager });
 
@@ -14,6 +11,15 @@ const canisterId = 'ryjl3-tyaaa-aaaaa-aaaba-cai';
 const fetchCandidInterface = async () => {
   console.log('Fetch Candid Interface -----------------');
   const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId);
+
+  return idlFactory;
+};
+
+const convertCandidInterface = async () => {
+  console.log('Convert Candid Interface -----------------');
+  const { idlFactory } = await candidAdapter.didTojs(
+    'service:{icrc1_name:()->(text) query}',
+  );
 
   return idlFactory;
 };
@@ -43,7 +49,7 @@ const reactorCore = async (idlFactory: InterfaceFactory) => {
 
   // Call a method
   const { subscribe } = queryCall({
-    functionName: 'name',
+    functionName: 'icrc1_name',
   });
 
   subscribe((state) => {
@@ -57,6 +63,8 @@ const reactorCore = async (idlFactory: InterfaceFactory) => {
 
 (async () => {
   const idlFactory = await fetchCandidInterface();
+  const idlFactory2 = await convertCandidInterface();
+
   await actorManager(idlFactory);
-  await reactorCore(idlFactory);
+  await reactorCore(idlFactory2);
 })();

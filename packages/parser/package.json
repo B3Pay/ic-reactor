@@ -1,7 +1,7 @@
 {
-  "name": "@ic-reactor/visitor",
-  "version": "1.6.8-beta.1",
-  "description": "Visitor classes for ic-reactor",
+  "name": "@ic-reactor/parser",
+  "version": "0.0.0-beta.1",
+  "description": "A parser for the DFINITY Candid language",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -27,17 +27,18 @@
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/visit#readme",
   "dependencies": {
     "@dfinity/principal": "^1.2",
-    "@ic-reactor/core": "^1.5.4-beta.1"
+    "@ic-reactor/core": "^1.5.4-beta.1",
+    "@wasm-tool/wasm-pack-plugin": "^1.7.0"
   },
   "peerDependencies": {
     "@dfinity/principal": "^1.2",
     "@ic-reactor/core": "^1.4.2"
   },
   "scripts": {
-    "test": "npx jest",
+    "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
+    "build": "npx rimraf src/pkg dist && node build",
     "start": "tsc watch",
-    "build": "npx tsc",
-    "clean": "npx rimraf dist"
+    "clean": "npx rimraf dist src/pkg"
   },
   "engines": {
     "node": ">=10"

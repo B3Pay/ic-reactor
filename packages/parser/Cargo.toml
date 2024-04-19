@@ -1,0 +1,19 @@
+[package]
+name = "didjs"
+version = "0.0.1"
+authors = ["b3hr4d <behradmusiclove@yahoo.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+candid_parser = "0.1"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"

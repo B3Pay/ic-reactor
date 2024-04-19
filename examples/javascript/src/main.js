@@ -3,30 +3,58 @@ import {
   LOCAL_HOST_NETWORK_URI,
   jsonToString,
 } from "@ic-reactor/core/dist/utils"
-import {
-  createCandidAdapter,
-  createAgentManager,
-  createReactorCore,
-} from "@ic-reactor/core"
+import { createAgentManager, createReactorCore } from "@ic-reactor/core"
 import { Principal } from "@dfinity/principal"
+import * as candid from "@ic-reactor/parser"
 
 const agentManager = createAgentManager({ withDevtools: true })
-const candidAdapter = createCandidAdapter({ agentManager })
+const candidAdapter = candid.createCandidAdapter({ agentManager })
 
 let previousActorCleanup = null
 let balanceUnsub = null
 let transferUnsub = null
 
 const canisterForm = document.getElementById("canisterForm")
+const candidForm = document.getElementById("candidForm")
+document.addEventListener("DOMContentLoaded", listener)
 
-document.addEventListener("DOMContentLoaded", function () {
+function listener() {
   canisterForm.addEventListener("submit", renderActor, false)
-})
+  candidForm.addEventListener(
+    "submit",
+    async (e) => {
+      console.log("🚀 ~ e:", e)
+      e?.preventDefault()
+      const text = e.target.elements.candidInput.value
+      const canisterId = e.target.elements.canisterId.value
+      const functionName = e.target.elements.functionName.value
+
+      const { idlFactory } = await candidAdapter.didTojs(`service:{${text}}`)
+      console.log("🚀 ~ idlFactory:", idlFactory)
+
+      const reactor = createReactorCore({
+        agentManager,
+        canisterId,
+        idlFactory,
+        withDevtools: true,
+        withVisitor: true,
+      })
+
+      const { dataPromise } = reactor.queryCall({ functionName })
+
+      dataPromise.then((result) => {
+        candidResultDiv.innerHTML = jsonToString(result)
+      })
+    },
+    false
+  )
+}
 
 const canisterIdInput = document.getElementById("canisterIdInput")
 const networkSelect = document.getElementById("networkSelect")
 const userPara = document.getElementById("user")
 const loginButton = document.getElementById("loginButton")
+const candidResultDiv = document.getElementById("candidResult")
 const resultDiv = document.getElementById("result")
 const userForm = document.getElementById("userForm")
 const balanceDiv = document.getElementById("balance")
