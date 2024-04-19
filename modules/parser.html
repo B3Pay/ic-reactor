@@ -1,0 +1,91 @@
+<!DOCTYPE html><html class="default" lang="en"><head><meta charSet="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>parser | ic-reactor</title><meta name="description" content="A library for seamless communication between Internet Computer Actors and the frontend."/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><link rel="icon" href="../ic-reactor.png" />
+</head><body><script>console.log(`Loaded ${location.href}`)</script><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search" data-base=".."><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"><a href="https://github.com/B3Pay/ic-reactor/tree/main/examples">Example</a><a href="https://github.com/B3Pay/ic-reactor">GitHub</a></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">ic-reactor</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../index.html">ic-reactor</a></li><li><a href="parser.html">parser</a></li></ul><h1>Module parser</h1></div><section class="tsd-panel tsd-typography"><div align="center">
+
+  <h1><code>wasm-pack-template</code></h1>
+
+<p>  <strong>A template for kick starting a Rust and WebAssembly project using <a href="https://github.com/rustwasm/wasm-pack">wasm-pack</a>.</strong></p>
+  <p>
+    <a href="https://travis-ci.org/rustwasm/wasm-pack-template"><img src="https://img.shields.io/travis/rustwasm/wasm-pack-template.svg?style=flat-square" alt="Build Status" /></a>
+  </p>
+
+  <h3>
+    <a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html">Tutorial</a>
+    <span> | </span>
+    <a href="https://discordapp.com/channels/442252698964721669/443151097398296587">Chat</a>
+  </h3>
+
+<p>  <sub>Built with 🦀🕸 by <a href="https://rustwasm.github.io/">The Rust and WebAssembly Working Group</a></sub></p>
+</div>
+
+<a id="md:about" class="tsd-anchor"></a><h2><a href="#md:about">About</a></h2><p><a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html"><strong>📚 Read this template tutorial! 📚</strong></a></p>
+<p>This template is designed for compiling Rust libraries into WebAssembly and
+publishing the resulting package to NPM.</p>
+<p>Be sure to check out <a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/index.html">other <code>wasm-pack</code> tutorials online</a> for other
+templates and usages of <code>wasm-pack</code>.</p>
+<a id="md:🚴-usage" class="tsd-anchor"></a><h2><a href="#md:🚴-usage">🚴 Usage</a></h2><a id="md:🐑-use-cargo-generate-to-clone-this-template" class="tsd-anchor"></a><h3><a href="#md:🐑-use-cargo-generate-to-clone-this-template">🐑 Use <code>cargo generate</code> to Clone this Template</a></h3><p><a href="https://github.com/ashleygwilliams/cargo-generate">Learn more about <code>cargo generate</code> here.</a></p>
+<pre><code><span class="hl-9">cargo</span><span class="hl-1"> </span><span class="hl-9">generate</span><span class="hl-1"> --</span><span class="hl-9">git</span><span class="hl-1"> </span><span class="hl-15">https</span><span class="hl-1">:</span><span class="hl-13">//github.com/rustwasm/wasm-pack-template.git --name my-project</span><br/><span class="hl-9">cd</span><span class="hl-1"> </span><span class="hl-9">my</span><span class="hl-1">-</span><span class="hl-9">project</span>
+</code><button>Copy</button></pre>
+<a id="md:🛠️-build-with-wasm-pack-build" class="tsd-anchor"></a><h3><a href="#md:🛠️-build-with-wasm-pack-build">🛠️ Build with <code>wasm-pack build</code></a></h3><pre><code><span class="hl-9">wasm</span><span class="hl-1">-</span><span class="hl-9">pack</span><span class="hl-1"> </span><span class="hl-9">build</span>
+</code><button>Copy</button></pre>
+<a id="md:🔬-test-in-headless-browsers-with-wasm-pack-test" class="tsd-anchor"></a><h3><a href="#md:🔬-test-in-headless-browsers-with-wasm-pack-test">🔬 Test in Headless Browsers with <code>wasm-pack test</code></a></h3><pre><code><span class="hl-9">wasm</span><span class="hl-1">-</span><span class="hl-9">pack</span><span class="hl-1"> </span><span class="hl-9">test</span><span class="hl-1"> --</span><span class="hl-9">headless</span><span class="hl-1"> --</span><span class="hl-9">firefox</span>
+</code><button>Copy</button></pre>
+<a id="md:🎁-publish-to-npm-with-wasm-pack-publish" class="tsd-anchor"></a><h3><a href="#md:🎁-publish-to-npm-with-wasm-pack-publish">🎁 Publish to NPM with <code>wasm-pack publish</code></a></h3><pre><code><span class="hl-9">wasm</span><span class="hl-1">-</span><span class="hl-9">pack</span><span class="hl-1"> </span><span class="hl-9">publish</span>
+</code><button>Copy</button></pre>
+<a id="md:🔋-batteries-included" class="tsd-anchor"></a><h2><a href="#md:🔋-batteries-included">🔋 Batteries Included</a></h2><ul>
+<li><a href="https://github.com/rustwasm/wasm-bindgen"><code>wasm-bindgen</code></a> for communicating
+between WebAssembly and JavaScript.</li>
+<li><a href="https://github.com/rustwasm/console_error_panic_hook"><code>console_error_panic_hook</code></a>
+for logging panic messages to the developer console.</li>
+<li><code>LICENSE-APACHE</code> and <code>LICENSE-MIT</code>: most Rust projects are licensed this way, so these are included for you</li>
+</ul>
+<a id="md:license" class="tsd-anchor"></a><h2><a href="#md:license">License</a></h2><p>Licensed under either of</p>
+<ul>
+<li>Apache License, Version 2.0, (<a href="LICENSE-APACHE">LICENSE-APACHE</a> or <a href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</a>)</li>
+<li>MIT license (<a href="LICENSE-MIT">LICENSE-MIT</a> or <a href="http://opensource.org/licenses/MIT">http://opensource.org/licenses/MIT</a>)</li>
+</ul>
+<p>at your option.</p>
+<a id="md:contribution" class="tsd-anchor"></a><h3><a href="#md:contribution">Contribution</a></h3><p>Unless you explicitly state otherwise, any contribution intentionally
+submitted for inclusion in the work by you, as defined in the Apache-2.0
+license, shall be dual licensed as above, without any additional terms or
+conditions.</p>
+</section><section class="tsd-panel-group tsd-index-group"><section class="tsd-panel tsd-index-panel"><h3 class="tsd-index-heading uppercase">Index</h3><section class="tsd-index-section"><h3 class="tsd-index-heading">Classes</h3><div class="tsd-index-list"><a href="../classes/parser.CandidAdapter.html" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="../assets/icons.svg#icon-128"></use></svg><span>Candid<wbr/>Adapter</span></a>
+</div></section><section class="tsd-index-section"><h3 class="tsd-index-heading">Functions</h3><div class="tsd-index-list"><a href="../functions/parser.createCandidAdapter.html" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="../assets/icons.svg#icon-64"></use></svg><span>create<wbr/>Candid<wbr/>Adapter</span></a>
+</div></section></section></section></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-index-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><h4 class="uppercase">Member Visibility</h4><form><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-private" name="private"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Private</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></form></div><div class="tsd-theme-toggle"><h4 class="uppercase">Theme</h4><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-index-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#md:about"><span>About</span></a><a href="#md:🚴-usage"><span>🚴 <wbr/>Usage</span></a><ul><li><a href="#md:🐑-use-cargo-generate-to-clone-this-template"><span>🐑 <wbr/>Use cargo generate to <wbr/>Clone this <wbr/>Template</span></a></li><li><a href="#md:🛠️-build-with-wasm-pack-build"><span>🛠️ <wbr/>Build with wasm-<wbr/>pack build</span></a></li><li><a href="#md:🔬-test-in-headless-browsers-with-wasm-pack-test"><span>🔬 <wbr/>Test in <wbr/>Headless <wbr/>Browsers with wasm-<wbr/>pack test</span></a></li><li><a href="#md:🎁-publish-to-npm-with-wasm-pack-publish"><span>🎁 <wbr/>Publish to NPM with wasm-<wbr/>pack publish</span></a></li></ul><a href="#md:🔋-batteries-included"><span>🔋 <wbr/>Batteries <wbr/>Included</span></a><a href="#md:license"><span>License</span></a><ul><li><a href="#md:contribution"><span>Contribution</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../index.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="../assets/icons.svg#icon-1"></use></svg><span>ic-reactor</span></a><ul class="tsd-small-nested-navigation" id="tsd-nav-container" data-base=".."><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a><br>
+            <span id="generation-date"></span>
+            <script>
+                window.GENERATION_DATE = 1713535345712;
+
+                (() => {
+                    
+        const formatter = new Intl.RelativeTimeFormat('en', {
+            numeric: 'auto',
+            style: 'short',
+        });
+
+        const divisions = [
+            { amount: 60, name: 'seconds' },
+            { amount: 60, name: 'minutes' },
+            { amount: 24, name: 'hours' },
+            { amount: 7, name: 'days' },
+            { amount: 4.34524, name: 'weeks' },
+            { amount: 12, name: 'months' },
+            { amount: Number.POSITIVE_INFINITY, name: 'years' }
+        ];
+
+        function formatTimeAgo(date) {
+            let duration = (date - new Date()) / 1000;
+            
+            for (const division of divisions) {
+                if (Math.abs(duration) < division.amount) {
+                    return formatter.format(Math.round(duration), division.name);
+                }
+                duration /= division.amount;
+            }
+        }
+
+        document.getElementById('generation-date').title = new Date(window.GENERATION_DATE).toLocaleString();
+        document.getElementById('generation-date').innerText = `Last modified ${formatTimeAgo(window.GENERATION_DATE)}`;
+    
+                })();
+            </script>
+        </p></footer><div class="overlay"></div></body></html>
