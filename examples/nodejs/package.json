@@ -51,7 +51,7 @@
   "dependencies": {
     "@dfinity/agent": "^1.0",
     "@ic-reactor/core": "*",
-    "@ic-reactor/parser": "*",
+    "@ic-reactor/parser": "0.0.0-beta.1",
     "@ic-reactor/visitor": "*"
   }
 }

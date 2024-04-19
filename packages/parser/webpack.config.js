@@ -11,12 +11,6 @@ module.exports = () => {
       filename: "index.js",
       path: path.resolve(__dirname, "dist"),
     },
-    resolve: {
-      alias: {
-        "@ic-reactor/parser": path.resolve(__dirname, "../parser/src"),
-      },
-      extensions: [".ts", ".js"],
-    },
     experiments: {
       syncWebAssembly: true,
     },

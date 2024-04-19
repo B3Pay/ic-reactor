@@ -6,19 +6,14 @@ const path = require("path")
 
 // get the arguments
 const args = process.argv.slice(2)
-const isRelease = args.includes("--release")
-const target = args[0] ?? "bundler"
+const target = args[0] ?? "web"
 
 console.log(`Building for target: ${target}...`)
 // Run wasm-pack build
 execSync(
-  `wasm-pack build --${
-    isRelease ? "release" : "dev"
-  } --target ${target} --out-dir src/pkg --out-name index`,
+  `wasm-pack build --release --target ${target} --out-dir src/pkg --out-name index`,
   { stdio: "inherit" }
 )
-
-execSync("npx tsc", { stdio: "inherit" })
 
 const srcDir = "./src/pkg"
 const destDir = "./dist/pkg"

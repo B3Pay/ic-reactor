@@ -36,7 +36,7 @@
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
-    "build": "npx rimraf src/pkg dist && node build",
+    "build": "npx rimraf src/pkg dist && node build && npx tsc",
     "start": "tsc watch",
     "clean": "npx rimraf dist src/pkg"
   },
