@@ -1,11 +1,14 @@
-import { CandidAdapter } from "@ic-reactor/core/dist/classes"
 import { useEffect, useState } from "react"
 import { createCandidAdapter } from "@ic-reactor/core"
 import { useAgent } from "./useAgent"
 
+import type { CandidAdapter } from "@ic-reactor/core/dist/classes"
+export type { CandidAdapter }
+
 export interface UseCandidAdapterParams {
   didjsCanisterId?: string
 }
+
 /**
  * Accesses the `CandidAdapter` to download the actor's Candid interface.
  *

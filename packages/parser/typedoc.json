@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["./pkg/didjs.d.ts"],
+  "entryPoints": ["./dist/didjs.d.ts"],
   "name": "parser",
   "kindSortOrder": [
     "Reference",

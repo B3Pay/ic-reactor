@@ -2107,16 +2107,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/parser@workspace:packages/parser":
+"@ic-reactor/parser@npm:0.0.0-beta.2, @ic-reactor/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/parser@workspace:packages/parser"
-  dependencies:
-    "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.5.4-beta.2"
-    "@wasm-tool/wasm-pack-plugin": "npm:^1.7.0"
-  peerDependencies:
-    "@dfinity/principal": ^1.2
-    "@ic-reactor/core": ^1.4.2
   languageName: unknown
   linkType: soft
 
@@ -2138,25 +2131,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/react@npm:1.5.5-beta.1":
-  version: 1.5.5-beta.1
-  resolution: "@ic-reactor/react@npm:1.5.5-beta.1"
-  dependencies:
-    "@ic-reactor/core": "npm:^1.5.4-beta.1"
-    zustand-utils: "npm:^1.3"
-  peerDependencies:
-    "@dfinity/agent": ^1.2
-    "@dfinity/auth-client": ^1.2
-    "@dfinity/candid": ^1.2
-    "@dfinity/identity": ^1.2
-    "@dfinity/principal": ^1.2
-    react: ">=16.8"
-    zustand: 4.5
-  checksum: 6574d0989b7a7a797fbf44460a0ea7a1b2d21efbec9e4731c9838b6916f7437de3f679b1da0c62b760c8e29b7ca82fa4bbff90dc2b791274b60a508e0d4d5b48
-  languageName: node
-  linkType: hard
-
-"@ic-reactor/react@workspace:packages/react":
+"@ic-reactor/react@npm:1.5.5-beta.2, @ic-reactor/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
@@ -2186,20 +2161,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/visitor@npm:1.6.8-beta.1":
-  version: 1.6.8-beta.1
-  resolution: "@ic-reactor/visitor@npm:1.6.8-beta.1"
-  dependencies:
-    "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.5.4-beta.1"
-  peerDependencies:
-    "@dfinity/principal": ^1.2
-    "@ic-reactor/core": ^1.4.2
-  checksum: 9e9fadc9568d1d49e07a78a57e98ab07b4a09306bdc73a0d230aefe90eced6b730da21c162ebc921ea7e10d1892391953011a3794c50957848103a105d7da5eb
-  languageName: node
-  linkType: hard
-
-"@ic-reactor/visitor@workspace:packages/visitor":
+"@ic-reactor/visitor@npm:1.6.8-beta.2, @ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
@@ -5418,18 +5380,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@wasm-tool/wasm-pack-plugin@npm:^1.7.0":
-  version: 1.7.0
-  resolution: "@wasm-tool/wasm-pack-plugin@npm:1.7.0"
-  dependencies:
-    chalk: "npm:^2.4.1"
-    command-exists: "npm:^1.2.7"
-    watchpack: "npm:^2.1.1"
-    which: "npm:^2.0.2"
-  checksum: 657942706a742d914914ecf390ac498a44f556f296f54407813b9e9562bbbbd54360b598b72057d441de7f56f1a4f5d2d5edc9dc1b69772000bacb39d9ca39bc
-  languageName: node
-  linkType: hard
-
 "@webassemblyjs/ast@npm:1.12.1, @webassemblyjs/ast@npm:^1.12.1":
   version: 1.12.1
   resolution: "@webassemblyjs/ast@npm:1.12.1"
@@ -7177,9 +7127,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "candid-react@workspace:examples/candid-ui"
   dependencies:
-    "@ic-reactor/parser": "npm:0.0.0-beta.1"
-    "@ic-reactor/react": "npm:1.5.5-beta.1"
-    "@ic-reactor/visitor": "npm:1.6.8-beta.1"
+    "@ic-reactor/parser": "npm:0.0.0-beta.2"
+    "@ic-reactor/react": "npm:1.5.5-beta.2"
+    "@ic-reactor/visitor": "npm:1.6.8-beta.2"
     "@react-hook/resize-observer": "npm:^1.2.6"
     "@types/lodash": "npm:^4.17.0"
     "@types/node": "npm:^16.18.68"
@@ -7609,13 +7559,6 @@ __metadata:
   dependencies:
     delayed-stream: "npm:~1.0.0"
   checksum: 0dbb829577e1b1e839fa82b40c07ffaf7de8a09b935cadd355a73652ae70a88b4320db322f6634a4ad93424292fa80973ac6480986247f1734a1137debf271d5
-  languageName: node
-  linkType: hard
-
-"command-exists@npm:^1.2.7":
-  version: 1.2.9
-  resolution: "command-exists@npm:1.2.9"
-  checksum: 75040240062de46cd6cd43e6b3032a8b0494525c89d3962e280dde665103f8cc304a8b313a5aa541b91da2f5a9af75c5959dc3a77893a2726407a5e9a0234c16
   languageName: node
   linkType: hard
 
@@ -12507,7 +12450,7 @@ __metadata:
   resolution: "javacript@workspace:examples/javascript"
   dependencies:
     "@ic-reactor/core": "npm:*"
-    "@ic-reactor/parser": "npm:0.0.0-beta.1"
+    "@ic-reactor/parser": "npm:0.0.0-beta.2"
     copy-webpack-plugin: "npm:^12.0.2"
     html-webpack-plugin: "npm:^5.0.0"
     webpack: "npm:^5.0.0"
@@ -21974,7 +21917,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"watchpack@npm:^2.1.1, watchpack@npm:^2.4.1":
+"watchpack@npm:^2.4.1":
   version: 2.4.1
   resolution: "watchpack@npm:2.4.1"
   dependencies:
