@@ -50,7 +50,8 @@
   },
   "dependencies": {
     "@dfinity/agent": "^1.0",
-    "@ic-reactor/core": "^*",
-    "@ic-reactor/visitor": "^*"
+    "@ic-reactor/core": "workspace:^",
+    "@ic-reactor/parser": "workspace:^",
+    "@ic-reactor/visitor": "workspace:^"
   }
 }
