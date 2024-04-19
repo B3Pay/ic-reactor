@@ -50,8 +50,8 @@
   },
   "dependencies": {
     "@dfinity/agent": "^1.0",
-    "@ic-reactor/core": "^*",
-    "@ic-reactor/parser": "^*",
-    "@ic-reactor/visitor": "^*"
+    "@ic-reactor/core": "*",
+    "@ic-reactor/parser": "*",
+    "@ic-reactor/visitor": "*"
   }
 }
