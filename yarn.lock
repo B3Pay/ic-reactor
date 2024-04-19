@@ -2075,7 +2075,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/core@npm:^1.5.4-beta.1, @ic-reactor/core@workspace:packages/core":
+"@ic-reactor/core@npm:^1.5.4-beta.1, @ic-reactor/core@npm:^1.5.4-beta.2, @ic-reactor/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
@@ -2094,12 +2094,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/parser@npm:0.0.0-beta.1, @ic-reactor/parser@workspace:packages/parser":
+"@ic-reactor/parser@npm:0.0.0-beta.1":
+  version: 0.0.0-beta.1
+  resolution: "@ic-reactor/parser@npm:0.0.0-beta.1"
+  dependencies:
+    "@dfinity/principal": "npm:^1.2"
+    "@ic-reactor/core": "npm:^1.5.4-beta.1"
+  peerDependencies:
+    "@dfinity/principal": ^1.2
+    "@ic-reactor/core": ^1.4.2
+  checksum: 640122d7d484f40c8490fe110940c68261216b2861a5ed87e6f99eb688d570cadab387c94095f4aee2c70cb04bcaf6392fd1f860dd79eb85ac9afc4d3b01d39d
+  languageName: node
+  linkType: hard
+
+"@ic-reactor/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/parser@workspace:packages/parser"
   dependencies:
     "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.5.4-beta.1"
+    "@ic-reactor/core": "npm:^1.5.4-beta.2"
     "@wasm-tool/wasm-pack-plugin": "npm:^1.7.0"
   peerDependencies:
     "@dfinity/principal": ^1.2
@@ -2125,11 +2138,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/react@npm:1.5.5-beta.1, @ic-reactor/react@workspace:packages/react":
+"@ic-reactor/react@npm:1.5.5-beta.1":
+  version: 1.5.5-beta.1
+  resolution: "@ic-reactor/react@npm:1.5.5-beta.1"
+  dependencies:
+    "@ic-reactor/core": "npm:^1.5.4-beta.1"
+    zustand-utils: "npm:^1.3"
+  peerDependencies:
+    "@dfinity/agent": ^1.2
+    "@dfinity/auth-client": ^1.2
+    "@dfinity/candid": ^1.2
+    "@dfinity/identity": ^1.2
+    "@dfinity/principal": ^1.2
+    react: ">=16.8"
+    zustand: 4.5
+  checksum: 6574d0989b7a7a797fbf44460a0ea7a1b2d21efbec9e4731c9838b6916f7437de3f679b1da0c62b760c8e29b7ca82fa4bbff90dc2b791274b60a508e0d4d5b48
+  languageName: node
+  linkType: hard
+
+"@ic-reactor/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
-    "@ic-reactor/core": "npm:^1.5.4-beta.1"
+    "@ic-reactor/core": "npm:^1.5.4-beta.2"
     zustand-utils: "npm:^1.3"
   peerDependencies:
     "@dfinity/agent": ^1.2
@@ -2155,12 +2186,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/visitor@npm:1.6.8-beta.1, @ic-reactor/visitor@workspace:packages/visitor":
+"@ic-reactor/visitor@npm:1.6.8-beta.1":
+  version: 1.6.8-beta.1
+  resolution: "@ic-reactor/visitor@npm:1.6.8-beta.1"
+  dependencies:
+    "@dfinity/principal": "npm:^1.2"
+    "@ic-reactor/core": "npm:^1.5.4-beta.1"
+  peerDependencies:
+    "@dfinity/principal": ^1.2
+    "@ic-reactor/core": ^1.4.2
+  checksum: 9e9fadc9568d1d49e07a78a57e98ab07b4a09306bdc73a0d230aefe90eced6b730da21c162ebc921ea7e10d1892391953011a3794c50957848103a105d7da5eb
+  languageName: node
+  linkType: hard
+
+"@ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
     "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.5.4-beta.1"
+    "@ic-reactor/core": "npm:^1.5.4-beta.2"
   peerDependencies:
     "@dfinity/principal": ^1.2
     "@ic-reactor/core": ^1.4.2
