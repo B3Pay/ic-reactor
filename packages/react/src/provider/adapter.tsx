@@ -5,31 +5,26 @@ import { CandidAdapterContext } from "../context/adapter"
 import { useAgentManager } from "../hooks"
 
 /**
- * `CandidAdapterProvider` is a React functional component that serves as a context provider for IC agent and authentication hooks.
- * It enables any child components to access and use the agent and authentication functionalities seamlessly.
- *
- * The provider encapsulates the logic for initializing and managing an agent manager instance, which is then used to
- * create various hooks related to agent operations and authentication processes. These hooks are made available to all
- * child components through the context, facilitating a centralized and efficient way to interact with the Internet Computer (IC) blockchain.
- *
- * @param children - Child components that can consume the context.
- * @param agentManager - An optional `AgentManager` instance to be used by the provider. If not provided, a new instance
- *                       will be created based on the provided options combined with default configuration.
- * @param options - Configuration options for the `AgentManager`. These options are merged with any default configurations
- *                  specified during the context creation and can include custom settings for the agent, such as identity,
- *                  host URL, etc.
+ * `CandidAdapterProvider` is a React component that provides the CandidAdapter to its children.
+ * It initializes the CandidAdapter with the provided options and makes it available to all children.
  *
  * @example
- * Wrap your component tree with `CandidAdapterProvider` to provide all child components access to IC agent and authentication hooks.
+ * ```tsx
+ * import { AgentProvider, CandidAdapterProvider, ActorProvider } from "@ic-reactor/react"
  *
- * ```jsx
- * <CandidAdapterProvider>
- *   <YourComponent />
- * </CandidAdapterProvider>
+ * const App = () => (
+ *  <AgentProvider>
+ *    <CandidAdapterProvider>
+ *       Your Actors here, it will able to fetch the Candid interface
+ *       you dont need to pass the idlFactory to the Actor component
+ *       e.g.
+ *      <ActorProvider canisterId="ryjl3-tyaaa-aaaaa-aaaba-cai" />
+ *    </CandidAdapterProvider>
+ *  </AgentProvider>
+ * )
+ *
+ * export default App
  * ```
- *
- * Inside `YourComponent` or any of its children, you can use the hooks provided through the context to interact with the IC,
- * manage authentication, and perform other agent-related tasks.
  */
 const CandidAdapterProvider: React.FC<CandidAdapterProviderProps> = ({
   children,
