@@ -41,8 +41,8 @@ export class CandidAdapter {
 
   public async initializeParser() {
     try {
-      this.parserModule = await import("@ic-reactor/parser")
-      await this.parserModule.default()
+      this.parserModule = require("@ic-reactor/parser")
+      await this.parserModule?.default()
     } catch (error) {
       throw new Error(`Error initializing parser: ${error}`)
     }
