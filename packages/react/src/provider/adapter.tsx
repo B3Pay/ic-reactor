@@ -34,7 +34,8 @@ import { useAgentManager } from "../hooks"
 const CandidAdapterProvider: React.FC<CandidAdapterProviderProps> = ({
   children,
   initialParser,
-  loadingComponent = <div>Loading...</div>,
+  loadingComponent = <div>Awaiting Candid interface...</div>,
+  didjsCanisterId,
   ...options
 }) => {
   const [initalized, setInitialized] = React.useState(false)
@@ -42,8 +43,8 @@ const CandidAdapterProvider: React.FC<CandidAdapterProviderProps> = ({
   const agentManager = useAgentManager()
 
   const candidAdapter = React.useMemo(
-    () => createCandidAdapter({ agentManager, ...options }),
-    [options, agentManager]
+    () => createCandidAdapter({ agentManager, didjsCanisterId, ...options }),
+    [didjsCanisterId, agentManager]
   )
 
   React.useEffect(() => {

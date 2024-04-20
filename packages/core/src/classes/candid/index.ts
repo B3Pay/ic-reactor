@@ -15,7 +15,7 @@ import { importCandidDefinition } from "../../utils"
 export class CandidAdapter {
   public agent: HttpAgent
   public didjsCanisterId: string
-  public parserModule?: typeof import("@ic-reactor/parser")
+  private parserModule?: typeof import("@ic-reactor/parser")
 
   public unsubscribeAgent: () => void = () => {}
 

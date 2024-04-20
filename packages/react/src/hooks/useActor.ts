@@ -102,7 +102,7 @@ export const useActor = <A = BaseActor>(
   const authenticating = useAuthState().authenticating
 
   const fetchCandid = useCallback(async () => {
-    if (fetching || authenticating || !candidAdapter) return
+    if (fetching) return
 
     setState({
       fetching: true,
@@ -110,7 +110,9 @@ export const useActor = <A = BaseActor>(
     })
 
     try {
-      const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
+      const { idlFactory } = await candidAdapter!.getCandidDefinition(
+        canisterId
+      )
 
       setState({
         fetching: false,
@@ -126,7 +128,24 @@ export const useActor = <A = BaseActor>(
         fetching: false,
       })
     }
-  }, [canisterId, candidAdapter, authenticating])
+  }, [canisterId])
+
+  const evaluateCandid = useCallback(async () => {
+    try {
+      const definition = await candidAdapter!.dynamicEvalJs(candidString!)
+      if (typeof definition?.idlFactory !== "function") {
+        throw new Error("Error evaluating Candid definition")
+      }
+      return definition.idlFactory
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err)
+      setState({
+        fetchError: `Error evaluating Candid definition, ${err}`,
+        fetching: false,
+      })
+    }
+  }, [candidString])
 
   const agentManager = useAgentManager()
 
@@ -145,54 +164,24 @@ export const useActor = <A = BaseActor>(
     [canisterId, agentManager, authenticating]
   )
 
-  const evaluateCandid = useCallback(
-    async (candidString: string) => {
-      if (!candidAdapter) {
-        return
-      }
-      try {
-        const definition = await candidAdapter.dynamicEvalJs(candidString)
-        if (typeof definition?.idlFactory !== "function") {
-          throw new Error("Error evaluating Candid definition")
-        }
-        return definition.idlFactory
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error(err)
-        setState({
-          fetchError: `Error evaluating Candid definition, ${err}`,
-          fetching: false,
-        })
-      }
-    },
-    [candidAdapter]
-  )
-
   const handleActorInitialization = useCallback(async () => {
+    if (authenticating) return
     if (maybeIdlFactory) {
-      return initialActorManager(maybeIdlFactory)
+      initialActorManager(maybeIdlFactory)
+      return
     }
     if (!candidAdapter) {
       throw new Error(
         "CandidAdapter is not available, make sure you have wrapped your component with CandidAdapterProvider"
       )
     }
-
-    try {
-      if (candidString) {
-        const idlFactory = await evaluateCandid(candidString)
-        return initialActorManager(idlFactory)
-      }
-      const idlFactory = await fetchCandid()
-      return initialActorManager(idlFactory)
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(error)
-      setState({
-        fetchError: "Error occurred during actor initialization",
-        fetching: false,
-      })
+    let idlFactory
+    if (candidString) {
+      idlFactory = await evaluateCandid()
+    } else {
+      idlFactory = await fetchCandid()
     }
+    initialActorManager(idlFactory)
   }, [fetchCandid, evaluateCandid, maybeIdlFactory, initialActorManager])
 
   useEffect(() => {
