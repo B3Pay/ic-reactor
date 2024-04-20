@@ -2157,7 +2157,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/parser@npm:^0.1.0-beta.1, @ic-reactor/parser@workspace:packages/parser":
+"@ic-reactor/parser@npm:^0.1.0-beta.0, @ic-reactor/parser@npm:^0.1.0-beta.1, @ic-reactor/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/parser@workspace:packages/parser"
   dependencies:
@@ -2201,7 +2201,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/react@npm:^1.6.0-beta.0, @ic-reactor/react@workspace:^, @ic-reactor/react@workspace:packages/react":
+"@ic-reactor/react@npm:1.6.0-beta.4, @ic-reactor/react@npm:^1.6.0-beta.0, @ic-reactor/react@npm:^1.6.0-beta.4, @ic-reactor/react@workspace:^, @ic-reactor/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
@@ -2231,20 +2231,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/visitor@npm:1.6.8-beta.3":
-  version: 1.6.8-beta.3
-  resolution: "@ic-reactor/visitor@npm:1.6.8-beta.3"
-  dependencies:
-    "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.6.0-beta.0"
-  peerDependencies:
-    "@dfinity/principal": ^1.2
-    "@ic-reactor/core": ^1.4.2
-  checksum: 0ea9fd3e739e4efa62eb314de6354445e77fc755d0a443dee1e38defe4dce66cd00896f887a213f52eeada66032d18908a8d8162b64fd20129c68a229f9cd8bc
-  languageName: node
-  linkType: hard
-
-"@ic-reactor/visitor@workspace:packages/visitor":
+"@ic-reactor/visitor@npm:^1.6.8-beta.3, @ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
@@ -7217,9 +7204,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "candid-react@workspace:examples/candid-ui"
   dependencies:
-    "@ic-reactor/parser": "npm:0.1.0-beta.0"
-    "@ic-reactor/react": "npm:1.6.0-beta.0"
-    "@ic-reactor/visitor": "npm:1.6.8-beta.3"
+    "@ic-reactor/parser": "npm:^0.1.0-beta.0"
+    "@ic-reactor/react": "npm:^1.6.0-beta.4"
+    "@ic-reactor/visitor": "npm:^1.6.8-beta.3"
     "@react-hook/resize-observer": "npm:^1.2.6"
     "@types/lodash": "npm:^4.17.0"
     "@types/node": "npm:^16.18.68"
@@ -18633,7 +18620,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "react-example@workspace:examples/react-provider"
   dependencies:
-    "@ic-reactor/react": "npm:*"
+    "@ic-reactor/react": "npm:1.6.0-beta.4"
     "@types/react": "npm:^18.2"
     "@types/react-dom": "npm:^18.2"
     react: "npm:^18.2.0"
