@@ -2142,7 +2142,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/parser@npm:^0.1.0-beta.0, @ic-reactor/parser@workspace:packages/parser":
+"@ic-reactor/parser@npm:0.1.0-beta.0, @ic-reactor/parser@npm:^0.1.0-beta.0, @ic-reactor/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/parser@workspace:packages/parser"
   dependencies:
@@ -2186,7 +2186,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/react@workspace:packages/react":
+"@ic-reactor/react@npm:1.6.0-beta.0, @ic-reactor/react@npm:^1.6.0-beta.0, @ic-reactor/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
@@ -8371,8 +8371,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "custom-provider@workspace:examples/custom-provider"
   dependencies:
-    "@ic-reactor/react": "npm:*"
-    "@ic-reactor/visitor": "npm:*"
+    "@ic-reactor/parser": "npm:0.1.0-beta.0"
+    "@ic-reactor/react": "npm:1.6.0-beta.0"
     "@types/node": "npm:^16.18.68"
     "@types/react": "npm:^18.2.45"
     "@types/react-dom": "npm:^18.2.18"
@@ -9024,7 +9024,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "dynamic-actor@workspace:examples/dynamic-actor"
   dependencies:
-    "@ic-reactor/react": "npm:*"
+    "@ic-reactor/react": "npm:^1.6.0-beta.0"
     "@types/react": "npm:18.2.38"
     "@types/react-dom": "npm:18.2.15"
     react: "npm:^18.0.0"

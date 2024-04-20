@@ -54,28 +54,18 @@ const CanisterForm = ({ setCanisterId }) => {
     }
   }
   return (
-    <form onSubmit={onSubmit} className="flex justify-center mb-2">
-      <select
-        id="network"
-        className="border py-1 px-2 mr-2 rounded-lg"
-        ref={networkRef}
-      >
+    <form onSubmit={onSubmit}>
+      <select id="network" ref={networkRef}>
         <option value="local">Local</option>
         <option value="ic">IC</option>
       </select>
       <input
         id="canisterId"
-        className="flex-auto border py-1 px-2 mr-2 rounded-lg w-80"
         required
         ref={canisterIdRef}
         defaultValue="ss2fx-dyaaa-aaaar-qacoq-cai"
       />
-      <button
-        className="flex-1 border p-1 rounded-lg bg-blue-500 text-white"
-        type="submit"
-      >
-        Fetch
-      </button>
+      <button type="submit">Fetch</button>
     </form>
   )
 }

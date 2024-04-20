@@ -9,11 +9,13 @@ export default function App() {
   return (
     <div className="App">
       <CanisterForm setCanisterId={setCanisterId} />
+      {/* <CandidAdapterProvider> */}
       {canisterId && (
         <ActorProvider canisterId={canisterId} withDevtools>
           <Actor />
         </ActorProvider>
       )}
+      {/* </CandidAdapterProvider> */}
     </div>
   )
 }

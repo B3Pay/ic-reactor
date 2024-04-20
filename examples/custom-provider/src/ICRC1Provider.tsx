@@ -31,4 +31,6 @@ const ICRC1Provider: React.FC<ICRC1ActorProps> = ({ children, canisterId }) => {
   )
 }
 
+ICRC1Provider.displayName = "ICRC1Provider"
+
 export default ICRC1Provider

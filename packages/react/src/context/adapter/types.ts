@@ -9,6 +9,6 @@ export interface CandidAdapterContextType extends CandidAdapter {}
 export interface CandidAdapterProviderProps
   extends PropsWithChildren,
     CandidAdapterParameters {
-  initialParser?: boolean
+  withParser?: boolean
   loadingComponent?: React.ReactNode
 }

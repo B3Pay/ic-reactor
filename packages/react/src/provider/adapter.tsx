@@ -33,8 +33,8 @@ import { useAgentManager } from "../hooks"
  */
 const CandidAdapterProvider: React.FC<CandidAdapterProviderProps> = ({
   children,
-  initialParser,
-  loadingComponent = <div>Awaiting Candid interface...</div>,
+  withParser,
+  loadingComponent = <div>Loading Parser...</div>,
   didjsCanisterId,
   ...options
 }) => {
@@ -48,8 +48,10 @@ const CandidAdapterProvider: React.FC<CandidAdapterProviderProps> = ({
   )
 
   React.useEffect(() => {
-    if (initialParser) {
+    if (withParser) {
       candidAdapter.initializeParser().then(() => setInitialized(true))
+    } else {
+      setInitialized(true)
     }
   }, [])
 

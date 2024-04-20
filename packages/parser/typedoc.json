@@ -1,7 +1,8 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["./dist/didjs.d.ts"],
+  "entryPoints": ["./dist"],
   "name": "parser",
+  "entryPointStrategy": "expand",
   "kindSortOrder": [
     "Reference",
     "Project",

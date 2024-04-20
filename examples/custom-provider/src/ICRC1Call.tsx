@@ -1,15 +1,20 @@
-import { FunctionName } from "@ic-reactor/react/dist/types"
+import {
+  FunctionName,
+  UseQueryCallParameters,
+} from "@ic-reactor/react/dist/types"
 import { useICRC1QueryCall } from "./ICRC1Provider"
 import { ICRC1 } from "./declarations/icrc1"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 
-interface ICRC1CallProps {
-  functionName: FunctionName<ICRC1>
+interface ICRC1CallProps<M extends FunctionName<ICRC1> = FunctionName<ICRC1>>
+  extends UseQueryCallParameters<ICRC1, M> {
+  functionName: M
 }
 
-const ICRC1Call: React.FC<ICRC1CallProps> = ({ functionName }) => {
+const ICRC1Call: React.FC<ICRC1CallProps> = ({ functionName, ...rest }) => {
   const { call, data, loading } = useICRC1QueryCall({
     functionName,
+    ...rest,
   })
 
   return (

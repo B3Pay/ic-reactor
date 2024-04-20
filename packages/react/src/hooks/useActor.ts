@@ -172,7 +172,7 @@ export const useActor = <A = BaseActor>(
     }
     if (!candidAdapter) {
       throw new Error(
-        "CandidAdapter is not available, make sure you have wrapped your component with CandidAdapterProvider"
+        "CandidAdapter is necessary to fetch the Candid interface. Please ensure your application is wrapped with the CandidAdapterProvider!"
       )
     }
     let idlFactory
