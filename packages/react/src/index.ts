@@ -1,8 +1,8 @@
 export * from "./createReactor"
-export * from "./context/actor"
-export * from "./context/agent"
+export * from "./context"
 export * from "./provider/actor"
 export * from "./provider/agent"
+export * from "./provider/adapter"
 export * from "./hooks"
 
 export * as helpers from "./helpers"

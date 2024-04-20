@@ -2,9 +2,10 @@ import React from "react"
 import { CandidAdapterProviderProps } from "../context/types"
 import { createCandidAdapter } from "@ic-reactor/core"
 import { CandidAdapterContext } from "../context/adapter"
+import { useAgentManager } from "../hooks"
 
 /**
- * `AdapterProvider` is a React functional component that serves as a context provider for IC agent and authentication hooks.
+ * `CandidAdapterProvider` is a React functional component that serves as a context provider for IC agent and authentication hooks.
  * It enables any child components to access and use the agent and authentication functionalities seamlessly.
  *
  * The provider encapsulates the logic for initializing and managing an agent manager instance, which is then used to
@@ -19,18 +20,18 @@ import { CandidAdapterContext } from "../context/adapter"
  *                  host URL, etc.
  *
  * @example
- * Wrap your component tree with `AdapterProvider` to provide all child components access to IC agent and authentication hooks.
+ * Wrap your component tree with `CandidAdapterProvider` to provide all child components access to IC agent and authentication hooks.
  *
  * ```jsx
- * <AdapterProvider>
+ * <CandidAdapterProvider>
  *   <YourComponent />
- * </AdapterProvider>
+ * </CandidAdapterProvider>
  * ```
  *
  * Inside `YourComponent` or any of its children, you can use the hooks provided through the context to interact with the IC,
  * manage authentication, and perform other agent-related tasks.
  */
-export const AdapterProvider: React.FC<CandidAdapterProviderProps> = ({
+const CandidAdapterProvider: React.FC<CandidAdapterProviderProps> = ({
   children,
   initialParser,
   loadingComponent = <div>Loading...</div>,
@@ -38,9 +39,11 @@ export const AdapterProvider: React.FC<CandidAdapterProviderProps> = ({
 }) => {
   const [initalized, setInitialized] = React.useState(false)
 
+  const agentManager = useAgentManager()
+
   const candidAdapter = React.useMemo(
-    () => createCandidAdapter(options),
-    [options]
+    () => createCandidAdapter({ agentManager, ...options }),
+    [options, agentManager]
   )
 
   React.useEffect(() => {
@@ -55,3 +58,7 @@ export const AdapterProvider: React.FC<CandidAdapterProviderProps> = ({
     </CandidAdapterContext.Provider>
   )
 }
+
+CandidAdapterProvider.displayName = "CandidAdapterContext"
+
+export { CandidAdapterProvider }
