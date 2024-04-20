@@ -41,7 +41,9 @@
     "zustand": "^4.5"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "^0.1.0-beta.1"
+    "@ic-reactor/parser": "^0.1.0-beta.1",
+    "@types/copyfiles": "^2",
+    "copyfiles": "^2.4.1"
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
@@ -49,7 +51,8 @@
     "bundle": "npm run bundle:dev && npm run bundle:prod",
     "bundle:dev": "npx webpack --mode development",
     "bundle:prod": "npx webpack --mode production",
-    "build": "npx tsc && npm run bundle",
+    "build": "npx tsc && npm run bundle && npm run copy",
+    "copy": "copyfiles -u 1 \"src/**/*.d.ts\" dist",
     "clean": "npx rimraf dist && npx rimraf umd && npx rimraf node_modules"
   },
   "engines": {

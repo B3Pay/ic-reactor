@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const path = require("path")
-const { IgnorePlugin } = require("webpack")
 
 /** @type {import("webpack").Configuration} */
 module.exports = (env, argv) => {
@@ -35,11 +34,7 @@ module.exports = (env, argv) => {
         },
       ],
     },
-    plugins: [
-      new IgnorePlugin({
-        resourceRegExp: /^@ic-reactor\/parser$/,
-      }),
-    ],
+    plugins: [],
     resolve: {
       extensions: [".ts", ".js"],
       modules: [path.resolve(__dirname, "node_modules"), "node_modules"],
