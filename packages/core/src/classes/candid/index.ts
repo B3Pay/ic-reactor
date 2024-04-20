@@ -110,7 +110,7 @@ export class CandidAdapter {
       let candidDef: string | [] = ""
 
       try {
-        candidDef = await this.parseDidToJs(data)
+        candidDef = this.parseDidToJs(data)
       } catch (error) {
         candidDef = (await this.fetchDidTojs(data))[0]
       }

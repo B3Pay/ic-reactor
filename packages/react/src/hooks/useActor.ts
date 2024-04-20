@@ -74,9 +74,10 @@ export const useActor = <A = BaseActor>(
 ): UseActorReturn<A> => {
   const {
     canisterId,
-    idlFactory: maybeIdlFactory,
     candidString,
     didjsCanisterId,
+    initializeParser,
+    idlFactory: maybeIdlFactory,
     ...actorConfig
   } = config
 
@@ -100,6 +101,7 @@ export const useActor = <A = BaseActor>(
 
   const candidAdapter = useCandidAdapter({
     didjsCanisterId,
+    initializeParser,
   })
 
   const authenticating = useAuthState().authenticating
@@ -136,7 +138,6 @@ export const useActor = <A = BaseActor>(
   const initialActorManager = useCallback(
     (idlFactory?: IDL.InterfaceFactory) => {
       if (authenticating || !idlFactory) return
-      console.log("initialActorManager")
       const actorManager = createActorManager<A>({
         agentManager,
         idlFactory,

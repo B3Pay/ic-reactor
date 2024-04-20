@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { createCandidAdapter } from "@ic-reactor/core"
 import { useAgent } from "./useAgent"
 
@@ -7,6 +7,7 @@ export type { CandidAdapter }
 
 export interface UseCandidAdapterParams {
   didjsCanisterId?: string
+  initializeParser?: boolean
 }
 
 /**
@@ -36,18 +37,25 @@ export const useCandidAdapter = (config: UseCandidAdapterParams = {}) => {
 
   const agent = useAgent()
 
-  useEffect(() => {
+  const initializeCandidAdapter = useCallback(async () => {
     try {
-      const candidManager = createCandidAdapter({
+      const candidAdapter = createCandidAdapter({
         agent,
         didjsCanisterId: config.didjsCanisterId,
       })
-      setCandidAdapter(candidManager)
+      if (config.initializeParser) {
+        await candidAdapter.initializeParser()
+      }
+      setCandidAdapter(candidAdapter)
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error("Error creating CandidAdapter", error)
     }
-  }, [agent, config.didjsCanisterId])
+  }, [agent])
+
+  useEffect(() => {
+    initializeCandidAdapter()
+  }, [initializeCandidAdapter])
 
   return candidAdapter
 }

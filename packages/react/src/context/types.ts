@@ -55,4 +55,5 @@ export interface CreateActorContextParameters
   didjsId?: string
   canisterId?: CanisterId
   idlFactory?: IDL.InterfaceFactory
+  initializeParser?: boolean
 }

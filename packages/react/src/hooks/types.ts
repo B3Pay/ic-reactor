@@ -16,6 +16,7 @@ export interface UseActorParameters
   canisterId: CanisterId
   idlFactory?: IDL.InterfaceFactory
   didjsCanisterId?: string
+  initializeParser?: boolean
 }
 
 export interface UseActorReturn<A = BaseActor> {
