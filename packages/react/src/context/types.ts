@@ -42,6 +42,7 @@ export interface CreateActorContextReturnType<A = BaseActor>
 
 export interface ActorProviderProps extends CreateActorContextParameters {
   children?: React.ReactNode | undefined
+  candidString?: string
   loadingComponent?: React.ReactNode
   authenticatingComponent?: React.ReactNode
 }

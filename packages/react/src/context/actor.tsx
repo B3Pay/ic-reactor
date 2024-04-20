@@ -79,6 +79,7 @@ export function createActorContext<A = BaseActor>(
     canisterId = defaultCanisterId,
     loadingComponent = <div>Fetching canister...</div>,
     authenticatingComponent = <div>Authenticating...</div>,
+    candidString,
     ...restConfig
   }) => {
     if (!canisterId) {
@@ -95,6 +96,7 @@ export function createActorContext<A = BaseActor>(
 
     const { fetchError, authenticating, hooks } = useActor<A>({
       canisterId,
+      candidString,
       ...config,
     })
 

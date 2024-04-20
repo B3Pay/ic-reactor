@@ -12,6 +12,7 @@ export interface UseActorParameters
     ActorManagerParameters,
     "idlFactory" | "agentManager" | "canisterId"
   > {
+  candidString?: string
   canisterId: CanisterId
   idlFactory?: IDL.InterfaceFactory
   didjsCanisterId?: string

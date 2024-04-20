@@ -75,6 +75,7 @@ export const useActor = <A = BaseActor>(
   const {
     canisterId,
     idlFactory: maybeIdlFactory,
+    candidString,
     didjsCanisterId,
     ...actorConfig
   } = config
@@ -133,8 +134,9 @@ export const useActor = <A = BaseActor>(
   const agentManager = useAgentManager()
 
   const initialActorManager = useCallback(
-    (idlFactory: IDL.InterfaceFactory) => {
-      if (authenticating) return
+    (idlFactory?: IDL.InterfaceFactory) => {
+      if (authenticating || !idlFactory) return
+      console.log("initialActorManager")
       const actorManager = createActorManager<A>({
         agentManager,
         idlFactory,
@@ -147,16 +149,53 @@ export const useActor = <A = BaseActor>(
     [canisterId, agentManager, authenticating]
   )
 
-  useEffect(() => {
+  const evaluateCandid = useCallback(
+    async (candidString: string) => {
+      if (!candidAdapter) {
+        return
+      }
+      try {
+        const definition = await candidAdapter.dynamicEvalJs(candidString)
+        if (typeof definition?.idlFactory !== "function") {
+          throw new Error("Error evaluating Candid definition")
+        }
+        return definition.idlFactory
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(err)
+        setState({
+          fetchError: `Error evaluating Candid definition, ${err}`,
+          fetching: false,
+        })
+      }
+    },
+    [candidAdapter]
+  )
+
+  const handleActorInitialization = useCallback(async () => {
     if (maybeIdlFactory) {
-      initialActorManager(maybeIdlFactory)
-    } else {
-      fetchCandid().then((idlFactory) => {
-        if (!idlFactory) return
-        initialActorManager(idlFactory)
+      return initialActorManager(maybeIdlFactory)
+    }
+    try {
+      if (candidString) {
+        const idlFactory = await evaluateCandid(candidString)
+        return initialActorManager(idlFactory)
+      }
+      const idlFactory = await fetchCandid()
+      return initialActorManager(idlFactory)
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error)
+      setState({
+        fetchError: "Error occurred during actor initialization",
+        fetching: false,
       })
     }
-  }, [fetchCandid, maybeIdlFactory, initialActorManager])
+  }, [fetchCandid, evaluateCandid, maybeIdlFactory, initialActorManager])
+
+  useEffect(() => {
+    handleActorInitialization()
+  }, [handleActorInitialization])
 
   const hooks = useMemo(() => {
     if (!actorManager) return null
