@@ -1,0 +1,1 @@
+export { useCandidAdapter } from "./useCandidAdapter"

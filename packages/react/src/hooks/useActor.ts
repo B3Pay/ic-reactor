@@ -5,7 +5,7 @@ import { actorHooks } from "../helpers"
 import { useAuthState } from "./agent"
 import type { ActorManager, IDL, BaseActor } from "../types"
 import type { UseActorParameters, UseActorReturn } from "./types"
-import { useCandidAdapter } from "./agent/useCandidAdapter"
+import { useCandidAdapter } from "./adapter/useCandidAdapter"
 
 /**
  * A comprehensive hook that manages both the fetching of Candid interfaces
@@ -75,8 +75,6 @@ export const useActor = <A = BaseActor>(
   const {
     canisterId,
     candidString,
-    didjsCanisterId,
-    initializeParser,
     idlFactory: maybeIdlFactory,
     ...actorConfig
   } = config
@@ -99,10 +97,7 @@ export const useActor = <A = BaseActor>(
     fetchError: null as string | null,
   })
 
-  const candidAdapter = useCandidAdapter({
-    didjsCanisterId,
-    initializeParser,
-  })
+  const candidAdapter = useCandidAdapter()
 
   const authenticating = useAuthState().authenticating
 
@@ -131,7 +126,7 @@ export const useActor = <A = BaseActor>(
         fetching: false,
       })
     }
-  }, [canisterId, candidAdapter, authenticating, didjsCanisterId])
+  }, [canisterId, candidAdapter, authenticating])
 
   const agentManager = useAgentManager()
 
@@ -177,6 +172,12 @@ export const useActor = <A = BaseActor>(
     if (maybeIdlFactory) {
       return initialActorManager(maybeIdlFactory)
     }
+    if (!candidAdapter) {
+      throw new Error(
+        "CandidAdapter is not available, make sure you have wrapped your component with CandidAdapterProvider"
+      )
+    }
+
     try {
       if (candidString) {
         const idlFactory = await evaluateCandid(candidString)

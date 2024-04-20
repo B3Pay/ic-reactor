@@ -5,7 +5,7 @@ import {
   BaseActor,
   CanisterId,
 } from "../types"
-export * from "./agent/useCandidAdapter"
+export * from "./adapter/useCandidAdapter"
 
 export interface UseActorParameters
   extends Omit<
@@ -15,8 +15,6 @@ export interface UseActorParameters
   candidString?: string
   canisterId: CanisterId
   idlFactory?: IDL.InterfaceFactory
-  didjsCanisterId?: string
-  initializeParser?: boolean
 }
 
 export interface UseActorReturn<A = BaseActor> {
