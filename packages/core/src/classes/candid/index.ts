@@ -10,10 +10,12 @@ import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
 } from "../../utils/constants"
+import { importCandidDefinition } from "../../utils"
 
 export class CandidAdapter {
   public agent: HttpAgent
   public didjsCanisterId: string
+  public parserModule?: typeof import("@ic-reactor/parser")
 
   public unsubscribeAgent: () => void = () => {}
 
@@ -37,6 +39,15 @@ export class CandidAdapter {
     this.didjsCanisterId = didjsCanisterId || this.getDefaultDidJsId()
   }
 
+  public async initializeParser() {
+    try {
+      this.parserModule = await import("@ic-reactor/parser")
+      await this.parserModule.default()
+    } catch (error) {
+      throw new Error(`Error initializing parser: ${error}`)
+    }
+  }
+
   private getDefaultDidJsId() {
     return this.agent.isLocal?.() === true
       ? DEFAULT_LOCAL_DIDJS_ID
@@ -51,13 +62,13 @@ export class CandidAdapter {
       const fromMetadata = await this.getFromMetadata(canisterId).catch(() => {
         return undefined
       })
-      if (fromMetadata) return this.evaluateJs(fromMetadata as string)
+      if (fromMetadata) return this.dynamicEvalJs(fromMetadata as string)
 
       // Second attempt: Try the temporary hack method
       const fromTmpHack = await this.getFromTmpHack(canisterId).catch(() => {
         return undefined
       })
-      if (fromTmpHack) return this.evaluateJs(fromTmpHack as string)
+      if (fromTmpHack) return this.dynamicEvalJs(fromTmpHack as string)
 
       // If both attempts fail, throw an error
       throw "Failed to retrieve Candid definition by any method."
@@ -94,7 +105,7 @@ export class CandidAdapter {
     return (await actor.__get_candid_interface_tmp_hack()) as string
   }
 
-  public async evaluateJs(data: string): Promise<CandidDefenition> {
+  public async dynamicEvalJs(data: string): Promise<CandidDefenition> {
     try {
       let candidDef: string | [] = ""
 
@@ -108,12 +119,9 @@ export class CandidAdapter {
         throw new Error("Cannot compile Candid to JavaScript")
       }
 
-      const dataUri =
-        "data:text/javascript;charset=utf-8," + encodeURIComponent(candidDef)
-
-      return eval('import("' + dataUri + '")')
+      return importCandidDefinition(candidDef)
     } catch (error) {
-      throw new Error("Error evaluating Candid definition")
+      throw new Error(`Error evaluating Candid definition: ${error}`)
     }
   }
 
@@ -134,14 +142,11 @@ export class CandidAdapter {
     return didjs.did_to_js(candidSource)
   }
 
-  public async parseDidToJs(candidSource: string): Promise<string> {
-    try {
-      // This is a dynamic import if the module is available in the environment
-      const parser = await import("@ic-reactor/parser")
-      await parser.default()
-      return parser.did_to_js(candidSource)
-    } catch (error) {
-      throw new Error("@ic-reactor/parser module is not available")
+  public parseDidToJs(candidSource: string): string {
+    if (!this.parserModule) {
+      throw new Error("Parser module not available")
     }
+
+    return this.parserModule.did_to_js(candidSource)
   }
 }

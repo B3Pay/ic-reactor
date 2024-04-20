@@ -22,6 +22,17 @@ export function createStoreWithOptionalDevtools<T>(
   }
 }
 
+export const importCandidDefinition = (candidDef: string) => {
+  try {
+    const dataUri =
+      "data:text/javascript;charset=utf-8," + encodeURIComponent(candidDef)
+
+    return eval('import("' + dataUri + '")')
+  } catch (error) {
+    throw new Error("Error importing Candid definition")
+  }
+}
+
 export const isInLocalOrDevelopment = () => {
   return typeof process !== "undefined" && process.env.DFX_NETWORK === "local"
 }
