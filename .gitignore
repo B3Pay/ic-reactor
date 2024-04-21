@@ -9,7 +9,6 @@ dist
 .dfx
 .dfinity
 .gpteng
-.yarn
 prompt
 lerna-debug.log
 yarn-error.log
