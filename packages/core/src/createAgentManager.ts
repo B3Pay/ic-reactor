@@ -1,5 +1,6 @@
 import { AgentManager } from "./classes/agent"
-import { AgentManagerParameters } from "./types"
+
+import type { AgentManagerParameters } from "./types"
 
 /**
  * Agent manager handles the lifecycle of the `@dfinity/agent`.

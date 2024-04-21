@@ -1,5 +1,6 @@
 import { CandidAdapter } from "./classes/candid"
-import { CandidAdapterParameters } from "./types"
+
+import type { CandidAdapterParameters } from "./types"
 
 /**
  * The `CandidAdapter` class is used to interact with a canister and retrieve its Candid interface definition.

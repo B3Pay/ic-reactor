@@ -1,7 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference
-/// <reference path="./parser.d.ts" />
 import type { AgentManager } from "../agent"
-import type { IDL, HttpAgent } from "../../types"
+import type { IDL, HttpAgent } from "@src/types"
 
 export interface CandidAdapterParameters {
   agentManager?: AgentManager

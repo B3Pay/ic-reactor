@@ -1,5 +1,6 @@
 import { ActorManager } from "./classes/actor"
-import { ActorManagerParameters, BaseActor } from "./types"
+
+import type { ActorManagerParameters, BaseActor } from "./types"
 
 /**
  * Actor manager handles the lifecycle of the actors.

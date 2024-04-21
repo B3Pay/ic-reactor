@@ -6,8 +6,8 @@
     "build": "webpack --mode production"
   },
   "dependencies": {
-    "@ic-reactor/core": "1.6.0-beta.0",
-    "@ic-reactor/parser": "0.1.0-beta.0"
+    "@ic-reactor/core": "workspace:*",
+    "@ic-reactor/parser": "workspace:*"
   },
   "devDependencies": {
     "copy-webpack-plugin": "^12.0.2",

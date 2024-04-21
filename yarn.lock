@@ -2075,26 +2075,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/core@npm:1.6.0-beta.0":
-  version: 1.6.0-beta.0
-  resolution: "@ic-reactor/core@npm:1.6.0-beta.0"
-  dependencies:
-    "@dfinity/agent": "npm:^1.2"
-    "@dfinity/auth-client": "npm:^1.2"
-    "@dfinity/candid": "npm:^1.2"
-    "@dfinity/identity": "npm:^1.2"
-    "@dfinity/principal": "npm:^1.2"
-    zustand: "npm:^4.5"
-  peerDependencies:
-    "@dfinity/agent": ^1.2
-    "@dfinity/auth-client": ^1.2
-    "@dfinity/candid": ^1.2
-    "@dfinity/identity": ^1.2
-    "@dfinity/principal": ^1.2
-  checksum: 49f850b1ce4d6deb8c62ead39e7c5d4e74a0233c837a7896d01b365b9c669cb1f250276d43762ed9c6dbbe9b693c651b885424d0a852c6943bda2035f4849d1d
-  languageName: node
-  linkType: hard
-
 "@ic-reactor/core@npm:^1.5.4-beta.1":
   version: 1.5.4-beta.2
   resolution: "@ic-reactor/core@npm:1.5.4-beta.2"
@@ -2115,7 +2095,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/core@npm:^1.6.0-beta.0, @ic-reactor/core@npm:^1.6.0-beta.4, @ic-reactor/core@npm:^1.6.0-beta.6, @ic-reactor/core@workspace:packages/core":
+"@ic-reactor/core@npm:^1.6.0-beta.0, @ic-reactor/core@npm:^1.6.0-beta.4, @ic-reactor/core@npm:^1.6.0-beta.6, @ic-reactor/core@workspace:*, @ic-reactor/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
@@ -2155,7 +2135,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/parser@npm:^0.1.0-beta.0, @ic-reactor/parser@npm:^0.1.0-beta.1, @ic-reactor/parser@workspace:packages/parser":
+"@ic-reactor/parser@npm:^0.1.0-beta.0, @ic-reactor/parser@npm:^0.1.0-beta.1, @ic-reactor/parser@workspace:*, @ic-reactor/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/parser@workspace:packages/parser"
   languageName: unknown
@@ -7682,6 +7662,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"commander@npm:^9.0.0":
+  version: 9.5.0
+  resolution: "commander@npm:9.5.0"
+  checksum: 5f7784fbda2aaec39e89eb46f06a999e00224b3763dc65976e05929ec486e174fe9aac2655f03ba6a5e83875bd173be5283dc19309b7c65954701c02025b3c1d
+  languageName: node
+  linkType: hard
+
 "common-path-prefix@npm:^3.0.0":
   version: 3.0.0
   resolution: "common-path-prefix@npm:3.0.0"
@@ -11530,6 +11517,7 @@ __metadata:
     svelte-jester: "npm:3.0"
     text-encoding: "npm:0.7.0"
     ts-jest: "npm:29.1"
+    tsc-alias: "npm:^1.8"
     typedoc: "npm:^0.25"
     typedoc-plugin-coverage: "npm:^3.1"
     typedoc-plugin-extras: "npm:^3.0.0"
@@ -12534,8 +12522,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "javacript@workspace:examples/javascript"
   dependencies:
-    "@ic-reactor/core": "npm:1.6.0-beta.0"
-    "@ic-reactor/parser": "npm:0.1.0-beta.0"
+    "@ic-reactor/core": "workspace:*"
+    "@ic-reactor/parser": "workspace:*"
     copy-webpack-plugin: "npm:^12.0.2"
     html-webpack-plugin: "npm:^5.0.0"
     webpack: "npm:^5.0.0"
@@ -15699,6 +15687,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mylas@npm:^2.1.9":
+  version: 2.1.13
+  resolution: "mylas@npm:2.1.13"
+  checksum: 093dfaf88f444d9da956c68a61ddcfe05ab9411c0024b0c7f4d721639ba7d311ea8f9c052ce617344e67d40982f67614cd634b525b923048bf9a191234968c9c
+  languageName: node
+  linkType: hard
+
 "mz@npm:^2.7.0":
   version: 2.7.0
   resolution: "mz@npm:2.7.0"
@@ -17278,6 +17273,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"plimit-lit@npm:^1.2.6":
+  version: 1.6.1
+  resolution: "plimit-lit@npm:1.6.1"
+  dependencies:
+    queue-lit: "npm:^1.5.1"
+  checksum: af5d351bb55afe1eaa84b27c2b329699e150e4cf70464f3d474f5eabe9bdb9f48ed378ada1498d3b893f68ee7da2423ba6d9a4d88b1429d3b0aea22afcf5292b
+  languageName: node
+  linkType: hard
+
 "posix-character-classes@npm:^0.1.0":
   version: 0.1.1
   resolution: "posix-character-classes@npm:0.1.1"
@@ -18445,6 +18449,13 @@ __metadata:
   version: 2.2.0
   resolution: "querystringify@npm:2.2.0"
   checksum: 3258bc3dbdf322ff2663619afe5947c7926a6ef5fb78ad7d384602974c467fadfc8272af44f5eb8cddd0d011aae8fabf3a929a8eee4b86edcc0a21e6bd10f9aa
+  languageName: node
+  linkType: hard
+
+"queue-lit@npm:^1.5.1":
+  version: 1.5.2
+  resolution: "queue-lit@npm:1.5.2"
+  checksum: 8aa838b2c939aeaa6cd272b5b6b172379a3fa1d9193b2a3e687643c68c0efee3cd3493af4f1f8a11ff79b8207e4d00cc5d0b072f6e4bbeaaa27ee01f567ec4ac
   languageName: node
   linkType: hard
 
@@ -21245,6 +21256,22 @@ __metadata:
     ts-node-transpile-only: dist/bin-transpile.js
     ts-script: dist/bin-script-deprecated.js
   checksum: 5f29938489f96982a25ba650b64218e83a3357d76f7bede80195c65ab44ad279c8357264639b7abdd5d7e75fc269a83daa0e9c62fd8637a3def67254ecc9ddc2
+  languageName: node
+  linkType: hard
+
+"tsc-alias@npm:^1.8":
+  version: 1.8.8
+  resolution: "tsc-alias@npm:1.8.8"
+  dependencies:
+    chokidar: "npm:^3.5.3"
+    commander: "npm:^9.0.0"
+    globby: "npm:^11.0.4"
+    mylas: "npm:^2.1.9"
+    normalize-path: "npm:^3.0.0"
+    plimit-lit: "npm:^1.2.6"
+  bin:
+    tsc-alias: dist/bin/index.js
+  checksum: 02d0e3309f5b4d5c2dfc09ddb1192faa75108025e37d51f85dd7cfaab1ebe69cd50a6ed17d2e5d692ddc406455c1b17dfc056ca6ac56f587cba7b63993de251c
   languageName: node
   linkType: hard
 

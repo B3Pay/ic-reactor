@@ -3,9 +3,9 @@ import { HttpAgent } from "@dfinity/agent"
 import {
   createStoreWithOptionalDevtools,
   getProcessEnvNetwork,
-} from "../../utils/helper"
+} from "@src/utils/helper"
 import { AuthClient } from "@dfinity/auth-client"
-import type { AuthClientLoginOptions } from "../../types"
+import type { AuthClientLoginOptions } from "@src/types"
 import type {
   AgentState,
   AgentStore,
@@ -19,7 +19,7 @@ import {
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
   REMOTE_HOSTS,
-} from "../../utils/constants"
+} from "@src/utils/constants"
 
 export class AgentManager {
   private _agent: HttpAgent
