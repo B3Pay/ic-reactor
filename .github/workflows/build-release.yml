@@ -20,9 +20,6 @@ jobs:
         with:
           version: "4.1.1"
 
-      - name: Install wasm-pack
-        run: yarn dlx wasm-pack
-
       - name: Build
         run: yarn build
 
