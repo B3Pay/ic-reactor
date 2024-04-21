@@ -41,7 +41,9 @@
     "zustand": "^4.5"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "^0.1.0-beta.1"
+    "@ic-reactor/parser": "^0.1.0-beta.1",
+    "tsc-alias": "^1.8",
+    "typescript": "^5.4"
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
