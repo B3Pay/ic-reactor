@@ -2135,7 +2135,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/parser@npm:^0.1.0-beta.0, @ic-reactor/parser@npm:^0.1.0-beta.1, @ic-reactor/parser@workspace:*, @ic-reactor/parser@workspace:packages/parser":
+"@ic-reactor/parser@npm:^0.1.0-beta.0, @ic-reactor/parser@npm:^0.1.0-beta.1, @ic-reactor/parser@workspace:*, @ic-reactor/parser@workspace:^, @ic-reactor/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/parser@workspace:packages/parser"
   languageName: unknown
@@ -21613,7 +21613,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "typescript@workspace:examples/typescript"
   dependencies:
-    "@ic-reactor/core": "npm:*"
+    "@ic-reactor/core": "workspace:*"
+    "@ic-reactor/parser": "workspace:^"
     html-webpack-plugin: "npm:^5.0.0"
     webpack: "npm:^5.0.0"
     webpack-cli: "npm:^4.0.0"

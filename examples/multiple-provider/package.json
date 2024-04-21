@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@ic-reactor/react": "*",
+    "@ic-reactor/react": "workspace:^",
     "@ic-reactor/visitor": "*",
     "@types/node": "^16.18.68",
     "@types/react": "^18.2.45",
