@@ -29,7 +29,7 @@ import type {
  * // Initialize the actor context with configuration options
  * const { ActorProvider, useActorState, useQueryCall, useUpdateCall } = createActorContext<typeof backend>({
  *   canisterId,
- *   idlFactory, // Optional
+ *   idlFactory, // Optional, wrap the ActorProvider with CandidAdapterProvider
  * });
  *
  * // A sample component that utilizes the actor context

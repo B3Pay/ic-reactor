@@ -20,7 +20,7 @@ import { ActorHooks } from "@src/hooks/actor/hooks"
  *
  * @example
  * ```jsx
- * <ActorProvider canisterId="your-canister-id">
+ * <ActorProvider canisterId="your-canister-id" idlFactory={yourIdlFactory}>
  *   <YourComponent />
  * </ActorProvider>
  * ```

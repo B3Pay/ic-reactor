@@ -22,8 +22,6 @@ export const createAdapterContext = (
   const CandidAdapterContext =
     React.createContext<CandidAdapterContextType | null>(null)
 
-  CandidAdapterContext.displayName = "CandidAdapterContext"
-
   const useCandidAdapter = () => {
     const candidAdapter = React.useContext(CandidAdapterContext)
 
@@ -69,7 +67,7 @@ export const createAdapterContext = (
     )
   }
 
-  CandidAdapterProvider.displayName = "CandidAdapterContext"
+  CandidAdapterProvider.displayName = "CandidAdapterProvider"
 
   return {
     useCandidAdapter,

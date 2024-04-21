@@ -33,6 +33,7 @@ import type { UseActorParameters, UseActorReturn } from "./types"
  * const LedgerActor = ({ children }) => {
  *   const { hooks, fetching, fetchError } = useActor<Ledger>({
  *     canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger canister
+ *     idlFactory // optional: it will be fetched using CandidAdapter
  *   })
  *
  *   return (
@@ -60,14 +61,15 @@ import type { UseActorParameters, UseActorReturn } from "./types"
  *
  * const App = () => (
  *   <AgentProvider withDevtools>
- *     <LedgerActor>
+ *     <CandidAdapterProvider>
+ *      <LedgerActor>
  *       <CanisterName />
- *     </LedgerActor>
+ *      </LedgerActor>
+ *    </CandidAdapterProvider>
  *   </AgentProvider>
  * )
  *
  * export default App
- *
  * ```
  */
 export const useActor = <A = BaseActor>(

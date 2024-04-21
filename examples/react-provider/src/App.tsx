@@ -13,7 +13,6 @@ import { ICPTransfer } from "IcpTransfer"
 const publicKey = crypto.getRandomValues(new Uint8Array(48))
 
 const App = () => {
-  console.log(process.env.DFX_NETWORK === "local")
   return (
     <AgentProvider withDevtools>
       <Login />

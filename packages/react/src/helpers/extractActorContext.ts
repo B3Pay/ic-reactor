@@ -15,31 +15,6 @@ import type { CreateActorContextReturnType } from "@src/context/actor/types"
 export function extractActorContext<A = BaseActor>(
   actorContext: React.Context<ActorHooksReturnType<A> | null>
 ): Omit<CreateActorContextReturnType<A>, "ActorProvider"> {
-  /**
-   * Hook for accessing the actor context, including the actor manager and state.
-   * @returns The actor context, including the actor manager and state.
-   * @example
-   * ```tsx
-   * function ActorComponent() {
-   *  const { initialize, useActorState, useQueryCall, useUpdateCall, useMethodCall, useVisitMethod } = useActorContext();
-   *  const { canisterId } = useActorState();
-   *
-   *  return (
-   *   <div>
-   *     <p>Canister ID: {canisterId}</p>
-   *   </div>
-   *  );
-   * }
-   *
-   * function App() {
-   *  return (
-   *   <ActorProvider canisterId="rrkah-fqaaa-aaaaa-aaaaq-cai">
-   *     <ActorComponent />
-   *   </ActorProvider>
-   *  );
-   * }
-   * ```
-   */
   const useActorContext = () => {
     const context = React.useContext(actorContext)
 
