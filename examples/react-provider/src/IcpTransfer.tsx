@@ -1,12 +1,12 @@
 import { Principal } from "@dfinity/principal"
-import { useUpdateCall } from "@ic-reactor/react"
+import { useMethod } from "@ic-reactor/react"
 import { useState } from "react"
 
 export const ICPTransfer = () => {
   const [principal, setPrincipal] = useState("")
   const [amount, setAmount] = useState("")
 
-  const { call, data, loading, error } = useUpdateCall({
+  const { call, data, loading, error } = useMethod({
     functionName: "icrc1_transfer",
   })
 

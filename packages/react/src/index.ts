@@ -1,7 +1,8 @@
+// Note: Order of exports is important
 export * from "./createReactor"
-export * from "./provider"
-export * from "./context"
 export * from "./hooks"
+export * from "./context"
+export * from "./provider"
 
 export * as helpers from "./helpers"
 export * as types from "./types"

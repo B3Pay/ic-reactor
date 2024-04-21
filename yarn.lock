@@ -4447,13 +4447,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node20@npm:^20.1.4":
-  version: 20.1.4
-  resolution: "@tsconfig/node20@npm:20.1.4"
-  checksum: 10c0/239cd6abaceaaffc758e7a9dd3748ec1acfdabd6de28a9a16a3824c21f17ad69a16184870298460345d2fb6f3663d092c21d5b764bef669a179658b4a7eac739
-  languageName: node
-  linkType: hard
-
 "@tsconfig/recommended@npm:^1.0":
   version: 1.0.6
   resolution: "@tsconfig/recommended@npm:1.0.6"
@@ -7087,9 +7080,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.0, caniuse-lite@npm:^1.0.30001579, caniuse-lite@npm:^1.0.30001587, caniuse-lite@npm:^1.0.30001599":
-  version: 1.0.30001611
-  resolution: "caniuse-lite@npm:1.0.30001611"
-  checksum: 10c0/e6d6549a42b811212f6c4ef2798c45ab5a19484aaee0fa550ec20632a49638d3e53b64e088664d2efab0c5a278d1f8d1dec4654fbce11194e6ec1dc4ba5df466
+  version: 1.0.30001612
+  resolution: "caniuse-lite@npm:1.0.30001612"
+  checksum: 10c0/d6b405ff06f4e913bc779f9183fa68001c9d6b8526a7dd1b99c60587dd21a01aa8def3d8462cf6214f0181f1c21b9245611ff65241cf9c967fc742e86ece5065
   languageName: node
   linkType: hard
 
@@ -11318,7 +11311,6 @@ __metadata:
     "@peculiar/webcrypto": "npm:^1.4"
     "@testing-library/jest-dom": "npm:^6.1"
     "@testing-library/react": "npm:^14.1"
-    "@tsconfig/node20": "npm:^20.1.4"
     "@tsconfig/recommended": "npm:^1.0"
     "@types/jest": "npm:^29.5"
     "@types/node": "npm:^20.12"

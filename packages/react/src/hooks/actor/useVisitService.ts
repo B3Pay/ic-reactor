@@ -1,4 +1,4 @@
-import { ActorHooks } from "./hooks"
+import ActorHooks from "./hooks"
 
 import type { BaseActor, UseVisitService } from "../../types"
 

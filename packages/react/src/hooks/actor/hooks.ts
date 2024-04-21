@@ -1,3 +1,5 @@
 import { createActorContext } from "../../context/actor"
 
-export const ActorHooks = createActorContext()
+const ActorHooks = createActorContext()
+
+export default ActorHooks

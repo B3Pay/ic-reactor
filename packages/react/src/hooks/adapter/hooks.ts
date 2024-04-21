@@ -1,3 +1,5 @@
-import { createAdapterContext } from "../../context"
+import { createAdapterContext } from "../../context/adapter"
 
-export const AdapterHooks = createAdapterContext()
+const AdapterHooks = createAdapterContext()
+
+export default AdapterHooks

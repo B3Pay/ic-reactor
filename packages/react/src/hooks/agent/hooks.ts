@@ -1,3 +1,5 @@
 import { createAgentContext } from "../../context/agent"
 
-export const AgentHooks = createAgentContext()
+const AgentHooks = createAgentContext()
+
+export default AgentHooks

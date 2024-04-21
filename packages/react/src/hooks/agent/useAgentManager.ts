@@ -1,4 +1,4 @@
-import { AgentHooks } from "./hooks"
+import AgentHooks from "./hooks"
 
 /**
  * Accesses the `AgentManager` instance for managing agent configurations and state.

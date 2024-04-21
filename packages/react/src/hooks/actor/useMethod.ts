@@ -1,4 +1,10 @@
-import { ActorHooks } from "./hooks"
+import {
+  BaseActor,
+  FunctionName,
+  UseMethod,
+  UseMethodParameters,
+} from "../../types"
+import ActorHooks from "./hooks"
 
 /**
  * Hook for making dynamically update or query calls to actors, handling loading states, and managing errors. It supports custom event handlers for loading, success, and error events.
@@ -27,4 +33,9 @@ import { ActorHooks } from "./hooks"
  * }
  * ```
  */
-export const useMethod = ActorHooks.useMethod
+export function useMethod<
+  A = BaseActor,
+  M extends FunctionName<A> = FunctionName<A>
+>(args: UseMethodParameters<A, M>) {
+  return (ActorHooks.useMethod as UseMethod<A>)(args)
+}
