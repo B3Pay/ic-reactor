@@ -1,0 +1,25 @@
+name: Yarn Berry Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20'
+
+      - name: Install Yarn Berry
+        run: yarn set version berry
+
+      - name: Install Dependencies
+        run: yarn install
+
+      - name: Build
+        run: yarn build
