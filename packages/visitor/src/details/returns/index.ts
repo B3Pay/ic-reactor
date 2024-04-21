@@ -1,3 +1,8 @@
+import { IDL } from "@dfinity/candid"
+import { isQuery, isFieldInTable } from "@src/helpers"
+import { VisitReturns } from "@src/fields"
+import { Status } from "./types"
+
 import type {
   ReturnDetailsWithChild,
   ReturnDetails,
@@ -5,12 +10,7 @@ import type {
   MethodReturnDetails,
   OutputDetails,
 } from "./types"
-import { IDL } from "@dfinity/candid"
-import { isQuery } from "../../helper"
-import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import { VisitReturns } from "../../fields"
-import { DynamicReturnType, Status } from "../../types"
-import { isFieldInTable } from "../../fields/returns/helpers"
+import type { DynamicReturnType, BaseActor, FunctionName } from "@src/types"
 
 /**
  * Visit the candid file and extract the details.

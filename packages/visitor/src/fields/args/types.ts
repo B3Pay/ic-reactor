@@ -1,10 +1,11 @@
-import type { IDL } from "@dfinity/candid"
 import type {
   BaseActor,
   FunctionName,
   FunctionType,
-} from "@ic-reactor/core/dist/types"
-import type { AllNumberTypes, FieldType } from "../../types"
+  IDL,
+  AllNumberTypes,
+  FieldType,
+} from "@src/types"
 
 export type ServiceArgs<A = BaseActor> = {
   [K in FunctionName<A>]: MethodArgs<A>

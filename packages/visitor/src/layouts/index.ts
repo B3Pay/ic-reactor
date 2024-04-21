@@ -1,9 +1,8 @@
-import type { ServiceLayouts } from "./types"
 import { IDL } from "@dfinity/candid"
-import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import { findCategory } from "./helpers"
-import { DEFAULT_CATEGORIES, DEFAULT_LAYOUTS } from "./constants"
+import { findCategory } from "@src/helpers"
+import { DEFAULT_CATEGORIES, DEFAULT_LAYOUTS } from "@src/constants"
 
+import type { BaseActor, FunctionName, ServiceLayouts } from "@src/types"
 /**
  * Visit the candid file and extract the details.
  * It returns the extracted service details.

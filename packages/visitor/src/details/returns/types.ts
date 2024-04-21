@@ -1,8 +1,4 @@
-import type {
-  BaseActor,
-  FunctionName,
-  FunctionType,
-} from "@ic-reactor/core/dist/types"
+import type { BaseActor, FunctionName, FunctionType } from "@src/types"
 
 export enum Status {
   Visible = 0, // Default

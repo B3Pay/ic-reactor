@@ -1,4 +1,4 @@
-import type { Principal } from "@ic-reactor/core/dist/types"
+import type { Principal } from "@src/types"
 
 export type ReturnDataType =
   | "record"

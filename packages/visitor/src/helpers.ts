@@ -1,4 +1,47 @@
-import { IDL } from "@dfinity/candid"
+import {
+  GOVERNANCE_TEST,
+  SETTING_TEST,
+  STATUS_TEST,
+  WALLET_TEST,
+} from "./constants"
+
+import type {
+  AllReturnTypes,
+  IDL,
+  FunctionCategory,
+  OptionalReturns,
+} from "./types"
+
+export const isFieldInTable = (field: AllReturnTypes<IDL.Type>): boolean => {
+  if (field.type === "optional") {
+    return isFieldInTable((field as OptionalReturns).field)
+  }
+
+  return !["record", "tuple", "vector"].includes(field.type)
+}
+
+export const findCategory = (name: string): FunctionCategory => {
+  const categories = [
+    { name: "home", test: [] },
+    {
+      name: "wallet",
+      test: WALLET_TEST,
+    },
+    {
+      name: "status",
+      test: STATUS_TEST,
+    },
+    {
+      name: "setting",
+      test: SETTING_TEST,
+    },
+    { name: "governance", test: GOVERNANCE_TEST },
+  ]
+  const category = categories.find((c) =>
+    c.test.some((t) => name.toLowerCase().includes(t))
+  )?.name as FunctionCategory
+  return category || "home"
+}
 
 export const extractAndSortArgs = <T extends Record<string, unknown>>(
   argsObject: T

@@ -26,12 +26,15 @@
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/visit#readme",
   "dependencies": {
-    "@dfinity/principal": "^1.2",
-    "@ic-reactor/core": "^1.6.0-beta.6"
+    "@dfinity/candid": "^1.2",
+    "@dfinity/principal": "^1.2"
   },
   "peerDependencies": {
-    "@dfinity/principal": "^1.2",
-    "@ic-reactor/core": "^1.4.2"
+    "@dfinity/candid": "^1.2",
+    "@dfinity/principal": "^1.2"
+  },
+  "devDependencies": {
+    "@ic-reactor/core": "^1.6.0-beta.6"
   },
   "scripts": {
     "test": "npx jest",
