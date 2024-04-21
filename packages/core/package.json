@@ -50,8 +50,8 @@
     "bundle": "yarn bundle:dev && yarn bundle:prod",
     "bundle:dev": "webpack --mode development",
     "bundle:prod": "webpack --mode production",
-    "build:tsc": "tsc && tsc-alias",
-    "build": "tsc && tsc-alias && yarn bundle",
+    "build:tsc": "tsc --project ./tsconfig.json && tsc-alias -p ./tsconfig.json",
+    "build": "yarn build:tsc && yarn bundle",
     "clean": "rimraf dist && rimraf umd && rimraf node_modules"
   },
   "engines": {
