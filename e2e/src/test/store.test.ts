@@ -1,6 +1,3 @@
-import { config } from "dotenv"
-config().parsed
-
 import { createReactorStore } from "@ic-reactor/core"
 import {
   canisterId,

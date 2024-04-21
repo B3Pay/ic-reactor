@@ -52,6 +52,6 @@
     "@dfinity/agent": "^1.0",
     "@ic-reactor/core": "workspace:^",
     "@ic-reactor/parser": "workspace:^",
-    "@ic-reactor/visitor": "*"
+    "@ic-reactor/visitor": "workspace:^"
   }
 }
