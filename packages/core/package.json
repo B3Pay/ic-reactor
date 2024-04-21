@@ -48,8 +48,8 @@
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
     "start": "tsc watch",
     "bundle": "yarn bundle:dev && yarn bundle:prod",
-    "bundle:dev": "webpack --mode development",
-    "bundle:prod": "webpack --mode production",
+    "bundle:dev": "npx webpack --mode development",
+    "bundle:prod": "npx webpack --mode production",
     "build:tsc": "tsc",
     "build": "yarn build:tsc && yarn bundle",
     "clean": "rimraf dist && rimraf umd && rimraf node_modules"
