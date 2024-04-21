@@ -2086,6 +2086,7 @@ __metadata:
     "@dfinity/principal": "npm:^1.2"
     "@ic-reactor/parser": "npm:^0.1.0-beta.1"
     "@types/node": "npm:^20.12.7"
+    webpack-cli: "npm:^5.1.4"
     zustand: "npm:^4.5"
   peerDependencies:
     "@dfinity/agent": ^1.2
