@@ -42,6 +42,7 @@
   },
   "devDependencies": {
     "@ic-reactor/parser": "^0.1.0-beta.1",
+    "@types/node": "^20.12.7",
     "tsc-alias": "^1.8",
     "typescript": "^5.4"
   },
