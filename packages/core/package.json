@@ -51,8 +51,8 @@
     "bundle": "yarn bundle:dev && yarn bundle:prod",
     "bundle:dev": "npx webpack --mode development",
     "bundle:prod": "npx webpack --mode production",
-    "build:tsc": "npx tsc && npx tsc-alias",
-    "build": "yarn build:tsc && yarn bundle",
+    "build:tsc": "tsc && npx tsc-alias",
+    "build": "tsc && npx tsc-alias && yarn bundle",
     "clean": "npx rimraf dist && npx rimraf umd && npx rimraf node_modules"
   },
   "engines": {
