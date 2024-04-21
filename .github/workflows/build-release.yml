@@ -9,33 +9,21 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-        with:
-          token: ${{ secrets.RELEASE_TOKEN }}
-          ref: main
+      - name: Checkout
+        uses: actions/checkout@v4.1.2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: "20"
+      - name: Setup Yarn
+        uses: threeal/setup-yarn-action@v2.0.0
 
-      - name: Install Yarn
-        uses: borales/actions-yarn@v4
-        with:
-          cmd: install
+      - name: Install dependencies
+        run: yarn install
 
       - name: Install wasm-pack
-        uses: borales/actions-yarn@v4
-        with:
-          cmd: global add wasm-pack
+        run: yarn global add wasm-pack
 
       - name: Build
-        uses: borales/actions-yarn@v4
-        with:
-          cmd: build
+        run: yarn build
 
       - name: Get Core Package Version
         id: core-version
