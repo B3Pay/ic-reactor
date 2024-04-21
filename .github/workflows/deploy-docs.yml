@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "20.9.0"
 
       - name: Setup Yarn
         uses: threeal/setup-yarn-action@v2.0.0
