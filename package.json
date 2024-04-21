@@ -79,5 +79,6 @@
     "webpack-dev-server": "^5.0.2",
     "whatwg-fetch": "3.6",
     "xmlhttprequest": "^1.8"
-  }
+  },
+  "packageManager": "yarn@4.1.1"
 }

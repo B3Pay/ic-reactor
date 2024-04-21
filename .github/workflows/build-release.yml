@@ -27,7 +27,7 @@ jobs:
         run: npm install -g yarn
 
       - name: Install Dependencies
-        run: yarn install --ignore=examples
+        run: yarn install
 
       - name: Install wasm-pack
         run: yarn global add wasm-pack
