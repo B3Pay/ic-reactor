@@ -4,7 +4,7 @@ import type {
   BaseActor,
   ActorManagerParameters,
   CanisterId,
-} from "../../types"
+} from "@src/types"
 
 export interface CreateActorContextReturnType<A = BaseActor>
   extends ActorHooksReturnType<A> {

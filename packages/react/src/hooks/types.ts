@@ -1,10 +1,10 @@
-import type { IDL } from "@dfinity/candid"
 import {
+  IDL,
   ActorHooksReturnType,
   ActorManagerParameters,
   BaseActor,
   CanisterId,
-} from "../types"
+} from "@src/types"
 
 export interface UseActorParameters
   extends Omit<

@@ -1,3 +1,3 @@
-import { createAgentContext } from "../../context/agent"
+import { createAgentContext } from "@src/context/agent"
 
 export const AgentHooks = createAgentContext()

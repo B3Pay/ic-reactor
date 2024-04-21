@@ -1,3 +1,3 @@
-import { createActorContext } from "../../context/actor"
+import { createActorContext } from "@src/context/actor"
 
 export const ActorHooks = createActorContext()

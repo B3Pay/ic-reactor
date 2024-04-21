@@ -1,5 +1,10 @@
-import React = require("react")
+import React from "react"
 import { useStore } from "zustand"
+import {
+  IC_INTERNET_IDENTITY_PROVIDER,
+  LOCAL_INTERNET_IDENTITY_PROVIDER,
+} from "@ic-reactor/core/dist/utils"
+
 import type {
   AgentManager,
   UseAuthParameters,
@@ -9,12 +14,8 @@ import type {
   Principal,
   Identity,
   LoginState,
-} from "../types"
-import {
-  IC_INTERNET_IDENTITY_PROVIDER,
-  LOCAL_INTERNET_IDENTITY_PROVIDER,
-} from "@ic-reactor/core/dist/utils"
-import { InternetIdentityAuthResponseSuccess } from "@dfinity/auth-client"
+} from "@src/types"
+import type { InternetIdentityAuthResponseSuccess } from "@dfinity/auth-client"
 
 export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   const {

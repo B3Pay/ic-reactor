@@ -1,13 +1,14 @@
 import React from "react"
-import {
+import { useAgentManager } from "@src/hooks"
+import { createCandidAdapter } from "@ic-reactor/core"
+
+import type {
   CandidAdapterContextType,
   CreateCandidAdapterCotextParameters,
   CreateCandidAdapterContextReturnType,
   CandidAdapterProviderProps,
   CandidAdapter,
 } from "./types"
-import { useAgentManager } from "../../hooks"
-import { createCandidAdapter } from "@ic-reactor/core"
 
 export const createAdapterContext = (
   config: CreateCandidAdapterCotextParameters = {}

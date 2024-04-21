@@ -1,10 +1,11 @@
 import React from "react"
+
 import type {
   AgentManager,
   AgentContext,
   CreateAgentContextReturnType,
   UseAuthParameters,
-} from "../types"
+} from "@src/types"
 
 /**
  * This function facilitates the use of contextually provided agent functionalities,

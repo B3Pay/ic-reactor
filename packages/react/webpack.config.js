@@ -36,6 +36,9 @@ module.exports = (env, argv) => {
     },
     resolve: {
       extensions: [".tsx", ".ts", ".js"],
+      alias: {
+        "@src": path.resolve(__dirname, "src"), // Adjust the path as needed
+      },
       modules: [path.resolve(__dirname, "node_modules"), "node_modules"],
     },
     externals: {

@@ -1,4 +1,5 @@
 import React from "react"
+
 import type {
   ActorHooksReturnType,
   BaseActor,
@@ -8,8 +9,8 @@ import type {
   UseUpdateCall,
   UseVisitMethod,
   UseVisitService,
-} from "../types"
-import { CreateActorContextReturnType } from "../context/actor/types"
+} from "@src/types"
+import type { CreateActorContextReturnType } from "@src/context/actor/types"
 
 export function extractActorContext<A = BaseActor>(
   actorContext: React.Context<ActorHooksReturnType<A> | null>

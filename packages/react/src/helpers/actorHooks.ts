@@ -1,5 +1,8 @@
 import * as React from "react"
 import { useStore } from "zustand"
+import { useShallow } from "zustand/react/shallow"
+import { generateRequestHash } from "@src/utils"
+
 import type {
   UseSharedCallState,
   UseSharedCall,
@@ -9,7 +12,7 @@ import type {
   UseMethod,
   UseMethodParameters,
   UseMethodReturnType,
-} from "../types"
+} from "@src/types"
 import type {
   VisitService,
   ActorMethodParameters,
@@ -20,8 +23,6 @@ import type {
   MethodAttributes,
   ActorMethodState,
 } from "@ic-reactor/core/dist/types"
-import { generateRequestHash } from "../utils"
-import { useShallow } from "zustand/react/shallow"
 
 const DEFAULT_STATE: UseSharedCallState<never, never> = {
   data: undefined,
