@@ -48,11 +48,11 @@
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
     "start": "tsc watch",
-    "bundle": "npm run bundle:dev && npm run bundle:prod",
+    "bundle": "yarn bundle:dev && yarn bundle:prod",
     "bundle:dev": "npx webpack --mode development",
     "bundle:prod": "npx webpack --mode production",
     "build:tsc": "npx tsc && npx tsc-alias",
-    "build": "npm run build:tsc && npm run bundle",
+    "build": "yarn build:tsc && yarn bundle",
     "clean": "npx rimraf dist && npx rimraf umd && npx rimraf node_modules"
   },
   "engines": {
