@@ -1,1 +1,1 @@
-export { useCandidAdapter } from "./useCandidAdapter"
+export * from "./useCandidAdapter"

@@ -5,7 +5,6 @@ import {
   BaseActor,
   CanisterId,
 } from "../types"
-export * from "./adapter/useCandidAdapter"
 
 export interface UseActorParameters
   extends Omit<

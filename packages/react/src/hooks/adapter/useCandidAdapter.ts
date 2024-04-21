@@ -1,5 +1,4 @@
-import React from "react"
-import { CandidAdapterContext } from "../../context/adapter"
+import { AdapterHooks } from "./hooks"
 
 /**
  * Accesses the `CandidAdapter` to download the actor's Candid interface.
@@ -23,8 +22,4 @@ import { CandidAdapterContext } from "../../context/adapter"
  * }
  *```
  */
-export const useCandidAdapter = () => {
-  const candidAdapter = React.useContext(CandidAdapterContext)
-
-  return candidAdapter
-}
+export const useCandidAdapter = AdapterHooks.useCandidAdapter

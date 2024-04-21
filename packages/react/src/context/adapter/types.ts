@@ -12,3 +12,13 @@ export interface CandidAdapterProviderProps
   withParser?: boolean
   loadingComponent?: React.ReactNode
 }
+
+export interface CreateCandidAdapterCotextParameters
+  extends CandidAdapterParameters {
+  withParser?: boolean
+}
+
+export interface CreateCandidAdapterContextReturnType {
+  useCandidAdapter: () => CandidAdapter
+  CandidAdapterProvider: React.FC<CandidAdapterProviderProps>
+}
