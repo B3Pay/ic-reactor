@@ -15,7 +15,6 @@ jobs:
         with:
           node-version: "20"
 
-      - run: yarn cache clean
       - run: rm -rf node_modules
       - run: rm -rf .yarn
 
