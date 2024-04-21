@@ -11426,7 +11426,8 @@ __metadata:
     ts-jest: "npm:29.1"
     tsc-alias: "npm:^1.8"
     typedoc: "npm:^0.25"
-    typedoc-plugin-coverage: "npm:^3.1"
+    typedoc-plugin-coverage: "npm:^3.1.0"
+    typedoc-plugin-external-resolver: "npm:^1.0.3"
     typedoc-plugin-extras: "npm:^3.0.0"
     typedoc-plugin-include-example: "npm:^1.2.0"
     typedoc-plugin-mdn-links: "npm:^3.1.16"
@@ -21404,12 +21405,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typedoc-plugin-coverage@npm:^3.1":
+"typedoc-plugin-coverage@npm:^3.1.0":
   version: 3.1.0
   resolution: "typedoc-plugin-coverage@npm:3.1.0"
   peerDependencies:
     typedoc: 0.25.x
   checksum: 2cada342ffdc1879fdf647a199b3c06b99d8e5654407e2592f3f22349ac2cbf64910093b454ab2eb47297514f2a637a224ef333b242f95620fd8047a6958adf8
+  languageName: node
+  linkType: hard
+
+"typedoc-plugin-external-resolver@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "typedoc-plugin-external-resolver@npm:1.0.3"
+  peerDependencies:
+    typedoc: 0.25.x
+    typescript: 4.x || 5.x
+  checksum: e0c6a0468c9e568137f8dc9b0033ae1978a0c33a91e44654edb902df7741e6b563a9d4c6043909f8444915003b3f643ef95da0dad21badd972f964ae2c8c391a
   languageName: node
   linkType: hard
 
