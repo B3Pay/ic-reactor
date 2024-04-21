@@ -27,9 +27,9 @@
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/parser#readme",
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
-    "build": "wasm-pack build --release --target web --out-dir dist --out-name index",
-    "build:node": "wasm-pack build --release --target nodejs --out-dir dist --out-name index",
-    "build:builder": "wasm-pack build --release --out-dir dist --out-name index",
+    "build": "npx wasm-pack build --release --target web --out-dir dist --out-name index",
+    "build:node": "npx wasm-pack build --release --target nodejs --out-dir dist --out-name index",
+    "build:builder": "npx wasm-pack build --release --out-dir dist --out-name index",
     "start": "tsc watch",
     "clean": "npx rimraf dist"
   },

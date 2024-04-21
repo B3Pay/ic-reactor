@@ -20,12 +20,6 @@ jobs:
         with:
           version: "4.1.1"
 
-      - name: Install dependencies
-        run: yarn install --immutable
-
-      - name: Install wasm-pack
-        run: yarn global add wasm-pack
-
       - name: Build
         run: yarn build
 
