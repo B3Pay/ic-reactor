@@ -11,7 +11,7 @@
     "test": "lerna run test",
     "lint": "eslint . --ext .ts",
     "e2e": "cd e2e && sh ./test.sh",
-    "docs:serve": "npx serve@latest ./docs",
+    "docs:serve": "serve@latest ./docs",
     "docs:build": "typedoc --options ./typedoc.json",
     "lerna-publish": "yarn clean && yarn build && lerna publish"
   },
@@ -43,6 +43,7 @@
     "@testing-library/react": "^14.1",
     "@tsconfig/recommended": "^1.0",
     "@types/jest": "^29.5",
+    "@types/node": "^20.12",
     "@types/react": "18.2",
     "@types/react-test-renderer": "^18.0",
     "@types/xmlhttprequest": "^1",

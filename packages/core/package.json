@@ -41,20 +41,17 @@
     "zustand": "^4.5"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "^0.1.0-beta.1",
-    "@types/node": "^20.12.7",
-    "tsc-alias": "^1.8",
-    "typescript": "^5.4"
+    "@ic-reactor/parser": "^0.1.0-beta.1"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
+    "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
     "start": "tsc watch",
     "bundle": "yarn bundle:dev && yarn bundle:prod",
-    "bundle:dev": "npx webpack --mode development",
-    "bundle:prod": "npx webpack --mode production",
-    "build:tsc": "tsc && npx tsc-alias",
-    "build": "tsc && npx tsc-alias && yarn bundle",
-    "clean": "npx rimraf dist && npx rimraf umd && npx rimraf node_modules"
+    "bundle:dev": "webpack --mode development",
+    "bundle:prod": "webpack --mode production",
+    "build:tsc": "tsc && tsc-alias",
+    "build": "tsc && tsc-alias && yarn bundle",
+    "clean": "rimraf dist && rimraf umd && rimraf node_modules"
   },
   "engines": {
     "node": ">=10"
