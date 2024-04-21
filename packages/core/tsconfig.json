@@ -2,6 +2,10 @@
   "extends": "../../tsconfig.json",
   "include": ["./src"],
   "compilerOptions": {
-    "outDir": "./dist"
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "paths": {
+      "@src/*": ["./src/*"] // Map the path alias to the correct directory
+    }
   }
 }

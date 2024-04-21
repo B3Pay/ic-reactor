@@ -1,5 +1,9 @@
-import { useAgentManager, useUserPrincipal } from "@ic-reactor/react"
-import LedgerProvider from "./ICRC1Provider"
+import {
+  CandidAdapterProvider,
+  useAgentManager,
+  useUserPrincipal,
+} from "@ic-reactor/react"
+import ICRC1Provider from "./ICRC1Provider"
 import ICRC1Call from "./ICRC1Call"
 import { FunctionName } from "@ic-reactor/react/dist/types"
 import { ICRC1 } from "./declarations/icrc1"
@@ -70,12 +74,18 @@ const App: React.FC<AppProps> = () => {
         />
         <button type="submit">Fetch</button>
       </form>
-      <LedgerProvider canisterId={canisterId}>
-        {functionNames.map((functionName) => (
-          <ICRC1Call key={functionName} functionName={functionName} />
-        ))}
-        {principal && <UserWallet principal={principal} />}
-      </LedgerProvider>
+      <CandidAdapterProvider withParser>
+        <ICRC1Provider canisterId={canisterId}>
+          {functionNames.map((functionName) => (
+            <ICRC1Call key={functionName} functionName={functionName} />
+          ))}
+          <ICRC1Call
+            functionName="icrc1_balance_of"
+            args={[{ owner: Principal.anonymous(), subaccount: [] }]}
+          />
+          {principal && <UserWallet principal={principal} />}
+        </ICRC1Provider>
+      </CandidAdapterProvider>
     </div>
   )
 }

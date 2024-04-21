@@ -1,7 +1,8 @@
 import { ActorManager } from "./classes/actor"
-import type { BaseActor, CreateReactorStoreParameters } from "./types"
 import { createActorManager } from "./createActorManager"
 import { createAgentManager } from "./createAgentManager"
+
+import type { BaseActor, CreateReactorStoreParameters } from "./types"
 
 /**
  * Create a new actor manager with the given options.

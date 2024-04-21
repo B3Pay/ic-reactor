@@ -1,6 +1,6 @@
 import CanisterForm from "./CanisterForm"
 import { useState } from "react"
-import { ActorProvider } from "@ic-reactor/react"
+import { ActorProvider, CandidAdapterProvider } from "@ic-reactor/react"
 import { Actor } from "./Actor"
 
 export default function App() {
@@ -9,11 +9,13 @@ export default function App() {
   return (
     <div className="App">
       <CanisterForm setCanisterId={setCanisterId} />
-      {canisterId && (
-        <ActorProvider canisterId={canisterId} withDevtools>
-          <Actor />
-        </ActorProvider>
-      )}
+      <CandidAdapterProvider>
+        {canisterId && (
+          <ActorProvider canisterId={canisterId} withDevtools>
+            <Actor />
+          </ActorProvider>
+        )}
+      </CandidAdapterProvider>
     </div>
   )
 }

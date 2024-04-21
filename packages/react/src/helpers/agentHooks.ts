@@ -1,7 +1,8 @@
 import React from "react"
+import { useStore } from "zustand"
+
 import type { HttpAgent, AgentManager } from "@ic-reactor/core/dist/types"
 import type { AgentHooksReturnType } from "./types"
-import { useStore } from "zustand"
 
 export const agentHooks = (
   agentManager: AgentManager

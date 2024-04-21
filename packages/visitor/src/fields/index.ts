@@ -1,8 +1,13 @@
 import { IDL } from "@dfinity/candid"
-import { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
-import { MethodFields, ServiceFields } from "./types"
 import { VisitReturns } from "./returns"
 import { VisitArgs } from "./args"
+
+import type {
+  BaseActor,
+  FunctionName,
+  MethodFields,
+  ServiceFields,
+} from "@src/types"
 
 export * from "./returns"
 export * from "./args"

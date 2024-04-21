@@ -1,11 +1,12 @@
 import { createActorManager } from "@ic-reactor/core"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAgentManager } from "./agent/useAgentManager"
-import { actorHooks } from "../helpers"
+import { actorHooks } from "@src/helpers"
 import { useAuthState } from "./agent"
-import type { ActorManager, IDL, BaseActor } from "../types"
+import { useCandidAdapter } from "./adapter/useCandidAdapter"
+
+import type { ActorManager, IDL, BaseActor } from "@src/types"
 import type { UseActorParameters, UseActorReturn } from "./types"
-import { useCandidAdapter } from "./agent/useCandidAdapter"
 
 /**
  * A comprehensive hook that manages both the fetching of Candid interfaces
@@ -32,6 +33,7 @@ import { useCandidAdapter } from "./agent/useCandidAdapter"
  * const LedgerActor = ({ children }) => {
  *   const { hooks, fetching, fetchError } = useActor<Ledger>({
  *     canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger canister
+ *     idlFactory // optional: it will be fetched using CandidAdapter
  *   })
  *
  *   return (
@@ -59,14 +61,15 @@ import { useCandidAdapter } from "./agent/useCandidAdapter"
  *
  * const App = () => (
  *   <AgentProvider withDevtools>
- *     <LedgerActor>
+ *     <CandidAdapterProvider>
+ *      <LedgerActor>
  *       <CanisterName />
- *     </LedgerActor>
+ *      </LedgerActor>
+ *    </CandidAdapterProvider>
  *   </AgentProvider>
  * )
  *
  * export default App
- *
  * ```
  */
 export const useActor = <A = BaseActor>(
@@ -74,8 +77,8 @@ export const useActor = <A = BaseActor>(
 ): UseActorReturn<A> => {
   const {
     canisterId,
+    candidString,
     idlFactory: maybeIdlFactory,
-    didjsCanisterId,
     ...actorConfig
   } = config
 
@@ -97,14 +100,12 @@ export const useActor = <A = BaseActor>(
     fetchError: null as string | null,
   })
 
-  const candidAdapter = useCandidAdapter({
-    didjsCanisterId,
-  })
+  const candidAdapter = useCandidAdapter()
 
   const authenticating = useAuthState().authenticating
 
   const fetchCandid = useCallback(async () => {
-    if (fetching || authenticating || !candidAdapter) return
+    if (fetching) return
 
     setState({
       fetching: true,
@@ -112,7 +113,9 @@ export const useActor = <A = BaseActor>(
     })
 
     try {
-      const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
+      const { idlFactory } = await candidAdapter!.getCandidDefinition(
+        canisterId
+      )
 
       setState({
         fetching: false,
@@ -128,13 +131,30 @@ export const useActor = <A = BaseActor>(
         fetching: false,
       })
     }
-  }, [canisterId, candidAdapter, authenticating, didjsCanisterId])
+  }, [canisterId])
+
+  const evaluateCandid = useCallback(async () => {
+    try {
+      const definition = await candidAdapter!.dynamicEvalJs(candidString!)
+      if (typeof definition?.idlFactory !== "function") {
+        throw new Error("Error evaluating Candid definition")
+      }
+      return definition.idlFactory
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err)
+      setState({
+        fetchError: `Error evaluating Candid definition, ${err}`,
+        fetching: false,
+      })
+    }
+  }, [candidString])
 
   const agentManager = useAgentManager()
 
   const initialActorManager = useCallback(
-    (idlFactory: IDL.InterfaceFactory) => {
-      if (authenticating) return
+    (idlFactory?: IDL.InterfaceFactory) => {
+      if (authenticating || !idlFactory) return
       const actorManager = createActorManager<A>({
         agentManager,
         idlFactory,
@@ -147,16 +167,29 @@ export const useActor = <A = BaseActor>(
     [canisterId, agentManager, authenticating]
   )
 
-  useEffect(() => {
+  const handleActorInitialization = useCallback(async () => {
+    if (authenticating) return
     if (maybeIdlFactory) {
       initialActorManager(maybeIdlFactory)
-    } else {
-      fetchCandid().then((idlFactory) => {
-        if (!idlFactory) return
-        initialActorManager(idlFactory)
-      })
+      return
     }
-  }, [fetchCandid, maybeIdlFactory, initialActorManager])
+    if (!candidAdapter) {
+      throw new Error(
+        "CandidAdapter is necessary to fetch the Candid interface. Please ensure your application is wrapped with the CandidAdapterProvider!"
+      )
+    }
+    let idlFactory
+    if (candidString) {
+      idlFactory = await evaluateCandid()
+    } else {
+      idlFactory = await fetchCandid()
+    }
+    initialActorManager(idlFactory)
+  }, [fetchCandid, evaluateCandid, maybeIdlFactory, initialActorManager])
+
+  useEffect(() => {
+    handleActorInitialization()
+  }, [handleActorInitialization])
 
   const hooks = useMemo(() => {
     if (!actorManager) return null

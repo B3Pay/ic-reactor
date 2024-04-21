@@ -1,4 +1,4 @@
-import { IDL } from "@ic-reactor/core/dist/types"
+import type { IDL } from "@ic-reactor/core/dist/types"
 
 export * from "./transform/types"
 export * from "./layouts/types"
@@ -30,3 +30,12 @@ export type AllNumberTypes =
   | IDL.FixedNatClass
   | IDL.FixedIntClass
   | IDL.FloatClass
+
+export type {
+  IDL,
+  Principal,
+  BaseActor,
+  ActorMethodReturnType,
+  FunctionName,
+  FunctionType,
+} from "@ic-reactor/core/dist/types"

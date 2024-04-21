@@ -1,6 +1,6 @@
 import type { HttpAgent, HttpAgentOptions, Identity } from "@dfinity/agent"
 import type { AuthClient } from "@dfinity/auth-client"
-import { StoreApiWithDevtools } from "../types"
+import { StoreApiWithDevtools } from "@src/types"
 
 export { HttpAgentOptions, AuthClient, Identity }
 

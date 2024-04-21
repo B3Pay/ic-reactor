@@ -3,12 +3,17 @@ import {
   LOCAL_HOST_NETWORK_URI,
   jsonToString,
 } from "@ic-reactor/core/dist/utils"
-import { createAgentManager, createReactorCore } from "@ic-reactor/core"
+import {
+  createAgentManager,
+  createCandidAdapter,
+  createReactorCore,
+} from "@ic-reactor/core"
 import { Principal } from "@dfinity/principal"
-import * as candid from "@ic-reactor/parser"
 
 const agentManager = createAgentManager({ withDevtools: true })
-const candidAdapter = candid.createCandidAdapter({ agentManager })
+const candidAdapter = createCandidAdapter({ agentManager })
+
+candidAdapter.initializeParser()
 
 let previousActorCleanup = null
 let balanceUnsub = null
@@ -29,7 +34,9 @@ function listener() {
       const canisterId = e.target.elements.canisterId.value
       const functionName = e.target.elements.functionName.value
 
-      const { idlFactory } = await candidAdapter.didTojs(`service:{${text}}`)
+      const { idlFactory } = await candidAdapter.dynamicEvalJs(
+        `service:{${text}}`
+      )
       console.log("🚀 ~ idlFactory:", idlFactory)
 
       const reactor = createReactorCore({

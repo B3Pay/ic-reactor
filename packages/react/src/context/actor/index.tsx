@@ -1,12 +1,13 @@
 import React from "react"
-import { ActorHooksReturnType, BaseActor } from "../types"
-import {
+import { useActor } from "@src/hooks/useActor"
+import { extractActorContext } from "@src/helpers/extractActorContext"
+
+import type { ActorHooksReturnType, BaseActor } from "@src/types"
+import type {
   CreateActorContextParameters,
   CreateActorContextReturnType,
   ActorProviderProps,
 } from "./types"
-import { useActor } from "../hooks/useActor"
-import { extractActorContext } from "../helpers/extractActorContext"
 /**
  * Creates a React context specifically designed for managing the state and interactions with an actor on the Internet Computer (IC) blockchain.
  * This context facilitates the dynamic creation and management of IC actors within React applications, leveraging the provided configuration options.
@@ -28,7 +29,7 @@ import { extractActorContext } from "../helpers/extractActorContext"
  * // Initialize the actor context with configuration options
  * const { ActorProvider, useActorState, useQueryCall, useUpdateCall } = createActorContext<typeof backend>({
  *   canisterId,
- *   idlFactory, // Optional
+ *   idlFactory, // Optional, wrap the ActorProvider with CandidAdapterProvider
  * });
  *
  * // A sample component that utilizes the actor context

@@ -1,7 +1,11 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
-import type { BaseActor } from "@ic-reactor/core/dist/types"
-import { ArgTypeFromIDLType, MethodArgsDefaultValues } from "../types"
+
+import type {
+  BaseActor,
+  ArgTypeFromIDLType,
+  MethodArgsDefaultValues,
+} from "@src/types"
 
 /**
  * Visit the candid file and extract the fields.

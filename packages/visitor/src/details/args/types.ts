@@ -1,8 +1,4 @@
-import type {
-  BaseActor,
-  FunctionName,
-  FunctionType,
-} from "@ic-reactor/core/dist/types"
+import type { BaseActor, FunctionName, FunctionType } from "@src/types"
 
 export type ArgDetails<A = BaseActor> = {
   [K in FunctionName<A>]: MethodArgDetails<A>

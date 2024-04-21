@@ -1,4 +1,4 @@
-import { AgentHooks } from "../hooks/agent/hooks"
+import { AgentHooks } from "@src/hooks/agent/hooks"
 
 /**
  * `AgentProvider` is a React functional component that serves as a context provider for IC agent and authentication hooks.
@@ -16,15 +16,15 @@ import { AgentHooks } from "../hooks/agent/hooks"
  *                  host URL, etc.
  *
  * @example
- * Wrap your component tree with `AgentProvider` to provide all child components access to IC agent and authentication hooks.
+ * Wrap your App with `AgentProvider` to provide all child components access to IC agent and authentication hooks.
  *
  * ```jsx
  * <AgentProvider>
- *   <YourComponent />
+ *   <App />
  * </AgentProvider>
  * ```
  *
- * Inside `YourComponent` or any of its children, you can use the hooks provided through the context to interact with the IC,
+ * Inside `App` or any of its children, you can use the hooks provided through the context to interact with the IC,
  * manage authentication, and perform other agent-related tasks.
  */
 export const AgentProvider = AgentHooks.AgentProvider

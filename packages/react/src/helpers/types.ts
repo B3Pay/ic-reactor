@@ -1,5 +1,5 @@
-import type { ServiceClass } from "@dfinity/candid/lib/cjs/idl"
 import type {
+  IDL,
   ActorState,
   AuthClientLoginOptions,
   ActorMethodParameters,
@@ -13,7 +13,7 @@ import type {
   AgentState,
   BaseActor,
   MethodAttributes,
-} from "@ic-reactor/core/dist/types"
+} from "@src/types"
 
 export interface AgentHooksReturnType {
   useAgent: () => HttpAgent | undefined
@@ -146,7 +146,7 @@ export type UseVisitService<A> = () => VisitService<A>
 export interface ActorHooksReturnType<A = BaseActor> {
   initialize: () => Promise<void>
   useActorState: () => UseActorState
-  useActorInterface: () => ServiceClass
+  useActorInterface: () => IDL.ServiceClass
   useMethodNames: <Actor = A>() => FunctionName<Actor>[]
   useMethodAttributes: <Actor = A>() => MethodAttributes<Actor>
   useMethod: UseMethod<A>

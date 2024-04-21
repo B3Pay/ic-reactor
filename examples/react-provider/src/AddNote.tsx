@@ -1,3 +1,4 @@
+import { jsonToString } from "@ic-reactor/react/dist/utils"
 import { useNoteUpdateCall } from "NoteActor"
 import { useState } from "react"
 
@@ -27,12 +28,7 @@ const AddNote: React.FC<AddNoteProps> = ({ publicKey }) => {
         <br />
         Error: {error?.toString()}
         <br />
-        Data:{" "}
-        {data
-          ? JSON.stringify(data, (_, v) =>
-              typeof v === "bigint" ? v.toString() : v
-            )
-          : null}
+        Data: {data ? jsonToString(data) : null}
       </div>
       <input type="text" value={input} name="note" onChange={onInputChange} />
       <button onClick={call}>Add Note</button>

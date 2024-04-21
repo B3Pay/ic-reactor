@@ -1,7 +1,8 @@
 import { hash } from "@dfinity/agent"
 import { DevtoolsOptions, devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
-import type { BaseActor, IDL } from "../types"
+
+import type { BaseActor, IDL } from "@src/types"
 
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
@@ -19,6 +20,17 @@ export function createStoreWithOptionalDevtools<T>(
     )
   } else {
     return createStore(() => initialState)
+  }
+}
+
+export const importCandidDefinition = (candidDef: string) => {
+  try {
+    const dataUri =
+      "data:text/javascript;charset=utf-8," + encodeURIComponent(candidDef)
+
+    return eval('import("' + dataUri + '")')
+  } catch (error) {
+    throw new Error("Error importing Candid definition")
   }
 }
 

@@ -1,3 +1,5 @@
+import { IDL } from "@dfinity/candid"
+
 import type {
   ArgTypeFromIDLType,
   DefaultArg,
@@ -22,9 +24,8 @@ import {
   isQuery,
   validateError,
   validateNumberError,
-} from "../../helper"
-import { IDL } from "@dfinity/candid"
-import type { BaseActor, FunctionName } from "@ic-reactor/core/dist/types"
+} from "@src/helpers"
+import type { BaseActor, FunctionName } from "@src/types"
 
 /**
  * Visit the candid file and extract the fields.

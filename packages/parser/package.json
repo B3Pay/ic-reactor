@@ -1,11 +1,11 @@
 {
   "name": "@ic-reactor/parser",
-  "version": "0.0.0-beta.2",
+  "version": "0.1.0-beta.1",
   "description": "A parser for the DFINITY Candid language",
-  "main": "pkg/didjs.js",
-  "types": "pkg/didjs.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
-    "pkg/*"
+    "dist/*"
   ],
   "repository": {
     "type": "git",
@@ -24,22 +24,14 @@
   "bugs": {
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
-  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/visit#readme",
-  "dependencies": {
-    "@dfinity/principal": "^1.2",
-    "@ic-reactor/core": "^1.5.4-beta.2",
-    "@wasm-tool/wasm-pack-plugin": "^1.7.0"
-  },
-  "peerDependencies": {
-    "@dfinity/principal": "^1.2",
-    "@ic-reactor/core": "^1.4.2"
-  },
+  "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/parser#readme",
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest",
-    "build": "wasm-pack build --release --target web",
-    "build:node": "wasm-pack build --release --target nodejs",
+    "build": "wasm-pack build --release --target web --out-dir dist --out-name index",
+    "build:node": "wasm-pack build --release --target nodejs --out-dir dist --out-name index",
+    "build:builder": "wasm-pack build --release --out-dir dist --out-name index",
     "start": "tsc watch",
-    "clean": "npx rimraf dist pkg"
+    "clean": "npx rimraf dist"
   },
   "engines": {
     "node": ">=10"

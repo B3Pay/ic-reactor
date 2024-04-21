@@ -2075,7 +2075,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/core@npm:^1.5.4-beta.1, @ic-reactor/core@npm:^1.5.4-beta.2, @ic-reactor/core@workspace:packages/core":
+"@ic-reactor/core@npm:^1.6.0-beta.6, @ic-reactor/core@workspace:^, @ic-reactor/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
@@ -2084,6 +2084,7 @@ __metadata:
     "@dfinity/candid": "npm:^1.2"
     "@dfinity/identity": "npm:^1.2"
     "@dfinity/principal": "npm:^1.2"
+    "@ic-reactor/parser": "npm:^0.1.0-beta.1"
     zustand: "npm:^4.5"
   peerDependencies:
     "@dfinity/agent": ^1.2
@@ -2094,29 +2095,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/parser@npm:0.0.0-beta.1":
-  version: 0.0.0-beta.1
-  resolution: "@ic-reactor/parser@npm:0.0.0-beta.1"
-  dependencies:
-    "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.5.4-beta.1"
-  peerDependencies:
-    "@dfinity/principal": ^1.2
-    "@ic-reactor/core": ^1.4.2
-  checksum: 640122d7d484f40c8490fe110940c68261216b2861a5ed87e6f99eb688d570cadab387c94095f4aee2c70cb04bcaf6392fd1f860dd79eb85ac9afc4d3b01d39d
-  languageName: node
-  linkType: hard
-
-"@ic-reactor/parser@workspace:packages/parser":
+"@ic-reactor/parser@npm:^0.1.0-beta.1, @ic-reactor/parser@workspace:^, @ic-reactor/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/parser@workspace:packages/parser"
-  dependencies:
-    "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.5.4-beta.2"
-    "@wasm-tool/wasm-pack-plugin": "npm:^1.7.0"
-  peerDependencies:
-    "@dfinity/principal": ^1.2
-    "@ic-reactor/core": ^1.4.2
   languageName: unknown
   linkType: soft
 
@@ -2138,29 +2119,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/react@npm:1.5.5-beta.1":
-  version: 1.5.5-beta.1
-  resolution: "@ic-reactor/react@npm:1.5.5-beta.1"
-  dependencies:
-    "@ic-reactor/core": "npm:^1.5.4-beta.1"
-    zustand-utils: "npm:^1.3"
-  peerDependencies:
-    "@dfinity/agent": ^1.2
-    "@dfinity/auth-client": ^1.2
-    "@dfinity/candid": ^1.2
-    "@dfinity/identity": ^1.2
-    "@dfinity/principal": ^1.2
-    react: ">=16.8"
-    zustand: 4.5
-  checksum: 6574d0989b7a7a797fbf44460a0ea7a1b2d21efbec9e4731c9838b6916f7437de3f679b1da0c62b760c8e29b7ca82fa4bbff90dc2b791274b60a508e0d4d5b48
-  languageName: node
-  linkType: hard
-
-"@ic-reactor/react@workspace:packages/react":
+"@ic-reactor/react@workspace:^, @ic-reactor/react@workspace:packages/react":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
-    "@ic-reactor/core": "npm:^1.5.4-beta.2"
+    "@ic-reactor/core": "npm:^1.6.0-beta.6"
     zustand-utils: "npm:^1.3"
   peerDependencies:
     "@dfinity/agent": ^1.2
@@ -2173,41 +2136,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/visitor@npm:*":
-  version: 1.6.7
-  resolution: "@ic-reactor/visitor@npm:1.6.7"
-  dependencies:
-    "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.5.3"
-  peerDependencies:
-    "@dfinity/principal": ^1.2
-    "@ic-reactor/core": ^1.4.2
-  checksum: 087cebc233cf7366828664b2824f300c511b858eb523cf4a9566f438202d697970d9c0612e0e1f042ca14cfe457995ee7903e8a3ccb0b7ba6a042f624b4b804b
-  languageName: node
-  linkType: hard
-
-"@ic-reactor/visitor@npm:1.6.8-beta.1":
-  version: 1.6.8-beta.1
-  resolution: "@ic-reactor/visitor@npm:1.6.8-beta.1"
-  dependencies:
-    "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.5.4-beta.1"
-  peerDependencies:
-    "@dfinity/principal": ^1.2
-    "@ic-reactor/core": ^1.4.2
-  checksum: 9e9fadc9568d1d49e07a78a57e98ab07b4a09306bdc73a0d230aefe90eced6b730da21c162ebc921ea7e10d1892391953011a3794c50957848103a105d7da5eb
-  languageName: node
-  linkType: hard
-
-"@ic-reactor/visitor@workspace:packages/visitor":
+"@ic-reactor/visitor@workspace:^, @ic-reactor/visitor@workspace:packages/visitor":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
+    "@dfinity/candid": "npm:^1.2"
     "@dfinity/principal": "npm:^1.2"
-    "@ic-reactor/core": "npm:^1.5.4-beta.2"
+    "@ic-reactor/core": "npm:^1.6.0-beta.6"
   peerDependencies:
+    "@dfinity/candid": ^1.2
     "@dfinity/principal": ^1.2
-    "@ic-reactor/core": ^1.4.2
   languageName: unknown
   linkType: soft
 
@@ -5418,18 +5356,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@wasm-tool/wasm-pack-plugin@npm:^1.7.0":
-  version: 1.7.0
-  resolution: "@wasm-tool/wasm-pack-plugin@npm:1.7.0"
-  dependencies:
-    chalk: "npm:^2.4.1"
-    command-exists: "npm:^1.2.7"
-    watchpack: "npm:^2.1.1"
-    which: "npm:^2.0.2"
-  checksum: 657942706a742d914914ecf390ac498a44f556f296f54407813b9e9562bbbbd54360b598b72057d441de7f56f1a4f5d2d5edc9dc1b69772000bacb39d9ca39bc
-  languageName: node
-  linkType: hard
-
 "@webassemblyjs/ast@npm:1.12.1, @webassemblyjs/ast@npm:^1.12.1":
   version: 1.12.1
   resolution: "@webassemblyjs/ast@npm:1.12.1"
@@ -7177,9 +7103,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "candid-react@workspace:examples/candid-ui"
   dependencies:
-    "@ic-reactor/parser": "npm:0.0.0-beta.1"
-    "@ic-reactor/react": "npm:1.5.5-beta.1"
-    "@ic-reactor/visitor": "npm:1.6.8-beta.1"
+    "@ic-reactor/parser": "workspace:^"
+    "@ic-reactor/react": "workspace:^"
+    "@ic-reactor/visitor": "workspace:^"
     "@react-hook/resize-observer": "npm:^1.2.6"
     "@types/lodash": "npm:^4.17.0"
     "@types/node": "npm:^16.18.68"
@@ -7612,13 +7538,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"command-exists@npm:^1.2.7":
-  version: 1.2.9
-  resolution: "command-exists@npm:1.2.9"
-  checksum: 75040240062de46cd6cd43e6b3032a8b0494525c89d3962e280dde665103f8cc304a8b313a5aa541b91da2f5a9af75c5959dc3a77893a2726407a5e9a0234c16
-  languageName: node
-  linkType: hard
-
 "commander@npm:^10.0.1":
   version: 10.0.1
   resolution: "commander@npm:10.0.1"
@@ -7651,6 +7570,13 @@ __metadata:
   version: 8.3.0
   resolution: "commander@npm:8.3.0"
   checksum: 8b043bb8322ea1c39664a1598a95e0495bfe4ca2fad0d84a92d7d1d8d213e2a155b441d2470c8e08de7c4a28cf2bc6e169211c49e1b21d9f7edc6ae4d9356060
+  languageName: node
+  linkType: hard
+
+"commander@npm:^9.0.0":
+  version: 9.5.0
+  resolution: "commander@npm:9.5.0"
+  checksum: 5f7784fbda2aaec39e89eb46f06a999e00224b3763dc65976e05929ec486e174fe9aac2655f03ba6a5e83875bd173be5283dc19309b7c65954701c02025b3c1d
   languageName: node
   linkType: hard
 
@@ -8341,8 +8267,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "custom-provider@workspace:examples/custom-provider"
   dependencies:
-    "@ic-reactor/react": "npm:*"
-    "@ic-reactor/visitor": "npm:*"
+    "@ic-reactor/parser": "workspace:^"
+    "@ic-reactor/react": "workspace:^"
     "@types/node": "npm:^16.18.68"
     "@types/react": "npm:^18.2.45"
     "@types/react-dom": "npm:^18.2.18"
@@ -8982,7 +8908,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "dynamic-actor@workspace:examples/dynamic-actor"
   dependencies:
-    "@ic-reactor/react": "npm:*"
+    "@ic-reactor/react": "workspace:^"
     "@types/react": "npm:18.2.38"
     "@types/react-dom": "npm:18.2.15"
     react: "npm:^18.0.0"
@@ -11157,10 +11083,6 @@ __metadata:
   dependencies:
     "@babel/core": "npm:^7.23.2"
     "@babel/preset-env": "npm:^7.23.2"
-    "@dfinity/agent": "npm:^1.2"
-    "@dfinity/candid": "npm:^1.2"
-    "@dfinity/identity": "npm:^1.2"
-    "@dfinity/principal": "npm:^1.2"
     "@ic-reactor/core": "npm:*"
     "@ic-reactor/react": "npm:*"
     babel-jest: "npm:^29.7.0"
@@ -11502,8 +11424,10 @@ __metadata:
     svelte-jester: "npm:3.0"
     text-encoding: "npm:0.7.0"
     ts-jest: "npm:29.1"
+    tsc-alias: "npm:^1.8"
     typedoc: "npm:^0.25"
-    typedoc-plugin-coverage: "npm:^3.1"
+    typedoc-plugin-coverage: "npm:^3.1.0"
+    typedoc-plugin-external-resolver: "npm:^1.0.3"
     typedoc-plugin-extras: "npm:^3.0.0"
     typedoc-plugin-include-example: "npm:^1.2.0"
     typedoc-plugin-mdn-links: "npm:^3.1.16"
@@ -11525,7 +11449,7 @@ __metadata:
     "@dfinity/candid": "npm:^1.0"
     "@dfinity/identity": "npm:^1.0"
     "@dfinity/principal": "npm:^1.0"
-    "@ic-reactor/react": "npm:*"
+    "@ic-reactor/react": "workspace:^"
     "@peculiar/webcrypto": "npm:^1.4"
     "@types/node": "npm:20.9.4"
     "@types/react": "npm:18.2.38"
@@ -12506,8 +12430,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "javacript@workspace:examples/javascript"
   dependencies:
-    "@ic-reactor/core": "npm:*"
-    "@ic-reactor/parser": "npm:0.0.0-beta.1"
+    "@ic-reactor/core": "workspace:^"
+    "@ic-reactor/parser": "workspace:^"
     copy-webpack-plugin: "npm:^12.0.2"
     html-webpack-plugin: "npm:^5.0.0"
     webpack: "npm:^5.0.0"
@@ -15644,8 +15568,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "multiple-provider@workspace:examples/multiple-provider"
   dependencies:
-    "@ic-reactor/react": "npm:*"
-    "@ic-reactor/visitor": "npm:*"
+    "@ic-reactor/react": "workspace:^"
+    "@ic-reactor/visitor": "workspace:^"
     "@types/node": "npm:^16.18.68"
     "@types/react": "npm:^18.2.45"
     "@types/react-dom": "npm:^18.2.18"
@@ -15668,6 +15592,13 @@ __metadata:
   version: 1.0.0
   resolution: "mute-stream@npm:1.0.0"
   checksum: dce2a9ccda171ec979a3b4f869a102b1343dee35e920146776780de182f16eae459644d187e38d59a3d37adf85685e1c17c38cf7bfda7e39a9880f7a1d10a74c
+  languageName: node
+  linkType: hard
+
+"mylas@npm:^2.1.9":
+  version: 2.1.13
+  resolution: "mylas@npm:2.1.13"
+  checksum: 093dfaf88f444d9da956c68a61ddcfe05ab9411c0024b0c7f4d721639ba7d311ea8f9c052ce617344e67d40982f67614cd634b525b923048bf9a191234968c9c
   languageName: node
   linkType: hard
 
@@ -15928,9 +15859,9 @@ __metadata:
   resolution: "nodejs@workspace:examples/nodejs"
   dependencies:
     "@dfinity/agent": "npm:^1.0"
-    "@ic-reactor/core": "npm:*"
-    "@ic-reactor/parser": "npm:0.0.0-beta.1"
-    "@ic-reactor/visitor": "npm:*"
+    "@ic-reactor/core": "workspace:^"
+    "@ic-reactor/parser": "workspace:^"
+    "@ic-reactor/visitor": "workspace:^"
     "@types/jest": "npm:^29.5.11"
     "@types/node": "npm:^18.6.1"
     "@typescript-eslint/eslint-plugin": "npm:^5.31.0"
@@ -17250,6 +17181,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"plimit-lit@npm:^1.2.6":
+  version: 1.6.1
+  resolution: "plimit-lit@npm:1.6.1"
+  dependencies:
+    queue-lit: "npm:^1.5.1"
+  checksum: af5d351bb55afe1eaa84b27c2b329699e150e4cf70464f3d474f5eabe9bdb9f48ed378ada1498d3b893f68ee7da2423ba6d9a4d88b1429d3b0aea22afcf5292b
+  languageName: node
+  linkType: hard
+
 "posix-character-classes@npm:^0.1.0":
   version: 0.1.1
   resolution: "posix-character-classes@npm:0.1.1"
@@ -18420,6 +18360,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"queue-lit@npm:^1.5.1":
+  version: 1.5.2
+  resolution: "queue-lit@npm:1.5.2"
+  checksum: 8aa838b2c939aeaa6cd272b5b6b172379a3fa1d9193b2a3e687643c68c0efee3cd3493af4f1f8a11ff79b8207e4d00cc5d0b072f6e4bbeaaa27ee01f567ec4ac
+  languageName: node
+  linkType: hard
+
 "queue-microtask@npm:^1.2.2":
   version: 1.2.3
   resolution: "queue-microtask@npm:1.2.3"
@@ -18553,7 +18500,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "react-example@workspace:examples/react-provider"
   dependencies:
-    "@ic-reactor/react": "npm:*"
+    "@ic-reactor/react": "workspace:^"
     "@types/react": "npm:^18.2"
     "@types/react-dom": "npm:^18.2"
     react: "npm:^18.2.0"
@@ -21220,6 +21167,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tsc-alias@npm:^1.8":
+  version: 1.8.8
+  resolution: "tsc-alias@npm:1.8.8"
+  dependencies:
+    chokidar: "npm:^3.5.3"
+    commander: "npm:^9.0.0"
+    globby: "npm:^11.0.4"
+    mylas: "npm:^2.1.9"
+    normalize-path: "npm:^3.0.0"
+    plimit-lit: "npm:^1.2.6"
+  bin:
+    tsc-alias: dist/bin/index.js
+  checksum: 02d0e3309f5b4d5c2dfc09ddb1192faa75108025e37d51f85dd7cfaab1ebe69cd50a6ed17d2e5d692ddc406455c1b17dfc056ca6ac56f587cba7b63993de251c
+  languageName: node
+  linkType: hard
+
 "tsconfig-paths@npm:^3.15.0":
   version: 3.15.0
   resolution: "tsconfig-paths@npm:3.15.0"
@@ -21442,12 +21405,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typedoc-plugin-coverage@npm:^3.1":
+"typedoc-plugin-coverage@npm:^3.1.0":
   version: 3.1.0
   resolution: "typedoc-plugin-coverage@npm:3.1.0"
   peerDependencies:
     typedoc: 0.25.x
   checksum: 2cada342ffdc1879fdf647a199b3c06b99d8e5654407e2592f3f22349ac2cbf64910093b454ab2eb47297514f2a637a224ef333b242f95620fd8047a6958adf8
+  languageName: node
+  linkType: hard
+
+"typedoc-plugin-external-resolver@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "typedoc-plugin-external-resolver@npm:1.0.3"
+  peerDependencies:
+    typedoc: 0.25.x
+    typescript: 4.x || 5.x
+  checksum: e0c6a0468c9e568137f8dc9b0033ae1978a0c33a91e44654edb902df7741e6b563a9d4c6043909f8444915003b3f643ef95da0dad21badd972f964ae2c8c391a
   languageName: node
   linkType: hard
 
@@ -21558,7 +21531,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "typescript@workspace:examples/typescript"
   dependencies:
-    "@ic-reactor/core": "npm:*"
+    "@ic-reactor/core": "workspace:^"
+    "@ic-reactor/parser": "workspace:^"
     html-webpack-plugin: "npm:^5.0.0"
     webpack: "npm:^5.0.0"
     webpack-cli: "npm:^4.0.0"
@@ -21974,7 +21948,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"watchpack@npm:^2.1.1, watchpack@npm:^2.4.1":
+"watchpack@npm:^2.4.1":
   version: 2.4.1
   resolution: "watchpack@npm:2.4.1"
   dependencies:

@@ -1,10 +1,11 @@
-import {
+import { ActorHooks } from "./hooks"
+
+import type {
   BaseActor,
   FunctionName,
   UseUpdateCall,
   UseUpdateCallParameters,
-} from "../../types"
-import { ActorHooks } from "./hooks"
+} from "@src/types"
 
 /**
  * Hook for making update calls to actors, handling loading states, and managing errors. It supports custom event handlers for loading, success, and error events.

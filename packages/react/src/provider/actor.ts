@@ -1,4 +1,4 @@
-import { ActorHooks } from "../hooks/actor/hooks"
+import { ActorHooks } from "@src/hooks/actor/hooks"
 
 /**
  * `ActorProvider` is a React functional component that serves as a context provider for IC actor interactions within a React application.
@@ -20,7 +20,7 @@ import { ActorHooks } from "../hooks/actor/hooks"
  *
  * @example
  * ```jsx
- * <ActorProvider canisterId="your-canister-id">
+ * <ActorProvider canisterId="your-canister-id" idlFactory={yourIdlFactory}>
  *   <YourComponent />
  * </ActorProvider>
  * ```

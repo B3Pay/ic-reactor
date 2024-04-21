@@ -1,5 +1,5 @@
 import type { AgentManager } from "../agent"
-import type { IDL, HttpAgent } from "../../types"
+import type { IDL, HttpAgent } from "@src/types"
 
 export interface CandidAdapterParameters {
   agentManager?: AgentManager

@@ -1,3 +1,4 @@
+import { createReactorStore } from "./createReactorStore"
 import { generateRequestHash } from "./utils"
 
 import type {
@@ -14,8 +15,6 @@ import type {
   CreateReactorCoreParameters,
   CreateReactorCoreReturnType,
 } from "./types"
-import type {} from "@dfinity/auth-client"
-import { createReactorStore } from "./createReactorStore"
 
 /**
  * The Core module is the main entry point for the library.

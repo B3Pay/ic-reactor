@@ -1,8 +1,11 @@
-import { createActorManager, createReactorCore } from '@ic-reactor/core';
+import {
+  createActorManager,
+  createCandidAdapter,
+  createReactorCore,
+} from '@ic-reactor/core';
 import { _SERVICE } from './declarations/icp-ledger';
 import { agentManager } from './agent';
-import { InterfaceFactory } from '@dfinity/candid/lib/cjs/idl';
-import { createCandidAdapter } from '@ic-reactor/parser';
+import { IDL } from '@ic-reactor/core/dist/types';
 
 const candidAdapter = createCandidAdapter({ agentManager });
 
@@ -17,14 +20,14 @@ const fetchCandidInterface = async () => {
 
 const convertCandidInterface = async () => {
   console.log('Convert Candid Interface -----------------');
-  const { idlFactory } = await candidAdapter.didTojs(
+  const { idlFactory } = await candidAdapter.dynamicEvalJs(
     'service:{icrc1_name:()->(text) query}',
   );
 
   return idlFactory;
 };
 
-const actorManager = async (idlFactory: InterfaceFactory) => {
+const actorManager = async (idlFactory: IDL.InterfaceFactory) => {
   console.log('Actor Manager -----------------');
   const { callMethod } = createActorManager<_SERVICE>({
     agentManager,
@@ -38,7 +41,7 @@ const actorManager = async (idlFactory: InterfaceFactory) => {
   console.log('Response from version method:', await version);
 };
 
-const reactorCore = async (idlFactory: InterfaceFactory) => {
+const reactorCore = async (idlFactory: IDL.InterfaceFactory) => {
   console.log('Reactor Core -----------------');
 
   const { queryCall } = createReactorCore<_SERVICE>({

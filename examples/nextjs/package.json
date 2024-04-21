@@ -34,7 +34,7 @@
     "@dfinity/candid": "^1.0",
     "@dfinity/identity": "^1.0",
     "@dfinity/principal": "^1.0",
-    "@ic-reactor/react": "*",
+    "@ic-reactor/react": "workspace:^",
     "@peculiar/webcrypto": "^1.4",
     "next": "^14.1",
     "react": "^18.2",
