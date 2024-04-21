@@ -24,16 +24,19 @@ jobs:
           cache: "yarn"
 
       - name: Install Yarn
-        run: npm install -g yarn
-
-      - name: Install Dependencies
-        run: yarn install
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install
 
       - name: Install wasm-pack
-        run: yarn global add wasm-pack
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: global add wasm-pack
 
       - name: Build
-        run: yarn build
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: build
 
       - name: Get Core Package Version
         id: core-version
