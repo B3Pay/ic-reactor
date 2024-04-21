@@ -5,7 +5,7 @@ import type {
   IDL,
   AllNumberTypes,
   FieldType,
-} from "@src/types"
+} from "../../types"
 
 export type ServiceArgs<A = BaseActor> = {
   [K in FunctionName<A>]: MethodArgs<A>

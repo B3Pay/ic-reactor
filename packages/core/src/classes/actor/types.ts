@@ -1,7 +1,11 @@
-import type { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
-import type { ActorMethod, ActorSubclass, Principal } from "@src/types"
-import { StoreApiWithDevtools } from "@src/types"
+import type {
+  IDL,
+  StoreApiWithDevtools,
+  ActorMethod,
+  ActorSubclass,
+  Principal,
+} from "../../types"
 
 export interface DefaultActorType {
   [key: string]: ActorMethod

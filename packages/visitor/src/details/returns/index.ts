@@ -1,6 +1,6 @@
 import { IDL } from "@dfinity/candid"
-import { isQuery, isFieldInTable } from "@src/helpers"
-import { VisitReturns } from "@src/fields"
+import { isQuery, isFieldInTable } from "../../helpers"
+import { VisitReturns } from "../../fields"
 import { Status } from "./types"
 
 import type {
@@ -10,7 +10,7 @@ import type {
   MethodReturnDetails,
   OutputDetails,
 } from "./types"
-import type { DynamicReturnType, BaseActor, FunctionName } from "@src/types"
+import type { DynamicReturnType, BaseActor, FunctionName } from "../../types"
 
 /**
  * Visit the candid file and extract the details.

@@ -1,6 +1,6 @@
 import { ActorHooks } from "./hooks"
 
-import type { BaseActor, UseVisitService } from "@src/types"
+import type { BaseActor, UseVisitService } from "../../types"
 
 /**
  * Memoizes and returns a visit service function for a specific actor method.

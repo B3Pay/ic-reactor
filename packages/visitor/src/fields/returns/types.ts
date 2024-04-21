@@ -5,7 +5,7 @@ import type {
   BaseActor,
   FunctionName,
   FunctionType,
-} from "@src/types"
+} from "../../types"
 
 export type ServiceReturns<A = BaseActor> = {
   [K in FunctionName<A>]: MethodReturns<A>

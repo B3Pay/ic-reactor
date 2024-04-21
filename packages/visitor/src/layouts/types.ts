@@ -1,4 +1,4 @@
-import type { FunctionCategory, BaseActor, FunctionName } from "@src/types"
+import type { FunctionCategory, BaseActor, FunctionName } from "../types"
 
 export interface GridLayout<A = BaseActor> {
   i: FunctionName<A>

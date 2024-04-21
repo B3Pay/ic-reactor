@@ -1,4 +1,4 @@
-import type { BaseActor, FunctionName, FunctionType } from "@src/types"
+import type { BaseActor, FunctionName, FunctionType } from "../../types"
 
 export type ArgDetails<A = BaseActor> = {
   [K in FunctionName<A>]: MethodArgDetails<A>

@@ -5,7 +5,7 @@ import type {
   BaseActor,
   ArgTypeFromIDLType,
   MethodArgsDefaultValues,
-} from "@src/types"
+} from "../types"
 
 /**
  * Visit the candid file and extract the fields.

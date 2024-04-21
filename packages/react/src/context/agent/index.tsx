@@ -1,8 +1,8 @@
 import React from "react"
 import { createAgentManager } from "@ic-reactor/core"
-import { agentHooks } from "@src/helpers/agentHooks"
-import { authHooks } from "@src/helpers/authHooks"
-import { extractAgentContext } from "@src/helpers/extractAgentContext"
+import { agentHooks } from "../../helpers/agentHooks"
+import { authHooks } from "../../helpers/authHooks"
+import { extractAgentContext } from "../../helpers/extractAgentContext"
 
 import type {
   CreateAgentContextReturnType,

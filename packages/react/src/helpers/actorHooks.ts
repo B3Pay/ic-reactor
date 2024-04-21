@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useStore } from "zustand"
 import { useShallow } from "zustand/react/shallow"
-import { generateRequestHash } from "@src/utils"
+import { generateRequestHash } from "../utils"
 
 import type {
   UseSharedCallState,
@@ -12,7 +12,7 @@ import type {
   UseMethod,
   UseMethodParameters,
   UseMethodReturnType,
-} from "@src/types"
+} from "../types"
 import type {
   VisitService,
   ActorMethodParameters,

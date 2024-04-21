@@ -1,8 +1,8 @@
 import React from "react"
-import { useActor } from "@src/hooks/useActor"
-import { extractActorContext } from "@src/helpers/extractActorContext"
+import { useActor } from "../../hooks/useActor"
+import { extractActorContext } from "../../helpers/extractActorContext"
 
-import type { ActorHooksReturnType, BaseActor } from "@src/types"
+import type { ActorHooksReturnType, BaseActor } from "../../types"
 import type {
   CreateActorContextParameters,
   CreateActorContextReturnType,

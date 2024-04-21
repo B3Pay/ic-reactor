@@ -39,7 +39,7 @@
   "scripts": {
     "test": "jest",
     "start": "tsc watch",
-    "build": "tsc --project ./tsconfig.json && tsc-alias -p ./tsconfig.json",
+    "build": "tsc",
     "clean": "rimraf dist"
   },
   "engines": {

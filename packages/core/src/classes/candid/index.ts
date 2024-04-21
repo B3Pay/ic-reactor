@@ -5,12 +5,12 @@ import type {
   CandidDefenition,
   IDL,
   Principal,
-} from "@src/types"
+} from "../../types"
 import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
-} from "@src/utils/constants"
-import { importCandidDefinition } from "@src/utils"
+} from "../../utils/constants"
+import { importCandidDefinition } from "../../utils"
 
 export class CandidAdapter {
   public agent: HttpAgent

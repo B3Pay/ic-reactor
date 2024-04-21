@@ -1,8 +1,8 @@
 import { IDL } from "@dfinity/candid"
-import { findCategory } from "@src/helpers"
-import { DEFAULT_CATEGORIES, DEFAULT_LAYOUTS } from "@src/constants"
+import { findCategory } from "../helpers"
+import { DEFAULT_CATEGORIES, DEFAULT_LAYOUTS } from "../constants"
 
-import type { BaseActor, FunctionName, ServiceLayouts } from "@src/types"
+import type { BaseActor, FunctionName, ServiceLayouts } from "../types"
 /**
  * Visit the candid file and extract the details.
  * It returns the extracted service details.

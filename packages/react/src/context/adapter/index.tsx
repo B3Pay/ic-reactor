@@ -1,5 +1,5 @@
 import React from "react"
-import { useAgentManager } from "@src/hooks"
+import { useAgentManager } from "../../hooks"
 import { createCandidAdapter } from "@ic-reactor/core"
 
 import type {

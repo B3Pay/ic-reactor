@@ -5,7 +5,7 @@ import {
   FunctionName,
   UseQueryCall,
   UseQueryCallParameters,
-} from "@src/types"
+} from "../../types"
 
 /**
  * Hook for making query calls to actors. It supports automatic refetching on component mount and at specified intervals.

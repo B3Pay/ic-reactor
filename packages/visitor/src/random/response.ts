@@ -1,7 +1,7 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
 
-import type { BaseActor, ActorMethodReturnType, FunctionName } from "@src/types"
+import type { BaseActor, ActorMethodReturnType, FunctionName } from "../types"
 
 /**
  * Visit the candid file and extract the fields.

@@ -1,4 +1,4 @@
-import type { Principal } from "@src/types"
+import type { Principal } from "../types"
 
 export type ReturnDataType =
   | "record"

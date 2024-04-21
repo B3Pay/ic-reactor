@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react"
-import type { CandidAdapterParameters } from "@src/types"
+import type { CandidAdapterParameters } from "../../types"
 import type { CandidAdapter } from "@ic-reactor/core/dist/classes"
 
 export type { CandidAdapter }

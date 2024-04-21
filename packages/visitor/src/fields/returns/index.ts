@@ -1,6 +1,6 @@
 import { IDL } from "@dfinity/candid"
-import { isQuery, isFieldInTable } from "@src/helpers"
-import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "@src/constants"
+import { isQuery, isFieldInTable } from "../../helpers"
+import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "../../constants"
 
 import type {
   ReturnTypeFromIDLType,
@@ -21,7 +21,7 @@ import type {
   MethodReturnValues,
   ListReturns,
 } from "./types"
-import type { BaseActor, FunctionName } from "@src/types"
+import type { BaseActor, FunctionName } from "../../types"
 
 /**
  * Visit the candid file and extract the fields.

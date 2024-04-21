@@ -13,7 +13,7 @@ import type {
   AgentState,
   BaseActor,
   MethodAttributes,
-} from "@src/types"
+} from "../types"
 
 export interface AgentHooksReturnType {
   useAgent: () => HttpAgent | undefined

@@ -2,7 +2,7 @@ import { hash } from "@dfinity/agent"
 import { DevtoolsOptions, devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 
-import type { BaseActor, IDL } from "@src/types"
+import type { BaseActor, IDL } from "../types"
 
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,

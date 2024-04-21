@@ -7,7 +7,7 @@ import type {
   ServiceDetails,
   BaseActor,
   FunctionName,
-} from "@src/types"
+} from "../types"
 
 export * from "./returns"
 export * from "./args"

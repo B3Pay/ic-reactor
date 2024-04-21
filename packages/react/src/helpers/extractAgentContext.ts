@@ -5,7 +5,7 @@ import type {
   AgentContext,
   CreateAgentContextReturnType,
   UseAuthParameters,
-} from "@src/types"
+} from "../types"
 
 /**
  * This function facilitates the use of contextually provided agent functionalities,

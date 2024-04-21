@@ -1,6 +1,6 @@
 import { ActorHooks } from "./hooks"
 
-import type { BaseActor } from "@src/types"
+import type { BaseActor } from "../../types"
 
 /**
  * Hook for accessing the method names of an actor.

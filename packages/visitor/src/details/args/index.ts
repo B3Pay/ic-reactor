@@ -1,5 +1,5 @@
 import { IDL } from "@dfinity/candid"
-import { isQuery } from "@src/helpers"
+import { isQuery } from "../../helpers"
 
 import type {
   ArgDetailsWithChild,
@@ -8,7 +8,7 @@ import type {
   MethodArgDetails,
   InputDetails,
 } from "./types"
-import type { BaseActor, FunctionName } from "@src/types"
+import type { BaseActor, FunctionName } from "../../types"
 
 /**
  * Visit the candid file and extract the details.

@@ -4,7 +4,7 @@ import type {
   AuthHooksReturnType,
   AgentManager,
   AgentManagerParameters,
-} from "@src/types"
+} from "../../types"
 
 export interface AgentContext
   extends AgentHooksReturnType,

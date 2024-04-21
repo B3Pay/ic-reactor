@@ -24,8 +24,8 @@ import {
   isQuery,
   validateError,
   validateNumberError,
-} from "@src/helpers"
-import type { BaseActor, FunctionName } from "@src/types"
+} from "../../helpers"
+import type { BaseActor, FunctionName } from "../../types"
 
 /**
  * Visit the candid file and extract the fields.

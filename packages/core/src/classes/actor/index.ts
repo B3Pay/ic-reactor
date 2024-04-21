@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { Actor } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools, isQuery } from "@src/utils/helper"
+import { createStoreWithOptionalDevtools, isQuery } from "../../utils/helper"
 import type { HttpAgent } from "@dfinity/agent"
 import type {
   ActorMethodParameters,
@@ -18,7 +18,7 @@ import type {
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
-import type { UpdateAgentParameters } from "@src/types"
+import type { UpdateAgentParameters } from "../types"
 
 export class ActorManager<A = BaseActor> {
   private _actor: null | A = null

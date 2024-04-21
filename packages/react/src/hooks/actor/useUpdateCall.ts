@@ -5,7 +5,7 @@ import type {
   FunctionName,
   UseUpdateCall,
   UseUpdateCallParameters,
-} from "@src/types"
+} from "../../types"
 
 /**
  * Hook for making update calls to actors, handling loading states, and managing errors. It supports custom event handlers for loading, success, and error events.

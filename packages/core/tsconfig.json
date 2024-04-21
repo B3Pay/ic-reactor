@@ -3,9 +3,6 @@
   "include": ["./src"],
   "compilerOptions": {
     "skipLibCheck": true,
-    "outDir": "./dist",
-    "paths": {
-      "@src/*": ["./src/*"] // Map the path alias to the correct directory
-    }
+    "outDir": "./dist"
   }
 }

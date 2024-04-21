@@ -4,7 +4,7 @@ import {
   ActorManagerParameters,
   BaseActor,
   CanisterId,
-} from "@src/types"
+} from "../types"
 
 export interface UseActorParameters
   extends Omit<

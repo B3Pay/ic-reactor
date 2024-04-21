@@ -1,6 +1,6 @@
 import { IDL } from "@dfinity/candid"
-import { isImage, isUrl } from "@src/helpers"
-import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "@src/constants"
+import { isImage, isUrl } from "../helpers"
+import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "../constants"
 import { isValueInTable } from "./helpers"
 
 import type {
@@ -18,7 +18,7 @@ import type {
   OptionalMethodResult,
   VariantMethodResult,
 } from "./types"
-import type { Principal } from "@src/types"
+import type { Principal } from "../types"
 
 /**
  * Visit the candid file and extract the fields.

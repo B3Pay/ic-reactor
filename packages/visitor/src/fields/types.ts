@@ -1,4 +1,4 @@
-import type { BaseActor, FunctionName } from "@src/types"
+import type { BaseActor, FunctionName } from "../types"
 import type { MethodReturns } from "./returns/types"
 import type { MethodArgs } from "./args/types"
 

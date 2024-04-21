@@ -1,4 +1,4 @@
-import type { BaseActor, FunctionName, FunctionType } from "@src/types"
+import type { BaseActor, FunctionName, FunctionType } from "../../types"
 
 export enum Status {
   Visible = 0, // Default

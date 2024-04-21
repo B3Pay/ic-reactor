@@ -7,7 +7,7 @@ import type {
   FunctionName,
   MethodFields,
   ServiceFields,
-} from "@src/types"
+} from "../types"
 
 export * from "./returns"
 export * from "./args"
