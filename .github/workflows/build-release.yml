@@ -10,11 +10,8 @@ jobs:
   build-and-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.1.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
@@ -22,8 +19,11 @@ jobs:
         uses: threeal/setup-yarn-action@v2.0.0
         continue-on-error: true
 
+      - name: Yarn Version
+        run: yarn --version
+
       - name: Install dependencies
-        run: yarn install
+        run: yarn install --frozen-lockfile
 
       - name: Install wasm-pack
         run: yarn global add wasm-pack

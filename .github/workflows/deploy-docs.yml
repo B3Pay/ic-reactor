@@ -24,7 +24,7 @@ jobs:
         continue-on-error: true
 
       - name: Install dependencies
-        run: yarn install
+        run: yarn install --frozen-lockfile
 
       - name: Install wasm-pack
         run: yarn global add wasm-pack
