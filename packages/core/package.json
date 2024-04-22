@@ -41,10 +41,7 @@
     "zustand": "^4.5"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "^0.1.0-beta.1",
-    "@types/node": "^20.12.7",
-    "ts-loader": "^9.5.1",
-    "webpack": "^5.91"
+    "@ic-reactor/parser": "workspace:^"
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",

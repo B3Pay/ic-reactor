@@ -34,7 +34,7 @@
     "@dfinity/principal": "^1.2"
   },
   "devDependencies": {
-    "@ic-reactor/core": "^1.6.0-beta.6"
+    "@ic-reactor/core": "workspace:^"
   },
   "scripts": {
     "test": "jest",
