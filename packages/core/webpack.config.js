@@ -6,7 +6,6 @@ const { IgnorePlugin } = require("webpack")
 module.exports = (env, argv) => {
   // Determine if it's a production build
   const isProduction = argv.mode === "production"
-
   return {
     entry: "./src/index.ts",
     output: {
@@ -24,7 +23,7 @@ module.exports = (env, argv) => {
     module: {
       rules: [
         {
-          test: /\.tsx?$/,
+          test: /\.ts?$/,
           use: "ts-loader",
           exclude: /node_modules/,
         },
@@ -37,10 +36,11 @@ module.exports = (env, argv) => {
     ],
     resolve: {
       extensions: [".ts", ".js"],
-      alias: {
-        "@src": path.resolve(__dirname, "src"), // Adjust the path as needed
-      },
-      modules: [path.resolve(__dirname, "node_modules"), "node_modules"],
+      modules: [
+        path.resolve(__dirname, "node_modules"),
+        path.resolve(__dirname, "../../node_modules"),
+        "node_modules",
+      ],
     },
     externals: {},
     // Add source maps in development for easier debugging

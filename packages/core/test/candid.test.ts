@@ -10,7 +10,7 @@ describe("createReactorStore", () => {
   const candidAdapter = createCandidAdapter({ agentManager })
 
   it("compile the candid string", async () => {
-    const candid = await candidAdapter.evaluateJs(
+    const candid = await candidAdapter.dynamicEvalJs(
       `service:{icrc1_name:()->(text) query;}`
     )
     console.log("🚀 ~ it ~ candid:", candid)
