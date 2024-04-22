@@ -3,6 +3,9 @@ name = "didjs"
 version = "0.0.1"
 authors = ["b3hr4d <behradmusiclove@yahoo.com>"]
 edition = "2018"
+description = "A simple parser for Candid IDL to generate JavaScript bindings."
+repository = "https://github.com/B3Pay/ic-reactor/tree/main/packages/parser"
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

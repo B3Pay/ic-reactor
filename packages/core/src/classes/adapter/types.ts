@@ -14,5 +14,5 @@ export interface CandidDefenition {
 
 export type ReactorParser =
   | typeof import("@ic-reactor/parser")
-  | typeof import("@ic-reactor/parser/dist/node")
+  | typeof import("@ic-reactor/parser/dist/nodejs")
   | typeof import("@ic-reactor/parser/dist/bundler")

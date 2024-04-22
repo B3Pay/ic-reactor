@@ -12,7 +12,7 @@ const App: React.FC<AppProps> = ({ Component, pageProps }) => {
   }, [])
 
   return mounted ? (
-    <AgentProvider withProcessEnv>
+    <AgentProvider withLocalEnv>
       <Component {...pageProps} />
     </AgentProvider>
   ) : null

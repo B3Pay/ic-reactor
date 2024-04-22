@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "description": "A parser for the DFINITY Candid language",
   "files": [
-    "dist/*"
+    "dist/web/*",
+    "dist/nodejs/*",
+    "dist/bundler/*"
   ],
-  "main": "dist/web/didjs.js",
-  "types": "dist/web/didjs.d.ts",
+  "main": "dist/web/index.js",
+  "types": "dist/web/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git@github.com:B3Pay/ic-reactor.git"
@@ -28,9 +30,9 @@
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
     "build": "yarn clean && yarn build:web && yarn build:node && yarn build:bundler",
-    "build:web": "npx wasm-pack build --release --target web --out-dir dist/web",
-    "build:node": "npx wasm-pack build --release --target nodejs --out-dir dist/node",
-    "build:bundler": "npx wasm-pack build --release --target bundler --out-dir dist/bundler",
+    "build:web": "npx wasm-pack build --release --target web --out-dir dist/web --out-name index",
+    "build:node": "npx wasm-pack build --release --target nodejs --out-dir dist/nodejs --out-name index",
+    "build:bundler": "npx wasm-pack build --release --target bundler --out-dir dist/bundler --out-name index",
     "start": "tsc watch",
     "clean": "npx rimraf dist"
   },
