@@ -1,6 +1,6 @@
 export * from "./agent/types"
 export * from "./actor/types"
-export * from "./candid/types"
+export * from "./adapter/types"
 
 import { NamedSet } from "zustand/middleware"
 import type { StoreApi } from "zustand"

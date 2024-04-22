@@ -40,7 +40,7 @@
     "test": "jest",
     "start": "tsc watch",
     "build": "tsc",
-    "clean": "rimraf dist"
+    "clean": "npx rimraf dist"
   },
   "engines": {
     "node": ">=10"

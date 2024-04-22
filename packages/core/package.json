@@ -51,7 +51,7 @@
     "bundle:prod": "npx webpack-cli --mode production",
     "build:tsc": "tsc",
     "build": "yarn build:tsc && yarn bundle",
-    "clean": "rimraf dist && rimraf umd && rimraf node_modules"
+    "clean": "npx rimraf dist && npx rimraf umd && npx rimraf node_modules"
   },
   "engines": {
     "node": ">=10"

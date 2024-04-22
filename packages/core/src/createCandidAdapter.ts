@@ -1,4 +1,4 @@
-import { CandidAdapter } from "./classes/candid"
+import { CandidAdapter } from "./classes/adapter"
 
 import type { CandidAdapterParameters } from "./types"
 

@@ -29,7 +29,7 @@
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
     "start": "tsc watch",
     "build": "tsc",
-    "clean": "rimraf dist && rimraf umd"
+    "clean": "npx rimraf dist && npx rimraf umd"
   },
   "engines": {
     "node": ">=10"

@@ -5,6 +5,7 @@ import type {
   CandidDefenition,
   IDL,
   Principal,
+  ReactorParser,
 } from "../../types"
 import {
   DEFAULT_IC_DIDJS_ID,
@@ -15,7 +16,7 @@ import { importCandidDefinition } from "../../utils"
 export class CandidAdapter {
   public agent: HttpAgent
   public didjsCanisterId: string
-  private parserModule?: typeof import("@ic-reactor/parser")
+  private parserModule?: ReactorParser
 
   public unsubscribeAgent: () => void = () => {}
 
@@ -39,10 +40,19 @@ export class CandidAdapter {
     this.didjsCanisterId = didjsCanisterId || this.getDefaultDidJsId()
   }
 
-  public async initializeParser() {
+  public async initializeParser(module?: ReactorParser) {
+    if (module !== undefined) {
+      this.parserModule = module
+      return
+    }
     try {
       this.parserModule = require("@ic-reactor/parser")
-      await this.parserModule?.default()
+      if (
+        typeof this.parserModule !== "undefined" &&
+        "default" in this.parserModule
+      ) {
+        await this.parserModule.default()
+      }
     } catch (error) {
       throw new Error(`Error initializing parser: ${error}`)
     }
@@ -111,6 +121,9 @@ export class CandidAdapter {
 
       try {
         candidDef = this.parseDidToJs(data)
+        if (candidDef === "") {
+          throw new Error("Cannot compile Candid to JavaScript")
+        }
       } catch (error) {
         candidDef = (await this.fetchDidTojs(data))[0]
       }
