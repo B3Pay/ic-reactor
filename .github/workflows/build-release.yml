@@ -14,11 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20.9.0"
+          cache: "yarn"
 
       - name: Setup Yarn
-        uses: threeal/setup-yarn-action@v2.0.0
-        with:
-          version: "4.1.1"
+        run: yarn install
 
       - name: Build
         run: yarn build
@@ -44,7 +43,7 @@ jobs:
             ```
             Parser WebAssembly file:
             ```html
-            <script src="https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/index_bg.wasm"></script>
+            <script src="https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/didjs_bg.wasm"></script>
             ```
           files: |
             ./packages/parser/dist/web/didjs_bg.wasm
