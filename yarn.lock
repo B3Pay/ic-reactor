@@ -2085,6 +2085,7 @@ __metadata:
     "@dfinity/identity": "npm:^1.2"
     "@dfinity/principal": "npm:^1.2"
     "@ic-reactor/parser": "npm:^0.1.0-beta.1"
+    "@types/node": "npm:^20.12.7"
     zustand: "npm:^4.5"
   peerDependencies:
     "@dfinity/agent": ^1.2
@@ -4776,7 +4777,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:>=13.7.0, @types/node@npm:^20.12":
+"@types/node@npm:*, @types/node@npm:>=13.7.0, @types/node@npm:^20.12, @types/node@npm:^20.12.7":
   version: 20.12.7
   resolution: "@types/node@npm:20.12.7"
   dependencies:
