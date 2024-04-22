@@ -41,11 +41,9 @@
     "zustand": "^4.5"
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.24",
-    "@babel/preset-typescript": "^7.24",
     "@ic-reactor/parser": "^0.1.0-beta.1",
     "@types/node": "^20.12.7",
-    "babel-loader": "^9.1",
+    "ts-loader": "^9.5.1",
     "webpack": "^5.91"
   },
   "scripts": {
@@ -55,7 +53,7 @@
     "bundle:dev": "npx webpack-cli --mode development",
     "bundle:prod": "npx webpack-cli --mode production",
     "build:tsc": "tsc",
-    "build": "yarn build:tsc && yarn bundle",
+    "build": "yarn && yarn build:tsc && yarn bundle",
     "clean": "rimraf dist && rimraf umd && rimraf node_modules"
   },
   "engines": {
