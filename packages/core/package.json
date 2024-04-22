@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/core",
-  "version": "1.6.0-beta.6",
+  "version": "1.6.0-beta.7",
   "description": "A library for intracting with the Internet Computer canisters",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
