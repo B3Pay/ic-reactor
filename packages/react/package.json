@@ -36,7 +36,6 @@
   },
   "dependencies": {
     "@ic-reactor/core": "workspace:^",
-    "react": ">=16.8",
     "zustand-utils": "^1.3"
   },
   "peerDependencies": {
