@@ -92,7 +92,7 @@ export class AgentManager {
       name: "Reactor-Agent",
       store: "auth",
     })
-    console.log(process.env.DFX_NETWORK, window.location)
+
     this._agent = new HttpAgent(agentOptions)
     this.initializeAgent()
   }
