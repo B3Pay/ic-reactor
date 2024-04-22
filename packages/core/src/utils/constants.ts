@@ -1,5 +1,7 @@
 export const REMOTE_HOSTS = [".github.dev", ".gitpod.io"]
 
+export const LOCAL_HOSTS = ["localhost", "127.0.0.1"]
+
 export const IC_HOST_NETWORK_URI = "https://ic0.app"
 
 export const LOCAL_HOST_NETWORK_URI = "http://127.0.0.1:4943"

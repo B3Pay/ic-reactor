@@ -10,8 +10,7 @@ export { idlFactory } from "./todo.did.js";
  * beginning in dfx 0.15.0
  */
 export const canisterId =
-  process.env.CANISTER_ID_TODO ||
-  process.env.TODO_CANISTER_ID;
+  process.env.CANISTER_ID_TODO;
 
 export const createActor = (canisterId, options = {}) => {
   const agent = options.agent || new HttpAgent({ ...options.agentOptions });

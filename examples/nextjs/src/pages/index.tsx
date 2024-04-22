@@ -6,7 +6,7 @@ import AddTodo from "components/AddTodo"
 import Login from "components/Login"
 import Todos from "components/Todos"
 import Image from "next/image"
-import { useAuthState } from "service/todo"
+import { useAuthState } from "@ic-reactor/react"
 
 function HomePage() {
   const { error, authenticated } = useAuthState()

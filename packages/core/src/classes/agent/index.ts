@@ -17,6 +17,7 @@ import type {
 import {
   IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
+  LOCAL_HOSTS,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
   REMOTE_HOSTS,
 } from "../../utils/constants"
@@ -68,18 +69,16 @@ export class AgentManager {
       port = 4943,
       withLocalEnv,
       withProcessEnv,
-      host: optionHost,
       ...agentOptions
     } = options || {}
-    let host: string | undefined
-
     if (withProcessEnv) {
       const processNetwork = getProcessEnvNetwork()
-      host = processNetwork === "ic" ? IC_HOST_NETWORK_URI : undefined
+      agentOptions.host =
+        processNetwork === "ic" ? IC_HOST_NETWORK_URI : undefined
     } else if (withLocalEnv) {
-      host = `http://127.0.0.1:${port}`
+      agentOptions.host = `http://127.0.0.1:${port}`
     } else {
-      host = optionHost ?? IC_HOST_NETWORK_URI
+      agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI
     }
 
     this.agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
@@ -93,8 +92,8 @@ export class AgentManager {
       name: "Reactor-Agent",
       store: "auth",
     })
-
-    this._agent = new HttpAgent({ ...agentOptions, host })
+    console.log(process.env.DFX_NETWORK, window.location)
+    this._agent = new HttpAgent(agentOptions)
     this.initializeAgent()
   }
 
@@ -198,7 +197,6 @@ export class AgentManager {
     if (!this._auth) {
       throw new Error("Auth client not initialized")
     }
-
     await this._auth.login({
       identityProvider: this.getIsLocal()
         ? LOCAL_INTERNET_IDENTITY_PROVIDER
@@ -229,13 +227,13 @@ export class AgentManager {
   }
 
   public getIsLocal = () => {
-    return this._agent.isLocal?.() === true
+    return this.getNetwork() !== "ic"
   }
 
   public getNetwork = () => {
     const hostname = this.getAgentHost().hostname
 
-    if (hostname === "127.0.0.1" || hostname.endsWith("127.0.0.1")) {
+    if (LOCAL_HOSTS.some((host) => hostname.endsWith(host))) {
       return "local"
     } else if (REMOTE_HOSTS.some((host) => hostname.endsWith(host))) {
       return "remote"
