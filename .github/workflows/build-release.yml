@@ -47,7 +47,7 @@ jobs:
             <script src="https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/index_bg.wasm"></script>
             ```
           files: |
-            ./packages/parser/dist/web/index_bg.wasm
+            ./packages/parser/dist/web/didjs_bg.wasm
             ./packages/core/umd/production/ic-reactor-core.min.js
             ./packages/core/umd/development/ic-reactor-core.js
             ./packages/core/umd/development/ic-reactor-core.js.map
