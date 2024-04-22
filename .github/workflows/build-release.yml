@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,7 +42,11 @@ jobs:
             ```html
             <script src="https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/ic-reactor-core.js"></script>
             ```
+            ```html
+            <script src="https://github.com/B3Pay/ic-reactor/releases/download/v${{ env.CORE_VERSION }}/index_bg.wasm"></script>
+            ```
           files: |
+            ./packages/parser/dist/index_bg.wasm
             ./packages/core/umd/production/ic-reactor-core.min.js
             ./packages/core/umd/development/ic-reactor-core.js
             ./packages/core/umd/development/ic-reactor-core.js.map
