@@ -13,8 +13,11 @@ jobs:
       contents: write
       actions: "read"
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4.1.2
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
