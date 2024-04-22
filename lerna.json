@@ -3,7 +3,6 @@
   "version": "independent",
   "npmClient": "yarn",
   "access": "public",
-  "parallel": true,
   "packages": ["packages/*"],
   "ignoreChanges": ["examples/**/*", "**/*.md", "**/*.spec.ts", "**/test/**/*"]
 }
