@@ -43,17 +43,16 @@
   "devDependencies": {
     "@ic-reactor/parser": "^0.1.0-beta.1",
     "@types/node": "^20.12.7",
-    "ts-loader": "^9.5.1",
-    "webpack": "^5.91"
+    "ts-loader": "^9.5.1"
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
     "start": "tsc watch",
     "bundle": "yarn bundle:dev && yarn bundle:prod",
-    "bundle:dev": "npx webpack-cli --mode development",
-    "bundle:prod": "npx webpack-cli --mode production",
+    "bundle:dev": "webpack --mode development",
+    "bundle:prod": "webpack --mode production",
     "build:tsc": "tsc",
-    "build": "yarn && yarn build:tsc && yarn bundle",
+    "build": "yarn build:tsc && yarn bundle",
     "clean": "rimraf dist && rimraf umd && rimraf node_modules"
   },
   "engines": {
