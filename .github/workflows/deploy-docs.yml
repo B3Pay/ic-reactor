@@ -20,9 +20,6 @@ jobs:
         with:
           node-version: "20.9.0"
 
-      - name: Install Webpack
-        run: npm install --global webpack-cli webpack
-
       - name: Install Dependencies
         run: yarn install
 

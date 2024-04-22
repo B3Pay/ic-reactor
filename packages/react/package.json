@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@ic-reactor/core": "^1.6.0-beta.6",
+    "react": ">=16.8",
     "zustand-utils": "^1.3"
   },
   "peerDependencies": {
