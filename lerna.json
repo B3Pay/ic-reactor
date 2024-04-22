@@ -2,6 +2,8 @@
   "$schema": "node_modules/lerna/schemas/lerna-schema.json",
   "version": "independent",
   "npmClient": "yarn",
+  "access": "public",
+  "parallel": true,
   "packages": ["packages/*"],
   "ignoreChanges": ["examples/**/*", "**/*.md", "**/*.spec.ts", "**/test/**/*"]
 }
