@@ -1,8 +1,8 @@
 import type { BaseActor, FunctionName, FunctionType } from "../../types"
 
 export enum Status {
-  Visible = 0, // Default
-  Hidden = 1,
+  Hidden = 0,
+  Visible = 1, // Default
   Table = 2,
   Grid = 3,
   Card = 4,
