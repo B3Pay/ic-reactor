@@ -110,7 +110,7 @@ export const createAgentContext = (
         ...authHooks(agentManager),
         agentManager,
       }
-    }, [options])
+    }, [])
 
     return (
       <AgentContext.Provider value={hooks}>{children}</AgentContext.Provider>
