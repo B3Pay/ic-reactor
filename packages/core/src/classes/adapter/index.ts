@@ -172,6 +172,6 @@ export class CandidAdapter {
       throw new Error("Parser module not available")
     }
 
-    return this.parserModule.did_to_js(candidSource)
+    return this.parserModule.didToJs(candidSource)
   }
 }
