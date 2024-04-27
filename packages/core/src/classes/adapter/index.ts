@@ -64,26 +64,37 @@ export class CandidAdapter {
       : DEFAULT_IC_DIDJS_ID
   }
 
+  public async fetchCandidDefinition(canisterId: CanisterId): Promise<string> {
+    let candidDef: string | undefined = ""
+
+    // First attempt: Try getting Candid definition from metadata
+    try {
+      candidDef = await this.getFromMetadata(canisterId)
+      if (!candidDef) {
+        throw new Error("Cannot retrieve Candid definition from metadata")
+      }
+    } catch (error) {
+      // Second attempt: Try the temporary hack method
+      candidDef = await this.getFromTmpHack(canisterId).catch(() => {
+        return undefined
+      })
+    }
+
+    if (!candidDef) {
+      throw new Error("Failed to retrieve Candid definition by any method.")
+    }
+
+    return candidDef
+  }
+
   public async getCandidDefinition(
     canisterId: CanisterId
   ): Promise<CandidDefenition> {
     try {
-      // First attempt: Try getting Candid definition from metadata
-      const fromMetadata = await this.getFromMetadata(canisterId).catch(() => {
-        return undefined
-      })
-      if (fromMetadata) return this.dynamicEvalJs(fromMetadata as string)
-
-      // Second attempt: Try the temporary hack method
-      const fromTmpHack = await this.getFromTmpHack(canisterId).catch(() => {
-        return undefined
-      })
-      if (fromTmpHack) return this.dynamicEvalJs(fromTmpHack as string)
-
-      // If both attempts fail, throw an error
-      throw "Failed to retrieve Candid definition by any method."
-    } catch (err) {
-      throw new Error(`Error fetching canister ${canisterId}: ${err}`)
+      const candidDef = await this.fetchCandidDefinition(canisterId)
+      return this.dynamicEvalJs(candidDef)
+    } catch (error) {
+      throw new Error(`Error fetching canister ${canisterId}: ${error}`)
     }
   }
 
@@ -99,9 +110,7 @@ export class CandidAdapter {
     return status.get("candid") as string
   }
 
-  public async getFromTmpHack(
-    canisterId: CanisterId
-  ): Promise<string | undefined> {
+  public async getFromTmpHack(canisterId: CanisterId): Promise<string> {
     const commonInterface: IDL.InterfaceFactory = ({ IDL }) =>
       IDL.Service({
         __get_candid_interface_tmp_hack: IDL.Func([], [IDL.Text], ["query"]),
@@ -138,7 +147,10 @@ export class CandidAdapter {
     }
   }
 
-  public async fetchDidTojs(candidSource: string): Promise<[string]> {
+  public async fetchDidTojs(
+    candidSource: string,
+    didjsCanisterId?: string
+  ): Promise<[string]> {
     type DidToJs = {
       did_to_js: (arg: string) => Promise<[string]>
     }
@@ -149,7 +161,7 @@ export class CandidAdapter {
 
     const didjs = Actor.createActor<DidToJs>(didjsInterface, {
       agent: this.agent,
-      canisterId: this.didjsCanisterId,
+      canisterId: didjsCanisterId || this.didjsCanisterId,
     })
 
     return didjs.did_to_js(candidSource)
