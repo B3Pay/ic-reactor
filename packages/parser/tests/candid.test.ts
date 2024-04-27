@@ -1,9 +1,9 @@
-import { createCandidAdapter } from "@ic-reactor/core"
-import { createAgentManager } from "@ic-reactor/core"
+import { createAgentManager, createCandidAdapter } from "@ic-reactor/core"
 import * as fetcher from "whatwg-fetch"
-import * as parser from "../dist/node"
+import * as parser from "../dist/nodejs"
 import fs from "fs"
 import path from "path"
+import { importCandidDefinition } from "@ic-reactor/core/dist/utils"
 
 // Mocking the fetch function
 // @ts-ignore
@@ -59,5 +59,11 @@ describe("createReactorStore", () => {
     )
 
     expect(candid).toEqual(EXPECTED_JS)
+
+    const candidDef = await importCandidDefinition(candid)
+    console.log("🚀 ~ it ~ candidDef:", candidDef)
+
+    expect(candidDef.idlFactory).toBeInstanceOf(Function)
+    expect(candidDef.init).toBeInstanceOf(Function)
   })
 })

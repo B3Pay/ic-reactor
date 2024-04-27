@@ -2,7 +2,7 @@ import { hash } from "@dfinity/agent"
 import { DevtoolsOptions, devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 
-import type { BaseActor, IDL } from "../types"
+import type { BaseActor, CandidDefenition, IDL } from "../types"
 
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
@@ -23,7 +23,9 @@ export function createStoreWithOptionalDevtools<T>(
   }
 }
 
-export const importCandidDefinition = (candidDef: string) => {
+export const importCandidDefinition = (
+  candidDef: string
+): Promise<CandidDefenition> => {
   try {
     const dataUri =
       "data:text/javascript;charset=utf-8," + encodeURIComponent(candidDef)

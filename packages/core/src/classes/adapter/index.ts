@@ -141,7 +141,7 @@ export class CandidAdapter {
         throw new Error("Cannot compile Candid to JavaScript")
       }
 
-      return importCandidDefinition(candidDef)
+      return await importCandidDefinition(candidDef)
     } catch (error) {
       throw new Error(`Error evaluating Candid definition: ${error}`)
     }

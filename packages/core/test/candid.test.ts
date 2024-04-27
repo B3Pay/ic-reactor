@@ -2,7 +2,10 @@ import {
   createActorManager,
   createCandidAdapter,
   createAgentManager,
+  createReactorStore,
 } from "../src"
+import * as parser from "../../parser/dist/nodejs"
+import { importCandidDefinition } from "../src/utils"
 
 describe("createReactorStore", () => {
   const agentManager = createAgentManager()
@@ -26,27 +29,38 @@ describe("createReactorStore", () => {
     expect(name).toEqual("Internet Computer")
   })
 
-  // it("should return candid idlFactory", async () => {
-  //   const candid = await candidAdapter.getCandidDefinition(
-  //     "a4gq6-oaaaa-aaaab-qaa4q-cai"
-  //   )
+  const canisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
 
-  //   expect(candid.idlFactory).toBeDefined()
-  // })
+  it("should return fetch candid definition and callMethod", async () => {
+    const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
 
-  // const canisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+    const { callMethod } = createReactorStore({
+      canisterId,
+      idlFactory,
+      agentManager,
+    })
 
-  // it("should return fetch candid definition and callMethod", async () => {
-  //   const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
+    const name = await callMethod("name")
 
-  //   const { callMethod } = createReactorStore({
-  //     canisterId,
-  //     idlFactory,
-  //     agentManager,
-  //   })
+    expect(name).toEqual({ name: "Internet Computer" })
+  })
 
-  //   const name = await callMethod("name")
+  it("should return fetch candid definition and callMethod using parser", async () => {
+    await candidAdapter.initializeParser(parser)
+    const candid = candidAdapter.parseDidToJs(
+      `service:{icrc1_name:()->(text) query;}`
+    )
 
-  //   expect(name).toEqual({ name: "Internet Computer" })
-  // })
+    const candidDef = await importCandidDefinition(candid)
+
+    const { callMethod } = createReactorStore({
+      canisterId,
+      idlFactory: candidDef.idlFactory,
+      agentManager,
+    })
+
+    const name = await callMethod("icrc1_name")
+
+    expect(name).toEqual("Internet Computer")
+  })
 })
