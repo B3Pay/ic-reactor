@@ -8,6 +8,7 @@ export * from "./details/types"
 export type FunctionCategory = "home" | "wallet" | "governance" | "setting"
 
 export type FieldType =
+  | "function"
   | "record"
   | "variant"
   | "tuple"

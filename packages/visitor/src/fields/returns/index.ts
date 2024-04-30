@@ -21,7 +21,7 @@ import type {
   MethodReturnValues,
   ListReturns,
 } from "./types"
-import type { BaseActor, FunctionName, MethodFields } from "../../types"
+import type { BaseActor, FunctionName } from "../../types"
 import { VisitFields } from ".."
 
 /**
@@ -31,17 +31,29 @@ import { VisitFields } from ".."
  */
 export class VisitReturns<A = BaseActor> extends IDL.Visitor<
   string,
-  MethodReturns<A> | DefaultReturn | ServiceReturns<A> | MethodFields<A>
+  MethodReturns<A> | DefaultReturn | ServiceReturns<A>
 > {
   private inVisit = false
   public visitFunc(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
-  ): MethodReturns<A> | MethodFields<A> {
+  ): MethodReturns<A> {
     const functionType = isQuery(t) ? "query" : "update"
 
     if (this.inVisit) {
-      return new VisitFields<A>().visitFunc(t, functionName)
+      const fields = new VisitFields<A>().visitFunc(
+        t,
+        functionName
+      ) as unknown as AllReturnTypes<IDL.Type>[]
+
+      return {
+        type: "function",
+        fields,
+        functionName,
+        functionType,
+        transformData: () => ({}),
+        defaultValues: {} as MethodReturnValues<FunctionName<A>>,
+      }
     }
 
     const { fields, defaultValues } = t.retTypes.reduce(
@@ -81,6 +93,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     }
 
     return {
+      type: "normal",
       functionName,
       functionType,
       defaultValues,

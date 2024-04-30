@@ -6,7 +6,6 @@ import type {
   BaseActor,
   FunctionName,
   MethodFields,
-  MethodReturns,
   ServiceFields,
 } from "../types"
 
@@ -33,7 +32,7 @@ export class VisitFields<A = BaseActor> extends IDL.Visitor<
       fields: retFields,
       defaultValues: retDefaultValues,
       ...restRets
-    } = this.returnsVisitor.visitFunc(t, functionName) as MethodReturns<A>
+    } = this.returnsVisitor.visitFunc(t, functionName)
 
     return {
       argFields,
