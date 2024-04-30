@@ -5,6 +5,7 @@ import type {
   BaseActor,
   FunctionName,
   FunctionType,
+  MethodFields,
 } from "../../types"
 
 export type ServiceReturns<A = BaseActor> = {
@@ -14,7 +15,7 @@ export type ServiceReturns<A = BaseActor> = {
 export interface MethodReturns<A = BaseActor> {
   functionName: FunctionName<A>
   functionType: FunctionType
-  fields: AllReturnTypes<IDL.Type>[] | []
+  fields: AllReturnTypes<IDL.Type>[] | MethodFields<A> | []
   defaultValues: MethodReturnValues<FunctionName<A>>
   transformData: (data: unknown) => MethodReturnValues<FunctionName<A>>
 }

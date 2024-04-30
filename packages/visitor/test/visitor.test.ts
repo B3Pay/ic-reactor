@@ -1,4 +1,4 @@
-import { createReactorStore } from "@ic-reactor/core"
+import { createCandidAdapter, createReactorStore } from "@ic-reactor/core"
 import { VisitDetails, VisitTransform, VisitLayouts, VisitFields } from "../src"
 import { b3wallet, idlFactory } from "./candid/b3wallet"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
@@ -7,11 +7,13 @@ import accountView from "./account_view.json"
 type B3Wallet = typeof b3wallet
 
 describe("createReactorStore", () => {
-  const { extractInterface, visitFunction } = createReactorStore<B3Wallet>({
-    canisterId: "2vxsx-fae",
-    idlFactory,
-    withVisitor: true,
-  })
+  const { extractInterface, agentManager, visitFunction } =
+    createReactorStore<B3Wallet>({
+      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+      idlFactory,
+      withVisitor: true,
+    })
+  const adapter = createCandidAdapter({ agentManager })
 
   const visitedService = () => {
     const iface = extractInterface()

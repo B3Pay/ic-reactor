@@ -1,0 +1,594 @@
+{
+  "icrc1_balance_of": {
+    "argDetails": {
+      "arg0": {
+        "__label": "__arg0",
+        "__hide_label": true,
+        "owner": {
+          "__label": "owner"
+        },
+        "subaccount": {
+          "__checked": false,
+          "__label": "subaccount",
+          "__hide_label": false,
+          "optional": {
+            "__label": "subaccount",
+            "vector": {
+              "__label": "subaccount"
+            }
+          }
+        }
+      }
+    },
+    "retDetails": {
+      "ret0": {
+        "__label": "__ret0",
+        "__status": 1
+      }
+    },
+    "__label": "icrc1_balance_of",
+    "__status": 1,
+    "functionName": "icrc1_balance_of",
+    "functionType": "query"
+  },
+  "query_blocks": {
+    "argDetails": {
+      "arg0": {
+        "__label": "__arg0",
+        "__hide_label": true,
+        "start": {
+          "__label": "start"
+        },
+        "length": {
+          "__label": "length"
+        }
+      }
+    },
+    "retDetails": {
+      "ret0": {
+        "__label": "__ret0",
+        "__status": 0,
+        "certificate": {
+          "__label": "certificate",
+          "__status": 1,
+          "optional": {
+            "__status": 1,
+            "__label": "certificate",
+            "vector": {
+              "__label": "certificate",
+              "__status": 0
+            }
+          }
+        },
+        "blocks": {
+          "__status": 1,
+          "__label": "blocks",
+          "vector": {
+            "__label": "blocks",
+            "__status": 0,
+            "transaction": {
+              "__label": "transaction",
+              "__status": 1,
+              "memo": {
+                "__label": "memo",
+                "__status": 1
+              },
+              "icrc1_memo": {
+                "__label": "icrc1_memo",
+                "__status": 1,
+                "optional": {
+                  "__status": 1,
+                  "__label": "icrc1_memo",
+                  "vector": {
+                    "__label": "icrc1_memo",
+                    "__status": 0
+                  }
+                }
+              },
+              "operation": {
+                "__label": "operation",
+                "__status": 1,
+                "optional": {
+                  "__label": "operation",
+                  "__status": 1,
+                  "Approve": {
+                    "__label": "Approve",
+                    "__status": 1,
+                    "fee": {
+                      "__label": "fee",
+                      "__status": 1,
+                      "e8s": {
+                        "__label": "e8s",
+                        "__status": 1
+                      }
+                    },
+                    "from": {
+                      "__status": 1,
+                      "__label": "from",
+                      "vector": {
+                        "__label": "from",
+                        "__status": 0
+                      }
+                    },
+                    "allowance_e8s": {
+                      "__label": "allowance_e8s",
+                      "__status": 1
+                    },
+                    "allowance": {
+                      "__label": "allowance",
+                      "__status": 1,
+                      "e8s": {
+                        "__label": "e8s",
+                        "__status": 1
+                      }
+                    },
+                    "expected_allowance": {
+                      "__label": "expected_allowance",
+                      "__status": 1,
+                      "optional": {
+                        "__label": "expected_allowance",
+                        "__status": 1,
+                        "e8s": {
+                          "__label": "e8s",
+                          "__status": 1
+                        }
+                      }
+                    },
+                    "expires_at": {
+                      "__label": "expires_at",
+                      "__status": 1,
+                      "optional": {
+                        "__label": "expires_at",
+                        "__status": 1,
+                        "timestamp_nanos": {
+                          "__label": "timestamp_nanos",
+                          "__status": 1
+                        }
+                      }
+                    },
+                    "spender": {
+                      "__status": 1,
+                      "__label": "spender",
+                      "vector": {
+                        "__label": "spender",
+                        "__status": 0
+                      }
+                    }
+                  },
+                  "Burn": {
+                    "__label": "Burn",
+                    "__status": 1,
+                    "from": {
+                      "__status": 1,
+                      "__label": "from",
+                      "vector": {
+                        "__label": "from",
+                        "__status": 0
+                      }
+                    },
+                    "amount": {
+                      "__label": "amount",
+                      "__status": 1,
+                      "e8s": {
+                        "__label": "e8s",
+                        "__status": 1
+                      }
+                    },
+                    "spender": {
+                      "__label": "spender",
+                      "__status": 1,
+                      "optional": {
+                        "__status": 1,
+                        "__label": "spender",
+                        "vector": {
+                          "__label": "spender",
+                          "__status": 0
+                        }
+                      }
+                    }
+                  },
+                  "Mint": {
+                    "__label": "Mint",
+                    "__status": 1,
+                    "to": {
+                      "__status": 1,
+                      "__label": "to",
+                      "vector": {
+                        "__label": "to",
+                        "__status": 0
+                      }
+                    },
+                    "amount": {
+                      "__label": "amount",
+                      "__status": 1,
+                      "e8s": {
+                        "__label": "e8s",
+                        "__status": 1
+                      }
+                    }
+                  },
+                  "Transfer": {
+                    "__label": "Transfer",
+                    "__status": 1,
+                    "to": {
+                      "__status": 1,
+                      "__label": "to",
+                      "vector": {
+                        "__label": "to",
+                        "__status": 0
+                      }
+                    },
+                    "fee": {
+                      "__label": "fee",
+                      "__status": 1,
+                      "e8s": {
+                        "__label": "e8s",
+                        "__status": 1
+                      }
+                    },
+                    "from": {
+                      "__status": 1,
+                      "__label": "from",
+                      "vector": {
+                        "__label": "from",
+                        "__status": 0
+                      }
+                    },
+                    "amount": {
+                      "__label": "amount",
+                      "__status": 1,
+                      "e8s": {
+                        "__label": "e8s",
+                        "__status": 1
+                      }
+                    },
+                    "spender": {
+                      "__label": "spender",
+                      "__status": 1,
+                      "optional": {
+                        "__status": 1,
+                        "__label": "spender",
+                        "vector": {
+                          "__label": "spender",
+                          "__status": 0
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "created_at_time": {
+                "__label": "created_at_time",
+                "__status": 1,
+                "timestamp_nanos": {
+                  "__label": "timestamp_nanos",
+                  "__status": 1
+                }
+              }
+            },
+            "timestamp": {
+              "__label": "timestamp",
+              "__status": 1,
+              "timestamp_nanos": {
+                "__label": "timestamp_nanos",
+                "__status": 1
+              }
+            },
+            "parent_hash": {
+              "__label": "parent_hash",
+              "__status": 1,
+              "optional": {
+                "__status": 1,
+                "__label": "parent_hash",
+                "vector": {
+                  "__label": "parent_hash",
+                  "__status": 0
+                }
+              }
+            }
+          }
+        },
+        "chain_length": {
+          "__label": "chain_length",
+          "__status": 1
+        },
+        "first_block_index": {
+          "__label": "first_block_index",
+          "__status": 1
+        },
+        "archived_blocks": {
+          "__status": 1,
+          "__label": "archived_blocks",
+          "vector": {
+            "__label": "archived_blocks",
+            "__status": 0,
+            "callback": {
+              "__label": "callback",
+              "__status": 1,
+              "functionName": "callback",
+              "functionType": "query",
+              "details": {
+                "ret0": {
+                  "__label": "__ret0",
+                  "__status": 1,
+                  "Ok": {
+                    "__label": "Ok",
+                    "__status": 1,
+                    "blocks": {
+                      "__status": 1,
+                      "__label": "blocks",
+                      "vector": {
+                        "__label": "blocks",
+                        "__status": 0,
+                        "transaction": {
+                          "__label": "transaction",
+                          "__status": 1,
+                          "memo": {
+                            "__label": "memo",
+                            "__status": 1
+                          },
+                          "icrc1_memo": {
+                            "__label": "icrc1_memo",
+                            "__status": 1,
+                            "optional": {
+                              "__status": 1,
+                              "__label": "icrc1_memo",
+                              "vector": {
+                                "__label": "icrc1_memo",
+                                "__status": 0
+                              }
+                            }
+                          },
+                          "operation": {
+                            "__label": "operation",
+                            "__status": 1,
+                            "optional": {
+                              "__label": "operation",
+                              "__status": 1,
+                              "Approve": {
+                                "__label": "Approve",
+                                "__status": 1,
+                                "fee": {
+                                  "__label": "fee",
+                                  "__status": 1,
+                                  "e8s": {
+                                    "__label": "e8s",
+                                    "__status": 1
+                                  }
+                                },
+                                "from": {
+                                  "__status": 1,
+                                  "__label": "from",
+                                  "vector": {
+                                    "__label": "from",
+                                    "__status": 0
+                                  }
+                                },
+                                "allowance_e8s": {
+                                  "__label": "allowance_e8s",
+                                  "__status": 1
+                                },
+                                "allowance": {
+                                  "__label": "allowance",
+                                  "__status": 1,
+                                  "e8s": {
+                                    "__label": "e8s",
+                                    "__status": 1
+                                  }
+                                },
+                                "expected_allowance": {
+                                  "__label": "expected_allowance",
+                                  "__status": 1,
+                                  "optional": {
+                                    "__label": "expected_allowance",
+                                    "__status": 1,
+                                    "e8s": {
+                                      "__label": "e8s",
+                                      "__status": 1
+                                    }
+                                  }
+                                },
+                                "expires_at": {
+                                  "__label": "expires_at",
+                                  "__status": 1,
+                                  "optional": {
+                                    "__label": "expires_at",
+                                    "__status": 1,
+                                    "timestamp_nanos": {
+                                      "__label": "timestamp_nanos",
+                                      "__status": 1
+                                    }
+                                  }
+                                },
+                                "spender": {
+                                  "__status": 1,
+                                  "__label": "spender",
+                                  "vector": {
+                                    "__label": "spender",
+                                    "__status": 0
+                                  }
+                                }
+                              },
+                              "Burn": {
+                                "__label": "Burn",
+                                "__status": 1,
+                                "from": {
+                                  "__status": 1,
+                                  "__label": "from",
+                                  "vector": {
+                                    "__label": "from",
+                                    "__status": 0
+                                  }
+                                },
+                                "amount": {
+                                  "__label": "amount",
+                                  "__status": 1,
+                                  "e8s": {
+                                    "__label": "e8s",
+                                    "__status": 1
+                                  }
+                                },
+                                "spender": {
+                                  "__label": "spender",
+                                  "__status": 1,
+                                  "optional": {
+                                    "__status": 1,
+                                    "__label": "spender",
+                                    "vector": {
+                                      "__label": "spender",
+                                      "__status": 0
+                                    }
+                                  }
+                                }
+                              },
+                              "Mint": {
+                                "__label": "Mint",
+                                "__status": 1,
+                                "to": {
+                                  "__status": 1,
+                                  "__label": "to",
+                                  "vector": {
+                                    "__label": "to",
+                                    "__status": 0
+                                  }
+                                },
+                                "amount": {
+                                  "__label": "amount",
+                                  "__status": 1,
+                                  "e8s": {
+                                    "__label": "e8s",
+                                    "__status": 1
+                                  }
+                                }
+                              },
+                              "Transfer": {
+                                "__label": "Transfer",
+                                "__status": 1,
+                                "to": {
+                                  "__status": 1,
+                                  "__label": "to",
+                                  "vector": {
+                                    "__label": "to",
+                                    "__status": 0
+                                  }
+                                },
+                                "fee": {
+                                  "__label": "fee",
+                                  "__status": 1,
+                                  "e8s": {
+                                    "__label": "e8s",
+                                    "__status": 1
+                                  }
+                                },
+                                "from": {
+                                  "__status": 1,
+                                  "__label": "from",
+                                  "vector": {
+                                    "__label": "from",
+                                    "__status": 0
+                                  }
+                                },
+                                "amount": {
+                                  "__label": "amount",
+                                  "__status": 1,
+                                  "e8s": {
+                                    "__label": "e8s",
+                                    "__status": 1
+                                  }
+                                },
+                                "spender": {
+                                  "__label": "spender",
+                                  "__status": 1,
+                                  "optional": {
+                                    "__status": 1,
+                                    "__label": "spender",
+                                    "vector": {
+                                      "__label": "spender",
+                                      "__status": 0
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "created_at_time": {
+                            "__label": "created_at_time",
+                            "__status": 1,
+                            "timestamp_nanos": {
+                              "__label": "timestamp_nanos",
+                              "__status": 1
+                            }
+                          }
+                        },
+                        "timestamp": {
+                          "__label": "timestamp",
+                          "__status": 1,
+                          "timestamp_nanos": {
+                            "__label": "timestamp_nanos",
+                            "__status": 1
+                          }
+                        },
+                        "parent_hash": {
+                          "__label": "parent_hash",
+                          "__status": 1,
+                          "optional": {
+                            "__status": 1,
+                            "__label": "parent_hash",
+                            "vector": {
+                              "__label": "parent_hash",
+                              "__status": 0
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "Err": {
+                    "__label": "Err",
+                    "__status": 1,
+                    "BadFirstBlockIndex": {
+                      "__label": "BadFirstBlockIndex",
+                      "__status": 1,
+                      "requested_index": {
+                        "__label": "requested_index",
+                        "__status": 1
+                      },
+                      "first_valid_index": {
+                        "__label": "first_valid_index",
+                        "__status": 1
+                      }
+                    },
+                    "Other": {
+                      "__label": "Other",
+                      "__status": 1,
+                      "error_message": {
+                        "__label": "error_message",
+                        "__status": 1
+                      },
+                      "error_code": {
+                        "__label": "error_code",
+                        "__status": 1
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "start": {
+              "__label": "start",
+              "__status": 1
+            },
+            "length": {
+              "__label": "length",
+              "__status": 1
+            }
+          }
+        }
+      }
+    },
+    "__label": "query_blocks",
+    "__status": 1,
+    "functionName": "query_blocks",
+    "functionType": "query"
+  }
+}
