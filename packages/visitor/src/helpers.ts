@@ -17,7 +17,7 @@ export const isFieldInTable = (field: AllReturnTypes<IDL.Type>): boolean => {
     return isFieldInTable((field as OptionalReturns).field)
   }
 
-  return !["record", "tuple", "vector"].includes(field.type)
+  return !["record", "tuple", "vector", "function"].includes(field.type)
 }
 
 export const findCategory = (name: string): FunctionCategory => {
