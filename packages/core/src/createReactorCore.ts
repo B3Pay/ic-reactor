@@ -30,13 +30,14 @@ export const createReactorCore = <A = BaseActor>(
   const {
     subscribeActorState,
     updateMethodState,
+    callMethodWithOptions,
     callMethod,
     getState,
     agentManager,
     ...rest
   } = createReactorStore<A>(config)
 
-  const actorMethod: ActorMethodCall<A> = (functionName, ...args) => {
+  const actorMethod: ActorMethodCall<A> = (options, functionName, ...args) => {
     const requestHash = generateRequestHash(args)
 
     const updateState = <M extends FunctionName<A>>(
@@ -86,7 +87,10 @@ export const createReactorCore = <A = BaseActor>(
         })
 
         try {
-          const data = await callMethod(functionName, ...(replaceArgs ?? args))
+          const data = await callMethodWithOptions(options)(
+            functionName,
+            ...(replaceArgs ?? args)
+          )
 
           updateState({ data, loading: false })
 
@@ -118,12 +122,14 @@ export const createReactorCore = <A = BaseActor>(
 
   const queryCall: ActorQuery<A> = ({
     functionName,
+    options,
     args = [],
     refetchOnMount = true,
     refetchInterval = false,
   }) => {
     let intervalId: NodeJS.Timeout | null = null
     const { call, ...rest } = actorMethod(
+      options,
       functionName,
       ...(args as ActorMethodParameters<A[typeof functionName]>)
     )
@@ -134,14 +140,21 @@ export const createReactorCore = <A = BaseActor>(
       }, refetchInterval)
     }
 
+    const clearRefetchInterval = () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+
     let dataPromise = Promise.resolve() as ReturnType<typeof call>
     if (refetchOnMount) dataPromise = call()
 
-    return { ...rest, call, dataPromise, intervalId }
+    return { ...rest, call, dataPromise, intervalId, clearRefetchInterval }
   }
 
-  const updateCall: ActorUpdate<A> = ({ functionName, args = [] }) => {
+  const updateCall: ActorUpdate<A> = ({ functionName, options, args = [] }) => {
     return actorMethod(
+      options,
       functionName,
       ...(args as ActorMethodParameters<A[typeof functionName]>)
     )
@@ -151,6 +164,7 @@ export const createReactorCore = <A = BaseActor>(
     queryCall,
     updateCall,
     callMethod,
+    callMethodWithOptions,
     getState,
     subscribeActorState,
     ...agentManager,

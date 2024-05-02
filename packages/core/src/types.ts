@@ -4,6 +4,7 @@ import type {
   HttpAgentOptions,
   HttpAgent,
   Identity,
+  CallConfig,
 } from "@dfinity/agent"
 import type { Principal } from "@dfinity/principal"
 import type { IDL } from "@dfinity/candid"
@@ -76,6 +77,7 @@ export type ActorUpdateReturnType<A, M extends FunctionName<A>> = {
 }
 
 export type ActorQueryParameters<A, M extends FunctionName<A>> = {
+  options: CallConfig
   functionName: M
   args?: ActorMethodParameters<A[M]>
   refetchOnMount?: boolean
@@ -83,6 +85,7 @@ export type ActorQueryParameters<A, M extends FunctionName<A>> = {
 }
 
 export type ActorUpdateParameters<A, M extends FunctionName<A>> = {
+  options: CallConfig
   functionName: M
   args?: ActorMethodParameters<A[M]>
 }
@@ -91,6 +94,7 @@ export type ActorUpdateParameters<A, M extends FunctionName<A>> = {
 export type ActorMethodCall<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
+  options: CallConfig,
   functionName: M,
   ...args: ActorMethodParameters<A[M]>
 ) => ActorUpdateReturnType<A, M>
