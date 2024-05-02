@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Actor } from "@dfinity/agent"
 import { createStoreWithOptionalDevtools, isQuery } from "../../utils/helper"
-import type { HttpAgent } from "@dfinity/agent"
+import type { CallConfig, HttpAgent } from "@dfinity/agent"
 import type {
   ActorMethodParameters,
   ActorMethodReturnType,
@@ -218,10 +218,7 @@ export class ActorManager<A = BaseActor> {
     }
   }
 
-  public callMethod = async <M extends FunctionName<A>>(
-    functionName: M,
-    ...args: ActorMethodParameters<A[M]>
-  ): Promise<ActorMethodReturnType<A[M]>> => {
+  private _getActorMethod = <M extends FunctionName<A>>(functionName: M) => {
     if (!this._actor) {
       throw new Error("Actor not initialized")
     }
@@ -233,13 +230,40 @@ export class ActorManager<A = BaseActor> {
       throw new Error(`Method ${String(functionName)} not found`)
     }
 
-    const method = this._actor[functionName as keyof A] as (
-      ...args: ActorMethodParameters<A[M]>
-    ) => Promise<ActorMethodReturnType<A[M]>>
+    return this._actor[functionName as keyof A] as {
+      (...args: ActorMethodParameters<A[M]>): Promise<
+        ActorMethodReturnType<A[M]>
+      >
+      withOptions: (
+        options: CallConfig
+      ) => (
+        ...args: ActorMethodParameters<A[M]>
+      ) => Promise<ActorMethodReturnType<A[M]>>
+    }
+  }
+
+  public callMethod = async <M extends FunctionName<A>>(
+    functionName: M,
+    ...args: ActorMethodParameters<A[M]>
+  ): Promise<ActorMethodReturnType<A[M]>> => {
+    const method = this._getActorMethod(functionName)
 
     const data = await method(...args)
 
     return data
+  }
+
+  public callMethodWithOptions = (options: CallConfig) => {
+    return async <M extends FunctionName<A>>(
+      functionName: M,
+      ...args: ActorMethodParameters<A[M]>
+    ): Promise<ActorMethodReturnType<A[M]>> => {
+      const method = this._getActorMethod(functionName)
+
+      const data = await method.withOptions(options)(...args)
+
+      return data
+    }
   }
 
   // agent store
