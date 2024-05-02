@@ -161,11 +161,11 @@ export const createReactorCore = <A = BaseActor>(
   }
 
   return {
+    getState,
     queryCall,
     updateCall,
     callMethod,
     callMethodWithOptions,
-    getState,
     subscribeActorState,
     ...agentManager,
     ...rest,
