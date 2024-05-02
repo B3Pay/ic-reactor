@@ -5,13 +5,14 @@ import {
   FunctionName,
   UseQueryCall,
   UseQueryCallParameters,
+  UseSharedCallReturnType,
 } from "../../types"
 
 /**
  * Hook for making query calls to actors. It supports automatic refetching on component mount and at specified intervals.
  *
- * @param options Configuration object for the query call, including refetching options and other configurations passed to useReactorCall.
- * @returns An object containing the query call function and the current call state (data, error, loading, call, reset).
+ * @param args {@link UseQueryCallParameters}.
+ * @returns object {@link UseSharedCallReturnType}.
  * @example
  * ```tsx
  * function QueryCallComponent() {
@@ -36,6 +37,6 @@ import {
 export function useQueryCall<
   A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
->(args: UseQueryCallParameters<A, M>) {
+>(args: UseQueryCallParameters<A, M>): UseSharedCallReturnType<A, M> {
   return (ActorHooks.useQueryCall as UseQueryCall<A>)(args)
 }
