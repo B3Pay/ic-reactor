@@ -55,7 +55,7 @@ export const actorHooks = <A = BaseActor>(
     updateMethodState,
     extractMethodAttributes,
     extractInterface,
-    callMethod,
+    callMethodWithOptions,
     initialize,
   } = actorManager
 
@@ -128,10 +128,13 @@ export const actorHooks = <A = BaseActor>(
   }
 
   const useSharedCall: UseSharedCall<A> = ({
-    args = [],
+    args = [] as unknown as ActorMethodParameters<A[typeof functionName]>,
     functionName,
     throwOnError = false,
-    ...events
+    onError,
+    onLoading,
+    onSuccess,
+    ...options
   }) => {
     type M = typeof functionName
 
@@ -152,19 +155,19 @@ export const actorHooks = <A = BaseActor>(
         eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
       ) => {
         setSharedState({ error: undefined, loading: true })
-        events?.onLoading?.(true)
+        onLoading?.(true)
 
         try {
           const replaceArgs =
             eventOrReplaceArgs instanceof Array ? eventOrReplaceArgs : args
-          const data = await callMethod(
+          const data = await callMethodWithOptions(options)(
             functionName,
-            ...(replaceArgs as ActorMethodParameters<A[M]>)
+            ...(replaceArgs ?? args)
           )
 
           setSharedState({ data, error: undefined, loading: false })
-          events?.onSuccess?.(data)
-          events?.onLoading?.(false)
+          onSuccess?.(data)
+          onLoading?.(false)
           return data
         } catch (error) {
           // eslint-disable-next-line no-console
@@ -173,13 +176,13 @@ export const actorHooks = <A = BaseActor>(
             error: error as Error,
             loading: false,
           })
-          events?.onError?.(error as Error)
-          events?.onLoading?.(false)
+          onError?.(error as Error)
+          onLoading?.(false)
 
           if (throwOnError) throw error
         }
       },
-      [args, functionName, events]
+      [args, functionName, options, onError, onLoading, onSuccess, throwOnError]
     )
 
     return { call, reset, requestKey, ...sharedState }

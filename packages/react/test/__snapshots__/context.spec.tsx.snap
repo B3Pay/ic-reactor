@@ -2,7 +2,7 @@
 
 exports[`createReactor should query 1`] = `
 <div>
-  Authenticating...
+  Loading Parser...
 </div>
 `;
 
@@ -13,6 +13,12 @@ exports[`createReactor should query 2`] = `
 `;
 
 exports[`createReactor should query 3`] = `
+<div>
+  Fetching canister...
+</div>
+`;
+
+exports[`createReactor should query 4`] = `
 <div>
   <button
     onClick={[Function]}
@@ -25,7 +31,7 @@ exports[`createReactor should query 3`] = `
 </div>
 `;
 
-exports[`createReactor should query 4`] = `
+exports[`createReactor should query 5`] = `
 <div>
   <button
     onClick={[Function]}
@@ -33,7 +39,7 @@ exports[`createReactor should query 4`] = `
     Get Version
   </button>
   <span>
-    ckETH
+    Internet Computer
   </span>
 </div>
 `;

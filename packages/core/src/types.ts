@@ -102,13 +102,13 @@ export type ActorMethodCall<A = Record<string, ActorMethod>> = <
 export type ActorQuery<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
-  config: ActorQueryParameters<A, M>
+  params: ActorQueryParameters<A, M>
 ) => ActorQueryReturnType<A, M>
 
 export type ActorUpdate<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
-  config: ActorUpdateParameters<A, M>
+  params: ActorUpdateParameters<A, M>
 ) => ActorUpdateReturnType<A, M>
 
 export interface CreateReactorCoreParameters

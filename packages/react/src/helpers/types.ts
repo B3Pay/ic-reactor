@@ -1,3 +1,4 @@
+import { CallConfig } from "@dfinity/agent"
 import type {
   IDL,
   ActorState,
@@ -61,7 +62,8 @@ export interface UseActorState extends Omit<ActorState, "methodState"> {
   canisterId: string
 }
 
-export type UseSharedCallParameters<A, M extends FunctionName<A>> = {
+export interface UseSharedCallParameters<A, M extends FunctionName<A>>
+  extends CallConfig {
   functionName: M
   args?: ActorMethodParameters<A[M]>
   onLoading?: (loading: boolean) => void
@@ -88,7 +90,7 @@ export interface UseSharedCallReturnType<
 }
 
 export type UseSharedCall<A> = <M extends FunctionName<A>>(
-  args: UseSharedCallParameters<A, M>
+  params: UseSharedCallParameters<A, M>
 ) => UseSharedCallReturnType<A, M>
 
 export interface UseQueryCallParameters<A, M extends FunctionName<A>>
@@ -98,14 +100,14 @@ export interface UseQueryCallParameters<A, M extends FunctionName<A>>
 }
 
 export type UseQueryCall<A> = <M extends FunctionName<A>>(
-  args: UseQueryCallParameters<A, M>
+  params: UseQueryCallParameters<A, M>
 ) => UseSharedCallReturnType<A, M>
 
 export interface UseUpdateCallParameters<A, M extends FunctionName<A>>
   extends UseSharedCallParameters<A, M> {}
 
 export type UseUpdateCall<A> = <M extends FunctionName<A>>(
-  args: UseUpdateCallParameters<A, M>
+  params: UseUpdateCallParameters<A, M>
 ) => UseSharedCallReturnType<A, M>
 
 export interface DynamicDataArgs<V = unknown> {

@@ -1,7 +1,7 @@
 import React, { createContext } from "react"
 import renderer, { act } from "react-test-renderer"
 import { backend, idlFactory } from "./candid"
-import { useActor } from "../src"
+import { CandidAdapterProvider, useActor } from "../src"
 import { AgentProvider } from "../src"
 import { ActorHooksReturnType } from "../src/types"
 import { extractActorContext } from "../src/helpers"
@@ -47,7 +47,9 @@ describe("createReactor", () => {
 
     let screen = renderer.create(
       <AgentProvider>
-        <BackendActor />
+        <CandidAdapterProvider>
+          <BackendActor />
+        </CandidAdapterProvider>
       </AgentProvider>
     )
 
@@ -56,7 +58,7 @@ describe("createReactor", () => {
     expect(screen.toJSON()).toMatchSnapshot()
 
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 1000))
+      await new Promise((r) => setTimeout(r, 100))
     })
 
     expect(screen.toJSON()).toMatchSnapshot()

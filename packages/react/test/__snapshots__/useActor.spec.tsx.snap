@@ -1,9 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`createReactor should query 1 1`] = `
-<p>
-  Loading Candid interface...
-</p>
+<div>
+  Loading Parser...
+</div>
 `;
 
 exports[`createReactor should query 1 2`] = `
