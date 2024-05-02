@@ -22,6 +22,7 @@ import type {
   ListReturns,
 } from "./types"
 import type { BaseActor, FunctionName } from "../../types"
+import { VisitFields } from ".."
 
 /**
  * Visit the candid file and extract the fields.
@@ -40,10 +41,12 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     const functionType = isQuery(t) ? "query" : "update"
 
     if (this.inVisit) {
-      console.log(t)
+      const fields = new VisitFields<A>().visitFunc(t, functionName)
+
       return {
         type: "function",
         label: functionName,
+        fields,
       } as unknown as MethodReturns<A>
     }
 
