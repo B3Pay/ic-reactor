@@ -76,16 +76,16 @@ export type ActorUpdateReturnType<A, M extends FunctionName<A>> = {
   call: ActorCallFunction<A, M>
 }
 
-export type ActorQueryParameters<A, M extends FunctionName<A>> = {
-  options?: CallConfig
+export interface ActorQueryParameters<A, M extends FunctionName<A>>
+  extends CallConfig {
   functionName: M
   args?: ActorMethodParameters<A[M]>
   refetchOnMount?: boolean
   refetchInterval?: number | false
 }
 
-export type ActorUpdateParameters<A, M extends FunctionName<A>> = {
-  options?: CallConfig
+export interface ActorUpdateParameters<A, M extends FunctionName<A>>
+  extends CallConfig {
   functionName: M
   args?: ActorMethodParameters<A[M]>
 }
@@ -94,9 +94,9 @@ export type ActorUpdateParameters<A, M extends FunctionName<A>> = {
 export type ActorMethodCall<A = Record<string, ActorMethod>> = <
   M extends FunctionName<A>
 >(
-  options: CallConfig,
   functionName: M,
-  ...args: ActorMethodParameters<A[M]>
+  args: ActorMethodParameters<A[M]>,
+  options?: CallConfig
 ) => ActorUpdateReturnType<A, M>
 
 export type ActorQuery<A = Record<string, ActorMethod>> = <

@@ -44,7 +44,7 @@ describe("My IC Store and Actions", () => {
     expect(symbol).toEqual(ICRC1_CANISTERS[0].symbol)
   })
 
-  it("should return the version with options on different canister", async () => {
+  it("should return the ICRC1_CANISTERS", async () => {
     const pollingStrategyFactory: PollStrategyFactory = () => {
       return async (canisterId, requestId, status) => {
         console.log({ canisterId, requestId, status })

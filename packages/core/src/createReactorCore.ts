@@ -38,9 +38,9 @@ export const createReactorCore = <A = BaseActor>(
   } = createReactorStore<A>(config)
 
   const actorMethod: ActorMethodCall<A> = (
-    options = {},
     functionName,
-    ...args
+    args,
+    options = {}
   ) => {
     const requestHash = generateRequestHash(args)
 
@@ -126,17 +126,13 @@ export const createReactorCore = <A = BaseActor>(
 
   const queryCall: ActorQuery<A> = ({
     functionName,
-    options = {},
-    args = [],
+    args = [] as unknown as ActorMethodParameters<A[typeof functionName]>,
     refetchOnMount = true,
     refetchInterval = false,
+    ...options
   }) => {
     let intervalId: NodeJS.Timeout | null = null
-    const { call, ...rest } = actorMethod(
-      options,
-      functionName,
-      ...(args as ActorMethodParameters<A[typeof functionName]>)
-    )
+    const { call, ...rest } = actorMethod(functionName, args, options)
 
     if (refetchInterval) {
       intervalId = setInterval(() => {
@@ -158,14 +154,10 @@ export const createReactorCore = <A = BaseActor>(
 
   const updateCall: ActorUpdate<A> = ({
     functionName,
-    options = {},
-    args = [],
+    args = [] as unknown as ActorMethodParameters<A[typeof functionName]>,
+    ...options
   }) => {
-    return actorMethod(
-      options,
-      functionName,
-      ...(args as ActorMethodParameters<A[typeof functionName]>)
-    )
+    return actorMethod(functionName, args, options)
   }
 
   return {

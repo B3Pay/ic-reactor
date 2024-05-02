@@ -15,6 +15,7 @@ import type {
   ActorMethodState,
   MethodAttributes,
   FunctionType,
+  ActorMethodType,
 } from "./types"
 import { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
@@ -230,16 +231,7 @@ export class ActorManager<A = BaseActor> {
       throw new Error(`Method ${String(functionName)} not found`)
     }
 
-    return this._actor[functionName as keyof A] as {
-      (...args: ActorMethodParameters<A[M]>): Promise<
-        ActorMethodReturnType<A[M]>
-      >
-      withOptions: (
-        options: CallConfig
-      ) => (
-        ...args: ActorMethodParameters<A[M]>
-      ) => Promise<ActorMethodReturnType<A[M]>>
-    }
+    return this._actor[functionName as keyof A] as ActorMethodType<A, M>
   }
 
   public callMethod = async <M extends FunctionName<A>>(

@@ -6,6 +6,7 @@ import type {
   ActorSubclass,
   Principal,
 } from "../../types"
+import { CallConfig } from "@dfinity/agent"
 
 export interface DefaultActorType {
   [key: string]: ActorMethod
@@ -67,6 +68,15 @@ export interface ActorMethodState<
 
 export type ActorMethodStates<A = BaseActor> = {
   [M in FunctionName<A>]: ActorMethodState<A, M>
+}
+
+export type ActorMethodType<A, M extends keyof A> = {
+  (...args: ActorMethodParameters<A[M]>): Promise<ActorMethodReturnType<A[M]>>
+  withOptions: (
+    options: CallConfig
+  ) => (
+    ...args: ActorMethodParameters<A[M]>
+  ) => Promise<ActorMethodReturnType<A[M]>>
 }
 
 // State structure for an actor in a Reactor
