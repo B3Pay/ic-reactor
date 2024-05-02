@@ -289,8 +289,7 @@
               "fields": [
                 {
                   "type": "function",
-                  "label": "callback",
-                  "fields": "(record {start:nat64; length:nat64}) -> (variant {Ok:record {blocks:vec record {transaction:record {memo:nat64; icrc1_memo:opt vec nat8; operation:opt variant {Approve:record {fee:record {e8s:nat64}; from:vec nat8; allowance_e8s:int; allowance:record {e8s:nat64}; expected_allowance:opt record {e8s:nat64}; expires_at:opt record {timestamp_nanos:nat64}; spender:vec nat8}; Burn:record {from:vec nat8; amount:record {e8s:nat64}; spender:opt vec nat8}; Mint:record {to:vec nat8; amount:record {e8s:nat64}}; Transfer:record {to:vec nat8; fee:record {e8s:nat64}; from:vec nat8; amount:record {e8s:nat64}; spender:opt vec nat8}}; created_at_time:record {timestamp_nanos:nat64}}; timestamp:record {timestamp_nanos:nat64}; parent_hash:opt vec nat8}}; Err:variant {BadFirstBlockIndex:record {requested_index:nat64; first_valid_index:nat64}; Other:record {error_message:text; error_code:nat64}}}) query"
+                  "label": "callback"
                 },
                 {
                   "type": "number",

@@ -26,7 +26,6 @@ describe("createReactorStore", () => {
 
   it("should visitFunction", () => {
     const json = jsonToString(visitedField())
-    console.log("🚀 ~ it ~ json:", json)
     // execute json with fx in the terminal
     writeFileSync(path.join(__dirname, "candid-field.json"), json)
   })
