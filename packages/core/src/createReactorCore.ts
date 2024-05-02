@@ -37,7 +37,11 @@ export const createReactorCore = <A = BaseActor>(
     ...rest
   } = createReactorStore<A>(config)
 
-  const actorMethod: ActorMethodCall<A> = (options, functionName, ...args) => {
+  const actorMethod: ActorMethodCall<A> = (
+    options = {},
+    functionName,
+    ...args
+  ) => {
     const requestHash = generateRequestHash(args)
 
     const updateState = <M extends FunctionName<A>>(
@@ -122,7 +126,7 @@ export const createReactorCore = <A = BaseActor>(
 
   const queryCall: ActorQuery<A> = ({
     functionName,
-    options,
+    options = {},
     args = [],
     refetchOnMount = true,
     refetchInterval = false,
@@ -152,7 +156,11 @@ export const createReactorCore = <A = BaseActor>(
     return { ...rest, call, dataPromise, intervalId, clearRefetchInterval }
   }
 
-  const updateCall: ActorUpdate<A> = ({ functionName, options, args = [] }) => {
+  const updateCall: ActorUpdate<A> = ({
+    functionName,
+    options = {},
+    args = [],
+  }) => {
     return actorMethod(
       options,
       functionName,

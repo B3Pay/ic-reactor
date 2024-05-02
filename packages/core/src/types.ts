@@ -77,7 +77,7 @@ export type ActorUpdateReturnType<A, M extends FunctionName<A>> = {
 }
 
 export type ActorQueryParameters<A, M extends FunctionName<A>> = {
-  options: CallConfig
+  options?: CallConfig
   functionName: M
   args?: ActorMethodParameters<A[M]>
   refetchOnMount?: boolean
@@ -85,7 +85,7 @@ export type ActorQueryParameters<A, M extends FunctionName<A>> = {
 }
 
 export type ActorUpdateParameters<A, M extends FunctionName<A>> = {
-  options: CallConfig
+  options?: CallConfig
   functionName: M
   args?: ActorMethodParameters<A[M]>
 }
