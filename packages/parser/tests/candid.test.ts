@@ -23,6 +23,14 @@ const EXPECTED_JS = `export const idlFactory = ({ IDL }) => {
 };
 export const init = ({ IDL }) => { return []; };`
 
+describe("convert candid to js", () => {
+  it("compile the candid string", async () => {
+    const candid = parser.didToJs(`service:{icrc1_name:()->(text) query;}`)
+
+    expect(candid).toEqual(EXPECTED_JS)
+  })
+})
+
 const EXPECTED_TS = `import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
@@ -31,17 +39,9 @@ export interface _SERVICE { 'icrc1_name' : ActorMethod<[], string> }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`
 
-describe("convert candid to js", () => {
-  it("compile the candid string", async () => {
-    const candid = parser.did_to_js(`service:{icrc1_name:()->(text) query;}`)
-
-    expect(candid).toEqual(EXPECTED_JS)
-  })
-})
-
 describe("convert candid to ts", () => {
   it("compile the candid string", async () => {
-    const candid = parser.did_to_ts(`service:{icrc1_name:()->(text) query;}`)
+    const candid = parser.didToTs(`service:{icrc1_name:()->(text) query;}`)
 
     expect(candid).toEqual(EXPECTED_TS)
   })

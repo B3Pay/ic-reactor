@@ -1911,7 +1911,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/agent@npm:^1.0, @dfinity/agent@npm:^1.2":
+"@dfinity/agent@npm:^1.2":
   version: 1.2.0
   resolution: "@dfinity/agent@npm:1.2.0"
   dependencies:
@@ -1928,7 +1928,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/auth-client@npm:^1.0, @dfinity/auth-client@npm:^1.2":
+"@dfinity/agent@npm:^1.3":
+  version: 1.3.0
+  resolution: "@dfinity/agent@npm:1.3.0"
+  dependencies:
+    "@noble/curves": "npm:^1.4.0"
+    "@noble/hashes": "npm:^1.3.1"
+    base64-arraybuffer: "npm:^0.2.0"
+    borc: "npm:^2.1.1"
+    buffer: "npm:^6.0.3"
+    simple-cbor: "npm:^0.4.1"
+  peerDependencies:
+    "@dfinity/candid": ^1.3.0
+    "@dfinity/principal": ^1.3.0
+  checksum: 10c0/2c74b0d02b793c419a217ee92c08b2c187e9f8a435e5865e4348a4adcbf251acb200728c897db0adbb7ead130e44ec84a84c0b3fd558cba5f892dae1e20df82f
+  languageName: node
+  linkType: hard
+
+"@dfinity/auth-client@npm:^1.2":
   version: 1.2.0
   resolution: "@dfinity/auth-client@npm:1.2.0"
   dependencies:
@@ -1941,7 +1958,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/candid@npm:^1.0, @dfinity/candid@npm:^1.2":
+"@dfinity/auth-client@npm:^1.3":
+  version: 1.3.0
+  resolution: "@dfinity/auth-client@npm:1.3.0"
+  dependencies:
+    idb: "npm:^7.0.2"
+  peerDependencies:
+    "@dfinity/agent": ^1.3.0
+    "@dfinity/identity": ^1.3.0
+    "@dfinity/principal": ^1.3.0
+  checksum: 10c0/cb268532b6c2b5bb2fdb773c4acaaa162c014ec03fb90a0c449e111b563b85df0f5e18c1a33c93181918ea64ca1b02227909dbd0af6e67f3c2650715f15986f8
+  languageName: node
+  linkType: hard
+
+"@dfinity/candid@npm:^1.2":
   version: 1.2.0
   resolution: "@dfinity/candid@npm:1.2.0"
   peerDependencies:
@@ -1950,7 +1980,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/identity@npm:^1.0, @dfinity/identity@npm:^1.2":
+"@dfinity/candid@npm:^1.3":
+  version: 1.3.0
+  resolution: "@dfinity/candid@npm:1.3.0"
+  peerDependencies:
+    "@dfinity/principal": ^1.3.0
+  checksum: 10c0/c7030ac6d99cc0fad862d4c3d64fa0cd9223e35a6096136d2df50f04a55a3dbac4b20db55240559a76078b92c53c7d166f2e67e377baa5d38526264499bd891c
+  languageName: node
+  linkType: hard
+
+"@dfinity/identity@npm:^1.2":
   version: 1.2.0
   resolution: "@dfinity/identity@npm:1.2.0"
   dependencies:
@@ -1965,12 +2004,36 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/principal@npm:^1.0, @dfinity/principal@npm:^1.2":
+"@dfinity/identity@npm:^1.3":
+  version: 1.3.0
+  resolution: "@dfinity/identity@npm:1.3.0"
+  dependencies:
+    "@noble/curves": "npm:^1.2.0"
+    "@noble/hashes": "npm:^1.3.1"
+    borc: "npm:^2.1.1"
+  peerDependencies:
+    "@dfinity/agent": ^1.3.0
+    "@dfinity/principal": ^1.3.0
+    "@peculiar/webcrypto": ^1.4.0
+  checksum: 10c0/816c01536c5f0b5342c6ccd8967f2b42d9fd189c3bdf5bf0eb0c35b176c52809595cdb7b1ce6a3d9bc925602c09117a50757f6e5113ff14be33b64158f9547ad
+  languageName: node
+  linkType: hard
+
+"@dfinity/principal@npm:^1.2":
   version: 1.2.0
   resolution: "@dfinity/principal@npm:1.2.0"
   dependencies:
     "@noble/hashes": "npm:^1.3.1"
   checksum: 10c0/482328a1acbb4e3b6fb8e77cb65328fbea267d74d4c66cb1abc9b1f561eeaabad0157176073cef792c1551f316661d531dcfec603263da2ff57ed3b28f2a19c3
+  languageName: node
+  linkType: hard
+
+"@dfinity/principal@npm:^1.3":
+  version: 1.3.0
+  resolution: "@dfinity/principal@npm:1.3.0"
+  dependencies:
+    "@noble/hashes": "npm:^1.3.1"
+  checksum: 10c0/7948d2d8b9b54bdae49c445d36048c2b4cd2f5a53ae30c52d69110bd671164c68bf0a6c4e8566789ae5b5d3e2f964338cff48f3aba26e7783ecc15cf76dec4b4
   languageName: node
   linkType: hard
 
@@ -2079,19 +2142,19 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
-    "@dfinity/agent": "npm:^1.2"
-    "@dfinity/auth-client": "npm:^1.2"
-    "@dfinity/candid": "npm:^1.2"
-    "@dfinity/identity": "npm:^1.2"
-    "@dfinity/principal": "npm:^1.2"
+    "@dfinity/agent": "npm:^1.3"
+    "@dfinity/auth-client": "npm:^1.3"
+    "@dfinity/candid": "npm:^1.3"
+    "@dfinity/identity": "npm:^1.3"
+    "@dfinity/principal": "npm:^1.3"
     "@ic-reactor/parser": "workspace:^"
     zustand: "npm:^4.5"
   peerDependencies:
-    "@dfinity/agent": ^1.2
-    "@dfinity/auth-client": ^1.2
-    "@dfinity/candid": ^1.2
-    "@dfinity/identity": ^1.2
-    "@dfinity/principal": ^1.2
+    "@dfinity/agent": ^1.3
+    "@dfinity/auth-client": ^1.3
+    "@dfinity/candid": ^1.3
+    "@dfinity/identity": ^1.3
+    "@dfinity/principal": ^1.3
   languageName: unknown
   linkType: soft
 
@@ -2126,11 +2189,11 @@ __metadata:
     "@ic-reactor/core": "workspace:^"
     zustand-utils: "npm:^1.3"
   peerDependencies:
-    "@dfinity/agent": ^1.2
-    "@dfinity/auth-client": ^1.2
-    "@dfinity/candid": ^1.2
-    "@dfinity/identity": ^1.2
-    "@dfinity/principal": ^1.2
+    "@dfinity/agent": ^1.3
+    "@dfinity/auth-client": ^1.3
+    "@dfinity/candid": ^1.3
+    "@dfinity/identity": ^1.3
+    "@dfinity/principal": ^1.3
     react: ">=16.8"
     zustand: 4.5
   languageName: unknown
@@ -2140,12 +2203,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
-    "@dfinity/candid": "npm:^1.2"
-    "@dfinity/principal": "npm:^1.2"
+    "@dfinity/candid": "npm:^1.3"
+    "@dfinity/principal": "npm:^1.3"
     "@ic-reactor/core": "workspace:^"
   peerDependencies:
-    "@dfinity/candid": ^1.2
-    "@dfinity/principal": ^1.2
+    "@dfinity/candid": ^1.3
+    "@dfinity/principal": ^1.3
   languageName: unknown
   linkType: soft
 
@@ -11232,13 +11295,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ic-rust-nextjs@workspace:examples/nextjs"
   dependencies:
-    "@dfinity/agent": "npm:^1.0"
-    "@dfinity/auth-client": "npm:^1.0"
-    "@dfinity/candid": "npm:^1.0"
-    "@dfinity/identity": "npm:^1.0"
-    "@dfinity/principal": "npm:^1.0"
     "@ic-reactor/react": "workspace:^"
-    "@peculiar/webcrypto": "npm:^1.4"
     "@types/node": "npm:20.9.4"
     "@types/react": "npm:18.2.38"
     dotenv: "npm:16.3.1"
@@ -15619,7 +15676,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "nodejs@workspace:examples/nodejs"
   dependencies:
-    "@dfinity/agent": "npm:^1.0"
     "@ic-reactor/core": "workspace:^"
     "@ic-reactor/parser": "workspace:^"
     "@ic-reactor/visitor": "workspace:^"
