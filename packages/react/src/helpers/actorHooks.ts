@@ -216,19 +216,17 @@ export const actorHooks = <A = BaseActor>(
   const useMethod: UseMethod<A> = <M extends FunctionName<A>>(
     params: UseMethodParameters<A, M>
   ): UseMethodReturnType<A, M> => {
+    const attributes = React.useMemo(() => {
+      if (!methodAttributes[params.functionName]) {
+        throw new Error(`Method ${params.functionName} not found`)
+      }
+
+      return methodAttributes[params.functionName]
+    }, [params.functionName])
+
     const visit: VisitService<A>[M] = React.useCallback(
-      (extractorClass, data) => {
-        if (!visitFunction[params.functionName]) {
-          throw new Error(`Method ${params.functionName} not found`)
-        }
-
-        return visitFunction[params.functionName](extractorClass, data)
-      },
-      [params.functionName]
-    )
-
-    const attributes = React.useMemo(
-      () => methodAttributes[params.functionName],
+      (extractorClass, data) =>
+        visitFunction[params.functionName](extractorClass, data),
       [params.functionName]
     )
 

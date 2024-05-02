@@ -41,12 +41,10 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     const functionType = isQuery(t) ? "query" : "update"
 
     if (this.inVisit) {
-      const fields = new VisitFields<A>().visitFunc(t, functionName)
-
       return {
         type: "function",
         label: functionName,
-        fields,
+        fields: t.name,
       } as unknown as MethodReturns<A>
     }
 
