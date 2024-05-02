@@ -1,6 +1,6 @@
 import { IDL } from "@dfinity/candid"
 import { findCategory } from "../helpers"
-import { DEFAULT_CATEGORIES, DEFAULT_LAYOUTS } from "../constants"
+import { CategoryTest, DEFAULT_CATEGORIES, DEFAULT_LAYOUTS } from "../constants"
 
 import type { BaseActor, FunctionName, ServiceLayouts } from "../types"
 /**
@@ -9,7 +9,7 @@ import type { BaseActor, FunctionName, ServiceLayouts } from "../types"
  *
  */
 export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
-  string,
+  CategoryTest[] | string,
   ServiceLayouts<A> | number | void
 > {
   public counter = 0
@@ -126,12 +126,15 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
     {}
   )
 
-  public visitService(t: IDL.ServiceClass): ServiceLayouts<A> {
+  public visitService(
+    t: IDL.ServiceClass,
+    categoryTest?: CategoryTest[] | string
+  ): ServiceLayouts<A> {
     const layouts = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      const category = findCategory(functionName)
+      const category = findCategory(functionName, categoryTest)
 
       const h = func.accept(this, functionName) as number
 

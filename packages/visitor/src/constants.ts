@@ -1,3 +1,5 @@
+import { FunctionCategory } from "./types"
+
 const TAMESTAMP_KEYS = [
   "time",
   "date",
@@ -151,10 +153,32 @@ export const DEFAULT_LAYOUTS = [
   { name: "xs", size: 2 },
 ] as const
 
-export const DEFAULT_CATEGORIES = [
+export const DEFAULT_CATEGORIES: FunctionCategory[] = [
   "home",
   "wallet",
   "governance",
   "setting",
   "status",
-] as const
+]
+
+export type CategoryTest = {
+  name: FunctionCategory
+  test: string[]
+}
+
+export const DETAULT_CATEGORY_TEST: CategoryTest[] = [
+  { name: "home", test: [] },
+  {
+    name: "wallet",
+    test: WALLET_TEST,
+  },
+  {
+    name: "status",
+    test: STATUS_TEST,
+  },
+  {
+    name: "setting",
+    test: SETTING_TEST,
+  },
+  { name: "governance", test: GOVERNANCE_TEST },
+]

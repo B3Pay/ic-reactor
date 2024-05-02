@@ -1,10 +1,4 @@
-import {
-  GOVERNANCE_TEST,
-  SETTING_TEST,
-  STATUS_TEST,
-  WALLET_TEST,
-} from "./constants"
-
+import { CategoryTest, DETAULT_CATEGORY_TEST } from "./constants"
 import type {
   AllReturnTypes,
   IDL,
@@ -20,26 +14,18 @@ export const isFieldInTable = (field: AllReturnTypes<IDL.Type>): boolean => {
   return !["record", "tuple", "vector", "function"].includes(field.type)
 }
 
-export const findCategory = (name: string): FunctionCategory => {
-  const categories = [
-    { name: "home", test: [] },
-    {
-      name: "wallet",
-      test: WALLET_TEST,
-    },
-    {
-      name: "status",
-      test: STATUS_TEST,
-    },
-    {
-      name: "setting",
-      test: SETTING_TEST,
-    },
-    { name: "governance", test: GOVERNANCE_TEST },
-  ]
-  const category = categories.find((c) =>
+export const findCategory = (
+  name: string,
+  categoryTest: string | CategoryTest[] | undefined = DETAULT_CATEGORY_TEST
+): FunctionCategory => {
+  if (typeof categoryTest === "string") {
+    return categoryTest
+  }
+
+  const category = categoryTest.find((c) =>
     c.test.some((t) => name.toLowerCase().includes(t))
   )?.name as FunctionCategory
+
   return category || "home"
 }
 
