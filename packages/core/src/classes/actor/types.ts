@@ -38,7 +38,7 @@ export type VisitService<
 > = {
   [K in M]: <V extends IDL.Visitor<unknown, unknown>>(
     extractorClass: V,
-    data?: VisitorType<V>["data"]
+    data: VisitorType<V>["data"]
   ) => ReturnType<V["visitFunc"]>
 }
 

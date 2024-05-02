@@ -164,7 +164,7 @@ export class ActorManager<A = BaseActor> {
       const type = service[1]
 
       const visit = ((extractorClass, data) => {
-        return type.accept(extractorClass, data || functionName)
+        return type.accept(extractorClass, data)
       }) as VisitService<A>[typeof functionName]
 
       acc[functionName] = visit
