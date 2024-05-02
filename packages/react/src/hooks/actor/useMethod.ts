@@ -3,7 +3,7 @@ import {
   FunctionName,
   UseMethod,
   UseMethodParameters,
-  UseSharedCallReturnType,
+  UseMethodReturnType,
 } from "../../types"
 import ActorHooks from "./hooks"
 
@@ -11,7 +11,7 @@ import ActorHooks from "./hooks"
  * Hook for making dynamically update or query calls to actors, handling loading states, and managing errors. It supports custom event handlers for loading, success, and error events.
  *
  * @param args {@link UseMethodParameters}.
- * @returns object {@link UseSharedCallReturnType}.
+ * @returns object {@link UseMethodReturnType}.
  * @example
  * ```tsx
  * function MethodCallComponent() {
@@ -37,6 +37,6 @@ import ActorHooks from "./hooks"
 export function useMethod<
   A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
->(args: UseMethodParameters<A, M>): UseSharedCallReturnType<A, M> {
+>(args: UseMethodParameters<A, M>): UseMethodReturnType<A, M> {
   return (ActorHooks.useMethod as UseMethod<A>)(args)
 }
