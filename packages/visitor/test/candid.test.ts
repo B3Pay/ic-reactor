@@ -14,19 +14,22 @@ describe("createReactorStore", () => {
 
   const visitedDetail = () => {
     const iface = extractInterface()
-    const fieldsVisitor = new VisitDetails()
+    const fieldsVisitor = new VisitDetails<_SERVICE>()
     return fieldsVisitor.visitService(iface)
   }
 
   const visitedField = () => {
     const iface = extractInterface()
-    const fieldsVisitor = new VisitReturns()
+    const fieldsVisitor = new VisitReturns<_SERVICE>()
     return fieldsVisitor.visitService(iface)
   }
 
   it("should visitFunction", () => {
-    const json = jsonToString(visitedField())
+    const fields = visitedField()
     // execute json with fx in the terminal
-    writeFileSync(path.join(__dirname, "candid-field.json"), json)
+    writeFileSync(
+      path.join(__dirname, "candid-field.json"),
+      jsonToString(fields)
+    )
   })
 })

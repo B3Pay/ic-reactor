@@ -1,4 +1,4 @@
-import { hash } from "@dfinity/agent"
+import { hash, hashValue, toHex } from "@dfinity/agent"
 import { DevtoolsOptions, devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 
@@ -60,18 +60,10 @@ export const jsonToString = (json: unknown, space = 2) => {
   )
 }
 
-export const generateRequestHash = (args: unknown[] = []) => {
-  const serializedArgs = args
-    .map((arg) => {
-      if (typeof arg === "bigint") {
-        return arg.toString()
-      }
+export const generateRequestHash = (args: unknown[] = []): `0x${string}` => {
+  const serializedArgs = hashValue(args)
 
-      return JSON.stringify(arg)
-    })
-    .join("|")
-
-  return stringToHash(serializedArgs ?? "")
+  return `0x${toHex(serializedArgs)}`
 }
 
 export const generateHash = (field?: unknown) => {
@@ -90,8 +82,5 @@ export const stringToHash = (str: string) => {
 }
 
 function toHexString(bytes: ArrayBuffer) {
-  return new Uint8Array(bytes).reduce(
-    (str, byte) => str + byte.toString(16).padStart(2, "0"),
-    ""
-  )
+  return toHex(bytes)
 }

@@ -1,5 +1,5 @@
 import type { BaseActor, FunctionName } from "../types"
-import type { MethodReturns } from "./returns/types"
+import type { NormalMethodReturns } from "./returns/types"
 import type { MethodArgs } from "./args/types"
 
 export * from "./args/types"
@@ -11,11 +11,11 @@ export type ServiceFields<A = BaseActor> = {
 
 export interface MethodFields<A = BaseActor>
   extends Omit<MethodArgs<A>, "fields" | "defaultValues">,
-    Omit<MethodReturns<A>, "fields" | "defaultValues"> {
+    Omit<NormalMethodReturns<A>, "fields" | "defaultValues"> {
   defaultValues: {
     args: MethodArgs<A>["defaultValues"]
-    rets: MethodReturns<A>["defaultValues"]
+    rets: NormalMethodReturns<A>["defaultValues"]
   }
   argFields: MethodArgs<A>["fields"]
-  retFields: MethodReturns<A>["fields"]
+  retFields: NormalMethodReturns<A>["fields"]
 }

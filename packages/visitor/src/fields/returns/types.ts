@@ -11,14 +11,24 @@ export type ServiceReturns<A = BaseActor> = {
   [K in FunctionName<A>]: MethodReturns<A>
 }
 
-export type MethodReturns<A = BaseActor> = {
-  type: "normal" | "function"
+export type FunctionMethodReturns = {
+  type: "function"
+  label: string
+  funcClass: IDL.FuncClass
+}
+
+export type NormalMethodReturns<A = BaseActor> = {
+  type: "normal"
   functionName: FunctionName<A>
   functionType: FunctionType
   fields: AllReturnTypes<IDL.Type>[] | []
   defaultValues: MethodReturnValues<FunctionName<A>>
   transformData: (data: unknown) => MethodReturnValues<FunctionName<A>>
 }
+
+export type MethodReturns<A = BaseActor> =
+  | FunctionMethodReturns
+  | NormalMethodReturns<A>
 
 export type MethodReturnValues<T = string> = {
   [key: `ret${number}`]: ReturnTypeFromIDLType<T>
@@ -78,7 +88,9 @@ export interface NumberReturn extends DefaultReturn {
 
 export interface InputReturn extends DefaultReturn {}
 
-export type DynamicReturnType<T extends FieldType> = T extends "record"
+export type DynamicReturnType<T extends FieldType> = T extends "function"
+  ? FunctionMethodReturns
+  : T extends "record"
   ? RecordReturns<IDL.Type>
   : T extends "variant"
   ? VariantReturns<IDL.Type>

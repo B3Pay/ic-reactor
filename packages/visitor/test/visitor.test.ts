@@ -31,12 +31,15 @@ describe("createReactorStore", () => {
 
   const visitedDetail = () => {
     const fieldsVisitor = new VisitDetails()
-    return visitFunction.print_log_entries(fieldsVisitor)
+    return visitFunction.print_log_entries(fieldsVisitor, "print_log_entries")
   }
 
   const visitedFields = () => {
     const fieldsVisitor = new VisitFields()
-    return visitFunction.account_swap_btc_to_ckbtc(fieldsVisitor)
+    return visitFunction.account_swap_btc_to_ckbtc(
+      fieldsVisitor,
+      "account_swap_btc_to_ckbtc"
+    )
   }
 
   it("should visitFunction", () => {
