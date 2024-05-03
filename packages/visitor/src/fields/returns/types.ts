@@ -5,6 +5,8 @@ import type {
   BaseActor,
   FunctionName,
   FunctionType,
+  Principal,
+  ArgTypeFromIDLType,
 } from "../../types"
 
 export type ServiceReturns<A = BaseActor> = {
@@ -42,9 +44,14 @@ export interface RecordReturns<T extends IDL.Type> extends DefaultReturn {
 export interface FunctionRecordReturns<T extends IDL.Type>
   extends DefaultReturn {
   type: "functionRecord"
-  functionClass: IDL.FuncClass
-  fields: AllReturnTypes<T>[]
-  extractArgs: (values: Record<string, unknown>) => Record<string, unknown>
+  extract: (values: Record<string, unknown>) => FunctionExtractedData<T>
+}
+
+export type FunctionExtractedData<T extends IDL.Type = IDL.Type> = {
+  canisterId: Principal
+  functionName: string
+  idlFactory: IDL.InterfaceFactory
+  args: [Record<string, ArgTypeFromIDLType<T>>]
 }
 
 export interface VariantReturns<T extends IDL.Type> extends DefaultReturn {

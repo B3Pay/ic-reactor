@@ -20,10 +20,17 @@ import type {
   BlobReturns,
   MethodReturnValues,
   ListReturns,
-  FunctionMethodReturns,
   FunctionRecordReturns,
+  FunctionExtractedData,
+  FunctionMethodReturns,
 } from "./types"
-import type { BaseActor, FunctionName } from "../../types"
+import type {
+  ArgTypeFromIDLType,
+  BaseActor,
+  FunctionName,
+  Principal,
+} from "../../types"
+
 /**
  * Visit the candid file and extract the fields.
  * It returns the extracted service fields.
@@ -114,28 +121,39 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     )
 
     if (fields[0]?.type === "function") {
-      const extractArgs = (values: Record<string, unknown>) => {
-        const args = fields.reduce((acc, field) => {
-          if (field.type !== "function") {
-            const value = values[field.label]
+      const func = fields[0] as FunctionMethodReturns
+      const argFields = fields.slice(1)
 
-            acc[field.label] = value
+      const extract = <T extends IDL.Type = IDL.Type>(
+        values: Record<string, unknown>
+      ): FunctionExtractedData<T> => {
+        const funcValues = values[func.label] as [Principal, string]
 
-            return acc
-          }
+        const canisterId = funcValues[0]
+        const functionName = funcValues[1]
+        const idlFactory = () =>
+          IDL.Service({
+            [functionName]: func.functionClass,
+          })
+
+        const args = argFields.reduce((acc, field) => {
+          acc[field.label] = values[field.label] as ArgTypeFromIDLType<T>
 
           return acc
-        }, {} as Record<string, unknown>)
+        }, {} as Record<string, ArgTypeFromIDLType<T>>)
 
-        return args
+        return {
+          canisterId,
+          functionName,
+          idlFactory,
+          args: [args],
+        }
       }
 
       return {
         type: "functionRecord",
         label,
-        functionClass: (fields[0] as FunctionMethodReturns).functionClass,
-        fields,
-        extractArgs,
+        extract,
       }
     }
 
