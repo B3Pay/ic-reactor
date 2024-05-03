@@ -203,6 +203,8 @@ export const actorHooks = <A = BaseActor>(
 
       if (refetchOnMount && state.data === undefined) {
         call()
+      } else if (refetchOnMount && state.data !== undefined) {
+        rest.onSuccess?.(state.data)
       }
 
       return () => clearInterval(intervalId.current)
