@@ -13,6 +13,7 @@ export type FunctionCategory =
   | string
 
 export type FieldType =
+  | "functionRecord"
   | "function"
   | "record"
   | "variant"

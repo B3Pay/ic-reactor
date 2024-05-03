@@ -112,10 +112,10 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     )
 
     return {
-      type: "record",
+      type: fields[0]?.type === "function" ? "functionRecord" : "record",
       label,
       fields,
-    }
+    } as RecordReturns<IDL.Type>
   }
 
   public visitVariant(

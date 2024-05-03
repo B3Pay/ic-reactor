@@ -284,12 +284,387 @@
           {
             "type": "vector",
             "field": {
-              "type": "record",
+              "type": "functionRecord",
               "label": "archived_blocks",
               "fields": [
                 {
                   "type": "function",
-                  "label": "callback"
+                  "label": "callback",
+                  "funcClass": {
+                    "argTypes": [
+                      {
+                        "_fields": [
+                          [
+                            "start",
+                            {
+                              "_bits": 64
+                            }
+                          ],
+                          [
+                            "length",
+                            {
+                              "_bits": 64
+                            }
+                          ]
+                        ]
+                      }
+                    ],
+                    "retTypes": [
+                      {
+                        "_fields": [
+                          [
+                            "Ok",
+                            {
+                              "_fields": [
+                                [
+                                  "blocks",
+                                  {
+                                    "_type": {
+                                      "_fields": [
+                                        [
+                                          "transaction",
+                                          {
+                                            "_fields": [
+                                              [
+                                                "memo",
+                                                {
+                                                  "_bits": 64
+                                                }
+                                              ],
+                                              [
+                                                "icrc1_memo",
+                                                {
+                                                  "_type": {
+                                                    "_type": {
+                                                      "_bits": 8
+                                                    },
+                                                    "_blobOptimization": true
+                                                  }
+                                                }
+                                              ],
+                                              [
+                                                "operation",
+                                                {
+                                                  "_type": {
+                                                    "_fields": [
+                                                      [
+                                                        "Approve",
+                                                        {
+                                                          "_fields": [
+                                                            [
+                                                              "fee",
+                                                              {
+                                                                "_fields": [
+                                                                  [
+                                                                    "e8s",
+                                                                    {
+                                                                      "_bits": 64
+                                                                    }
+                                                                  ]
+                                                                ]
+                                                              }
+                                                            ],
+                                                            [
+                                                              "from",
+                                                              {
+                                                                "_type": {
+                                                                  "_bits": 8
+                                                                },
+                                                                "_blobOptimization": true
+                                                              }
+                                                            ],
+                                                            [
+                                                              "allowance_e8s",
+                                                              {}
+                                                            ],
+                                                            [
+                                                              "allowance",
+                                                              {
+                                                                "_fields": [
+                                                                  [
+                                                                    "e8s",
+                                                                    {
+                                                                      "_bits": 64
+                                                                    }
+                                                                  ]
+                                                                ]
+                                                              }
+                                                            ],
+                                                            [
+                                                              "expected_allowance",
+                                                              {
+                                                                "_type": {
+                                                                  "_fields": [
+                                                                    [
+                                                                      "e8s",
+                                                                      {
+                                                                        "_bits": 64
+                                                                      }
+                                                                    ]
+                                                                  ]
+                                                                }
+                                                              }
+                                                            ],
+                                                            [
+                                                              "expires_at",
+                                                              {
+                                                                "_type": {
+                                                                  "_fields": [
+                                                                    [
+                                                                      "timestamp_nanos",
+                                                                      {
+                                                                        "_bits": 64
+                                                                      }
+                                                                    ]
+                                                                  ]
+                                                                }
+                                                              }
+                                                            ],
+                                                            [
+                                                              "spender",
+                                                              {
+                                                                "_type": {
+                                                                  "_bits": 8
+                                                                },
+                                                                "_blobOptimization": true
+                                                              }
+                                                            ]
+                                                          ]
+                                                        }
+                                                      ],
+                                                      [
+                                                        "Burn",
+                                                        {
+                                                          "_fields": [
+                                                            [
+                                                              "from",
+                                                              {
+                                                                "_type": {
+                                                                  "_bits": 8
+                                                                },
+                                                                "_blobOptimization": true
+                                                              }
+                                                            ],
+                                                            [
+                                                              "amount",
+                                                              {
+                                                                "_fields": [
+                                                                  [
+                                                                    "e8s",
+                                                                    {
+                                                                      "_bits": 64
+                                                                    }
+                                                                  ]
+                                                                ]
+                                                              }
+                                                            ],
+                                                            [
+                                                              "spender",
+                                                              {
+                                                                "_type": {
+                                                                  "_type": {
+                                                                    "_bits": 8
+                                                                  },
+                                                                  "_blobOptimization": true
+                                                                }
+                                                              }
+                                                            ]
+                                                          ]
+                                                        }
+                                                      ],
+                                                      [
+                                                        "Mint",
+                                                        {
+                                                          "_fields": [
+                                                            [
+                                                              "to",
+                                                              {
+                                                                "_type": {
+                                                                  "_bits": 8
+                                                                },
+                                                                "_blobOptimization": true
+                                                              }
+                                                            ],
+                                                            [
+                                                              "amount",
+                                                              {
+                                                                "_fields": [
+                                                                  [
+                                                                    "e8s",
+                                                                    {
+                                                                      "_bits": 64
+                                                                    }
+                                                                  ]
+                                                                ]
+                                                              }
+                                                            ]
+                                                          ]
+                                                        }
+                                                      ],
+                                                      [
+                                                        "Transfer",
+                                                        {
+                                                          "_fields": [
+                                                            [
+                                                              "to",
+                                                              {
+                                                                "_type": {
+                                                                  "_bits": 8
+                                                                },
+                                                                "_blobOptimization": true
+                                                              }
+                                                            ],
+                                                            [
+                                                              "fee",
+                                                              {
+                                                                "_fields": [
+                                                                  [
+                                                                    "e8s",
+                                                                    {
+                                                                      "_bits": 64
+                                                                    }
+                                                                  ]
+                                                                ]
+                                                              }
+                                                            ],
+                                                            [
+                                                              "from",
+                                                              {
+                                                                "_type": {
+                                                                  "_bits": 8
+                                                                },
+                                                                "_blobOptimization": true
+                                                              }
+                                                            ],
+                                                            [
+                                                              "amount",
+                                                              {
+                                                                "_fields": [
+                                                                  [
+                                                                    "e8s",
+                                                                    {
+                                                                      "_bits": 64
+                                                                    }
+                                                                  ]
+                                                                ]
+                                                              }
+                                                            ],
+                                                            [
+                                                              "spender",
+                                                              {
+                                                                "_type": {
+                                                                  "_type": {
+                                                                    "_bits": 8
+                                                                  },
+                                                                  "_blobOptimization": true
+                                                                }
+                                                              }
+                                                            ]
+                                                          ]
+                                                        }
+                                                      ]
+                                                    ]
+                                                  }
+                                                }
+                                              ],
+                                              [
+                                                "created_at_time",
+                                                {
+                                                  "_fields": [
+                                                    [
+                                                      "timestamp_nanos",
+                                                      {
+                                                        "_bits": 64
+                                                      }
+                                                    ]
+                                                  ]
+                                                }
+                                              ]
+                                            ]
+                                          }
+                                        ],
+                                        [
+                                          "timestamp",
+                                          {
+                                            "_fields": [
+                                              [
+                                                "timestamp_nanos",
+                                                {
+                                                  "_bits": 64
+                                                }
+                                              ]
+                                            ]
+                                          }
+                                        ],
+                                        [
+                                          "parent_hash",
+                                          {
+                                            "_type": {
+                                              "_type": {
+                                                "_bits": 8
+                                              },
+                                              "_blobOptimization": true
+                                            }
+                                          }
+                                        ]
+                                      ]
+                                    },
+                                    "_blobOptimization": false
+                                  }
+                                ]
+                              ]
+                            }
+                          ],
+                          [
+                            "Err",
+                            {
+                              "_fields": [
+                                [
+                                  "BadFirstBlockIndex",
+                                  {
+                                    "_fields": [
+                                      [
+                                        "requested_index",
+                                        {
+                                          "_bits": 64
+                                        }
+                                      ],
+                                      [
+                                        "first_valid_index",
+                                        {
+                                          "_bits": 64
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ],
+                                [
+                                  "Other",
+                                  {
+                                    "_fields": [
+                                      [
+                                        "error_message",
+                                        {}
+                                      ],
+                                      [
+                                        "error_code",
+                                        {
+                                          "_bits": 64
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ]
+                              ]
+                            }
+                          ]
+                        ]
+                      }
+                    ],
+                    "annotations": [
+                      "query"
+                    ]
+                  }
                 },
                 {
                   "type": "number",

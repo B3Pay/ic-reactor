@@ -34,10 +34,18 @@ export type MethodReturnValues<T = string> = {
   [key: `ret${number}`]: ReturnTypeFromIDLType<T>
 }
 
-export interface RecordReturns<T extends IDL.Type> extends DefaultReturn {
-  type: "record"
-  fields: AllReturnTypes<T>[]
-}
+export type RecordReturns<T extends IDL.Type> =
+  | DefaultReturn &
+      (
+        | {
+            type: "functionRecord"
+            fields: [FunctionMethodReturns, ...AllReturnTypes<T>[]]
+          }
+        | {
+            type: "record"
+            fields: AllReturnTypes<T>[]
+          }
+      )
 
 export interface VariantReturns<T extends IDL.Type> extends DefaultReturn {
   type: "variant"
