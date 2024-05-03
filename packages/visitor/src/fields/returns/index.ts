@@ -20,6 +20,8 @@ import type {
   BlobReturns,
   MethodReturnValues,
   ListReturns,
+  FunctionMethodReturns,
+  FunctionRecordReturns,
 } from "./types"
 import type { BaseActor, FunctionName } from "../../types"
 /**
@@ -40,7 +42,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
       return {
         type: "function",
         label: functionName,
-        funcClass: t,
+        functionClass: t,
       }
     }
 
@@ -75,7 +77,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
         } as MethodReturnValues
       }
 
-      return t.argTypes.reduce((acc, _, index) => {
+      return t.retTypes.reduce((acc, _, index) => {
         acc[`ret${index}`] = (data as ReturnTypeFromIDLType<IDL.Type>[])[index]
 
         return acc
@@ -96,7 +98,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.RecordClass,
     _fields: Array<[string, IDL.Type]>,
     label: string
-  ): RecordReturns<IDL.Type> {
+  ): RecordReturns<IDL.Type> | FunctionRecordReturns<IDL.Type> {
     const { fields } = _fields.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllReturnTypes<typeof type>
@@ -111,11 +113,37 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
       }
     )
 
+    if (fields[0]?.type === "function") {
+      const extractArgs = (values: Record<string, unknown>) => {
+        const args = fields.reduce((acc, field) => {
+          if (field.type !== "function") {
+            const value = values[field.label]
+
+            acc[field.label] = value
+
+            return acc
+          }
+
+          return acc
+        }, {} as Record<string, unknown>)
+
+        return args
+      }
+
+      return {
+        type: "functionRecord",
+        label,
+        functionClass: (fields[0] as FunctionMethodReturns).functionClass,
+        fields,
+        extractArgs,
+      }
+    }
+
     return {
-      type: fields[0]?.type === "function" ? "functionRecord" : "record",
+      type: "record",
       label,
       fields,
-    } as RecordReturns<IDL.Type>
+    }
   }
 
   public visitVariant(
