@@ -21,8 +21,9 @@ export type FunctionType = "query" | "update"
 export type CanisterId = string | Principal
 
 export interface ActorManagerParameters {
-  agentManager: AgentManager
   idlFactory: IDL.InterfaceFactory
+  agentManager: AgentManager
+  name?: string
   canisterId: CanisterId
   withVisitor?: boolean
   withDevtools?: boolean
@@ -81,6 +82,7 @@ export type ActorMethodType<A, M extends keyof A> = {
 
 // State structure for an actor in a Reactor
 export type ActorState<A = BaseActor> = {
+  name: string
   initialized: boolean
   initializing: boolean
   error: Error | undefined

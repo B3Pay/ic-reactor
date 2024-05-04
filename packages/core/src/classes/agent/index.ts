@@ -83,13 +83,13 @@ export class AgentManager {
 
     this.agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
       withDevtools,
-      name: "Reactor-Agent",
+      name: "reactor-agent",
       store: "agent",
     })
 
     this.authStore = createStoreWithOptionalDevtools(this.initialAuthState, {
       withDevtools,
-      name: "Reactor-Agent",
+      name: "reactor-agent",
       store: "auth",
     })
 

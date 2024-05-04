@@ -63,6 +63,7 @@ export const actorHooks = <A = BaseActor>(
     useStore(
       actorStore,
       useShallow((state) => ({
+        name: state.name,
         error: state.error,
         initialized: state.initialized,
         initializing: state.initializing,

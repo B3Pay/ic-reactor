@@ -20,6 +20,7 @@ import type {
 import { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
 import type { UpdateAgentParameters } from "../types"
+import { ACTOR_INITIAL_STATE } from "../../utils"
 
 export class ActorManager<A = BaseActor> {
   private _actor: null | A = null
@@ -33,13 +34,6 @@ export class ActorManager<A = BaseActor> {
   public actorStore: ActorStore<A>
   public visitFunction: VisitService<A>
   public methodAttributes: MethodAttributes<A>
-
-  private initialState: ActorState<A> = {
-    methodState: {} as ActorMethodStates<A>,
-    initializing: false,
-    initialized: false,
-    error: undefined,
-  }
 
   private updateState = (newState: Partial<ActorState<A>>, action?: string) => {
     this.actorStore.setState(
@@ -80,8 +74,9 @@ export class ActorManager<A = BaseActor> {
   constructor(actorConfig: ActorManagerParameters) {
     const {
       agentManager,
-      canisterId,
       idlFactory,
+      canisterId,
+      name = canisterId.toString(),
       withVisitor = false,
       withDevtools = false,
       initializeOnCreate = true,
@@ -93,23 +88,26 @@ export class ActorManager<A = BaseActor> {
     this.canisterId = canisterId.toString()
 
     if (!idlFactory) {
-      throw new Error("IDL factory is required!")
+      throw new Error("IDLFactory is required!")
     }
 
     this._idlFactory = idlFactory
     this.methodAttributes = this.extractMethodAttributes()
 
     if (!agentManager) {
-      throw new Error("Agent manager is required!")
+      throw new Error("AgentManager is required!")
     }
     this._agentManager = agentManager
 
     // Initialize stores
-    this.actorStore = createStoreWithOptionalDevtools(this.initialState, {
-      withDevtools,
-      name: "Reactor-Actor",
-      store: canisterId.toString(),
-    })
+    this.actorStore = createStoreWithOptionalDevtools(
+      { ...ACTOR_INITIAL_STATE, name } as ActorState<A>,
+      {
+        withDevtools,
+        name: "reactor-actor",
+        store: canisterId.toString(),
+      }
+    )
 
     this._unsubscribeAgent = this._agentManager.subscribeAgent(
       this.initializeActor,

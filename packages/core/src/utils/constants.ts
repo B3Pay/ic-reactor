@@ -15,3 +15,11 @@ export const IC_INTERNET_IDENTITY_PROVIDER =
 
 export const LOCAL_INTERNET_IDENTITY_PROVIDER =
   "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/#authorize"
+
+export const ACTOR_INITIAL_STATE = {
+  name: "",
+  methodState: {},
+  initializing: false,
+  initialized: false,
+  error: undefined,
+}
