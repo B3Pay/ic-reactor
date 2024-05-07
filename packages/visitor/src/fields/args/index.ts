@@ -228,18 +228,8 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
   ): VectorArgs | BlobArgs {
     const field = ty.accept(this, label) as DynamicArgTypeByClass<typeof ty>
 
-    if ("_bits" in ty && ty._bits === 8) {
-      return {
-        type: "blob",
-        field,
-        defaultValue: [],
-        validate: validateError(t),
-        label,
-      }
-    }
-
     return {
-      type: "vector",
+      type: "_bits" in ty && ty._bits === 8 ? "blob" : "vector",
       field,
       validate: validateError(t),
       defaultValue: [],
