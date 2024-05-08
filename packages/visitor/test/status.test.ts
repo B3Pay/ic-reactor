@@ -1,4 +1,4 @@
-import { Status, StatusHelper, StatusType } from "../src/status"
+import { Status } from "../src/status"
 import { createReactorStore } from "@ic-reactor/core"
 import { VisitDetails } from "../src"
 import { _SERVICE, idlFactory } from "./candid/ledger"
@@ -32,22 +32,21 @@ describe("createReactorStore", () => {
 describe("Status Loop", () => {
   it("should loop into all status", () => {
     let status = "Status:\n"
-    const statusKeys = Object.keys(Status)
-    statusKeys.forEach((key) => {
-      status += key + ": " + Status[key] + "\n"
+    const statusEntries = Object.entries(Status.Flag)
+    statusEntries.forEach(([key, value]) => {
+      status += `${key}: ${value}\n`
     })
-    status += "-----\n"
-    status += "StatusType:\n"
-    const statusTypeKeys = Object.keys(StatusType)
-    statusTypeKeys.forEach((key) => {
-      status += key + ": " + StatusType[key] + "\n"
+    status += "-----\nStatusType:\n"
+
+    const statusTypeEntries = Object.entries(Status.Type)
+    statusTypeEntries.forEach(([key, value]) => {
+      status += `${key}: ${value}\n`
     })
     status += "-----\n"
 
-    statusKeys.forEach((key) => {
-      statusTypeKeys.forEach((typeKey) => {
-        // prettier-ignore
-        status += key + " | " + typeKey + ": " + (Status[key] | StatusType[typeKey]) + "\n"
+    statusEntries.forEach(([key1, value1]) => {
+      statusTypeEntries.forEach(([key2, value2]) => {
+        status += `${key1} | ${key2}: ${value1 | value2}\n`
       })
     })
 
@@ -55,125 +54,130 @@ describe("Status Loop", () => {
       encoding: "utf-8",
     })
 
+    console.log("🚀 ~ it ~ status:", status)
     expect(status).toBe(snapshot)
   })
 })
 
-describe("StatusHelper", () => {
+describe("Status", () => {
   it("should correctly identify hidden status", () => {
-    const status = Status.Hidden
-    expect(StatusHelper.isHidden(status)).toBe(true)
+    const status = Status.Hidden()
+    expect(Status.isHidden(status)).toBe(true)
   })
 
   it("should correctly identify checked status", () => {
-    const status = StatusType.Checked
-    expect(StatusHelper.isChecked(status)).toBe(true)
+    const status = Status.Hidden("Checked")
+    expect(Status.isChecked(status)).toBe(true)
   })
 
   it("should correctly identify visible status", () => {
-    const status = Status.Visible
-    expect(StatusHelper.isVisible(status)).toBe(true)
+    const status = Status.Visible()
+    expect(Status.isVisible(status)).toBe(true)
   })
 
   it("should correctly identify optional status", () => {
-    const status = StatusType.Optional
-    expect(StatusHelper.isOptional(status)).toBe(true)
+    const status = Status.Visible("Optional")
+    expect(Status.isOptional(status)).toBe(true)
   })
 
   it("should correctly identify hidden optional status", () => {
-    const status = Status.Hidden | StatusType.Optional
-    expect(StatusHelper.isHidden(status)).toBe(true)
-    expect(StatusHelper.isOptional(status)).toBe(true)
+    const status = Status.Hidden("Optional")
+    expect(Status.isHidden(status)).toBe(true)
+    expect(Status.isOptional(status)).toBe(true)
   })
 
   it("should correctly identify hidden checked status", () => {
-    const status = StatusType.Checked | Status.Hidden
-    expect(StatusHelper.isChecked(status)).toBe(true)
-    expect(StatusHelper.isHidden(status)).toBe(true)
+    const status = Status.Hidden("Checked")
+    expect(Status.isChecked(status)).toBe(true)
+    expect(Status.isHidden(status)).toBe(true)
   })
 
   it("should correctly identify visible checked status", () => {
-    const status = Status.Visible | StatusType.Checked
-    expect(StatusHelper.isVisible(status)).toBe(true)
-    expect(StatusHelper.isChecked(status)).toBe(true)
+    const status = Status.Visible("Checked")
+    expect(Status.isVisible(status)).toBe(true)
+    expect(Status.isChecked(status)).toBe(true)
   })
 
   it("should correctly identify optional checked status", () => {
-    const status = StatusType.Optional | StatusType.Checked
-    expect(StatusHelper.isOptional(status)).toBe(true)
-    expect(StatusHelper.isChecked(status)).toBe(true)
+    const status = Status.Visible("Optional", "Checked")
+    expect(Status.isOptional(status)).toBe(true)
+    expect(Status.isChecked(status)).toBe(true)
   })
 
   it("should correctly toggle checked status", () => {
-    let status = StatusType.Checked
-    status = StatusHelper.toggleChecked(status)
-    expect(StatusHelper.isChecked(status)).toBe(false)
+    let status = Status.Visible("Checked")
+    status = Status.toggleChecked(status)
+    expect(Status.isChecked(status)).toBe(false)
   })
 
   it("should correctly toggle visible status", () => {
-    let status = Status.Visible
-    status = StatusHelper.toggleVisibility(status)
-    expect(StatusHelper.isVisible(status)).toBe(false)
+    let status = Status.Visible()
+    status = Status.toggleVisibility(status)
+    expect(Status.isVisible(status)).toBe(false)
   })
 
   it("should correctly usable using switch", () => {
-    let status: Status | StatusType = Status.Visible
+    let status = Status.Visible()
     switch (status) {
-      case Status.Visible:
+      case Status.Visible():
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = Status.Hidden
+    status = Status.Hidden()
     switch (status) {
-      case Status.Hidden:
+      case Status.Hidden():
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = StatusType.Checked
-    switch (status) {
-      case StatusType.Checked:
+    status = Status.Visible("Checked")
+    switch (true) {
+      case Status.isChecked(status):
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = StatusType.Optional
-    switch (status) {
-      case StatusType.Optional:
+    status = Status.Hidden("Checked")
+    switch (true) {
+      case Status.isChecked(status):
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = Status.Visible | StatusType.Checked
+    status = Status.Visible("Checked")
     switch (status) {
-      case Status.Visible | StatusType.Checked:
+      case Status.Visible("Checked"):
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = Status.Visible | StatusType.Optional
+    // if (Status.isVisible(status) && Status.isChecked(status))
+    //   expect(true).toBe(true)
+    // if (Status.isHidden(status)) expect(false).toBe(true)
+
+    status = Status.Visible("Checked")
     switch (status) {
-      case Status.Visible | StatusType.Optional:
+      case Status.Visible("Checked"):
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = Status.Hidden | StatusType.Checked
+    status = Status.Hidden("Checked")
     switch (status) {
-      case Status.Hidden | StatusType.Checked:
+      case Status.Hidden("Checked"):
         expect(true).toBe(true)
         break
       default:

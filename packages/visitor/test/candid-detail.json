@@ -47,12 +47,11 @@
     "retDetails": {
       "ret0": {
         "__label": "__ret0",
-        "__status": 2,
         "certificate": {
           "__label": "certificate",
-          "__status": 130,
+          "__status": 66,
           "optional": {
-            "__status": 129,
+            "__status": 65,
             "__label": "certificate",
             "vector": {
               "__label": "certificate",
@@ -61,7 +60,7 @@
           }
         },
         "blocks": {
-          "__status": 129,
+          "__status": 65,
           "__label": "blocks",
           "vector": {
             "__label": "blocks",
@@ -75,9 +74,9 @@
               },
               "icrc1_memo": {
                 "__label": "icrc1_memo",
-                "__status": 130,
+                "__status": 66,
                 "optional": {
-                  "__status": 129,
+                  "__status": 65,
                   "__label": "icrc1_memo",
                   "vector": {
                     "__label": "icrc1_memo",
@@ -87,7 +86,7 @@
               },
               "operation": {
                 "__label": "operation",
-                "__status": 130,
+                "__status": 66,
                 "optional": {
                   "__label": "operation",
                   "__status": 1,
@@ -103,7 +102,7 @@
                       }
                     },
                     "from": {
-                      "__status": 129,
+                      "__status": 65,
                       "__label": "from",
                       "vector": {
                         "__label": "from",
@@ -124,7 +123,7 @@
                     },
                     "expected_allowance": {
                       "__label": "expected_allowance",
-                      "__status": 130,
+                      "__status": 66,
                       "optional": {
                         "__label": "expected_allowance",
                         "__status": 1,
@@ -136,7 +135,7 @@
                     },
                     "expires_at": {
                       "__label": "expires_at",
-                      "__status": 130,
+                      "__status": 66,
                       "optional": {
                         "__label": "expires_at",
                         "__status": 1,
@@ -147,7 +146,7 @@
                       }
                     },
                     "spender": {
-                      "__status": 129,
+                      "__status": 65,
                       "__label": "spender",
                       "vector": {
                         "__label": "spender",
@@ -159,7 +158,7 @@
                     "__label": "Burn",
                     "__status": 1,
                     "from": {
-                      "__status": 129,
+                      "__status": 65,
                       "__label": "from",
                       "vector": {
                         "__label": "from",
@@ -176,9 +175,9 @@
                     },
                     "spender": {
                       "__label": "spender",
-                      "__status": 130,
+                      "__status": 66,
                       "optional": {
-                        "__status": 129,
+                        "__status": 65,
                         "__label": "spender",
                         "vector": {
                           "__label": "spender",
@@ -191,7 +190,7 @@
                     "__label": "Mint",
                     "__status": 1,
                     "to": {
-                      "__status": 129,
+                      "__status": 65,
                       "__label": "to",
                       "vector": {
                         "__label": "to",
@@ -211,7 +210,7 @@
                     "__label": "Transfer",
                     "__status": 1,
                     "to": {
-                      "__status": 129,
+                      "__status": 65,
                       "__label": "to",
                       "vector": {
                         "__label": "to",
@@ -227,7 +226,7 @@
                       }
                     },
                     "from": {
-                      "__status": 129,
+                      "__status": 65,
                       "__label": "from",
                       "vector": {
                         "__label": "from",
@@ -244,9 +243,9 @@
                     },
                     "spender": {
                       "__label": "spender",
-                      "__status": 130,
+                      "__status": 66,
                       "optional": {
-                        "__status": 129,
+                        "__status": 65,
                         "__label": "spender",
                         "vector": {
                           "__label": "spender",
@@ -276,9 +275,9 @@
             },
             "parent_hash": {
               "__label": "parent_hash",
-              "__status": 130,
+              "__status": 66,
               "optional": {
-                "__status": 129,
+                "__status": 65,
                 "__label": "parent_hash",
                 "vector": {
                   "__label": "parent_hash",
@@ -297,7 +296,7 @@
           "__status": 1
         },
         "archived_blocks": {
-          "__status": 129,
+          "__status": 65,
           "__label": "archived_blocks",
           "vector": {
             "__label": "archived_blocks",
@@ -315,7 +314,7 @@
                     "__label": "Ok",
                     "__status": 1,
                     "blocks": {
-                      "__status": 129,
+                      "__status": 65,
                       "__label": "blocks",
                       "vector": {
                         "__label": "blocks",
@@ -329,9 +328,9 @@
                           },
                           "icrc1_memo": {
                             "__label": "icrc1_memo",
-                            "__status": 130,
+                            "__status": 66,
                             "optional": {
-                              "__status": 129,
+                              "__status": 65,
                               "__label": "icrc1_memo",
                               "vector": {
                                 "__label": "icrc1_memo",
@@ -341,7 +340,7 @@
                           },
                           "operation": {
                             "__label": "operation",
-                            "__status": 130,
+                            "__status": 66,
                             "optional": {
                               "__label": "operation",
                               "__status": 1,
@@ -357,7 +356,7 @@
                                   }
                                 },
                                 "from": {
-                                  "__status": 129,
+                                  "__status": 65,
                                   "__label": "from",
                                   "vector": {
                                     "__label": "from",
@@ -378,7 +377,7 @@
                                 },
                                 "expected_allowance": {
                                   "__label": "expected_allowance",
-                                  "__status": 130,
+                                  "__status": 66,
                                   "optional": {
                                     "__label": "expected_allowance",
                                     "__status": 1,
@@ -390,7 +389,7 @@
                                 },
                                 "expires_at": {
                                   "__label": "expires_at",
-                                  "__status": 130,
+                                  "__status": 66,
                                   "optional": {
                                     "__label": "expires_at",
                                     "__status": 1,
@@ -401,7 +400,7 @@
                                   }
                                 },
                                 "spender": {
-                                  "__status": 129,
+                                  "__status": 65,
                                   "__label": "spender",
                                   "vector": {
                                     "__label": "spender",
@@ -413,7 +412,7 @@
                                 "__label": "Burn",
                                 "__status": 1,
                                 "from": {
-                                  "__status": 129,
+                                  "__status": 65,
                                   "__label": "from",
                                   "vector": {
                                     "__label": "from",
@@ -430,9 +429,9 @@
                                 },
                                 "spender": {
                                   "__label": "spender",
-                                  "__status": 130,
+                                  "__status": 66,
                                   "optional": {
-                                    "__status": 129,
+                                    "__status": 65,
                                     "__label": "spender",
                                     "vector": {
                                       "__label": "spender",
@@ -445,7 +444,7 @@
                                 "__label": "Mint",
                                 "__status": 1,
                                 "to": {
-                                  "__status": 129,
+                                  "__status": 65,
                                   "__label": "to",
                                   "vector": {
                                     "__label": "to",
@@ -465,7 +464,7 @@
                                 "__label": "Transfer",
                                 "__status": 1,
                                 "to": {
-                                  "__status": 129,
+                                  "__status": 65,
                                   "__label": "to",
                                   "vector": {
                                     "__label": "to",
@@ -481,7 +480,7 @@
                                   }
                                 },
                                 "from": {
-                                  "__status": 129,
+                                  "__status": 65,
                                   "__label": "from",
                                   "vector": {
                                     "__label": "from",
@@ -498,9 +497,9 @@
                                 },
                                 "spender": {
                                   "__label": "spender",
-                                  "__status": 130,
+                                  "__status": 66,
                                   "optional": {
-                                    "__status": 129,
+                                    "__status": 65,
                                     "__label": "spender",
                                     "vector": {
                                       "__label": "spender",
@@ -530,9 +529,9 @@
                         },
                         "parent_hash": {
                           "__label": "parent_hash",
-                          "__status": 130,
+                          "__status": 66,
                           "optional": {
-                            "__status": 129,
+                            "__status": 65,
                             "__label": "parent_hash",
                             "vector": {
                               "__label": "parent_hash",

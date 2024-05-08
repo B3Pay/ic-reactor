@@ -1,28 +1,12 @@
 Status:
-1: Visible
-2: Hidden
 Visible: 1
 Hidden: 2
 -----
 StatusType:
-64: Checked
-128: Optional
-Checked: 64
-Optional: 128
+Optional: 64
+Checked: 128
 -----
-1 | 64: 0
-1 | 128: 0
-1 | Checked: 64
-1 | Optional: 128
-2 | 64: 0
-2 | 128: 0
-2 | Checked: 64
-2 | Optional: 128
-Visible | 64: 1
-Visible | 128: 1
-Visible | Checked: 65
-Visible | Optional: 129
-Hidden | 64: 2
-Hidden | 128: 2
-Hidden | Checked: 66
-Hidden | Optional: 130
+Visible | Optional: 65
+Visible | Checked: 129
+Hidden | Optional: 66
+Hidden | Checked: 130

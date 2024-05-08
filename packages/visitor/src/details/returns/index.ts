@@ -10,7 +10,7 @@ import type {
   OutputDetails,
 } from "./types"
 import type { DynamicReturnType, BaseActor, FunctionName } from "../../types"
-import { Status, StatusType } from "../../status"
+import { Status } from "../../status"
 
 /**
  * Visit the candid file and extract the details.
@@ -26,7 +26,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 > {
   private visitReturnField = new VisitReturns()
   public counter = 0
-  private status = Status.Visible
+  private status = Status.Default
   private isTable = false
 
   public visitFunc<M extends FunctionName<A>>(
@@ -36,7 +36,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const functionType = isQuery(t) ? "query" : "update"
 
     const details = t.retTypes.reduce((acc, ret, index) => {
-      this.status = Status.Visible
+      this.status = Status.Default
       this.isTable = false
       acc[`ret${index}`] = ret.accept(
         this,
@@ -50,7 +50,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label: functionName,
-      __status: Status.Visible,
+      __status: Status.Default,
       functionName,
       functionType,
       details,
@@ -65,7 +65,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const __status = this.status
 
     const fields = _fields.reduce((acc, [key, type]) => {
-      this.status = Status.Visible
+      this.status = Status.Default
       const details = type.accept(this, key) as ReturnDetailsWithChild
 
       acc[key] = details
@@ -89,7 +89,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const __status = this.status
 
     const fields = components.reduce((acc, type, index) => {
-      this.status = Status.Hidden | StatusType.Optional
+      this.status = Status.Hidden("Optional")
       const details = type.accept(this, `_${index}_`) as ReturnDetailsWithChild
 
       acc[`_${index}_`] = details
@@ -112,7 +112,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const __status = this.status
 
     const fields = _fields.reduce((acc, [key, type]) => {
-      this.status = Status.Visible
+      this.status = Status.Default
       acc[key] = type.accept(this, key) as ReturnDetailsWithChild
 
       return acc
@@ -153,9 +153,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __status: this.isTable
-        ? Status.Hidden
-        : Status.Hidden | StatusType.Optional,
+      __status: this.isTable ? Status.Hidden() : Status.Hidden("Optional"),
       optional: details,
     }
   }
@@ -197,11 +195,11 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
       }
     }
 
-    this.status = Status.Hidden
+    this.status = Status.Hidden()
     const vector = ty.accept(this, __label) as ReturnDetailsWithChild
-    this.status = Status.Visible
+    this.status = Status.Default
     return {
-      __status: Status.Visible | StatusType.Optional,
+      __status: Status.Visible("Optional"),
       __label,
       vector,
     }
@@ -210,7 +208,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
   public visitNull(_t: IDL.NullClass, __label: string): OutputDetails {
     return {
       __label,
-      __status: Status.Visible | StatusType.Optional,
+      __status: Status.Visible("Optional"),
     }
   }
 
