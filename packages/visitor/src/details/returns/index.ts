@@ -10,7 +10,7 @@ import type {
   OutputDetails,
 } from "./types"
 import type { DynamicReturnType, BaseActor, FunctionName } from "../../types"
-import { Status } from "../../status"
+import { Status, StatusType } from "../../status"
 
 /**
  * Visit the candid file and extract the details.
@@ -89,7 +89,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const __status = this.status
 
     const fields = components.reduce((acc, type, index) => {
-      this.status = Status.Optional
+      this.status = Status.Hidden | StatusType.Optional
       const details = type.accept(this, `_${index}_`) as ReturnDetailsWithChild
 
       acc[`_${index}_`] = details
@@ -153,7 +153,9 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label,
-      __status: this.isTable ? Status.Hidden : Status.Hidden | Status.Optional,
+      __status: this.isTable
+        ? Status.Hidden
+        : Status.Hidden | StatusType.Optional,
       optional: details,
     }
   }
@@ -199,7 +201,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const vector = ty.accept(this, __label) as ReturnDetailsWithChild
     this.status = Status.Visible
     return {
-      __status: Status.Visible | Status.Optional,
+      __status: Status.Visible | StatusType.Optional,
       __label,
       vector,
     }
@@ -208,7 +210,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
   public visitNull(_t: IDL.NullClass, __label: string): OutputDetails {
     return {
       __label,
-      __status: Status.Visible | Status.Optional,
+      __status: Status.Visible | StatusType.Optional,
     }
   }
 

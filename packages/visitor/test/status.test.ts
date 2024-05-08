@@ -1,4 +1,4 @@
-import { Status, StatusHelper } from "../src/status"
+import { Status, StatusHelper, StatusType } from "../src/status"
 import { createReactorStore } from "@ic-reactor/core"
 import { VisitDetails } from "../src"
 import { _SERVICE, idlFactory } from "./candid/ledger"
@@ -35,6 +35,9 @@ describe("Status Loop", () => {
     Object.keys(Status).forEach((key) => {
       status += key + ": " + Status[key] + "\n"
     })
+    Object.keys(StatusType).forEach((key) => {
+      status += key + ": " + StatusType[key] + "\n"
+    })
     for (let i = 0; i < 32; i++) {
       let statusString = i + ": "
       if (StatusHelper.isHidden(i)) {
@@ -66,7 +69,7 @@ describe("StatusHelper", () => {
   })
 
   it("should correctly identify checked status", () => {
-    const status = Status.Checked
+    const status = StatusType.Checked
     expect(StatusHelper.isChecked(status)).toBe(true)
   })
 
@@ -76,36 +79,36 @@ describe("StatusHelper", () => {
   })
 
   it("should correctly identify optional status", () => {
-    const status = Status.Optional
+    const status = StatusType.Optional
     expect(StatusHelper.isOptional(status)).toBe(true)
   })
 
   it("should correctly identify hidden optional status", () => {
-    const status = Status.Hidden | Status.Optional
+    const status = Status.Hidden | StatusType.Optional
     expect(StatusHelper.isHidden(status)).toBe(true)
     expect(StatusHelper.isOptional(status)).toBe(true)
   })
 
   it("should correctly identify hidden checked status", () => {
-    const status = Status.Checked | Status.Hidden
+    const status = StatusType.Checked | Status.Hidden
     expect(StatusHelper.isChecked(status)).toBe(true)
     expect(StatusHelper.isHidden(status)).toBe(true)
   })
 
   it("should correctly identify visible checked status", () => {
-    const status = Status.Visible | Status.Checked
+    const status = Status.Visible | StatusType.Checked
     expect(StatusHelper.isVisible(status)).toBe(true)
     expect(StatusHelper.isChecked(status)).toBe(true)
   })
 
   it("should correctly identify optional checked status", () => {
-    const status = Status.Optional | Status.Checked
+    const status = StatusType.Optional | StatusType.Checked
     expect(StatusHelper.isOptional(status)).toBe(true)
     expect(StatusHelper.isChecked(status)).toBe(true)
   })
 
   it("should correctly toggle checked status", () => {
-    let status = Status.Checked
+    let status = StatusType.Checked
     status = StatusHelper.toggleChecked(status)
     expect(StatusHelper.isChecked(status)).toBe(false)
   })
@@ -117,7 +120,7 @@ describe("StatusHelper", () => {
   })
 
   it("should correctly usable using switch", () => {
-    let status = Status.Visible
+    let status: Status | StatusType = Status.Visible
     switch (status) {
       case Status.Visible:
         expect(true).toBe(true)
@@ -135,45 +138,45 @@ describe("StatusHelper", () => {
         expect(false).toBe(true)
     }
 
-    status = Status.Checked
+    status = StatusType.Checked
     switch (status) {
-      case Status.Checked:
+      case StatusType.Checked:
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = Status.Optional
+    status = StatusType.Optional
     switch (status) {
-      case Status.Optional:
+      case StatusType.Optional:
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = Status.Visible | Status.Checked
+    status = Status.Visible | StatusType.Checked
     switch (status) {
-      case Status.Visible | Status.Checked:
+      case Status.Visible | StatusType.Checked:
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = Status.Visible | Status.Optional
+    status = Status.Visible | StatusType.Optional
     switch (status) {
-      case Status.Visible | Status.Optional:
+      case Status.Visible | StatusType.Optional:
         expect(true).toBe(true)
         break
       default:
         expect(false).toBe(true)
     }
 
-    status = Status.Hidden | Status.Checked
+    status = Status.Hidden | StatusType.Checked
     switch (status) {
-      case Status.Hidden | Status.Checked:
+      case Status.Hidden | StatusType.Checked:
         expect(true).toBe(true)
         break
       default:

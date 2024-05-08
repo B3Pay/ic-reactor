@@ -1,7 +1,10 @@
 export enum Status {
   Visible = 1 << 0,
-  Checked = 1 << 1,
-  Hidden = 1 << 2,
+  Hidden = 1 << 1,
+}
+
+export enum StatusType {
+  Checked = 1 << 2,
   Optional = 1 << 3,
 }
 
@@ -11,7 +14,7 @@ export class StatusHelper {
   }
 
   public static isChecked(status: number): boolean {
-    return (status & Status.Checked) !== 0
+    return (status & StatusType.Checked) !== 0
   }
 
   public static isVisible(status: number): boolean {
@@ -19,11 +22,11 @@ export class StatusHelper {
   }
 
   public static isOptional(status: number): boolean {
-    return (status & Status.Optional) !== 0
+    return (status & StatusType.Optional) !== 0
   }
 
   public static toggleChecked(status: number): number {
-    return status ^ Status.Checked
+    return status ^ StatusType.Checked
   }
 
   public static toggleVisibility(status: number): number {

@@ -47,16 +47,16 @@
     "retDetails": {
       "ret0": {
         "__label": "__ret0",
-        "__status": 4,
+        "__status": 2,
         "certificate": {
           "__label": "certificate",
-          "__status": 12,
+          "__status": 10,
           "optional": {
             "__status": 9,
             "__label": "certificate",
             "vector": {
               "__label": "certificate",
-              "__status": 4
+              "__status": 2
             }
           }
         },
@@ -65,7 +65,7 @@
           "__label": "blocks",
           "vector": {
             "__label": "blocks",
-            "__status": 4,
+            "__status": 2,
             "transaction": {
               "__label": "transaction",
               "__status": 1,
@@ -75,19 +75,19 @@
               },
               "icrc1_memo": {
                 "__label": "icrc1_memo",
-                "__status": 12,
+                "__status": 10,
                 "optional": {
                   "__status": 9,
                   "__label": "icrc1_memo",
                   "vector": {
                     "__label": "icrc1_memo",
-                    "__status": 4
+                    "__status": 2
                   }
                 }
               },
               "operation": {
                 "__label": "operation",
-                "__status": 12,
+                "__status": 10,
                 "optional": {
                   "__label": "operation",
                   "__status": 1,
@@ -107,7 +107,7 @@
                       "__label": "from",
                       "vector": {
                         "__label": "from",
-                        "__status": 4
+                        "__status": 2
                       }
                     },
                     "allowance_e8s": {
@@ -124,7 +124,7 @@
                     },
                     "expected_allowance": {
                       "__label": "expected_allowance",
-                      "__status": 12,
+                      "__status": 10,
                       "optional": {
                         "__label": "expected_allowance",
                         "__status": 1,
@@ -136,7 +136,7 @@
                     },
                     "expires_at": {
                       "__label": "expires_at",
-                      "__status": 12,
+                      "__status": 10,
                       "optional": {
                         "__label": "expires_at",
                         "__status": 1,
@@ -151,7 +151,7 @@
                       "__label": "spender",
                       "vector": {
                         "__label": "spender",
-                        "__status": 4
+                        "__status": 2
                       }
                     }
                   },
@@ -163,7 +163,7 @@
                       "__label": "from",
                       "vector": {
                         "__label": "from",
-                        "__status": 4
+                        "__status": 2
                       }
                     },
                     "amount": {
@@ -176,13 +176,13 @@
                     },
                     "spender": {
                       "__label": "spender",
-                      "__status": 12,
+                      "__status": 10,
                       "optional": {
                         "__status": 9,
                         "__label": "spender",
                         "vector": {
                           "__label": "spender",
-                          "__status": 4
+                          "__status": 2
                         }
                       }
                     }
@@ -195,7 +195,7 @@
                       "__label": "to",
                       "vector": {
                         "__label": "to",
-                        "__status": 4
+                        "__status": 2
                       }
                     },
                     "amount": {
@@ -215,7 +215,7 @@
                       "__label": "to",
                       "vector": {
                         "__label": "to",
-                        "__status": 4
+                        "__status": 2
                       }
                     },
                     "fee": {
@@ -231,7 +231,7 @@
                       "__label": "from",
                       "vector": {
                         "__label": "from",
-                        "__status": 4
+                        "__status": 2
                       }
                     },
                     "amount": {
@@ -244,13 +244,13 @@
                     },
                     "spender": {
                       "__label": "spender",
-                      "__status": 12,
+                      "__status": 10,
                       "optional": {
                         "__status": 9,
                         "__label": "spender",
                         "vector": {
                           "__label": "spender",
-                          "__status": 4
+                          "__status": 2
                         }
                       }
                     }
@@ -276,13 +276,13 @@
             },
             "parent_hash": {
               "__label": "parent_hash",
-              "__status": 12,
+              "__status": 10,
               "optional": {
                 "__status": 9,
                 "__label": "parent_hash",
                 "vector": {
                   "__label": "parent_hash",
-                  "__status": 4
+                  "__status": 2
                 }
               }
             }
@@ -301,7 +301,7 @@
           "__label": "archived_blocks",
           "vector": {
             "__label": "archived_blocks",
-            "__status": 4,
+            "__status": 2,
             "callback": {
               "__label": "callback",
               "__status": 1,
@@ -319,7 +319,7 @@
                       "__label": "blocks",
                       "vector": {
                         "__label": "blocks",
-                        "__status": 4,
+                        "__status": 2,
                         "transaction": {
                           "__label": "transaction",
                           "__status": 1,
@@ -329,19 +329,19 @@
                           },
                           "icrc1_memo": {
                             "__label": "icrc1_memo",
-                            "__status": 12,
+                            "__status": 10,
                             "optional": {
                               "__status": 9,
                               "__label": "icrc1_memo",
                               "vector": {
                                 "__label": "icrc1_memo",
-                                "__status": 4
+                                "__status": 2
                               }
                             }
                           },
                           "operation": {
                             "__label": "operation",
-                            "__status": 12,
+                            "__status": 10,
                             "optional": {
                               "__label": "operation",
                               "__status": 1,
@@ -361,7 +361,7 @@
                                   "__label": "from",
                                   "vector": {
                                     "__label": "from",
-                                    "__status": 4
+                                    "__status": 2
                                   }
                                 },
                                 "allowance_e8s": {
@@ -378,7 +378,7 @@
                                 },
                                 "expected_allowance": {
                                   "__label": "expected_allowance",
-                                  "__status": 12,
+                                  "__status": 10,
                                   "optional": {
                                     "__label": "expected_allowance",
                                     "__status": 1,
@@ -390,7 +390,7 @@
                                 },
                                 "expires_at": {
                                   "__label": "expires_at",
-                                  "__status": 12,
+                                  "__status": 10,
                                   "optional": {
                                     "__label": "expires_at",
                                     "__status": 1,
@@ -405,7 +405,7 @@
                                   "__label": "spender",
                                   "vector": {
                                     "__label": "spender",
-                                    "__status": 4
+                                    "__status": 2
                                   }
                                 }
                               },
@@ -417,7 +417,7 @@
                                   "__label": "from",
                                   "vector": {
                                     "__label": "from",
-                                    "__status": 4
+                                    "__status": 2
                                   }
                                 },
                                 "amount": {
@@ -430,13 +430,13 @@
                                 },
                                 "spender": {
                                   "__label": "spender",
-                                  "__status": 12,
+                                  "__status": 10,
                                   "optional": {
                                     "__status": 9,
                                     "__label": "spender",
                                     "vector": {
                                       "__label": "spender",
-                                      "__status": 4
+                                      "__status": 2
                                     }
                                   }
                                 }
@@ -449,7 +449,7 @@
                                   "__label": "to",
                                   "vector": {
                                     "__label": "to",
-                                    "__status": 4
+                                    "__status": 2
                                   }
                                 },
                                 "amount": {
@@ -469,7 +469,7 @@
                                   "__label": "to",
                                   "vector": {
                                     "__label": "to",
-                                    "__status": 4
+                                    "__status": 2
                                   }
                                 },
                                 "fee": {
@@ -485,7 +485,7 @@
                                   "__label": "from",
                                   "vector": {
                                     "__label": "from",
-                                    "__status": 4
+                                    "__status": 2
                                   }
                                 },
                                 "amount": {
@@ -498,13 +498,13 @@
                                 },
                                 "spender": {
                                   "__label": "spender",
-                                  "__status": 12,
+                                  "__status": 10,
                                   "optional": {
                                     "__status": 9,
                                     "__label": "spender",
                                     "vector": {
                                       "__label": "spender",
-                                      "__status": 4
+                                      "__status": 2
                                     }
                                   }
                                 }
@@ -530,13 +530,13 @@
                         },
                         "parent_hash": {
                           "__label": "parent_hash",
-                          "__status": 12,
+                          "__status": 10,
                           "optional": {
                             "__status": 9,
                             "__label": "parent_hash",
                             "vector": {
                               "__label": "parent_hash",
-                              "__status": 4
+                              "__status": 2
                             }
                           }
                         }
