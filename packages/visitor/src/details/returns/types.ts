@@ -1,13 +1,5 @@
+import type { Status } from "../../status"
 import type { BaseActor, FunctionName, FunctionType } from "../../types"
-
-export enum Status {
-  Hidden = 0,
-  Visible = 1, // Default
-  Table = 2,
-  Grid = 3,
-  Card = 4,
-  List = 5,
-}
 
 export type ReturnDetailsParams<A = BaseActor, M = FunctionName<A>> = {
   __label: M

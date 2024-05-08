@@ -51,7 +51,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     _fields: Array<[string, IDL.Type]>,
     __label: string
   ): ArgDetailsWithChild {
-    const fields = _fields.reduce((acc, [key, type]) => {
+    const details = _fields.reduce((acc, [key, type]) => {
       const details = type.accept(this, key) as ArgDetailsWithChild
 
       acc[key] = details
@@ -62,7 +62,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     return {
       __label,
       __hide_label: /^__arg|/.test(__label),
-      ...fields,
+      ...details,
     }
   }
 
@@ -71,16 +71,15 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     _fields: Array<[string, IDL.Type]>,
     __label: string
   ): ArgDetailsWithChild {
-    const fields = _fields.reduce((acc, [key, type]) => {
-      const details = type.accept(this, key) as ArgDetailsWithChild
-      acc[key] = details
+    const details = _fields.reduce((acc, [key, type]) => {
+      acc[key] = type.accept(this, key) as ArgDetailsWithChild
 
       return acc
     }, {} as Record<string, ArgDetailsWithChild | ArgFieldDetails>)
 
     return {
       __label,
-      ...fields,
+      ...details,
     }
   }
 
@@ -89,10 +88,8 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     components: IDL.Type[],
     __label: string
   ): ArgDetailsWithChild {
-    const fields = components.reduce((acc, type, index) => {
-      const details = type.accept(this, `_${index}_`) as ArgDetailsWithChild
-
-      acc[`_${index}_`] = details
+    const details = components.reduce((acc, type, index) => {
+      acc[`_${index}_`] = type.accept(this, `_${index}_`) as ArgDetailsWithChild
 
       return acc
     }, {} as Record<string, ArgDetailsWithChild | ArgFieldDetails>)
@@ -100,7 +97,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     return {
       __label,
       __hide_label: false,
-      ...fields,
+      ...details,
     }
   }
 
@@ -128,12 +125,12 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     __label: string
   ): ArgDetailsWithChild {
-    const details = ty.accept(this, __label) as ArgDetailsWithChild
+    const optional = ty.accept(this, __label) as ArgDetailsWithChild
     return {
       __checked: false,
-      __label,
       __hide_label: false,
-      optional: details,
+      __label,
+      optional,
     }
   }
 
@@ -142,10 +139,10 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     __label: string
   ): ArgDetailsWithChild {
-    const details = ty.accept(this, __label) as ArgDetailsWithChild
+    const vector = ty.accept(this, __label) as ArgDetailsWithChild
     return {
       __label,
-      vector: details,
+      vector,
     }
   }
 
