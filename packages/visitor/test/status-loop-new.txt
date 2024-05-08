@@ -1,42 +1,44 @@
+Status:
 1: Visible
-2: Checked
-4: Hidden
-8: Optional
-16: newOption
+2: Hidden
 Visible: 1
-Checked: 2
-Hidden: 4
+Hidden: 2
+4: Checked
+8: Optional
+16: NewOption
+Checked: 4
 Optional: 8
-newOption: 16
+NewOption: 16
+-----
 0: 
 1: Visible 
-2: Checked 
-3: Checked Visible 
-4: Hidden 
-5: Hidden Visible 
+2: Hidden 
+3: Hidden Visible 
+4: Checked 
+5: Checked Visible 
 6: Hidden Checked 
 7: Hidden Checked Visible 
 8: Optional 
 9: Visible Optional 
-10: Checked Optional 
-11: Checked Visible Optional 
-12: Hidden Optional 
-13: Hidden Visible Optional 
+10: Hidden Optional 
+11: Hidden Visible Optional 
+12: Checked Optional 
+13: Checked Visible Optional 
 14: Hidden Checked Optional 
 15: Hidden Checked Visible Optional 
-16: newOption 
-17: Visible newOption 
-18: Checked newOption 
-19: Checked Visible newOption 
-20: Hidden newOption 
-21: Hidden Visible newOption 
-22: Hidden Checked newOption 
-23: Hidden Checked Visible newOption 
-24: Optional newOption 
-25: Visible Optional newOption 
-26: Checked Optional newOption 
-27: Checked Visible Optional newOption 
-28: Hidden Optional newOption 
-29: Hidden Visible Optional newOption 
-30: Hidden Checked Optional newOption 
-31: Hidden Checked Visible Optional newOption 
+16: NewOption 
+17: Visible NewOption 
+18: Hidden NewOption 
+19: Hidden Visible NewOption 
+20: Checked NewOption 
+21: Checked Visible NewOption 
+22: Hidden Checked NewOption 
+23: Hidden Checked Visible NewOption 
+24: Optional NewOption 
+25: Visible Optional NewOption 
+26: Hidden Optional NewOption 
+27: Hidden Visible Optional NewOption 
+28: Checked Optional NewOption 
+29: Checked Visible Optional NewOption 
+30: Hidden Checked Optional NewOption 
+31: Hidden Checked Visible Optional NewOption 

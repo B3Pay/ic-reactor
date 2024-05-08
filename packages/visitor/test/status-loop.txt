@@ -1,40 +1,28 @@
+Status:
 1: Visible
 2: Hidden
 Visible: 1
 Hidden: 2
-4: Checked
-8: Optional
-Checked: 4
-Optional: 8
-0: 
-1: Visible 
-2: Hidden 
-3: Hidden Visible 
-4: Checked 
-5: Checked Visible 
-6: Hidden Checked 
-7: Hidden Checked Visible 
-8: Optional 
-9: Visible Optional 
-10: Hidden Optional 
-11: Hidden Visible Optional 
-12: Checked Optional 
-13: Checked Visible Optional 
-14: Hidden Checked Optional 
-15: Hidden Checked Visible Optional 
-16: 
-17: Visible 
-18: Hidden 
-19: Hidden Visible 
-20: Checked 
-21: Checked Visible 
-22: Hidden Checked 
-23: Hidden Checked Visible 
-24: Optional 
-25: Visible Optional 
-26: Hidden Optional 
-27: Hidden Visible Optional 
-28: Checked Optional 
-29: Checked Visible Optional 
-30: Hidden Checked Optional 
-31: Hidden Checked Visible Optional 
+-----
+StatusType:
+64: Checked
+128: Optional
+Checked: 64
+Optional: 128
+-----
+1 | 64: 0
+1 | 128: 0
+1 | Checked: 64
+1 | Optional: 128
+2 | 64: 0
+2 | 128: 0
+2 | Checked: 64
+2 | Optional: 128
+Visible | 64: 1
+Visible | 128: 1
+Visible | Checked: 65
+Visible | Optional: 129
+Hidden | 64: 2
+Hidden | 128: 2
+Hidden | Checked: 66
+Hidden | Optional: 130

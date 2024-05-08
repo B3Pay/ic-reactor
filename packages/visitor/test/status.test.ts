@@ -31,29 +31,26 @@ describe("createReactorStore", () => {
 
 describe("Status Loop", () => {
   it("should loop into all status", () => {
-    let status = ""
-    Object.keys(Status).forEach((key) => {
+    let status = "Status:\n"
+    const statusKeys = Object.keys(Status)
+    statusKeys.forEach((key) => {
       status += key + ": " + Status[key] + "\n"
     })
-    Object.keys(StatusType).forEach((key) => {
+    status += "-----\n"
+    status += "StatusType:\n"
+    const statusTypeKeys = Object.keys(StatusType)
+    statusTypeKeys.forEach((key) => {
       status += key + ": " + StatusType[key] + "\n"
     })
-    for (let i = 0; i < 32; i++) {
-      let statusString = i + ": "
-      if (StatusHelper.isHidden(i)) {
-        statusString += "Hidden "
-      }
-      if (StatusHelper.isChecked(i)) {
-        statusString += "Checked "
-      }
-      if (StatusHelper.isVisible(i)) {
-        statusString += "Visible "
-      }
-      if (StatusHelper.isOptional(i)) {
-        statusString += "Optional "
-      }
-      status += statusString + "\n"
-    }
+    status += "-----\n"
+
+    statusKeys.forEach((key) => {
+      statusTypeKeys.forEach((typeKey) => {
+        // prettier-ignore
+        status += key + " | " + typeKey + ": " + (Status[key] | StatusType[typeKey]) + "\n"
+      })
+    })
+
     const snapshot = readFileSync(path.join(__dirname, "status-loop.txt"), {
       encoding: "utf-8",
     })

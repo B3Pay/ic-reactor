@@ -4,8 +4,8 @@ export enum Status {
 }
 
 export enum StatusType {
-  Checked = 1 << 2,
-  Optional = 1 << 3,
+  Checked = 1 << 6,
+  Optional = 1 << 7,
 }
 
 export class StatusHelper {
