@@ -36,7 +36,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const functionType = isQuery(t) ? "query" : "update"
 
     const details = t.retTypes.reduce((acc, ret, index) => {
-      this.status = Status.Default
+      this.status = Status.Visible
       this.isTable = false
       acc[`ret${index}`] = ret.accept(
         this,
@@ -50,7 +50,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       __label: functionName,
-      __status: Status.Default,
+      __status: Status.Visible,
       functionName,
       functionType,
       details,
@@ -65,7 +65,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const __status = this.status
 
     const fields = _fields.reduce((acc, [key, type]) => {
-      this.status = Status.Default
+      this.status = Status.Visible
       const details = type.accept(this, key) as ReturnDetailsWithChild
 
       acc[key] = details
@@ -112,7 +112,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     const __status = this.status
 
     const fields = _fields.reduce((acc, [key, type]) => {
-      this.status = Status.Default
+      this.status = Status.Visible
       acc[key] = type.accept(this, key) as ReturnDetailsWithChild
 
       return acc
@@ -197,7 +197,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     this.status = Status.Hidden
     const vector = ty.accept(this, __label) as ReturnDetailsWithChild
-    this.status = Status.Default
+    this.status = Status.Visible
     return {
       __status: Status.Visible | Status.Optional,
       __label,

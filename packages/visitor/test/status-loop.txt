@@ -1,3 +1,11 @@
+1: Visible
+2: Checked
+4: Hidden
+8: Optional
+Visible: 1
+Checked: 2
+Hidden: 4
+Optional: 8
 0: 
 1: Visible 
 2: Checked 
@@ -30,35 +38,3 @@
 29: Hidden Visible Optional 
 30: Hidden Checked Optional 
 31: Hidden Checked Visible Optional 
-32: 
-33: Visible 
-34: Checked 
-35: Checked Visible 
-36: Hidden 
-37: Hidden Visible 
-38: Hidden Checked 
-39: Hidden Checked Visible 
-40: Optional 
-41: Visible Optional 
-42: Checked Optional 
-43: Checked Visible Optional 
-44: Hidden Optional 
-45: Hidden Visible Optional 
-46: Hidden Checked Optional 
-47: Hidden Checked Visible Optional 
-48: 
-49: Visible 
-50: Checked 
-51: Checked Visible 
-52: Hidden 
-53: Hidden Visible 
-54: Hidden Checked 
-55: Hidden Checked Visible 
-56: Optional 
-57: Visible Optional 
-58: Checked Optional 
-59: Checked Visible Optional 
-60: Hidden Optional 
-61: Hidden Visible Optional 
-62: Hidden Checked Optional 
-63: Hidden Checked Visible Optional 

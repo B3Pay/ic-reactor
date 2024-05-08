@@ -3,7 +3,7 @@ import { createReactorStore } from "@ic-reactor/core"
 import { VisitDetails } from "../src"
 import { _SERVICE, idlFactory } from "./candid/ledger"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
-import { writeFileSync } from "fs"
+import { readFileSync, writeFileSync } from "fs"
 import path from "path"
 
 describe("createReactorStore", () => {
@@ -32,7 +32,10 @@ describe("createReactorStore", () => {
 describe("Status Loop", () => {
   it("should loop into all status", () => {
     let status = ""
-    for (let i = 0; i < 64; i++) {
+    Object.keys(Status).forEach((key) => {
+      status += key + ": " + Status[key] + "\n"
+    })
+    for (let i = 0; i < 32; i++) {
       let statusString = i + ": "
       if (StatusHelper.isHidden(i)) {
         statusString += "Hidden "
@@ -46,14 +49,13 @@ describe("Status Loop", () => {
       if (StatusHelper.isOptional(i)) {
         statusString += "Optional "
       }
-
-      if (statusString.length === 0) {
-        statusString = "Zero status"
-      }
       status += statusString + "\n"
     }
-    console.log(status)
-    // writeFileSync(path.join(__dirname, "status-loop.txt"), status)
+    const snapshot = readFileSync(path.join(__dirname, "status-loop.txt"), {
+      encoding: "utf-8",
+    })
+
+    expect(status).toBe(snapshot)
   })
 })
 

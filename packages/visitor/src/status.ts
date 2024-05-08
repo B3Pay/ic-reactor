@@ -3,9 +3,6 @@ export enum Status {
   Checked = 1 << 1,
   Hidden = 1 << 2,
   Optional = 1 << 3,
-  newOption = 1 << 4,
-
-  Default = Visible,
 }
 
 export class StatusHelper {
@@ -23,10 +20,6 @@ export class StatusHelper {
 
   public static isOptional(status: number): boolean {
     return (status & Status.Optional) !== 0
-  }
-
-  public static isnewOption(status: number): boolean {
-    return (status & Status.newOption) !== 0
   }
 
   public static toggleChecked(status: number): number {
