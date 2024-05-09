@@ -12,6 +12,7 @@ export class Status {
   private static _type = {
     Optional: 1 << 16, /// Bit flag for optional status
     Checked: 1 << 17, /// Bit flag for checked status
+    FlexRow: 1 << 18, /// Bit flag for flex row status
   }
 
   /// Getter for the _flag object
