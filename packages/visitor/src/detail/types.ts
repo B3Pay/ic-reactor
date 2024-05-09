@@ -1,4 +1,4 @@
-import type { BaseActor, FieldType, FunctionName, FunctionType } from "../types"
+import type { BaseActor, FunctionName, FunctionType } from "../types"
 
 export type ServiceDetail<A = BaseActor> = {
   [K in FunctionName<A>]: MethodDetail<A>
@@ -38,9 +38,7 @@ export interface FieldDetail {
 }
 
 export interface FieldDetailWithChild extends FieldDetail {
-  type?: FieldType
   labelList?: string[]
-  list?: FieldDetailWithChild[]
   vector?: FieldDetailWithChild[]
   optional?: FieldDetailWithChild
   tuple?: Record<string, FieldDetailWithChild>

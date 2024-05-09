@@ -187,14 +187,13 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
 
       if (isList) {
         this.isTable = true
-        const list = ty.accept(this, label) as FieldDetailWithChild[]
+        const record = ty.accept(this, label) as FieldDetailWithChild
         this.isTable = false
+
         return {
-          type: "list",
+          ...record,
           status: Status.Hidden(),
-          label,
           labelList,
-          list,
         }
       }
     }
