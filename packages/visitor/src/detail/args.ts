@@ -2,7 +2,7 @@ import { IDL } from "@dfinity/candid"
 import { isQuery } from "../helpers"
 
 import type {
-  DetailType,
+  ArgDetailRecord,
   FieldDetail,
   FieldDetailWithChild,
   MethodArgDetail,
@@ -15,9 +15,9 @@ import { Status } from "../status"
  * It returns the extracted service details.
  *
  */
-export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
+export class VisitArgDetail<A = BaseActor> extends IDL.Visitor<
   string,
-  DetailType<A> | MethodArgDetail<A> | FieldDetailWithChild | FieldDetail
+  ArgDetailRecord<A> | MethodArgDetail<A> | FieldDetailWithChild | FieldDetail
 > {
   public counter = 0
 
@@ -195,7 +195,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
   public visitFixedInt = this.visitNumber
   public visitFixedNat = this.visitNumber
 
-  public visitService(t: IDL.ServiceClass): DetailType<A> {
+  public visitService(t: IDL.ServiceClass): ArgDetailRecord<A> {
     const methodDetails = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
@@ -203,7 +203,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
       acc[functionName] = func.accept(this, functionName) as MethodArgDetail<A>
 
       return acc
-    }, {} as DetailType<A>)
+    }, {} as ArgDetailRecord<A>)
 
     return methodDetails
   }

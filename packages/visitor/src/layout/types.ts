@@ -10,10 +10,10 @@ export interface GridLayout<A = BaseActor> {
   minW?: number
 }
 
-export interface GridLayouts<A = BaseActor> {
+export interface GridLayoutRecord<A = BaseActor> {
   [key: string]: GridLayout<A>[]
 }
 
-export type ServiceLayouts<A = BaseActor> = {
-  [K in FunctionCategory]: GridLayouts<A>
+export type ServiceLayout<A = BaseActor> = {
+  [K in FunctionCategory]: GridLayoutRecord<A>
 }

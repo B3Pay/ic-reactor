@@ -1,10 +1,10 @@
 import { IDL } from "@dfinity/candid"
-import { VisitReturnDetails } from "./rets"
-import { VisitArgDetails } from "./args"
+import { VisitReturnDetail } from "./rets"
+import { VisitArgDetail } from "./args"
 
 import type {
   MethodDetail,
-  ServiceDetails,
+  ServiceDetail,
   BaseActor,
   FunctionName,
 } from "../types"
@@ -12,12 +12,12 @@ import type {
 export * from "./rets"
 export * from "./args"
 
-export class VisitDetails<A = BaseActor> extends IDL.Visitor<
+export class VisitDetail<A = BaseActor> extends IDL.Visitor<
   string,
-  ServiceDetails<A> | MethodDetail<A>
+  ServiceDetail<A> | MethodDetail<A>
 > {
-  private argsVisitor = new VisitArgDetails<A>()
-  private returnsVisitor = new VisitReturnDetails<A>()
+  private argsVisitor = new VisitArgDetail<A>()
+  private returnsVisitor = new VisitReturnDetail<A>()
 
   public visitFunc(
     t: IDL.FuncClass,
@@ -40,7 +40,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitService(t: IDL.ServiceClass): ServiceDetails<A> {
+  public visitService(t: IDL.ServiceClass): ServiceDetail<A> {
     const methodFields = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
@@ -48,7 +48,7 @@ export class VisitDetails<A = BaseActor> extends IDL.Visitor<
       acc[functionName] = func.accept(this, functionName) as MethodDetail<A>
 
       return acc
-    }, {} as ServiceDetails<A>)
+    }, {} as ServiceDetail<A>)
 
     return methodFields
   }

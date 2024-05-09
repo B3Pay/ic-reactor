@@ -2,15 +2,15 @@ import { IDL } from "@dfinity/candid"
 import { findCategory } from "../helpers"
 import { CategoryTest, DEFAULT_CATEGORIES, DEFAULT_LAYOUTS } from "../constants"
 
-import type { BaseActor, FunctionName, ServiceLayouts } from "../types"
+import type { BaseActor, FunctionName, ServiceLayout } from "../types"
 /**
  * Visit the candid file and extract the details.
  * It returns the extracted service details.
  *
  */
-export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
+export class VisitLayout<A = BaseActor> extends IDL.Visitor<
   CategoryTest[] | string,
-  ServiceLayouts<A> | number | void
+  ServiceLayout<A> | number | void
 > {
   public counter = 0
   public height = 0
@@ -129,7 +129,7 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
   public visitService(
     t: IDL.ServiceClass,
     categoryTest?: CategoryTest[] | string
-  ): ServiceLayouts<A> {
+  ): ServiceLayout<A> {
     const layouts = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
@@ -161,7 +161,7 @@ export class VisitLayouts<A = BaseActor> extends IDL.Visitor<
       this.counter++
 
       return acc
-    }, this.DEFAULTLAYOUT as ServiceLayouts<A>)
+    }, this.DEFAULTLAYOUT as ServiceLayout<A>)
 
     return layouts
   }

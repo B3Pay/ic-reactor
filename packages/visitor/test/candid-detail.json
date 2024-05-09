@@ -1,592 +1,683 @@
 {
   "icrc1_balance_of": {
-    "argDetails": {
+    "argDetail": {
       "arg0": {
-        "__label": "__arg0",
-        "__hide_label": true,
-        "owner": {
-          "__label": "owner"
-        },
-        "subaccount": {
-          "__checked": false,
-          "__hide_label": false,
-          "__label": "subaccount",
-          "optional": {
-            "__label": "subaccount",
-            "vector": {
-              "__label": "subaccount"
+        "label": "__arg0",
+        "status": 65538,
+        "record": {
+          "owner": {
+            "label": "owner",
+            "status": 1
+          },
+          "subaccount": {
+            "label": "subaccount",
+            "status": 65537,
+            "optional": {
+              "label": "subaccount",
+              "status": 1,
+              "vector": {
+                "label": "subaccount",
+                "status": 1
+              }
             }
           }
         }
       }
     },
-    "retDetails": {
+    "retDetail": {
       "ret0": {
-        "__label": "__ret0",
-        "__status": 1
+        "label": "__ret0",
+        "status": 1
       }
     },
-    "__label": "icrc1_balance_of",
-    "__status": 1,
+    "label": "icrc1_balance_of",
+    "status": 1,
     "functionName": "icrc1_balance_of",
     "functionType": "query"
   },
   "query_blocks": {
-    "argDetails": {
+    "argDetail": {
       "arg0": {
-        "__label": "__arg0",
-        "__hide_label": true,
-        "start": {
-          "__label": "start"
-        },
-        "length": {
-          "__label": "length"
+        "label": "__arg0",
+        "status": 65538,
+        "record": {
+          "start": {
+            "label": "start",
+            "status": 1
+          },
+          "length": {
+            "label": "length",
+            "status": 1
+          }
         }
       }
     },
-    "retDetails": {
+    "retDetail": {
       "ret0": {
-        "__label": "__ret0",
-        "certificate": {
-          "__label": "certificate",
-          "__status": 65538,
-          "optional": {
-            "__status": 65537,
-            "__label": "certificate",
+        "label": "__ret0",
+        "status": 65538,
+        "record": {
+          "certificate": {
+            "label": "certificate",
+            "status": 65538,
+            "optional": {
+              "status": 65537,
+              "label": "certificate",
+              "vector": {
+                "label": "certificate",
+                "status": 2
+              }
+            }
+          },
+          "blocks": {
+            "status": 65537,
+            "label": "blocks",
             "vector": {
-              "__label": "certificate",
-              "__status": 2
-            }
-          }
-        },
-        "blocks": {
-          "__status": 65537,
-          "__label": "blocks",
-          "vector": {
-            "__label": "blocks",
-            "__status": 2,
-            "transaction": {
-              "__label": "transaction",
-              "__status": 1,
-              "memo": {
-                "__label": "memo",
-                "__status": 1
-              },
-              "icrc1_memo": {
-                "__label": "icrc1_memo",
-                "__status": 65538,
-                "optional": {
-                  "__status": 65537,
-                  "__label": "icrc1_memo",
-                  "vector": {
-                    "__label": "icrc1_memo",
-                    "__status": 2
-                  }
-                }
-              },
-              "operation": {
-                "__label": "operation",
-                "__status": 65538,
-                "optional": {
-                  "__label": "operation",
-                  "__status": 1,
-                  "Approve": {
-                    "__label": "Approve",
-                    "__status": 1,
-                    "fee": {
-                      "__label": "fee",
-                      "__status": 1,
-                      "e8s": {
-                        "__label": "e8s",
-                        "__status": 1
-                      }
+              "label": "blocks",
+              "status": 2,
+              "record": {
+                "transaction": {
+                  "label": "transaction",
+                  "status": 1,
+                  "record": {
+                    "memo": {
+                      "label": "memo",
+                      "status": 1
                     },
-                    "from": {
-                      "__status": 65537,
-                      "__label": "from",
-                      "vector": {
-                        "__label": "from",
-                        "__status": 2
-                      }
-                    },
-                    "allowance_e8s": {
-                      "__label": "allowance_e8s",
-                      "__status": 1
-                    },
-                    "allowance": {
-                      "__label": "allowance",
-                      "__status": 1,
-                      "e8s": {
-                        "__label": "e8s",
-                        "__status": 1
-                      }
-                    },
-                    "expected_allowance": {
-                      "__label": "expected_allowance",
-                      "__status": 65538,
+                    "icrc1_memo": {
+                      "label": "icrc1_memo",
+                      "status": 65538,
                       "optional": {
-                        "__label": "expected_allowance",
-                        "__status": 1,
-                        "e8s": {
-                          "__label": "e8s",
-                          "__status": 1
-                        }
-                      }
-                    },
-                    "expires_at": {
-                      "__label": "expires_at",
-                      "__status": 65538,
-                      "optional": {
-                        "__label": "expires_at",
-                        "__status": 1,
-                        "timestamp_nanos": {
-                          "__label": "timestamp_nanos",
-                          "__status": 1
-                        }
-                      }
-                    },
-                    "spender": {
-                      "__status": 65537,
-                      "__label": "spender",
-                      "vector": {
-                        "__label": "spender",
-                        "__status": 2
-                      }
-                    }
-                  },
-                  "Burn": {
-                    "__label": "Burn",
-                    "__status": 1,
-                    "from": {
-                      "__status": 65537,
-                      "__label": "from",
-                      "vector": {
-                        "__label": "from",
-                        "__status": 2
-                      }
-                    },
-                    "amount": {
-                      "__label": "amount",
-                      "__status": 1,
-                      "e8s": {
-                        "__label": "e8s",
-                        "__status": 1
-                      }
-                    },
-                    "spender": {
-                      "__label": "spender",
-                      "__status": 65538,
-                      "optional": {
-                        "__status": 65537,
-                        "__label": "spender",
+                        "status": 65537,
+                        "label": "icrc1_memo",
                         "vector": {
-                          "__label": "spender",
-                          "__status": 2
+                          "label": "icrc1_memo",
+                          "status": 2
                         }
                       }
-                    }
-                  },
-                  "Mint": {
-                    "__label": "Mint",
-                    "__status": 1,
-                    "to": {
-                      "__status": 65537,
-                      "__label": "to",
-                      "vector": {
-                        "__label": "to",
-                        "__status": 2
-                      }
                     },
-                    "amount": {
-                      "__label": "amount",
-                      "__status": 1,
-                      "e8s": {
-                        "__label": "e8s",
-                        "__status": 1
-                      }
-                    }
-                  },
-                  "Transfer": {
-                    "__label": "Transfer",
-                    "__status": 1,
-                    "to": {
-                      "__status": 65537,
-                      "__label": "to",
-                      "vector": {
-                        "__label": "to",
-                        "__status": 2
-                      }
-                    },
-                    "fee": {
-                      "__label": "fee",
-                      "__status": 1,
-                      "e8s": {
-                        "__label": "e8s",
-                        "__status": 1
-                      }
-                    },
-                    "from": {
-                      "__status": 65537,
-                      "__label": "from",
-                      "vector": {
-                        "__label": "from",
-                        "__status": 2
-                      }
-                    },
-                    "amount": {
-                      "__label": "amount",
-                      "__status": 1,
-                      "e8s": {
-                        "__label": "e8s",
-                        "__status": 1
-                      }
-                    },
-                    "spender": {
-                      "__label": "spender",
-                      "__status": 65538,
+                    "operation": {
+                      "label": "operation",
+                      "status": 65538,
                       "optional": {
-                        "__status": 65537,
-                        "__label": "spender",
-                        "vector": {
-                          "__label": "spender",
-                          "__status": 2
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "created_at_time": {
-                "__label": "created_at_time",
-                "__status": 1,
-                "timestamp_nanos": {
-                  "__label": "timestamp_nanos",
-                  "__status": 1
-                }
-              }
-            },
-            "timestamp": {
-              "__label": "timestamp",
-              "__status": 1,
-              "timestamp_nanos": {
-                "__label": "timestamp_nanos",
-                "__status": 1
-              }
-            },
-            "parent_hash": {
-              "__label": "parent_hash",
-              "__status": 65538,
-              "optional": {
-                "__status": 65537,
-                "__label": "parent_hash",
-                "vector": {
-                  "__label": "parent_hash",
-                  "__status": 2
-                }
-              }
-            }
-          }
-        },
-        "chain_length": {
-          "__label": "chain_length",
-          "__status": 1
-        },
-        "first_block_index": {
-          "__label": "first_block_index",
-          "__status": 1
-        },
-        "archived_blocks": {
-          "__status": 65537,
-          "__label": "archived_blocks",
-          "vector": {
-            "__label": "archived_blocks",
-            "__status": 2,
-            "callback": {
-              "__label": "callback",
-              "__status": 1,
-              "functionName": "callback",
-              "functionType": "query",
-              "details": {
-                "ret0": {
-                  "__label": "__ret0",
-                  "__status": 1,
-                  "Ok": {
-                    "__label": "Ok",
-                    "__status": 1,
-                    "blocks": {
-                      "__status": 65537,
-                      "__label": "blocks",
-                      "vector": {
-                        "__label": "blocks",
-                        "__status": 2,
-                        "transaction": {
-                          "__label": "transaction",
-                          "__status": 1,
-                          "memo": {
-                            "__label": "memo",
-                            "__status": 1
-                          },
-                          "icrc1_memo": {
-                            "__label": "icrc1_memo",
-                            "__status": 65538,
-                            "optional": {
-                              "__status": 65537,
-                              "__label": "icrc1_memo",
-                              "vector": {
-                                "__label": "icrc1_memo",
-                                "__status": 2
-                              }
-                            }
-                          },
-                          "operation": {
-                            "__label": "operation",
-                            "__status": 65538,
-                            "optional": {
-                              "__label": "operation",
-                              "__status": 1,
-                              "Approve": {
-                                "__label": "Approve",
-                                "__status": 1,
-                                "fee": {
-                                  "__label": "fee",
-                                  "__status": 1,
+                        "label": "operation",
+                        "status": 1,
+                        "variant": {
+                          "Approve": {
+                            "label": "Approve",
+                            "status": 1,
+                            "record": {
+                              "fee": {
+                                "label": "fee",
+                                "status": 1,
+                                "record": {
                                   "e8s": {
-                                    "__label": "e8s",
-                                    "__status": 1
+                                    "label": "e8s",
+                                    "status": 1
                                   }
-                                },
-                                "from": {
-                                  "__status": 65537,
-                                  "__label": "from",
-                                  "vector": {
-                                    "__label": "from",
-                                    "__status": 2
-                                  }
-                                },
-                                "allowance_e8s": {
-                                  "__label": "allowance_e8s",
-                                  "__status": 1
-                                },
-                                "allowance": {
-                                  "__label": "allowance",
-                                  "__status": 1,
+                                }
+                              },
+                              "from": {
+                                "status": 65537,
+                                "label": "from",
+                                "vector": {
+                                  "label": "from",
+                                  "status": 2
+                                }
+                              },
+                              "allowance_e8s": {
+                                "label": "allowance_e8s",
+                                "status": 1
+                              },
+                              "allowance": {
+                                "label": "allowance",
+                                "status": 1,
+                                "record": {
                                   "e8s": {
-                                    "__label": "e8s",
-                                    "__status": 1
+                                    "label": "e8s",
+                                    "status": 1
                                   }
-                                },
-                                "expected_allowance": {
-                                  "__label": "expected_allowance",
-                                  "__status": 65538,
-                                  "optional": {
-                                    "__label": "expected_allowance",
-                                    "__status": 1,
+                                }
+                              },
+                              "expected_allowance": {
+                                "label": "expected_allowance",
+                                "status": 65538,
+                                "optional": {
+                                  "label": "expected_allowance",
+                                  "status": 1,
+                                  "record": {
                                     "e8s": {
-                                      "__label": "e8s",
-                                      "__status": 1
+                                      "label": "e8s",
+                                      "status": 1
                                     }
                                   }
-                                },
-                                "expires_at": {
-                                  "__label": "expires_at",
-                                  "__status": 65538,
-                                  "optional": {
-                                    "__label": "expires_at",
-                                    "__status": 1,
+                                }
+                              },
+                              "expires_at": {
+                                "label": "expires_at",
+                                "status": 65538,
+                                "optional": {
+                                  "label": "expires_at",
+                                  "status": 1,
+                                  "record": {
                                     "timestamp_nanos": {
-                                      "__label": "timestamp_nanos",
-                                      "__status": 1
-                                    }
-                                  }
-                                },
-                                "spender": {
-                                  "__status": 65537,
-                                  "__label": "spender",
-                                  "vector": {
-                                    "__label": "spender",
-                                    "__status": 2
-                                  }
-                                }
-                              },
-                              "Burn": {
-                                "__label": "Burn",
-                                "__status": 1,
-                                "from": {
-                                  "__status": 65537,
-                                  "__label": "from",
-                                  "vector": {
-                                    "__label": "from",
-                                    "__status": 2
-                                  }
-                                },
-                                "amount": {
-                                  "__label": "amount",
-                                  "__status": 1,
-                                  "e8s": {
-                                    "__label": "e8s",
-                                    "__status": 1
-                                  }
-                                },
-                                "spender": {
-                                  "__label": "spender",
-                                  "__status": 65538,
-                                  "optional": {
-                                    "__status": 65537,
-                                    "__label": "spender",
-                                    "vector": {
-                                      "__label": "spender",
-                                      "__status": 2
+                                      "label": "timestamp_nanos",
+                                      "status": 1
                                     }
                                   }
                                 }
                               },
-                              "Mint": {
-                                "__label": "Mint",
-                                "__status": 1,
-                                "to": {
-                                  "__status": 65537,
-                                  "__label": "to",
-                                  "vector": {
-                                    "__label": "to",
-                                    "__status": 2
-                                  }
-                                },
-                                "amount": {
-                                  "__label": "amount",
-                                  "__status": 1,
+                              "spender": {
+                                "status": 65537,
+                                "label": "spender",
+                                "vector": {
+                                  "label": "spender",
+                                  "status": 2
+                                }
+                              }
+                            }
+                          },
+                          "Burn": {
+                            "label": "Burn",
+                            "status": 1,
+                            "record": {
+                              "from": {
+                                "status": 65537,
+                                "label": "from",
+                                "vector": {
+                                  "label": "from",
+                                  "status": 2
+                                }
+                              },
+                              "amount": {
+                                "label": "amount",
+                                "status": 1,
+                                "record": {
                                   "e8s": {
-                                    "__label": "e8s",
-                                    "__status": 1
+                                    "label": "e8s",
+                                    "status": 1
                                   }
                                 }
                               },
-                              "Transfer": {
-                                "__label": "Transfer",
-                                "__status": 1,
-                                "to": {
-                                  "__status": 65537,
-                                  "__label": "to",
+                              "spender": {
+                                "label": "spender",
+                                "status": 65538,
+                                "optional": {
+                                  "status": 65537,
+                                  "label": "spender",
                                   "vector": {
-                                    "__label": "to",
-                                    "__status": 2
-                                  }
-                                },
-                                "fee": {
-                                  "__label": "fee",
-                                  "__status": 1,
-                                  "e8s": {
-                                    "__label": "e8s",
-                                    "__status": 1
-                                  }
-                                },
-                                "from": {
-                                  "__status": 65537,
-                                  "__label": "from",
-                                  "vector": {
-                                    "__label": "from",
-                                    "__status": 2
-                                  }
-                                },
-                                "amount": {
-                                  "__label": "amount",
-                                  "__status": 1,
-                                  "e8s": {
-                                    "__label": "e8s",
-                                    "__status": 1
-                                  }
-                                },
-                                "spender": {
-                                  "__label": "spender",
-                                  "__status": 65538,
-                                  "optional": {
-                                    "__status": 65537,
-                                    "__label": "spender",
-                                    "vector": {
-                                      "__label": "spender",
-                                      "__status": 2
-                                    }
+                                    "label": "spender",
+                                    "status": 2
                                   }
                                 }
                               }
                             }
                           },
-                          "created_at_time": {
-                            "__label": "created_at_time",
-                            "__status": 1,
-                            "timestamp_nanos": {
-                              "__label": "timestamp_nanos",
-                              "__status": 1
+                          "Mint": {
+                            "label": "Mint",
+                            "status": 1,
+                            "record": {
+                              "to": {
+                                "status": 65537,
+                                "label": "to",
+                                "vector": {
+                                  "label": "to",
+                                  "status": 2
+                                }
+                              },
+                              "amount": {
+                                "label": "amount",
+                                "status": 1,
+                                "record": {
+                                  "e8s": {
+                                    "label": "e8s",
+                                    "status": 1
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "Transfer": {
+                            "label": "Transfer",
+                            "status": 1,
+                            "record": {
+                              "to": {
+                                "status": 65537,
+                                "label": "to",
+                                "vector": {
+                                  "label": "to",
+                                  "status": 2
+                                }
+                              },
+                              "fee": {
+                                "label": "fee",
+                                "status": 1,
+                                "record": {
+                                  "e8s": {
+                                    "label": "e8s",
+                                    "status": 1
+                                  }
+                                }
+                              },
+                              "from": {
+                                "status": 65537,
+                                "label": "from",
+                                "vector": {
+                                  "label": "from",
+                                  "status": 2
+                                }
+                              },
+                              "amount": {
+                                "label": "amount",
+                                "status": 1,
+                                "record": {
+                                  "e8s": {
+                                    "label": "e8s",
+                                    "status": 1
+                                  }
+                                }
+                              },
+                              "spender": {
+                                "label": "spender",
+                                "status": 65538,
+                                "optional": {
+                                  "status": 65537,
+                                  "label": "spender",
+                                  "vector": {
+                                    "label": "spender",
+                                    "status": 2
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "created_at_time": {
+                      "label": "created_at_time",
+                      "status": 1,
+                      "record": {
+                        "timestamp_nanos": {
+                          "label": "timestamp_nanos",
+                          "status": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "timestamp": {
+                  "label": "timestamp",
+                  "status": 1,
+                  "record": {
+                    "timestamp_nanos": {
+                      "label": "timestamp_nanos",
+                      "status": 1
+                    }
+                  }
+                },
+                "parent_hash": {
+                  "label": "parent_hash",
+                  "status": 65538,
+                  "optional": {
+                    "status": 65537,
+                    "label": "parent_hash",
+                    "vector": {
+                      "label": "parent_hash",
+                      "status": 2
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "chain_length": {
+            "label": "chain_length",
+            "status": 1
+          },
+          "first_block_index": {
+            "label": "first_block_index",
+            "status": 1
+          },
+          "archived_blocks": {
+            "status": 65537,
+            "label": "archived_blocks",
+            "vector": {
+              "label": "archived_blocks",
+              "status": 2,
+              "record": {
+                "callback": {
+                  "detail": {
+                    "ret0": {
+                      "label": "__ret0",
+                      "status": 1,
+                      "variant": {
+                        "Ok": {
+                          "label": "Ok",
+                          "status": 1,
+                          "record": {
+                            "blocks": {
+                              "status": 65537,
+                              "label": "blocks",
+                              "vector": {
+                                "label": "blocks",
+                                "status": 2,
+                                "record": {
+                                  "transaction": {
+                                    "label": "transaction",
+                                    "status": 1,
+                                    "record": {
+                                      "memo": {
+                                        "label": "memo",
+                                        "status": 1
+                                      },
+                                      "icrc1_memo": {
+                                        "label": "icrc1_memo",
+                                        "status": 65538,
+                                        "optional": {
+                                          "status": 65537,
+                                          "label": "icrc1_memo",
+                                          "vector": {
+                                            "label": "icrc1_memo",
+                                            "status": 2
+                                          }
+                                        }
+                                      },
+                                      "operation": {
+                                        "label": "operation",
+                                        "status": 65538,
+                                        "optional": {
+                                          "label": "operation",
+                                          "status": 1,
+                                          "variant": {
+                                            "Approve": {
+                                              "label": "Approve",
+                                              "status": 1,
+                                              "record": {
+                                                "fee": {
+                                                  "label": "fee",
+                                                  "status": 1,
+                                                  "record": {
+                                                    "e8s": {
+                                                      "label": "e8s",
+                                                      "status": 1
+                                                    }
+                                                  }
+                                                },
+                                                "from": {
+                                                  "status": 65537,
+                                                  "label": "from",
+                                                  "vector": {
+                                                    "label": "from",
+                                                    "status": 2
+                                                  }
+                                                },
+                                                "allowance_e8s": {
+                                                  "label": "allowance_e8s",
+                                                  "status": 1
+                                                },
+                                                "allowance": {
+                                                  "label": "allowance",
+                                                  "status": 1,
+                                                  "record": {
+                                                    "e8s": {
+                                                      "label": "e8s",
+                                                      "status": 1
+                                                    }
+                                                  }
+                                                },
+                                                "expected_allowance": {
+                                                  "label": "expected_allowance",
+                                                  "status": 65538,
+                                                  "optional": {
+                                                    "label": "expected_allowance",
+                                                    "status": 1,
+                                                    "record": {
+                                                      "e8s": {
+                                                        "label": "e8s",
+                                                        "status": 1
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                "expires_at": {
+                                                  "label": "expires_at",
+                                                  "status": 65538,
+                                                  "optional": {
+                                                    "label": "expires_at",
+                                                    "status": 1,
+                                                    "record": {
+                                                      "timestamp_nanos": {
+                                                        "label": "timestamp_nanos",
+                                                        "status": 1
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                "spender": {
+                                                  "status": 65537,
+                                                  "label": "spender",
+                                                  "vector": {
+                                                    "label": "spender",
+                                                    "status": 2
+                                                  }
+                                                }
+                                              }
+                                            },
+                                            "Burn": {
+                                              "label": "Burn",
+                                              "status": 1,
+                                              "record": {
+                                                "from": {
+                                                  "status": 65537,
+                                                  "label": "from",
+                                                  "vector": {
+                                                    "label": "from",
+                                                    "status": 2
+                                                  }
+                                                },
+                                                "amount": {
+                                                  "label": "amount",
+                                                  "status": 1,
+                                                  "record": {
+                                                    "e8s": {
+                                                      "label": "e8s",
+                                                      "status": 1
+                                                    }
+                                                  }
+                                                },
+                                                "spender": {
+                                                  "label": "spender",
+                                                  "status": 65538,
+                                                  "optional": {
+                                                    "status": 65537,
+                                                    "label": "spender",
+                                                    "vector": {
+                                                      "label": "spender",
+                                                      "status": 2
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            },
+                                            "Mint": {
+                                              "label": "Mint",
+                                              "status": 1,
+                                              "record": {
+                                                "to": {
+                                                  "status": 65537,
+                                                  "label": "to",
+                                                  "vector": {
+                                                    "label": "to",
+                                                    "status": 2
+                                                  }
+                                                },
+                                                "amount": {
+                                                  "label": "amount",
+                                                  "status": 1,
+                                                  "record": {
+                                                    "e8s": {
+                                                      "label": "e8s",
+                                                      "status": 1
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            },
+                                            "Transfer": {
+                                              "label": "Transfer",
+                                              "status": 1,
+                                              "record": {
+                                                "to": {
+                                                  "status": 65537,
+                                                  "label": "to",
+                                                  "vector": {
+                                                    "label": "to",
+                                                    "status": 2
+                                                  }
+                                                },
+                                                "fee": {
+                                                  "label": "fee",
+                                                  "status": 1,
+                                                  "record": {
+                                                    "e8s": {
+                                                      "label": "e8s",
+                                                      "status": 1
+                                                    }
+                                                  }
+                                                },
+                                                "from": {
+                                                  "status": 65537,
+                                                  "label": "from",
+                                                  "vector": {
+                                                    "label": "from",
+                                                    "status": 2
+                                                  }
+                                                },
+                                                "amount": {
+                                                  "label": "amount",
+                                                  "status": 1,
+                                                  "record": {
+                                                    "e8s": {
+                                                      "label": "e8s",
+                                                      "status": 1
+                                                    }
+                                                  }
+                                                },
+                                                "spender": {
+                                                  "label": "spender",
+                                                  "status": 65538,
+                                                  "optional": {
+                                                    "status": 65537,
+                                                    "label": "spender",
+                                                    "vector": {
+                                                      "label": "spender",
+                                                      "status": 2
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "created_at_time": {
+                                        "label": "created_at_time",
+                                        "status": 1,
+                                        "record": {
+                                          "timestamp_nanos": {
+                                            "label": "timestamp_nanos",
+                                            "status": 1
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "timestamp": {
+                                    "label": "timestamp",
+                                    "status": 1,
+                                    "record": {
+                                      "timestamp_nanos": {
+                                        "label": "timestamp_nanos",
+                                        "status": 1
+                                      }
+                                    }
+                                  },
+                                  "parent_hash": {
+                                    "label": "parent_hash",
+                                    "status": 65538,
+                                    "optional": {
+                                      "status": 65537,
+                                      "label": "parent_hash",
+                                      "vector": {
+                                        "label": "parent_hash",
+                                        "status": 2
+                                      }
+                                    }
+                                  }
+                                }
+                              }
                             }
                           }
                         },
-                        "timestamp": {
-                          "__label": "timestamp",
-                          "__status": 1,
-                          "timestamp_nanos": {
-                            "__label": "timestamp_nanos",
-                            "__status": 1
-                          }
-                        },
-                        "parent_hash": {
-                          "__label": "parent_hash",
-                          "__status": 65538,
-                          "optional": {
-                            "__status": 65537,
-                            "__label": "parent_hash",
-                            "vector": {
-                              "__label": "parent_hash",
-                              "__status": 2
+                        "Err": {
+                          "label": "Err",
+                          "status": 1,
+                          "variant": {
+                            "BadFirstBlockIndex": {
+                              "label": "BadFirstBlockIndex",
+                              "status": 1,
+                              "record": {
+                                "requested_index": {
+                                  "label": "requested_index",
+                                  "status": 1
+                                },
+                                "first_valid_index": {
+                                  "label": "first_valid_index",
+                                  "status": 1
+                                }
+                              }
+                            },
+                            "Other": {
+                              "label": "Other",
+                              "status": 1,
+                              "record": {
+                                "error_message": {
+                                  "label": "error_message",
+                                  "status": 1
+                                },
+                                "error_code": {
+                                  "label": "error_code",
+                                  "status": 1
+                                }
+                              }
                             }
                           }
                         }
                       }
                     }
                   },
-                  "Err": {
-                    "__label": "Err",
-                    "__status": 1,
-                    "BadFirstBlockIndex": {
-                      "__label": "BadFirstBlockIndex",
-                      "__status": 1,
-                      "requested_index": {
-                        "__label": "requested_index",
-                        "__status": 1
-                      },
-                      "first_valid_index": {
-                        "__label": "first_valid_index",
-                        "__status": 1
-                      }
-                    },
-                    "Other": {
-                      "__label": "Other",
-                      "__status": 1,
-                      "error_message": {
-                        "__label": "error_message",
-                        "__status": 1
-                      },
-                      "error_code": {
-                        "__label": "error_code",
-                        "__status": 1
-                      }
-                    }
-                  }
+                  "label": "callback",
+                  "status": 1,
+                  "functionName": "callback",
+                  "functionType": "query"
+                },
+                "start": {
+                  "label": "start",
+                  "status": 1
+                },
+                "length": {
+                  "label": "length",
+                  "status": 1
                 }
               }
-            },
-            "start": {
-              "__label": "start",
-              "__status": 1
-            },
-            "length": {
-              "__label": "length",
-              "__status": 1
             }
           }
         }
       }
     },
-    "__label": "query_blocks",
-    "__status": 1,
+    "label": "query_blocks",
+    "status": 1,
     "functionName": "query_blocks",
     "functionType": "query"
   }

@@ -1,7 +1,7 @@
 import { Status } from "../status"
 import type { BaseActor, FieldType, FunctionName, FunctionType } from "../types"
 
-export type ServiceDetails<A = BaseActor> = {
+export type ServiceDetail<A = BaseActor> = {
   [K in FunctionName<A>]: MethodDetail<A>
 }
 
@@ -24,8 +24,12 @@ export interface MethodReturnDetail<A = BaseActor> extends FieldDetail {
   detail: { [key: `ret${number}`]: FieldDetailWithChild }
 }
 
-export type DetailType<A = BaseActor> = {
+export type ArgDetailRecord<A = BaseActor> = {
   [K in FunctionName<A>]: MethodArgDetail<A>
+}
+
+export type ReturnDetailRecord<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodReturnDetail<A>
 }
 
 export interface FieldDetail {

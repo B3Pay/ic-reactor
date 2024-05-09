@@ -1,5 +1,5 @@
 import { createCandidAdapter, createReactorStore } from "@ic-reactor/core"
-import { VisitDetails, VisitTransform, VisitLayouts, VisitFields } from "../src"
+import { VisitDetail, VisitTransform, VisitLayout, VisitField } from "../src"
 import { b3wallet, idlFactory } from "./candid/b3wallet"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 import accountView from "./account_view.json"
@@ -17,7 +17,7 @@ describe("createReactorStore", () => {
 
   const visitedService = () => {
     const iface = extractInterface()
-    const fieldsVisitor = new VisitLayouts()
+    const fieldsVisitor = new VisitLayout()
     return fieldsVisitor.visitService(iface)
   }
 
@@ -30,12 +30,12 @@ describe("createReactorStore", () => {
   }
 
   const visitedDetail = () => {
-    const fieldsVisitor = new VisitDetails()
+    const fieldsVisitor = new VisitDetail()
     return visitFunction.print_log_entries(fieldsVisitor, "print_log_entries")
   }
 
   const visitedFields = () => {
-    const fieldsVisitor = new VisitFields()
+    const fieldsVisitor = new VisitField()
     return visitFunction.account_swap_btc_to_ckbtc(
       fieldsVisitor,
       "account_swap_btc_to_ckbtc"

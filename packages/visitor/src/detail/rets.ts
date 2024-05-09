@@ -4,7 +4,7 @@ import { VisitReturn } from "../field"
 
 import type {
   FieldDetailWithChild,
-  DetailType,
+  ReturnDetailRecord,
   FieldDetail,
   MethodReturnDetail,
 } from "./types"
@@ -16,9 +16,12 @@ import { Status } from "../status"
  * It returns the extracted service details.
  *
  */
-export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
+export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
   string,
-  DetailType<A> | MethodReturnDetail<A> | FieldDetailWithChild | FieldDetail
+  | ReturnDetailRecord<A>
+  | MethodReturnDetail<A>
+  | FieldDetailWithChild
+  | FieldDetail
 > {
   private visitReturnField = new VisitReturn()
   public counter = 0
@@ -254,7 +257,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
   public visitFixedInt = this.visitNumber
   public visitFixedNat = this.visitNumber
 
-  public visitService(t: IDL.ServiceClass): DetailType<A> {
+  public visitService(t: IDL.ServiceClass): ReturnDetailRecord<A> {
     const methodDetails = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
@@ -265,7 +268,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
       ) as MethodReturnDetail<A>
 
       return acc
-    }, {} as DetailType<A>)
+    }, {} as ReturnDetailRecord<A>)
 
     return methodDetails
   }

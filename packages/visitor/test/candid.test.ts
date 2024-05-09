@@ -1,5 +1,5 @@
 import { createReactorStore } from "@ic-reactor/core"
-import { VisitDetails, VisitReturns } from "../src"
+import { VisitDetail, VisitReturn } from "../src"
 import { _SERVICE, idlFactory } from "./candid/ledger"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 import { writeFileSync } from "fs"
@@ -14,13 +14,13 @@ describe("createReactorStore", () => {
 
   const visitedDetail = () => {
     const iface = extractInterface()
-    const fieldsVisitor = new VisitDetails<_SERVICE>()
+    const fieldsVisitor = new VisitDetail<_SERVICE>()
     return fieldsVisitor.visitService(iface)
   }
 
   const visitedField = () => {
     const iface = extractInterface()
-    const fieldsVisitor = new VisitReturns<_SERVICE>()
+    const fieldsVisitor = new VisitReturn<_SERVICE>()
     return fieldsVisitor.visitService(iface)
   }
 
