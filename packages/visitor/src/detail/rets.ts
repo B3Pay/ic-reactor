@@ -103,7 +103,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
 
     return {
       label,
-      status: this.isTable ? Status.Hidden() : savedStatus,
+      status: this.isTable ? Status.Enabled("Optional") : savedStatus,
       tuple,
     }
   }
@@ -116,7 +116,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     const saveStatus = this.status
 
     const variant = _fields.reduce((acc, [key, type]) => {
-      this.status = Status.Default
+      this.status = Status.Visible("Optional")
       acc[key] = type.accept(this, key) as FieldDetailWithChild
 
       return acc
@@ -124,7 +124,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
 
     return {
       label,
-      status: this.isTable ? Status.Hidden() : saveStatus,
+      status: this.isTable ? Status.Enabled("Optional") : saveStatus,
       variant,
     }
   }
@@ -157,7 +157,9 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
 
     return {
       label,
-      status: this.isTable ? Status.Hidden() : Status.Hidden("Optional"),
+      status: this.isTable
+        ? Status.Enabled("Optional")
+        : Status.Hidden("Optional"),
       optional,
     }
   }
@@ -199,12 +201,12 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
       }
     }
 
-    this.status = Status.Hidden()
+    this.status = Status.Visible("Optional")
     const vector = ty.accept(this, label) as FieldDetailWithChild[]
     this.status = Status.Default
 
     return {
-      status: Status.Visible("Optional"),
+      status: Status.Hidden("Optional"),
       label,
       vector,
     }
@@ -221,7 +223,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     if (this.isTable) {
       return {
         label,
-        status: Status.Hidden(),
+        status: Status.Enabled("Optional"),
       }
     }
 

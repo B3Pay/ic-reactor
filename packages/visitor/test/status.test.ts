@@ -95,34 +95,34 @@ describe("Status", () => {
   it("should correctly toggle checked status", () => {
     let status = Status.Visible("Checked")
     expect(Status.isChecked(status)).toBe(true)
-    status = Status.uncheck(status)
+    status = Status.setUncheck(status)
     expect(Status.isChecked(status)).toBe(false)
   })
 
   it("should correctly toggle checked status", () => {
     let status = Status.Visible()
-    status = Status.check(status)
+    status = Status.setCheck(status)
     expect(Status.isChecked(status)).toBe(true)
-    status = Status.uncheck(status)
+    status = Status.setUncheck(status)
     expect(Status.isChecked(status)).toBe(false)
   })
 
   it("should throw an error when hiding a non-optional status", () => {
     let status = Status.Visible()
-    expect(() => Status.hide(status)).toThrow(
+    expect(() => Status.setHide(status)).toThrow(
       "Cannot modify a non-optional status"
     )
 
     status = Status.Hidden()
 
-    expect(() => Status.show(status)).toThrow(
+    expect(() => Status.setShow(status)).toThrow(
       "Cannot modify a non-optional status"
     )
   })
 
   it("should correctly toggle visible status", () => {
     let status = Status.Visible("Optional")
-    status = Status.hide(status)
+    status = Status.setHide(status)
     expect(Status.isVisible(status)).toBe(false)
   })
 
@@ -180,9 +180,9 @@ describe("Status", () => {
     status = Status.Hidden("Checked")
     if (Status.isChecked(status) && Status.isHidden(status)) {
       expect(true).toBe(true)
-      status = Status.check(status)
+      status = Status.setCheck(status)
       expect(Status.isChecked(status)).toBe(true)
-      status = Status.uncheck(status)
+      status = Status.setUncheck(status)
       expect(Status.isChecked(status)).toBe(false)
     } else {
       expect(false).toBe(true)
@@ -191,44 +191,44 @@ describe("Status", () => {
 
   it("should return props", () => {
     let status = Status.Visible("Optional")
-    expect(Status.all(status)).toStrictEqual({
+    expect(Status.allString(status)).toStrictEqual({
       flag: "Visible",
       props: ["Optional"],
     })
 
-    status = Status.hide(status)
+    status = Status.setHide(status)
 
     expect(Status.isHidden(status)).toBe(true)
 
-    expect(Status.all(status)).toStrictEqual({
+    expect(Status.allString(status)).toStrictEqual({
       flag: "Hidden",
       props: ["Optional"],
     })
 
-    status = Status.show(status)
+    status = Status.setShow(status)
 
     expect(Status.isVisible(status)).toBe(true)
 
-    expect(Status.all(status)).toStrictEqual({
+    expect(Status.allString(status)).toStrictEqual({
       flag: "Visible",
       props: ["Optional"],
     })
   })
 
   it("should return props", () => {
-    let status = Status.Visible("Optional", "FlexRow", "Checked")
-    expect(Status.all(status)).toStrictEqual({
+    let status = Status.Visible("Optional", "Row", "Checked")
+    expect(Status.allString(status)).toStrictEqual({
       flag: "Visible",
-      props: ["Optional", "Checked", "FlexRow"],
+      props: ["Optional", "Checked", "Row"],
     })
 
-    status = Status.hide(status)
+    status = Status.setHide(status)
 
     expect(Status.isHidden(status)).toBe(true)
 
-    expect(Status.all(status)).toStrictEqual({
+    expect(Status.allString(status)).toStrictEqual({
       flag: "Hidden",
-      props: ["Optional", "Checked", "FlexRow"],
+      props: ["Optional", "Checked", "Row"],
     })
   })
 })

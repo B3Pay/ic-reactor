@@ -8,7 +8,9 @@ export class Status {
     ///  [0; 30] + [1, 0]
     Hidden: 1 << 1,
     ///  [0; 29] + [1, 0, 0]
-    Disabled: 1 << 2,
+    Enabled: 1 << 2,
+    /// [0; 28] + [1, 0, 0, 0]
+    Disabled: 1 << 3,
   } as const
 
   protected static _prop = {
@@ -17,7 +19,7 @@ export class Status {
     ///  [0; 14] + [1] + [0; 16]
     Checked: 1 << 17,
     ///  [0; 13] + [1] + [0; 17]
-    FlexRow: 1 << 18,
+    Row: 1 << 18,
   } as const
 
   /// Getter for the _flag object
@@ -52,12 +54,26 @@ export class Status {
   }
 
   /// Method to get the number representing disabled status with given props
+  public static Enabled(...props: StatusProp[]): number {
+    let result = this._flag.Enabled
+    for (const prop of props) {
+      result |= this._prop[prop]
+    }
+    return result
+  }
+
+  /// Method to get the number representing table status with given props
   public static Disabled(...props: StatusProp[]): number {
     let result = this._flag.Disabled
     for (const prop of props) {
       result |= this._prop[prop]
     }
     return result
+  }
+
+  /// Method to get the default status with given props
+  public static isDefault(status: number): boolean {
+    return status === this.Default
   }
 
   /// Method to check if a status is visible
@@ -68,6 +84,16 @@ export class Status {
   /// Method to check if a status is hidden
   public static isHidden(status: number): boolean {
     return (status & this._flag.Hidden) !== 0
+  }
+
+  /// Method to check if a status is table
+  public static isTable(status: number): boolean {
+    return (status & this._flag.Disabled) !== 0
+  }
+
+  /// Method to check if a status is enabled
+  public static isEnabled(status: number): boolean {
+    return (status & this._flag.Enabled) !== 0
   }
 
   /// Method to check if a status is disabled
@@ -85,8 +111,23 @@ export class Status {
     return (status & this._prop.Optional) !== 0
   }
 
+  /// Method to check if a status is row
+  public static isRow(status: number): boolean {
+    return (status & this._prop.Row) !== 0
+  }
+
   /// Method to return the flag in a status
-  public static flag(status: number): keyof (typeof Status)["_flag"] {
+  public static flag(status: number): number {
+    for (const key in this._flag) {
+      if ((status & this._flag[key as StatusFlag]) !== 0) {
+        return this._flag[key as StatusFlag]
+      }
+    }
+    throw new Error("Invalid status")
+  }
+
+  /// Method to return the flag in a status
+  public static flagString(status: number): keyof (typeof Status)["_flag"] {
     for (const key in this._flag) {
       if ((status & this._flag[key as StatusFlag]) !== 0) {
         return key as StatusFlag
@@ -95,8 +136,19 @@ export class Status {
     throw new Error("Invalid status")
   }
 
+  /// Method to return the props in a status
+  public static props(status: number): number[] {
+    const props: number[] = []
+    for (const key in this._prop) {
+      if ((status & this._prop[key as StatusProp]) !== 0) {
+        props.push(key as unknown as number)
+      }
+    }
+    return props
+  }
+
   /// Method to return all present props in a status
-  public static props(status: number): StatusProp[] {
+  public static propStrings(status: number): StatusProp[] {
     const props: StatusProp[] = []
     for (const prop in this._prop) {
       if ((status & this._prop[prop as StatusProp]) !== 0) {
@@ -107,12 +159,23 @@ export class Status {
   }
 
   /// Method to return all present flags and props in a status
-  public static all(status: number): { flag: StatusFlag; props: StatusProp[] } {
+  public static all(status: number): {
+    flag: number
+    props: number[]
+  } {
     return { flag: this.flag(status), props: this.props(status) }
   }
 
+  /// Method to return all present flags and props in a status
+  public static allString(status: number): {
+    flag: StatusFlag
+    props: StatusProp[]
+  } {
+    return { flag: this.flagString(status), props: this.propStrings(status) }
+  }
+
   /// Method to hide the status
-  public static hide(status: number): number {
+  public static setHide(status: number): number {
     if (!this.isOptional(status)) {
       throw new Error("Cannot modify a non-optional status")
     }
@@ -123,7 +186,7 @@ export class Status {
   }
 
   /// Method to show the status
-  public static show(status: number): number {
+  public static setShow(status: number): number {
     if (!this.isOptional(status)) {
       throw new Error("Cannot modify a non-optional status")
     }
@@ -134,36 +197,36 @@ export class Status {
   }
 
   /// Method to disable the status
-  public static disable(status: number): number {
+  public static setDisable(status: number): number {
     if (!this.isOptional(status)) {
       throw new Error("Cannot modify a non-optional status")
     }
-
     if (this.isDisabled(status)) {
       return status
     }
-    return status | this._flag.Disabled
+
+    return (status | this._flag.Disabled) ^ this._flag.Enabled
   }
 
   /// Method to enable the status
-  public static enable(status: number): number {
+  public static setEnable(status: number): number {
     if (!this.isOptional(status)) {
       throw new Error("Cannot modify a non-optional status")
     }
-
-    if (!this.isDisabled(status)) {
+    if (this.isEnabled(status)) {
       return status
     }
-    return status ^ this._flag.Disabled
+
+    return (status | this._flag.Enabled) ^ this._flag.Disabled
   }
 
   /// Method to add the checked status
-  public static check(status: number): number {
+  public static setCheck(status: number): number {
     return status | this._prop.Checked
   }
 
   /// Method to remove the checked status
-  public static uncheck(status: number): number {
+  public static setUncheck(status: number): number {
     return status & ~this._prop.Checked
   }
 }
