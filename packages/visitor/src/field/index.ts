@@ -25,19 +25,19 @@ export class VisitField<A = BaseActor> extends IDL.Visitor<
     functionName: FunctionName<A>
   ): MethodField<A> {
     const {
-      fields: argFields,
+      fields: argField,
       defaultValues: argDefaultValues,
       ...restArgs
     } = this.argsVisitor.visitFunc(t, functionName)
     const {
-      fields: retFields,
+      fields: retField,
       defaultValues: retDefaultValues,
       ...restRets
     } = this.returnsVisitor.visitFunc(t, functionName) as NormalMethodReturn<A>
 
     return {
-      argField: argFields,
-      retField: retFields,
+      argField,
+      retField,
       defaultValues: {
         args: argDefaultValues,
         rets: retDefaultValues,

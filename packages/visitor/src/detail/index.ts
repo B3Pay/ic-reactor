@@ -23,18 +23,18 @@ export class VisitDetail<A = BaseActor> extends IDL.Visitor<
     t: IDL.FuncClass,
     functionName: FunctionName<A>
   ): MethodDetail<A> {
-    const { detail: argDetails, ...restArgs } = this.argsVisitor.visitFunc(
+    const { detail: argDetail, ...restArgs } = this.argsVisitor.visitFunc(
       t,
       functionName
     )
-    const { detail: retDetails, ...restRets } = this.returnsVisitor.visitFunc(
+    const { detail: retDetail, ...restRets } = this.returnsVisitor.visitFunc(
       t,
       functionName
     )
 
     return {
-      argDetail: argDetails,
-      retDetail: retDetails,
+      argDetail,
+      retDetail,
       ...restRets,
       ...restArgs,
     }

@@ -144,8 +144,8 @@ export class VisitReturn<A = BaseActor> extends IDL.Visitor<
 
         return {
           canisterId,
-          functionName,
           idlFactory,
+          functionName,
           args: [args],
         }
       }
