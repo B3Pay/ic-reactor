@@ -9,39 +9,39 @@ import type {
   ArgTypeFromIDLType,
 } from "../../types"
 
-export type ServiceReturns<A = BaseActor> = {
-  [K in FunctionName<A>]: MethodReturns<A>
+export type ServiceReturn<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodReturn<A>
 }
 
-export type FunctionMethodReturns = {
+export type FunctionMethodReturn = {
   type: "function"
   label: string
   functionClass: IDL.FuncClass
 }
 
-export type NormalMethodReturns<A = BaseActor> = {
+export type NormalMethodReturn<A = BaseActor> = {
   type: "normal"
   functionName: FunctionName<A>
   functionType: FunctionType
   fields: AllReturnTypes<IDL.Type>[] | []
-  defaultValues: MethodReturnValues<FunctionName<A>>
-  transformData: (data: unknown) => MethodReturnValues<FunctionName<A>>
+  defaultValues: MethodReturnValue<FunctionName<A>>
+  transformData: (data: unknown) => MethodReturnValue<FunctionName<A>>
 }
 
-export type MethodReturns<A = BaseActor> =
-  | FunctionMethodReturns
-  | NormalMethodReturns<A>
+export type MethodReturn<A = BaseActor> =
+  | FunctionMethodReturn
+  | NormalMethodReturn<A>
 
-export type MethodReturnValues<T = string> = {
+export type MethodReturnValue<T = string> = {
   [key: `ret${number}`]: ReturnTypeFromIDLType<T>
 }
 
-export interface RecordReturns<T extends IDL.Type> extends DefaultReturn {
+export interface RecordReturn<T extends IDL.Type> extends DefaultReturn {
   type: "record"
   fields: AllReturnTypes<T>[]
 }
 
-export interface FunctionRecordReturns<T extends IDL.Type>
+export interface FunctionRecordReturn<T extends IDL.Type>
   extends DefaultReturn {
   type: "functionRecord"
   extract: (values: Record<string, unknown>) => FunctionExtractedData<T>
@@ -54,42 +54,42 @@ export type FunctionExtractedData<T extends IDL.Type = IDL.Type> = {
   args: [Record<string, ArgTypeFromIDLType<T>>]
 }
 
-export interface VariantReturns<T extends IDL.Type> extends DefaultReturn {
+export interface VariantReturn<T extends IDL.Type> extends DefaultReturn {
   type: "variant"
   options: string[]
   selected: string
   fields: AllReturnTypes<T>[]
 }
 
-export interface TupleReturns<T extends IDL.Type> extends DefaultReturn {
+export interface TupleReturn<T extends IDL.Type> extends DefaultReturn {
   type: "tuple"
   fields: AllReturnTypes<T>[]
 }
 
-export interface OptionalReturns extends DefaultReturn {
+export interface OptionalReturn extends DefaultReturn {
   type: "optional"
   field: AllReturnTypes<IDL.Type>
 }
 
-export interface VectorReturns extends DefaultReturn {
+export interface VectorReturn extends DefaultReturn {
   type: "vector"
   field: AllReturnTypes<IDL.Type>
 }
 
-export interface ListReturns extends DefaultReturn {
+export interface ListReturn extends DefaultReturn {
   type: "list"
   labelList: string[]
   fields: AllReturnTypes<IDL.Type>[]
 }
 
-export interface BlobReturns extends DefaultReturn {
+export interface BlobReturn extends DefaultReturn {
   type: "blob"
 }
 
-export interface RecursiveReturns extends DefaultReturn {
+export interface RecursiveReturn extends DefaultReturn {
   type: "recursive"
   name: string
-  extract: () => VariantReturns<IDL.Type>
+  extract: () => VariantReturn<IDL.Type>
 }
 
 export interface PrincipalReturn extends DefaultReturn {
@@ -104,25 +104,25 @@ export interface NumberReturn extends DefaultReturn {
 export interface InputReturn extends DefaultReturn {}
 
 export type DynamicReturnType<T extends FieldType> = T extends "function"
-  ? FunctionMethodReturns
+  ? FunctionMethodReturn
   : T extends "functionRecord"
-  ? FunctionRecordReturns<IDL.Type>
+  ? FunctionRecordReturn<IDL.Type>
   : T extends "record"
-  ? RecordReturns<IDL.Type>
+  ? RecordReturn<IDL.Type>
   : T extends "variant"
-  ? VariantReturns<IDL.Type>
+  ? VariantReturn<IDL.Type>
   : T extends "tuple"
-  ? TupleReturns<IDL.Type>
+  ? TupleReturn<IDL.Type>
   : T extends "optional"
-  ? OptionalReturns
+  ? OptionalReturn
   : T extends "vector"
-  ? VectorReturns
+  ? VectorReturn
   : T extends "list"
-  ? ListReturns
+  ? ListReturn
   : T extends "blob"
-  ? BlobReturns
+  ? BlobReturn
   : T extends "recursive"
-  ? RecursiveReturns
+  ? RecursiveReturn
   : T extends "unknown"
   ? InputReturn
   : T extends "text"
@@ -139,17 +139,17 @@ export type DynamicReturnType<T extends FieldType> = T extends "function"
 
 export type DynamicReturnTypeByClass<T extends IDL.Type> =
   T extends IDL.RecordClass
-    ? RecordReturns<T>
+    ? RecordReturn<T>
     : T extends IDL.TupleClass<IDL.Type[]>
-    ? TupleReturns<T>
+    ? TupleReturn<T>
     : T extends IDL.VariantClass
-    ? VariantReturns<T>
+    ? VariantReturn<T>
     : T extends IDL.VecClass<IDL.Type>
-    ? VectorReturns
+    ? VectorReturn
     : T extends IDL.OptClass<IDL.Type>
-    ? OptionalReturns
+    ? OptionalReturn
     : T extends IDL.RecClass<IDL.Type>
-    ? RecursiveReturns
+    ? RecursiveReturn
     : T extends IDL.PrincipalClass
     ? PrincipalReturn
     : T extends AllNumberTypes
@@ -157,12 +157,12 @@ export type DynamicReturnTypeByClass<T extends IDL.Type> =
     : InputReturn
 
 export type AllReturnTypes<T extends IDL.Type> =
-  | RecordReturns<T>
-  | TupleReturns<T>
-  | VariantReturns<T>
-  | VectorReturns
-  | OptionalReturns
-  | RecursiveReturns
+  | RecordReturn<T>
+  | TupleReturn<T>
+  | VariantReturn<T>
+  | VectorReturn
+  | OptionalReturn
+  | RecursiveReturn
   | PrincipalReturn
   | NumberReturn
   | InputReturn

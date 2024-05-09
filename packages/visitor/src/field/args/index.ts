@@ -3,21 +3,21 @@ import { IDL } from "@dfinity/candid"
 import type {
   ArgTypeFromIDLType,
   DefaultArg,
-  MethodArgs,
+  MethodArg,
   InputArg,
   NumberArg,
   PrincipalArg,
-  OptionalArgs,
-  RecordArgs,
-  RecursiveArgs,
-  TupleArgs,
-  VariantArgs,
-  VectorArgs,
+  OptionalArg,
+  RecordArg,
+  RecursiveArg,
+  TupleArg,
+  VariantArg,
+  VectorArg,
   MethodArgsDefaultValues,
   DynamicArgTypeByClass,
   AllArgTypes,
-  ServiceArgs,
-  BlobArgs,
+  ServiceArg,
+  BlobArg,
 } from "./types"
 import {
   extractAndSortArgs,
@@ -32,14 +32,14 @@ import type { BaseActor, FunctionName } from "../../types"
  * It returns the extracted service fields.
  *
  */
-export class VisitArgs<A = BaseActor> extends IDL.Visitor<
+export class VisitArg<A = BaseActor> extends IDL.Visitor<
   string,
-  MethodArgs<A> | DefaultArg | ServiceArgs<A>
+  MethodArg<A> | DefaultArg | ServiceArg<A>
 > {
   public visitFunc(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
-  ): MethodArgs<A> {
+  ): MethodArg<A> {
     const functionType = isQuery(t) ? "query" : "update"
 
     const { fields, defaultValues } = t.argTypes.reduce(
@@ -99,7 +99,7 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
     t: IDL.RecordClass,
     _fields: Array<[string, IDL.Type]>,
     label: string
-  ): RecordArgs<IDL.Type> {
+  ): RecordArg<IDL.Type> {
     const { fields, defaultValues } = _fields.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllArgTypes<typeof type>
@@ -128,7 +128,7 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
     t: IDL.VariantClass,
     fields_: Array<[string, IDL.Type]>,
     label: string
-  ): VariantArgs<IDL.Type> {
+  ): VariantArg<IDL.Type> {
     const { fields, options } = fields_.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllArgTypes<typeof type>
@@ -165,7 +165,7 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
     t: IDL.TupleClass<T>,
     components: IDL.Type[],
     label: string
-  ): TupleArgs<IDL.Type> {
+  ): TupleArg<IDL.Type> {
     const { fields, defaultValues } = components.reduce(
       (acc, type, index) => {
         const field = type.accept(this, `_${index}_`) as AllArgTypes<
@@ -195,13 +195,13 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
     t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     label: string
-  ): RecursiveArgs {
+  ): RecursiveArg {
     return {
       type: "recursive",
       label,
       validate: validateError(t),
       name: ty.name,
-      extract: () => ty.accept(this, label) as VariantArgs<IDL.Type>,
+      extract: () => ty.accept(this, label) as VariantArg<IDL.Type>,
     }
   }
 
@@ -209,7 +209,7 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
     t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): OptionalArgs {
+  ): OptionalArg {
     const field = ty.accept(this, label) as DynamicArgTypeByClass<typeof ty>
 
     return {
@@ -225,7 +225,7 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
     t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): VectorArgs | BlobArgs {
+  ): VectorArg | BlobArg {
     const field = ty.accept(this, label) as DynamicArgTypeByClass<typeof ty>
 
     return {
@@ -319,15 +319,15 @@ export class VisitArgs<A = BaseActor> extends IDL.Visitor<
     return this.visitNumber(t, label)
   }
 
-  public visitService(t: IDL.ServiceClass): ServiceArgs<A> {
+  public visitService(t: IDL.ServiceClass): ServiceArg<A> {
     const methodFields = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      acc[functionName] = func.accept(this, functionName) as MethodArgs<A>
+      acc[functionName] = func.accept(this, functionName) as MethodArg<A>
 
       return acc
-    }, {} as ServiceArgs<A>)
+    }, {} as ServiceArg<A>)
 
     return methodFields
   }

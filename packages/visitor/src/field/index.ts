@@ -1,29 +1,29 @@
 import { IDL } from "@dfinity/candid"
-import { VisitReturns } from "./returns"
-import { VisitArgs } from "./args"
+import { VisitReturn } from "./rets"
+import { VisitArg } from "./args"
 
 import type {
   BaseActor,
   FunctionName,
-  MethodFields,
-  NormalMethodReturns,
-  ServiceFields,
+  MethodField,
+  NormalMethodReturn,
+  ServiceField,
 } from "../types"
 
-export * from "./returns"
+export * from "./rets"
 export * from "./args"
 
-export class VisitFields<A = BaseActor> extends IDL.Visitor<
+export class VisitField<A = BaseActor> extends IDL.Visitor<
   string,
-  ServiceFields<A> | MethodFields<A>
+  ServiceField<A> | MethodField<A>
 > {
-  private argsVisitor = new VisitArgs<A>()
-  private returnsVisitor = new VisitReturns<A>()
+  private argsVisitor = new VisitArg<A>()
+  private returnsVisitor = new VisitReturn<A>()
 
   public visitFunc(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
-  ): MethodFields<A> {
+  ): MethodField<A> {
     const {
       fields: argFields,
       defaultValues: argDefaultValues,
@@ -33,11 +33,11 @@ export class VisitFields<A = BaseActor> extends IDL.Visitor<
       fields: retFields,
       defaultValues: retDefaultValues,
       ...restRets
-    } = this.returnsVisitor.visitFunc(t, functionName) as NormalMethodReturns<A>
+    } = this.returnsVisitor.visitFunc(t, functionName) as NormalMethodReturn<A>
 
     return {
-      argFields,
-      retFields,
+      argField: argFields,
+      retField: retFields,
       defaultValues: {
         args: argDefaultValues,
         rets: retDefaultValues,
@@ -47,15 +47,15 @@ export class VisitFields<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitService(t: IDL.ServiceClass): ServiceFields<A> {
+  public visitService(t: IDL.ServiceClass): ServiceField<A> {
     const methodFields = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      acc[functionName] = func.accept(this, functionName) as MethodFields<A>
+      acc[functionName] = func.accept(this, functionName) as MethodField<A>
 
       return acc
-    }, {} as ServiceFields<A>)
+    }, {} as ServiceField<A>)
 
     return methodFields
   }

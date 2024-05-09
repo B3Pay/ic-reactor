@@ -3,12 +3,12 @@ import type {
   AllReturnTypes,
   IDL,
   FunctionCategory,
-  OptionalReturns,
+  OptionalReturn,
 } from "./types"
 
 export const isFieldInTable = (field: AllReturnTypes<IDL.Type>): boolean => {
   if (field.type === "optional") {
-    return isFieldInTable((field as OptionalReturns).field)
+    return isFieldInTable((field as OptionalReturn).field)
   }
 
   return !["record", "tuple", "vector", "function"].includes(field.type)

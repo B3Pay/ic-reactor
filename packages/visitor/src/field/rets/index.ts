@@ -5,24 +5,24 @@ import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "../../constants"
 import type {
   ReturnTypeFromIDLType,
   DefaultReturn,
-  MethodReturns,
+  MethodReturn,
   NumberReturn,
   PrincipalReturn,
-  OptionalReturns,
-  RecordReturns,
-  RecursiveReturns,
-  TupleReturns,
-  VariantReturns,
-  VectorReturns,
+  OptionalReturn,
+  RecordReturn,
+  RecursiveReturn,
+  TupleReturn,
+  VariantReturn,
+  VectorReturn,
   DynamicReturnTypeByClass,
   AllReturnTypes,
-  ServiceReturns,
-  BlobReturns,
-  MethodReturnValues,
-  ListReturns,
-  FunctionRecordReturns,
+  ServiceReturn,
+  BlobReturn,
+  MethodReturnValue,
+  ListReturn,
+  FunctionRecordReturn,
   FunctionExtractedData,
-  FunctionMethodReturns,
+  FunctionMethodReturn,
 } from "./types"
 import type {
   ArgTypeFromIDLType,
@@ -36,15 +36,15 @@ import type {
  * It returns the extracted service fields.
  *
  */
-export class VisitReturns<A = BaseActor> extends IDL.Visitor<
+export class VisitReturn<A = BaseActor> extends IDL.Visitor<
   string,
-  MethodReturns<A> | DefaultReturn | ServiceReturns<A>
+  MethodReturn<A> | DefaultReturn | ServiceReturn<A>
 > {
   private inVisit = false
   public visitFunc(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
-  ): MethodReturns<A> {
+  ): MethodReturn<A> {
     if (this.inVisit) {
       return {
         type: "function",
@@ -73,22 +73,22 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
       },
       {
         fields: [] as DynamicReturnTypeByClass<IDL.Type>[],
-        defaultValues: {} as MethodReturnValues<FunctionName<A>>,
+        defaultValues: {} as MethodReturnValue<FunctionName<A>>,
       }
     )
 
-    const transformData = (data: unknown | unknown[]): MethodReturnValues => {
+    const transformData = (data: unknown | unknown[]): MethodReturnValue => {
       if (t.retTypes.length === 1) {
         return {
           ret0: data,
-        } as MethodReturnValues
+        } as MethodReturnValue
       }
 
       return t.retTypes.reduce((acc, _, index) => {
         acc[`ret${index}`] = (data as ReturnTypeFromIDLType<IDL.Type>[])[index]
 
         return acc
-      }, {} as MethodReturnValues)
+      }, {} as MethodReturnValue)
     }
 
     return {
@@ -105,7 +105,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.RecordClass,
     _fields: Array<[string, IDL.Type]>,
     label: string
-  ): RecordReturns<IDL.Type> | FunctionRecordReturns<IDL.Type> {
+  ): RecordReturn<IDL.Type> | FunctionRecordReturn<IDL.Type> {
     const { fields } = _fields.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllReturnTypes<typeof type>
@@ -121,7 +121,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     )
 
     if (fields[0]?.type === "function") {
-      const func = fields[0] as FunctionMethodReturns
+      const func = fields[0] as FunctionMethodReturn
       const argFields = fields.slice(1)
 
       const extract = <T extends IDL.Type = IDL.Type>(
@@ -168,7 +168,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.VariantClass,
     fields_: Array<[string, IDL.Type]>,
     label: string
-  ): VariantReturns<IDL.Type> {
+  ): VariantReturn<IDL.Type> {
     const { fields, options } = fields_.reduce(
       (acc, [key, type]) => {
         const field = type.accept(this, key) as AllReturnTypes<typeof type>
@@ -197,7 +197,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.TupleClass<T>,
     components: IDL.Type[],
     label: string
-  ): TupleReturns<IDL.Type> {
+  ): TupleReturn<IDL.Type> {
     const { fields } = components.reduce(
       (acc, type, index) => {
         const field = type.accept(this, `_${index}_`) as AllReturnTypes<
@@ -224,12 +224,12 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     label: string
-  ): RecursiveReturns {
+  ): RecursiveReturn {
     return {
       type: "recursive",
       label,
       name: ty.name,
-      extract: () => ty.accept(this, label) as VariantReturns<IDL.Type>,
+      extract: () => ty.accept(this, label) as VariantReturn<IDL.Type>,
     }
   }
 
@@ -237,7 +237,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): OptionalReturns {
+  ): OptionalReturn {
     const field = ty.accept(this, label) as DynamicReturnTypeByClass<typeof ty>
 
     return {
@@ -251,7 +251,7 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     _t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): VectorReturns | BlobReturns | ListReturns {
+  ): VectorReturn | BlobReturn | ListReturn {
     const field = ty.accept(this, label) as DynamicReturnTypeByClass<typeof ty>
 
     if ("_bits" in ty && ty._bits === 8) {
@@ -264,24 +264,22 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     if (field.type === "record") {
       const labelList: string[] = []
 
-      const isList = (field as RecordReturns<IDL.Type>).fields.every(
-        (field) => {
-          if (isFieldInTable(field)) {
-            if (field.label) {
-              labelList.push(field.label)
-              return true
-            }
+      const isList = (field as RecordReturn<IDL.Type>).fields.every((field) => {
+        if (isFieldInTable(field)) {
+          if (field.label) {
+            labelList.push(field.label)
+            return true
           }
-          return false
         }
-      )
+        return false
+      })
 
       if (isList) {
         return {
           type: "list",
           label,
           labelList,
-          fields: (field as RecordReturns<IDL.Type>).fields,
+          fields: (field as RecordReturn<IDL.Type>).fields,
         }
       }
     }
@@ -369,15 +367,15 @@ export class VisitReturns<A = BaseActor> extends IDL.Visitor<
     return this.visitNumber(t, label)
   }
 
-  public visitService(t: IDL.ServiceClass): ServiceReturns<A> {
+  public visitService(t: IDL.ServiceClass): ServiceReturn<A> {
     const methodFields = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
 
-      acc[functionName] = func.accept(this, functionName) as MethodReturns<A>
+      acc[functionName] = func.accept(this, functionName) as MethodReturn<A>
 
       return acc
-    }, {} as ServiceReturns<A>)
+    }, {} as ServiceReturn<A>)
 
     return methodFields
   }

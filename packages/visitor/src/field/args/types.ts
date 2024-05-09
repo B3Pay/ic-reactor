@@ -7,11 +7,11 @@ import type {
   FieldType,
 } from "../../types"
 
-export type ServiceArgs<A = BaseActor> = {
-  [K in FunctionName<A>]: MethodArgs<A>
+export type ServiceArg<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodArg<A>
 }
 
-export interface MethodArgs<A = BaseActor> {
+export interface MethodArg<A = BaseActor> {
   functionName: FunctionName<A>
   functionType: FunctionType
   fields: AllArgTypes<IDL.Type>[] | []
@@ -25,13 +25,13 @@ export type MethodArgsDefaultValues<T = string> = {
   [key: `arg${number}`]: ArgTypeFromIDLType<T>
 }
 
-export interface RecordArgs<T extends IDL.Type> extends DefaultArg {
+export interface RecordArg<T extends IDL.Type> extends DefaultArg {
   type: "record"
   fields: AllArgTypes<T>[]
   defaultValues: Record<string, ArgTypeFromIDLType<T>>
 }
 
-export interface VariantArgs<T extends IDL.Type> extends DefaultArg {
+export interface VariantArg<T extends IDL.Type> extends DefaultArg {
   type: "variant"
   options: string[]
   defaultValue: string
@@ -39,34 +39,34 @@ export interface VariantArgs<T extends IDL.Type> extends DefaultArg {
   defaultValues: ArgTypeFromIDLType<T>
 }
 
-export interface TupleArgs<T extends IDL.Type> extends DefaultArg {
+export interface TupleArg<T extends IDL.Type> extends DefaultArg {
   type: "tuple"
   fields: AllArgTypes<T>[]
   defaultValues: ArgTypeFromIDLType<T>[]
 }
 
-export interface OptionalArgs extends DefaultArg {
+export interface OptionalArg extends DefaultArg {
   type: "optional"
   field: AllArgTypes<IDL.Type>
   defaultValue: []
 }
 
-export interface VectorArgs extends DefaultArg {
+export interface VectorArg extends DefaultArg {
   type: "vector"
   field: AllArgTypes<IDL.Type>
   defaultValue: []
 }
 
-export interface BlobArgs extends DefaultArg {
+export interface BlobArg extends DefaultArg {
   type: "blob"
   field: AllArgTypes<IDL.Type>
   defaultValue: []
 }
 
-export interface RecursiveArgs extends DefaultArg {
+export interface RecursiveArg extends DefaultArg {
   type: "recursive"
   name: string
-  extract: () => VariantArgs<IDL.Type>
+  extract: () => VariantArg<IDL.Type>
 }
 
 export interface PrincipalArg extends DefaultArg {
@@ -91,19 +91,19 @@ export interface InputArg<T extends IDL.Type> extends DefaultArg {
 }
 
 export type DynamicArgType<T extends FieldType> = T extends "record"
-  ? RecordArgs<IDL.Type>
+  ? RecordArg<IDL.Type>
   : T extends "variant"
-  ? VariantArgs<IDL.Type>
+  ? VariantArg<IDL.Type>
   : T extends "tuple"
-  ? TupleArgs<IDL.Type>
+  ? TupleArg<IDL.Type>
   : T extends "optional"
-  ? OptionalArgs
+  ? OptionalArg
   : T extends "vector"
-  ? VectorArgs
+  ? VectorArg
   : T extends "blob"
-  ? BlobArgs
+  ? BlobArg
   : T extends "recursive"
-  ? RecursiveArgs
+  ? RecursiveArg
   : T extends "unknown"
   ? InputArg<IDL.Type>
   : T extends "text"
@@ -120,17 +120,17 @@ export type DynamicArgType<T extends FieldType> = T extends "record"
 
 export type DynamicArgTypeByClass<T extends IDL.Type> =
   T extends IDL.RecordClass
-    ? RecordArgs<T>
+    ? RecordArg<T>
     : T extends IDL.TupleClass<IDL.Type[]>
-    ? TupleArgs<T>
+    ? TupleArg<T>
     : T extends IDL.VariantClass
-    ? VariantArgs<T>
+    ? VariantArg<T>
     : T extends IDL.VecClass<IDL.Type>
-    ? VectorArgs
+    ? VectorArg
     : T extends IDL.OptClass<IDL.Type>
-    ? OptionalArgs
+    ? OptionalArg
     : T extends IDL.RecClass<IDL.Type>
-    ? RecursiveArgs
+    ? RecursiveArg
     : T extends IDL.PrincipalClass
     ? PrincipalArg
     : T extends AllNumberTypes
@@ -138,12 +138,12 @@ export type DynamicArgTypeByClass<T extends IDL.Type> =
     : InputArg<T>
 
 export type AllArgTypes<T extends IDL.Type> =
-  | RecordArgs<T>
-  | TupleArgs<T>
-  | VariantArgs<T>
-  | VectorArgs
-  | OptionalArgs
-  | RecursiveArgs
+  | RecordArg<T>
+  | TupleArg<T>
+  | VariantArg<T>
+  | VectorArg
+  | OptionalArg
+  | RecursiveArg
   | PrincipalArg
   | NumberArg
   | InputArg<T>
@@ -152,12 +152,12 @@ export type ArgTypeFromIDLType<T> = T extends IDL.Type
   ? ReturnType<T["decodeValue"]>
   : IDL.Type
 
-export type ExtraInputFormArgs = Partial<{
+export type ExtraInputFormArg = Partial<{
   maxLength: number
   minLength: number
 }>
 
-export interface DefaultArg extends ExtraInputFormArgs {
+export interface DefaultArg extends ExtraInputFormArg {
   type: FieldType
   label: string
   validate: (value: ArgTypeFromIDLType<IDL.Type>) => boolean | string

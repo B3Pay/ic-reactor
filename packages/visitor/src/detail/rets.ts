@@ -1,6 +1,6 @@
 import { IDL } from "@dfinity/candid"
 import { isQuery, isFieldInTable } from "../helpers"
-import { VisitReturns } from "../fields"
+import { VisitReturn } from "../field"
 
 import type {
   FieldDetailWithChild,
@@ -20,7 +20,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
   string,
   DetailType<A> | MethodReturnDetail<A> | FieldDetailWithChild | FieldDetail
 > {
-  private visitReturnField = new VisitReturns()
+  private visitReturnField = new VisitReturn()
   public counter = 0
   private status = Status.Default
   private isTable = false
