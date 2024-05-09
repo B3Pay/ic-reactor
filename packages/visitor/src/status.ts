@@ -1,23 +1,24 @@
-export type StatusType = keyof (typeof Status)["_type"]
+type StatusFlag = keyof (typeof Status)["_flag"]
+type StatusProp = keyof (typeof Status)["_prop"]
 
 export class Status {
-  private static _flag = {
+  protected static _flag = {
     ///  [0; 31] + [1]
     Visible: 1 << 0,
     ///  [0; 30] + [1, 0]
     Hidden: 1 << 1,
     ///  [0; 29] + [1, 0, 0]
     Disabled: 1 << 2,
-  }
+  } as const
 
-  private static _type = {
+  protected static _prop = {
     ///  [0; 15] + [1] + [0; 15]
     Optional: 1 << 16,
     ///  [0; 14] + [1] + [0; 16]
     Checked: 1 << 17,
     ///  [0; 13] + [1] + [0; 17]
     FlexRow: 1 << 18,
-  }
+  } as const
 
   /// Getter for the _flag object
   public static get Flag() {
@@ -25,36 +26,36 @@ export class Status {
   }
 
   /// Getter for the _type object
-  public static get Type() {
-    return this._type
+  public static get Prop() {
+    return this._prop
   }
 
   /// Default status is visible
   public static Default = this._flag.Visible
 
-  /// Method to get the number representing visible status with given types
-  public static Visible(...types: StatusType[]): number {
+  /// Method to get the number representing visible status with given props
+  public static Visible(...props: StatusProp[]): number {
     let result = this._flag.Visible
-    for (const type of types) {
-      result |= this._type[type]
+    for (const prop of props) {
+      result |= this._prop[prop]
     }
     return result
   }
 
-  /// Method to get the number representing hidden status with given types
-  public static Hidden(...types: StatusType[]): number {
+  /// Method to get the number representing hidden status with given props
+  public static Hidden(...props: StatusProp[]): number {
     let result = this._flag.Hidden
-    for (const type of types) {
-      result |= this._type[type]
+    for (const prop of props) {
+      result |= this._prop[prop]
     }
     return result
   }
 
-  /// Method to get the number representing disabled status with given types
-  public static Disabled(...types: StatusType[]): number {
+  /// Method to get the number representing disabled status with given props
+  public static Disabled(...props: StatusProp[]): number {
     let result = this._flag.Disabled
-    for (const type of types) {
-      result |= this._type[type]
+    for (const prop of props) {
+      result |= this._prop[prop]
     }
     return result
   }
@@ -76,38 +77,38 @@ export class Status {
 
   /// Method to check if a status is checked
   public static isChecked(status: number): boolean {
-    return (status & this._type.Checked) !== 0
+    return (status & this._prop.Checked) !== 0
   }
 
   /// Method to check if a status is optional
   public static isOptional(status: number): boolean {
-    return (status & this._type.Optional) !== 0
+    return (status & this._prop.Optional) !== 0
   }
 
   /// Method to return the flag in a status
   public static flag(status: number): keyof (typeof Status)["_flag"] {
     for (const key in this._flag) {
-      if ((status & this._flag[key as keyof (typeof Status)["_flag"]]) !== 0) {
-        return key as keyof (typeof Status)["_flag"]
+      if ((status & this._flag[key as StatusFlag]) !== 0) {
+        return key as StatusFlag
       }
     }
     throw new Error("Invalid status")
   }
 
-  /// Method to return all present types in a status
-  public static types(status: number): StatusType[] {
-    const types: StatusType[] = []
-    for (const key in this._type) {
-      if ((status & this._type[key as StatusType]) !== 0) {
-        types.push(key as StatusType)
+  /// Method to return all present props in a status
+  public static props(status: number): StatusProp[] {
+    const props: StatusProp[] = []
+    for (const prop in this._prop) {
+      if ((status & this._prop[prop as StatusProp]) !== 0) {
+        props.push(prop as StatusProp)
       }
     }
-    return types
+    return props
   }
 
-  /// Method to return all present flags and types in a status
-  public static props(status: number) {
-    return { flag: this.flag(status), types: this.types(status) }
+  /// Method to return all present flags and props in a status
+  public static all(status: number): { flag: StatusFlag; props: StatusProp[] } {
+    return { flag: this.flag(status), props: this.props(status) }
   }
 
   /// Method to hide the status
@@ -157,12 +158,12 @@ export class Status {
   }
 
   /// Method to add the checked status
-  public static addChecked(status: number): number {
-    return status | this._type.Checked
+  public static check(status: number): number {
+    return status | this._prop.Checked
   }
 
   /// Method to remove the checked status
-  public static removeChecked(status: number): number {
-    return status & ~this._type.Checked
+  public static uncheck(status: number): number {
+    return status & ~this._prop.Checked
   }
 }
