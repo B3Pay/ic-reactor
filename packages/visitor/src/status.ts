@@ -19,7 +19,7 @@ export class Status {
     ///  [0; 14] + [1] + [0; 16]
     Checked: 1 << 17,
     ///  [0; 13] + [1] + [0; 17]
-    Row: 1 << 18,
+    Dynamic: 1 << 18,
   } as const
 
   /// Getter for the _flag object
@@ -112,8 +112,8 @@ export class Status {
   }
 
   /// Method to check if a status is row
-  public static isRow(status: number): boolean {
-    return (status & this._prop.Row) !== 0
+  public static isDynamic(status: number): boolean {
+    return (status & this._prop.Dynamic) !== 0
   }
 
   /// Method to return the flag in a status
@@ -228,5 +228,15 @@ export class Status {
   /// Method to remove the checked status
   public static setUncheck(status: number): number {
     return status & ~this._prop.Checked
+  }
+
+  /// Method to add the dynamic status
+  public static setDynamic(status: number): number {
+    return status | this._prop.Dynamic
+  }
+
+  /// Method to remove the dynamic status
+  public static setStatic(status: number): number {
+    return status & ~this._prop.Dynamic
   }
 }

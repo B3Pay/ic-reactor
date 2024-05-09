@@ -216,10 +216,10 @@ describe("Status", () => {
   })
 
   it("should return props", () => {
-    let status = Status.Visible("Optional", "Row", "Checked")
+    let status = Status.Visible("Optional", "Dynamic", "Checked")
     expect(Status.allString(status)).toStrictEqual({
       flag: "Visible",
-      props: ["Optional", "Checked", "Row"],
+      props: ["Optional", "Checked", "Dynamic"],
     })
 
     status = Status.setHide(status)
@@ -228,7 +228,7 @@ describe("Status", () => {
 
     expect(Status.allString(status)).toStrictEqual({
       flag: "Hidden",
-      props: ["Optional", "Checked", "Row"],
+      props: ["Optional", "Checked", "Dynamic"],
     })
   })
 })

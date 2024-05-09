@@ -201,12 +201,12 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
       }
     }
 
-    this.status = Status.Visible("Optional")
+    this.status = Status.Hidden("Optional", "Dynamic")
     const vector = ty.accept(this, label) as FieldDetailWithChild[]
     this.status = Status.Default
 
     return {
-      status: Status.Hidden("Optional"),
+      status: Status.Visible("Optional"),
       label,
       vector,
     }
