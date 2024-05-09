@@ -1,5 +1,5 @@
-type StatusFlag = keyof (typeof Status)["_flag"]
-type StatusProp = keyof (typeof Status)["_prop"]
+export type StatusFlag = keyof (typeof Status)["_flag"]
+export type StatusProp = keyof (typeof Status)["_prop"]
 
 export class Status {
   protected static _flag = {

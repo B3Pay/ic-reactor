@@ -187,12 +187,13 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
 
       if (isList) {
         this.isTable = true
+        this.status = Status.Visible("Optional")
         const record = ty.accept(this, label) as FieldDetailWithChild
         this.isTable = false
 
         return {
           ...record,
-          status: Status.Hidden(),
+          status: Status.Hidden("Optional"),
           labelList,
         }
       }
@@ -212,7 +213,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
   public visitNull(_t: IDL.NullClass, label: string): FieldDetail {
     return {
       label,
-      status: Status.Visible("Optional"),
+      status: Status.Visible(),
     }
   }
 
