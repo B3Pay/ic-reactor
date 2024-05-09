@@ -1,12 +1,15 @@
 Status:
 Visible: 1
 Hidden: 2
+Disabled: 4
 -----
 StatusType:
-Optional: 64
-Checked: 128
+Optional: 65536
+Checked: 131072
 -----
-Visible | Optional: 65
-Visible | Checked: 129
-Hidden | Optional: 66
-Hidden | Checked: 130
+Visible | Optional: 65537
+Visible | Checked: 131073
+Hidden | Optional: 65538
+Hidden | Checked: 131074
+Disabled | Optional: 65540
+Disabled | Checked: 131076

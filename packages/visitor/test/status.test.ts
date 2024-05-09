@@ -162,9 +162,10 @@ describe("Status", () => {
         expect(false).toBe(true)
     }
 
-    // if (Status.isVisible(status) && Status.isChecked(status))
-    //   expect(true).toBe(true)
-    // if (Status.isHidden(status)) expect(false).toBe(true)
+    if (Status.isVisible(status) && Status.isChecked(status))
+      expect(true).toBe(true)
+
+    if (Status.isHidden(status)) expect(false).toBe(true)
 
     status = Status.Visible("Checked")
     switch (status) {

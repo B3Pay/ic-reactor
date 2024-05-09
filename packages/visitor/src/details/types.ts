@@ -1,17 +1,49 @@
-import type { BaseActor, FunctionName } from "../types"
-import type { MethodReturnDetails } from "./returns/types"
-import type { MethodArgDetails } from "./args/types"
-
-export * from "./args/types"
-export * from "./returns/types"
+import { Status } from "../status"
+import type { BaseActor, FunctionName, FunctionType } from "../types"
 
 export type ServiceDetails<A = BaseActor> = {
-  [K in FunctionName<A>]: MethodDetails<A>
+  [K in FunctionName<A>]: MethodDetail<A>
 }
 
-export interface MethodDetails<A = BaseActor>
-  extends Omit<MethodArgDetails<A>, "details" | "defaultValues">,
-    Omit<MethodReturnDetails<A>, "details" | "defaultValues"> {
-  argDetails: MethodArgDetails<A>["details"]
-  retDetails: MethodReturnDetails<A>["details"]
+export interface MethodDetail<A = BaseActor>
+  extends Omit<MethodArgDetail<A>, "detail">,
+    Omit<MethodReturnDetail<A>, "detail"> {
+  argDetail: MethodArgDetail<A>["detail"]
+  retDetail: MethodReturnDetail<A>["detail"]
+}
+
+export type MethodArgDetail<A = BaseActor> = {
+  functionType: FunctionType
+  functionName: FunctionName<A>
+  label: string
+  description?: string
+  detail: { [key: `arg${number}`]: FieldDetailWithChild }
+}
+
+export type MethodReturnDetail<A = BaseActor> = {
+  functionType: FunctionType
+  functionName: FunctionName<A>
+  label: string
+  description?: string
+  detail: { [key: `ret${number}`]: FieldDetailWithChild }
+}
+
+export type DetailType<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodArgDetail<A>
+}
+
+export interface FieldDetail {
+  label: string
+  status: Status
+  description?: string
+}
+
+export interface FieldDetailWithChild extends FieldDetail {
+  labelList?: string[]
+  list?: FieldDetailWithChild[]
+  vector?: FieldDetailWithChild[]
+  optional?: FieldDetailWithChild
+  tuple?: Record<string, FieldDetailWithChild>
+  record?: Record<string, FieldDetailWithChild>
+  variant?: Record<string, FieldDetailWithChild>
 }
