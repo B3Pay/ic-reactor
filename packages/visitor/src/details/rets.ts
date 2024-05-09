@@ -7,7 +7,6 @@ import type {
   DetailType,
   FieldDetail,
   MethodReturnDetail,
-  MethodDetail,
 } from "./types"
 import type { DynamicReturnType, BaseActor, FunctionName } from "../types"
 import { Status } from "../status"
@@ -19,7 +18,7 @@ import { Status } from "../status"
  */
 export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
   string,
-  MethodReturnDetail<A> | FieldDetailWithChild | FieldDetail | DetailType<A>
+  DetailType<A> | MethodReturnDetail<A> | FieldDetailWithChild | FieldDetail
 > {
   private visitReturnField = new VisitReturns()
   public counter = 0
@@ -46,11 +45,11 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     this.counter++
 
     return {
+      detail,
       label: functionName,
       status: Status.Default,
       functionName,
       functionType,
-      detail,
     }
   }
 
@@ -59,21 +58,27 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     _fields: Array<[string, IDL.Type]>,
     label: string
   ): FieldDetailWithChild {
-    const status = this.status
+    const savedStatus = this.status
 
-    const fields = _fields.reduce((acc, [key, type]) => {
+    const record = _fields.reduce((acc, [key, type]) => {
       this.status = Status.Default
       const details = type.accept(this, key) as FieldDetailWithChild
 
       acc[key] = details
 
       return acc
-    }, {} as Record<string, FieldDetailWithChild | FieldDetail>)
+    }, {} as Record<string, FieldDetailWithChild>)
+
+    const status = this.isTable
+      ? Status.Hidden()
+      : /^__ret/.test(label)
+      ? Status.Hidden("Optional")
+      : savedStatus
 
     return {
       label,
-      status: this.isTable || /^__ret/.test(label) ? Status.Hidden() : status,
-      ...fields,
+      status,
+      record,
     }
   }
 
@@ -82,9 +87,9 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     components: IDL.Type[],
     label: string
   ): FieldDetailWithChild {
-    const __status = this.status
+    const savedStatus = this.status
 
-    const fields = components.reduce((acc, type, index) => {
+    const tuple = components.reduce((acc, type, index) => {
       this.status = Status.Hidden("Optional")
       const details = type.accept(this, `_${index}_`) as FieldDetailWithChild
 
@@ -95,8 +100,8 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       label,
-      __status: this.isTable ? Status.Hidden : __status,
-      ...fields,
+      status: this.isTable ? Status.Hidden() : savedStatus,
+      tuple,
     }
   }
 
@@ -105,19 +110,19 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     _fields: Array<[string, IDL.Type]>,
     label: string
   ): FieldDetailWithChild {
-    const __status = this.status
+    const saveStatus = this.status
 
-    const fields = _fields.reduce((acc, [key, type]) => {
+    const variant = _fields.reduce((acc, [key, type]) => {
       this.status = Status.Default
       acc[key] = type.accept(this, key) as FieldDetailWithChild
 
       return acc
-    }, {} as Record<string, FieldDetailWithChild | FieldDetail>)
+    }, {} as Record<string, FieldDetailWithChild>)
 
     return {
       label,
-      __status: this.isTable ? Status.Hidden : __status,
-      ...fields,
+      status: this.isTable ? Status.Hidden() : saveStatus,
+      variant,
     }
   }
 
@@ -136,7 +141,7 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       label,
-      __status: this.status,
+      status: this.status,
     }
   }
 
@@ -145,12 +150,12 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     label: string
   ): FieldDetailWithChild {
-    const details = ty.accept(this, label) as FieldDetailWithChild
+    const optional = ty.accept(this, label) as FieldDetailWithChild
 
     return {
       label,
-      __status: this.isTable ? Status.Hidden() : Status.Hidden("Optional"),
-      optional: details,
+      status: this.isTable ? Status.Hidden() : Status.Hidden("Optional"),
+      optional,
     }
   }
 
@@ -179,11 +184,11 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
 
       if (isList) {
         this.isTable = true
-        const list = ty.accept(this, label) as FieldDetailWithChild
+        const list = ty.accept(this, label) as FieldDetailWithChild[]
         this.isTable = false
         return {
           type: "list",
-          __status: Status.Hidden,
+          status: Status.Hidden(),
           label,
           labelList,
           list,
@@ -192,52 +197,54 @@ export class VisitReturnDetails<A = BaseActor> extends IDL.Visitor<
     }
 
     this.status = Status.Hidden()
-    const vector = ty.accept(this, label) as FieldDetailWithChild
+    const vector = ty.accept(this, label) as FieldDetailWithChild[]
     this.status = Status.Default
+
     return {
-      __status: Status.Visible("Optional"),
+      status: Status.Visible("Optional"),
       label,
       vector,
     }
   }
 
-  public visitNull(_t: IDL.NullClass, label: string): MethodDetail {
+  public visitNull(_t: IDL.NullClass, label: string): FieldDetail {
     return {
       label,
-      __status: Status.Visible("Optional"),
+      status: Status.Visible("Optional"),
     }
   }
 
-  private visiGenericType = (label: string): MethodDetail => {
+  private visiGenericType = (label: string): FieldDetail => {
     if (this.isTable) {
       return {
         label,
-        __status: Status.Hidden,
-      } as MethodDetail
+        status: Status.Hidden(),
+      }
     }
+
     return {
       label,
-      __status: this.status,
+      status: this.status,
     }
   }
 
-  public visitBool(_t: IDL.BoolClass, label: string): MethodDetail {
+  public visitBool(_t: IDL.BoolClass, label: string) {
     return this.visiGenericType(label)
   }
 
-  public visitType<T>(_t: IDL.Type<T>, label: string): MethodDetail {
+  public visitType<T>(_t: IDL.Type<T>, label: string) {
     return this.visiGenericType(label)
   }
 
-  public visitPrincipal(_t: IDL.PrincipalClass, label: string): MethodDetail {
+  public visitPrincipal(_t: IDL.PrincipalClass, label: string) {
     return this.visiGenericType(label)
   }
 
-  public visitText(_t: IDL.TextClass, label: string): MethodDetail {
+  public visitText(_t: IDL.TextClass, label: string) {
     return this.visiGenericType(label)
   }
 
-  public visitNumber<T>(_t: IDL.Type<T>, label: string): MethodDetail {
+  public visitNumber<T>(_t: IDL.Type<T>, label: string) {
     return this.visiGenericType(label)
   }
 

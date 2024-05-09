@@ -34,15 +34,16 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
       ) as FieldDetailWithChild
 
       return acc
-    }, {} as Record<`arg${number}`, FieldDetailWithChild>)
+    }, {} as MethodArgDetail<A>["detail"])
 
     this.counter++
 
     return {
+      detail,
+      label: functionName,
+      status: Status.Default,
       functionName,
       functionType,
-      label: functionName,
-      detail,
     }
   }
 
@@ -57,32 +58,16 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
       acc[key] = details
 
       return acc
-    }, {} as Record<string, FieldDetailWithChild | FieldDetail>)
-
-    return {
-      label,
-      status: /^__arg|/.test(label)
-        ? Status.Hidden("Optional")
-        : Status.Visible("Optional"),
-      record,
-    }
-  }
-
-  public visitVariant(
-    _t: IDL.VariantClass,
-    _fields: Array<[string, IDL.Type]>,
-    label: string
-  ): FieldDetailWithChild {
-    const variant = _fields.reduce((acc, [key, type]) => {
-      acc[key] = type.accept(this, key) as FieldDetailWithChild
-
-      return acc
     }, {} as Record<string, FieldDetailWithChild>)
 
+    const status = /^__arg|/.test(label)
+      ? Status.Hidden("Optional")
+      : Status.Visible("Optional")
+
     return {
       label,
-      status: Status.Default,
-      variant,
+      status,
+      record,
     }
   }
 
@@ -107,6 +92,24 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     }
   }
 
+  public visitVariant(
+    _t: IDL.VariantClass,
+    _fields: Array<[string, IDL.Type]>,
+    label: string
+  ): FieldDetailWithChild {
+    const variant = _fields.reduce((acc, [key, type]) => {
+      acc[key] = type.accept(this, key) as FieldDetailWithChild
+
+      return acc
+    }, {} as Record<string, FieldDetailWithChild>)
+
+    return {
+      label,
+      status: Status.Default,
+      variant,
+    }
+  }
+
   private visitedRecursive: Record<string, true> = {}
   public visitRec<T>(
     _t: IDL.RecClass<T>,
@@ -122,7 +125,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
 
     return {
       label,
-      status: false,
+      status: Status.Visible("Optional"),
     }
   }
 
@@ -133,8 +136,8 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
   ): FieldDetailWithChild {
     const optional = ty.accept(this, label) as FieldDetailWithChild
     return {
-      status: false,
       label,
+      status: Status.Visible("Optional"),
       optional,
     }
   }
@@ -144,7 +147,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     label: string
   ): FieldDetailWithChild {
-    const vector = ty.accept(this, label) as FieldDetailWithChild
+    const vector = ty.accept(this, label) as FieldDetailWithChild[]
     return {
       label,
       status: Status.Default,
@@ -155,7 +158,7 @@ export class VisitArgDetails<A = BaseActor> extends IDL.Visitor<
   public visitNull(_t: IDL.NullClass, label: string): FieldDetail {
     return {
       label,
-      status: true,
+      status: Status.Hidden("Optional"),
     }
   }
 
