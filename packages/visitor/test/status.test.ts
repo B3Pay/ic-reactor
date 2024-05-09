@@ -95,83 +95,138 @@ describe("Status", () => {
 
   it("should correctly toggle checked status", () => {
     let status = Status.Visible("Checked")
-    status = Status.toggleChecked(status)
+    status = Status.removeChecked(status)
     expect(Status.isChecked(status)).toBe(false)
   })
 
-  it("should correctly toggle visible status", () => {
+  it("should correctly toggle checked status", () => {
     let status = Status.Visible()
-    status = Status.toggleVisibility(status)
+    status = Status.addChecked(status)
+    expect(Status.isChecked(status)).toBe(true)
+  })
+
+  it("should throw an error when hiding a non-optional status", () => {
+    let status = Status.Visible()
+    expect(() => Status.hide(status)).toThrow(
+      "Cannot modify a non-optional status"
+    )
+
+    status = Status.Hidden()
+
+    expect(() => Status.show(status)).toThrow(
+      "Cannot modify a non-optional status"
+    )
+  })
+
+  it("should correctly toggle visible status", () => {
+    let status = Status.Visible("Optional")
+    status = Status.hide(status)
     expect(Status.isVisible(status)).toBe(false)
   })
 
   it("should correctly usable using switch", () => {
     let status = Status.Visible()
-    switch (status) {
-      case Status.Visible():
-        expect(true).toBe(true)
-        break
-      default:
-        expect(false).toBe(true)
+    if (status === Status.Visible()) {
+      expect(true).toBe(true)
+    } else {
+      expect(false).toBe(true)
     }
 
     status = Status.Hidden()
-    switch (status) {
-      case Status.Hidden():
-        expect(true).toBe(true)
-        break
-      default:
-        expect(false).toBe(true)
-    }
-
-    status = Status.Visible("Checked")
-    switch (true) {
-      case Status.isChecked(status):
-        expect(true).toBe(true)
-        break
-      default:
-        expect(false).toBe(true)
-    }
-
-    status = Status.Hidden("Checked")
-    switch (true) {
-      case Status.isChecked(status):
-        expect(true).toBe(true)
-        break
-      default:
-        expect(false).toBe(true)
-    }
-
-    status = Status.Visible("Checked")
-    switch (status) {
-      case Status.Visible("Checked"):
-        expect(true).toBe(true)
-        break
-      default:
-        expect(false).toBe(true)
-    }
-
-    if (Status.isVisible(status) && Status.isChecked(status))
+    if (status === Status.Hidden()) {
       expect(true).toBe(true)
-
-    if (Status.isHidden(status)) expect(false).toBe(true)
+    } else {
+      expect(false).toBe(true)
+    }
 
     status = Status.Visible("Checked")
-    switch (status) {
-      case Status.Visible("Checked"):
-        expect(true).toBe(true)
-        break
-      default:
-        expect(false).toBe(true)
+    if (Status.isChecked(status)) {
+      expect(true).toBe(true)
+    } else {
+      expect(false).toBe(true)
     }
 
     status = Status.Hidden("Checked")
-    switch (status) {
-      case Status.Hidden("Checked"):
-        expect(true).toBe(true)
-        break
-      default:
-        expect(false).toBe(true)
+    if (Status.isChecked(status)) {
+      expect(true).toBe(true)
+    } else {
+      expect(false).toBe(true)
     }
+
+    status = Status.Visible("Checked")
+    if (status === Status.Visible("Checked")) {
+      expect(true).toBe(true)
+    } else {
+      expect(false).toBe(true)
+    }
+
+    if (Status.isVisible(status) && Status.isChecked(status)) {
+      expect(true).toBe(true)
+    }
+
+    if (Status.isHidden(status)) {
+      expect(false).toBe(true)
+    }
+
+    status = Status.Visible()
+    if (Status.isVisible(status) && !Status.isChecked(status)) {
+      expect(true).toBe(true)
+    } else {
+      expect(false).toBe(true)
+    }
+
+    status = Status.Hidden("Checked")
+    if (Status.isChecked(status) && Status.isHidden(status)) {
+      expect(true).toBe(true)
+      status = Status.addChecked(status)
+      expect(Status.isChecked(status)).toBe(true)
+      status = Status.removeChecked(status)
+      expect(Status.isChecked(status)).toBe(false)
+    } else {
+      expect(false).toBe(true)
+    }
+  })
+
+  it("should return props", () => {
+    let status = Status.Visible("Optional")
+    expect(Status.props(status)).toStrictEqual({
+      flag: "Visible",
+      types: ["Optional"],
+    })
+
+    status = Status.hide(status)
+
+    expect(Status.isHidden(status)).toBe(true)
+
+    expect(Status.props(status)).toStrictEqual({
+      flag: "Hidden",
+      types: ["Optional"],
+    })
+
+    status = Status.show(status)
+
+    expect(Status.isVisible(status)).toBe(true)
+
+    expect(Status.props(status)).toStrictEqual({
+      flag: "Visible",
+      types: ["Optional"],
+    })
+  })
+
+  it("should return props", () => {
+    let status = Status.Visible("Optional", "FlexRow", "Checked")
+    expect(Status.props(status)).toStrictEqual({
+      flag: "Visible",
+      types: ["Optional", "Checked", "FlexRow"],
+    })
+
+    status = Status.hide(status)
+
+    expect(Status.isHidden(status)).toBe(true)
+
+    expect(Status.props(status)).toStrictEqual({
+      flag: "Hidden",
+      types: ["Optional", "Checked", "FlexRow"],
+    })
   })
 })

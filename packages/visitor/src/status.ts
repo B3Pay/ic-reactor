@@ -1,18 +1,22 @@
 export type StatusType = keyof (typeof Status)["_type"]
 
 export class Status {
-  /// Define the _flag object with bit flags for visibility
   private static _flag = {
-    Visible: 1 << 0, /// Bit flag for visible status
-    Hidden: 1 << 1, /// Bit flag for hidden status
-    Disabled: 1 << 2, /// Bit flag for disabled status
+    ///  [0; 31] + [1]
+    Visible: 1 << 0,
+    ///  [0; 30] + [1, 0]
+    Hidden: 1 << 1,
+    ///  [0; 29] + [1, 0, 0]
+    Disabled: 1 << 2,
   }
 
-  /// Define the _type object with bit flags for different types
   private static _type = {
-    Optional: 1 << 16, /// Bit flag for optional status
-    Checked: 1 << 17, /// Bit flag for checked status
-    FlexRow: 1 << 18, /// Bit flag for flex row status
+    ///  [0; 15] + [1] + [0; 15]
+    Optional: 1 << 16,
+    ///  [0; 14] + [1] + [0; 16]
+    Checked: 1 << 17,
+    ///  [0; 13] + [1] + [0; 17]
+    FlexRow: 1 << 18,
   }
 
   /// Getter for the _flag object
@@ -57,17 +61,17 @@ export class Status {
 
   /// Method to check if a status is visible
   public static isVisible(status: number): boolean {
-    return (status & Status.Visible()) !== 0
+    return (status & this._flag.Visible) !== 0
   }
 
   /// Method to check if a status is hidden
   public static isHidden(status: number): boolean {
-    return (status & this.Hidden()) !== 0
+    return (status & this._flag.Hidden) !== 0
   }
 
   /// Method to check if a status is disabled
   public static isDisabled(status: number): boolean {
-    return (status & this.Disabled()) !== 0
+    return (status & this._flag.Disabled) !== 0
   }
 
   /// Method to check if a status is checked
@@ -80,13 +84,85 @@ export class Status {
     return (status & this._type.Optional) !== 0
   }
 
-  /// Method to toggle the checked status
-  public static toggleChecked(status: number): number {
-    return status ^ this._type.Checked
+  /// Method to return the flag in a status
+  public static flag(status: number): keyof (typeof Status)["_flag"] {
+    for (const key in this._flag) {
+      if ((status & this._flag[key as keyof (typeof Status)["_flag"]]) !== 0) {
+        return key as keyof (typeof Status)["_flag"]
+      }
+    }
+    throw new Error("Invalid status")
   }
 
-  /// Method to toggle the visibility status
-  public static toggleVisibility(status: number): number {
-    return status ^ Status.Visible()
+  /// Method to return all present types in a status
+  public static types(status: number): StatusType[] {
+    const types: StatusType[] = []
+    for (const key in this._type) {
+      if ((status & this._type[key as StatusType]) !== 0) {
+        types.push(key as StatusType)
+      }
+    }
+    return types
+  }
+
+  /// Method to return all present flags and types in a status
+  public static props(status: number) {
+    return { flag: this.flag(status), types: this.types(status) }
+  }
+
+  /// Method to hide the status
+  public static hide(status: number): number {
+    if (!this.isOptional(status)) {
+      throw new Error("Cannot modify a non-optional status")
+    }
+    if (this.isHidden(status)) {
+      return status
+    }
+    return (status | this._flag.Hidden) ^ this._flag.Visible
+  }
+
+  /// Method to show the status
+  public static show(status: number): number {
+    if (!this.isOptional(status)) {
+      throw new Error("Cannot modify a non-optional status")
+    }
+    if (this.isVisible(status)) {
+      return status
+    }
+    return (status | this._flag.Visible) ^ this._flag.Hidden
+  }
+
+  /// Method to disable the status
+  public static disable(status: number): number {
+    if (!this.isOptional(status)) {
+      throw new Error("Cannot modify a non-optional status")
+    }
+
+    if (this.isDisabled(status)) {
+      return status
+    }
+    return status | this._flag.Disabled
+  }
+
+  /// Method to enable the status
+  public static enable(status: number): number {
+    if (!this.isOptional(status)) {
+      throw new Error("Cannot modify a non-optional status")
+    }
+
+    if (!this.isDisabled(status)) {
+      return status
+    }
+    return status ^ this._flag.Disabled
+  }
+
+  /// Method to add the checked status
+  public static addChecked(status: number): number {
+    return status | this._type.Checked
+  }
+
+  /// Method to remove the checked status
+  public static removeChecked(status: number): number {
+    return status & ~this._type.Checked
   }
 }
