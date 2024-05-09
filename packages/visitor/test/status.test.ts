@@ -2,11 +2,9 @@ import { Status } from "../src/status"
 import { createReactorStore } from "@ic-reactor/core"
 import { VisitDetail } from "../src"
 import { _SERVICE, idlFactory } from "./candid/ledger"
-import { jsonToString } from "@ic-reactor/core/dist/utils"
-import { readFileSync, writeFileSync } from "fs"
-import path from "path"
+import { deepEqual } from "assert"
 
-describe("createReactorStore", () => {
+describe("createReactorStore and visit", () => {
   const { extractInterface } = createReactorStore<_SERVICE>({
     canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
     idlFactory,
@@ -19,18 +17,14 @@ describe("createReactorStore", () => {
     return fieldsVisitor.visitService(iface)
   }
 
-  it("should visitFunction", () => {
-    const fields = visitedDetail()
-    // execute json with fx in the terminal
-    writeFileSync(
-      path.join(__dirname, "candid-detail.json"),
-      jsonToString(fields)
-    )
+  it("should verify detail", () => {
+    const detail = visitedDetail()
+    expect(detail).toMatchSnapshot()
   })
 })
 
 describe("Status Loop", () => {
-  it("should loop into all status", () => {
+  it("should print same status info", () => {
     let status = "Status:\n"
     const statusEntries = Object.entries(Status.Flag)
     statusEntries.forEach(([key, value]) => {
@@ -50,12 +44,7 @@ describe("Status Loop", () => {
       })
     })
 
-    const snapshot = readFileSync(path.join(__dirname, "status-loop.txt"), {
-      encoding: "utf-8",
-    })
-
-    console.log("🚀 ~ it ~ status:", status)
-    expect(status).toBe(snapshot)
+    expect(status).toMatchSnapshot()
   })
 })
 

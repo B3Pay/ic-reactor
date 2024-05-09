@@ -1,4 +1,7 @@
-{
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
+"{
   "icrc1_balance_of": {
     "argDetail": {
       "arg0": {
@@ -681,4 +684,439 @@
     "functionName": "query_blocks",
     "functionType": "query"
   }
-}
+}"
+`;
+
+exports[`createReactorStore visited classes should visit VisitField 1`] = `
+"{
+  "icrc1_balance_of": {
+    "argField": [
+      {
+        "type": "record",
+        "label": "__arg0",
+        "fields": [
+          {
+            "type": "principal",
+            "maxLength": 64,
+            "minLength": 7,
+            "label": "owner",
+            "required": true,
+            "defaultValue": ""
+          },
+          {
+            "type": "optional",
+            "field": {
+              "type": "blob",
+              "field": {
+                "type": "number",
+                "required": true,
+                "label": "subaccount",
+                "defaultValue": ""
+              },
+              "defaultValue": [],
+              "label": "subaccount"
+            },
+            "defaultValue": [],
+            "label": "subaccount"
+          }
+        ],
+        "defaultValues": {
+          "subaccount": []
+        }
+      }
+    ],
+    "retField": [
+      {
+        "type": "number",
+        "componentType": "normal",
+        "label": "__ret0"
+      }
+    ],
+    "defaultValues": {
+      "args": {
+        "arg0": {
+          "subaccount": []
+        }
+      },
+      "rets": {}
+    },
+    "type": "normal",
+    "functionName": "icrc1_balance_of",
+    "functionType": "query"
+  },
+  "query_blocks": {
+    "argField": [
+      {
+        "type": "record",
+        "label": "__arg0",
+        "fields": [
+          {
+            "type": "number",
+            "required": true,
+            "label": "start",
+            "defaultValue": ""
+          },
+          {
+            "type": "number",
+            "required": true,
+            "label": "length",
+            "defaultValue": ""
+          }
+        ],
+        "defaultValues": {}
+      }
+    ],
+    "retField": [
+      {
+        "type": "record",
+        "label": "__ret0",
+        "fields": [
+          {
+            "type": "optional",
+            "field": {
+              "type": "blob",
+              "label": "certificate"
+            },
+            "label": "certificate"
+          },
+          {
+            "type": "vector",
+            "field": {
+              "type": "record",
+              "label": "blocks",
+              "fields": [
+                {
+                  "type": "record",
+                  "label": "transaction",
+                  "fields": [
+                    {
+                      "type": "number",
+                      "componentType": "normal",
+                      "label": "memo"
+                    },
+                    {
+                      "type": "optional",
+                      "field": {
+                        "type": "blob",
+                        "label": "icrc1_memo"
+                      },
+                      "label": "icrc1_memo"
+                    },
+                    {
+                      "type": "optional",
+                      "field": {
+                        "type": "variant",
+                        "fields": [
+                          {
+                            "type": "record",
+                            "label": "Approve",
+                            "fields": [
+                              {
+                                "type": "record",
+                                "label": "fee",
+                                "fields": [
+                                  {
+                                    "type": "number",
+                                    "componentType": "normal",
+                                    "label": "e8s"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "blob",
+                                "label": "from"
+                              },
+                              {
+                                "type": "number",
+                                "componentType": "normal",
+                                "label": "allowance_e8s"
+                              },
+                              {
+                                "type": "record",
+                                "label": "allowance",
+                                "fields": [
+                                  {
+                                    "type": "number",
+                                    "componentType": "normal",
+                                    "label": "e8s"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "optional",
+                                "field": {
+                                  "type": "record",
+                                  "label": "expected_allowance",
+                                  "fields": [
+                                    {
+                                      "type": "number",
+                                      "componentType": "normal",
+                                      "label": "e8s"
+                                    }
+                                  ]
+                                },
+                                "label": "expected_allowance"
+                              },
+                              {
+                                "type": "optional",
+                                "field": {
+                                  "type": "record",
+                                  "label": "expires_at",
+                                  "fields": [
+                                    {
+                                      "type": "number",
+                                      "componentType": "timestamp",
+                                      "label": "timestamp_nanos"
+                                    }
+                                  ]
+                                },
+                                "label": "expires_at"
+                              },
+                              {
+                                "type": "blob",
+                                "label": "spender"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "record",
+                            "label": "Burn",
+                            "fields": [
+                              {
+                                "type": "blob",
+                                "label": "from"
+                              },
+                              {
+                                "type": "record",
+                                "label": "amount",
+                                "fields": [
+                                  {
+                                    "type": "number",
+                                    "componentType": "normal",
+                                    "label": "e8s"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "optional",
+                                "field": {
+                                  "type": "blob",
+                                  "label": "spender"
+                                },
+                                "label": "spender"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "record",
+                            "label": "Mint",
+                            "fields": [
+                              {
+                                "type": "blob",
+                                "label": "to"
+                              },
+                              {
+                                "type": "record",
+                                "label": "amount",
+                                "fields": [
+                                  {
+                                    "type": "number",
+                                    "componentType": "normal",
+                                    "label": "e8s"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "record",
+                            "label": "Transfer",
+                            "fields": [
+                              {
+                                "type": "blob",
+                                "label": "to"
+                              },
+                              {
+                                "type": "record",
+                                "label": "fee",
+                                "fields": [
+                                  {
+                                    "type": "number",
+                                    "componentType": "normal",
+                                    "label": "e8s"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "blob",
+                                "label": "from"
+                              },
+                              {
+                                "type": "record",
+                                "label": "amount",
+                                "fields": [
+                                  {
+                                    "type": "number",
+                                    "componentType": "normal",
+                                    "label": "e8s"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "optional",
+                                "field": {
+                                  "type": "blob",
+                                  "label": "spender"
+                                },
+                                "label": "spender"
+                              }
+                            ]
+                          }
+                        ],
+                        "options": [
+                          "Approve",
+                          "Burn",
+                          "Mint",
+                          "Transfer"
+                        ],
+                        "selected": "Approve",
+                        "label": "operation"
+                      },
+                      "label": "operation"
+                    },
+                    {
+                      "type": "record",
+                      "label": "created_at_time",
+                      "fields": [
+                        {
+                          "type": "number",
+                          "componentType": "timestamp",
+                          "label": "timestamp_nanos"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "record",
+                  "label": "timestamp",
+                  "fields": [
+                    {
+                      "type": "number",
+                      "componentType": "timestamp",
+                      "label": "timestamp_nanos"
+                    }
+                  ]
+                },
+                {
+                  "type": "optional",
+                  "field": {
+                    "type": "blob",
+                    "label": "parent_hash"
+                  },
+                  "label": "parent_hash"
+                }
+              ]
+            },
+            "label": "blocks"
+          },
+          {
+            "type": "number",
+            "componentType": "normal",
+            "label": "chain_length"
+          },
+          {
+            "type": "number",
+            "componentType": "normal",
+            "label": "first_block_index"
+          },
+          {
+            "type": "vector",
+            "field": {
+              "type": "functionRecord",
+              "label": "archived_blocks"
+            },
+            "label": "archived_blocks"
+          }
+        ]
+      }
+    ],
+    "defaultValues": {
+      "args": {
+        "arg0": {}
+      },
+      "rets": {}
+    },
+    "type": "normal",
+    "functionName": "query_blocks",
+    "functionType": "query"
+  }
+}"
+`;
+
+exports[`createReactorStore visited classes should visit VisitLayout 1`] = `
+"{
+  "ledger": {
+    "xl": [
+      {
+        "i": "icrc1_balance_of",
+        "x": 0,
+        "w": 2,
+        "y": 0,
+        "h": 30,
+        "minW": 2,
+        "minH": 30
+      },
+      {
+        "i": "query_blocks",
+        "x": 2,
+        "w": 2,
+        "y": 0,
+        "h": 34,
+        "minW": 2,
+        "minH": 34
+      }
+    ],
+    "md": [
+      {
+        "i": "icrc1_balance_of",
+        "x": 0,
+        "w": 2,
+        "y": 0,
+        "h": 30,
+        "minW": 2,
+        "minH": 30
+      },
+      {
+        "i": "query_blocks",
+        "x": 2,
+        "w": 2,
+        "y": 0,
+        "h": 34,
+        "minW": 2,
+        "minH": 34
+      }
+    ],
+    "xs": [
+      {
+        "i": "icrc1_balance_of",
+        "x": 0,
+        "w": 2,
+        "y": 0,
+        "h": 30,
+        "minW": 2,
+        "minH": 30
+      },
+      {
+        "i": "query_blocks",
+        "x": 0,
+        "w": 2,
+        "y": 30,
+        "h": 34,
+        "minW": 2,
+        "minH": 34
+      }
+    ]
+  }
+}"
+`;

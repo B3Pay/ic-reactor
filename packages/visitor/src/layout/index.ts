@@ -107,29 +107,50 @@ export class VisitLayout<A = BaseActor> extends IDL.Visitor<
 
   private breakpoints = DEFAULT_LAYOUTS
 
-  private savedY = Object.fromEntries(
-    DEFAULT_CATEGORIES.map((category) => [
-      category,
-      Object.fromEntries(
-        DEFAULT_LAYOUTS.map(({ name }) => [name, new Map<number, number>()])
-      ),
-    ])
-  )
+  private generateSavedY = (categoryTest?: CategoryTest[] | string) => {
+    const categories = categoryTest
+      ? Array.isArray(categoryTest)
+        ? categoryTest.map((category) => category.name)
+        : [categoryTest]
+      : DEFAULT_CATEGORIES
 
-  private DEFAULTLAYOUT = DEFAULT_CATEGORIES.reduce(
-    (acc, category) => ({
-      ...acc,
-      [category]: Object.fromEntries(
-        DEFAULT_LAYOUTS.map(({ name }) => [name, []])
-      ),
-    }),
-    {}
-  )
+    return Object.fromEntries(
+      categories.map((category) => [
+        category,
+        Object.fromEntries(
+          DEFAULT_LAYOUTS.map(({ name }) => [name, new Map<number, number>()])
+        ),
+      ])
+    )
+  }
+
+  private generateDefaultLayout = (
+    categoryTest?: CategoryTest[] | string
+  ): ServiceLayout<A> => {
+    const categories = categoryTest
+      ? Array.isArray(categoryTest)
+        ? categoryTest.map((category) => category.name)
+        : [categoryTest]
+      : DEFAULT_CATEGORIES
+
+    return categories.reduce(
+      (acc, category) => ({
+        ...acc,
+        [category as string]: Object.fromEntries(
+          DEFAULT_LAYOUTS.map(({ name }) => [name, []])
+        ),
+      }),
+      {}
+    )
+  }
 
   public visitService(
     t: IDL.ServiceClass,
     categoryTest?: CategoryTest[] | string
   ): ServiceLayout<A> {
+    const detaultLayout = this.generateDefaultLayout(categoryTest)
+    const defaultSavedY = this.generateSavedY(categoryTest)
+
     const layouts = t._fields.reduce((acc, services) => {
       const functionName = services[0] as FunctionName<A>
       const func = services[1]
@@ -142,7 +163,7 @@ export class VisitLayout<A = BaseActor> extends IDL.Visitor<
         const length = acc[category][name].length
         const w = 2
         const x = (length * w) % size
-        const y = this.savedY[category][name].get(x) || 0
+        const y = defaultSavedY[category][name].get(x) || 0
         const minW = h >= 18 ? 2 : 1
 
         acc[category][name].push({
@@ -155,13 +176,13 @@ export class VisitLayout<A = BaseActor> extends IDL.Visitor<
           minH: h,
         })
 
-        this.savedY[category][name].set(x, y + h)
+        defaultSavedY[category][name].set(x, y + h)
       })
 
       this.counter++
 
       return acc
-    }, this.DEFAULTLAYOUT as ServiceLayout<A>)
+    }, detaultLayout)
 
     return layouts
   }

@@ -12,15 +12,19 @@ describe("createReactorStore", () => {
   const visitedRandom = () => {
     const iface = extractInterface()
     const fieldsVisitor = new VisitRandomArgs<_SERVICE>()
-    return iface._fields.map(([_, field]) => {
-      const args = fieldsVisitor.visitFunc(field)
-      return args
-    })
+    return iface._fields[0][1].accept(fieldsVisitor, iface._fields[0][0])
   }
 
   it("should visitFunction", () => {
-    const fields = visitedRandom()
-    // execute json with fx in the terminal
-    console.log(fields)
+    const random = visitedRandom()
+
+    const expected = {
+      arg0: {
+        owner: expect.anything(),
+        subaccount: expect.anything(),
+      },
+    }
+
+    expect(random).toMatchObject(expected)
   })
 })

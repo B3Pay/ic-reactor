@@ -1,73 +1,42 @@
-import { createCandidAdapter, createReactorStore } from "@ic-reactor/core"
-import { VisitDetail, VisitTransform, VisitLayout, VisitField } from "../src"
-import { b3wallet, idlFactory } from "./candid/b3wallet"
+import { createReactorStore } from "@ic-reactor/core"
+import { VisitDetail, VisitLayout, VisitField } from "../src"
+import { _SERVICE, idlFactory } from "./candid/ledger"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
-import accountView from "./account_view.json"
-
-type B3Wallet = typeof b3wallet
 
 describe("createReactorStore", () => {
-  const { extractInterface, agentManager, visitFunction } =
-    createReactorStore<B3Wallet>({
-      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
-      idlFactory,
-      withVisitor: true,
-    })
-  const adapter = createCandidAdapter({ agentManager })
+  const { extractInterface } = createReactorStore<_SERVICE>({
+    canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+    idlFactory,
+    withVisitor: true,
+  })
 
-  const visitedService = () => {
+  const visitedLayout = () => {
     const iface = extractInterface()
-    const fieldsVisitor = new VisitLayout()
-    return fieldsVisitor.visitService(iface)
-  }
-
-  const visitedTransform = () => {
-    const fieldsVisitor = new VisitTransform()
-    return visitFunction.get_account_views(fieldsVisitor, {
-      label: "accountView",
-      value: accountView,
-    })
+    const fieldsVisitor = new VisitLayout<_SERVICE>()
+    return ["VisitLayout", fieldsVisitor.visitService(iface, "ledger")]
   }
 
   const visitedDetail = () => {
-    const fieldsVisitor = new VisitDetail()
-    return visitFunction.print_log_entries(fieldsVisitor, "print_log_entries")
+    const iface = extractInterface()
+    const fieldsVisitor = new VisitDetail<_SERVICE>()
+    return ["VisitDetail", fieldsVisitor.visitService(iface)]
   }
 
-  const visitedFields = () => {
-    const fieldsVisitor = new VisitField()
-    return visitFunction.account_swap_btc_to_ckbtc(
-      fieldsVisitor,
-      "account_swap_btc_to_ckbtc"
-    )
+  const visitedField = () => {
+    const iface = extractInterface()
+    const fieldsVisitor = new VisitField<_SERVICE>()
+    return ["VisitField", fieldsVisitor.visitService(iface)]
   }
 
-  it("should visitFunction", () => {
-    // console.log(jsonToString(visitedTransform()))
-    console.log(jsonToString(visitedDetail()))
-
-    // const args = visitFunction.get_app(new VisitRandomArgs<B3Wallet>())
-    // console.log(args)
-    // const details = visitedService()
-    // console.log(jsonToString(details))
-
-    // const value = visitFunction.get_app(new VisitRandomResponse<B3Wallet>())
-    // console.log(value)
-
-    // const transform = visitFunction.get_app(new VisitTransform(), {
-    //   value,
-    //   label: "test",
-    // })
-    // console.log(transform.values)
-
-    // const { methodState, initialized, initializing, error } =
-    //   actorStore.getState()
-
-    // expect({ methodState, initialized, initializing, error }).toEqual({
-    //   methodState: {},
-    //   initialized: true,
-    //   initializing: false,
-    //   error: undefined,
-    // })
+  describe("visited classes", () => {
+    for (const [name, visited] of [
+      visitedLayout(),
+      visitedDetail(),
+      visitedField(),
+    ]) {
+      it(`should visit ${name}`, () => {
+        expect(jsonToString(visited)).toMatchSnapshot()
+      })
+    }
   })
 })
