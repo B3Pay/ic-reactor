@@ -1,4 +1,3 @@
-import { Status } from "../status"
 import type { BaseActor, FieldType, FunctionName, FunctionType } from "../types"
 
 export type ServiceDetail<A = BaseActor> = {
@@ -34,7 +33,7 @@ export type ReturnDetailRecord<A = BaseActor> = {
 
 export interface FieldDetail {
   label: string
-  status: Status
+  status: number
   description?: string
 }
 
