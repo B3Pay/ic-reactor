@@ -151,7 +151,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                       "status": 65537,
                                       "vector": {
                                         "label": "parent_hash",
-                                        "status": 327682,
+                                        "status": 262145,
                                       },
                                     },
                                     "status": 65538,
@@ -186,7 +186,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                           "status": 65537,
                                           "vector": {
                                             "label": "icrc1_memo",
-                                            "status": 327682,
+                                            "status": 262145,
                                           },
                                         },
                                         "status": 65538,
@@ -261,7 +261,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                   "status": 65537,
                                                   "vector": {
                                                     "label": "from",
-                                                    "status": 327682,
+                                                    "status": 262145,
                                                   },
                                                 },
                                                 "spender": {
@@ -269,7 +269,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                   "status": 65537,
                                                   "vector": {
                                                     "label": "spender",
-                                                    "status": 327682,
+                                                    "status": 262145,
                                                   },
                                                 },
                                               },
@@ -293,7 +293,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                   "status": 65537,
                                                   "vector": {
                                                     "label": "from",
-                                                    "status": 327682,
+                                                    "status": 262145,
                                                   },
                                                 },
                                                 "spender": {
@@ -303,7 +303,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                     "status": 65537,
                                                     "vector": {
                                                       "label": "spender",
-                                                      "status": 327682,
+                                                      "status": 262145,
                                                     },
                                                   },
                                                   "status": 65538,
@@ -329,7 +329,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                   "status": 65537,
                                                   "vector": {
                                                     "label": "to",
-                                                    "status": 327682,
+                                                    "status": 262145,
                                                   },
                                                 },
                                               },
@@ -363,7 +363,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                   "status": 65537,
                                                   "vector": {
                                                     "label": "from",
-                                                    "status": 327682,
+                                                    "status": 262145,
                                                   },
                                                 },
                                                 "spender": {
@@ -373,7 +373,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                     "status": 65537,
                                                     "vector": {
                                                       "label": "spender",
-                                                      "status": 327682,
+                                                      "status": 262145,
                                                     },
                                                   },
                                                   "status": 65538,
@@ -383,7 +383,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                   "status": 65537,
                                                   "vector": {
                                                     "label": "to",
-                                                    "status": 327682,
+                                                    "status": 262145,
                                                   },
                                                 },
                                               },
@@ -397,7 +397,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                     "status": 1,
                                   },
                                 },
-                                "status": 327682,
+                                "status": 262145,
                               },
                             },
                           },
@@ -420,7 +420,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                   "status": 1,
                 },
               },
-              "status": 327682,
+              "status": 262145,
             },
           },
           "blocks": {
@@ -436,7 +436,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                     "status": 65537,
                     "vector": {
                       "label": "parent_hash",
-                      "status": 327682,
+                      "status": 262145,
                     },
                   },
                   "status": 65538,
@@ -471,7 +471,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                         "status": 65537,
                         "vector": {
                           "label": "icrc1_memo",
-                          "status": 327682,
+                          "status": 262145,
                         },
                       },
                       "status": 65538,
@@ -546,7 +546,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                 "status": 65537,
                                 "vector": {
                                   "label": "from",
-                                  "status": 327682,
+                                  "status": 262145,
                                 },
                               },
                               "spender": {
@@ -554,7 +554,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                 "status": 65537,
                                 "vector": {
                                   "label": "spender",
-                                  "status": 327682,
+                                  "status": 262145,
                                 },
                               },
                             },
@@ -578,7 +578,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                 "status": 65537,
                                 "vector": {
                                   "label": "from",
-                                  "status": 327682,
+                                  "status": 262145,
                                 },
                               },
                               "spender": {
@@ -588,7 +588,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                   "status": 65537,
                                   "vector": {
                                     "label": "spender",
-                                    "status": 327682,
+                                    "status": 262145,
                                   },
                                 },
                                 "status": 65538,
@@ -614,7 +614,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                 "status": 65537,
                                 "vector": {
                                   "label": "to",
-                                  "status": 327682,
+                                  "status": 262145,
                                 },
                               },
                             },
@@ -648,7 +648,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                 "status": 65537,
                                 "vector": {
                                   "label": "from",
-                                  "status": 327682,
+                                  "status": 262145,
                                 },
                               },
                               "spender": {
@@ -658,7 +658,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                   "status": 65537,
                                   "vector": {
                                     "label": "spender",
-                                    "status": 327682,
+                                    "status": 262145,
                                   },
                                 },
                                 "status": 65538,
@@ -668,7 +668,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                 "status": 65537,
                                 "vector": {
                                   "label": "to",
-                                  "status": 327682,
+                                  "status": 262145,
                                 },
                               },
                             },
@@ -682,7 +682,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                   "status": 1,
                 },
               },
-              "status": 327682,
+              "status": 262145,
             },
           },
           "certificate": {
@@ -692,7 +692,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
               "status": 65537,
               "vector": {
                 "label": "certificate",
-                "status": 327682,
+                "status": 262145,
               },
             },
             "status": 65538,
