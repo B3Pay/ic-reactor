@@ -72,7 +72,11 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
       return acc
     }, {} as Record<string, FieldDetailWithChild>)
 
-    const status = this.isTable ? Status.Hidden() : savedStatus
+    const status = this.isTable
+      ? Status.Hidden()
+      : Status.isDefault(savedStatus) && /^__ret|/.test(label)
+      ? Status.Hidden("Optional")
+      : savedStatus
 
     return {
       label,
