@@ -86,11 +86,6 @@ export class Status {
     return (status & this._flag.Hidden) !== 0
   }
 
-  /// Method to check if a status is table
-  public static isTable(status: number): boolean {
-    return (status & this._flag.Disabled) !== 0
-  }
-
   /// Method to check if a status is enabled
   public static isEnabled(status: number): boolean {
     return (status & this._flag.Enabled) !== 0
