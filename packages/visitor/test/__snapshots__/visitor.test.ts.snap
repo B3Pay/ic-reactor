@@ -67,7 +67,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
               "status": 65537,
               "label": "certificate",
               "vector": {
-                "label": "certificate",
+                "label": "certificate {index}",
                 "status": 262145
               }
             }
@@ -76,12 +76,12 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
             "status": 65537,
             "label": "blocks",
             "vector": {
-              "label": "blocks",
+              "label": "blocks {index}",
               "status": 262145,
               "record": {
                 "transaction": {
                   "label": "transaction",
-                  "status": 1,
+                  "status": 65538,
                   "record": {
                     "memo": {
                       "label": "memo",
@@ -94,7 +94,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                         "status": 65537,
                         "label": "icrc1_memo",
                         "vector": {
-                          "label": "icrc1_memo",
+                          "label": "icrc1_memo {index}",
                           "status": 262145
                         }
                       }
@@ -112,7 +112,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                             "record": {
                               "fee": {
                                 "label": "fee",
-                                "status": 1,
+                                "status": 65538,
                                 "record": {
                                   "e8s": {
                                     "label": "e8s",
@@ -124,7 +124,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "status": 65537,
                                 "label": "from",
                                 "vector": {
-                                  "label": "from",
+                                  "label": "from {index}",
                                   "status": 262145
                                 }
                               },
@@ -134,7 +134,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                               },
                               "allowance": {
                                 "label": "allowance",
-                                "status": 1,
+                                "status": 65538,
                                 "record": {
                                   "e8s": {
                                     "label": "e8s",
@@ -147,7 +147,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "status": 65538,
                                 "optional": {
                                   "label": "expected_allowance",
-                                  "status": 1,
+                                  "status": 65538,
                                   "record": {
                                     "e8s": {
                                       "label": "e8s",
@@ -161,7 +161,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "status": 65538,
                                 "optional": {
                                   "label": "expires_at",
-                                  "status": 1,
+                                  "status": 65538,
                                   "record": {
                                     "timestamp_nanos": {
                                       "label": "timestamp_nanos",
@@ -174,7 +174,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "status": 65537,
                                 "label": "spender",
                                 "vector": {
-                                  "label": "spender",
+                                  "label": "spender {index}",
                                   "status": 262145
                                 }
                               }
@@ -188,13 +188,13 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "status": 65537,
                                 "label": "from",
                                 "vector": {
-                                  "label": "from",
+                                  "label": "from {index}",
                                   "status": 262145
                                 }
                               },
                               "amount": {
                                 "label": "amount",
-                                "status": 1,
+                                "status": 65538,
                                 "record": {
                                   "e8s": {
                                     "label": "e8s",
@@ -209,7 +209,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                   "status": 65537,
                                   "label": "spender",
                                   "vector": {
-                                    "label": "spender",
+                                    "label": "spender {index}",
                                     "status": 262145
                                   }
                                 }
@@ -224,13 +224,13 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "status": 65537,
                                 "label": "to",
                                 "vector": {
-                                  "label": "to",
+                                  "label": "to {index}",
                                   "status": 262145
                                 }
                               },
                               "amount": {
                                 "label": "amount",
-                                "status": 1,
+                                "status": 65538,
                                 "record": {
                                   "e8s": {
                                     "label": "e8s",
@@ -248,13 +248,13 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "status": 65537,
                                 "label": "to",
                                 "vector": {
-                                  "label": "to",
+                                  "label": "to {index}",
                                   "status": 262145
                                 }
                               },
                               "fee": {
                                 "label": "fee",
-                                "status": 1,
+                                "status": 65538,
                                 "record": {
                                   "e8s": {
                                     "label": "e8s",
@@ -266,13 +266,13 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "status": 65537,
                                 "label": "from",
                                 "vector": {
-                                  "label": "from",
+                                  "label": "from {index}",
                                   "status": 262145
                                 }
                               },
                               "amount": {
                                 "label": "amount",
-                                "status": 1,
+                                "status": 65538,
                                 "record": {
                                   "e8s": {
                                     "label": "e8s",
@@ -287,7 +287,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                   "status": 65537,
                                   "label": "spender",
                                   "vector": {
-                                    "label": "spender",
+                                    "label": "spender {index}",
                                     "status": 262145
                                   }
                                 }
@@ -299,7 +299,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                     },
                     "created_at_time": {
                       "label": "created_at_time",
-                      "status": 1,
+                      "status": 65538,
                       "record": {
                         "timestamp_nanos": {
                           "label": "timestamp_nanos",
@@ -311,7 +311,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                 },
                 "timestamp": {
                   "label": "timestamp",
-                  "status": 1,
+                  "status": 65538,
                   "record": {
                     "timestamp_nanos": {
                       "label": "timestamp_nanos",
@@ -326,7 +326,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                     "status": 65537,
                     "label": "parent_hash",
                     "vector": {
-                      "label": "parent_hash",
+                      "label": "parent_hash {index}",
                       "status": 262145
                     }
                   }
@@ -346,7 +346,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
             "status": 65537,
             "label": "archived_blocks",
             "vector": {
-              "label": "archived_blocks",
+              "label": "archived_blocks {index}",
               "status": 262145,
               "record": {
                 "callback": {
@@ -363,12 +363,12 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                               "status": 65537,
                               "label": "blocks",
                               "vector": {
-                                "label": "blocks",
+                                "label": "blocks {index}",
                                 "status": 262145,
                                 "record": {
                                   "transaction": {
                                     "label": "transaction",
-                                    "status": 1,
+                                    "status": 65538,
                                     "record": {
                                       "memo": {
                                         "label": "memo",
@@ -381,7 +381,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                           "status": 65537,
                                           "label": "icrc1_memo",
                                           "vector": {
-                                            "label": "icrc1_memo",
+                                            "label": "icrc1_memo {index}",
                                             "status": 262145
                                           }
                                         }
@@ -399,7 +399,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                               "record": {
                                                 "fee": {
                                                   "label": "fee",
-                                                  "status": 1,
+                                                  "status": 65538,
                                                   "record": {
                                                     "e8s": {
                                                       "label": "e8s",
@@ -411,7 +411,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "status": 65537,
                                                   "label": "from",
                                                   "vector": {
-                                                    "label": "from",
+                                                    "label": "from {index}",
                                                     "status": 262145
                                                   }
                                                 },
@@ -421,7 +421,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                 },
                                                 "allowance": {
                                                   "label": "allowance",
-                                                  "status": 1,
+                                                  "status": 65538,
                                                   "record": {
                                                     "e8s": {
                                                       "label": "e8s",
@@ -434,7 +434,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "status": 65538,
                                                   "optional": {
                                                     "label": "expected_allowance",
-                                                    "status": 1,
+                                                    "status": 65538,
                                                     "record": {
                                                       "e8s": {
                                                         "label": "e8s",
@@ -448,7 +448,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "status": 65538,
                                                   "optional": {
                                                     "label": "expires_at",
-                                                    "status": 1,
+                                                    "status": 65538,
                                                     "record": {
                                                       "timestamp_nanos": {
                                                         "label": "timestamp_nanos",
@@ -461,7 +461,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "status": 65537,
                                                   "label": "spender",
                                                   "vector": {
-                                                    "label": "spender",
+                                                    "label": "spender {index}",
                                                     "status": 262145
                                                   }
                                                 }
@@ -475,13 +475,13 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "status": 65537,
                                                   "label": "from",
                                                   "vector": {
-                                                    "label": "from",
+                                                    "label": "from {index}",
                                                     "status": 262145
                                                   }
                                                 },
                                                 "amount": {
                                                   "label": "amount",
-                                                  "status": 1,
+                                                  "status": 65538,
                                                   "record": {
                                                     "e8s": {
                                                       "label": "e8s",
@@ -496,7 +496,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                     "status": 65537,
                                                     "label": "spender",
                                                     "vector": {
-                                                      "label": "spender",
+                                                      "label": "spender {index}",
                                                       "status": 262145
                                                     }
                                                   }
@@ -511,13 +511,13 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "status": 65537,
                                                   "label": "to",
                                                   "vector": {
-                                                    "label": "to",
+                                                    "label": "to {index}",
                                                     "status": 262145
                                                   }
                                                 },
                                                 "amount": {
                                                   "label": "amount",
-                                                  "status": 1,
+                                                  "status": 65538,
                                                   "record": {
                                                     "e8s": {
                                                       "label": "e8s",
@@ -535,13 +535,13 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "status": 65537,
                                                   "label": "to",
                                                   "vector": {
-                                                    "label": "to",
+                                                    "label": "to {index}",
                                                     "status": 262145
                                                   }
                                                 },
                                                 "fee": {
                                                   "label": "fee",
-                                                  "status": 1,
+                                                  "status": 65538,
                                                   "record": {
                                                     "e8s": {
                                                       "label": "e8s",
@@ -553,13 +553,13 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "status": 65537,
                                                   "label": "from",
                                                   "vector": {
-                                                    "label": "from",
+                                                    "label": "from {index}",
                                                     "status": 262145
                                                   }
                                                 },
                                                 "amount": {
                                                   "label": "amount",
-                                                  "status": 1,
+                                                  "status": 65538,
                                                   "record": {
                                                     "e8s": {
                                                       "label": "e8s",
@@ -574,7 +574,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                     "status": 65537,
                                                     "label": "spender",
                                                     "vector": {
-                                                      "label": "spender",
+                                                      "label": "spender {index}",
                                                       "status": 262145
                                                     }
                                                   }
@@ -586,7 +586,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                       },
                                       "created_at_time": {
                                         "label": "created_at_time",
-                                        "status": 1,
+                                        "status": 65538,
                                         "record": {
                                           "timestamp_nanos": {
                                             "label": "timestamp_nanos",
@@ -598,7 +598,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                   },
                                   "timestamp": {
                                     "label": "timestamp",
-                                    "status": 1,
+                                    "status": 65538,
                                     "record": {
                                       "timestamp_nanos": {
                                         "label": "timestamp_nanos",
@@ -613,7 +613,7 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                       "status": 65537,
                                       "label": "parent_hash",
                                       "vector": {
-                                        "label": "parent_hash",
+                                        "label": "parent_hash {index}",
                                         "status": 262145
                                       }
                                     }

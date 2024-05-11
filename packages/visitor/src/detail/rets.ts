@@ -173,6 +173,13 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     label: string
   ): FieldDetailWithChild {
+    if ("_bits" in ty && ty._bits === 8) {
+      return {
+        status: Status.Default,
+        label,
+      }
+    }
+
     const field = ty.accept(
       this.visitReturnField,
       label
@@ -206,7 +213,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     }
 
     this.status = Status.Visible("Dynamic")
-    const vector = ty.accept(this, label) as FieldDetailWithChild[]
+    const vector = ty.accept(this, `${label} {index}`) as FieldDetailWithChild
     this.status = Status.Default
 
     return {

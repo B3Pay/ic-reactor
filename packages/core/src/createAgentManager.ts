@@ -11,6 +11,8 @@ import type { AgentManagerParameters } from "./types"
  * @category Main
  * @includeExample ./packages/core/README.md:232-260
  */
-export const createAgentManager = (config?: AgentManagerParameters) => {
+export const createAgentManager = (
+  config?: AgentManagerParameters
+): AgentManager => {
   return new AgentManager(config)
 }

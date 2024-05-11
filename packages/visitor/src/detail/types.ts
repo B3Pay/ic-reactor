@@ -39,7 +39,7 @@ export interface FieldDetail {
 
 export interface FieldDetailWithChild extends FieldDetail {
   labelList?: string[]
-  vector?: FieldDetailWithChild[]
+  vector?: FieldDetailWithChild
   optional?: FieldDetailWithChild
   tuple?: Record<string, FieldDetailWithChild>
   record?: Record<string, FieldDetailWithChild>

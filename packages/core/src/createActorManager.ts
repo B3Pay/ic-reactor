@@ -13,6 +13,6 @@ import type { ActorManagerParameters, BaseActor } from "./types"
  */
 export const createActorManager = <A = BaseActor>(
   config: ActorManagerParameters
-) => {
+): ActorManager<A> => {
   return new ActorManager<A>(config)
 }

@@ -147,7 +147,7 @@ export class VisitArgDetail<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     label: string
   ): FieldDetailWithChild {
-    const vector = ty.accept(this, label) as FieldDetailWithChild[]
+    const vector = ty.accept(this, label) as FieldDetailWithChild
     return {
       label,
       status: Status.Default,
