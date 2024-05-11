@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/visitor",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "description": "Visitor classes for ic-reactor",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
