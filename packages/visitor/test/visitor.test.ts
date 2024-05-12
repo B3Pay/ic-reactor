@@ -1,5 +1,5 @@
 import { createReactorStore } from "@ic-reactor/core"
-import { VisitDetail, VisitLayout, VisitField } from "../src"
+import { VisitDetail, VisitLayout, VisitField, VisitRandomRets } from "../src"
 import { _SERVICE, idlFactory } from "./candid/ledger"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 
@@ -27,6 +27,11 @@ describe("createReactorStore", () => {
     const fieldsVisitor = new VisitField<_SERVICE>()
     return ["VisitField", fieldsVisitor.visitService(iface)]
   }
+  const visitedRandom = () => {
+    const iface = extractInterface()
+    const fieldsVisitor = new VisitRandomRets<_SERVICE>()
+    return fieldsVisitor.visitFunc(iface._fields[1][1])
+  }
 
   describe("visited classes", () => {
     for (const [name, visited] of [
@@ -38,5 +43,10 @@ describe("createReactorStore", () => {
         expect(jsonToString(visited)).toMatchSnapshot()
       })
     }
+  })
+
+  it("should visit random", () => {
+    const visited = visitedRandom()
+    console.log(jsonToString(visited))
   })
 })

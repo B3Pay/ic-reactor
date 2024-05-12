@@ -64,12 +64,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
             "label": "certificate",
             "status": 65538,
             "optional": {
-              "status": 65537,
-              "label": "certificate",
-              "vector": {
-                "label": "certificate {index}",
-                "status": 262145
-              }
+              "status": 1,
+              "label": "certificate"
             }
           },
           "blocks": {
@@ -91,12 +87,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                       "label": "icrc1_memo",
                       "status": 65538,
                       "optional": {
-                        "status": 65537,
-                        "label": "icrc1_memo",
-                        "vector": {
-                          "label": "icrc1_memo {index}",
-                          "status": 262145
-                        }
+                        "status": 1,
+                        "label": "icrc1_memo"
                       }
                     },
                     "operation": {
@@ -121,12 +113,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 }
                               },
                               "from": {
-                                "status": 65537,
-                                "label": "from",
-                                "vector": {
-                                  "label": "from {index}",
-                                  "status": 262145
-                                }
+                                "status": 1,
+                                "label": "from"
                               },
                               "allowance_e8s": {
                                 "label": "allowance_e8s",
@@ -171,12 +159,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 }
                               },
                               "spender": {
-                                "status": 65537,
-                                "label": "spender",
-                                "vector": {
-                                  "label": "spender {index}",
-                                  "status": 262145
-                                }
+                                "status": 1,
+                                "label": "spender"
                               }
                             }
                           },
@@ -185,12 +169,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                             "status": 65537,
                             "record": {
                               "from": {
-                                "status": 65537,
-                                "label": "from",
-                                "vector": {
-                                  "label": "from {index}",
-                                  "status": 262145
-                                }
+                                "status": 1,
+                                "label": "from"
                               },
                               "amount": {
                                 "label": "amount",
@@ -206,12 +186,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "label": "spender",
                                 "status": 65538,
                                 "optional": {
-                                  "status": 65537,
-                                  "label": "spender",
-                                  "vector": {
-                                    "label": "spender {index}",
-                                    "status": 262145
-                                  }
+                                  "status": 1,
+                                  "label": "spender"
                                 }
                               }
                             }
@@ -221,12 +197,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                             "status": 65537,
                             "record": {
                               "to": {
-                                "status": 65537,
-                                "label": "to",
-                                "vector": {
-                                  "label": "to {index}",
-                                  "status": 262145
-                                }
+                                "status": 1,
+                                "label": "to"
                               },
                               "amount": {
                                 "label": "amount",
@@ -245,12 +217,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                             "status": 65537,
                             "record": {
                               "to": {
-                                "status": 65537,
-                                "label": "to",
-                                "vector": {
-                                  "label": "to {index}",
-                                  "status": 262145
-                                }
+                                "status": 1,
+                                "label": "to"
                               },
                               "fee": {
                                 "label": "fee",
@@ -263,12 +231,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 }
                               },
                               "from": {
-                                "status": 65537,
-                                "label": "from",
-                                "vector": {
-                                  "label": "from {index}",
-                                  "status": 262145
-                                }
+                                "status": 1,
+                                "label": "from"
                               },
                               "amount": {
                                 "label": "amount",
@@ -284,12 +248,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                 "label": "spender",
                                 "status": 65538,
                                 "optional": {
-                                  "status": 65537,
-                                  "label": "spender",
-                                  "vector": {
-                                    "label": "spender {index}",
-                                    "status": 262145
-                                  }
+                                  "status": 1,
+                                  "label": "spender"
                                 }
                               }
                             }
@@ -323,12 +283,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                   "label": "parent_hash",
                   "status": 65538,
                   "optional": {
-                    "status": 65537,
-                    "label": "parent_hash",
-                    "vector": {
-                      "label": "parent_hash {index}",
-                      "status": 262145
-                    }
+                    "status": 1,
+                    "label": "parent_hash"
                   }
                 }
               }
@@ -378,12 +334,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                         "label": "icrc1_memo",
                                         "status": 65538,
                                         "optional": {
-                                          "status": 65537,
-                                          "label": "icrc1_memo",
-                                          "vector": {
-                                            "label": "icrc1_memo {index}",
-                                            "status": 262145
-                                          }
+                                          "status": 1,
+                                          "label": "icrc1_memo"
                                         }
                                       },
                                       "operation": {
@@ -408,12 +360,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   }
                                                 },
                                                 "from": {
-                                                  "status": 65537,
-                                                  "label": "from",
-                                                  "vector": {
-                                                    "label": "from {index}",
-                                                    "status": 262145
-                                                  }
+                                                  "status": 1,
+                                                  "label": "from"
                                                 },
                                                 "allowance_e8s": {
                                                   "label": "allowance_e8s",
@@ -458,12 +406,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   }
                                                 },
                                                 "spender": {
-                                                  "status": 65537,
-                                                  "label": "spender",
-                                                  "vector": {
-                                                    "label": "spender {index}",
-                                                    "status": 262145
-                                                  }
+                                                  "status": 1,
+                                                  "label": "spender"
                                                 }
                                               }
                                             },
@@ -472,12 +416,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                               "status": 65537,
                                               "record": {
                                                 "from": {
-                                                  "status": 65537,
-                                                  "label": "from",
-                                                  "vector": {
-                                                    "label": "from {index}",
-                                                    "status": 262145
-                                                  }
+                                                  "status": 1,
+                                                  "label": "from"
                                                 },
                                                 "amount": {
                                                   "label": "amount",
@@ -493,12 +433,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "label": "spender",
                                                   "status": 65538,
                                                   "optional": {
-                                                    "status": 65537,
-                                                    "label": "spender",
-                                                    "vector": {
-                                                      "label": "spender {index}",
-                                                      "status": 262145
-                                                    }
+                                                    "status": 1,
+                                                    "label": "spender"
                                                   }
                                                 }
                                               }
@@ -508,12 +444,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                               "status": 65537,
                                               "record": {
                                                 "to": {
-                                                  "status": 65537,
-                                                  "label": "to",
-                                                  "vector": {
-                                                    "label": "to {index}",
-                                                    "status": 262145
-                                                  }
+                                                  "status": 1,
+                                                  "label": "to"
                                                 },
                                                 "amount": {
                                                   "label": "amount",
@@ -532,12 +464,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                               "status": 65537,
                                               "record": {
                                                 "to": {
-                                                  "status": 65537,
-                                                  "label": "to",
-                                                  "vector": {
-                                                    "label": "to {index}",
-                                                    "status": 262145
-                                                  }
+                                                  "status": 1,
+                                                  "label": "to"
                                                 },
                                                 "fee": {
                                                   "label": "fee",
@@ -550,12 +478,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   }
                                                 },
                                                 "from": {
-                                                  "status": 65537,
-                                                  "label": "from",
-                                                  "vector": {
-                                                    "label": "from {index}",
-                                                    "status": 262145
-                                                  }
+                                                  "status": 1,
+                                                  "label": "from"
                                                 },
                                                 "amount": {
                                                   "label": "amount",
@@ -571,12 +495,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                                   "label": "spender",
                                                   "status": 65538,
                                                   "optional": {
-                                                    "status": 65537,
-                                                    "label": "spender",
-                                                    "vector": {
-                                                      "label": "spender {index}",
-                                                      "status": 262145
-                                                    }
+                                                    "status": 1,
+                                                    "label": "spender"
                                                   }
                                                 }
                                               }
@@ -610,12 +530,8 @@ exports[`createReactorStore visited classes should visit VisitDetail 1`] = `
                                     "label": "parent_hash",
                                     "status": 65538,
                                     "optional": {
-                                      "status": 65537,
-                                      "label": "parent_hash",
-                                      "vector": {
-                                        "label": "parent_hash {index}",
-                                        "status": 262145
-                                      }
+                                      "status": 1,
+                                      "label": "parent_hash"
                                     }
                                   }
                                 }

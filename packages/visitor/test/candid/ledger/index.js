@@ -69,7 +69,7 @@ export const idlFactory = ({ IDL }) => {
     archived_blocks: IDL.Vec(ArchivedBlocksRange),
   })
   return IDL.Service({
-    icrc1_balance_of: IDL.Func([Account], [IDL.Nat], ["query"]),
     query_blocks: IDL.Func([GetBlocksArgs], [QueryBlocksResponse], ["query"]),
+    icrc1_balance_of: IDL.Func([Account], [IDL.Nat], ["query"]),
   })
 }

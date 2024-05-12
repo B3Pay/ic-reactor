@@ -73,7 +73,6 @@ export interface ArchivedBlocksRange {
 }
 export interface _SERVICE {
   query_blocks: ActorMethod<[GetBlocksArgs], QueryBlocksResponse>
-  icrc1_balance_of: ActorMethod<[Account], bigint>
 }
 export declare const idlFactory: IDL.InterfaceFactory
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[]

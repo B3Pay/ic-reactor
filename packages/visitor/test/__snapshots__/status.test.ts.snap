@@ -148,11 +148,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                     "label": "parent_hash",
                                     "optional": {
                                       "label": "parent_hash",
-                                      "status": 65537,
-                                      "vector": {
-                                        "label": "parent_hash {index}",
-                                        "status": 262145,
-                                      },
+                                      "status": 1,
                                     },
                                     "status": 65538,
                                   },
@@ -183,11 +179,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                         "label": "icrc1_memo",
                                         "optional": {
                                           "label": "icrc1_memo",
-                                          "status": 65537,
-                                          "vector": {
-                                            "label": "icrc1_memo {index}",
-                                            "status": 262145,
-                                          },
+                                          "status": 1,
                                         },
                                         "status": 65538,
                                       },
@@ -258,19 +250,11 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                 },
                                                 "from": {
                                                   "label": "from",
-                                                  "status": 65537,
-                                                  "vector": {
-                                                    "label": "from {index}",
-                                                    "status": 262145,
-                                                  },
+                                                  "status": 1,
                                                 },
                                                 "spender": {
                                                   "label": "spender",
-                                                  "status": 65537,
-                                                  "vector": {
-                                                    "label": "spender {index}",
-                                                    "status": 262145,
-                                                  },
+                                                  "status": 1,
                                                 },
                                               },
                                               "status": 65537,
@@ -290,21 +274,13 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                 },
                                                 "from": {
                                                   "label": "from",
-                                                  "status": 65537,
-                                                  "vector": {
-                                                    "label": "from {index}",
-                                                    "status": 262145,
-                                                  },
+                                                  "status": 1,
                                                 },
                                                 "spender": {
                                                   "label": "spender",
                                                   "optional": {
                                                     "label": "spender",
-                                                    "status": 65537,
-                                                    "vector": {
-                                                      "label": "spender {index}",
-                                                      "status": 262145,
-                                                    },
+                                                    "status": 1,
                                                   },
                                                   "status": 65538,
                                                 },
@@ -326,11 +302,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                 },
                                                 "to": {
                                                   "label": "to",
-                                                  "status": 65537,
-                                                  "vector": {
-                                                    "label": "to {index}",
-                                                    "status": 262145,
-                                                  },
+                                                  "status": 1,
                                                 },
                                               },
                                               "status": 65537,
@@ -360,31 +332,19 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                                                 },
                                                 "from": {
                                                   "label": "from",
-                                                  "status": 65537,
-                                                  "vector": {
-                                                    "label": "from {index}",
-                                                    "status": 262145,
-                                                  },
+                                                  "status": 1,
                                                 },
                                                 "spender": {
                                                   "label": "spender",
                                                   "optional": {
                                                     "label": "spender",
-                                                    "status": 65537,
-                                                    "vector": {
-                                                      "label": "spender {index}",
-                                                      "status": 262145,
-                                                    },
+                                                    "status": 1,
                                                   },
                                                   "status": 65538,
                                                 },
                                                 "to": {
                                                   "label": "to",
-                                                  "status": 65537,
-                                                  "vector": {
-                                                    "label": "to {index}",
-                                                    "status": 262145,
-                                                  },
+                                                  "status": 1,
                                                 },
                                               },
                                               "status": 65537,
@@ -433,11 +393,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                   "label": "parent_hash",
                   "optional": {
                     "label": "parent_hash",
-                    "status": 65537,
-                    "vector": {
-                      "label": "parent_hash {index}",
-                      "status": 262145,
-                    },
+                    "status": 1,
                   },
                   "status": 65538,
                 },
@@ -468,11 +424,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                       "label": "icrc1_memo",
                       "optional": {
                         "label": "icrc1_memo",
-                        "status": 65537,
-                        "vector": {
-                          "label": "icrc1_memo {index}",
-                          "status": 262145,
-                        },
+                        "status": 1,
                       },
                       "status": 65538,
                     },
@@ -543,19 +495,11 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                               },
                               "from": {
                                 "label": "from",
-                                "status": 65537,
-                                "vector": {
-                                  "label": "from {index}",
-                                  "status": 262145,
-                                },
+                                "status": 1,
                               },
                               "spender": {
                                 "label": "spender",
-                                "status": 65537,
-                                "vector": {
-                                  "label": "spender {index}",
-                                  "status": 262145,
-                                },
+                                "status": 1,
                               },
                             },
                             "status": 65537,
@@ -575,21 +519,13 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                               },
                               "from": {
                                 "label": "from",
-                                "status": 65537,
-                                "vector": {
-                                  "label": "from {index}",
-                                  "status": 262145,
-                                },
+                                "status": 1,
                               },
                               "spender": {
                                 "label": "spender",
                                 "optional": {
                                   "label": "spender",
-                                  "status": 65537,
-                                  "vector": {
-                                    "label": "spender {index}",
-                                    "status": 262145,
-                                  },
+                                  "status": 1,
                                 },
                                 "status": 65538,
                               },
@@ -611,11 +547,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                               },
                               "to": {
                                 "label": "to",
-                                "status": 65537,
-                                "vector": {
-                                  "label": "to {index}",
-                                  "status": 262145,
-                                },
+                                "status": 1,
                               },
                             },
                             "status": 65537,
@@ -645,31 +577,19 @@ exports[`createReactorStore and visit should verify detail 1`] = `
                               },
                               "from": {
                                 "label": "from",
-                                "status": 65537,
-                                "vector": {
-                                  "label": "from {index}",
-                                  "status": 262145,
-                                },
+                                "status": 1,
                               },
                               "spender": {
                                 "label": "spender",
                                 "optional": {
                                   "label": "spender",
-                                  "status": 65537,
-                                  "vector": {
-                                    "label": "spender {index}",
-                                    "status": 262145,
-                                  },
+                                  "status": 1,
                                 },
                                 "status": 65538,
                               },
                               "to": {
                                 "label": "to",
-                                "status": 65537,
-                                "vector": {
-                                  "label": "to {index}",
-                                  "status": 262145,
-                                },
+                                "status": 1,
                               },
                             },
                             "status": 65537,
@@ -689,11 +609,7 @@ exports[`createReactorStore and visit should verify detail 1`] = `
             "label": "certificate",
             "optional": {
               "label": "certificate",
-              "status": 65537,
-              "vector": {
-                "label": "certificate {index}",
-                "status": 262145,
-              },
+              "status": 1,
             },
             "status": 65538,
           },
