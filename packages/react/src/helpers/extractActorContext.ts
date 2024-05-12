@@ -2,8 +2,10 @@ import React from "react"
 
 import type {
   ActorHooksReturnType,
+  ActorState,
   BaseActor,
   FunctionName,
+  UseActorStore,
   UseMethod,
   UseQueryCall,
   UseUpdateCall,
@@ -36,6 +38,12 @@ export function extractActorContext<A = BaseActor>(
   const useMethodAttributes = <Actor = A>() =>
     useActorContext().useMethodAttributes<Actor>()
 
+  const useActorStore: UseActorStore<A> = <T>(
+    selector = (s: ActorState<A>) => s as T
+  ) => {
+    return useActorContext().useActorStore(selector)
+  }
+
   const useActorState = () => useActorContext().useActorState()
 
   const useMethod: UseMethod<A> = (args) => useActorContext().useMethod(args)
@@ -55,6 +63,7 @@ export function extractActorContext<A = BaseActor>(
   const useActorInterface = () => useActorContext().useActorInterface()
 
   return {
+    useActorStore,
     useActorState,
     useMethod,
     useMethodNames,
