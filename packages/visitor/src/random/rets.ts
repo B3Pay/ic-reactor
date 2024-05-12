@@ -16,13 +16,26 @@ export class VisitRandomRets<A = BaseActor> extends IDL.Visitor<
   unknown,
   MethodRetsDefaultValues<A> | unknown
 > {
+  private inVisit = false
+
   public visitFunc(t: IDL.FuncClass): MethodRetsDefaultValues<A> {
-    return t.retTypes.reduce((acc, type, index) => {
+    if (this.inVisit) {
+      const canisterId = Principal.fromUint8Array(this.generateRandomBytes(10))
+      const functionName = Math.random().toString(36).substring(6)
+
+      return [canisterId, functionName] as unknown as MethodRetsDefaultValues<A>
+    }
+
+    const defaultValue = t.retTypes.reduce((acc, type, index) => {
+      this.inVisit = true
       acc[`ret${index}`] = type.accept(this, false) as ReturnTypeFromIDLType<
         typeof type
       >
+      this.inVisit = false
       return acc
     }, {} as MethodRetsDefaultValues<A>)
+
+    return defaultValue
   }
 
   public visitRecord(
