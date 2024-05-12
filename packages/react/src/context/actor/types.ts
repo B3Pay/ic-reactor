@@ -9,6 +9,12 @@ import type {
 export interface CreateActorContextReturnType<A = BaseActor>
   extends ActorHooksReturnType<A> {
   ActorProvider: React.FC<ActorProviderProps>
+  ActorHookProvider: React.FC<ActorHookProviderProps<A>>
+}
+
+export interface ActorHookProviderProps<A> {
+  hooks: ActorHooksReturnType<A>
+  children?: React.ReactNode
 }
 
 export interface ActorProviderProps extends CreateActorContextParameters {

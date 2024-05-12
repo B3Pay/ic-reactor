@@ -7,6 +7,7 @@ import type {
   CreateActorContextParameters,
   CreateActorContextReturnType,
   ActorProviderProps,
+  ActorHookProviderProps,
 } from "./types"
 /**
  * Creates a React context specifically designed for managing the state and interactions with an actor on the Internet Computer (IC) blockchain.
@@ -114,8 +115,18 @@ export function createActorContext<A = BaseActor>(
 
   ActorProvider.displayName = "ActorProvider"
 
+  const ActorHookProvider: React.FC<ActorHookProviderProps<A>> = ({
+    hooks,
+    children,
+  }) => {
+    return (
+      <ActorContext.Provider value={hooks}>{children}</ActorContext.Provider>
+    )
+  }
+
   return {
     ActorProvider,
+    ActorHookProvider,
     ...extractActorContext<A>(ActorContext),
   }
 }

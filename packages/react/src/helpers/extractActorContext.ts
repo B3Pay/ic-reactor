@@ -14,7 +14,10 @@ import type { CreateActorContextReturnType } from "../context/actor/types"
 
 export function extractActorContext<A = BaseActor>(
   actorContext: React.Context<ActorHooksReturnType<A> | null>
-): Omit<CreateActorContextReturnType<A>, "ActorProvider"> {
+): Omit<
+  CreateActorContextReturnType<A>,
+  "ActorProvider" | "ActorHookProvider"
+> {
   const useActorContext = () => {
     const context = React.useContext(actorContext)
 
