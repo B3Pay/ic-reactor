@@ -27,3 +27,26 @@ import ActorHooks from "../hooks/actor/hooks"
  * This setup ensures that `YourComponent` and any of its children can interact with the specified IC actor through the context provided by `ActorProvider`.
  */
 export const ActorProvider = ActorHooks.ActorProvider
+
+/**
+ * `ActorHookProvider` is a React functional component that serves as a context provider for IC actor hooks within a React application.
+ * It wraps child components, providing them access to actor-specific hooks and functionalities based on the provided actor hooks and configuration.
+ *
+ * Props:
+ * - `hooks`: ActorHooksReturnType - The actor hooks object containing the various actor interaction hooks.
+ * - `children`: React Node - The child components that will have access to the actor hooks context.
+ *
+ * Behavior:
+ * - Validates the presence of the `hooks` object. Throws an error if it is missing, ensuring that the actor hooks are always available for actor operations.
+ * - Utilizes `useMemo` to memoize the `hooks` object, optimizing for performance by avoiding unnecessary recalculations.
+ * - Renders the child components once the `hooks` object is available, effectively providing them access to the actor hooks context.
+ *
+ * @example
+ * ```jsx
+ * <ActorHookProvider hooks={yourActorHooks}>
+ *   <YourComponent />
+ * </ActorHookProvider>
+ * ```
+ * This setup ensures that `YourComponent` and any of its children can interact with the specified IC actor hooks through the context provided by `ActorHookProvider`.
+ */
+export const ActorHookProvider = ActorHooks.ActorHookProvider
