@@ -12,6 +12,7 @@ import type {
   UseMethod,
   UseMethodParameters,
   UseMethodReturnType,
+  UseActorStore,
 } from "../types"
 import type {
   VisitService,
@@ -22,6 +23,7 @@ import type {
   IDL,
   MethodAttributes,
   ActorMethodState,
+  ActorState,
 } from "@ic-reactor/core/dist/types"
 
 const DEFAULT_STATE: UseSharedCallState<never, never> = {
@@ -59,18 +61,21 @@ export const actorHooks = <A = BaseActor>(
     initialize,
   } = actorManager
 
-  const useActorState = () =>
-    useStore(
-      actorStore,
-      useShallow((state) => ({
-        name: state.name,
-        error: state.error,
-        initialized: state.initialized,
-        initializing: state.initializing,
-        canisterId,
-      }))
-    )
+  const useActorStore: UseActorStore<A> = <T>(
+    selector = (s: ActorState<A>) => s as T
+  ) => {
+    return useStore(actorStore, useShallow(selector))
+  }
 
+  const useActorState = () => {
+    return useActorStore((state) => ({
+      name: state.name,
+      error: state.error,
+      initialized: state.initialized,
+      initializing: state.initializing,
+      canisterId,
+    }))
+  }
   const useMethodState = <M extends FunctionName<A>>(
     functionName: M,
     requestKey: string
@@ -78,11 +83,9 @@ export const actorHooks = <A = BaseActor>(
     ActorMethodState<A, M>[string],
     (newState: Partial<ActorMethodState<A, M>[string]>) => void
   ] => {
-    const state =
-      useStore(
-        actorStore,
-        useShallow((state) => state.methodState[functionName]?.[requestKey])
-      ) || DEFAULT_STATE
+    const state = useActorStore(
+      (state) => state.methodState[functionName]?.[requestKey]
+    )
 
     const setSharedState = React.useCallback(
       (newState: Partial<ActorMethodState<A, M>[string]>) => {
@@ -293,6 +296,7 @@ export const actorHooks = <A = BaseActor>(
 
   return {
     initialize,
+    useActorStore,
     useMethodAttributes,
     useMethodNames,
     useMethod,

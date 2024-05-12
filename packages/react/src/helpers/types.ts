@@ -58,7 +58,10 @@ export type LoginParameters = AuthClientLoginOptions
 
 export type LogoutParameters = { returnTo?: string }
 
-export interface UseActorState extends Omit<ActorState, "methodState"> {
+export type UseActorStore<A> = <T>(callback?: (state: ActorState<A>) => T) => T
+
+export interface UseActorStateReturnType
+  extends Omit<ActorState, "methodState"> {
   canisterId: string
 }
 
@@ -147,7 +150,8 @@ export type UseVisitService<A> = () => VisitService<A>
 
 export interface ActorHooksReturnType<A = BaseActor> {
   initialize: () => Promise<void>
-  useActorState: () => UseActorState
+  useActorStore: UseActorStore<A>
+  useActorState: () => UseActorStateReturnType
   useActorInterface: () => IDL.ServiceClass
   useMethodNames: <Actor = A>() => FunctionName<Actor>[]
   useMethodAttributes: <Actor = A>() => MethodAttributes<Actor>
