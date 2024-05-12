@@ -3,7 +3,7 @@ export * from "./detail"
 export * from "./layout"
 export * from "./transform"
 export * from "./random/args"
-export * from "./random/response"
+export * from "./random/rets"
 
 export * from "./status"
 

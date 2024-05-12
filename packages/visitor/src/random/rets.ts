@@ -8,7 +8,7 @@ import type { BaseActor, ActorMethodReturnType, FunctionName } from "../types"
  * It returns the extracted service fields.
  *
  */
-export class VisitRandomResponse<A = BaseActor> extends IDL.Visitor<
+export class VisitRandomRets<A = BaseActor> extends IDL.Visitor<
   unknown,
   ActorMethodReturnType<A[FunctionName<A>]> | unknown
 > {
@@ -153,7 +153,7 @@ export class VisitRandomResponse<A = BaseActor> extends IDL.Visitor<
     for (let i = 0; i < maxIterations; i++) {
       const randomBytes = this.generateRandomBytes(Math.ceil(bits / 8))
       const mask = (BigInt(1) << BigInt(bits)) - BigInt(1)
-      randomBigInt = BigInt(`0x${this.bytesToHex(randomBytes)}`) & mask
+      randomBigInt = BigInt(this.bytesToBase64(randomBytes)) & mask
       if (randomBigInt >= min && randomBigInt < max) {
         break
       }
@@ -170,16 +170,16 @@ export class VisitRandomResponse<A = BaseActor> extends IDL.Visitor<
     return randomBigInt
   }
 
-  private bytesToHex(bytes: Uint8Array): string {
-    return Array.from(bytes)
+  private bytesToBase64(bytes: Uint8Array): string {
+    return `0x${Array.from(bytes)
       .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
+      .join("")}`
   }
 
   private generateRandomBytes(n: number): Uint8Array {
     const arr = new Uint8Array(n)
     for (let i = 0; i < n; i++) {
-      arr[i] = Math.floor(Math.random() * 256)
+      arr[i] = Math.floor(Math.random() * 128)
     }
     return arr
   }
