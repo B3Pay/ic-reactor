@@ -18,7 +18,7 @@ import type {
   AllReturnTypes,
   ServiceReturn,
   BlobReturn,
-  MethodReturnValue,
+  MethodRetsDefaultValues,
   ListReturn,
   FunctionRecordReturn,
   FunctionExtractedData,
@@ -73,22 +73,24 @@ export class VisitReturn<A = BaseActor> extends IDL.Visitor<
       },
       {
         fields: [] as DynamicReturnTypeByClass<IDL.Type>[],
-        defaultValues: {} as MethodReturnValue<FunctionName<A>>,
+        defaultValues: {} as MethodRetsDefaultValues<FunctionName<A>>,
       }
     )
 
-    const transformData = (data: unknown | unknown[]): MethodReturnValue => {
+    const transformData = (
+      data: unknown | unknown[]
+    ): MethodRetsDefaultValues => {
       if (t.retTypes.length === 1) {
         return {
           ret0: data,
-        } as MethodReturnValue
+        } as MethodRetsDefaultValues
       }
 
       return t.retTypes.reduce((acc, _, index) => {
         acc[`ret${index}`] = (data as ReturnTypeFromIDLType<IDL.Type>[])[index]
 
         return acc
-      }, {} as MethodReturnValue)
+      }, {} as MethodRetsDefaultValues)
     }
 
     return {

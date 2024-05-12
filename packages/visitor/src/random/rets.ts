@@ -1,7 +1,11 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
 
-import type { BaseActor, ActorMethodReturnType, FunctionName } from "../types"
+import type {
+  BaseActor,
+  MethodRetsDefaultValues,
+  ReturnTypeFromIDLType,
+} from "../types"
 
 /**
  * Visit the candid file and extract the fields.
@@ -10,14 +14,15 @@ import type { BaseActor, ActorMethodReturnType, FunctionName } from "../types"
  */
 export class VisitRandomRets<A = BaseActor> extends IDL.Visitor<
   unknown,
-  ActorMethodReturnType<A[FunctionName<A>]> | unknown
+  MethodRetsDefaultValues<A> | unknown
 > {
-  public visitFunc(
-    t: IDL.FuncClass
-  ): ActorMethodReturnType<A[FunctionName<A>]> {
-    return t.retTypes.map((type) =>
-      type.accept(this, null)
-    ) as ActorMethodReturnType<A[FunctionName<A>]>
+  public visitFunc(t: IDL.FuncClass): MethodRetsDefaultValues<A> {
+    return t.retTypes.reduce((acc, type, index) => {
+      acc[`ret${index}`] = type.accept(this, false) as ReturnTypeFromIDLType<
+        typeof type
+      >
+      return acc
+    }, {} as MethodRetsDefaultValues<A>)
   }
 
   public visitRecord(
