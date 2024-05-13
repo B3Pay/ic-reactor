@@ -214,7 +214,7 @@ export const actorHooks = <A = BaseActor>(
       return () => clearInterval(intervalId.current)
     }, [refetchInterval, refetchOnMount])
 
-    return { call, ...state }
+    return { call, intervalId, ...state }
   }
 
   const useUpdateCall: UseUpdateCall<A> = useSharedCall
