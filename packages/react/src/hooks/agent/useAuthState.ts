@@ -6,13 +6,13 @@ import AgentHooks from "./hooks"
  * @example
  * ```jsx
  * function AuthStateComponent() {
- *   const { isAuthenticated, authenticating, identity, error } = useAuthState();
+ *   const { authenticated, authenticating, identity, error } = useAuthState();
  *
  *   return (
  *     <div>
  *       {authenticating ? 'Authenticating...' : ''}
  *       {error ? `Error: ${error.message}` : ''}
- *       {isAuthenticated ? `User ${identity?.getPrincipal()} is authenticated.` : 'User is not authenticated.'}
+ *       {authenticated ? `User ${identity?.getPrincipal()} is authenticated.` : 'User is not authenticated.'}
  *     </div>
  *   );
  * }
