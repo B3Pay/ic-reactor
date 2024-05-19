@@ -175,7 +175,7 @@ export const useActor = <A = BaseActor>(
     }
     if (!candidAdapter) {
       throw new Error(
-        "CandidAdapter is necessary to fetch the Candid interface. Please ensure your application is wrapped with the CandidAdapterProvider!"
+        "CandidAdapter is necessary to fetch the Candid interface. Please ensure your application is wrapped with the CandidAdapterProvider, or provide the idlFactory directly."
       )
     }
     let idlFactory
