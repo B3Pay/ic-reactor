@@ -1,4 +1,4 @@
-import { ActorHooks } from "../../context"
+import { ActorHooks } from ".."
 
 /**
  *

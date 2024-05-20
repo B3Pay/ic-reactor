@@ -19,7 +19,10 @@ export interface CreateReactorReturnType<A>
   getVisitFunction: () => VisitService<A>
 }
 
+export * from "./context/actor/types"
 export * from "./context/agent/types"
+export * from "./context/adapter/types"
+
 export * from "./helpers/types"
 export * from "./hooks/types"
 

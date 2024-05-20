@@ -1,12 +1,12 @@
-import { ActorHooks } from "../../context"
+import { ActorHooks } from ".."
 
-import {
+import type {
   BaseActor,
   FunctionName,
   UseQueryCall,
   UseQueryCallParameters,
   UseSharedCallReturnType,
-} from "../../types"
+} from "../../../types"
 
 /**
  * Hook for making query calls to actors. It supports automatic refetching on component mount and at specified intervals.

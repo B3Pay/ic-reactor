@@ -1,4 +1,4 @@
-import { AdapterHooks } from "../../context"
+import { AdapterHooks } from ".."
 
 /**
  * Accesses the `CandidAdapter` to download the actor's Candid interface.

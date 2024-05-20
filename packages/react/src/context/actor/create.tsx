@@ -130,3 +130,5 @@ export function createActorContext<A = BaseActor>(
     ...extractActorContext<A>(ActorContext),
   }
 }
+
+export const ActorHooks = createActorContext()

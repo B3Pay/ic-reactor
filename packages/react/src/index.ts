@@ -1,9 +1,11 @@
 // Note: Order of exports is important
 export * from "./createReactor"
 
-export * from "./context"
+export * from "./context/actor"
+export * from "./context/adapter"
+export * from "./context/agent"
+
 export * from "./hooks"
-export * from "./provider"
 
 export * as helpers from "./helpers"
 export * as types from "./types"

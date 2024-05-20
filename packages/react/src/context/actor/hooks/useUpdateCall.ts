@@ -1,4 +1,4 @@
-import { ActorHooks } from "../../context"
+import { ActorHooks } from ".."
 
 import type {
   BaseActor,
@@ -6,7 +6,7 @@ import type {
   UseUpdateCall,
   UseUpdateCallParameters,
   UseSharedCallReturnType,
-} from "../../types"
+} from "../../../types"
 
 /**
  * Hook for making update calls to actors, handling loading states, and managing errors. It supports custom event handlers for loading, success, and error events.

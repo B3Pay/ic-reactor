@@ -1,4 +1,4 @@
-import { ActorHooks } from "../../context"
+import { ActorHooks } from ".."
 
 /**
  * Provides a hook for accessing the state of an actor from the actor's store.

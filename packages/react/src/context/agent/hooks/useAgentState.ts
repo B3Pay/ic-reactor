@@ -1,4 +1,4 @@
-import { AgentHooks } from "../../context"
+import { AgentHooks } from ".."
 
 /**
  * Accesses the current state of the agent.

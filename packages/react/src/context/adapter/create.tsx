@@ -1,5 +1,5 @@
 import React from "react"
-import { useAgentManager } from "../../hooks"
+import { useAgentManager } from "../agent"
 import { createCandidAdapter } from "@ic-reactor/core"
 
 import type {
@@ -74,3 +74,5 @@ export const createAdapterContext = (
     CandidAdapterProvider,
   }
 }
+
+export const AdapterHooks = createAdapterContext()
