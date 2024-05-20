@@ -46,12 +46,11 @@ export class CandidAdapter {
       return
     }
     try {
-      this.parserModule = require("@ic-reactor/parser")
-      if (
-        typeof this.parserModule !== "undefined" &&
-        "default" in this.parserModule
-      ) {
-        await this.parserModule.default()
+      const parserModule = (await import("@ic-reactor/parser")) as ReactorParser
+      if (parserModule) {
+        this.parserModule = parserModule
+      } else {
+        throw new Error("Failed to load parser module")
       }
     } catch (error) {
       throw new Error(`Error initializing parser: ${error}`)

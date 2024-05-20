@@ -1,6 +1,6 @@
 import {
   VisitRandomArgs,
-  VisitRandomResponse,
+  VisitRandomRets,
   VisitTransform,
 } from "../../visitor/src"
 import { createReactorStore } from "../src"
@@ -16,7 +16,7 @@ describe("createReactorStore", () => {
   })
 
   test("Initialized", async () => {
-    const value = visitFunction.get_app(new VisitRandomResponse<Example>())
+    const value = visitFunction.get_app(new VisitRandomRets<Example>(), "app")
     const data = visitFunction.get_app(new VisitTransform(), {
       value,
       label: "app",
@@ -24,7 +24,7 @@ describe("createReactorStore", () => {
 
     expect(data).toBeDefined()
 
-    const args = visitFunction.get_app(new VisitRandomArgs<Example>())
+    const args = visitFunction.get_app(new VisitRandomArgs<Example>(), "app")
     expect(args).toBeDefined()
 
     expect(getState()).toEqual({
