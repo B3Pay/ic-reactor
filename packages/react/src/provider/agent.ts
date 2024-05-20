@@ -1,4 +1,4 @@
-import { AgentHooks } from "../context/agent"
+import { AgentHooks } from "../context"
 
 /**
  * `AgentProvider` is a React functional component that serves as a context provider for IC agent and authentication hooks.

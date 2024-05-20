@@ -1,4 +1,4 @@
-import { AdapterHooks } from "../context/adapter"
+import { AdapterHooks } from "../context"
 
 /**
  * `CandidAdapterProvider` is a React component that provides the CandidAdapter to its children.

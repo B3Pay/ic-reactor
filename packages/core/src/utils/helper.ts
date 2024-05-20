@@ -29,26 +29,26 @@ export const importCandidDefinition = async (
   if (typeof window === "undefined") {
     // Node.js environment
     try {
-      const dataUri =
-        "data:text/javascript;charset=utf-8," + encodeURIComponent(candidDef)
+      const loaderFunction = new Function(`
+        return import("data:text/javascript;charset=utf-8, ${encodeURIComponent(
+          candidDef
+        )}")
+      `)
 
-      return eval('import("' + dataUri + '")')
+      return loaderFunction()
     } catch (error) {
-      throw new Error("Error importing Candid definition in Node.js")
+      throw new Error(`Error importing candid definition: ${error}`)
     }
   } else {
     // Browser environment
     const blob = new Blob([candidDef], { type: "application/javascript" })
     const url = URL.createObjectURL(blob)
 
-    return new Promise((resolve) => {
-      const loaderFunction = new Function(`
-        return import('${url}')
-          .catch(error => console.error('Error loading module:', error));
-      `)
+    const loaderFunction = new Function(`return import('${url}')`)
 
-      resolve(loaderFunction())
-    })
+    URL.revokeObjectURL(url)
+
+    return loaderFunction()
   }
 }
 

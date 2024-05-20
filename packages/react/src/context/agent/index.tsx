@@ -121,5 +121,3 @@ export const createAgentContext = (
 
   return { AgentProvider, ...extractAgentContext(AgentContext) }
 }
-
-export const AgentHooks = createAgentContext()

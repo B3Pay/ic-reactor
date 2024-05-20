@@ -1,4 +1,4 @@
-import { ActorHooks } from "../../context/actor"
+import { ActorHooks } from "../../context"
 
 /**
  * Hook for accessing the current state of the actor, including the canister ID.

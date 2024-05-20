@@ -74,5 +74,3 @@ export const createAdapterContext = (
     CandidAdapterProvider,
   }
 }
-
-export const AdapterHooks = createAdapterContext()

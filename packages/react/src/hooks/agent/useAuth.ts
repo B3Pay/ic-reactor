@@ -1,4 +1,4 @@
-import { AgentHooks } from "../../context/agent"
+import { AgentHooks } from "../../context"
 
 /**
  * `useAuth` is a custom React hook designed to manage authentication processes in applications interacting with the Internet Computer (IC).
