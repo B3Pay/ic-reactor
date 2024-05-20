@@ -1,6 +1,7 @@
 import { createActorContext } from "./create"
 export { createActorContext }
 
+/** @ignore */
 export const ActorHooks = createActorContext()
 
 export * from "./provider"
