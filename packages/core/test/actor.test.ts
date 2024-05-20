@@ -21,6 +21,7 @@ describe("createReactorStore", () => {
   test("Uninitialized", () => {
     expect(getState()).toEqual({
       methodState: {},
+      name: "2vxsx-fae",
       initialized: false,
       initializing: false,
       error: undefined,
@@ -31,6 +32,7 @@ describe("createReactorStore", () => {
     await initialize()
 
     expect(getState()).toEqual({
+      name: "2vxsx-fae",
       methodState: {},
       initialized: true,
       initializing: false,

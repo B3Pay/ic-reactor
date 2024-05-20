@@ -57,7 +57,7 @@ describe("Initialize", () => {
       args: ["World"],
     })
     expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
+      "0xeeffa880e337ce6f306bd786f51e97d272f791699d400dc9c80bd5e17827113b"
     )
 
     const data = await dataPromise
@@ -84,7 +84,7 @@ describe("Initialize", () => {
     })
 
     expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
+      "0xeeffa880e337ce6f306bd786f51e97d272f791699d400dc9c80bd5e17827113b"
     )
 
     const loadingBefore = getState("loading")

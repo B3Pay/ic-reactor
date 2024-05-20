@@ -28,6 +28,7 @@ describe("createReactorStore", () => {
     expect(args).toBeDefined()
 
     expect(getState()).toEqual({
+      name: "2vxsx-fae",
       methodState: {},
       initialized: true,
       initializing: false,
