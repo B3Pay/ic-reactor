@@ -26,16 +26,31 @@ export function createStoreWithOptionalDevtools<T>(
 export const importCandidDefinition = async (
   candidDef: string
 ): Promise<CandidDefenition> => {
-  const blob = new Blob([candidDef], { type: "application/javascript" })
-  const url = URL.createObjectURL(blob)
+  if (typeof window === "undefined") {
+    // Node.js environment
+    try {
+      const dataUri =
+        "data:text/javascript;charset=utf-8," + encodeURIComponent(candidDef)
 
-  try {
-    const module = await import(/* @vite-ignore */ url)
-    URL.revokeObjectURL(url) // Ensure URL is revoked after import
-    return module.default
-  } catch (error) {
-    URL.revokeObjectURL(url) // Ensure URL is revoked in case of error
-    throw new Error("Error importing Candid definition")
+      return eval('import("' + dataUri + '")')
+    } catch (error) {
+      throw new Error("Error importing Candid definition in Node.js")
+    }
+  } else {
+    // Browser environment
+    const jsBlob = new Blob([candidDef], { type: "application/javascript" })
+
+    const url = URL.createObjectURL(jsBlob)
+    try {
+      const module = eval('import("' + url + '")')
+
+      URL.revokeObjectURL(url)
+
+      return module
+    } catch (error) {
+      URL.revokeObjectURL(url)
+      throw new Error("Error importing Candid definition in Browser")
+    }
   }
 }
 
