@@ -1,3 +1,3 @@
-export * from "./adapter"
-export * from "./actor"
-export * from "./agent"
+export { createAdapterContext } from "./adapter"
+export { createActorContext } from "./actor"
+export { createAgentContext } from "./agent"

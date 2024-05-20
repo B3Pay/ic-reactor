@@ -38,19 +38,17 @@ export const importCandidDefinition = async (
     }
   } else {
     // Browser environment
-    const jsBlob = new Blob([candidDef], { type: "application/javascript" })
+    const blob = new Blob([candidDef], { type: "application/javascript" })
+    const url = URL.createObjectURL(blob)
 
-    const url = URL.createObjectURL(jsBlob)
-    try {
-      const module = eval('import("' + url + '")')
+    return new Promise((resolve) => {
+      const loaderFunction = new Function(`
+        return import('${url}')
+          .catch(error => console.error('Error loading module:', error));
+      `)
 
-      URL.revokeObjectURL(url)
-
-      return module
-    } catch (error) {
-      URL.revokeObjectURL(url)
-      throw new Error("Error importing Candid definition in Browser")
-    }
+      resolve(loaderFunction())
+    })
   }
 }
 

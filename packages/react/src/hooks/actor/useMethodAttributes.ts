@@ -1,4 +1,4 @@
-import ActorHooks from "./hooks"
+import { ActorHooks } from "../../context/actor"
 
 import type { BaseActor } from "../../types"
 

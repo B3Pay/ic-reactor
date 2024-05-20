@@ -5,7 +5,7 @@ import {
   UseMethodParameters,
   UseMethodReturnType,
 } from "../../types"
-import ActorHooks from "./hooks"
+import { ActorHooks } from "../../context/actor"
 
 /**
  * Hook for making dynamically update or query calls to actors, handling loading states, and managing errors. It supports custom event handlers for loading, success, and error events.

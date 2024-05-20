@@ -1,4 +1,4 @@
-import AgentHooks from "./hooks"
+import { AgentHooks } from "../../context/agent"
 
 /**
  * Accesses the current authentication state.
