@@ -37,18 +37,21 @@ export const importCandidDefinition = async (
 
       return loaderFunction()
     } catch (error) {
-      throw new Error(`Error importing candid definition: ${error}`)
+      throw new Error(`Error importing candid definition in NodeJs: ${error}`)
     }
   } else {
     // Browser environment
-    const blob = new Blob([candidDef], { type: "application/javascript" })
-    const url = URL.createObjectURL(blob)
+    try {
+      const loaderFunction = new Function(`
+        const blob = new Blob([\`${candidDef}\`], { type: "application/javascript" })
+        const url = URL.createObjectURL(blob)
+        return import(url)
+      `)
 
-    const loaderFunction = new Function(`return import('${url}')`)
-
-    URL.revokeObjectURL(url)
-
-    return loaderFunction()
+      return loaderFunction()
+    } catch (error) {
+      throw new Error(`Error importing candid definition: ${error}`)
+    }
   }
 }
 

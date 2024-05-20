@@ -1,4 +1,4 @@
-import { useUserPrincipal } from "@ic-reactor/react"
+import { useUserPrincipal, CandidAdapterProvider } from "@ic-reactor/react"
 import ICPMethod from "./ICPMethod"
 import Donation from "./Donation"
 import Login from "./Login"
@@ -15,13 +15,15 @@ const App: React.FC<AppProps> = () => {
     <div>
       <h1>ICDEV Donation</h1>
       <Login />
-      <ICPProvider>
-        <ICPMethod functionName="icrc1_name" />
-        <ICDVProvider>
-          <ICDVMethod functionName="icrc1_name" />
-          {principal && <Donation principal={principal} />}
-        </ICDVProvider>
-      </ICPProvider>
+      <CandidAdapterProvider>
+        <ICPProvider>
+          <ICPMethod functionName="icrc1_name" />
+          <ICDVProvider>
+            <ICDVMethod functionName="icrc1_name" />
+            {principal && <Donation principal={principal} />}
+          </ICDVProvider>
+        </ICPProvider>
+      </CandidAdapterProvider>
     </div>
   )
 }
