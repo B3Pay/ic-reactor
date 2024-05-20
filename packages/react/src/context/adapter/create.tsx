@@ -10,9 +10,9 @@ import type {
   CandidAdapter,
 } from "./types"
 
-export const createAdapterContext = (
+export function createAdapterContext(
   config: CreateCandidAdapterCotextParameters = {}
-): CreateCandidAdapterContextReturnType => {
+): CreateCandidAdapterContextReturnType {
   const {
     withParser: _withParser,
     didjsCanisterId: _didjsCanisterId,
@@ -74,5 +74,3 @@ export const createAdapterContext = (
     CandidAdapterProvider,
   }
 }
-
-export const AdapterHooks = createAdapterContext()

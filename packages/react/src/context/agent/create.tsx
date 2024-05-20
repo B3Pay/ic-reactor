@@ -83,9 +83,9 @@ import type {
  * the components wrapped by {@link AgentProvider}, facilitating interaction
  * with the Internet Computer blockchain.
  */
-export const createAgentContext = (
+export function createAgentContext(
   config: CreateAgentCotextParameters = {}
-): CreateAgentContextReturnType => {
+): CreateAgentContextReturnType {
   const { disableAuthenticateOnMount: defaultDisable, ...contextOptions } =
     config
   const AgentContext = React.createContext<AgentContext | null>(null)

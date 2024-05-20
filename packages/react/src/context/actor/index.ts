@@ -1,8 +1,7 @@
 import { createActorContext } from "./create"
+export { createActorContext }
 
 export const ActorHooks = createActorContext()
-
-export { createActorContext }
 
 export * from "./provider"
 

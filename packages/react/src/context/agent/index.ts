@@ -1,8 +1,7 @@
 import { createAgentContext } from "./create"
+export { createAgentContext }
 
 export const AgentHooks = createAgentContext()
-
-export { createAgentContext }
 
 export * from "./provider"
 

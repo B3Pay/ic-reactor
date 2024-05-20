@@ -1,4 +1,4 @@
-import { ActorHooks } from "./create"
+import { ActorHooks } from "."
 
 /**
  * `ActorProvider` is a React functional component that serves as a context provider for IC actor interactions within a React application.
