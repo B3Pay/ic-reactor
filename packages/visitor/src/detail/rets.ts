@@ -188,7 +188,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     if (field.type === "record") {
       const labelList: string[] = []
 
-      const isList = field.fields.every((field) => {
+      const isTable = field.fields.every((field) => {
         if (isFieldInTable(field)) {
           if (field.label) {
             labelList.push(field.label)
@@ -198,7 +198,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
         return false
       })
 
-      if (isList) {
+      if (isTable) {
         this.isTable = true
         this.status = Status.Visible("Optional")
         const record = ty.accept(this, label) as FieldDetailWithChild
@@ -206,7 +206,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
 
         return {
           ...record,
-          status: Status.Hidden("Optional"),
+          status: Status.Visible("Optional"),
           labelList,
         }
       }

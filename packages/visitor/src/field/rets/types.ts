@@ -77,8 +77,8 @@ export interface VectorReturn extends DefaultReturn {
 }
 
 export interface ListReturn extends DefaultReturn {
-  type: "list"
-  labelList: string[]
+  type: "table"
+  tableList: string[]
   fields: AllReturnTypes<IDL.Type>[]
 }
 
@@ -117,7 +117,7 @@ export type DynamicReturnType<T extends FieldType> = T extends "function"
   ? OptionalReturn
   : T extends "vector"
   ? VectorReturn
-  : T extends "list"
+  : T extends "table"
   ? ListReturn
   : T extends "blob"
   ? BlobReturn

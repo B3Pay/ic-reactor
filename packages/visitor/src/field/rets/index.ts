@@ -264,12 +264,12 @@ export class VisitReturn<A = BaseActor> extends IDL.Visitor<
     }
 
     if (field.type === "record") {
-      const labelList: string[] = []
+      const tableList: string[] = []
 
       const isList = (field as RecordReturn<IDL.Type>).fields.every((field) => {
         if (isFieldInTable(field)) {
           if (field.label) {
-            labelList.push(field.label)
+            tableList.push(field.label)
             return true
           }
         }
@@ -278,9 +278,9 @@ export class VisitReturn<A = BaseActor> extends IDL.Visitor<
 
       if (isList) {
         return {
-          type: "list",
+          type: "table",
           label,
-          labelList,
+          tableList: tableList,
           fields: (field as RecordReturn<IDL.Type>).fields,
         }
       }

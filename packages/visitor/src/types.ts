@@ -20,7 +20,7 @@ export type FieldType =
   | "tuple"
   | "optional"
   | "vector"
-  | "list"
+  | "table"
   | "blob"
   | "recursive"
   | "unknown"

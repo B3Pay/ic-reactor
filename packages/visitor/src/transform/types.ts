@@ -116,8 +116,8 @@ export type VectorMethodResult = DefaultMethodResult & {
         values: Array<MethodResult<ReturnDataType>>
       }
     | {
-        componentType: "list"
-        labelList: string[]
+        componentType: "table"
+        tableList: string[]
         values: Array<RecordMethodResult>
       }
   )

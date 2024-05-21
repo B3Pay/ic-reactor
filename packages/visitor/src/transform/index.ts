@@ -211,12 +211,12 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     })
 
     if (values?.length > 5 && values[0].type === "record") {
-      const labelList: string[] = []
+      const tableList: string[] = []
 
       const isList = values[0].values.every((value) => {
         if (isValueInTable(value)) {
           if (value.label) {
-            labelList.push(value.label)
+            tableList.push(value.label)
             return true
           }
         }
@@ -226,10 +226,10 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
       if (isList) {
         return {
           label,
-          labelList,
+          tableList,
           values: values as Array<RecordMethodResult>,
           type: "vector",
-          componentType: "list",
+          componentType: "table",
         }
       }
     }
