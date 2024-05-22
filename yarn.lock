@@ -18136,6 +18136,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"multiple-provider2@workspace:examples/multiple-provider2":
+  version: 0.0.0-use.local
+  resolution: "multiple-provider2@workspace:examples/multiple-provider2"
+  dependencies:
+    "@ic-reactor/react": "workspace:^"
+    "@ic-reactor/visitor": "workspace:^"
+    "@types/node": "npm:^16.18.68"
+    "@types/react": "npm:^18.2.45"
+    "@types/react-dom": "npm:^18.2.18"
+    react: "npm:^18.2.0"
+    react-dom: "npm:^18.2.0"
+    react-hook-form: "npm:^7.49.2"
+    react-scripts: "npm:5.0.1"
+    typescript: "npm:^5.3"
+  languageName: unknown
+  linkType: soft
+
 "multiple-provider@workspace:examples/multiple-provider":
   version: 0.0.0-use.local
   resolution: "multiple-provider@workspace:examples/multiple-provider"
