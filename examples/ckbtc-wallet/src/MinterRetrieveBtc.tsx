@@ -4,11 +4,13 @@ import { useRef } from "react"
 import { useCKBTCLedgerMethod } from "./CKBTC"
 import { Principal } from "@dfinity/principal"
 
-interface RetrieveBTCProps {
+interface MinterRetrieveBTCProps {
   userPrincipal: Principal
 }
 
-const RetrieveBTC: React.FC<RetrieveBTCProps> = ({ userPrincipal }) => {
+const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
+  userPrincipal,
+}) => {
   const { canisterId } = useCKBTCMinterState()
 
   const minterCanisterId = Principal.fromText(canisterId)
@@ -92,7 +94,7 @@ const RetrieveBTC: React.FC<RetrieveBTCProps> = ({ userPrincipal }) => {
     <div>
       <div>
         <span>
-          <strong>Balance</strong>:{" "}
+          <strong>ckBTC Balance</strong>:{" "}
           <button onClick={refetchBalance} disabled={balanceLoading}>
             ↻
           </button>{" "}
@@ -109,7 +111,7 @@ const RetrieveBTC: React.FC<RetrieveBTCProps> = ({ userPrincipal }) => {
         </span>
       </div>
       <form onSubmit={onSubmit}>
-        <h2>Retrieve</h2>
+        <h2>Retrieve BTC</h2>
         <input ref={addressRef} type="text" placeholder="Address" />
         <input ref={amountRef} type="text" placeholder="Amount" />
         <button>Retrieve</button>
@@ -127,12 +129,10 @@ const RetrieveBTC: React.FC<RetrieveBTCProps> = ({ userPrincipal }) => {
           ) : retreiveBtcLoading || retreiveBtcResult || retreiveBtcError ? (
             <div>
               <div>Approve Result: {jsonToString(approveResult)}</div>
-              {retreiveBtcResult ? (
-                <div>
-                  Thanks for your donation! : {jsonToString(retreiveBtcResult)}
-                </div>
-              ) : retreiveBtcError ? (
+              {retreiveBtcError ? (
                 <div>Error: {retreiveBtcError.message}</div>
+              ) : retreiveBtcResult ? (
+                <div>Retreive Result: {jsonToString(retreiveBtcResult)}</div>
               ) : null}
             </div>
           ) : null}
@@ -142,4 +142,4 @@ const RetrieveBTC: React.FC<RetrieveBTCProps> = ({ userPrincipal }) => {
   )
 }
 
-export default RetrieveBTC
+export default MinterRetrieveBTC

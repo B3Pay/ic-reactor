@@ -6,9 +6,10 @@ import {
 import Login from "./Login"
 import { CKBTCLedgerProvider } from "./CKBTC"
 import { CKBTCMinterProvider } from "./Minter"
-import CkbtcAddress from "./CkbtcAddress"
+import GetBTCAddress from "./GetBTCAddress"
 import CkbtcUpdateBalance from "./MinterUpdateBalance"
-import RetrieveBTC from "./RetrieveBtc"
+import MinterRetrieveBTC from "./MinterRetrieveBtc"
+import CKBTCTransfer from "./CKBTCTransfer"
 
 interface AppProps {}
 
@@ -24,11 +25,12 @@ const App: React.FC<AppProps> = () => {
         <CKBTCLedgerProvider>
           <CKBTCMinterProvider>
             {authenticated && userPrincipal ? (
-              <CkbtcAddress userPrincipal={userPrincipal}>
+              <GetBTCAddress userPrincipal={userPrincipal}>
                 <CkbtcUpdateBalance userPrincipal={userPrincipal}>
-                  <RetrieveBTC userPrincipal={userPrincipal} />
+                  <MinterRetrieveBTC userPrincipal={userPrincipal} />
+                  <CKBTCTransfer />
                 </CkbtcUpdateBalance>
-              </CkbtcAddress>
+              </GetBTCAddress>
             ) : (
               <p>Login to see your BTC address and balance</p>
             )}

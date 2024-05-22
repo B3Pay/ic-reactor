@@ -2,11 +2,11 @@ import { useEffect } from "react"
 import { Principal } from "@ic-reactor/react/dist/types"
 import { useCKBTCMinterMethod } from "./Minter"
 
-type CkbtcAddressProps = React.PropsWithChildren<{
+type GetBTCAddressProps = React.PropsWithChildren<{
   userPrincipal: Principal
 }>
 
-const CkbtcAddress: React.FC<CkbtcAddressProps> = ({
+const GetBTCAddress: React.FC<GetBTCAddressProps> = ({
   userPrincipal,
   children,
 }) => {
@@ -23,12 +23,14 @@ const CkbtcAddress: React.FC<CkbtcAddressProps> = ({
     <p>getting btc address...</p>
   ) : error ? (
     <p>Error: {error.message}</p>
-  ) : (
+  ) : data ? (
     <div>
-      <p>BTC Address: {data}</p>
+      <p>
+        <strong>BTC Address:</strong> {data}
+      </p>
       {children}
     </div>
-  )
+  ) : null
 }
 
-export default CkbtcAddress
+export default GetBTCAddress

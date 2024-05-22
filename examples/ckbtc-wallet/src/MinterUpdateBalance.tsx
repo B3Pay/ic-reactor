@@ -20,11 +20,15 @@ const MinterUpdateBalance: React.FC<MinterUpdateBalanceProps> = ({
     call()
   }, [])
 
-  return loading ? (
-    <p>getting balance...</p>
-  ) : (
+  return (
     <div>
-      <p>Update Result: {jsonToString(data)}</p>
+      <span>
+        <strong>Update Balance</strong>:{" "}
+        <button onClick={call} disabled={loading}>
+          ↻
+        </button>{" "}
+        {loading ? "Loading..." : jsonToString(data)}
+      </span>
       {children}
     </div>
   )
