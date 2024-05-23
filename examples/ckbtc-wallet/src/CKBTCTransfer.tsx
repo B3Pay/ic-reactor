@@ -42,8 +42,15 @@ const CKBTCTransfer: React.FC<CKBTCTransferProps> = () => {
           name="principal"
           ref={principalRef}
           placeholder="Principal"
+          required
         />
-        <input type="text" name="amount" ref={amountRef} placeholder="Amount" />
+        <input
+          type="text"
+          name="amount"
+          ref={amountRef}
+          placeholder="Amount"
+          required
+        />
         <button>Transfer</button>
       </form>
       <span>
