@@ -36,10 +36,7 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
     args: [
       {
         account: { owner: userPrincipal, subaccount: [] },
-        spender: {
-          owner: minterCanisterId,
-          subaccount: [],
-        },
+        spender: { owner: minterCanisterId, subaccount: [] },
       },
     ],
   })
@@ -51,6 +48,10 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
     loading: retreiveBtcLoading,
   } = useCKBTCMinterMethod({
     functionName: "retrieve_btc_with_approval",
+    onSuccess: () => {
+      refetchBalance()
+      refetchAllowance()
+    },
   })
 
   const {
@@ -61,11 +62,14 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
     functionName: "icrc2_approve",
     onSuccess: () => {
       refetchAllowance()
+
+      const amount = BigInt(amountRef.current?.value || "0")
+      const address = addressRef.current?.value || ""
       retreiveBtc([
         {
-          amount: BigInt(amountRef.current?.value || "0"),
+          amount,
+          address,
           from_subaccount: [],
-          address: addressRef.current?.value || "",
         },
       ])
     },
@@ -73,13 +77,12 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault()
+
+    const amount = BigInt(amountRef.current?.value || "0")
     approve([
       {
-        spender: {
-          owner: minterCanisterId,
-          subaccount: [],
-        },
-        amount: BigInt(amountRef.current?.value || "0"),
+        spender: { owner: minterCanisterId, subaccount: [] },
+        amount,
         fee: [],
         memo: [],
         created_at_time: [],
@@ -112,8 +115,8 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
       </div>
       <form onSubmit={onSubmit}>
         <h2>Retrieve BTC</h2>
-        <input ref={addressRef} type="text" placeholder="Address" />
-        <input ref={amountRef} type="text" placeholder="Amount" />
+        <input ref={addressRef} type="text" placeholder="Address" required />
+        <input ref={amountRef} type="text" placeholder="Amount" required />
         <button>Retrieve</button>
       </form>
       <div>

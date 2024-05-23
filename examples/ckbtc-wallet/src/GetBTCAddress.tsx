@@ -18,6 +18,7 @@ const GetBTCAddress: React.FC<GetBTCAddressProps> = ({
   useEffect(() => {
     call()
   }, [])
+  console.log("🚀 ~ data:", data)
 
   return loading ? (
     <p>getting btc address...</p>

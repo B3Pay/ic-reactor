@@ -22,20 +22,20 @@ const App: React.FC<AppProps> = () => {
       <h1>ckBTC(TestNet) Wallet</h1>
       <Login />
       <CandidAdapterProvider>
-        <CKBTCLedgerProvider>
-          <CKBTCMinterProvider>
-            {authenticated && userPrincipal ? (
+        {authenticated && userPrincipal ? (
+          <CKBTCLedgerProvider>
+            <CKBTCMinterProvider>
               <GetBTCAddress userPrincipal={userPrincipal}>
                 <CkbtcUpdateBalance userPrincipal={userPrincipal}>
                   <MinterRetrieveBTC userPrincipal={userPrincipal} />
                   <CKBTCTransfer />
                 </CkbtcUpdateBalance>
               </GetBTCAddress>
-            ) : (
-              <p>Login to see your BTC address and balance</p>
-            )}
-          </CKBTCMinterProvider>
-        </CKBTCLedgerProvider>
+            </CKBTCMinterProvider>
+          </CKBTCLedgerProvider>
+        ) : (
+          <p>Login to see your BTC address and balance</p>
+        )}
       </CandidAdapterProvider>
     </div>
   )
