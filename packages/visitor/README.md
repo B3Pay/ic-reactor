@@ -1,34 +1,54 @@
 This package provides a visitor pattern implementation for the IC-Reactor framework.
 
-### Dictionary Table
+### All Possible Number Values and Tags
 
 #### Flags
 
-| Key      | Value  | Tag                      |
-| -------- | ------ | ------------------------ |
-| Visible  | 1 << 0 | `[0; 31] + [1]`          |
-| Hidden   | 1 << 1 | `[0; 30] + [1, 0]`       |
-| Enabled  | 1 << 2 | `[0; 29] + [1, 0, 0]`    |
-| Disabled | 1 << 3 | `[0; 28] + [1, 0, 0, 0]` |
+| Number Value | Key      | Tag                      |
+| ------------ | -------- | ------------------------ |
+| 1            | Visible  | `[0; 31] + [1]`          |
+| 2            | Hidden   | `[0; 30] + [1, 0]`       |
+| 4            | Enabled  | `[0; 29] + [1, 0, 0]`    |
+| 8            | Disabled | `[0; 28] + [1, 0, 0, 0]` |
 
 #### Properties
 
-| Key      | Value   | Tag                       |
-| -------- | ------- | ------------------------- |
-| Optional | 1 << 16 | `[0; 15] + [1] + [0; 15]` |
-| Checked  | 1 << 17 | `[0; 14] + [1] + [0; 16]` |
-| Dynamic  | 1 << 18 | `[0; 13] + [1] + [0; 17]` |
+| Number Value | Key      | Tag                       |
+| ------------ | -------- | ------------------------- |
+| 65536        | Optional | `[0; 15] + [1] + [0; 15]` |
+| 131072       | Checked  | `[0; 14] + [1] + [0; 16]` |
+| 262144       | Dynamic  | `[0; 13] + [1] + [0; 17]` |
 
-### Detailed Explanation
+### Combined Possible Values
 
-1. **Flags:**
+The combined possible values can be derived by adding any combination of the above values. Here are some examples:
 
-   - `Visible`: Represented by `1 << 0` which is equivalent to `1` in binary. Tag `[0; 31] + [1]` suggests it's always present.
-   - `Hidden`: Represented by `1 << 1` which is equivalent to `2` in binary. Tag `[0; 30] + [1, 0]` indicates the status is hidden.
-   - `Enabled`: Represented by `1 << 2` which is equivalent to `4` in binary. Tag `[0; 29] + [1, 0, 0]` indicates the status is enabled.
-   - `Disabled`: Represented by `1 << 3` which is equivalent to `8` in binary. Tag `[0; 28] + [1, 0, 0, 0]` indicates the status is disabled.
+- **Single Values:**
 
-2. **Properties:**
-   - `Optional`: Represented by `1 << 16` which is equivalent to `65536` in binary. Tag `[0; 15] + [1] + [0; 15]` indicates it's an optional property.
-   - `Checked`: Represented by `1 << 17` which is equivalent to `131072` in binary. Tag `[0; 14] + [1] + [0; 16]` indicates the status is checked.
-   - `Dynamic`: Represented by `1 << 18` which is equivalent to `262144` in binary. Tag `[0; 13] + [1] + [0; 17]` indicates the status is dynamic.
+  - `1`: Visible
+  - `2`: Hidden
+  - `4`: Enabled
+  - `8`: Disabled
+  - `65536`: Optional
+  - `131072`: Checked
+  - `262144`: Dynamic
+
+- **Combined Values:**
+  - `1 + 65536 = 65537`: Visible + Optional
+  - `2 + 131072 = 131074`: Hidden + Checked
+  - `4 + 262144 = 262148`: Enabled + Dynamic
+  - `8 + 65536 = 65544`: Disabled + Optional
+  - `1 + 65536 + 131072 = 196609`: Visible + Optional + Checked
+  - `2 + 65536 + 262144 = 327682`: Hidden + Optional + Dynamic
+
+...and so on, including all other possible combinations. Each combination represents a different status with multiple properties and flags applied.
+
+### Tags for Combined Values
+
+The tags for combined values are the union of the tags for each component. For example:
+
+- For `65537` (Visible + Optional), the combined tags would be:
+  - `[0; 31] + [1]` (from Visible)
+  - `[0; 15] + [1] + [0; 15]` (from Optional)
+
+This approach ensures that each combined value and its tags are correctly identified. If you need a full list of every possible combination, please let me know!
