@@ -85,7 +85,7 @@ export function createActorContext<A = BaseActor>(
     fetchingComponent,
     canisterId = defaultCanisterId,
     errorComponent = (error) => <div>{error}</div>,
-    loadingComponent = <div>Fetching canister...</div>,
+    loadingComponent = <div>Loading canister...</div>,
     authenticatingComponent = <div>Authenticating...</div>,
     ...restConfig
   }) => {
