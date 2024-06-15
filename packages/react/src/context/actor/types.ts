@@ -32,4 +32,5 @@ export interface CreateActorContextParameters
   didjsId?: string
   canisterId?: CanisterId
   idlFactory?: IDL.InterfaceFactory
+  disableAutoFetch?: boolean
 }
