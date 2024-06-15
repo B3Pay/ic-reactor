@@ -21,6 +21,7 @@ export interface CreateCandidAdapterCotextParameters
 export interface UseCandidEvaluationReturnType {
   fetchError: string | null
   fetching: boolean
+  validateCandid: (candidString: string) => boolean | undefined
   evaluateCandid: (
     candidString: string
   ) => Promise<IDL.InterfaceFactory | undefined>

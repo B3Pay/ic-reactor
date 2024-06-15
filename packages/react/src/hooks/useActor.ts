@@ -155,7 +155,7 @@ export const useActor = <A = BaseActor>(
   const initializeActor = useCallback(
     (idlFactory: IDL.InterfaceFactory, actorReConfig?: UseActorParameters) => {
       if (authenticating || !idlFactory) return
-      const actorManager = createActorManager<A>({
+      const newActorManager = createActorManager<A>({
         agentManager,
         idlFactory,
         canisterId,
@@ -163,7 +163,7 @@ export const useActor = <A = BaseActor>(
         ...actorReConfig,
       })
 
-      setActorManager(actorManager)
+      setActorManager(newActorManager)
     },
     [canisterId, agentManager, authenticating]
   )
