@@ -1,10 +1,10 @@
 import { createActorManager } from "@ic-reactor/core"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { actorHooks } from "../helpers"
 
 import type { ActorManager, IDL, BaseActor } from "../types"
 import type { UseActorParameters, UseActorReturn } from "./types"
-import { useCandidAdapter } from "../context/adapter"
+import { CandidAdapterContext } from "../context/adapter"
 import { useAgentManager, useAuthState } from "../context/agent"
 
 /**
@@ -100,7 +100,7 @@ export const useActor = <A = BaseActor>(
     fetchError: null as string | null,
   })
 
-  const candidAdapter = useCandidAdapter()
+  const candidAdapter = useContext(CandidAdapterContext)
 
   const authenticating = useAuthState().authenticating
 

@@ -4,9 +4,7 @@ import type {
   ActorState,
   BaseActor,
   FunctionName,
-  IDL,
   InitializeActor,
-  UseActorParameters,
   UseActorStore,
   UseMethod,
   UseQueryCall,
@@ -67,10 +65,8 @@ export function extractActorContext<A = BaseActor>(
 
   const useActorInterface = () => useActorContext().useActorInterface()
 
-  const useInitializeActor: InitializeActor = (
-    idlFactory: IDL.InterfaceFactory,
-    actorReConfig?: UseActorParameters
-  ) => useActorContext().useInitializeActor?.(idlFactory, actorReConfig)
+  const useInitializeActor = (): InitializeActor =>
+    useActorContext().useInitializeActor?.() as InitializeActor
 
   return {
     useActorStore,

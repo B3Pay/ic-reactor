@@ -22,6 +22,7 @@ export interface CreateAgentContextReturnType
     AuthHooksReturnType {
   useAgentManager: () => AgentManager
   AgentProvider: React.FC<AgentProviderProps>
+  AgentContext: React.Context<AgentContext | null>
 }
 
 export interface AgentProviderProps

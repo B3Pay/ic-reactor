@@ -34,7 +34,7 @@ import type {
  */
 export const extractAgentContext = (
   agentContext: React.Context<AgentContext | null>
-): Omit<CreateAgentContextReturnType, "AgentProvider"> => {
+): Omit<CreateAgentContextReturnType, "AgentProvider" | "AgentContext"> => {
   const useAgentContext = () => {
     const context = React.useContext(agentContext)
 

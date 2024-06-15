@@ -1,8 +1,9 @@
 import { createAdapterContext } from "./create"
-export { createAdapterContext }
 
 /** @ignore */
 export const AdapterHooks = createAdapterContext()
+
+export const CandidAdapterContext = AdapterHooks.CandidAdapterContext
 
 export * from "./provider"
 

@@ -119,5 +119,5 @@ export function createAgentContext(
 
   AgentProvider.displayName = "AgentProvider"
 
-  return { AgentProvider, ...extractAgentContext(AgentContext) }
+  return { AgentContext, AgentProvider, ...extractAgentContext(AgentContext) }
 }

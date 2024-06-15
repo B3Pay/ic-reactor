@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react"
-import type { CandidAdapterParameters } from "../../types"
+import type { CandidAdapterParameters, IDL } from "../../types"
 import type { CandidAdapter } from "@ic-reactor/core/dist/classes"
 
 export type { CandidAdapter }
@@ -18,7 +18,15 @@ export interface CreateCandidAdapterCotextParameters
   withParser?: boolean
 }
 
+export interface UseCandidEvaluationReturnType {
+  fetchError: string | null
+  fetching: boolean
+  evaluateCandid: () => Promise<IDL.InterfaceFactory | undefined>
+}
+
 export interface CreateCandidAdapterContextReturnType {
-  useCandidAdapter: () => CandidAdapter
+  CandidAdapterContext: React.Context<CandidAdapterContextType | null>
   CandidAdapterProvider: React.FC<CandidAdapterProviderProps>
+  useCandidEvaluation: (candidString: string) => UseCandidEvaluationReturnType
+  useCandidAdapter: () => CandidAdapter
 }

@@ -7,7 +7,7 @@ import type {
   CreateCandidAdapterCotextParameters,
   CreateCandidAdapterContextReturnType,
   CandidAdapterProviderProps,
-  CandidAdapter,
+  UseCandidEvaluationReturnType,
 } from "./types"
 
 export function createAdapterContext(
@@ -23,9 +23,54 @@ export function createAdapterContext(
     React.createContext<CandidAdapterContextType | null>(null)
 
   const useCandidAdapter = () => {
-    const candidAdapter = React.useContext(CandidAdapterContext)
+    const context = React.useContext(CandidAdapterContext)
 
-    return candidAdapter as CandidAdapter
+    if (!context) {
+      throw new Error("Actor hooks must be used within a ActorProvider")
+    }
+
+    return context
+  }
+
+  type State = {
+    fetchError: string | null
+    fetching: boolean
+  }
+
+  const useCandidEvaluation = (
+    candidString: string
+  ): UseCandidEvaluationReturnType => {
+    const [state, setState] = React.useState<State>({
+      fetchError: null,
+      fetching: true,
+    })
+
+    const evaluateCandid = React.useCallback(async () => {
+      const candidAdapter = React.useContext(CandidAdapterContext)
+
+      if (!candidAdapter) {
+        throw new Error(
+          "CandidAdapter must be used within a CandidAdapterProvider!"
+        )
+      }
+
+      try {
+        const definition = await candidAdapter!.dynamicEvalJs(candidString!)
+        if (typeof definition?.idlFactory !== "function") {
+          throw new Error("Error evaluating Candid definition")
+        }
+        return definition.idlFactory
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(err)
+        setState({
+          fetchError: `Error evaluating Candid definition, ${err}`,
+          fetching: false,
+        })
+      }
+    }, [candidString])
+
+    return { evaluateCandid, ...state }
   }
 
   const CandidAdapterProvider: React.FC<CandidAdapterProviderProps> = ({
@@ -70,7 +115,9 @@ export function createAdapterContext(
   CandidAdapterProvider.displayName = "CandidAdapterProvider"
 
   return {
-    useCandidAdapter,
+    CandidAdapterContext,
     CandidAdapterProvider,
+    useCandidEvaluation,
+    useCandidAdapter,
   }
 }

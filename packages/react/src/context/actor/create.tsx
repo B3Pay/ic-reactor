@@ -2,12 +2,7 @@ import React from "react"
 import { useActor } from "../../hooks/useActor"
 import { extractActorContext } from "../../helpers/extractActorContext"
 
-import type {
-  ActorHooksReturnType,
-  BaseActor,
-  IDL,
-  UseActorParameters,
-} from "../../types"
+import type { ActorHooksReturnType, BaseActor } from "../../types"
 import type {
   CreateActorContextParameters,
   CreateActorContextReturnType,
@@ -108,15 +103,9 @@ export function createActorContext<A = BaseActor>(
       ...config,
     })
 
-    const useInitializeActor = React.useCallback(
-      (
-        idlFactory: IDL.InterfaceFactory,
-        actorReConfig?: UseActorParameters
-      ) => {
-        initializeActor(idlFactory, actorReConfig)
-      },
-      [initializeActor]
-    )
+    const useInitializeActor = React.useCallback(() => {
+      return initializeActor
+    }, [initializeActor])
 
     return (
       <ActorContext.Provider
