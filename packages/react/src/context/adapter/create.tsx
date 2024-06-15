@@ -48,8 +48,6 @@ export function createAdapterContext(
       try {
         return candidAdapter.validateIDL(candidString)
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error(err)
         setState({
           fetchError: `Error validating Candid definition, ${err}`,
           fetching: false,
@@ -67,10 +65,12 @@ export function createAdapterContext(
         if (typeof definition?.idlFactory !== "function") {
           throw new Error("Error evaluating Candid definition")
         }
+        setState({
+          fetchError: null,
+          fetching: false,
+        })
         return definition.idlFactory
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error(err)
         setState({
           fetchError: `Error evaluating Candid definition, ${err}`,
           fetching: false,
