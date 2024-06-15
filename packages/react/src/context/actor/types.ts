@@ -43,3 +43,7 @@ export interface CreateActorContextParameters
   idlFactory?: IDL.InterfaceFactory
   disableAutoFetch?: boolean
 }
+
+export interface ActorChildrenProps extends React.PropsWithChildren {
+  useActorState: ActorHooksReturnType["useActorState"]
+}
