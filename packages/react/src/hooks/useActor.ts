@@ -152,14 +152,15 @@ export const useActor = <A = BaseActor>(
 
   const agentManager = useAgentManager()
 
-  const initialActor = useCallback(
-    (idlFactory?: IDL.InterfaceFactory) => {
+  const initializeActor = useCallback(
+    (idlFactory: IDL.InterfaceFactory, actorReConfig?: UseActorParameters) => {
       if (authenticating || !idlFactory) return
       const actorManager = createActorManager<A>({
         agentManager,
         idlFactory,
         canisterId,
         ...actorConfig,
+        ...actorReConfig,
       })
 
       setActorManager(actorManager)
@@ -170,7 +171,7 @@ export const useActor = <A = BaseActor>(
   const handleActorInitialization = useCallback(async () => {
     if (authenticating) return
     if (maybeIdlFactory) {
-      initialActor(maybeIdlFactory)
+      initializeActor(maybeIdlFactory)
       return
     }
     if (disableAutoFetch) {
@@ -191,8 +192,9 @@ export const useActor = <A = BaseActor>(
     } else {
       idlFactory = await fetchCandid()
     }
-    initialActor(idlFactory)
-  }, [fetchCandid, evaluateCandid, maybeIdlFactory, initialActor])
+    if (!idlFactory) return
+    initializeActor(idlFactory)
+  }, [fetchCandid, evaluateCandid, maybeIdlFactory, initializeActor])
 
   useEffect(() => {
     handleActorInitialization()
@@ -204,5 +206,5 @@ export const useActor = <A = BaseActor>(
     return actorHooks(actorManager)
   }, [actorManager])
 
-  return { hooks, authenticating, fetching, fetchError, initialActor }
+  return { hooks, authenticating, fetching, fetchError, initializeActor }
 }

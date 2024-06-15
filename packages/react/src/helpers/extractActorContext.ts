@@ -1,10 +1,12 @@
 import React from "react"
 
 import type {
-  ActorHooksReturnType,
   ActorState,
   BaseActor,
   FunctionName,
+  IDL,
+  InitializeActor,
+  UseActorParameters,
   UseActorStore,
   UseMethod,
   UseQueryCall,
@@ -12,10 +14,13 @@ import type {
   UseVisitMethod,
   UseVisitService,
 } from "../types"
-import type { CreateActorContextReturnType } from "../context/actor/types"
+import type {
+  CreateActorContextReturnType,
+  CreateActorContextType,
+} from "../context/actor/types"
 
 export function extractActorContext<A = BaseActor>(
-  actorContext: React.Context<ActorHooksReturnType<A> | null>
+  actorContext: React.Context<CreateActorContextType<A> | null>
 ): Omit<
   CreateActorContextReturnType<A>,
   "ActorProvider" | "ActorHookProvider"
@@ -62,6 +67,11 @@ export function extractActorContext<A = BaseActor>(
 
   const useActorInterface = () => useActorContext().useActorInterface()
 
+  const useInitializeActor: InitializeActor = (
+    idlFactory: IDL.InterfaceFactory,
+    actorReConfig?: UseActorParameters
+  ) => useActorContext().useInitializeActor?.(idlFactory, actorReConfig)
+
   return {
     useActorStore,
     useActorState,
@@ -73,6 +83,7 @@ export function extractActorContext<A = BaseActor>(
     useVisitMethod,
     useVisitService,
     useActorInterface,
+    useInitializeActor,
     initialize,
   }
 }

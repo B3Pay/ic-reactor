@@ -22,5 +22,10 @@ export interface UseActorReturn<A = BaseActor> {
   fetching: boolean
   fetchError: string | null
   authenticating: boolean
-  initialActor: (idlFactory?: IDL.InterfaceFactory) => void
+  initializeActor: InitializeActor
 }
+
+export type InitializeActor = (
+  idlFactory: IDL.InterfaceFactory,
+  actorReConfig?: UseActorParameters
+) => void

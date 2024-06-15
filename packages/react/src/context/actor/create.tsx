@@ -2,12 +2,18 @@ import React from "react"
 import { useActor } from "../../hooks/useActor"
 import { extractActorContext } from "../../helpers/extractActorContext"
 
-import type { ActorHooksReturnType, BaseActor } from "../../types"
+import type {
+  ActorHooksReturnType,
+  BaseActor,
+  IDL,
+  UseActorParameters,
+} from "../../types"
 import type {
   CreateActorContextParameters,
   CreateActorContextReturnType,
   ActorProviderProps,
   ActorHookProviderProps,
+  CreateActorContextType,
 } from "./types"
 /**
  * Creates a React context specifically designed for managing the state and interactions with an actor on the Internet Computer (IC) blockchain.
@@ -74,7 +80,9 @@ export function createActorContext<A = BaseActor>(
 ): CreateActorContextReturnType<A> {
   const { canisterId: defaultCanisterId, ...defaultConfig } = contextConfig
 
-  const ActorContext = React.createContext<ActorHooksReturnType<A> | null>(null)
+  const ActorContext = React.createContext<CreateActorContextType<A> | null>(
+    null
+  )
 
   const ActorProvider: React.FC<ActorProviderProps> = ({
     children,
@@ -95,13 +103,25 @@ export function createActorContext<A = BaseActor>(
       [defaultConfig, restConfig]
     )
 
-    const { fetchError, authenticating, hooks } = useActor<A>({
+    const { fetchError, authenticating, initializeActor, hooks } = useActor<A>({
       canisterId,
       ...config,
     })
 
+    const useInitializeActor = React.useCallback(
+      (
+        idlFactory: IDL.InterfaceFactory,
+        actorReConfig?: UseActorParameters
+      ) => {
+        initializeActor(idlFactory, actorReConfig)
+      },
+      [initializeActor]
+    )
+
     return (
-      <ActorContext.Provider value={hooks}>
+      <ActorContext.Provider
+        value={{ ...(hooks as ActorHooksReturnType<A>), useInitializeActor }}
+      >
         {hooks === null
           ? fetchError
             ? fetchError

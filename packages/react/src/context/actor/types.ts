@@ -4,12 +4,19 @@ import type {
   BaseActor,
   ActorManagerParameters,
   CanisterId,
+  InitializeActor,
 } from "../../types"
+
+export interface CreateActorContextType<A = BaseActor>
+  extends ActorHooksReturnType<A> {
+  useInitializeActor?: InitializeActor
+}
 
 export interface CreateActorContextReturnType<A = BaseActor>
   extends ActorHooksReturnType<A> {
   ActorProvider: React.FC<ActorProviderProps>
   ActorHookProvider: React.FC<ActorHookProviderProps<A>>
+  useInitializeActor: InitializeActor
 }
 
 export interface ActorHookProviderProps<A> {
