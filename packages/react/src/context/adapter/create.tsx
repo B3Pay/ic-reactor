@@ -32,30 +32,17 @@ export function createAdapterContext(
     return context
   }
 
-  type State = {
-    fetchError: string | null
-    fetching: boolean
-  }
-
-  const useCandidEvaluation = (
-    candidString: string
-  ): UseCandidEvaluationReturnType => {
-    const [state, setState] = React.useState<State>({
-      fetchError: null,
+  const useCandidEvaluation = (): UseCandidEvaluationReturnType => {
+    const [state, setState] = React.useState({
       fetching: true,
+      fetchError: null as string | null,
     })
 
-    const evaluateCandid = React.useCallback(async () => {
-      const candidAdapter = React.useContext(CandidAdapterContext)
-
-      if (!candidAdapter) {
-        throw new Error(
-          "CandidAdapter must be used within a CandidAdapterProvider!"
-        )
-      }
+    const evaluateCandid = React.useCallback(async (candidString: string) => {
+      const candidAdapter = useCandidAdapter()
 
       try {
-        const definition = await candidAdapter!.dynamicEvalJs(candidString!)
+        const definition = await candidAdapter.dynamicEvalJs(candidString)
         if (typeof definition?.idlFactory !== "function") {
           throw new Error("Error evaluating Candid definition")
         }
@@ -68,7 +55,7 @@ export function createAdapterContext(
           fetching: false,
         })
       }
-    }, [candidString])
+    }, [])
 
     return { evaluateCandid, ...state }
   }

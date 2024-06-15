@@ -21,12 +21,14 @@ export interface CreateCandidAdapterCotextParameters
 export interface UseCandidEvaluationReturnType {
   fetchError: string | null
   fetching: boolean
-  evaluateCandid: () => Promise<IDL.InterfaceFactory | undefined>
+  evaluateCandid: (
+    candidString: string
+  ) => Promise<IDL.InterfaceFactory | undefined>
 }
 
 export interface CreateCandidAdapterContextReturnType {
   CandidAdapterContext: React.Context<CandidAdapterContextType | null>
   CandidAdapterProvider: React.FC<CandidAdapterProviderProps>
-  useCandidEvaluation: (candidString: string) => UseCandidEvaluationReturnType
+  useCandidEvaluation: () => UseCandidEvaluationReturnType
   useCandidAdapter: () => CandidAdapter
 }
