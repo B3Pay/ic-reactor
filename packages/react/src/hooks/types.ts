@@ -14,6 +14,7 @@ export interface UseActorParameters
   candidString?: string
   canisterId: CanisterId
   idlFactory?: IDL.InterfaceFactory
+  disableAutoFetch?: boolean
 }
 
 export interface UseActorReturn<A = BaseActor> {
@@ -21,4 +22,5 @@ export interface UseActorReturn<A = BaseActor> {
   fetching: boolean
   fetchError: string | null
   authenticating: boolean
+  initialActor: (idlFactory?: IDL.InterfaceFactory) => void
 }

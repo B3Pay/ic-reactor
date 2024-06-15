@@ -78,6 +78,7 @@ export const useActor = <A = BaseActor>(
     canisterId,
     candidString,
     idlFactory: maybeIdlFactory,
+    disableAutoFetch,
     ...actorConfig
   } = config
 
@@ -151,7 +152,7 @@ export const useActor = <A = BaseActor>(
 
   const agentManager = useAgentManager()
 
-  const initialActorManager = useCallback(
+  const initialActor = useCallback(
     (idlFactory?: IDL.InterfaceFactory) => {
       if (authenticating || !idlFactory) return
       const actorManager = createActorManager<A>({
@@ -169,9 +170,10 @@ export const useActor = <A = BaseActor>(
   const handleActorInitialization = useCallback(async () => {
     if (authenticating) return
     if (maybeIdlFactory) {
-      initialActorManager(maybeIdlFactory)
+      initialActor(maybeIdlFactory)
       return
     }
+    if (disableAutoFetch) return
     if (!candidAdapter) {
       throw new Error(
         "CandidAdapter is necessary to fetch the Candid interface. Please ensure your application is wrapped with the CandidAdapterProvider, or provide the idlFactory directly."
@@ -183,8 +185,8 @@ export const useActor = <A = BaseActor>(
     } else {
       idlFactory = await fetchCandid()
     }
-    initialActorManager(idlFactory)
-  }, [fetchCandid, evaluateCandid, maybeIdlFactory, initialActorManager])
+    initialActor(idlFactory)
+  }, [fetchCandid, evaluateCandid, maybeIdlFactory, initialActor])
 
   useEffect(() => {
     handleActorInitialization()
@@ -196,5 +198,5 @@ export const useActor = <A = BaseActor>(
     return actorHooks(actorManager)
   }, [actorManager])
 
-  return { hooks, authenticating, fetching, fetchError }
+  return { hooks, authenticating, fetching, fetchError, initialActor }
 }
