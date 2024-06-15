@@ -3,7 +3,11 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { actorHooks } from "../helpers"
 
 import type { ActorManager, IDL, BaseActor } from "../types"
-import type { UseActorParameters, UseActorReturn } from "./types"
+import type {
+  ActorReConfigParameters,
+  UseActorParameters,
+  UseActorReturn,
+} from "./types"
 import { CandidAdapterContext } from "../context/adapter"
 import { useAgentManager, useAuthState } from "../context/agent"
 
@@ -153,7 +157,10 @@ export const useActor = <A = BaseActor>(
   const agentManager = useAgentManager()
 
   const initializeActor = useCallback(
-    (idlFactory: IDL.InterfaceFactory, actorReConfig?: UseActorParameters) => {
+    (
+      idlFactory: IDL.InterfaceFactory,
+      actorReConfig?: ActorReConfigParameters
+    ) => {
       if (authenticating || !idlFactory) return
       const newActorManager = createActorManager<A>({
         agentManager,

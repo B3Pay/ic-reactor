@@ -6,11 +6,12 @@ import {
   CanisterId,
 } from "../types"
 
-export interface UseActorParameters
-  extends Omit<
-    ActorManagerParameters,
-    "idlFactory" | "agentManager" | "canisterId"
-  > {
+export type ActorReConfigParameters = Omit<
+  ActorManagerParameters,
+  "idlFactory" | "canisterId" | "agentManager"
+>
+
+export interface UseActorParameters extends ActorReConfigParameters {
   candidString?: string
   canisterId: CanisterId
   idlFactory?: IDL.InterfaceFactory
@@ -27,5 +28,5 @@ export interface UseActorReturn<A = BaseActor> {
 
 export type InitializeActor = (
   idlFactory: IDL.InterfaceFactory,
-  actorReConfig?: UseActorParameters
+  actorReConfig?: ActorReConfigParameters
 ) => void
