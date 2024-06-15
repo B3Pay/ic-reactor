@@ -25,6 +25,7 @@ export interface ActorHookProviderProps<A> {
 }
 
 export interface ActorProviderProps extends CreateActorContextParameters {
+  initializer?: React.ReactNode
   children?: React.ReactNode | undefined
   candidString?: string
   loadingComponent?: React.ReactNode

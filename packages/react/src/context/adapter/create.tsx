@@ -38,9 +38,9 @@ export function createAdapterContext(
       fetchError: null as string | null,
     })
 
-    const evaluateCandid = React.useCallback(async (candidString: string) => {
-      const candidAdapter = useCandidAdapter()
+    const candidAdapter = useCandidAdapter()
 
+    const evaluateCandid = React.useCallback(async (candidString: string) => {
       try {
         const definition = await candidAdapter.dynamicEvalJs(candidString)
         if (typeof definition?.idlFactory !== "function") {

@@ -81,6 +81,7 @@ export function createActorContext<A = BaseActor>(
 
   const ActorProvider: React.FC<ActorProviderProps> = ({
     children,
+    initializer,
     canisterId = defaultCanisterId,
     loadingComponent = <div>Fetching canister...</div>,
     authenticatingComponent = <div>Authenticating...</div>,
@@ -111,6 +112,7 @@ export function createActorContext<A = BaseActor>(
       <ActorContext.Provider
         value={{ ...(hooks as ActorHooksReturnType<A>), useInitializeActor }}
       >
+        {initializer}
         {hooks === null
           ? fetchError
             ? fetchError
