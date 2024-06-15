@@ -4,7 +4,7 @@ import {
   AgentProvider,
   CandidAdapterProvider,
   createActorContext,
-} from "../src"
+} from "../dist"
 
 const { ActorProvider, useQueryCall } = createActorContext({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",

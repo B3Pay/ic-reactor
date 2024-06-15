@@ -1,6 +1,6 @@
 import React from "react"
 import renderer, { act } from "react-test-renderer"
-import { createReactor } from "../src"
+import { createReactor } from "../dist"
 import { backend, idlFactory } from "./candid"
 
 const { useActorState, useQueryCall, initialize } = createReactor<

@@ -173,7 +173,13 @@ export const useActor = <A = BaseActor>(
       initialActor(maybeIdlFactory)
       return
     }
-    if (disableAutoFetch) return
+    if (disableAutoFetch) {
+      setState({
+        fetchError: "Candid interface not fetched!",
+        fetching: false,
+      })
+      return
+    }
     if (!candidAdapter) {
       throw new Error(
         "CandidAdapter is necessary to fetch the Candid interface. Please ensure your application is wrapped with the CandidAdapterProvider, or provide the idlFactory directly."

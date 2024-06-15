@@ -1,10 +1,9 @@
 import React, { createContext } from "react"
 import renderer, { act } from "react-test-renderer"
 import { backend, idlFactory } from "./candid"
-import { CandidAdapterProvider, useActor } from "../src"
-import { AgentProvider } from "../src"
-import { ActorHooksReturnType } from "../src/types"
-import { extractActorContext } from "../src/helpers"
+import { AgentProvider, CandidAdapterProvider, useActor } from "../dist"
+import { ActorHooksReturnType } from "../dist/types"
+import { extractActorContext } from "../dist/helpers"
 
 type Backend = typeof backend
 

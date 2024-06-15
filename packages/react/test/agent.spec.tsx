@@ -6,7 +6,7 @@ import {
   createAgentContext,
   useAgent,
   useAgentManager,
-} from "../src"
+} from "../dist"
 import { LOCAL_HOST_NETWORK_URI } from "../src/utils"
 
 fetchMock.enableMocks()
