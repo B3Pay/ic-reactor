@@ -14,16 +14,16 @@ import type {
   UseMethodReturnType,
   UseActorStore,
 } from "../types"
-import type {
-  VisitService,
-  ActorMethodParameters,
-  FunctionName,
-  ActorManager,
-  BaseActor,
-  IDL,
-  MethodAttributes,
-  ActorMethodState,
-  ActorState,
+import {
+  type VisitService,
+  type ActorMethodParameters,
+  type FunctionName,
+  type ActorManager,
+  type BaseActor,
+  type IDL,
+  type MethodAttributes,
+  type ActorMethodState,
+  type ActorState,
 } from "@ic-reactor/core/dist/types"
 
 const DEFAULT_STATE: UseSharedCallState<never, never> = {
@@ -98,21 +98,18 @@ export const actorHooks = <A = BaseActor>(
   }
 
   const useMethodAttributes = <Actor = A>(): MethodAttributes<Actor> => {
-    return React.useMemo(
-      extractMethodAttributes,
-      []
-    ) as unknown as MethodAttributes<Actor>
+    return React.useMemo(extractMethodAttributes, [
+      actorManager,
+    ]) as unknown as MethodAttributes<Actor>
   }
 
   const useMethodNames = <Actor = A>(): FunctionName<Actor>[] => {
-    return React.useMemo(
-      () => Object.keys(extractMethodAttributes()) as FunctionName<Actor>[],
-      []
-    )
+    const methodAttributes = useMethodAttributes()
+    return Object.keys(methodAttributes) as FunctionName<Actor>[]
   }
 
   const useActorInterface = (): IDL.ServiceClass => {
-    return React.useMemo(() => extractInterface(), [])
+    return extractInterface()
   }
 
   const useVisitService = (): VisitService<A> => {

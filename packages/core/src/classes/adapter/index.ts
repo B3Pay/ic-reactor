@@ -174,4 +174,12 @@ export class CandidAdapter {
 
     return this.parserModule.didToJs(candidSource)
   }
+
+  public validateIDL(candidSource: string): boolean {
+    if (!this.parserModule) {
+      throw new Error("Parser module not available")
+    }
+
+    return this.parserModule.validateIDL(candidSource)
+  }
 }

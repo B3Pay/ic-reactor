@@ -23,6 +23,15 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
     Ok(res)
 }
 
+
+#[wasm_bindgen(js_name = validateIDL)]
+pub fn validate_idl(prog: String) -> Result<bool, String> {
+    let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
+    let mut env = TypeEnv::new();
+    check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
 #[wasm_bindgen(js_name = verifyCompatability)]
 pub fn verify_compatability(a: String, b: String) -> Result<bool, String> {
     let a = candid_parser::utils::CandidSource::Text(&a);
@@ -35,3 +44,4 @@ pub fn verify_compatability(a: String, b: String) -> Result<bool, String> {
         Err(e) => Err(e.to_string()),
     }
 }
+
