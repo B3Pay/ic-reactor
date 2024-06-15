@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/react",
-  "version": "1.7.8",
+  "version": "1.7.9",
   "description": "A React library for interacting with Internet Computer canisters",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
