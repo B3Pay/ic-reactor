@@ -25,6 +25,7 @@ describe("createReactorStore", () => {
       initialized: false,
       initializing: false,
       error: undefined,
+      version: 0,
     })
   })
 
@@ -37,6 +38,7 @@ describe("createReactorStore", () => {
       initialized: true,
       initializing: false,
       error: undefined,
+      version: 0,
     })
   })
 })

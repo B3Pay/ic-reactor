@@ -83,6 +83,7 @@ export type ActorMethodType<A, M extends keyof A> = {
 // State structure for an actor in a Reactor
 export type ActorState<A = BaseActor> = {
   name: string
+  version: number
   initialized: boolean
   initializing: boolean
   error: Error | undefined

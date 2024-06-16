@@ -18,6 +18,7 @@ export const LOCAL_INTERNET_IDENTITY_PROVIDER =
 
 export const ACTOR_INITIAL_STATE = {
   name: "",
+  version: 0,
   methodState: {},
   initializing: false,
   initialized: false,
