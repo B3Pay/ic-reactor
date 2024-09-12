@@ -13,7 +13,6 @@ import type {
   UseMethodParameters,
   UseMethodReturnType,
   UseActorStore,
-  UseActorStateReturnType,
 } from "../types"
 import {
   type VisitService,
