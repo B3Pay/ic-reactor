@@ -10,11 +10,13 @@ const TAMESTAMP_KEYS = [
   "createdAt",
   "updatedAt",
   "deletedAt",
+  "expiresAt",
   "validUntil",
   "status_at",
   "created_at",
   "updated_at",
   "deleted_at",
+  "expires_at",
   "valid_until",
 ]
 
