@@ -107,7 +107,7 @@ export type UseQueryCall<A> = <M extends FunctionName<A>>(
 ) => UseSharedCallReturnType<A, M>
 
 export interface UseUpdateCallParameters<A, M extends FunctionName<A>>
-  extends UseSharedCallParameters<A, M> {}
+  extends UseSharedCallParameters<A, M> { }
 
 export type UseUpdateCall<A> = <M extends FunctionName<A>>(
   params: UseUpdateCallParameters<A, M>
@@ -119,7 +119,7 @@ export interface DynamicDataArgs<V = unknown> {
 }
 
 export interface UseMethodParameters<A, M extends FunctionName<A>>
-  extends UseQueryCallParameters<A, M> {}
+  extends UseQueryCallParameters<A, M> { }
 
 export interface UseMethodReturnType<
   A,

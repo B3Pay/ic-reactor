@@ -13,6 +13,7 @@ import type {
   UseMethodParameters,
   UseMethodReturnType,
   UseActorStore,
+  UseActorStateReturnType,
 } from "../types"
 import {
   type VisitService,
@@ -71,6 +72,7 @@ export const actorHooks = <A = BaseActor>(
     return useActorStore((state) => ({
       name: state.name,
       error: state.error,
+      version: state.version,
       initialized: state.initialized,
       initializing: state.initializing,
       canisterId,
@@ -80,9 +82,9 @@ export const actorHooks = <A = BaseActor>(
     functionName: M,
     requestKey: string
   ): [
-    ActorMethodState<A, M>[string],
-    (newState: Partial<ActorMethodState<A, M>[string]>) => void
-  ] => {
+      ActorMethodState<A, M>[string],
+      (newState: Partial<ActorMethodState<A, M>[string]>) => void
+    ] => {
     const state = useActorStore(
       (state) => state.methodState[functionName]?.[requestKey]
     )
