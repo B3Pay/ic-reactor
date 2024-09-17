@@ -8,6 +8,7 @@
     "prettier"
   ],
   "rules": {
+    "semi": "off",
     "prettier/prettier": "warn",
     "@typescript-eslint/no-unused-vars": [
       "warn",
