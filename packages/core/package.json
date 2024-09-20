@@ -26,22 +26,22 @@
   },
   "homepage": "https://b3pay.github.io/ic-reactor/modules/core.html",
   "peerDependencies": {
-    "@dfinity/agent": "^1.4",
-    "@dfinity/auth-client": "^1.4",
-    "@dfinity/candid": "^1.4",
-    "@dfinity/identity": "^1.4",
-    "@dfinity/principal": "^1.4"
+    "@dfinity/agent": "2.1.1",
+    "@dfinity/auth-client": "2.1.1",
+    "@dfinity/candid": "2.1.1",
+    "@dfinity/identity": "2.1.1",
+    "@dfinity/principal": "2.1.1"
   },
   "dependencies": {
-    "@dfinity/agent": "^1.4",
-    "@dfinity/auth-client": "^1.4",
-    "@dfinity/candid": "^1.4",
-    "@dfinity/identity": "^1.4",
-    "@dfinity/principal": "^1.4",
-    "zustand": "^4.5"
+    "@dfinity/agent": "2.1.1",
+    "@dfinity/auth-client": "2.1.1",
+    "@dfinity/candid": "2.1.1",
+    "@dfinity/identity": "2.1.1",
+    "@dfinity/principal": "2.1.1",
+    "zustand": "4.5.5"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "^0.4.0"
+    "@ic-reactor/parser": "0.4.0"
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
