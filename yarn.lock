@@ -2064,6 +2064,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@dfinity/agent@npm:2.1.1":
+  version: 2.1.1
+  resolution: "@dfinity/agent@npm:2.1.1"
+  dependencies:
+    "@noble/curves": "npm:^1.4.0"
+    "@noble/hashes": "npm:^1.3.1"
+    base64-arraybuffer: "npm:^0.2.0"
+    borc: "npm:^2.1.1"
+    buffer: "npm:^6.0.3"
+    simple-cbor: "npm:^0.4.1"
+  peerDependencies:
+    "@dfinity/candid": ^2.1.1
+    "@dfinity/principal": ^2.1.1
+  checksum: 10c0/7c86e43823fc0829a59baadaca142144c645a531c865111a552de0fadd8d49e3bafcc3035421d721349fdc7aec2f602dcc057a01c34eb0febcf6daf30b86e5f7
+  languageName: node
+  linkType: hard
+
 "@dfinity/agent@npm:^0.19.3":
   version: 0.19.3
   resolution: "@dfinity/agent@npm:0.19.3"
@@ -2096,20 +2113,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/agent@npm:^1.4":
-  version: 1.4.0
-  resolution: "@dfinity/agent@npm:1.4.0"
+"@dfinity/auth-client@npm:2.1.1":
+  version: 2.1.1
+  resolution: "@dfinity/auth-client@npm:2.1.1"
   dependencies:
-    "@noble/curves": "npm:^1.4.0"
-    "@noble/hashes": "npm:^1.3.1"
-    base64-arraybuffer: "npm:^0.2.0"
-    borc: "npm:^2.1.1"
-    buffer: "npm:^6.0.3"
-    simple-cbor: "npm:^0.4.1"
+    idb: "npm:^7.0.2"
   peerDependencies:
-    "@dfinity/candid": ^1.4.0
-    "@dfinity/principal": ^1.4.0
-  checksum: 10c0/d6c59a3b72365a85af3da73092016fa9fcb47da37a9b1d316fa44953d65d9b352e5cba98f2d768a7fc0b7abc6eee1affbad877f565e42f5751b3629fe6c5ef9a
+    "@dfinity/agent": ^2.1.1
+    "@dfinity/identity": ^2.1.1
+    "@dfinity/principal": ^2.1.1
+  checksum: 10c0/95b9139029234d67765a829c81e757ab3448f824975d4dea9504d6c5cfd7ed598076dbfe4482d8cec99b2e1936e9de00bc8367a4c564aae3c193be6f07f4a67f
   languageName: node
   linkType: hard
 
@@ -2126,16 +2139,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/auth-client@npm:^1.4":
-  version: 1.4.0
-  resolution: "@dfinity/auth-client@npm:1.4.0"
-  dependencies:
-    idb: "npm:^7.0.2"
+"@dfinity/candid@npm:2.1.1":
+  version: 2.1.1
+  resolution: "@dfinity/candid@npm:2.1.1"
   peerDependencies:
-    "@dfinity/agent": ^1.4.0
-    "@dfinity/identity": ^1.4.0
-    "@dfinity/principal": ^1.4.0
-  checksum: 10c0/6c194558e39b0f5136f5af07b43c6a173307c2a460e8deab0bff31fa0521ef8f67c3fbce985f44dc096da8742f3225a4dce97c593f091649c212e021c0215c70
+    "@dfinity/principal": ^2.1.1
+  checksum: 10c0/57847acbabfd2d57e28ed47dd4ed2572cfeead456e92b4ee678eec5a6439fb37ba493bed635e5c8d0d2fc40f1e7b7363dc2360a2179ec014f01d4bb1b29aade0
   languageName: node
   linkType: hard
 
@@ -2166,15 +2175,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/candid@npm:^1.4":
-  version: 1.4.0
-  resolution: "@dfinity/candid@npm:1.4.0"
-  peerDependencies:
-    "@dfinity/principal": ^1.4.0
-  checksum: 10c0/26348848352bc15c5028eda966337f8b672dd70bf5972391c17166a8bde8098a673744ab2d9c76173f97addd91e82605145505f3e231a33445535f93eea5e548
-  languageName: node
-  linkType: hard
-
 "@dfinity/identity-secp256k1@npm:^0.19.3":
   version: 0.19.3
   resolution: "@dfinity/identity-secp256k1@npm:0.19.3"
@@ -2185,6 +2185,21 @@ __metadata:
     bs58check: "npm:^2.1.2"
     secp256k1: "npm:^4.0.3"
   checksum: 10c0/4744cd6bcf894d311b1cce3a873bea50b9b7ad8ace7678a96f9ddd9ff24311fd881361ae69d1030d2494bd4c7a8bbf038ae168a495363c725952ae50146a3be4
+  languageName: node
+  linkType: hard
+
+"@dfinity/identity@npm:2.1.1":
+  version: 2.1.1
+  resolution: "@dfinity/identity@npm:2.1.1"
+  dependencies:
+    "@noble/curves": "npm:^1.2.0"
+    "@noble/hashes": "npm:^1.3.1"
+    borc: "npm:^2.1.1"
+  peerDependencies:
+    "@dfinity/agent": ^2.1.1
+    "@dfinity/principal": ^2.1.1
+    "@peculiar/webcrypto": ^1.4.0
+  checksum: 10c0/4d07799b7085abbd1b8e10b8bb2bd73577c6877d1fc7b51a3f6d11999f04b0a8fc25b8b5ba291eb8a17a25ad2b9b56ee063390ce6bcce32a5b9409bad45a2fb2
   languageName: node
   linkType: hard
 
@@ -2218,18 +2233,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/identity@npm:^1.4":
-  version: 1.4.0
-  resolution: "@dfinity/identity@npm:1.4.0"
+"@dfinity/principal@npm:2.1.1":
+  version: 2.1.1
+  resolution: "@dfinity/principal@npm:2.1.1"
   dependencies:
-    "@noble/curves": "npm:^1.2.0"
     "@noble/hashes": "npm:^1.3.1"
-    borc: "npm:^2.1.1"
-  peerDependencies:
-    "@dfinity/agent": ^1.4.0
-    "@dfinity/principal": ^1.4.0
-    "@peculiar/webcrypto": ^1.4.0
-  checksum: 10c0/bb6fb62200c1e6237a16dcb4b6f57a5d6cfc038624b3713de867e6c179d34e726f313d6e11a0e1dff41ae23b876df331651499a33189fa06bd38027ba4a08390
+  checksum: 10c0/7ab7f3c80c504e2aa0a446ad4359597fb3e5cca32c3609b56378938e3b7e266e171a1bb377fc41b6c76a7dc3b22b36364b89b596401e90ef6f4bd5077dee8a89
   languageName: node
   linkType: hard
 
@@ -2257,15 +2266,6 @@ __metadata:
   dependencies:
     "@noble/hashes": "npm:^1.3.1"
   checksum: 10c0/7948d2d8b9b54bdae49c445d36048c2b4cd2f5a53ae30c52d69110bd671164c68bf0a6c4e8566789ae5b5d3e2f964338cff48f3aba26e7783ecc15cf76dec4b4
-  languageName: node
-  linkType: hard
-
-"@dfinity/principal@npm:^1.4":
-  version: 1.4.0
-  resolution: "@dfinity/principal@npm:1.4.0"
-  dependencies:
-    "@noble/hashes": "npm:^1.3.1"
-  checksum: 10c0/42345707be48be2b7f56482b1837de81025f5227795365210d0f0ff2c36de397aa8dea43fa897a20b6893ee3a856825b3206eb31055ea872eb91fae43272c684
   languageName: node
   linkType: hard
 
@@ -2563,23 +2563,23 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
-    "@dfinity/agent": "npm:^1.4"
-    "@dfinity/auth-client": "npm:^1.4"
-    "@dfinity/candid": "npm:^1.4"
-    "@dfinity/identity": "npm:^1.4"
-    "@dfinity/principal": "npm:^1.4"
-    "@ic-reactor/parser": "npm:^0.4.0"
-    zustand: "npm:^4.5"
+    "@dfinity/agent": "npm:2.1.1"
+    "@dfinity/auth-client": "npm:2.1.1"
+    "@dfinity/candid": "npm:2.1.1"
+    "@dfinity/identity": "npm:2.1.1"
+    "@dfinity/principal": "npm:2.1.1"
+    "@ic-reactor/parser": "npm:0.4.0"
+    zustand: "npm:4.5.5"
   peerDependencies:
-    "@dfinity/agent": ^1.4
-    "@dfinity/auth-client": ^1.4
-    "@dfinity/candid": ^1.4
-    "@dfinity/identity": ^1.4
-    "@dfinity/principal": ^1.4
+    "@dfinity/agent": 2.1.1
+    "@dfinity/auth-client": 2.1.1
+    "@dfinity/candid": 2.1.1
+    "@dfinity/identity": 2.1.1
+    "@dfinity/principal": 2.1.1
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/parser@npm:^0.4.0, @ic-reactor/parser@workspace:^, @ic-reactor/parser@workspace:packages/parser":
+"@ic-reactor/parser@npm:0.4.0, @ic-reactor/parser@workspace:^, @ic-reactor/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/parser@workspace:packages/parser"
   languageName: unknown
@@ -2610,11 +2610,11 @@ __metadata:
     "@ic-reactor/core": "npm:^1.8.4"
     zustand-utils: "npm:^1.3"
   peerDependencies:
-    "@dfinity/agent": ^1.4
-    "@dfinity/auth-client": ^1.4
-    "@dfinity/candid": ^1.4
-    "@dfinity/identity": ^1.4
-    "@dfinity/principal": ^1.4
+    "@dfinity/agent": 2.1.1
+    "@dfinity/auth-client": 2.1.1
+    "@dfinity/candid": 2.1.1
+    "@dfinity/identity": 2.1.1
+    "@dfinity/principal": 2.1.1
     react: ">=16.8"
     zustand: 4.5
   languageName: unknown
@@ -2624,12 +2624,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/visitor@workspace:packages/visitor"
   dependencies:
-    "@dfinity/candid": "npm:^1.4"
-    "@dfinity/principal": "npm:^1.4"
-    "@ic-reactor/core": "npm:^1.8.4"
+    "@dfinity/candid": "npm:2.1.1"
+    "@dfinity/principal": "npm:2.1.1"
+    "@ic-reactor/core": "npm:*"
   peerDependencies:
-    "@dfinity/candid": ^1.4
-    "@dfinity/principal": ^1.4
+    "@dfinity/candid": 2.1.1
+    "@dfinity/principal": 2.1.1
   languageName: unknown
   linkType: soft
 
@@ -11013,7 +11013,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-config-prettier@npm:^9.1":
+"eslint-config-prettier@npm:^9.1.0":
   version: 9.1.0
   resolution: "eslint-config-prettier@npm:9.1.0"
   peerDependencies:
@@ -13361,7 +13361,7 @@ __metadata:
     babel-loader: "npm:^9.1.3"
     babel-plugin-transform-import-meta: "npm:^2.2.1"
     eslint: "npm:^8.57"
-    eslint-config-prettier: "npm:^9.1"
+    eslint-config-prettier: "npm:^9.1.0"
     eslint-plugin-jest: "npm:^27.9"
     eslint-plugin-prettier: "npm:^4"
     fake-indexeddb: "npm:5.0.1"
@@ -24848,6 +24848,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"use-sync-external-store@npm:1.2.2":
+  version: 1.2.2
+  resolution: "use-sync-external-store@npm:1.2.2"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0
+  checksum: 10c0/23b1597c10adf15b26ade9e8c318d8cc0abc9ec0ab5fc7ca7338da92e89c2536abd150a5891bf076836c352fdfa104fc7231fb48f806fd9960e0cbe03601abaf
+  languageName: node
+  linkType: hard
+
 "use@npm:^3.1.0":
   version: 3.1.1
   resolution: "use@npm:3.1.1"
@@ -26340,6 +26349,26 @@ __metadata:
     react: ">=16.8"
     zustand: ">=4.4.1"
   checksum: 10c0/65cc8b16eb92e690a744af6558675a423771009683ffab33ed665b5fe88ab06257291dd86d8bdc8392f2471ab9f3c6800705f9d0c1cca2a0460813982556ccef
+  languageName: node
+  linkType: hard
+
+"zustand@npm:4.5.5":
+  version: 4.5.5
+  resolution: "zustand@npm:4.5.5"
+  dependencies:
+    use-sync-external-store: "npm:1.2.2"
+  peerDependencies:
+    "@types/react": ">=16.8"
+    immer: ">=9.0.6"
+    react: ">=16.8"
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    immer:
+      optional: true
+    react:
+      optional: true
+  checksum: 10c0/d04469d76b29c7e4070da269886de4efdadedd3d3824dc2a06ac4ff62e3b5877f925e927afe7382de651829872b99adec48082f1bd69fe486149be666345e626
   languageName: node
   linkType: hard
 
