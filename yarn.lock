@@ -2096,9 +2096,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/agent@npm:^1.3":
-  version: 1.3.0
-  resolution: "@dfinity/agent@npm:1.3.0"
+"@dfinity/agent@npm:^1.4":
+  version: 1.4.0
+  resolution: "@dfinity/agent@npm:1.4.0"
   dependencies:
     "@noble/curves": "npm:^1.4.0"
     "@noble/hashes": "npm:^1.3.1"
@@ -2107,9 +2107,9 @@ __metadata:
     buffer: "npm:^6.0.3"
     simple-cbor: "npm:^0.4.1"
   peerDependencies:
-    "@dfinity/candid": ^1.3.0
-    "@dfinity/principal": ^1.3.0
-  checksum: 10c0/2c74b0d02b793c419a217ee92c08b2c187e9f8a435e5865e4348a4adcbf251acb200728c897db0adbb7ead130e44ec84a84c0b3fd558cba5f892dae1e20df82f
+    "@dfinity/candid": ^1.4.0
+    "@dfinity/principal": ^1.4.0
+  checksum: 10c0/d6c59a3b72365a85af3da73092016fa9fcb47da37a9b1d316fa44953d65d9b352e5cba98f2d768a7fc0b7abc6eee1affbad877f565e42f5751b3629fe6c5ef9a
   languageName: node
   linkType: hard
 
@@ -2126,16 +2126,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/auth-client@npm:^1.3":
-  version: 1.3.0
-  resolution: "@dfinity/auth-client@npm:1.3.0"
+"@dfinity/auth-client@npm:^1.4":
+  version: 1.4.0
+  resolution: "@dfinity/auth-client@npm:1.4.0"
   dependencies:
     idb: "npm:^7.0.2"
   peerDependencies:
-    "@dfinity/agent": ^1.3.0
-    "@dfinity/identity": ^1.3.0
-    "@dfinity/principal": ^1.3.0
-  checksum: 10c0/cb268532b6c2b5bb2fdb773c4acaaa162c014ec03fb90a0c449e111b563b85df0f5e18c1a33c93181918ea64ca1b02227909dbd0af6e67f3c2650715f15986f8
+    "@dfinity/agent": ^1.4.0
+    "@dfinity/identity": ^1.4.0
+    "@dfinity/principal": ^1.4.0
+  checksum: 10c0/6c194558e39b0f5136f5af07b43c6a173307c2a460e8deab0bff31fa0521ef8f67c3fbce985f44dc096da8742f3225a4dce97c593f091649c212e021c0215c70
   languageName: node
   linkType: hard
 
@@ -2163,6 +2163,15 @@ __metadata:
   peerDependencies:
     "@dfinity/principal": ^1.3.0
   checksum: 10c0/c7030ac6d99cc0fad862d4c3d64fa0cd9223e35a6096136d2df50f04a55a3dbac4b20db55240559a76078b92c53c7d166f2e67e377baa5d38526264499bd891c
+  languageName: node
+  linkType: hard
+
+"@dfinity/candid@npm:^1.4":
+  version: 1.4.0
+  resolution: "@dfinity/candid@npm:1.4.0"
+  peerDependencies:
+    "@dfinity/principal": ^1.4.0
+  checksum: 10c0/26348848352bc15c5028eda966337f8b672dd70bf5972391c17166a8bde8098a673744ab2d9c76173f97addd91e82605145505f3e231a33445535f93eea5e548
   languageName: node
   linkType: hard
 
@@ -2209,18 +2218,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dfinity/identity@npm:^1.3":
-  version: 1.3.0
-  resolution: "@dfinity/identity@npm:1.3.0"
+"@dfinity/identity@npm:^1.4":
+  version: 1.4.0
+  resolution: "@dfinity/identity@npm:1.4.0"
   dependencies:
     "@noble/curves": "npm:^1.2.0"
     "@noble/hashes": "npm:^1.3.1"
     borc: "npm:^2.1.1"
   peerDependencies:
-    "@dfinity/agent": ^1.3.0
-    "@dfinity/principal": ^1.3.0
+    "@dfinity/agent": ^1.4.0
+    "@dfinity/principal": ^1.4.0
     "@peculiar/webcrypto": ^1.4.0
-  checksum: 10c0/816c01536c5f0b5342c6ccd8967f2b42d9fd189c3bdf5bf0eb0c35b176c52809595cdb7b1ce6a3d9bc925602c09117a50757f6e5113ff14be33b64158f9547ad
+  checksum: 10c0/bb6fb62200c1e6237a16dcb4b6f57a5d6cfc038624b3713de867e6c179d34e726f313d6e11a0e1dff41ae23b876df331651499a33189fa06bd38027ba4a08390
   languageName: node
   linkType: hard
 
@@ -2248,6 +2257,15 @@ __metadata:
   dependencies:
     "@noble/hashes": "npm:^1.3.1"
   checksum: 10c0/7948d2d8b9b54bdae49c445d36048c2b4cd2f5a53ae30c52d69110bd671164c68bf0a6c4e8566789ae5b5d3e2f964338cff48f3aba26e7783ecc15cf76dec4b4
+  languageName: node
+  linkType: hard
+
+"@dfinity/principal@npm:^1.4":
+  version: 1.4.0
+  resolution: "@dfinity/principal@npm:1.4.0"
+  dependencies:
+    "@noble/hashes": "npm:^1.3.1"
+  checksum: 10c0/42345707be48be2b7f56482b1837de81025f5227795365210d0f0ff2c36de397aa8dea43fa897a20b6893ee3a856825b3206eb31055ea872eb91fae43272c684
   languageName: node
   linkType: hard
 
@@ -2545,19 +2563,19 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
-    "@dfinity/agent": "npm:^1.3"
-    "@dfinity/auth-client": "npm:^1.3"
-    "@dfinity/candid": "npm:^1.3"
-    "@dfinity/identity": "npm:^1.3"
-    "@dfinity/principal": "npm:^1.3"
+    "@dfinity/agent": "npm:^1.4"
+    "@dfinity/auth-client": "npm:^1.4"
+    "@dfinity/candid": "npm:^1.4"
+    "@dfinity/identity": "npm:^1.4"
+    "@dfinity/principal": "npm:^1.4"
     "@ic-reactor/parser": "workspace:^"
     zustand: "npm:^4.5"
   peerDependencies:
-    "@dfinity/agent": ^1.3
-    "@dfinity/auth-client": ^1.3
-    "@dfinity/candid": ^1.3
-    "@dfinity/identity": ^1.3
-    "@dfinity/principal": ^1.3
+    "@dfinity/agent": ^1.4
+    "@dfinity/auth-client": ^1.4
+    "@dfinity/candid": ^1.4
+    "@dfinity/identity": ^1.4
+    "@dfinity/principal": ^1.4
   languageName: unknown
   linkType: soft
 
@@ -2592,11 +2610,11 @@ __metadata:
     "@ic-reactor/core": "workspace:^"
     zustand-utils: "npm:^1.3"
   peerDependencies:
-    "@dfinity/agent": ^1.3
-    "@dfinity/auth-client": ^1.3
-    "@dfinity/candid": ^1.3
-    "@dfinity/identity": ^1.3
-    "@dfinity/principal": ^1.3
+    "@dfinity/agent": ^1.4
+    "@dfinity/auth-client": ^1.4
+    "@dfinity/candid": ^1.4
+    "@dfinity/identity": ^1.4
+    "@dfinity/principal": ^1.4
     react: ">=16.8"
     zustand: 4.5
   languageName: unknown
