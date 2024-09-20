@@ -35,7 +35,7 @@
     "node": ">=10"
   },
   "dependencies": {
-    "@ic-reactor/core": "workspace:^",
+    "@ic-reactor/core": "^1.8.2",
     "zustand-utils": "^1.3"
   },
   "peerDependencies": {
@@ -47,5 +47,5 @@
     "react": ">=16.8",
     "zustand": "4.5"
   },
-  "gitHead": "0ea67535c619645638ccac472f10fb94d043acf6"
+  "gitHead": "49ed73cdd6dd688e4ac723f49bcbc2b1071fac25"
 }

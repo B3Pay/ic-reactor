@@ -41,7 +41,7 @@
     "zustand": "^4.5"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "workspace:^"
+    "@ic-reactor/parser": "^0.4.0"
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
@@ -56,5 +56,5 @@
   "engines": {
     "node": ">=10"
   },
-  "gitHead": "0ea67535c619645638ccac472f10fb94d043acf6"
+  "gitHead": "49ed73cdd6dd688e4ac723f49bcbc2b1071fac25"
 }
