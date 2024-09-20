@@ -78,5 +78,8 @@
     "webpack-dev-server": "^5.0.2",
     "whatwg-fetch": "^3.6.20",
     "xmlhttprequest": "^1.8"
+  },
+  "resolutions": {
+    "punycode": "^2.3.1"
   }
 }
