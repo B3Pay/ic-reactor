@@ -223,7 +223,7 @@ export class AgentManager {
   }
 
   public getAgentHost = () => {
-    return (this._agent as unknown as { _host: URL })._host
+    return this._agent.host
   }
 
   public getIsLocal = () => {
