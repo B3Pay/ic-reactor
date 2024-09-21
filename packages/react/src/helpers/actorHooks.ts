@@ -81,9 +81,9 @@ export const actorHooks = <A = BaseActor>(
     functionName: M,
     requestKey: string
   ): [
-      ActorMethodState<A, M>[string],
-      (newState: Partial<ActorMethodState<A, M>[string]>) => void
-    ] => {
+    ActorMethodState<A, M>[string],
+    (newState: Partial<ActorMethodState<A, M>[string]>) => void
+  ] => {
     const state = useActorStore(
       (state) => state.methodState[functionName]?.[requestKey]
     )
@@ -173,7 +173,7 @@ export const actorHooks = <A = BaseActor>(
           return data
         } catch (error) {
           // eslint-disable-next-line no-console
-          console.error("Error in call:", error)
+          console.error(`Error calling method ${functionName}:`, error)
           setSharedState({
             error: error as Error,
             loading: false,
