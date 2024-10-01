@@ -93,7 +93,7 @@ export class AgentManager {
       store: "auth",
     })
 
-    this._agent = new HttpAgent(agentOptions)
+    this._agent = HttpAgent.createSync(agentOptions)
     this.initializeAgent()
   }
 
@@ -150,7 +150,7 @@ export class AgentManager {
     if (agent) {
       this._agent = agent
     } else if (options) {
-      this._agent = new HttpAgent(options)
+      this._agent = HttpAgent.createSync(options)
       await this.initializeAgent()
     }
 
