@@ -30,8 +30,8 @@
     "@dfinity/principal": ">=2.1.2"
   },
   "peerDependencies": {
-    "@dfinity/candid": ">=2.1.2",
-    "@dfinity/principal": ">=2.1.2"
+    "@dfinity/candid": ">=2.0.0",
+    "@dfinity/principal": ">=2.0.0"
   },
   "devDependencies": {
     "@ic-reactor/core": "^1.10.0"
