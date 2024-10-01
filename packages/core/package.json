@@ -26,18 +26,18 @@
   },
   "homepage": "https://b3pay.github.io/ic-reactor/modules/core.html",
   "peerDependencies": {
-    "@dfinity/agent": "2.1.1",
-    "@dfinity/auth-client": "2.1.1",
-    "@dfinity/candid": "2.1.1",
-    "@dfinity/identity": "2.1.1",
-    "@dfinity/principal": "2.1.1"
+    "@dfinity/agent": ">=2.1.2",
+    "@dfinity/auth-client": ">=2.1.2",
+    "@dfinity/candid": ">=2.1.2",
+    "@dfinity/identity": ">=2.1.2",
+    "@dfinity/principal": ">=2.1.2"
   },
   "dependencies": {
-    "@dfinity/agent": "2.1.1",
-    "@dfinity/auth-client": "2.1.1",
-    "@dfinity/candid": "2.1.1",
-    "@dfinity/identity": "2.1.1",
-    "@dfinity/principal": "2.1.1",
+    "@dfinity/agent": ">=2.1.2",
+    "@dfinity/auth-client": ">=2.1.2",
+    "@dfinity/candid": ">=2.1.2",
+    "@dfinity/identity": ">=2.1.2",
+    "@dfinity/principal": ">=2.1.2",
     "zustand": "4.5.5"
   },
   "devDependencies": {
