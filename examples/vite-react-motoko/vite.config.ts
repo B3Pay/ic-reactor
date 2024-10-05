@@ -38,6 +38,6 @@ export default defineConfig({
     cache: { dir: '../node_modules/.vitest' },
   },
   resolve: {
-    preserveSymlinks: true, // this is the fix!
+    preserveSymlinks: true,
   },
 });

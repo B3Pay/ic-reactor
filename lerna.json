@@ -2,6 +2,6 @@
   "$schema": "node_modules/lerna/schemas/lerna-schema.json",
   "version": "independent",
   "npmClient": "yarn",
-  "packages": ["packages/*"],
+  "packages": ["packages/core", "packages/react"],
   "ignoreChanges": ["examples/**/*", "**/*.md", "**/*.spec.ts", "**/test/**/*"]
 }

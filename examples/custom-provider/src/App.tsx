@@ -79,10 +79,12 @@ const App: React.FC<AppProps> = () => {
           {functionNames.map((functionName) => (
             <ICRC1Call key={functionName} functionName={functionName} />
           ))}
-          <ICRC1Call
-            functionName="icrc1_balance_of"
-            args={[{ owner: Principal.anonymous(), subaccount: [] }]}
-          />
+          {principal && (
+            <ICRC1Call
+              functionName="icrc1_balance_of"
+              args={[{ owner: principal, subaccount: [] }]}
+            />
+          )}
           {principal && <UserWallet principal={principal} />}
         </ICRC1Provider>
       </CandidAdapterProvider>

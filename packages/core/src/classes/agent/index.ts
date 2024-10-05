@@ -23,7 +23,9 @@ import {
 } from "../../utils/constants"
 
 export class AgentManager {
+  private _anonymousAgent: HttpAgent
   private _agent: HttpAgent
+
   private _auth: AuthClient | null = null
   private _subscribers: Array<(agent: HttpAgent) => void> = []
 
@@ -55,7 +57,8 @@ export class AgentManager {
     )
   }
 
-  private updateAuthState = (newState: Partial<AuthState>, action?: string) => {
+  //TODO: make it private
+  public updateAuthState = (newState: Partial<AuthState>, action?: string) => {
     this.authStore.setState(
       (state) => ({ ...state, ...newState }),
       false,
@@ -93,6 +96,7 @@ export class AgentManager {
       store: "auth",
     })
 
+    this._anonymousAgent = HttpAgent.createSync(agentOptions)
     this._agent = HttpAgent.createSync(agentOptions)
     this.initializeAgent()
   }
@@ -110,6 +114,7 @@ export class AgentManager {
     if (network !== "ic") {
       try {
         await this._agent.fetchRootKey()
+        await this._anonymousAgent.fetchRootKey()
       } catch (error) {
         this.updateAgentState(
           { error: error as Error, initializing: false },
@@ -222,8 +227,12 @@ export class AgentManager {
     return this._agent
   }
 
-  public getAgentHost = () => {
+  public getAgentHost = (): URL | undefined => {
     return this._agent.host
+  }
+
+  public getAgentHostName = () => {
+    return this.getAgentHost()?.hostname || ""
   }
 
   public getIsLocal = () => {
@@ -231,7 +240,7 @@ export class AgentManager {
   }
 
   public getNetwork = () => {
-    const hostname = this.getAgentHost().hostname
+    const hostname = this.getAgentHostName()
 
     if (LOCAL_HOSTS.some((host) => hostname.endsWith(host))) {
       return "local"
