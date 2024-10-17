@@ -2559,7 +2559,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ic-reactor/core@npm:^1.10.1, @ic-reactor/core@workspace:^, @ic-reactor/core@workspace:packages/core":
+"@ic-reactor/core@npm:^1.10.1, @ic-reactor/core@npm:^1.10.2, @ic-reactor/core@workspace:^, @ic-reactor/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/core@workspace:packages/core"
   dependencies:
@@ -2607,7 +2607,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
-    "@ic-reactor/core": "npm:^1.10.1"
+    "@ic-reactor/core": "npm:^1.10.2"
     zustand-utils: "npm:^1.3"
   peerDependencies:
     "@dfinity/agent": ">=2.0.0"
