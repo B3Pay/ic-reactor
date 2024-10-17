@@ -4,6 +4,7 @@ import {
   ActorManagerParameters,
   BaseActor,
   CanisterId,
+  AgentManager,
 } from "../types"
 
 export type ActorReConfigParameters = Omit<
@@ -13,6 +14,7 @@ export type ActorReConfigParameters = Omit<
 
 export interface UseActorParameters extends ActorReConfigParameters {
   candidString?: string
+  agentManager: AgentManager
   canisterId: CanisterId
   idlFactory?: IDL.InterfaceFactory
   disableAutoFetch?: boolean

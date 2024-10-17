@@ -11,6 +11,7 @@ import type {
   CreateActorContextType,
   ActorChildrenProps,
 } from "./types"
+import { useAgentManager } from "../agent"
 /**
  * Creates a React context specifically designed for managing the state and interactions with an actor on the Internet Computer (IC) blockchain.
  * This context facilitates the dynamic creation and management of IC actors within React applications, leveraging the provided configuration options.
@@ -101,7 +102,10 @@ export function createActorContext<A = BaseActor>(
       [defaultConfig, restConfig]
     )
 
+    const agentManager = useAgentManager()
+
     const { fetchError, authenticating, initializeActor, hooks } = useActor<A>({
+      agentManager,
       canisterId,
       ...config,
     })

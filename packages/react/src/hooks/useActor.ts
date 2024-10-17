@@ -9,7 +9,7 @@ import type {
   UseActorReturn,
 } from "./types"
 import { CandidAdapterContext } from "../context/adapter"
-import { useAgentManager, useAuthState } from "../context/agent"
+import { useAuthState } from "../context/agent"
 
 /**
  * A comprehensive hook that manages both the fetching of Candid interfaces
@@ -83,6 +83,7 @@ export const useActor = <A = BaseActor>(
     candidString,
     idlFactory: maybeIdlFactory,
     disableAutoFetch,
+    agentManager,
     ...actorConfig
   } = config
 
@@ -153,8 +154,6 @@ export const useActor = <A = BaseActor>(
       })
     }
   }, [candidString])
-
-  const agentManager = useAgentManager()
 
   const initializeActor = useCallback(
     (
