@@ -23,9 +23,7 @@ import {
 } from "../../utils/constants"
 
 export class AgentManager {
-  private _anonymousAgent: HttpAgent
   private _agent: HttpAgent
-
   private _auth: AuthClient | null = null
   private _subscribers: Array<(agent: HttpAgent) => void> = []
 
@@ -57,8 +55,7 @@ export class AgentManager {
     )
   }
 
-  //TODO: make it private
-  public updateAuthState = (newState: Partial<AuthState>, action?: string) => {
+  private updateAuthState = (newState: Partial<AuthState>, action?: string) => {
     this.authStore.setState(
       (state) => ({ ...state, ...newState }),
       false,
@@ -96,7 +93,6 @@ export class AgentManager {
       store: "auth",
     })
 
-    this._anonymousAgent = HttpAgent.createSync(agentOptions)
     this._agent = HttpAgent.createSync(agentOptions)
     this.initializeAgent()
   }
@@ -114,7 +110,6 @@ export class AgentManager {
     if (network !== "ic") {
       try {
         await this._agent.fetchRootKey()
-        await this._anonymousAgent.fetchRootKey()
       } catch (error) {
         this.updateAgentState(
           { error: error as Error, initializing: false },
