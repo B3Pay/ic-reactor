@@ -16,10 +16,6 @@ const MinterUpdateBalance: React.FC<MinterUpdateBalanceProps> = ({
     args: [{ owner: [userPrincipal], subaccount: [] }],
   })
 
-  useEffect(() => {
-    call()
-  }, [])
-
   return (
     <div>
       <span>

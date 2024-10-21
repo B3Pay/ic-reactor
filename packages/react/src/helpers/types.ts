@@ -73,6 +73,7 @@ export interface UseSharedCallParameters<A, M extends FunctionName<A>>
   onError?: (error: Error | undefined) => void
   onSuccess?: (data: ActorMethodReturnType<A[M]> | undefined) => void
   throwOnError?: boolean
+  compileResult?: boolean
 }
 
 export type UseSharedCallState<A, M extends FunctionName<A>> = {
@@ -88,7 +89,7 @@ export interface UseSharedCallReturnType<
   requestKey: string
   reset: () => void
   call: (
-    eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
+    eventOrReplaceArgs?: ActorMethodParameters<A[M]> | React.MouseEvent
   ) => Promise<ActorMethodReturnType<A[M]> | undefined>
 }
 
@@ -107,7 +108,7 @@ export type UseQueryCall<A> = <M extends FunctionName<A>>(
 ) => UseSharedCallReturnType<A, M>
 
 export interface UseUpdateCallParameters<A, M extends FunctionName<A>>
-  extends UseSharedCallParameters<A, M> { }
+  extends UseSharedCallParameters<A, M> {}
 
 export type UseUpdateCall<A> = <M extends FunctionName<A>>(
   params: UseUpdateCallParameters<A, M>
@@ -119,7 +120,7 @@ export interface DynamicDataArgs<V = unknown> {
 }
 
 export interface UseMethodParameters<A, M extends FunctionName<A>>
-  extends UseQueryCallParameters<A, M> { }
+  extends UseQueryCallParameters<A, M> {}
 
 export interface UseMethodReturnType<
   A,
@@ -134,7 +135,7 @@ export interface UseMethodReturnType<
   visit: VisitService<A>[M]
   reset: () => void
   call: (
-    eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
+    eventOrReplaceArgs?: ActorMethodParameters<A[M]> | React.MouseEvent
   ) => Promise<ActorMethodReturnType<A[M]> | undefined>
 }
 

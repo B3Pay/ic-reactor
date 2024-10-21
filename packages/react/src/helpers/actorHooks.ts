@@ -13,6 +13,7 @@ import type {
   UseMethodParameters,
   UseMethodReturnType,
   UseActorStore,
+  ActorMethodReturnType,
 } from "../types"
 import {
   type VisitService,
@@ -136,6 +137,7 @@ export const actorHooks = <A = BaseActor>(
     onError,
     onLoading,
     onSuccess,
+    compileResult,
     ...options
   }) => {
     type M = typeof functionName
@@ -154,7 +156,7 @@ export const actorHooks = <A = BaseActor>(
 
     const call = React.useCallback(
       async (
-        eventOrReplaceArgs?: React.MouseEvent | ActorMethodParameters<A[M]>
+        eventOrReplaceArgs?: ActorMethodParameters<A[M]> | React.MouseEvent
       ) => {
         setSharedState({ error: undefined, loading: true })
         onLoading?.(true)
@@ -167,13 +169,33 @@ export const actorHooks = <A = BaseActor>(
             ...(replaceArgs ?? args)
           )
 
+          if (compileResult && data && typeof data === "object") {
+            if ("Ok" in data) {
+              const compiledData = data.Ok as ActorMethodReturnType<A[M]>
+              setSharedState({
+                data: compiledData,
+                error: undefined,
+                loading: false,
+              })
+              onSuccess?.(compiledData)
+              onLoading?.(false)
+              return compiledData
+            } else if ("Err" in data) {
+              const error = new Error(data.Err as string)
+              setSharedState({ error, loading: false })
+              onError?.(error)
+              onLoading?.(false)
+
+              if (throwOnError) throw error
+            }
+          }
           setSharedState({ data, error: undefined, loading: false })
           onSuccess?.(data)
           onLoading?.(false)
           return data
         } catch (error) {
           // eslint-disable-next-line no-console
-          console.error(`Error calling method ${functionName}:`, error)
+          console.error(`Error calling method "${functionName}":`, error)
           setSharedState({
             error: error as Error,
             loading: false,
