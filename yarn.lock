@@ -2568,7 +2568,7 @@ __metadata:
     "@dfinity/candid": "npm:>=2.0.0"
     "@dfinity/identity": "npm:>=2.0.0"
     "@dfinity/principal": "npm:>=2.0.0"
-    "@ic-reactor/parser": "npm:0.4.0"
+    "@ic-reactor/parser": "npm:^0.4.1"
     zustand: "npm:4.5.5"
   peerDependencies:
     "@dfinity/agent": ">=2.1.2"
@@ -2579,7 +2579,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ic-reactor/parser@npm:0.4.0, @ic-reactor/parser@workspace:^, @ic-reactor/parser@workspace:packages/parser":
+"@ic-reactor/parser@npm:^0.4.1, @ic-reactor/parser@workspace:^, @ic-reactor/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@ic-reactor/parser@workspace:packages/parser"
   languageName: unknown

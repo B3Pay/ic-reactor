@@ -41,7 +41,7 @@
     "zustand": "4.5.5"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "0.4.0"
+    "@ic-reactor/parser": "^0.4.1"
   },
   "scripts": {
     "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
