@@ -14,8 +14,8 @@ import type {
   AgentState,
   BaseActor,
   MethodAttributes,
+  CompiledResult,
 } from "../types"
-import { CompiledResult } from "../utils"
 
 export interface AgentHooksReturnType {
   useAgent: () => HttpAgent | undefined

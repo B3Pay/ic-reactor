@@ -120,3 +120,37 @@ export interface CreateReactorCoreReturnType<A = BaseActor>
   queryCall: ActorQuery<A>
   updateCall: ActorUpdate<A>
 }
+
+// Improved UnwrapResult type
+export type UnwrapResult<T> = T extends { Ok: infer U }
+  ? U
+  : T extends { Err: infer E }
+  ? E
+  : T
+
+// Helper type to extract Ok and Err types
+type ExtractOkErr<T> = T extends { Ok: infer U }
+  ? { OkType: U; ErrType: never }
+  : T extends { Err: infer E }
+  ? { OkType: never; ErrType: E }
+  : { OkType: T; ErrType: never }
+
+// Improved CompiledResult type
+export type CompiledResult<T> = ExtractOkErr<T> extends {
+  OkType: infer U
+  ErrType: infer E
+}
+  ?
+      | {
+          isOk: true
+          isErr: false
+          value: U
+          error: null
+        }
+      | {
+          isOk: false
+          isErr: true
+          value: null
+          error: E
+        }
+  : never

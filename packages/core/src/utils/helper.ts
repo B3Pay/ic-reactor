@@ -2,7 +2,7 @@ import { hash, hashValue, toHex } from "@dfinity/agent"
 import { DevtoolsOptions, devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 
-import type { BaseActor, CandidDefenition, IDL } from "../types"
+import type { CompiledResult, BaseActor, CandidDefenition, IDL } from "../types"
 
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
@@ -102,4 +102,31 @@ export const stringToHash = (str: string) => {
 
 function toHexString(bytes: ArrayBuffer) {
   return toHex(bytes)
+}
+
+/// Helper function for extracting the value from a compiled result { Ok: T } or { Err: E }
+export function createCompiledResult<T>(result: T): CompiledResult<T> {
+  if (result && typeof result === "object" && "Ok" in result) {
+    return {
+      isOk: true,
+      isErr: false,
+      value: (result as { Ok: unknown }).Ok,
+      error: null,
+    } as CompiledResult<T>
+  } else if (result && typeof result === "object" && "Err" in result) {
+    return {
+      isOk: false,
+      isErr: true,
+      value: null,
+      error: (result as { Err: unknown }).Err,
+    } as CompiledResult<T>
+  } else {
+    // For non-Result types
+    return {
+      isOk: false,
+      isErr: false,
+      value: undefined,
+      error: null,
+    } as never
+  }
 }
