@@ -14,6 +14,7 @@ const MinterUpdateBalance: React.FC<MinterUpdateBalanceProps> = ({
   const { call, data, loading } = useCKBTCMinterMethod({
     functionName: "update_balance",
     args: [{ owner: [userPrincipal], subaccount: [] }],
+    compileResult: true,
   })
 
   return (

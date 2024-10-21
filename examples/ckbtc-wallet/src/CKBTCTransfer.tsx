@@ -11,6 +11,7 @@ const CKBTCTransfer: React.FC<CKBTCTransferProps> = () => {
 
   const { call, data, loading, error } = useCKBTCLedgerMethod({
     functionName: "icrc1_transfer",
+    compileResult: true,
   })
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
