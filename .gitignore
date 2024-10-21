@@ -17,6 +17,7 @@ target
 pulled.json
 examples/*/deps/candid
 candid-ui
+orbit-wallet
 docs
 .nx
 umd
@@ -30,4 +31,3 @@ packages/svelte
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
-examples/orbit
