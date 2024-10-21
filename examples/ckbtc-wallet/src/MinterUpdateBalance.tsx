@@ -1,6 +1,5 @@
 import { Principal } from "@ic-reactor/react/dist/types"
 import { useCKBTCMinterMethod } from "./Minter"
-import { useEffect } from "react"
 import { jsonToString } from "@ic-reactor/react/dist/utils"
 
 type MinterUpdateBalanceProps = React.PropsWithChildren<{

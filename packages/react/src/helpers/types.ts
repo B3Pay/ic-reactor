@@ -15,6 +15,7 @@ import type {
   BaseActor,
   MethodAttributes,
 } from "../types"
+import { CompiledResult } from "../utils"
 
 export interface AgentHooksReturnType {
   useAgent: () => HttpAgent | undefined
@@ -65,6 +66,12 @@ export interface UseActorStateReturnType
   canisterId: string
 }
 
+export type UseSharedCallState<A, M extends FunctionName<A>> = {
+  data: ActorMethodReturnType<A[M]> | undefined
+  error: Error | undefined
+  loading: boolean
+}
+
 export interface UseSharedCallParameters<A, M extends FunctionName<A>>
   extends CallConfig {
   functionName: M
@@ -76,18 +83,13 @@ export interface UseSharedCallParameters<A, M extends FunctionName<A>>
   compileResult?: boolean
 }
 
-export type UseSharedCallState<A, M extends FunctionName<A>> = {
-  data: ActorMethodReturnType<A[M]> | undefined
-  error: Error | undefined
-  loading: boolean
-}
-
 export interface UseSharedCallReturnType<
   A,
   M extends FunctionName<A> = FunctionName<A>
 > extends UseSharedCallState<A, M> {
   requestKey: string
   reset: () => void
+  compileResult: () => CompiledResult<ActorMethodReturnType<A[M]>>
   call: (
     eventOrReplaceArgs?: ActorMethodParameters<A[M]> | React.MouseEvent
   ) => Promise<ActorMethodReturnType<A[M]> | undefined>
