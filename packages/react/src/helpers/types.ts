@@ -78,7 +78,9 @@ export interface UseSharedCallParameters<A, M extends FunctionName<A>>
   args?: ActorMethodParameters<A[M]>
   onLoading?: (loading: boolean) => void
   onError?: (error: Error | undefined) => void
-  onSuccess?: (data: ActorMethodReturnType<A[M]> | undefined) => void
+  onSuccess?: (
+    data: CompiledResult<ActorMethodReturnType<A[M]>> | undefined
+  ) => void
   throwOnError?: boolean
   compileResult?: boolean
 }

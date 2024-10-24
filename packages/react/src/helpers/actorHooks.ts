@@ -168,7 +168,7 @@ export const actorHooks = <A = BaseActor>(
           )
 
           setSharedState({ data, error: undefined, loading: false })
-          onSuccess?.(data)
+          onSuccess?.(createCompiledResult(data))
           onLoading?.(false)
           return data
         } catch (error) {
@@ -211,7 +211,7 @@ export const actorHooks = <A = BaseActor>(
       if (refetchOnMount && state.data === undefined) {
         call()
       } else if (refetchOnMount && state.data !== undefined) {
-        rest.onSuccess?.(state.data)
+        rest.onSuccess?.(createCompiledResult(state.data))
       }
 
       return () => clearInterval(intervalId.current)
