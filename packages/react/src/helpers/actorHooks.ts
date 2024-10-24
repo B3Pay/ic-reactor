@@ -200,7 +200,7 @@ export const actorHooks = <A = BaseActor>(
     refetchInterval = false,
     ...rest
   }) => {
-    const { call, ...state } = useSharedCall(rest)
+    const { call, requestKey, ...state } = useSharedCall(rest)
     const intervalId = React.useRef<NodeJS.Timeout>()
 
     React.useEffect(() => {
@@ -215,9 +215,9 @@ export const actorHooks = <A = BaseActor>(
       }
 
       return () => clearInterval(intervalId.current)
-    }, [refetchInterval, refetchOnMount])
+    }, [refetchInterval, refetchOnMount, requestKey])
 
-    return { call, intervalId, ...state }
+    return { call, intervalId, requestKey, ...state }
   }
 
   const useUpdateCall: UseUpdateCall<A> = useSharedCall
