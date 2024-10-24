@@ -56,9 +56,7 @@ describe("Initialize", () => {
       functionName: "greet",
       args: ["World"],
     })
-    expect(requestHash).toEqual(
-      "0xeeffa880e337ce6f306bd786f51e97d272f791699d400dc9c80bd5e17827113b"
-    )
+    expect(requestHash).toEqual("0x3e5c8666")
 
     const data = await dataPromise
     expect(data).toEqual(canisterDecodedReturnValue)
@@ -83,9 +81,7 @@ describe("Initialize", () => {
       args: ["World"],
     })
 
-    expect(requestHash).toEqual(
-      "0xeeffa880e337ce6f306bd786f51e97d272f791699d400dc9c80bd5e17827113b"
-    )
+    expect(requestHash).toEqual("0x3e5c8666")
 
     const loadingBefore = getState("loading")
     expect(loadingBefore).toEqual(false)

@@ -1,5 +1,6 @@
 export * from "./helper"
 export * from "./constants"
+export * from "./hash"
 
 // Re-export the peerDependencies
 /// https://agent-js.icp.xyz/candid

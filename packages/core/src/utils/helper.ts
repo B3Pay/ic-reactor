@@ -1,8 +1,9 @@
-import { hash, hashValue, toHex } from "@dfinity/agent"
+import { hash, toHex } from "@dfinity/agent"
 import { DevtoolsOptions, devtools } from "zustand/middleware"
 import { createStore } from "zustand/vanilla"
 
 import type { CompiledResult, BaseActor, CandidDefenition, IDL } from "../types"
+import { createSimpleHash } from "./hash"
 
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
@@ -80,9 +81,9 @@ export const jsonToString = (json: unknown, space = 2) => {
 }
 
 export const generateRequestHash = (args: unknown[] = []): `0x${string}` => {
-  const serializedArgs = hashValue(args)
+  const serializedArgs = createSimpleHash(args)
 
-  return `0x${toHex(serializedArgs)}`
+  return `0x${serializedArgs}`
 }
 
 export const generateHash = (field?: unknown) => {
