@@ -43,6 +43,14 @@ export const VALUE_KEYS_REGEX = new RegExp(
   "i"
 )
 
+const CYCLE_KEYS = ["cycle", "cycles"]
+
+export const CYCLE_KEYS_REGEX = new RegExp(
+  // eslint-disable-next-line no-useless-escape
+  CYCLE_KEYS.map((key) => `^[\w-]*${key}[\w-]*$`).join("|"),
+  "i"
+)
+
 export const WALLET_TEST = [
   "wallet",
   "balance",

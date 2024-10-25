@@ -272,7 +272,6 @@ export class VisitArg<A = BaseActor> extends IDL.Visitor<
   public visitNull(t: IDL.NullClass, label: string): InputArg<typeof t> {
     return {
       type: "null",
-      required: true,
       label,
       validate: validateError(t),
       defaultValue: null,

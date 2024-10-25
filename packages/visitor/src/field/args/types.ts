@@ -86,7 +86,7 @@ export interface NumberArg extends DefaultArg {
 }
 
 export interface InputArg<T extends IDL.Type> extends DefaultArg {
-  required: true
+  required?: true
   defaultValue: ArgTypeFromIDLType<T>
 }
 

@@ -5,7 +5,7 @@ import type {
   ArgDetailRecord,
   FieldDetail,
   FieldDetailWithChild,
-  MethodArgDetail
+  MethodArgDetail,
 } from "./types"
 import type { BaseActor, FunctionName } from "../types"
 import { Status } from "../status"
@@ -43,7 +43,7 @@ export class VisitArgDetail<A = BaseActor> extends IDL.Visitor<
       label: functionName,
       status: Status.Default,
       functionName,
-      functionType
+      functionType,
     }
   }
 
@@ -67,7 +67,7 @@ export class VisitArgDetail<A = BaseActor> extends IDL.Visitor<
     return {
       label,
       status,
-      record
+      record,
     }
   }
 
@@ -88,7 +88,7 @@ export class VisitArgDetail<A = BaseActor> extends IDL.Visitor<
     return {
       label,
       status: Status.Hidden("Optional"),
-      tuple
+      tuple,
     }
   }
 
@@ -106,7 +106,7 @@ export class VisitArgDetail<A = BaseActor> extends IDL.Visitor<
     return {
       label,
       status: Status.Default,
-      variant
+      variant,
     }
   }
 
@@ -125,7 +125,7 @@ export class VisitArgDetail<A = BaseActor> extends IDL.Visitor<
 
     return {
       label,
-      status: Status.Visible("Optional")
+      status: Status.Visible("Optional"),
     }
   }
 
@@ -138,7 +138,7 @@ export class VisitArgDetail<A = BaseActor> extends IDL.Visitor<
     return {
       label,
       status: Status.Visible("Optional"),
-      optional
+      optional,
     }
   }
 
@@ -151,21 +151,21 @@ export class VisitArgDetail<A = BaseActor> extends IDL.Visitor<
     return {
       label,
       status: Status.Default,
-      vector
+      vector,
     }
   }
 
   public visitNull(_t: IDL.NullClass, label: string): FieldDetail {
     return {
       label,
-      status: Status.Hidden("Optional")
+      status: Status.Hidden("Optional"),
     }
   }
 
   private visiGenericType = (label: string): FieldDetail => {
     return {
       label,
-      status: Status.Default
+      status: Status.Default,
     }
   }
 
