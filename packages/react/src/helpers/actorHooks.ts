@@ -13,6 +13,7 @@ import type {
   UseMethodParameters,
   UseMethodReturnType,
   UseActorStore,
+  ActorMethodReturnType,
 } from "../types"
 import {
   type VisitService,
@@ -139,18 +140,18 @@ export const actorHooks = <A = BaseActor>(
     ...options
   }) => {
     type M = typeof functionName
-
     const requestKey = React.useMemo(() => generateRequestHash(args), [args])
-
     const [sharedState, setSharedState] = useMethodState(
       functionName,
       requestKey
     )
 
-    const reset = React.useCallback(
-      () => updateMethodState(functionName, requestKey, DEFAULT_STATE),
-      [functionName, requestKey]
-    )
+    const latestDataRef = React.useRef<ActorMethodReturnType<A[M]>>()
+
+    const reset = React.useCallback(() => {
+      updateMethodState(functionName, requestKey, DEFAULT_STATE)
+      latestDataRef.current = undefined
+    }, [functionName, requestKey])
 
     const call = React.useCallback(
       async (
@@ -158,7 +159,6 @@ export const actorHooks = <A = BaseActor>(
       ) => {
         setSharedState({ error: undefined, loading: true })
         onLoading?.(true)
-
         try {
           const replaceArgs =
             eventOrReplaceArgs instanceof Array ? eventOrReplaceArgs : args
@@ -167,32 +167,39 @@ export const actorHooks = <A = BaseActor>(
             ...(replaceArgs ?? args)
           )
 
+          latestDataRef.current = data
           setSharedState({ data, error: undefined, loading: false })
+
           onSuccess?.(createCompiledResult(data))
           onLoading?.(false)
           return data
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error(`Error calling method ${functionName}:`, error)
+          latestDataRef.current = undefined
           setSharedState({
             error: error as Error,
             loading: false,
           })
           onError?.(error as Error)
           onLoading?.(false)
-
           if (throwOnError) throw error
         }
       },
       [args, functionName, options, onError, onLoading, onSuccess, throwOnError]
     )
 
-    const compileResult = React.useCallback(
-      () => createCompiledResult(sharedState?.data),
-      [sharedState?.data]
-    )
+    const compileResult = () => {
+      return createCompiledResult(latestDataRef.current || sharedState?.data)
+    }
 
-    return { call, reset, compileResult, requestKey, ...sharedState }
+    return {
+      call,
+      reset,
+      compileResult,
+      requestKey,
+      ...sharedState,
+    }
   }
 
   const useQueryCall: UseQueryCall<A> = ({
