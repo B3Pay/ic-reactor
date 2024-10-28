@@ -137,6 +137,7 @@ export const actorHooks = <A = BaseActor>(
     onError,
     onLoading,
     onSuccess,
+    onSuccessResult,
     ...options
   }) => {
     type M = typeof functionName
@@ -170,7 +171,8 @@ export const actorHooks = <A = BaseActor>(
           latestDataRef.current = data
           setSharedState({ data, error: undefined, loading: false })
 
-          onSuccess?.(createCompiledResult(data))
+          onSuccess?.(data)
+          onSuccessResult?.(createCompiledResult(data))
           onLoading?.(false)
           return data
         } catch (error) {
@@ -186,7 +188,16 @@ export const actorHooks = <A = BaseActor>(
           if (throwOnError) throw error
         }
       },
-      [args, functionName, options, onError, onLoading, onSuccess, throwOnError]
+      [
+        args,
+        functionName,
+        options,
+        onError,
+        onLoading,
+        onSuccess,
+        onSuccessResult,
+        throwOnError,
+      ]
     )
 
     const compileResult = () => {
@@ -218,7 +229,8 @@ export const actorHooks = <A = BaseActor>(
       if (refetchOnMount && state.data === undefined) {
         call()
       } else if (refetchOnMount && state.data !== undefined) {
-        rest.onSuccess?.(createCompiledResult(state.data))
+        rest.onSuccess?.(state.data)
+        rest.onSuccessResult?.(createCompiledResult(state.data))
       }
 
       return () => clearInterval(intervalId.current)
