@@ -8431,9 +8431,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"candid-react@workspace:examples/candid-ui":
+"candid-ui@workspace:examples/candid-ui":
   version: 0.0.0-use.local
-  resolution: "candid-react@workspace:examples/candid-ui"
+  resolution: "candid-ui@workspace:examples/candid-ui"
   dependencies:
     "@ic-reactor/parser": "workspace:^"
     "@ic-reactor/react": "workspace:^"
