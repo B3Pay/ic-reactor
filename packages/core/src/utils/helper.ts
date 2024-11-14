@@ -4,6 +4,7 @@ import { createStore } from "zustand/vanilla"
 
 import type { CompiledResult, BaseActor, CandidDefenition, IDL } from "../types"
 import { createSimpleHash } from "./hash"
+import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
 
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
@@ -63,6 +64,18 @@ export const isInLocalOrDevelopment = () => {
 export const getProcessEnvNetwork = () => {
   if (typeof process === "undefined") return "ic"
   else return process.env.DFX_NETWORK ?? "ic"
+}
+
+export function getNetworkByHostname(
+  hostname: string
+): "local" | "remote" | "ic" {
+  if (LOCAL_HOSTS.some((host) => hostname.endsWith(host))) {
+    return "local"
+  } else if (REMOTE_HOSTS.some((host) => hostname.endsWith(host))) {
+    return "remote"
+  } else {
+    return "ic"
+  }
 }
 
 export function isQuery(func: IDL.FuncClass): boolean {

@@ -2,6 +2,7 @@
 import { HttpAgent } from "@dfinity/agent"
 import {
   createStoreWithOptionalDevtools,
+  getNetworkByHostname,
   getProcessEnvNetwork,
 } from "../../utils/helper"
 import { AuthClient } from "@dfinity/auth-client"
@@ -17,9 +18,7 @@ import type {
 import {
   IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
-  LOCAL_HOSTS,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
-  REMOTE_HOSTS,
 } from "../../utils/constants"
 
 export class AgentManager {
@@ -237,13 +236,7 @@ export class AgentManager {
   public getNetwork = () => {
     const hostname = this.getAgentHostName()
 
-    if (LOCAL_HOSTS.some((host) => hostname.endsWith(host))) {
-      return "local"
-    } else if (REMOTE_HOSTS.some((host) => hostname.endsWith(host))) {
-      return "remote"
-    } else {
-      return "ic"
-    }
+    return getNetworkByHostname(hostname)
   }
 
   public getAgentState: AgentStore["getState"] = () => {

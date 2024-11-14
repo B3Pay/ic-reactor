@@ -1,6 +1,7 @@
 import React from "react"
 import { useStore } from "zustand"
 import {
+  getNetworkByHostname,
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "@ic-reactor/core/dist/utils"
@@ -141,9 +142,10 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
 
     React.useEffect(
       () =>
-        agentManager.subscribeAgentState((state) => {
-          if (network.current !== state.network) {
-            network.current = state.network
+        agentManager.subscribeAgent((agent) => {
+          const agentNetwork = getNetworkByHostname(agent.host.hostname)
+          if (network.current !== agentNetwork) {
+            network.current = agentNetwork
             authenticate()
           }
         }),
