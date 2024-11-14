@@ -81,5 +81,6 @@
   },
   "resolutions": {
     "punycode": "^2.3.1"
-  }
+  },
+  "packageManager": "yarn@4.5.1"
 }
