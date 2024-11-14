@@ -8,11 +8,11 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4.1.2
+        uses: actions/checkout@v4.2.2
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
           ref: main
@@ -21,11 +21,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20.18.0"
-          cache: "yarn"
-          check-latest: true
-          yarn-version: "4.5.1"
 
       - name: Setup Yarn
+        uses: threeal/setup-yarn-action@v2.0.0
+
+      - name: Install Dependencies
         run: yarn install --frozen-lockfile
 
       - name: Build
