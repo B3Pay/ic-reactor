@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/visitor",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "description": "Visitor classes for ic-reactor",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,7 +34,7 @@
     "@dfinity/principal": ">=2.0.0"
   },
   "devDependencies": {
-    "@ic-reactor/core": "^1.12.0"
+    "@ic-reactor/core": "^1.13.0"
   },
   "scripts": {
     "test": "jest",
