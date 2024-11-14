@@ -43,6 +43,7 @@
   "devDependencies": {
     "@ic-reactor/parser": "^0.4.3",
     "@types/node": "^22.9.0",
+    "ts-loader": "^9.5.1",
     "webpack": "^5.96.1"
   },
   "scripts": {
