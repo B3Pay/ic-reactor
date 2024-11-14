@@ -36,11 +36,6 @@ module.exports = (env, argv) => {
     ],
     resolve: {
       extensions: [".ts", ".js"],
-      modules: [
-        path.resolve(__dirname, "node_modules"),
-        path.resolve(__dirname, "../../node_modules"),
-        "node_modules",
-      ],
     },
     externals: {},
     // Add source maps in development for easier debugging
