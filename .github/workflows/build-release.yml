@@ -22,6 +22,8 @@ jobs:
         with:
           node-version: "20.18.0"
           cache: "yarn"
+          check-latest: true
+          yarn-version: "4.5.1"
 
       - name: Setup Yarn
         run: yarn install --frozen-lockfile
