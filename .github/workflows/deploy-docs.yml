@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "@ic-reactor/core"
 
 jobs:
   build-and-deploy:
@@ -19,12 +21,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20.18.0"
-
       - name: Setup Yarn
-        uses: threeal/setup-yarn-action@v2.0.0
-
-      - name: Install Dependencies
-        run: yarn install --frozen-lockfile
+        uses: actions/setup-node@v4
+        with:
+          c: "20.9.0"
+          cache: "yarn"
+          check-latest: true
 
       - name: Build
         run: yarn build
