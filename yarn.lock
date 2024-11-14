@@ -4825,13 +4825,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@remix-run/router@npm:1.21.0":
-  version: 1.21.0
-  resolution: "@remix-run/router@npm:1.21.0"
-  checksum: 10c0/570792211c083a1c7146613b79cbb8e0d1e14f34e974052e060e7f9dcad38c800d80fe0a18bf42811bc278ab12c0e8fd62cfce649e905046c4e55bd5a09eafdc
-  languageName: node
-  linkType: hard
-
 "@rollup/plugin-babel@npm:^5.2.0":
   version: 5.3.1
   resolution: "@rollup/plugin-babel@npm:5.3.1"
@@ -5697,13 +5690,6 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10c0/e1cd0e48fcae21b1d4378887a23453bd7212b480a131b11bcda2cdeb0687d03c9646ee5ba592e04cfaf76f7cc80f179950e627cdb3ebc90a5923bce49a35631a
-  languageName: node
-  linkType: hard
-
-"@types/lodash@npm:^4.17.0":
-  version: 4.17.13
-  resolution: "@types/lodash@npm:4.17.13"
-  checksum: 10c0/c3d0b7efe7933ac0369b99f2f7bff9240d960680fdb74b41ed4bd1b3ca60cca1e31fe4046d9abbde778f941a41bc2a75eb629abf8659fa6c27b66efbbb0802a9
   languageName: node
   linkType: hard
 
@@ -8338,29 +8324,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"candid-ui@workspace:examples/candid-ui":
-  version: 0.0.0-use.local
-  resolution: "candid-ui@workspace:examples/candid-ui"
-  dependencies:
-    "@ic-reactor/parser": "workspace:^"
-    "@ic-reactor/react": "workspace:^"
-    "@ic-reactor/visitor": "workspace:^"
-    "@react-hook/resize-observer": "npm:^1.2.6"
-    "@types/lodash": "npm:^4.17.0"
-    "@types/react-grid-layout": "npm:^1"
-    clsx: "npm:^2.1.0"
-    optics-ts: "npm:^2.4.1"
-    react-grid-layout: "npm:^1.4.4"
-    react-hook-form: "npm:^7.49.2"
-    react-router: "npm:^6.22.3"
-    react-router-dom: "npm:^6.22.3"
-    react-scripts: "npm:5.0.1"
-    tailwind-merge: "npm:^2.3.0"
-    tailwindcss: "npm:^3.4.0"
-    typescript: "npm:^4.9.5"
-  languageName: unknown
-  linkType: soft
-
 "caniuse-api@npm:^3.0.0":
   version: 3.0.0
   resolution: "caniuse-api@npm:3.0.0"
@@ -8748,7 +8711,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"clsx@npm:^2.0.0, clsx@npm:^2.1.0":
+"clsx@npm:^2.0.0":
   version: 2.1.1
   resolution: "clsx@npm:2.1.1"
   checksum: 10c0/c4c8eb865f8c82baab07e71bfa8897c73454881c4f99d6bc81585aecd7c441746c1399d08363dc096c550cceaf97bd4ce1e8854e1771e9998d9f94c4fe075839
@@ -19155,13 +19118,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"optics-ts@npm:^2.4.1":
-  version: 2.4.1
-  resolution: "optics-ts@npm:2.4.1"
-  checksum: 10c0/104865a15a4466a3a4fbb23966118337b0ab89737a599a81ea35d47d7691e96c0c29fa0b8e8f6303b2e772b096deebb126b1ab519cbffaa2ca01b3e220bca252
-  languageName: node
-  linkType: hard
-
 "optionator@npm:^0.8.1":
   version: 0.8.3
   resolution: "optionator@npm:0.8.3"
@@ -21304,30 +21260,6 @@ __metadata:
   peerDependencies:
     react: ">= 16.3"
   checksum: 10c0/cfe50aa6efb79e0aa09bd681a5beab2fcd1186737c4952eb4c3974ed9395d5d263ccd1130961d06b8f5e24c8f544dd2967b5c740ce68719962d1771de7bdb350
-  languageName: node
-  linkType: hard
-
-"react-router-dom@npm:^6.22.3":
-  version: 6.28.0
-  resolution: "react-router-dom@npm:6.28.0"
-  dependencies:
-    "@remix-run/router": "npm:1.21.0"
-    react-router: "npm:6.28.0"
-  peerDependencies:
-    react: ">=16.8"
-    react-dom: ">=16.8"
-  checksum: 10c0/e2930cf83e8c843a932b008c7ce11059fd83390502a433f0e41f192e3cb80081a621d069eeda7af3cf4bf74d7f8029f0141cdce741bca3f0af82d4bbbc7f7f10
-  languageName: node
-  linkType: hard
-
-"react-router@npm:6.28.0, react-router@npm:^6.22.3":
-  version: 6.28.0
-  resolution: "react-router@npm:6.28.0"
-  dependencies:
-    "@remix-run/router": "npm:1.21.0"
-  peerDependencies:
-    react: ">=16.8"
-  checksum: 10c0/b435510de78fd882bf6ca9800a73cd90cee418bd1d19efd91b8dcaebde36929bbb589e25d9f7eec24ceb84255e8d538bc1fe54e6ddb5c43c32798e2b720fa76d
   languageName: node
   linkType: hard
 
@@ -23567,7 +23499,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tailwind-merge@npm:^2.2.0, tailwind-merge@npm:^2.3.0":
+"tailwind-merge@npm:^2.2.0":
   version: 2.5.4
   resolution: "tailwind-merge@npm:2.5.4"
   checksum: 10c0/6c3d2a1d44344f373859f005e6366f0dbd7f66131d330a51dbe823dab08f71c388b2efcbb2b6a2170ca469581d27079c25cd40c234ca1356c4893ae99c2febb3
