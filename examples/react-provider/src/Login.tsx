@@ -15,12 +15,12 @@ const Login = () => {
       authPromise()
         .then((identity) => {
           console.log(
-            "🚀 ~ onAuthentication ~ Authenticated as:",
+            "🚀 ~ onAuthentication Promise ~ Authenticated as:",
             identity.getPrincipal().toText()
           )
         })
         .catch((error) => {
-          console.log("🚀 ~ onAuthentication ~ error:", error)
+          console.log("🚀 ~ onAuthentication Promise ~ error:", error)
         })
     },
     onLogin(loginPromise) {

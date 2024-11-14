@@ -63,7 +63,7 @@ const CanisterForm = ({ setCanisterId }) => {
         id="canisterId"
         required
         ref={canisterIdRef}
-        defaultValue="ss2fx-dyaaa-aaaar-qacoq-cai"
+        defaultValue="ryjl3-tyaaa-aaaaa-aaaba-cai"
       />
       <button type="submit">Fetch</button>
     </form>

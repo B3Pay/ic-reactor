@@ -17,7 +17,7 @@ export const ICPBalance = () => {
     <div>
       <h2>ICP Balance:</h2>
       <div>
-        Loading: {loading.toString()}
+        Loading: {loading?.toString()}
         <br />
         Error: {error?.toString()}
         <br />

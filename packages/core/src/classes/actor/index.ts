@@ -48,6 +48,10 @@ export class ActorManager<A = BaseActor> {
     hash: string,
     newState: Partial<ActorMethodState<A, typeof method>[string]>
   ) => {
+    const actionName = `${method}:${
+      newState.error ? "error" : newState.loading ? "loading" : "loaded"
+    }`
+
     this.actorStore.setState(
       (state) => {
         const methodState = state.methodState[method] || {}
@@ -67,7 +71,7 @@ export class ActorManager<A = BaseActor> {
         }
       },
       false,
-      method
+      actionName
     )
   }
 

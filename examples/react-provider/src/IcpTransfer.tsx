@@ -31,7 +31,7 @@ export const ICPTransfer = () => {
     <div>
       <h2>Transfer:</h2>
       <div>
-        Loading: {loading.toString()}
+        Loading: {loading?.toString()}
         <br />
         Error: {error?.toString()}
         <br />

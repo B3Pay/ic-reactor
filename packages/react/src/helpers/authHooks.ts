@@ -140,17 +140,19 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
       [onLoggedOut]
     )
 
-    React.useEffect(
-      () =>
-        agentManager.subscribeAgent((agent) => {
-          const agentNetwork = getNetworkByHostname(agent.host.hostname)
-          if (network.current !== agentNetwork) {
-            network.current = agentNetwork
-            authenticate()
-          }
-        }),
-      []
-    )
+    React.useEffect(() => {
+      const unsubscribe = agentManager.subscribeAgent((agent) => {
+        const agentNetwork = getNetworkByHostname(agent.host.hostname)
+        if (network.current !== agentNetwork) {
+          network.current = agentNetwork
+          authenticate()
+        }
+      })
+
+      authenticate()
+
+      return unsubscribe
+    }, [])
 
     return {
       authenticated,
