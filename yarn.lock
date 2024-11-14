@@ -2021,6 +2021,7 @@ __metadata:
     "@dfinity/principal": "npm:>=2.1"
     "@ic-reactor/parser": "npm:^0.4.3"
     "@types/node": "npm:^22.9.0"
+    simple-cbor: "npm:^0.4.1"
     ts-loader: "npm:^9.5.1"
     webpack: "npm:^5.96.1"
     zustand: "npm:4.5.5"

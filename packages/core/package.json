@@ -31,6 +31,7 @@
     "@dfinity/candid": ">=2.1",
     "@dfinity/identity": ">=2.1",
     "@dfinity/principal": ">=2.1",
+    "simple-cbor": "^0.4.1",
     "zustand": "4.5.5"
   },
   "peerDependencies": {
