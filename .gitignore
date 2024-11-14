@@ -16,7 +16,6 @@ yarn-error.log
 target
 pulled.json
 examples/*/deps/candid
-candid-ui
 orbit-wallet
 docs
 .nx

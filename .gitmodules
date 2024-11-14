@@ -1,3 +1,6 @@
+[submodule "examples/candid-ui"]
+	path = examples/candid-ui
+	url = git@github.com:b3hr4d/candid-ui.git
 [submodule "examples/ui-builder"]
 	path = examples/ui-builder
-	url = https://github.com/b3hr4d/ui-builder.git
+	url = git@github.com:b3hr4d/ui-builder.git
