@@ -2046,7 +2046,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ic-reactor/react@workspace:packages/react"
   dependencies:
+    "@dfinity/agent": "npm:>=2.1"
+    "@dfinity/auth-client": "npm:>=2.1"
     "@ic-reactor/core": "npm:^1.14.0"
+    "@types/node": "npm:^22.9.0"
     "@types/react": "npm:^18"
     react: "npm:^18"
     zustand: "npm:4.5"
