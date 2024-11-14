@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/parser",
-  "version": "0.4.2",
+  "version": "0.4.1",
   "description": "A parser for the DFINITY Candid language",
   "files": [
     "dist/web/*",

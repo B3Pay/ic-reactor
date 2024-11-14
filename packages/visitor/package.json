@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/visitor",
-  "version": "1.13.0",
+  "version": "1.12.1",
   "description": "Visitor classes for ic-reactor",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,15 +26,15 @@
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/visit#readme",
   "dependencies": {
-    "@dfinity/candid": ">=2.0.0",
-    "@dfinity/principal": ">=2.0.0"
+    "@dfinity/candid": ">=2.1",
+    "@dfinity/principal": ">=2.1"
   },
   "peerDependencies": {
-    "@dfinity/candid": ">=2.0.0",
-    "@dfinity/principal": ">=2.0.0"
+    "@dfinity/candid": ">=2.1",
+    "@dfinity/principal": ">=2.1"
   },
   "devDependencies": {
-    "@ic-reactor/core": "^1.13.0"
+    "@ic-reactor/core": "^1.12.0"
   },
   "scripts": {
     "test": "jest",
