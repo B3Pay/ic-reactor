@@ -26,8 +26,8 @@
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/visit#readme",
   "dependencies": {
-    "@dfinity/candid": ">=2.1.2",
-    "@dfinity/principal": ">=2.1.2"
+    "@dfinity/candid": ">=2.0.0",
+    "@dfinity/principal": ">=2.0.0"
   },
   "peerDependencies": {
     "@dfinity/candid": ">=2.0.0",
