@@ -14,6 +14,8 @@ import type {
   UseMethodReturnType,
   UseActorStore,
   ActorMethodReturnType,
+  ExtractErr,
+  ExtractOk,
 } from "../types"
 import {
   type VisitService,
@@ -138,6 +140,7 @@ export const actorHooks = <A = BaseActor>(
     onLoading,
     onSuccess,
     onSuccessResult,
+    onErrorResult,
     ...options
   }) => {
     type M = typeof functionName
@@ -171,9 +174,18 @@ export const actorHooks = <A = BaseActor>(
           latestDataRef.current = data
           setSharedState({ data, error: undefined, loading: false })
 
-          onSuccess?.(data)
-          onSuccessResult?.(createCompiledResult(data))
           onLoading?.(false)
+          onSuccess?.(data)
+
+          const { isOk, value, error } = createCompiledResult(data)
+          if (isOk) {
+            onSuccessResult?.(value as ExtractOk<ActorMethodReturnType<A[M]>>)
+          } else {
+            onErrorResult?.(error as ExtractErr<ActorMethodReturnType<A[M]>>)
+            if (throwOnError) {
+              throw error
+            }
+          }
           return data
         } catch (error) {
           // eslint-disable-next-line no-console
@@ -230,7 +242,20 @@ export const actorHooks = <A = BaseActor>(
         call()
       } else if (refetchOnMount && state.data !== undefined) {
         rest.onSuccess?.(state.data)
-        rest.onSuccessResult?.(createCompiledResult(state.data))
+        const { isOk, value, error } = createCompiledResult(state.data)
+        if (isOk) {
+          rest.onSuccessResult?.(
+            value as ExtractOk<
+              ActorMethodReturnType<A[typeof rest.functionName]>
+            >
+          )
+        } else {
+          rest.onErrorResult?.(
+            error as ExtractErr<
+              ActorMethodReturnType<A[typeof rest.functionName]>
+            >
+          )
+        }
       }
 
       return () => clearInterval(intervalId.current)

@@ -135,6 +135,12 @@ type ExtractOkErr<T> = T extends { Ok: infer U }
   ? { OkType: never; ErrType: E }
   : { OkType: T; ErrType: never }
 
+// Extract Ok type from Result
+export type ExtractOk<T> = T extends { Ok: infer U } ? U : never
+
+// Extract Err type from Result
+export type ExtractErr<T> = T extends { Err: infer E } ? E : never
+
 // Improved CompiledResult type
 export type CompiledResult<T> = ExtractOkErr<T> extends {
   OkType: infer U

@@ -15,6 +15,8 @@ import type {
   BaseActor,
   MethodAttributes,
   CompiledResult,
+  ExtractOk,
+  ExtractErr,
 } from "../types"
 
 export interface AgentHooksReturnType {
@@ -79,9 +81,8 @@ export interface UseSharedCallParameters<A, M extends FunctionName<A>>
   onLoading?: (loading: boolean) => void
   onError?: (error: Error | undefined) => void
   onSuccess?: (data: ActorMethodReturnType<A[M]>) => void
-  onSuccessResult?: (
-    result: CompiledResult<ActorMethodReturnType<A[M]>>
-  ) => void
+  onSuccessResult?: (value: ExtractOk<ActorMethodReturnType<A[M]>>) => void
+  onErrorResult?: (error: ExtractErr<ActorMethodReturnType<A[M]>>) => void
   throwOnError?: boolean
   compileResult?: boolean
 }
