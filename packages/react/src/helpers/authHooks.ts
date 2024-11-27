@@ -1,7 +1,6 @@
 import React from "react"
 import { useStore } from "zustand"
 import {
-  getNetworkByHostname,
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "@ic-reactor/core/dist/utils"
@@ -39,8 +38,6 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
     onLoginError,
     onLoggedOut,
   }: UseAuthParameters = {}) => {
-    const network = React.useRef("ic")
-
     const [loginState, setLoginState] = React.useState<LoginState>({
       loading: false,
       error: undefined,
@@ -139,20 +136,6 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
       },
       [onLoggedOut]
     )
-
-    React.useEffect(() => {
-      const unsubscribe = agentManager.subscribeAgent((agent) => {
-        const agentNetwork = getNetworkByHostname(agent.host.hostname)
-        if (network.current !== agentNetwork) {
-          network.current = agentNetwork
-          authenticate()
-        }
-      })
-
-      authenticate()
-
-      return unsubscribe
-    }, [])
 
     return {
       authenticated,

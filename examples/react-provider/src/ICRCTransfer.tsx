@@ -2,7 +2,9 @@ import { Principal } from "@dfinity/principal"
 import { useMethod } from "@ic-reactor/react"
 import { useState } from "react"
 
-export const ICPTransfer = () => {
+interface ICRCTransferProps {}
+
+const ICRCTransfer: React.FC<ICRCTransferProps> = () => {
   const [principal, setPrincipal] = useState("")
   const [amount, setAmount] = useState("")
 
@@ -60,3 +62,5 @@ export const ICPTransfer = () => {
     </div>
   )
 }
+
+export default ICRCTransfer

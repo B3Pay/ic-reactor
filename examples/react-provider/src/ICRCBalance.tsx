@@ -2,7 +2,9 @@ import { useQueryCall, useUserPrincipal } from "@ic-reactor/react"
 import { ICPLedger } from "./declarations/icp-ledger"
 import { Principal } from "@ic-reactor/react/dist/types"
 
-export const ICPBalance = () => {
+interface ICRCBalanceProps {}
+
+const ICRCBalance: React.FC<ICRCBalanceProps> = () => {
   const principal = useUserPrincipal() as Principal
 
   const { call, data, loading, error } = useQueryCall<
@@ -15,7 +17,7 @@ export const ICPBalance = () => {
 
   return (
     <div>
-      <h2>ICP Balance:</h2>
+      <h2>Balance:</h2>
       <div>
         Loading: {loading?.toString()}
         <br />
@@ -32,3 +34,5 @@ export const ICPBalance = () => {
     </div>
   )
 }
+
+export default ICRCBalance

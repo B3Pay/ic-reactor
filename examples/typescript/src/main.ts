@@ -16,7 +16,10 @@ import {
 } from "@ic-reactor/core/dist/types"
 
 const agentManager = createAgentManager({ withDevtools: true })
-const candidAdapter = createCandidAdapter({ agentManager })
+const candidAdapter = createCandidAdapter({
+  agentManager,
+  didjsCanisterId: "bnz7o-iuaaa-aaaaa-qaaaa-cai",
+})
 
 let previousActorCleanup: (() => void) | null = null
 let balanceUnsub: (() => void) | null = null

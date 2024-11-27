@@ -7,8 +7,7 @@ import {
   CandidAdapterProvider,
 } from "@ic-reactor/react"
 import { NoteActorProvider } from "NoteActor"
-import { ICPBalance } from "IcpBalance"
-import { ICPTransfer } from "IcpTransfer"
+import Ledger from "Ledger"
 
 const publicKey = crypto.getRandomValues(new Uint8Array(48))
 
@@ -19,12 +18,19 @@ const App = () => {
       {/*  idlFactory can be fetched from the network using CandidAdapterProvider */}
       <CandidAdapterProvider>
         <ActorProvider
+          canisterId="mxzaz-hqaaa-aaaar-qaada-cai"
+          name="CKBTC Ledger"
+          loadingComponent={<div>Loading CKBTC Ledger...</div>}
+        >
+          <Ledger />
+        </ActorProvider>
+        <ActorProvider
           withDevtools
           canisterId="ryjl3-tyaaa-aaaaa-aaaba-cai"
+          name="ICP Ledger"
           loadingComponent={<div>Loading Icp Ledger...</div>}
         >
-          <ICPBalance />
-          <ICPTransfer />
+          <Ledger />
         </ActorProvider>
         <NoteActorProvider
           withDevtools
