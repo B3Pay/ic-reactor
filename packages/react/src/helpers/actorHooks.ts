@@ -238,7 +238,11 @@ export const actorHooks = <A = BaseActor>(
         intervalId.current = setInterval(call, refetchInterval)
       }
 
-      if (refetchOnMount && state.data === undefined) {
+      if (
+        refetchOnMount &&
+        state.data === undefined &&
+        rest.args !== undefined
+      ) {
         call()
       } else if (refetchOnMount && state.data !== undefined) {
         rest.onSuccess?.(state.data)
@@ -261,7 +265,11 @@ export const actorHooks = <A = BaseActor>(
       return () => clearInterval(intervalId.current)
     }, [refetchInterval, refetchOnMount, requestKey])
 
-    return { call, intervalId, requestKey, ...state }
+    const refetch = () => {
+      call()
+    }
+
+    return { call, refetch, intervalId, requestKey, ...state }
   }
 
   const useUpdateCall: UseUpdateCall<A> = useSharedCall
