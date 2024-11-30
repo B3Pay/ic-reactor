@@ -109,16 +109,24 @@ export interface UseQueryCallParameters<A, M extends FunctionName<A>>
   refetchInterval?: number | false
 }
 
+export interface UseQueryCallReturnType<A, M extends FunctionName<A>>
+  extends UseSharedCallReturnType<A, M> {
+  refetch: () => void
+}
+
 export type UseQueryCall<A> = <M extends FunctionName<A>>(
   params: UseQueryCallParameters<A, M>
-) => UseSharedCallReturnType<A, M>
+) => UseQueryCallReturnType<A, M>
 
 export interface UseUpdateCallParameters<A, M extends FunctionName<A>>
   extends UseSharedCallParameters<A, M> {}
 
+export interface UseUpdateCallReturnType<A, M extends FunctionName<A>>
+  extends UseSharedCallReturnType<A, M> {}
+
 export type UseUpdateCall<A> = <M extends FunctionName<A>>(
   params: UseUpdateCallParameters<A, M>
-) => UseSharedCallReturnType<A, M>
+) => UseUpdateCallReturnType<A, M>
 
 export interface DynamicDataArgs<V = unknown> {
   label: string

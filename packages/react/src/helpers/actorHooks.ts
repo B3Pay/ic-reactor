@@ -238,11 +238,7 @@ export const actorHooks = <A = BaseActor>(
         intervalId.current = setInterval(call, refetchInterval)
       }
 
-      if (
-        refetchOnMount &&
-        state.data === undefined &&
-        rest.args !== undefined
-      ) {
+      if (refetchOnMount && state.data === undefined) {
         call()
       } else if (refetchOnMount && state.data !== undefined) {
         rest.onSuccess?.(state.data)
