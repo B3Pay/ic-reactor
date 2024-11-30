@@ -5,14 +5,14 @@ import type {
   FunctionName,
   UseUpdateCall,
   UseUpdateCallParameters,
-  UseSharedCallReturnType,
+  UseUpdateCallReturnType,
 } from "../../../types"
 
 /**
  * Hook for making update calls to actors, handling loading states, and managing errors. It supports custom event handlers for loading, success, and error events.
  *
  * @param args {@link UseUpdateCallParameters}.
- * @returns object {@link UseSharedCallReturnType}.
+ * @returns object {@link UseUpdateCallReturnType}.
  * @example
  * ```tsx
  * function UpdateCallComponent() {
@@ -38,6 +38,6 @@ import type {
 export function useUpdateCall<
   A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
->(args: UseUpdateCallParameters<A, M>): UseSharedCallReturnType<A, M> {
+>(args: UseUpdateCallParameters<A, M>): UseUpdateCallReturnType<A, M> {
   return (ActorHooks.useUpdateCall as UseUpdateCall<A>)(args)
 }
