@@ -7,7 +7,6 @@ interface TodosProps {}
 const Todos: React.FC<TodosProps> = () => {
   const { data, error, loading } = useQueryTodo({
     functionName: "getAllTodos",
-    args: [],
     refetchOnMount: true,
     refetchInterval: 5000
   })

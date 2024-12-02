@@ -7,5 +7,6 @@ export const {
   useUpdateCall: useUpdateTodo
 } = createActorContext<typeof todo>({
   idlFactory,
-  canisterId
+  canisterId,
+  withDevtools: true
 })
