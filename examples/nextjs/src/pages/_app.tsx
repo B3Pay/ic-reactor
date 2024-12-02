@@ -1,6 +1,7 @@
 import { AgentProvider } from "@ic-reactor/react"
 import { AppProps } from "next/app"
 import { useEffect, useState } from "react"
+import { TodoActorProvider } from "service/todo"
 import "styles/global.css"
 
 const App: React.FC<AppProps> = ({ Component, pageProps }) => {
@@ -13,7 +14,9 @@ const App: React.FC<AppProps> = ({ Component, pageProps }) => {
 
   return mounted ? (
     <AgentProvider withLocalEnv>
-      <Component {...pageProps} />
+      <TodoActorProvider>
+        <Component {...pageProps} />
+      </TodoActorProvider>
     </AgentProvider>
   ) : null
 }

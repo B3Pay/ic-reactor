@@ -1,11 +1,11 @@
 import { ToDo } from "declarations/todo/todo.did"
 import React from "react"
-import { useUpdateCall } from "service/todo"
+import { useUpdateTodo } from "service/todo"
 
 interface TodoProps extends ToDo {}
 
 const Todo: React.FC<TodoProps> = ({ id, completed, description }) => {
-  const { call, error, loading } = useUpdateCall({
+  const { call, error, loading } = useUpdateTodo({
     functionName: "toggleTodo",
     args: [id]
   })

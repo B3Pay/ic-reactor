@@ -1,12 +1,13 @@
 import React from "react"
-import { useQueryCall } from "service/todo"
+import { useQueryTodo } from "service/todo"
 import Todo from "./Todo"
 
 interface TodosProps {}
 
 const Todos: React.FC<TodosProps> = () => {
-  const { data, error, loading } = useQueryCall({
+  const { data, error, loading } = useQueryTodo({
     functionName: "getAllTodos",
+    args: [],
     refetchOnMount: true,
     refetchInterval: 5000
   })

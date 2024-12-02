@@ -1,10 +1,10 @@
 import React, { useState } from "react"
-import { useUpdateCall } from "service/todo"
+import { useUpdateTodo } from "service/todo"
 
 interface AddTodoProps {}
 
 const AddTodo: React.FC<AddTodoProps> = () => {
-  const { call, error, loading } = useUpdateCall({
+  const { call, error, loading } = useUpdateTodo({
     functionName: "addTodo"
   })
 
