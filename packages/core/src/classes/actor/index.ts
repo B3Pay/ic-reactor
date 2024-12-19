@@ -1,6 +1,10 @@
 /* eslint-disable no-console */
 import { Actor } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools, isQuery } from "../../utils/helper"
+import {
+  createStoreWithOptionalDevtools,
+  generateRequestHash,
+  isQuery,
+} from "../../utils/helper"
 import type { CallConfig, HttpAgent } from "@dfinity/agent"
 import type {
   ActorMethodParameters,
@@ -254,6 +258,36 @@ export class ActorManager<A = BaseActor> {
       const data = await method.withOptions(options)(...args)
 
       return data
+    }
+  }
+
+  public call = async <M extends FunctionName<A>>(
+    functionName: M,
+    ...args: ActorMethodParameters<A[M]>
+  ): Promise<ActorMethodReturnType<A[M]>> => {
+    const requestHash = generateRequestHash(args)
+    try {
+      this.updateMethodState(functionName, requestHash, {
+        loading: true,
+        error: undefined,
+      })
+
+      const data = await this.callMethod(functionName, ...args)
+
+      this.updateMethodState(functionName, requestHash, {
+        loading: false,
+        data,
+      })
+
+      return data
+    } catch (error) {
+      this.updateMethodState(functionName, requestHash, {
+        loading: false,
+        error: error as Error,
+        data: undefined,
+      })
+
+      throw error as Error
     }
   }
 
