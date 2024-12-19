@@ -21,7 +21,7 @@ export function extractActorContext<A = BaseActor>(
   actorContext: React.Context<CreateActorContextType<A> | null>
 ): Omit<
   CreateActorContextReturnType<A>,
-  "ActorProvider" | "ActorHookProvider"
+  "ActorProvider" | "ActorHookProvider" | "ActorManagerProvider"
 > {
   const useActorContext = () => {
     const context = React.useContext(actorContext)

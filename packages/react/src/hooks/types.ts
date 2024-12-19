@@ -4,6 +4,7 @@ import {
   ActorManagerParameters,
   BaseActor,
   CanisterId,
+  ActorManager,
 } from "../types"
 
 export type ActorReConfigParameters = Omit<
@@ -18,12 +19,20 @@ export interface UseActorParameters extends ActorReConfigParameters {
   disableAutoFetch?: boolean
 }
 
+export interface UseActorManagerParameters<A> extends ActorReConfigParameters {
+  actorManager: ActorManager<A>
+}
+
 export interface UseActorReturn<A = BaseActor> {
   hooks: ActorHooksReturnType<A> | null
   fetching: boolean
   fetchError: string | null
   authenticating: boolean
   initializeActor: InitializeActor
+}
+
+export interface UseActorManagerReturn<A = BaseActor> {
+  hooks: ActorHooksReturnType<A>
 }
 
 export type InitializeActor = (

@@ -10,7 +10,9 @@ import type {
   ActorHookProviderProps,
   CreateActorContextType,
   ActorChildrenProps,
+  ActorManagerProviderProps,
 } from "./types"
+import { useActorManager } from "../../hooks/useActorManager"
 /**
  * Creates a React context specifically designed for managing the state and interactions with an actor on the Internet Computer (IC) blockchain.
  * This context facilitates the dynamic creation and management of IC actors within React applications, leveraging the provided configuration options.
@@ -155,9 +157,23 @@ export function createActorContext<A = BaseActor>(
     )
   }
 
+  const ActorManagerProvider: React.FC<ActorManagerProviderProps<A>> = ({
+    actorManager,
+    children,
+  }) => {
+    const { hooks } = useActorManager<A>({
+      actorManager,
+    })
+
+    return (
+      <ActorContext.Provider value={hooks}>{children}</ActorContext.Provider>
+    )
+  }
+
   return {
     ActorProvider,
     ActorHookProvider,
+    ActorManagerProvider,
     ...extractActorContext<A>(ActorContext),
   }
 }

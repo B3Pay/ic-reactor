@@ -5,6 +5,7 @@ import type {
   ActorManagerParameters,
   CanisterId,
   InitializeActor,
+  ActorManager,
 } from "../../types"
 
 export interface CreateActorContextType<A = BaseActor>
@@ -16,12 +17,18 @@ export interface CreateActorContextReturnType<A = BaseActor>
   extends ActorHooksReturnType<A> {
   ActorProvider: React.FC<ActorProviderProps>
   ActorHookProvider: React.FC<ActorHookProviderProps<A>>
+  ActorManagerProvider: React.FC<ActorManagerProviderProps<A>>
   useInitializeActor: () => InitializeActor
 }
 
 export interface ActorHookProviderProps<A> {
   hooks: ActorHooksReturnType<A>
   children?: React.ReactNode
+}
+
+export interface ActorManagerProviderProps<A> {
+  children?: React.ReactNode | undefined
+  actorManager: ActorManager<A>
 }
 
 export interface ActorProviderProps extends CreateActorContextParameters {
