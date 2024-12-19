@@ -9,7 +9,7 @@ const ICRC1_CANISTERS = [
   { canisterId: "yfumr-cyaaa-aaaar-qaela-cai", symbol: "ckSepoliaUSDC" },
 ]
 
-export const idlFactory = ({ IDL }) => {
+export const idlFactory = ({ IDL }: any) => {
   return IDL.Service({
     icrc1_symbol: IDL.Func([], [IDL.Text], ["query"]),
   })
@@ -47,7 +47,7 @@ describe("My IC Store and Actions", () => {
   })
 
   it("should return the Symbol for each canister", async () => {
-    for (const canister of ICRC1_CANISTERS) {
+    for await (const canister of ICRC1_CANISTERS) {
       const { dataPromise } = queryCall({
         canisterId: canister.canisterId,
         functionName: "icrc1_symbol",

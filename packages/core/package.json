@@ -32,7 +32,7 @@
     "@dfinity/identity": ">=2.1",
     "@dfinity/principal": ">=2.1",
     "simple-cbor": "^0.4.1",
-    "zustand": "4.5.5"
+    "zustand": "5.0.2"
   },
   "peerDependencies": {
     "@dfinity/agent": ">=2.1",
@@ -48,7 +48,7 @@
     "webpack": "^5.96.1"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
+    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" npx jest",
     "start": "tsc watch",
     "bundle": "yarn bundle:dev && yarn bundle:prod",
     "bundle:dev": "npx webpack-cli --mode development",

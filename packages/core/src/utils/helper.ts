@@ -1,15 +1,29 @@
 import { hash, toHex } from "@dfinity/agent"
 import { DevtoolsOptions, devtools } from "zustand/middleware"
-import { createStore } from "zustand/vanilla"
+import { createStore, StoreApi } from "zustand"
 
-import type { CompiledResult, BaseActor, CandidDefenition, IDL } from "../types"
+import type {
+  CompiledResult,
+  BaseActor,
+  CandidDefenition,
+  IDL,
+  StoreApiWithDevtools,
+  ExtractOk,
+} from "../types"
 import { createSimpleHash } from "./hash"
 import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
 
+/**
+ * Creates a Zustand store with optional DevTools middleware.
+ *
+ * @param initialState - The initial state of the store.
+ * @param config - Configuration options for DevTools.
+ * @returns A Zustand store with DevTools enabled if configured, otherwise a standard store.
+ */
 export function createStoreWithOptionalDevtools<T>(
   initialState: T,
   config: DevtoolsOptions
-) {
+): StoreApiWithDevtools<T> | StoreApi<T> {
   if (config.withDevtools) {
     return createStore(
       devtools(() => initialState, {
@@ -57,15 +71,31 @@ export const importCandidDefinition = async (
   }
 }
 
+/**
+ * Checks if the current environment is local or development.
+ *
+ * @returns `true` if running in a local or development environment, otherwise `false`.
+ */
 export const isInLocalOrDevelopment = () => {
   return typeof process !== "undefined" && process.env.DFX_NETWORK === "local"
 }
 
+/**
+ * Retrieves the network from the process environment variables.
+ *
+ * @returns The network name, defaulting to "ic" if not specified.
+ */
 export const getProcessEnvNetwork = () => {
   if (typeof process === "undefined") return "ic"
   else return process.env.DFX_NETWORK ?? "ic"
 }
 
+/**
+ * Determines the network type based on the provided hostname.
+ *
+ * @param hostname - The hostname to evaluate.
+ * @returns A string indicating the network type: "local", "remote", or "ic".
+ */
 export function getNetworkByHostname(
   hostname: string
 ): "local" | "remote" | "ic" {
@@ -78,6 +108,12 @@ export function getNetworkByHostname(
   }
 }
 
+/**
+ * Checks if a given IDL function is a query.
+ *
+ * @param func - The IDL function to check.
+ * @returns `true` if the function is a query or composite query, otherwise `false`.
+ */
 export function isQuery(func: IDL.FuncClass): boolean {
   return (
     func.annotations.includes("query") ||
@@ -118,7 +154,12 @@ function toHexString(bytes: ArrayBuffer) {
   return toHex(bytes)
 }
 
-/// Helper function for extracting the value from a compiled result { Ok: T } or { Err: E }
+/**
+ * Helper function for extracting the value from a compiled result { Ok: T } or { Err: E }
+ *
+ * @param result - The compiled result to extract from.
+ * @returns A `CompiledResult` object indicating success or failure.
+ */
 export function createCompiledResult<T>(result: T): CompiledResult<T> {
   if (result && typeof result === "object" && "Ok" in result) {
     return {
@@ -143,4 +184,20 @@ export function createCompiledResult<T>(result: T): CompiledResult<T> {
       error: null,
     } as never
   }
+}
+
+/**
+ * Helper function for extracting the value from a compiled result { Ok: T } or throw the error if { Err: E }
+ *
+ * @param result - The compiled result to extract from.
+ * @returns The extracted value from the compiled result.
+ * @throws The error from the compiled result.
+ */
+export function extractOkResult<T>(result: T): ExtractOk<T> {
+  const compiledResult = createCompiledResult(result)
+  if (compiledResult.isErr) {
+    throw compiledResult.error
+  }
+
+  return compiledResult.value as ExtractOk<T>
 }

@@ -2024,7 +2024,7 @@ __metadata:
     simple-cbor: "npm:^0.4.1"
     ts-loader: "npm:^9.5.1"
     webpack: "npm:^5.96.1"
-    zustand: "npm:4.5.5"
+    zustand: "npm:5.0.2"
   peerDependencies:
     "@dfinity/agent": ">=2.1"
     "@dfinity/auth-client": ">=2.1"
@@ -22369,7 +22369,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zustand@npm:4.5, zustand@npm:4.5.5":
+"zustand@npm:4.5":
   version: 4.5.5
   resolution: "zustand@npm:4.5.5"
   dependencies:
@@ -22386,5 +22386,26 @@ __metadata:
     react:
       optional: true
   checksum: 10c0/d04469d76b29c7e4070da269886de4efdadedd3d3824dc2a06ac4ff62e3b5877f925e927afe7382de651829872b99adec48082f1bd69fe486149be666345e626
+  languageName: node
+  linkType: hard
+
+"zustand@npm:5.0.2":
+  version: 5.0.2
+  resolution: "zustand@npm:5.0.2"
+  peerDependencies:
+    "@types/react": ">=18.0.0"
+    immer: ">=9.0.6"
+    react: ">=18.0.0"
+    use-sync-external-store: ">=1.2.0"
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    immer:
+      optional: true
+    react:
+      optional: true
+    use-sync-external-store:
+      optional: true
+  checksum: 10c0/d9bb048d8129fd1aaed3fda974991b15a7c9c31ef06f78e9bf5c4b3678f249850764a6dadb8c93127257d07831995cf7a048281658a37c5d1143ad6f397fe37c
   languageName: node
   linkType: hard
