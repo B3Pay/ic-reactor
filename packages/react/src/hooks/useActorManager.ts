@@ -1,4 +1,3 @@
-import { useMemo } from "react"
 import { actorHooks } from "../helpers"
 
 import type { BaseActor } from "../types"
@@ -74,9 +73,7 @@ export const useActorManager = <A = BaseActor>(
 ): UseActorManagerReturn<A> => {
   const { actorManager } = config
 
-  const hooks = useMemo(() => {
-    return actorHooks(actorManager)
-  }, [actorManager])
+  const hooks = actorHooks(actorManager)
 
   return { hooks }
 }

@@ -50,3 +50,26 @@ export const ActorProvider = ActorHooks.ActorProvider
  * This setup ensures that `YourComponent` and any of its children can interact with the specified IC actor hooks through the context provided by `ActorHookProvider`.
  */
 export const ActorHookProvider = ActorHooks.ActorHookProvider
+
+/**
+ * `ActorManagerProvider` is a React functional component that serves as a context provider for IC actor managers within a React application.
+ * It wraps child components, providing them access to actor-specific manager functionalities based on the provided actor manager and configuration.
+ *
+ * Props:
+ * - `actorManager`: ActorManager - The actor manager object containing the actor manager functionalities.
+ * - `children`: React Node - The child components that will have access to the actor manager context.
+ *
+ * Behavior:
+ * - Validates the presence of the `actorManager`. Throws an error if it is missing, ensuring that the actor manager is always available for actor operations.
+ * - Utilizes `useMemo` to memoize the `actorManager`, optimizing for performance by avoiding unnecessary recalculations.
+ * - Renders the child components once the `actorManager` is available, effectively providing them access to the actor manager context.
+ *
+ * @example
+ * ```jsx
+ * <ActorManagerProvider actorManager={yourActorManager}>
+ *   <YourComponent />
+ * </ActorManagerProvider>
+ * ```
+ * This setup ensures that `YourComponent` and any of its children can interact with the specified IC actor manager through the context provided by `ActorManagerProvider`.
+ */
+export const ActorManagerProvider = ActorHooks.ActorManagerProvider
