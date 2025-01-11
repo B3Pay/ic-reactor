@@ -28,7 +28,7 @@
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/parser#readme",
   "scripts": {
-    "test": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest",
+    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" npx jest",
     "build": "yarn clean && yarn build:web && yarn build:node && yarn build:bundler",
     "build:web": "npx wasm-pack build --release --target web --out-dir dist/web --out-name index",
     "build:node": "npx wasm-pack build --release --target nodejs --out-dir dist/nodejs --out-name index",

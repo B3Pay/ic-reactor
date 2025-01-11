@@ -8,13 +8,20 @@ exports[`createReactor should query 1`] = `
 
 exports[`createReactor should query 2`] = `
 <div>
-  Fetching canister...
+  Loading canister...
 </div>
 `;
 
 exports[`createReactor should query 3`] = `
 <div>
-  Fetching canister...
+  <button
+    onClick={[Function]}
+  >
+    Get Version
+  </button>
+  <span>
+    Ready To call
+  </span>
 </div>
 `;
 
