@@ -11,7 +11,7 @@ export const ICRC1_CANISTERS = [
   { canisterId: "yfumr-cyaaa-aaaar-qaela-cai", symbol: "ckSepoliaUSDC" },
 ]
 
-export const idlFactory = ({ IDL }) => {
+export const idlFactory = ({ IDL }: any) => {
   return IDL.Service({
     icrc1_symbol: IDL.Func([], [IDL.Text], ["query"]),
   })

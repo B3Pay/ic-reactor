@@ -24,7 +24,15 @@ import type {
 import { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
 import type { UpdateAgentParameters } from "../types"
-import { ACTOR_INITIAL_STATE } from "../../utils"
+
+const ACTOR_INITIAL_STATE = {
+  name: "",
+  version: 0,
+  methodState: {},
+  initializing: false,
+  initialized: false,
+  error: undefined,
+}
 
 export class ActorManager<A = BaseActor> {
   private _actor: null | A = null
@@ -305,8 +313,23 @@ export class ActorManager<A = BaseActor> {
     return this.actorStore.getState()
   }
 
-  public subscribeActorState: ActorStore<A>["subscribe"] = (listener) => {
-    const unsubscribe = this.actorStore.subscribe(listener)
+  // @ts-expect-error: Overrides subscribe method signature
+  public subscribeActorState: ActorStore<A>["subscribe"] = (
+    selectorOrListener,
+    listener,
+    options
+  ) => {
+    let unsubscribe = () => {}
+    if (listener) {
+      unsubscribe = this.actorStore.subscribe(
+        selectorOrListener,
+        listener,
+        options
+      )
+    } else {
+      unsubscribe = this.actorStore.subscribe(selectorOrListener)
+    }
+
     this._subscribers.push(unsubscribe)
     return unsubscribe
   }

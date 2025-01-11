@@ -1,14 +1,21 @@
 import { hash, toHex } from "@dfinity/agent"
-import { DevtoolsOptions, devtools } from "zustand/middleware"
-import { createStore, StoreApi } from "zustand"
+import {
+  DevtoolsOptions,
+  devtools,
+  subscribeWithSelector,
+} from "zustand/middleware"
+import { createStore, StateCreator } from "zustand"
 
 import type {
   CompiledResult,
   BaseActor,
   CandidDefenition,
   IDL,
-  StoreApiWithDevtools,
   ExtractOk,
+  StoreWithAllMiddleware,
+  StoreWithSubscribeOnly,
+  WithSubscribeSelector,
+  WithDevtools,
 } from "../types"
 import { createSimpleHash } from "./hash"
 import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
@@ -20,23 +27,29 @@ import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
  * @param config - Configuration options for DevTools.
  * @returns A Zustand store with DevTools enabled if configured, otherwise a standard store.
  */
-export function createStoreWithOptionalDevtools<T>(
+export function createStoreWithOptionalDevtools<T extends object>(
   initialState: T,
-  config: DevtoolsOptions
-): StoreApiWithDevtools<T> | StoreApi<T> {
+  config: DevtoolsOptions & { withDevtools?: boolean }
+): StoreWithAllMiddleware<T> | StoreWithSubscribeOnly<T> {
+  const createState: StateCreator<T> = () => initialState
+
   if (config.withDevtools) {
-    return createStore(
-      devtools(() => initialState, {
-        serialize: {
-          replacer: (_: string, value: unknown) =>
-            typeof value === "bigint" ? value.toString() : value,
-        },
-        ...config,
-      })
+    return createStore<T, [WithSubscribeSelector, WithDevtools]>(
+      subscribeWithSelector(
+        devtools(createState, {
+          serialize: {
+            replacer: (_: string, value: unknown) =>
+              typeof value === "bigint" ? value.toString() : value,
+          },
+          ...config,
+        })
+      )
     )
-  } else {
-    return createStore(() => initialState)
   }
+
+  return createStore<T, [WithSubscribeSelector]>(
+    subscribeWithSelector(createState)
+  )
 }
 
 export const importCandidDefinition = async (

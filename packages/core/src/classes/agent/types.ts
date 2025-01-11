@@ -1,6 +1,6 @@
 import type { HttpAgent, HttpAgentOptions, Identity } from "@dfinity/agent"
 import type { AuthClient } from "@dfinity/auth-client"
-import type { StoreApiWithDevtools } from "../../types"
+import type { StoreWithAllMiddleware } from "../../types"
 
 export { HttpAgentOptions, AuthClient, Identity }
 
@@ -9,13 +9,14 @@ export interface AgentManagerParameters extends HttpAgentOptions {
   withLocalEnv?: boolean
   withDevtools?: boolean
   withProcessEnv?: boolean
+  initializeOnCreate?: boolean
 }
 
 export interface AgentState {
   initialized: boolean
   initializing: boolean
   error: Error | undefined
-  network: string
+  network: string | undefined
 }
 
 export interface AuthState {
@@ -30,5 +31,5 @@ export interface UpdateAgentParameters extends HttpAgentOptions {
 }
 
 // Type for the Reactor store
-export type AgentStore = StoreApiWithDevtools<AgentState>
-export type AuthStore = StoreApiWithDevtools<AuthState>
+export type AgentStore = StoreWithAllMiddleware<AgentState>
+export type AuthStore = StoreWithAllMiddleware<AuthState>

@@ -21,6 +21,20 @@ import {
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "../../utils/constants"
 
+const AGENT_INITIAL_STATE: AgentState = {
+  initialized: false,
+  initializing: false,
+  error: undefined,
+  network: undefined,
+}
+
+const AUTH_INITIAL_STATE: AuthState = {
+  identity: null,
+  authenticating: false,
+  authenticated: false,
+  error: undefined,
+}
+
 export class AgentManager {
   private _agent: HttpAgent
   private _auth: AuthClient | null = null
@@ -28,20 +42,6 @@ export class AgentManager {
 
   public agentStore: AgentStore
   public authStore: AuthStore
-
-  private initialAgentState: AgentState = {
-    initialized: false,
-    initializing: false,
-    error: undefined,
-    network: "ic",
-  }
-
-  private initialAuthState: AuthState = {
-    identity: null,
-    authenticating: false,
-    authenticated: false,
-    error: undefined,
-  }
 
   private updateAgentState = (
     newState: Partial<AgentState>,
@@ -68,6 +68,7 @@ export class AgentManager {
       port = 4943,
       withLocalEnv,
       withProcessEnv,
+      initializeOnCreate = true,
       ...agentOptions
     } = options || {}
     if (withProcessEnv) {
@@ -80,23 +81,26 @@ export class AgentManager {
       agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI
     }
 
-    this.agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
+    this.agentStore = createStoreWithOptionalDevtools(AGENT_INITIAL_STATE, {
       withDevtools,
       name: "reactor-agent",
       store: "agent",
     })
 
-    this.authStore = createStoreWithOptionalDevtools(this.initialAuthState, {
+    this.authStore = createStoreWithOptionalDevtools(AUTH_INITIAL_STATE, {
       withDevtools,
       name: "reactor-agent",
       store: "auth",
     })
 
     this._agent = HttpAgent.createSync(agentOptions)
-    this.initializeAgent()
+
+    if (initializeOnCreate) {
+      this.initializeAgent()
+    }
   }
 
-  private initializeAgent = async () => {
+  public initializeAgent = async () => {
     const network = this.getNetwork()
     this.updateAgentState(
       {
@@ -243,8 +247,17 @@ export class AgentManager {
     return this.agentStore.getState()
   }
 
-  public subscribeAgentState: AgentStore["subscribe"] = (listener) => {
-    return this.agentStore.subscribe(listener)
+  // @ts-expect-error: Overrides subscribe method signature
+  public subscribeAgentState: AgentStore["subscribe"] = (
+    selectorOrListener,
+    listener,
+    options
+  ) => {
+    if (listener) {
+      return this.agentStore.subscribe(selectorOrListener, listener, options)
+    }
+
+    return this.agentStore.subscribe(selectorOrListener)
   }
 
   // auth store
@@ -252,8 +265,17 @@ export class AgentManager {
     return this.authStore.getState()
   }
 
-  public subscribeAuthState: AuthStore["subscribe"] = (listener) => {
-    return this.authStore.subscribe(listener)
+  // @ts-expect-error: Overrides subscribe method signature
+  public subscribeAuthState: AuthStore["subscribe"] = (
+    selectorOrListener,
+    listener,
+    options
+  ) => {
+    if (listener) {
+      return this.authStore.subscribe(selectorOrListener, listener, options)
+    }
+
+    return this.authStore.subscribe(selectorOrListener)
   }
 
   public getAuth = () => {

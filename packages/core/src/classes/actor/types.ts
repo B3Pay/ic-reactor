@@ -1,10 +1,10 @@
 import type { AgentManager } from "../agent"
 import type {
   IDL,
-  StoreApiWithDevtools,
   ActorMethod,
   ActorSubclass,
   Principal,
+  StoreWithAllMiddleware,
 } from "../../types"
 import { CallConfig } from "@dfinity/agent"
 
@@ -90,7 +90,7 @@ export type ActorState<A = BaseActor> = {
   methodState: ActorMethodStates<A>
 }
 
-export type ActorStore<A = BaseActor> = StoreApiWithDevtools<ActorState<A>>
+export type ActorStore<A = BaseActor> = StoreWithAllMiddleware<ActorState<A>>
 
 // Function type for directly calling a method on an actor
 export type CallActorMethod<A = BaseActor> = <

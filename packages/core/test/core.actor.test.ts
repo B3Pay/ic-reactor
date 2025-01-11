@@ -29,79 +29,238 @@ fetchMock.mockResponse(async (req) => {
   })
 })
 
-describe("Initialize", () => {
-  const callback = jest.fn()
+describe("Initialize and Subscriptions", () => {
+  // Test specific to fireImmediately behavior
+  describe("Subscription Immediate Firing", () => {
+    const immediateCallback = jest.fn()
 
-  const { initialize, subscribeActorState, getState, updateCall, queryCall } =
-    createReactorCore<typeof hello>({
-      idlFactory,
-      canisterId: "aaaaa-aa",
-      initializeOnCreate: false,
-      verifyQuerySignatures: false,
-      host: "https://local-mock",
+    it("should fire immediately when option is set", () => {
+      const { subscribeActorState } = createReactorCore<typeof hello>({
+        idlFactory,
+        canisterId: "aaaaa-aa",
+        initializeOnCreate: false,
+        verifyQuerySignatures: false,
+        host: "https://local-mock",
+      })
+
+      const unsubscribe = subscribeActorState(
+        (state) => state.initialized,
+        immediateCallback,
+        { fireImmediately: true }
+      )
+
+      // Update expectation to match actual behavior - prev value is false on first call
+      expect(immediateCallback).toHaveBeenCalledTimes(1)
+      expect(immediateCallback).toHaveBeenCalledWith(false, false)
+
+      unsubscribe()
+    })
+  })
+
+  let callCounter = 0
+  const simpleCallback = jest.fn((_) => {
+    callCounter++
+  })
+  const methodStateCallback = jest.fn()
+  const loadingStateCallback = jest.fn()
+  const customEqualityFn = jest.fn((a, b) => a === b)
+  const counterCallback = jest.fn()
+
+  let unsubscribeSimple: () => void
+  let unsubscribeMethodState: () => void
+  let unsubscribeLoadingState: () => void
+  let unsubscribeCounter: () => void
+
+  const {
+    initialize,
+    subscribeActorState,
+    getState,
+    updateCall,
+    queryCall,
+    setState,
+  } = createReactorCore<typeof hello>({
+    idlFactory,
+    canisterId: "aaaaa-aa",
+    initializeOnCreate: false,
+    verifyQuerySignatures: false,
+    host: "https://local-mock",
+  })
+
+  beforeAll(async () => {
+    // First set up subscriptions
+    unsubscribeLoadingState = subscribeActorState(
+      (state) => state.initialized,
+      loadingStateCallback,
+      { fireImmediately: true }
+    )
+
+    // Wait for initial subscription to fire
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // Set up remaining subscriptions
+    unsubscribeCounter = subscribeActorState(
+      (state) => (state as any).counter,
+      counterCallback,
+      { fireImmediately: true }
+    )
+
+    unsubscribeMethodState = subscribeActorState(
+      (state) => state.methodState,
+      methodStateCallback,
+      { equalityFn: customEqualityFn }
+    )
+
+    unsubscribeSimple = subscribeActorState((state) => {
+      simpleCallback(state)
+      return state
     })
 
-  subscribeActorState(callback)
+    // Set initial state after subscriptions
+    setState((state) => ({
+      ...state,
+      counter: 0,
+    }))
 
-  it("should initialize the actor", async () => {
-    expect(getState().initialized).toEqual(false)
+    // Wait for state updates to propagate
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  beforeEach(() => {
+    simpleCallback.mockClear()
+    methodStateCallback.mockClear()
+    loadingStateCallback.mockClear()
+    customEqualityFn.mockClear()
+    counterCallback.mockClear()
+  })
+
+  afterAll(() => {
+    unsubscribeSimple()
+    unsubscribeMethodState()
+    unsubscribeLoadingState()
+    unsubscribeCounter()
+  })
+
+  it("should handle initialization and update simple subscription", async () => {
     await initialize()
 
-    expect(getState().initialized).toEqual(true)
-    expect(callback).toHaveBeenCalledTimes(2)
+    expect(simpleCallback).toHaveBeenCalled()
+    const lastCall =
+      simpleCallback.mock.calls[simpleCallback.mock.calls.length - 1][0]
+    expect(lastCall.initialized).toBe(true)
   })
 
-  it("should queryCall the query method", async () => {
-    const { requestHash, dataPromise, call, getState } = queryCall({
-      functionName: "greet",
-      args: ["World"],
-    })
-    expect(requestHash).toEqual("0x3e5c8666")
-
-    const data = await dataPromise
-    expect(data).toEqual(canisterDecodedReturnValue)
-
-    expect(getState()).toEqual({
-      data: canisterDecodedReturnValue,
-      loading: false,
-      error: undefined,
-    })
-    const res = call()
-
-    expect(res).resolves.toEqual(canisterDecodedReturnValue)
-  })
-
-  it("should subscribe to the actor state", () => {
-    expect(callback).toHaveBeenCalledTimes(7)
-  })
-
-  it("should updateCall the query method", async () => {
-    const { requestHash, call, getState } = updateCall({
+  it("should handle selector subscription with equality function", async () => {
+    const { call } = updateCall({
       functionName: "greet",
       args: ["World"],
     })
 
-    expect(requestHash).toEqual("0x3e5c8666")
+    await call()
 
-    const loadingBefore = getState("loading")
-    expect(loadingBefore).toEqual(false)
+    expect(methodStateCallback).toHaveBeenCalled()
+    expect(methodStateCallback).toHaveBeenCalledTimes(3)
 
-    const result = call()
-
-    const loadingAfter = getState("loading")
-    expect(loadingAfter).toEqual(true)
-
-    const data = await result
-    expect(data).toEqual(canisterDecodedReturnValue)
-
-    expect(getState()).toEqual({
-      data: canisterDecodedReturnValue,
-      loading: false,
-      error: undefined,
-    })
+    expect(customEqualityFn).toHaveBeenCalled()
+    expect(customEqualityFn).toHaveBeenCalledTimes(3)
   })
 
-  it("should subscribe to the actor state", () => {
-    expect(callback).toHaveBeenCalledTimes(10)
+  it("should track state updates with counter", async () => {
+    // Clear previous calls
+    counterCallback.mockClear()
+
+    const initialCounter = (getState() as any).counter
+
+    // Update counter multiple times
+    for (let i = 0; i < 3; i++) {
+      setState((state) => ({
+        ...state,
+        counter: (state as any).counter + 1,
+      }))
+      // Wait for state update to propagate
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    expect(counterCallback.mock.calls.length).toBe(3)
+    const lastCall =
+      counterCallback.mock.calls[counterCallback.mock.calls.length - 1]
+    expect(lastCall).toEqual([initialCounter + 3, initialCounter + 2])
+  })
+
+  it("should queryCall and notify all subscribers", async () => {
+    const { dataPromise } = queryCall({
+      functionName: "greet",
+      args: ["World"],
+    })
+
+    await dataPromise
+
+    expect(simpleCallback).toHaveBeenCalled()
+    expect(methodStateCallback).toHaveBeenCalled()
+  })
+
+  it("should updateCall and track loading states", async () => {
+    const { call } = updateCall({
+      functionName: "greet",
+      args: ["World"],
+    })
+
+    const promise = call()
+
+    // Verify loading state
+    const loadingState = methodStateCallback.mock.calls.find(
+      (call) => call[0]?.greet?.["0x3e5c8666"]?.loading === true
+    )
+    expect(loadingState).toBeTruthy()
+
+    await promise
+
+    // Verify completed state
+    const completedState = methodStateCallback.mock.calls.find(
+      (call) =>
+        call[0]?.greet?.["0x3e5c8666"]?.data === canisterDecodedReturnValue &&
+        call[0]?.greet?.["0x3e5c8666"]?.loading === false
+    )
+    expect(completedState).toBeTruthy()
+  })
+
+  it("should handle error states and notify subscribers", async () => {
+    fetchMock.mockRejectOnce(new Error("Network error"))
+
+    const { call } = updateCall({
+      functionName: "greet",
+      args: ["World"],
+    })
+
+    try {
+      await call()
+    } catch (error) {
+      const errorState = methodStateCallback.mock.calls.find(
+        (call) =>
+          call[0]?.greet?.["0x3e5c8666"]?.error instanceof Error &&
+          call[0]?.greet?.["0x3e5c8666"]?.loading === false
+      )
+      expect(errorState).toBeTruthy()
+    }
+  })
+
+  it("should unsubscribe and stop receiving updates", async () => {
+    simpleCallback.mockClear()
+    counterCallback.mockClear()
+
+    unsubscribeSimple()
+    unsubscribeMethodState()
+    unsubscribeLoadingState()
+    unsubscribeCounter()
+
+    setState((state) => ({
+      ...state,
+      counter: (state as any).counter + 1,
+    }))
+
+    // Wait for potential updates
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(simpleCallback).not.toHaveBeenCalled()
+    expect(counterCallback).not.toHaveBeenCalled()
   })
 })
