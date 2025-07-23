@@ -6,7 +6,7 @@ import type {
   Principal,
   StoreWithAllMiddleware,
 } from "../../types"
-import { CallConfig } from "@dfinity/agent"
+import type { AgentError, CallConfig } from "@dfinity/agent"
 
 export interface DefaultActorType {
   [key: string]: ActorMethod
@@ -63,7 +63,7 @@ export interface ActorMethodState<
   [key: string]: {
     data: ActorMethodReturnType<A[M]> | undefined
     loading: boolean
-    error: Error | undefined
+    error: AgentError | undefined
   }
 }
 
@@ -86,7 +86,7 @@ export type ActorState<A = BaseActor> = {
   version: number
   initialized: boolean
   initializing: boolean
-  error: Error | undefined
+  error: AgentError | undefined
   methodState: ActorMethodStates<A>
 }
 

@@ -1,5 +1,10 @@
 /* eslint-disable no-console */
-import { Actor } from "@dfinity/agent"
+import {
+  Actor,
+  AgentError,
+  UnexpectedErrorCode,
+  ErrorKindEnum,
+} from "@dfinity/agent"
 import {
   createStoreWithOptionalDevtools,
   generateRequestHash,
@@ -99,19 +104,28 @@ export class ActorManager<A = BaseActor> {
     } = actorConfig
 
     if (!canisterId) {
-      throw new Error("CanisterId is required!")
+      throw new AgentError(
+        new UnexpectedErrorCode("CanisterId is required!"),
+        ErrorKindEnum.Unknown
+      )
     }
     this.canisterId = canisterId.toString()
 
     if (!idlFactory) {
-      throw new Error("IDLFactory is required!")
+      throw new AgentError(
+        new UnexpectedErrorCode("IDLFactory is required!"),
+        ErrorKindEnum.Unknown
+      )
     }
 
     this._idlFactory = idlFactory
     this.methodAttributes = this.extractMethodAttributes()
 
     if (!agentManager) {
-      throw new Error("AgentManager is required!")
+      throw new AgentError(
+        new UnexpectedErrorCode("AgentManager is required!"),
+        ErrorKindEnum.Unknown
+      )
     }
     this._agentManager = agentManager
 
@@ -205,7 +219,10 @@ export class ActorManager<A = BaseActor> {
 
     try {
       if (!agent) {
-        throw new Error("Agent not initialized")
+        throw new AgentError(
+          new UnexpectedErrorCode("Agent not initialized"),
+          ErrorKindEnum.Unknown
+        )
       }
 
       this._actor = Actor.createActor<A>(_idlFactory, {
@@ -214,7 +231,10 @@ export class ActorManager<A = BaseActor> {
       })
 
       if (!this._actor) {
-        throw new Error("Failed to initialize actor")
+        throw new AgentError(
+          new UnexpectedErrorCode("Failed to initialize actor"),
+          ErrorKindEnum.Unknown
+        )
       }
 
       this.updateState(
@@ -226,20 +246,29 @@ export class ActorManager<A = BaseActor> {
       )
     } catch (error) {
       console.error("Error in initializeActor:", error)
-      this.updateState({ error: error as Error, initializing: false }, "error")
+      this.updateState(
+        { error: error as AgentError, initializing: false },
+        "error"
+      )
     }
   }
 
   private _getActorMethod = <M extends FunctionName<A>>(functionName: M) => {
     if (!this._actor) {
-      throw new Error("Actor not initialized")
+      throw new AgentError(
+        new UnexpectedErrorCode("Actor not initialized"),
+        ErrorKindEnum.Unknown
+      )
     }
 
     if (
       !this._actor[functionName as keyof A] ||
       typeof this._actor[functionName as keyof A] !== "function"
     ) {
-      throw new Error(`Method ${String(functionName)} not found`)
+      throw new AgentError(
+        new UnexpectedErrorCode(`Method ${String(functionName)} not found`),
+        ErrorKindEnum.Unknown
+      )
     }
 
     return this._actor[functionName as keyof A] as ActorMethodType<A, M>
@@ -291,11 +320,11 @@ export class ActorManager<A = BaseActor> {
     } catch (error) {
       this.updateMethodState(functionName, requestHash, {
         loading: false,
-        error: error as Error,
+        error: error as AgentError,
         data: undefined,
       })
 
-      throw error as Error
+      throw error as AgentError
     }
   }
 
@@ -346,10 +375,13 @@ export class ActorManager<A = BaseActor> {
 
 const emptyVisitor = new Proxy({} as VisitService<never>, {
   get: function (_, prop) {
-    throw new Error(
-      `Cannot visit function "${String(
-        prop
-      )}" without initializing the actor with the visitor option, please set the withVisitor option to true when creating the actor manager.`
+    throw new AgentError(
+      new UnexpectedErrorCode(
+        `Cannot visit function "${String(
+          prop
+        )}" without initializing the actor with the visitor option, please set the withVisitor option to true when creating the actor manager.`
+      ),
+      ErrorKindEnum.Unknown
     )
   },
 })

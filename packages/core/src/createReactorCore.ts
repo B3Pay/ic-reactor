@@ -15,6 +15,7 @@ import type {
   CreateReactorCoreParameters,
   CreateReactorCoreReturnType,
 } from "./types"
+import { AgentError } from "@dfinity/agent"
 
 /**
  * The Core module is the main entry point for the library.
@@ -101,7 +102,7 @@ export const createReactorCore = <A = BaseActor>(
           return data
         } catch (error) {
           updateState({
-            error: error as Error,
+            error: error as AgentError,
             loading: false,
           })
           throw error
@@ -116,7 +117,7 @@ export const createReactorCore = <A = BaseActor>(
       }
     } catch (error) {
       updateState({
-        error: error as Error,
+        error: error as AgentError,
         loading: false,
       })
 

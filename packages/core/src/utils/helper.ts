@@ -1,11 +1,11 @@
-import { hash, toHex } from "@dfinity/agent"
+import { sha256 } from "@noble/hashes/sha2"
+import { bytesToHex } from "@noble/hashes/utils"
 import {
   DevtoolsOptions,
   devtools,
   subscribeWithSelector,
 } from "zustand/middleware"
 import { createStore, StateCreator } from "zustand"
-
 import type {
   CompiledResult,
   BaseActor,
@@ -13,7 +13,6 @@ import type {
   IDL,
   ExtractOk,
   StoreWithAllMiddleware,
-  StoreWithSubscribeOnly,
   WithSubscribeSelector,
   WithDevtools,
 } from "../types"
@@ -30,25 +29,20 @@ import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
 export function createStoreWithOptionalDevtools<T extends object>(
   initialState: T,
   config: DevtoolsOptions & { withDevtools?: boolean }
-): StoreWithAllMiddleware<T> | StoreWithSubscribeOnly<T> {
+): StoreWithAllMiddleware<T> {
   const createState: StateCreator<T> = () => initialState
 
-  if (config.withDevtools) {
-    return createStore<T, [WithSubscribeSelector, WithDevtools]>(
-      subscribeWithSelector(
-        devtools(createState, {
-          serialize: {
-            replacer: (_: string, value: unknown) =>
-              typeof value === "bigint" ? value.toString() : value,
-          },
-          ...config,
-        })
-      )
+  return createStore<T, [WithSubscribeSelector, WithDevtools]>(
+    subscribeWithSelector(
+      devtools(createState, {
+        enabled: !!config.withDevtools,
+        serialize: {
+          replacer: (_: string, value: unknown) =>
+            typeof value === "bigint" ? value.toString() : value,
+        },
+        ...config,
+      })
     )
-  }
-
-  return createStore<T, [WithSubscribeSelector]>(
-    subscribeWithSelector(createState)
   )
 }
 
@@ -159,12 +153,12 @@ export const generateActorHash = (actor: BaseActor) => {
 }
 
 export const stringToHash = (str: string) => {
-  const hashBytes = hash(new TextEncoder().encode(str))
+  const hashBytes = sha256(new TextEncoder().encode(str))
   return `0x${toHexString(hashBytes)}` as `0x${string}`
 }
 
 function toHexString(bytes: ArrayBuffer) {
-  return toHex(bytes)
+  return bytesToHex(new Uint8Array(bytes))
 }
 
 /**
