@@ -40,7 +40,7 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
-    "wasm-pack": "0.13.1"
+    "wasm-pack": "^0.13.1"
   },
   "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe",
   "dependencies": {

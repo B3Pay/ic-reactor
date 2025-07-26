@@ -6,7 +6,8 @@
   "license": "MIT",
   "scripts": {
     "test": "bun test",
-    "size": "bun run size-limit"
+    "size": "bun run size-limit",
+    "build": "bun build --workspaces"
   },
   "publishConfig": {
     "access": "public",
@@ -31,7 +32,7 @@
     "@dfinity/identity": "^3.1.0",
     "@dfinity/principal": "^3.1.0",
     "@size-limit/preset-small-lib": "^11.2.0",
-    "@types/minimatch": "^6.0.0",
+    "@types/minimatch": "^5.1.2",
     "react": "^19.1.0",
     "size-limit": "^11.2.0",
     "zustand": "^5.0.6",

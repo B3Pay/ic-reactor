@@ -27,8 +27,8 @@
   "homepage": "https://b3pay.github.io/ic-reactor/modules/react.html",
   "scripts": {
     "test": "bun test",
-    "start": "bun run tsc --watch",
-    "build": "bun run tsc",
+    "start": "bun run ./src/index.ts --watch",
+    "build": "bun build ./src/index.ts --outdir ./dist",
     "clean": "bun run rimraf dist && bun run rimraf umd"
   },
   "engines": {
@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@ic-reactor/core": "^1.16.0",
-    "@ic-reactor/shared": "workspace:*",
+    "@ic-reactor/shared": "^0.1.0",
     "zustand": "^5.0.6",
     "zustand-utils": "^2.1.0"
   },
@@ -46,8 +46,8 @@
     "@dfinity/candid": "^3.1.0",
     "@dfinity/identity": "^3.1.0",
     "@dfinity/principal": "^3.1.0",
-    "react": "^18.2.0",
-    "zustand": "^5.4.0"
+    "react": ">=19.0.0",
+    "zustand": "^5.0.6"
   },
   "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe"
 }
