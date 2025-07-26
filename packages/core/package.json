@@ -26,40 +26,36 @@
   },
   "homepage": "https://b3pay.github.io/ic-reactor/modules/core.html",
   "dependencies": {
-    "@dfinity/agent": ">=3.0.0",
-    "@dfinity/auth-client": ">=3.0.0",
-    "@dfinity/candid": "3.0.0",
-    "@dfinity/identity": ">=3.0.0",
-    "@dfinity/principal": "3.0.0",
-    "@noble/hashes": "1.8.0",
-    "simple-cbor": "^0.4.1",
+    "@dfinity/agent": "^3.1.0",
+    "@dfinity/auth-client": "^3.1.0",
+    "@dfinity/candid": "^3.1.0",
+    "@dfinity/identity": "^3.1.0",
+    "@dfinity/principal": "^3.1.0",
+    "@ic-reactor/shared": "workspace:*",
     "zustand": "5.0.6"
   },
   "peerDependencies": {
-    "@dfinity/agent": ">=3.0.0",
-    "@dfinity/auth-client": ">=3.0.0",
-    "@dfinity/candid": ">=3.0.0",
-    "@dfinity/identity": ">=3.0.0",
-    "@dfinity/principal": ">=3.0.0"
+    "@dfinity/agent": ">=3.1.0",
+    "@dfinity/auth-client": ">=3.1.0",
+    "@dfinity/candid": ">=3.1.0",
+    "@dfinity/identity": ">=3.1.0",
+    "@dfinity/principal": ">=3.1.0"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "0.4.4",
-    "@types/node": "24.1.0",
-    "ts-loader": "9.5.2",
-    "webpack": "5.100.2"
+    "@ic-reactor/parser": "0.4.4"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" npx jest",
-    "start": "tsc watch",
-    "bundle": "yarn bundle:dev && yarn bundle:prod",
-    "bundle:dev": "npx webpack-cli --mode development",
-    "bundle:prod": "npx webpack-cli --mode production",
-    "build:tsc": "tsc",
-    "build": "yarn build:tsc && yarn bundle",
-    "clean": "npx rimraf dist && npx rimraf umd && npx rimraf node_modules"
+    "test": "bun test",
+    "start": "bun run tsc --watch",
+    "bundle": "bun run bundle:dev && bun run bundle:prod",
+    "bundle:dev": "bun run webpack-cli --mode development",
+    "bundle:prod": "bun run webpack-cli --mode production",
+    "build:tsc": "bun run tsc",
+    "build": "bun run build:tsc && bun run bundle",
+    "clean": "bun run rimraf dist && bun run rimraf umd && bun run rimraf node_modules"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=22.0.0"
   },
   "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe"
 }

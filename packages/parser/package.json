@@ -28,19 +28,27 @@
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/parser#readme",
   "scripts": {
-    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" npx jest",
-    "build": "yarn clean && yarn build:web && yarn build:node && yarn build:bundler",
-    "build:web": "npx wasm-pack build --release --target web --out-dir dist/web --out-name index",
-    "build:node": "npx wasm-pack build --release --target nodejs --out-dir dist/nodejs --out-name index",
-    "build:bundler": "npx wasm-pack build --release --target bundler --out-dir dist/bundler --out-name index",
-    "start": "tsc watch",
-    "clean": "npx rimraf dist"
+    "test": "bun test",
+    "build": "bun run clean && bun run build:web && bun run build:node && bun run build:bundler",
+    "build:web": "bun run wasm-pack build --release --target web --out-dir dist/web --out-name index",
+    "build:node": "bun run wasm-pack build --release --target nodejs --out-dir dist/nodejs --out-name index",
+    "build:bundler": "bun run wasm-pack build --release --target bundler --out-dir dist/bundler --out-name index",
+    "start": "bun run tsc --watch",
+    "clean": "bun run rimraf dist"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=22.0.0"
   },
   "devDependencies": {
     "wasm-pack": "0.13.1"
   },
-  "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe"
+  "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe",
+  "dependencies": {
+    "@ic-reactor/shared": "workspace:*",
+    "@dfinity/agent": "^3.1.0",
+    "@dfinity/auth-client": "^3.1.0",
+    "@dfinity/candid": "^3.1.0",
+    "@dfinity/identity": "^3.1.0",
+    "@dfinity/principal": "^3.1.0"
+  }
 }

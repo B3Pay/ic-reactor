@@ -26,34 +26,28 @@
   },
   "homepage": "https://b3pay.github.io/ic-reactor/modules/react.html",
   "scripts": {
-    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" npx jest",
-    "start": "tsc watch",
-    "build": "tsc",
-    "clean": "npx rimraf dist && npx rimraf umd"
+    "test": "bun test",
+    "start": "bun run tsc --watch",
+    "build": "bun run tsc",
+    "clean": "bun run rimraf dist && bun run rimraf umd"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=22.0.0"
   },
   "dependencies": {
     "@ic-reactor/core": "^1.16.0",
-    "zustand": "5.0.6",
-    "zustand-utils": "2.1.0"
+    "@ic-reactor/shared": "workspace:*",
+    "zustand": "^5.0.6",
+    "zustand-utils": "^2.1.0"
   },
   "peerDependencies": {
-    "@dfinity/agent": ">=3.0.0",
-    "@dfinity/auth-client": ">=3.0.0",
-    "@dfinity/candid": ">=3.0.0",
-    "@dfinity/identity": ">=3.0.0",
-    "@dfinity/principal": ">=3.0.0",
-    "react": ">=19.0",
-    "zustand": ">=5.0.0"
+    "@dfinity/agent": "^3.1.0",
+    "@dfinity/auth-client": "^3.1.0",
+    "@dfinity/candid": "^3.1.0",
+    "@dfinity/identity": "^3.1.0",
+    "@dfinity/principal": "^3.1.0",
+    "react": "^18.2.0",
+    "zustand": "^5.4.0"
   },
-  "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe",
-  "devDependencies": {
-    "@dfinity/agent": ">=3.0.0",
-    "@dfinity/auth-client": ">=3.0.0",
-    "@types/node": "24.1.0",
-    "@types/react": "^19",
-    "react": "^19"
-  }
+  "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe"
 }

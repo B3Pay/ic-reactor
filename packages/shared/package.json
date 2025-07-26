@@ -1,0 +1,17 @@
+{
+  "name": "@ic-reactor/shared",
+  "version": "0.1.0",
+  "description": "Shared utilities and types for the ic-reactor monorepo.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun run tsc -b",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
+  }
+}
