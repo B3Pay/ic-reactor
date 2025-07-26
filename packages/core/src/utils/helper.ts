@@ -152,13 +152,9 @@ export const generateActorHash = (actor: BaseActor) => {
   return stringToHash(serializedArgs ?? "")
 }
 
-export const stringToHash = (str: string) => {
-  const hashBytes = sha256(new TextEncoder().encode(str))
-  return `0x${toHexString(hashBytes)}` as `0x${string}`
-}
-
-function toHexString(bytes: ArrayBuffer) {
-  return bytesToHex(new Uint8Array(bytes))
+export const stringToHash = (str: string): `0x${string}` => {
+  const hashBytes = sha256(str)
+  return `0x${bytesToHex(hashBytes)}`
 }
 
 /**
