@@ -27,10 +27,8 @@
   "homepage": "https://b3pay.github.io/ic-reactor/modules/react.html",
   "scripts": {
     "test": "bun test",
-    "start": "bun run ./src/index.ts --watch",
-    "build": "bun build ./src/index.ts --outdir ./dist",
-    "build:umd": "webpack --mode=production",
-    "build:umd:dev": "webpack --mode=development",
+    "start": "bun run tsc watch",
+    "build": "bun run tsc",
     "clean": "bun run rimraf dist && bun run rimraf umd"
   },
   "engines": {

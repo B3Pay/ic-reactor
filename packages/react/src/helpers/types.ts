@@ -1,4 +1,4 @@
-import { CallConfig } from "@dfinity/agent"
+import { AgentError, CallConfig } from "@dfinity/agent"
 import type {
   IDL,
   ActorState,
@@ -70,7 +70,7 @@ export interface UseActorStateReturnType
 
 export type UseSharedCallState<A, M extends FunctionName<A>> = {
   data: ActorMethodReturnType<A[M]> | undefined
-  error: Error | undefined
+  error: AgentError | undefined
   loading: boolean
 }
 
@@ -79,7 +79,7 @@ export interface UseSharedCallParameters<A, M extends FunctionName<A>>
   functionName: M
   args?: ActorMethodParameters<A[M]>
   onLoading?: (loading: boolean) => void
-  onError?: (error: Error | undefined) => void
+  onError?: (error: AgentError | undefined) => void
   onSuccess?: (data: ActorMethodReturnType<A[M]>) => void
   onSuccessResult?: (value: ExtractOk<ActorMethodReturnType<A[M]>>) => void
   onErrorResult?: (error: ExtractErr<ActorMethodReturnType<A[M]>>) => void
@@ -143,7 +143,7 @@ export interface UseMethodReturnType<
   loading: boolean
   formRequired: boolean
   requestKey: string
-  error: Error | undefined
+  error: AgentError | undefined
   data: ActorMethodReturnType<A[M]> | undefined
   validateArgs: (args?: ActorMethodParameters<A[M]> | undefined) => boolean
   visit: VisitService<A>[M]

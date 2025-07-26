@@ -28,6 +28,7 @@ import {
   type ActorMethodState,
   type ActorState,
 } from "@ic-reactor/core/dist/types"
+import { AgentError } from "@dfinity/agent"
 
 const DEFAULT_STATE: UseSharedCallState<never, never> = {
   data: undefined,
@@ -192,10 +193,10 @@ export const actorHooks = <A = BaseActor>(
           console.error(`Error calling method ${functionName}:`, error)
           latestDataRef.current = undefined
           setSharedState({
-            error: error as Error,
+            error: error as AgentError,
             loading: false,
           })
-          onError?.(error as Error)
+          onError?.(error as AgentError)
           onLoading?.(false)
           if (throwOnError) throw error
         }

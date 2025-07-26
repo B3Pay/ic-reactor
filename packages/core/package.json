@@ -47,11 +47,11 @@
   "scripts": {
     "test": "bun test",
     "start": "bun run tsc --watch",
+    "build:tsc": "bun run tsc",
+    "build": "bun run build:tsc && bun run bundle",
     "bundle": "bun run bundle:dev && bun run bundle:prod",
     "bundle:dev": "bun run webpack-cli --mode development",
     "bundle:prod": "bun run webpack-cli --mode production",
-    "build:tsc": "bun run tsc",
-    "build": "bun run build:tsc && bun run bundle",
     "clean": "bun run rimraf dist && bun run rimraf umd && bun run rimraf node_modules"
   },
   "engines": {
