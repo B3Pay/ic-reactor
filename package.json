@@ -35,6 +35,9 @@
     "@types/minimatch": "^5.1.2",
     "react": "^19.1.0",
     "size-limit": "^11.2.0",
+    "typescript": "5.8.3",
+    "webpack": "^5.100.2",
+    "webpack-cli": "^6.0.1",
     "zustand": "^5.0.6",
     "zustand-utils": "^2.1.0"
   },

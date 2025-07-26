@@ -10,8 +10,5 @@
   "scripts": {
     "build": "bun run tsc -b",
     "test": "bun test"
-  },
-  "devDependencies": {
-    "typescript": "5.8.3"
   }
 }
