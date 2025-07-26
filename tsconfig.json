@@ -10,7 +10,8 @@
     "moduleResolution": "Node",
     "jsx": "react",
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "types": ["bun-types"]
   },
   "exclude": ["**/*.spec.ts", "examples", ".next", "dist", "test", "out"]
 }

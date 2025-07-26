@@ -33,6 +33,7 @@
     "@dfinity/principal": "^3.1.0",
     "@size-limit/preset-small-lib": "^11.2.0",
     "@types/minimatch": "^5.1.2",
+    "bun-types": "^1.2.19",
     "react": "^19.1.0",
     "size-limit": "^11.2.0",
     "typescript": "5.8.3",

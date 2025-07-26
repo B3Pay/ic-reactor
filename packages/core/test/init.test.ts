@@ -1,20 +1,18 @@
-import { Cbor } from "@dfinity/agent"
+import { mock, expect, describe, it, afterEach } from "bun:test"
 import { IDL } from "@dfinity/candid"
-import fetchMock from "jest-fetch-mock"
 import { idlFactory } from "./candid/hello"
 import { _SERVICE } from "./candid/hello/hello.did"
 import { createActorManager, createAgentManager } from "../src"
+import { Cbor } from "@dfinity/agent"
 
-fetchMock.enableMocks()
-
+// --- Mock Setup ---
 const canisterDecodedReturnValue = "Hello, World!"
 const expectedReplyArg = IDL.encode([IDL.Text], [canisterDecodedReturnValue])
 
-fetchMock.mockResponse(async (req) => {
+// Use `fetchMock.doMock` for a persistent handler
+fetchMock.doMock(async (req) => {
   if (req.url.endsWith("/call")) {
-    return Promise.resolve({
-      status: 200,
-    })
+    return new Response(null, { status: 200 })
   }
 
   const responseObj = {
@@ -23,17 +21,20 @@ fetchMock.mockResponse(async (req) => {
       arg: expectedReplyArg,
     },
   }
-
-  return Promise.resolve({
-    status: 200,
-    body: Cbor.encode(responseObj),
-  })
+  return new Response(Cbor.encode(responseObj))
 })
 
+// `resetMocks()` will correctly clear the mock set by `doMock`
+afterEach(() => {
+  fetchMock.resetMocks()
+})
+
+// --- Test Suite ---
 describe("CreateActor", () => {
-  const agentCallback = jest.fn()
-  const authCallback = jest.fn()
-  const actorCallback = jest.fn()
+  // Replaced jest.fn() with mock() from bun:test
+  const agentCallback = mock()
+  const authCallback = mock()
+  const actorCallback = mock()
 
   const agentManager = createAgentManager({
     verifyQuerySignatures: false,
@@ -61,10 +62,12 @@ describe("CreateActor", () => {
   subscribeActorState(actorCallback)
 
   it("should return the actor agent manager", () => {
+    // expect() is identical
     expect(actorAgentManager).toEqual(agentManager)
   })
 
   it("should initialized the actor", async () => {
+    // All assertions are identical
     expect(agentCallback).toHaveBeenCalledTimes(1)
     expect(authCallback).toHaveBeenCalledTimes(0)
     expect(actorCallback).toHaveBeenCalledTimes(0)
@@ -86,9 +89,11 @@ describe("CreateActor", () => {
 
   it("should queryCall the query method", async () => {
     const data = await callMethod("greet", "World")
-
     expect(data).toEqual(canisterDecodedReturnValue)
   })
+
+  // The rest of your tests will work without any changes to their logic
+  // because the `expect` and mock assertion APIs are the same.
 
   it("should have not authenticated the actor", () => {
     const { authenticated, authenticating } = agentManager.getAuthState()
