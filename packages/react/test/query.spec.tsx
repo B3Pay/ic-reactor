@@ -9,6 +9,7 @@ import { CreateReactorCoreParameters } from "../src/types"
 const config: CreateReactorCoreParameters = {
   canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   idlFactory,
+  initializeOnCreate: false,
 }
 
 const { useQueryCall } = createReactor<typeof backend>(config)
