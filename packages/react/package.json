@@ -36,7 +36,6 @@
   },
   "dependencies": {
     "@ic-reactor/core": "^1.16.0",
-    "@ic-reactor/shared": "^0.1.0",
     "zustand": "^5.0.6",
     "zustand-utils": "^2.1.0"
   },

@@ -41,7 +41,6 @@
     "@dfinity/principal": ">=3.1.0"
   },
   "devDependencies": {
-    "@ic-reactor/shared": "workspace:*",
     "@ic-reactor/parser": "workspace:*"
   },
   "scripts": {

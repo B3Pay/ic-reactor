@@ -1,6 +1,7 @@
 import { createReactorStore } from "@ic-reactor/core"
 import { VisitRandomArgs } from "../src"
 import { _SERVICE, idlFactory } from "./candid/ledger"
+import { describe, it, expect } from "bun:test"
 
 describe("createReactorStore", () => {
   const { extractInterface } = createReactorStore<_SERVICE>({

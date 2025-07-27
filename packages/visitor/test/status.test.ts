@@ -2,6 +2,7 @@ import { Status } from "../src/status"
 import { createReactorStore } from "@ic-reactor/core"
 import { VisitDetail } from "../src"
 import { _SERVICE, idlFactory } from "./candid/ledger"
+import { describe, it, expect } from "bun:test"
 
 describe("createReactorStore and visit", () => {
   const { extractInterface } = createReactorStore<_SERVICE>({

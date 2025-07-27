@@ -2,6 +2,7 @@ import { createReactorStore } from "@ic-reactor/core"
 import { VisitDetail, VisitLayout, VisitField, VisitRandomRets } from "../src"
 import { _SERVICE, idlFactory } from "./candid/ledger"
 import { jsonToString } from "@ic-reactor/core/dist/utils"
+import { describe, it, expect } from "bun:test"
 
 describe("createReactorStore", () => {
   const { extractInterface } = createReactorStore<_SERVICE>({
