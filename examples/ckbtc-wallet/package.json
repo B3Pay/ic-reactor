@@ -6,8 +6,6 @@
     "@ic-reactor/react": "workspace:^",
     "@ic-reactor/visitor": "workspace:^",
     "@types/node": "^16.18.68",
-    "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.49.2",
