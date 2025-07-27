@@ -6,7 +6,7 @@ import type {
   FieldDetailWithChild,
   ReturnDetailRecord,
   FieldDetail,
-  MethodReturnDetail
+  MethodReturnDetail,
 } from "./types"
 import type { DynamicReturnType, BaseActor, FunctionName } from "../types"
 import { Status } from "../status"
@@ -52,7 +52,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
       label: functionName,
       status: Status.Default,
       functionName,
-      functionType
+      functionType,
     }
   }
 
@@ -81,7 +81,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     return {
       label,
       status,
-      record
+      record,
     }
   }
 
@@ -106,7 +106,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     return {
       label,
       status,
-      tuple
+      tuple,
     }
   }
 
@@ -129,7 +129,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     return {
       label,
       status,
-      variant
+      variant,
     }
   }
 
@@ -148,7 +148,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
 
     return {
       label,
-      status: this.status
+      status: this.status,
     }
   }
 
@@ -164,7 +164,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
       status: this.isTable
         ? Status.Enabled("Optional")
         : Status.Hidden("Optional"),
-      optional
+      optional,
     }
   }
 
@@ -176,7 +176,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     if ("_bits" in ty && ty._bits === 8) {
       return {
         status: Status.Default,
-        label
+        label,
       }
     }
 
@@ -188,7 +188,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     if (field.type === "record") {
       const labelList: string[] = []
 
-      const isTable = field.fields.every(field => {
+      const isTable = field.fields.every((field) => {
         if (isFieldInTable(field)) {
           if (field.label) {
             labelList.push(field.label)
@@ -207,7 +207,7 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
         return {
           ...record,
           status: Status.Visible("Optional"),
-          labelList
+          labelList,
         }
       }
     }
@@ -219,14 +219,14 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     return {
       status: Status.Visible("Optional"),
       label,
-      vector
+      vector,
     }
   }
 
   public visitNull(_t: IDL.NullClass, label: string): FieldDetail {
     return {
       label,
-      status: Status.Visible()
+      status: Status.Visible(),
     }
   }
 
@@ -234,13 +234,13 @@ export class VisitReturnDetail<A = BaseActor> extends IDL.Visitor<
     if (this.isTable) {
       return {
         label,
-        status: Status.Enabled("Optional")
+        status: Status.Enabled("Optional"),
       }
     }
 
     return {
       label,
-      status: this.status
+      status: this.status,
     }
   }
 

@@ -1,11 +1,7 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
 
-import type {
-  BaseActor,
-  ArgTypeFromIDLType,
-  MethodArgsDefaultValues,
-} from "../types"
+import type { BaseActor, MethodArgsDefaultValues } from "../types"
 import {
   generateBigInteger,
   generateNumber,
@@ -21,16 +17,16 @@ export class VisitRandomArgs<A = BaseActor> extends IDL.Visitor<
   unknown,
   unknown
 > {
-  public visitFunc(t: IDL.FuncClass) {
-    const defaultValue = t.argTypes.reduce((acc, type, index) => {
-      acc[`arg${index}`] = type.accept(this, false) as ArgTypeFromIDLType<
-        typeof type
-      >
+  public visitFunc(t: IDL.FuncClass): MethodArgsDefaultValues<A> {
+    const defaultValue = t.argTypes.reduce<Record<string, unknown>>(
+      (acc, type, index) => {
+        acc[`arg${index}`] = type.accept(this, false)
+        return acc
+      },
+      {}
+    )
 
-      return acc
-    }, {} as MethodArgsDefaultValues<A>)
-
-    return defaultValue
+    return defaultValue as MethodArgsDefaultValues<A>
   }
 
   public visitRecord(

@@ -1,4 +1,4 @@
-import type { IDL } from "@ic-reactor/core/dist/types"
+import type { IDL } from "@dfinity/candid"
 
 export * from "./transform/types"
 export * from "./layout/types"
@@ -38,8 +38,9 @@ export type AllNumberTypes =
   | IDL.FixedIntClass
   | IDL.FloatClass
 
+export type { IDL } from "@dfinity/candid"
+
 export type {
-  IDL,
   Principal,
   BaseActor,
   ActorMethodReturnType,
