@@ -154,11 +154,11 @@ export const actorHooks = <A = BaseActor>(
       requestKey
     )
 
-    const latestDataRef = React.useRef<ActorMethodReturnType<A[M]>>()
+    const latestDataRef = React.useRef<ActorMethodReturnType<A[M]>>(null)
 
     const reset = React.useCallback(() => {
       updateMethodState(functionName, requestKey, DEFAULT_STATE)
-      latestDataRef.current = undefined
+      latestDataRef.current = null
     }, [functionName, requestKey])
 
     const call = React.useCallback(
@@ -199,7 +199,7 @@ export const actorHooks = <A = BaseActor>(
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error(`Error calling method ${functionName}:`, error)
-          latestDataRef.current = undefined
+          latestDataRef.current = null
           setSharedState({
             error: error as AgentError,
             loading: false,
@@ -242,7 +242,7 @@ export const actorHooks = <A = BaseActor>(
     ...rest
   }) => {
     const { call, requestKey, ...state } = useSharedCall(rest)
-    const intervalId = React.useRef<NodeJS.Timeout>()
+    const intervalId = React.useRef<NodeJS.Timeout>(null)
 
     React.useEffect(() => {
       if (refetchInterval) {
@@ -269,7 +269,11 @@ export const actorHooks = <A = BaseActor>(
         }
       }
 
-      return () => clearInterval(intervalId.current)
+      return () => {
+        if (intervalId.current) {
+          clearInterval(intervalId.current)
+        }
+      }
     }, [refetchInterval, refetchOnMount, requestKey])
 
     const refetch = () => {

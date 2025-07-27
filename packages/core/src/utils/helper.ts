@@ -61,26 +61,30 @@ export const importCandidDefinition = async (
   if (typeof window === "undefined") {
     // Node.js environment - use dynamic evaluation
     try {
-      // Create a module-like object to capture exports
       const moduleExports: Record<string, unknown> = {}
       const moduleCode = candidDef.replace(/export const /g, "moduleExports.")
 
-      // Execute the code with the module exports object
       const func = new Function("moduleExports", moduleCode)
       func(moduleExports)
 
       return moduleExports as unknown as CandidDefenition
     } catch (error) {
-      throw new Error(`Error importing candid definition in NodeJs: ${error}`)
+      throw new Error(
+        `Error importing candid definition in NodeJs: ${
+          (error as Error).message
+        }`
+      )
     }
   } else {
     // Browser environment
     try {
-      const blob = new Blob([candidDef], { type: "application/javascript" })
-      const url = URL.createObjectURL(blob)
-      const module = await import(url)
-      URL.revokeObjectURL(url) // Clean up the blob URL
-      return module
+      const loaderFunction = new Function(`
+        const blob = new Blob([\`${candidDef}\`], { type: "application/javascript" })
+        const url = URL.createObjectURL(blob)
+        return import(url)
+      `)
+
+      return loaderFunction()
     } catch (error) {
       throw new Error(`Error importing candid definition: ${error}`)
     }
