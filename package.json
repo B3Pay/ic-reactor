@@ -36,7 +36,7 @@
     "url": "git@github.com:b3hr4d/ic-reactor.git"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.15.0"
   },
   "workspaces": [
     "examples/*",
