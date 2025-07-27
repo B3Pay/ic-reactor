@@ -16,7 +16,7 @@ interface ICRC1ActorProps extends PropsWithChildren {
 }
 
 const ICRC1Provider: React.FC<ICRC1ActorProps> = ({ children, canisterId }) => {
-  const { hooks, fetching, fetchError } = useActor<ICRC1>({
+  const { hooks, isFetching, fetchError } = useActor<ICRC1>({
     canisterId,
     withDevtools: true,
   })
@@ -24,7 +24,7 @@ const ICRC1Provider: React.FC<ICRC1ActorProps> = ({ children, canisterId }) => {
   return (
     <ActorContext.Provider value={hooks}>
       <h2>ICRC1({canisterId})</h2>
-      {fetching && <p>Loading Candid interface...</p>}
+      {isFetching && <p>Loading Candid interface...</p>}
       {fetchError && <p>Error: {fetchError}</p>}
       {hooks && children}
     </ActorContext.Provider>
