@@ -10,9 +10,12 @@ export const idlFactory = ({ IDL }) => {
 export const init = ({ IDL }) => { return []; };
 `
 
-describe("importCandidDefinition", () => {
-  it("should import Candid definition", async () => {
+describe("Debug importCandidDefinition", () => {
+  it("should import Candid definition correctly", async () => {
     const candidDef = await importCandidDefinition(testCandidDef)
+
     expect(candidDef).toBeDefined()
+    expect(typeof candidDef.idlFactory).toBe("function")
+    expect(typeof candidDef.init).toBe("function")
   })
 })

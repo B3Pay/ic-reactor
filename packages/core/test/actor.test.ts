@@ -26,6 +26,8 @@ describe("createReactorStore", () => {
       name: "2vxsx-fae",
       initialized: false,
       initializing: false,
+      isInitialized: false,
+      isInitializing: false,
       error: undefined,
       version: 0,
     })
@@ -39,6 +41,8 @@ describe("createReactorStore", () => {
       methodState: {} as ActorMethodStates<Example>,
       initialized: true,
       initializing: false,
+      isInitialized: true,
+      isInitializing: false,
       error: undefined,
       version: 0,
     })
