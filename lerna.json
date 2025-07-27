@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/lerna/schemas/lerna-schema.json",
+  "version": "independent",
+  "command": {
+    "run": {
+      "stream": true
+    },
+    "exec": {
+      "stream": true
+    }
+  },
+  "packages": ["packages/*"],
+  "ignoreChanges": ["examples/**/*", "**/*.md", "**/*.spec.ts", "**/test/**/*"]
+}
