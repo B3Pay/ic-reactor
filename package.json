@@ -1,5 +1,6 @@
 {
   "name": "ic-reactor",
+  "version": "1.16.0",
   "private": true,
   "description": "A React library for working with Internet computer Actors",
   "author": "Behrad Deylami <b3hr4d@live.com>",
@@ -55,7 +56,6 @@
     "@dfinity/principal": "^3.1.0",
     "@size-limit/esbuild-why": "^11.2.0",
     "@size-limit/preset-small-lib": "^11.2.0",
-    "@typescript-eslint/typescript-estree": "^8.38.0",
     "babel-loader": "^10.0.0",
     "bun-types": "^1.2.19",
     "lerna": "^8.2.3",
