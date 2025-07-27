@@ -61,7 +61,9 @@ export function createAdapterContext(
         fetching: true,
       })
       try {
-        const definition = await candidAdapter.dynamicEvalJs(candidString)
+        const definition = await candidAdapter.evaluateCandidDefinition(
+          candidString
+        )
         if (typeof definition?.idlFactory !== "function") {
           throw new Error("No Function found in Candid definition!")
         }

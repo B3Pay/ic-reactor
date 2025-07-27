@@ -106,7 +106,7 @@ export const useActor = <A = BaseActor>(
 
   const candidAdapter = useContext(CandidAdapterContext)
 
-  const authenticating = useAuthState().authenticating
+  const authenticating = useAuthState().isAuthenticating
 
   const fetchCandid = useCallback(async () => {
     if (fetching) return
@@ -117,9 +117,12 @@ export const useActor = <A = BaseActor>(
     })
 
     try {
-      const { idlFactory } = await candidAdapter!.getCandidDefinition(
-        canisterId
-      )
+      if (!candidAdapter) {
+        throw new Error(
+          "CandidAdapter is necessary to fetch the Candid interface. Please ensure your application is wrapped with the CandidAdapterProvider, or provide the idlFactory directly."
+        )
+      }
+      const { idlFactory } = await candidAdapter.getCandidDefinition(canisterId)
 
       setState({
         fetching: false,
@@ -139,7 +142,14 @@ export const useActor = <A = BaseActor>(
 
   const evaluateCandid = useCallback(async () => {
     try {
-      const definition = await candidAdapter!.dynamicEvalJs(candidString!)
+      if (!candidString) {
+        throw new Error(
+          "Candid string is required to evaluate the Candid definition"
+        )
+      }
+      const definition = await candidAdapter?.evaluateCandidDefinition(
+        candidString
+      )
       if (typeof definition?.idlFactory !== "function") {
         throw new Error("Error evaluating Candid definition")
       }

@@ -77,7 +77,9 @@ export const actorHooks = <A = BaseActor>(
       error: state.error,
       version: state.version,
       initialized: state.initialized,
+      isInitialized: state.isInitialized,
       initializing: state.initializing,
+      isInitializing: state.isInitializing,
       canisterId,
     }))
   }
