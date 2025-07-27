@@ -1,2 +1,2 @@
 [test]
-preload = ["fake-indexeddb/auto"]
+preload = ["./testing/happydom.ts", "./testing/testing-library.ts"]

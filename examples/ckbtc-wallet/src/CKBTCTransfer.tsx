@@ -9,9 +9,8 @@ const CKBTCTransfer: React.FC<CKBTCTransferProps> = () => {
   const principalRef = useRef<HTMLInputElement>(null)
   const amountRef = useRef<HTMLInputElement>(null)
 
-  const { call, data, loading, error } = useCKBTCLedgerMethod({
+  const { call, data, isLoading, error } = useCKBTCLedgerMethod({
     functionName: "icrc1_transfer",
-    compileResult: true,
   })
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -56,8 +55,8 @@ const CKBTCTransfer: React.FC<CKBTCTransferProps> = () => {
       </form>
       <span>
         <strong>Transfer Result</strong>:
-        {loading ? (
-          <div>loading...</div>
+        {isLoading ? (
+          <div>isLoading...</div>
         ) : error ? (
           <div>Error: {error.message}</div>
         ) : data ? (
