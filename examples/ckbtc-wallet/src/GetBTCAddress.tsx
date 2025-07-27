@@ -10,7 +10,7 @@ const GetBTCAddress: React.FC<GetBTCAddressProps> = ({
   userPrincipal,
   children,
 }) => {
-  const { call, data, error, loading } = useCKBTCMinterMethod({
+  const { call, data, error, isLoading } = useCKBTCMinterMethod({
     functionName: "get_btc_address",
     args: [{ owner: [userPrincipal], subaccount: [] }],
   })
@@ -18,9 +18,8 @@ const GetBTCAddress: React.FC<GetBTCAddressProps> = ({
   useEffect(() => {
     call()
   }, [])
-  console.log("🚀 ~ data:", data)
 
-  return loading ? (
+  return isLoading ? (
     <p>getting btc address...</p>
   ) : error ? (
     <p>Error: {error.message}</p>

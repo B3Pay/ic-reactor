@@ -1,5 +1,5 @@
 import { Principal } from "@ic-reactor/react/dist/types"
-import { useCKBTCMinterMethod } from "./Minter"
+import { useCKBTCMinterMethod, useCKBTCMinterQueryCall } from "./Minter"
 import { jsonToString } from "@ic-reactor/react/dist/utils"
 
 type MinterUpdateBalanceProps = React.PropsWithChildren<{
@@ -10,20 +10,29 @@ const MinterUpdateBalance: React.FC<MinterUpdateBalanceProps> = ({
   children,
   userPrincipal,
 }) => {
-  const { call, data, loading } = useCKBTCMinterMethod({
+  const { call, compileResult, isLoading } = useCKBTCMinterQueryCall({
     functionName: "update_balance",
     args: [{ owner: [userPrincipal], subaccount: [] }],
-    compileResult: true,
   })
+
+  const { value, isOk, error, isErr } = compileResult()
 
   return (
     <div>
       <span>
         <strong>Update Balance</strong>:{" "}
-        <button onClick={call} disabled={loading}>
+        <button onClick={call} disabled={isLoading}>
           ↻
         </button>{" "}
-        {loading ? "Loading..." : jsonToString(data)}
+        {isLoading ? (
+          <div>loading...</div>
+        ) : isOk ? (
+          <div>Balance updated: {jsonToString(value)}</div>
+        ) : isErr ? (
+          <div>Error: {jsonToString(error)}</div>
+        ) : (
+          <div>Click to update balance</div>
+        )}
       </span>
       {children}
     </div>
