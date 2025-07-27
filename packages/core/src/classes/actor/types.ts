@@ -56,13 +56,38 @@ export type ActorMethodReturnType<T> = T extends ActorMethod<any, infer Ret>
   ? Ret
   : never
 
+/**
+ * Interface representing the state of each actor method.
+ *
+ * @template A - The actor type, defaulting to `BaseActor`.
+ * @template M - A specific method name of the actor.
+ */
 export interface ActorMethodState<
   A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>
 > {
+  /**
+   * The per-method state object, keyed by the method name.
+   */
+
   [key: string]: {
+    /**
+     * The data returned from the actor method call, if available.
+     */
     data: ActorMethodReturnType<A[M]> | undefined
+    /**
+     * @deprecated Use `isLoading` instead.
+     * Flag indicating whether the actor method is in progress.
+     */
     loading: boolean
+    /**
+     * Flag indicating whether the actor method is in progress.
+     */
+
+    isLoading: boolean
+    /**
+     * Error thrown during the actor method invocation, if any.
+     */
     error: AgentError | undefined
   }
 }
@@ -81,12 +106,52 @@ export type ActorMethodType<A, M extends keyof A> = {
 }
 
 // State structure for an actor in a Reactor
+/**
+ * Represents the state of an actor.
+ *
+ * @template A - The type of the actor, defaults to `BaseActor`.
+ */
 export type ActorState<A = BaseActor> = {
+  /**
+   * The name of the actor.
+   */
   name: string
+
+  /**
+   * The version of the actor.
+   */
   version: number
+
+  /**
+   * @deprecated Use `isInitialized` instead.
+   * Indicates whether the actor is initialized.
+   */
   initialized: boolean
+
+  /**
+   * Indicates whether the actor is initialized.
+   */
+  isInitialized: boolean
+
+  /**
+   * @deprecated Use `isInitializing` instead.
+   * Indicates whether the actor is in the process of initializing.
+   */
   initializing: boolean
+
+  /**
+   * Indicates whether the actor is in the process of initializing.
+   */
+  isInitializing: boolean
+
+  /**
+   * The error associated with the actor, if any.
+   */
   error: AgentError | undefined
+
+  /**
+   * The state of the actor's methods.
+   */
   methodState: ActorMethodStates<A>
 }
 

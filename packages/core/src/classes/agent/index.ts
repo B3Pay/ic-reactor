@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { HttpAgent } from "@dfinity/agent"
+import { AgentError, HttpAgent } from "@dfinity/agent"
 import {
   createStoreWithOptionalDevtools,
   getNetworkByHostname,
@@ -23,7 +23,9 @@ import {
 
 const AGENT_INITIAL_STATE: AgentState = {
   initialized: false,
+  isInitialized: false,
   initializing: false,
+  isInitializing: false,
   error: undefined,
   network: undefined,
 }
@@ -107,6 +109,7 @@ export class AgentManager {
     this.updateAgentState(
       {
         initializing: true,
+        isInitializing: true,
         error: undefined,
         network,
       },
@@ -117,13 +120,22 @@ export class AgentManager {
         await this._agent.fetchRootKey()
       } catch (error) {
         this.updateAgentState(
-          { error: error as Error, initializing: false },
+          {
+            error: error as AgentError,
+            initializing: false,
+            isInitializing: false,
+          },
           "error"
         )
       }
     }
     this.updateAgentState(
-      { initialized: true, initializing: false },
+      {
+        initialized: true,
+        isInitialized: true,
+        initializing: false,
+        isInitializing: false,
+      },
       "initialized"
     )
   }

@@ -31,12 +31,14 @@ import { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
 import type { UpdateAgentParameters } from "../types"
 
-const ACTOR_INITIAL_STATE = {
+const ACTOR_INITIAL_STATE: ActorState = {
   name: "",
   version: 0,
   methodState: {},
   initializing: false,
+  isInitializing: false,
   initialized: false,
+  isInitialized: false,
   error: undefined,
 }
 
@@ -67,7 +69,7 @@ export class ActorManager<A = BaseActor> {
     newState: Partial<ActorMethodState<A, typeof method>[string]>
   ) => {
     const actionName = `${method}:${
-      newState.error ? "error" : newState.loading ? "loading" : "loaded"
+      newState.error ? "error" : newState.isLoading ? "loading..." : "loaded"
     }`
 
     this.actorStore.setState(
@@ -212,7 +214,9 @@ export class ActorManager<A = BaseActor> {
     this.updateState(
       {
         initializing: true,
+        isInitializing: true,
         initialized: false,
+        isInitialized: false,
         methodState: {} as ActorMethodStates<A>,
       },
       "initializing"
@@ -241,14 +245,20 @@ export class ActorManager<A = BaseActor> {
       this.updateState(
         {
           initializing: false,
+          isInitializing: false,
           initialized: true,
+          isInitialized: true,
         },
         "initialized"
       )
     } catch (error) {
       console.error("Error in initializeActor:", error)
       this.updateState(
-        { error: error as AgentError, initializing: false },
+        {
+          error: error as AgentError,
+          initializing: false,
+          isInitializing: false,
+        },
         "error"
       )
     }
@@ -307,6 +317,7 @@ export class ActorManager<A = BaseActor> {
     try {
       this.updateMethodState(functionName, requestHash, {
         loading: true,
+        isLoading: true,
         error: undefined,
       })
 
@@ -314,6 +325,7 @@ export class ActorManager<A = BaseActor> {
 
       this.updateMethodState(functionName, requestHash, {
         loading: false,
+        isLoading: false,
         data,
       })
 
@@ -321,6 +333,7 @@ export class ActorManager<A = BaseActor> {
     } catch (error) {
       this.updateMethodState(functionName, requestHash, {
         loading: false,
+        isLoading: false,
         error: error as AgentError,
         data: undefined,
       })
@@ -387,4 +400,9 @@ const emptyVisitor = new Proxy({} as VisitService<never>, {
   },
 })
 
-const DEFAULT_STATE = { data: undefined, error: undefined, loading: false }
+const DEFAULT_STATE: ActorMethodState<never, never>[string] = {
+  data: undefined,
+  error: undefined,
+  loading: false,
+  isLoading: false,
+}

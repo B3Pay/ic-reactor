@@ -14,6 +14,8 @@ describe("createReactorCore", () => {
     expect(getState()).toEqual({
       initialized: false,
       initializing: false,
+      isInitialized: false,
+      isInitializing: false,
       error: undefined,
       methodState: {},
       name: "xeka7-ryaaa-aaaal-qb57a-cai",
@@ -22,7 +24,9 @@ describe("createReactorCore", () => {
 
     expect(actorStore.getState()).toEqual({
       initialized: false,
+      isInitialized: false,
       initializing: false,
+      isInitializing: false,
       error: undefined,
       methodState: {},
       name: "xeka7-ryaaa-aaaal-qb57a-cai",
@@ -39,7 +43,9 @@ describe("createReactorCore", () => {
 
     expect(getState()).toEqual({
       initialized: true,
+      isInitialized: true,
       initializing: false,
+      isInitializing: false,
       methodState: {},
       error: undefined,
       name: "xeka7-ryaaa-aaaal-qb57a-cai",
