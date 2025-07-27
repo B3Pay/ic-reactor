@@ -45,19 +45,14 @@ export type VisitService<
 }
 
 // Extracts the argument types of an ActorMethod
-export type ActorMethodParameters<T> = T extends ActorMethod<
-  infer Args,
-  unknown
->
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ActorMethodParameters<T> = T extends ActorMethod<infer Args, any>
   ? Args
   : never
 
 // Extracts the return type of an ActorMethod
-
-export type ActorMethodReturnType<T> = T extends ActorMethod<
-  unknown[],
-  infer Ret
->
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ActorMethodReturnType<T> = T extends ActorMethod<any, infer Ret>
   ? Ret
   : never
 

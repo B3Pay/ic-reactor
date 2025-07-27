@@ -7,6 +7,7 @@ import {
 } from "../src"
 import * as parser from "@ic-reactor/parser/dist/nodejs"
 import { importCandidDefinition } from "../src/utils"
+import { ActorMethod } from "@dfinity/agent"
 
 describe("Candid Tests", () => {
   const agentManager = createAgentManager()
@@ -18,7 +19,11 @@ describe("Candid Tests", () => {
       `service:{icrc1_name:()->(text) query;}`
     )
 
-    const { callMethod } = createActorManager({
+    interface ICRC1 {
+      icrc1_name: ActorMethod<[], string>
+    }
+
+    const { callMethod } = createActorManager<ICRC1>({
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       idlFactory: candid.idlFactory,
       agentManager,
@@ -32,7 +37,7 @@ describe("Candid Tests", () => {
   it("compile the candid string", async () => {
     await candidAdapter.initializeParser(parser)
     const candidJsCode = candidAdapter.parseDidToJs(
-      `service:{icrc1_name:()->(text) query;}`
+      `service:{icrc1_decimals:()->(nat8) query;}`
     )
 
     // Debug what importCandidDefinition returns
@@ -53,8 +58,8 @@ describe("Candid Tests", () => {
       agentManager,
     })
 
-    const name = await callMethod("icrc1_name")
-    expect(name).toEqual("Internet Computer")
+    const name = await callMethod("icrc1_decimals")
+    expect(name).toEqual(8)
   })
 
   const canisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
