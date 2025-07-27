@@ -4,14 +4,14 @@ import { createCandidAdapter } from "@ic-reactor/core"
 
 import type {
   CandidAdapterContextType,
-  CreateCandidAdapterCotextParameters,
+  CreateCandidAdapterContextParameters,
   CreateCandidAdapterContextReturnType,
   CandidAdapterProviderProps,
   UseCandidEvaluationReturnType,
 } from "./types"
 
 export function createAdapterContext(
-  config: CreateCandidAdapterCotextParameters = {}
+  config: CreateCandidAdapterContextParameters = {}
 ): CreateCandidAdapterContextReturnType {
   const {
     withParser: _withParser,

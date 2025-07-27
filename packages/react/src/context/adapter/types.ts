@@ -1,10 +1,9 @@
 import type { PropsWithChildren } from "react"
-import type { CandidAdapterParameters, IDL } from "../../types"
-import type { CandidAdapter } from "@ic-reactor/core/dist/classes"
+import type { IDL } from "@dfinity/candid"
+import { CandidAdapter } from "@ic-reactor/core/dist/classes"
+import { CandidAdapterParameters } from "../../types"
 
-export type { CandidAdapter }
-
-export interface CandidAdapterContextType extends CandidAdapter {}
+export type CandidAdapterContextType = CandidAdapter
 
 export interface CandidAdapterProviderProps
   extends PropsWithChildren,
@@ -13,7 +12,7 @@ export interface CandidAdapterProviderProps
   loadingComponent?: React.ReactNode
 }
 
-export interface CreateCandidAdapterCotextParameters
+export interface CreateCandidAdapterContextParameters
   extends CandidAdapterParameters {
   withParser?: boolean
 }

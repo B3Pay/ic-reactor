@@ -9,7 +9,7 @@ import type {
   AuthHooksReturnType,
 } from "./helpers/types"
 
-export interface CreateReactorParameters extends CreateReactorCoreParameters {}
+export type CreateReactorParameters = CreateReactorCoreParameters
 
 export interface CreateReactorReturnType<A>
   extends ActorHooksReturnType<A>,
