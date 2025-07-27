@@ -92,7 +92,7 @@ export class CandidAdapter {
   ): Promise<CandidDefenition> {
     try {
       const candidDef = await this.fetchCandidDefinition(canisterId)
-      return this.dynamicEvalJs(candidDef)
+      return this.evaluateCandidDefinition(candidDef)
     } catch (error) {
       throw new Error(`Error fetching canister ${canisterId}: ${error}`)
     }
@@ -124,7 +124,9 @@ export class CandidAdapter {
     return (await actor.__get_candid_interface_tmp_hack()) as string
   }
 
-  public async dynamicEvalJs(data: string): Promise<CandidDefenition> {
+  public async evaluateCandidDefinition(
+    data: string
+  ): Promise<CandidDefenition> {
     try {
       let candidDef: string | [] = ""
 
