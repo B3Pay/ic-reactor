@@ -109,7 +109,7 @@ export type VectorMethodResult = DefaultMethodResult & {
 } & (
     | {
         componentType: "blob"
-        value: ArrayBuffer
+        value: Uint8Array
       }
     | {
         componentType: "normal"
