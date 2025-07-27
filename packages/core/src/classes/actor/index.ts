@@ -9,6 +9,7 @@ import {
   createStoreWithOptionalDevtools,
   generateRequestHash,
   isQuery,
+  noop,
 } from "../../utils/helper"
 import type { CallConfig, HttpAgent } from "@dfinity/agent"
 import type {
@@ -348,7 +349,7 @@ export class ActorManager<A = BaseActor> {
     listener,
     options
   ) => {
-    let unsubscribe = () => {}
+    let unsubscribe = noop
     if (listener) {
       unsubscribe = this.actorStore.subscribe(
         selectorOrListener,

@@ -45,7 +45,7 @@ export function stringifyStable(value: unknown): string {
  * @param length - Desired length of the hex string (default: 8)
  * @returns string - Hex string of specified length
  */
-export function createSimpleHash(value: unknown, length: number = 8): string {
+export function createSimpleHash(value: unknown, length = 8): string {
   const str = stringifyStable(value)
   let hash = 0
 

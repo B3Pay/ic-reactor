@@ -20,6 +20,15 @@ import { createSimpleHash } from "./hash"
 import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
 
 /**
+ * No operation function that does nothing.
+ * It can be used as a placeholder or for logging purposes.
+ */
+export function noop() {
+  // eslint-disable-next-line no-console
+  console.warn("No operation function called")
+}
+
+/**
  * Creates a Zustand store with optional DevTools middleware.
  *
  * @param initialState - The initial state of the store.

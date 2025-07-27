@@ -1,3 +1,4 @@
+import { describe, it, expect } from "bun:test"
 import { ActorMethod } from "@dfinity/agent"
 import { createReactorCore } from "../src"
 

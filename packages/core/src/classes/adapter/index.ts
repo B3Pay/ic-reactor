@@ -11,14 +11,14 @@ import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
 } from "../../utils/constants"
-import { importCandidDefinition } from "../../utils"
+import { importCandidDefinition, noop } from "../../utils"
 
 export class CandidAdapter {
   public agent: HttpAgent
   public didjsCanisterId: string
   private parserModule?: ReactorParser
 
-  public unsubscribeAgent: () => void = () => {}
+  public unsubscribeAgent: () => void = noop
 
   constructor({
     agentManager,

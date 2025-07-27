@@ -1,3 +1,4 @@
+import { describe, it, expect } from "bun:test"
 import { createReactorStore } from "../src"
 import { example, canisterId, idlFactory } from "./candid/example"
 

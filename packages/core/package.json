@@ -31,7 +31,6 @@
     "@dfinity/candid": "^3.1.0",
     "@dfinity/identity": "^3.1.0",
     "@dfinity/principal": "^3.1.0",
-    "@ic-reactor/shared": "workspace:*",
     "zustand": "5.0.6"
   },
   "peerDependencies": {
@@ -42,7 +41,8 @@
     "@dfinity/principal": ">=3.1.0"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "0.4.4"
+    "@ic-reactor/shared": "workspace:*",
+    "@ic-reactor/parser": "workspace:*"
   },
   "scripts": {
     "test": "bun test",

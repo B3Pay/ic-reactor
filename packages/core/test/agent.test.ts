@@ -1,3 +1,4 @@
+import { describe, it, expect } from "bun:test"
 import { IC_HOST_NETWORK_URI } from "../src/utils"
 import { createAgentManager } from "../src"
 import { AgentState } from "../dist/types"
@@ -99,7 +100,7 @@ describe("My Local Network agent", () => {
       const state = agentManager.getAgentState()
       expect(state.initialized).toBe(false)
       expect(state.initializing).toBe(false)
-      expect(state.network).toBe(undefined)
+      expect(state.network).toBeUndefined()
     })
 
     it("should track initialization states", (done) => {

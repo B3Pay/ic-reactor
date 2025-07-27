@@ -111,8 +111,7 @@ export type ActorUpdate<A = Record<string, ActorMethod>> = <
   params: ActorUpdateParameters<A, M>
 ) => ActorUpdateReturnType<A, M>
 
-export interface CreateReactorCoreParameters
-  extends CreateReactorStoreParameters {}
+export type CreateReactorCoreParameters = CreateReactorStoreParameters
 
 export interface CreateReactorCoreReturnType<A = BaseActor>
   extends AgentManager,

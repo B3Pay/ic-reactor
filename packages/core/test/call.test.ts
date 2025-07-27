@@ -1,7 +1,7 @@
-import { ActorMethod } from "@dfinity/agent"
+import { describe, it, expect } from "bun:test"
+import { ActorMethod, PollStrategy } from "@dfinity/agent"
 import { createActorManager, createAgentManager } from "../src"
 import { IC_HOST_NETWORK_URI } from "../src/utils"
-import { PollStrategyFactory } from "@dfinity/agent/lib/cjs/polling"
 
 export const ICRC1_CANISTERS = [
   { canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", symbol: "ICP" },
@@ -45,15 +45,19 @@ describe("My IC Store and Actions", () => {
   })
 
   it("should return the ICRC1_CANISTERS", async () => {
-    const pollingStrategyFactory: PollStrategyFactory = () => {
-      return async (canisterId, requestId, status) => {
-        console.log({ canisterId, requestId, status })
-      }
+    const pollingStrategy: PollStrategy = async (
+      canisterId,
+      requestId,
+      status
+    ) => {
+      console.log({ canisterId, requestId, status })
     }
 
     for (const canister of ICRC1_CANISTERS) {
       const symbol = await callMethodWithOptions({
-        pollingStrategyFactory,
+        pollingOptions: {
+          strategy: pollingStrategy,
+        },
         canisterId: canister.canisterId,
       })("icrc1_symbol")
 

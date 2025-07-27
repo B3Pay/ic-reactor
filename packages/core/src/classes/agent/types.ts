@@ -21,8 +21,12 @@ export interface AgentState {
 
 export interface AuthState {
   identity: Identity | null
+  /** Deprecated: use `isAuthenticating` instead */
   authenticating: boolean
+  isAuthenticating: boolean
+  /** Deprecated: use `isAuthenticated` instead */
   authenticated: boolean
+  isAuthenticated: boolean
   error: Error | undefined
 }
 

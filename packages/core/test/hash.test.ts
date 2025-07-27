@@ -1,4 +1,5 @@
 // test.spec.ts
+import { describe, test, beforeEach, expect } from "bun:test"
 import { createSimpleHash } from "../src/utils"
 
 // Types
