@@ -198,7 +198,7 @@ export class VisitTransform extends IDL.Visitor<DynamicDataArgs, MethodResult> {
     if ("_bits" in ty && ty._bits === 8) {
       return {
         label,
-        value: t.encodeValue(value),
+        value: t.encodeValue(value) as ArrayBuffer,
         type: "vector",
         componentType: "blob",
       }
