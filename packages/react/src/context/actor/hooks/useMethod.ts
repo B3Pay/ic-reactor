@@ -16,15 +16,15 @@ import type {
  * @example
  * ```tsx
  * function MethodCallComponent() {
- *   const { call, data, loading } = useMethod({
+ *   const { call, data, isLoading } = useMethod({
  *      functionName: 'updateUserProfile',
  *      args: ['123', { name: 'John Doe' }],
- *      onLoading: (loading) => console.log('Loading:', loading),
+ *      onLoading: (isLoading) => console.log('Loading:', isLoading),
  *      onError: (error) => console.error('Error:', error),
  *      onSuccess: (data) => console.log('Success:', data),
  *   });
  *
- *  if (loading) return <p>Updating profile...</p>;
+ *  if (isLoading) return <p>Updating profile...</p>;
  *
  *  return (
  *    <div>

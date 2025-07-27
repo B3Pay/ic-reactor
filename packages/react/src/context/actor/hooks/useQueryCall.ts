@@ -16,14 +16,14 @@ import type {
  * @example
  * ```tsx
  * function QueryCallComponent() {
- *    const { call, data, loading } = useQueryCall({
+ *    const { call, data, isLoading } = useQueryCall({
  *      functionName: 'getUserProfile',
  *      args: ['123'],
  *      refetchOnMount: true,
  *      refetchInterval: 5000, // refetch every 5 seconds
  *    });
  *
- *    if (loading) return <p>Loading profile...</p>;
+ *    if (isLoading) return <p>isLoading profile...</p>;
  *
  *    return (
  *      <div>

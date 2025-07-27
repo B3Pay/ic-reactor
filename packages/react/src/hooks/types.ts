@@ -25,9 +25,9 @@ export interface UseActorManagerParameters<A> extends ActorReConfigParameters {
 
 export interface UseActorReturn<A = BaseActor> {
   hooks: ActorHooksReturnType<A> | null
-  fetching: boolean
+  isFetching: boolean
   fetchError: string | null
-  authenticating: boolean
+  isAuthenticating: boolean
   initializeActor: InitializeActor
 }
 

@@ -34,6 +34,7 @@ const DEFAULT_STATE: UseSharedCallState<never, never> = {
   data: undefined,
   error: undefined,
   loading: false,
+  isLoading: false,
 }
 /**
  * Provides a set of React hooks designed for interacting with actors in an Internet Computer (IC) project using the React framework and Zustand for state management.
@@ -76,9 +77,9 @@ export const actorHooks = <A = BaseActor>(
       name: state.name,
       error: state.error,
       version: state.version,
-      initialized: state.initialized,
+      initialized: state.isInitialized,
       isInitialized: state.isInitialized,
-      initializing: state.initializing,
+      initializing: state.isInitializing,
       isInitializing: state.isInitializing,
       canisterId,
     }))
@@ -164,7 +165,7 @@ export const actorHooks = <A = BaseActor>(
       async (
         eventOrReplaceArgs?: ActorMethodParameters<A[M]> | React.MouseEvent
       ) => {
-        setSharedState({ error: undefined, loading: true })
+        setSharedState({ error: undefined, loading: true, isLoading: true })
         onLoading?.(true)
         try {
           const replaceArgs =
@@ -175,7 +176,12 @@ export const actorHooks = <A = BaseActor>(
           )
 
           latestDataRef.current = data
-          setSharedState({ data, error: undefined, loading: false })
+          setSharedState({
+            data,
+            error: undefined,
+            loading: false,
+            isLoading: false,
+          })
 
           onLoading?.(false)
           onSuccess?.(data)
@@ -197,6 +203,7 @@ export const actorHooks = <A = BaseActor>(
           setSharedState({
             error: error as AgentError,
             loading: false,
+            isLoading: false,
           })
           onError?.(error as AgentError)
           onLoading?.(false)
@@ -322,12 +329,12 @@ export const actorHooks = <A = BaseActor>(
 
     let refetchOnMount = params.refetchOnMount
     let refetchInterval = params.refetchInterval
-    let formRequired = true
+    let isFormRequired = true
 
     switch (attributes.type) {
       case "query":
         if (validateArgs(params.args)) {
-          formRequired = params.refetchOnMount === false ? true : false
+          isFormRequired = params.refetchOnMount === false ? true : false
         } else {
           refetchOnMount = false
           refetchInterval = false
@@ -340,10 +347,10 @@ export const actorHooks = <A = BaseActor>(
             refetchOnMount,
             refetchInterval,
           }),
-          formRequired,
+          isFormRequired,
         }
       case "update":
-        return { visit, validateArgs, ...useUpdateCall(params), formRequired }
+        return { visit, validateArgs, ...useUpdateCall(params), isFormRequired }
       default:
         throw new Error(`Method type ${attributes.type} not found`)
     }

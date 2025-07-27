@@ -35,6 +35,7 @@ export function createAdapterContext(
   const useCandidEvaluation = (): UseCandidEvaluationReturnType => {
     const [state, setState] = React.useState({
       fetching: true,
+      isFetching: true,
       fetchError: null as string | null,
     })
 
@@ -44,6 +45,7 @@ export function createAdapterContext(
       setState({
         fetchError: null,
         fetching: false,
+        isFetching: false,
       })
       try {
         return candidAdapter.validateIDL(candidString)
@@ -51,15 +53,24 @@ export function createAdapterContext(
         setState({
           fetchError: `Error validating Candid definition, ${err}`,
           fetching: false,
+          isFetching: false,
         })
         return false
       }
     }, [])
 
+    const isCandidValid = React.useCallback(
+      (candidString: string) => {
+        return validateCandid(candidString) !== false
+      },
+      [validateCandid]
+    )
+
     const evaluateCandid = React.useCallback(async (candidString: string) => {
       setState({
         fetchError: null,
         fetching: true,
+        isFetching: true,
       })
       try {
         const definition = await candidAdapter.evaluateCandidDefinition(
@@ -71,18 +82,20 @@ export function createAdapterContext(
         setState({
           fetchError: null,
           fetching: false,
+          isFetching: false,
         })
         return definition.idlFactory
       } catch (err) {
         setState({
           fetchError: `Error evaluating Candid definition, ${err}`,
           fetching: false,
+          isFetching: false,
         })
         return undefined
       }
     }, [])
 
-    return { evaluateCandid, validateCandid, ...state }
+    return { evaluateCandid, isCandidValid, validateCandid, ...state }
   }
 
   const CandidAdapterProvider: React.FC<CandidAdapterProviderProps> = ({

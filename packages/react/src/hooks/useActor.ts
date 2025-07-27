@@ -225,5 +225,11 @@ export const useActor = <A = BaseActor>(
     return actorHooks(actorManager)
   }, [actorManager])
 
-  return { hooks, authenticating, fetching, fetchError, initializeActor }
+  return {
+    hooks,
+    isAuthenticating: authenticating,
+    isFetching: fetching,
+    fetchError,
+    initializeActor,
+  }
 }

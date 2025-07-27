@@ -18,9 +18,42 @@ export interface CreateCandidAdapterContextParameters
 }
 
 export interface UseCandidEvaluationReturnType {
+  /**
+   * The error message encountered during the fetch operation, or `null` if no error occurred.
+   */
   fetchError: string | null
+
+  /**
+   * @deprecated Use `isFetching` instead.
+   * Indicates whether a fetch operation is currently in progress.
+   */
   fetching: boolean
+
+  /**
+   * Indicates whether a fetch operation is currently in progress.
+   */
+  isFetching: boolean
+
+  /**
+   * @deprecated Use `isCandidValid` instead.
+   * Validates the provided Candid interface definition string.
+   * @param candidString - The Candid definition to validate.
+   * @returns `true` if the string is valid, `false` otherwise.
+   */
   validateCandid: (candidString: string) => boolean | undefined
+
+  /**
+   * Validates the provided Candid interface definition string.
+   * @param candidString - The Candid definition to validate.
+   * @returns `true` if valid, `false` otherwise.
+   */
+  isCandidValid: (candidString: string) => boolean | undefined
+
+  /**
+   * Evaluates the provided Candid interface definition string.
+   * @param candidString - The Candid definition to evaluate.
+   * @returns A promise resolving to the corresponding InterfaceFactory if the evaluation succeeds, otherwise `undefined`.
+   */
   evaluateCandid: (
     candidString: string
   ) => Promise<IDL.InterfaceFactory | undefined>

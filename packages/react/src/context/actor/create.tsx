@@ -103,7 +103,12 @@ export function createActorContext<A = BaseActor>(
       [defaultConfig, restConfig]
     )
 
-    const { fetchError, authenticating, initializeActor, hooks } = useActor<A>({
+    const {
+      fetchError,
+      isAuthenticating: authenticating,
+      initializeActor,
+      hooks,
+    } = useActor<A>({
       canisterId,
       ...config,
     })
