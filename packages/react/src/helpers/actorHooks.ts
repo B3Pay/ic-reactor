@@ -201,6 +201,7 @@ export const actorHooks = <A = BaseActor>(
           onError?.(error as AgentError)
           onLoading?.(false)
           if (throwOnError) throw error
+          return undefined
         }
       },
       [

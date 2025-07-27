@@ -1,5 +1,6 @@
 # node
 node_modules
+node_modules.backup
 .DS_Store
 
 # build

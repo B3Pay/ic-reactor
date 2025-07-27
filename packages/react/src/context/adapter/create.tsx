@@ -52,6 +52,7 @@ export function createAdapterContext(
           fetchError: `Error validating Candid definition, ${err}`,
           fetching: false,
         })
+        return false
       }
     }, [])
 
@@ -77,6 +78,7 @@ export function createAdapterContext(
           fetchError: `Error evaluating Candid definition, ${err}`,
           fetching: false,
         })
+        return undefined
       }
     }, [])
 

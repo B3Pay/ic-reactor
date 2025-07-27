@@ -137,6 +137,7 @@ export const useActor = <A = BaseActor>(
         fetchError: `Error fetching canister ${canisterId}`,
         fetching: false,
       })
+      return undefined
     }
   }, [canisterId])
 
@@ -161,6 +162,7 @@ export const useActor = <A = BaseActor>(
         fetchError: `Error evaluating Candid definition, ${err}`,
         fetching: false,
       })
+      return undefined
     }
   }, [candidString])
 
