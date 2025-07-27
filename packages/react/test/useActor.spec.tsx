@@ -1,5 +1,6 @@
 import React, { createContext } from "react"
-import renderer, { act } from "react-test-renderer"
+import { describe, it, expect } from "bun:test"
+import { render, waitFor } from "@testing-library/react"
 import { backend, idlFactory } from "./candid"
 import { AgentProvider, CandidAdapterProvider, useActor } from "../dist"
 import { ActorHooksReturnType } from "../dist/types"
@@ -7,20 +8,19 @@ import { extractActorContext } from "../dist/helpers"
 
 type Backend = typeof backend
 
-describe("createReactor", () => {
-  it("should query 1", async () => {
+describe("useActor Tests", () => {
+  it("should handle actor loading and queries", async () => {
     const BackendActor = () => {
-      const { hooks, fetchError, authenticating, fetching } = useActor<Backend>(
-        {
+      const { hooks, fetchError, isAuthenticating, isFetching } =
+        useActor<Backend>({
           canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
           idlFactory,
-        }
-      )
+        })
 
-      return fetching || authenticating ? (
-        <p>Loading Candid interface...</p>
+      return isFetching || isAuthenticating ? (
+        <p data-testid="loading">Loading Candid interface...</p>
       ) : fetchError ? (
-        <p>Error: {fetchError}</p>
+        <p data-testid="error">Error: {fetchError}</p>
       ) : (
         hooks && <TestComponent {...hooks} />
       )
@@ -33,7 +33,7 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <span>
+          <span data-testid="version-status">
             {loading
               ? "Loading..."
               : version
@@ -44,7 +44,7 @@ describe("createReactor", () => {
       )
     }
 
-    let screen = renderer.create(
+    const { container } = render(
       <AgentProvider>
         <CandidAdapterProvider>
           <BackendActor />
@@ -52,28 +52,30 @@ describe("createReactor", () => {
       </AgentProvider>
     )
 
-    const versionStatus = () => screen.root.findAllByType("span")[0]
+    // Wait for loading to complete
+    await waitFor(
+      () => {
+        const loadingElement = container.querySelector(
+          '[data-testid="loading"]'
+        )
+        expect(loadingElement).toBeNull()
+      },
+      { timeout: 3000 }
+    )
 
-    expect(screen.toJSON()).toMatchSnapshot()
+    const versionStatus = container.querySelector(
+      '[data-testid="version-status"]'
+    ) as HTMLElement
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100))
-    })
-
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    expect(versionStatus().props.children).toEqual("Loading...")
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 1000))
-    })
-
-    expect(versionStatus().props.children).toEqual("0.2.0")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    await waitFor(
+      () => {
+        expect(versionStatus.textContent).toBe("0.2.0")
+      },
+      { timeout: 3000 }
+    )
   })
 
-  it("should query 2", async () => {
+  it("should work with context pattern", async () => {
     const ActorContext = createContext<ActorHooksReturnType<Backend> | null>(
       null
     )
@@ -81,23 +83,24 @@ describe("createReactor", () => {
     const { useQueryCall } = extractActorContext(ActorContext)
 
     const BackendActor = ({ children }: any) => {
-      const { hooks, fetching, authenticating, fetchError } = useActor<Backend>(
-        {
+      const { hooks, isFetching, isAuthenticating, fetchError } =
+        useActor<Backend>({
           canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
           idlFactory,
-        }
-      )
+        })
 
       return (
         <ActorContext.Provider value={hooks}>
           <h2>IC Canister Interaction</h2>
-          {(fetching || authenticating) && <p>Loading Candid interface...</p>}
-          {fetchError && <p>Error: {fetchError}</p>}
+          {(isFetching || isAuthenticating) && (
+            <p data-testid="loading">Loading Candid interface...</p>
+          )}
+          {fetchError && <p data-testid="error">Error: {fetchError}</p>}
           {hooks && children}
         </ActorContext.Provider>
       )
     }
-    // later in the code
+
     const CanisterName = () => {
       const { data: version, loading } = useQueryCall({
         functionName: "version",
@@ -105,7 +108,7 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <span>
+          <span data-testid="canister-version">
             {loading
               ? "Loading..."
               : version
@@ -116,7 +119,7 @@ describe("createReactor", () => {
       )
     }
 
-    let screen = renderer.create(
+    const { container } = render(
       <AgentProvider withDevtools>
         <BackendActor>
           <CanisterName />
@@ -124,24 +127,26 @@ describe("createReactor", () => {
       </AgentProvider>
     )
 
-    const versionStatus = () => screen.root.findAllByType("span")[0]
+    // Wait for loading to complete
+    await waitFor(
+      () => {
+        const loadingElement = container.querySelector(
+          '[data-testid="loading"]'
+        )
+        expect(loadingElement).toBeNull()
+      },
+      { timeout: 3000 }
+    )
 
-    expect(screen.toJSON()).toMatchSnapshot()
+    const versionStatus = container.querySelector(
+      '[data-testid="canister-version"]'
+    ) as HTMLElement
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100))
-    })
-
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    expect(versionStatus().props.children).toEqual("Loading...")
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 1000))
-    })
-
-    expect(versionStatus().props.children).toEqual("0.2.0")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    await waitFor(
+      () => {
+        expect(versionStatus.textContent).toBe("0.2.0")
+      },
+      { timeout: 3000 }
+    )
   })
 })

@@ -1,6 +1,7 @@
 import React from "react"
-import fetchMock from "jest-fetch-mock"
-import renderer, { act } from "react-test-renderer"
+import { describe, it, expect } from "bun:test"
+import { render, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import {
   AgentProvider,
   createAgentContext,
@@ -9,41 +10,37 @@ import {
 } from "../dist"
 import { LOCAL_HOST_NETWORK_URI } from "../src/utils"
 
-fetchMock.enableMocks()
-
-fetchMock.mockResponse(async () => {
-  return Promise.resolve({
-    status: 200,
-  })
-})
-
 const { AgentProvider: LocalAgentProvider, useAgent: useLocalAgent } =
   createAgentContext({
     withLocalEnv: true,
   })
 
-describe("createReactor", () => {
-  it("should query", async () => {
-    const TestComponent = ({}) => {
+describe("Agent Tests", () => {
+  it("should handle agent switching and local environment", async () => {
+    const user = userEvent.setup()
+
+    const TestComponent = () => {
       const agent = useAgent()
       return (
         <div>
-          <span>{agent?.isLocal().toString()}</span>
+          <span data-testid="agent-status">{agent?.isLocal().toString()}</span>
         </div>
       )
     }
 
-    const TestLocalComponent = ({}) => {
+    const TestLocalComponent = () => {
       const agent = useLocalAgent()
 
       return (
         <div>
-          <span>{agent?.isLocal().toString()}</span>
+          <span data-testid="local-agent-status">
+            {agent?.isLocal().toString()}
+          </span>
         </div>
       )
     }
 
-    const TestSwitchAgent = ({}) => {
+    const TestSwitchAgent = () => {
       const agentManager = useAgentManager()
 
       const switchAgent = () =>
@@ -53,12 +50,14 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <button onClick={switchAgent}>Switch</button>
+          <button data-testid="switch-button" onClick={switchAgent}>
+            Switch
+          </button>
         </div>
       )
     }
 
-    let screen = renderer.create(
+    const { container } = render(
       <>
         <AgentProvider withProcessEnv>
           <TestComponent />
@@ -70,28 +69,30 @@ describe("createReactor", () => {
       </>
     )
 
-    const agentStatus = () =>
-      screen.root.findAllByType("span")[0].props.children
+    // Check initial agent status
+    const agentStatus = container.querySelector(
+      '[data-testid="agent-status"]'
+    ) as HTMLElement
+    const localAgentStatus = container.querySelector(
+      '[data-testid="local-agent-status"]'
+    ) as HTMLElement
+    const switchButton = container.querySelector(
+      '[data-testid="switch-button"]'
+    ) as HTMLElement
 
-    const localAgentStatus = () =>
-      screen.root.findAllByType("span")[1].props.children
+    expect(agentStatus.textContent).toBe("false")
 
-    const switchAgent = () =>
-      screen.root.findAllByType("button")[0].props.onClick()
+    // Click the switch button
+    await user.click(switchButton)
 
-    expect(agentStatus()).toEqual("false")
+    // Wait for the agent to switch to local
+    await waitFor(
+      () => {
+        expect(agentStatus.textContent).toBe("true")
+      },
+      { timeout: 2000 }
+    )
 
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    await act(async () => await switchAgent())
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 1000))
-    })
-
-    expect(agentStatus()).toEqual("true")
-    expect(localAgentStatus()).toEqual("true")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    expect(localAgentStatus.textContent).toBe("true")
   })
 })

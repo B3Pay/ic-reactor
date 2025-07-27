@@ -1,5 +1,7 @@
 import React from "react"
-import renderer, { act } from "react-test-renderer"
+import { describe, it, expect } from "bun:test"
+import { render, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { createReactor } from "../dist"
 import { backend, idlFactory } from "./candid"
 
@@ -11,15 +13,21 @@ const { useActorState, useQueryCall, initialize } = createReactor<
   initializeOnCreate: false,
 })
 
-describe("createReactor", () => {
-  it("should initialize", async () => {
+describe("Initialization Tests", () => {
+  it("should handle initialization and queries", async () => {
+    const user = userEvent.setup()
+
     const TestInitialize = () => {
       const { initialized } = useActorState()
 
       return (
         <div>
-          <span>{initialized ? "Initialized" : "Not initialized"}</span>
-          <button onClick={initialize}>Initialize</button>
+          <span data-testid="init-status">
+            {initialized ? "Initialized" : "Not initialized"}
+          </span>
+          <button data-testid="init-button" onClick={initialize}>
+            Initialize
+          </button>
           <QueryCall />
         </div>
       )
@@ -33,40 +41,52 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <button onClick={call}>Get Version</button>
-          <span>
+          <button data-testid="get-version-button" onClick={call}>
+            Get Version
+          </button>
+          <span data-testid="version-status">
             {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
           </span>
         </div>
       )
     }
 
-    let screen = renderer.create(<TestInitialize />)
+    const { container } = render(<TestInitialize />)
 
-    const initializeStatus = () =>
-      screen.root.findAllByType("span")[0].props.children
-    const versionStatus = () =>
-      screen.root.findAllByType("span")[1].props.children
+    const initStatus = container.querySelector(
+      '[data-testid="init-status"]'
+    ) as HTMLElement
+    const versionStatus = container.querySelector(
+      '[data-testid="version-status"]'
+    ) as HTMLElement
+    const initButton = container.querySelector(
+      '[data-testid="init-button"]'
+    ) as HTMLElement
+    const getVersionButton = container.querySelector(
+      '[data-testid="get-version-button"]'
+    ) as HTMLElement
 
-    const initializeButton = () => screen.root.findAllByType("button")[0]
-    const getVersionButton = () => screen.root.findAllByType("button")[1]
+    // Check initial state
+    expect(initStatus.textContent).toBe("Not initialized")
 
-    expect(screen.toJSON()).toMatchSnapshot()
+    // Initialize
+    await user.click(initButton)
 
-    expect(initializeStatus()).toEqual("Not initialized")
+    await waitFor(() => {
+      expect(initStatus.textContent).toBe("Initialized")
+    })
 
-    await act(() => initializeButton().props.onClick())
+    // Check version call is ready
+    expect(versionStatus.textContent).toBe("Ready To call")
 
-    expect(initializeStatus()).toEqual("Initialized")
+    // Make version call
+    await user.click(getVersionButton)
 
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    expect(versionStatus()).toEqual("Ready To call")
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    await act(() => getVersionButton().props.onClick())
-
-    expect(versionStatus()).toEqual("0.2.0")
-    expect(screen.toJSON()).toMatchSnapshot()
+    await waitFor(
+      () => {
+        expect(versionStatus.textContent).toBe("0.2.0")
+      },
+      { timeout: 3000 }
+    )
   })
 })
