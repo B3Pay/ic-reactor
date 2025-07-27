@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - agentjs-v3  # Add your current branch for testing
+      - agentjs-v3 # Add your current branch for testing
     tags:
       - "@ic-reactor/core"
   workflow_dispatch:
