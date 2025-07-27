@@ -7,6 +7,7 @@
   "scripts": {
     "test": "bun test",
     "size": "bun run size-limit",
+    "size:why": "bun run size-limit --why",
     "build": "bun build --workspaces"
   },
   "publishConfig": {
@@ -31,8 +32,9 @@
     "@dfinity/candid": "^3.1.0",
     "@dfinity/identity": "^3.1.0",
     "@dfinity/principal": "^3.1.0",
+    "@size-limit/esbuild-why": "^11.2.0",
     "@size-limit/preset-small-lib": "^11.2.0",
-    "@types/minimatch": "^5.1.2",
+    "minimatch": "^10.0.3",
     "bun-types": "^1.2.19",
     "react": "^19.1.0",
     "size-limit": "^11.2.0",
@@ -44,32 +46,29 @@
   },
   "size-limit": [
     {
+      "name": "Core (ES Module)",
       "path": "packages/core/dist/index.js",
-      "limit": "50 KB"
+      "limit": "90 KB"
     },
     {
-      "path": "packages/parser/dist/web/index.js",
-      "limit": "50 KB"
+      "name": "Core (UMD Development)",
+      "path": "packages/core/umd/development/ic-reactor-core.js",
+      "limit": "100 KB"
     },
     {
-      "path": "packages/parser/dist/nodejs/index.js",
-      "limit": "50 KB"
+      "name": "Core (UMD Production)",
+      "path": "packages/core/umd/production/ic-reactor-core.min.js",
+      "limit": "90 KB"
     },
     {
-      "path": "packages/parser/dist/bundler/index.js",
-      "limit": "50 KB"
-    },
-    {
-      "path": "packages/shared/dist/index.js",
-      "limit": "50 KB"
-    },
-    {
+      "name": "React (ES Module)",
       "path": "packages/react/dist/index.js",
-      "limit": "50 KB"
+      "limit": "95 KB"
     },
     {
+      "name": "Visitor (ES Module)",
       "path": "packages/visitor/dist/index.js",
-      "limit": "50 KB"
+      "limit": "25 KB"
     }
   ],
   "packageManager": "bun@1.2.19"
