@@ -2,7 +2,6 @@ import { jsonToString } from "@ic-reactor/core/dist/utils"
 import { useICRC1QueryCall, useICRC1UpdateCall } from "./ICRC1Provider"
 import { Principal } from "@dfinity/principal"
 import { useRef } from "react"
-import { HttpErrorCode } from "@dfinity/agent"
 
 interface UserWalletProps {
   principal: Principal
