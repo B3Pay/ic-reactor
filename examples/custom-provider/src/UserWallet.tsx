@@ -2,6 +2,7 @@ import { jsonToString } from "@ic-reactor/core/dist/utils"
 import { useICRC1QueryCall, useICRC1UpdateCall } from "./ICRC1Provider"
 import { Principal } from "@dfinity/principal"
 import { useRef } from "react"
+import { HttpErrorCode } from "@dfinity/agent"
 
 interface UserWalletProps {
   principal: Principal
@@ -23,7 +24,8 @@ const UserWallet: React.FC<UserWalletProps> = ({ principal }) => {
   const {
     call: transfer,
     isLoading: isTransferLoading,
-    data: transferResult,
+    error: callError,
+    compileResult,
   } = useICRC1UpdateCall({
     functionName: "icrc1_transfer",
   })
@@ -45,6 +47,8 @@ const UserWallet: React.FC<UserWalletProps> = ({ principal }) => {
     ])
   }
 
+  const { isOk, value, error } = compileResult()
+
   return (
     <div>
       <h2>User Wallet</h2>
@@ -65,8 +69,10 @@ const UserWallet: React.FC<UserWalletProps> = ({ principal }) => {
       </form>
       <div>
         <span>
-          <strong>Transfer Result</strong>:{" "}
-          {isTransferLoading ? "Loading..." : jsonToString(transferResult)}
+          <strong>Transfer Result</strong>: {isTransferLoading && "Loading..."}
+          {callError && `Error: ${callError.message}`}
+          {isOk && jsonToString(value)}
+          {error && `Error: ${jsonToString(error)}`}
         </span>
       </div>
     </div>
