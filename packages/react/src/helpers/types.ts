@@ -178,7 +178,6 @@ export interface UseSharedCallParameters<A, M extends FunctionName<A>>
   onSuccessResult?: (value: ExtractOk<ActorMethodReturnType<A[M]>>) => void
   onErrorResult?: (error: ExtractErr<ActorMethodReturnType<A[M]>>) => void
   throwOnError?: boolean
-  compileResult?: boolean
 }
 
 export interface UseSharedCallReturnType<

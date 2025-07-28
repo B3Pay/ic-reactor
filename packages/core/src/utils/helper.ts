@@ -190,6 +190,14 @@ export function createCompiledResult<T>(result: T): CompiledResult<T> {
       value: null,
       error: (result as { Err: unknown }).Err,
     } as CompiledResult<T>
+  } else if (result) {
+    // For non-Result types
+    return {
+      isOk: true,
+      isErr: false,
+      value: result,
+      error: null,
+    } as CompiledResult<T>
   } else {
     // For non-Result types
     return {
