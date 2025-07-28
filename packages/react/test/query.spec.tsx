@@ -1,5 +1,7 @@
 import React from "react"
-import renderer, { act } from "react-test-renderer"
+import { describe, it, expect } from "bun:test"
+import { render, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { createReactor } from "../dist"
 import { backend, idlFactory } from "./candid"
 import { CreateReactorCoreParameters } from "../src/types"
@@ -7,11 +9,12 @@ import { CreateReactorCoreParameters } from "../src/types"
 const config: CreateReactorCoreParameters = {
   canisterId: "xeka7-ryaaa-aaaal-qb57a-cai",
   idlFactory,
+  initializeOnCreate: false,
 }
 
 const { useQueryCall } = createReactor<typeof backend>(config)
 
-describe("createReactor", () => {
+describe("Query Tests", () => {
   it("should query on mount", async () => {
     const TestComponent = () => {
       const { data, loading } = useQueryCall({
@@ -20,51 +23,55 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <span>
+          <span data-testid="version-status">
             {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
           </span>
         </div>
       )
     }
 
-    let screen = renderer.create(<TestComponent />)
+    const { container } = render(<TestComponent />)
 
-    const versionStatus = () => screen.root.findAllByType("span")[0]
+    const versionStatus = container.querySelector(
+      '[data-testid="version-status"]'
+    ) as HTMLElement
 
-    expect(versionStatus().props.children).toEqual("Ready To call")
-    expect(screen.toJSON()).toMatchSnapshot()
+    expect(versionStatus.textContent).toBe("Ready To call")
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 1000))
-    })
-
-    expect(versionStatus().props.children).toEqual("0.2.0")
-    expect(screen.toJSON()).toMatchSnapshot()
+    await waitFor(
+      () => {
+        expect(versionStatus.textContent).toBe("0.2.0")
+      },
+      { timeout: 3000 }
+    )
   })
 
-  it("should have cached", async () => {
+  it("should have cached result", async () => {
     const TestComponent = () => {
       const { data, loading } = useQueryCall({
         functionName: "version",
       })
 
       return (
-        <span>
+        <span data-testid="cached-version">
           {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
         </span>
       )
     }
 
-    let screen = renderer.create(<TestComponent />)
+    const { container } = render(<TestComponent />)
 
-    const versionStatus = () => screen.root.findAllByType("span")[0]
+    const versionStatus = container.querySelector(
+      '[data-testid="cached-version"]'
+    ) as HTMLElement
 
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    expect(versionStatus().props.children).toEqual("0.2.0")
+    // Should immediately have cached result
+    expect(versionStatus.textContent).toBe("0.2.0")
   })
 
-  it("should have refetch", async () => {
+  it("should handle refetch and reset", async () => {
+    const user = userEvent.setup()
+
     const TestComponent = () => {
       const { call, reset, data, loading } = useQueryCall({
         functionName: "version",
@@ -72,36 +79,47 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <button onClick={call}>Get Version</button>
-          <button onClick={reset}>Reset</button>
-          <span>
+          <button data-testid="get-version-button" onClick={call}>
+            Get Version
+          </button>
+          <button data-testid="reset-button" onClick={reset}>
+            Reset
+          </button>
+          <span data-testid="refetch-version">
             {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
           </span>
         </div>
       )
     }
 
-    let screen = renderer.create(<TestComponent />)
+    const { container } = render(<TestComponent />)
 
-    const versionStatus = () => screen.root.findAllByType("span")[0]
+    const versionStatus = container.querySelector(
+      '[data-testid="refetch-version"]'
+    ) as HTMLElement
+    const versionButton = container.querySelector(
+      '[data-testid="get-version-button"]'
+    ) as HTMLElement
+    const resetButton = container.querySelector(
+      '[data-testid="reset-button"]'
+    ) as HTMLElement
 
-    const versionButton = () => screen.root.findAllByType("button")[0]
-    const resetButton = () => screen.root.findAllByType("button")[1]
+    // Should have cached result
+    expect(versionStatus.textContent).toBe("0.2.0")
 
-    expect(screen.toJSON()).toMatchSnapshot()
+    // Reset should clear the data
+    await user.click(resetButton)
 
-    expect(versionStatus().props.children).toEqual("0.2.0")
+    expect(versionStatus.textContent).toBe("Ready To call")
 
-    await act(async () => resetButton().props.onClick())
+    // Refetch should get the data again
+    await user.click(versionButton)
 
-    expect(versionStatus().props.children).toEqual("Ready To call")
-
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    await act(async () => versionButton().props.onClick())
-
-    expect(versionStatus().props.children).toEqual("0.2.0")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    await waitFor(
+      () => {
+        expect(versionStatus.textContent).toBe("0.2.0")
+      },
+      { timeout: 3000 }
+    )
   })
 })

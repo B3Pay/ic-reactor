@@ -40,9 +40,11 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   }: UseAuthParameters = {}) => {
     const [loginState, setLoginState] = React.useState<LoginState>({
       loading: false,
+      isLoading: false,
       error: undefined,
     })
-    const { authenticated, authenticating, error, identity } = useAuthState()
+    const { isAuthenticated, isAuthenticating, error, identity } =
+      useAuthState()
 
     const authenticate = React.useCallback(async () => {
       const authenticatePromise: Promise<Identity> = new Promise(
@@ -71,7 +73,7 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
 
     const login = React.useCallback(
       async (options?: LoginParameters) => {
-        setLoginState({ loading: true, error: undefined })
+        setLoginState({ loading: true, isLoading: true, error: undefined })
 
         const loginPromise: Promise<Principal> = new Promise(
           (resolve, reject) => {
@@ -94,24 +96,28 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
                       options?.onSuccess?.(msg)
                       onLoginSuccess?.(principal)
                       resolve(principal)
-                      setLoginState({ loading: false, error: undefined })
+                      setLoginState({
+                        loading: false,
+                        isLoading: false,
+                        error: undefined,
+                      })
                     })
                     .catch((error) => {
-                      setLoginState({ loading: false, error })
+                      setLoginState({ loading: false, isLoading: false, error })
                       onLoginError?.(error)
                       reject(error)
                     })
                 },
                 onError: (error) => {
                   options?.onError?.(error)
-                  setLoginState({ loading: false, error })
+                  setLoginState({ loading: false, isLoading: false, error })
                   onLoginError?.(error)
                   reject(error)
                 },
               })
             } catch (e) {
               const error = e as string
-              setLoginState({ loading: false, error })
+              setLoginState({ loading: false, isLoading: false, error })
               onLoginError?.(error)
               reject(error)
             }
@@ -138,14 +144,17 @@ export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
     )
 
     return {
-      authenticated,
-      authenticating,
+      isAuthenticated,
+      isAuthenticating,
+      authenticated: isAuthenticated,
+      authenticating: isAuthenticating,
       identity,
       error,
       login,
       logout,
       authenticate,
-      loginLoading: loginState.loading,
+      loginLoading: loginState.isLoading,
+      isLoginLoading: loginState.isLoading,
       loginError: loginState.error,
     }
   }

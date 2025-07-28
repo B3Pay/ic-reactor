@@ -1,128 +1,149 @@
-import { Cbor } from "@dfinity/agent"
+import {
+  mock,
+  expect,
+  describe,
+  it,
+  afterEach,
+  beforeEach,
+  spyOn,
+} from "bun:test"
 import { IDL } from "@dfinity/candid"
-import fetchMock from "jest-fetch-mock"
+import { Cbor } from "@dfinity/agent"
 import { idlFactory } from "./candid/hello"
-import { _SERVICE } from "./candid/hello/hello.did"
 import { createActorManager, createAgentManager } from "../src"
 
-fetchMock.enableMocks()
-
+// --- Mocking Fetch Correctly ---
 const canisterDecodedReturnValue = "Hello, World!"
 const expectedReplyArg = IDL.encode([IDL.Text], [canisterDecodedReturnValue])
 
-fetchMock.mockResponse(async (req) => {
-  if (req.url.endsWith("/call")) {
-    return Promise.resolve({
-      status: 200,
-    })
-  }
+// Set up the spy before each test
+beforeEach(() => {
+  spyOn(globalThis, "fetch").mockImplementation(
+    Object.assign(
+      async (input: RequestInfo | URL) => {
+        const url = typeof input === "string" ? input : input.toString()
 
-  const responseObj = {
-    status: "replied",
-    reply: {
-      arg: expectedReplyArg,
-    },
-  }
+        if (url.endsWith("/call")) {
+          return new Response(null, { status: 200 })
+        }
 
-  return Promise.resolve({
-    status: 200,
-    body: Cbor.encode(responseObj),
-  })
+        if (url.includes("/query")) {
+          const responseObj = {
+            status: "replied",
+            reply: {
+              arg: expectedReplyArg,
+            },
+          }
+          return new Response(Cbor.encode(responseObj))
+        }
+
+        // For other requests, return empty success response
+        return new Response(JSON.stringify({}), { status: 200 })
+      },
+      { preconnect: () => {} } // Mock the preconnect property
+    )
+  )
 })
 
+// Restore the original fetch after each test
+afterEach(() => {
+  // This is crucial to prevent tests from interfering with each other
+  mock.restore()
+})
+
+// --- Test Suite ---
 describe("CreateActor", () => {
-  const agentCallback = jest.fn()
-  const authCallback = jest.fn()
-  const actorCallback = jest.fn()
+  // A helper function to set up a clean state for each test
+  const setupTest = () => {
+    const agentCallback = mock()
+    const authCallback = mock()
+    const actorCallback = mock()
 
-  const agentManager = createAgentManager({
-    verifyQuerySignatures: false,
-    withDevtools: false,
-  })
+    const agentManager = createAgentManager({
+      verifyQuerySignatures: false,
+    })
 
-  const { subscribeAgent, subscribeAuthState } = agentManager
+    agentManager.subscribeAgent(agentCallback)
+    agentManager.subscribeAuthState(authCallback)
 
-  subscribeAgent(agentCallback)
-  subscribeAuthState(authCallback)
+    const actorManager = createActorManager({
+      agentManager,
+      canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
+      idlFactory,
+      initializeOnCreate: false,
+    })
 
-  const {
-    callMethod,
-    initialize,
-    agentManager: actorAgentManager,
-    getState,
-    subscribeActorState,
-  } = createActorManager({
-    agentManager,
-    canisterId: "bd3sg-teaaa-aaaaa-qaaba-cai",
-    idlFactory,
-    initializeOnCreate: false,
-  })
+    actorManager.subscribeActorState(actorCallback)
 
-  subscribeActorState(actorCallback)
+    return {
+      agentManager,
+      actorManager,
+      callbacks: { agentCallback, authCallback, actorCallback },
+    }
+  }
 
   it("should return the actor agent manager", () => {
-    expect(actorAgentManager).toEqual(agentManager)
+    const { actorManager, agentManager } = setupTest()
+    expect(actorManager.agentManager).toEqual(agentManager)
   })
 
-  it("should initialized the actor", async () => {
+  it("should initialize the actor", async () => {
+    const { actorManager, callbacks } = setupTest()
+    const { agentCallback, authCallback, actorCallback } = callbacks
+
     expect(agentCallback).toHaveBeenCalledTimes(1)
     expect(authCallback).toHaveBeenCalledTimes(0)
     expect(actorCallback).toHaveBeenCalledTimes(0)
 
-    expect(getState().initialized).toEqual(false)
-
-    const promise = initialize()
-
-    expect(agentCallback).toHaveBeenCalledTimes(2)
-    expect(authCallback).toHaveBeenCalledTimes(0)
-    expect(actorCallback).toHaveBeenCalledTimes(2)
-
-    await promise
+    await actorManager.initialize()
 
     expect(agentCallback).toHaveBeenCalledTimes(2)
     expect(authCallback).toHaveBeenCalledTimes(0)
     expect(actorCallback).toHaveBeenCalledTimes(2)
   })
 
-  it("should queryCall the query method", async () => {
-    const data = await callMethod("greet", "World")
+  it("should call the query method", async () => {
+    const { actorManager } = setupTest()
+    await actorManager.initialize() // Actor must be initialized first
 
+    const data = await actorManager.callMethod("greet", "World")
     expect(data).toEqual(canisterDecodedReturnValue)
   })
 
   it("should have not authenticated the actor", () => {
-    const { authenticated, authenticating } = agentManager.getAuthState()
-    const authClient = agentManager.getAuth()
-
-    expect(authenticating).toEqual(false)
-    expect(authenticated).toEqual(false)
-    expect(authClient).toBeNull()
+    const { agentManager } = setupTest()
+    const { isAuthenticated, isAuthenticating } = agentManager.getAuthState()
+    expect(isAuthenticating).toEqual(false)
+    expect(isAuthenticated).toEqual(false)
   })
 
-  it("should authenticating the actor", async () => {
-    const identity = agentManager.authenticate()
+  it("should handle the authentication process", async () => {
+    const { agentManager, callbacks } = setupTest()
+    const { authCallback } = callbacks
 
+    let authState = agentManager.getAuthState()
+    expect(authState.identity).toEqual(null)
+    expect(authState.authenticating).toBe(false)
+    expect(authState.authenticated).toBe(false)
+
+    // Start authentication
+    const identityPromise = agentManager.authenticate()
+
+    // State becomes "authenticating"
     expect(authCallback).toHaveBeenCalledTimes(1)
+    authState = agentManager.getAuthState()
+    expect(authState.identity).toEqual(null)
+    expect(authState.isAuthenticating).toBe(true)
+    expect(authState.isAuthenticated).toBe(false)
 
-    const { authenticated, authenticating } = agentManager.getAuthState()
-    const authClient = agentManager.getAuth()
+    // Wait for the process to complete
+    await identityPromise
 
-    expect(authenticating).toEqual(true)
-    expect(authenticated).toEqual(false)
-    expect(authClient).toBeNull()
-    await identity
+    // State becomes "authenticated"
     expect(authCallback).toHaveBeenCalledTimes(2)
-  })
-
-  it("should authenticated the actor", async () => {
-    const { identity, authenticating } = agentManager.getAuthState()
-    const authClient = agentManager.getAuth()
-
-    expect(authenticating).toEqual(false)
-    expect(authClient).toBeDefined()
-    expect(identity).toBeDefined()
-
-    expect(agentCallback).toHaveBeenCalledTimes(3)
-    expect(authCallback).toHaveBeenCalledTimes(2)
+    authState = agentManager.getAuthState()
+    expect(authState.authenticating).toBe(false)
+    expect(authState.identity?.getPrincipal().toString()).toEqual("2vxsx-fae")
+    expect(authState.authenticated).toBe(false) // since the login is not happend yet!
   })
 })

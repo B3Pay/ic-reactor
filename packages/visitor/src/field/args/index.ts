@@ -1,5 +1,4 @@
 import { IDL } from "@dfinity/candid"
-
 import type {
   ArgTypeFromIDLType,
   DefaultArg,

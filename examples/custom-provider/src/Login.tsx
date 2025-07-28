@@ -4,28 +4,28 @@ const Login = () => {
   const {
     login,
     logout,
-    loginLoading,
+    isLoginLoading,
     loginError,
     identity,
-    authenticating,
-    authenticated,
+    isAuthenticating,
+    isAuthenticated,
   } = useAuth()
 
   return (
     <div>
       <h2>Login:</h2>
       <div>
-        {loginLoading && <div>Loading...</div>}
+        {isLoginLoading && <div>Loading...</div>}
         {loginError ? <div>{loginError}</div> : null}
         {identity && <div>{identity.getPrincipal().toText()}</div>}
       </div>
-      {authenticated ? (
+      {isAuthenticated ? (
         <div>
           <button onClick={() => logout()}>Logout</button>
         </div>
       ) : (
         <div>
-          <button onClick={() => login()} disabled={authenticating}>
+          <button onClick={() => login()} disabled={isAuthenticating}>
             Login
           </button>
         </div>

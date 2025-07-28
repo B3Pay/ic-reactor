@@ -1,7 +1,0 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-import { Crypto } from "@peculiar/webcrypto"
-import "fake-indexeddb/auto"
-global.crypto = new Crypto()
-global.TextEncoder = require("text-encoding").TextEncoder
-global.TextDecoder = require("text-encoding").TextDecoder
-global.XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest

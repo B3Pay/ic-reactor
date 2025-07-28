@@ -103,7 +103,12 @@ export function createActorContext<A = BaseActor>(
       [defaultConfig, restConfig]
     )
 
-    const { fetchError, authenticating, initializeActor, hooks } = useActor<A>({
+    const {
+      fetchError,
+      isAuthenticating: authenticating,
+      initializeActor,
+      hooks,
+    } = useActor<A>({
       canisterId,
       ...config,
     })
@@ -113,11 +118,11 @@ export function createActorContext<A = BaseActor>(
     }, [initializeActor])
 
     const ActorChildren: React.FC<ActorChildrenProps> = ({ useActorState }) => {
-      const { initializing, initialized, error } = useActorState()
+      const { isInitializing, isInitialized, error } = useActorState()
 
-      return initializing
+      return isInitializing
         ? loadingComponent
-        : initialized
+        : isInitialized
         ? children
         : error
         ? errorComponent(error.message)

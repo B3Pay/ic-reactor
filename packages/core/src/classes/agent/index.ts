@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { HttpAgent } from "@dfinity/agent"
+import { AgentError, HttpAgent } from "@dfinity/agent"
 import {
   createStoreWithOptionalDevtools,
   getNetworkByHostname,
@@ -23,7 +23,9 @@ import {
 
 const AGENT_INITIAL_STATE: AgentState = {
   initialized: false,
+  isInitialized: false,
   initializing: false,
+  isInitializing: false,
   error: undefined,
   network: undefined,
 }
@@ -31,7 +33,9 @@ const AGENT_INITIAL_STATE: AgentState = {
 const AUTH_INITIAL_STATE: AuthState = {
   identity: null,
   authenticating: false,
+  isAuthenticating: false,
   authenticated: false,
+  isAuthenticated: false,
   error: undefined,
 }
 
@@ -105,6 +109,7 @@ export class AgentManager {
     this.updateAgentState(
       {
         initializing: true,
+        isInitializing: true,
         error: undefined,
         network,
       },
@@ -115,13 +120,22 @@ export class AgentManager {
         await this._agent.fetchRootKey()
       } catch (error) {
         this.updateAgentState(
-          { error: error as Error, initializing: false },
+          {
+            error: error as AgentError,
+            initializing: false,
+            isInitializing: false,
+          },
           "error"
         )
       }
     }
     this.updateAgentState(
-      { initialized: true, initializing: false },
+      {
+        initialized: true,
+        isInitialized: true,
+        initializing: false,
+        isInitializing: false,
+      },
       "initialized"
     )
   }
@@ -162,11 +176,14 @@ export class AgentManager {
 
   public authenticate = async () => {
     console.log(`Authenticating on ${this.getNetwork()} network`)
-    this.updateAuthState({ authenticating: true }, "authenticating")
+    this.updateAuthState(
+      { isAuthenticating: true, authenticating: true },
+      "authenticating"
+    )
 
     try {
       this._auth = await AuthClient.create()
-      const authenticated = await this._auth.isAuthenticated()
+      const isAuthenticated = await this._auth.isAuthenticated()
       const identity = this._auth.getIdentity()
 
       this._agent.replaceIdentity(identity)
@@ -174,9 +191,11 @@ export class AgentManager {
 
       this.updateAuthState(
         {
-          authenticated,
+          authenticated: isAuthenticated,
+          isAuthenticated,
           identity,
           authenticating: false,
+          isAuthenticating: false,
         },
         "authenticated"
       )
@@ -184,7 +203,11 @@ export class AgentManager {
       return identity
     } catch (error) {
       this.updateAuthState(
-        { error: error as Error, authenticating: false },
+        {
+          error: error as Error,
+          isAuthenticating: false,
+          authenticating: false,
+        },
         "error"
       )
       throw error
@@ -192,7 +215,10 @@ export class AgentManager {
   }
 
   public login = async (options?: AuthClientLoginOptions) => {
-    this.updateAuthState({ authenticating: true }, "login")
+    this.updateAuthState(
+      { isAuthenticating: true, authenticating: true },
+      "login"
+    )
     if (!this._auth) {
       await this.authenticate()
     }

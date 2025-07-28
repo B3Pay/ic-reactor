@@ -28,11 +28,13 @@ import {
   type ActorMethodState,
   type ActorState,
 } from "@ic-reactor/core/dist/types"
+import { AgentError } from "@dfinity/agent"
 
 const DEFAULT_STATE: UseSharedCallState<never, never> = {
   data: undefined,
   error: undefined,
   loading: false,
+  isLoading: false,
 }
 /**
  * Provides a set of React hooks designed for interacting with actors in an Internet Computer (IC) project using the React framework and Zustand for state management.
@@ -75,8 +77,10 @@ export const actorHooks = <A = BaseActor>(
       name: state.name,
       error: state.error,
       version: state.version,
-      initialized: state.initialized,
-      initializing: state.initializing,
+      initialized: state.isInitialized,
+      isInitialized: state.isInitialized,
+      initializing: state.isInitializing,
+      isInitializing: state.isInitializing,
       canisterId,
     }))
   }
@@ -150,18 +154,18 @@ export const actorHooks = <A = BaseActor>(
       requestKey
     )
 
-    const latestDataRef = React.useRef<ActorMethodReturnType<A[M]>>()
+    const latestDataRef = React.useRef<ActorMethodReturnType<A[M]>>(null)
 
     const reset = React.useCallback(() => {
       updateMethodState(functionName, requestKey, DEFAULT_STATE)
-      latestDataRef.current = undefined
+      latestDataRef.current = null
     }, [functionName, requestKey])
 
     const call = React.useCallback(
       async (
         eventOrReplaceArgs?: ActorMethodParameters<A[M]> | React.MouseEvent
       ) => {
-        setSharedState({ error: undefined, loading: true })
+        setSharedState({ error: undefined, loading: true, isLoading: true })
         onLoading?.(true)
         try {
           const replaceArgs =
@@ -172,7 +176,12 @@ export const actorHooks = <A = BaseActor>(
           )
 
           latestDataRef.current = data
-          setSharedState({ data, error: undefined, loading: false })
+          setSharedState({
+            data,
+            error: undefined,
+            loading: false,
+            isLoading: false,
+          })
 
           onLoading?.(false)
           onSuccess?.(data)
@@ -190,14 +199,16 @@ export const actorHooks = <A = BaseActor>(
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error(`Error calling method ${functionName}:`, error)
-          latestDataRef.current = undefined
+          latestDataRef.current = null
           setSharedState({
-            error: error as Error,
+            error: error as AgentError,
             loading: false,
+            isLoading: false,
           })
-          onError?.(error as Error)
+          onError?.(error as AgentError)
           onLoading?.(false)
           if (throwOnError) throw error
+          return undefined
         }
       },
       [
@@ -231,7 +242,7 @@ export const actorHooks = <A = BaseActor>(
     ...rest
   }) => {
     const { call, requestKey, ...state } = useSharedCall(rest)
-    const intervalId = React.useRef<NodeJS.Timeout>()
+    const intervalId = React.useRef<NodeJS.Timeout>(null)
 
     React.useEffect(() => {
       if (refetchInterval) {
@@ -258,7 +269,11 @@ export const actorHooks = <A = BaseActor>(
         }
       }
 
-      return () => clearInterval(intervalId.current)
+      return () => {
+        if (intervalId.current) {
+          clearInterval(intervalId.current)
+        }
+      }
     }, [refetchInterval, refetchOnMount, requestKey])
 
     const refetch = () => {
@@ -318,12 +333,12 @@ export const actorHooks = <A = BaseActor>(
 
     let refetchOnMount = params.refetchOnMount
     let refetchInterval = params.refetchInterval
-    let formRequired = true
+    let isFormRequired = true
 
     switch (attributes.type) {
       case "query":
         if (validateArgs(params.args)) {
-          formRequired = params.refetchOnMount === false ? true : false
+          isFormRequired = params.refetchOnMount === false ? true : false
         } else {
           refetchOnMount = false
           refetchInterval = false
@@ -336,10 +351,10 @@ export const actorHooks = <A = BaseActor>(
             refetchOnMount,
             refetchInterval,
           }),
-          formRequired,
+          isFormRequired,
         }
       case "update":
-        return { visit, validateArgs, ...useUpdateCall(params), formRequired }
+        return { visit, validateArgs, ...useUpdateCall(params), isFormRequired }
       default:
         throw new Error(`Method type ${attributes.type} not found`)
     }

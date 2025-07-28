@@ -1,38 +1,59 @@
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterAll,
+  spyOn,
+  mock,
+} from "bun:test"
 import { Cbor } from "@dfinity/agent"
 import { IDL } from "@dfinity/candid"
-import fetchMock from "jest-fetch-mock"
 import { createReactorCore } from "../src"
 import { hello, idlFactory } from "./candid/hello"
-
-fetchMock.enableMocks()
 
 const canisterDecodedReturnValue = "Hello, World!"
 const expectedReplyArg = IDL.encode([IDL.Text], [canisterDecodedReturnValue])
 
-fetchMock.mockResponse(async (req) => {
-  if (req.url.endsWith("/call")) {
-    return Promise.resolve({
-      status: 200,
-    })
-  }
+// Set up global fetch mock
+beforeAll(() => {
+  spyOn(globalThis, "fetch").mockImplementation(
+    Object.assign(
+      async (input: RequestInfo | URL) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+            ? input.toString()
+            : input.url
 
-  const responseObj = {
-    status: "replied",
-    reply: {
-      arg: expectedReplyArg,
-    },
-  }
+        if (url.endsWith("/call")) {
+          return new Response(null, {
+            status: 200,
+          })
+        }
 
-  return Promise.resolve({
-    status: 200,
-    body: Cbor.encode(responseObj),
-  })
+        const responseObj = {
+          status: "replied",
+          reply: {
+            arg: expectedReplyArg,
+          },
+        }
+
+        return new Response(Cbor.encode(responseObj), {
+          status: 200,
+        })
+      },
+      { preconnect: () => {} } // Add the required preconnect property
+    )
+  )
 })
 
 describe("Initialize and Subscriptions", () => {
   // Test specific to fireImmediately behavior
   describe("Subscription Immediate Firing", () => {
-    const immediateCallback = jest.fn()
+    const immediateCallback = mock()
 
     it("should fire immediately when option is set", () => {
       const { subscribeActorState } = createReactorCore<typeof hello>({
@@ -58,13 +79,13 @@ describe("Initialize and Subscriptions", () => {
   })
 
   let callCounter = 0
-  const simpleCallback = jest.fn((_) => {
+  const simpleCallback = mock((_: any) => {
     callCounter++
   })
-  const methodStateCallback = jest.fn()
-  const loadingStateCallback = jest.fn()
-  const customEqualityFn = jest.fn((a, b) => a === b)
-  const counterCallback = jest.fn()
+  const methodStateCallback = mock()
+  const loadingStateCallback = mock()
+  const customEqualityFn = mock((a: any, b: any) => a === b)
+  const counterCallback = mock()
 
   let unsubscribeSimple: () => void
   let unsubscribeMethodState: () => void
@@ -208,7 +229,7 @@ describe("Initialize and Subscriptions", () => {
 
     // Verify loading state
     const loadingState = methodStateCallback.mock.calls.find(
-      (call) => call[0]?.greet?.["0x3e5c8666"]?.loading === true
+      (call: any) => call[0]?.greet?.["0x3e5c8666"]?.loading === true
     )
     expect(loadingState).toBeTruthy()
 
@@ -216,7 +237,7 @@ describe("Initialize and Subscriptions", () => {
 
     // Verify completed state
     const completedState = methodStateCallback.mock.calls.find(
-      (call) =>
+      (call: any) =>
         call[0]?.greet?.["0x3e5c8666"]?.data === canisterDecodedReturnValue &&
         call[0]?.greet?.["0x3e5c8666"]?.loading === false
     )
@@ -224,7 +245,8 @@ describe("Initialize and Subscriptions", () => {
   })
 
   it("should handle error states and notify subscribers", async () => {
-    fetchMock.mockRejectOnce(new Error("Network error"))
+    // Mock a network error for this specific call
+    spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Network error"))
 
     const { call } = updateCall({
       functionName: "greet",
@@ -235,7 +257,7 @@ describe("Initialize and Subscriptions", () => {
       await call()
     } catch (error) {
       const errorState = methodStateCallback.mock.calls.find(
-        (call) =>
+        (call: any) =>
           call[0]?.greet?.["0x3e5c8666"]?.error instanceof Error &&
           call[0]?.greet?.["0x3e5c8666"]?.loading === false
       )

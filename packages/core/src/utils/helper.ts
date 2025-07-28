@@ -1,11 +1,11 @@
-import { hash, toHex } from "@dfinity/agent"
+import { sha256 } from "@noble/hashes/sha2"
+import { bytesToHex } from "@noble/hashes/utils"
 import {
   DevtoolsOptions,
   devtools,
   subscribeWithSelector,
 } from "zustand/middleware"
 import { createStore, StateCreator } from "zustand"
-
 import type {
   CompiledResult,
   BaseActor,
@@ -13,12 +13,20 @@ import type {
   IDL,
   ExtractOk,
   StoreWithAllMiddleware,
-  StoreWithSubscribeOnly,
   WithSubscribeSelector,
   WithDevtools,
 } from "../types"
 import { createSimpleHash } from "./hash"
 import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
+
+/**
+ * No operation function that does nothing.
+ * It can be used as a placeholder or for logging purposes.
+ */
+export function noop() {
+  // eslint-disable-next-line no-console
+  console.warn("No operation function called")
+}
 
 /**
  * Creates a Zustand store with optional DevTools middleware.
@@ -30,25 +38,20 @@ import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
 export function createStoreWithOptionalDevtools<T extends object>(
   initialState: T,
   config: DevtoolsOptions & { withDevtools?: boolean }
-): StoreWithAllMiddleware<T> | StoreWithSubscribeOnly<T> {
+): StoreWithAllMiddleware<T> {
   const createState: StateCreator<T> = () => initialState
 
-  if (config.withDevtools) {
-    return createStore<T, [WithSubscribeSelector, WithDevtools]>(
-      subscribeWithSelector(
-        devtools(createState, {
-          serialize: {
-            replacer: (_: string, value: unknown) =>
-              typeof value === "bigint" ? value.toString() : value,
-          },
-          ...config,
-        })
-      )
+  return createStore<T, [WithSubscribeSelector, WithDevtools]>(
+    subscribeWithSelector(
+      devtools(createState, {
+        enabled: !!config.withDevtools,
+        serialize: {
+          replacer: (_: string, value: unknown) =>
+            typeof value === "bigint" ? value.toString() : value,
+        },
+        ...config,
+      })
     )
-  }
-
-  return createStore<T, [WithSubscribeSelector]>(
-    subscribeWithSelector(createState)
   )
 }
 
@@ -56,17 +59,21 @@ export const importCandidDefinition = async (
   candidDef: string
 ): Promise<CandidDefenition> => {
   if (typeof window === "undefined") {
-    // Node.js environment
+    // Node.js environment - use dynamic evaluation
     try {
-      const loaderFunction = new Function(`
-        return import("data:text/javascript;charset=utf-8, ${encodeURIComponent(
-          candidDef
-        )}")
-      `)
+      const moduleExports: Record<string, unknown> = {}
+      const moduleCode = candidDef.replace(/export const /g, "moduleExports.")
 
-      return loaderFunction()
+      const func = new Function("moduleExports", moduleCode)
+      func(moduleExports)
+
+      return moduleExports as unknown as CandidDefenition
     } catch (error) {
-      throw new Error(`Error importing candid definition in NodeJs: ${error}`)
+      throw new Error(
+        `Error importing candid definition in NodeJs: ${
+          (error as Error).message
+        }`
+      )
     }
   } else {
     // Browser environment
@@ -83,7 +90,6 @@ export const importCandidDefinition = async (
     }
   }
 }
-
 /**
  * Checks if the current environment is local or development.
  *
@@ -158,13 +164,9 @@ export const generateActorHash = (actor: BaseActor) => {
   return stringToHash(serializedArgs ?? "")
 }
 
-export const stringToHash = (str: string) => {
-  const hashBytes = hash(new TextEncoder().encode(str))
-  return `0x${toHexString(hashBytes)}` as `0x${string}`
-}
-
-function toHexString(bytes: ArrayBuffer) {
-  return toHex(bytes)
+export const stringToHash = (str: string): `0x${string}` => {
+  const hashBytes = sha256(str)
+  return `0x${bytesToHex(hashBytes)}`
 }
 
 /**
@@ -187,6 +189,14 @@ export function createCompiledResult<T>(result: T): CompiledResult<T> {
       isErr: true,
       value: null,
       error: (result as { Err: unknown }).Err,
+    } as CompiledResult<T>
+  } else if (result) {
+    // For non-Result types
+    return {
+      isOk: true,
+      isErr: false,
+      value: result,
+      error: null,
     } as CompiledResult<T>
   } else {
     // For non-Result types

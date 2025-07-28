@@ -1,5 +1,7 @@
 import React from "react"
-import renderer, { act } from "react-test-renderer"
+import { describe, it, expect } from "bun:test"
+import { render, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import {
   AgentProvider,
   CandidAdapterProvider,
@@ -10,9 +12,11 @@ const { ActorProvider, useQueryCall } = createActorContext({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
 })
 
-describe("createReactor", () => {
-  it("should query", async () => {
-    const TestComponent = ({}) => {
+describe("Context Tests", () => {
+  it("should handle query calls", async () => {
+    const user = userEvent.setup()
+
+    const TestComponent = () => {
       const {
         call,
         data: version,
@@ -21,8 +25,10 @@ describe("createReactor", () => {
 
       return (
         <div>
-          <button onClick={call}>Get Version</button>
-          <span>
+          <button data-testid="get-version-button" onClick={call}>
+            Get Version
+          </button>
+          <span data-testid="status">
             {loading
               ? "Loading..."
               : version
@@ -33,7 +39,7 @@ describe("createReactor", () => {
       )
     }
 
-    let screen = renderer.create(
+    const { container } = render(
       <AgentProvider>
         <CandidAdapterProvider>
           <ActorProvider>
@@ -42,36 +48,31 @@ describe("createReactor", () => {
         </CandidAdapterProvider>
       </AgentProvider>
     )
-    const versionStatus = () => screen.root.findAllByType("span")[0]
 
-    const versionButton = () => screen.root.findAllByType("button")[0]
+    const statusElement = container.querySelector(
+      '[data-testid="status"]'
+    ) as HTMLElement
+    const getVersionButton = container.querySelector(
+      '[data-testid="get-version-button"]'
+    ) as HTMLElement
 
-    expect(screen.toJSON()).toMatchSnapshot()
+    // Wait for initial load
+    await waitFor(
+      () => {
+        expect(statusElement.textContent).toBe("Ready To call")
+      },
+      { timeout: 3000 }
+    )
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 1000))
-    })
+    // Click the button to make the call
+    await user.click(getVersionButton)
 
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 1000))
-    })
-
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 1000))
-    })
-
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    expect(versionStatus().props.children).toEqual("Ready To call")
-
-    await act(() => versionButton().props.onClick())
-
-    expect(versionStatus().props.children).toEqual("Internet Computer")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    // Wait for the response
+    await waitFor(
+      () => {
+        expect(statusElement.textContent).toBe("Internet Computer")
+      },
+      { timeout: 3000 }
+    )
   })
 })

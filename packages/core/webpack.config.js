@@ -37,7 +37,6 @@ module.exports = (env, argv) => {
     resolve: {
       extensions: [".ts", ".js"],
       fallback: {
-        "simple-cbor": require.resolve("simple-cbor"),
         "@dfinity/candid": require.resolve("@dfinity/candid"),
       },
     },

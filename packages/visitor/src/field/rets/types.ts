@@ -101,7 +101,7 @@ export interface NumberReturn extends DefaultReturn {
   componentType: "timestamp" | "cycle" | "value" | "normal"
 }
 
-export interface InputReturn extends DefaultReturn {}
+export type InputReturn = DefaultReturn
 
 export type DynamicReturnType<T extends FieldType> = T extends "function"
   ? FunctionMethodReturn

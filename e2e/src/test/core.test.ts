@@ -4,12 +4,18 @@ import {
   idlFactory,
   hello_actor,
 } from "../declarations/hello_actor/index.js"
+import { describe, expect, it } from "bun:test"
+import { ActorMethodStates, ActorState } from "@ic-reactor/core/src/types.js"
 
-const DEFAULT_STATE = {
+const DEFAULT_STATE: ActorState<typeof hello_actor> = {
   initializing: false,
+  isInitializing: false,
   initialized: false,
+  isInitialized: false,
   error: undefined,
-  methodState: {},
+  methodState: {} as ActorMethodStates<typeof hello_actor>,
+  version: 0,
+  name: canisterId,
 }
 
 describe("Core Function Test", () => {
@@ -45,8 +51,8 @@ describe("Core Function Test", () => {
     const { loading, data, error } = getState()
 
     expect(loading).toEqual(true)
-    expect(data).toEqual(undefined)
-    expect(error).toEqual(undefined)
+    expect(data).toBeUndefined()
+    expect(error).toBeUndefined()
     const greet = await dataPromise
 
     expect(greet).toEqual("Hello, World!")
@@ -75,7 +81,7 @@ describe("Core Function Test", () => {
 
     expect(loading).toEqual(false)
     expect(data).toEqual("Hello, World!")
-    expect(error).toEqual(undefined)
+    expect(error).toBeUndefined()
   })
 
   it("should call the greet_update function", async () => {
@@ -101,6 +107,6 @@ describe("Core Function Test", () => {
 
     expect(loading).toEqual(false)
     expect(data).toEqual("Hello, World!")
-    expect(error).toEqual(undefined)
+    expect(error).toBeUndefined()
   })
 })

@@ -1,5 +1,7 @@
+import { describe, it, test, expect } from "bun:test"
 import { createReactorStore } from "../src"
 import { example, idlFactory } from "./candid/example"
+import { ActorMethodStates } from "../src/types"
 
 type Example = typeof example
 
@@ -20,10 +22,12 @@ describe("createReactorStore", () => {
 
   test("Uninitialized", () => {
     expect(getState()).toEqual({
-      methodState: {},
+      methodState: {} as ActorMethodStates<Example>,
       name: "2vxsx-fae",
       initialized: false,
       initializing: false,
+      isInitialized: false,
+      isInitializing: false,
       error: undefined,
       version: 0,
     })
@@ -34,9 +38,11 @@ describe("createReactorStore", () => {
 
     expect(getState()).toEqual({
       name: "2vxsx-fae",
-      methodState: {},
+      methodState: {} as ActorMethodStates<Example>,
       initialized: true,
       initializing: false,
+      isInitialized: true,
+      isInitializing: false,
       error: undefined,
       version: 0,
     })

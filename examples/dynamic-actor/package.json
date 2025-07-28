@@ -6,14 +6,10 @@
   "main": "src/index.js",
   "dependencies": {
     "@ic-reactor/react": "workspace:^",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "react-json-view-lite": "^1.3.0",
-    "react-scripts": "^5.0.0"
-  },
-  "devDependencies": {
-    "@types/react": "18.2.38",
-    "@types/react-dom": "18.2.15"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-json-view-lite": "2.4.1",
+    "react-scripts": "^5.0.1"
   },
   "scripts": {
     "start": "react-scripts start",

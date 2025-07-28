@@ -1,11 +1,7 @@
 import { Principal } from "@dfinity/principal"
 import { IDL } from "@dfinity/candid"
 
-import type {
-  BaseActor,
-  MethodRetsDefaultValues,
-  ReturnTypeFromIDLType,
-} from "../types"
+import type { BaseActor, MethodRetsDefaultValues } from "../types"
 import {
   generateBigInteger,
   generateNumber,
@@ -30,16 +26,17 @@ export class VisitRandomRets<A = BaseActor> extends IDL.Visitor<
       return [canisterId, functionName] as unknown as MethodRetsDefaultValues<A>
     }
 
-    const defaultValue = t.retTypes.reduce((acc, type, index) => {
-      this.inVisit = true
-      acc[`ret${index}`] = type.accept(this, false) as ReturnTypeFromIDLType<
-        typeof type
-      >
-      this.inVisit = false
-      return acc
-    }, {} as MethodRetsDefaultValues<A>)
+    const defaultValue = t.retTypes.reduce<Record<string, unknown>>(
+      (acc, type, index) => {
+        this.inVisit = true
+        acc[`ret${index}`] = type.accept(this, false)
+        this.inVisit = false
+        return acc
+      },
+      {}
+    )
 
-    return defaultValue
+    return defaultValue as MethodRetsDefaultValues<A>
   }
 
   public visitRecord(

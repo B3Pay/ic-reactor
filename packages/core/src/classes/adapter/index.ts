@@ -11,14 +11,14 @@ import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
 } from "../../utils/constants"
-import { importCandidDefinition } from "../../utils"
+import { importCandidDefinition, noop } from "../../utils"
 
 export class CandidAdapter {
   public agent: HttpAgent
   public didjsCanisterId: string
   private parserModule?: ReactorParser
 
-  public unsubscribeAgent: () => void = () => {}
+  public unsubscribeAgent: () => void = noop
 
   constructor({
     agentManager,
@@ -92,7 +92,7 @@ export class CandidAdapter {
   ): Promise<CandidDefenition> {
     try {
       const candidDef = await this.fetchCandidDefinition(canisterId)
-      return this.dynamicEvalJs(candidDef)
+      return this.evaluateCandidDefinition(candidDef)
     } catch (error) {
       throw new Error(`Error fetching canister ${canisterId}: ${error}`)
     }
@@ -124,7 +124,9 @@ export class CandidAdapter {
     return (await actor.__get_candid_interface_tmp_hack()) as string
   }
 
-  public async dynamicEvalJs(data: string): Promise<CandidDefenition> {
+  public async evaluateCandidDefinition(
+    data: string
+  ): Promise<CandidDefenition> {
     try {
       let candidDef: string | [] = ""
 

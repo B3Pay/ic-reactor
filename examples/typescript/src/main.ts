@@ -48,9 +48,9 @@ const transferResult = document.getElementById("transferResult")!
 loginButton.addEventListener("click", login, false)
 
 function login() {
-  const { authenticated } = agentManager.getAuthState()
+  const { isAuthenticated } = agentManager.getAuthState()
 
-  if (authenticated) {
+  if (isAuthenticated) {
     balanceUnsub?.()
     transferUnsub?.()
     agentManager.logout()
@@ -65,12 +65,12 @@ function login() {
 }
 
 agentManager.subscribeAuthState(
-  ({ identity, authenticating, authenticated }) => {
+  ({ identity, isAuthenticating, isAuthenticated }) => {
     const userPrincipal = identity?.getPrincipal().toText()
 
-    loginButton.textContent = authenticating
+    loginButton.textContent = isAuthenticating
       ? "Authenticating..."
-      : authenticated
+      : isAuthenticated
       ? "Logout"
       : "Login"
 
@@ -142,8 +142,8 @@ const tokenDetails = async ({
     container.appendChild(refreshButton)
     container.appendChild(resultPara)
 
-    subscribe(({ data, loading, error }) => {
-      resultPara.textContent = loading
+    subscribe(({ data, isLoading, error }) => {
+      resultPara.textContent = isLoading
         ? "Loading..."
         : error
         ? `Error: ${error.message}`

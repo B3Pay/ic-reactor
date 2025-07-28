@@ -4,14 +4,14 @@ import { createCandidAdapter } from "@ic-reactor/core"
 
 import type {
   CandidAdapterContextType,
-  CreateCandidAdapterCotextParameters,
+  CreateCandidAdapterContextParameters,
   CreateCandidAdapterContextReturnType,
   CandidAdapterProviderProps,
   UseCandidEvaluationReturnType,
 } from "./types"
 
 export function createAdapterContext(
-  config: CreateCandidAdapterCotextParameters = {}
+  config: CreateCandidAdapterContextParameters = {}
 ): CreateCandidAdapterContextReturnType {
   const {
     withParser: _withParser,
@@ -35,6 +35,7 @@ export function createAdapterContext(
   const useCandidEvaluation = (): UseCandidEvaluationReturnType => {
     const [state, setState] = React.useState({
       fetching: true,
+      isFetching: true,
       fetchError: null as string | null,
     })
 
@@ -44,6 +45,7 @@ export function createAdapterContext(
       setState({
         fetchError: null,
         fetching: false,
+        isFetching: false,
       })
       try {
         return candidAdapter.validateIDL(candidString)
@@ -51,34 +53,49 @@ export function createAdapterContext(
         setState({
           fetchError: `Error validating Candid definition, ${err}`,
           fetching: false,
+          isFetching: false,
         })
+        return false
       }
     }, [])
+
+    const isCandidValid = React.useCallback(
+      (candidString: string) => {
+        return validateCandid(candidString) !== false
+      },
+      [validateCandid]
+    )
 
     const evaluateCandid = React.useCallback(async (candidString: string) => {
       setState({
         fetchError: null,
         fetching: true,
+        isFetching: true,
       })
       try {
-        const definition = await candidAdapter.dynamicEvalJs(candidString)
+        const definition = await candidAdapter.evaluateCandidDefinition(
+          candidString
+        )
         if (typeof definition?.idlFactory !== "function") {
           throw new Error("No Function found in Candid definition!")
         }
         setState({
           fetchError: null,
           fetching: false,
+          isFetching: false,
         })
         return definition.idlFactory
       } catch (err) {
         setState({
           fetchError: `Error evaluating Candid definition, ${err}`,
           fetching: false,
+          isFetching: false,
         })
+        return undefined
       }
     }, [])
 
-    return { evaluateCandid, validateCandid, ...state }
+    return { evaluateCandid, isCandidValid, validateCandid, ...state }
   }
 
   const CandidAdapterProvider: React.FC<CandidAdapterProviderProps> = ({

@@ -26,39 +26,35 @@
   },
   "homepage": "https://b3pay.github.io/ic-reactor/modules/core.html",
   "dependencies": {
-    "@dfinity/agent": ">=2.1",
-    "@dfinity/auth-client": ">=2.1",
-    "@dfinity/candid": ">=2.1",
-    "@dfinity/identity": ">=2.1",
-    "@dfinity/principal": ">=2.1",
-    "simple-cbor": "^0.4.1",
-    "zustand": "5.0.2"
+    "@dfinity/agent": "^3.1.0",
+    "@dfinity/auth-client": "^3.1.0",
+    "@dfinity/candid": "^3.1.0",
+    "@dfinity/identity": "^3.1.0",
+    "@dfinity/principal": "^3.1.0",
+    "zustand": "5.0.6"
   },
   "peerDependencies": {
-    "@dfinity/agent": ">=2.1",
-    "@dfinity/auth-client": ">=2.1",
-    "@dfinity/candid": ">=2.1",
-    "@dfinity/identity": ">=2.1",
-    "@dfinity/principal": ">=2.1"
+    "@dfinity/agent": ">=3.1.0",
+    "@dfinity/auth-client": ">=3.1.0",
+    "@dfinity/candid": ">=3.1.0",
+    "@dfinity/identity": ">=3.1.0",
+    "@dfinity/principal": ">=3.1.0"
   },
   "devDependencies": {
-    "@ic-reactor/parser": "^0.4.4",
-    "@types/node": "^22.9.0",
-    "ts-loader": "^9.5.1",
-    "webpack": "^5.96.1"
+    "@ic-reactor/parser": "workspace:*"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" npx jest",
-    "start": "tsc watch",
-    "bundle": "yarn bundle:dev && yarn bundle:prod",
-    "bundle:dev": "npx webpack-cli --mode development",
-    "bundle:prod": "npx webpack-cli --mode production",
-    "build:tsc": "tsc",
-    "build": "yarn build:tsc && yarn bundle",
-    "clean": "npx rimraf dist && npx rimraf umd && npx rimraf node_modules"
+    "test": "bun test",
+    "start": "bun run tsc --watch",
+    "build:tsc": "bun run tsc",
+    "build": "bun run build:tsc && bun run bundle",
+    "bundle": "bun run bundle:dev && bun run bundle:prod",
+    "bundle:dev": "bun run webpack-cli --mode development",
+    "bundle:prod": "bun run webpack-cli --mode production",
+    "clean": "bun run rimraf dist && bun run rimraf umd && bun run rimraf node_modules"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=22.0.0"
   },
   "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe"
 }

@@ -14,7 +14,7 @@ const UserWallet: React.FC<UserWalletProps> = ({ principal }) => {
   const {
     call: refetchBalance,
     data: balance,
-    loading: balanceLoading,
+    isLoading: isBalanceLoading,
   } = useICRC1QueryCall({
     functionName: "icrc1_balance_of",
     args: [{ owner: principal, subaccount: [] }],
@@ -22,7 +22,7 @@ const UserWallet: React.FC<UserWalletProps> = ({ principal }) => {
 
   const {
     call: transfer,
-    loading: transferLoading,
+    isLoading: isTransferLoading,
     data: transferResult,
   } = useICRC1UpdateCall({
     functionName: "icrc1_transfer",
@@ -52,10 +52,10 @@ const UserWallet: React.FC<UserWalletProps> = ({ principal }) => {
       <div>
         <span>
           <strong>Balance</strong>:{" "}
-          <button onClick={refetchBalance} disabled={balanceLoading}>
+          <button onClick={refetchBalance} disabled={isBalanceLoading}>
             ↻
           </button>{" "}
-          {balanceLoading ? "Loading..." : jsonToString(balance)}
+          {isBalanceLoading ? "Loading..." : jsonToString(balance)}
         </span>
       </div>
       <form onSubmit={onSubmit}>
@@ -66,7 +66,7 @@ const UserWallet: React.FC<UserWalletProps> = ({ principal }) => {
       <div>
         <span>
           <strong>Transfer Result</strong>:{" "}
-          {transferLoading ? "Loading..." : jsonToString(transferResult)}
+          {isTransferLoading ? "Loading..." : jsonToString(transferResult)}
         </span>
       </div>
     </div>

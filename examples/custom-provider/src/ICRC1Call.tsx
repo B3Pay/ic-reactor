@@ -12,7 +12,7 @@ interface ICRC1CallProps<M extends FunctionName<ICRC1> = FunctionName<ICRC1>>
 }
 
 const ICRC1Call: React.FC<ICRC1CallProps> = ({ functionName, ...rest }) => {
-  const { call, data, loading } = useICRC1QueryCall({
+  const { call, data, isLoading } = useICRC1QueryCall({
     functionName,
     ...rest,
   })
@@ -21,10 +21,10 @@ const ICRC1Call: React.FC<ICRC1CallProps> = ({ functionName, ...rest }) => {
     <div>
       <span>
         <strong>{functionName}</strong>:{" "}
-        <button onClick={call} disabled={loading}>
+        <button onClick={call} disabled={isLoading}>
           ↻
         </button>{" "}
-        {loading ? "Loading..." : jsonToString(data)}
+        {isLoading ? "Loading..." : jsonToString(data)}
       </span>
     </div>
   )
