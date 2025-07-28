@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/visitor",
-  "version": "2.0.0",
+  "version": "1.16.0",
   "description": "Visitor classes for ic-reactor",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -30,9 +30,9 @@
     "@dfinity/principal": "^3.1.0"
   },
   "peerDependencies": {
+    "@ic-reactor/core": "workspace:*",
     "@dfinity/candid": ">=3.1.0",
-    "@dfinity/principal": ">=3.1.0",
-    "@ic-reactor/core": "workspace:*"
+    "@dfinity/principal": ">=3.1.0"
   },
   "scripts": {
     "test": "bun test",
