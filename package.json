@@ -27,7 +27,6 @@
     "docs:build": "bunx typedoc --options ./typedoc.json",
     "publish": "bun run clean && bun run build && bunx lerna publish",
     "bootstrap": "bunx lerna bootstrap",
-    "version": "bunx lerna version",
     "changed": "bunx lerna changed",
     "diff": "bunx lerna diff"
   },
