@@ -38,7 +38,9 @@ beforeEach(() => {
               arg: expectedReplyArg,
             },
           }
-          return new Response(Cbor.encode(responseObj))
+          return new Response(
+            Cbor.encode(responseObj) as Uint8Array<ArrayBuffer>
+          )
         }
 
         // For other requests, return empty success response

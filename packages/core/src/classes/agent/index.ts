@@ -263,6 +263,10 @@ export class AgentManager {
     return this.getNetwork() !== "ic"
   }
 
+  public isAuthClientInitialized = () => {
+    return this.getAgentState().isInitialized && this._auth !== null
+  }
+
   public getNetwork = () => {
     const hostname = this.getAgentHostName()
 

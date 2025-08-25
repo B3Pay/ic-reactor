@@ -11,6 +11,7 @@ import { IDL } from "@dfinity/candid"
 import { Cbor } from "@dfinity/agent"
 import { idlFactory } from "./candid/hello"
 import { createActorManager, createAgentManager } from "../src"
+import { AgentManager, ActorManager } from "../src/types"
 
 // --- Mocking Fetch Correctly ---
 const canisterDecodedReturnValue = "Hello, World!"
@@ -34,7 +35,7 @@ beforeEach(() => {
               arg: expectedReplyArg,
             },
           }
-          return new Response(Cbor.encode(responseObj))
+          return new Response(Cbor.encode(responseObj) as BodyInit)
         }
 
         // For other requests, return empty success response
@@ -54,7 +55,15 @@ afterEach(() => {
 // --- Test Suite ---
 describe("CreateActor", () => {
   // A helper function to set up a clean state for each test
-  const setupTest = () => {
+  const setupTest = (): {
+    agentManager: AgentManager
+    actorManager: ActorManager
+    callbacks: {
+      agentCallback: typeof agentCallback
+      authCallback: typeof authCallback
+      actorCallback: typeof actorCallback
+    }
+  } => {
     const agentCallback = mock()
     const authCallback = mock()
     const actorCallback = mock()
@@ -88,7 +97,7 @@ describe("CreateActor", () => {
   })
 
   it("should initialize the actor", async () => {
-    const { actorManager, callbacks } = setupTest()
+    const { agentManager, actorManager, callbacks } = setupTest()
     const { agentCallback, authCallback, actorCallback } = callbacks
 
     expect(agentCallback).toHaveBeenCalledTimes(1)
@@ -97,6 +106,7 @@ describe("CreateActor", () => {
 
     await actorManager.initialize()
 
+    expect(agentManager.isAuthClientInitialized()).toBe(false)
     expect(agentCallback).toHaveBeenCalledTimes(2)
     expect(authCallback).toHaveBeenCalledTimes(0)
     expect(actorCallback).toHaveBeenCalledTimes(2)
@@ -115,6 +125,7 @@ describe("CreateActor", () => {
     const { isAuthenticated, isAuthenticating } = agentManager.getAuthState()
     expect(isAuthenticating).toEqual(false)
     expect(isAuthenticated).toEqual(false)
+    expect(agentManager.isAuthClientInitialized()).toBe(false)
   })
 
   it("should handle the authentication process", async () => {
@@ -125,7 +136,7 @@ describe("CreateActor", () => {
     expect(authState.identity).toEqual(null)
     expect(authState.authenticating).toBe(false)
     expect(authState.authenticated).toBe(false)
-
+    expect(agentManager.isAuthClientInitialized()).toBe(false)
     // Start authentication
     const identityPromise = agentManager.authenticate()
 
@@ -135,6 +146,7 @@ describe("CreateActor", () => {
     expect(authState.identity).toEqual(null)
     expect(authState.isAuthenticating).toBe(true)
     expect(authState.isAuthenticated).toBe(false)
+    expect(agentManager.isAuthClientInitialized()).toBe(false)
 
     // Wait for the process to complete
     await identityPromise
@@ -145,5 +157,6 @@ describe("CreateActor", () => {
     expect(authState.authenticating).toBe(false)
     expect(authState.identity?.getPrincipal().toString()).toEqual("2vxsx-fae")
     expect(authState.authenticated).toBe(false) // since the login is not happend yet!
+    expect(agentManager.isAuthClientInitialized()).toBe(true)
   })
 })
