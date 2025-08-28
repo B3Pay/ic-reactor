@@ -17,6 +17,7 @@
     "build:umd": "bunx lerna run bundle --scope='@ic-reactor/core' --stream",
     "clean": "bunx lerna run clean --stream",
     "clean:packages": "bunx lerna run clean --scope='@ic-reactor/*' --stream",
+    "clean:modules": "for d in packages/* examples/*; do [ -d \"$d\" ] || continue; (cd \"$d\" && rm -rf .dfx .cache dist node_modules); done && rm -rf node_modules bun.lock",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "lint:ci-check": "eslint . --ext .ts,.tsx --max-warnings 0",
