@@ -9,6 +9,7 @@ import type {
   ActorState,
   AgentState,
 } from "@ic-reactor/core/dist/types.js"
+import { test, expect } from "bun:test"
 
 const AUTH_DEFAULT_STATE: AuthState = {
   identity: null,
