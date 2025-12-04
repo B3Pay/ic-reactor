@@ -1,4 +1,4 @@
-import { AgentError, CallConfig } from "@dfinity/agent"
+import { AgentError, CallConfig } from "@icp-sdk/core/agent"
 import type {
   IDL,
   ActorState,

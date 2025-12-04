@@ -1,4 +1,4 @@
-import { IDL } from "@dfinity/candid"
+import { IDL } from "@icp-sdk/core/candid"
 import { isImage, isUrl } from "../helpers"
 import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "../constants"
 import { isValueInTable } from "./helpers"

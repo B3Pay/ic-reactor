@@ -1,4 +1,4 @@
-import type { IDL } from "@dfinity/candid"
+import type { IDL } from "@icp-sdk/core/candid"
 
 export * from "./transform/types"
 export * from "./layout/types"
@@ -38,7 +38,7 @@ export type AllNumberTypes =
   | IDL.FixedIntClass
   | IDL.FloatClass
 
-export type { IDL } from "@dfinity/candid"
+export type { IDL } from "@icp-sdk/core/candid"
 
 export type {
   Principal,

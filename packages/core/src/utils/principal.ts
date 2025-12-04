@@ -1,1 +1,1 @@
-export * from "@dfinity/principal"
+export * from "@icp-sdk/core/principal"

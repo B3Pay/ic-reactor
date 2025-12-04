@@ -1,4 +1,4 @@
-import { Actor, CanisterStatus, HttpAgent } from "@dfinity/agent"
+import { Actor, CanisterStatus, HttpAgent } from "@icp-sdk/core/agent"
 import type {
   CanisterId,
   CandidAdapterParameters,

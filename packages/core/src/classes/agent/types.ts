@@ -3,7 +3,7 @@ import type {
   HttpAgent,
   HttpAgentOptions,
   Identity,
-} from "@dfinity/agent"
+} from "@icp-sdk/core/agent"
 import type { AuthClient } from "@dfinity/auth-client"
 import type { StoreWithAllMiddleware } from "../../types"
 

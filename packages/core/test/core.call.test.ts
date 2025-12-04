@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { ActorMethod } from "@dfinity/agent"
+import { ActorMethod } from "@icp-sdk/core/agent"
 import { createReactorCore } from "../src"
 
 const ICRC1_CANISTERS = [

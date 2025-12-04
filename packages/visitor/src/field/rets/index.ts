@@ -1,4 +1,4 @@
-import { IDL } from "@dfinity/candid"
+import { IDL } from "@icp-sdk/core/candid"
 import { isQuery, isFieldInTable } from "../../helpers"
 import { TAMESTAMP_KEYS_REGEX, VALUE_KEYS_REGEX } from "../../constants"
 

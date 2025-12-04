@@ -1,5 +1,5 @@
-import { Principal } from "@dfinity/principal"
-import { IDL } from "@dfinity/candid"
+import { Principal } from "@icp-sdk/core/principal"
+import { IDL } from "@icp-sdk/core/candid"
 
 import type { BaseActor, MethodArgsDefaultValues } from "../types"
 import {

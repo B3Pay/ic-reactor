@@ -7,7 +7,7 @@ import {
 } from "../src"
 import * as parser from "@ic-reactor/parser/dist/nodejs"
 import { importCandidDefinition } from "../src/utils"
-import { ActorMethod } from "@dfinity/agent"
+import { ActorMethod } from "@icp-sdk/core/agent"
 
 describe("Candid Tests", () => {
   const agentManager = createAgentManager()

@@ -15,7 +15,7 @@ import type {
   CreateReactorCoreParameters,
   CreateReactorCoreReturnType,
 } from "./types"
-import { AgentError } from "@dfinity/agent"
+import { AgentError } from "@icp-sdk/core/agent"
 
 /**
  * The Core module is the main entry point for the library.
