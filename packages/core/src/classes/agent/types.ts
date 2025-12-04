@@ -1,14 +1,23 @@
 import type { HttpAgent, HttpAgentOptions, Identity } from "@dfinity/agent"
 import type { AuthClient } from "@dfinity/auth-client"
-import type { StoreApiWithDevtools } from "../../types"
+import type { QueryClient } from "@tanstack/query-core"
+import type { QueryClientConfig } from "../query"
 
 export { HttpAgentOptions, AuthClient, Identity }
 
 export interface AgentManagerParameters extends HttpAgentOptions {
   port?: number
   withLocalEnv?: boolean
-  withDevtools?: boolean
   withProcessEnv?: boolean
+  /**
+   * Provide a custom QueryClient instance
+   * If not provided, a new one will be created
+   */
+  queryClient?: QueryClient
+  /**
+   * Configuration for the QueryClient (only used if queryClient is not provided)
+   */
+  queryClientConfig?: QueryClientConfig
 }
 
 export interface AgentState {
@@ -28,7 +37,3 @@ export interface AuthState {
 export interface UpdateAgentParameters extends HttpAgentOptions {
   agent?: HttpAgent
 }
-
-// Type for the Reactor store
-export type AgentStore = StoreApiWithDevtools<AgentState>
-export type AuthStore = StoreApiWithDevtools<AuthState>

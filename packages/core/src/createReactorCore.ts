@@ -1,5 +1,6 @@
 import { createReactorStore } from "./createReactorStore"
 import { generateRequestHash } from "./utils"
+import { actorKeys } from "./classes/query"
 
 import type {
   ActorMethodState,
@@ -33,9 +34,13 @@ export const createReactorCore = <A = BaseActor>(
     callMethodWithOptions,
     callMethod,
     getState,
+    getQueryClient,
+    canisterId,
     agentManager,
     ...rest
   } = createReactorStore<A>(config)
+
+  const queryClient = getQueryClient()
 
   const actorMethod: ActorMethodCall<A> = (
     functionName,
@@ -55,7 +60,12 @@ export const createReactorCore = <A = BaseActor>(
     type M = typeof functionName
     try {
       const methodState = ((key?: "data" | "loading" | "error") => {
-        const state = getState().methodState[functionName][requestHash]
+        const queryKey = actorKeys.method(canisterId, functionName, requestHash)
+        const state = queryClient.getQueryData<ActorMethodState<A, M>[string]>(queryKey) || {
+          data: undefined,
+          loading: false,
+          error: undefined,
+        }
 
         switch (key) {
           case "data":
@@ -72,12 +82,13 @@ export const createReactorCore = <A = BaseActor>(
       const subscribe: ActorSubscribeFunction<A, M> = (callback) => {
         callback(methodState())
 
-        const unsubscribe = subscribeActorState((state) => {
-          const methodState = state.methodState[functionName]
-          const methodStateHash = methodState[requestHash]
-
-          if (methodStateHash) {
-            callback(methodStateHash)
+        const queryKey = actorKeys.method(canisterId, functionName, requestHash)
+        const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+          if (
+            event?.query.queryKey &&
+            JSON.stringify(event.query.queryKey) === JSON.stringify(queryKey)
+          ) {
+            callback(methodState())
           }
         })
 
@@ -167,6 +178,7 @@ export const createReactorCore = <A = BaseActor>(
     callMethod,
     callMethodWithOptions,
     subscribeActorState,
+    getQueryClient,
     ...agentManager,
     ...rest,
   } as CreateReactorCoreReturnType<A>

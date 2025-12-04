@@ -1,12 +1,11 @@
 /* eslint-disable no-console */
 import { Actor } from "@dfinity/agent"
-import { createStoreWithOptionalDevtools, isQuery } from "../../utils/helper"
+import { isQuery, generateRequestHash } from "../../utils/helper"
 import type { CallConfig, HttpAgent } from "@dfinity/agent"
 import type {
   ActorMethodParameters,
   ActorMethodReturnType,
   ActorState,
-  ActorStore,
   ActorMethodStates,
   ActorManagerParameters,
   FunctionName,
@@ -21,6 +20,8 @@ import { IDL } from "@dfinity/candid"
 import type { AgentManager } from "../agent"
 import type { UpdateAgentParameters } from "../types"
 import { ACTOR_INITIAL_STATE } from "../../utils"
+import type { QueryClient, QueryCacheNotifyEvent } from "@tanstack/query-core"
+import { createQueryClient, actorKeys } from "../query"
 
 export class ActorManager<A = BaseActor> {
   private _actor: null | A = null
@@ -29,18 +30,23 @@ export class ActorManager<A = BaseActor> {
 
   private _unsubscribeAgent: () => void
   private _subscribers: Array<() => void> = []
+  private _queryClient: QueryClient
 
   public canisterId: string
-  public actorStore: ActorStore<A>
   public visitFunction: VisitService<A>
   public methodAttributes: MethodAttributes<A>
 
   private updateState = (newState: Partial<ActorState<A>>, action?: string) => {
-    this.actorStore.setState(
-      (state) => ({ ...state, ...newState }),
-      false,
-      action
-    )
+    const queryKey = actorKeys.state(this.canisterId)
+    const currentState = this._queryClient.getQueryData<ActorState<A>>(queryKey) || {
+      ...ACTOR_INITIAL_STATE,
+      name: this.canisterId,
+    }
+    this._queryClient.setQueryData(queryKey, { ...currentState, ...newState })
+    
+    if (action) {
+      console.debug(`[ActorManager] ${action}`, newState)
+    }
   }
 
   public updateMethodState = (
@@ -48,31 +54,15 @@ export class ActorManager<A = BaseActor> {
     hash: string,
     newState: Partial<ActorMethodState<A, typeof method>[string]>
   ) => {
-    const actionName = `${method}:${
-      newState.error ? "error" : newState.loading ? "loading" : "loaded"
-    }`
+    const queryKey = actorKeys.method(this.canisterId, method, hash)
+    const currentMethodState = this._queryClient.getQueryData<
+      ActorMethodState<A, typeof method>[string]
+    >(queryKey) || DEFAULT_STATE
 
-    this.actorStore.setState(
-      (state) => {
-        const methodState = state.methodState[method] || {}
-        const currentMethodState = methodState[hash] || DEFAULT_STATE
-
-        const updatedMethodState = {
-          ...methodState,
-          [hash]: { ...currentMethodState, ...newState },
-        }
-
-        return {
-          ...state,
-          methodState: {
-            ...state.methodState,
-            [method]: updatedMethodState,
-          },
-        }
-      },
-      false,
-      actionName
-    )
+    this._queryClient.setQueryData(queryKey, {
+      ...currentMethodState,
+      ...newState,
+    })
   }
 
   constructor(actorConfig: ActorManagerParameters) {
@@ -82,8 +72,9 @@ export class ActorManager<A = BaseActor> {
       canisterId,
       name = canisterId.toString(),
       withVisitor = false,
-      withDevtools = false,
       initializeOnCreate = true,
+      queryClient,
+      queryClientConfig,
     } = actorConfig
 
     if (!canisterId) {
@@ -103,15 +94,12 @@ export class ActorManager<A = BaseActor> {
     }
     this._agentManager = agentManager
 
-    // Initialize stores
-    this.actorStore = createStoreWithOptionalDevtools(
-      { ...ACTOR_INITIAL_STATE, name } as ActorState<A>,
-      {
-        withDevtools,
-        name: "reactor-actor",
-        store: canisterId.toString(),
-      }
-    )
+    // Initialize TanStack Query
+    this._queryClient = queryClient || createQueryClient(queryClientConfig)
+    
+    // Initialize actor state in query cache
+    const initialState = { ...ACTOR_INITIAL_STATE, name } as ActorState<A>
+    this._queryClient.setQueryData(actorKeys.state(this.canisterId), initialState)
 
     this._unsubscribeAgent = this._agentManager.subscribeAgent(
       this.initializeActor,
@@ -237,11 +225,33 @@ export class ActorManager<A = BaseActor> {
     functionName: M,
     ...args: ActorMethodParameters<A[M]>
   ): Promise<ActorMethodReturnType<A[M]>> => {
-    const method = this._getActorMethod(functionName)
+    const argsHash = generateRequestHash(args)
+    const isQueryMethod = this.methodAttributes[functionName].type === "query"
 
-    const data = await method(...args)
+    if (isQueryMethod) {
+      // Use TanStack Query for query methods
+      const queryKey = actorKeys.method(this.canisterId, functionName, argsHash)
 
-    return data
+      return this._queryClient.fetchQuery({
+        queryKey,
+        queryFn: async () => {
+          const method = this._getActorMethod(functionName)
+          return await method(...args)
+        },
+        staleTime: 30000, // 30 seconds - can be configured per method
+      })
+    } else {
+      // Use direct call for update methods
+      const method = this._getActorMethod(functionName)
+      const data = await method(...args)
+
+      // Invalidate queries after update
+      await this._queryClient.invalidateQueries({
+        queryKey: actorKeys.all(this.canisterId),
+      })
+
+      return data
+    }
   }
 
   public callMethodWithOptions = (options: CallConfig) => {
@@ -252,6 +262,14 @@ export class ActorManager<A = BaseActor> {
       const method = this._getActorMethod(functionName)
 
       const data = await method.withOptions(options)(...args)
+
+      // Invalidate queries if this was an update method
+      const isQueryMethod = this.methodAttributes[functionName].type === "query"
+      if (!isQueryMethod) {
+        await this._queryClient.invalidateQueries({
+          queryKey: actorKeys.all(this.canisterId),
+        })
+      }
 
       return data
     }
@@ -267,23 +285,55 @@ export class ActorManager<A = BaseActor> {
     return this._actor
   }
 
-  public getState: ActorStore<A>["getState"] = () => {
-    return this.actorStore.getState()
+  public getState = (): ActorState<A> => {
+    const queryKey = actorKeys.state(this.canisterId)
+    return (
+      this._queryClient.getQueryData<ActorState<A>>(queryKey) ||
+      ({ ...ACTOR_INITIAL_STATE, name: this.canisterId } as ActorState<A>)
+    )
   }
 
-  public subscribeActorState: ActorStore<A>["subscribe"] = (listener) => {
-    const unsubscribe = this.actorStore.subscribe(listener)
+  public subscribeActorState = (
+    listener: (state: ActorState<A>, previousState: ActorState<A>) => void
+  ): (() => void) => {
+    const queryKey = actorKeys.state(this.canisterId)
+    const unsubscribe = this._queryClient.getQueryCache().subscribe((event: QueryCacheNotifyEvent) => {
+      if (
+        event?.query.queryKey &&
+        JSON.stringify(event.query.queryKey) === JSON.stringify(queryKey)
+      ) {
+        listener(this.getState(), this.getState())
+      }
+    })
     this._subscribers.push(unsubscribe)
     return unsubscribe
   }
 
-  public setState: ActorStore<A>["setState"] = (updater) => {
-    return this.actorStore.setState(updater)
+  public setState = (
+    updater: ActorState<A> | ((state: ActorState<A>) => ActorState<A>)
+  ): void => {
+    const queryKey = actorKeys.state(this.canisterId)
+    const currentState = this.getState()
+    const newState =
+      typeof updater === "function" ? updater(currentState) : updater
+    this._queryClient.setQueryData(queryKey, newState)
+  }
+
+  /**
+   * Get the QueryClient instance
+   */
+  public getQueryClient = (): QueryClient => {
+    return this._queryClient
   }
 
   public cleanup = () => {
     this._unsubscribeAgent()
     this._subscribers.forEach((unsubscribe) => unsubscribe())
+    
+    // Clear query cache for this actor
+    this._queryClient.removeQueries({
+      queryKey: actorKeys.all(this.canisterId),
+    })
   }
 }
 

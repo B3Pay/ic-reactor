@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 import { HttpAgent } from "@dfinity/agent"
 import {
-  createStoreWithOptionalDevtools,
   getNetworkByHostname,
   getProcessEnvNetwork,
 } from "../../utils/helper"
@@ -9,25 +8,23 @@ import { AuthClient } from "@dfinity/auth-client"
 import type { AuthClientLoginOptions } from "../../types"
 import type {
   AgentState,
-  AgentStore,
   AgentManagerParameters,
   UpdateAgentParameters,
   AuthState,
-  AuthStore,
 } from "./types"
 import {
   IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "../../utils/constants"
+import type { QueryClient } from "@tanstack/query-core"
+import { createQueryClient, agentKeys } from "../query"
 
 export class AgentManager {
   private _agent: HttpAgent
   private _auth: AuthClient | null = null
   private _subscribers: Array<(agent: HttpAgent) => void> = []
-
-  public agentStore: AgentStore
-  public authStore: AuthStore
+  private _queryClient: QueryClient
 
   private initialAgentState: AgentState = {
     initialized: false,
@@ -47,29 +44,35 @@ export class AgentManager {
     newState: Partial<AgentState>,
     action?: string
   ) => {
-    this.agentStore.setState(
-      (state) => ({ ...state, ...newState }),
-      false,
-      action
-    )
+    const queryKey = agentKeys.state()
+    const currentState = this._queryClient.getQueryData<AgentState>(queryKey) || this.initialAgentState
+    this._queryClient.setQueryData(queryKey, { ...currentState, ...newState })
+    
+    if (action) {
+      console.debug(`[AgentManager] ${action}`, newState)
+    }
   }
 
   private updateAuthState = (newState: Partial<AuthState>, action?: string) => {
-    this.authStore.setState(
-      (state) => ({ ...state, ...newState }),
-      false,
-      action
-    )
+    const queryKey = agentKeys.auth()
+    const currentState = this._queryClient.getQueryData<AuthState>(queryKey) || this.initialAuthState
+    this._queryClient.setQueryData(queryKey, { ...currentState, ...newState })
+    
+    if (action) {
+      console.debug(`[AgentManager] ${action}`, newState)
+    }
   }
 
   constructor(options?: AgentManagerParameters) {
     const {
-      withDevtools,
       port = 4943,
       withLocalEnv,
       withProcessEnv,
+      queryClient,
+      queryClientConfig,
       ...agentOptions
     } = options || {}
+    
     if (withProcessEnv) {
       const processNetwork = getProcessEnvNetwork()
       agentOptions.host =
@@ -80,17 +83,12 @@ export class AgentManager {
       agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI
     }
 
-    this.agentStore = createStoreWithOptionalDevtools(this.initialAgentState, {
-      withDevtools,
-      name: "reactor-agent",
-      store: "agent",
-    })
-
-    this.authStore = createStoreWithOptionalDevtools(this.initialAuthState, {
-      withDevtools,
-      name: "reactor-agent",
-      store: "auth",
-    })
+    // Initialize TanStack Query
+    this._queryClient = queryClient || createQueryClient(queryClientConfig)
+    
+    // Initialize states in query cache
+    this._queryClient.setQueryData(agentKeys.state(), this.initialAgentState)
+    this._queryClient.setQueryData(agentKeys.auth(), this.initialAuthState)
 
     this._agent = HttpAgent.createSync(agentOptions)
     this.initializeAgent()
@@ -239,21 +237,41 @@ export class AgentManager {
     return getNetworkByHostname(hostname)
   }
 
-  public getAgentState: AgentStore["getState"] = () => {
-    return this.agentStore.getState()
+  public getAgentState = (): AgentState => {
+    return this._queryClient.getQueryData<AgentState>(agentKeys.state()) || this.initialAgentState
   }
 
-  public subscribeAgentState: AgentStore["subscribe"] = (listener) => {
-    return this.agentStore.subscribe(listener)
+  public subscribeAgentState = (
+    listener: (state: AgentState, previousState: AgentState) => void
+  ): (() => void) => {
+    const queryKey = agentKeys.state()
+    return this._queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event?.query.queryKey &&
+        JSON.stringify(event.query.queryKey) === JSON.stringify(queryKey)
+      ) {
+        listener(this.getAgentState(), this.getAgentState())
+      }
+    })
   }
 
   // auth store
-  public getAuthState: AuthStore["getState"] = () => {
-    return this.authStore.getState()
+  public getAuthState = (): AuthState => {
+    return this._queryClient.getQueryData<AuthState>(agentKeys.auth()) || this.initialAuthState
   }
 
-  public subscribeAuthState: AuthStore["subscribe"] = (listener) => {
-    return this.authStore.subscribe(listener)
+  public subscribeAuthState = (
+    listener: (state: AuthState, previousState: AuthState) => void
+  ): (() => void) => {
+    const queryKey = agentKeys.auth()
+    return this._queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event?.query.queryKey &&
+        JSON.stringify(event.query.queryKey) === JSON.stringify(queryKey)
+      ) {
+        listener(this.getAuthState(), this.getAuthState())
+      }
+    })
   }
 
   public getAuth = () => {
@@ -261,11 +279,18 @@ export class AgentManager {
   }
 
   public getIdentity = () => {
-    return this.authStore.getState().identity
+    return this.getAuthState().identity
   }
 
   public getPrincipal = () => {
-    const identity = this.authStore.getState().identity
+    const identity = this.getAuthState().identity
     return identity ? identity.getPrincipal() : null
+  }
+
+  /**
+   * Get the QueryClient instance
+   */
+  public getQueryClient = (): QueryClient => {
+    return this._queryClient
   }
 }

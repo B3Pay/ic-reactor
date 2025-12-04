@@ -1,29 +1,8 @@
 import { hash, toHex } from "@dfinity/agent"
-import { DevtoolsOptions, devtools } from "zustand/middleware"
-import { createStore } from "zustand/vanilla"
 
 import type { CompiledResult, BaseActor, CandidDefenition, IDL } from "../types"
 import { createSimpleHash } from "./hash"
 import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
-
-export function createStoreWithOptionalDevtools<T>(
-  initialState: T,
-  config: DevtoolsOptions
-) {
-  if (config.withDevtools) {
-    return createStore(
-      devtools(() => initialState, {
-        serialize: {
-          replacer: (_: string, value: unknown) =>
-            typeof value === "bigint" ? value.toString() : value,
-        },
-        ...config,
-      })
-    )
-  } else {
-    return createStore(() => initialState)
-  }
-}
 
 export const importCandidDefinition = async (
   candidDef: string

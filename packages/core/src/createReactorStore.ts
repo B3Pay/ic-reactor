@@ -18,17 +18,19 @@ export const createReactorStore = <A = BaseActor>(
   const {
     idlFactory,
     canisterId,
-    withDevtools = false,
     initializeOnCreate = true,
     withVisitor = false,
     agentManager: maybeAgentManager,
+    queryClient,
+    queryClientConfig,
     ...agentParameters
   } = config
 
   const agentManager =
     maybeAgentManager ||
     createAgentManager({
-      withDevtools,
+      queryClient,
+      queryClientConfig,
       ...agentParameters,
     })
 
@@ -37,7 +39,8 @@ export const createReactorStore = <A = BaseActor>(
     canisterId,
     agentManager,
     withVisitor,
-    withDevtools,
+    queryClient,
+    queryClientConfig,
     initializeOnCreate,
   })
 

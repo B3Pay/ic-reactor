@@ -1,12 +1,13 @@
 import type { AgentManager } from "../agent"
 import type {
   IDL,
-  StoreApiWithDevtools,
   ActorMethod,
   ActorSubclass,
   Principal,
 } from "../../types"
 import { CallConfig } from "@dfinity/agent"
+import type { QueryClient } from "@tanstack/query-core"
+import type { QueryClientConfig } from "../query"
 
 export interface DefaultActorType {
   [key: string]: ActorMethod
@@ -26,8 +27,16 @@ export interface ActorManagerParameters {
   name?: string
   canisterId: CanisterId
   withVisitor?: boolean
-  withDevtools?: boolean
   initializeOnCreate?: boolean
+  /**
+   * Provide a custom QueryClient instance
+   * If not provided, a new one will be created
+   */
+  queryClient?: QueryClient
+  /**
+   * Configuration for the QueryClient (only used if queryClient is not provided)
+   */
+  queryClientConfig?: QueryClientConfig
 }
 
 export type VisitorType<V> = V extends IDL.Visitor<infer D, infer R>
@@ -89,8 +98,6 @@ export type ActorState<A = BaseActor> = {
   error: Error | undefined
   methodState: ActorMethodStates<A>
 }
-
-export type ActorStore<A = BaseActor> = StoreApiWithDevtools<ActorState<A>>
 
 // Function type for directly calling a method on an actor
 export type CallActorMethod<A = BaseActor> = <
