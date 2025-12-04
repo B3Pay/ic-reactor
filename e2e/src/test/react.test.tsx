@@ -1,11 +1,13 @@
 import React from "react"
-import renderer, { act } from "react-test-renderer"
+import { act } from "react"
+import renderer from "react-test-renderer"
 import {
   canisterId,
   idlFactory,
   hello_actor,
 } from "../declarations/hello_actor"
 import { createReactor } from "@ic-reactor/react"
+import { describe, it, expect } from "bun:test"
 
 describe("React Test", () => {
   it("should initialize", async () => {
