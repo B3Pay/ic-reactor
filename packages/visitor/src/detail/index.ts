@@ -1,4 +1,4 @@
-import { IDL } from "@dfinity/candid"
+import { IDL } from "@icp-sdk/core/candid"
 import { VisitReturnDetail } from "./rets"
 import { VisitArgDetail } from "./args"
 

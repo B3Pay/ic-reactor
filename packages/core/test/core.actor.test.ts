@@ -8,8 +8,8 @@ import {
   spyOn,
   mock,
 } from "bun:test"
-import { Cbor } from "@dfinity/agent"
-import { IDL } from "@dfinity/candid"
+import { Cbor } from "@icp-sdk/core/agent"
+import { IDL } from "@icp-sdk/core/candid"
 import { createReactorCore } from "../src"
 import { hello, idlFactory } from "./candid/hello"
 

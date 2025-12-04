@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { ActorMethod, PollStrategy } from "@dfinity/agent"
+import { ActorMethod, PollStrategy } from "@icp-sdk/core/agent"
 import { createActorManager, createAgentManager } from "../src"
 import { IC_HOST_NETWORK_URI } from "../src/utils"
 

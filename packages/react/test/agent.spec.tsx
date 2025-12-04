@@ -9,10 +9,10 @@ import {
   useAgentManager,
 } from "../dist"
 import { LOCAL_HOST_NETWORK_URI } from "../src/utils"
-import { IDL } from "@dfinity/candid"
+import { IDL } from "@icp-sdk/core/candid"
 import { beforeEach } from "bun:test"
 import { spyOn } from "bun:test"
-import { Cbor } from "@dfinity/agent"
+import { Cbor } from "@icp-sdk/core/agent"
 import { afterEach } from "bun:test"
 import { mock } from "bun:test"
 

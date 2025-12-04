@@ -28,7 +28,7 @@ import {
   type ActorMethodState,
   type ActorState,
 } from "@ic-reactor/core/dist/types"
-import { AgentError } from "@dfinity/agent"
+import { AgentError } from "@icp-sdk/core/agent"
 
 const DEFAULT_STATE: UseSharedCallState<never, never> = {
   data: undefined,

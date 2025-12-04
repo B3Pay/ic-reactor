@@ -2,7 +2,7 @@ import { jsonToString } from "@ic-reactor/react/dist/utils"
 import { useCKBTCMinterMethod, useCKBTCMinterState } from "./Minter"
 import { useRef } from "react"
 import { useCKBTCLedgerMethod } from "./CKBTC"
-import { Principal } from "@dfinity/principal"
+import { Principal } from "@icp-sdk/core/principal"
 
 interface MinterRetrieveBTCProps {
   userPrincipal: Principal

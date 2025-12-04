@@ -6,7 +6,7 @@ import type {
   Principal,
   StoreWithAllMiddleware,
 } from "../../types"
-import type { AgentError, CallConfig } from "@dfinity/agent"
+import type { AgentError, CallConfig } from "@icp-sdk/core/agent"
 
 export interface DefaultActorType {
   [key: string]: ActorMethod

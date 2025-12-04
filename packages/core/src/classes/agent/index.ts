@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { AgentError, HttpAgent } from "@dfinity/agent"
+import { AgentError, HttpAgent } from "@icp-sdk/core/agent"
 import {
   createStoreWithOptionalDevtools,
   getNetworkByHostname,

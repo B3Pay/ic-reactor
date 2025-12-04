@@ -7,7 +7,7 @@ import ICRC1Provider from "./ICRC1Provider"
 import ICRC1Call from "./ICRC1Call"
 import { FunctionName } from "@ic-reactor/react/dist/types"
 import { ICRC1 } from "./declarations/icrc1"
-import { Principal } from "@dfinity/principal"
+import { Principal } from "@icp-sdk/core/principal"
 import { useRef, useState } from "react"
 import {
   IC_HOST_NETWORK_URI,

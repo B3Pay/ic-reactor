@@ -37,7 +37,7 @@ module.exports = (env, argv) => {
     resolve: {
       extensions: [".ts", ".js"],
       fallback: {
-        "@dfinity/candid": require.resolve("@dfinity/candid"),
+        "@icp-sdk/core/candid": require.resolve("@icp-sdk/core/candid"),
       },
     },
     externals: {},

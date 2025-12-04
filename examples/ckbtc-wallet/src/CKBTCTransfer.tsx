@@ -1,4 +1,4 @@
-import { Principal } from "@dfinity/principal"
+import { Principal } from "@icp-sdk/core/principal"
 import { useRef } from "react"
 import { useCKBTCLedgerMethod } from "./CKBTC"
 import { jsonToString } from "@ic-reactor/react/dist/utils"

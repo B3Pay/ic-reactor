@@ -1,6 +1,6 @@
 import { jsonToString } from "@ic-reactor/core/dist/utils"
 import { useICPQueryCall, useICPUpdateCall } from "./ICP"
-import { Principal } from "@dfinity/principal"
+import { Principal } from "@icp-sdk/core/principal"
 import { useRef } from "react"
 import { useICDVState, useICDVUpdateCall } from "./ICDV"
 

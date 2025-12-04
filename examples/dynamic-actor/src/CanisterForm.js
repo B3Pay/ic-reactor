@@ -1,6 +1,6 @@
 import { useAgentManager } from "@ic-reactor/react"
 import { useEffect, useRef } from "react"
-import { Principal } from "@dfinity/principal"
+import { Principal } from "@icp-sdk/core/principal"
 import {
   IC_HOST_NETWORK_URI,
   LOCAL_HOST_NETWORK_URI,

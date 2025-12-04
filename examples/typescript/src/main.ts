@@ -8,7 +8,7 @@ import {
   createAgentManager,
   createReactorCore,
 } from "@ic-reactor/core"
-import { Principal } from "@dfinity/principal"
+import { Principal } from "@icp-sdk/core/principal"
 import { _SERVICE } from "./icp-ledger"
 import {
   CreateReactorCoreReturnType,

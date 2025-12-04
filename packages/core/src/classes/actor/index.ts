@@ -4,14 +4,14 @@ import {
   AgentError,
   UnexpectedErrorCode,
   ErrorKindEnum,
-} from "@dfinity/agent"
+} from "@icp-sdk/core/agent"
 import {
   createStoreWithOptionalDevtools,
   generateRequestHash,
   isQuery,
   noop,
 } from "../../utils/helper"
-import type { CallConfig, HttpAgent } from "@dfinity/agent"
+import type { CallConfig, HttpAgent } from "@icp-sdk/core/agent"
 import type {
   ActorMethodParameters,
   ActorMethodReturnType,
@@ -27,7 +27,7 @@ import type {
   FunctionType,
   ActorMethodType,
 } from "./types"
-import { IDL } from "@dfinity/candid"
+import { IDL } from "@icp-sdk/core/candid"
 import type { AgentManager } from "../agent"
 import type { UpdateAgentParameters } from "../types"
 

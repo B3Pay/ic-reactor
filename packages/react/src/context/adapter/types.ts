@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react"
-import type { IDL } from "@dfinity/candid"
+import type { IDL } from "@icp-sdk/core/candid"
 import { CandidAdapter } from "@ic-reactor/core/dist/classes"
 import { CandidAdapterParameters } from "../../types"
 

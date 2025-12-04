@@ -186,22 +186,16 @@
       "name": "@ic-reactor/core",
       "version": "2.0.1",
       "dependencies": {
-        "@dfinity/agent": "^3.1.0",
-        "@dfinity/auth-client": "^3.1.0",
-        "@dfinity/candid": "^3.1.0",
-        "@dfinity/identity": "^3.1.0",
-        "@dfinity/principal": "^3.1.0",
+        "@icp-sdk/auth": "^4.2.0",
+        "@icp-sdk/core": "^4.2.3",
         "zustand": "5.0.6",
       },
       "devDependencies": {
         "@ic-reactor/parser": "workspace:*",
       },
       "peerDependencies": {
-        "@dfinity/agent": ">=3.1.0",
-        "@dfinity/auth-client": ">=3.1.0",
-        "@dfinity/candid": ">=3.1.0",
-        "@dfinity/identity": ">=3.1.0",
-        "@dfinity/principal": ">=3.1.0",
+        "@icp-sdk/auth": ">=4.2.0",
+        "@icp-sdk/core": ">=4.2.3",
       },
     },
     "packages/parser": {
@@ -227,11 +221,7 @@
         "zustand-utils": "^2.1.0",
       },
       "peerDependencies": {
-        "@dfinity/agent": "^3.1.0",
-        "@dfinity/auth-client": "^3.1.0",
-        "@dfinity/candid": "^3.1.0",
-        "@dfinity/identity": "^3.1.0",
-        "@dfinity/principal": "^3.1.0",
+        "@icp-sdk/core": ">=4.2.3",
         "react": ">=19.0.0",
         "zustand": "^5.0.6",
       },
@@ -565,6 +555,8 @@
 
     "@dfinity/identity": ["@dfinity/identity@3.2.3", "", { "peerDependencies": { "@dfinity/agent": "3.2.3", "@dfinity/candid": "3.2.3", "@dfinity/principal": "3.2.3", "@noble/curves": "^1.9.2", "@noble/hashes": "^1.8.0" } }, "sha512-3xnAlyxDGI6Em86zo2NqhB+fxj1p4JYqFnnDKTGeyhFzCPijzOQRTQahcGh52Wy1bGVRCBBcZ3kF80OZlntlxw=="],
 
+    "@dfinity/identity-secp256k1": ["@dfinity/identity-secp256k1@3.4.3", "", { "dependencies": { "@dfinity/agent": "3.4.3", "@scure/bip32": "^1.7.0", "@scure/bip39": "^1.6.0", "asn1js": "^3.0.5" }, "peerDependencies": { "@dfinity/candid": "3.4.3", "@noble/curves": "^1.9.2", "@noble/hashes": "^1.8.0" } }, "sha512-Mao+EQZUWJ9oG90eS3GwI3zU4zdccvhuBANBpCJWhcad84HYkr7NIJRQRYWSDmIXdALcU8jCeUvyhLxxgk0akQ=="],
+
     "@dfinity/principal": ["@dfinity/principal@3.2.3", "", { "dependencies": { "@noble/hashes": "^1.8.0" } }, "sha512-8wf7aFz1Ip3wumHOC7ampLl6S4x6+AIjSi4NZHofGOPog5a4ARWsBc6cAM2Akca6fVMFH0e6mGHov2lugoC9Dg=="],
 
     "@discoveryjs/json-ext": ["@discoveryjs/json-ext@0.6.3", "", {}, "sha512-4B4OijXeVNOPZlYA2oEwWOTkzyltLao+xbotHQeqN++Rv27Y6s818+n2Qkp8q+Fxhn0t/5lA5X1Mxktud8eayQ=="],
@@ -654,6 +646,10 @@
     "@ic-reactor/react": ["@ic-reactor/react@workspace:packages/react"],
 
     "@ic-reactor/visitor": ["@ic-reactor/visitor@workspace:packages/visitor"],
+
+    "@icp-sdk/auth": ["@icp-sdk/auth@4.2.0", "", { "dependencies": { "idb": "^7.1.1" }, "peerDependencies": { "@icp-sdk/core": "^4" } }, "sha512-LAs1AZia/UNgWjpnm82UDySpZsjTWKIW0x5JI2/PTEZqvaC3WSvHZfNkLacazE4Zdks+tpTDIV8HUmbssTJ+EA=="],
+
+    "@icp-sdk/core": ["@icp-sdk/core@4.2.3", "", { "peerDependencies": { "@dfinity/agent": "3.4.3", "@dfinity/candid": "3.4.3", "@dfinity/identity": "3.4.3", "@dfinity/identity-secp256k1": "3.4.3", "@dfinity/principal": "3.4.3" } }, "sha512-g48GZ+A2SD3txFKYZ9okfL6XPvYYeTE8cWMFCvtGZVD3T0Mp+vwQgzgf2XozdJW5aHUKT6G+DumzvgpY4pMh4A=="],
 
     "@img/sharp-darwin-arm64": ["@img/sharp-darwin-arm64@0.34.3", "", { "optionalDependencies": { "@img/sharp-libvips-darwin-arm64": "1.2.0" }, "os": "darwin", "cpu": "arm64" }, "sha512-ryFMfvxxpQRsgZJqBd4wsttYQbCxsJksrv9Lw/v798JcQ8+w84mBWuXwl+TT0WJ/WrYOLaYpwQXi3sA9nTIaIg=="],
 
@@ -900,6 +896,12 @@
     "@rtsao/scc": ["@rtsao/scc@1.1.0", "", {}, "sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g=="],
 
     "@rushstack/eslint-patch": ["@rushstack/eslint-patch@1.12.0", "", {}, "sha512-5EwMtOqvJMMa3HbmxLlF74e+3/HhwBTMcvt3nqVJgGCozO6hzIPOBlwm8mGVNR9SN2IJpxSnlxczyDjcn7qIyw=="],
+
+    "@scure/base": ["@scure/base@1.2.6", "", {}, "sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg=="],
+
+    "@scure/bip32": ["@scure/bip32@1.7.0", "", { "dependencies": { "@noble/curves": "~1.9.0", "@noble/hashes": "~1.8.0", "@scure/base": "~1.2.5" } }, "sha512-E4FFX/N3f4B80AKWp5dP6ow+flD1LQZo/w8UnLGYZO674jS6YnYeepycOOksv+vLPSpgN35wgKgy+ybfTb2SMw=="],
+
+    "@scure/bip39": ["@scure/bip39@1.6.0", "", { "dependencies": { "@noble/hashes": "~1.8.0", "@scure/base": "~1.2.5" } }, "sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A=="],
 
     "@shikijs/engine-oniguruma": ["@shikijs/engine-oniguruma@3.12.0", "", { "dependencies": { "@shikijs/types": "3.12.0", "@shikijs/vscode-textmate": "^10.0.2" } }, "sha512-IfDl3oXPbJ/Jr2K8mLeQVpnF+FxjAc7ZPDkgr38uEw/Bg3u638neSrpwqOTnTHXt1aU0Fk1/J+/RBdst1kVqLg=="],
 
@@ -1268,6 +1270,8 @@
     "arrify": ["arrify@2.0.1", "", {}, "sha512-3duEwti880xqi4eAMN8AyR4a0ByT90zoYdLlevfrvU43vb0YZwZVfxOgxWrLXXXpyugL0hNZc9G6BiB5B3nUug=="],
 
     "asap": ["asap@2.0.6", "", {}, "sha512-BSHWgDSAiKs50o2Re8ppvp3seVHXSRM44cdSsT9FfNEUUZLOGWVCsiWaRPWM1Znn+mqZ1OfVZ3z3DWEzSp7hRA=="],
+
+    "asn1js": ["asn1js@3.0.6", "", { "dependencies": { "pvtsutils": "^1.3.6", "pvutils": "^1.1.3", "tslib": "^2.8.1" } }, "sha512-UOCGPYbl0tv8+006qks/dTgV9ajs97X2p0FAbyS2iyCRrmLSRolDaHdp+v/CLgnzHc3fVB+CwYiUmei7ndFcgA=="],
 
     "assign-symbols": ["assign-symbols@1.0.0", "", {}, "sha512-Q+JC7Whu8HhmTdBph/Tq59IoRtoy6KAm5zzPv00WdujX82lbAL8K7WVjne7vdCsAmbF4AYaDOPyO3k0kl8qIrw=="],
 
@@ -2885,6 +2889,10 @@
 
     "punycode.js": ["punycode.js@2.3.1", "", {}, "sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA=="],
 
+    "pvtsutils": ["pvtsutils@1.3.6", "", { "dependencies": { "tslib": "^2.8.1" } }, "sha512-PLgQXQ6H2FWCaeRak8vvk1GW462lMxB5s3Jm673N82zI4vqtVUPuZdffdZbPDFRoU8kAhItWFtPCWiPpp4/EDg=="],
+
+    "pvutils": ["pvutils@1.1.5", "", {}, "sha512-KTqnxsgGiQ6ZAzZCVlJH5eOjSnvlyEgx1m8bkRJfOhmGRqfo5KLvmAlACQkrjEtOQ4B7wF9TdSLIs9O90MX9xA=="],
+
     "q": ["q@1.5.1", "", {}, "sha512-kV/CThkXo6xyFEZUugw/+pIOywXcDbFYgSct5cT3gqlbkBE1SJdwy6UQoZvodiWF/ckQLZyDE/Bu1M6gVu5lVw=="],
 
     "qs": ["qs@6.13.0", "", { "dependencies": { "side-channel": "^1.0.6" } }, "sha512-+38qI9SOr8tfZ4QmJNplMUxqjbe7LKvvZgWdExBOmd+egZTtjLB67Gu0HRX3u/XOq7UU2Nx6nsjvS16Z9uwfpg=="],
@@ -3589,6 +3597,8 @@
 
     "@cucumber/messages/uuid": ["uuid@8.3.2", "", { "bin": { "uuid": "dist/bin/uuid" } }, "sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg=="],
 
+    "@dfinity/identity-secp256k1/@dfinity/agent": ["@dfinity/agent@3.4.3", "", { "dependencies": { "@dfinity/cbor": "^0.2.2", "@noble/curves": "^1.9.2" }, "peerDependencies": { "@dfinity/candid": "3.4.3", "@dfinity/principal": "3.4.3", "@noble/hashes": "^1.8.0" } }, "sha512-qOJqvZdMzncbbYX3eUjlAqvP66DQuOQgBFQE06yzI3m/lVXnefxvY7wE9Y1Sb2wjVIQs6W2rfjixnn4EEjHAZg=="],
+
     "@eslint/eslintrc/minimatch": ["minimatch@3.1.2", "", { "dependencies": { "brace-expansion": "^1.1.7" } }, "sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw=="],
 
     "@happy-dom/global-registrator/@types/node": ["@types/node@20.9.4", "", { "dependencies": { "undici-types": "~5.26.4" } }, "sha512-wmyg8HUhcn6ACjsn8oKYjkN/zUzQeNtMy44weTJSM6p4MMzEOuKbA3OjJ267uPCOW7Xex9dyrNTful8XTQYoDA=="],
@@ -3596,6 +3606,8 @@
     "@humanwhocodes/config-array/minimatch": ["minimatch@3.1.2", "", { "dependencies": { "brace-expansion": "^1.1.7" } }, "sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw=="],
 
     "@ic-reactor/core/zustand": ["zustand@5.0.6", "", { "peerDependencies": { "@types/react": ">=18.0.0", "immer": ">=9.0.6", "react": ">=18.0.0", "use-sync-external-store": ">=1.2.0" }, "optionalPeers": ["@types/react", "immer", "react", "use-sync-external-store"] }, "sha512-ihAqNeUVhe0MAD+X8M5UzqyZ9k3FFZLBTtqo6JLPwV53cbRB/mJwBI0PxcIgqhBBHlEs8G45OTDTMq3gNcLq3A=="],
+
+    "@ic-reactor/parser/@dfinity/agent": ["@dfinity/agent@3.4.3", "", { "dependencies": { "@dfinity/cbor": "^0.2.2", "@noble/curves": "^1.9.2" }, "peerDependencies": { "@dfinity/candid": "3.4.3", "@dfinity/principal": "3.4.3", "@noble/hashes": "^1.8.0" } }, "sha512-qOJqvZdMzncbbYX3eUjlAqvP66DQuOQgBFQE06yzI3m/lVXnefxvY7wE9Y1Sb2wjVIQs6W2rfjixnn4EEjHAZg=="],
 
     "@isaacs/cliui/string-width": ["string-width@5.1.2", "", { "dependencies": { "eastasianwidth": "^0.2.0", "emoji-regex": "^9.2.2", "strip-ansi": "^7.0.1" } }, "sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA=="],
 

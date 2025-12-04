@@ -7,8 +7,8 @@ import {
   beforeEach,
   spyOn,
 } from "bun:test"
-import { IDL } from "@dfinity/candid"
-import { Cbor } from "@dfinity/agent"
+import { IDL } from "@icp-sdk/core/candid"
+import { Cbor } from "@icp-sdk/core/agent"
 import { idlFactory } from "./candid/hello"
 import { createActorManager, createAgentManager } from "../src"
 import { AgentManager, ActorManager } from "../src/types"

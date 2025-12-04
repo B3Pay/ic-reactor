@@ -1,4 +1,4 @@
-import { IDL } from "@dfinity/candid"
+import { IDL } from "@icp-sdk/core/candid"
 import { findCategory } from "../helpers"
 import { CategoryTest, DEFAULT_CATEGORIES, DEFAULT_LAYOUTS } from "../constants"
 

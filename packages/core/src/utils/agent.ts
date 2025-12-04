@@ -1,1 +1,1 @@
-export * from "@dfinity/agent"
+export * from "@icp-sdk/core/agent"

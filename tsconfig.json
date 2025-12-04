@@ -7,7 +7,7 @@
     "strict": true,
     "skipLibCheck": true,
     "declaration": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "node16",
     "jsx": "react",
     "noUnusedLocals": true,
     "noUnusedParameters": true,

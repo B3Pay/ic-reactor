@@ -1,1 +1,1 @@
-export * from "@dfinity/candid"
+export * from "@icp-sdk/core/candid"

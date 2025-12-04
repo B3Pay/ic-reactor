@@ -8,7 +8,7 @@ import {
   createCandidAdapter,
   createReactorCore,
 } from "@ic-reactor/core"
-import { Principal } from "@dfinity/principal"
+import { Principal } from "@icp-sdk/core/principal"
 
 const agentManager = createAgentManager({ withDevtools: true })
 const candidAdapter = createCandidAdapter({ agentManager })
