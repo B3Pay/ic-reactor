@@ -18,7 +18,7 @@ import type {
 } from "./classes/actor/types"
 import type { ActorManager } from "./classes/actor"
 import type { AgentManager } from "./classes/agent"
-import type { AuthClientLoginOptions } from "@dfinity/auth-client"
+import type { AuthClientLoginOptions } from "@icp-sdk/auth/client"
 
 export * from "./classes/types"
 

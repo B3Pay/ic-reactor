@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["./src", "src/context/actor/hooks/.ts"],
+  "include": ["./src"],
   "compilerOptions": {
+    "rootDir": "./src",
+    "jsx": "react-jsx",
     "outDir": "./dist"
   }
 }

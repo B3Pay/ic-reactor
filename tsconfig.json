@@ -1,17 +1,31 @@
 {
   "compilerOptions": {
-    "target": "es2024",
-    "module": "commonjs",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true,
+    "rootDir": ".",
+    "allowJs": false,
     "declaration": true,
-    "moduleResolution": "node16",
-    "jsx": "react",
+    "declarationMap": true,
+    "sourceMap": true,
+    "forceConsistentCasingInFileNames": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "useDefineForClassFields": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": false,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    
+    /* Linting */
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "types": ["bun-types"]
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022"
   },
-  "exclude": ["**/*.spec.ts", "examples", ".next", "dist", "test", "out"]
+  "exclude": ["bin", "node_modules", "e2e", "docs", "**/*.test.ts", "**/*.test.tsx"]
 }

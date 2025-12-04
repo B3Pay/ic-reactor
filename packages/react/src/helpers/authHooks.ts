@@ -15,7 +15,7 @@ import type {
   Identity,
   LoginState,
 } from "../types"
-import type { InternetIdentityAuthResponseSuccess } from "@dfinity/auth-client"
+import type { InternetIdentityAuthResponseSuccess } from "@icp-sdk/auth/client"
 
 export const authHooks = (agentManager: AgentManager): AuthHooksReturnType => {
   const {

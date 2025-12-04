@@ -29,17 +29,14 @@ module.exports = (env, argv) => {
         },
       ],
     },
+    resolve: {
+      extensions: [".ts", ".js"],
+    },
     plugins: [
       new IgnorePlugin({
         resourceRegExp: /^@ic-reactor\/parser$/,
       }),
     ],
-    resolve: {
-      extensions: [".ts", ".js"],
-      fallback: {
-        "@icp-sdk/core/candid": require.resolve("@icp-sdk/core/candid"),
-      },
-    },
     externals: {},
     // Add source maps in development for easier debugging
     devtool: isProduction ? false : "source-map",

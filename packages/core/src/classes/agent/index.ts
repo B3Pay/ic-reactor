@@ -5,7 +5,7 @@ import {
   getNetworkByHostname,
   getProcessEnvNetwork,
 } from "../../utils/helper"
-import { AuthClient } from "@dfinity/auth-client"
+import { AuthClient } from "@icp-sdk/auth/client"
 import type { AuthClientLoginOptions } from "../../types"
 import type {
   AgentState,
