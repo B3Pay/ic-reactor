@@ -77,8 +77,14 @@ export class AgentManager {
     } = options || {}
     if (withProcessEnv) {
       const processNetwork = getProcessEnvNetwork()
-      agentOptions.host =
-        processNetwork === "ic" ? IC_HOST_NETWORK_URI : undefined
+      if (processNetwork === "ic") {
+        agentOptions.host = IC_HOST_NETWORK_URI
+      } else if (processNetwork === "local") {
+        agentOptions.host =
+          typeof process !== "undefined" && process.env.IC_HOST
+            ? process.env.IC_HOST
+            : `http://127.0.0.1:${port}`
+      }
     } else if (withLocalEnv) {
       agentOptions.host = `http://127.0.0.1:${port}`
     } else {

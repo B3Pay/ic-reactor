@@ -14,20 +14,28 @@ const AUTH_DEFAULT_STATE: AuthState = {
   identity: null,
   authenticated: false,
   authenticating: false,
+  isAuthenticating: false,
+  isAuthenticated: false,
   error: undefined,
 }
 const AGENT_DEFAULT_STATE: AgentState = {
   error: undefined,
   initialized: true,
   initializing: false,
+  isInitialized: true,
+  isInitializing: false,
   network: "local",
 }
 
 const ACTOR_DEFAULT_STATE: ActorState<typeof hello_actor> = {
   initialized: false,
   initializing: false,
+  isInitialized: false,
+  isInitializing: false,
   error: undefined,
   methodState: {} as any,
+  name: canisterId,
+  version: 0,
 }
 
 test("Main Function Test", async () => {
@@ -47,8 +55,12 @@ test("Main Function Test", async () => {
   expect(actorStore.getState()).toEqual({
     initialized: true,
     initializing: false,
+    isInitialized: true,
+    isInitializing: false,
     error: undefined,
     methodState: {},
+    name: canisterId,
+    version: 0,
   })
 
   const greet = await callMethod("greet", "World")

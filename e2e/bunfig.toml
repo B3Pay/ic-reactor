@@ -1,3 +1,2 @@
 [test]
-dom = "happy-dom"
 preload = ["fake-indexeddb/auto"]

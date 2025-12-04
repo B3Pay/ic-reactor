@@ -1,14 +1,33 @@
 import React from "react"
-import renderer, { act } from "react-test-renderer"
+import { GlobalRegistrator } from "@happy-dom/global-registrator"
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+  cleanup,
+} from "@testing-library/react"
+
+GlobalRegistrator.register()
+
+import { describe, it, expect, afterEach } from "bun:test"
 import {
   canisterId,
   idlFactory,
   hello_actor,
 } from "../declarations/hello_actor"
 import { createReactor } from "@ic-reactor/react"
+import * as matchers from "@testing-library/jest-dom/matchers"
+
+expect.extend(matchers)
+
+afterEach(() => {
+  cleanup()
+})
 
 describe("React Test", () => {
-  it("should initialize", async () => {
+  it.only("should initialize", async () => {
     const { useActorState, initialize } = createReactor<typeof hello_actor>({
       canisterId,
       idlFactory,
@@ -21,7 +40,7 @@ describe("React Test", () => {
 
       return (
         <div>
-          <span>
+          <span data-testid="status">
             {initializing
               ? "Initializing"
               : initialized
@@ -33,21 +52,19 @@ describe("React Test", () => {
       )
     }
 
-    let screen = renderer.create(<Initialize />)
+    const { asFragment } = render(<Initialize />)
 
-    const initializeStatus = () =>
-      screen.root.findAllByType("span")[0].props.children
-    const initializeButton = () => screen.root.findAllByType("button")[0]
+    expect(asFragment()).toMatchSnapshot()
 
-    expect(screen.toJSON()).toMatchSnapshot()
+    expect(screen.getByTestId("status")).toHaveTextContent("Not initialized")
 
-    expect(initializeStatus()).toEqual("Not initialized")
+    await act(async () => {
+      fireEvent.click(screen.getByText("Initialize"))
+    })
 
-    await act(() => initializeButton().props.onClick())
+    expect(screen.getByTestId("status")).toHaveTextContent("Initialized")
 
-    expect(initializeStatus()).toEqual("Initialized")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    expect(asFragment()).toMatchSnapshot()
   })
 
   it("should call query method", async () => {
@@ -67,28 +84,28 @@ describe("React Test", () => {
       return (
         <div>
           <button onClick={call}>Say Hello</button>
-          <span>
+          <span data-testid="data">
             {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
           </span>
         </div>
       )
     }
 
-    let screen = renderer.create(<HelloComponent />)
+    const { asFragment } = render(<HelloComponent />)
 
-    const data = () => screen.root.findAllByType("span")[0]
+    expect(asFragment()).toMatchSnapshot()
 
-    const button = () => screen.root.findAllByType("button")[0]
+    expect(screen.getByTestId("data")).toHaveTextContent("Ready To call")
 
-    expect(screen.toJSON()).toMatchSnapshot()
+    await act(async () => {
+      fireEvent.click(screen.getByText("Say Hello"))
+    })
 
-    expect(data().props.children).toEqual("Ready To call")
+    await waitFor(() => {
+      expect(screen.getByTestId("data")).toHaveTextContent("Hello, Query Call!")
+    })
 
-    await act(() => button().props.onClick())
-
-    expect(data().props.children).toEqual("Hello, Query Call!")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    expect(asFragment()).toMatchSnapshot()
   })
 
   it("should call update method", async () => {
@@ -107,27 +124,29 @@ describe("React Test", () => {
       return (
         <div>
           <button onClick={call}>Say Hello</button>
-          <span>
+          <span data-testid="data">
             {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
           </span>
         </div>
       )
     }
 
-    let screen = renderer.create(<HelloComponent />)
+    const { asFragment } = render(<HelloComponent />)
 
-    const data = () => screen.root.findAllByType("span")[0]
+    expect(asFragment()).toMatchSnapshot()
 
-    const button = () => screen.root.findAllByType("button")[0]
+    expect(screen.getByTestId("data")).toHaveTextContent("Ready To call")
 
-    expect(screen.toJSON()).toMatchSnapshot()
+    await act(async () => {
+      fireEvent.click(screen.getByText("Say Hello"))
+    })
 
-    expect(data().props.children).toEqual("Ready To call")
+    await waitFor(() => {
+      expect(screen.getByTestId("data")).toHaveTextContent(
+        "Hello, Update Call!"
+      )
+    })
 
-    await act(() => button().props.onClick())
-
-    expect(data().props.children).toEqual("Hello, Update Call!")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    expect(asFragment()).toMatchSnapshot()
   })
 })

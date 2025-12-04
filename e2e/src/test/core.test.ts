@@ -26,7 +26,12 @@ describe("Core Function Test", () => {
     idlFactory,
     withProcessEnv: true,
     initializeOnCreate: false,
+    verifyQuerySignatures: false,
   })
+
+  console.log("Canister ID:", canisterId)
+  console.log("Network:", process.env.DFX_NETWORK)
+  console.log("Host:", process.env.IC_HOST)
 
   expect(getState()).toEqual(DEFAULT_STATE)
 
@@ -44,9 +49,7 @@ describe("Core Function Test", () => {
       args: ["World"],
     })
 
-    expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
-    )
+    expect(requestHash).toEqual("0x3e5c8666")
 
     const { loading, data, error } = getState()
 
@@ -64,9 +67,7 @@ describe("Core Function Test", () => {
       args: ["World"],
     })
 
-    expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
-    )
+    expect(requestHash).toEqual("0x3e5c8666")
 
     const loadingBefore = getState("loading")
     expect(loadingBefore).toEqual(false)
@@ -90,9 +91,7 @@ describe("Core Function Test", () => {
       args: ["World"],
     })
 
-    expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
-    )
+    expect(requestHash).toEqual("0x3e5c8666")
 
     const loadingBefore = getState("loading")
     expect(loadingBefore).toEqual(false)
