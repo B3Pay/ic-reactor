@@ -9,8 +9,8 @@ import {
   createReactorCore,
 } from "@ic-reactor/core"
 import { Principal } from "@icp-sdk/core/principal"
-import { _SERVICE } from "./icp-ledger"
-import {
+import type { _SERVICE } from "./icp-ledger"
+import type {
   CreateReactorCoreReturnType,
   FunctionName,
 } from "@ic-reactor/core/dist/types"
@@ -154,10 +154,14 @@ const tokenDetails = async ({
   })
 }
 
-const userWallet = async ({ getPrincipal, queryCall, updateCall }) => {
+const userWallet = async ({
+  getPrincipal,
+  queryCall,
+  updateCall,
+}: CreateReactorCoreReturnType<_SERVICE>) => {
   userForm.style.display = "flex"
 
-  const owner = getPrincipal()
+  const owner = getPrincipal()!
 
   const { subscribe: balanceSubscribe, call: balanceCall } = queryCall({
     functionName: "icrc1_balance_of",

@@ -1,13 +1,13 @@
-import Login from "Login"
-import Notes from "Notes"
+import Login from "./Login"
+import Notes from "./Notes"
 import AddNote from "./AddNote"
 import {
   AgentProvider,
   ActorProvider,
   CandidAdapterProvider,
 } from "@ic-reactor/react"
-import { NoteActorProvider } from "NoteActor"
-import Ledger from "Ledger"
+import { NoteActorProvider } from "./NoteActor"
+import Ledger from "./Ledger"
 
 const publicKey = crypto.getRandomValues(new Uint8Array(48))
 
