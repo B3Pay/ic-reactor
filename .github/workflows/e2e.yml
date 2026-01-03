@@ -1,0 +1,69 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, v3]
+  pull_request:
+    branches: [main, v3]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Setup dfx
+        uses: dfinity/setup-dfx@main
+
+      - name: Confirm dfx installation
+        run: dfx --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Start dfx and run e2e tests
+        run: |
+          cd e2e
+          dfx start --background --clean
+          dfx deploy hello_actor
+          dfx generate hello_actor
+
+          # Verify deployment
+          dfx canister call hello_actor greet '("World")'
+
+          # Set environment variables
+          set -a
+          source .env
+          set +a
+
+          # Run tests
+          pnpm test
+
+          # Cleanup
+          dfx stop
