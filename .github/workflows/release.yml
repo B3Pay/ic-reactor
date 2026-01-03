@@ -65,8 +65,9 @@ jobs:
           fi
 
       - name: Publish to npm (uses npm CLI for OIDC)
-        # Use npm CLI workspaces so OIDC trusted publishing is detected properly
-        run: npm publish -w ${{ matrix.workspace }} --access public --tag $TAG
+        # Run publish inside the package directory to avoid npm workspaces mismatch
+        working-directory: ${{ matrix.workspace }}
+        run: npm publish --access public --tag $TAG
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
