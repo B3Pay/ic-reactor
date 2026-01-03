@@ -37,11 +37,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      // Map @dfinity/* imports (from dfx generate) to @icp-sdk/* equivalents
-      "@dfinity/agent": "@icp-sdk/core",
-      "@dfinity/candid": "@icp-sdk/candid",
-      "@dfinity/principal": "@icp-sdk/principal",
-      "@dfinity/identity": "@icp-sdk/identity",
+      "@dfinity/agent": "@icp-sdk/core/agent",
+      "@dfinity/candid": "@icp-sdk/core/candid",
+      "@dfinity/principal": "@icp-sdk/core/principal",
+      "@dfinity/identity": "@icp-sdk/core/identity",
     },
   },
 })
