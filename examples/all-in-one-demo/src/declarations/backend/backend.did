@@ -1,0 +1,31 @@
+type Post = 
+ record {
+   caller: principal;
+   content: text;
+   id: nat;
+   timestamp: int;
+ };
+type Log = 
+ record {
+   action: text;
+   caller: principal;
+   details: text;
+   timestamp: int;
+ };
+type ChaosResult = 
+ variant {
+   err: text;
+   ok;
+ };
+service : {
+  batch_create_posts: (contents: vec text) -> (vec nat);
+  create_post: (content: text) -> (nat);
+  get_likes: () -> (vec principal) query;
+  get_logs: () -> (vec Log) query;
+  get_posts: (offset: nat, limit: nat) -> (vec Post) query;
+  get_posts_count: () -> (nat) query;
+  get_chaos_status: () -> (bool) query;
+  like: () -> (ChaosResult);
+  toggle_chaos_mode: () -> (bool);
+  unlike: () -> (ChaosResult);
+}

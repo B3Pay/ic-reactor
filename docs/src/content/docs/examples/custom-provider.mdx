@@ -1,0 +1,72 @@
+---
+title: "Custom Provider"
+description: Dynamic canister IDs and context-based providers
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+This example demonstrates how to build a **Token Viewer** where the user can input _any_ Canister ID, and the app dynamically connects to it. This requires creating a custom Context Provider that instantiates a Reactor based on props.
+
+## Features Demonstrated
+
+- **Dynamic Canister IDs**: Connecting to canisters determined at runtime.
+- **Context API**: Passing the reactor instance down to children.
+- **Reusability**: Creating a generic `ICRC1Provider` that can wrap any part of the app.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/custom-provider?embed=1&theme=dark&file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3hr4d/ic-reactor-v3/tree/main/examples/custom-provider"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/custom-provider?embed=1&theme=dark&file=src/App.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor Custom Provider"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Implementation Details
+
+### The Dynamic Provider
+
+```typescript
+export const ICRC1Context = createContext<ActorHooks | null>(null)
+
+export const ICRC1Provider = ({ canisterId, children }) => {
+  const [hooks, setHooks] = useState<ActorHooks | null>(null)
+
+  useEffect(() => {
+    // Create a new reactor when canisterId changes
+    const reactor = new DisplayReactor({
+      clientManager,
+      canisterId,
+      idlFactory,
+    })
+
+    // Generate hooks for this specific reactor
+    setHooks(createActorHooks(reactor))
+  }, [canisterId])
+
+  if (!hooks) return <div>Initializing...</div>
+
+  return (
+    <ICRC1Context.Provider value={hooks}>
+      {children}
+    </ICRC1Context.Provider>
+  )
+}
+```

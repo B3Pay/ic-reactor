@@ -1,0 +1,399 @@
+---
+title: Mutations
+description: Updating data on Internet Computer canisters
+editUrl: false
+---
+
+import { Aside, Code, Tabs, TabItem } from "@astrojs/starlight/components"
+
+Unlike queries, mutations are typically used to create, update, or delete data on your canister, or perform side-effects. For this purpose, IC Reactor provides the `useActorMutation` hook.
+
+## Basic Mutation
+
+Here's an example of a mutation that creates a new post:
+
+```tsx
+import { useActorMutation } from "../reactor/hooks"
+
+function CreatePost() {
+  const { mutate, isPending, isSuccess, isError, error } = useActorMutation({
+    functionName: "createPost",
+  })
+
+  return (
+    <button
+      onClick={() => {
+        mutate([{ title: "My New Post", content: "Hello world!" }])
+      }}
+      disabled={isPending}
+    >
+      {isPending ? "Creating..." : "Create Post"}
+    </button>
+  )
+}
+```
+
+A mutation can only be in one of the following states at any given moment:
+
+- `isIdle` or `status === 'idle'` - The mutation is currently idle or in a fresh/reset state
+- `isPending` or `status === 'pending'` - The mutation is currently running
+- `isError` or `status === 'error'` - The mutation encountered an error
+- `isSuccess` or `status === 'success'` - The mutation was successful and mutation data is available
+
+Beyond those primary states, more information is available depending on the state of the mutation:
+
+- `error` - If the mutation is in an `isError` state, the error is available via the `error` property.
+- `data` - If the mutation is in an `isSuccess` state, the return data is available via the `data` property.
+
+## Mutation Arguments
+
+Arguments are passed to the `mutate` function as an array (matching the canister method signature):
+
+```tsx
+// Canister method: transfer(to: Principal, amount: nat64) -> Result<TransferReceipt, TransferError>
+
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+})
+
+// Call with arguments as array
+mutate(["aaaaa-aa", BigInt(1000000)])
+```
+
+## Side Effects
+
+`useActorMutation` comes with helper options that allow quick and easy side-effects at any stage during the mutation lifecycle:
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  onMutate: (variables) => {
+    // A mutation is about to happen!
+    console.log("Creating post with:", variables)
+
+    // Optionally return a context containing data to use when rolling back
+    return { id: Date.now() }
+  },
+  onError: (error, variables, context) => {
+    // An error happened!
+    console.log("Rolling back with id:", context?.id)
+  },
+  onSuccess: (data, variables, context) => {
+    // Boom baby!
+    console.log("Post created:", data)
+  },
+  onSettled: (data, error, variables, context) => {
+    // Error or success... doesn't matter!
+    console.log("Mutation finished")
+  },
+})
+```
+
+When returning a promise in any of the callback functions, it will first be awaited before the next callback is called:
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  onSuccess: async () => {
+    console.log("I'm first!")
+  },
+  onSettled: async () => {
+    console.log("I'm second!")
+  },
+})
+```
+
+## Per-Mutate Callbacks
+
+You can also provide additional callbacks to the `mutate` function itself. These are useful for component-specific side effects:
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  onSuccess: () => {
+    // This fires first (from hook config)
+  },
+})
+
+// In your component
+mutate([{ title: "New Post" }], {
+  onSuccess: () => {
+    // This fires second (from mutate call)
+    navigate("/posts")
+  },
+})
+```
+
+<Aside type="caution">
+  Per-mutate callbacks won't run if your component unmounts before the mutation
+  finishes.
+</Aside>
+
+## Refetching Queries After Mutation
+
+The most common pattern after a mutation is to refetch related queries. Use the `refetchQueries` option:
+
+```tsx
+import { backendActor } from "../reactor"
+
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  refetchQueries: [
+    // Refetch the posts list after creating
+    backendActor.generateQueryKey({ functionName: "getPosts" }),
+  ],
+})
+```
+
+Or use `onSuccess` with the query client for more control:
+
+```tsx
+import { useQueryClient } from "@tanstack/react-query"
+import { backendActor } from "../reactor"
+
+function CreatePost() {
+  const queryClient = useQueryClient()
+
+  const { mutate } = useActorMutation({
+    functionName: "createPost",
+    onSuccess: () => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({
+        queryKey: backendActor.generateQueryKey({ functionName: "getPosts" }),
+      })
+    },
+  })
+}
+```
+
+## Form Handling
+
+Here's a complete example with form handling:
+
+```tsx
+import { useState } from "react"
+import { useActorMutation } from "../reactor/hooks"
+
+function CreatePost() {
+  const [title, setTitle] = useState("")
+  const [content, setContent] = useState("")
+
+  const { mutate, isPending, isError, error, reset } = useActorMutation({
+    functionName: "createPost",
+    onSuccess: () => {
+      // Clear form on success
+      setTitle("")
+      setContent("")
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    mutate([{ title, content }])
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Title"
+        disabled={isPending}
+      />
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder="Content"
+        disabled={isPending}
+      />
+
+      {isError && (
+        <div className="error">
+          Error: {error.message}
+          <button type="button" onClick={reset}>
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      <button type="submit" disabled={isPending}>
+        {isPending ? "Creating..." : "Create Post"}
+      </button>
+    </form>
+  )
+}
+```
+
+## Async/Await with mutateAsync
+
+If you prefer async/await syntax, use `mutateAsync`:
+
+```tsx
+const { mutateAsync, isPending } = useActorMutation({
+  functionName: "transfer",
+})
+
+const handleTransfer = async () => {
+  try {
+    const result = await mutateAsync([recipient, amount])
+    console.log("Transfer successful:", result)
+    toast.success("Transfer complete!")
+  } catch (error) {
+    console.error("Transfer failed:", error)
+    toast.error("Transfer failed")
+  }
+}
+```
+
+## Resetting Mutation State
+
+Use the `reset` function to clear the mutation state:
+
+```tsx
+const { mutate, isError, error, reset } = useActorMutation({
+  functionName: "createPost",
+})
+
+return (
+  <div>
+    {isError && (
+      <div>
+        <p>Error: {error.message}</p>
+        <button onClick={reset}>Clear error</button>
+      </div>
+    )}
+    <button onClick={() => mutate([{ title: "Test" }])}>Create Post</button>
+  </div>
+)
+```
+
+## Optimistic Updates
+
+You can perform optimistic updates using standard TanStack Query patterns:
+
+```tsx
+import { useQueryClient } from "@tanstack/react-query"
+import { backendActor } from "../reactor"
+
+function LikeButton({ postId }: { postId: string }) {
+  const queryClient = useQueryClient()
+
+  const { mutate } = useActorMutation({
+    functionName: "likePost",
+    onMutate: async (args) => {
+      const [postId] = args
+      const queryKey = backendActor.generateQueryKey({
+        functionName: "getPost",
+        args: [postId],
+      })
+
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey })
+
+      // Snapshot the previous value
+      const previousPost = queryClient.getQueryData(queryKey)
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(queryKey, (old: any) => ({
+        ...old,
+        likes: old.likes + 1,
+      }))
+
+      // Return a context object with the snapshotted value
+      return { previousPost, queryKey }
+    },
+    onError: (err, args, context) => {
+      // If the mutation fails, use the context to roll back
+      if (context?.previousPost) {
+        queryClient.setQueryData(context.queryKey, context.previousPost)
+      }
+    },
+    onSettled: (data, error, args, context) => {
+      // Always refetch after error or success
+      if (context?.queryKey) {
+        queryClient.invalidateQueries({ queryKey: context.queryKey })
+      }
+    },
+  })
+
+  return <button onClick={() => mutate([postId])}>Like</button>
+}
+```
+
+## Mutation Factory
+
+For reusable mutation configurations, use `createMutation`:
+
+```tsx
+import { createMutation } from "@ic-reactor/react"
+import { backendActor } from "../reactor"
+
+// Define mutation once
+const createPostMutation = createMutation(backendActor, {
+  functionName: "createPost",
+  refetchQueries: [backendActor.generateQueryKey({ functionName: "getPosts" })],
+})
+
+// Use in components
+function CreatePost() {
+  const { mutate, isPending } = createPostMutation.useMutation()
+  // ...
+}
+
+// Or execute directly (outside React)
+async function createPostInLoader(data: PostInput) {
+  const result = await createPostMutation.execute([data])
+  return result
+}
+```
+
+## Error Handling
+
+IC Reactor provides structured error types for mutations:
+
+```tsx
+import { CanisterError, CallError } from "@ic-reactor/core"
+
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  onError: (error) => {
+    if (error instanceof CanisterError) {
+      // Business logic error from canister (e.g., InsufficientFunds)
+      if ("InsufficientFunds" in error.err) {
+        toast.error(
+          `Not enough funds. Balance: ${error.err.InsufficientFunds.balance}`
+        )
+      } else if ("InvalidRecipient" in error.err) {
+        toast.error("Invalid recipient address")
+      }
+    } else if (error instanceof CallError) {
+      // Network or agent error
+      toast.error("Network error. Please try again.")
+    }
+  },
+})
+```
+
+## Type Safety
+
+Like queries, mutations are fully type-safe:
+
+```tsx
+// Canister: createPost(input: PostInput) -> Result<Post, CreatePostError>
+
+const { mutate } = useActorMutation({
+  functionName: "createPost", // ✅ Autocomplete available
+})
+
+// ✅ TypeScript knows the argument type
+mutate([{ title: "Hello", content: "World" }])
+
+// ❌ TypeScript error: missing required field
+mutate([{ title: "Hello" }])
+```
+
+## Further Reading
+
+- [Query Caching](/query-caching) - Cache invalidation after mutations
+- [Error Handling](/error-handling) - Detailed error handling patterns
+- [Type Safety](/type-safety) - Understanding typed mutations

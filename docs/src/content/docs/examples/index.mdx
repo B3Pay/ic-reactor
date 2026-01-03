@@ -1,0 +1,54 @@
+---
+title: Examples
+description: Interactive IC Reactor examples
+editUrl: false
+---
+
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+Explore IC Reactor through live, interactive examples. Each example can be opened in StackBlitz for hands-on experimentation.
+
+<CardGrid>
+  <LinkCard
+    title="Query Demo"
+    description="Queries, suspense, and real-time data fetching from mainnet ICP ledgers"
+    href="/examples/query-demo"
+  />
+  <LinkCard
+    title="TanStack Router"
+    description="Full app with routing, loaders, and authentication"
+    href="/examples/tanstack-router"
+  />
+  <LinkCard
+    title="Codec Demo"
+    description="Automatic type transformations with DisplayReactor"
+    href="/examples/codec-demo"
+  />
+  <LinkCard
+    title="Infinite Query"
+    description="Infinite scrolling and pagination"
+    href="/examples/infinite-query"
+  />
+  <LinkCard
+    title="TypeScript Demo"
+    description="Pure TypeScript usage without React"
+    href="/examples/typescript-demo"
+  />
+</CardGrid>
+
+## Running Examples Locally
+
+```bash
+git clone https://github.com/b3hr4d/ic-reactor-v3.git
+cd ic-reactor-v3
+
+# Install dependencies
+pnpm install
+
+# Build packages first
+pnpm build
+
+# Run a specific example
+cd examples/query-demo
+pnpm dev
+```

@@ -1,0 +1,111 @@
+---
+title: useAuth
+description: The primary hook for Managing Internet Identity authentication.
+editUrl: false
+---
+
+`useAuth` is the primary hook for authentication. It automatically initializes the client on mount and provides access to auth state and methods.
+
+## Usage
+
+```tsx
+import { useAuth } from "./reactor/hooks"
+
+function AuthButton() {
+  const {
+    login, // Function to trigger login
+    logout, // Function to trigger logout
+    authenticate, // Function to authenticate without popup
+    isAuthenticated, // boolean
+    isAuthenticating, // boolean
+    identity, // Identity | null
+    principal, // Principal | null
+    error, // Error | undefined
+  } = useAuth()
+
+  return isAuthenticated ? (
+    <button onClick={logout}>Logout {principal?.toText()}</button>
+  ) : (
+    <button onClick={() => login()}>Login</button>
+  )
+}
+```
+
+## Methods
+
+### login(options?)
+
+Triggers the Internet Identity login flow:
+
+```typescript
+login({
+  // Identity provider URL (auto-detected based on network)
+  identityProvider?: string,
+
+  // Session duration in nanoseconds
+  maxTimeToLive?: bigint,
+
+  // Callback on successful login
+  onSuccess?: () => void,
+
+  // Callback on login error
+  onError?: (error: string) => void,
+})
+```
+
+### logout()
+
+Logs out and clears the session:
+
+```typescript
+const { logout } = useAuth()
+logout() // Clears session and updates state
+```
+
+### authenticate()
+
+Authenticates the user without a popup. Useful for re-authenticating an existing session:
+
+```typescript
+const { authenticate } = useAuth()
+await authenticate()
+```
+
+## Return Value
+
+| Property           | Type                          | Description                                       |
+| ------------------ | ----------------------------- | ------------------------------------------------- |
+| `login`            | `(options?) => Promise<void>` | Triggers the login flow                           |
+| `logout`           | `() => Promise<void>`         | Logs the user out                                 |
+| `authenticate`     | `() => Promise<void>`         | Authenticates without popup                       |
+| `isAuthenticated`  | `boolean`                     | Whether the user is currently authenticated       |
+| `isAuthenticating` | `boolean`                     | Whether an authentication process is in progress  |
+| `identity`         | `Identity \| null`            | The current user's `@dfinity/agent` Identity      |
+| `principal`        | `Principal \| null`           | The current user's `@dfinity/principal` Principal |
+| `error`            | `Error \| undefined`          | Last authentication error                         |
+
+## Protected Routes Pattern
+
+```tsx
+import { useAuth } from "../reactor/hooks"
+import { Navigate, useLocation } from "react-router-dom"
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isAuthenticating } = useAuth()
+  const location = useLocation()
+
+  if (isAuthenticating) return <Loading />
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return <>{children}</>
+}
+```
+
+## See Also
+
+- [createAuthHooks](/reference/createauthhooks) — Auth hooks factory
+- [useUserPrincipal](/reference/createauthhooks/useuserprincipal) — Get current principal
+- [useAgentState](/reference/createauthhooks/useagentstate) — Monitor agent state

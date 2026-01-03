@@ -1,0 +1,403 @@
+---
+title: Error Handling
+description: Handle errors gracefully in IC Reactor applications
+editUrl: false
+---
+
+import { Aside, Card, CardGrid } from "@astrojs/starlight/components"
+
+IC Reactor provides structured error handling for both canister-level and network-level errors. This guide covers everything you need to know about handling errors in your application.
+
+## Error Types
+
+IC Reactor distinguishes between two types of errors:
+
+<CardGrid>
+  <Card title="CanisterError" icon="warning">
+    Business logic errors from your canister (e.g., InsufficientFunds, NotFound,
+    Unauthorized)
+  </Card>
+  <Card title="CallError" icon="error">
+    Network, agent, or trap errors (e.g., connection timeout, canister trapped)
+  </Card>
+</CardGrid>
+
+### CanisterError
+
+Thrown when your canister returns an `Err` variant from a `Result` type:
+
+```typescript
+import { CanisterError } from "@ic-reactor/core"
+
+// Your canister method returns Result<User, GetUserError>
+// On Err, IC Reactor throws CanisterError with the error value
+
+if (error instanceof CanisterError) {
+  console.log("Canister error:", error.err)
+  console.log("Error code:", error.code) // Extracted from variant key
+  // error.err contains the Err variant, e.g.:
+  // { NotFound: null }
+  // { Unauthorized: { reason: "Not owner" } }
+  // { InsufficientFunds: { balance: 100n, required: 500n } }
+}
+```
+
+### CallError
+
+Thrown for network, agent, or canister trap errors:
+
+```typescript
+import { CallError } from "@ic-reactor/core"
+
+if (error instanceof CallError) {
+  console.log("Call error:", error.message)
+  // Network timeout, canister trapped, etc.
+}
+```
+
+## Handling Query Errors
+
+### In Components
+
+```tsx
+import { CanisterError, CallError } from "@ic-reactor/core"
+import { useActorQuery } from "../reactor/hooks"
+
+function UserProfile({ userId }: { userId: string }) {
+  const { data, error, isError, isPending } = useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  if (isPending) {
+    return <LoadingSpinner />
+  }
+
+  if (isError) {
+    if (error instanceof CanisterError) {
+      // Handle specific business logic errors
+      if ("NotFound" in error.err) {
+        return <UserNotFound userId={userId} />
+      }
+      if ("Unauthorized" in error.err) {
+        return <Unauthorized message={error.err.Unauthorized.reason} />
+      }
+      return (
+        <div>
+          Error: {error.code} - {JSON.stringify(error.err)}
+        </div>
+      )
+    }
+
+    // Network or other errors
+    return (
+      <div className="error">
+        <p>Failed to load user: {error.message}</p>
+        <button onClick={() => refetch()}>Retry</button>
+      </div>
+    )
+  }
+
+  return <UserCard user={data} />
+}
+```
+
+### Error Boundaries
+
+Use React Error Boundaries for unexpected errors:
+
+```tsx
+import { ErrorBoundary } from "react-error-boundary"
+
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <div className="error-fallback">
+      <h2>Something went wrong</h2>
+      <pre>{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <YourApp />
+    </ErrorBoundary>
+  )
+}
+```
+
+## Handling Mutation Errors
+
+### Using onError Callback
+
+```tsx
+import { CanisterError } from "@ic-reactor/core"
+
+function TransferForm() {
+  const { mutate, isPending, error } = useActorMutation({
+    functionName: "transfer",
+    onError: (error) => {
+      if (error instanceof CanisterError) {
+        // Handle specific error variants
+        if ("InsufficientFunds" in error.err) {
+          const { balance, required } = error.err.InsufficientFunds
+          toast.error(`Insufficient funds. Have: ${balance}, Need: ${required}`)
+          return
+        }
+        if ("InvalidRecipient" in error.err) {
+          toast.error("Invalid recipient address")
+          return
+        }
+      }
+
+      // Generic error handling
+      toast.error("Transfer failed: " + error.message)
+    },
+  })
+
+  // ...
+}
+```
+
+### Using try/catch with mutateAsync
+
+```tsx
+const { mutateAsync } = useActorMutation({
+  functionName: "transfer",
+})
+
+const handleTransfer = async () => {
+  try {
+    const result = await mutateAsync([recipient, amount])
+    toast.success("Transfer successful!")
+  } catch (error) {
+    if (error instanceof CanisterError) {
+      handleCanisterError(error)
+    } else {
+      toast.error("Network error. Please try again.")
+    }
+  }
+}
+```
+
+## Typed Error Handling
+
+For type-safe error handling, define your error types:
+
+```typescript
+// Define error type matching your canister's Candid
+type TransferError =
+  | { InsufficientFunds: { balance: bigint; required: bigint } }
+  | { InvalidRecipient: null }
+  | { AmountTooSmall: { minimum: bigint } }
+  | { Unauthorized: null }
+
+function handleTransferError(error: TransferError): string {
+  if ("InsufficientFunds" in error) {
+    return `Insufficient balance: ${error.InsufficientFunds.balance}`
+  }
+  if ("InvalidRecipient" in error) {
+    return "Invalid recipient address"
+  }
+  if ("AmountTooSmall" in error) {
+    return `Minimum amount: ${error.AmountTooSmall.minimum}`
+  }
+  if ("Unauthorized" in error) {
+    return "You are not authorized to perform this action"
+  }
+  return "Unknown error"
+}
+
+// Usage
+if (error instanceof CanisterError) {
+  const message = handleTransferError(error.err as TransferError)
+  toast.error(message)
+}
+```
+
+## Retry Configuration
+
+### Don't Retry Business Errors
+
+Configure your QueryClient to retry network errors but not business logic errors:
+
+```typescript
+import { QueryClient } from "@tanstack/query-core"
+import { CanisterError } from "@ic-reactor/core"
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Never retry canister business logic errors
+        if (error instanceof CanisterError) {
+          return false
+        }
+
+        // Retry network errors up to 3 times
+        return failureCount < 3
+      },
+      retryDelay: (attemptIndex) => {
+        // Exponential backoff: 1s, 2s, 4s...
+        return Math.min(1000 * 2 ** attemptIndex, 30000)
+      },
+    },
+    mutations: {
+      retry: false, // Never retry mutations by default
+    },
+  },
+})
+```
+
+### Custom Retry Logic
+
+```typescript
+const { data } = useActorQuery({
+  functionName: "getPrice",
+  args: [],
+  retry: 5, // Retry up to 5 times
+  retryDelay: 1000, // Wait 1 second between retries
+})
+```
+
+## Error Recovery Patterns
+
+### Retry Button
+
+```tsx
+function DataView() {
+  const { data, error, refetch, isError, isFetching } = useActorQuery({
+    functionName: "getData",
+    args: [],
+  })
+
+  if (isError) {
+    return (
+      <div className="error-state">
+        <p>Failed to load data</p>
+        <button onClick={() => refetch()} disabled={isFetching}>
+          {isFetching ? "Retrying..." : "Retry"}
+        </button>
+      </div>
+    )
+  }
+
+  return <DataDisplay data={data} />
+}
+```
+
+### Reset Mutation State
+
+```tsx
+function CreateForm() {
+  const { mutate, error, isError, reset } = useActorMutation({
+    functionName: "create",
+  })
+
+  return (
+    <form>
+      {isError && (
+        <div className="error-banner">
+          <p>{error.message}</p>
+          <button type="button" onClick={reset}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      {/* form fields */}
+    </form>
+  )
+}
+```
+
+### Fallback Data
+
+Provide fallback data when queries fail:
+
+```tsx
+const { data } = useActorQuery({
+  functionName: "getConfig",
+  args: [],
+  // Show default config if query fails
+  placeholderData: {
+    theme: "light",
+    language: "en",
+  },
+})
+```
+
+## Logging and Monitoring
+
+### Log Errors for Debugging
+
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Log all errors for debugging
+        console.error("Query failed:", {
+          failureCount,
+          error,
+          isCanisterError: error instanceof CanisterError,
+        })
+
+        return failureCount < 3 && !(error instanceof CanisterError)
+      },
+    },
+  },
+})
+```
+
+### Error Tracking Integration
+
+```tsx
+import * as Sentry from "@sentry/react"
+
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  onError: (error) => {
+    // Report to error tracking
+    Sentry.captureException(error, {
+      tags: {
+        type: error instanceof CanisterError ? "canister" : "network",
+      },
+    })
+  },
+})
+```
+
+## Best Practices
+
+1. **Distinguish error types** — Handle `CanisterError` and `CallError` differently
+2. **Don't retry business errors** — If the canister says "insufficient funds", retrying won't help
+3. **Show actionable messages** — Tell users how to fix the issue
+4. **Provide recovery options** — Retry buttons, form reset, etc.
+5. **Log appropriately** — Send business errors to analytics, network errors to monitoring
+6. **Use type guards** — Create helper functions for typed error checking
+
+```typescript
+// Helper for checking specific error variants
+function isInsufficientFunds(error: unknown): error is CanisterError & {
+  err: { InsufficientFunds: { balance: bigint } }
+} {
+  return (
+    error instanceof CanisterError &&
+    "InsufficientFunds" in (error.err as object)
+  )
+}
+
+// Usage
+if (isInsufficientFunds(error)) {
+  const balance = error.err.InsufficientFunds.balance
+  // TypeScript knows the type is correct
+}
+```
+
+## Further Reading
+
+- [Queries](/guides/queries) — Query error handling patterns
+- [Mutations](/guides/mutations) — Mutation error handling patterns
+- [TanStack Query Error Handling](https://tanstack.com/query/latest/docs/framework/react/guides/query-functions#handling-errors) — TanStack Query documentation

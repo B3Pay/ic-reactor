@@ -1,0 +1,367 @@
+---
+title: useActorMutation
+description: Hook for updating canister state
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useActorMutation` is a React hook for calling update methods on Internet Computer canisters. It wraps TanStack Query's `useMutation` with canister-specific functionality.
+
+## Import
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+
+const { useActorMutation } = createActorHooks(backend)
+```
+
+<Aside type="tip">
+  It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
+
+```typescript
+const { useActorMutation: useBackendMutation } = createActorHooks(backend)
+```
+
+</Aside>
+
+## Usage
+
+```tsx
+function CreatePost() {
+  const { mutate, isPending } = useActorMutation({
+    functionName: "createPost",
+  })
+
+  return (
+    <button
+      onClick={() => mutate([{ title: "Hello", content: "World" }])}
+      disabled={isPending}
+    >
+      {isPending ? "Creating..." : "Create Post"}
+    </button>
+  )
+}
+```
+
+## Options
+
+### Required Options
+
+| Option         | Type     | Description                 |
+| -------------- | -------- | --------------------------- |
+| `functionName` | `string` | The canister method to call |
+
+### Optional Options
+
+| Option           | Type                 | Default | Description                      |
+| ---------------- | -------------------- | ------- | -------------------------------- |
+| `callConfig`     | `CallConfig`         | -       | IC agent call configuration      |
+| `refetchQueries` | `QueryKey[]`         | -       | Query keys to refetch on success |
+| `retry`          | `number \| boolean`  | `0`     | Number of retry attempts         |
+| `retryDelay`     | `number \| function` | -       | Delay between retries            |
+| `onMutate`       | `function`           | -       | Called before mutation           |
+| `onSuccess`      | `function`           | -       | Called on successful mutation    |
+| `onError`        | `function`           | -       | Called on mutation error         |
+| `onSettled`      | `function`           | -       | Called after success or error    |
+
+### Callback Signatures
+
+```typescript
+onMutate: (variables: Args) => Promise<Context> | Context
+
+onSuccess: (data: Data, variables: Args, context: Context) => Promise<void> | void
+
+onError: (error: Error, variables: Args, context: Context) => Promise<void> | void
+
+onSettled: (data: Data | undefined, error: Error | null, variables: Args, context: Context) => Promise<void> | void
+```
+
+## Return Value
+
+Returns a TanStack Query mutation result object:
+
+| Property      | Type                                          | Description                  |
+| ------------- | --------------------------------------------- | ---------------------------- |
+| `mutate`      | `function`                                    | Trigger the mutation         |
+| `mutateAsync` | `function`                                    | Trigger and return a promise |
+| `data`        | `TData \| undefined`                          | Last successful result       |
+| `error`       | `Error \| null`                               | Error if mutation failed     |
+| `status`      | `'idle' \| 'pending' \| 'error' \| 'success'` | Mutation status              |
+| `isIdle`      | `boolean`                                     | True if mutation hasn't run  |
+| `isPending`   | `boolean`                                     | True if mutation is running  |
+| `isError`     | `boolean`                                     | True if mutation errored     |
+| `isSuccess`   | `boolean`                                     | True if mutation succeeded   |
+| `reset`       | `function`                                    | Reset mutation state         |
+| `variables`   | `Args`                                        | Variables passed to mutate   |
+
+## Examples
+
+### Basic Mutation
+
+```tsx
+const { mutate, isPending, isSuccess } = useActorMutation({
+  functionName: "createPost",
+})
+
+const handleCreate = () => {
+  mutate([{ title: "Hello", content: "World" }])
+}
+```
+
+### With Callbacks
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  onMutate: (args) => {
+    console.log("Starting transfer:", args)
+    return { startTime: Date.now() }
+  },
+  onSuccess: (data, args, context) => {
+    console.log("Transfer completed in", Date.now() - context.startTime, "ms")
+    toast.success("Transfer successful!")
+  },
+  onError: (error, args, context) => {
+    console.error("Transfer failed:", error)
+    toast.error("Transfer failed: " + error.message)
+  },
+  onSettled: () => {
+    console.log("Transfer finished (success or error)")
+  },
+})
+```
+
+### Refetch Queries After Mutation
+
+```tsx
+import { backend } from "../reactor"
+
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  refetchQueries: [
+    backend.generateQueryKey({ functionName: "getPosts" }),
+    backend.generateQueryKey({ functionName: "getPostCount" }),
+  ],
+})
+```
+
+### Using mutateAsync
+
+```tsx
+const { mutateAsync, isPending } = useActorMutation({
+  functionName: "transfer",
+})
+
+const handleTransfer = async () => {
+  try {
+    const result = await mutateAsync([recipient, amount])
+    toast.success(`Transferred ${result.amount} successfully!`)
+    navigate("/transactions")
+  } catch (error) {
+    toast.error("Transfer failed")
+  }
+}
+```
+
+### Form Integration
+
+```tsx
+function CreateUserForm() {
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+
+  const { mutate, isPending, isError, error, reset } = useActorMutation({
+    functionName: "createUser",
+    onSuccess: () => {
+      setName("")
+      setEmail("")
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    mutate([{ name, email }])
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        disabled={isPending}
+        placeholder="Name"
+      />
+      <input
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        disabled={isPending}
+        placeholder="Email"
+      />
+
+      {isError && (
+        <div className="error">
+          {error.message}
+          <button type="button" onClick={reset}>
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      <button type="submit" disabled={isPending}>
+        {isPending ? "Creating..." : "Create User"}
+      </button>
+    </form>
+  )
+}
+```
+
+### Optimistic Updates
+
+```tsx
+import { useQueryClient } from "@tanstack/react-query"
+import { backend } from "../reactor"
+
+function LikeButton({ postId }: { postId: string }) {
+  const queryClient = useQueryClient()
+  const queryKey = backend.generateQueryKey({
+    functionName: "getPost",
+    args: [postId],
+  })
+
+  const { mutate } = useActorMutation({
+    functionName: "likePost",
+    onMutate: async () => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey })
+
+      // Snapshot previous value
+      const previousPost = queryClient.getQueryData(queryKey)
+
+      // Optimistically update
+      queryClient.setQueryData(queryKey, (old: Post) => ({
+        ...old,
+        likes: old.likes + 1,
+        isLiked: true,
+      }))
+
+      return { previousPost }
+    },
+    onError: (err, vars, context) => {
+      // Rollback on error
+      queryClient.setQueryData(queryKey, context?.previousPost)
+    },
+    onSettled: () => {
+      // Refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
+
+  return <button onClick={() => mutate([postId])}>❤️ Like</button>
+}
+```
+
+### Error Handling
+
+```tsx
+import { CanisterError } from "@ic-reactor/core"
+
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  onError: (error) => {
+    if (error instanceof CanisterError) {
+      // Handle specific canister errors
+      if ("InsufficientFunds" in error.err) {
+        toast.error("Not enough balance")
+      } else if ("InvalidRecipient" in error.err) {
+        toast.error("Invalid recipient address")
+      } else {
+        toast.error("Transaction failed: " + error.code)
+      }
+    } else {
+      toast.error("Network error: " + error.message)
+    }
+  },
+})
+```
+
+### Per-Mutation Callbacks
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  onSuccess: () => {
+    // This runs first (from hook config)
+    console.log("Post created!")
+  },
+})
+
+// Later, in an event handler:
+mutate([postData], {
+  onSuccess: () => {
+    // This runs second (from mutate call)
+    navigate(`/posts/${postData.id}`)
+  },
+})
+```
+
+### With Loading State
+
+```tsx
+function TransferButton() {
+  const { mutate, isPending, isSuccess, reset } = useActorMutation({
+    functionName: "transfer",
+  })
+
+  useEffect(() => {
+    if (isSuccess) {
+      const timer = setTimeout(reset, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [isSuccess, reset])
+
+  return (
+    <button onClick={() => mutate([recipient, amount])} disabled={isPending}>
+      {isPending && "Transferring..."}
+      {isSuccess && "✓ Done!"}
+      {!isPending && !isSuccess && "Transfer"}
+    </button>
+  )
+}
+```
+
+## Type Parameters
+
+```typescript
+useActorMutation<M extends FunctionName<A>>(
+  options: UseActorMutationConfig<A, M, T>
+)
+```
+
+Types are automatically inferred from your actor interface.
+
+## Notes
+
+<Aside type="tip">
+  Use `refetchQueries` for simple cases where you just need to refresh related
+  data. For more complex scenarios (optimistic updates, cache manipulation), use
+  `onSuccess` with the QueryClient.
+</Aside>
+
+<Aside type="caution">
+  Callbacks passed to `mutate()` won't run if the component unmounts before the
+  mutation completes. Use callbacks in the hook config for critical side
+  effects.
+</Aside>
+
+<Aside type="note">
+  Unlike queries, mutations don't automatically retry by default. Set `retry:
+  true` or `retry: 3` if you want retry behavior.
+</Aside>
+
+## See Also
+
+- [Mutations Guide](/guides/mutations) — In-depth guide to mutations
+- [useActorQuery](/reference/createactorhooks/useactorquery) — Query hook reference
+- [Query Caching](/query-caching) — Cache invalidation patterns
+- [createActorHooks](/reference/createactorhooks/overview) — Creating hooks

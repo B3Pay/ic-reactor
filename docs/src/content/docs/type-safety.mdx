@@ -1,0 +1,355 @@
+---
+title: Type Safety
+description: End-to-end TypeScript support in IC Reactor
+editUrl: false
+---
+
+import { Aside, Card, CardGrid } from "@astrojs/starlight/components"
+
+IC Reactor provides **end-to-end type safety** from your Candid definitions all the way to your React components. This guide explains how the type system works and how to get the most out of it.
+
+## How It Works
+
+```
+Candid IDL → dfx generate → TypeScript Types → IC Reactor → React Hooks
+```
+
+1. **Candid IDL** — Your canister's interface definition (`.did` file)
+2. **dfx generate** — Creates TypeScript declarations from Candid
+3. **IC Reactor** — Infers types for all hooks and methods
+4. **React Components** — Full autocomplete and type checking
+
+## Generated Types
+
+When you run `dfx generate`, it creates TypeScript files in `src/declarations/<canister_name>/`:
+
+```typescript
+// src/declarations/backend/backend.did.d.ts
+import type { Principal } from "@icp-sdk/core/principal"
+
+export interface User {
+  id: string
+  name: string
+  email: string
+  createdAt: bigint
+}
+
+export interface CreateUserInput {
+  name: string
+  email: string
+}
+
+export type CreateUserError =
+  | { EmailAlreadyExists: null }
+  | { InvalidEmail: null }
+
+export type Result = { Ok: User } | { Err: CreateUserError }
+
+export interface _SERVICE {
+  getUser: (id: string) => Promise<[] | [User]>
+  createUser: (input: CreateUserInput) => Promise<Result>
+  listUsers: (page: bigint, limit: bigint) => Promise<User[]>
+}
+```
+
+## Reactor Setup
+
+Pass the `_SERVICE` type to your Reactor for full type inference:
+
+```typescript
+import { Reactor } from "@ic-reactor/core"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+// TypeScript knows the exact shape of _SERVICE
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+})
+```
+
+## Query Type Inference
+
+The `useActorQuery` hook infers types automatically:
+
+```tsx
+const { data } = useActorQuery({
+  functionName: "getUser", // ✅ Autocomplete shows valid methods
+  args: ["user-123"], // ✅ Type checked as [string]
+})
+// data is typed as User | undefined (from [] | [User])
+```
+
+### Autocomplete
+
+Your IDE will show:
+
+- All available method names
+- Required argument types
+- Return type for each method
+
+### Compile-Time Safety
+
+TypeScript catches errors before runtime:
+
+```tsx
+// ❌ TypeScript error: 'invalidMethod' does not exist on _SERVICE
+useActorQuery({
+  functionName: "invalidMethod",
+  args: [],
+})
+
+// ❌ TypeScript error: Argument of type 'number' is not assignable to 'string'
+useActorQuery({
+  functionName: "getUser",
+  args: [123], // Wrong type!
+})
+
+// ✅ Correct
+useActorQuery({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+```
+
+## Mutation Type Inference
+
+Mutations are equally type-safe:
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "createUser", // ✅ Autocomplete
+})
+
+// ✅ Type-safe arguments
+mutate([{ name: "Alice", email: "alice@example.com" }])
+
+// ❌ TypeScript error: missing 'email' field
+mutate([{ name: "Alice" }])
+```
+
+## Select Transformations
+
+The `select` option maintains type safety:
+
+```tsx
+// data is User | undefined
+const { data } = useActorQuery({
+  functionName: "getUser",
+  args: [userId],
+})
+
+// data is string | undefined (just the name)
+const { data } = useActorQuery({
+  functionName: "getUser",
+  args: [userId],
+  select: (user) => user?.name, // ✅ user is typed as User | undefined
+})
+```
+
+## Error Types
+
+Error types are also inferred:
+
+```tsx
+const { error } = useActorQuery({
+  functionName: "getUser",
+  args: [userId],
+})
+// error is typed as CanisterError | CallError | unknown
+```
+
+For mutations with specific error types:
+
+```tsx
+const { error } = useActorMutation({
+  functionName: "createUser",
+  onError: (error) => {
+    if (error instanceof CanisterError) {
+      // error.err is typed as CreateUserError
+      if ("EmailAlreadyExists" in error.err) {
+        toast.error("Email already in use")
+      }
+    }
+  },
+})
+```
+
+## Display Types (Auto Transformations)
+
+With `DisplayReactor`, types are automatically transformed:
+
+| Candid Type | Raw TypeScript | Display (transformed)     |
+| ----------- | -------------- | ------------------------- |
+| `nat`       | `bigint`       | `string`                  |
+| `int`       | `bigint`       | `string`                  |
+| `nat64`     | `bigint`       | `string`                  |
+| `principal` | `Principal`    | `string`                  |
+| `blob`      | `Uint8Array`   | `hexString`, `Uint8Array` |
+| `opt T`     | `[T] \| []`    | `T \| null`               |
+
+### Using DisplayReactor
+
+```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+import { createActorHooks } from "@ic-reactor/react"
+
+// Create a DisplayReactor directly
+const reactor = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "...",
+})
+
+// Pass it to createActorHooks - types are automatically inferred as "display"
+const { useActorQuery } = createActorHooks(reactor)
+
+// Inputs and outputs use display types
+const { data } = useActorQuery({
+  functionName: "getBalance",
+  args: ["aaaaa-aa"], // Principal as string
+})
+// data is string instead of bigint
+```
+
+### Type Assertions
+
+With display types, TypeScript knows the transformed shapes:
+
+```tsx
+const { data: balance } = useActorQuery({
+  functionName: "getBalance",
+  args: [principalString],
+})
+// balance is string, not bigint - can be used directly in UI!
+
+return <span>Balance: {balance}</span>
+```
+
+## Result Unwrapping
+
+IC Reactor automatically unwraps `Result` types:
+
+```typescript
+// Canister method: createUser(input) -> Result<User, CreateUserError>
+
+// IC Reactor:
+// - On Ok: returns the User value
+// - On Err: throws CanisterError with the error variant
+
+const { data } = useActorQuery({
+  functionName: "createUser",
+  args: [input],
+})
+// data is User (not Result<User, Error>)
+```
+
+The error type is available in the `error` property:
+
+```tsx
+const { data, error } = useActorQuery({
+  functionName: "createUser",
+  args: [input],
+})
+// data: User | undefined
+// error: CanisterError<CreateUserError> | CallError | undefined
+```
+
+## Optional Unwrapping
+
+Optional types (`opt T`) are transformed too:
+
+```typescript
+// Candid: getUser(id) -> opt User (returns [] | [User])
+
+// With display types:
+const { data } = useActorQuery({
+  functionName: "getUser",
+  args: [userId],
+})
+// data is User | null (easier to work with than [] | [User])
+```
+
+## Type Narrowing
+
+Use type narrowing for safer access:
+
+```tsx
+function UserProfile({ userId }: { userId: string }) {
+  const { data, isPending, isError, error } = useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  if (isPending) return <Loading />
+
+  if (isError) return <Error error={error} />
+
+  // TypeScript knows data is defined here
+  return (
+    <div>
+      <h1>{data.name}</h1> {/* ✅ No null check needed */}
+      <p>{data.email}</p>
+    </div>
+  )
+}
+```
+
+## Generic Patterns
+
+Create type-safe reusable patterns:
+
+```typescript
+// Type-safe query factory
+function useUser(userId: string) {
+  return useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+    enabled: !!userId,
+  })
+}
+
+// Type-safe mutation factory
+function useCreateUser() {
+  return useActorMutation({
+    functionName: "createUser",
+  })
+}
+
+// Usage
+const { data: user } = useUser(userId) // user: User | undefined
+const { mutate } = useCreateUser() // mutate expects CreateUserInput
+```
+
+## Best Practices
+
+1. **Always use the generated `_SERVICE` type** — Pass it to `Reactor<_SERVICE>`
+2. **Enable strict TypeScript** — Use `strict: true` in tsconfig.json
+3. **Trust the types** — If it compiles, the call is structurally valid
+4. **Run dfx generate after Candid changes** — Keep types in sync
+5. **Use type narrowing** — Check for `isPending` and `isError` before accessing `data`
+
+## TypeScript Configuration
+
+Ensure your `tsconfig.json` is properly configured:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "moduleResolution": "bundler",
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"]
+  }
+}
+```
+
+## Further Reading
+
+- [Queries](/guides/queries) — Type-safe query patterns
+- [Mutations](/guides/mutations) — Type-safe mutation patterns
+- [Error Handling](/error-handling) — Type-safe error handling

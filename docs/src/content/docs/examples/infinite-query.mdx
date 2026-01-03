@@ -1,0 +1,102 @@
+---
+title: "Infinite Query"
+description: Infinite scrolling and pagination
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+Shows how to implement infinite scrolling with IC Reactor using TanStack Query's `useInfiniteQuery`.
+
+## Features Demonstrated
+
+- `useActorInfiniteQuery` for paginated data
+- `useSuspenseInfiniteQuery` for suspense-based infinite loading
+- Cursor-based pagination
+- Load more on scroll
+- `getNextPageParam` for automatic pagination
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/suspense-infinite-query-demo?embed=1&theme=dark&file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3hr4d/ic-reactor-v3/tree/main/examples/suspense-infinite-query-demo"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/suspense-infinite-query-demo?embed=1&theme=dark&file=src/App.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor Infinite Query Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Key Code
+
+```tsx
+import { useActorInfiniteQuery } from "@ic-reactor/react"
+
+function InfiniteList() {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useActorInfiniteQuery({
+      functionName: "getItems",
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    })
+
+  return (
+    <div>
+      {data?.pages.map((page) =>
+        page.items.map((item) => <Item key={item.id} {...item} />)
+      )}
+
+      {hasNextPage && (
+        <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+          {isFetchingNextPage ? "Loading..." : "Load More"}
+        </button>
+      )}
+    </div>
+  )
+}
+```
+
+### With Suspense
+
+```tsx
+import { useActorSuspenseInfiniteQuery } from "@ic-reactor/react"
+
+function SuspenseInfiniteList() {
+  const { data, fetchNextPage, hasNextPage } = useActorSuspenseInfiniteQuery({
+    functionName: "getItems",
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  })
+
+  // No need for loading state - Suspense handles it!
+  return (
+    <div>
+      {data.pages
+        .flatMap((page) => page.items)
+        .map((item) => (
+          <Item key={item.id} {...item} />
+        ))}
+    </div>
+  )
+}
+```
+
+<Aside type="note">
+  The `getNextPageParam` function should return `undefined` when there are no
+  more pages to load. IC Reactor will automatically set `hasNextPage` to
+  `false`.
+</Aside>

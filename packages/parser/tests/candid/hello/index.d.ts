@@ -3,28 +3,28 @@ import type {
   HttpAgentOptions,
   ActorConfig,
   Agent,
-} from "@dfinity/agent";
-import type { Principal } from "@dfinity/principal";
-import type { IDL } from "@dfinity/candid";
+} from "@icp-sdk/core/agent"
+import type { Principal } from "@icp-sdk/core/principal"
+import type { IDL } from "@icp-sdk/core/candid"
 
-import { _SERVICE } from './hello.did';
+import { _SERVICE } from "./hello.did"
 
-export declare const idlFactory: IDL.InterfaceFactory;
-export declare const canisterId: string;
+export declare const idlFactory: IDL.InterfaceFactory
+export declare const canisterId: string
 
 export declare interface CreateActorOptions {
   /**
    * @see {@link Agent}
    */
-  agent?: Agent;
+  agent?: Agent
   /**
    * @see {@link HttpAgentOptions}
    */
-  agentOptions?: HttpAgentOptions;
+  agentOptions?: HttpAgentOptions
   /**
    * @see {@link ActorConfig}
    */
-  actorOptions?: ActorConfig;
+  actorOptions?: ActorConfig
 }
 
 /**
@@ -41,10 +41,10 @@ export declare interface CreateActorOptions {
 export declare const createActor: (
   canisterId: string | Principal,
   options?: CreateActorOptions
-) => ActorSubclass<_SERVICE>;
+) => ActorSubclass<_SERVICE>
 
 /**
  * Intialized Actor using default settings, ready to talk to a canister using its candid interface
  * @constructs {@link ActorSubClass}
  */
-export declare const hello: ActorSubclass<_SERVICE>;
+export declare const hello: ActorSubclass<_SERVICE>

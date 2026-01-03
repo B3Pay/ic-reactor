@@ -1,0 +1,24 @@
+{
+  "name": "typescript-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "npm:rolldown-vite@7.2.5"
+  },
+  "dependencies": {
+    "@ic-reactor/core": "workspace:*",
+    "@icp-sdk/core": "^5.0.0",
+    "@tanstack/devtools-vite": "^0.3.11",
+    "@tanstack/query-core": "^5.90"
+  },
+  "overrides": {
+    "vite": "npm:rolldown-vite@7.2.5"
+  }
+}

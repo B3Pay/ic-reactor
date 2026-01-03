@@ -1,0 +1,191 @@
+---
+title: Installation
+description: How to install IC Reactor in your project
+editUrl: false
+---
+
+import { Aside, Steps, TabItem, Tabs } from "@astrojs/starlight/components"
+
+IC Reactor is compatible with React 18+, and works with TypeScript 5+.
+
+## Prerequisites
+
+- **Node.js** 18 or later
+- **A package manager**: npm, yarn, pnpm, or bun
+
+## Install Packages
+
+Most users will want the React package, which includes everything you need:
+
+<Tabs syncKey="pm">
+  <TabItem label="pnpm" icon="pnpm">
+    ```bash
+    pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+    ```
+  </TabItem>
+  <TabItem label="npm" icon="npm">
+    ```bash
+    npm install @ic-reactor/react @icp-sdk/core @tanstack/react-query
+    ```
+  </TabItem>
+  <TabItem label="yarn" icon="seti:yarn">
+    ```bash
+    yarn add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+    ```
+  </TabItem>
+  <TabItem label="bun" icon="bun">
+    ```bash
+    bun add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="tip">
+  `@ic-reactor/react` re-exports everything from `@ic-reactor/core`, so you only
+  need one import for everything!
+</Aside>
+
+### Non-React Projects (Node.js, Svelte, Vue, etc.)
+
+If you're not using React, install the core package directly:
+
+<Tabs syncKey="pm">
+  <TabItem label="pnpm" icon="pnpm">
+    ```bash
+    pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+    ```
+  </TabItem>
+  <TabItem label="npm" icon="npm">
+    ```bash
+    npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
+    ```
+  </TabItem>
+  <TabItem label="yarn" icon="seti:yarn">
+    ```bash
+    yarn add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+    ```
+  </TabItem>
+  <TabItem label="bun" icon="bun">
+    ```bash
+    bun add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+  The `@icp-sdk/auth` package is optional and only needed for Internet Identity
+  authentication. It's dynamically imported when needed, so it won't increase
+  your bundle size if you don't use it.
+</Aside>
+
+## Package Overview
+
+| Package                 | Purpose                                 | For React | For Non-React |
+| ----------------------- | --------------------------------------- | --------- | ------------- |
+| `@ic-reactor/react`     | React hooks + re-exports core           | ✅        | ❌            |
+| `@ic-reactor/core`      | Core: Reactor, ClientManager, utilities | included  | ✅            |
+| `@icp-sdk/core`         | IC SDK for agents and Candid            | ✅        | ✅            |
+| `@tanstack/react-query` | TanStack Query for React                | ✅        | ❌            |
+| `@tanstack/query-core`  | TanStack Query core (caching engine)    | included  | ✅            |
+| `@icp-sdk/auth`         | Internet Identity authentication        | Optional  | Optional      |
+
+**✅ Required** • **included** means it comes with the parent package • **Optional** for specific features
+
+## TypeScript Configuration
+
+IC Reactor is written in TypeScript and provides first-class type support. Ensure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"]
+  }
+}
+```
+
+<Aside type="note">
+  Setting `strict: true` is highly recommended to get the full benefit of IC
+  Reactor's type safety.
+</Aside>
+
+## Generate Candid Declarations
+
+If you have a DFX project, generate TypeScript declarations from your Candid files:
+
+```bash
+dfx generate
+```
+
+This creates TypeScript declarations in `src/declarations/<canister_name>/` that IC Reactor uses for type safety. The generated files include:
+
+- `index.js` — IDL factory and canister ID
+- `<canister>.did.d.ts` — TypeScript types for your canister interface
+
+## Verify Installation
+
+Create a simple test to verify everything is working:
+
+```typescript
+import { ClientManager, Reactor } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+
+const queryClient = new QueryClient()
+const clientManager = new ClientManager({ queryClient })
+
+console.log("IC Reactor installed successfully!")
+console.log("Network:", clientManager.network)
+```
+
+## Bundler Configuration
+
+### Vite
+
+No additional configuration needed for Vite. Just ensure you have the required polyfills:
+
+```typescript
+// vite.config.ts
+import { defineConfig } from "vite"
+
+export default defineConfig({
+  define: {
+    global: "globalThis",
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: "globalThis",
+      },
+    },
+  },
+})
+```
+
+### Next.js
+
+For Next.js apps, add to `next.config.js`:
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+    }
+    return config
+  },
+}
+
+module.exports = nextConfig
+```
+
+## Next Steps
+
+Now that you have IC Reactor installed, continue to the [Quick Start](/quick-start) guide to build your first integration!

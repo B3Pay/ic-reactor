@@ -1,0 +1,263 @@
+---
+title: useActorQuery
+description: Hook for fetching data from canisters
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useActorQuery` is a React hook for fetching data from Internet Computer canisters. It wraps TanStack Query's `useQuery` with canister-specific functionality.
+
+## Import
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+
+const { useActorQuery } = createActorHooks(backend)
+```
+
+<Aside type="tip">
+  It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
+
+```typescript
+const { useActorQuery: useBackendQuery } = createActorHooks(backend)
+```
+
+</Aside>
+
+## Usage
+
+```tsx
+function UserProfile({ userId }: { userId: string }) {
+  const { data, isPending, error } = useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  if (isPending) return <div>Loading...</div>
+  if (error) return <div>Error: {error.message}</div>
+
+  return <div>{data?.name}</div>
+}
+```
+
+## Options
+
+### Required Options
+
+| Option         | Type     | Description                 |
+| -------------- | -------- | --------------------------- |
+| `functionName` | `string` | The canister method to call |
+
+### Optional Options
+
+| Option                 | Type                 | Default     | Description                                        |
+| ---------------------- | -------------------- | ----------- | -------------------------------------------------- |
+| `args`                 | `array`              | `[]`        | Arguments to pass to the method                    |
+| `enabled`              | `boolean`            | `true`      | Whether the query should run                       |
+| `staleTime`            | `number`             | `0`         | Time in ms before data is considered stale         |
+| `gcTime`               | `number`             | `300000`    | Time in ms before unused data is garbage collected |
+| `refetchInterval`      | `number \| false`    | `false`     | Polling interval in ms                             |
+| `refetchOnWindowFocus` | `boolean`            | `true`      | Refetch when window regains focus                  |
+| `refetchOnMount`       | `boolean`            | `true`      | Refetch when component mounts                      |
+| `refetchOnReconnect`   | `boolean`            | `true`      | Refetch when network reconnects                    |
+| `retry`                | `number \| boolean`  | `3`         | Number of retry attempts                           |
+| `retryDelay`           | `number \| function` | exponential | Delay between retries                              |
+| `select`               | `function`           | -           | Transform the data before returning                |
+| `queryKey`             | `array`              | -           | Additional query key segments                      |
+| `callConfig`           | `CallConfig`         | -           | IC agent call configuration                        |
+
+## Return Value
+
+Returns a TanStack Query result object:
+
+| Property        | Type                                | Description                             |
+| --------------- | ----------------------------------- | --------------------------------------- |
+| `data`          | `TData \| undefined`                | The resolved data                       |
+| `error`         | `Error \| null`                     | Error if query failed                   |
+| `status`        | `'pending' \| 'error' \| 'success'` | Query status                            |
+| `isPending`     | `boolean`                           | True if no data yet                     |
+| `isError`       | `boolean`                           | True if query errored                   |
+| `isSuccess`     | `boolean`                           | True if query succeeded                 |
+| `isFetching`    | `boolean`                           | True if fetching (including background) |
+| `isRefetching`  | `boolean`                           | True if refetching                      |
+| `refetch`       | `function`                          | Manually trigger a refetch              |
+| `dataUpdatedAt` | `number`                            | Timestamp of last data update           |
+
+## Examples
+
+### Basic Query
+
+```tsx
+const { data, isPending, error } = useActorQuery({
+  functionName: "greet",
+  args: ["World"],
+})
+```
+
+### Conditional Query
+
+```tsx
+const { data } = useActorQuery({
+  functionName: "getUser",
+  args: [userId],
+  enabled: !!userId, // Only fetch when userId exists
+})
+```
+
+### With Select
+
+```tsx
+// Extract only the name from the user object
+const { data: userName } = useActorQuery({
+  functionName: "getUser",
+  args: [userId],
+  select: (user) => user?.name,
+})
+```
+
+### Stale Time Configuration
+
+```tsx
+// Data stays fresh for 5 minutes
+const { data } = useActorQuery({
+  functionName: "getConfig",
+  args: [],
+  staleTime: 5 * 60 * 1000,
+})
+
+// Data is never stale
+const { data } = useActorQuery({
+  functionName: "getMetadata",
+  args: [],
+  staleTime: Infinity,
+})
+```
+
+### Polling
+
+```tsx
+// Refetch every 10 seconds
+const { data } = useActorQuery({
+  functionName: "getPrice",
+  args: [],
+  refetchInterval: 10_000,
+})
+```
+
+### Manual Refetch
+
+```tsx
+const { data, refetch, isFetching } = useActorQuery({
+  functionName: "getNotifications",
+  args: [],
+})
+
+return (
+  <div>
+    <NotificationList data={data} />
+    <button onClick={() => refetch()} disabled={isFetching}>
+      Refresh
+    </button>
+  </div>
+)
+```
+
+### Error Handling
+
+```tsx
+import { CanisterError, CallError } from "@ic-reactor/core"
+
+const { data, error, isError } = useActorQuery({
+  functionName: "getBalance",
+  args: [principal],
+})
+
+if (isError) {
+  if (error instanceof CanisterError) {
+    // Business logic error from canister
+    return (
+      <div>
+        Canister error [{error.code}]: {JSON.stringify(error.err)}
+      </div>
+    )
+  }
+  // Network or other error
+  return <div>Error: {error.message}</div>
+}
+```
+
+### Type-Safe Queries
+
+```tsx
+// TypeScript infers types from your canister interface
+const { data } = useActorQuery({
+  functionName: "getUser", // ✅ Autocompletes valid methods
+  args: ["user-123"], // ✅ Type-checked
+})
+// data is typed as User | undefined
+```
+
+### With Custom Query Key
+
+```tsx
+// Add custom segments to the query key
+const { data } = useActorQuery({
+  functionName: "getData",
+  args: [],
+  queryKey: ["version", "2"],
+})
+// Full key: [canisterId, "getData", "version", "2"]
+```
+
+### Dependent Queries
+
+```tsx
+function UserPosts({ userId }: { userId: string }) {
+  // First query
+  const { data: user } = useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  // Dependent query - only runs when user exists
+  const { data: posts } = useActorQuery({
+    functionName: "getUserPosts",
+    args: [user?.id ?? ""],
+    enabled: !!user?.id,
+  })
+
+  return <PostList posts={posts} />
+}
+```
+
+## Type Parameters
+
+```typescript
+useActorQuery<
+  M extends FunctionName<A>,  // Method name
+  TSelected = ReturnType       // Type after select
+>(options: UseActorQueryConfig<A, M, T, TSelected>)
+```
+
+The types are automatically inferred from your actor interface, so you typically don't need to specify them manually.
+
+## Notes
+
+<Aside type="note">
+  The query key is automatically generated from `[canisterId, functionName,
+  ...args]`. This ensures that queries with different arguments are cached
+  separately.
+</Aside>
+
+<Aside type="tip">
+  When using `select`, the selected data is what gets passed to your component.
+  The original query data is still cached and used for determining staleness.
+</Aside>
+
+## See Also
+
+- [Queries Guide](/guides/queries) — In-depth guide to queries
+- [useActorSuspenseQuery](/reference/createactorhooks/useactorsuspensequery) — Suspense version
+- [useActorInfiniteQuery](/reference/createactorhooks/useactorinfinitequery) — For pagination
+- [createActorHooks](/reference/createactorhooks/overview) — Creating hooks

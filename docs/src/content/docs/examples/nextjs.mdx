@@ -1,0 +1,74 @@
+---
+title: "Next.js Integration"
+description: Full-stack template with Rust backend and Next.js frontend
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+A complete template for building Internet Computer applications with **Next.js** and a **Rust** backend. This example demonstrates how to configure the IC SDK to work seamlessly with Next.js's server and client components.
+
+## Features Demonstrated
+
+- **Next.js App Router**: Modern React architecture.
+- **Rust Backend**: Integrates with a Rust-based canister.
+- **Local Development**: Scripts to run the full stack locally.
+- **Environment config**: Handling `dfx` generated declarations in Next.js.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/nextjs?embed=1&theme=dark&file=src/app/page.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3hr4d/ic-reactor-v3/tree/main/examples/nextjs"
+  />
+</CardGrid>
+
+## Setup Guide
+
+### 1. Install Dependencies
+
+```bash
+pnpm install
+```
+
+### 2. Start Local Replica & Deploy
+
+```bash
+# Starts replica, deploys backend, and generates declarations
+pnpm run dfx:start
+pnpm run deploy
+```
+
+### 3. Start Next.js
+
+```bash
+pnpm run dev
+```
+
+## Configuration
+
+The key to getting Next.js to work with IC Reactor is properly configuring the webpack setup in `next.config.js` to handle WebAssembly and the DFINITY proxy, or simply using the client-side hooks provided by `@ic-reactor/react`.
+
+This example uses a client-side only approach for simplicity:
+
+```tsx
+"use client"
+
+import { useActorQuery } from "./reactor"
+
+export default function Home() {
+  const { data, isLoading } = useActorQuery({
+    functionName: "greet",
+    args: ["World"],
+  })
+
+  return <main>{isLoading ? "Loading..." : data}</main>
+}
+```

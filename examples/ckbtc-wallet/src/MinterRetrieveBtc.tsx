@@ -1,8 +1,13 @@
-import { jsonToString } from "@ic-reactor/react/dist/utils"
-import { useCKBTCMinterMethod, useCKBTCMinterState } from "./Minter"
-import { useRef } from "react"
-import { useCKBTCLedgerMethod } from "./CKBTC"
 import { Principal } from "@icp-sdk/core/principal"
+import { generateKey } from "@ic-reactor/core"
+import { useRef } from "react"
+import {
+  balanceQuery,
+  allowanceQuery,
+  approveMutation,
+  retrieveBtcMutation,
+  CKBTC_MINTER_CANISTER_ID,
+} from "./reactor"
 
 interface MinterRetrieveBTCProps {
   userPrincipal: Principal
@@ -11,61 +16,57 @@ interface MinterRetrieveBTCProps {
 const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
   userPrincipal,
 }) => {
-  const { canisterId } = useCKBTCMinterState()
-
-  const minterCanisterId = Principal.fromText(canisterId)
+  const minterCanisterId = Principal.fromText(CKBTC_MINTER_CANISTER_ID)
 
   const addressRef = useRef<HTMLInputElement>(null)
   const amountRef = useRef<HTMLInputElement>(null)
 
+  // Balance query
   const {
-    call: refetchBalance,
+    refetch: refetchBalance,
     data: balance,
-    loading: balanceLoading,
-  } = useCKBTCLedgerMethod({
-    functionName: "icrc1_balance_of",
-    args: [{ owner: userPrincipal, subaccount: [] }],
-  })
+    isLoading: balanceLoading,
+  } = balanceQuery([{ owner: userPrincipal, subaccount: [] }]).useQuery()
 
+  // Allowance query
   const {
-    call: refetchAllowance,
+    refetch: refetchAllowance,
     data: allowance,
-    loading: allowanceLoading,
-  } = useCKBTCLedgerMethod({
-    functionName: "icrc2_allowance",
-    args: [
-      {
-        account: { owner: userPrincipal, subaccount: [] },
-        spender: { owner: minterCanisterId, subaccount: [] },
-      },
-    ],
-  })
+    isLoading: allowanceLoading,
+  } = allowanceQuery([
+    {
+      account: { owner: userPrincipal, subaccount: [] },
+      spender: { owner: minterCanisterId, subaccount: [] },
+    },
+  ]).useQuery()
 
+  // Retrieve BTC mutation
   const {
-    call: retreiveBtc,
-    data: retreiveBtcResult,
-    error: retreiveBtcError,
-    loading: retreiveBtcLoading,
-  } = useCKBTCMinterMethod({
-    functionName: "retrieve_btc_with_approval",
+    mutate: retrieveBtc,
+    data: retrieveBtcResult,
+    error: retrieveBtcError,
+    isPending: retrieveBtcLoading,
+    reset: resetRetrieve,
+  } = retrieveBtcMutation.useMutation({
     onSuccess: () => {
       refetchBalance()
       refetchAllowance()
     },
   })
 
+  // Approve mutation
   const {
-    call: approve,
-    loading: approveLoading,
+    mutate: approve,
+    isPending: approveLoading,
     data: approveResult,
-  } = useCKBTCLedgerMethod({
-    functionName: "icrc2_approve",
+    reset: resetApprove,
+  } = approveMutation.useMutation({
     onSuccess: () => {
       refetchAllowance()
 
-      const amount = BigInt(amountRef.current?.value || "0")
+      const amount = amountRef.current?.value || "0"
       const address = addressRef.current?.value || ""
-      retreiveBtc([
+      retrieveBtc([
         {
           amount,
           address,
@@ -93,54 +94,158 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
     ])
   }
 
+  const formatBalance = (bal: bigint | undefined) => {
+    if (bal === undefined) return "—"
+    // Assuming 8 decimals for ckBTC
+    return Number(bal / 100000000n).toFixed(8)
+  }
+
+  const isProcessing = approveLoading || retrieveBtcLoading
+
   return (
-    <div>
-      <div>
-        <span>
-          <strong>ckBTC Balance</strong>:{" "}
-          <button onClick={refetchBalance} disabled={balanceLoading}>
-            ↻
-          </button>{" "}
-          {balanceLoading ? "Loading..." : jsonToString(balance)}
-        </span>
+    <div className="card">
+      <div className="card-header">
+        <span className="card-icon">⬆️</span>
+        <h3 className="card-title">Withdraw to BTC</h3>
       </div>
-      <div>
-        <span>
-          <strong>Allowance to Minter</strong>:{" "}
-          <button onClick={refetchAllowance} disabled={allowanceLoading}>
-            ↻
-          </button>
-          {allowanceLoading ? "Loading..." : jsonToString(allowance)}
-        </span>
+
+      {/* Balance & Allowance Display */}
+      <div style={{ marginBottom: "16px" }}>
+        <div className="data-row">
+          <span className="data-label">ckBTC Balance</span>
+          <span className="data-value">
+            {balanceLoading ? (
+              <span className="spinner" />
+            ) : (
+              <>
+                {formatBalance(balance)} ckBTC
+                <button
+                  className="btn-icon"
+                  onClick={() => refetchBalance()}
+                  disabled={balanceLoading}
+                  style={{
+                    marginLeft: "8px",
+                    width: "24px",
+                    height: "24px",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  ↻
+                </button>
+              </>
+            )}
+          </span>
+        </div>
+        <div className="data-row">
+          <span className="data-label">Minter Allowance</span>
+          <span className="data-value">
+            {allowanceLoading ? (
+              <span className="spinner" />
+            ) : (
+              <>
+                {allowance ? formatBalance(allowance.allowance) : "0"} ckBTC
+                <button
+                  className="btn-icon"
+                  onClick={() => refetchAllowance()}
+                  disabled={allowanceLoading}
+                  style={{
+                    marginLeft: "8px",
+                    width: "24px",
+                    height: "24px",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  ↻
+                </button>
+              </>
+            )}
+          </span>
+        </div>
       </div>
+
+      <div className="divider" />
+
+      {/* Retrieve Form */}
       <form onSubmit={onSubmit}>
-        <h2>Retrieve BTC</h2>
-        <input ref={addressRef} type="text" placeholder="Address" required />
-        <input ref={amountRef} type="text" placeholder="Amount" required />
-        <button>Retrieve</button>
-      </form>
-      <div>
-        <span>
-          <strong>Retrieve Result</strong>:
+        <div className="form-group">
+          <label className="form-label">BTC Address</label>
+          <input
+            ref={addressRef}
+            type="text"
+            placeholder="bc1q... or 3... or 1..."
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Amount (satoshis)</label>
+          <input ref={amountRef} type="text" placeholder="100000" required />
+        </div>
+
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={isProcessing}
+          style={{ width: "100%", padding: "12px" }}
+        >
           {approveLoading ? (
-            <div>Approving...</div>
-          ) : retreiveBtcLoading ? (
-            <div>
-              <div>Approve Result: {jsonToString(approveResult)}</div>
-              Retreiving...
+            <>
+              <span className="spinner" style={{ marginRight: "8px" }} />
+              Approving...
+            </>
+          ) : retrieveBtcLoading ? (
+            <>
+              <span className="spinner" style={{ marginRight: "8px" }} />
+              Retrieving BTC...
+            </>
+          ) : (
+            "Withdraw to BTC"
+          )}
+        </button>
+      </form>
+
+      {/* Result Display */}
+      {(approveResult || retrieveBtcResult || retrieveBtcError) && (
+        <div style={{ marginTop: "16px" }}>
+          {approveResult && (
+            <div
+              className="status status-success"
+              style={{ marginBottom: "8px" }}
+            >
+              ✅ Approved: Block #{approveResult.toString()}
             </div>
-          ) : retreiveBtcLoading || retreiveBtcResult || retreiveBtcError ? (
-            <div>
-              <div>Approve Result: {jsonToString(approveResult)}</div>
-              {retreiveBtcError ? (
-                <div>Error: {retreiveBtcError.message}</div>
-              ) : retreiveBtcResult ? (
-                <div>Retreive Result: {jsonToString(retreiveBtcResult)}</div>
-              ) : null}
+          )}
+          {retrieveBtcError ? (
+            <div className="status status-error">
+              ⚠️ {retrieveBtcError.message}
+              <button
+                className="btn-icon"
+                onClick={() => {
+                  resetApprove()
+                  resetRetrieve()
+                }}
+                style={{ marginLeft: "auto", fontSize: "0.75rem" }}
+              >
+                ✕
+              </button>
+            </div>
+          ) : retrieveBtcResult ? (
+            <div className="status status-success">
+              ✅ BTC withdrawal initiated! {generateKey([retrieveBtcResult])}
+              <button
+                className="btn-icon"
+                onClick={() => {
+                  resetApprove()
+                  resetRetrieve()
+                }}
+                style={{ marginLeft: "auto", fontSize: "0.75rem" }}
+              >
+                ✕
+              </button>
             </div>
           ) : null}
-        </span>
-      </div>
+        </div>
+      )}
     </div>
   )
 }

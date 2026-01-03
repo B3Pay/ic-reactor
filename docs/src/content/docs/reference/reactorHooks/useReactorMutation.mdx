@@ -1,0 +1,82 @@
+---
+title: useReactorMutation
+description: Hook for updating canister state via reactor instance
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useReactorMutation` is a React hook for calling update methods on Internet Computer canisters using a `Reactor` instance. It is the raw version of `useActorMutation`.
+
+## Import
+
+```typescript
+import { useReactorMutation } from "@ic-reactor/react"
+```
+
+## Usage
+
+```tsx
+import { useReactorMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function CreatePost() {
+  const { mutate, isPending } = useReactorMutation({
+    reactor: backend, // 👈 Required
+    functionName: "createPost",
+  })
+
+  return (
+    <button
+      onClick={() => mutate([{ title: "Hello", content: "World" }])}
+      disabled={isPending}
+    >
+      {isPending ? "Creating..." : "Create Post"}
+    </button>
+  )
+}
+```
+
+## Options
+
+### Required Options
+
+| Option         | Type            | Description                 |
+| -------------- | --------------- | --------------------------- |
+| `reactor`      | `Reactor<A, T>` | The Reactor instance to use |
+| `functionName` | `string`        | The canister method to call |
+
+### Optional Options
+
+Same as [useActorMutation](/reference/createactorhooks/useactormutation).
+
+## Return Value
+
+Returns a TanStack Query mutation result object, same as `useActorMutation`.
+
+## Examples
+
+### Basic Mutation
+
+```tsx
+const { mutate } = useReactorMutation({
+  reactor: backend,
+  functionName: "transfer",
+  args: [recipient, amount], // Optional default args
+})
+```
+
+### With Callbacks
+
+```tsx
+const { mutate } = useReactorMutation({
+  reactor: backend,
+  functionName: "createPost",
+  onSuccess: () => console.log("Post created!"),
+})
+```
+
+## See Also
+
+- [useActorMutation](/reference/createactorhooks/useactormutation) — Bound version
+- [Reactor Overview](/reference/hooks/reactorhooks/overview)

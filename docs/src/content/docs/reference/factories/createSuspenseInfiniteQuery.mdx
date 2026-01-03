@@ -1,0 +1,322 @@
+---
+title: createSuspenseInfiniteQuery
+description: Create Suspense-enabled paginated query objects
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`createSuspenseInfiniteQuery` creates a Suspense-enabled infinite query object. Data is always defined — Suspense handles loading states.
+
+## Import
+
+```typescript
+import {
+  createSuspenseInfiniteQuery,
+  createSuspenseInfiniteQueryFactory,
+} from "@ic-reactor/react"
+```
+
+## Basic Usage
+
+```typescript
+import { createSuspenseInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const postsQuery = createSuspenseInfiniteQuery(backend, {
+  functionName: "getPosts",
+  initialPageParam: 0,
+  getArgs: (offset) => [{ offset, limit: 20 }],
+  getNextPageParam: (lastPage) =>
+    lastPage.hasMore ? lastPage.nextOffset : undefined,
+})
+```
+
+## Key Differences from createInfiniteQuery
+
+| Feature          | `createInfiniteQuery`       | `createSuspenseInfiniteQuery` |
+| ---------------- | --------------------------- | ----------------------------- |
+| Loading handling | Manual (`isFetching`)       | React Suspense                |
+| `data` type      | `InfiniteData \| undefined` | `InfiniteData` (always)       |
+| `enabled` option | ✅ Supported                | ❌ Not available              |
+| Render blocking  | No                          | Yes (suspends)                |
+
+## Configuration
+
+Same options as `createInfiniteQuery`:
+
+| Option                 | Type                  | Description                       |
+| ---------------------- | --------------------- | --------------------------------- |
+| `functionName`         | `string`              | The canister method to call       |
+| `initialPageParam`     | `TPageParam`          | Initial cursor/offset value       |
+| `getArgs`              | `(pageParam) => Args` | Convert page param to method args |
+| `getNextPageParam`     | `function`            | Determine next page param         |
+| `getPreviousPageParam` | `function`            | For bi-directional scrolling      |
+| `maxPages`             | `number`              | Max pages to keep in cache        |
+| `staleTime`            | `number`              | Time before data is stale (ms)    |
+| `select`               | `function`            | Transform the InfiniteData result |
+
+## Return Value
+
+| Property                   | Type                  | Description                    |
+| -------------------------- | --------------------- | ------------------------------ |
+| `fetch`                    | `() => Promise<T>`    | Fetch first page (for loaders) |
+| `useSuspenseInfiniteQuery` | `hook`                | Suspense-enabled React hook    |
+| `refetch`                  | `() => Promise<void>` | Invalidate and refetch         |
+| `getQueryKey`              | `() => QueryKey`      | Get the query key              |
+| `getCacheData`             | `(select?) => T`      | Read from cache                |
+
+---
+
+## Examples
+
+### TanStack Router with Suspense Streaming
+
+Prefetch and stream content:
+
+```typescript
+// routes/feed.tsx
+import { createFileRoute } from "@tanstack/react-router"
+import { Suspense } from "react"
+import { createSuspenseInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "../reactor"
+
+const feedQuery = createSuspenseInfiniteQuery(backend, {
+  functionName: "getFeed",
+  initialPageParam: null as string | null,
+  getArgs: (cursor) => [{ cursor, limit: 20 }],
+  getNextPageParam: (lastPage) => lastPage.nextCursor,
+})
+
+function FeedPage() {
+  return (
+    <Suspense fallback={<FeedSkeleton />}>
+      <Feed />
+    </Suspense>
+  )
+}
+
+function Feed() {
+  // data is NEVER undefined - Suspense handles initial loading
+  const {
+    data: posts,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = feedQuery.useSuspenseInfiniteQuery({
+    select: (data) => data.pages.flatMap((page) => page.posts),
+  })
+
+  return (
+    <div className="feed">
+      {posts.map((post) => (
+        <FeedPost key={post.id} post={post} />
+      ))}
+
+      {hasNextPage && (
+        <button
+          onClick={() => fetchNextPage()}
+          disabled={isFetchingNextPage}
+        >
+          {isFetchingNextPage ? "Loading..." : "Load More"}
+        </button>
+      )}
+    </div>
+  )
+}
+```
+
+### With Error Boundary
+
+Handle canister errors gracefully:
+
+```typescript
+import { ErrorBoundary } from "react-error-boundary"
+
+function CommentsSection({ postId }: { postId: string }) {
+  return (
+    <ErrorBoundary
+      fallbackRender={({ error, resetErrorBoundary }) => (
+        <div className="error-panel">
+          <p>Failed to load comments</p>
+          <button onClick={resetErrorBoundary}>Retry</button>
+        </div>
+      )}
+    >
+      <Suspense fallback={<CommentsSkeleton />}>
+        <CommentsList postId={postId} />
+      </Suspense>
+    </ErrorBoundary>
+  )
+}
+
+function CommentsList({ postId }: { postId: string }) {
+  const commentsQuery = getCommentsQuery(postId)
+
+  // data is always defined
+  const { data, fetchNextPage, hasNextPage } = commentsQuery.useSuspenseInfiniteQuery()
+
+  return (
+    <div>
+      {data.pages.flatMap((p) => p.comments).map((comment) => (
+        <Comment key={comment.id} comment={comment} />
+      ))}
+
+      {hasNextPage && (
+        <button onClick={() => fetchNextPage()}>
+          Load more comments
+        </button>
+      )}
+    </div>
+  )
+}
+```
+
+### Infinite Scroll with Suspend
+
+Combined with IntersectionObserver:
+
+```typescript
+function InfiniteGallery() {
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = galleryQuery.useSuspenseInfiniteQuery()
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { threshold: 0.5 }
+    )
+
+    if (sentinelRef.current) {
+      observer.observe(sentinelRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage])
+
+  const images = data.pages.flatMap((page) => page.images)
+
+  return (
+    <div className="gallery-grid">
+      {images.map((image) => (
+        <GalleryImage key={image.id} image={image} />
+      ))}
+
+      <div ref={sentinelRef} className="sentinel">
+        {isFetchingNextPage && <Spinner />}
+      </div>
+    </div>
+  )
+}
+
+// Wrap in Suspense
+function GalleryPage() {
+  return (
+    <Suspense fallback={<GallerySkeleton />}>
+      <InfiniteGallery />
+    </Suspense>
+  )
+}
+```
+
+### Select for Flattened Data
+
+Flatten pages at factory level:
+
+```typescript
+const productListQuery = createSuspenseInfiniteQuery(backend, {
+  functionName: "getProducts",
+  initialPageParam: 0,
+  getArgs: (offset) => [{ offset, limit: 24 }],
+  getNextPageParam: (lastPage) => lastPage.nextOffset,
+
+  // Pre-flatten the data
+  select: (infiniteData) => ({
+    products: infiniteData.pages.flatMap((page) => page.products),
+    totalCount: infiniteData.pages[0]?.totalCount ?? 0,
+    hasMore: !!infiniteData.pageParams.at(-1),
+  }),
+})
+
+function ProductGrid() {
+  // Already flattened and typed
+  const { data } = productListQuery.useSuspenseInfiniteQuery()
+
+  return (
+    <div>
+      <h2>{data.totalCount} Products</h2>
+      <div className="grid">
+        {data.products.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## createSuspenseInfiniteQueryFactory
+
+For dynamic args generation:
+
+```typescript
+const getCategoryProductsQuery = createSuspenseInfiniteQueryFactory(backend, {
+  functionName: "getProductsByCategory",
+  initialPageParam: 0,
+  getNextPageParam: (lastPage) => lastPage.nextOffset,
+})
+
+// Create with specific category
+function CategoryPage({ categoryId }: { categoryId: string }) {
+  const query = getCategoryProductsQuery((offset) => [
+    categoryId,
+    { offset, limit: 20 }
+  ])
+
+  const { data } = query.useInfiniteQuery()
+
+  return (
+    <Suspense fallback={<ProductGridSkeleton />}>
+      <ProductGrid products={data.pages.flatMap((p) => p.products)} />
+    </Suspense>
+  )
+}
+```
+
+---
+
+## Notes
+
+<Aside type="tip">
+  Use Suspense infinite queries when you want simpler components without
+  undefined checks. The parent Suspense boundary handles loading.
+</Aside>
+
+<Aside type="note">
+  Initial page is fetched during suspend. Subsequent pages (fetchNextPage) don't
+  trigger Suspense — they set `isFetchingNextPage` instead.
+</Aside>
+
+<Aside type="caution">
+  There's no `enabled` option in Suspense queries. Use
+  [createInfiniteQuery](/reference/factories/createinfinitequery) if you need
+  conditional fetching.
+</Aside>
+
+## See Also
+
+- [createInfiniteQuery](/reference/factories/createinfinitequery) — Non-Suspense version
+- [createSuspenseQuery](/reference/factories/createsuspensequery) — Non-paginated Suspense
+- [useActorSuspenseInfiniteQuery](/reference/useactorsuspenseinfinitequery) — Direct hook

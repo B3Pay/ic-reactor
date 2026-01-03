@@ -1,33 +1,5 @@
-# node
 node_modules
-node_modules.backup
-.DS_Store
-
-# build
-lib
 dist
+target
 .env
 .dfx
-.dfinity
-.gpteng
-prompt
-lerna-debug.log
-yarn-error.log
-
-target
-pulled.json
-examples/*/deps/candid
-orbit-wallet
-docs
-.nx
-umd
-
-packages/svelte
-
-.yarn/*
-!.yarn/cache
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions

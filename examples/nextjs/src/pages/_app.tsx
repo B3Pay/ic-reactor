@@ -1,24 +1,26 @@
-import { AgentProvider } from "@ic-reactor/react"
+"use client"
+import { QueryClientProvider } from "@tanstack/react-query"
 import { AppProps } from "next/app"
-import { useEffect, useState } from "react"
-import { TodoActorProvider } from "service/todo"
+import { clientManager, queryClient, useAgentState } from "reactor"
 import "styles/global.css"
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+import { useEffect } from "react"
 
 const App: React.FC<AppProps> = ({ Component, pageProps }) => {
-  /// This is a workaround for client-side rendering
-  const [mounted, setMounted] = useState(false)
+  const { isInitialized } = useAgentState()
 
   useEffect(() => {
-    setMounted(true)
+    clientManager.initialize()
   }, [])
 
-  return mounted ? (
-    <AgentProvider withLocalEnv>
-      <TodoActorProvider>
-        <Component {...pageProps} />
-      </TodoActorProvider>
-    </AgentProvider>
-  ) : null
+  if (!isInitialized) return null
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Component {...pageProps} />
+      <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+    </QueryClientProvider>
+  )
 }
 
 export default App

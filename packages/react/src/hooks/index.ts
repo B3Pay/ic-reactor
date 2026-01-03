@@ -1,2 +1,5 @@
-export * from "./useActor"
-export * from "./useActorManager"
+export { useActorQuery as useReactorQuery } from "./useActorQuery"
+export { useActorMutation as useReactorMutation } from "./useActorMutation"
+export { useActorSuspenseQuery as useReactorSuspenseQuery } from "./useActorSuspenseQuery"
+export { useActorInfiniteQuery as useReactorInfiniteQuery } from "./useActorInfiniteQuery"
+export { useActorSuspenseInfiniteQuery as useReactorSuspenseInfiniteQuery } from "./useActorSuspenseInfiniteQuery"

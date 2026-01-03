@@ -1,0 +1,15 @@
+type Post = record {
+    id: nat;
+    title: text;
+    content: text;
+    category: text;
+};
+
+type PostsResponse = record {
+    posts: vec Post;
+    next_cursor: opt nat;
+};
+
+service : {
+    get_posts: (category: opt text, cursor: nat, limit: nat) -> (PostsResponse) query;
+}

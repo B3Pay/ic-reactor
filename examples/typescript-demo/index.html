@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>typescript-demo</title>
+  </head>
+  <body>
+    <div id="app">
+      <div>
+        <h1>IC Reactor Core + TypeScript Demo</h1>
+
+        <div class="container">
+          <div class="card">
+            <h2>Authentication</h2>
+            <div id="auth-status">Checking...</div>
+            <button id="login-btn">Login with Internet Identity</button>
+            <div
+              id="principal-display"
+              style="
+                margin-top: 10px;
+                font-family: monospace;
+                word-break: break-all;
+              "
+            ></div>
+          </div>
+
+          <div class="card">
+            <h2>Token Configuration</h2>
+            <div
+              style="
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                justify-content: center;
+                flex-wrap: wrap;
+              "
+            >
+              <select
+                id="token-select"
+                style="padding: 8px; border-radius: 4px"
+              >
+                <option value="custom">Custom</option>
+              </select>
+              <input
+                id="canister-id-input"
+                type="text"
+                placeholder="Token Canister ID"
+                style="padding: 8px; width: 300px"
+              />
+              <button id="update-token-btn">Load Token</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Ledger Information</h2>
+          <div>Token Name: <span id="token-name">Loading...</span></div>
+          <div>Token Symbol: <span id="token-symbol">Loading...</span></div>
+          <div>Decimals: <span id="token-decimals">Loading...</span></div>
+        </div>
+
+        <div class="container">
+          <div class="card" id="balance-card" style="display: none">
+            <h2>My Balance</h2>
+            <div
+              id="balance-display"
+              style="font-size: 1.5em; font-weight: bold"
+            >
+              Loading...
+            </div>
+            <button id="refresh-balance-btn" style="margin-top: 10px">
+              Refresh Balance
+            </button>
+          </div>
+
+          <div class="card" id="transfer-card" style="display: none">
+            <h2>Transfer</h2>
+            <div
+              style="
+                margin-bottom: 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+              "
+            >
+              <input
+                type="text"
+                id="transfer-to"
+                placeholder="To Principal ID"
+                style="padding: 8px; width: 100%; max-width: 300px"
+              />
+              <input
+                type="number"
+                id="transfer-amount"
+                placeholder="Amount"
+                style="padding: 8px; width: 100%; max-width: 300px"
+              />
+            </div>
+            <button id="transfer-btn">Transfer</button>
+            <div id="transfer-status" style="margin-top: 10px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

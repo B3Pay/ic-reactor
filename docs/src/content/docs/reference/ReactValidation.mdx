@@ -1,0 +1,180 @@
+---
+title: Validation
+description: Utilities for handling validation errors in React
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+## Overview
+
+The `@ic-reactor/react` package provides utilities to easily handle validation errors thrown by `DisplayReactor`. These helpers make it simple to integrate with form libraries like React Hook Form or manage state manually.
+
+## Import
+
+```typescript
+import {
+  mapValidationErrors,
+  getFieldError,
+  handleValidationError,
+  isValidationError,
+} from "@ic-reactor/react"
+```
+
+## Utilities
+
+### mapValidationErrors
+
+Maps a `ValidationError` to a simple object where keys are field names and values are error messages.
+
+```typescript
+function mapValidationErrors(
+  error: ValidationError,
+  options?: { multiple?: boolean }
+): Record<string, string | string[]>
+```
+
+**Usage:**
+
+```tsx
+try {
+  await mutate([data])
+} catch (error) {
+  if (isValidationError(error)) {
+    const errors = mapValidationErrors(error)
+    console.log(errors) // { to: "Required", amount: "Must be positive" }
+    setFormErrors(errors)
+  }
+}
+```
+
+### handleValidationError
+
+Creates an error handler callback that automatically checks for `ValidationError` and extracts field errors. Perfect for `onError` callbacks.
+
+```typescript
+function handleValidationError(
+  setFieldErrors: (errors: Record<string, string>) => void,
+  onOtherError?: (error: Error) => void
+): (error: Error) => void
+```
+
+**Usage:**
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  onError: handleValidationError(
+    (errors) => setFormErrors(errors), // Called if validation error
+    (error) => toast.error(error.message) // Called for other errors
+  ),
+})
+```
+
+### getFieldError
+
+Extracts the first error message for a specific field.
+
+```typescript
+function getFieldError(
+  error: ValidationError,
+  field: string
+): string | undefined
+```
+
+### extractValidationErrors
+
+A type-safe helper that returns the mapped errors if the error is a `ValidationError`, or `null` otherwise.
+
+```typescript
+function extractValidationErrors(error: unknown): Record<string, string> | null
+```
+
+## integration Examples
+
+<Tabs>
+<TabItem label="Manual State">
+
+```tsx
+import { useState } from "react"
+import {
+  useActorMutation,
+  mapValidationErrors,
+  isValidationError,
+} from "@ic-reactor/react"
+
+function TransferForm() {
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const { mutate, isPending } = useActorMutation({
+    functionName: "transfer",
+    onError: (error) => {
+      if (isValidationError(error)) {
+        setErrors(mapValidationErrors(error))
+      }
+    },
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const formData = new FormData(e.target)
+    mutate([
+      {
+        to: formData.get("to") as string,
+        amount: formData.get("amount") as string,
+      },
+    ])
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <input name="to" placeholder="To" />
+        {errors.to && <span className="error">{errors.to}</span>}
+      </div>
+
+      <div>
+        <input name="amount" placeholder="Amount" />
+        {errors.amount && <span className="error">{errors.amount}</span>}
+      </div>
+
+      <button disabled={isPending}>Submit</button>
+    </form>
+  )
+}
+```
+
+</TabItem>
+<TabItem label="React Hook Form">
+
+```tsx
+import { useForm } from "react-hook-form"
+import {
+  useActorMutation,
+  mapValidationErrors,
+  isValidationError,
+} from "@ic-reactor/react"
+
+function TransferForm() {
+  const { register, handleSubmit, setError } = useForm()
+
+  const { mutate } = useActorMutation({
+    functionName: "transfer",
+    onError: (error) => {
+      if (isValidationError(error)) {
+        const fieldErrors = mapValidationErrors(error)
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          setError(field, { type: "server", message })
+        })
+      }
+    },
+  })
+
+  const onSubmit = (data) => mutate([data])
+
+  return <form onSubmit={handleSubmit(onSubmit)}>{/* Inputs... */}</form>
+}
+```
+
+</TabItem>
+</Tabs>

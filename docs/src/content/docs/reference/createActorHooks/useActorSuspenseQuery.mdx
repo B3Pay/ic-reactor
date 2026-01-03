@@ -1,0 +1,259 @@
+---
+title: useActorSuspenseQuery
+description: Suspense-enabled query hook for canisters
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useActorSuspenseQuery` is a React hook for fetching data from canisters with Suspense support. It suspends the component until data is available, eliminating the need for loading state handling.
+
+## Import
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+
+const { useActorSuspenseQuery } = createActorHooks(backend)
+```
+
+<Aside type="tip">
+  It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
+
+```typescript
+const { useActorSuspenseQuery: useBackendSuspenseQuery } =
+  createActorHooks(backend)
+```
+
+</Aside>
+
+## Usage
+
+```tsx
+import { Suspense } from "react"
+
+function UserProfile({ userId }: { userId: string }) {
+  // This hook suspends until data is loaded
+  const { data } = useActorSuspenseQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  // data is ALWAYS defined here - no undefined check needed
+  return (
+    <div>
+      <h1>{data.name}</h1>
+      <p>{data.email}</p>
+    </div>
+  )
+}
+
+// Must be wrapped in Suspense
+function App() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <UserProfile userId="user-123" />
+    </Suspense>
+  )
+}
+```
+
+## Options
+
+Same as [useActorQuery](/reference/createactorhooks/useactorquery) **except**:
+
+<Aside type="caution">
+  `useActorSuspenseQuery` does **NOT** support the `enabled` option. The query
+  always executes immediately.
+</Aside>
+
+### Key Options
+
+| Option         | Type       | Default  | Description                                |
+| -------------- | ---------- | -------- | ------------------------------------------ |
+| `functionName` | `string`   | Required | The canister method to call                |
+| `args`         | `array`    | `[]`     | Arguments to pass to the method            |
+| `staleTime`    | `number`   | `0`      | Time in ms before data is considered stale |
+| `select`       | `function` | -        | Transform the data before returning        |
+
+## Return Value
+
+Returns a TanStack Query suspense result. The key difference from `useActorQuery`:
+
+| Property | Type        | Description                          |
+| -------- | ----------- | ------------------------------------ |
+| `data`   | `TData`     | **Always defined** (never undefined) |
+| `error`  | `never`     | Errors are thrown, not returned      |
+| `status` | `'success'` | Always success (suspends otherwise)  |
+
+## Examples
+
+### Basic Suspense Query
+
+```tsx
+function Greeting() {
+  const { data } = useActorSuspenseQuery({
+    functionName: "greet",
+    args: ["World"],
+  })
+
+  // data is guaranteed to be defined
+  return <h1>{data}</h1>
+}
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Greeting />
+    </Suspense>
+  )
+}
+```
+
+### Multiple Suspense Queries
+
+```tsx
+function Dashboard({ userId }: { userId: string }) {
+  // Both queries run in parallel
+  const { data: user } = useActorSuspenseQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  const { data: stats } = useActorSuspenseQuery({
+    functionName: "getUserStats",
+    args: [userId],
+  })
+
+  return (
+    <div>
+      <h1>Welcome, {user.name}</h1>
+      <Stats data={stats} />
+    </div>
+  )
+}
+```
+
+### With Select
+
+```tsx
+const { data: userName } = useActorSuspenseQuery({
+  functionName: "getUser",
+  args: [userId],
+  select: (user) => user.name, // data is just the name string
+})
+
+return <h1>Hello, {userName}</h1>
+```
+
+### Nested Suspense Boundaries
+
+```tsx
+function App() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <Header /> {/* Has its own data */}
+      <Suspense fallback={<ContentSkeleton />}>
+        <MainContent /> {/* Independent loading */}
+      </Suspense>
+      <Suspense fallback={<SidebarSkeleton />}>
+        <Sidebar /> {/* Independent loading */}
+      </Suspense>
+    </Suspense>
+  )
+}
+```
+
+### Error Handling with Error Boundaries
+
+```tsx
+import { ErrorBoundary } from "react-error-boundary"
+
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <div className="error">
+      <p>Something went wrong:</p>
+      <pre>{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Suspense fallback={<Loading />}>
+        <UserProfile userId="user-123" />
+      </Suspense>
+    </ErrorBoundary>
+  )
+}
+```
+
+### With Stale Time
+
+```tsx
+const { data } = useActorSuspenseQuery({
+  functionName: "getConfig",
+  args: [],
+  staleTime: 5 * 60 * 1000, // Fresh for 5 minutes
+})
+```
+
+### Sequential Suspense (Waterfall)
+
+```tsx
+function UserPosts({ userId }: { userId: string }) {
+  // This query runs first
+  const { data: user } = useActorSuspenseQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  // This query runs after user is loaded
+  const { data: posts } = useActorSuspenseQuery({
+    functionName: "getUserPosts",
+    args: [user.id], // Uses data from first query
+  })
+
+  return <PostList posts={posts} author={user.name} />
+}
+```
+
+<Aside type="tip">
+  To avoid waterfalls, fetch independent data in parallel using separate
+  components or `useSuspenseQueries` (if available).
+</Aside>
+
+## When to Use Suspense
+
+✅ **Use Suspense when:**
+
+- You always need the data (no conditional fetching)
+- You want cleaner components without loading state
+- You're using React Server Components
+- You want loading states at the boundary level
+
+❌ **Use regular `useActorQuery` when:**
+
+- You need conditional fetching (`enabled` option)
+- You want per-component loading UI
+- You need to access `isPending` or `isFetching` states
+
+## Notes
+
+<Aside type="note">
+  Suspense queries throw errors instead of returning them. Always wrap in an
+  Error Boundary to catch and display errors gracefully.
+</Aside>
+
+<Aside type="tip">
+  With suspense, you can assume `data` is always defined in your component. This
+  leads to cleaner code without null checks.
+</Aside>
+
+## See Also
+
+- [useActorQuery](/reference/createactorhooks/useactorquery) — Regular query hook
+- [useActorSuspenseInfiniteQuery](/reference/createactorhooks/useactorsuspenseinfinitequery) — Suspense pagination
+- [Queries Guide](/guides/queries) — In-depth query patterns
+- [createActorHooks](/reference/createactorhooks/overview) — Creating hooks

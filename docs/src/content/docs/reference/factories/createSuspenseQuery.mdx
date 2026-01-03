@@ -1,0 +1,317 @@
+---
+title: createSuspenseQuery
+description: Create Suspense-enabled reusable query objects
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+`createSuspenseQuery` creates a reusable query object that uses React Suspense for loading states. Data is **always defined** — no need for undefined checks.
+
+## Import
+
+```typescript
+import {
+  createSuspenseQuery,
+  createSuspenseQueryFactory,
+} from "@ic-reactor/react"
+```
+
+## Basic Usage
+
+```typescript
+import { createSuspenseQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const userQuery = createSuspenseQuery(backend, {
+  functionName: "getUser",
+  args: [userId],
+})
+```
+
+## Key Differences from createQuery
+
+| Feature          | `createQuery`        | `createSuspenseQuery` |
+| ---------------- | -------------------- | --------------------- |
+| Loading handling | Manual (`isLoading`) | React Suspense        |
+| `data` type      | `T \| undefined`     | `T` (always defined)  |
+| `enabled` option | ✅ Supported         | ❌ Not available      |
+| Error handling   | `error` property     | Error Boundary        |
+| Render blocking  | No                   | Yes (suspends)        |
+
+## Configuration
+
+| Option         | Type                 | Default  | Description                     |
+| -------------- | -------------------- | -------- | ------------------------------- |
+| `functionName` | `string`             | Required | The canister method to call     |
+| `args`         | `Args`               | `[]`     | Arguments for the method        |
+| `select`       | `(data) => Selected` | -        | Transform data before returning |
+| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)  |
+| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments       |
+
+## Return Value
+
+| Property           | Type                                   | Description              |
+| ------------------ | -------------------------------------- | ------------------------ |
+| `fetch`            | `() => Promise<T>`                     | Fetch data (for loaders) |
+| `useSuspenseQuery` | `(options?) => UseSuspenseQueryResult` | Suspense hook            |
+| `refetch`          | `() => Promise<void>`                  | Invalidate and refetch   |
+| `getQueryKey`      | `() => QueryKey`                       | Get the query key        |
+| `getCacheData`     | `(select?) => T`                       | Read from cache          |
+
+---
+
+## Examples
+
+### TanStack Router with Suspense
+
+Combine loaders with Suspense for optimal UX:
+
+```typescript
+// routes/users/$userId.tsx
+import { createFileRoute } from "@tanstack/react-router"
+import { Suspense } from "react"
+import { createSuspenseQueryFactory } from "@ic-reactor/react"
+import { backend } from "../../reactor"
+
+const getUserQuery = createSuspenseQueryFactory(backend, {
+  functionName: "getUser",
+})
+
+export const Route = createFileRoute("/users/$userId")({
+  // Prefetch in loader
+  loader: async ({ params }) => {
+    await getUserQuery([params.userId]).fetch()
+    // No need to return data - it's in the cache
+  },
+
+  component: UserPageWrapper,
+})
+
+function UserPageWrapper() {
+  return (
+    <Suspense fallback={<UserSkeleton />}>
+      <UserPage />
+    </Suspense>
+  )
+}
+
+function UserPage() {
+  const { userId } = Route.useParams()
+
+  // data is NEVER undefined - Suspense handles loading
+  const { data: user } = getUserQuery([userId]).useSuspenseQuery()
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+    </div>
+  )
+}
+```
+
+### Nested Suspense Boundaries
+
+Use multiple Suspense boundaries for granular loading states:
+
+```typescript
+function Dashboard() {
+  return (
+    <div className="dashboard">
+      <Suspense fallback={<HeaderSkeleton />}>
+        <DashboardHeader />
+      </Suspense>
+
+      <div className="dashboard-content">
+        <Suspense fallback={<StatsSkeleton />}>
+          <StatsPanel />
+        </Suspense>
+
+        <Suspense fallback={<ActivitySkeleton />}>
+          <RecentActivity />
+        </Suspense>
+      </div>
+    </div>
+  )
+}
+
+function DashboardHeader() {
+  const { data: user } = userProfileQuery.useSuspenseQuery()
+  return <Header user={user} />
+}
+
+function StatsPanel() {
+  const { data: stats } = dashboardStatsQuery.useSuspenseQuery()
+  return <Stats data={stats} />
+}
+
+function RecentActivity() {
+  const { data: activity } = recentActivityQuery.useSuspenseQuery()
+  return <ActivityList items={activity} />
+}
+```
+
+### Error Boundary Integration
+
+Handle errors with React Error Boundaries:
+
+```typescript
+import { ErrorBoundary } from "react-error-boundary"
+
+function UserPageWrapper() {
+  return (
+    <ErrorBoundary
+      fallbackRender={({ error, resetErrorBoundary }) => (
+        <div className="error">
+          <h2>Something went wrong</h2>
+          <pre>{error.message}</pre>
+          <button onClick={resetErrorBoundary}>Try again</button>
+        </div>
+      )}
+    >
+      <Suspense fallback={<UserSkeleton />}>
+        <UserPage />
+      </Suspense>
+    </ErrorBoundary>
+  )
+}
+```
+
+### Parallel Suspense Queries
+
+Fetch multiple queries in parallel:
+
+```typescript
+function UserDashboard({ userId }: { userId: string }) {
+  // These queries run in parallel - not waterfall!
+  const { data: profile } = getUserProfileQuery([userId]).useSuspenseQuery()
+  const { data: posts } = getUserPostsQuery([userId]).useSuspenseQuery()
+  const { data: followers } = getUserFollowersQuery([userId]).useSuspenseQuery()
+
+  return (
+    <div>
+      <ProfileCard profile={profile} />
+      <PostsList posts={posts} />
+      <FollowersList followers={followers} />
+    </div>
+  )
+}
+
+// Wrap in single Suspense boundary
+function UserDashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <UserDashboard userId={userId} />
+    </Suspense>
+  )
+}
+```
+
+### Prefetching on Route Transition
+
+Prefetch data during route transitions:
+
+```typescript
+import { Link, useNavigate } from "@tanstack/react-router"
+
+function UserCard({ userId }: { userId: string }) {
+  const navigate = useNavigate()
+
+  const handleClick = async () => {
+    // Start prefetch
+    getUserQuery([userId]).fetch()
+    // Navigate immediately - data loads in background
+    navigate({ to: `/users/${userId}` })
+  }
+
+  return (
+    <div onClick={handleClick} className="user-card">
+      <Avatar userId={userId} />
+      <span>View Profile</span>
+    </div>
+  )
+}
+```
+
+### With Select Transformation
+
+```typescript
+const userAvatarQuery = createSuspenseQuery(backend, {
+  functionName: "getUser",
+  args: [userId],
+  select: (user) => ({
+    url: user.avatarUrl,
+    alt: user.name,
+  }),
+})
+
+function Avatar() {
+  // data is { url, alt } - never undefined
+  const { data } = userAvatarQuery.useSuspenseQuery()
+
+  return <img src={data.url} alt={data.alt} />
+}
+```
+
+---
+
+## createSuspenseQueryFactory
+
+For dynamic arguments:
+
+```typescript
+const getUserQuery = createSuspenseQueryFactory(backend, {
+  functionName: "getUser",
+})
+
+function UserProfile({ userId }: { userId: string }) {
+  // data is ALWAYS defined
+  const { data: user } = getUserQuery([userId]).useQuery()
+
+  return <h1>{user.name}</h1>
+}
+```
+
+---
+
+## When to Use Suspense
+
+✅ **Use createSuspenseQuery when:**
+
+- You want simpler component code (no `isLoading` checks)
+- Data must be available before rendering
+- You're using React 18+ concurrent features
+- Your app already uses Suspense patterns
+
+❌ **Use createQuery when:**
+
+- You need the `enabled` option for conditional fetching
+- You want to show partial UI while loading
+- You need fine-grained control over loading states
+- You're migrating from non-Suspense patterns
+
+---
+
+## Notes
+
+<Aside type="tip">
+  Prefetch in loaders and use Suspense in components for the best UX. Data loads
+  during navigation, and components render instantly.
+</Aside>
+
+<Aside type="caution">
+  Suspense queries don't support the `enabled` option. If you need conditional
+  fetching, use [createQuery](/reference/factories/createquery) instead.
+</Aside>
+
+<Aside type="note">
+  Wrap Suspense components in Error Boundaries to handle canister errors
+  gracefully.
+</Aside>
+
+## See Also
+
+- [createQuery](/reference/factories/createquery) — Non-Suspense version
+- [createSuspenseInfiniteQuery](/reference/factories/createsuspenseinfinitequery) — Suspense pagination
+- [useActorSuspenseQuery](/reference/useactorsuspensequery) — Direct hook usage

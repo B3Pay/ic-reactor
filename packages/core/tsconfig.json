@@ -1,9 +1,17 @@
 {
-  "extends": "../../tsconfig.json",
-  "include": ["./src"],
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "outDir": "./dist",
     "rootDir": "./src",
-    "skipLibCheck": true,
-    "outDir": "./dist"
-  }
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "lib": ["ES2020", "DOM"],
+    "moduleResolution": "bundler"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/actor.ts", "**/*.test.ts", "**/*.spec.ts", "tests/**/*"]
 }

@@ -1,0 +1,352 @@
+---
+title: Queries
+description: Fetching data from Internet Computer canisters
+editUrl: false
+---
+
+import { Aside, Code, Tabs, TabItem } from "@astrojs/starlight/components"
+
+## Query Basics
+
+A query is a declarative dependency on an asynchronous data source from an IC canister that is tied to a unique key. A query can be used to fetch any data from your canisters using query or update methods.
+
+To subscribe to a query in your components, call the `useActorQuery` hook with at least:
+
+- A **function name** that exists on your actor
+- Optionally, **arguments** to pass to that function
+
+```tsx
+import { useActorQuery } from "../reactor/hooks"
+
+function App() {
+  const info = useActorQuery({
+    functionName: "getUser",
+    args: ["user-123"],
+  })
+}
+```
+
+The unique key is automatically generated based on your canister ID, function name, and arguments. This key is used internally for refetching, caching, and sharing your queries throughout your application.
+
+## Query Results
+
+The query result returned by `useActorQuery` contains all of the information about the query that you'll need for templating and any other usage of the data:
+
+```tsx
+const result = useActorQuery({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+```
+
+The `result` object contains a few very important states you'll need to be aware of to be productive. A query can only be in one of the following states at any given moment:
+
+- `isPending` or `status === 'pending'` - The query has no data yet
+- `isError` or `status === 'error'` - The query encountered an error
+- `isSuccess` or `status === 'success'` - The query was successful and data is available
+
+Beyond those primary states, more information is available depending on the state of the query:
+
+- `error` - If the query is in an `isError` state, the error is available via the `error` property.
+- `data` - If the query is in an `isSuccess` state, the data is available via the `data` property.
+- `isFetching` - In any state, if the query is fetching at any time (including background refetching) `isFetching` will be true.
+
+For most queries, it's usually sufficient to check for the `isPending` state, then the `isError` state, then finally, assume that the data is available and render the successful state:
+
+```tsx
+function UserProfile({ userId }: { userId: string }) {
+  const { isPending, isError, data, error } = useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  if (isPending) {
+    return <span>Loading...</span>
+  }
+
+  if (isError) {
+    return <span>Error: {error.message}</span>
+  }
+
+  // We can assume by this point that `isSuccess === true`
+  return (
+    <div>
+      <h2>{data?.name}</h2>
+      <p>{data?.bio}</p>
+    </div>
+  )
+}
+```
+
+If booleans aren't your thing, you can always use the `status` state as well:
+
+```tsx
+function UserProfile({ userId }: { userId: string }) {
+  const { status, data, error } = useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  if (status === "pending") {
+    return <span>Loading...</span>
+  }
+
+  if (status === "error") {
+    return <span>Error: {error.message}</span>
+  }
+
+  // also status === 'success', but "else" logic works, too
+  return (
+    <div>
+      <h2>{data?.name}</h2>
+      <p>{data?.bio}</p>
+    </div>
+  )
+}
+```
+
+TypeScript will also narrow the type of `data` correctly if you've checked for `pending` and `error` before accessing it.
+
+## Conditional Queries
+
+You can use the `enabled` option to conditionally execute a query:
+
+```tsx
+function UserProfile({ userId }: { userId: string | null }) {
+  const { data } = useActorQuery({
+    functionName: "getUser",
+    args: [userId!],
+    // Only fetch when userId exists
+    enabled: !!userId,
+  })
+}
+```
+
+This is particularly useful when:
+
+- Waiting for other data before fetching
+- Only fetching when authenticated
+- Disabling queries in certain UI states
+
+## Selecting Data
+
+Use the `select` option to transform or select a portion of the data:
+
+```tsx
+const { data: userName } = useActorQuery({
+  functionName: "getUser",
+  args: [userId],
+  // Only return the name from the query
+  select: (user) => user.name,
+})
+// data is now just the user's name (string)
+```
+
+This is useful for:
+
+- Extracting specific fields
+- Transforming data for rendering
+- Computing derived values
+
+## Stale Time
+
+Control when data is considered stale and should be refetched:
+
+```tsx
+// Data is fresh for 5 minutes
+const { data } = useActorQuery({
+  functionName: "getConfig",
+  args: [],
+  staleTime: 1000 * 60 * 5, // 5 minutes
+})
+
+// Data is never stale (static data)
+const { data: metadata } = useActorQuery({
+  functionName: "getMetadata",
+  args: [],
+  staleTime: Infinity,
+})
+```
+
+## Refetching
+
+### Automatic Refetching
+
+```tsx
+// Refetch every 10 seconds
+const { data } = useActorQuery({
+  functionName: "getPrice",
+  args: [],
+  refetchInterval: 1000 * 10,
+})
+
+// Refetch when window regains focus
+const { data } = useActorQuery({
+  functionName: "getNotifications",
+  args: [],
+  refetchOnWindowFocus: true,
+})
+```
+
+### Manual Refetching
+
+```tsx
+const { data, refetch } = useActorQuery({
+  functionName: "getUser",
+  args: [userId],
+})
+
+// Trigger a refetch
+const handleRefresh = () => {
+  refetch()
+}
+```
+
+## Suspense Queries
+
+For Suspense-based data fetching, use `useActorSuspenseQuery`:
+
+```tsx
+import { Suspense } from "react"
+import { useActorSuspenseQuery } from "../reactor/hooks"
+
+function UserProfile({ userId }: { userId: string }) {
+  // This hook suspends until data is loaded
+  const { data } = useActorSuspenseQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  // data is always defined here
+  return (
+    <div>
+      <h2>{data.name}</h2>
+      <p>{data.bio}</p>
+    </div>
+  )
+}
+
+// Wrap with Suspense boundary
+function App() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <UserProfile userId="user-123" />
+    </Suspense>
+  )
+}
+```
+
+<Aside type="note">
+  `useActorSuspenseQuery` does NOT support the `enabled` option. The query
+  always executes and suspends until complete.
+</Aside>
+
+## Infinite Queries
+
+For paginated data, use `useActorInfiniteQuery`:
+
+```tsx
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
+  useActorInfiniteQuery({
+    functionName: "getItems",
+    getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }],
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
+  })
+
+return status === "pending" ? (
+  <p>Loading...</p>
+) : status === "error" ? (
+  <p>Error loading data</p>
+) : (
+  <>
+    {data.pages.map((group, i) => (
+      <div key={i}>
+        {group.items.map((item) => (
+          <p key={item.id}>{item.name}</p>
+        ))}
+      </div>
+    ))}
+    <button
+      onClick={() => fetchNextPage()}
+      disabled={!hasNextPage || isFetchingNextPage}
+    >
+      {isFetchingNextPage
+        ? "Loading more..."
+        : hasNextPage
+          ? "Load More"
+          : "Nothing more to load"}
+    </button>
+  </>
+)
+```
+
+## Query Factories
+
+For reusable query configurations, use `createQuery`:
+
+```tsx
+import { createQuery } from "@ic-reactor/react"
+import { backendActor } from "../reactor"
+
+// Define query once
+const userQuery = createQuery(backendActor, {
+  functionName: "getUser",
+  args: ["user-123"],
+  staleTime: 5 * 60 * 1000,
+})
+
+// Use in components
+function UserProfile() {
+  const { data, isLoading } = userQuery.useQuery()
+  // ...
+}
+
+// Use in loaders
+async function loader() {
+  const user = await userQuery.fetch()
+  return { user }
+}
+
+// Invalidate cache
+await userQuery.refetch()
+```
+
+For dynamic arguments, use `createQueryFactory`:
+
+```tsx
+const getUserQuery = createQueryFactory(backendActor, {
+  functionName: "getUser",
+})
+
+// Create query with specific args
+function UserProfile({ userId }: { userId: string }) {
+  const userQuery = getUserQuery([userId])
+  const { data } = userQuery.useQuery()
+  // ...
+}
+```
+
+## Type Safety
+
+IC Reactor provides full TypeScript support. The `functionName` prop autocompletes to valid canister methods, and `args` are type-checked:
+
+```tsx
+// ✅ TypeScript knows this method exists and args are correct
+const { data } = useActorQuery({
+  functionName: "getUser", // autocomplete available
+  args: ["user-123"], // type checked
+})
+
+// ❌ TypeScript error: wrong argument type
+const { data } = useActorQuery({
+  functionName: "getUser",
+  args: [123], // Error: Expected string
+})
+```
+
+## Further Reading
+
+- [Query Caching](/query-caching) - Deep dive into TanStack Query integration
+- [Type Safety](/type-safety) - Understanding the type system
+- [Error Handling](/error-handling) - Handling query errors

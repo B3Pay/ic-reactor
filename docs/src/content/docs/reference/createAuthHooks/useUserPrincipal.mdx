@@ -1,0 +1,33 @@
+---
+title: useUserPrincipal
+description: Hook to get the current user's Principal.
+editUrl: false
+---
+
+`useUserPrincipal` is a convenience hook that returns the current user's Principal or null.
+
+## Usage
+
+```tsx
+import { useUserPrincipal } from "./reactor/hooks"
+
+function UserBadge() {
+  const principal = useUserPrincipal()
+
+  if (!principal) return null
+  if (principal.isAnonymous()) return <span>Anonymous</span>
+
+  return <span>{principal.toText().slice(0, 12)}...</span>
+}
+```
+
+## Return Value
+
+| Type                | Description                                                   |
+| ------------------- | ------------------------------------------------------------- |
+| `Principal \| null` | The current user's Principal, or `null` if not authenticated. |
+
+## See Also
+
+- [createAuthHooks](/reference/createauthhooks) — Auth hooks factory
+- [useAuth](/reference/createauthhooks/useauth) — Main auth hook

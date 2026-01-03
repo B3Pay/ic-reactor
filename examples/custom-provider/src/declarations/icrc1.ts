@@ -1,5 +1,6 @@
-import type { Principal } from "@dfinity/principal"
-import type { ActorMethod } from "@dfinity/agent"
+import type { Principal } from "@icp-sdk/core/principal"
+import type { ActorMethod } from "@icp-sdk/core/agent"
+import type { IDL } from "@icp-sdk/core/candid"
 
 export interface Account {
   owner: Principal
@@ -52,3 +53,6 @@ export interface ICRC1 {
   icrc1_total_supply: ActorMethod<[], bigint>
   icrc1_transfer: ActorMethod<[TransferArg], Result>
 }
+
+export declare const idlFactory: IDL.InterfaceFactory
+export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[]

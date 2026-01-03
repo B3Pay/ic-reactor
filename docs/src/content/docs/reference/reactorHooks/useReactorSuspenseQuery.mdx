@@ -1,0 +1,70 @@
+---
+title: useReactorSuspenseQuery
+description: Suspense-enabled query hook for reactor instance
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useReactorSuspenseQuery` is a React hook for fetching data via a `Reactor` instance with Suspense support.
+
+## Import
+
+```typescript
+import { useReactorSuspenseQuery } from "@ic-reactor/react"
+```
+
+## Usage
+
+```tsx
+import { Suspense } from "react"
+import { useReactorSuspenseQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function UserProfile({ userId }) {
+  const { data } = useReactorSuspenseQuery({
+    reactor: backend, // 👈 Required
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  // data is always defined
+  return <div>{data.name}</div>
+}
+
+function App() {
+  return (
+    <Suspense fallback="Loading...">
+      <UserProfile userId="123" />
+    </Suspense>
+  )
+}
+```
+
+## Options
+
+### Required Options
+
+| Option         | Type            | Description                 |
+| -------------- | --------------- | --------------------------- |
+| `reactor`      | `Reactor<A, T>` | The Reactor instance to use |
+| `functionName` | `string`        | The canister method to call |
+
+### Optional Options
+
+Same as [useActorSuspenseQuery](/reference/createactorhooks/useactorsuspensequery).
+
+<Aside type="caution">
+  Like `useActorSuspenseQuery`, this hook does **NOT** support the `enabled`
+  option.
+</Aside>
+
+## Return Value
+
+Returns a Suspense-enabled Query result object (errors are thrown, valid data returned).
+
+## See Also
+
+- [useActorSuspenseQuery](/reference/createactorhooks/useactorsuspensequery) — Bound version
+- [useReactorQuery](/reference/hooks/reactorhooks/usereactorquery) — Non-suspense version
+- [Reactor Overview](/reference/hooks/reactorhooks/overview)

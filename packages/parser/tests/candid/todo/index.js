@@ -1,4 +1,4 @@
-import { Actor, HttpAgent } from "@dfinity/agent"
+import { Actor, HttpAgent } from "@icp-sdk/core/agent"
 
 // Imports and re-exports candid interface
 import { idlFactory } from "./todo.did.js"
@@ -23,7 +23,7 @@ export const createActor = (canisterId, options = {}) => {
 
   // Fetch root key for certificate validation during development
   if (process.env.DFX_NETWORK !== "ic") {
-    agent.fetchRootKey().catch(err => {
+    agent.fetchRootKey().catch((err) => {
       console.warn(
         "Unable to fetch root key. Check to ensure that your local replica is running"
       )
@@ -35,6 +35,6 @@ export const createActor = (canisterId, options = {}) => {
   return Actor.createActor(idlFactory, {
     agent,
     canisterId,
-    ...options.actorOptions
+    ...options.actorOptions,
   })
 }

@@ -1,3 +1,10 @@
-import { GlobalRegistrator } from "@happy-dom/global-registrator"
+import { config } from "dotenv"
+import { TextEncoder, TextDecoder } from "util"
 
-GlobalRegistrator.register()
+config({ path: ".env" })
+
+global.TextEncoder = TextEncoder
+global.TextDecoder = TextDecoder as any
+
+import "fake-indexeddb/auto"
+import "@testing-library/jest-dom/vitest"

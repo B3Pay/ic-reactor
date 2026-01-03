@@ -1,0 +1,348 @@
+---
+title: createQuery
+description: Create reusable query objects for canister methods
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+`createQuery` creates a reusable query object with pre-configured options. Perfect for route loaders, centralized query definitions, and cache manipulation outside React components.
+
+## Import
+
+```typescript
+import { createQuery, createQueryFactory } from "@ic-reactor/react"
+```
+
+## Basic Usage
+
+```typescript
+import { createQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const userProfileQuery = createQuery(backend, {
+  functionName: "getProfile",
+  args: [currentUserId],
+  staleTime: 5 * 60 * 1000, // 5 minutes
+})
+```
+
+## Configuration
+
+| Option         | Type                 | Default  | Description                     |
+| -------------- | -------------------- | -------- | ------------------------------- |
+| `functionName` | `string`             | Required | The canister method to call     |
+| `args`         | `Args`               | `[]`     | Arguments for the method        |
+| `select`       | `(data) => Selected` | -        | Transform data before returning |
+| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)  |
+| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments       |
+
+## Return Value
+
+The factory returns an object with these utilities:
+
+| Property       | Type                           | Description                           |
+| -------------- | ------------------------------ | ------------------------------------- |
+| `fetch`        | `() => Promise<T>`             | Fetch data (cache-first, for loaders) |
+| `useQuery`     | `(options?) => UseQueryResult` | React hook for components             |
+| `refetch`      | `() => Promise<void>`          | Invalidate and refetch cache          |
+| `getQueryKey`  | `() => QueryKey`               | Get the TanStack Query key            |
+| `getCacheData` | `(select?) => T`               | Read from cache without fetching      |
+
+---
+
+## Examples
+
+### TanStack Router Integration
+
+Use factories with TanStack Router's file-based routing and loaders:
+
+```typescript
+// routes/users/$userId.tsx
+import { createFileRoute } from "@tanstack/react-router"
+import { createQueryFactory } from "@ic-reactor/react"
+import { backend } from "../../reactor"
+import { redirect } from "@tanstack/react-router"
+
+// Create factory (can be in a separate file)
+const getUserQuery = createQueryFactory(backend, {
+  functionName: "getUser",
+  select: (result) => result.user,
+  staleTime: 5 * 60 * 1000,
+})
+
+export const Route = createFileRoute("/users/$userId")({
+  // Prefetch in loader - runs before component mounts
+  loader: async ({ params }) => {
+    const user = await getUserQuery([params.userId]).fetch()
+
+    if (!user) {
+      throw redirect("/404")
+    }
+
+    return { user }
+  },
+
+  // Optional: Define pending component
+  pendingComponent: () => <div>Loading user...</div>,
+
+  // Main component
+  component: UserPage,
+})
+
+function UserPage() {
+  const params = Route.useParams()
+
+  // Data is already cached from loader - instant render!
+  const { data: user, isRefetching } = getUserQuery([params.userId]).useQuery()
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      {isRefetching && <span>Refreshing...</span>}
+    </div>
+  )
+}
+```
+
+### TanStack Router with Route Context
+
+Pass the reactor via router context for better organization:
+
+```typescript
+// router.tsx
+import {
+  createRouter,
+  createRootRouteWithContext,
+} from "@tanstack/react-router"
+import { backend } from "./reactor"
+
+interface RouterContext {
+  backend: typeof backend
+}
+
+const rootRoute = createRootRouteWithContext<RouterContext>()({
+  component: RootLayout,
+})
+
+export const router = createRouter({
+  routeTree,
+  context: { backend },
+  defaultPreloadStaleTime: 0, // Let TanStack Query handle caching
+})
+
+// routes/posts.tsx
+import { createFileRoute } from "@tanstack/react-router"
+import { createQuery } from "@ic-reactor/react"
+
+export const Route = createFileRoute("/posts")({
+  loader: async ({ context }) => {
+    const postsQuery = createQuery(context.backend, {
+      functionName: "getPosts",
+    })
+    return { posts: await postsQuery.fetch() }
+  },
+  component: PostsPage,
+})
+```
+
+### React Router 6/7 Integration
+
+```typescript
+// routes.tsx
+import { createBrowserRouter, json } from "react-router-dom"
+import { createQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const getUserQuery = createQueryFactory(backend, {
+  functionName: "getUser",
+})
+
+export const router = createBrowserRouter([
+  {
+    path: "/users/:userId",
+    loader: async ({ params }) => {
+      const user = await getUserQuery([params.userId!]).fetch()
+      return json({ user })
+    },
+    Component: UserPage,
+  },
+])
+
+// UserPage.tsx
+import { useLoaderData, useParams } from "react-router-dom"
+
+function UserPage() {
+  // Initial data from loader
+  const { user: initialUser } = useLoaderData() as { user: User }
+  const { userId } = useParams()
+
+  // Subscribe to updates
+  const { data: user } = getUserQuery([userId!]).useQuery({
+    initialData: initialUser,
+  })
+
+  return <Profile user={user} />
+}
+```
+
+### Select Transformation
+
+Transform data at the factory level:
+
+```typescript
+// Only get what you need
+const userNameQuery = createQuery(backend, {
+  functionName: "getUser",
+  args: [userId],
+  select: (user) => user.name, // Only extract name
+})
+
+// In component - data is just the name string
+const { data: userName } = userNameQuery.useQuery()
+```
+
+### Chained Select in Hook
+
+Chain additional transformations in the hook:
+
+```typescript
+const userQuery = createQuery(backend, {
+  functionName: "getUser",
+  args: [userId],
+  select: (user) => user.profile, // First transformation
+})
+
+// Further transform in component
+const { data: avatarUrl } = userQuery.useQuery({
+  select: (profile) => profile.avatarUrl, // Chained transformation
+})
+```
+
+### Conditional Fetching
+
+Use `enabled` option for conditional queries:
+
+```typescript
+const sensitiveDataQuery = createQuery(backend, {
+  functionName: "getSensitiveData",
+  args: [],
+})
+
+function ProtectedComponent() {
+  const { isAuthenticated } = useAuth()
+
+  const { data } = sensitiveDataQuery.useQuery({
+    enabled: isAuthenticated, // Only fetch when authenticated
+  })
+
+  return isAuthenticated ? <Data data={data} /> : <LoginPrompt />
+}
+```
+
+### Cache Manipulation
+
+Read and manipulate cache outside React:
+
+```typescript
+const userQuery = createQuery(backend, {
+  functionName: "getUser",
+  args: [userId],
+})
+
+// Read from cache (returns undefined if not cached)
+const cachedUser = userQuery.getCacheData()
+
+// Read with transformation
+const cachedName = userQuery.getCacheData((user) => user.name)
+
+// Force refetch
+await userQuery.refetch()
+
+// Get query key for manual operations
+const queryKey = userQuery.getQueryKey()
+queryClient.setQueryData(queryKey, updatedUser)
+```
+
+### Prefetching on Hover
+
+Prefetch data when user hovers over a link:
+
+```typescript
+function UserLink({ userId }: { userId: string }) {
+  const handleMouseEnter = async () => {
+    // Prefetch on hover
+    await getUserQuery([userId]).fetch()
+  }
+
+  return (
+    <Link
+      to={`/users/${userId}`}
+      onMouseEnter={handleMouseEnter}
+    >
+      View User
+    </Link>
+  )
+}
+```
+
+---
+
+## createQueryFactory
+
+For dynamic arguments (like route params), use the factory variant:
+
+```typescript
+import { createQueryFactory } from "@ic-reactor/react"
+
+const getUserQuery = createQueryFactory(backend, {
+  functionName: "getUser",
+  staleTime: 5 * 60 * 1000,
+})
+
+// Create query instances with different args
+const aliceQuery = getUserQuery(["alice"])
+const bobQuery = getUserQuery(["bob"])
+
+// Use in components
+const { data: alice } = aliceQuery.useQuery()
+const { data: bob } = bobQuery.useQuery()
+```
+
+### Factory Caching
+
+Factory instances are cached internally:
+
+```typescript
+// These return the SAME object instance
+const query1 = getUserQuery(["alice"])
+const query2 = getUserQuery(["alice"])
+
+console.log(query1 === query2) // true
+```
+
+---
+
+## Notes
+
+<Aside type="tip">
+  Use `createQueryFactory` when args come from route params or user input. Use
+  `createQuery` when args are known at definition time.
+</Aside>
+
+<Aside type="note">
+  The `fetch()` method uses `ensureQueryData` internally, which returns cached
+  data if fresh, or fetches if stale. Perfect for loaders.
+</Aside>
+
+<Aside type="caution">
+  If you need Suspense-based loading (where `data` is never undefined), use
+  [createSuspenseQuery](/reference/factories/createsuspensequery) instead.
+</Aside>
+
+## See Also
+
+- [createSuspenseQuery](/reference/factories/createsuspensequery) — Suspense version
+- [createInfiniteQuery](/reference/factories/createinfinitequery) — Paginated queries
+- [useActorQuery](/reference/createactorhooks/useactorquery) — Direct hook usage
+- [Queries Guide](/guides/queries) — Query patterns

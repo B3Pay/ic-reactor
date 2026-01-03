@@ -1,0 +1,430 @@
+---
+title: createInfiniteQuery
+description: Create reusable paginated/infinite scroll query objects
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+`createInfiniteQuery` creates a reusable infinite query object for paginated data. Perfect for infinite scroll, "load more" buttons, and cursor-based pagination.
+
+## Import
+
+```typescript
+import {
+  createInfiniteQuery,
+  createInfiniteQueryFactory,
+} from "@ic-reactor/react"
+```
+
+## Basic Usage
+
+```typescript
+import { createInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const postsQuery = createInfiniteQuery(backend, {
+  functionName: "getPosts",
+  initialPageParam: 0,
+  getArgs: (offset) => [{ offset, limit: 20 }] as const, // Type inference
+  getNextPageParam: (lastPage, allPages) =>
+    lastPage.posts.length < 20 ? undefined : allPages.length * 20,
+})
+```
+
+## Configuration
+
+| Option                 | Type                  | Description                                  |
+| ---------------------- | --------------------- | -------------------------------------------- |
+| `functionName`         | `string`              | The canister method to call (Required)       |
+| `initialPageParam`     | `TPageParam`          | Initial cursor/offset value (Required)       |
+| `getArgs`              | `(pageParam) => Args` | Convert page param to method args (Required) |
+| `getNextPageParam`     | `function`            | Determine next page param (Required)         |
+| `getPreviousPageParam` | `function`            | For bi-directional scrolling                 |
+| `maxPages`             | `number`              | Max pages to keep in cache                   |
+| `staleTime`            | `number`              | Time before data is stale (ms)               |
+| `select`               | `function`            | Transform the InfiniteData result            |
+| `callConfig`           | `CallConfig`          | IC call configuration                        |
+
+### Pagination Functions
+
+```typescript
+// getNextPageParam signature
+getNextPageParam: (
+  lastPage: PageData, // Last fetched page
+  allPages: PageData[], // All pages so far
+  lastPageParam: Param, // Page param used for last fetch
+  allPageParams: Param[] // All page params used
+) => Param | undefined | null
+
+// getPreviousPageParam signature (for bi-directional)
+getPreviousPageParam: (
+  firstPage: PageData,
+  allPages: PageData[],
+  firstPageParam: Param,
+  allPageParams: Param[]
+) => Param | undefined | null
+```
+
+## Return Value
+
+| Property           | Type                                   | Description                      |
+| ------------------ | -------------------------------------- | -------------------------------- |
+| `fetch`            | `() => Promise<T>`                     | Fetch first page (for loaders)   |
+| `useInfiniteQuery` | `(options?) => UseInfiniteQueryResult` | React hook                       |
+| `refetch`          | `() => Promise<void>`                  | Invalidate and refetch all pages |
+| `getQueryKey`      | `() => QueryKey`                       | Get the query key                |
+| `getCacheData`     | `(select?) => T`                       | Read from cache                  |
+
+---
+
+## Examples
+
+### TanStack Router with Virtual Scrolling
+
+Combine with TanStack Virtual for performant infinite scroll:
+
+```typescript
+// routes/posts.tsx
+import { createFileRoute } from "@tanstack/react-router"
+import { useVirtualizer } from "@tanstack/react-virtual"
+import { createInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "../reactor"
+import { useRef, useCallback } from "react"
+
+const postsQuery = createInfiniteQuery(backend, {
+  functionName: "getPosts",
+  initialPageParam: 0,
+  getArgs: (offset) => [{ offset, limit: 20 }] as const,
+  getNextPageParam: (lastPage, allPages) =>
+    lastPage.hasMore ? allPages.length * 20 : undefined,
+})
+
+export const Route = createFileRoute("/posts")({
+  // Prefetch first page
+  loader: async () => {
+    await postsQuery.fetch()
+  },
+  component: PostsPage,
+})
+
+function PostsPage() {
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = postsQuery.useInfiniteQuery()
+
+  // Flatten all pages
+  const allPosts = data?.pages.flatMap((page) => page.posts) ?? []
+
+  const virtualizer = useVirtualizer({
+    count: hasNextPage ? allPosts.length + 1 : allPosts.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 100,
+    overscan: 5,
+  })
+
+  const items = virtualizer.getVirtualItems()
+
+  // Load more when reaching end
+  const lastItem = items[items.length - 1]
+  useEffect(() => {
+    if (
+      lastItem?.index >= allPosts.length - 1 &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
+      fetchNextPage()
+    }
+  }, [lastItem?.index, hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  return (
+    <div ref={parentRef} style={{ height: "100vh", overflow: "auto" }}>
+      <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+        {items.map((virtualRow) => (
+          <div
+            key={virtualRow.key}
+            style={{
+              position: "absolute",
+              top: virtualRow.start,
+              width: "100%",
+            }}
+          >
+            {virtualRow.index < allPosts.length ? (
+              <PostCard post={allPosts[virtualRow.index]} />
+            ) : (
+              <LoadingSpinner />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+```
+
+### Cursor-Based Pagination
+
+Use cursors instead of offsets:
+
+```typescript
+interface PostsResponse {
+  posts: Post[]
+  nextCursor: string | null
+}
+
+const postsQuery = createInfiniteQuery(backend, {
+  functionName: "getPosts",
+  initialPageParam: null as string | null,
+  getArgs: (cursor) => [{ cursor, limit: 20 }] as const,
+  getNextPageParam: (lastPage: PostsResponse) => lastPage.nextCursor,
+})
+```
+
+### Bi-directional Scrolling
+
+Load pages in both directions (like a chat):
+
+```typescript
+const messagesQuery = createInfiniteQuery(backend, {
+  functionName: "getMessages",
+  initialPageParam: { timestamp: Date.now() },
+
+  getArgs: (param) => [{
+    before: param.timestamp,
+    limit: 50
+  }] as const,
+
+  // Load newer messages
+  getNextPageParam: (lastPage) =>
+    lastPage.hasNewer
+      ? { timestamp: lastPage.newestTimestamp }
+      : undefined,
+
+  // Load older messages
+  getPreviousPageParam: (firstPage) =>
+    firstPage.hasOlder
+      ? { timestamp: firstPage.oldestTimestamp }
+      : undefined,
+})
+
+function ChatMessages() {
+  const {
+    data,
+    fetchNextPage,
+    fetchPreviousPage,
+    hasPreviousPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchingPreviousPage,
+  } = messagesQuery.useInfiniteQuery()
+
+  return (
+    <div className="chat">
+      {hasPreviousPage && (
+        <button
+          onClick={() => fetchPreviousPage()}
+          disabled={isFetchingPreviousPage}
+        >
+          Load older messages
+        </button>
+      )}
+
+      {data?.pages.flatMap((page) => page.messages).map((msg) => (
+        <Message key={msg.id} message={msg} />
+      ))}
+
+      {hasNextPage && (
+        <button
+          onClick={() => fetchNextPage()}
+          disabled={isFetchingNextPage}
+        >
+          Load newer messages
+        </button>
+      )}
+    </div>
+  )
+}
+```
+
+### "Load More" Button Pattern
+
+Simple load more without infinite scroll:
+
+```typescript
+function ProductList() {
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = productsQuery.useInfiniteQuery()
+
+  const products = data?.pages.flatMap((page) => page.items) ?? []
+
+  return (
+    <div>
+      <div className="product-grid">
+        {products.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+
+      {hasNextPage && (
+        <button
+          onClick={() => fetchNextPage()}
+          disabled={isFetchingNextPage}
+          className="load-more"
+        >
+          {isFetchingNextPage ? (
+            <><Spinner /> Loading...</>
+          ) : (
+            `Load More (${products.length} items)`
+          )}
+        </button>
+      )}
+
+      {!hasNextPage && products.length > 0 && (
+        <p className="end-message">You've reached the end!</p>
+      )}
+    </div>
+  )
+}
+```
+
+### With Select Transformation
+
+Flatten pages automatically:
+
+```typescript
+const postsQuery = createInfiniteQuery(backend, {
+  functionName: "getPosts",
+  initialPageParam: 0,
+  getArgs: (offset) => [{ offset, limit: 20 }] as const,
+  getNextPageParam: (lastPage) => lastPage.nextOffset,
+
+  // Flatten in the factory
+  select: (data) => ({
+    posts: data.pages.flatMap((page) => page.posts),
+    pageCount: data.pages.length,
+  }),
+})
+
+function PostList() {
+  // data is already flattened
+  const { data } = postsQuery.useInfiniteQuery()
+
+  return (
+    <div>
+      <span>{data.pageCount} pages loaded</span>
+      {data.posts.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+    </div>
+  )
+}
+```
+
+### Intersection Observer for Auto-Load
+
+Use IntersectionObserver for automatic loading:
+
+```typescript
+function InfiniteList() {
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = postsQuery.useInfiniteQuery()
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  return (
+    <div>
+      {data?.pages.flatMap((page) => page.items).map((item) => (
+        <ItemCard key={item.id} item={item} />
+      ))}
+
+      <div ref={loadMoreRef} style={{ height: 20 }}>
+        {isFetchingNextPage && <Spinner />}
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## createInfiniteQueryFactory
+
+For dynamic `getArgs` functions:
+
+```typescript
+const getPostsQuery = createInfiniteQueryFactory(backend, {
+  functionName: "getPosts",
+  initialPageParam: 0,
+  getNextPageParam: (lastPage) => lastPage.nextOffset,
+})
+
+// Create with specific args builder
+const userPostsQuery = getPostsQuery((offset) => [
+  {
+    userId,
+    offset,
+    limit: 20,
+  },
+])
+
+function UserPosts({ userId }: { userId: string }) {
+  const { data } = userPostsQuery.useInfiniteQuery()
+  // ...
+}
+```
+
+---
+
+## Notes
+
+<Aside type="tip">
+  Return `undefined` or `null` from `getNextPageParam` to indicate there are no
+  more pages. This sets `hasNextPage` to `false`.
+</Aside>
+
+<Aside type="note">
+  Use `select` to flatten pages at the factory level. This avoids repetitive
+  `.pages.flatMap()` in components.
+</Aside>
+
+<Aside type="caution">
+  For Suspense-based infinite queries, use
+  [createSuspenseInfiniteQuery](/reference/factories/createsuspenseinfinitequery)
+  instead.
+</Aside>
+
+## See Also
+
+- [createSuspenseInfiniteQuery](/reference/factories/createsuspenseinfinitequery) — Suspense version
+- [useActorInfiniteQuery](/reference/useactorinfinitequery) — Direct hook usage
+- [createQuery](/reference/factories/createquery) — Non-paginated queries

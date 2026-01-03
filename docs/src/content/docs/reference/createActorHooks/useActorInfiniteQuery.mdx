@@ -1,0 +1,295 @@
+---
+title: useActorInfiniteQuery
+description: Hook for paginated canister queries
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useActorInfiniteQuery` is a React hook for fetching paginated data from Internet Computer canisters. It wraps TanStack Query's `useInfiniteQuery` with canister-specific functionality.
+
+## Import
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+
+const { useActorInfiniteQuery } = createActorHooks(backend)
+```
+
+<Aside type="tip">
+  It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
+
+```typescript
+const { useActorInfiniteQuery: useBackendInfiniteQuery } =
+  createActorHooks(backend)
+```
+
+</Aside>
+
+## Usage
+
+```tsx
+function ItemList() {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useActorInfiniteQuery({
+      functionName: "getItems",
+      getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }] as const,
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
+    })
+
+  return (
+    <div>
+      {data?.pages.map((page, i) => (
+        <div key={i}>
+          {page.items.map((item) => (
+            <Item key={item.id} data={item} />
+          ))}
+        </div>
+      ))}
+
+      <button
+        onClick={() => fetchNextPage()}
+        disabled={!hasNextPage || isFetchingNextPage}
+      >
+        {isFetchingNextPage
+          ? "Loading more..."
+          : hasNextPage
+            ? "Load More"
+            : "No more items"}
+      </button>
+    </div>
+  )
+}
+```
+
+## Options
+
+### Required Options
+
+| Option             | Type                  | Description                              |
+| ------------------ | --------------------- | ---------------------------------------- |
+| `functionName`     | `string`              | The canister method to call              |
+| `getArgs`          | `(pageParam) => Args` | Function that returns args for each page |
+| `initialPageParam` | `TPageParam`          | Initial page parameter                   |
+| `getNextPageParam` | `function`            | Returns next page param or undefined     |
+
+### Optional Options
+
+| Option                 | Type       | Default  | Description                                    |
+| ---------------------- | ---------- | -------- | ---------------------------------------------- |
+| `getPreviousPageParam` | `function` | -        | Returns previous page param for bi-directional |
+| `maxPages`             | `number`   | -        | Maximum number of pages to keep in cache       |
+| `enabled`              | `boolean`  | `true`   | Whether the query should run                   |
+| `staleTime`            | `number`   | `0`      | Time in ms before data is stale                |
+| `gcTime`               | `number`   | `300000` | Time before unused data is GC'd                |
+| `refetchOnWindowFocus` | `boolean`  | `true`   | Refetch on window focus                        |
+| `select`               | `function` | -        | Transform the data                             |
+| `queryKey`             | `array`    | -        | Additional query key segments                  |
+
+### Callback Signatures
+
+```typescript
+getArgs: (pageParam: TPageParam) => Args
+
+getNextPageParam: (
+  lastPage: TData,
+  allPages: TData[],
+  lastPageParam: TPageParam,
+  allPageParams: TPageParam[]
+) => TPageParam | undefined | null
+
+getPreviousPageParam: (
+  firstPage: TData,
+  allPages: TData[],
+  firstPageParam: TPageParam,
+  allPageParams: TPageParam[]
+) => TPageParam | undefined | null
+```
+
+## Return Value
+
+| Property                 | Type                                | Description                                 |
+| ------------------------ | ----------------------------------- | ------------------------------------------- |
+| `data`                   | `InfiniteData<TData>`               | Object with `pages` and `pageParams` arrays |
+| `data.pages`             | `TData[]`                           | Array of all fetched pages                  |
+| `data.pageParams`        | `TPageParam[]`                      | Array of page parameters used               |
+| `error`                  | `Error \| null`                     | Error if query failed                       |
+| `status`                 | `'pending' \| 'error' \| 'success'` | Query status                                |
+| `isPending`              | `boolean`                           | True if no data yet                         |
+| `isFetching`             | `boolean`                           | True if any fetch in progress               |
+| `isFetchingNextPage`     | `boolean`                           | True if fetching next page                  |
+| `isFetchingPreviousPage` | `boolean`                           | True if fetching previous page              |
+| `isRefetching`           | `boolean`                           | True if refetching all pages                |
+| `hasNextPage`            | `boolean`                           | True if more pages available                |
+| `hasPreviousPage`        | `boolean`                           | True if previous pages available            |
+| `fetchNextPage`          | `function`                          | Fetch the next page                         |
+| `fetchPreviousPage`      | `function`                          | Fetch the previous page                     |
+| `refetch`                | `function`                          | Refetch all pages                           |
+
+## Examples
+
+### Offset-Based Pagination
+
+```tsx
+const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
+  functionName: "getItems",
+  getArgs: (offset) => [{ offset, limit: 20 }],
+  initialPageParam: 0,
+  getNextPageParam: (lastPage, allPages) => {
+    // If we got fewer items than limit, no more pages
+    return lastPage.items.length < 20 ? undefined : allPages.length * 20 // Next offset
+  },
+})
+```
+
+### Cursor-Based Pagination
+
+```tsx
+const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
+  functionName: "getItems",
+  getArgs: (cursor) => [cursor ? { after: cursor } : {}],
+  initialPageParam: null as string | null,
+  getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+})
+```
+
+### Page Number Pagination
+
+```tsx
+const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
+  functionName: "getItemsByPage",
+  getArgs: (page) => [{ page, perPage: 10 }],
+  initialPageParam: 1,
+  getNextPageParam: (lastPage, allPages, lastPageParam) => {
+    return lastPage.hasMore ? lastPageParam + 1 : undefined
+  },
+})
+```
+
+### Bi-Directional Infinite List
+
+```tsx
+const { data, fetchNextPage, fetchPreviousPage, hasNextPage, hasPreviousPage } =
+  useActorInfiniteQuery({
+    functionName: "getTimeline",
+    getArgs: (timestamp) => [{ around: timestamp, limit: 20 }],
+    initialPageParam: Date.now(),
+    getNextPageParam: (lastPage) => lastPage.oldestTimestamp,
+    getPreviousPageParam: (firstPage) => firstPage.newestTimestamp,
+  })
+
+return (
+  <div>
+    <button onClick={() => fetchPreviousPage()} disabled={!hasPreviousPage}>
+      Load newer
+    </button>
+
+    {data?.pages.map((page, i) => (
+      <TimelineItems key={i} items={page.items} />
+    ))}
+
+    <button onClick={() => fetchNextPage()} disabled={!hasNextPage}>
+      Load older
+    </button>
+  </div>
+)
+```
+
+### Infinite Scroll
+
+```tsx
+import { useInView } from "react-intersection-observer"
+import { useEffect } from "react"
+
+function InfiniteList() {
+  const { ref, inView } = useInView()
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useActorInfiniteQuery({
+      functionName: "getItems",
+      getArgs: (offset) => [{ offset, limit: 20 }],
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) =>
+        lastPage.items.length < 20 ? undefined : allPages.length * 20,
+    })
+
+  // Auto-fetch when sentinel comes into view
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  return (
+    <div>
+      {data?.pages.map((page, i) => (
+        <div key={i}>
+          {page.items.map((item) => (
+            <ItemCard key={item.id} item={item} />
+          ))}
+        </div>
+      ))}
+
+      {/* Sentinel element */}
+      <div ref={ref}>{isFetchingNextPage && <LoadingSpinner />}</div>
+    </div>
+  )
+}
+```
+
+### With Select for Flattened Data
+
+```tsx
+const { data: items } = useActorInfiniteQuery({
+  functionName: "getItems",
+  getArgs: (offset) => [{ offset, limit: 20 }],
+  initialPageParam: 0,
+  getNextPageParam: (lastPage, allPages) =>
+    lastPage.items.length < 20 ? undefined : allPages.length * 20,
+  // Flatten all pages into a single array
+  select: (data) => ({
+    pages: data.pages.flatMap((page) => page.items),
+    pageParams: data.pageParams,
+  }),
+})
+
+// items.pages is now a flat array of all items
+```
+
+### Limiting Cached Pages
+
+```tsx
+const { data } = useActorInfiniteQuery({
+  functionName: "getItems",
+  getArgs: (offset) => [{ offset, limit: 20 }],
+  initialPageParam: 0,
+  getNextPageParam: (lastPage, allPages) =>
+    lastPage.items.length < 20 ? undefined : allPages.length * 20,
+  maxPages: 3, // Only keep last 3 pages in cache
+})
+```
+
+## Notes
+
+<Aside type="note">
+  The `data.pages` array contains all fetched pages in order. Each page is the
+  response from one canister call.
+</Aside>
+
+<Aside type="tip">
+  Return `undefined` or `null` from `getNextPageParam` to indicate there are no
+  more pages. This sets `hasNextPage` to `false`.
+</Aside>
+
+<Aside type="caution">
+  Be careful with bi-directional scrolling. Make sure your canister method can
+  handle both forward and backward pagination efficiently.
+</Aside>
+
+## See Also
+
+- [useActorSuspenseInfiniteQuery](/reference/createactorhooks/useactorsuspenseinfinitequery) — Suspense version
+- [useActorQuery](/reference/createactorhooks/useactorquery) — Regular queries
+- [Queries Guide](/guides/queries) — In-depth query patterns
+- [createActorHooks](/reference/createactorhooks/overview) — Creating hooks

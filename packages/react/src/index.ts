@@ -1,13 +1,21 @@
-// Note: Order of exports is important
-export * from "./createReactor"
+// Re-export core (following TanStack Query's pattern)
+// Users can import everything from @ic-reactor/react without needing @ic-reactor/core
+export * from "@ic-reactor/core"
 
-export * from "./context/actor"
-export * from "./context/adapter"
-export * from "./context/agent"
-
+// Re-export hooks
 export * from "./hooks"
 
-export * as helpers from "./helpers"
-export * as types from "./types"
-export * as core from "./core"
-export * as utils from "./utils"
+// Validation utilities for React
+export * from "./validation"
+
+// React-specific exports
+export * from "./createAuthHooks"
+export * from "./createActorHooks"
+
+export * from "./createQuery"
+export * from "./createSuspenseQuery"
+export * from "./createInfiniteQuery"
+export * from "./createSuspenseInfiniteQuery"
+export * from "./createMutation"
+
+export * from "./types"

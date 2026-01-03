@@ -1,33 +1,92 @@
-import { PropsWithChildren, createContext } from "react"
-import type { ICRC1 } from "./declarations/icrc1"
-import { extractActorContext } from "@ic-reactor/react/dist/helpers"
-import { ActorHooksReturnType } from "@ic-reactor/react/dist/types"
-import { useActor } from "@ic-reactor/react"
+/**
+ * ICRC1Provider - Custom Provider with Dynamic Canister ID
+ *
+ * This component demonstrates how to create a custom provider that supports
+ * dynamic canister IDs using the v3 API. It creates a Reactor instance and
+ * exposes the generated hooks via React Context.
+ */
+import {
+  PropsWithChildren,
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+} from "react"
+import { Reactor } from "@ic-reactor/core"
+import { IDL } from "@icp-sdk/core/candid"
+import { createActorHooks, ActorHooks } from "@ic-reactor/react"
+import { idlFactory, type ICRC1 } from "./declarations/icrc1"
+import { clientManager } from "./reactor"
 
-const ActorContext = createContext<ActorHooksReturnType<ICRC1> | null>(null)
+// ============================================================================
+// 1. Context Definition
+// ============================================================================
 
-export const {
-  useQueryCall: useICRC1QueryCall,
-  useUpdateCall: useICRC1UpdateCall,
-} = extractActorContext(ActorContext)
+type ICRC1Hooks = ActorHooks<ICRC1, "candid">
 
-interface ICRC1ActorProps extends PropsWithChildren {
+interface ICRC1ContextValue {
+  canisterId: string
+  hooks: ICRC1Hooks
+  error: string | null
+}
+
+const ICRC1Context = createContext<ICRC1ContextValue | null>(null)
+
+// ============================================================================
+// 2. Custom Hook to use the Provider
+// ============================================================================
+
+export const useICRC1Context = () => {
+  const context = useContext(ICRC1Context)
+  if (!context) {
+    throw new Error("useICRC1Context must be used within an ICRC1Provider")
+  }
+  return context
+}
+
+// ============================================================================
+// 4. Provider Component
+// ============================================================================
+
+interface ICRC1ProviderProps extends PropsWithChildren {
   canisterId: string
 }
 
-const ICRC1Provider: React.FC<ICRC1ActorProps> = ({ children, canisterId }) => {
-  const { hooks, isFetching, fetchError } = useActor<ICRC1>({
-    canisterId,
-    withDevtools: true,
-  })
+const ICRC1Provider: React.FC<ICRC1ProviderProps> = ({
+  children,
+  canisterId,
+}) => {
+  const [error, setError] = useState<string | null>(null)
+
+  // Create Reactor and hooks when canister ID changes
+  const hooks = useMemo<ICRC1Hooks>(() => {
+    try {
+      setError(null)
+      const reactor = new Reactor<ICRC1>({
+        clientManager,
+        canisterId,
+        idlFactory: idlFactory as IDL.InterfaceFactory,
+      })
+
+      const actorHooks = createActorHooks(reactor) as ICRC1Hooks
+      return actorHooks
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      throw e
+    }
+  }, [canisterId])
 
   return (
-    <ActorContext.Provider value={hooks}>
-      <h2>ICRC1({canisterId})</h2>
-      {isFetching && <p>Loading Candid interface...</p>}
-      {fetchError && <p>Error: {fetchError}</p>}
+    <ICRC1Context.Provider value={{ canisterId, hooks, error }}>
+      {error && (
+        <div className="card">
+          <div className="transfer-result error">
+            <strong>Error:</strong> {error}
+          </div>
+        </div>
+      )}
       {hooks && children}
-    </ActorContext.Provider>
+    </ICRC1Context.Provider>
   )
 }
 

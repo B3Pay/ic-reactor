@@ -1,18 +1,13 @@
-type ToDos = vec ToDo;
-type ToDo = 
+type Todo = 
  record {
    completed: bool;
    description: text;
    id: nat;
+   owner: principal;
  };
 service : {
-  addTodo: (text) -> (nat);
+  addTodo: (description: text) -> (nat);
   clearComplete: () -> ();
-  getAllTodos: () -> (opt ToDos) query;
-  showTodoAsTuple: () -> (vec record {
-                                nat;
-                                text;
-                                bool;
-                              });
-  toggleTodo: (nat) -> (bool);
+  getAllTodos: () -> (vec Todo) query;
+  toggleTodo: (id: nat) -> (bool);
 }

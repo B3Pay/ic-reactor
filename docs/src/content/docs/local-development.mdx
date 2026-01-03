@@ -1,0 +1,147 @@
+---
+title: Local Development
+description: Setting up your environment for local Internet Computer development
+editUrl: false
+---
+
+import { Aside, Steps, Tabs, TabItem } from "@astrojs/starlight/components"
+
+This guide explains how to configure IC Reactor for local development against a local Internet Computer (IC) replica.
+
+## Prerequisites
+
+- [DFX SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install/index.mdx) installed
+- A local dfx project running (`dfx start`)
+
+## Configuration
+
+The easiest way to switch between local and mainnet environments is using `ClientManager` with the `withProcessEnv` option.
+
+### 1. Setup ClientManager
+
+```typescript
+// src/reactor/index.ts
+import { ClientManager } from "@ic-reactor/react"
+
+export const clientManager = new ClientManager({
+  // Auto-detects network based on DFX_NETWORK env var
+  withProcessEnv: true,
+
+  // Optional: Explicitly define port if different from default (4943)
+  // port: 8000
+})
+```
+
+### 2. Configure Environment Variables
+
+For Vite, create or update your `.env` files:
+
+<Tabs>
+  <TabItem label=".env.local">
+    Use this for local development:
+    
+    ```bash
+    # .env.local
+    DFX_NETWORK=local
+    # Canister IDs from dfx canister id <name>
+    VITE_BACKEND_CANISTER_ID=bkyz2-fmaaa-aaaaa-qaaaq-cai
+    ```
+  </TabItem>
+  <TabItem label=".env.production">
+    Use this for production build:
+    
+    ```bash
+    # .env.production
+    DFX_NETWORK=ic
+    VITE_BACKEND_CANISTER_ID=<production-canister-id>
+    ```
+  </TabItem>
+</Tabs>
+
+## Fetching Root Key
+
+When communicating with the IC mainnet, the agent uses a hardcoded public key to verify responses. For a local replica, the agent needs to fetch a different root key during initialization.
+
+<Aside type="note">
+  **Important:** You must explicitly call `clientManager.initialize()` or use
+  `useAuth` to ensure the root key is fetched. IC Reactor will not do this
+  automatically to avoid security risks in production.
+</Aside>
+
+```tsx
+import { useEffect } from "react"
+import { clientManager, useAgentState } from "./reactor"
+
+function App() {
+  const { isInitialized } = useAgentState()
+
+  useEffect(() => {
+    clientManager.initialize()
+  }, [])
+
+  if (!isInitialized) {
+    return <div>Loading...</div>
+  }
+
+  return <YourApp />
+}
+```
+
+## Troubleshooting
+
+### "Fail to verify certificate"
+
+This error usually means the agent hasn't fetched the local root key.
+
+**Solution:** Ensure you are calling `clientManager.initialize()` at the root of your application.
+
+### "Can't connect to localhost:4943"
+
+Check if your local replica is running and on which port.
+
+1.  Run `dfx info webserver-port` to verify the port.
+2.  If it's not `4943`, update your `ClientManager` config:
+
+    ```typescript
+    export const clientManager = new ClientManager({
+      port: 8000, // or your specific port
+      withProcessEnv: true,
+    })
+    ```
+
+### Internet Identity on Localhost
+
+To use Internet Identity locally, you need to deploy a local instance of the II canister.
+
+1.  Pull the dependency in `dfx.json`:
+
+    ```json
+    {
+      "canisters": {
+        //...
+        "internet_identity": {
+          "type": "custom",
+          "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
+          "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
+          "specified_id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+        }
+      }
+    }
+    ```
+
+2.  Deploy it:
+
+    It is recommended to deploy it to the default canister ID:
+
+    ```bash
+    dfx deploy internet_identity --specified-id rdmx6-jaaaa-aaaaa-aaadq-cai
+    ```
+
+3.  Login using the local provider URL. `useAuth` handles this automatically if `withProcessEnv` is set correctly!
+
+    ```typescript
+    // Auto-detects based on network
+    // Local: http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943
+    // Mainnet: https://identity.ic0.app
+    const { login } = useAuth()
+    ```

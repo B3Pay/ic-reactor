@@ -1,121 +1,147 @@
-`@ic-reactor/react` is a comprehensive React library designed to streamline interactions with the Internet Computer (IC) blockchain. It provides React hooks and utilities for efficient state management, authentication, and interaction with IC actors.
+# @ic-reactor/react
+
+**The Ultimate React Hooks for the Internet Computer.**  
+Connect your React application to the Internet Computer Blockchain in seconds. using the power of [TanStack Query](https://tanstack.com/query).
 
 ## Features
 
-- **React Hooks Integration**: Custom hooks for managing blockchain actor states and authentication within React applications.
-- **Type-Safe Actor Interactions**: Type-safe interaction with IC actors using the provided actor declaration file.
-- **Efficient State Management**: Utilize the power of Zustand for global state management in React components.
-- **Asynchronous Data Handling**: Easy handling of asynchronous operations related to IC actors.
-- **Authentication Support**: Integrated hooks for managing authentication with the IC blockchain.
-- **Auto-Refresh and Query Capabilities**: Support for auto-refreshing data and querying IC actors.
+- ⚛️ **React Query Integration**: Full power of TanStack Query (Caching, Refetching, Suspense).
+- 🔄 ** Type-Safe**: Full TypeScript support with automatic type inference from your Candid files.
+- 🔐 **Authentication**: Easy-to-use authentication hooks with Internet Identity and other providers.
+- 🚀 **Performance**: Efficient caching and state management tailored for IC.
 
 ## Installation
 
-Install the package using npm:
-
 ```bash
-npm install @ic-reactor/react
+npm install @ic-reactor/react @ic-reactor/core @tanstack/react-query @icp-sdk/core @icp-sdk/auth
 ```
 
-or using yarn:
+## Quick Start
 
-```bash
-yarn add @ic-reactor/react
+### 1. Initialize the Actor
+
+Create your actor hooks using `createActorHooks`. This is the "One Stop Shop" for interacting with your canister.
+
+```typescript
+// src/hooks/actor.ts
+import { createActorHooks } from "@ic-reactor/react"
+import { canisterId, idlFactory } from "../declarations/my_canister"
+
+export const { useActorQuery, useActorMutation, useAuth, reactor } =
+  createActorHooks({
+    canisterId,
+    idlFactory,
+  })
 ```
 
-## Usage
+### 2. Authentication (Auto-Initializes Session)
 
-Here's a simple example to get you started:
+The `useAuth` hook automatically initializes the agent and restores any previous session on first use.
 
-First, create an actor declaration file:
+```tsx
+// src/App.tsx
+import { useAuth } from "./hooks/actor"
 
-```ts
-// actor.ts
-import { canisterId, idlFactory, actor } from "declaration/actor"
-import { createReactor } from "@ic-reactor/react"
+function App() {
+  // useAuth() auto-initializes - no separate setup needed!
+  const { isAuthenticated, login, logout } = useAuth()
 
-type Actor = typeof actor
-
-export const { useActorStore, useAuth, useQueryCall } = createReactor<Actor>({
-  canisterId,
-  idlFactory,
-  host: "https://localhost:4943",
-})
+  return (
+    <div>
+      {isAuthenticated ? (
+        <button onClick={logout}>Logout</button>
+      ) : (
+        <button onClick={login}>Login with II</button>
+      )}
+      <Dashboard />
+    </div>
+  )
+}
 ```
 
-Then, use the `useQueryCall` hook to call your canister method:
+### 3. Use in Components
 
-```jsx
-// Balance.tsx
-import { useQueryCall } from "./actor"
+Now you can use your hooks directly in your components!
 
-const Balance = ({ principal }) => {
-  const { call, data, loading, error } = useQueryCall({
-    functionName: "get_balance",
-    args: [principal],
-    refetchInterval: 1000,
-    refetchOnMount: true,
-    onLoading: () => console.log("Loading..."),
-    onSuccess: (data) => console.log("Success!", data),
-    onError: (error) => console.log("Error!", error),
+```tsx
+// src/Dashboard.tsx
+import { useActorQuery, useActorMutation } from "./hooks/actor"
+
+function Dashboard() {
+  // Query: Fetch data (auto-cached!)
+  const { data: balance } = useActorQuery({
+    functionName: "icrc1_balance_of",
+    args: [{ owner: Principal.fromText("...") }],
+  })
+
+  // Update: Execute state changes
+  const { mutate: transfer, isPending } = useActorMutation({
+    functionName: "icrc1_transfer",
+    onSuccess: () => {
+      console.log("Transfer successful!")
+    }
   })
 
   return (
     <div>
-      <button onClick={call} disabled={loading}>
-        {loading ? "Loading..." : "Refresh"}
+      <h1>Balance: {balance?.toString()}</h1>
+      <button onClick={() => transfer(...)} disabled={isPending}>
+        Transfer
       </button>
-      {loading && <p>Loading...</p>}
-      {data && <p>Balance: {data}</p>}
-      {error && <p>Error: {error}</p>}
     </div>
   )
 }
-
-export default Balance
 ```
 
-## Authentication
+### Form Friendly (CandidAdapter)
 
-`@ic-reactor/react` provides a custom hook for managing authentication with the IC blockchain. To use it, first create an authentication declaration file:
+If you want your hooks to automatically handle type transformations (e.g., converting `bigint` to `string` for simple form binding), set `autoCodecs: true`.
 
-```jsx
-// Login.tsx
-import { useAuth } from "./actor"
+```typescript
+export const { useActorQuery } = createActorHooks({
+  canisterId,
+  idlFactory,
+  autoCodecs: true, // Returns stringified values for bigint, principal, small blobs
+})
+```
 
-const Login = () => {
-  const {
-    login,
-    logout,
-    loginLoading,
-    loginError,
-    identity,
-    authenticating,
-    authenticated,
-  } = useAuth()
+### Authentication
+
+The `createActorHooks` function returns authentication hooks directly.
+
+```typescript
+import { useAuth } from "./hooks/actor"
+
+function LoginButton() {
+  const { login, logout, identity, isAuthenticated } = useAuth()
 
   return (
     <div>
-      <h2>Login:</h2>
-      <div>
-        {loginLoading && <div>Loading...</div>}
-        {loginError ? <div>{JSON.stringify(loginError)}</div> : null}
-        {identity && <div>{identity.getPrincipal().toText()}</div>}
-      </div>
-      {authenticated ? (
-        <div>
-          <button onClick={logout}>Logout</button>
-        </div>
+      {isAuthenticated ? (
+        <button onClick={logout}>Logout</button>
       ) : (
-        <div>
-          <button onClick={login} disabled={authenticating}>
-            Login
-          </button>
-        </div>
+        <button onClick={login}>Login</button>
       )}
     </div>
   )
 }
-
-export default Login
 ```
+
+### Dynamic Queries
+
+Need to create queries on the fly? Use `createQuery`.
+
+```typescript
+import { createQuery } from "@ic-reactor/react"
+
+const balanceQuery = createQuery(reactor, {
+  functionName: "icrc1_balance_of",
+  select: (balance) => balance.toString() + " ICP",
+})
+
+const { data } = balanceQuery.useQuery()
+```
+
+## License
+
+MIT

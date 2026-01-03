@@ -1,0 +1,235 @@
+---
+title: createActorHooks
+description: Create type-safe React hooks for your canister
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+`createActorHooks` is a factory function that creates a set of type-safe React hooks bound to a specific canister. It's the primary way to integrate IC Reactor with React.
+
+## Import
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+```
+
+## Usage
+
+### Basic Usage
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const {
+  useActorQuery,
+  useActorSuspenseQuery,
+  useActorInfiniteQuery,
+  useActorSuspenseInfiniteQuery,
+  useActorMutation,
+} = createActorHooks(backend)
+```
+
+<Aside type="tip">
+  It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
+
+```typescript
+const { useActorQuery: useBackendQuery } = createActorHooks(backend)
+```
+
+</Aside>
+
+### With Reactor Parameters
+
+Using a `Reactor` instance is the only supported way to create actor hooks:
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { clientManager } from "./reactor"
+import { Reactor } from "@ic-reactor/core"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+})
+
+const { useActorQuery, useActorMutation } = createActorHooks(backend)
+```
+
+### With DisplayReactor (Auto Transformations)
+
+To enable automatic display transformations (BigInt → string, Principal → text, etc.), use `DisplayReactor`:
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./reactor"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+const backend = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "...",
+})
+
+// Hooks will use display types (string instead of bigint, etc.)
+const { useActorQuery, useActorMutation } = createActorHooks(backend)
+```
+
+## Parameters
+
+```typescript
+createActorHooks(reactor: Reactor<A, T>)
+```
+
+| Parameter | Type            | Description                                      |
+| --------- | --------------- | ------------------------------------------------ |
+| `reactor` | `Reactor<A, T>` | A pre-created Reactor or DisplayReactor instance |
+
+## Return Value
+
+`createActorHooks` returns an object containing:
+
+| Property                                                                                     | Type | Description                          |
+| -------------------------------------------------------------------------------------------- | ---- | ------------------------------------ |
+| [`useActorQuery`](/reference/createactorhooks/useactorquery)                                 | Hook | Query hook for fetching data         |
+| [`useActorSuspenseQuery`](/reference/createactorhooks/useactorsuspensequery)                 | Hook | Suspense-enabled query hook          |
+| [`useActorMutation`](/reference/createactorhooks/useactormutation)                           | Hook | Mutation hook for updates            |
+| [`useActorInfiniteQuery`](/reference/createactorhooks/useactorinfinitequery)                 | Hook | Infinite query hook for pagination   |
+| [`useActorSuspenseInfiniteQuery`](/reference/createactorhooks/useactorsuspenseinfinitequery) | Hook | Suspense-enabled infinite query hook |
+
+## Examples
+
+### Complete Setup Example
+
+```typescript
+// src/reactor/index.ts
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+export const queryClient = new QueryClient()
+
+export const clientManager = new ClientManager({
+  queryClient,
+  withProcessEnv: true,
+})
+
+export const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+  name: "backend",
+})
+```
+
+```typescript
+// src/reactor/hooks.ts
+import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import { backend, clientManager } from "./index"
+
+// Create hooks for the backend canister
+export const {
+  useActorQuery,
+  useActorMutation,
+  useActorSuspenseQuery,
+  useActorInfiniteQuery,
+  useActorSuspenseInfiniteQuery,
+} = createActorHooks(backend)
+
+// Create auth hooks
+export const { useAuth, useUserPrincipal, useAgentState } =
+  createAuthHooks(clientManager)
+```
+
+### Multiple Canisters
+
+```typescript
+// src/reactor/hooks.ts
+import { createActorHooks } from "@ic-reactor/react"
+import { backend, ledger } from "./index"
+
+// Backend canister hooks
+export const backendHooks = createActorHooks(backend)
+
+// Ledger canister hooks
+export const ledgerHooks = createActorHooks(ledger)
+
+// Export individual hooks for convenience
+export const {
+  useActorQuery: useBackendQuery,
+  useActorMutation: useBackendMutation,
+} = backendHooks
+
+export const {
+  useActorQuery: useLedgerQuery,
+  useActorMutation: useLedgerMutation,
+} = ledgerHooks
+```
+
+### Inline Definition
+
+You can define everything in one place:
+
+```typescript
+// src/reactor/hooks.ts
+import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+const queryClient = new QueryClient()
+
+const clientManager = new ClientManager({
+  queryClient,
+  withProcessEnv: true,
+})
+
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+})
+
+// Returns hooks
+export const { useActorQuery, useActorMutation } = createActorHooks(backend)
+
+export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
+
+// Export for use elsewhere
+export { queryClient, clientManager, backend }
+```
+
+## Type Safety
+
+`createActorHooks` preserves full type safety:
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const { useActorQuery, useActorMutation } = createActorHooks(backend)
+
+// TypeScript knows all available methods
+const { data } = useActorQuery({
+  functionName: "getUser", // ✅ Autocomplete shows valid methods
+  args: ["user-123"], // ✅ Type-checked arguments
+})
+
+const { mutate } = useActorMutation({
+  functionName: "createUser", // ✅ Autocomplete
+})
+
+mutate([{ name: "Alice", email: "alice@example.com" }]) // ✅ Type-safe args
+```
+
+## See Also
+
+- [useActorQuery](/reference/createactorhooks/useactorquery) — Query hook reference
+- [useActorMutation](/reference/createactorhooks/useactormutation) — Mutation hook reference
+- [useActorSuspenseQuery](/reference/createactorhooks/useactorsuspensequery) — Suspense query reference
+- [useActorInfiniteQuery](/reference/createactorhooks/useactorinfinitequery) — Infinite query reference
+- [createAuthHooks](/reference/createauthhooks/overview) — Auth hooks factory

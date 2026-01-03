@@ -1,0 +1,121 @@
+---
+title: "TypeScript Demo"
+description: Pure TypeScript usage without React
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+Pure TypeScript example showing IC Reactor without React, for Node.js or other non-React environments.
+
+## Features Demonstrated
+
+- `Reactor` usage without React hooks
+- Direct `callMethod` for queries and mutations
+- `getQueryOptions()` for manual query execution
+- Works in Node.js, Deno, or any JavaScript runtime
+- Command-line interface example
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/typescript-demo?embed=1&theme=dark&file=src/main.ts"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3hr4d/ic-reactor-v3/tree/main/examples/typescript-demo"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/typescript-demo?embed=1&theme=dark&file=src/main.ts&view=editor"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor TypeScript Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Key Code
+
+### Basic Setup
+
+```typescript
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const queryClient = new QueryClient()
+const clientManager = new ClientManager({ queryClient })
+
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+```
+
+### Direct Method Calls
+
+```typescript
+// Query method
+const name = await backend.callMethod({
+  functionName: "icrc1_name",
+})
+console.log("Token name:", name)
+
+// Query with args
+const balance = await backend.callMethod({
+  functionName: "icrc1_balance_of",
+  args: [{ owner: principal, subaccount: [] }],
+})
+console.log("Balance:", balance)
+
+// Update method (mutation)
+const result = await backend.callMethod({
+  functionName: "icrc1_transfer",
+  args: [
+    {
+      to: { owner: recipientPrincipal, subaccount: [] },
+      amount: 100_000_000n, // 1 ICP in e8s
+      fee: [],
+      memo: [],
+      created_at_time: [],
+      from_subaccount: [],
+    },
+  ],
+})
+console.log("Transfer result:", result)
+```
+
+### Using QueryClient Directly
+
+```typescript
+// Get query options for manual execution
+const queryOptions = backend.getQueryOptions({
+  functionName: "icrc1_name",
+})
+
+// Execute with QueryClient
+const result = await queryClient.fetchQuery(queryOptions)
+
+// Or prefetch for later
+await queryClient.prefetchQuery(queryOptions)
+```
+
+<Aside type="tip">
+  The core package (`@ic-reactor/core`) works without React. Use it for: -
+  Node.js scripts and CLI tools - Server-side rendering - Non-React frameworks
+  (Svelte, Vue, etc.) - Testing and automation
+</Aside>
+
+## Installation for Non-React
+
+```bash
+pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+```

@@ -1,5 +1,6 @@
-import logo from './logo.svg'
-import './App.css'
+import { Link } from "@tanstack/react-router"
+import logo from "./logo.svg"
+import "./App.css"
 
 function App() {
   return (
@@ -11,20 +12,15 @@ function App() {
         </p>
         <a
           className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-        <a
-          className="App-link"
           href="https://tanstack.com"
           target="_blank"
           rel="noopener noreferrer"
         >
           Learn TanStack
         </a>
+        <Link to="/wallet" className="App-link">
+          IC Reactor Wallet Demo
+        </Link>
       </header>
     </div>
   )

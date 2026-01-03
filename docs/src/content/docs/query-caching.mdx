@@ -1,0 +1,465 @@
+---
+title: Query Caching
+description: Master TanStack Query integration with IC Reactor
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+IC Reactor uses [TanStack Query](https://tanstack.com/query) under the hood for intelligent caching and data synchronization. This guide covers everything you need to know about how caching works.
+
+## How It Works
+
+When you call `useActorQuery`, IC Reactor:
+
+1. **Generates a unique cache key** based on the canister ID, function name, and arguments
+2. **Returns cached data immediately** if available
+3. **Fetches fresh data in the background** if data is stale
+4. **Automatically updates the UI** when new data arrives
+
+This pattern is often called "stale-while-revalidate" and provides the best user experience by showing data immediately while keeping it fresh.
+
+## Cache Keys
+
+Cache keys are automatically generated from your query parameters:
+
+```typescript
+// Query key: ['rrkah-fqaaa...', 'getUser', 'user-123']
+const { data } = useActorQuery({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+
+// Query key: ['rrkah-fqaaa...', 'getUser', 'user-456']
+const { data } = useActorQuery({
+  functionName: "getUser",
+  args: ["user-456"],
+})
+```
+
+Each unique combination of canister ID, function name, and arguments creates a separate cache entry.
+
+### Custom Query Keys
+
+You can add custom keys for more granular cache control:
+
+```typescript
+const { data } = useActorQuery({
+  functionName: "getData",
+  args: [],
+  queryKey: ["version", "2"], // Appended to auto-generated key
+})
+```
+
+### Accessing Query Keys
+
+Use `generateQueryKey` to get the cache key for any query:
+
+```typescript
+import { backend } from "./reactor"
+
+const queryKey = backend.generateQueryKey({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+// ['rrkah-fqaaa...', 'getUser', 'user-123']
+```
+
+## Stale Time
+
+`staleTime` determines **how long data is considered fresh**. Fresh data is never refetched:
+
+```typescript
+// Data is fresh for 5 minutes
+const { data } = useActorQuery({
+  functionName: "getConfig",
+  args: [],
+  staleTime: 1000 * 60 * 5, // 5 minutes
+})
+
+// Data is never stale (static data that never changes)
+const { data } = useActorQuery({
+  functionName: "getMetadata",
+  args: [],
+  staleTime: Infinity,
+})
+
+// Data is immediately stale (default behavior)
+const { data } = useActorQuery({
+  functionName: "getPrice",
+  args: [],
+  staleTime: 0, // Refetch on every mount
+})
+```
+
+<Aside type="tip">
+  Set a longer `staleTime` for data that doesn't change often (like
+  configuration or metadata) to reduce unnecessary network requests.
+</Aside>
+
+## Garbage Collection Time
+
+`gcTime` determines **how long unused data stays in cache** before being garbage collected:
+
+```typescript
+// Keep unused data for 10 minutes (default is 5 minutes)
+const { data } = useActorQuery({
+  functionName: "getUser",
+  args: [userId],
+  gcTime: 1000 * 60 * 10,
+})
+
+// Keep data forever
+const { data } = useActorQuery({
+  functionName: "getConfig",
+  args: [],
+  gcTime: Infinity,
+})
+```
+
+The difference between `staleTime` and `gcTime`:
+
+- **Stale data** can be served immediately while fetching fresh data
+- **Garbage collected data** is removed entirely and must be fetched again
+
+## Automatic Refetching
+
+### Refetch Interval
+
+Automatically refetch data at a set interval:
+
+```typescript
+// Refetch every 10 seconds
+const { data } = useActorQuery({
+  functionName: "getPrice",
+  args: [],
+  refetchInterval: 1000 * 10,
+})
+
+// Only refetch when window is focused
+const { data } = useActorQuery({
+  functionName: "getPrice",
+  args: [],
+  refetchInterval: 1000 * 10,
+  refetchIntervalInBackground: false,
+})
+```
+
+### Refetch Triggers
+
+```typescript
+const { data } = useActorQuery({
+  functionName: "getNotifications",
+  args: [],
+  // Refetch when window regains focus (default: true)
+  refetchOnWindowFocus: true,
+  // Refetch when component mounts (default: true)
+  refetchOnMount: true,
+  // Refetch when reconnecting to network (default: true)
+  refetchOnReconnect: true,
+})
+```
+
+## Manual Invalidation
+
+### Using QueryClient
+
+Invalidate queries directly with the QueryClient:
+
+```typescript
+import { useQueryClient } from "@tanstack/react-query"
+import { backend } from "./reactor"
+
+function RefreshButton() {
+  const queryClient = useQueryClient()
+
+  const handleRefresh = () => {
+    // Invalidate a specific query
+    queryClient.invalidateQueries({
+      queryKey: backend.generateQueryKey({
+        functionName: "getUser",
+        args: ["user-123"],
+      }),
+    })
+  }
+
+  return <button onClick={handleRefresh}>Refresh</button>
+}
+```
+
+### Invalidate All Canister Queries
+
+```typescript
+// Invalidate ALL queries for this canister
+backend.invalidateQueries()
+```
+
+### Invalidate by Function Name
+
+```typescript
+// Invalidate all getUser queries (any args)
+backend.invalidateQueries({ functionName: "getUser" })
+```
+
+### Invalidate Specific Query
+
+```typescript
+// Invalidate getUser query for specific user
+backend.invalidateQueries({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+```
+
+### Invalidate by Custom Query Key
+
+```typescript
+// Invalidate query with custom key
+backend.invalidateQueries({
+  functionName: "getData",
+  queryKey: ["version", "2"],
+})
+```
+
+## Refetch After Mutation
+
+### Using refetchQueries
+
+The simplest way to refetch related data after a mutation:
+
+```typescript
+import { backend } from "./reactor"
+
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  refetchQueries: [
+    backend.generateQueryKey({ functionName: "getPosts" }),
+    backend.generateQueryKey({ functionName: "getPostCount" }),
+  ],
+})
+```
+
+### Using onSuccess
+
+For more control, use `onSuccess`:
+
+```typescript
+import { useQueryClient } from "@tanstack/react-query"
+import { backend } from "./reactor"
+
+function CreatePost() {
+  const queryClient = useQueryClient()
+
+  const { mutate } = useActorMutation({
+    functionName: "createPost",
+    onSuccess: (newPost) => {
+      // Invalidate posts list
+      queryClient.invalidateQueries({
+        queryKey: backend.generateQueryKey({ functionName: "getPosts" }),
+      })
+
+      // Or directly update the cache
+      queryClient.setQueryData(
+        backend.generateQueryKey({ functionName: "getPosts" }),
+        (old: Post[]) => [...old, newPost]
+      )
+    },
+  })
+}
+```
+
+## Optimistic Updates
+
+Update the UI immediately, then sync with the server:
+
+```typescript
+import { useQueryClient } from "@tanstack/react-query"
+import { backend } from "./reactor"
+
+function LikeButton({ postId }: { postId: string }) {
+  const queryClient = useQueryClient()
+  const queryKey = backend.generateQueryKey({
+    functionName: "getPost",
+    args: [postId],
+  })
+
+  const { mutate } = useActorMutation({
+    functionName: "likePost",
+    onMutate: async () => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey })
+
+      // Snapshot the previous value
+      const previous = queryClient.getQueryData(queryKey)
+
+      // Optimistically update
+      queryClient.setQueryData(queryKey, (old: Post) => ({
+        ...old,
+        likes: old.likes + 1,
+      }))
+
+      // Return context with previous value
+      return { previous }
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous)
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
+
+  return <button onClick={() => mutate([postId])}>Like</button>
+}
+```
+
+## QueryClient Configuration
+
+Set global defaults for all queries:
+
+```typescript
+import { QueryClient } from "@tanstack/query-core"
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60, // 1 minute default
+      gcTime: 1000 * 60 * 5, // 5 minutes
+      retry: 2, // Retry failed queries twice
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      refetchOnWindowFocus: true,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+})
+```
+
+### Smart Retry Logic
+
+Don't retry business logic errors:
+
+```typescript
+import { CanisterError } from "@ic-reactor/core"
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Don't retry canister business logic errors
+        if (error instanceof CanisterError) {
+          return false
+        }
+        // Retry network errors up to 3 times
+        return failureCount < 3
+      },
+    },
+  },
+})
+```
+
+## Prefetching
+
+Prefetch data before it's needed:
+
+```typescript
+import { backend } from "./reactor"
+
+// In a route loader
+async function postsLoader() {
+  await backend.queryClient.prefetchQuery(
+    backend.getQueryOptions({
+      functionName: "getPosts",
+      args: [],
+    })
+  )
+  return null
+}
+
+// Or on hover
+function PostLink({ postId }: { postId: string }) {
+  const handleMouseEnter = () => {
+    backend.queryClient.prefetchQuery(
+      backend.getQueryOptions({
+        functionName: "getPost",
+        args: [postId],
+      })
+    )
+  }
+
+  return (
+    <Link to={`/posts/${postId}`} onMouseEnter={handleMouseEnter}>
+      View Post
+    </Link>
+  )
+}
+```
+
+## Initial Data
+
+Provide initial data while fresh data loads:
+
+```typescript
+const { data } = useActorQuery({
+  functionName: "getSettings",
+  args: [],
+  initialData: {
+    theme: "light",
+    notifications: true,
+  },
+  // Don't count initial data as fresh
+  initialDataUpdatedAt: 0,
+})
+```
+
+## Placeholder Data
+
+Show placeholder data that doesn't get cached:
+
+```typescript
+const { data } = useActorQuery({
+  functionName: "getPost",
+  args: [postId],
+  placeholderData: {
+    id: postId,
+    title: "Loading...",
+    content: "",
+  },
+})
+```
+
+## Debug Caching
+
+Enable React Query DevTools to inspect the cache:
+
+```tsx
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <YourApp />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  )
+}
+```
+
+The DevTools show:
+
+- All cached queries
+- Their status (fresh, stale, fetching)
+- Cache keys
+- Last updated time
+- Ability to manually trigger refetches
+
+## Further Reading
+
+- [TanStack Query Documentation](https://tanstack.com/query/latest) — Complete TanStack Query docs
+- [Queries](/guides/queries) — IC Reactor query patterns
+- [Mutations](/guides/mutations) — IC Reactor mutation patterns

@@ -1,0 +1,71 @@
+---
+title: "Multiple Canisters"
+description: Interacting with multiple actors in a single application
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+Real-world dApps often need to talk to multiple services: a Ledger, a Governance canister, and perhaps a custom backend. This example shows how to manage multiple actors efficiently sharing the same authentication state.
+
+## Features Demonstrated
+
+- **Shared ClientManager**: One login session for all canisters.
+- **Multiple Reactors**: Instantiating separate reactors for different IDLs (ICP Ledger vs Custom Token).
+- **Organization**: Structuring code to keep canister logic separate.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/multiple-canister?embed=1&theme=dark&file=src/reactor.ts"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3hr4d/ic-reactor-v3/tree/main/examples/multiple-canister"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/multiple-canister?embed=1&theme=dark&file=src/reactor.ts&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor Multiple Canisters"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Best Practice: Centralized Reactor Definition
+
+Defining all your actors in one place makes it easy to manage imports throughout your app.
+
+```typescript
+// src/reactor.ts
+import { ClientManager, DisplayReactor } from "@ic-reactor/react"
+import { idlFactory as icpIdl } from "./declarations/icp"
+import { idlFactory as customIdl } from "./declarations/custom"
+
+// 1. Shared Client Manager (handles Auth)
+const clientManager = new ClientManager()
+
+// 2. Define Reactors
+export const icpReactor = new DisplayReactor({
+  clientManager,
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  idlFactory: icpIdl,
+})
+
+export const customReactor = new DisplayReactor({
+  clientManager,
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  idlFactory: customIdl,
+})
+
+// 3. Export Hooks
+export const { useActorQuery: useIcpQuery } = createActorHooks(icpReactor)
+export const { useActorQuery: useCustomQuery } = createActorHooks(customReactor)
+```

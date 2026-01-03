@@ -1,0 +1,25 @@
+type Log = record {
+  timestamp : int;
+  caller : principal;
+  action : text;
+  details : text;
+};
+
+type Post = record {
+  id : nat;
+  content : text;
+  caller : principal;
+  timestamp : int;
+};
+
+service : {
+  get_likes : () -> (vec principal) query;
+  get_logs : () -> (vec Log) query;
+  get_posts : (nat, nat) -> (vec Post) query;
+  get_posts_count : () -> (nat) query;
+  batch_create_posts : (vec text) -> (vec nat);
+  create_post : (text) -> (nat);
+  like : () -> (variant { Ok; Err : text });
+  unlike : () -> (variant { Ok; Err : text });
+  toggle_chaos_mode : () -> (bool);
+}

@@ -1,0 +1,62 @@
+---
+title: useReactorInfiniteQuery
+description: Infinite query hook for reactor instance
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useReactorInfiniteQuery` is a React hook for paginated data fetching using a `Reactor` instance.
+
+## Import
+
+```typescript
+import { useReactorInfiniteQuery } from "@ic-reactor/react"
+```
+
+## Usage
+
+```tsx
+import { useReactorInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function Feed() {
+  const { data, fetchNextPage, hasNextPage } = useReactorInfiniteQuery({
+    reactor: backend, // 👈 Required
+    functionName: "getPosts",
+    args: [],
+    getNextPageParam: (lastPage, allPages) => lastPage.nextCursor,
+  })
+
+  return (
+    <div>
+      {data?.pages.map((page) => (
+        // Render posts
+        <div key={page.id}>{/*...*/}</div>
+      ))}
+      <button onClick={() => fetchNextPage()} disabled={!hasNextPage}>
+        Load More
+      </button>
+    </div>
+  )
+}
+```
+
+## Options
+
+### Required Options
+
+| Option             | Type            | Description                                              |
+| ------------------ | --------------- | -------------------------------------------------------- |
+| `reactor`          | `Reactor<A, T>` | The Reactor instance to use                              |
+| `functionName`     | `string`        | The canister method to call                              |
+| `getNextPageParam` | `function`      | Function to determine the next page param (cursor/index) |
+
+### Optional Options
+
+Same as [useActorInfiniteQuery](/reference/createactorhooks/useactorinfinitequery).
+
+## See Also
+
+- [useActorInfiniteQuery](/reference/createactorhooks/useactorinfinitequery) — Bound version
+- [Reactor Overview](/reference/hooks/reactorhooks/overview)
