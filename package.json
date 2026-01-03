@@ -36,7 +36,7 @@
   "devDependencies": {
     "@types/node": "^25.0.3",
     "husky": "^8.0.3",
-    "lint-staged": "^14.0.1",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3"
   }
