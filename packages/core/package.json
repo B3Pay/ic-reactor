@@ -67,7 +67,7 @@
   "devDependencies": {
     "@icp-sdk/auth": "^5.0.0",
     "@icp-sdk/core": "^5.0.0",
-    "@size-limit/preset-small-lib": "^11.1.6",
+    "@size-limit/preset-small-lib": "^12.0.0",
     "@tanstack/query-core": "^5.90",
     "@tanstack/react-query": "^5.90",
     "@types/node": "^24.10.1",
