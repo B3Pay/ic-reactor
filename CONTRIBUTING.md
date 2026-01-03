@@ -49,15 +49,15 @@ pnpm prepare
 
 ## Publishing (trusted publishing / tokens)
 
-We recommend using npm's **Trusted Publishing (OIDC)** for CI-based publishes rather than long-lived write tokens. Trusted publishing uses short-lived, workflow-scoped credentials and is more secure.
+This repository enforces **OIDC Trusted Publishing** for releases (no long-lived publish tokens for the publish step). Trusted publishing is more secure and produces provenance attestations when used from GitHub Actions.
 
 - To enable: go to your package on npmjs.com → Settings → Trusted publishers and add this repository's workflow filename (e.g., `release.yml`).
-- Make sure the `release.yml` workflow has `permissions: id-token: write` (it does in this repo).
-- After enabling and validating trusted publishing, you can remove long-lived publish tokens.
+- Ensure the `release.yml` workflow has `permissions: id-token: write` (already configured).
+- After enabling and validating Trusted Publishing, do not add a write `NPM_TOKEN` secret — publishing will use the OIDC token.
 
-If you need to install private dependencies during CI, use a **read-only** token (create a granular token on npmjs.com) and store it as `NPM_READ_TOKEN` in repository secrets. The `release.yml` will use this token for installs when present.
+If your CI needs to install private dependencies, create a **read-only** granular token on npmjs.com and store it as `NPM_READ_TOKEN` (the install step will use this token when present).
 
-As a migration step, you can keep an automation write token (named `NPM_TOKEN`) temporarily while you verify trusted publishing; remove it after verification to maximize security.
+The release workflow also auto-selects a publish tag from the git tag name: prerelease tags containing a hyphen (e.g., `v3.0.0-beta.1`) are published with the `beta` tag; stable tags publish to `latest`.
 
 ## Commits & PRs
 
