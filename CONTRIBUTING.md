@@ -47,6 +47,18 @@ If you need to re-install hooks manually:
 pnpm prepare
 ```
 
+## Publishing (trusted publishing / tokens)
+
+We recommend using npm's **Trusted Publishing (OIDC)** for CI-based publishes rather than long-lived write tokens. Trusted publishing uses short-lived, workflow-scoped credentials and is more secure.
+
+- To enable: go to your package on npmjs.com → Settings → Trusted publishers and add this repository's workflow filename (e.g., `release.yml`).
+- Make sure the `release.yml` workflow has `permissions: id-token: write` (it does in this repo).
+- After enabling and validating trusted publishing, you can remove long-lived publish tokens.
+
+If you need to install private dependencies during CI, use a **read-only** token (create a granular token on npmjs.com) and store it as `NPM_READ_TOKEN` in repository secrets. The `release.yml` will use this token for installs when present.
+
+As a migration step, you can keep an automation write token (named `NPM_TOKEN`) temporarily while you verify trusted publishing; remove it after verification to maximize security.
+
 ## Commits & PRs
 
 - Use clear, descriptive commit messages.
