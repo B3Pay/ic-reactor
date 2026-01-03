@@ -39,5 +39,13 @@
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@dfinity/agent": "npm:@icp-sdk/core@^5.0.0",
+      "@dfinity/candid": "npm:@icp-sdk/candid@^5.0.0",
+      "@dfinity/principal": "npm:@icp-sdk/principal@^5.0.0",
+      "@dfinity/identity": "npm:@icp-sdk/identity@^5.0.0"
+    }
   }
 }
