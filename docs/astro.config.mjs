@@ -28,11 +28,11 @@ export default defineConfig({
         {
           label: "GitHub",
           icon: "github",
-          href: "https://github.com/b3hr4d/ic-reactor-v3",
+          href: "https://github.com/b3pay/ic-reactor",
         },
       ],
       editLink: {
-        baseUrl: "https://github.com/b3hr4d/ic-reactor-v3/edit/main/docs/",
+        baseUrl: "https://github.com/b3pay/ic-reactor/edit/main/docs/",
       },
       head: [
         {
