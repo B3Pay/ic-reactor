@@ -48,7 +48,7 @@
   "author": "Behrad Deylami",
   "license": "MIT",
   "dependencies": {
-    "@noble/curves": "^1.9.7",
+    "@noble/curves": "^2.0.1",
     "zod": "^4.3.2"
   },
   "peerDependencies": {
@@ -72,8 +72,8 @@
     "@tanstack/react-query": "^5.90",
     "@types/node": "^24.10.1",
     "fake-indexeddb": "^6.2.5",
-    "size-limit": "^11.1.6",
-    "vitest": "^4.0.15"
+    "size-limit": "^12.0.0",
+    "vitest": "^4.0.16"
   },
   "size-limit": [
     {
