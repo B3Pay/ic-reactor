@@ -15,7 +15,7 @@
   "dependencies": {
     "@ic-reactor/core": "workspace:*",
     "@icp-sdk/core": "^5.0.0",
-    "@tanstack/devtools-vite": "^0.3.11",
+    "@tanstack/devtools-vite": "^0.4.0",
     "@tanstack/query-core": "^5.90"
   },
   "overrides": {
