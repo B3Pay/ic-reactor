@@ -29,13 +29,23 @@
     "generate": "dfx generate"
   },
   "dependencies": {
+    "@ic-reactor/core": "workspace:^",
     "@ic-reactor/react": "workspace:^",
+    "@icp-sdk/auth": "^5.0.0",
+    "@icp-sdk/core": "^5.0.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@tanstack/react-query": "^5.90.16",
     "next": "^15.4.4",
+    "postcss": "^8.5.6",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
+    "@tanstack/react-query-devtools": "^5.91.2",
     "@types/node": "20.9.4",
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.0",
     "dotenv": "16.3.1",
     "typescript": "5.8.3"
   }

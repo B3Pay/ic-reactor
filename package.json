@@ -1,115 +1,43 @@
 {
-  "name": "ic-reactor",
-  "private": true,
-  "description": "A React library for working with Internet computer Actors",
-  "author": "Behrad Deylami <b3hr4d@live.com>",
-  "license": "MIT",
+  "name": "ic-reactor-v3",
+  "version": "3.0.0",
+  "description": "The modern, type-safe library for building Internet Computer applications",
+  "main": "index.js",
   "scripts": {
-    "test": "bun test",
-    "size": "bun run size-limit",
-    "size:why": "bun run size-limit --why",
-    "build": "bunx lerna run build --stream --sort",
-    "build:packages": "bunx lerna run build --scope='@ic-reactor/*' --stream --sort",
-    "build:core": "bunx lerna run build --scope='@ic-reactor/core' --stream",
-    "build:react": "bunx lerna run build --scope='@ic-reactor/react' --stream",
-    "build:visitor": "bunx lerna run build --scope='@ic-reactor/visitor' --stream",
-    "build:parser": "bunx lerna run build --scope='@ic-reactor/parser' --stream",
-    "build:umd": "bunx lerna run bundle --scope='@ic-reactor/core' --stream",
-    "clean": "bunx lerna run clean --stream",
-    "clean:packages": "bunx lerna run clean --scope='@ic-reactor/*' --stream",
-    "clean:modules": "for d in packages/* examples/*; do [ -d \"$d\" ] || continue; (cd \"$d\" && rm -rf .dfx .cache dist node_modules); done && rm -rf node_modules bun.lock",
-    "lint": "eslint . --ext .ts,.tsx",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix",
-    "lint:ci-check": "eslint . --ext .ts,.tsx --max-warnings 0",
-    "type-check": "bunx lerna run build --scope='@ic-reactor/*' --stream --sort",
-    "ci-check": "bun run lint:ci-check && bun run type-check",
-    "e2e": "cd e2e && sh ./test.sh",
-    "docs:serve": "bunx serve@latest ./docs",
-    "docs:build": "bunx typedoc --options ./typedoc.json",
-    "publish": "bun run clean && bun run build && bunx lerna publish",
-    "bootstrap": "bunx lerna bootstrap",
-    "changed": "bunx lerna changed",
-    "diff": "bunx lerna diff"
+    "build": "pnpm -r --filter \"./packages/**\" build",
+    "test": "pnpm -r --filter \"./packages/**\" test",
+    "test-e2e": "cd e2e && sh ./test.sh",
+    "docs:build": "cd docs && pnpm build",
+    "docs:preview": "cd docs && pnpm preview",
+    "size": "pnpm -r --filter \"./packages/**\" run size",
+    "size:analyze": "pnpm -r --filter \"./packages/**\" run analyze",
+    "prepublish:check": "pnpm run build && pnpm run test && pnpm run size",
+    "pack:check": "pnpm -r --filter \"./packages/**\" exec npm pack --dry-run",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
+    "format:staged": "pnpm -r --filter './packages/**' exec prettier --write",
+    "prepare": "husky install"
   },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,md,mdx,css,scss,html}": [
+      "prettier --write"
+    ]
   },
-  "repository": {
-    "type": "git",
-    "url": "git@github.com:b3hr4d/ic-reactor.git"
-  },
-  "engines": {
-    "node": ">=22.15.0"
-  },
-  "workspaces": [
-    "examples/*",
-    "packages/*",
-    "e2e"
+  "keywords": [
+    "internet-computer",
+    "dfinity",
+    "icp",
+    "react",
+    "typescript",
+    "tanstack-query"
   ],
+  "author": "Behrad Deylami",
+  "license": "MIT",
   "devDependencies": {
-    "@dfinity/agent": "^3.1.0",
-    "@dfinity/auth-client": "^3.1.0",
-    "@dfinity/candid": "^3.1.0",
-    "@dfinity/identity": "^3.1.0",
-    "@dfinity/principal": "^3.1.0",
-    "@happy-dom/global-registrator": "^18.0.1",
-    "@mxssfd/typedoc-theme": "^1.1.7",
-    "@size-limit/esbuild-why": "^11.2.0",
-    "@size-limit/preset-small-lib": "^11.2.0",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.6.4",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
-    "babel-loader": "^10.0.0",
-    "bun-types": "^1.2.19",
-    "fake-indexeddb": "^6.0.1",
-    "lerna": "^8.2.3",
-    "minimatch": "^10.0.3",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.0",
-    "size-limit": "^11.2.0",
-    "ts-loader": "^9.5.2",
-    "typedoc": "^0.28.7",
-    "typedoc-plugin-coverage": "^4.0.1",
-    "typedoc-plugin-external-resolver": "^1.0.3",
-    "typedoc-plugin-extras": "^4.0.1",
-    "typedoc-plugin-include-example": "^2.1.2",
-    "typedoc-plugin-mdn-links": "^5.0.6",
-    "typescript": "5.8.3",
-    "webpack": "^5.100.2",
-    "webpack-cli": "^6.0.1",
-    "zustand": "^5.0.6",
-    "zustand-utils": "^2.1.0"
-  },
-  "size-limit": [
-    {
-      "name": "Core (ES Module)",
-      "path": "packages/core/dist/index.js",
-      "limit": "90 KB"
-    },
-    {
-      "name": "Core (UMD Development)",
-      "path": "packages/core/umd/development/ic-reactor-core.js",
-      "limit": "100 KB"
-    },
-    {
-      "name": "Core (UMD Production)",
-      "path": "packages/core/umd/production/ic-reactor-core.min.js",
-      "limit": "90 KB"
-    },
-    {
-      "name": "React (ES Module)",
-      "path": "packages/react/dist/index.js",
-      "limit": "95 KB"
-    },
-    {
-      "name": "Visitor (ES Module)",
-      "path": "packages/visitor/dist/index.js",
-      "limit": "25 KB"
-    }
-  ],
-  "packageManager": "bun@1.2.19"
+    "@types/node": "^25.0.3",
+    "husky": "^8.0.3",
+    "lint-staged": "^14.0.1",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3"
+  }
 }

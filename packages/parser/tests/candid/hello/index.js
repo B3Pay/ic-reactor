@@ -1,4 +1,4 @@
-import { Actor, HttpAgent } from "@dfinity/agent"
+import { Actor, HttpAgent } from "@icp-sdk/core/agent"
 import { idlFactory } from "./hello.did.js"
 
 export { idlFactory } from "./hello.did.js"

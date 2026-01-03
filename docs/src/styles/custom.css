@@ -1,0 +1,149 @@
+:root {
+  --sl-color-accent-low: #1e1b4b;
+  --sl-color-accent: #e54646;
+  --sl-color-accent-high: #a5b4fc;
+  --sl-color-white: #0f172a;
+  --sl-color-gray-1: #334155;
+  --sl-color-gray-2: #475569;
+  --sl-color-gray-3: #64748b;
+  --sl-color-gray-4: #94a3b8;
+  --sl-color-gray-5: #cbd5e1;
+  --sl-color-gray-6: #f1f5f9;
+  --sl-color-black: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(15, 23, 42, 0.1);
+  --sl-content-width: 50rem;
+}
+
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #312e81;
+  --sl-color-accent: #6366f1;
+  --sl-color-accent-high: #c7d2fe;
+  --sl-color-white: #ffffff;
+  --sl-color-gray-1: #f1f5f9;
+  --sl-color-gray-2: #e2e8f0;
+  --sl-color-gray-3: #cbd5e1;
+  --sl-color-gray-4: #94a3b8;
+  --sl-color-gray-5: #64748b;
+  --sl-color-gray-6: #334155;
+  --sl-color-black: #020617;
+  --glass-bg: rgba(15, 23, 42, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+/* Glassmorphism effect for sidebar */
+.sidebar-pane {
+  background-color: var(--glass-bg) !important;
+  backdrop-filter: blur(12px);
+  border-right: 1px solid var(--glass-border);
+}
+
+/* Modern Header */
+header {
+  background-color: var(--glass-bg) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border) !important;
+}
+
+/* Custom Gradients */
+.hero {
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent),
+    radial-gradient(circle at bottom left, rgba(79, 70, 229, 0.15), transparent);
+}
+
+/* Typography refinements */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+/* Fix code block horizontal scrollbars - the code element padding causes overflow */
+.expressive-code pre {
+  overflow-x: auto !important;
+}
+
+.expressive-code pre code {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.expressive-code .ec-line {
+  overflow-x: visible !important;
+}
+
+/* Hide scrollbar track when not needed */
+.expressive-code pre::-webkit-scrollbar {
+  height: 8px;
+}
+
+.expressive-code pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.expressive-code pre::-webkit-scrollbar-thumb {
+  background: var(--sl-color-gray-5);
+  border-radius: 4px;
+}
+
+.expressive-code pre::-webkit-scrollbar-thumb:hover {
+  background: var(--sl-color-gray-4);
+}
+
+/* Premium card effects if any exist */
+.card {
+  transition:
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.site-title {
+  font-size: 1.5rem;
+  gap: 0.5rem;
+}
+
+/* Align title and page actions horizontally */
+.sl-container:has(> h1 + .actions-container) {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 1.5rem !important;
+  max-width: none !important;
+  margin-bottom: 2rem !important;
+}
+
+.sl-container:has(> h1 + .actions-container) h1 {
+  margin-bottom: 0 !important;
+}
+
+.sl-container:has(> h1 + .actions-container) .actions-container {
+  margin-top: 0 !important;
+}
+
+.sl-markdown-content code:not(:where(.not-content *)) {
+  background-color: var(--glass-border) !important;
+  border-radius: 4px !important;
+}
+
+@media (max-width: 600px) {
+  .sl-container:has(> h1 + .actions-container) {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+}

@@ -1,0 +1,92 @@
+---
+title: "TanStack Router"
+description: Full app with routing, loaders, and authentication
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+A full-featured application demonstrating IC Reactor with TanStack Router for navigation, route loaders, and authentication.
+
+## Features Demonstrated
+
+- Route-based data prefetching with `loader`
+- `getQueryOptions()` for router integration
+- Protected routes with authentication
+- Query invalidation after mutations
+- Multiple canisters with shared `ClientManager`
+- File-based routing structure
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/tanstack-router?embed=1&theme=dark&file=src/reactor.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3hr4d/ic-reactor-v3/tree/main/examples/tanstack-router"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/tanstack-router?embed=1&theme=dark&file=src/reactor.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor TanStack Router Example"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Key Code
+
+### Route Loader with Prefetching
+
+```typescript
+// src/routes/wallet/$canisterId.tsx
+export const Route = createFileRoute("/wallet/$canisterId")({
+  loader: async ({ params, context }) => {
+    const { queryClient, clientManager } = context
+
+    // Create reactor for this canister
+    const reactor = new DisplayReactor<Ledger>({
+      clientManager,
+      canisterId: params.canisterId,
+      idlFactory: ledgerIdlFactory,
+    })
+
+    // Prefetch data before rendering
+    await queryClient.prefetchQuery(
+      reactor.getQueryOptions({ functionName: "icrc1_name" })
+    )
+
+    return { reactor }
+  },
+})
+```
+
+### Using Prefetched Data
+
+```tsx
+function WalletPage() {
+  const { reactor } = Route.useLoaderData()
+
+  // Data is already cached from loader!
+  const { data: name } = useActorQuery({
+    reactor,
+    functionName: "icrc1_name",
+  })
+
+  return <h1>{name}</h1>
+}
+```
+
+<Aside type="note">
+  TanStack Router's loader runs before the component renders, ensuring data is
+  available immediately. Combined with IC Reactor's caching, this provides
+  instant navigation between routes.
+</Aside>

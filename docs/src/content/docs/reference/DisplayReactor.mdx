@@ -1,0 +1,589 @@
+---
+title: DisplayReactor
+description: Automatic type transformations for UI-friendly data
+editUrl: false
+---
+
+import { Aside, Card, CardGrid } from "@astrojs/starlight/components"
+
+## Overview
+
+`DisplayReactor` is a specialized reactor that serves as a **bridge between Candid's type system and your user interface**. It automatically transforms IC-native types into formats that are natural to work with in JavaScript and easy to display in UIs.
+
+### The Philosophy
+
+Candid (the IC's interface description language) has its own type system that doesn't always map cleanly to JavaScript:
+
+- `bigint` values can't be displayed directly in templates or serialized to JSON
+- `Principal` objects need `.toText()` every time you display them
+- Optional values are arrays (`[value]` or `[]`) instead of `value | null`
+- Variants use object keys instead of discriminators
+
+**DisplayReactor handles all these transformations automatically**, in both directions. You work with clean, JavaScript-native types in your UI, and DisplayReactor converts them to Candid when calling the canister and back to display format when receiving results.
+
+```typescript
+// DisplayReactor: the bridge between Candid and your UI
+const backend = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId,
+})
+
+// Input: JavaScript strings (easy to get from forms)
+// Output: Display-friendly types (easy to render)
+const user = await backend.callMethod({
+  functionName: "getUser",
+  args: ["aaaaa-aa"], // Principal as string ✓
+})
+console.log(user.balance) // "1000000" (string, not bigint) ✓
+```
+
+This is one of IC Reactor's most unique and powerful features — it eliminates the need for manual type conversions between the IC and your frontend.
+
+## The Problem
+
+Candid types don't always map directly to JavaScript types that are easy to work with in UIs:
+
+```typescript
+// What the canister returns (Candid types)
+{
+  balance: 1000000000n,              // bigint - can't display directly
+  owner: Principal.fromText("..."),  // Principal object - need .toText()
+  createdAt: 1703500800000000000n,   // nanoseconds as bigint
+  metadata: [["a", 1], ["b", 2]],    // Array of tuples, not a Map
+  status: { Active: null },          // Variant with null value
+  avatar: Uint8Array([...]),         // Binary data
+  description: [],                   // Empty array means "null" (opt type)
+}
+```
+
+You'd normally need to write conversion logic everywhere in your app:
+
+```tsx
+// Without DisplayReactor - tedious and error-prone
+<span>Balance: {balance.toString()}</span>
+<span>Owner: {owner.toText()}</span>
+<span>Status: {Object.keys(status)[0]}</span>
+<span>Description: {description[0] ?? "No description"}</span>
+```
+
+## The Solution
+
+`DisplayReactor` automatically transforms these types to UI-friendly formats:
+
+```typescript
+// What DisplayReactor gives you
+{
+  balance: "1000000000",                // string - easy to display
+  owner: "rrkah-fqaaa-aaaaa-aaaaq-cai", // string - already formatted
+  createdAt: "1703500800000000000",     // string - parse as needed
+  metadata: Map { "a" => 1, "b" => 2 }, // JavaScript Map - iterable
+  status: { _type: "Active" },          // Normalized variant
+  avatar: "0x89504e47...",              // Small blobs → hex string
+  description: null,                    // null instead of []
+}
+```
+
+Now your components are simple:
+
+```tsx
+// With DisplayReactor - clean and straightforward
+<span>Balance: {balance}</span>
+<span>Owner: {owner}</span>
+<span>Status: {status._type}</span>
+<span>Description: {description ?? "No description"}</span>
+```
+
+## Import
+
+```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+```
+
+## Usage
+
+### Creating a DisplayReactor
+
+```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./client"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+const backend = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+})
+```
+
+### With createActorHooks
+
+Pass a `DisplayReactor` instance to `createActorHooks` to get hooks with automatic type transformations:
+
+```typescript
+import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
+import { clientManager } from "./client"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+// Create a DisplayReactor
+const backend = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+})
+
+// Pass it to createActorHooks - all hooks use display types
+const { useActorQuery, useActorMutation, reactor } = createActorHooks(backend)
+```
+
+## Type Transformations
+
+<CardGrid>
+  <Card title="Numbers" icon="rocket">
+    `bigint` → `string` Large numbers stay precise
+  </Card>
+  <Card title="Principals" icon="seti:lock">
+    `Principal` → `string` Ready for display
+  </Card>
+  <Card title="Optionals" icon="approve-check">
+    `[T] | []` → `T | null` JavaScript-native nullish
+  </Card>
+  <Card title="Blobs" icon="document">
+    Small → hex `string` Large → `Uint8Array`
+  </Card>
+</CardGrid>
+
+### Complete Transformation Reference
+
+#### Numeric Types
+
+| Candid    | TypeScript | Display  | Notes                         |
+| --------- | ---------- | -------- | ----------------------------- |
+| `nat`     | `bigint`   | `string` | Arbitrary precision preserved |
+| `int`     | `bigint`   | `string` | Arbitrary precision preserved |
+| `nat64`   | `bigint`   | `string` | 64-bit integers as strings    |
+| `int64`   | `bigint`   | `string` | 64-bit integers as strings    |
+| `nat8`    | `number`   | `number` | No change needed              |
+| `nat16`   | `number`   | `number` | No change needed              |
+| `nat32`   | `number`   | `number` | No change needed              |
+| `float32` | `number`   | `number` | No change needed              |
+| `float64` | `number`   | `number` | No change needed              |
+
+#### Identity & Binary Types
+
+| Candid           | TypeScript   | Display      | Notes                           |
+| ---------------- | ------------ | ------------ | ------------------------------- |
+| `principal`      | `Principal`  | `string`     | e.g., `"rrkah-fqaaa..."`        |
+| `blob` ≤96 bytes | `Uint8Array` | `string`     | Hex format: `"0x89504e..."`     |
+| `blob` >96 bytes | `Uint8Array` | `Uint8Array` | Unchanged (avoids huge strings) |
+
+#### Container Types
+
+| Candid           | TypeScript      | Display          | Notes                          |
+| ---------------- | --------------- | ---------------- | ------------------------------ |
+| `opt T`          | `[T] \| []`     | `T \| null`      | Nullish instead of empty array |
+| `vec T`          | `T[]`           | `Display<T>[]`   | Elements are transformed       |
+| `vec (text, T)`  | `[string, T][]` | `Map<string, T>` | Key-value pairs as Map         |
+| `record { ... }` | `{ ... }`       | `{ ... }`        | Nested fields transformed      |
+
+#### Variant Types
+
+| Candid             | TypeScript    | Display                         | Notes                                 |
+| ------------------ | ------------- | ------------------------------- | ------------------------------------- |
+| `variant { A }`    | `{ A: null }` | `{ _type: "A" }`                | Normalized with `_type` discriminator |
+| `variant { A: T }` | `{ A: T }`    | `{ _type: "A", A: Display<T> }` | Value field preserved                 |
+
+## Bidirectional Transformation
+
+DisplayReactor transforms data in **both directions**:
+
+1. **Arguments (Display → Candid)**: When you call a method, your display-friendly args are converted to Candid format
+2. **Results (Candid → Display)**: When the canister responds, Candid data is converted to display format
+
+```typescript
+// You provide display-friendly input
+const user = await backend.callMethod({
+  functionName: "getUser",
+  args: ["aaaaa-aa"], // Principal as string ✓
+})
+
+// You receive display-friendly output
+console.log(user.balance) // "1000000" (string, not bigint)
+console.log(user.createdAt) // "1703500800000000000" (string)
+```
+
+## Automatic Result Unwrapping
+
+IC Reactor automatically unwraps Candid `Result` types (`variant { Ok: T; Err: E }`):
+
+- **On `Ok`**: Returns the success value directly (with display transformations applied)
+- **On `Err`**: Throws a `CanisterError` containing the error value
+
+```typescript
+// Canister method signature:
+// createUser : (CreateUserInput) -> (Result<User, CreateUserError>)
+
+// Without IC Reactor, you'd need to handle:
+// { Ok: User } | { Err: CreateUserError }
+
+// With IC Reactor - automatic unwrapping:
+try {
+  const user = await backend.callMethod({
+    functionName: "createUser",
+    args: [{ name: "Alice", email: "alice@example.com" }],
+  })
+  // user is directly the User object (not { Ok: User })
+  console.log(user.name) // "Alice"
+} catch (error) {
+  if (error instanceof CanisterError) {
+    // error.err contains the CreateUserError
+    if ("EmailAlreadyExists" in error.err) {
+      console.log("Email taken!")
+    }
+  }
+}
+```
+
+This means you never have to manually check for `Ok` or `Err` variants — IC Reactor handles it for you.
+
+<Aside type="tip">
+  Learn more about handling canister errors in the [Error
+  Handling](/error-handling) guide.
+</Aside>
+
+## Examples
+
+### Basic Usage
+
+```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+
+const backend = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "...",
+})
+
+// All returned values use display types
+const balance = await backend.callMethod({
+  functionName: "getBalance",
+  args: ["aaaaa-aa"], // Principal as string
+})
+// balance is string, not bigint
+```
+
+### With React Hooks
+
+```typescript
+// Create DisplayReactor and hooks
+const backend = new DisplayReactor<_SERVICE>({ clientManager, idlFactory, canisterId })
+const { useActorQuery } = createActorHooks(backend)
+
+function Balance({ principal }: { principal: string }) {
+  const { data: balance } = useActorQuery({
+    functionName: "getBalance",
+    args: [principal], // string, not Principal
+  })
+
+  // balance is string, ready for display
+  return <span>{balance} ICP</span>
+}
+```
+
+### Handling Variants
+
+Candid variants are normalized for easier pattern matching:
+
+```typescript
+// Candid variant: variant { Pending; Active; Completed: nat }
+// Raw TS: { Pending: null } | { Active: null } | { Completed: bigint }
+
+// With DisplayReactor:
+type DisplayStatus =
+  | { _type: "Pending" }
+  | { _type: "Active" }
+  | { _type: "Completed"; Completed: string }
+
+function StatusBadge({ status }: { status: DisplayStatus }) {
+  switch (status._type) {
+    case "Pending":
+      return <span className="badge yellow">Pending</span>
+    case "Active":
+      return <span className="badge green">Active</span>
+    case "Completed":
+      return <span className="badge blue">Done at {status.Completed}</span>
+  }
+}
+```
+
+### Handling Optionals
+
+No more array-based optional checking:
+
+```typescript
+// Without DisplayReactor
+const description = user.bio[0] ?? "No bio"
+const avatar = user.avatar.length > 0 ? user.avatar[0] : null
+
+// With DisplayReactor
+const description = user.bio ?? "No bio"
+const avatar = user.avatar // Already null or value
+```
+
+### Handling Blobs (Binary Data)
+
+Blobs (`vec nat8`) are handled intelligently based on size:
+
+- **Small blobs (≤96 bytes)**: Converted to hex strings for easy display and storage
+- **Large blobs (>96 bytes)**: Stay as `Uint8Array` to avoid huge hex strings
+
+```typescript
+// Candid: blob (vec nat8)
+
+// Small blob example (e.g., a hash, signature, or small icon)
+const hash = user.passwordHash // "0x2cf24dba5fb0a30e..."
+const signature = tx.signature // "0x3045022100ab..."
+
+// Large blob example (e.g., image data)
+const imageData = user.avatar // Uint8Array (stays as-is)
+
+// When sending blobs back, you can use either format:
+mutate([
+  {
+    // Hex string input (DisplayReactor converts to Uint8Array)
+    hash: "0x2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c",
+
+    // Or Uint8Array directly
+    data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+  },
+])
+```
+
+### Working with Maps
+
+Candid's `vec (text, T)` becomes a real JavaScript Map:
+
+```typescript
+// Without DisplayReactor
+const metadata: Array<[string, string]> = [
+  ["key1", "val1"],
+  ["key2", "val2"],
+]
+const value = metadata.find(([k]) => k === "key1")?.[1]
+
+// With DisplayReactor
+const metadata: Map<string, string> = new Map([
+  ["key1", "val1"],
+  ["key2", "val2"],
+])
+const value = metadata.get("key1")
+```
+
+### Form Handling
+
+Display types work seamlessly with form inputs:
+
+```tsx
+function TransferForm() {
+  const [recipient, setRecipient] = useState("")
+  const [amount, setAmount] = useState("")
+
+  const { mutate } = useActorMutation({
+    functionName: "transfer",
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Strings work directly - no BigInt conversion needed!
+    mutate([recipient, amount])
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        value={recipient}
+        onChange={(e) => setRecipient(e.target.value)}
+        placeholder="Principal ID"
+      />
+      <input
+        type="text"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder="Amount"
+      />
+      <button type="submit">Transfer</button>
+    </form>
+  )
+}
+```
+
+### Accessing the Codec
+
+For advanced use cases, access the underlying codec:
+
+```typescript
+const codec = backend.getCodec("getUser")
+
+if (codec) {
+  // Transform display → candid manually
+  const candidArgs = codec.args.asCandid(displayArgs)
+
+  // Transform candid → display manually
+  const displayResult = codec.result.asDisplay(candidResult)
+}
+```
+
+## Type Safety
+
+DisplayReactor maintains full type safety. TypeScript knows the transformed types:
+
+```typescript
+// TypeScript infers the correct display types
+const { data } = useActorQuery({
+  functionName: "getUser",
+  args: [userId], // string (was Principal)
+})
+
+// data.balance is string (was bigint)
+// data.createdAt is string (was bigint)
+// data.bio is string | null (was [string] | [])
+```
+
+## Validation
+
+DisplayReactor includes optional argument validation. Validators receive **display types**,
+making them perfect for form validation.
+
+### Registering Validators
+
+```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+
+const backend = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId,
+})
+
+// Validators receive display types (strings!)
+backend.registerValidator("transfer", ([input]) => {
+  const issues = []
+
+  // input.to is string (not Principal)
+  if (!input.to || input.to.length === 0) {
+    issues.push({ path: ["to"], message: "Recipient is required" })
+  }
+
+  // input.amount is string (not bigint)
+  if (!/^\d+$/.test(input.amount)) {
+    issues.push({ path: ["amount"], message: "Must be a valid number" })
+  }
+
+  return issues.length > 0 ? { success: false, issues } : { success: true }
+})
+```
+
+### Pre-submission Validation
+
+Use `validate()` to check before calling the canister:
+
+```typescript
+const result = await backend.validate("transfer", [formData])
+
+if (!result.success) {
+  result.issues.forEach((issue) => {
+    form.setError(issue.path[0], issue.message)
+  })
+  return
+}
+
+// Validation passed, make the call
+await backend.callMethod({ functionName: "transfer", args: [formData] })
+```
+
+### Zod Integration
+
+Use `fromZodSchema` for type-safe validation:
+
+```typescript
+import { z } from "zod"
+import { fromZodSchema, DisplayReactor } from "@ic-reactor/core"
+
+const transferSchema = z.object({
+  to: z.string().min(1, "Recipient is required"),
+  amount: z.string().regex(/^\d+$/, "Must be a valid number"),
+})
+
+backend.registerValidator("transfer", fromZodSchema(transferSchema))
+```
+
+### Async Validators
+
+For async validation (e.g., checking a blocklist), use `callMethodWithValidation`:
+
+```typescript
+backend.registerValidator("transfer", async ([input]) => {
+  const isBlocked = await checkBlocklist(input.to)
+  if (isBlocked) {
+    return {
+      success: false,
+      issues: [{ path: ["to"], message: "Address is blocked" }],
+    }
+  }
+  return { success: true }
+})
+
+// Use callMethodWithValidation for async validators
+await backend.callMethodWithValidation({
+  functionName: "transfer",
+  args: [formData],
+})
+```
+
+<Aside type="tip">
+  Validation is optional! If you don't register validators, DisplayReactor works
+  exactly like before — just type transformations.
+</Aside>
+
+## When to Use DisplayReactor
+
+✅ **Use DisplayReactor when:**
+
+- Building user interfaces
+- Working with forms
+- Displaying data in components
+- Serializing data to JSON
+- You want simpler type handling
+- You need client-side validation
+
+❌ **Use regular Reactor when:**
+
+- Performing arithmetic with bigint values
+- Building backend services
+- You need raw Candid types for specific operations
+- You're serializing to specific binary formats
+
+## Notes
+
+<Aside type="tip">
+  Use `DisplayReactor` with `createActorHooks` for UI-friendly types. Just pass
+  a DisplayReactor instance to get hooks with automatic type transformations.
+</Aside>
+
+<Aside type="note">
+  Display transformations happen automatically on every call. There's no
+  performance penalty for the transformation itself.
+</Aside>
+
+<Aside type="caution">
+  If you need to perform math with large numbers, convert back to BigInt:
+  `BigInt(balance)`
+</Aside>
+
+## See Also
+
+- [Reactor](/reference/reactor) — Standard reactor without transformations
+- [Type Safety](/type-safety) — Type system details
+- [createActorHooks](/reference/createactorhooks) — Create React hooks from a reactor
+- [React Validation](/reference/reactvalidation) — React validation utilities
+- [Error Handling](/error-handling) — Handle validation and canister errors

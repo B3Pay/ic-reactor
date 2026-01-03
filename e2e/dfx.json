@@ -6,7 +6,10 @@
       "package": "hello_actor",
       "candid": "src/actor/hello_actor.did",
       "declarations": {
-        "node_compatibility": true
+        "bindings": null,
+        "env_override": null,
+        "node_compatibility": true,
+        "output": null
       }
     }
   },

@@ -1,0 +1,124 @@
+# IC Reactor - AI Friendly Guide
+
+IC Reactor is a modern, type-safe library for building Internet Computer applications. It provides seamless integration between JavaScript/TypeScript applications and IC canisters with full TypeScript support, intelligent caching (via TanStack Query), and React integration.
+
+## Core Packages
+
+- `@ic-reactor/core`: Low-level API for managing actors, agents, and query caching.
+- `@ic-reactor/react`: High-level React hooks and context providers for easy integration.
+
+## Key Concepts
+
+- **Reactor**: Manages a single canister's actor instance, handling method calls and query caching. (Replaces `CandidActor`)
+- **DisplayReactor**: A specialized `Reactor` that automatically transforms Candid types (BigInt, Principal) to JS-friendly types (string, number). (Replaces `DisplayCodecActor`)
+- **ClientManager**: Manages the IC Agent connection, handling authentication and identity provider integration.
+- **Auto Codecs**: Automatically transforms Candid types (BigInt, Principal) to JS-friendly types (string, number).
+- **Type Safety**: Provides end-to-end type safety from Candid definitions to React hooks.
+
+## Common Code Patterns
+
+### 1. Initialization (Core)
+
+```typescript
+import { ClientManager, Reactor, DisplayReactor } from '@ic-reactor/core';
+import { QueryClient } from '@tanstack/query-core';
+import { idlFactory, type _SERVICE } from './declarations/my_canister';
+
+const queryClient = new QueryClient();
+const clientManager = new ClientManager({ queryClient });
+
+// Standard Reactor (Raw Candid Types)
+const reactor = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: 'rrkah-fqaaa-aaaaa-aaaaq-cai',
+});
+
+// OR DisplayReactor (Auto Transformation)
+const displayReactor = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: 'rrkah-fqaaa-aaaaa-aaaaq-cai',
+});
+```
+
+### 2. React Integration (Standard Hooks)
+
+```typescript
+import { createActorHooks } from '@ic-reactor/react';
+
+const { useActorQuery, useActorMutation } = createActorHooks(reactor);
+
+// Query call (cached)
+function Profile() {
+  const { data, isLoading } = useActorQuery({
+    functionName: 'getUserProfile',
+    args: ['principal-id'],
+  });
+  return <div>{isLoading ? 'Loading...' : data.name}</div>;
+}
+
+// Update call (mutation)
+function UpdateProfile() {
+  const { mutate, isPending } = useActorMutation({
+    functionName: 'updateUserProfile',
+    onSuccess: (data) => console.log('Updated!', data),
+  });
+  return <button onClick={() => mutate(['New Name'])}>Update</button>;
+}
+```
+
+### 3. Query Factories (Advanced / Route Loaders)
+
+For extracting queries outside of components or creating reusable query factories:
+
+```typescript
+import { createActorQuery, createActorQueryFactory } from '@ic-reactor/react';
+
+// Single Query Factory
+const profileQuery = createActorQuery(reactor, {
+  functionName: 'getUserProfile',
+  args: ['user-id'],
+});
+// Usage: await profileQuery.fetch() OR profileQuery.useQuery()
+
+// Dynamic Query Factory
+const profileQueryFactory = createActorQueryFactory(reactor, {
+  functionName: 'getUserProfile',
+});
+// Usage: profileQueryFactory('user-id').useQuery()
+```
+
+### 4. Infinite Queries
+
+```typescript
+const { useActorInfiniteQuery } = createActorHooks(reactor);
+
+function ActivityLog() {
+  const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
+    functionName: 'getActivities',
+    args: [],
+    paginationType: 'offset', // or 'cursor'
+    // ...
+  });
+}
+```
+
+## API Reference (Summary)
+
+### @ic-reactor/core
+- `Reactor`: `callMethod`, `getQueryOptions`, `generateQueryKey`, `invalidateQueries`.
+- `DisplayReactor`: Extended `Reactor` with automatic type transformation.
+- `ClientManager`: `authenticate`, `login`, `logout`, `subscribeAuthState`.
+
+### @ic-reactor/react
+- `createActorHooks(reactor)`: Returns `useActorQuery`, `useActorMutation`, `useActorInfiniteQuery`, `useActorSuspenseQuery`.
+- `createActorQuery(reactor, config)`: Creates a standalone query object.
+- `createActorMutation(reactor, config)`: Creates a standalone mutation object.
+- `useAuth`, `useAuthState`, `useUserPrincipal`: Hooks for agent-level auth state.
+
+## Best Practices
+1. Use `DisplayReactor` for simpler data handling with AI / UI layers.
+2. Use `createActorHooks` to generate type-safe hooks for your specific canister.
+3. Leverage TanStack Query options (staleTime, cacheTime) passed through `useActorQuery`.
+4. Use `Suspense` versions (`useActorSuspenseQuery`) for a better loading experience.

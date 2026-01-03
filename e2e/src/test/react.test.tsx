@@ -1,133 +1,139 @@
 import React from "react"
-import renderer, { act } from "react-test-renderer"
 import {
-  canisterId,
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+  cleanup,
+} from "@testing-library/react"
+import { idlFactory, hello_actor } from "../declarations/hello_actor"
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { createActorHooks } from "@ic-reactor/react"
+import { describe, it, expect, afterEach, beforeAll } from "vitest"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+
+const queryClient = new QueryClient()
+
+const clientManager = new ClientManager({
+  withProcessEnv: true,
+  agentOptions: {
+    verifyQuerySignatures: false,
+  },
+  queryClient,
+})
+
+const helloActor = new Reactor<typeof hello_actor>({
+  clientManager,
+  canisterId: process.env.CANISTER_ID_HELLO_ACTOR!,
   idlFactory,
-  hello_actor,
-} from "../declarations/hello_actor"
-import { createReactor } from "@ic-reactor/react"
+  name: "hello_actor",
+})
+
+const { useActorQuery, useActorMutation } = createActorHooks(helloActor)
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+)
+
+beforeAll(async () => {
+  await clientManager.initialize()
+})
+
+afterEach(() => {
+  cleanup()
+})
 
 describe("React Test", () => {
-  it("should initialize", async () => {
-    const { useActorState, initialize } = createReactor<typeof hello_actor>({
-      canisterId,
-      idlFactory,
-      initializeOnCreate: false,
-      withProcessEnv: true,
-    })
-
-    const Initialize = () => {
-      const { initialized, initializing } = useActorState()
-
-      return (
-        <div>
-          <span>
-            {initializing
-              ? "Initializing"
-              : initialized
-              ? "Initialized"
-              : "Not initialized"}
-          </span>
-          <button onClick={() => initialize()}>Initialize</button>
-        </div>
-      )
-    }
-
-    let screen = renderer.create(<Initialize />)
-
-    const initializeStatus = () =>
-      screen.root.findAllByType("span")[0].props.children
-    const initializeButton = () => screen.root.findAllByType("button")[0]
-
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    expect(initializeStatus()).toEqual("Not initialized")
-
-    await act(() => initializeButton().props.onClick())
-
-    expect(initializeStatus()).toEqual("Initialized")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+  it("should initialize and render", () => {
+    const { container } = render(<div>Test App</div>, { wrapper: Wrapper })
+    expect(container).toBeInTheDocument()
   })
 
   it("should call query method", async () => {
-    const { useQueryCall } = createReactor<typeof hello_actor>({
-      canisterId,
-      idlFactory,
-      withLocalEnv: true,
-      verifyQuerySignatures: false,
-    })
-
     const HelloComponent = () => {
-      const { call, data, loading } = useQueryCall({
+      const { refetch, data, isLoading, isError, error } = useActorQuery({
         functionName: "greet",
         args: ["Query Call"],
+        enabled: false, // Wait for manual call
       })
+
+      if (isError) return <div>Error: {error.message}</div>
 
       return (
         <div>
-          <button onClick={call}>Say Hello</button>
-          <span>
-            {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
+          <button onClick={() => refetch()}>Say Hello</button>
+          <span data-testid="data">
+            {isLoading
+              ? "Loading..."
+              : data
+                ? data.toString()
+                : "Ready To call"}
           </span>
         </div>
       )
     }
 
-    let screen = renderer.create(<HelloComponent />)
+    render(<HelloComponent />, { wrapper: Wrapper })
 
-    const data = () => screen.root.findAllByType("span")[0]
+    expect(screen.getByTestId("data")).toHaveTextContent("Ready To call")
 
-    const button = () => screen.root.findAllByType("button")[0]
+    await act(async () => {
+      fireEvent.click(screen.getByText("Say Hello"))
+    })
 
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    expect(data().props.children).toEqual("Ready To call")
-
-    await act(() => button().props.onClick())
-
-    expect(data().props.children).toEqual("Hello, Query Call!")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    await waitFor(() => {
+      expect(screen.getByTestId("data")).toHaveTextContent("Hello, Query Call!")
+    })
   })
 
   it("should call update method", async () => {
-    const { useUpdateCall } = createReactor<typeof hello_actor>({
-      canisterId,
-      idlFactory,
-      withLocalEnv: true,
-    })
-
     const HelloComponent = () => {
-      const { call, data, loading } = useUpdateCall({
-        functionName: "greet_update",
-        args: ["Update Call"],
-      })
+      const { mutateAsync, data, isPending, isError, error } = useActorMutation(
+        {
+          functionName: "greet_update",
+        }
+      )
+
+      if (isError) return <div>Error: {error.message}</div>
 
       return (
         <div>
-          <button onClick={call}>Say Hello</button>
-          <span>
-            {loading ? "Loading..." : data ? data.toString() : "Ready To call"}
+          <button
+            onClick={() =>
+              mutateAsync(["Update Call"]).catch((e) =>
+                console.error("Update failed", e)
+              )
+            }
+          >
+            Say Hello
+          </button>
+          <span data-testid="data">
+            {isPending
+              ? "Loading..."
+              : data
+                ? data.toString()
+                : "Ready To call"}
           </span>
         </div>
       )
     }
 
-    let screen = renderer.create(<HelloComponent />)
+    render(<HelloComponent />, { wrapper: Wrapper })
 
-    const data = () => screen.root.findAllByType("span")[0]
+    expect(screen.getByTestId("data")).toHaveTextContent("Ready To call")
 
-    const button = () => screen.root.findAllByType("button")[0]
+    await act(async () => {
+      fireEvent.click(screen.getByText("Say Hello"))
+    })
 
-    expect(screen.toJSON()).toMatchSnapshot()
-
-    expect(data().props.children).toEqual("Ready To call")
-
-    await act(() => button().props.onClick())
-
-    expect(data().props.children).toEqual("Hello, Update Call!")
-
-    expect(screen.toJSON()).toMatchSnapshot()
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("data")).toHaveTextContent(
+          "Hello, Update Call!"
+        )
+      },
+      { timeout: 5000 }
+    )
   })
 })

@@ -1,6 +1,0 @@
-[submodule "candid-ui"]
-	path = candid-ui
-	url = git@github.com:b3hr4d/candid-ui.git
-[submodule "ui-builder"]
-	path = ui-builder
-	url = git@github.com:b3hr4d/ui-builder.git

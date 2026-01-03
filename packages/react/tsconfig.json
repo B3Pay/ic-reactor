@@ -1,7 +1,22 @@
 {
-  "extends": "../../tsconfig.json",
-  "include": ["./src", "src/context/actor/hooks/.ts"],
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist"
-  }
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "jsx": "react-jsx",
+    "noEmit": false,
+    "allowImportingTsExtensions": false
+  },
+  "include": ["src"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "tests/**/*"
+  ],
+  "references": [{ "path": "../core" }]
 }

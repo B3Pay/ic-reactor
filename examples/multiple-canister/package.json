@@ -1,0 +1,45 @@
+{
+  "name": "multiple-provider",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ic-reactor/core": "workspace:^",
+    "@ic-reactor/react": "workspace:^",
+    "@icp-sdk/core": "^5.0.0",
+    "@tanstack/react-query": "^5.90.16",
+    "@types/node": "25.0.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-hook-form": "^7.49.2",
+    "typescript": "^5.9"
+  },
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "vite": "^7.1.7"
+  }
+}

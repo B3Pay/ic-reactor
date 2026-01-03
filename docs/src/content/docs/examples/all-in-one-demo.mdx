@@ -1,0 +1,73 @@
+---
+title: "All-in-One Demo"
+description: Complete example with optimistic updates and Rust backend
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+A simplified "Twitter-like" dApp that demonstrates the full power of IC Reactor, including optimistic UI updates, backend integration, and authentication.
+
+## Features Demonstrated
+
+- **Optimistic Updates**: UI updates instantly when you "Like" a post, rolling back on error.
+- **Rust Backend**: Includes a simple Rust canister for posts and likes.
+- **Authentication**: Connect with Internet Identity.
+- **Form Handling**: Creating new posts with loading states.
+- **Automatic Refetching**: Lists update automatically after mutations.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/all-in-one-demo?embed=1&theme=dark&file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3hr4d/ic-reactor-v3/tree/main/examples/all-in-one-demo"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/all-in-one-demo?embed=1&theme=dark&file=src/App.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor All-in-One Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Key Code
+
+### Optimistic Mutation
+
+```typescript
+// Optimistically update the UI before the canister confirms
+const { mutate } = useActorMutation({
+  functionName: "like_post",
+  onMutate: async (postId) => {
+    // Cancel queries to avoid overwrites
+    await queryClient.cancelQueries({ queryKey: ["posts"] })
+
+    // Snapshot previous value
+    const previousPosts = queryClient.getQueryData(["posts"])
+
+    // Optimistically update
+    queryClient.setQueryData(["posts"], (old: Post[]) =>
+      old.map((post) =>
+        post.id === postId ? { ...post, likes: post.likes + 1 } : post
+      )
+    )
+
+    return { previousPosts }
+  },
+  onCanisterError: (error, variables, context) => {
+    // Rollback on logic error (e.g., "Already liked")
+    queryClient.setQueryData(["posts"], context.previousPosts)
+  },
+})
+```

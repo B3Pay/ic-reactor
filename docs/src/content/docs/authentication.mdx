@@ -1,0 +1,199 @@
+---
+title: Authentication
+description: Internet Identity authentication with IC Reactor
+editUrl: false
+---
+
+import { Aside, Steps, Tabs, TabItem } from "@astrojs/starlight/components"
+
+IC Reactor provides seamless integration with Internet Identity for authentication. This guide covers everything you need to know about user authentication.
+
+## Setup
+
+Authentication hooks are created by passing your `ClientManager` instance to `createAuthHooks`:
+
+```typescript
+// src/reactor/hooks.ts
+import { createAuthHooks } from "@ic-reactor/react"
+import { clientManager } from "./index"
+
+export const { useAuth, useUserPrincipal, useAgentState } =
+  createAuthHooks(clientManager)
+```
+
+<Aside type="note">
+  These hooks are bound to the specific `ClientManager` instance you created.
+  All actors using the same client manager will share the same authentication
+  state.
+</Aside>
+
+## useAuth
+
+The primary hook for managing authentication. Provides login, logout, and access to the current identity and principal:
+
+```tsx
+import { useAuth } from "../reactor/hooks"
+
+function AuthButton() {
+  const { login, logout, isAuthenticated, isAuthenticating, principal } =
+    useAuth()
+
+  if (isAuthenticating) {
+    return <button disabled>Connecting...</button>
+  }
+
+  return isAuthenticated ? (
+    <button onClick={logout}>
+      Logout {principal?.toText().slice(0, 8)}...
+    </button>
+  ) : (
+    <button onClick={() => login()}>Login with Internet Identity</button>
+  )
+}
+```
+
+### Login Options
+
+Customize the login flow with options:
+
+```tsx
+const { login } = useAuth()
+
+login({
+  // Identity provider URL (auto-detected based on network)
+  identityProvider: "https://identity.ic0.app",
+
+  // Session duration (default: 8 hours)
+  maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days
+
+  // Callbacks
+  onSuccess: () => {
+    console.log("Logged in!")
+    navigate("/dashboard")
+  },
+  onError: (error) => {
+    console.error("Login failed:", error)
+    toast.error("Authentication failed")
+  },
+})
+```
+
+### Auto-Detected Identity Provider
+
+The `ClientManager` automatically selects the correct Internet Identity provider based on your network:
+
+| Network      | Identity Provider                                              |
+| ------------ | -------------------------------------------------------------- |
+| IC (mainnet) | `https://identity.ic0.app`                                     |
+| Local        | `http://localhost:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai` |
+
+You can override this by passing `identityProvider` to the login options.
+
+## useUserPrincipal
+
+A convenience hook to get the current user's principal:
+
+```tsx
+import { useUserPrincipal } from "../reactor/hooks"
+
+function UserBadge() {
+  const principal = useUserPrincipal()
+
+  if (!principal || principal.isAnonymous()) {
+    return <span>Anonymous User</span>
+  }
+
+  return (
+    <span className="principal-badge">{principal.toText().slice(0, 8)}...</span>
+  )
+}
+```
+
+## useAgentState
+
+Access the IC agent's initialization state. This is useful for showing a global loading screen while the agent (and potential session) is warming up:
+
+```tsx
+import { useAgentState } from "../reactor/hooks"
+
+function AppRoot({ children }) {
+  const { isInitializing, error } = useAgentState()
+
+  if (isInitializing) {
+    return <LoadingScreen message="Connecting to IC..." />
+  }
+
+  if (error) {
+    return <ErrorScreen error={error} />
+  }
+
+  return children
+}
+```
+
+## Protected Routes
+
+Create a wrapper component for routes that require authentication:
+
+```tsx
+import { useAuth } from "../reactor/hooks"
+import { Navigate, useLocation } from "react-router-dom"
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isAuthenticating } = useAuth()
+  const location = useLocation()
+
+  // Show loading while checking auth state
+  if (isAuthenticating) {
+    return <LoadingSpinner />
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return <>{children}</>
+}
+```
+
+## Session Persistence
+
+Sessions are automatically persisted in IndexedDB. When users return to your app, the `useAuth` hook (or `clientManager.initialize()`) automatically triggers session restoration.
+
+### Session Duration
+
+By default, Internet Identity sessions last 8 hours. You can customize this:
+
+```tsx
+login({
+  maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days in nanoseconds
+})
+```
+
+<Aside type="caution">
+  Longer sessions are more convenient but less secure. Consider your app's
+  security requirements when setting session duration.
+</Aside>
+
+## Automatic Query Invalidation
+
+IC Reactor automatically invalidates all cached queries when the user's identity changes. This ensures:
+
+- **Login**: Fresh data is fetched for the authenticated user
+- **Logout**: Cached user data is cleared immediately
+- **Session restore**: Queries are refreshed if a session is restored
+
+This prevents cross-account data leakage and ensures data freshness.
+
+## Without Authentication
+
+If your app doesn't need authentication, you can skip the `@icp-sdk/auth` package entirely. The `ClientManager` will work with an anonymous identity. Queries will work, but update calls requiring authentication will fail.
+
+## Further Reading
+
+- [useAuth](/reference/createauthhooks/useauth) — Main auth hook reference
+- [useAgentState](/reference/createauthhooks/useagentstate) — Agent state reference
+- [React Setup](/react-setup) — Complete React configuration
+- [Error Handling](/error-handling) — Handle auth and query errors
+- [Query Caching](/query-caching) — Understand query invalidation

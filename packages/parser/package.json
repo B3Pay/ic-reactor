@@ -2,6 +2,7 @@
   "name": "@ic-reactor/parser",
   "version": "0.4.5",
   "description": "A parser for the DFINITY Candid language",
+  "sideEffects": false,
   "files": [
     "dist/web/*",
     "dist/nodejs/*",
@@ -14,12 +15,16 @@
     "url": "git@github.com:B3Pay/ic-reactor.git"
   },
   "keywords": [
+    "internet-computer",
+    "icp",
+    "dfinity",
+    "candid",
+    "parser",
     "actor",
     "react",
-    "candid",
-    "dfinity",
     "web3",
-    "dapp"
+    "dapp",
+    "wasm"
   ],
   "author": "b3hr4d",
   "license": "MIT",
@@ -28,13 +33,12 @@
   },
   "homepage": "https://github.com/b3hr4d/ic-reactor/tree/main/packages/parser#readme",
   "scripts": {
-    "test": "bun test",
-    "build": "bun run clean && bun run build:web && bun run build:node && bun run build:bundler",
-    "build:web": "bun run wasm-pack build --release --target web --out-dir dist/web --out-name index",
-    "build:node": "bun run wasm-pack build --release --target nodejs --out-dir dist/nodejs --out-name index",
-    "build:bundler": "bun run wasm-pack build --release --target bundler --out-dir dist/bundler --out-name index",
-    "start": "bun run tsc --watch",
-    "clean": "bun run rimraf dist"
+    "build": "npm run clean && npm run build:web && npm run build:node && npm run build:bundler",
+    "build:web": "wasm-pack build --release --target web --out-dir dist/web --out-name index",
+    "build:node": "wasm-pack build --release --target nodejs --out-dir dist/nodejs --out-name index",
+    "build:bundler": "wasm-pack build --release --target bundler --out-dir dist/bundler --out-name index",
+    "start": "tsc --watch",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo && tsc -b"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -44,10 +48,7 @@
   },
   "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe",
   "dependencies": {
-    "@dfinity/agent": "^3.1.0",
-    "@dfinity/auth-client": "^3.1.0",
-    "@dfinity/candid": "^3.1.0",
-    "@dfinity/identity": "^3.1.0",
-    "@dfinity/principal": "^3.1.0"
+    "@icp-sdk/core": "^5.0.0",
+    "@icp-sdk/auth": "^5.0.0"
   }
 }

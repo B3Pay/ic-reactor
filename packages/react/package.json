@@ -1,52 +1,87 @@
 {
   "name": "@ic-reactor/react",
-  "version": "2.0.1",
-  "description": "A React library for interacting with Internet Computer canisters",
+  "version": "3.0.0",
+  "description": "IC Reactor React Library",
   "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "files": [
-    "dist/*"
+    "dist",
+    "README.md"
   ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "size": "size-limit",
+    "analyze": "size-limit --why"
+  },
   "repository": {
     "type": "git",
-    "url": "git@github.com:b3hr4d/ic-reactor.git"
+    "url": "git+https://github.com/b3hr4d/ic-reactor.git",
+    "directory": "packages/react"
   },
-  "keywords": [
-    "actor",
-    "react",
-    "candid",
-    "dfinity",
-    "web3",
-    "dapp"
-  ],
-  "author": "b3hr4d",
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/b3hr4d/ic-reactor/issues"
   },
-  "homepage": "https://b3pay.github.io/ic-reactor/modules/react.html",
-  "scripts": {
-    "test": "bun test",
-    "start": "bun run tsc watch",
-    "build": "bun run tsc",
-    "clean": "bun run rimraf dist && bun run rimraf umd"
-  },
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "dependencies": {
-    "@ic-reactor/core": "workspace:*",
-    "zustand": "^5.0.6",
-    "zustand-utils": "^2.1.0"
-  },
+  "homepage": "https://ic-reactor.dev",
+  "keywords": [
+    "internet-computer",
+    "icp",
+    "dfinity",
+    "react",
+    "hooks",
+    "web3",
+    "blockchain",
+    "canister",
+    "tanstack-query"
+  ],
+  "author": "Behrad Deylami",
+  "license": "MIT",
   "peerDependencies": {
-    "@dfinity/agent": "^3.1.0",
-    "@dfinity/auth-client": "^3.1.0",
-    "@dfinity/candid": "^3.1.0",
-    "@dfinity/identity": "^3.1.0",
-    "@dfinity/principal": "^3.1.0",
-    "react": ">=19.0.0",
-    "zustand": "^5.0.6"
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "@ic-reactor/core": "workspace:^",
+    "@tanstack/react-query": "^5.0.0"
   },
-  "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe"
+  "devDependencies": {
+    "@icp-sdk/auth": "^5.0.0",
+    "@icp-sdk/core": "^5.0.0",
+    "@ic-reactor/core": "workspace:^",
+    "@size-limit/preset-small-lib": "^11.1.6",
+    "@tanstack/react-query": "^5.90",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^27.2.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "size-limit": "^11.1.6",
+    "vitest": "^4.0.15"
+  },
+  "size-limit": [
+    {
+      "name": "React Library",
+      "path": "dist/index.js",
+      "limit": "30 KB",
+      "gzip": true,
+      "ignore": [
+        "react",
+        "react-dom",
+        "@ic-reactor/core",
+        "@tanstack/react-query"
+      ]
+    }
+  ]
 }

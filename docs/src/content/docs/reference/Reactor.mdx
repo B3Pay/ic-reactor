@@ -1,0 +1,485 @@
+---
+title: Reactor
+description: Reactive canister connections with automatic caching and type safety
+editUrl: false
+---
+
+import { Aside, Card, CardGrid } from "@astrojs/starlight/components"
+
+## Overview
+
+`Reactor` is the core class that represents a **reactive connection** to an Internet Computer canister. The name "Reactor" reflects its fundamental purpose: it **reacts** to changes and propagates updates throughout your application.
+
+### The Philosophy
+
+Traditional IC development treats canister calls as one-shot operations—you call, you get data, you're done. But modern applications need more:
+
+- **Data should stay fresh** — automatically refetch stale data in the background
+- **Requests should be deduplicated** — multiple components fetching the same data shouldn't make multiple calls
+- **Cache should be managed** — know when to invalidate and refetch
+- **Errors should be typed** — canister errors are domain-specific, not just strings
+
+`Reactor` wraps a canister connection with **TanStack Query integration**, transforming static canister calls into reactive data streams that your UI components can subscribe to.
+
+```typescript
+// A Reactor isn't just a connection — it's a reactive data source
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId,
+})
+
+// Data flows reactively: cache → components → automatic updates
+const { data, isLoading, refetch } = useReactorQuery({
+  reactor: backend,
+  functionName: "getUser",
+  args: [userId],
+})
+```
+
+## Why Reactor Instead of Actor?
+
+If you're familiar with the standard `Actor` class from `@icp-sdk/core/agent`, you might wonder why use `Reactor`. Here's why:
+
+<CardGrid>
+  <Card title="Automatic Caching" icon="rocket">
+    Built-in TanStack Query integration for automatic caching, deduplication, and background updates
+  </Card>
+  <Card title="Result Unwrapping" icon="approve-check">
+    Automatically unwraps `Result<Ok, Err>` types - no more manual `Ok`/`Err` checking
+  </Card>
+  <Card title="Type Transformations" icon="random">
+    With `DisplayReactor`, auto-convert BigInt → string, Principal → text for easy UI rendering
+  </Card>
+  <Card title="Identity Management" icon="seti:lock">
+    Shares authentication state across all reactors via `ClientManager`
+  </Card>
+</CardGrid>
+
+### Feature Comparison
+
+| Feature                | Standard Actor | Reactor                  |
+| ---------------------- | -------------- | ------------------------ |
+| Type-safe method calls | ✅             | ✅                       |
+| Query caching          | ❌             | ✅ Built-in              |
+| Automatic refetching   | ❌             | ✅ Background updates    |
+| Result unwrapping      | ❌ Manual      | ✅ Automatic             |
+| Error typing           | ❌ Generic     | ✅ `CanisterError<E>`    |
+| Identity sharing       | ❌ Per-actor   | ✅ Via ClientManager     |
+| Query invalidation     | ❌             | ✅ `invalidateQueries()` |
+
+## Import
+
+```typescript
+// React users - import from @ic-reactor/react
+import { Reactor } from "@ic-reactor/react"
+
+// Non-React users
+import { Reactor } from "@ic-reactor/core"
+```
+
+## Usage
+
+```typescript
+import { Reactor, ClientManager } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/query-core"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const queryClient = new QueryClient()
+const clientManager = new ClientManager({ queryClient })
+
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  name: "backend",
+})
+```
+
+## Constructor Options
+
+| Option           | Type                   | Required | Description                          |
+| ---------------- | ---------------------- | -------- | ------------------------------------ |
+| `clientManager`  | `ClientManager`        | Yes      | The ClientManager instance           |
+| `idlFactory`     | `IDL.InterfaceFactory` | Yes      | Candid IDL factory from declarations |
+| `canisterId`     | `string \| Principal`  | Yes      | The canister ID to connect to        |
+| `name`           | `string`               | No       | Human-readable name for debugging    |
+| `pollingOptions` | `PollingOptions`       | No       | Custom polling options for updates   |
+
+## Properties
+
+| Property        | Type               | Description                    |
+| --------------- | ------------------ | ------------------------------ |
+| `canisterId`    | `Principal`        | The canister's Principal       |
+| `name`          | `string`           | Name of the reactor            |
+| `service`       | `IDL.ServiceClass` | The Candid service interface   |
+| `agent`         | `HttpAgent`        | The IC HTTP agent (getter)     |
+| `queryClient`   | `QueryClient`      | TanStack Query client (getter) |
+| `clientManager` | `ClientManager`    | The shared client manager      |
+
+## Methods
+
+### callMethod
+
+Call a canister method directly:
+
+```typescript
+const result = await backend.callMethod({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+```
+
+#### Parameters
+
+| Option         | Type         | Description                 |
+| -------------- | ------------ | --------------------------- |
+| `functionName` | `string`     | Name of the canister method |
+| `args`         | `array`      | Arguments to pass           |
+| `callConfig`   | `CallConfig` | Optional call configuration |
+
+#### Returns
+
+`Promise<ReturnType>` — The method's return value (with Result unwrapping)
+
+---
+
+### generateQueryKey
+
+Generate a TanStack Query cache key for a method call:
+
+```typescript
+const queryKey = backend.generateQueryKey({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+// Returns: [canisterId, "getUser", "user-123"]
+```
+
+Use this for:
+
+- `refetchQueries` in mutations
+- Manual cache operations
+- Query invalidation
+
+---
+
+### getQueryOptions
+
+Get TanStack Query options for a method call:
+
+```typescript
+const queryOptions = backend.getQueryOptions({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+
+// Use in loaders
+const loader = async () => {
+  await queryClient.prefetchQuery(queryOptions)
+  return null
+}
+
+// Or with useQuery directly
+const result = useQuery(queryOptions)
+```
+
+#### Returns
+
+Object containing `queryKey` and `queryFn` for TanStack Query.
+
+---
+
+### invalidateQueries
+
+Invalidate all cached queries for this canister:
+
+```typescript
+// After a successful mutation, invalidate all queries for this canister
+await backend.callMethod({ functionName: "updateProfile", args: [newProfile] })
+backend.invalidateQueries()
+```
+
+This will mark all queries as stale and trigger a refetch for any active queries.
+
+---
+
+### getServiceInterface
+
+Get the Candid service interface (IDL.ServiceClass):
+
+```typescript
+const service = backend.getServiceInterface()
+console.log(service._fields) // Array of [methodName, FuncClass]
+```
+
+Useful for introspection and codec generation.
+
+## Examples
+
+### Complete Setup
+
+```typescript
+// src/reactor/index.ts
+import { ClientManager, Reactor } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/query-core"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+    },
+  },
+})
+
+export const clientManager = new ClientManager({
+  queryClient,
+  withProcessEnv: true,
+})
+
+export const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+  name: "backend",
+})
+```
+
+### Direct Method Calls
+
+```typescript
+// Query method
+const user = await backend.callMethod({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+
+// Update method
+const result = await backend.callMethod({
+  functionName: "createPost",
+  args: [{ title: "Hello", content: "World" }],
+})
+```
+
+### Prefetching in Loaders
+
+```typescript
+// React Router loader
+export async function loader({ params }) {
+  const queryOptions = backend.getQueryOptions({
+    functionName: "getUser",
+    args: [params.userId],
+  })
+
+  await queryClient.prefetchQuery(queryOptions)
+
+  return null
+}
+```
+
+### Cache Manipulation
+
+```typescript
+import { useQueryClient } from "@tanstack/react-query"
+
+function useUpdateUserCache() {
+  const queryClient = useQueryClient()
+
+  const updateUser = (userId: string, updates: Partial<User>) => {
+    const queryKey = backend.generateQueryKey({
+      functionName: "getUser",
+      args: [userId],
+    })
+
+    queryClient.setQueryData(queryKey, (old: User) => ({
+      ...old,
+      ...updates,
+    }))
+  }
+
+  return updateUser
+}
+```
+
+### Multiple Canisters
+
+```typescript
+import { Reactor, ClientManager } from "@ic-reactor/react"
+import {
+  idlFactory as backendIdl,
+  type _SERVICE as BackendService,
+} from "../declarations/backend"
+import {
+  idlFactory as ledgerIdl,
+  type _SERVICE as LedgerService,
+} from "../declarations/ledger"
+
+// One ClientManager, shared across all reactors
+export const backend = new Reactor<BackendService>({
+  clientManager,
+  idlFactory: backendIdl,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+  name: "backend",
+})
+
+export const ledger = new Reactor<LedgerService>({
+  clientManager,
+  idlFactory: ledgerIdl,
+  canisterId: import.meta.env.VITE_LEDGER_CANISTER_ID,
+  name: "ledger",
+})
+```
+
+### fetchQuery
+
+Fetch data from the canister and cache it using React Query:
+
+```typescript
+const result = await backend.fetchQuery({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+```
+
+This method ensures the data is in the cache (fetching it if necessary) and returns it. It respects the standard React Query caching behavior.
+
+---
+
+### getQueryData
+
+Get the current data from the cache without fetching:
+
+```typescript
+const user = backend.getQueryData({
+  functionName: "getUser",
+  args: ["user-123"],
+})
+
+if (user) {
+  console.log("User in cache:", user.name)
+}
+```
+
+---
+
+## Extending Reactor
+
+You can extend the `Reactor` class to add custom functionality, logging, or middleware. The `callMethod` is now a class method, allowing you to override it easily.
+
+```typescript
+class LoggingReactor extends Reactor<BackendService> {
+  // Override callMethod to add logging
+  async callMethod(params) {
+    console.log("Calling method:", params.functionName)
+    const result = await super.callMethod(params)
+    console.log("Method result:", result)
+    return result
+  }
+
+  // Override fetchQuery to add custom logic (e.g. auth checks)
+  async fetchQuery(params) {
+    if (!this.clientManager.isAuthenticated) {
+      console.warn("User not authenticated")
+    }
+    return super.fetchQuery(params)
+  }
+}
+
+const backend = new LoggingReactor({
+  clientManager,
+  idlFactory,
+  canisterId,
+})
+```
+
+By extending `Reactor`, all methods relying on it (including `callMethod`, `fetchQuery`, and even `createQuery` consumers) will automatically use your custom logic.
+
+## Automatic Result Unwrapping
+
+IC Reactor automatically unwraps Candid `Result` types (`variant { Ok: T; Err: E }`):
+
+- **On `Ok`**: Returns the success value directly
+- **On `Err`**: Throws a `CanisterError` containing the error variant
+
+```typescript
+import { CanisterError } from "@ic-reactor/react"
+
+// Canister returns: Result<User, CreateUserError>
+try {
+  const user = await backend.callMethod({
+    functionName: "createUser",
+    args: [{ name: "Alice", email: "alice@example.com" }],
+  })
+  // user is User directly (not { Ok: User })
+  console.log("Created:", user.name)
+} catch (error) {
+  if (error instanceof CanisterError) {
+    // error.err is the CreateUserError variant
+    console.log("Error code:", error.code)
+    if ("EmailAlreadyExists" in error.err) {
+      console.log("Email already taken")
+    }
+  }
+}
+```
+
+This eliminates the need to manually check for `Ok`/`Err` variants in your code.
+
+<Aside type="tip">
+  Learn how to handle canister errors effectively in the [Error
+  Handling](/error-handling) guide.
+</Aside>
+
+## Notes
+
+<Aside type="tip">
+  Use the `name` option for better debugging. It appears in console logs and
+  helps identify which canister is being called.
+</Aside>
+
+<Aside type="note">
+  For automatic type transformations (BigInt → string, Principal → text, etc.),
+  use [DisplayReactor](/reference/displayreactor) instead.
+</Aside>
+
+## Validation
+
+For argument validation before canister calls, use `DisplayReactor` which includes
+built-in validation support. Validators receive **display types** (strings for
+Principal/bigint), making them ideal for form validation.
+
+```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+
+const reactor = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId,
+})
+
+// Register validators that receive display types
+reactor.registerValidator("transfer", ([input]) => {
+  const issues = []
+
+  if (!input.to) {
+    issues.push({ path: ["to"], message: "Recipient is required" })
+  }
+  if (!/^\d+$/.test(input.amount)) {
+    issues.push({ path: ["amount"], message: "Must be a valid number" })
+  }
+
+  return issues.length > 0 ? { success: false, issues } : { success: true }
+})
+```
+
+See [DisplayReactor](/reference/displayreactor#validation) for full validation documentation.
+
+## See Also
+
+- [DisplayReactor](/reference/displayreactor) — Type transformations and validation
+- [ClientManager](/reference/clientmanager) — Agent and auth management
+- [createActorHooks](/reference/createactorhooks) — Create React hooks
+- [Error Handling](/error-handling) — Handle canister errors
+- [Type Safety](/type-safety) — Type system details

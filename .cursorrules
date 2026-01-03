@@ -1,0 +1,51 @@
+# IC Reactor - AI Rules & Coding Standards
+
+## Project Context
+You are working on **IC Reactor v3**, a type-safe TypeScript library for building Internet Computer (IC) applications.
+It leverages **TanStack Query** (React Query) for state management and caching.
+
+## Core Principles
+- **Type Safety**: usage of `Candid` types is mandatory. Avoid `any` or loose typing.
+- **DisplayReactor**: Prefer `DisplayReactor` over standard `Reactor` for UI components to handle BigInt serialization automatically.
+- **Factory Pattern**: Use `createActorHooks`, `createQuery`, and `createMutation` factories instead of manual hook implementations.
+
+## Preferred Patterns
+
+### 1. Data Fetching (Queries)
+- Use `useActorQuery` from `createActorHooks` for component-level data fetching.
+- Use `createQuery` for defining reusable query objects outside components.
+- Always handle `isLoading` and `error` states.
+
+### 2. Data Mutations
+- Use `useActorMutation` for state-changing calls.
+- **CRITICAL**: Use the `onCanisterError` callback for handling logic errors returned by the canister (e.g., `Result.Err`).
+- Use `onSuccess` for successful `Result.Ok` unwrapped values.
+
+```typescript
+// ✅ Good Pattern
+const { mutate } = useActorMutation({
+  functionName: 'updateProfile',
+  onSuccess: (data) => console.log('Success:', data),
+  onCanisterError: (error) => console.error('Logic Error:', error), 
+});
+```
+
+### 3. Authentication
+- Use `useAuth` for simple login/logout actions.
+- Use `useAgentState` to check if the agent is initialized or to get network details.
+- Avoid deprecated hooks like `useAuthState`.
+
+## Naming Conventions
+- **Factories**: `createActorHooks`, `createQuery`, `createMutation`.
+- **Hooks**: `useActorQuery`, `useActorMutation`, `useActorInfiniteQuery`.
+- **Callbacks**: `onCanisterError` (not calling it just `onError` when referring to canister logic errors).
+
+## Documentation
+- Refer to `llms.txt` in the root directory for a comprehensive API overview and high-level concepts.
+- Refer to `/docs` for detailed guides and examples.
+
+## Tech Stack
+- TypeScript
+- React
+- TanStack Query v5
+- Internet Computer (DFINITY) Agent & Candid

@@ -1,0 +1,41 @@
+# Source files
+src/
+tests/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Compiled test files in dist
+dist/**/*.test.js
+dist/**/*.test.d.ts
+dist/**/*.test.js.map
+dist/**/*.test.d.ts.map
+dist/**/*.spec.js
+dist/**/*.spec.d.ts
+dist/**/*.spec.js.map
+dist/**/*.spec.d.ts.map
+
+# Build artifacts
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Development files
+test-setup.ts
+vitest.config.ts
+tsconfig.test.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/

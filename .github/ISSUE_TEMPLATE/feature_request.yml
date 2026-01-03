@@ -1,0 +1,76 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please provide as much detail as possible.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched the [existing issues](https://github.com/B3Pay/ic-reactor/issues) to make sure this feature hasn't been requested before
+          required: true
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which package(s) would this feature affect?
+      multiple: true
+      options:
+        - "@ic-reactor/core"
+        - "@ic-reactor/react"
+        - "@ic-reactor/parser"
+        - "New package"
+        - "Documentation"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: A clear description of the problem this feature would solve. What limitation or pain point are you experiencing?
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see implemented.
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: Suggested API (if applicable)
+      description: If you have ideas about what the API might look like, share them here.
+      render: typescript
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How important is this feature to you?
+      options:
+        - "Nice to have"
+        - "Important, but I can work around it"
+        - "Critical for my use case"
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I would be willing to submit a PR to implement this feature

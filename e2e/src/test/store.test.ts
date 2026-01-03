@@ -1,62 +1,51 @@
-import { createReactorStore } from "@ic-reactor/core"
-import {
-  canisterId,
-  hello_actor,
-  idlFactory,
-} from "../declarations/hello_actor/index.js"
-import type {
-  AuthState,
-  ActorState,
-  AgentState,
-} from "@ic-reactor/core/dist/types.js"
+import { Reactor, ClientManager } from "@ic-reactor/core"
+import { hello_actor, idlFactory } from "../declarations/hello_actor"
+import { describe, expect, it, beforeAll } from "vitest"
+import { QueryClient } from "@tanstack/react-query"
 
-const AUTH_DEFAULT_STATE: AuthState = {
-  identity: null,
-  authenticated: false,
-  authenticating: false,
-  error: undefined,
-}
-const AGENT_DEFAULT_STATE: AgentState = {
-  error: undefined,
-  initialized: true,
-  initializing: false,
-  network: "local",
-}
-
-const ACTOR_DEFAULT_STATE: ActorState<typeof hello_actor> = {
-  initialized: false,
-  initializing: false,
-  error: undefined,
-  methodState: {} as any,
-}
-
-test("Main Function Test", async () => {
-  const { actorStore, agentManager, callMethod, initialize } =
-    createReactorStore<typeof hello_actor>({
-      canisterId,
-      idlFactory,
-      withProcessEnv: true,
-      initializeOnCreate: false,
+describe("Store Test", () => {
+  const queryClient = new QueryClient()
+  const clientManager = new ClientManager({
+    withProcessEnv: true,
+    agentOptions: {
       verifyQuerySignatures: false,
-    })
-
-  expect(actorStore.getState()).toEqual(ACTOR_DEFAULT_STATE)
-
-  initialize()
-
-  expect(actorStore.getState()).toEqual({
-    initialized: true,
-    initializing: false,
-    error: undefined,
-    methodState: {},
+    },
+    queryClient,
   })
 
-  const greet = await callMethod("greet", "World")
-  expect(greet).toEqual("Hello, World!")
+  const helloActor = new Reactor<typeof hello_actor>({
+    clientManager,
+    canisterId: process.env.CANISTER_ID_HELLO_ACTOR!,
+    idlFactory,
+    name: "hello_actor",
+  })
 
-  const greetUpdate = await callMethod("greet_update", "World")
-  expect(greetUpdate).toEqual("Hello, World!")
+  beforeAll(async () => {
+    await clientManager.initialize()
+  })
 
-  expect(agentManager.getAuthState()).toEqual(AUTH_DEFAULT_STATE)
-  expect(agentManager.getAgentState()).toEqual(AGENT_DEFAULT_STATE)
+  it("should return the correct initial state", async () => {
+    expect(helloActor.canisterId.toString()).toEqual(
+      process.env.CANISTER_ID_HELLO_ACTOR
+    )
+    expect((await clientManager.getUserPrincipal()).isAnonymous()).toBe(true)
+  })
+
+  it("should call the greet function", async () => {
+    const greet = await helloActor.callMethod({
+      functionName: "greet",
+      args: ["World"],
+    })
+
+    expect(greet).toEqual("Hello, World!")
+  })
+
+  it("should call the greet_update function", async () => {
+    const result = await helloActor.callMethod({
+      functionName: "greet_update",
+      args: ["World"],
+    })
+
+    expect(result).toEqual("Hello, World!")
+  })
 })

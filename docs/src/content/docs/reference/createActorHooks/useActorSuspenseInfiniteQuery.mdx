@@ -1,0 +1,278 @@
+---
+title: useActorSuspenseInfiniteQuery
+description: Suspense-enabled infinite query hook for canisters
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useActorSuspenseInfiniteQuery` is a React hook for fetching paginated data from canisters with Suspense support. It suspends the component until the first page is loaded.
+
+## Import
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+
+const { useActorSuspenseInfiniteQuery } = createActorHooks(backend)
+```
+
+<Aside type="tip">
+  It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
+
+```typescript
+const { useActorSuspenseInfiniteQuery: useBackendSuspenseInfiniteQuery } =
+  createActorHooks(backend)
+```
+
+</Aside>
+
+## Usage
+
+```tsx
+import { Suspense } from "react"
+
+function ItemList() {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useActorSuspenseInfiniteQuery({
+      functionName: "getItems",
+      getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }],
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) =>
+        lastPage.items.length < 10 ? undefined : allPages.length * 10,
+    })
+
+  // data.pages is ALWAYS defined - no undefined check needed
+  return (
+    <div>
+      {data.pages.map((page, i) => (
+        <div key={i}>
+          {page.items.map((item) => (
+            <Item key={item.id} data={item} />
+          ))}
+        </div>
+      ))}
+
+      <button
+        onClick={() => fetchNextPage()}
+        disabled={!hasNextPage || isFetchingNextPage}
+      >
+        {isFetchingNextPage ? "Loading..." : hasNextPage ? "Load More" : "End"}
+      </button>
+    </div>
+  )
+}
+
+// Must be wrapped in Suspense
+function App() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <ItemList />
+    </Suspense>
+  )
+}
+```
+
+## Options
+
+Same as [useActorInfiniteQuery](/reference/useactorinfinitequery) **except**:
+
+<Aside type="caution">
+  `useActorSuspenseInfiniteQuery` does **NOT** support the `enabled` option. The
+  query always executes immediately.
+</Aside>
+
+### Key Options
+
+| Option                 | Type         | Description                            |
+| ---------------------- | ------------ | -------------------------------------- |
+| `functionName`         | `string`     | The canister method to call            |
+| `getArgs`              | `function`   | Returns args for each page             |
+| `initialPageParam`     | `TPageParam` | Initial page parameter                 |
+| `getNextPageParam`     | `function`   | Returns next page param                |
+| `getPreviousPageParam` | `function`   | Returns previous page param (optional) |
+| `maxPages`             | `number`     | Max pages to cache (optional)          |
+| `staleTime`            | `number`     | Time before data is stale              |
+
+## Return Value
+
+Returns a TanStack Query suspense infinite result. Key difference from `useActorInfiniteQuery`:
+
+| Property                 | Type                  | Description                          |
+| ------------------------ | --------------------- | ------------------------------------ |
+| `data`                   | `InfiniteData<TData>` | **Always defined** (never undefined) |
+| `data.pages`             | `TData[]`             | Array of all pages (at least one)    |
+| `data.pageParams`        | `TPageParam[]`        | Array of page parameters             |
+| `error`                  | `never`               | Errors are thrown, not returned      |
+| `status`                 | `'success'`           | Always success                       |
+| `hasNextPage`            | `boolean`             | More pages available                 |
+| `hasPreviousPage`        | `boolean`             | Previous pages available             |
+| `fetchNextPage`          | `function`            | Fetch next page                      |
+| `fetchPreviousPage`      | `function`            | Fetch previous page                  |
+| `isFetchingNextPage`     | `boolean`             | Fetching next page                   |
+| `isFetchingPreviousPage` | `boolean`             | Fetching previous page               |
+
+## Examples
+
+### Basic Usage
+
+```tsx
+function ProductList() {
+  const { data, fetchNextPage, hasNextPage } = useActorSuspenseInfiniteQuery({
+    functionName: "getProducts",
+    getArgs: (page) => [{ page, perPage: 20 }],
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages, lastPageParam) =>
+      lastPage.hasMore ? lastPageParam + 1 : undefined,
+  })
+
+  // data is guaranteed to have at least one page
+  return (
+    <div>
+      {data.pages
+        .flatMap((page) => page.products)
+        .map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+
+      {hasNextPage && (
+        <button onClick={() => fetchNextPage()}>Load More</button>
+      )}
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <Suspense fallback={<ProductListSkeleton />}>
+      <ProductList />
+    </Suspense>
+  )
+}
+```
+
+### With Error Boundary
+
+```tsx
+import { ErrorBoundary } from "react-error-boundary"
+
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <div className="error">
+      <p>Failed to load items</p>
+      <pre>{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Retry</button>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Suspense fallback={<Loading />}>
+        <ItemList />
+      </Suspense>
+    </ErrorBoundary>
+  )
+}
+```
+
+### Infinite Scroll with Suspense
+
+```tsx
+import { useInView } from "react-intersection-observer"
+import { useEffect, Suspense } from "react"
+
+function InfiniteList() {
+  const { ref, inView } = useInView()
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useActorSuspenseInfiniteQuery({
+      functionName: "getItems",
+      getArgs: (offset) => [{ offset, limit: 20 }],
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) =>
+        lastPage.items.length < 20 ? undefined : allPages.length * 20,
+    })
+
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  return (
+    <div>
+      {data.pages
+        .flatMap((page) => page.items)
+        .map((item) => (
+          <ItemCard key={item.id} item={item} />
+        ))}
+
+      <div ref={ref}>{isFetchingNextPage && <LoadingSpinner />}</div>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <Suspense fallback={<ListSkeleton />}>
+      <InfiniteList />
+    </Suspense>
+  )
+}
+```
+
+### Flattened Data with Select
+
+```tsx
+const { data: items } = useActorSuspenseInfiniteQuery({
+  functionName: "getItems",
+  getArgs: (offset) => [{ offset, limit: 20 }],
+  initialPageParam: 0,
+  getNextPageParam: (lastPage, allPages) =>
+    lastPage.items.length < 20 ? undefined : allPages.length * 20,
+  select: (data) => data.pages.flatMap((page) => page.items),
+})
+
+// items is a flat array of all items across all pages
+return (
+  <ul>
+    {items.map((item) => (
+      <li key={item.id}>{item.name}</li>
+    ))}
+  </ul>
+)
+```
+
+## When to Use
+
+✅ **Use Suspense Infinite Query when:**
+
+- You always need paginated data (no conditional fetching)
+- You want automatic loading states at the boundary level
+- You're building a feed or list that requires pagination
+
+❌ **Use regular `useActorInfiniteQuery` when:**
+
+- You need conditional fetching (`enabled` option)
+- You want per-component loading states
+- You need access to `isPending` state
+
+## Notes
+
+<Aside type="note">
+  Suspense queries throw errors instead of returning them. Always pair with an
+  Error Boundary.
+</Aside>
+
+<Aside type="tip">
+  The first page load suspends the component. Subsequent page fetches (via
+  `fetchNextPage`) do not suspend — use `isFetchingNextPage` for loading UI.
+</Aside>
+
+## See Also
+
+- [useActorInfiniteQuery](/reference/createactorhooks/useactorinfinitequery) — Regular infinite query
+- [useActorSuspenseQuery](/reference/createactorhooks/useactorsuspensequery) — Single suspense query
+- [Queries Guide](/guides/queries) — In-depth query patterns
+- [createActorHooks](/reference/createactorhooks/overview) — Creating hooks

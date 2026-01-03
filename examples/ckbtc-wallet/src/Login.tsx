@@ -1,34 +1,51 @@
-import { useAuth } from "@ic-reactor/react"
+import { useAuth } from "./reactor"
 
 const Login = () => {
-  const {
-    login,
-    logout,
-    loginLoading,
-    loginError,
-    identity,
-    authenticating,
-    authenticated,
-  } = useAuth()
+  const { login, logout, identity, isAuthenticating, isAuthenticated, error } =
+    useAuth()
 
   return (
-    <div>
-      <h2>Login:</h2>
-      <div>
-        {loginLoading && <div>Loading...</div>}
-        {loginError ? <div>{loginError}</div> : null}
-        {identity && <div>{identity.getPrincipal().toText()}</div>}
-      </div>
-      {authenticated ? (
-        <div>
-          <button onClick={() => logout()}>Logout</button>
+    <div className="login-section">
+      {error && (
+        <div className="status status-error" style={{ marginBottom: "16px" }}>
+          ⚠️ {error.message}
         </div>
-      ) : (
-        <div>
-          <button onClick={() => login()} disabled={authenticating}>
-            Login
+      )}
+
+      {isAuthenticated && identity ? (
+        <>
+          <div className="user-info">
+            <div className="user-avatar">👤</div>
+            <div className="user-principal">
+              {identity.getPrincipal().toText()}
+            </div>
+          </div>
+          <button className="btn-secondary" onClick={() => logout()}>
+            Disconnect Wallet
           </button>
-        </div>
+        </>
+      ) : (
+        <>
+          <h2 className="login-title">Connect Your Wallet</h2>
+          <p className="login-description">
+            Sign in with Internet Identity to manage your ckBTC
+          </p>
+          <button
+            className="btn-primary"
+            onClick={() => login()}
+            disabled={isAuthenticating}
+            style={{ padding: "12px 32px", fontSize: "1rem" }}
+          >
+            {isAuthenticating ? (
+              <>
+                <span className="spinner" style={{ marginRight: "8px" }} />
+                Connecting...
+              </>
+            ) : (
+              "🔑 Connect with Internet Identity"
+            )}
+          </button>
+        </>
       )}
     </div>
   )

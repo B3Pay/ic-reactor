@@ -1,0 +1,66 @@
+---
+title: useReactorSuspenseInfiniteQuery
+description: Suspense-enabled infinite query hook for reactor instance
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useReactorSuspenseInfiniteQuery` is a React hook for paginated data fetching with Suspense support using a `Reactor` instance.
+
+## Import
+
+```typescript
+import { useReactorSuspenseInfiniteQuery } from "@ic-reactor/react"
+```
+
+## Usage
+
+```tsx
+import { Suspense } from "react"
+import { useReactorSuspenseInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function Feed() {
+  const { data, fetchNextPage } = useReactorSuspenseInfiniteQuery({
+    reactor: backend, // 👈 Required
+    functionName: "getPosts",
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  })
+
+  // data is always defined
+  return (
+    <div>
+      {data.pages.map(page => /* ... */)}
+      <button onClick={() => fetchNextPage()}>Load More</button>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <Suspense fallback="Loading feed...">
+      <Feed />
+    </Suspense>
+  )
+}
+```
+
+## Options
+
+### Required Options
+
+| Option             | Type            | Description                                              |
+| ------------------ | --------------- | -------------------------------------------------------- |
+| `reactor`          | `Reactor<A, T>` | The Reactor instance to use                              |
+| `functionName`     | `string`        | The canister method to call                              |
+| `getNextPageParam` | `function`      | Function to determine the next page param (cursor/index) |
+
+### Optional Options
+
+Same as [useActorSuspenseInfiniteQuery](/reference/createactorhooks/useactorsuspenseinfinitequery).
+
+## See Also
+
+- [useActorSuspenseInfiniteQuery](/reference/createactorhooks/useactorsuspenseinfinitequery) — Bound version
+- [Reactor Overview](/reference/hooks/reactorhooks/overview)

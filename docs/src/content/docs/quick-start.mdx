@@ -1,0 +1,161 @@
+---
+title: Quick Start
+description: Get started with IC Reactor in 5 minutes
+editUrl: false
+---
+
+import { Aside, Steps, Tabs, TabItem } from "@astrojs/starlight/components"
+
+This tutorial walks you through creating your first IC Reactor integration with React. By the end, you'll have a fully functional data-fetching setup with queries and mutations.
+
+<Steps>
+
+1. ## Install packages
+
+   <Tabs syncKey="pm">
+     <TabItem label="pnpm" icon="pnpm">
+       ```bash pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+       ```
+     </TabItem>
+     <TabItem label="npm" icon="npm">
+       ```bash npm install @ic-reactor/react @icp-sdk/core @tanstack/react-query
+       ```
+     </TabItem>
+     <TabItem label="yarn" icon="seti:yarn">
+       ```bash yarn add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+       ```
+     </TabItem>
+     <TabItem label="bun" icon="bun">
+       ```bash bun add @ic-reactor/react @icp-sdk/core @tanstack/react-query ```
+     </TabItem>
+   </Tabs>
+
+2. ## Create the Reactor
+
+   Create a central configuration file for your canister connection:
+
+   ```typescript
+   // src/reactor/index.ts
+   import { ClientManager, Reactor } from "@ic-reactor/react"
+   import { QueryClient } from "@tanstack/react-query"
+   import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+   // Create QueryClient with sensible defaults
+   export const queryClient = new QueryClient({
+     defaultOptions: {
+       queries: {
+         staleTime: 1000 * 60, // 1 minute
+         gcTime: 1000 * 60 * 5, // 5 minutes
+       },
+     },
+   })
+
+   // Create ClientManager (handles agent and auth)
+   export const clientManager = new ClientManager({
+     queryClient,
+     withProcessEnv: true, // Auto-detect local vs IC network
+   })
+
+   // Create Reactor for your canister
+   export const backend = new Reactor<_SERVICE>({
+     clientManager,
+     idlFactory,
+     canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+   })
+   ```
+
+3. ## Create hooks
+
+   Create reusable hooks from your Reactor:
+
+   ```typescript
+   // src/reactor/hooks.ts
+   import { createActorHooks } from "@ic-reactor/react"
+   import { backend } from "./index"
+
+   export const { useActorQuery, useActorMutation } = createActorHooks(backend)
+   ```
+
+4. ## Fetch data with queries
+
+   Use `useActorQuery` to fetch data from your canister:
+
+   ```tsx
+   // src/components/Greeting.tsx
+   import { useActorQuery } from "../reactor/hooks"
+
+   function Greeting() {
+     const { data, isPending, error } = useActorQuery({
+       functionName: "greet",
+       args: ["World"],
+     })
+
+     if (isPending) return <div>Loading...</div>
+     if (error) return <div>Error: {error.message}</div>
+
+     return <h1>{data}</h1>
+   }
+   ```
+
+5. ## Update data with mutations
+
+   Use `useActorMutation` to call update methods:
+
+   ```tsx
+   // src/components/Counter.tsx
+   import { useState } from "react"
+   import { useActorQuery, useActorMutation } from "../reactor/hooks"
+   import { backend } from "../reactor"
+
+   function Counter() {
+     // Query the current count
+     const { data: count } = useActorQuery({
+       functionName: "getCount",
+     })
+
+     // Mutation to increment
+     const { mutate, isPending } = useActorMutation({
+       functionName: "increment",
+       // Refetch count after mutation
+       refetchQueries: [backend.generateQueryKey({ functionName: "getCount" })],
+     })
+
+     return (
+       <div>
+         <p>Count: {count ?? "..."}</p>
+         <button onClick={() => mutate([])} disabled={isPending}>
+           {isPending ? "Incrementing..." : "Increment"}
+         </button>
+       </div>
+     )
+   }
+   ```
+
+</Steps>
+
+## Environment Variables
+
+Set up your canister IDs in your environment file:
+
+```bash
+# .env.local (for Vite)
+VITE_BACKEND_CANISTER_ID=rrkah-fqaaa-aaaaa-aaaaq-cai
+
+# Or if using CRA
+REACT_APP_BACKEND_CANISTER_ID=rrkah-fqaaa-aaaaa-aaaaq-cai
+```
+
+<Aside type="tip">
+  If you have a DFX project, run `dfx generate` to create your canister's
+  TypeScript declarations in `src/declarations/`.
+</Aside>
+
+## What's Next?
+
+You now have IC Reactor working! Here's what to explore next:
+
+- **[React Setup](/react-setup)** — Complete configuration with authentication
+- **[Queries](/guides/queries)** — Deep dive into data fetching
+- **[Mutations](/guides/mutations)** — Learn about updating data
+- **[Query Caching](/query-caching)** — Master TanStack Query integration
+- **[Type Safety](/type-safety)** — Understand the type system

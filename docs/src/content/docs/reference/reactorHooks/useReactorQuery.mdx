@@ -1,0 +1,82 @@
+---
+title: useReactorQuery
+description: Hook for fetching data from a reactor instance
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`useReactorQuery` is a React hook for fetching data from Internet Computer canisters using a `Reactor` instance. It is the raw version of `useActorQuery` that requires explicit reactor passing.
+
+## Import
+
+```typescript
+import { useReactorQuery } from "@ic-reactor/react"
+```
+
+## Usage
+
+```tsx
+import { useReactorQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function UserProfile({ userId }: { userId: string }) {
+  const { data, isPending, error } = useReactorQuery({
+    reactor: backend, // 👈 Required
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  if (isPending) return <div>Loading...</div>
+  if (error) return <div>Error: {error.message}</div>
+
+  return <div>{data?.name}</div>
+}
+```
+
+## Options
+
+### Required Options
+
+| Option         | Type            | Description                 |
+| -------------- | --------------- | --------------------------- |
+| `reactor`      | `Reactor<A, T>` | The Reactor instance to use |
+| `functionName` | `string`        | The canister method to call |
+
+### Optional Options
+
+Same as [useActorQuery](/reference/createactorhooks/useactorquery).
+
+## Return Value
+
+Returns a TanStack Query result object, same as `useActorQuery`.
+
+## Examples
+
+### Basic Query
+
+```tsx
+const { data } = useReactorQuery({
+  reactor: backend,
+  functionName: "greet",
+  args: ["World"],
+})
+```
+
+### Type-Safe Queries
+
+TypeScript infers types from the passed `reactor` instance:
+
+```tsx
+const { data } = useReactorQuery({
+  reactor: backend,
+  functionName: "getUser", // ✅ Autocompletes valid methods
+  args: ["user-123"], // ✅ Type-checked
+})
+```
+
+## See Also
+
+- [useActorQuery](/reference/createactorhooks/useactorquery) — Bound version
+- [useReactorSuspenseQuery](/reference/hooks/reactorhooks/usereactorsuspensequery) — Suspense version
+- [Reactor Overview](/reference/hooks/reactorhooks/overview)

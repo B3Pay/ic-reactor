@@ -1,0 +1,84 @@
+---
+title: "Codec Demo"
+description: Automatic type transformations with DisplayReactor
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+Demonstrates the automatic type transformation system comparing `DisplayReactor` vs regular `Reactor`.
+
+## Features Demonstrated
+
+- BigInt → string transformations
+- Principal → text transformations
+- Optional unwrapping (`[T] | []` → `T | null`)
+- Variant normalization with `_type` discriminator
+- Side-by-side comparison of raw vs display types
+- Bidirectional transformation (input and output)
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/codec-demo?embed=1&theme=dark&file=src/main.ts"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3hr4d/ic-reactor-v3/tree/main/examples/codec-demo"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/codec-demo?embed=1&theme=dark&file=src/main.ts&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor Codec Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Type Transformation Reference
+
+| Candid Type        | Raw TypeScript | Display (transformed) |
+| ------------------ | -------------- | --------------------- |
+| `nat` / `int`      | `bigint`       | `string`              |
+| `principal`        | `Principal`    | `string`              |
+| `opt T`            | `[T] \| []`    | `T \| null`           |
+| `blob` (≤96 bytes) | `Uint8Array`   | `string` (hex)        |
+| `variant { A }`    | `{ A: null }`  | `{ _type: "A" }`      |
+
+## Key Code
+
+```typescript
+import { Reactor, DisplayReactor } from "@ic-reactor/react"
+
+// Regular Reactor - raw Candid types
+const rawReactor = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "...",
+})
+
+// DisplayReactor - transformed types for UI
+const displayReactor = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "...",
+})
+
+// Raw: data.balance is bigint
+const raw = await rawReactor.callMethod({ functionName: "getBalance", args: [...] })
+
+// Display: data.balance is string
+const display = await displayReactor.callMethod({ functionName: "getBalance", args: [...] })
+```
+
+<Aside type="tip">
+  Use `DisplayReactor` for UI components and `Reactor` when you need to perform
+  arithmetic operations with the raw bigint values.
+</Aside>

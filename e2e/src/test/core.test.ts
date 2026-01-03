@@ -1,112 +1,64 @@
-import { createReactorCore } from "@ic-reactor/core"
-import {
-  canisterId,
-  idlFactory,
-  hello_actor,
-} from "../declarations/hello_actor/index.js"
-import { describe, expect, it } from "bun:test"
-import { ActorMethodStates, ActorState } from "@ic-reactor/core/src/types.js"
+// @vitest-environment node
+import { Reactor, ClientManager } from "@ic-reactor/core"
+import { idlFactory, hello_actor } from "../declarations/hello_actor/index.js"
+import { describe, expect, it, beforeAll } from "vitest"
+import { QueryClient } from "@tanstack/react-query"
+import { createActor } from "../declarations/hello_actor/index.js"
 
-const DEFAULT_STATE: ActorState<typeof hello_actor> = {
-  initializing: false,
-  isInitializing: false,
-  initialized: false,
-  isInitialized: false,
-  error: undefined,
-  methodState: {} as ActorMethodStates<typeof hello_actor>,
-  version: 0,
-  name: canisterId,
-}
-
-describe("Core Function Test", () => {
-  const { initialize, getState, queryCall, updateCall } = createReactorCore<
-    typeof hello_actor
-  >({
-    canisterId,
-    idlFactory,
+describe("Core Function and Sanity Test", () => {
+  const queryClient = new QueryClient()
+  const clientManager = new ClientManager({
+    agentOptions: {
+      verifyQuerySignatures: false,
+    },
     withProcessEnv: true,
-    initializeOnCreate: false,
+    queryClient,
   })
 
-  expect(getState()).toEqual(DEFAULT_STATE)
+  // Use env var directly for reliability
+  const canisterId = process.env.CANISTER_ID_HELLO_ACTOR!
 
-  // Initialize the actor
-  it("should return the correct initial state", () => {
-    initialize()
+  const helloReactor = new Reactor<typeof hello_actor>({
+    clientManager,
+    canisterId,
+    idlFactory,
+    name: "hello_actor",
+  })
 
-    const { initialized } = getState()
-    expect(initialized).toEqual(true)
+  beforeAll(async () => {
+    await clientManager.initialize()
+  })
+
+  it("Sanity check: Raw Agent call should work", async () => {
+    // Create actor manually using the same agent
+    const actor = createActor(canisterId, {
+      agent: clientManager.agent,
+    })
+
+    const res = await actor.greet("World")
+    expect(res).toBe("Hello, World!")
+  })
+
+  it("should initialize the actor", () => {
+    expect(helloReactor).toBeDefined()
+    expect(helloReactor.canisterId.toString()).toEqual(canisterId)
   })
 
   it("should call the greet function", async () => {
-    const { dataPromise, requestHash, getState } = queryCall({
+    const greet = await helloReactor.callMethod({
       functionName: "greet",
       args: ["World"],
     })
-
-    expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
-    )
-
-    const { loading, data, error } = getState()
-
-    expect(loading).toEqual(true)
-    expect(data).toBeUndefined()
-    expect(error).toBeUndefined()
-    const greet = await dataPromise
 
     expect(greet).toEqual("Hello, World!")
   })
 
   it("should call the greet_update function", async () => {
-    const { getState, requestHash, call } = updateCall({
+    const result = await helloReactor.callMethod({
       functionName: "greet_update",
       args: ["World"],
     })
 
-    expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
-    )
-
-    const loadingBefore = getState("loading")
-    expect(loadingBefore).toEqual(false)
-
-    const result = call()
-
-    const loadingAfter = getState("loading")
-    expect(loadingAfter).toEqual(true)
-
-    await result
-    const { loading, data, error } = getState()
-
-    expect(loading).toEqual(false)
-    expect(data).toEqual("Hello, World!")
-    expect(error).toBeUndefined()
-  })
-
-  it("should call the greet_update function", async () => {
-    const { getState, requestHash, call } = updateCall({
-      functionName: "greet_update",
-      args: ["World"],
-    })
-
-    expect(requestHash).toEqual(
-      "0xc102685369c5e29182d7457bd5af52486928280f000dfe641db598b82c5753e0"
-    )
-
-    const loadingBefore = getState("loading")
-    expect(loadingBefore).toEqual(false)
-
-    const result = call()
-
-    const loadingAfter = getState("loading")
-    expect(loadingAfter).toEqual(true)
-
-    await result
-    const { loading, data, error } = getState()
-
-    expect(loading).toEqual(false)
-    expect(data).toEqual("Hello, World!")
-    expect(error).toBeUndefined()
+    expect(result).toEqual("Hello, World!")
   })
 })

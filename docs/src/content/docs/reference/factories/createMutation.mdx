@@ -1,0 +1,460 @@
+---
+title: createMutation
+description: Create reusable mutation objects for canister updates
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+`createMutation` creates a reusable mutation object with pre-configured callbacks and refetch logic. Perfect for update/insert operations that need to invalidate related queries.
+
+## Import
+
+```typescript
+import { createMutation } from "@ic-reactor/react"
+```
+
+## Basic Usage
+
+```typescript
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const createPostMutation = createMutation(backend, {
+  functionName: "createPost",
+  refetchQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
+})
+```
+
+## Configuration
+
+| Option            | Type                                        | Description                                 |
+| ----------------- | ------------------------------------------- | ------------------------------------------- |
+| `functionName`    | `string`                                    | The canister method to call (Required)      |
+| `callConfig`      | `CallConfig`                                | IC call configuration                       |
+| `refetchQueries`  | `QueryKey[]`                                | Queries to refetch on success               |
+| `onSuccess`       | `(data, variables, context) => void`        | Called on success                           |
+| `onError`         | `(error, variables, context) => void`       | Called on any error (network or canister)   |
+| `onCanisterError` | `(error, variables) => void`                | Called specifically on canister logic error |
+| `onSettled`       | `(data, error, variables, context) => void` | Called after mutation                       |
+| `onMutate`        | `(variables) => Promise<context>`           | Called before mutation (optimistic updates) |
+
+## Handling Canister Errors
+
+The `onCanisterError` callback is designed to handle business logic errors returned by the canister (e.g., `Result.Err`), separate from network or system errors.
+
+### Why use `onCanisterError`?
+
+- **Specific Targeting**: `onError` catches _everything_ (network issues, timeouts, throw errors). `onCanisterError` _only_ fires when the canister executes successfully but returns an error result (e.g., `InsufficientFunds`).
+- **Typed Errors**: The error object passed to this callback is a typed `CanisterError`, making it easier to check specific error variants.
+
+```typescript
+const transferMutation = createMutation(backend, {
+  functionName: "transfer",
+  onCanisterError: (error, args) => {
+    // 'error' is a CanisterError<T>
+    console.log("Error Key:", error.code) // e.g., "InsufficientFunds"
+    console.log("Error Data:", error.err) // The generic data associated with the error
+
+    if (error.code === "InsufficientFunds") {
+      toast.error("You don't have enough tokens!")
+    } else {
+      toast.error(`Transfer failed: ${error.code}`)
+    }
+  },
+  // 'onError' will still be called for network errors OR canister errors
+  onError: (error) => {
+    if (error instanceof CanisterError) {
+      // Already handled above
+      return
+    }
+    toast.error("Network error: " + error.message)
+  },
+})
+```
+
+## Return Value
+
+| Property      | Type                              | Description                      |
+| ------------- | --------------------------------- | -------------------------------- |
+| `useMutation` | `(options?) => UseMutationResult` | React hook for components        |
+| `execute`     | `(args) => Promise<T>`            | Direct execution (for utilities) |
+
+---
+
+## Examples
+
+### TanStack Router with Actions
+
+Combine mutations with TanStack Router's action handlers:
+
+```typescript
+// routes/posts/new.tsx
+import { createFileRoute } from "@tanstack/react-router"
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "../../reactor"
+
+const createPostMutation = createMutation(backend, {
+  functionName: "createPost",
+  refetchQueries: [
+    backend.generateQueryKey({ functionName: "getPosts" }),
+  ],
+})
+
+export const Route = createFileRoute("/posts/new")({
+  component: NewPostPage,
+})
+
+function NewPostPage() {
+  const navigate = Route.useNavigate()
+
+  const { mutate, isPending, error } = createPostMutation.useMutation({
+    onSuccess: (newPost) => {
+      // Navigate to the new post after creation
+      navigate({ to: `/posts/${newPost.id}` })
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+
+    mutate([{
+      title: formData.get("title") as string,
+      content: formData.get("content") as string,
+    }])
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="title" placeholder="Post title" required />
+      <textarea name="content" placeholder="Content" required />
+
+      {error && <p className="error">{error.message}</p>}
+
+      <button type="submit" disabled={isPending}>
+        {isPending ? "Creating..." : "Create Post"}
+      </button>
+    </form>
+  )
+}
+```
+
+### Optimistic Updates
+
+Update UI immediately before the canister responds:
+
+```typescript
+const likePostMutation = createMutation(backend, {
+  functionName: "likePost",
+  onMutate: async (args) => {
+    const [postId] = args
+    const queryKey = getPostQuery(postId).getQueryKey()
+
+    // Cancel outgoing refetches
+    await queryClient.cancelQueries({ queryKey })
+
+    // Snapshot current value
+    const previousPost = queryClient.getQueryData(queryKey)
+
+    // Optimistically update
+    queryClient.setQueryData(queryKey, (old: Post) => ({
+      ...old,
+      likes: old.likes + 1,
+      isLiked: true,
+    }))
+
+    // Return context with snapshot
+    return { previousPost }
+  },
+  onError: (err, args, context) => {
+    // Rollback on error
+    const [postId] = args
+    if (context?.previousPost) {
+      queryClient.setQueryData(
+        getPostQuery(postId).getQueryKey(),
+        context.previousPost
+      )
+    }
+  },
+  onSettled: (data, error, args) => {
+    // Refetch to ensure consistency
+    const [postId] = args
+    queryClient.invalidateQueries({
+      queryKey: getPostQuery(postId).getQueryKey(),
+    })
+  },
+})
+```
+
+### Form with React Hook Form
+
+Integrate with React Hook Form:
+
+```typescript
+import { useForm } from "react-hook-form"
+
+interface TransferForm {
+  recipient: string
+  amount: string
+}
+
+const transferMutation = createMutation(backend, {
+  functionName: "transfer",
+  refetchQueries: [
+    backend.generateQueryKey({ functionName: "getBalance" }),
+  ],
+})
+
+function TransferPage() {
+  const { register, handleSubmit, reset, formState } = useForm<TransferForm>()
+
+  const { mutate, isPending } = transferMutation.useMutation({
+    onSuccess: () => {
+      reset()
+      toast.success("Transfer successful!")
+    },
+    onError: (error) => {
+      toast.error(`Transfer failed: ${error.message}`)
+    },
+  })
+
+  const onSubmit = (data: TransferForm) => {
+    mutate([data.recipient, data.amount])
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register("recipient", { required: true })} placeholder="Recipient" />
+      <input {...register("amount", { required: true })} placeholder="Amount" />
+
+      <button type="submit" disabled={isPending}>
+        {isPending ? "Sending..." : "Send"}
+      </button>
+    </form>
+  )
+}
+```
+
+### Direct Execution (Outside React)
+
+Execute mutations from utilities or event handlers:
+
+```typescript
+const withdrawMutation = createMutation(backend, {
+  functionName: "withdraw",
+})
+
+// In an event handler or utility function
+async function handleWithdraw(amount: bigint) {
+  try {
+    const result = await withdrawMutation.execute([amount])
+    console.log("Withdrawal successful:", result)
+    return result
+  } catch (error) {
+    console.error("Withdrawal failed:", error)
+    throw error
+  }
+}
+
+// Use in onClick
+<button onClick={() => handleWithdraw(BigInt(100))}>
+  Withdraw
+</button>
+```
+
+### Multiple Related Refetches
+
+You can provide a list of query keys OR a function that returns them based on the mutation arguments.
+
+#### Option 1: Static Keys (if args are known in advance)
+
+```typescript
+const createCommentMutation = createMutation(backend, {
+  functionName: "createComment",
+  refetchQueries: [
+    backend.generateQueryKey({ functionName: "getUserActivity" }),
+  ],
+})
+```
+
+#### Option 2: Dynamic Keys (Recommended)
+
+To keep your code clean and reusable, define helper functions for your query keys:
+
+```typescript
+// Define reusable query key helpers
+const getPostKey = (postId: string) =>
+  backend.generateQueryKey({ functionName: "getPost", args: [postId] })
+
+const getCommentsKey = (postId: string) =>
+  backend.generateQueryKey({ functionName: "getComments", args: [postId] })
+
+const createCommentMutation = createMutation(backend, {
+  functionName: "createComment",
+})
+
+// In your component
+function CommentForm({ postId }) {
+  const queryClient = useQueryClient()
+
+  const { mutate } = createCommentMutation.useMutation({
+    // Refetch the post and comments after mutation
+    refetchQueries: [getPostKey(postId), getCommentsKey(postId)],
+  })
+
+  // ...
+}
+```
+
+### Refetching with Query Factories
+
+If you are using `createQuery` (or other query factories), you can use their `getQueryKey` method directly:
+
+```typescript
+import { createQuery, createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const postsQuery = createQuery(backend, {
+  functionName: "getPosts",
+})
+
+const createPostMutation = createMutation(backend, {
+  functionName: "createPost",
+  refetchQueries: [
+    // Use the factory's getQueryKey method
+    postsQuery.getQueryKey(),
+  ],
+})
+```
+
+### Callback Chaining
+
+Factory callbacks run first, then hook callbacks:
+
+```typescript
+// Factory level - runs first
+const updateProfileMutation = createMutation(backend, {
+  functionName: "updateProfile",
+  onSuccess: () => {
+    analytics.track("profile_updated")
+  },
+})
+
+// Hook level - runs second
+const { mutate } = updateProfileMutation.useMutation({
+  onSuccess: () => {
+    toast.success("Profile updated!")
+  },
+})
+```
+
+### With Loading State UI
+
+Build comprehensive loading states:
+
+```typescript
+function DeleteButton({ postId }: { postId: string }) {
+  const {
+    mutate,
+    isPending,
+    isSuccess,
+    error,
+    reset
+  } = deletePostMutation.useMutation()
+
+  if (isSuccess) {
+    return <span className="success">Deleted!</span>
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => mutate([postId])}
+        disabled={isPending}
+        className={isPending ? "deleting" : ""}
+      >
+        {isPending ? "Deleting..." : "Delete"}
+      </button>
+
+      {error && (
+        <div className="error">
+          <span>{error.message}</span>
+          <button onClick={reset}>Dismiss</button>
+        </div>
+      )}
+    </>
+  )
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Define Refetch Queries
+
+Always specify which queries should be invalidated:
+
+```typescript
+// ✅ Good - explicitly refetch related data
+const mutation = createMutation(backend, {
+  functionName: "createPost",
+  refetchQueries: [
+    backend.generateQueryKey({ functionName: "getPosts" }),
+    backend.generateQueryKey({ functionName: "getPostCount" }),
+  ],
+})
+
+// ❌ Bad - no refetch, cache becomes stale
+const mutation = createMutation(backend, {
+  functionName: "createPost",
+})
+```
+
+### 2. Handle Errors
+
+Always provide user feedback on errors:
+
+```typescript
+const { mutate, error } = mutation.useMutation({
+  onError: (error) => toast.error(error.message),
+})
+
+{error && <ErrorMessage error={error} />}
+```
+
+### 3. Use Pending State
+
+Disable buttons and show loading indicators:
+
+```typescript
+<button disabled={isPending}>
+  {isPending ? <Spinner /> : "Submit"}
+</button>
+```
+
+---
+
+## Notes
+
+<Aside type="tip">
+  Use `refetchQueries` for automatic cache invalidation. This is more reliable
+  than manually calling `queryClient.invalidateQueries()`.
+</Aside>
+
+<Aside type="note">
+  The `execute()` method is useful for utility functions, event handlers, or
+  when you need to await the result outside of React's lifecycle.
+</Aside>
+
+<Aside type="caution">
+  Optimistic updates require careful rollback handling. Always implement
+  `onError` to restore previous state.
+</Aside>
+
+## See Also
+
+- [useActorMutation](/reference/createactorhooks/useactormutation) — Direct hook usage
+- [Mutations Guide](/guides/mutations) — Mutation patterns
+- [createQuery](/reference/factories/createquery) — Query factory

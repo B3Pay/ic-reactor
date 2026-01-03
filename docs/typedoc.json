@@ -1,0 +1,34 @@
+{
+  "$schema": "https://typedoc-plugin-markdown.org/schema.json",
+  "entryPoints": [
+    "../packages/core/src/index.ts",
+    "../packages/react/src/index.ts"
+  ],
+  "tsconfig": "../packages/core/tsconfig.json",
+  "readme": "none",
+  "out": "src/content/docs/libs",
+  "plugin": ["typedoc-plugin-markdown", "typedoc-plugin-frontmatter"],
+  "entryFileName": "index",
+  "hidePageTitle": true,
+  "hideBreadcrumbs": true,
+  "hidePageHeader": true,
+  "frontmatterGlobals": {
+    "editUrl": false,
+    "next": true,
+    "prev": true
+  },
+  "indexFrontmatter": {
+    "title": "API Reference",
+    "description": "Generated API reference documentation"
+  },
+  "frontmatterNamingConvention": "camelCase",
+  "entryPointStrategy": "expand",
+  "exclude": ["**/node_modules/**", "**/*.test.ts", "**/*.spec.ts"],
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "categorizeByGroup": true,
+  "categoryOrder": ["Classes", "Functions", "Interfaces", "Type Aliases", "*"],
+  "sort": ["source-order"],
+  "name": "IC Reactor API"
+}

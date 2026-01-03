@@ -1,0 +1,39 @@
+{
+  "name": "all-in-one-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ic-reactor/core": "workspace:*",
+    "@ic-reactor/react": "workspace:*",
+    "@icp-sdk/core": "^5.0.0",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@tanstack/react-query": "^5.90",
+    "@tanstack/react-query-devtools": "^5.91.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.555.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-syntax-highlighter": "^16.1.0",
+    "tailwind-merge": "^3.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@vitejs/plugin-react": "^5.1.2",
+    "tailwindcss": "^4.1.17",
+    "tw-animate-css": "^1.4.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.3.0"
+  }
+}

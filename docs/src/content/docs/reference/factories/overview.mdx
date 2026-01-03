@@ -1,0 +1,196 @@
+---
+title: Factory Functions Overview
+description: Create reusable, pre-configured queries and mutations
+editUrl: false
+---
+
+import { Aside, Card, CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+Factory functions let you create **reusable, pre-configured** query and mutation objects. Unlike hooks which are created fresh on each render, factories create stable objects you can use across loaders, components, and utilities.
+
+## Why Use Factories?
+
+<CardGrid>
+  <Card title="Route Loaders" icon="rocket">
+    Prefetch data before components mount using TanStack Router or React Router
+    loaders
+  </Card>
+  <Card title="Centralized Config" icon="setting">
+    Define `select`, `staleTime`, `refetchQueries` once — use everywhere
+  </Card>
+  <Card title="Cache Access" icon="magnifier">
+    Read/invalidate cache outside of React components
+  </Card>
+  <Card title="Type Safety" icon="approve-check">
+    Get consistent types across your entire app
+  </Card>
+</CardGrid>
+
+## Available Factories
+
+### Query Factories
+
+<CardGrid>
+  <LinkCard
+    title="createQuery"
+    description="Create a reusable query with fixed args"
+    href="/reference/factories/createquery"
+  />
+  <LinkCard
+    title="createSuspenseQuery"
+    description="Suspense-enabled query factory"
+    href="/reference/factories/createsuspensequery"
+  />
+</CardGrid>
+
+### Mutation Factory
+
+<CardGrid>
+  <LinkCard
+    title="createMutation"
+    description="Create reusable mutations with refetch logic"
+    href="/reference/factories/createmutation"
+  />
+</CardGrid>
+
+### Infinite Query Factories
+
+<CardGrid>
+  <LinkCard
+    title="createInfiniteQuery"
+    description="Paginated/infinite scroll queries"
+    href="/reference/factories/createinfinitequery"
+  />
+  <LinkCard
+    title="createSuspenseInfiniteQuery"
+    description="Suspense-enabled infinite queries"
+    href="/reference/factories/createsuspenseinfinitequery"
+  />
+</CardGrid>
+
+## Import
+
+```typescript
+import {
+  // Query factories
+  createQuery,
+  createQueryFactory,
+  createSuspenseQuery,
+  createSuspenseQueryFactory,
+
+  // Mutation factory
+  createMutation,
+
+  // Infinite query factories
+  createInfiniteQuery,
+  createInfiniteQueryFactory,
+  createSuspenseInfiniteQuery,
+  createSuspenseInfiniteQueryFactory,
+} from "@ic-reactor/react"
+```
+
+## Quick Comparison
+
+| Factory                       | Suspense | Dynamic Args          | Use Case                        |
+| ----------------------------- | -------- | --------------------- | ------------------------------- |
+| `createQuery`                 | ❌       | Via `Factory` variant | Standard queries with `enabled` |
+| `createSuspenseQuery`         | ✅       | Via `Factory` variant | Suspense-based loading          |
+| `createMutation`              | N/A      | Args at call time     | State mutations                 |
+| `createInfiniteQuery`         | ❌       | Via `Factory` variant | Pagination/infinite scroll      |
+| `createSuspenseInfiniteQuery` | ✅       | Via `Factory` variant | Suspense pagination             |
+
+## Pattern: Centralized Query Definitions
+
+Organize all your queries in a dedicated file:
+
+```typescript
+// src/queries/index.ts
+import { createQueryFactory, createMutation } from "@ic-reactor/react"
+import { backend } from "../reactor"
+
+// Query factories
+export const getUserQuery = createQueryFactory(backend, {
+  functionName: "getUser",
+  staleTime: 5 * 60 * 1000,
+})
+
+export const getPostsQuery = createQueryFactory(backend, {
+  functionName: "getPosts",
+})
+
+// Mutation factories
+export const createPostMutation = createMutation(backend, {
+  functionName: "createPost",
+  refetchQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
+})
+
+// Query key helpers
+export const queryKeys = {
+  users: () => backend.generateQueryKey({ functionName: "getUser" }),
+  userById: (id: string) =>
+    backend.generateQueryKey({
+      functionName: "getUser",
+      args: [id],
+    }),
+  posts: () => backend.generateQueryKey({ functionName: "getPosts" }),
+}
+```
+
+## External Integration Examples
+
+### TanStack Router
+
+```typescript
+import { createFileRoute } from "@tanstack/react-router"
+import { getUserQuery } from "../queries"
+
+export const Route = createFileRoute("/users/$userId")({
+  // Prefetch in loader
+  loader: async ({ params }) => {
+    return { user: await getUserQuery(params.userId).fetch() }
+  },
+
+  component: UserPage,
+})
+
+function UserPage() {
+  // Data already loaded, instant render
+  const { data } = getUserQuery(Route.useParams().userId).useQuery()
+  return <Profile user={data} />
+}
+```
+
+### React Router
+
+```typescript
+import { json, useLoaderData } from "react-router-dom"
+import { getUserQuery } from "../queries"
+
+export async function loader({ params }) {
+  const user = await getUserQuery(params.userId).fetch()
+  return json({ user })
+}
+
+export function UserPage() {
+  const { user } = useLoaderData()
+  return <Profile user={user} />
+}
+```
+
+## Notes
+
+<Aside type="tip">
+  Factory results are cached internally. Calling `getUserQuery("alice")`
+  multiple times returns the same object instance.
+</Aside>
+
+<Aside type="note">
+  All factories work with both `Reactor` and `DisplayReactor`. When using
+  `DisplayReactor`, the type transformations are automatically applied.
+</Aside>
+
+## See Also
+
+- [Queries Guide](/guides/queries) — Query patterns
+- [Mutations Guide](/guides/mutations) — Mutation patterns
+- [Reactor](/reference/reactor) — Understanding query keys

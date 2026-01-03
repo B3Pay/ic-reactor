@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+coverage/
+.docs/
+.docusaurus/
+.cache/
+**/dist
+**/target
+docs/dist
+.e2e/
+public/
+.husky/
+.pnpm-debug.log
+.env
+.env.*

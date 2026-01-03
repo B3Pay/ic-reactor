@@ -1,0 +1,361 @@
+---
+title: Why IC Reactor
+description: A comprehensive analysis of IC Reactor's minimal footprint, battle-tested design, and why it's the ideal choice for Internet Computer applications
+editUrl: false
+---
+
+import {
+  Aside,
+  Card,
+  CardGrid,
+  LinkCard,
+  Tabs,
+  TabItem,
+} from "@astrojs/starlight/components"
+
+## The Case for IC Reactor
+
+In the rapidly evolving landscape of Internet Computer development, choosing the right library is critical. **IC Reactor** was designed from the ground up with three principles: **minimal footprint**, **type safety**, and **future-proof architecture**.
+
+---
+
+## 📦 Incredibly Lightweight
+
+<Aside type="tip">
+  Smaller bundles mean faster load times, better user experience, and lower
+  hosting costs. Every kilobyte matters.
+</Aside>
+
+### Our Packages Are Tiny
+
+| Package               | Minified + Gzipped | What's Included                               |
+| --------------------- | ------------------ | --------------------------------------------- |
+| **@ic-reactor/core**  | **~28 KB**         | Reactor, caching, transformations, validation |
+| **@ic-reactor/react** | **~2.6 KB**        | React hooks (excludes core + react)           |
+
+That's it. **~30 KB total** for a complete, production-ready data layer.
+
+### Minimal Dependencies
+
+IC Reactor is designed to be lightweight with only essential peer dependencies:
+
+```
+@ic-reactor/react
+├── @icp-sdk/core       (you already need this for IC development)
+└── @tanstack/react-query  (industry-standard, likely already in your app)
+```
+
+<Aside>
+  We leverage `@icp-sdk/core` as a peer dependency — you're already using it for
+  Internet Computer development. TanStack Query is the industry-standard for
+  React data fetching, and if you're not using it yet, you should be!
+</Aside>
+
+---
+
+## 🏗️ Architecture Analysis
+
+### Why Our Core Design Is Superior
+
+IC Reactor's architecture was built with **modern software engineering principles**:
+
+<CardGrid>
+  <Card title="🧱 Single Responsibility" icon="seti:json">
+    Each class has one job and does it well. `ClientManager` handles
+    connections. `Reactor` handles canister interactions. `DisplayReactor`
+    handles transformations.
+  </Card>
+  <Card title="📦 Composition Over Inheritance" icon="puzzle">
+    Build complex behaviors by composing simple, focused classes. No deep
+    inheritance hierarchies to navigate or debug.
+  </Card>
+  <Card title="🔌 Dependency Injection" icon="forward-slash">
+    All dependencies are injected, making testing trivial and allowing for
+    custom implementations.
+  </Card>
+  <Card title="🎯 Zero Lock-in" icon="open-book">
+    Use as much or as little as you want. Every component works standalone.
+  </Card>
+</CardGrid>
+
+### The Three-Layer Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Your Application                         │
+├─────────────────────────────────────────────────────────────┤
+│  React Layer (@ic-reactor/react)                            │
+│  ├── createActorHooks() → useActorQuery, useActorMutation   │
+│  ├── createAuthHooks()  → useAuth, useUserPrincipal         │
+│  └── Validation utilities for forms                         │
+├─────────────────────────────────────────────────────────────┤
+│  Core Layer (@ic-reactor/core)                              │
+│  ├── ClientManager     → Agent + Auth state management      │
+│  ├── Reactor           → Canister calls + TanStack caching  │
+│  └── DisplayReactor    → Type transformations + validation  │
+├─────────────────────────────────────────────────────────────┤
+│  SDK Layer (@icp-sdk/core)                                  │
+│  └── HttpAgent, Principal, IDL, Candid                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ⚡ Feature Comparison Matrix
+
+### IC Reactor vs. DIY Approach
+
+| Feature                     | IC Reactor                       | DIY (raw SDK)              |
+| --------------------------- | -------------------------------- | -------------------------- |
+| **Additional Bundle Size**  | **~30 KB** (on top of SDK)       | **~50+ KB** of custom code |
+| **Type Safety**             | ✅ End-to-end from Candid        | ⚠️ Manual type assertions  |
+| **Query Caching**           | ✅ TanStack Query built-in       | ❌ Build your own          |
+| **Background Refetch**      | ✅ Automatic                     | ❌ Build your own          |
+| **Request Deduplication**   | ✅ Automatic                     | ❌ Build your own          |
+| **Optimistic Updates**      | ✅ First-class support           | ❌ Build your own          |
+| **Result Unwrapping**       | ✅ `Ok`/`Err` → try/catch        | ❌ Manual unwrapping       |
+| **Error Typing**            | ✅ `CanisterError<E>`            | ❌ Generic Error           |
+| **Display Transformations** | ✅ BigInt→string, Principal→text | ❌ Manual conversion       |
+| **Form Validation**         | ✅ Zod schemas from Candid       | ❌ Build your own          |
+| **Suspense Support**        | ✅ Built-in                      | ❌ Complex setup           |
+| **Infinite Queries**        | ✅ Built-in                      | ❌ Complex setup           |
+| **DevTools**                | ✅ TanStack Query DevTools       | ❌ None                    |
+| **SSR Support**             | ✅ With prefetching              | ⚠️ Tricky                  |
+| **Multi-Actor**             | ✅ Shared ClientManager          | ⚠️ Manual coordination     |
+
+<Aside>
+  Both approaches require the ICP SDK (`@icp-sdk/core`). The comparison above
+  shows what you add **on top of** the SDK. IC Reactor gives you a complete data
+  layer in ~30 KB; building it yourself typically results in more code that does
+  less.
+</Aside>
+
+### The Hidden Cost of DIY
+
+When you build your own data layer, you're signing up for:
+
+- **Weeks of development** to build caching, deduplication, and error handling
+- **Ongoing maintenance** as requirements change and bugs surface
+- **Testing burden** for edge cases you haven't thought of yet
+- **Documentation debt** as your team grows
+
+<Aside type="caution">
+  We've seen teams spend 3-6 months building what IC Reactor provides out of the
+  box. Your time is better spent on features your users actually see.
+</Aside>
+
+---
+
+## 🤖 AI-Era Alignment
+
+### Why IC Reactor Is Future-Proof
+
+<CardGrid>
+  <Card title="🧠 AI-Friendly Codebase" icon="star">
+    **LLMs understand IC Reactor.** Our consistent patterns, comprehensive
+    JSDoc, and scannable structure means AI assistants can help you write code
+    faster.
+  </Card>
+  <Card title="📄 /llms.txt Standard" icon="document">
+    We include `/llms.txt` in our documentation for structured API overviews
+    that AI models can parse effectively.
+  </Card>
+  <Card title="🔮 Predictable Patterns" icon="approve-check">
+    Every hook, every class follows the same patterns. Once you learn one, you
+    know them all — and so does your AI pair programmer.
+  </Card>
+  <Card title="📚 Self-Documenting Types" icon="information">
+    TypeScript types serve as living documentation. Your IDE (and AI) can infer
+    everything from the types alone.
+  </Card>
+</CardGrid>
+
+### Code That AI Can Reason About
+
+```typescript
+// IC Reactor: AI understands this instantly ✅
+const { data, isPending, error } = useActorQuery({
+  functionName: "getBalance",
+  args: [principal],
+})
+
+// DIY approach: AI struggles with custom abstractions ❌
+const balance = useCustomHook({
+  actor: myActor,
+  method: "getBalance",
+  params: [principal],
+  cache: true,
+  retryOnError: 3,
+  transformResult: (r) => extractOk(r),
+})
+```
+
+The first pattern is **self-documenting** and follows conventions that every AI model trained on TanStack Query will recognize. The second is a custom abstraction that requires context AI doesn't have.
+
+---
+
+## 🔍 Technical Deep Dive
+
+### Result Unwrapping
+
+One of IC Reactor's most elegant features:
+
+<Tabs>
+  <TabItem label="With IC Reactor">
+```typescript
+// Your Candid method returns: variant { Ok: nat; Err: text }
+
+const { mutate } = useActorMutation({
+functionName: "transfer",
+onSuccess: (balance) => {
+// balance is typed as `bigint` - Err case throws automatically!
+console.log(`New balance: ${balance}`);
+},
+onCanisterError: (error) => {
+// error.err is typed as `string`
+console.error(`Transfer failed: ${error.err}`);
+},
+});
+
+````
+  </TabItem>
+  <TabItem label="Without IC Reactor">
+```typescript
+// Manual approach - tedious and error-prone
+const result = await actor.transfer({ to: recipient, amount });
+
+if ("Ok" in result) {
+  console.log(`New balance: ${result.Ok}`);
+} else if ("Err" in result) {
+  console.error(`Transfer failed: ${result.Err}`);
+} else {
+  // What if it's lowercase? What if the shape changes?
+  throw new Error("Unexpected result shape");
+}
+````
+
+  </TabItem>
+</Tabs>
+
+### Display Transformations
+
+`DisplayReactor` automatically converts types for UI consumption:
+
+| Candid Type           | Candid Value                | Display Value                | Automatic? |
+| --------------------- | --------------------------- | ---------------------------- | ---------- |
+| `nat` / `int`         | `1000000000000n`            | `"1000000000000"`            | ✅         |
+| `nat64` / `int64`     | `1234567890123456789n`      | `"1234567890123456789"`      | ✅         |
+| `principal`           | `Principal.fromText("...")` | `"aaaaa-aa"`                 | ✅         |
+| `opt T`               | `[value]` or `[]`           | `value` or `undefined`       | ✅         |
+| `blob` (≤96 bytes)    | `Uint8Array`                | `"0x1234..."`                | ✅         |
+| `variant { Ok; Err }` | `{ Ok: value }`             | `{ _type: "Ok", Ok: value }` | ✅         |
+
+This means your React components never deal with:
+
+- `BigInt` serialization issues (`JSON.stringify` fails!)
+- Principal instance comparisons
+- Optional tuple unpacking (`value?.[0]`)
+- Variant discrimination logic
+
+---
+
+## 💡 Design Philosophy
+
+### The Principles Behind IC Reactor
+
+<CardGrid stagger>
+  <Card title="Progressive Enhancement" icon="up-caret">
+    Start simple, add complexity only when needed. Use `Reactor` for basic
+    needs, upgrade to `DisplayReactor` for forms, add hooks as your React app
+    grows.
+  </Card>
+  <Card title="Standards Over Invention" icon="approve-check">
+    We don't reinvent the wheel. TanStack Query for caching, Zod for validation,
+    TypeScript for types. Learn once, apply everywhere.
+  </Card>
+  <Card title="Explicit Over Implicit" icon="document">
+    No magic. Every transformation, every hook, every option is explicit in your
+    code. Debugging is straightforward because the data flow is visible.
+  </Card>
+  <Card title="Minimal API Surface" icon="puzzle">
+    Fewer concepts to learn means faster onboarding. We expose what you need and
+    hide complexity behind sensible defaults.
+  </Card>
+</CardGrid>
+
+---
+
+## 🎯 My Honest Opinion
+
+As the creator and maintainer of IC Reactor, here's my honest assessment:
+
+### What We Do Exceptionally Well
+
+1. **Type Safety Is Unmatched** — From your `.did` file to your React components, types flow seamlessly. This catches bugs at compile time, not runtime.
+
+2. **The TanStack Query Foundation** — By building on a library with 47K+ GitHub stars and years of battle-testing, we inherit solutions to problems we'd otherwise have to solve ourselves.
+
+3. **Developer Experience** — The API is intuitive if you know TanStack Query. If you don't, you learn a skill that transfers to any React project.
+
+4. **Production Ready** — This is v3, not v1. We've learned from two major versions, countless production apps, and real user feedback.
+
+### Where We're Still Improving
+
+1. **Documentation** — We're continuously improving docs with more examples and edge cases. Your feedback helps.
+
+2. **Framework Support** — Currently React-focused. Vue, Svelte, and Solid support are on the roadmap.
+
+3. **Offline Support** — TanStack Query has offline capabilities we haven't fully exposed yet.
+
+### The Bottom Line
+
+If you're building Internet Computer applications in 2026+, **there is no reason not to use IC Reactor**:
+
+- It's **smaller** than rolling your own
+- It's **faster to develop with** than raw agents
+- It's **more maintainable** than custom abstractions
+- It's **future-proof** as the ecosystem evolves
+
+The alternative is spending weeks building what we've spent years perfecting.
+
+---
+
+## 🚀 Ready to Get Started?
+
+<CardGrid>
+  <LinkCard
+    title="Installation"
+    description="Get IC Reactor set up in 2 minutes"
+    href="/installation"
+  />
+  <LinkCard
+    title="Quick Start"
+    description="Build your first integration"
+    href="/quick-start"
+  />
+  <LinkCard
+    title="React Setup"
+    description="Complete guide for React apps"
+    href="/react-setup"
+  />
+  <LinkCard
+    title="Examples"
+    description="See IC Reactor in action"
+    href="/examples"
+  />
+</CardGrid>
+
+---
+
+## 📊 Summary Table
+
+| Aspect                    | IC Reactor                         | DIY Custom Solution            |
+| ------------------------- | ---------------------------------- | ------------------------------ |
+| **Learning Curve**        | ~1 hour if you know TanStack Query | ~2-4 weeks for custom solution |
+| **Additional Code**       | ~30 KB (battle-tested)             | ~50+ KB (untested custom code) |
+| **Type Safety**           | Full end-to-end                    | Partial, requires manual work  |
+| **Maintenance**           | Community + maintainer             | Your team only                 |
+| **Production Apps**       | Dozens                             | Depends on your testing        |
+| **AI Assistance**         | Excellent (familiar patterns)      | Poor (custom abstractions)     |
+| **Time to First Feature** | Days                               | Weeks                          |
+| **Regret Factor**         | Low                                | High                           |

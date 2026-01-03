@@ -1,34 +1,51 @@
-import { useAuth } from "@ic-reactor/react"
+/**
+ * Login Component
+ *
+ * Handles authentication with Internet Identity.
+ */
+import { useAuth } from "./reactor"
 
 const Login = () => {
-  const {
-    login,
-    logout,
-    isLoginLoading,
-    loginError,
-    identity,
-    isAuthenticating,
-    isAuthenticated,
-  } = useAuth()
+  const { login, logout, isAuthenticating, error, identity, isAuthenticated } =
+    useAuth()
 
   return (
-    <div>
-      <h2>Login:</h2>
-      <div>
-        {isLoginLoading && <div>Loading...</div>}
-        {loginError ? <div>{loginError}</div> : null}
-        {identity && <div>{identity.getPrincipal().toText()}</div>}
+    <div className="auth-section">
+      <div className="auth-info">
+        <span className="auth-icon">{isAuthenticated ? "🔓" : "🔐"}</span>
+        <div>
+          {isAuthenticated ? (
+            <>
+              <div className="auth-status">Connected</div>
+              <div className="auth-principal">
+                {identity?.getPrincipal().toText()}
+              </div>
+            </>
+          ) : (
+            <div className="auth-status">Not connected</div>
+          )}
+          {error && <div className="text-error">{error.message}</div>}
+        </div>
       </div>
       {isAuthenticated ? (
-        <div>
-          <button onClick={() => logout()}>Logout</button>
-        </div>
+        <button className="btn btn-danger" onClick={() => logout()}>
+          Logout
+        </button>
       ) : (
-        <div>
-          <button onClick={() => login()} disabled={isAuthenticating}>
-            Login
-          </button>
-        </div>
+        <button
+          className="btn btn-primary"
+          onClick={() => login()}
+          disabled={isAuthenticating}
+        >
+          {isAuthenticating ? (
+            <>
+              <span className="spinner" />
+              Connecting...
+            </>
+          ) : (
+            "🔑 Login with II"
+          )}
+        </button>
       )}
     </div>
   )

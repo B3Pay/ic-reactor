@@ -1,0 +1,398 @@
+---
+title: React Setup
+description: Complete React setup guide with authentication
+editUrl: false
+---
+
+import {
+  Aside,
+  Steps,
+  Tabs,
+  TabItem,
+  CardGrid,
+  LinkCard,
+} from "@astrojs/starlight/components"
+
+This guide covers the complete setup of IC Reactor in a React application, including authentication with Internet Identity.
+
+## Basic Setup
+
+<Steps>
+
+1. ### Create the Reactor
+
+   Set up your central configuration:
+
+   ```typescript
+   // src/reactor/index.ts
+   import { ClientManager, Reactor } from "@ic-reactor/core"
+   import { QueryClient } from "@tanstack/query-core"
+   import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+   export const queryClient = new QueryClient()
+
+   export const clientManager = new ClientManager({
+     queryClient,
+     withProcessEnv: true,
+   })
+
+   export const backend = new Reactor<_SERVICE>({
+     clientManager,
+     idlFactory,
+     canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+   })
+   ```
+
+   <Aside type="note">
+     The `ClientManager` provides an `initialize()` method for fetching the root
+     key when connecting to a local network, ensuring secure communication
+     during development.
+   </Aside>
+
+2. ### Create Hooks
+
+   ```typescript
+   // src/reactor/hooks.ts
+   import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+   import { backend, clientManager } from "./index"
+
+   // Actor hooks for your canister
+   export const {
+     useActorQuery, // [Read more](/reference/createactorhooks/useactorquery)
+     useActorMutation, // [Read more](/reference/createactorhooks/useactormutation)
+     useActorSuspenseQuery, // [Read more](/reference/createactorhooks/useactorsuspensequery)
+     useActorInfiniteQuery, // [Read more](/reference/createactorhooks/useactorinfinitequery)
+   } = createActorHooks(backend)
+
+   // Auth hooks for authentication
+   export const {
+     useAuth, // [Read more](/reference/createauthhooks/useauth)
+     useUserPrincipal, // [Read more](/reference/createauthhooks/useuserprincipal)
+     useAgentState, // [Read more](/reference/createauthhooks/useagentstate)
+   } = createAuthHooks(clientManager)
+   ```
+
+3. ### Setup Provider (Optional)
+
+   While not required (as hooks are already bound to your reactor and its internal `queryClient`), you can wrap your application with `QueryClientProvider` to use additional TanStack Query features or to enable the DevTools:
+
+   ```tsx
+   // src/App.tsx
+   import { QueryClientProvider } from "@tanstack/react-query"
+   import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+   import { queryClient } from "./reactor"
+   import Router from "./Router"
+
+   function App() {
+     return (
+       <QueryClientProvider client={queryClient}>
+         <Router />
+         <ReactQueryDevtools initialIsOpen={false} />
+       </QueryClientProvider>
+     )
+   }
+
+   export default App
+   ```
+
+</Steps>
+
+## Authentication
+
+### useAuth Hook
+
+The [`useAuth`](/reference/createauthhooks/useauth) hook provides login and logout functionality:
+
+```tsx
+import { useAuth } from "../reactor/hooks"
+
+function LoginButton() {
+  const { login, logout, isAuthenticated, isAuthenticating } = useAuth()
+
+  if (isAuthenticating) {
+    return <button disabled>Connecting...</button>
+  }
+
+  return isAuthenticated ? (
+    <button onClick={logout}>Logout</button>
+  ) : (
+    <button onClick={() => login()}>Login with Internet Identity</button>
+  )
+}
+```
+
+### useAgentState Hook
+
+For accessing the [`useAgentState`](/reference/createauthhooks/useagentstate) connection state:
+
+```tsx
+import { useAgentState } from "../reactor/hooks"
+
+function ConnectionStatus() {
+  const {
+    isInitialized, // boolean
+    isInitializing, // boolean
+    network, // 'ic' | 'local' | 'remote'
+  } = useAgentState()
+
+  if (isInitializing) {
+    return <span>Connecting to network...</span>
+  }
+
+  return <span>Connected to {network}</span>
+}
+```
+
+### useUserPrincipal Hook
+
+A convenience hook for getting the current user's [`useUserPrincipal`](/reference/createauthhooks/useuserprincipal):
+
+```tsx
+import { useUserPrincipal } from "../reactor/hooks"
+
+function UserBadge() {
+  const principal = useUserPrincipal()
+
+  if (!principal) return null
+
+  return <div className="badge">{principal.toText().slice(0, 8)}...</div>
+}
+```
+
+### Complete Auth Component
+
+```tsx
+import { useAuth, useUserPrincipal } from "../reactor/hooks"
+
+function AuthSection() {
+  const { login, logout, isAuthenticated, isAuthenticating } = useAuth()
+  const principal = useUserPrincipal()
+
+  if (isAuthenticating) {
+    return <div className="auth">Connecting to Internet Identity...</div>
+  }
+
+  return (
+    <div className="auth">
+      {isAuthenticated ? (
+        <>
+          <span>Welcome, {principal?.toText().slice(0, 12)}...</span>
+          <button onClick={logout}>Logout</button>
+        </>
+      ) : (
+        <button onClick={() => login()}>Login with Internet Identity</button>
+      )}
+    </div>
+  )
+}
+```
+
+### Login Options
+
+Customize the login flow:
+
+```tsx
+const { login } = useAuth()
+
+// With options
+login({
+  identityProvider: "https://identity.ic0.app",
+  maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days
+  onSuccess: () => {
+    console.log("Logged in successfully!")
+    navigate("/dashboard")
+  },
+  onError: (error) => {
+    console.error("Login failed:", error)
+  },
+})
+```
+
+## Protected Routes
+
+Create a wrapper for protected routes:
+
+```tsx
+import { useAuth } from "../reactor/hooks"
+import { Navigate, useLocation } from "react-router-dom"
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isAuthenticating } = useAuth()
+  const location = useLocation()
+
+  if (isAuthenticating) {
+    return <LoadingSpinner />
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return children
+}
+
+// Usage in router
+;<Route
+  path="/dashboard"
+  element={
+    <ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
+  }
+/>
+```
+
+## Multiple Actors
+
+Working with multiple canisters:
+
+```typescript
+// src/reactor/index.ts
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
+import {
+  idlFactory as ledgerIdl,
+  type _SERVICE as Ledger,
+} from "../declarations/ledger"
+import {
+  idlFactory as backendIdl,
+  type _SERVICE as Backend,
+} from "../declarations/backend"
+
+export const queryClient = new QueryClient()
+export const clientManager = new ClientManager({ queryClient })
+
+// Ledger canister
+export const ledger = new Reactor<Ledger>({
+  clientManager,
+  name: "ledger",
+  idlFactory: ledgerIdl,
+  canisterId: import.meta.env.VITE_LEDGER_CANISTER_ID,
+})
+
+// Backend canister
+export const backend = new Reactor<Backend>({
+  clientManager,
+  name: "backend",
+  idlFactory: backendIdl,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+})
+```
+
+```typescript
+// src/reactor/hooks.ts
+import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import { ledger, backend, clientManager } from "./index"
+
+export const ledgerHooks = createActorHooks(ledger)
+export const backendHooks = createActorHooks(backend)
+export const authHooks = createAuthHooks(clientManager)
+
+// Export individual hooks for convenience
+export const {
+  useActorQuery: useLedgerQuery, // [Read more](/reference/createactorhooks/useactorquery)
+  useActorMutation: useLedgerMutation, // [Read more](/reference/createactorhooks/useactormutation)
+} = ledgerHooks
+
+export const {
+  useActorQuery: useBackendQuery, // [Read more](/reference/createactorhooks/useactorquery)
+  useActorMutation: useBackendMutation, // [Read more](/reference/createactorhooks/useactormutation)
+} = backendHooks
+
+export const {
+  useAuth, // [Read more](/reference/createauthhooks/useauth)
+  useUserPrincipal, // [Read more](/reference/createauthhooks/useuserprincipal)
+} = authHooks
+```
+
+## Auto Transformations
+
+For easier handling of Candid types, use `DisplayReactor`:
+
+```typescript
+import { ClientManager, DisplayReactor } from "@ic-reactor/core"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+const backend = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "...",
+})
+
+// Now BigInt values are returned as strings,
+// Principals as text, etc.
+```
+
+## Session Persistence
+
+Sessions are automatically persisted in IndexedDB. Authentication hooks like `useAuth` automatically initialize the session restoration on first use.
+
+To manually initialize explicitly on app load (optional):
+
+```tsx
+// src/App.tsx
+import { useEffect } from "react"
+import { clientManager } from "./reactor"
+
+function App() {
+  useEffect(() => {
+    clientManager.initialize()
+  }, [])
+
+  return <YourApp />
+}
+```
+
+Or check agent state:
+
+```tsx
+import { useAgentState } from "./reactor/hooks"
+
+function App() {
+  const { isInitialized, isInitializing, error } = useAgentState()
+
+  if (isInitializing) {
+    return <LoadingScreen />
+  }
+
+  if (error) {
+    return <ErrorScreen error={error} />
+  }
+
+  return <YourApp />
+}
+```
+
+## Best Practices
+
+1. **Centralize configuration** — Keep reactor setup in a dedicated `reactor/` folder
+2. **Use environment variables** — Store canister IDs in `.env` files
+3. **Enable DevTools** — Use React Query DevTools in development
+4. **Handle auth state** — Always check `isAuthenticating` before showing login UI
+5. **Name your actors** — Use the `name` option for better debugging
+6. **Use Suspense boundaries** — Wrap components using [`useActorSuspenseQuery`](/reference/createactorhooks/useactorsuspensequery) in `<Suspense>`
+
+## Next Steps
+
+<CardGrid>
+  <LinkCard
+    title="Queries"
+    description="Deep dive into data fetching"
+    href="/guides/queries"
+  />
+  <LinkCard
+    title="Mutations"
+    description="Learn about updating data"
+    href="/guides/mutations"
+  />
+  <LinkCard
+    title="Query Caching"
+    description="Master cache configuration"
+    href="/query-caching"
+  />
+  <LinkCard
+    title="Authentication"
+    description="Advanced auth patterns"
+    href="/authentication"
+  />
+</CardGrid>

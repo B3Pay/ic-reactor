@@ -1,0 +1,130 @@
+import { useMemo, useCallback } from "react"
+import {
+  QueryKey,
+  useSuspenseInfiniteQuery,
+  UseSuspenseInfiniteQueryResult,
+  InfiniteData,
+} from "@tanstack/react-query"
+import {
+  FunctionName,
+  Reactor,
+  TransformKey,
+  ReactorArgs,
+  ReactorReturnOk,
+  ReactorReturnErr,
+} from "@ic-reactor/core"
+import { CallConfig } from "@icp-sdk/core/agent"
+
+export interface UseActorSuspenseInfiniteQueryParameters<
+  A,
+  M extends FunctionName<A>,
+  T extends TransformKey = "candid",
+  TPageParam = unknown,
+> {
+  reactor: Reactor<A, T>
+  functionName: M
+  getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>
+  callConfig?: CallConfig
+  queryKey?: QueryKey
+  initialPageParam: TPageParam
+  getNextPageParam: (
+    lastPage: ReactorReturnOk<A, M, T>,
+    allPages: ReactorReturnOk<A, M, T>[],
+    lastPageParam: TPageParam,
+    allPageParams: TPageParam[]
+  ) => TPageParam | undefined | null
+  getPreviousPageParam?: (
+    firstPage: ReactorReturnOk<A, M, T>,
+    allPages: ReactorReturnOk<A, M, T>[],
+    firstPageParam: TPageParam,
+    allPageParams: TPageParam[]
+  ) => TPageParam | undefined | null
+  maxPages?: number
+  staleTime?: number
+  gcTime?: number
+  refetchOnWindowFocus?: boolean
+  refetchOnMount?: boolean
+  refetchOnReconnect?: boolean
+  select?: (
+    data: InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>
+  ) => InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>
+}
+
+export type UseActorSuspenseInfiniteQueryConfig<
+  A,
+  M extends FunctionName<A>,
+  T extends TransformKey = "candid",
+  TPageParam = unknown,
+> = Omit<
+  UseActorSuspenseInfiniteQueryParameters<A, M, T, TPageParam>,
+  "reactor"
+>
+
+export type UseActorSuspenseInfiniteQueryResult<
+  A,
+  M extends FunctionName<A>,
+  T extends TransformKey = "candid",
+  TPageParam = unknown,
+> = UseSuspenseInfiniteQueryResult<
+  InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>,
+  ReactorReturnErr<A, M, T>
+>
+
+/**
+ * Hook for executing suspense-enabled infinite/paginated query calls on a canister.
+ *
+ * @example
+ * const { data, fetchNextPage, hasNextPage } = useActorSuspenseInfiniteQuery({
+ *   reactor,
+ *   functionName: "getItems",
+ *   getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }],
+ *   initialPageParam: 0,
+ *   getNextPageParam: (lastPage) => lastPage.nextOffset,
+ * })
+ */
+export const useActorSuspenseInfiniteQuery = <
+  A,
+  M extends FunctionName<A>,
+  T extends TransformKey = "candid",
+  TPageParam = unknown,
+>({
+  reactor,
+  functionName,
+  getArgs,
+  callConfig,
+  queryKey,
+  ...options
+}: UseActorSuspenseInfiniteQueryParameters<
+  A,
+  M,
+  T,
+  TPageParam
+>): UseActorSuspenseInfiniteQueryResult<A, M, T, TPageParam> => {
+  // Memoize queryKey to prevent unnecessary re-calculations
+  const baseQueryKey = useMemo(
+    () => queryKey ?? reactor.generateQueryKey({ functionName }),
+    [queryKey, reactor, functionName]
+  )
+
+  // Memoize queryFn to prevent recreation on every render
+  const queryFn = useCallback(
+    async ({ pageParam }: { pageParam: TPageParam }) => {
+      const args = getArgs(pageParam)
+      return reactor.callMethod({
+        functionName,
+        args,
+        callConfig,
+      })
+    },
+    [reactor, functionName, getArgs, callConfig]
+  )
+
+  return useSuspenseInfiniteQuery(
+    {
+      queryKey: baseQueryKey,
+      queryFn,
+      ...options,
+    } as any,
+    reactor.queryClient
+  ) as UseActorSuspenseInfiniteQueryResult<A, M, T, TPageParam>
+}

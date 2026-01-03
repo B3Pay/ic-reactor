@@ -1,0 +1,63 @@
+---
+title: useAgentState
+description: Hook to monitor the Internet Computer agent initialization state.
+editUrl: false
+---
+
+`useAgentState` provides access to the agent's initialization state and network information.
+
+## Usage
+
+```tsx
+import { useAgentState } from "./reactor/hooks"
+
+function AgentStatus() {
+  const {
+    isInitialized, // Agent is ready
+    isInitializing, // Agent is starting up
+    isLocalhost, // Connected to local network
+    network, // "ic" | "local"
+    error, // Error | undefined
+  } = useAgentState()
+
+  if (isInitializing) return <div>Connecting...</div>
+  return <div>Connected to {network}</div>
+}
+```
+
+## Return Value
+
+| Property         | Type                 | Description                                                   |
+| ---------------- | -------------------- | ------------------------------------------------------------- |
+| `isInitialized`  | `boolean`            | Whether the agent has finished initializing                   |
+| `isInitializing` | `boolean`            | Whether the agent is currently initializing                   |
+| `isLocalhost`    | `boolean`            | Whether the agent is connected to a local development network |
+| `network`        | `"ic" \| "local"`    | The network the agent is connected to                         |
+| `error`          | `Error \| undefined` | Any error that occurred during initialization                 |
+
+## Examples
+
+### Initial Loading Screen
+
+```tsx
+import { useAgentState } from "./reactor/hooks"
+
+function App({ children }) {
+  const { isInitializing, error } = useAgentState()
+
+  if (isInitializing) {
+    return <div className="loading">Initializing Agent...</div>
+  }
+
+  if (error) {
+    return <div className="error">Failed to connect: {error.message}</div>
+  }
+
+  return children
+}
+```
+
+## See Also
+
+- [createAuthHooks](/reference/createauthhooks) — Auth hooks factory
+- [useAuth](/reference/createauthhooks/useauth) — Main auth hook

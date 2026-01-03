@@ -1,0 +1,60 @@
+---
+title: AgentState
+editUrl: false
+next: true
+prev: true
+---
+
+Defined in: [types/client.ts:48](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/client.ts#L48)
+
+Represents the state of an agent.
+
+## Properties
+
+### isInitialized
+
+> **isInitialized**: `boolean`
+
+Defined in: [types/client.ts:52](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/client.ts#L52)
+
+Indicates whether the agent has been initialized.
+
+---
+
+### isInitializing
+
+> **isInitializing**: `boolean`
+
+Defined in: [types/client.ts:57](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/client.ts#L57)
+
+Indicates whether the agent is in the process of initializing.
+
+---
+
+### error
+
+> **error**: `Error` \| `undefined`
+
+Defined in: [types/client.ts:62](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/client.ts#L62)
+
+Represents an error associated with the agent, if any.
+
+---
+
+### network
+
+> **network**: `string` \| `undefined`
+
+Defined in: [types/client.ts:67](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/client.ts#L67)
+
+Represents the network associated with the agent, if any.
+
+---
+
+### isLocalhost
+
+> **isLocalhost**: `boolean`
+
+Defined in: [types/client.ts:72](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/client.ts#L72)
+
+Indicates whether the agent is connected to a local network.

@@ -1,0 +1,66 @@
+---
+title: AI Friendliness
+description: How to use IC Reactor with AI assistants and LLMs
+---
+
+IC Reactor is designed to be highly compatible with AI coding assistants (like ChatGPT, Claude, and GitHub Copilot) and LLMs. This guide explains how to get the best results when using AI to build with IC Reactor.
+
+## context.txt
+
+We provide a structured overview of the library at `/llms.txt` (located at the root of the repository). You can feed this file to any LLM to give it immediate context about:
+
+- Core concepts (Reactor, ClientManager)
+- Key packages and their roles
+- Common code patterns for initialization and React hooks
+- Best practices for type safety and transformations
+
+You can download the context file to provide to your AI assistant:
+
+import { Card } from "@astrojs/starlight/components"
+
+<Card title="AI Context File" icon="document">
+  [Download context.txt](/context.txt)
+</Card>
+
+## End-to-End Type Safety
+
+Since IC Reactor is built with extreme type safety in mind, AI assistants can easily infer the available methods and argument types for your canisters once you've defined the IDL factory.
+
+### Tip: Provide the IDL Factory
+
+When asking an AI to write code for a specific canister, always provide the generated IDL factory (e.g., `my_canister.did.js`) or the Candid interface. The AI can then write perfectly typed `useActorQuery` or `useActorMutation` hooks.
+
+## Display Types (Auto Transformations)
+
+To make AI-generated code cleaner and less error-prone, you can use `DisplayReactor`. This allows the AI to write code using standard JavaScript types (like `string` for BigInt or Principals) instead of specialized classes, which is what most LLMs are naturally trained on.
+
+```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+import { createActorHooks } from "@ic-reactor/react"
+
+const reactor = new DisplayReactor({
+  clientManager,
+  idlFactory,
+  canisterId: "...",
+})
+
+const { useActorQuery, useActorMutation } = createActorHooks(reactor)
+```
+
+## Prompting Examples
+
+### Setup
+
+"Help me set up an IC Reactor actor for a canister with ID `rrkah-fqaaa-aaaaa-aaaaq-cai` and an IDL factory imported from `./declarations/my_canister`."
+
+### Data Fetching
+
+"Show me how to use `useActorQuery` to fetch a user's balance from a Ledger canister using IC Reactor hooks."
+
+### Mutations
+
+"Write a React component that uses `useActorMutation` to transfer tokens between two accounts."
+
+## Tools and Extensions
+
+If you use **Cursor**, this project includes a `.cursorrules` file that automatically configures the AI to follow the project's specific coding standards and architecture.

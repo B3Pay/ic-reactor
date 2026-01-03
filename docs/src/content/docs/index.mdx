@@ -1,0 +1,231 @@
+---
+title: Overview
+description: IC Reactor - The missing data-fetching library for Internet Computer applications
+editUrl: false
+---
+
+import { Aside, Card, CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+**IC Reactor** is often described as the missing data-fetching library for Internet Computer applications, but in more technical terms, it makes **fetching, caching, synchronizing and updating canister state** in your web applications a breeze.
+
+## Motivation
+
+Most blockchain SDKs do not come with an opinionated way of fetching or updating data in a holistic way. Because of this, developers end up building either meta-frameworks which encapsulate strict opinions about data-fetching, or they invent their own ways of fetching data. This usually means cobbling together component-based state and side-effects, or using more general purpose state management libraries to store and provide asynchronous data throughout their apps.
+
+While most traditional state management libraries are great for working with client state, they are not so great at working with async or server state. This is because **canister state** is totally different. For starters, canister state:
+
+- Is persisted remotely in a decentralized network you may not control
+- Requires asynchronous APIs for fetching and updating
+- Implies shared ownership and can be changed by other users without your knowledge
+- Can potentially become "out of date" in your applications if you're not careful
+
+Once you grasp the nature of canister state in your application, even more challenges will arise as you go, for example:
+
+- **Caching** (possibly the hardest thing to do in programming)
+- Deduping multiple requests for the same data into a single request
+- Updating "out of date" data in the background
+- Knowing when data is "out of date"
+- Reflecting updates to data as quickly as possible
+- Performance optimizations like pagination and lazy loading data
+- Managing memory and garbage collection of canister state
+- Memoizing query results with structural sharing
+
+If you're not overwhelmed by that list, then that must mean that you've probably solved all of your canister state problems already and deserve an award. However, if you are like the vast majority of people, you either have yet to tackle all or most of these challenges — and we're only scratching the surface!
+
+## Built on TanStack Query
+
+Rather than reinventing the wheel, IC Reactor is built on top of [**TanStack Query**](https://tanstack.com/query) (formerly React Query) — the industry-standard library for server state management with **47K+ GitHub stars** and used by companies like Google, PayPal, Walmart, and Microsoft.
+
+<Aside type="tip">
+  If you're already familiar with TanStack Query, you'll feel right at home with
+  IC Reactor. All the patterns you know — `useQuery`, `useMutation`,
+  `queryClient.invalidateQueries()` — work exactly the same way.
+</Aside>
+
+### Why TanStack Query?
+
+TanStack Query has already solved all the hard problems of server state management:
+
+| Challenge                    | TanStack Query Solution                                                 |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| Caching                      | Automatic with configurable `staleTime` and `gcTime`                    |
+| Request deduplication        | Built-in — multiple components requesting same data = 1 network request |
+| Background refetching        | Automatic on window focus, reconnect, or interval                       |
+| Optimistic updates           | First-class support with rollback on failure                            |
+| Pagination / Infinite scroll | `useInfiniteQuery` with cursor management                               |
+| Retry logic                  | Configurable retries with exponential backoff                           |
+| Devtools                     | Chrome extension for debugging cache state                              |
+
+IC Reactor takes all of this and adds the **Internet Computer layer**:
+
+- **Candid type safety** — Full TypeScript from your `.did` file to your components
+- **Agent integration** — Automatic agent.query() and agent.call() handling
+- **Result unwrapping** — `variant { Ok: T; Err: E }` becomes try/catch with typed errors
+- **Display transformations** — BigInt → string, Principal → text, opt → nullable
+
+### The Best of Both Worlds
+
+```tsx
+// IC Reactor gives you TanStack Query powers for IC canisters
+const { data, isPending, refetch } = useActorQuery({
+  functionName: "getBalance",
+  args: [principal],
+  staleTime: 30_000, // TanStack Query option
+  refetchInterval: 60_000, // TanStack Query option
+})
+
+// Invalidate after mutations — just like TanStack Query
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  refetchQueries: [backend.generateQueryKey({ functionName: "getBalance" })],
+})
+```
+
+<Aside type="note">
+  IC Reactor doesn't lock you in. You can use any TanStack Query feature
+  directly — custom `queryFn`, `select` transformations, `placeholderData`,
+  suspense mode, and more.
+</Aside>
+
+## IC Reactor Will Likely:
+
+- Help you remove **many lines of complicated and misunderstood code** from your application and replace them with just a handful of lines of IC Reactor logic
+- Make your application **more maintainable** and easier to build new features without worrying about wiring up new canister state data sources
+- Have a **direct impact on your end-users** by making your application feel faster and more responsive than ever before
+- Potentially help you **save on bandwidth** and increase memory performance
+
+## Enough talk, show me some code already!
+
+In the example below, you can see **IC Reactor** in its most basic and simple form being used to fetch data from a canister:
+
+```tsx
+import { ClientManager, Reactor } from "@ic-reactor/react"
+import { createActorHooks } from "@ic-reactor/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+// 1. Create the client
+const queryClient = new QueryClient()
+const clientManager = new ClientManager({ queryClient })
+
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+})
+
+// 2. Create hooks
+const { useActorQuery, useActorMutation } = createActorHooks(backend)
+
+// 3. Wrap your app in QueryClientProvider (Optional)
+// Required only if you want to use DevTools or other TanStack Query features
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Example />
+    </QueryClientProvider>
+  )
+}
+
+// 4. Use in your components
+function Example() {
+  const { isPending, error, data } = useActorQuery({
+    functionName: "greet",
+    args: ["World"],
+  })
+
+  if (isPending) return "Loading..."
+
+  if (error) return "An error has occurred: " + error.message
+
+  return (
+    <div>
+      <h1>{data}</h1>
+    </div>
+  )
+}
+```
+
+## Core Concepts
+
+This code snippet illustrates the **3 core concepts** of IC Reactor:
+
+<CardGrid>
+  <LinkCard
+    title="Queries"
+    description="Fetch data from canisters with automatic caching and background updates"
+    href="/guides/queries"
+  />
+  <LinkCard
+    title="Mutations"
+    description="Update canister state and automatically sync with your UI"
+    href="/guides/mutations"
+  />
+  <LinkCard
+    title="Query Invalidation"
+    description="Control when and how cached data is refreshed"
+    href="/query-caching"
+  />
+</CardGrid>
+
+## You talked me into it, so what now?
+
+<CardGrid>
+  <LinkCard
+    title="Installation"
+    description="Get IC Reactor set up in your project"
+    href="/installation"
+  />
+  <LinkCard
+    title="Quick Start"
+    description="Build your first IC Reactor integration"
+    href="/quick-start"
+  />
+  <LinkCard
+    title="React Setup"
+    description="Complete React configuration with authentication"
+    href="/react-setup"
+  />
+  <LinkCard
+    title="Type Safety"
+    description="Understand the end-to-end type system"
+    href="/type-safety"
+  />
+</CardGrid>
+
+## Packages
+
+| Package             | Description                                                 | NPM                                                                                                       |
+| ------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`  | Core library with ClientManager, Reactor, and query caching | [![npm](https://img.shields.io/npm/v/@ic-reactor/core)](https://www.npmjs.com/package/@ic-reactor/core)   |
+| `@ic-reactor/react` | React hooks for seamless integration                        | [![npm](https://img.shields.io/npm/v/@ic-reactor/react)](https://www.npmjs.com/package/@ic-reactor/react) |
+
+## Why IC Reactor?
+
+<CardGrid>
+  <Card title="🔒 Type-Safe" icon="seti:lock">
+    End-to-end TypeScript from Candid to components
+  </Card>
+  <Card title="⚡ TanStack Query" icon="rocket">
+    Industry-standard caching engine with 47K+ GitHub stars
+  </Card>
+  <Card title="🔄 Auto Transforms" icon="random">
+    BigInt to string, Principal to text, Result unwrapping
+  </Card>
+  <Card title="🔐 Auth Built-in" icon="approve-check">
+    Seamless Internet Identity integration
+  </Card>
+</CardGrid>
+
+## Learn More About TanStack Query
+
+If you're new to TanStack Query, these resources will help:
+
+- [TanStack Query Documentation](https://tanstack.com/query/latest/docs/framework/react/overview) — Official docs
+- [TanStack Query DevTools](https://tanstack.com/query/latest/docs/framework/react/devtools) — Debug your cache
+- [Practical React Query](https://tkdodo.eu/blog/practical-react-query) — Excellent blog series by TkDodo
+
+<Aside type="tip">
+  The concepts you learn from TanStack Query apply directly to IC Reactor. Time
+  invested learning TanStack Query is time well spent!
+</Aside>

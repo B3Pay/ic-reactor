@@ -1,52 +1,70 @@
+@import "tailwindcss";
+
+/* Custom font import */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+/* Root variables for theming */
+:root {
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-secondary: #8b5cf6;
+  --color-accent: #06b6d4;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --gradient-accent: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+  --gradient-dark: linear-gradient(
+    135deg,
+    #1e1b4b 0%,
+    #312e81 50%,
+    #1e1b4b 100%
+  );
+}
+
+/* Base styles */
 html,
 body {
-    padding: 0;
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
-        Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
-    line-height: 1.6;
-    font-size: 18px;
+  padding: 0;
+  margin: 0;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    "Fira Sans",
+    "Droid Sans",
+    "Helvetica Neue",
+    sans-serif;
+  line-height: 1.6;
+  font-size: 16px;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  min-height: 100vh;
+  color: #f1f5f9;
 }
 
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
-a {
-    color: #0070f3;
-    text-decoration: none;
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-a:hover {
-    text-decoration: underline;
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
 }
 
-img {
-    max-width: 100%;
-    display: block;
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6366f1, #8b5cf6);
+  border-radius: 4px;
 }
 
-button {
-    width: 150px;
-    height: 40px;
-    font-size: 1rem;
-    margin-left: 6px;
-    margin-right: 6px;
-}
-
-section {
-    padding: 6px;
-    width: 600px
-}
-
-input {
-    padding: 4px;
-    margin: 0px 12px;
-    width: 200px;
-    height: 40px;
-    font-size: 1rem;
-}
-
-label {
-    font-size: 1.1rem;
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #4f46e5, #7c3aed);
 }

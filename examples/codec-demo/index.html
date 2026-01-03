@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="IC Reactor Codec Demo - Automatic type transformations between Candid and Display formats"
+    />
+    <title>IC Reactor Codec Demo | Automatic Type Transformations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='80'%3E⚡%3C/text%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <div class="logo">
+            <span class="logo-icon">⚡</span>
+            <div class="logo-text">
+              <h1>IC Reactor</h1>
+              <span class="subtitle">Codec Demo</span>
+            </div>
+          </div>
+          <div class="header-badge">
+            <span class="badge">v3.0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="main">
+        <!-- Hero Section -->
+        <section class="hero">
+          <div class="hero-content">
+            <h2>Automatic Type Transformations</h2>
+            <p>
+              Transform between Candid (raw) types and Display (user-friendly)
+              types automatically.
+              <strong>bigint → string</strong>,
+              <strong>Principal → string</strong>,
+              <strong>Uint8Array → hex</strong>, and more.
+            </p>
+          </div>
+        </section>
+
+        <!-- Transformation Demo Section -->
+        <section class="demo-section">
+          <h3 class="section-title">
+            <span class="section-icon">🔄</span>
+            Live Transformation Demo
+          </h3>
+
+          <div class="transformation-grid">
+            <!-- Candid Format -->
+            <div class="transform-card candid-card">
+              <div class="card-header">
+                <span class="card-icon">🔧</span>
+                <h4>Candid Format (Raw)</h4>
+                <span class="format-badge candid">Backend</span>
+              </div>
+              <div class="card-body">
+                <pre id="candid-output" class="code-block">Loading...</pre>
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div class="transform-arrow">
+              <div class="arrow-content">
+                <span class="arrow-icon bidirectional">⇄</span>
+                <span class="arrow-label">codec</span>
+              </div>
+            </div>
+
+            <!-- Display Format -->
+            <div class="transform-card display-card">
+              <div class="card-header">
+                <span class="card-icon">✨</span>
+                <h4>Display Format (User-Friendly)</h4>
+                <span class="format-badge display">Frontend</span>
+              </div>
+              <div class="card-body">
+                <pre id="display-output" class="code-block">Loading...</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Token Info Section -->
+        <section class="demo-section">
+          <h3 class="section-title">
+            <span class="section-icon">🪙</span>
+            Token Ledger Example
+          </h3>
+
+          <div class="token-selector">
+            <label for="token-select">Select Token:</label>
+            <select id="token-select">
+              <option value="ryjl3-tyaaa-aaaaa-aaaba-cai" selected>ICP</option>
+              <option value="mxzaz-hqaaa-aaaar-qaada-cai">ckBTC</option>
+              <option value="ss2fx-dyaaa-aaaar-qacoq-cai">ckETH</option>
+              <option value="cngnf-vqaaa-aaaar-qag4q-cai">ckUSDT</option>
+              <option value="xevnm-gaaaa-aaaar-qafnq-cai">ckUSDC</option>
+            </select>
+          </div>
+
+          <div class="info-cards">
+            <div class="info-card">
+              <span class="info-icon">📛</span>
+              <div class="info-content">
+                <span class="info-label">Token Name</span>
+                <span id="token-name" class="info-value">Loading...</span>
+              </div>
+            </div>
+            <div class="info-card">
+              <span class="info-icon">🏷️</span>
+              <div class="info-content">
+                <span class="info-label">Symbol</span>
+                <span id="token-symbol" class="info-value">Loading...</span>
+              </div>
+            </div>
+            <div class="info-card">
+              <span class="info-icon">🔢</span>
+              <div class="info-content">
+                <span class="info-label">Decimals</span>
+                <span id="token-decimals" class="info-value">Loading...</span>
+              </div>
+            </div>
+            <div class="info-card">
+              <span class="info-icon">💰</span>
+              <div class="info-content">
+                <span class="info-label">Total Supply</span>
+                <span id="total-supply" class="info-value">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Manual Codec Usage -->
+        <section class="demo-section">
+          <h3 class="section-title">
+            <span class="section-icon">🧪</span>
+            Manual Codec Methods - ICRC-1 Transfer Args
+          </h3>
+
+          <p class="section-description">
+            Build a complete <code>TransferArg</code> in Display format, then
+            transform it to Candid format. Toggle optional fields to see how
+            <code>null</code> transforms to <code>[]</code> and values to
+            <code>[value]</code>.
+          </p>
+
+          <div class="safety-note">
+            <span class="note-icon">🛡️</span>
+            <div class="note-content">
+              <strong>Why bigint ↔ string?</strong>
+              <p>
+                Standard HTML <code>&lt;input&gt;</code> elements and JSON do
+                not natively support <code>bigint</code>. DisplayReactor
+                transforms bigints to strings for
+                <strong>seamless form handling</strong> and UI display. The
+                transformation uses <code>BigInt()</code> and
+                <code>toString()</code> under the hood, ensuring
+                <strong>zero precision loss</strong> regardless of the number's
+                size.
+              </p>
+              <p class="future-plan">
+                <span class="plan-tag">Next:</span> We plan to support custom
+                formatting options (decimals, currency symbols, etc.) specified
+                directly within the Candid metadata for even more powerful
+                automatic transformations.
+              </p>
+            </div>
+          </div>
+
+          <div class="codec-demo">
+            <div class="transfer-form">
+              <!-- Recipient Account -->
+              <div class="form-group">
+                <h5>📬 Recipient Account</h5>
+                <div class="codec-input-group">
+                  <label for="principal-input">Owner Principal:</label>
+                  <input
+                    type="text"
+                    id="principal-input"
+                    value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+                    placeholder="Enter Principal ID"
+                  />
+                </div>
+
+                <div class="optional-field">
+                  <div class="optional-toggle">
+                    <input type="checkbox" id="subaccount-toggle" />
+                    <label for="subaccount-toggle">Include Subaccount</label>
+                  </div>
+                  <div
+                    class="codec-input-group optional-input"
+                    id="subaccount-group"
+                  >
+                    <label for="subaccount-input">Subaccount (hex):</label>
+                    <input
+                      type="text"
+                      id="subaccount-input"
+                      value="0x0000000000000000000000000000000000000000000000000000000000000001"
+                      placeholder="32-byte hex value"
+                      disabled
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Amount -->
+              <div class="form-group">
+                <h5>💰 Amount</h5>
+                <div class="codec-input-group">
+                  <label for="amount-input">Amount (e8s as string):</label>
+                  <input
+                    type="text"
+                    id="amount-input"
+                    value="100000000"
+                    placeholder="Enter amount in smallest unit"
+                  />
+                  <span class="input-hint">100000000 = 1 ICP (8 decimals)</span>
+                </div>
+              </div>
+
+              <!-- Optional Fee -->
+              <div class="form-group">
+                <h5>💸 Fee (Optional)</h5>
+                <div class="optional-field">
+                  <div class="optional-toggle">
+                    <input type="checkbox" id="fee-toggle" />
+                    <label for="fee-toggle">Custom Fee</label>
+                  </div>
+                  <div class="codec-input-group optional-input" id="fee-group">
+                    <label for="fee-input">Fee (e8s):</label>
+                    <input
+                      type="text"
+                      id="fee-input"
+                      value="10000"
+                      placeholder="Leave blank for default"
+                      disabled
+                    />
+                    <span class="input-hint">10000 = 0.0001 ICP</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Optional Memo -->
+              <div class="form-group">
+                <h5>📝 Memo (Optional)</h5>
+                <div class="optional-field">
+                  <div class="optional-toggle">
+                    <input type="checkbox" id="memo-toggle" />
+                    <label for="memo-toggle">Include Memo</label>
+                  </div>
+                  <div class="codec-input-group optional-input" id="memo-group">
+                    <label for="memo-input">Memo (hex):</label>
+                    <input
+                      type="text"
+                      id="memo-input"
+                      value="0xDEADBEEF"
+                      placeholder="Hex encoded memo"
+                      disabled
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Removed manual transform button as it now happens automatically on input -->
+
+            <div class="transformation-result">
+              <div class="result-columns">
+                <div class="result-column">
+                  <h5>📱 Display Format (Frontend)</h5>
+                  <pre id="display-args" class="code-block">
+Interact with the form to see result</pre
+                  >
+                </div>
+                <div class="result-arrow">→</div>
+                <div class="result-column">
+                  <h5>🔧 Candid Format (Backend)</h5>
+                  <pre id="candid-args" class="code-block">
+Interact with the form to see result</pre
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="codec-result">
+              <h5>📋 Transformation Details:</h5>
+              <pre id="encoded-result" class="code-block">
+Interact with the form to see the full transformation process</pre
+              >
+            </div>
+          </div>
+        </section>
+
+        <!-- Supported Transformations -->
+        <section class="demo-section">
+          <h3 class="section-title">
+            <span class="section-icon">📋</span>
+            Supported Transformations
+          </h3>
+
+          <div class="transformations-table">
+            <div class="table-row header">
+              <span>Candid Type</span>
+              <span></span>
+              <span>Display Type</span>
+            </div>
+            <div class="table-row">
+              <code>bigint</code>
+              <span class="arrow">↔</span>
+              <code>string (Safe)</code>
+            </div>
+            <div class="table-row">
+              <code>Principal</code>
+              <span class="arrow">↔</span>
+              <code>string</code>
+            </div>
+            <div class="table-row">
+              <code>Uint8Array</code>
+              <span class="arrow">↔</span>
+              <code>hex string</code>
+            </div>
+            <div class="table-row">
+              <code>[] | [T]</code>
+              <span class="arrow">↔</span>
+              <code>T | null</code>
+            </div>
+            <div class="table-row">
+              <code>{ Key: value }</code>
+              <span class="arrow">↔</span>
+              <code>{ _type: "Key", Key?: value }</code>
+            </div>
+            <div class="table-row">
+              <code>{ Ok: T } | { Err: E }</code>
+              <span class="arrow">→</span>
+              <code>T (throws if Err)</code>
+            </div>
+          </div>
+        </section>
+
+        <!-- Result Unwrapping Demo -->
+        <section class="demo-section">
+          <h3 class="section-title">
+            <span class="section-icon">🎯</span>
+            Automatic Result Unwrapping
+          </h3>
+
+          <p class="section-description">
+            Methods returning <code>{ Ok: T } | { Err: E }</code> (Rust
+            convention) or <code>{ ok: T } | { err: E }</code> (Motoko
+            convention) will <strong>always</strong> automatically extract the
+            <code>Ok</code> value. This eliminates the need for manual
+            <code>'Ok' in result</code> checks. <br /><br />
+            When using <code>DisplayReactor</code>, the extracted value (or
+            thrown error) is also <strong>transformed recursively</strong> (e.g.
+            if the error contains a bigint fee, it becomes a string).
+          </p>
+
+          <div class="result-demo">
+            <div class="result-demo-cards">
+              <div class="result-card ok">
+                <div class="result-header">
+                  <span class="result-icon">✅</span>
+                  <h5>Success (Any Case)</h5>
+                </div>
+                <pre class="code-block">
+// Works with { Ok: T } or { ok: T }
+// Backend returns:
+{ ok: { balance: 12345n } }
+
+// You receive directly:
+{ balance: "12345" } // Processed & Transformed</pre
+                >
+              </div>
+
+              <div class="result-card err">
+                <div class="result-header">
+                  <span class="result-icon">❌</span>
+                  <h5>Error Response</h5>
+                </div>
+                <pre class="code-block">
+// Works with { Err: E } or { err: E }
+// Backend returns:
+{ Err: { InsufficientFunds: { balance: 0n } } }
+
+// Throws CanisterError
+try {
+  await reactor.callMethod({ ... })
+} catch (err) {
+  // err.err = { InsufficientFunds: { balance: "0" } }
+} // Error value is also transformed!</pre
+                >
+              </div>
+            </div>
+
+            <button id="simulate-result-btn" class="btn primary">
+              <span>🧪</span>
+              Simulate Result Unwrapping
+            </button>
+
+            <div class="codec-result">
+              <h5>Simulated Result:</h5>
+              <pre id="result-demo-output" class="code-block">
+Click "Simulate Result Unwrapping" to see how Ok/Err are handled</pre
+              >
+            </div>
+          </div>
+        </section>
+
+        <!-- Code Example -->
+        <section class="demo-section">
+          <h3 class="section-title">
+            <span class="section-icon">💻</span>
+            Usage Example
+          </h3>
+
+          <div class="code-example">
+            <pre
+              class="code-block large"
+            ><code>import { ClientManager, Reactor, DisplayReactor } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
+import { idlFactory, type Ledger } from "./declarations/ledger"
+
+const queryClient = new QueryClient()
+const clientManager = new ClientManager({ queryClient, withProcessEnv: true })
+
+// Raw Reactor - returns Candid types (bigint, Principal, etc.)
+const rawReactor = new Reactor&lt;Ledger&gt;({
+  clientManager,
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  idlFactory,
+})
+
+// DisplayReactor - returns Display types (string, etc.)
+const displayReactor = new <span class="highlight">DisplayReactor</span>&lt;Ledger&gt;({
+  clientManager,
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  idlFactory,
+})
+
+// With DisplayReactor, bigint values are automatically converted to strings
+const supply = await displayReactor.callMethod({ functionName: "icrc1_total_supply" })
+console.log(typeof supply)  // "string" instead of "bigint"
+
+// Manual codec access for custom transformations
+const codec = displayReactor.getCodec("icrc1_balance_of")
+const display = codec.result.asDisplay(1000000000000n)  // "1000000000000"
+const candid = codec.result.asCandid("1000000000000")   // 1000000000000n</code></pre>
+          </div>
+        </section>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>IC Reactor v3 - Built with ❤️ for the Internet Computer</p>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

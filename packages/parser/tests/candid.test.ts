@@ -8,9 +8,9 @@ const EXPECTED_JS = `export const idlFactory = ({ IDL }) => {
 };
 export const init = ({ IDL }) => { return []; };`
 
-const EXPECTED_TS = `import type { Principal } from '@dfinity/principal';
-import type { ActorMethod } from '@dfinity/agent';
-import type { IDL } from '@dfinity/candid';
+const EXPECTED_TS = `import type { Principal } from '@icp-sdk/core/principal';
+import type { ActorMethod } from '@icp-sdk/core/agent';
+import type { IDL } from '@icp-sdk/core/candid';
 
 export interface _SERVICE { 'icrc1_name' : ActorMethod<[], string> }
 export declare const idlFactory: IDL.InterfaceFactory;

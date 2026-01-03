@@ -1,0 +1,61 @@
+---
+title: "ckBTC Wallet"
+description: Bitcoin wallet implementation using ICRC-1 and ckBTC minter
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+A specialized wallet interface for **ckBTC** (Chain Key Bitcoin). This example demonstrates how to build a finance-ready dApp that interacts with the ckBTC ledger and minter canisters.
+
+## Features Demonstrated
+
+- **ICRC-1 Standard**: Interacting with the standard token interface (balance, transfer).
+- **ckBTC Specifics**: Retrieving BTC addresses and updating balances.
+- **Complex Flows**: Managing deposit/withdraw cycles.
+- **Floating Point Math**: Handling token decimals correctly in the UI.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/ckbtc-wallet?embed=1&theme=dark&file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3hr4d/ic-reactor-v3/tree/main/examples/ckbtc-wallet"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3hr4d/ic-reactor-v3/tree/main/examples/ckbtc-wallet?embed=1&theme=dark&file=src/App.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor ckBTC Wallet"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Key Design Patterns
+
+### Domain Specific Hooks
+
+Instead of generic queries, this example wraps them in domain-specific hooks for cleaner code:
+
+```typescript
+// reactor.ts
+export const { useActorQuery: useCkbtcLedgerQuery } =
+  createActorHooks(ckbtcLedger)
+export const { useActorMutation: useMinterMutation } = createActorHooks(minter)
+
+// App.tsx
+const { data: balance } = useCkbtcLedgerQuery({
+  functionName: "icrc1_balance_of",
+  args: [{ owner: userPrincipal, subaccount: [] }],
+  refetchInterval: 5000, // Poll for balance updates
+})
+```
