@@ -27,9 +27,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm to v11 (required for OIDC)
+        run: npm i -g npm@^11.5.1 && npm --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -55,12 +58,9 @@ jobs:
             echo "TAG=latest" >> $GITHUB_ENV
           fi
 
-      - name: Publish to npm
-        # Preferred: OIDC Trusted Publishing (configure on npmjs.com)
-        # Fallback: NPM_TOKEN secret for publish
-        run: pnpm -r publish --access public --no-git-checks --tag $TAG
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm (uses npm CLI for OIDC)
+        # Use npm CLI so OIDC trusted publishing is detected properly
+        run: pnpm -r exec npm publish --access public --tag $TAG
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
