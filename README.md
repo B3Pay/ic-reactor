@@ -1,7 +1,7 @@
 # IC Reactor
 
 <div align="center">
-  <img src="docs/src/assets/logo-dark.svg" alt="IC Reactor Logo" width="120" />
+  <img src="docs/src/assets/icon.svg" alt="IC Reactor Logo" width="120" />
   <br><br>
   <strong>The modern, type-safe library for building Internet Computer applications</strong>
   <br><br>
@@ -20,7 +20,7 @@ IC Reactor provides seamless integration between your applications and Internet 
 - 🔒 **End-to-End Type Safety** - From Candid to your components
 - ⚡ **TanStack Query Integration** - Automatic caching, background refetching, optimistic updates
 - 🔄 **Auto Transformations** - BigInt to string, Principal to text, and more with DisplayReactor
-- ⚛️ **React Ready** - `useActorQuery` and `useActorMutation` hooks
+- ⚛️ **React Ready** - `useActorQuery`, `useActorInfiniteQuery`, `useActorMutation` and more.
 - 📦 **Result Unwrapping** - Automatic `Ok`/`Err` handling from Candid Result types
 - 🏗️ **Multi-Actor Support** - Manage multiple canisters with shared authentication
 - 🔐 **Internet Identity** - Seamless authentication integration
