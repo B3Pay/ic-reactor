@@ -45,10 +45,47 @@ jobs:
       - name: Build documentation
         run: pnpm docs:build
 
+      - name: Download existing GitHub Pages content
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: existing-pages
+        continue-on-error: true
+
+      - name: Merge with existing docs (preserve old, add v3)
+        run: |
+          # Create output directory
+          mkdir -p final-docs
+
+          # Copy existing pages content (old v2 docs) if exists
+          if [ -d "existing-pages" ]; then
+            cp -r existing-pages/* final-docs/ 2>/dev/null || true
+            rm -rf final-docs/.git
+          fi
+
+          # Remove old v3 directory if exists and copy new v3 docs
+          rm -rf final-docs/v3
+          mkdir -p final-docs/v3
+          cp -r docs/dist/* final-docs/v3/
+
+      - name: Inject v3 banner into v2 docs
+        run: |
+          # Banner HTML to inject after <body> tag in all v2 HTML files
+          BANNER='<div id="v3-banner" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#6366f1,#8b5cf6);color:white;padding:12px 20px;text-align:center;font-family:system-ui,-apple-system,sans-serif;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15);"><span style="margin-right:8px;">🚀</span><strong>IC Reactor v3 is here!</strong> Featuring TanStack Query integration, improved type safety, and more. <a href="/ic-reactor/v3/" style="color:white;text-decoration:underline;font-weight:600;margin-left:8px;">View v3 Documentation →</a><button onclick="document.getElementById('\''v3-banner'\'').remove();localStorage.setItem('\''v3-banner-dismissed'\'','\''1'\'')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:white;cursor:pointer;font-size:18px;padding:4px 8px;">×</button></div><script>if(localStorage.getItem('\''v3-banner-dismissed'\''))document.getElementById('\''v3-banner'\'').remove();</script>'
+
+          # Find all HTML files in v2 docs (not in v3 folder) and inject banner
+          find final-docs -maxdepth 2 -name "*.html" -not -path "final-docs/v3/*" | while read file; do
+            if grep -q "<body" "$file" && ! grep -q "v3-banner" "$file"; then
+              # Inject banner after <body> tag (handles <body> with or without attributes)
+              sed -i 's|<body[^>]*>|&'"$BANNER"'|' "$file"
+              echo "Injected banner into: $file"
+            fi
+          done
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: docs/dist
+          path: final-docs
 
   deploy:
     name: Deploy to GitHub Pages

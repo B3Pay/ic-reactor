@@ -3,7 +3,8 @@ import starlight from "@astrojs/starlight"
 import starlightPageActions from "starlight-page-actions"
 
 export default defineConfig({
-  site: "https://ic-reactor.js.org",
+  site: "https://b3pay.github.io",
+  base: "/ic-reactor/v3",
   integrations: [
     starlight({
       title: "IC-Reactor v3",
