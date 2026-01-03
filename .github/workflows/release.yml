@@ -55,10 +55,12 @@ jobs:
             echo "TAG=latest" >> $GITHUB_ENV
           fi
 
-      - name: Publish to npm (OIDC trusted publishing)
-        # This workflow enforces OIDC Trusted Publishing (no long-lived publish token required).
-        # Make sure you've configured a Trusted Publisher on npmjs.com for this workflow filename.
+      - name: Publish to npm
+        # Preferred: OIDC Trusted Publishing (configure on npmjs.com)
+        # Fallback: NPM_TOKEN secret for publish
         run: pnpm -r publish --access public --no-git-checks --tag $TAG
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
