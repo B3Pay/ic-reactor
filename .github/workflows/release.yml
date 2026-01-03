@@ -13,6 +13,12 @@ jobs:
   release:
     name: Release to npm
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - packages/core
+          - packages/react
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -59,8 +65,8 @@ jobs:
           fi
 
       - name: Publish to npm (uses npm CLI for OIDC)
-        # Use npm CLI so OIDC trusted publishing is detected properly
-        run: pnpm -r exec npm publish --access public --tag $TAG
+        # Use npm CLI workspaces so OIDC trusted publishing is detected properly
+        run: npm publish -w ${{ matrix.workspace }} --access public --tag $TAG
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
