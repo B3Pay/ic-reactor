@@ -33,6 +33,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        # If you have private dependencies, supply a read-only token in the secret `NPM_READ_TOKEN`
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
 
       - name: Build packages
         run: pnpm build
@@ -40,10 +43,22 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Publish to npm
-        run: pnpm -r publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Determine publish tag
+        run: |
+          # Determine publish tag based on the git tag name.
+          # Default to 'latest' for stable tags (e.g., v3.0.0). If tag contains a hyphen (e.g., v3.0.0-beta.1), use 'beta'.
+          REF=${GITHUB_REF##*/}
+          echo "Detected tag: $REF"
+          if [[ "$REF" == *-* ]]; then
+            echo "TAG=beta" >> $GITHUB_ENV
+          else
+            echo "TAG=latest" >> $GITHUB_ENV
+          fi
+
+      - name: Publish to npm (OIDC trusted publishing)
+        # This workflow enforces OIDC Trusted Publishing (no long-lived publish token required).
+        # Make sure you've configured a Trusted Publisher on npmjs.com for this workflow filename.
+        run: pnpm -r publish --access public --no-git-checks --tag $TAG
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

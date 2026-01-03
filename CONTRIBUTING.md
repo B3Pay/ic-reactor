@@ -47,6 +47,18 @@ If you need to re-install hooks manually:
 pnpm prepare
 ```
 
+## Publishing (trusted publishing / tokens)
+
+This repository enforces **OIDC Trusted Publishing** for releases (no long-lived publish tokens for the publish step). Trusted publishing is more secure and produces provenance attestations when used from GitHub Actions.
+
+- To enable: go to your package on npmjs.com → Settings → Trusted publishers and add this repository's workflow filename (e.g., `release.yml`).
+- Ensure the `release.yml` workflow has `permissions: id-token: write` (already configured).
+- After enabling and validating Trusted Publishing, do not add a write `NPM_TOKEN` secret — publishing will use the OIDC token.
+
+If your CI needs to install private dependencies, create a **read-only** granular token on npmjs.com and store it as `NPM_READ_TOKEN` (the install step will use this token when present).
+
+The release workflow also auto-selects a publish tag from the git tag name: prerelease tags containing a hyphen (e.g., `v3.0.0-beta.1`) are published with the `beta` tag; stable tags publish to `latest`.
+
 ## Commits & PRs
 
 - Use clear, descriptive commit messages.
