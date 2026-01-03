@@ -27,11 +27,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/b3hr4d/ic-reactor.git",
+    "url": "https://github.com/B3Pay/ic-reactor",
     "directory": "packages/core"
   },
   "bugs": {
-    "url": "https://github.com/b3hr4d/ic-reactor/issues"
+    "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
   "homepage": "https://ic-reactor.dev",
   "keywords": [
