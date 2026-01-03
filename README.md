@@ -149,6 +149,10 @@ pnpm test
 pnpm test-e2e
 ```
 
+## 🤝 Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on how to submit PRs, run the project locally, and formatting rules. Please also review our [Code of Conduct](./CODE_OF_CONDUCT.md).
+
 ## 🤖 AI/LLM Integration
 
 This project is AI-friendly with:
