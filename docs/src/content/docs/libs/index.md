@@ -97,6 +97,7 @@ description: Generated API reference documentation
 - [getVariantKeyValue](functions/getVariantKeyValue.md)
 - [getVariantKey](functions/getVariantKey.md)
 - [getVariantValue](functions/getVariantValue.md)
+- [getVariantValueByKey](functions/getVariantValueByKey.md)
 - [isKeyMatchVariant](functions/isKeyMatchVariant.md)
 - [generateKey](functions/generateKey.md)
 - [isInLocalOrDevelopment](functions/isInLocalOrDevelopment.md)
@@ -107,4 +108,5 @@ description: Generated API reference documentation
 - [nonNullish](functions/nonNullish.md)
 - [uint8ArrayToHex](functions/uint8ArrayToHex.md)
 - [hexToUint8Array](functions/hexToUint8Array.md)
+- [jsonToString](functions/jsonToString.md)
 - [createPollingStrategy](functions/createPollingStrategy.md)
