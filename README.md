@@ -37,8 +37,8 @@ IC Reactor provides seamless integration between your applications and Internet 
 ### Installation
 
 ```bash
-# For React apps (includes core)
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+# For React apps
+pnpm add @ic-reactor/react @ic-reactor/core @icp-sdk/core @tanstack/react-query
 
 # For non-React apps
 pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
@@ -50,34 +50,36 @@ pnpm add @icp-sdk/auth
 ### Basic Usage
 
 ```typescript
-import { ClientManager, Reactor } from '@ic-reactor/react';
-import { createActorHooks } from '@ic-reactor/react';
+import { ClientManager, Reactor, createActorHooks, createAuthHooks } from '@ic-reactor/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { idlFactory, type _SERVICE } from './declarations/my_canister';
 
-// Setup
+// 1. Setup ClientManager (handles Identity and Agent)
 const queryClient = new QueryClient();
 const clientManager = new ClientManager({ queryClient, withProcessEnv: true });
 
+// 2. Setup Reactor (handles Canister interaction)
 const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   canisterId: 'rrkah-fqaaa-aaaaa-aaaaq-cai',
 });
 
-// Create hooks
+// 3. Create Hooks
 const { useActorQuery, useActorMutation } = createActorHooks(backend);
+const { useAuth, useUserPrincipal } = createAuthHooks(clientManager);
 
-// Wrap your app
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Greeting />
-    </QueryClientProvider>
+// 4. Use in components
+function LoginButton() {
+  const { login, logout, isAuthenticated, principal } = useAuth();
+
+  return isAuthenticated ? (
+    <button onClick={() => logout()}>Logout {principal?.toText()}</button>
+  ) : (
+    <button onClick={() => login()}>Login with Internet Identity</button>
   );
 }
 
-// Use in components
 function Greeting() {
   const { data, isPending, error } = useActorQuery({
     functionName: 'greet',
@@ -107,8 +109,10 @@ function Greeting() {
 Visit the [documentation site](./docs) for complete guides:
 
 - [Getting Started](./docs/src/content/docs/quick-start.mdx)
+- [Authentication](./docs/src/content/docs/authentication.mdx)
 - [Queries Guide](./docs/src/content/docs/guides/queries.mdx)
 - [Mutations Guide](./docs/src/content/docs/guides/mutations.mdx)
+- [Query Caching](./docs/src/content/docs/query-caching.mdx)
 - [Error Handling](./docs/src/content/docs/error-handling.mdx)
 - [Type Safety](./docs/src/content/docs/type-safety.mdx)
 - [Examples](./examples/)
