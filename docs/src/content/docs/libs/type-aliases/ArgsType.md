@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-> **ArgsType**\<`T`\> = `T` *extends* readonly \[infer U\] ? `U` : `T` *extends* readonly \[\] ? `null` : `T`
+> **ArgsType**\<`T`\> = `T` _extends_ readonly \[infer U\] ? `U` : `T` _extends_ readonly \[\] ? `null` : `T`
 
 Defined in: [types/reactor.ts:80](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/reactor.ts#L80)
 

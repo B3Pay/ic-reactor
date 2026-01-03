@@ -22,11 +22,11 @@ Used by: getQueryOptions, fetchQuery, callMethod
 
 ### M
 
-`M` *extends* [`FunctionName`](../type-aliases/FunctionName.md)\<`A`\>
+`M` _extends_ [`FunctionName`](../type-aliases/FunctionName.md)\<`A`\>
 
 ### T
 
-`T` *extends* [`TransformKey`](../type-aliases/TransformKey.md) = `"candid"`
+`T` _extends_ [`TransformKey`](../type-aliases/TransformKey.md) = `"candid"`
 
 ## Properties
 
@@ -40,7 +40,7 @@ Defined in: [types/reactor.ts:179](https://github.com/b3hr4d/ic-reactor-v3/blob/
 
 [`ReactorQueryParams`](ReactorQueryParams.md).[`functionName`](ReactorQueryParams.md#functionname)
 
-***
+---
 
 ### args?
 
@@ -52,7 +52,7 @@ Defined in: [types/reactor.ts:180](https://github.com/b3hr4d/ic-reactor-v3/blob/
 
 [`ReactorQueryParams`](ReactorQueryParams.md).[`args`](ReactorQueryParams.md#args)
 
-***
+---
 
 ### queryKey?
 
@@ -64,7 +64,7 @@ Defined in: [types/reactor.ts:181](https://github.com/b3hr4d/ic-reactor-v3/blob/
 
 [`ReactorQueryParams`](ReactorQueryParams.md).[`queryKey`](ReactorQueryParams.md#querykey)
 
-***
+---
 
 ### callConfig?
 

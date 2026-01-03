@@ -13,11 +13,11 @@ Defined in: [utils/candid.ts:95](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 ### T
 
-`T` *extends* `Record`\<`string`, `any`\>
+`T` _extends_ `Record`\<`string`, `any`\>
 
 ### K
 
-`K` *extends* `string`
+`K` _extends_ `string`
 
 ## Parameters
 

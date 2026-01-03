@@ -22,11 +22,11 @@ Used by: generateQueryKey, getQueryData
 
 ### M
 
-`M` *extends* [`FunctionName`](../type-aliases/FunctionName.md)\<`A`\>
+`M` _extends_ [`FunctionName`](../type-aliases/FunctionName.md)\<`A`\>
 
 ### T
 
-`T` *extends* [`TransformKey`](../type-aliases/TransformKey.md) = `"candid"`
+`T` _extends_ [`TransformKey`](../type-aliases/TransformKey.md) = `"candid"`
 
 ## Properties
 
@@ -36,7 +36,7 @@ Used by: generateQueryKey, getQueryData
 
 Defined in: [types/reactor.ts:179](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/reactor.ts#L179)
 
-***
+---
 
 ### args?
 
@@ -44,7 +44,7 @@ Defined in: [types/reactor.ts:179](https://github.com/b3hr4d/ic-reactor-v3/blob/
 
 Defined in: [types/reactor.ts:180](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/reactor.ts#L180)
 
-***
+---
 
 ### queryKey?
 

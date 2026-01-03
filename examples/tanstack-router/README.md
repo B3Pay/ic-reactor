@@ -1,4 +1,4 @@
-Welcome to your new TanStack app! 
+Welcome to your new TanStack app!
 
 # Getting Started
 
@@ -29,10 +29,8 @@ npm run test
 
 This project uses CSS for styling.
 
-
-
-
 ## Routing
+
 This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a code based router. Which means that the routes are defined in code (in the `./src/main.tsx` file). If you like you can also use a file based routing setup by following the [File Based Routing](https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing) guide.
 
 ### Adding A Route
@@ -44,13 +42,13 @@ const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/about",
   component: () => <h1>About</h1>,
-});
+})
 ```
 
 You will also need to add the route to the `routeTree` in the `./src/main.tsx` file.
 
 ```tsx
-const routeTree = rootRoute.addChildren([indexRoute, aboutRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 ```
 
 With this set up you should be able to navigate to `/about` and see the about page.
@@ -58,13 +56,13 @@ With this set up you should be able to navigate to `/about` and see the about pa
 Of course you don't need to implement the About page in the `main.tsx` file. You can create that component in another file and import it into the `main.tsx` file, then use it in the `component` property of the `createRoute` call, like so:
 
 ```tsx
-import About from "./components/About.tsx";
+import About from "./components/About.tsx"
 
 const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/about",
   component: About,
-});
+})
 ```
 
 That is how we have the `App` component set up with the home page.
@@ -78,7 +76,7 @@ Now that you have two routes you can use a `Link` component to navigate between 
 To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
 
 ```tsx
-import { Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router"
 ```
 
 Then anywhere in your JSX you can use it like so:
@@ -93,7 +91,6 @@ More information on the `Link` component can be found in the [Link documentation
 
 ### Using A Layout
 
-
 Layouts can be used to wrap the contents of the routes in menus, headers, footers, etc.
 
 There is already a layout in the `src/main.tsx` file:
@@ -106,13 +103,13 @@ const rootRoute = createRootRoute({
       <TanStackRouterDevtools />
     </>
   ),
-});
+})
 ```
 
 You can use the React component specified in the `component` property of the `rootRoute` to wrap the contents of the routes. The `<Outlet />` component is used to render the current route within the body of the layout. For example you could add a header to the layout like so:
 
 ```tsx
-import { Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router"
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -127,13 +124,12 @@ const rootRoute = createRootRoute({
       <TanStackRouterDevtools />
     </>
   ),
-});
+})
 ```
 
 The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
 
 More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
 
 ### Migrating To File Base Routing
 
@@ -146,17 +142,14 @@ npm install @tanstack/router-plugin -D
 From there you need to update your `vite.config.js` file to use the plugin:
 
 ```ts
-import { defineConfig } from "vite";
-import viteReact from "@vitejs/plugin-react";
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
-  
+import { defineConfig } from "vite"
+import viteReact from "@vitejs/plugin-react"
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    TanStackRouterVite(),
-    viteReact()
-  ],
-});
+  plugins: [TanStackRouterVite(), viteReact()],
+})
 ```
 
 Now you'll need to rearrange your files a little bit. That starts with creating a `routes` directory in the `src` directory:
@@ -168,8 +161,8 @@ mkdir src/routes
 Then you'll need to create a `src/routes/__root.tsx` file with the contents of the root route that was in `main.tsx`.
 
 ```tsx
-import { Outlet, createRootRoute } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { Outlet, createRootRoute } from "@tanstack/react-router"
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
 
 export const Route = createRootRoute({
   component: () => (
@@ -178,48 +171,48 @@ export const Route = createRootRoute({
       <TanStackRouterDevtools />
     </>
   ),
-});
+})
 ```
 
 Next up you'll need to move your home route code into `src/routes/index.tsx`
 
 ```tsx
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router"
 
-import logo from "../logo.svg";
-import "../App.css";
+import logo from "../logo.svg"
+import "../App.css"
 
 export const Route = createFileRoute("/")({
   component: App,
-});
+})
 
 function App() {
   return (
-  <div className="App">
-    <header className="App-header">
-      <img src={logo} className="App-logo" alt="logo" />
-      <p>
-        Edit <code>src/App.tsx</code> and save to reload.
-      </p>
-      <a
-        className="App-link"
-        href="https://reactjs.org"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Learn React
-      </a>
-      <a
-        className="App-link"
-        href="https://tanstack.com"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Learn TanStack
-      </a>
-    </header>
-  </div>
-  );
+    <div className="App">
+      <header className="App-header">
+        <img src={logo} className="App-logo" alt="logo" />
+        <p>
+          Edit <code>src/App.tsx</code> and save to reload.
+        </p>
+        <a
+          className="App-link"
+          href="https://reactjs.org"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn React
+        </a>
+        <a
+          className="App-link"
+          href="https://tanstack.com"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn TanStack
+        </a>
+      </header>
+    </div>
+  )
 }
 ```
 
@@ -230,15 +223,15 @@ The only additional code is the `createFileRoute` function that tells TanStack R
 Finally the `src/main.tsx` file can be simplified down to this:
 
 ```tsx
-import { StrictMode } from "react";
-import ReactDOM from "react-dom/client";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { StrictMode } from "react"
+import ReactDOM from "react-dom/client"
+import { RouterProvider, createRouter } from "@tanstack/react-router"
 
 // Import the generated route tree
-import { routeTree } from "./routeTree.gen";
+import { routeTree } from "./routeTree.gen"
 
-import "./styles.css";
-import reportWebVitals from "./reportWebVitals.ts";
+import "./styles.css"
+import reportWebVitals from "./reportWebVitals.ts"
 
 // Create a new router instance
 const router = createRouter({
@@ -246,31 +239,31 @@ const router = createRouter({
   defaultPreload: "intent",
   defaultPreloadStaleTime: 0,
   scrollRestoration: true,
-  defaultStructuralSharing: true
-});
+  defaultStructuralSharing: true,
+})
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
   interface Register {
-    router: typeof router;
+    router: typeof router
   }
 }
 
 // Render the app
-const rootElement = document.getElementById("app")!;
+const rootElement = document.getElementById("app")!
 if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
+  const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
       <RouterProvider router={router} />
     </StrictMode>
-  );
+  )
 }
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+reportWebVitals()
 ```
 
 Now you've got a file based routing setup in your project! Let's have some fun with it! Just create a file in `about.tsx` in `src/routes` and it if the application is running TanStack will automatically add contents to the file and you'll have the start of your `/about` route ready to go with no additional work. You can see why folks find File Based Routing so easy to use.
@@ -288,24 +281,24 @@ const peopleRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/people",
   loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
+    const response = await fetch("https://swapi.dev/api/people")
     return response.json() as Promise<{
       results: {
-        name: string;
-      }[];
-    }>;
+        name: string
+      }[]
+    }>
   },
   component: () => {
-    const data = peopleRoute.useLoaderData();
+    const data = peopleRoute.useLoaderData()
     return (
       <ul>
         {data.results.map((person) => (
           <li key={person.name}>{person.name}</li>
         ))}
       </ul>
-    );
+    )
   },
-});
+})
 ```
 
 Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
@@ -323,29 +316,29 @@ npm install @tanstack/react-query @tanstack/react-query-devtools
 Next we'll need to create a query client and provider. We recommend putting those in `main.tsx`.
 
 ```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 // ...
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient()
 
 // ...
 
 if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
+  const root = ReactDOM.createRoot(rootElement)
 
   root.render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>
-  );
+  )
 }
 ```
 
 You can also add TanStack Query Devtools to the root route (optional).
 
 ```tsx
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -355,15 +348,15 @@ const rootRoute = createRootRoute({
       <TanStackRouterDevtools />
     </>
   ),
-});
+})
 ```
 
 Now you can use `useQuery` to fetch your data.
 
 ```tsx
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query"
 
-import "./App.css";
+import "./App.css"
 
 function App() {
   const { data } = useQuery({
@@ -373,7 +366,7 @@ function App() {
         .then((res) => res.json())
         .then((data) => data.results as { name: string }[]),
     initialData: [],
-  });
+  })
 
   return (
     <div>
@@ -383,10 +376,10 @@ function App() {
         ))}
       </ul>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
 ```
 
 You can find out everything you need to know on how to use React-Query in the [React-Query documentation](https://tanstack.com/query/latest/docs/framework/react/overview).
@@ -404,24 +397,24 @@ npm install @tanstack/store
 Now let's create a simple counter in the `src/App.tsx` file as a demonstration.
 
 ```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store } from "@tanstack/store";
-import "./App.css";
+import { useStore } from "@tanstack/react-store"
+import { Store } from "@tanstack/store"
+import "./App.css"
 
-const countStore = new Store(0);
+const countStore = new Store(0)
 
 function App() {
-  const count = useStore(countStore);
+  const count = useStore(countStore)
   return (
     <div>
       <button onClick={() => countStore.setState((n) => n + 1)}>
         Increment - {count}
       </button>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
 ```
 
 One of the many nice features of TanStack Store is the ability to derive state from other state. That derived state will update when the base state updates.
@@ -429,21 +422,21 @@ One of the many nice features of TanStack Store is the ability to derive state f
 Let's check this out by doubling the count using derived state.
 
 ```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store, Derived } from "@tanstack/store";
-import "./App.css";
+import { useStore } from "@tanstack/react-store"
+import { Store, Derived } from "@tanstack/store"
+import "./App.css"
 
-const countStore = new Store(0);
+const countStore = new Store(0)
 
 const doubledStore = new Derived({
   fn: () => countStore.state * 2,
   deps: [countStore],
-});
-doubledStore.mount();
+})
+doubledStore.mount()
 
 function App() {
-  const count = useStore(countStore);
-  const doubledCount = useStore(doubledStore);
+  const count = useStore(countStore)
+  const doubledCount = useStore(doubledStore)
 
   return (
     <div>
@@ -452,10 +445,10 @@ function App() {
       </button>
       <div>Doubled - {doubledCount}</div>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
 ```
 
 We use the `Derived` class to create a new store that is derived from another store. The `Derived` class has a `mount` method that will start the derived store updating.

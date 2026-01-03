@@ -17,7 +17,7 @@ Represents the authentication state of an agent.
 
 Defined in: [types/client.ts:79](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/client.ts#L79)
 
-***
+---
 
 ### isAuthenticating
 
@@ -27,7 +27,7 @@ Defined in: [types/client.ts:84](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 Indicates whether the authentication process is ongoing.
 
-***
+---
 
 ### isAuthenticated
 
@@ -37,7 +37,7 @@ Defined in: [types/client.ts:89](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 Indicates whether the agent is authenticated.
 
-***
+---
 
 ### error
 

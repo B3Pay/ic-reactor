@@ -19,4 +19,4 @@ Validator that receives display types for a specific method.
 
 ### M
 
-`M` *extends* [`FunctionName`](FunctionName.md)\<`A`\>
+`M` _extends_ [`FunctionName`](FunctionName.md)\<`A`\>

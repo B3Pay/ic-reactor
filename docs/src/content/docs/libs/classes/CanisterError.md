@@ -57,7 +57,7 @@ Defined in: [errors/index.ts:42](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 The raw error value from the canister
 
-***
+---
 
 ### code
 
@@ -67,7 +67,7 @@ Defined in: [errors/index.ts:44](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 The error code, extracted from the error object or variant key
 
-***
+---
 
 ### details
 
@@ -97,7 +97,7 @@ Type guard to check if an error object follows the API error format.
 
 `error is ApiError`
 
-***
+---
 
 ### create()
 

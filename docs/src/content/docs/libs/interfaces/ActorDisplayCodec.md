@@ -25,7 +25,7 @@ Defined in: [display/types.ts:87](https://github.com/b3hr4d/ic-reactor-v3/blob/d
 
 Defined in: [display/types.ts:88](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/display/types.ts#L88)
 
-***
+---
 
 ### asDisplay()
 
@@ -43,7 +43,7 @@ Defined in: [display/types.ts:89](https://github.com/b3hr4d/ic-reactor-v3/blob/d
 
 `TD`
 
-***
+---
 
 ### asCandid()
 

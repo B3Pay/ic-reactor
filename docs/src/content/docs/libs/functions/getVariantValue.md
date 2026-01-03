@@ -15,11 +15,11 @@ Extracts the value from a Candid variant type.
 
 ### T
 
-`T` *extends* `Record`\<`string`, `any`\>
+`T` _extends_ `Record`\<`string`, `any`\>
 
 ### K
 
-`K` *extends* `string` = [`CandidVariantKey`](../type-aliases/CandidVariantKey.md)\<`T`\>
+`K` _extends_ `string` = [`CandidVariantKey`](../type-aliases/CandidVariantKey.md)\<`T`\>
 
 ## Parameters
 

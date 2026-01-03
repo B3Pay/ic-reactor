@@ -17,7 +17,7 @@ Defined in: [types/reactor.ts:54](https://github.com/b3hr4d/ic-reactor-v3/blob/d
 
 ### M
 
-`M` *extends* keyof `A`
+`M` _extends_ keyof `A`
 
 > **ActorMethodType**(...`args`): `Promise`\<[`ActorMethodReturnType`](ActorMethodReturnType.md)\<`A`\[`M`\]\>\>
 

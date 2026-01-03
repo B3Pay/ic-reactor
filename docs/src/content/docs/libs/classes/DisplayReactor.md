@@ -11,12 +11,14 @@ DisplayReactor provides automatic type transformations between Candid and
 display-friendly types, plus optional argument validation.
 
 ### Type Transformations
+
 - `bigint` → `string` (for JSON/UI display)
 - `Principal` → `string` (text representation)
 - `[T] | []` → `T | null` (optional unwrapping)
 - Small blobs → hex strings
 
 ### Validation (Optional)
+
 Register validators to check arguments before canister calls.
 Validators receive **display types** (strings), making them perfect for
 form validation.
@@ -37,7 +39,7 @@ reactor.registerValidator("transfer", ([input]) => {
   if (!input.to) {
     return {
       success: false,
-      issues: [{ path: ["to"], message: "Recipient is required" }]
+      issues: [{ path: ["to"], message: "Recipient is required" }],
     }
   }
   return { success: true }
@@ -96,7 +98,7 @@ Defined in: [display-reactor.ts:136](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 [`Reactor`](Reactor.md).[`transform`](Reactor.md#transform)
 
-***
+---
 
 ### \_actor
 
@@ -110,7 +112,7 @@ Phantom type brand for inference - never assigned at runtime
 
 [`Reactor`](Reactor.md).[`_actor`](Reactor.md#_actor)
 
-***
+---
 
 ### clientManager
 
@@ -122,7 +124,7 @@ Defined in: [reactor.ts:46](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 
 [`Reactor`](Reactor.md).[`clientManager`](Reactor.md#clientmanager)
 
-***
+---
 
 ### name
 
@@ -134,7 +136,7 @@ Defined in: [reactor.ts:47](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 
 [`Reactor`](Reactor.md).[`name`](Reactor.md#name)
 
-***
+---
 
 ### canisterId
 
@@ -146,7 +148,7 @@ Defined in: [reactor.ts:48](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 
 [`Reactor`](Reactor.md).[`canisterId`](Reactor.md#canisterid)
 
-***
+---
 
 ### service
 
@@ -158,7 +160,7 @@ Defined in: [reactor.ts:49](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 
 [`Reactor`](Reactor.md).[`service`](Reactor.md#service)
 
-***
+---
 
 ### pollingOptions
 
@@ -191,7 +193,7 @@ This is the recommended way to access the query client for direct queries.
 
 [`Reactor`](Reactor.md).[`queryClient`](Reactor.md#queryclient)
 
-***
+---
 
 ### agent
 
@@ -227,7 +229,7 @@ Returns the args and result codecs for bidirectional transformation.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -243,7 +245,7 @@ The name of the method
 
 Object with args and result codecs, or null if not found
 
-***
+---
 
 ### registerValidator()
 
@@ -258,7 +260,7 @@ Validators receive display types (strings for Principal/bigint).
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -286,14 +288,14 @@ reactor.registerValidator("transfer", ([input]) => {
   if (!/^\d+$/.test(input.amount)) {
     return {
       success: false,
-      issues: [{ path: ["amount"], message: "Must be a valid number" }]
+      issues: [{ path: ["amount"], message: "Must be a valid number" }],
     }
   }
   return { success: true }
 })
 ```
 
-***
+---
 
 ### unregisterValidator()
 
@@ -307,7 +309,7 @@ Unregister a validator for a specific method.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -319,7 +321,7 @@ Unregister a validator for a specific method.
 
 `void`
 
-***
+---
 
 ### hasValidator()
 
@@ -333,7 +335,7 @@ Check if a method has a registered validator.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -345,7 +347,7 @@ Check if a method has a registered validator.
 
 `boolean`
 
-***
+---
 
 ### validate()
 
@@ -361,7 +363,7 @@ Useful for form validation before submission.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -387,19 +389,21 @@ ValidationResult indicating success or failure
 
 ```typescript
 // Validate form data before submission
-const result = await reactor.validate("transfer", [{
-  to: formData.recipient,  // string
-  amount: formData.amount, // string
-}])
+const result = await reactor.validate("transfer", [
+  {
+    to: formData.recipient, // string
+    amount: formData.amount, // string
+  },
+])
 
 if (!result.success) {
-  result.issues.forEach(issue => {
+  result.issues.forEach((issue) => {
     form.setError(issue.path[0], issue.message)
   })
 }
 ```
 
-***
+---
 
 ### callMethodWithValidation()
 
@@ -414,7 +418,7 @@ Use this instead of callMethod() when you have async validators.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -445,7 +449,7 @@ reactor.registerValidator("transfer", async ([input]) => {
   if (isBlocked) {
     return {
       success: false,
-      issues: [{ path: ["to"], message: "Address is blocked" }]
+      issues: [{ path: ["to"], message: "Address is blocked" }],
     }
   }
   return { success: true }
@@ -457,7 +461,7 @@ await reactor.callMethodWithValidation({
 })
 ```
 
-***
+---
 
 ### getServiceInterface()
 
@@ -478,7 +482,7 @@ The service interface
 
 [`Reactor`](Reactor.md).[`getServiceInterface`](Reactor.md#getserviceinterface)
 
-***
+---
 
 ### generateQueryKey()
 
@@ -490,7 +494,7 @@ Defined in: [reactor.ts:147](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -506,7 +510,7 @@ readonly `unknown`[]
 
 [`Reactor`](Reactor.md).[`generateQueryKey`](Reactor.md#generatequerykey)
 
-***
+---
 
 ### getQueryOptions()
 
@@ -518,7 +522,7 @@ Defined in: [reactor.ts:167](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -534,7 +538,7 @@ Defined in: [reactor.ts:167](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f
 
 [`Reactor`](Reactor.md).[`getQueryOptions`](Reactor.md#getqueryoptions)
 
-***
+---
 
 ### invalidateQueries()
 
@@ -549,7 +553,7 @@ This will mark matching queries as stale and trigger a refetch for any active qu
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -570,17 +574,17 @@ Optional parameters to filter the invalidation
 reactor.invalidateQueries()
 
 // Invalidate only 'getUser' queries
-reactor.invalidateQueries({ functionName: 'getUser' })
+reactor.invalidateQueries({ functionName: "getUser" })
 
 // Invalidate 'getUser' query for specific user
-reactor.invalidateQueries({ functionName: 'getUser', args: ['user-1'] })
+reactor.invalidateQueries({ functionName: "getUser", args: ["user-1"] })
 ```
 
 #### Inherited from
 
 [`Reactor`](Reactor.md).[`invalidateQueries`](Reactor.md#invalidatequeries)
 
-***
+---
 
 ### callMethod()
 
@@ -595,7 +599,7 @@ This is the recommended approach for interacting with canisters.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -612,23 +616,23 @@ This is the recommended approach for interacting with canisters.
 ```typescript
 // Query method
 const result = await reactor.callMethod({
-  functionName: 'greet',
-  args: ['world'],
-});
+  functionName: "greet",
+  args: ["world"],
+})
 
 // Update method with options
 const result = await reactor.callMethod({
-  functionName: 'transfer',
+  functionName: "transfer",
   args: [{ to: principal, amount: 100n }],
   callConfig: { effectiveCanisterId: principal },
-});
+})
 ```
 
 #### Inherited from
 
 [`Reactor`](Reactor.md).[`callMethod`](Reactor.md#callmethod)
 
-***
+---
 
 ### fetchQuery()
 
@@ -643,7 +647,7 @@ This method ensures the data is in the cache and returns it.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -659,7 +663,7 @@ This method ensures the data is in the cache and returns it.
 
 [`Reactor`](Reactor.md).[`fetchQuery`](Reactor.md#fetchquery)
 
-***
+---
 
 ### getQueryData()
 
@@ -673,7 +677,7 @@ Get the current data from the cache without fetching.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -689,7 +693,7 @@ Get the current data from the cache without fetching.
 
 [`Reactor`](Reactor.md).[`getQueryData`](Reactor.md#getquerydata)
 
-***
+---
 
 ### subnetId()
 
@@ -707,7 +711,7 @@ Get the subnet ID for this canister.
 
 [`Reactor`](Reactor.md).[`subnetId`](Reactor.md#subnetid)
 
-***
+---
 
 ### subnetState()
 

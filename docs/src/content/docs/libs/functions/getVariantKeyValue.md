@@ -17,7 +17,7 @@ type User = { 'Business': BusinessUser } | { 'Individual': IndividualUser }
 
 ### T
 
-`T` *extends* `Record`\<`string`, `any`\>
+`T` _extends_ `Record`\<`string`, `any`\>
 
 The variant type
 

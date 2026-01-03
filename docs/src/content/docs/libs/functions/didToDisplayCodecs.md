@@ -13,7 +13,7 @@ Defined in: [display/helper.ts:22](https://github.com/b3hr4d/ic-reactor-v3/blob/
 
 ### TTypes
 
-`TTypes` *extends* `Record`\<`string`, `Type`\<`any`\>\>
+`TTypes` _extends_ `Record`\<`string`, `Type`\<`any`\>\>
 
 ## Parameters
 

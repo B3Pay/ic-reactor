@@ -10,6 +10,7 @@ Defined in: [reactor.ts:42](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 Reactor class for interacting with IC canisters.
 
 This class provides core functionality for:
+
 - Direct agent calls using agent.call() and agent.query()
 - Query caching with TanStack Query integration
 - Method calls with result unwrapping
@@ -28,7 +29,7 @@ The actor service type
 
 ### T
 
-`T` *extends* [`TransformKey`](../type-aliases/TransformKey.md) = `"candid"`
+`T` _extends_ [`TransformKey`](../type-aliases/TransformKey.md) = `"candid"`
 
 The type transformation to apply (default: candid = raw Candid types)
 
@@ -60,7 +61,7 @@ Defined in: [reactor.ts:44](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 
 Phantom type brand for inference - never assigned at runtime
 
-***
+---
 
 ### transform
 
@@ -68,7 +69,7 @@ Phantom type brand for inference - never assigned at runtime
 
 Defined in: [reactor.ts:45](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/reactor.ts#L45)
 
-***
+---
 
 ### clientManager
 
@@ -76,7 +77,7 @@ Defined in: [reactor.ts:45](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 
 Defined in: [reactor.ts:46](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/reactor.ts#L46)
 
-***
+---
 
 ### name
 
@@ -84,7 +85,7 @@ Defined in: [reactor.ts:46](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 
 Defined in: [reactor.ts:47](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/reactor.ts#L47)
 
-***
+---
 
 ### canisterId
 
@@ -92,7 +93,7 @@ Defined in: [reactor.ts:47](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 
 Defined in: [reactor.ts:48](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/reactor.ts#L48)
 
-***
+---
 
 ### service
 
@@ -100,7 +101,7 @@ Defined in: [reactor.ts:48](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f9
 
 Defined in: [reactor.ts:49](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/reactor.ts#L49)
 
-***
+---
 
 ### pollingOptions
 
@@ -125,7 +126,7 @@ This is the recommended way to access the query client for direct queries.
 
 `QueryClient`
 
-***
+---
 
 ### agent
 
@@ -159,7 +160,7 @@ Useful for introspection and codec generation.
 
 The service interface
 
-***
+---
 
 ### generateQueryKey()
 
@@ -171,7 +172,7 @@ Defined in: [reactor.ts:147](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -183,7 +184,7 @@ Defined in: [reactor.ts:147](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f
 
 readonly `unknown`[]
 
-***
+---
 
 ### getQueryOptions()
 
@@ -195,7 +196,7 @@ Defined in: [reactor.ts:167](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -207,7 +208,7 @@ Defined in: [reactor.ts:167](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f
 
 `FetchQueryOptions`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
-***
+---
 
 ### invalidateQueries()
 
@@ -222,7 +223,7 @@ This will mark matching queries as stale and trigger a refetch for any active qu
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -243,13 +244,13 @@ Optional parameters to filter the invalidation
 reactor.invalidateQueries()
 
 // Invalidate only 'getUser' queries
-reactor.invalidateQueries({ functionName: 'getUser' })
+reactor.invalidateQueries({ functionName: "getUser" })
 
 // Invalidate 'getUser' query for specific user
-reactor.invalidateQueries({ functionName: 'getUser', args: ['user-1'] })
+reactor.invalidateQueries({ functionName: "getUser", args: ["user-1"] })
 ```
 
-***
+---
 
 ### callMethod()
 
@@ -264,7 +265,7 @@ This is the recommended approach for interacting with canisters.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -281,19 +282,19 @@ This is the recommended approach for interacting with canisters.
 ```typescript
 // Query method
 const result = await reactor.callMethod({
-  functionName: 'greet',
-  args: ['world'],
-});
+  functionName: "greet",
+  args: ["world"],
+})
 
 // Update method with options
 const result = await reactor.callMethod({
-  functionName: 'transfer',
+  functionName: "transfer",
   args: [{ to: principal, amount: 100n }],
   callConfig: { effectiveCanisterId: principal },
-});
+})
 ```
 
-***
+---
 
 ### fetchQuery()
 
@@ -308,7 +309,7 @@ This method ensures the data is in the cache and returns it.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -320,7 +321,7 @@ This method ensures the data is in the cache and returns it.
 
 `Promise`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
-***
+---
 
 ### getQueryData()
 
@@ -334,7 +335,7 @@ Get the current data from the cache without fetching.
 
 ##### M
 
-`M` *extends* `string`
+`M` _extends_ `string`
 
 #### Parameters
 
@@ -346,7 +347,7 @@ Get the current data from the cache without fetching.
 
 [`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\> \| `undefined`
 
-***
+---
 
 ### subnetId()
 
@@ -360,7 +361,7 @@ Get the subnet ID for this canister.
 
 `Promise`\<`Principal`\>
 
-***
+---
 
 ### subnetState()
 

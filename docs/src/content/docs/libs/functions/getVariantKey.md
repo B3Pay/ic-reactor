@@ -16,7 +16,7 @@ Variants in Candid are represented as objects with a single key-value pair.
 
 ### T
 
-`T` *extends* `Record`\<`string`, `any`\>
+`T` _extends_ `Record`\<`string`, `any`\>
 
 ## Parameters
 

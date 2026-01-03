@@ -69,7 +69,7 @@ Defined in: [errors/index.ts:209](https://github.com/b3hr4d/ic-reactor-v3/blob/d
 
 Array of validation issues
 
-***
+---
 
 ### methodName
 
@@ -99,7 +99,7 @@ Get issues for a specific field path
 
 [`ValidationIssue`](../interfaces/ValidationIssue.md)[]
 
-***
+---
 
 ### hasErrorForPath()
 

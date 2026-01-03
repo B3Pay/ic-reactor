@@ -19,7 +19,7 @@ Defined in: [types/client.ts:18](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 The TanStack QueryClient used for caching and state management.
 
-***
+---
 
 ### agentOptions?
 
@@ -29,7 +29,7 @@ Defined in: [types/client.ts:22](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 Optional configuration for the underlying HttpAgent.
 
-***
+---
 
 ### port?
 
@@ -39,7 +39,7 @@ Defined in: [types/client.ts:26](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 The port used for the local IC replica (default is 4943).
 
-***
+---
 
 ### withLocalEnv?
 
@@ -49,7 +49,7 @@ Defined in: [types/client.ts:30](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 If true, configures the agent for a local environment.
 
-***
+---
 
 ### withProcessEnv?
 
@@ -59,7 +59,7 @@ Defined in: [types/client.ts:34](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 If true, auto-configures the agent based on process.env settings.
 
-***
+---
 
 ### authClient?
 

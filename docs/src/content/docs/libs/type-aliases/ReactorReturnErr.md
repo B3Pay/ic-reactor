@@ -17,8 +17,8 @@ Defined in: [types/reactor.ts:142](https://github.com/b3hr4d/ic-reactor-v3/blob/
 
 ### M
 
-`M` *extends* [`FunctionName`](FunctionName.md)\<`A`\>
+`M` _extends_ [`FunctionName`](FunctionName.md)\<`A`\>
 
 ### Transform
 
-`Transform` *extends* [`TransformKey`](TransformKey.md) = `"candid"`
+`Transform` _extends_ [`TransformKey`](TransformKey.md) = `"candid"`

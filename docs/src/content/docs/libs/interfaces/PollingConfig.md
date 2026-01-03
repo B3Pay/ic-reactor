@@ -29,10 +29,10 @@ Choose descriptive names that help with debugging and monitoring.
 #### Example
 
 ```ts
-"sign-transaction", "document-upload"
+;("sign-transaction", "document-upload")
 ```
 
-***
+---
 
 ### logPrefix?
 
@@ -54,10 +54,10 @@ Useful when running multiple polling operations concurrently.
 #### Example
 
 ```ts
-"[PaymentPolling]", "[TransactionPolling]", "[SignerPolling]"
+;("[PaymentPolling]", "[TransactionPolling]", "[SignerPolling]")
 ```
 
-***
+---
 
 ### fastAttempts?
 
@@ -83,7 +83,7 @@ Lower values = faster transition to exponential backoff.
 5 (for slower operations), 15 (for very fast operations)
 ```
 
-***
+---
 
 ### fastDelayMs?
 
@@ -106,10 +106,10 @@ Lower values = more aggressive polling, higher network load.
 #### Example
 
 ```ts
-50 (aggressive), 200 (conservative)
+;(50(aggressive), 200(conservative))
 ```
 
-***
+---
 
 ### rampUntilMs?
 
@@ -135,7 +135,7 @@ After this duration, polling enters plateau phase with constant delays.
 10_000 (faster transition), 30_000 (longer ramp for slow ops)
 ```
 
-***
+---
 
 ### plateauDelayMs?
 
@@ -161,7 +161,7 @@ Balance between responsiveness and network/resource efficiency.
 2_000 (more responsive), 10_000 (more efficient)
 ```
 
-***
+---
 
 ### jitterRatio?
 
@@ -171,7 +171,7 @@ Defined in: [utils/polling.ts:117](https://github.com/b3hr4d/ic-reactor-v3/blob/
 
 Randomization ratio (0-1) for adding jitter to prevent thundering herd.
 
-Jitter adds ±(ratio * delay) randomness to each polling interval.
+Jitter adds ±(ratio \* delay) randomness to each polling interval.
 Higher values = more randomization, better distribution across time.
 Lower values = more predictable intervals, less variance.
 Prevents synchronized polling when multiple clients start simultaneously.
@@ -188,7 +188,7 @@ Prevents synchronized polling when multiple clients start simultaneously.
 0.2 (±20%, less jitter), 0.5 (±50%, more jitter)
 ```
 
-***
+---
 
 ### maxLogIntervalMs?
 
@@ -214,7 +214,7 @@ Prevents "silent" long-running operations; ensures monitoring visibility.
 10_000 (more frequent heartbeats), 30_000 (less verbose)
 ```
 
-***
+---
 
 ### abortSignal?
 
@@ -237,9 +237,9 @@ undefined (no external cancellation)
 #### Example
 
 ```typescript
-const controller = new AbortController();
+const controller = new AbortController()
 const strategy = createPollingStrategy({
-  abortSignal: controller.signal
-});
+  abortSignal: controller.signal,
+})
 // Later: controller.abort();
 ```

@@ -8,57 +8,57 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as WalletRouteImport } from './routes/wallet'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as WalletIndexRouteImport } from './routes/wallet/index'
-import { Route as WalletCanisterIdRouteImport } from './routes/wallet/$canisterId'
+import { Route as rootRouteImport } from "./routes/__root"
+import { Route as WalletRouteImport } from "./routes/wallet"
+import { Route as IndexRouteImport } from "./routes/index"
+import { Route as WalletIndexRouteImport } from "./routes/wallet/index"
+import { Route as WalletCanisterIdRouteImport } from "./routes/wallet/$canisterId"
 
 const WalletRoute = WalletRouteImport.update({
-  id: '/wallet',
-  path: '/wallet',
+  id: "/wallet",
+  path: "/wallet",
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
 } as any)
 const WalletIndexRoute = WalletIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => WalletRoute,
 } as any)
 const WalletCanisterIdRoute = WalletCanisterIdRouteImport.update({
-  id: '/$canisterId',
-  path: '/$canisterId',
+  id: "/$canisterId",
+  path: "/$canisterId",
   getParentRoute: () => WalletRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/wallet': typeof WalletRouteWithChildren
-  '/wallet/$canisterId': typeof WalletCanisterIdRoute
-  '/wallet/': typeof WalletIndexRoute
+  "/": typeof IndexRoute
+  "/wallet": typeof WalletRouteWithChildren
+  "/wallet/$canisterId": typeof WalletCanisterIdRoute
+  "/wallet/": typeof WalletIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/wallet/$canisterId': typeof WalletCanisterIdRoute
-  '/wallet': typeof WalletIndexRoute
+  "/": typeof IndexRoute
+  "/wallet/$canisterId": typeof WalletCanisterIdRoute
+  "/wallet": typeof WalletIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/wallet': typeof WalletRouteWithChildren
-  '/wallet/$canisterId': typeof WalletCanisterIdRoute
-  '/wallet/': typeof WalletIndexRoute
+  "/": typeof IndexRoute
+  "/wallet": typeof WalletRouteWithChildren
+  "/wallet/$canisterId": typeof WalletCanisterIdRoute
+  "/wallet/": typeof WalletIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/wallet' | '/wallet/$canisterId' | '/wallet/'
+  fullPaths: "/" | "/wallet" | "/wallet/$canisterId" | "/wallet/"
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/wallet/$canisterId' | '/wallet'
-  id: '__root__' | '/' | '/wallet' | '/wallet/$canisterId' | '/wallet/'
+  to: "/" | "/wallet/$canisterId" | "/wallet"
+  id: "__root__" | "/" | "/wallet" | "/wallet/$canisterId" | "/wallet/"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -66,33 +66,33 @@ export interface RootRouteChildren {
   WalletRoute: typeof WalletRouteWithChildren
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/wallet': {
-      id: '/wallet'
-      path: '/wallet'
-      fullPath: '/wallet'
+    "/wallet": {
+      id: "/wallet"
+      path: "/wallet"
+      fullPath: "/wallet"
       preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
+    "/": {
+      id: "/"
+      path: "/"
+      fullPath: "/"
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/wallet/': {
-      id: '/wallet/'
-      path: '/'
-      fullPath: '/wallet/'
+    "/wallet/": {
+      id: "/wallet/"
+      path: "/"
+      fullPath: "/wallet/"
       preLoaderRoute: typeof WalletIndexRouteImport
       parentRoute: typeof WalletRoute
     }
-    '/wallet/$canisterId': {
-      id: '/wallet/$canisterId'
-      path: '/$canisterId'
-      fullPath: '/wallet/$canisterId'
+    "/wallet/$canisterId": {
+      id: "/wallet/$canisterId"
+      path: "/$canisterId"
+      fullPath: "/wallet/$canisterId"
       preLoaderRoute: typeof WalletCanisterIdRouteImport
       parentRoute: typeof WalletRoute
     }

@@ -15,16 +15,16 @@ and integrates with TanStack Query's QueryClient for state management.
 ## Example
 
 ```typescript
-import { ClientManager } from "@ic-reactor/core";
-import { QueryClient } from "@tanstack/react-query";
+import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/react-query"
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient()
 const clientManager = new ClientManager({
   queryClient,
   withLocalEnv: true, // Use local replica
-});
+})
 
-await clientManager.initialize();
+await clientManager.initialize()
 ```
 
 ## Constructors
@@ -59,7 +59,7 @@ Defined in: [client.ts:50](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98
 
 The TanStack QueryClient used for managing cached canister data and invalidating queries on identity changes.
 
-***
+---
 
 ### agentState
 
@@ -69,7 +69,7 @@ Defined in: [client.ts:54](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98
 
 Current state of the HttpAgent, including initialization status, network, and error information.
 
-***
+---
 
 ### authState
 
@@ -95,7 +95,7 @@ The underlying HttpAgent managed by this class.
 
 `HttpAgent`
 
-***
+---
 
 ### agentHost
 
@@ -111,7 +111,7 @@ The host URL of the current IC agent.
 
 `URL` \| `undefined`
 
-***
+---
 
 ### agentHostName
 
@@ -127,7 +127,7 @@ The hostname of the current IC agent.
 
 `string`
 
-***
+---
 
 ### isLocal
 
@@ -143,7 +143,7 @@ Returns true if the agent is connecting to a local environment.
 
 `boolean`
 
-***
+---
 
 ### network
 
@@ -177,7 +177,7 @@ and triggers the authentication (session restoration) in the background.
 
 A promise that resolves to the ClientManager instance when core initialization is complete.
 
-***
+---
 
 ### initializeAgent()
 
@@ -194,7 +194,7 @@ On local networks, this includes fetching the root key for certificate verificat
 
 A promise that resolves when the agent is fully initialized.
 
-***
+---
 
 ### authenticate()
 
@@ -216,7 +216,7 @@ If the module is missing and no client is provided, it fails gracefully by marki
 
 A promise that resolves to the restored Identity, or undefined if auth fails or is unavailable.
 
-***
+---
 
 ### login()
 
@@ -242,7 +242,7 @@ Options for the login flow, including identity provider and callbacks.
 
 An error if the authentication module is not installed.
 
-***
+---
 
 ### logout()
 
@@ -260,7 +260,7 @@ Logs out the user and reverts the agent to an anonymous identity.
 
 An error if the authentication module is not installed.
 
-***
+---
 
 ### getUserPrincipal()
 
@@ -274,7 +274,7 @@ Returns the current user's Principal identity.
 
 `Promise`\<`Principal`\>
 
-***
+---
 
 ### registerCanisterId()
 
@@ -299,7 +299,7 @@ This is used for informational purposes and network detection.
 
 `void`
 
-***
+---
 
 ### connectedCanisterIds()
 
@@ -313,7 +313,7 @@ Returns a list of all canister IDs registered with this agent.
 
 `string`[]
 
-***
+---
 
 ### getSubnetIdFromCanister()
 
@@ -333,7 +333,7 @@ Get the subnet ID for a canister.
 
 `Promise`\<`Principal`\>
 
-***
+---
 
 ### syncTimeWithSubnet()
 
@@ -353,7 +353,7 @@ Sync time with a specific subnet.
 
 `Promise`\<`void`\>
 
-***
+---
 
 ### subscribe()
 
@@ -381,7 +381,7 @@ An unsubscribe function.
 
 `void`
 
-***
+---
 
 ### subscribeAgentState()
 
@@ -409,7 +409,7 @@ An unsubscribe function.
 
 `void`
 
-***
+---
 
 ### subscribeAuthState()
 
@@ -437,7 +437,7 @@ An unsubscribe function.
 
 `void`
 
-***
+---
 
 ### updateAgent()
 

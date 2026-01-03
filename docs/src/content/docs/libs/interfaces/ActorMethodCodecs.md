@@ -17,7 +17,7 @@ Helper type for actor method codecs returend by getCodec
 
 ### M
 
-`M` *extends* [`FunctionName`](../type-aliases/FunctionName.md)\<`A`\>
+`M` _extends_ [`FunctionName`](../type-aliases/FunctionName.md)\<`A`\>
 
 ## Properties
 
@@ -27,7 +27,7 @@ Helper type for actor method codecs returend by getCodec
 
 Defined in: [types/reactor.ts:156](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/types/reactor.ts#L156)
 
-***
+---
 
 ### result
 

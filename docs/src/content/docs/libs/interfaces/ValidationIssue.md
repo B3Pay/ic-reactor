@@ -19,7 +19,7 @@ Defined in: [errors/index.ts:178](https://github.com/b3hr4d/ic-reactor-v3/blob/d
 
 Path to the invalid field (e.g., ["to", "amount"])
 
-***
+---
 
 ### message
 
@@ -29,7 +29,7 @@ Defined in: [errors/index.ts:180](https://github.com/b3hr4d/ic-reactor-v3/blob/d
 
 Human-readable error message
 
-***
+---
 
 ### code?
 

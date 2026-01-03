@@ -13,7 +13,7 @@ Defined in: [display/helper.ts:38](https://github.com/b3hr4d/ic-reactor-v3/blob/
 
 ### T
 
-`T` *extends* `unknown`[]
+`T` _extends_ `unknown`[]
 
 ## Parameters
 

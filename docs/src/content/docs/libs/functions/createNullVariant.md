@@ -15,7 +15,7 @@ Creates a Candid variant from a string value.
 
 ### T
 
-`T` *extends* `string`
+`T` _extends_ `string`
 
 ## Parameters
 

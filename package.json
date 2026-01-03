@@ -12,7 +12,17 @@
     "size": "pnpm -r --filter \"./packages/**\" run size",
     "size:analyze": "pnpm -r --filter \"./packages/**\" run analyze",
     "prepublish:check": "pnpm run build && pnpm run test && pnpm run size",
-    "pack:check": "pnpm -r --filter \"./packages/**\" exec npm pack --dry-run"
+    "pack:check": "pnpm -r --filter \"./packages/**\" exec npm pack --dry-run",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
+    "format:staged": "pnpm -r --filter './packages/**' exec prettier --write",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,md,mdx,css,scss,html}": [
+      "prettier --write",
+      "git add"
+    ]
   },
   "keywords": [
     "internet-computer",

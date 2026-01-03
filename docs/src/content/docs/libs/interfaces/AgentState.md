@@ -19,7 +19,7 @@ Defined in: [types/client.ts:52](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 Indicates whether the agent has been initialized.
 
-***
+---
 
 ### isInitializing
 
@@ -29,7 +29,7 @@ Defined in: [types/client.ts:57](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 Indicates whether the agent is in the process of initializing.
 
-***
+---
 
 ### error
 
@@ -39,7 +39,7 @@ Defined in: [types/client.ts:62](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 Represents an error associated with the agent, if any.
 
-***
+---
 
 ### network
 
@@ -49,7 +49,7 @@ Defined in: [types/client.ts:67](https://github.com/b3hr4d/ic-reactor-v3/blob/de
 
 Represents the network associated with the agent, if any.
 
-***
+---
 
 ### isLocalhost
 

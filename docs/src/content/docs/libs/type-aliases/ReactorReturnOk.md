@@ -20,8 +20,8 @@ Looks up the transform in TransformReturnRegistry.
 
 ### M
 
-`M` *extends* [`FunctionName`](FunctionName.md)\<`A`\>
+`M` _extends_ [`FunctionName`](FunctionName.md)\<`A`\>
 
 ### Transform
 
-`Transform` *extends* [`TransformKey`](TransformKey.md) = `"candid"`
+`Transform` _extends_ [`TransformKey`](TransformKey.md) = `"candid"`

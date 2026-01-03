@@ -57,7 +57,7 @@ Defined in: [display/visitor.ts:9](https://github.com/b3hr4d/ic-reactor-v3/blob/
 
 `IDL.Visitor.visitType`
 
-***
+---
 
 ### visitPrimitive()
 
@@ -89,7 +89,7 @@ Defined in: [display/visitor.ts:13](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitPrimitive`
 
-***
+---
 
 ### visitEmpty()
 
@@ -115,7 +115,7 @@ Defined in: [display/visitor.ts:17](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitEmpty`
 
-***
+---
 
 ### visitBool()
 
@@ -141,7 +141,7 @@ Defined in: [display/visitor.ts:21](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitBool`
 
-***
+---
 
 ### visitNull()
 
@@ -167,7 +167,7 @@ Defined in: [display/visitor.ts:25](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitNull`
 
-***
+---
 
 ### visitReserved()
 
@@ -193,7 +193,7 @@ Defined in: [display/visitor.ts:29](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitReserved`
 
-***
+---
 
 ### visitText()
 
@@ -219,7 +219,7 @@ Defined in: [display/visitor.ts:33](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitText`
 
-***
+---
 
 ### visitNumber()
 
@@ -251,7 +251,7 @@ Defined in: [display/visitor.ts:37](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitNumber`
 
-***
+---
 
 ### visitInt()
 
@@ -277,7 +277,7 @@ Defined in: [display/visitor.ts:41](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitInt`
 
-***
+---
 
 ### visitNat()
 
@@ -303,7 +303,7 @@ Defined in: [display/visitor.ts:52](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitNat`
 
-***
+---
 
 ### visitFloat()
 
@@ -329,7 +329,7 @@ Defined in: [display/visitor.ts:63](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitFloat`
 
-***
+---
 
 ### visitFixedInt()
 
@@ -355,7 +355,7 @@ Defined in: [display/visitor.ts:67](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitFixedInt`
 
-***
+---
 
 ### visitFixedNat()
 
@@ -381,7 +381,7 @@ Defined in: [display/visitor.ts:86](https://github.com/b3hr4d/ic-reactor-v3/blob
 
 `IDL.Visitor.visitFixedNat`
 
-***
+---
 
 ### visitPrincipal()
 
@@ -407,7 +407,7 @@ Defined in: [display/visitor.ts:103](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 `IDL.Visitor.visitPrincipal`
 
-***
+---
 
 ### visitConstruct()
 
@@ -439,7 +439,7 @@ Defined in: [display/visitor.ts:120](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 `IDL.Visitor.visitConstruct`
 
-***
+---
 
 ### visitVec()
 
@@ -475,7 +475,7 @@ Defined in: [display/visitor.ts:124](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 `IDL.Visitor.visitVec`
 
-***
+---
 
 ### visitOpt()
 
@@ -511,7 +511,7 @@ Defined in: [display/visitor.ts:184](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 `IDL.Visitor.visitOpt`
 
-***
+---
 
 ### visitRecord()
 
@@ -541,7 +541,7 @@ Defined in: [display/visitor.ts:213](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 `IDL.Visitor.visitRecord`
 
-***
+---
 
 ### visitTuple()
 
@@ -553,7 +553,7 @@ Defined in: [display/visitor.ts:261](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 ##### T
 
-`T` *extends* `any`[]
+`T` _extends_ `any`[]
 
 #### Parameters
 
@@ -577,7 +577,7 @@ Defined in: [display/visitor.ts:261](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 `IDL.Visitor.visitTuple`
 
-***
+---
 
 ### visitVariant()
 
@@ -607,7 +607,7 @@ Defined in: [display/visitor.ts:290](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 `IDL.Visitor.visitVariant`
 
-***
+---
 
 ### visitRec()
 
@@ -643,7 +643,7 @@ Defined in: [display/visitor.ts:385](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 `IDL.Visitor.visitRec`
 
-***
+---
 
 ### visitFunc()
 
@@ -669,7 +669,7 @@ Defined in: [display/visitor.ts:394](https://github.com/b3hr4d/ic-reactor-v3/blo
 
 `IDL.Visitor.visitFunc`
 
-***
+---
 
 ### visitService()
 

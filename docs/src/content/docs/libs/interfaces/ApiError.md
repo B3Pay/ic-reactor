@@ -17,7 +17,7 @@ Interface representing the generic shape of an API error.
 
 Defined in: [errors/index.ts:7](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/errors/index.ts#L7)
 
-***
+---
 
 ### message
 
@@ -25,7 +25,7 @@ Defined in: [errors/index.ts:7](https://github.com/b3hr4d/ic-reactor-v3/blob/de6
 
 Defined in: [errors/index.ts:8](https://github.com/b3hr4d/ic-reactor-v3/blob/de652f98d9499faeb8ab72104033a6b97336fe47/packages/core/src/errors/index.ts#L8)
 
-***
+---
 
 ### details
 
