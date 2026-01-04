@@ -104,19 +104,6 @@ function Greeting() {
 | Error typing           | ❌ Generic     | ✅ `CanisterError<E>` |
 | Identity sharing       | ❌ Per-actor   | ✅ Via ClientManager  |
 
-## 📚 Documentation
-
-Visit the [documentation site](./docs) for complete guides:
-
-- [Getting Started](./docs/src/content/docs/quick-start.mdx)
-- [Authentication](./docs/src/content/docs/authentication.mdx)
-- [Queries Guide](./docs/src/content/docs/guides/queries.mdx)
-- [Mutations Guide](./docs/src/content/docs/guides/mutations.mdx)
-- [Query Caching](./docs/src/content/docs/query-caching.mdx)
-- [Error Handling](./docs/src/content/docs/error-handling.mdx)
-- [Type Safety](./docs/src/content/docs/type-safety.mdx)
-- [Examples](./examples/)
-
 ### Run Documentation Locally
 
 ```bash
