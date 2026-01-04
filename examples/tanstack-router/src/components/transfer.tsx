@@ -3,10 +3,10 @@ import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
 import { isCanisterError, type DisplayReactor } from "@ic-reactor/core"
-import { createActorMutation } from "@ic-reactor/react"
 import type { Ledger } from "@/reactor"
 import { TransferError } from "./transfer-error"
 import type { QueryKey } from "@tanstack/react-query"
+import { useReactorMutation } from "@ic-reactor/react"
 
 export const Transfer = ({
   reactor,
@@ -21,7 +21,13 @@ export const Transfer = ({
   const [amount, setAmount] = useState("")
   const [result, setResult] = useState<string | null>(null)
 
-  const { useMutation } = createActorMutation(reactor, {
+  const {
+    mutate: transfer,
+    isPending,
+    error,
+    reset,
+  } = useReactorMutation({
+    reactor,
     functionName: "icrc1_transfer",
     onSuccess: (blockIndex: string) => {
       // blockIndex is typed as string (the Ok value from the canister)
@@ -37,14 +43,6 @@ export const Transfer = ({
         isCanisterError(err) ? (err as any).err._type : err
       )
     },
-  })
-
-  const {
-    mutate: transfer,
-    isPending,
-    error,
-    reset,
-  } = useMutation({
     refetchQueries: refetchQueries ? [refetchQueries] : undefined,
   })
 

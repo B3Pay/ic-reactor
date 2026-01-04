@@ -22,8 +22,7 @@ export const clientManager = new ClientManager({
   queryClient,
 })
 
-export const { useAuth, useAuthState, useUserPrincipal } =
-  createAuthHooks(clientManager)
+export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
 
 // Imports moved to top
 
