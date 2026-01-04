@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/reactor.ts:188](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L188)
+Defined in: [types/reactor.ts:188](https://github.com/B3Pay/ic-reactor/blob/55f4ba80020af05ee4cac7b0f8c679b25ab2a717/packages/core/src/types/reactor.ts#L188)
 
 Query parameters with optional call configuration.
 Used by: getQueryOptions, fetchQuery, callMethod
@@ -34,7 +34,7 @@ Used by: getQueryOptions, fetchQuery, callMethod
 
 > **functionName**: `M`
 
-Defined in: [types/reactor.ts:179](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L179)
+Defined in: [types/reactor.ts:179](https://github.com/B3Pay/ic-reactor/blob/55f4ba80020af05ee4cac7b0f8c679b25ab2a717/packages/core/src/types/reactor.ts#L179)
 
 #### Inherited from
 
@@ -46,7 +46,7 @@ Defined in: [types/reactor.ts:179](https://github.com/B3Pay/ic-reactor/blob/aad0
 
 > `optional` **args**: [`ReactorArgs`](../type-aliases/ReactorArgs.md)\<`A`, `M`, `T`\>
 
-Defined in: [types/reactor.ts:180](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L180)
+Defined in: [types/reactor.ts:180](https://github.com/B3Pay/ic-reactor/blob/55f4ba80020af05ee4cac7b0f8c679b25ab2a717/packages/core/src/types/reactor.ts#L180)
 
 #### Inherited from
 
@@ -58,7 +58,7 @@ Defined in: [types/reactor.ts:180](https://github.com/B3Pay/ic-reactor/blob/aad0
 
 > `optional` **queryKey**: readonly `unknown`[]
 
-Defined in: [types/reactor.ts:181](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L181)
+Defined in: [types/reactor.ts:181](https://github.com/B3Pay/ic-reactor/blob/55f4ba80020af05ee4cac7b0f8c679b25ab2a717/packages/core/src/types/reactor.ts#L181)
 
 #### Inherited from
 
@@ -70,4 +70,4 @@ Defined in: [types/reactor.ts:181](https://github.com/B3Pay/ic-reactor/blob/aad0
 
 > `optional` **callConfig**: `CallConfig`
 
-Defined in: [types/reactor.ts:193](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L193)
+Defined in: [types/reactor.ts:193](https://github.com/B3Pay/ic-reactor/blob/55f4ba80020af05ee4cac7b0f8c679b25ab2a717/packages/core/src/types/reactor.ts#L193)
