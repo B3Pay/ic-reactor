@@ -65,9 +65,14 @@ jobs:
           fi
 
       - name: Publish to npm (uses npm CLI for OIDC)
-        # Run publish inside the package directory to avoid npm workspaces mismatch
+        # pnpm pack converts workspace:^ to real versions, then npm publish for OIDC auth
         working-directory: ${{ matrix.workspace }}
-        run: npm publish --access public --tag $TAG
+        run: |
+          # Pack first - this converts workspace:^ to actual versions
+          TARBALL=$(pnpm pack | tail -1)
+          echo "Publishing tarball: $TARBALL"
+          # Publish the tarball (npm for OIDC support)
+          npm publish "$TARBALL" --access public --tag $TAG
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
