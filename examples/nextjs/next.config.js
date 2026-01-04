@@ -1,5 +1,3 @@
-const path = require("path")
-
 // Adjust the path to load env from ../.env file
 const envList = require("dotenv").config({ path: "./.env" }).parsed || {}
 
@@ -15,32 +13,8 @@ envList.NEXT_PUBLIC_VERSION = version
 module.exports = {
   output: "export",
   env: envList,
-  transpilePackages: [
-    "@ic-reactor/react",
-    "@ic-reactor/core",
-    "@icp-sdk/core",
-    "@icp-sdk/agent",
-    "@icp-sdk/auth",
-    "@icp-sdk/candid",
-    "@icp-sdk/principal"
-  ],
-  // Ensure only one React instance is used in the monorepo
-  webpack: config => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      react: path.resolve(__dirname, "node_modules/react"),
-      "react-dom": path.resolve(__dirname, "node_modules/react-dom")
-    }
-    return config
-  },
-  redirects: async () => {
-    return [
-      {
-        source: "/api",
-        destination: envList.NEXT_PUBLIC_IC_HOST,
-        permanent: true
-      }
-    ]
+  turbopack: {
+    root: __dirname
   },
   images: {
     unoptimized: true
