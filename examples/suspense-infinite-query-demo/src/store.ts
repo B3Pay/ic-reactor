@@ -1,6 +1,6 @@
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import {
-  createActorSuspenseInfiniteQueryFactory,
+  createSuspenseInfiniteQueryFactory,
   createAuthHooks,
 } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
@@ -39,7 +39,7 @@ export const { useAuth, useAgentState } = createAuthHooks(clientManager)
 
 // 5. Create the Suspense Infinite Query Factory
 // This allows us to create specific queries for each category dynamically
-export const getPostsQuery = createActorSuspenseInfiniteQueryFactory(reactor, {
+export const getPostsQuery = createSuspenseInfiniteQueryFactory(reactor, {
   functionName: "get_posts",
   initialPageParam: 0n, // Start with bigint 0
 

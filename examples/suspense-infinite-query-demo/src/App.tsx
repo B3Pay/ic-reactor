@@ -17,7 +17,7 @@ const CategoryFeed = ({ category }: { category: string }) => {
   )
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    postsQuery.useInfiniteQuery()
+    postsQuery.useSuspenseInfiniteQuery()
 
   return (
     <div className="category-section">
