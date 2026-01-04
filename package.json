@@ -1,6 +1,6 @@
 {
   "name": "ic-reactor",
-  "version": "3.0.0-beta.5",
+  "version": "3.0.0-beta.6",
   "type": "module",
   "private": true,
   "description": "The modern, type-safe library for building Internet Computer applications",
@@ -36,6 +36,10 @@
   ],
   "author": "Behrad Deylami",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B3Pay/ic-reactor.git"
+  },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "husky": "^9.1.7",
