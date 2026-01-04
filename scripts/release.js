@@ -77,9 +77,6 @@ try {
 
   execSync(`git tag v${version}`, { stdio: "inherit" })
   console.log(`\n🎉 Successfully prepared release v${version}!`)
-  console.log(
-    `\nNext steps:\n  1. Publish to npm: pnpm -r publish --no-git-checks\n  2. Push to git: git push origin main --tags\n`
-  )
 } catch (error) {
   console.error("❌ Git operations failed. You might need to commit manually.")
 }
