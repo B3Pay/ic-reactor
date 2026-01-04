@@ -40,9 +40,6 @@
     "start": "tsc --watch",
     "clean": "rm -rf dist tsconfig.tsbuildinfo && tsc -b"
   },
-  "engines": {
-    "node": ">=22.0.0"
-  },
   "devDependencies": {
     "wasm-pack": "^0.13.1"
   },
