@@ -37,10 +37,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@icp-sdk/core/agent": "@icp-sdk/core/agent",
-      "@icp-sdk/core/candid": "@icp-sdk/core/candid",
-      "@icp-sdk/core/principal": "@icp-sdk/core/principal",
-      "@icp-sdk/core/identity": "@icp-sdk/core/identity",
+      "@dfinity/agent": "@icp-sdk/core/agent",
+      "@dfinity/candid": "@icp-sdk/core/candid",
+      "@dfinity/principal": "@icp-sdk/core/principal",
+      "@dfinity/identity": "@icp-sdk/core/identity",
     },
   },
 })
