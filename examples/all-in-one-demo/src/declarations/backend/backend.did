@@ -18,13 +18,13 @@ type ChaosResult =
    ok;
  };
 service : {
-  batch_create_posts: (contents: vec text) -> (vec nat);
+  batch_create_posts: (count: nat) -> (vec nat);
   create_post: (content: text) -> (nat);
+  get_chaos_status: () -> (bool) query;
   get_likes: () -> (vec principal) query;
   get_logs: () -> (vec Log) query;
   get_posts: (offset: nat, limit: nat) -> (vec Post) query;
   get_posts_count: () -> (nat) query;
-  get_chaos_status: () -> (bool) query;
   like: () -> (ChaosResult);
   toggle_chaos_mode: () -> (bool);
   unlike: () -> (ChaosResult);

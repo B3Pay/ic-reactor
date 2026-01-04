@@ -115,44 +115,29 @@ persistent actor {
     return id
   };
 
-  public shared (msg) func batch_create_posts(contents : [Text]) : async [Nat] {
+  public shared (msg) func batch_create_posts(count : Nat) : async [Nat] {
     var ids : [Nat] = [];
     var newPosts : [Post] = [];
 
-    // Create new posts
-    for (content in contents.vals()) {
+    var i = 0;
+    while (i < count) {
       let id = nextId;
       nextId += 1;
+      
+      let content = "Auto-generated post #" # debug_show(id);
+
       let newPost : Post = {
         id = id;
         content = content;
         caller = msg.caller;
         timestamp = Time.now()
       };
-      // We'll prepend them later, so let's collect them.
-      // If we want the *last* content to be the *top* post (newest), we should process in order
-      // and then reverse, OR just collect and prepend the whole block such that
-      // [p1, p2, p3] + old -> [p3, p2, p1] + old?
-      // Actually standard 'create' prepends.
-      // If I send [a, b, c].
-      // create(a) -> [a, old]
-      // create(b) -> [b, a, old]
-      // create(c) -> [c, b, a, old]
-      // So effectively we want to reverse the input array and prepend?
-      // Or just loop and prepend.
-      // Loop and prepend is easiest to match semantics.
-
-      // Let's optimize slightly by building the reversed list then appending to posts once.
-      // But Motoko arrays are immutable.
-      // List structure is better for prepending.
-      // But `posts` is `[Post]`.
-
-      // I'll stick to the loop for simplicity and matching the exact behavior of calling create_post N times.
-      // Optimization: Do it in one `Array.append`.
-      // Target: [newN, ..., new1] ++ old
-      newPosts := Array.append([newPost], newPosts); // Prepend to local batch -> [new current, ... others]
+      
+      newPosts := Array.append([newPost], newPosts);
       ids := Array.append(ids, [id]);
-      appendLog(msg.caller, "create_post", content)
+      appendLog(msg.caller, "create_post", content);
+      
+      i += 1;
     };
 
     posts := Array.append(newPosts, posts);

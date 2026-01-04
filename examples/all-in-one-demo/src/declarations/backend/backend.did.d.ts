@@ -16,13 +16,13 @@ export interface Post {
   caller: Principal
 }
 export interface _SERVICE {
-  batch_create_posts: ActorMethod<[Array<string>], Array<bigint>>
+  batch_create_posts: ActorMethod<[bigint], Array<bigint>>
   create_post: ActorMethod<[string], bigint>
+  get_chaos_status: ActorMethod<[], boolean>
   get_likes: ActorMethod<[], Array<Principal>>
   get_logs: ActorMethod<[], Array<Log>>
   get_posts: ActorMethod<[bigint, bigint], Array<Post>>
   get_posts_count: ActorMethod<[], bigint>
-  get_chaos_status: ActorMethod<[], boolean>
   like: ActorMethod<[], ChaosResult>
   toggle_chaos_mode: ActorMethod<[], boolean>
   unlike: ActorMethod<[], ChaosResult>
