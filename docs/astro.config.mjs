@@ -14,7 +14,7 @@ export default defineConfig({
       },
       plugins: [
         starlightPageActions({
-          baseUrl: "https://ic-reactor.js.org",
+          baseUrl: "https://b3pay.github.io/ic-reactor/v3",
           actions: {
             chatgpt: true,
             claude: true,
