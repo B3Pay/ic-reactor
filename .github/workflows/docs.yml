@@ -68,6 +68,23 @@ jobs:
           mkdir -p final-docs/v3
           cp -r docs/dist/* final-docs/v3/
 
+          # Create redirect for legacy path /ai-friendliness -> /ic-reactor/v3/ai-friendliness
+          mkdir -p final-docs/ai-friendliness
+          cat > final-docs/ai-friendliness/index.html <<'HTML'
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8" />
+              <meta http-equiv="refresh" content="0; url=/ic-reactor/v3/ai-friendliness" />
+              <meta name="robots" content="noindex" />
+              <title>Redirecting…</title>
+            </head>
+            <body>
+              If you're not redirected, <a href="/ic-reactor/v3/ai-friendliness">click here</a>.
+            </body>
+          </html>
+          HTML
+
           # Publish `llms.txt` at the site root so it's available at /llms.txt
           if [ -f docs/dist/llms.txt ]; then
             cp docs/dist/llms.txt final-docs/llms.txt
