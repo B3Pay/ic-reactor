@@ -158,11 +158,11 @@ importers:
   examples/all-in-one-demo:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:*
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@ic-reactor/react':
-        specifier: workspace:*
-        version: link:../../packages/react
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16))(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -234,11 +234,11 @@ importers:
   examples/ckbtc-wallet:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:*
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@ic-reactor/react':
-        specifier: workspace:*
-        version: link:../../packages/react
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16))(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -271,8 +271,8 @@ importers:
   examples/codec-demo:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:*
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -290,11 +290,11 @@ importers:
   examples/custom-provider:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:^
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@ic-reactor/react':
-        specifier: workspace:^
-        version: link:../../packages/react
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16))(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -327,11 +327,11 @@ importers:
   examples/multiple-canister:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:^
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@ic-reactor/react':
-        specifier: workspace:^
-        version: link:../../packages/react
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16))(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -367,11 +367,11 @@ importers:
   examples/nextjs:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:^
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@ic-reactor/react':
-        specifier: workspace:^
-        version: link:../../packages/react
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16))(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@icp-sdk/auth':
         specifier: ^5.0.0
         version: 5.0.0(@icp-sdk/core@5.0.0)
@@ -422,11 +422,11 @@ importers:
   examples/query-demo:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:*
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@ic-reactor/react':
-        specifier: workspace:*
-        version: link:../../packages/react
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16))(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -462,11 +462,11 @@ importers:
   examples/suspense-infinite-query-demo:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:*
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@ic-reactor/react':
-        specifier: workspace:*
-        version: link:../../packages/react
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16))(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -505,11 +505,11 @@ importers:
   examples/tanstack-router:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:*
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@ic-reactor/react':
-        specifier: workspace:*
-        version: link:../../packages/react
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16))(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -599,8 +599,8 @@ importers:
   examples/typescript-demo:
     dependencies:
       '@ic-reactor/core':
-        specifier: workspace:*
-        version: link:../../packages/core
+        specifier: ^3.0.0-beta.2
+        version: 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -1810,6 +1810,26 @@ packages:
   '@happy-dom/global-registrator@20.0.11':
     resolution: {integrity: sha512-GqNqiShBT/lzkHTMC/slKBrvN0DsD4Di8ssBk4aDaVgEn+2WMzE6DXxq701ndSXj7/0cJ8mNT71pM7Bnrr6JRw==}
     engines: {node: '>=20.0.0'}
+
+  '@ic-reactor/core@3.0.0-beta.2':
+    resolution: {integrity: sha512-WrNnvppDE+jzwx62xs0+V5IeAjyC1u96BPOWTZi3GKf7mw33tbkoue435yIgBfvTQwpaum82M5zRRhki1TvLjw==}
+    peerDependencies:
+      '@icp-sdk/auth': ^5.0.0
+      '@icp-sdk/core': ^5.0.0
+      '@tanstack/query-core': ^5.0.0
+    peerDependenciesMeta:
+      '@icp-sdk/auth':
+        optional: true
+      '@tanstack/query-core':
+        optional: true
+
+  '@ic-reactor/react@3.0.0-beta.2':
+    resolution: {integrity: sha512-ffIJntaZa28s45uvwhoDJNe26grM2N/I+0HYKtMMnc41U4LvM4fB4AqgNlm1HAxFZfkca4Py+WJ3p5q6b4HiDw==}
+    peerDependencies:
+      '@ic-reactor/core': workspace:^
+      '@tanstack/react-query': ^5.0.0
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
 
   '@icp-sdk/auth@5.0.0':
     resolution: {integrity: sha512-TaPfdaELT7s0vTIFOmCnlCmhPdL7kABA7+2Q0YNAUWIa/FFiwq6ffGPLvr0U0+2zFLaLQ4l7UCB2zf7vo6PFPQ==}
@@ -7995,6 +8015,22 @@ snapshots:
     dependencies:
       '@types/node': 20.19.25
       happy-dom: 20.0.11
+
+  '@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)':
+    dependencies:
+      '@icp-sdk/core': 5.0.0
+      '@noble/curves': 2.0.1
+      zod: 4.3.4
+    optionalDependencies:
+      '@icp-sdk/auth': 5.0.0(@icp-sdk/core@5.0.0)
+      '@tanstack/query-core': 5.90.16
+
+  '@ic-reactor/react@3.0.0-beta.2(@ic-reactor/core@3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16))(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@ic-reactor/core': 3.0.0-beta.2(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
+      '@tanstack/react-query': 5.90.16(react@19.2.3)
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
 
   '@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0)':
     dependencies:
