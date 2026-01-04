@@ -1,5 +1,7 @@
 packages:
   - "packages/*"
   - "e2e"
-  - "examples/*"
   - "docs"
+# Note: examples/* intentionally excluded from workspace
+# Examples use real npm versions for StackBlitz/CodeSandbox compatibility
+# Run `pnpm sync:examples` after releases to update example versions

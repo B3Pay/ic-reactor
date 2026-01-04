@@ -70,21 +70,14 @@ try {
   console.error("❌ Git operations failed.")
 }
 
-// 5. REVERT examples to workspace protocol locally
-// This keeps your local environment from breaking on the next 'pnpm install'
-console.log("\n🔄 Reverting examples to workspace:* for local development...")
-try {
-  execSync(`node scripts/sync-example-versions.js workspace`, {
-    stdio: "inherit",
-  })
-  console.log("✅ Local environment is back in 'workspace' mode.")
-} catch (error) {
-  console.error("❌ Failed to revert examples to workspace mode.")
-}
+// Note: Examples are now outside the workspace, so they stay on real npm versions
+// No need to revert to workspace:* - this is the TanStack Query pattern
 
 console.log(`\n🎉 Successfully prepared release v${version}!`)
 console.log(`\nNext steps:`)
 console.log(`  1. Publish to npm: pnpm -r publish --no-git-checks`)
-console.log(`  2. Push to git: git push origin main --tags\n`)
-console.log(`  3. Delete tag: git tag -d v${version}`)
-console.log(`  4. Force push tag: git push origin v${version} --force`)
+console.log(`  2. Push to git: git push origin main --tags`)
+console.log(`  3. If re-releasing, delete and recreate tag:`)
+console.log(
+  `     git tag -d v${version} && git push origin v${version} --force`
+)
