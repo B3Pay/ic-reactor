@@ -5,6 +5,7 @@
  * Usage:
  *   node scripts/sync-example-versions.js           # Uses version from root package.json
  *   node scripts/sync-example-versions.js 3.0.0    # Uses specified version
+ *   node scripts/sync-example-versions.js workspace # Sets to workspace:*
  *
  * This script updates all @ic-reactor/* dependencies in examples
  * to match the current published version, ensuring StackBlitz compatibility.
@@ -21,12 +22,16 @@ const examplesDir = join(rootDir, "examples")
 // Get version from CLI arg or root package.json
 const cliVersion = process.argv[2]
 const rootPkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf-8"))
-const isWorkspace = cliVersion === "workspace"
-const version = isWorkspace
-  ? "workspace:*"
-  : `^${cliVersion || rootPkg.version}`
 
-console.log(`\n📦 Syncing @ic-reactor/* to version: ${version}\n`)
+let targetVersion
+if (cliVersion === "workspace") {
+  targetVersion = "workspace:*"
+} else {
+  const v = cliVersion || rootPkg.version
+  targetVersion = v.startsWith("^") ? v : `^${v}`
+}
+
+console.log(`\n📦 Syncing @ic-reactor/* to version: ${targetVersion}\n`)
 
 // IC Reactor packages to update
 const packages = ["@ic-reactor/core", "@ic-reactor/react"]
@@ -34,9 +39,14 @@ const packages = ["@ic-reactor/core", "@ic-reactor/react"]
 // Get all example directories
 const examples = readdirSync(examplesDir).filter((name) => {
   const path = join(examplesDir, name)
-  return (
-    statSync(path).isDirectory() && statSync(join(path, "package.json")).isFile
-  )
+  try {
+    return (
+      statSync(path).isDirectory() &&
+      statSync(join(path, "package.json")).isFile()
+    )
+  } catch (e) {
+    return false
+  }
 })
 
 let updatedCount = 0
@@ -51,27 +61,23 @@ for (const example of examples) {
     for (const pkgName of packages) {
       // Check dependencies
       if (pkg.dependencies?.[pkgName]) {
-        const oldVersion = pkg.dependencies[pkgName]
-        const newVersion = `^${version}`
-        if (oldVersion !== newVersion) {
-          pkg.dependencies[pkgName] = newVersion
-          modified = true
+        if (pkg.dependencies[pkgName] !== targetVersion) {
           console.log(
-            `  ✓ ${example}: ${pkgName} ${oldVersion} → ${newVersion}`
+            `  ✓ ${example}: ${pkgName} ${pkg.dependencies[pkgName]} → ${targetVersion}`
           )
+          pkg.dependencies[pkgName] = targetVersion
+          modified = true
         }
       }
 
       // Check devDependencies
       if (pkg.devDependencies?.[pkgName]) {
-        const oldVersion = pkg.devDependencies[pkgName]
-        const newVersion = `^${version}`
-        if (oldVersion !== newVersion) {
-          pkg.devDependencies[pkgName] = newVersion
-          modified = true
+        if (pkg.devDependencies[pkgName] !== targetVersion) {
           console.log(
-            `  ✓ ${example}: ${pkgName} ${oldVersion} → ${newVersion}`
+            `  ✓ ${example}: ${pkgName} ${pkg.devDependencies[pkgName]} → ${targetVersion}`
           )
+          pkg.devDependencies[pkgName] = targetVersion
+          modified = true
         }
       }
     }
