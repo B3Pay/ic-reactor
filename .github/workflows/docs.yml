@@ -68,6 +68,12 @@ jobs:
           mkdir -p final-docs/v3
           cp -r docs/dist/* final-docs/v3/
 
+          # Create redirect for legacy path /ai-friendliness -> /ic-reactor/v3/ai-friendliness
+          mkdir -p final-docs/ai-friendliness
+          cat > final-docs/ai-friendliness/index.html <<'HTML'
+<!doctype html><html><head><meta charset="utf-8" /><meta http-equiv="refresh" content="0; url=/ic-reactor/v3/ai-friendliness" /><meta name="robots" content="noindex" /><title>Redirecting…</title></head><body>If you're not redirected, <a href="/ic-reactor/v3/ai-friendliness">click here</a>.</body></html>
+HTML
+
       - name: Inject v3 banner into v2 docs
         run: |
           # Banner HTML to inject after <body> tag in all v2 HTML files
