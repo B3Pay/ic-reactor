@@ -52,6 +52,7 @@ export function PostSection({ addLog }: PostSectionProps) {
       onError: (err) => {
         addLog("error", `Failed to batch create: ${err.message}`)
       },
+      refetchQueries: [getPosts.getQueryKey()],
     })
 
   // Infinite scroll observer
