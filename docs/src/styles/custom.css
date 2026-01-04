@@ -124,10 +124,10 @@ h6 {
   align-items: center !important;
   gap: 1.5rem !important;
   max-width: none !important;
-  margin-bottom: 2rem !important;
 }
 
 .sl-container:has(> h1 + .actions-container) h1 {
+  margin-top: 0 !important;
   margin-bottom: 0 !important;
 }
 
