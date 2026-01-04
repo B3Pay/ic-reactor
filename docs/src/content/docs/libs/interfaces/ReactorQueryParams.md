@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/reactor.ts:174](https://github.com/B3Pay/ic-reactor/blob/31379e9c6e4bae3777010b2d35287763d1a80af6/packages/core/src/types/reactor.ts#L174)
+Defined in: [types/reactor.ts:174](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L174)
 
 Basic query parameters for reactor cache operations.
 Used by: generateQueryKey, getQueryData
@@ -34,7 +34,7 @@ Used by: generateQueryKey, getQueryData
 
 > **functionName**: `M`
 
-Defined in: [types/reactor.ts:179](https://github.com/B3Pay/ic-reactor/blob/31379e9c6e4bae3777010b2d35287763d1a80af6/packages/core/src/types/reactor.ts#L179)
+Defined in: [types/reactor.ts:179](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L179)
 
 ---
 
@@ -42,7 +42,7 @@ Defined in: [types/reactor.ts:179](https://github.com/B3Pay/ic-reactor/blob/3137
 
 > `optional` **args**: [`ReactorArgs`](../type-aliases/ReactorArgs.md)\<`A`, `M`, `T`\>
 
-Defined in: [types/reactor.ts:180](https://github.com/B3Pay/ic-reactor/blob/31379e9c6e4bae3777010b2d35287763d1a80af6/packages/core/src/types/reactor.ts#L180)
+Defined in: [types/reactor.ts:180](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L180)
 
 ---
 
@@ -50,4 +50,4 @@ Defined in: [types/reactor.ts:180](https://github.com/B3Pay/ic-reactor/blob/3137
 
 > `optional` **queryKey**: readonly `unknown`[]
 
-Defined in: [types/reactor.ts:181](https://github.com/B3Pay/ic-reactor/blob/31379e9c6e4bae3777010b2d35287763d1a80af6/packages/core/src/types/reactor.ts#L181)
+Defined in: [types/reactor.ts:181](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L181)

@@ -7,7 +7,7 @@ prev: true
 
 > **ActorMethodType**\<`A`, `M`\> = `Promise`\<[`ActorMethodReturnType`](ActorMethodReturnType.md)\<`A`\[`M`\]\>\>
 
-Defined in: [types/reactor.ts:54](https://github.com/B3Pay/ic-reactor/blob/31379e9c6e4bae3777010b2d35287763d1a80af6/packages/core/src/types/reactor.ts#L54)
+Defined in: [types/reactor.ts:54](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L54)
 
 ## Type Parameters
 
@@ -21,7 +21,7 @@ Defined in: [types/reactor.ts:54](https://github.com/B3Pay/ic-reactor/blob/31379
 
 > **ActorMethodType**(...`args`): `Promise`\<[`ActorMethodReturnType`](ActorMethodReturnType.md)\<`A`\[`M`\]\>\>
 
-Defined in: [types/reactor.ts:55](https://github.com/B3Pay/ic-reactor/blob/31379e9c6e4bae3777010b2d35287763d1a80af6/packages/core/src/types/reactor.ts#L55)
+Defined in: [types/reactor.ts:55](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L55)
 
 ## Parameters
 
@@ -39,7 +39,7 @@ Defined in: [types/reactor.ts:55](https://github.com/B3Pay/ic-reactor/blob/31379
 
 > **withOptions**: (`options?`) => (...`args`) => `Promise`\<[`ActorMethodReturnType`](ActorMethodReturnType.md)\<`A`\[`M`\]\>\>
 
-Defined in: [types/reactor.ts:56](https://github.com/B3Pay/ic-reactor/blob/31379e9c6e4bae3777010b2d35287763d1a80af6/packages/core/src/types/reactor.ts#L56)
+Defined in: [types/reactor.ts:56](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/reactor.ts#L56)
 
 #### Parameters
 

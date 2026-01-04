@@ -7,7 +7,7 @@ prev: true
 
 > **OkResult**\<`T`\> = `T` _extends_ `object` ? `never` : `T` _extends_ `object` ? `never` : `T` _extends_ `object` ? `U` : `T` _extends_ `object` ? `U` : `T`
 
-Defined in: [types/result.ts:19](https://github.com/B3Pay/ic-reactor/blob/31379e9c6e4bae3777010b2d35287763d1a80af6/packages/core/src/types/result.ts#L19)
+Defined in: [types/result.ts:19](https://github.com/B3Pay/ic-reactor/blob/aad0bdc1ee05709f7192e1fae941b16eb3c0883b/packages/core/src/types/result.ts#L19)
 
 Extract the Ok value from a Result type.
 Supports both uppercase (Ok/Err - Rust) and lowercase (ok/err - Motoko).
