@@ -70,14 +70,30 @@ try {
   console.error("❌ Git operations failed.")
 }
 
-// Note: Examples are now outside the workspace, so they stay on real npm versions
-// No need to revert to workspace:* - this is the TanStack Query pattern
+// 5. Publish to npm (pnpm -r publish automatically converts workspace:^ to real versions)
+const shouldPublish = process.argv.includes("--publish")
+const dryRun = process.argv.includes("--dry-run")
 
-console.log(`\n🎉 Successfully prepared release v${version}!`)
-console.log(`\nNext steps:`)
-console.log(`  1. Publish to npm: pnpm -r publish --no-git-checks`)
-console.log(`  2. Push to git: git push origin main --tags`)
-console.log(`  3. If re-releasing, delete and recreate tag:`)
-console.log(
-  `     git tag -d v${version} && git push origin v${version} --force`
-)
+if (shouldPublish || dryRun) {
+  console.log(`\n📤 Publishing to npm${dryRun ? " (DRY RUN)" : ""}...`)
+  try {
+    // Only publish @ic-reactor/core and @ic-reactor/react (not parser, docs, e2e, etc.)
+    const publishCmd = `pnpm --filter "@ic-reactor/core" --filter "@ic-reactor/react" publish --no-git-checks --access public${dryRun ? " --dry-run" : ""}`
+    console.log(`Running: ${publishCmd}\n`)
+    execSync(publishCmd, { stdio: "inherit", cwd: rootDir })
+    console.log("\n✅ Published successfully!")
+  } catch (error) {
+    console.error("\n❌ Publish failed:", error.message)
+    process.exit(1)
+  }
+} else {
+  console.log(`\n🎉 Successfully prepared release v${version}!`)
+  console.log(`\nTo publish, run one of:`)
+  console.log(`  node scripts/release.js ${version} --dry-run  # Test first`)
+  console.log(
+    `  node scripts/release.js ${version} --publish  # Publish to npm`
+  )
+}
+
+console.log(`\nGit commands:`)
+console.log(`  git push origin main --tags`)
