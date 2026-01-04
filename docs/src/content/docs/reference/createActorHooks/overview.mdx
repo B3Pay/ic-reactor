@@ -93,13 +93,13 @@ createActorHooks(reactor: Reactor<A, T>)
 
 `createActorHooks` returns an object containing:
 
-| Property                                                                                     | Type | Description                          |
-| -------------------------------------------------------------------------------------------- | ---- | ------------------------------------ |
-| [`useActorQuery`](/reference/createactorhooks/useactorquery)                                 | Hook | Query hook for fetching data         |
-| [`useActorSuspenseQuery`](/reference/createactorhooks/useactorsuspensequery)                 | Hook | Suspense-enabled query hook          |
-| [`useActorMutation`](/reference/createactorhooks/useactormutation)                           | Hook | Mutation hook for updates            |
-| [`useActorInfiniteQuery`](/reference/createactorhooks/useactorinfinitequery)                 | Hook | Infinite query hook for pagination   |
-| [`useActorSuspenseInfiniteQuery`](/reference/createactorhooks/useactorsuspenseinfinitequery) | Hook | Suspense-enabled infinite query hook |
+| Property                                                                                        | Type | Description                          |
+| ----------------------------------------------------------------------------------------------- | ---- | ------------------------------------ |
+| [`useActorQuery`](/v3/reference/createactorhooks/useactorquery)                                 | Hook | Query hook for fetching data         |
+| [`useActorSuspenseQuery`](/v3/reference/createactorhooks/useactorsuspensequery)                 | Hook | Suspense-enabled query hook          |
+| [`useActorMutation`](/v3/reference/createactorhooks/useactormutation)                           | Hook | Mutation hook for updates            |
+| [`useActorInfiniteQuery`](/v3/reference/createactorhooks/useactorinfinitequery)                 | Hook | Infinite query hook for pagination   |
+| [`useActorSuspenseInfiniteQuery`](/v3/reference/createactorhooks/useactorsuspenseinfinitequery) | Hook | Suspense-enabled infinite query hook |
 
 ## Examples
 
@@ -228,8 +228,8 @@ mutate([{ name: "Alice", email: "alice@example.com" }]) // ✅ Type-safe args
 
 ## See Also
 
-- [useActorQuery](/reference/createactorhooks/useactorquery) — Query hook reference
-- [useActorMutation](/reference/createactorhooks/useactormutation) — Mutation hook reference
-- [useActorSuspenseQuery](/reference/createactorhooks/useactorsuspensequery) — Suspense query reference
-- [useActorInfiniteQuery](/reference/createactorhooks/useactorinfinitequery) — Infinite query reference
-- [createAuthHooks](/reference/createauthhooks/overview) — Auth hooks factory
+- [useActorQuery](/v3/reference/createactorhooks/useactorquery) — Query hook reference
+- [useActorMutation](/v3/reference/createactorhooks/useactormutation) — Mutation hook reference
+- [useActorSuspenseQuery](/v3/reference/createactorhooks/useactorsuspensequery) — Suspense query reference
+- [useActorInfiniteQuery](/v3/reference/createactorhooks/useactorinfinitequery) — Infinite query reference
+- [createAuthHooks](/v3/reference/createauthhooks/overview) — Auth hooks factory
