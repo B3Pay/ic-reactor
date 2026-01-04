@@ -34,7 +34,6 @@ import { Actor } from "@icp-sdk/core/agent"
 const queryClient = new QueryClient()
 
 const clientManager = new ClientManager({
-  withProcessEnv: true,
   queryClient,
 })
 
