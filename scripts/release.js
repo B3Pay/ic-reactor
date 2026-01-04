@@ -31,52 +31,58 @@ function updatePackageJson(filePath, newVersion) {
 
 console.log(`\n🚀 Starting release process for v${version}...\n`)
 
-// 1. Update root package.json
+// 1. Update library versions
 updatePackageJson("package.json", version)
-
-// 2. Update core packages
 updatePackageJson("packages/core/package.json", version)
 updatePackageJson("packages/react/package.json", version)
 
-// 3. Sync examples versions
-// Note: This is optional and usually done after the library is on npm
-// for StackBlitz compatibility. pnpm install will fail if version is not on npm.
+// 2. Update library lockfile while examples still point to workspace
+console.log("\n🔗 Updating lockfile (pnpm install)...")
 try {
-  console.log("\n📦 Syncing example versions...")
+  execSync("pnpm install --no-frozen-lockfile", { stdio: "inherit" })
+} catch (error) {
+  console.error("❌ pnpm install failed.")
+  process.exit(1)
+}
+
+// 3. Sync examples to literal version for the Git Commit (StackBlitz support)
+try {
+  console.log("\n📦 Syncing examples to literal version for StackBlitz...")
   execSync(`node scripts/sync-example-versions.js ${version}`, {
     stdio: "inherit",
   })
 } catch (error) {
-  console.warn("⚠️  Warning: Failed to sync example versions")
+  console.error("❌ Failed to sync example versions")
 }
 
-// 4. Update lockfile
-console.log("\n🔗 Updating lockfile (pnpm install)...")
-try {
-  // Use --no-frozen-lockfile to allow updates
-  execSync("pnpm install --no-frozen-lockfile", { stdio: "inherit" })
-} catch (error) {
-  console.warn(
-    "\n⚠️  pnpm install failed. This is expected if the new version is not yet published to npm."
-  )
-  console.warn(
-    "The package.json files have been updated, but the lockfile might be out of sync."
-  )
-}
-
-// 5. Git operations
-console.log("\n📂 Committing changes and creating tag...")
+// 4. Git Commit and Tag
+console.log("\n📂 Creating release commit and tag...")
 try {
   execSync("git add .", { stdio: "inherit" })
   execSync(`git commit -m "chore: release v${version}"`, { stdio: "inherit" })
 
-  // Delete tag if it exists (local only)
   try {
     execSync(`git tag -d v${version}`, { stdio: "ignore" })
   } catch (e) {}
 
   execSync(`git tag v${version}`, { stdio: "inherit" })
-  console.log(`\n🎉 Successfully prepared release v${version}!`)
 } catch (error) {
-  console.error("❌ Git operations failed. You might need to commit manually.")
+  console.error("❌ Git operations failed.")
 }
+
+// 5. REVERT examples to workspace protocol locally
+// This keeps your local environment from breaking on the next 'pnpm install'
+console.log("\n🔄 Reverting examples to workspace:* for local development...")
+try {
+  execSync(`node scripts/sync-example-versions.js workspace`, {
+    stdio: "inherit",
+  })
+  console.log("✅ Local environment is back in 'workspace' mode.")
+} catch (error) {
+  console.error("❌ Failed to revert examples to workspace mode.")
+}
+
+console.log(`\n🎉 Successfully prepared release v${version}!`)
+console.log(`\nNext steps:`)
+console.log(`  1. Publish to npm: pnpm -r publish --no-git-checks`)
+console.log(`  2. Push to git: git push origin main --tags\n`)

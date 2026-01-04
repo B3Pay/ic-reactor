@@ -21,9 +21,12 @@ const examplesDir = join(rootDir, "examples")
 // Get version from CLI arg or root package.json
 const cliVersion = process.argv[2]
 const rootPkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf-8"))
-const version = cliVersion || rootPkg.version
+const isWorkspace = cliVersion === "workspace"
+const version = isWorkspace
+  ? "workspace:*"
+  : `^${cliVersion || rootPkg.version}`
 
-console.log(`\n📦 Syncing @ic-reactor/* to version: ^${version}\n`)
+console.log(`\n📦 Syncing @ic-reactor/* to version: ${version}\n`)
 
 // IC Reactor packages to update
 const packages = ["@ic-reactor/core", "@ic-reactor/react"]
