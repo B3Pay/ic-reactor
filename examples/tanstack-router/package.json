@@ -9,8 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ic-reactor/core": "workspace:*",
-    "@ic-reactor/react": "workspace:*",
+    "@ic-reactor/core": "^3.0.0-beta.2",
+    "@ic-reactor/react": "^3.0.0-beta.2",
     "@icp-sdk/core": "^5.0.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "^0.9",

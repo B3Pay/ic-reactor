@@ -13,6 +13,7 @@
     "size:analyze": "pnpm -r --filter \"./packages/**\" run analyze",
     "prepublish:check": "pnpm run build && pnpm run test && pnpm run size",
     "pack:check": "pnpm -r --filter \"./packages/**\" exec npm pack --dry-run",
+    "sync:examples": "node scripts/sync-example-versions.js",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
     "format:staged": "pnpm -r --filter './packages/**' exec prettier --write",
