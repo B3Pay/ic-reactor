@@ -49,28 +49,34 @@ export default defineConfig({
           label: "Getting Started",
           items: [
             { label: "Overview", link: "/" },
-            { label: "Why IC Reactor", link: "/why-ic-reactor" },
-            { label: "Installation", link: "/installation" },
-            { label: "Quick Start", link: "/quick-start" },
-            { label: "Local Development", link: "/local-development" },
+            {
+              label: "Why IC Reactor",
+              link: "/getting-started/why-ic-reactor",
+            },
+            { label: "Installation", link: "/getting-started/installation" },
+            { label: "Quick Start", link: "/getting-started/quick-start" },
+            {
+              label: "Local Development",
+              link: "/getting-started/local-development",
+            },
           ],
         },
         {
           label: "Framework",
           items: [
-            { label: "React Setup", link: "/react-setup" },
-            { label: "Queries", link: "/guides/queries" },
-            { label: "Mutations", link: "/guides/mutations" },
-            { label: "Query Caching", link: "/query-caching" },
+            { label: "React Setup", link: "/framework/react-setup" },
+            { label: "Queries", link: "/framework/queries" },
+            { label: "Mutations", link: "/framework/mutations" },
+            { label: "Query Caching", link: "/framework/query-caching" },
           ],
         },
         {
           label: "Guides",
           items: [
-            { label: "Authentication", link: "/authentication" },
-            { label: "Type Safety", link: "/type-safety" },
-            { label: "Error Handling", link: "/error-handling" },
-            { label: "AI Friendliness", link: "/ai-friendliness" },
+            { label: "Authentication", link: "/guides/authentication" },
+            { label: "Type Safety", link: "/guides/type-safety" },
+            { label: "Error Handling", link: "/guides/error-handling" },
+            { label: "AI Friendliness", link: "/guides/ai-friendliness" },
           ],
         },
         {
