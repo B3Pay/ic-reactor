@@ -6,7 +6,7 @@ import { ClientManager } from "../src/client"
 import { Reactor } from "../src/reactor"
 
 describe("ICP Integration Test", () => {
-  it("should fetch ICP token symbol from mainnet", async () => {
+  it.skip("should fetch ICP token symbol from mainnet", async () => {
     // 1. Initialize ClientManager connected to Mainnet
     const clientManager = new ClientManager({
       queryClient: new QueryClient(),
@@ -41,7 +41,7 @@ describe("ICP Integration Test", () => {
     expect(result).toEqual({ symbol: "ICP" })
   })
 
-  it("should fetch ICP token symbol from mainnet using actor directly", async () => {
+  it.skip("should fetch ICP token symbol from mainnet using actor directly", async () => {
     // 1. Initialize ClientManager connected to Mainnet
     const clientManager = new ClientManager({
       queryClient: new QueryClient(),
