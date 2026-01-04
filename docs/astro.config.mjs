@@ -8,7 +8,6 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "IC-Reactor v3",
-      favicon: "./src/assets/icon.svg",
       logo: {
         src: "./src/assets/icon.svg",
       },
