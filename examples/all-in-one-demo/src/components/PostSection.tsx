@@ -4,7 +4,6 @@ import {
   getPosts,
   getPostsCount,
   useUserPrincipal,
-  queryClient,
 } from "../lib/reactor"
 import type { FrontendLog } from "../lib/types"
 import { Card, CardContent } from "@/components/ui/card"
@@ -26,8 +25,7 @@ interface PostSectionProps {
 
 export function PostSection({ addLog }: PostSectionProps) {
   const principal = useUserPrincipal()
-  const { data: totalPosts = 0n, refetch: refetchCount } =
-    getPostsCount.useQuery()
+  const { data: totalPosts = 0n } = getPostsCount.useQuery()
 
   const {
     data: rawPosts = [],
@@ -39,7 +37,6 @@ export function PostSection({ addLog }: PostSectionProps) {
     select: (data) => data.pages.flat(),
   })
 
-  // Deduplicate posts
   const posts = useMemo(() => {
     const seen = new Set()
     return rawPosts.filter((p) => {
@@ -50,17 +47,23 @@ export function PostSection({ addLog }: PostSectionProps) {
   }, [rawPosts])
 
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set())
+  const [newPostIds, setNewPostIds] = useState<Set<string>>(new Set())
   const [isFullScreen, setIsFullScreen] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   const { mutate: batchCreate, isPending: isCreating } =
     batchCreatePosts.useMutation({
+      refetchQueries: [getPosts.getQueryKey(), getPostsCount.getQueryKey()],
       onSuccess: (ids) => {
         addLog("success", `Batch created ${ids.length} posts`)
-        refetchCount()
-        // Invalidate to reset pagination state so new posts can be loaded
-        queryClient.invalidateQueries({ queryKey: getPosts.getQueryKey() })
+        // Track new post IDs for animation
+        const newIds = new Set(ids.map((id) => id.toString()))
+        setNewPostIds(newIds)
+        // Scroll to top to see new posts
+        scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
+        // Clear new post highlighting after 3 seconds
+        setTimeout(() => setNewPostIds(new Set()), 3000)
       },
       onError: (err) => {
         addLog("error", `Failed to batch create: ${err.message}`)
@@ -216,17 +219,33 @@ export function PostSection({ addLog }: PostSectionProps) {
             <>
               {posts.map((post) => {
                 const isSeen = seenIds.has(post.id.toString())
+                const isNew = newPostIds.has(post.id.toString())
                 return (
                   <div
                     key={post.id.toString()}
                     data-post-id={post.id.toString()}
-                    className={`bg-card/40 border rounded-xl p-4 transition-all duration-300 hover:shadow-md group relative overflow-hidden ${
-                      isSeen
-                        ? "border-border/20 opacity-80" // Seen style
-                        : "border-primary/40 bg-card/60 shadow-sm translate-x-1" // Unseen style
+                    className={`bg-card/40 border rounded-xl p-4 transition-all duration-500 hover:shadow-md group relative overflow-hidden ${
+                      isNew
+                        ? "border-primary bg-primary/5 shadow-lg ring-2 ring-primary/30 animate-pulse" // New post glow
+                        : isSeen
+                          ? "border-border/20 opacity-80" // Seen style
+                          : "border-primary/40 bg-card/60 shadow-sm" // Unseen style
                     } ${isFullScreen ? "max-w-3xl mx-auto" : ""}`}
+                    style={
+                      isNew ? { animation: "slideInFromTop 0.4s ease-out" } : {}
+                    }
                   >
-                    {isSeen && (
+                    {isNew && (
+                      <div className="absolute top-2 right-2 pointer-events-none">
+                        <Badge
+                          variant="default"
+                          className="text-[10px] px-1.5 py-0.5 animate-bounce"
+                        >
+                          NEW
+                        </Badge>
+                      </div>
+                    )}
+                    {isSeen && !isNew && (
                       <div className="absolute top-2 right-2 text-primary/30 pointer-events-none transition-opacity duration-500">
                         <Check className="w-4 h-4" />
                       </div>
@@ -235,9 +254,11 @@ export function PostSection({ addLog }: PostSectionProps) {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <div
                           className={`p-1 rounded-full ${
-                            isSeen
-                              ? "bg-muted text-muted-foreground"
-                              : "bg-primary/10 text-primary"
+                            isNew
+                              ? "bg-primary/20 text-primary"
+                              : isSeen
+                                ? "bg-muted text-muted-foreground"
+                                : "bg-primary/10 text-primary"
                           }`}
                         >
                           <User className="w-3 h-3" />
@@ -254,9 +275,11 @@ export function PostSection({ addLog }: PostSectionProps) {
                     </div>
                     <p
                       className={`text-sm pl-3 border-l-2 transition-colors relative z-10 ${
-                        isSeen
-                          ? "text-foreground/70 border-border"
-                          : "text-foreground border-primary/60 font-medium"
+                        isNew
+                          ? "text-foreground border-primary font-medium"
+                          : isSeen
+                            ? "text-foreground/70 border-border"
+                            : "text-foreground border-primary/60 font-medium"
                       }`}
                     >
                       {post.content}
