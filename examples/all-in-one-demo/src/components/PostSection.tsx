@@ -203,7 +203,7 @@ export function PostSection({ addLog }: PostSectionProps) {
         <div
           ref={scrollContainerRef}
           className={`${
-            isFullScreen ? "flex-1 pb-10" : "h-[450px]"
+            isFullScreen ? "flex-1 pb-10 fullscreen-scroll" : "h-[450px]"
           } overflow-y-auto p-4 space-y-3 scroll-smooth`}
         >
           {posts.length === 0 && isLoading ? (
@@ -224,7 +224,7 @@ export function PostSection({ addLog }: PostSectionProps) {
                   <div
                     key={post.id.toString()}
                     data-post-id={post.id.toString()}
-                    className={`bg-card/40 border rounded-xl p-4 transition-all duration-500 hover:shadow-md group relative overflow-hidden ${
+                    className={`bg-card border rounded-xl p-4 transition-all duration-500 hover:shadow-md group relative overflow-hidden ${
                       isNew
                         ? "border-primary bg-primary/5 shadow-lg ring-2 ring-primary/30 animate-pulse" // New post glow
                         : isSeen
@@ -236,7 +236,7 @@ export function PostSection({ addLog }: PostSectionProps) {
                     }
                   >
                     {isNew && (
-                      <div className="absolute top-2 right-2 pointer-events-none">
+                      <div className="absolute top-4 right-4 pointer-events-none">
                         <Badge
                           variant="default"
                           className="text-[10px] px-1.5 py-0.5 animate-bounce"
@@ -246,11 +246,22 @@ export function PostSection({ addLog }: PostSectionProps) {
                       </div>
                     )}
                     {isSeen && !isNew && (
-                      <div className="absolute top-2 right-2 text-primary/30 pointer-events-none transition-opacity duration-500">
+                      <div className="absolute top-4 right-4 text-primary/30 pointer-events-none transition-opacity duration-500">
                         <Check className="w-4 h-4" />
                       </div>
                     )}
-                    <div className="flex justify-between items-start mb-2 relative z-10">
+                    <div
+                      className={`text-sm pl-2 transition-colors relative z-10 ${
+                        isNew
+                          ? "text-foreground border-primary font-medium"
+                          : isSeen
+                            ? "text-foreground/70 border-border"
+                            : "text-foreground border-primary/60 font-medium"
+                      }`}
+                    >
+                      {post.content}
+                    </div>
+                    <div className="flex justify-between items-start mt-2 relative z-10">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <div
                           className={`p-1 rounded-full ${
@@ -273,33 +284,33 @@ export function PostSection({ addLog }: PostSectionProps) {
                         ).toLocaleTimeString()}
                       </span>
                     </div>
-                    <p
-                      className={`text-sm pl-3 border-l-2 transition-colors relative z-10 ${
-                        isNew
-                          ? "text-foreground border-primary font-medium"
-                          : isSeen
-                            ? "text-foreground/70 border-border"
-                            : "text-foreground border-primary/60 font-medium"
-                      }`}
-                    >
-                      {post.content}
-                    </p>
                   </div>
                 )
               })}
 
               <div
                 ref={sentinelRef}
-                className="py-6 text-center text-sm text-muted-foreground flex justify-center w-full"
+                className={`text-center text-muted-foreground flex justify-center items-center w-full ${
+                  isFullScreen ? "py-12 text-lg font-medium" : "py-6 text-sm"
+                }`}
               >
                 {isFetchingNextPage ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Loading more...
+                  <span className="flex items-center gap-3">
+                    <Loader2
+                      className={`animate-spin ${isFullScreen ? "h-6 w-6" : "h-3 w-3"}`}
+                    />
+                    Loading more...
                   </span>
                 ) : hasNextPage ? (
-                  "Scroll for more"
+                  <span className={`${isFullScreen ? "opacity-60" : ""}`}>
+                    ↓ Scroll for more
+                  </span>
                 ) : (
-                  "No more posts"
+                  <span
+                    className={`${isFullScreen ? "bg-muted/30 px-6 py-3 rounded-full" : ""}`}
+                  >
+                    No more posts
+                  </span>
                 )}
               </div>
             </>

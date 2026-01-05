@@ -84,6 +84,27 @@
   background: oklch(0.45 0.02 265);
 }
 
+/* Fullscreen mode - bigger and more visible scrollbar */
+.fullscreen-scroll::-webkit-scrollbar {
+  width: 16px;
+}
+
+.fullscreen-scroll::-webkit-scrollbar-track {
+  background: oklch(0.2 0.02 265);
+  border-radius: 999px;
+  margin: 8px 0;
+}
+
+.fullscreen-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.55 0.24 264);
+  border-radius: 999px;
+  border: 3px solid oklch(0.2 0.02 265);
+}
+
+.fullscreen-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.65 0.24 264);
+}
+
 /* Custom animations */
 @keyframes pulse-glow {
   0%,
