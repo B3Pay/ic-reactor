@@ -36,7 +36,11 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       {isInitialized ? <MainLayout /> : <div>Loading...</div>}
-      <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+      <ReactQueryDevtools
+        initialIsOpen={false}
+        position="left"
+        buttonPosition="bottom-left"
+      />
     </QueryClientProvider>
   )
 }
