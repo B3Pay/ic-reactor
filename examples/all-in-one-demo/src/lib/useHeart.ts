@@ -62,7 +62,7 @@ export function useHeart(
       // Called for all errors (network, agent failures, etc.)
       // CanisterErrors also trigger this after onCanisterError
     },
-    onSettled: () => getLikes.refetch(),
+    onSettled: () => getLikes.invalidate(),
   })
 
   const { mutateAsync: unlikeMutate } = unlikeHeart.useMutation({
@@ -75,7 +75,7 @@ export function useHeart(
     onError: (err) => {
       console.error("Unlike mutation error:", err)
     },
-    onSettled: () => getLikes.refetch(),
+    onSettled: () => getLikes.invalidate(),
   })
 
   // The main handler for the heart click

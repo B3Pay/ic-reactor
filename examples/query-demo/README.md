@@ -63,7 +63,7 @@ function Balance({ account }) {
 
 ### 3. `createActorMutation` - Mutations with Auto-Refetch 🔥
 
-Use for state-changing operations like transfers. **The killer feature**: just pass `refetchQueries` and the library handles everything!
+Use for state-changing operations like transfers. **The killer feature**: just pass `invalidateQueries` and the library handles everything!
 
 ```typescript
 import { createActorMutation, createActorSuspenseQueryFactory } from "@ic-reactor/react"
@@ -84,9 +84,9 @@ function TransferForm({ userAccount }) {
   // Get the balance query for this user
   const balanceQuery = getIcpBalance(userAccount)
 
-  // 🔥 Pass refetchQueries with .getQueryKey() - that's it!
+  // 🔥 Pass invalidateQueries with .getQueryKey() - that's it!
   const { mutate, isPending } = icpTransferMutation.useMutation({
-    refetchQueries: [balanceQuery.getQueryKey()], // Auto-refetch! ✨
+    invalidateQueries: [balanceQuery.getQueryKey()], // Auto-refetch! ✨
   })
 
   const handleTransfer = () => {
@@ -196,7 +196,7 @@ Creates a mutation wrapper for state-changing operations.
 
 - `functionName` - The canister method to call
 - `onSuccess?` - Callback on successful mutation
-- `refetchQueries?` - Query keys to refetch after mutation
+- `invalidateQueries?` - Query keys to refetch after mutation
 
 **Returns:**
 

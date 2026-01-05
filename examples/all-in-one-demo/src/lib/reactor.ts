@@ -50,7 +50,7 @@ export const getPostsCountSuspense = createSuspenseQuery(reactor, {
 
 export const batchCreatePosts = createMutation(reactor, {
   functionName: "batch_create_posts",
-  refetchQueries: [getPosts.getQueryKey(), getPostsCount.getQueryKey()],
+  invalidateQueries: [getPosts.getQueryKey(), getPostsCount.getQueryKey()],
 })
 
 export const getLikesSuspense = createSuspenseQuery(reactor, {

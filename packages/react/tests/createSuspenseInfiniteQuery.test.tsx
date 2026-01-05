@@ -723,7 +723,7 @@ describe("refetching behavior with infinite queries", () => {
       })
     })
 
-    it("should trigger refetch when calling refetchQueries directly", async () => {
+    it("should trigger refetch when calling invalidateQueries directly", async () => {
       const postsQuery = createSuspenseInfiniteQuery(mockReactor, {
         functionName: "getPosts",
         initialPageParam: 0,

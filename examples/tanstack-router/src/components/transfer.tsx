@@ -11,11 +11,11 @@ import { useReactorMutation } from "@ic-reactor/react"
 export const Transfer = ({
   reactor,
   decimals,
-  refetchQueries,
+  invalidateQueries,
 }: {
   reactor: DisplayReactor<Ledger>
   decimals: number | undefined
-  refetchQueries?: QueryKey
+  invalidateQueries?: QueryKey
 }) => {
   const [to, setTo] = useState("")
   const [amount, setAmount] = useState("")
@@ -43,7 +43,7 @@ export const Transfer = ({
         isCanisterError(err) ? (err as any).err._type : err
       )
     },
-    refetchQueries: refetchQueries ? [refetchQueries] : undefined,
+    invalidateQueries: invalidateQueries ? [invalidateQueries] : undefined,
   })
 
   const handleSubmit = (e: React.FormEvent) => {

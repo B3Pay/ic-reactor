@@ -27,7 +27,7 @@ export function TransferSection({ principal }: { principal: Principal }) {
     isSuccess,
     data: txId,
   } = icpTransferMutation.useMutation({
-    refetchQueries: [userBalanceQuery?.getQueryKey()],
+    invalidateQueries: [userBalanceQuery.getQueryKey()],
   })
 
   // 3. Handle transfer

@@ -197,8 +197,7 @@ export const getCkEthBalance = createSuspenseQueryFactory(ckETHManager, {
  * useAuth() automatically initializes the session on first use,
  * restoring any previous session from IndexedDB.
  */
-export const { useAuth, useAuthState, useUserPrincipal } =
-  createAuthHooks(clientManager)
+export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
 
 // ============================================================================
 // 8. createMutation - Transfer Functions
