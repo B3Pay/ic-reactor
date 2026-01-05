@@ -56,7 +56,7 @@ export function PostSection({ addLog }: PostSectionProps) {
 
   const { mutate: batchCreate, isPending: isCreating } =
     batchCreatePosts.useMutation({
-      refetchQueries: [getPosts.getQueryKey(), getPostsCount.getQueryKey()],
+      invalidateQueries: [getPosts.getQueryKey(), getPostsCount.getQueryKey()],
       onSuccess: (ids) => {
         addLog("success", `Batch created ${ids.length} posts`)
         // Track new post IDs for animation

@@ -142,7 +142,7 @@ function TokenWallet() {
         <Transfer
           reactor={reactor}
           decimals={decimals}
-          refetchQueries={balanceQuery.getQueryKey()}
+          invalidateQueries={balanceQuery.getQueryKey()}
         />
       )}
     </div>

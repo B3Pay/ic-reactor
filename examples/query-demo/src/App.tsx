@@ -227,7 +227,7 @@ function TransferSection({ principal }: { principal: Principal }) {
 
   // 🔥 Auto-refetch balance after successful transfer!
   const { mutate } = icpTransferMutation.useMutation({
-    refetchQueries: [balanceQuery.getQueryKey()], 
+    invalidateQueries: [balanceQuery.getQueryKey()], 
   })
 
   // DisplayReactor accepts strings for amounts!
