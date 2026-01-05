@@ -5,6 +5,7 @@ import {
   getLogs,
   getPosts,
   queryClient,
+  useAgentState,
 } from "./lib/reactor"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { QueryClientProvider, useIsFetching } from "@tanstack/react-query"
@@ -26,13 +27,15 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
  * Sets up the QueryClientProvider and initializes the IC client.
  */
 export default function App() {
+  const { isInitialized } = useAgentState()
+
   useEffect(() => {
     clientManager.initialize()
   }, [])
 
   return (
     <QueryClientProvider client={queryClient}>
-      <MainLayout />
+      {isInitialized ? <MainLayout /> : <div>Loading...</div>}
       <ReactQueryDevtools initialIsOpen={false} position="bottom" />
     </QueryClientProvider>
   )

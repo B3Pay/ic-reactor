@@ -4,6 +4,7 @@ import {
   getPosts,
   getPostsCount,
   useUserPrincipal,
+  queryClient,
 } from "../lib/reactor"
 import type { FrontendLog } from "../lib/types"
 import { Card, CardContent } from "@/components/ui/card"
@@ -58,11 +59,12 @@ export function PostSection({ addLog }: PostSectionProps) {
       onSuccess: (ids) => {
         addLog("success", `Batch created ${ids.length} posts`)
         refetchCount()
+        // Invalidate to reset pagination state so new posts can be loaded
+        queryClient.invalidateQueries({ queryKey: getPosts.getQueryKey() })
       },
       onError: (err) => {
         addLog("error", `Failed to batch create: ${err.message}`)
       },
-      refetchQueries: [getPosts.getQueryKey()],
     })
 
   // Track seen posts
@@ -150,6 +152,11 @@ export function PostSection({ addLog }: PostSectionProps) {
             <Badge variant="outline" className="bg-background/50 gap-1">
               {totalPosts.toString()} Posts
             </Badge>
+            {posts.length > 0 && (
+              <Badge variant="outline" className="bg-background/50 gap-1">
+                {posts.length} Loaded
+              </Badge>
+            )}
             {seenIds.size > 0 && (
               <Badge
                 variant="secondary"
