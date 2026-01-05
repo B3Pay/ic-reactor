@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/core": "^3.0.0-beta.6",
+    "@ic-reactor/core": "^3.0.0-beta.7",
     "@icp-sdk/core": "^5.0.0",
     "@tanstack/query-core": "^5.90"
   },

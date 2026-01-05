@@ -214,7 +214,7 @@ export const { useAuth, useAuthState, useUserPrincipal } =
  */
 export const icpTransferMutation = createMutation(icpReactor, {
   functionName: "icrc1_transfer",
-  refetchQueries: [],
+  invalidateQueries: [],
   onSuccess: (txId) => {
     console.log("Transfer successful! Transaction ID:", txId)
   },
