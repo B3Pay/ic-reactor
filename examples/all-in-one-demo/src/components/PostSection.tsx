@@ -17,6 +17,7 @@ import {
   Eye,
   Maximize2,
   Minimize2,
+  ArrowUp,
 } from "lucide-react"
 
 interface PostSectionProps {
@@ -49,6 +50,7 @@ export function PostSection({ addLog }: PostSectionProps) {
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set())
   const [newPostIds, setNewPostIds] = useState<Set<string>>(new Set())
   const [isFullScreen, setIsFullScreen] = useState(false)
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -134,6 +136,23 @@ export function PostSection({ addLog }: PostSectionProps) {
       document.body.style.overflow = ""
     }
   }, [isFullScreen])
+
+  // Track scroll position for scroll-to-top button
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      setShowScrollTop(container.scrollTop > 200)
+    }
+
+    container.addEventListener("scroll", handleScroll)
+    return () => container.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  const handleScrollToTop = () => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   const handleCreatePost = () => {
     if (!principal) return addLog("error", "Please login first")
@@ -316,6 +335,19 @@ export function PostSection({ addLog }: PostSectionProps) {
             </>
           )}
         </div>
+
+        {/* Scroll to top button */}
+        {showScrollTop && (
+          <Button
+            onClick={handleScrollToTop}
+            size="icon"
+            className={`absolute bottom-6 right-6 rounded-full shadow-lg transition-all duration-300 hover:scale-110 ${
+              isFullScreen ? "h-14 w-14" : "h-10 w-10"
+            }`}
+          >
+            <ArrowUp className={isFullScreen ? "h-6 w-6" : "h-4 w-4"} />
+          </Button>
+        )}
       </CardContent>
     </Card>
   )
