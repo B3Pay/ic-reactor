@@ -1,7 +1,7 @@
 /**
  * Suspense Infinite Query Factory - Generic wrapper for React Query suspense-based paginated canister data
  *
- * Creates unified fetch/hook/refetch functions for any paginated canister method.
+ * Creates unified fetch/hook/invalidate functions for any paginated canister method.
  * Works with any Reactor instance.
  *
  * Uses `useSuspenseInfiniteQuery` which:
@@ -198,8 +198,8 @@ export interface SuspenseInfiniteQueryResult<
     TError
   >
 
-  /** Invalidate and refetch cache */
-  refetch: () => Promise<void>
+  /** Invalidate the cache (refetches if query is active) */
+  invalidate: () => Promise<void>
 
   /** Get query key (for advanced React Query usage) */
   getQueryKey: () => QueryKey
@@ -333,10 +333,10 @@ const createSuspenseInfiniteQueryImpl = <
     )
   }
 
-  // Refetch/invalidate function
-  const refetch = async (): Promise<void> => {
+  // Invalidate function
+  const invalidate = async (): Promise<void> => {
     const queryKey = getQueryKey()
-    await reactor.queryClient.refetchQueries({ queryKey })
+    await reactor.queryClient.invalidateQueries({ queryKey })
   }
 
   // Get data from cache without fetching
@@ -366,7 +366,7 @@ const createSuspenseInfiniteQueryImpl = <
   return {
     fetch,
     useSuspenseInfiniteQuery: useSuspenseInfiniteQueryHook,
-    refetch,
+    invalidate,
     getQueryKey,
     getCacheData,
   }

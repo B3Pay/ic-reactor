@@ -309,7 +309,7 @@ async function loader() {
 }
 
 // Invalidate cache
-await userQuery.refetch()
+await userQuery.invalidate()
 ```
 
 For dynamic arguments, use `createQueryFactory`:

@@ -223,7 +223,7 @@ backend.invalidateQueries({
 
 ## Refetch After Mutation
 
-### Using refetchQueries
+### Using invalidateQueries
 
 The simplest way to refetch related data after a mutation:
 
@@ -232,7 +232,7 @@ import { backend } from "./reactor"
 
 const { mutate } = useActorMutation({
   functionName: "createPost",
-  refetchQueries: [
+  invalidateQueries: [
     backend.generateQueryKey({ functionName: "getPosts" }),
     backend.generateQueryKey({ functionName: "getPostCount" }),
   ],

@@ -122,8 +122,10 @@ This tutorial walks you through creating your first IC Reactor integration with 
      // Mutation to increment
      const { mutate, isPending } = useActorMutation({
        functionName: "increment",
-       // Refetch count after mutation
-       refetchQueries: [backend.generateQueryKey({ functionName: "getCount" })],
+       // Invalidate count after mutation
+       invalidateQueries: [
+         backend.generateQueryKey({ functionName: "getCount" }),
+       ],
      })
 
      return (

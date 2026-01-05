@@ -1,7 +1,7 @@
 /**
  * Infinite Query Factory - Generic wrapper for React Query paginated canister data
  *
- * Creates unified fetch/hook/refetch functions for any paginated canister method.
+ * Creates unified fetch/hook/invalidate functions for any paginated canister method.
  * Works with any Reactor instance.
  *
  * @example
@@ -19,7 +19,7 @@
  * const allPosts = data?.pages.flatMap(page => page.posts)
  *
  * // Invalidate cache
- * postsQuery.refetch()
+ * postsQuery.invalidate()
  */
 
 import type {
@@ -107,7 +107,7 @@ export interface InfiniteQueryConfig<
   ) => TPageParam | undefined | null
   /** Maximum number of pages to keep in cache */
   maxPages?: number
-  /** How long data stays fresh before refetching (default: 5 min) */
+  /** How long data stays fresh before becoming stale (default: 5 min) */
   staleTime?: number
   /** Transform the raw InfiniteData result before returning */
   select?: (
@@ -203,8 +203,8 @@ export interface InfiniteQueryResult<
     TError
   >
 
-  /** Invalidate and refetch cache */
-  refetch: () => Promise<void>
+  /** Invalidate the cache (refetches if query is active) */
+  invalidate: () => Promise<void>
 
   /** Get query key (for advanced React Query usage) */
   getQueryKey: () => QueryKey
@@ -344,10 +344,10 @@ const createInfiniteQueryImpl = <
     )
   }
 
-  // Refetch/invalidate function
-  const refetch = async (): Promise<void> => {
+  // Invalidate function
+  const invalidate = async (): Promise<void> => {
     const queryKey = getQueryKey()
-    await reactor.queryClient.refetchQueries({ queryKey })
+    await reactor.queryClient.invalidateQueries({ queryKey })
   }
 
   // Get data from cache without fetching
@@ -377,7 +377,7 @@ const createInfiniteQueryImpl = <
   return {
     fetch,
     useInfiniteQuery: useInfiniteQueryHook,
-    refetch,
+    invalidate,
     getQueryKey,
     getCacheData,
   }

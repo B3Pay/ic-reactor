@@ -109,7 +109,7 @@ describe("createSuspenseInfiniteQuery", () => {
 
       expect(postsQuery.fetch).toBeDefined()
       expect(postsQuery.useSuspenseInfiniteQuery).toBeDefined()
-      expect(postsQuery.refetch).toBeDefined()
+      expect(postsQuery.invalidate).toBeDefined()
       expect(postsQuery.getQueryKey).toBeDefined()
       expect(postsQuery.getCacheData).toBeDefined()
     })
@@ -300,7 +300,7 @@ describe("createSuspenseInfiniteQuery", () => {
         mockReactor.callMethod as ReturnType<typeof vi.fn>
       ).mock.calls.length
 
-      await postsQuery.refetch()
+      await postsQuery.invalidate()
 
       expect(
         (mockReactor.callMethod as ReturnType<typeof vi.fn>).mock.calls.length
@@ -459,7 +459,7 @@ describe("createSuspenseInfiniteQueryFactory", () => {
 
     expect(postsQuery.fetch).toBeDefined()
     expect(postsQuery.useSuspenseInfiniteQuery).toBeDefined()
-    expect(postsQuery.refetch).toBeDefined()
+    expect(postsQuery.invalidate).toBeDefined()
   })
 
   it("should fetch data with dynamic args", async () => {
@@ -611,7 +611,7 @@ describe("refetching behavior with infinite queries", () => {
       expect(fetchCount).toBe(1)
 
       // Refetch
-      await postsQuery.refetch()
+      await postsQuery.invalidate()
 
       await waitFor(() => {
         expect(result.current.data.pages[0].posts[0]).toBe("Post 1 (fetch #2)")
@@ -643,7 +643,7 @@ describe("refetching behavior with infinite queries", () => {
       const fetchCountBeforeRefetch = fetchCount
 
       // Refetch
-      await postsQuery.refetch()
+      await postsQuery.invalidate()
 
       await waitFor(() => {
         // Fetch count should have increased
@@ -679,7 +679,7 @@ describe("refetching behavior with infinite queries", () => {
       expect(result.current.data.pages[0].posts[0]).toContain("fetch #1")
 
       // Use hook's refetch
-      await result.current.refetch()
+      await postsQuery.invalidate()
 
       await waitFor(() => {
         expect(result.current.data.pages[0].posts[0]).toContain("fetch #2")
@@ -711,13 +711,13 @@ describe("refetching behavior with infinite queries", () => {
       expect(fetchCount).toBe(1)
 
       // First refetch
-      await postsQuery.refetch()
+      await postsQuery.invalidate()
       await waitFor(() => {
         expect(fetchCount).toBe(2)
       })
 
       // Second refetch
-      await postsQuery.refetch()
+      await postsQuery.invalidate()
       await waitFor(() => {
         expect(fetchCount).toBe(3)
       })
@@ -745,7 +745,9 @@ describe("refetching behavior with infinite queries", () => {
       const initialFetchCount = fetchCount
 
       // Use queryClient directly to refetch
-      await queryClient.refetchQueries({ queryKey: postsQuery.getQueryKey() })
+      await queryClient.invalidateQueries({
+        queryKey: postsQuery.getQueryKey(),
+      })
 
       await waitFor(() => {
         expect(fetchCount).toBeGreaterThan(initialFetchCount)
@@ -1033,7 +1035,7 @@ describe("refetching behavior with infinite queries", () => {
       expect(result2.current.data.pages[0].posts[0]).toBe("Post 1 (fetch #1)")
 
       // Refetch using the factory method
-      await postsQuery.refetch()
+      await postsQuery.invalidate()
 
       await waitFor(() => {
         // Both instances should be updated

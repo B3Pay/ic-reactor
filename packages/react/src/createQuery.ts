@@ -1,7 +1,7 @@
 /**
  * Query Factory - Generic wrapper for React Query-based canister data
  *
- * Creates unified fetch/hook/refetch functions for any canister method.
+ * Creates unified fetch/hook/invalidate functions for any canister method.
  * Works with any Reactor instance.
  *
  * @example
@@ -100,10 +100,10 @@ const createQueryImpl = <
     )
   }
 
-  // Refetch/invalidate function
-  const refetch = async (): Promise<void> => {
+  // Invalidate function
+  const invalidate = async (): Promise<void> => {
     const queryKey = getQueryKey()
-    await reactor.queryClient.refetchQueries({ queryKey })
+    await reactor.queryClient.invalidateQueries({ queryKey })
   }
 
   // Get data from cache without fetching
@@ -130,7 +130,7 @@ const createQueryImpl = <
   return {
     fetch,
     useQuery: useQueryHook,
-    refetch,
+    invalidate,
     getQueryKey,
     getCacheData,
   }

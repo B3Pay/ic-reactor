@@ -41,13 +41,13 @@ const userProfileQuery = createQuery(backend, {
 
 The factory returns an object with these utilities:
 
-| Property       | Type                           | Description                           |
-| -------------- | ------------------------------ | ------------------------------------- |
-| `fetch`        | `() => Promise<T>`             | Fetch data (cache-first, for loaders) |
-| `useQuery`     | `(options?) => UseQueryResult` | React hook for components             |
-| `refetch`      | `() => Promise<void>`          | Invalidate and refetch cache          |
-| `getQueryKey`  | `() => QueryKey`               | Get the TanStack Query key            |
-| `getCacheData` | `(select?) => T`               | Read from cache without fetching      |
+| Property       | Type                           | Description                            |
+| -------------- | ------------------------------ | -------------------------------------- |
+| `fetch`        | `() => Promise<T>`             | Fetch data (cache-first, for loaders)  |
+| `useQuery`     | `(options?) => UseQueryResult` | React hook for components              |
+| `invalidate`   | `() => Promise<void>`          | Invalidate cache (refetches if active) |
+| `getQueryKey`  | `() => QueryKey`               | Get the TanStack Query key             |
+| `getCacheData` | `(select?) => T`               | Read from cache without fetching       |
 
 ---
 
@@ -256,8 +256,8 @@ const cachedUser = userQuery.getCacheData()
 // Read with transformation
 const cachedName = userQuery.getCacheData((user) => user.name)
 
-// Force refetch
-await userQuery.refetch()
+// Force invalidation (refetches if query is active)
+await userQuery.invalidate()
 
 // Get query key for manual operations
 const queryKey = userQuery.getQueryKey()

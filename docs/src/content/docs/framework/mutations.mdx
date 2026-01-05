@@ -129,17 +129,17 @@ mutate([{ title: "New Post" }], {
   finishes.
 </Aside>
 
-## Refetching Queries After Mutation
+## Invalidating Queries After Mutation
 
-The most common pattern after a mutation is to refetch related queries. Use the `refetchQueries` option:
+The most common pattern after a mutation is to invalidate related queries. Use the `invalidateQueries` option:
 
 ```tsx
 import { backendActor } from "../reactor"
 
 const { mutate } = useActorMutation({
   functionName: "createPost",
-  refetchQueries: [
-    // Refetch the posts list after creating
+  invalidateQueries: [
+    // Invalidate the posts list after creating
     backendActor.generateQueryKey({ functionName: "getPosts" }),
   ],
 })
@@ -157,7 +157,9 @@ function CreatePost() {
   const { mutate } = useActorMutation({
     functionName: "createPost",
     onSuccess: () => {
-      // Invalidate and refetch
+      // Invalidate
+      backendActor.invalidateQueries({ functionName: "getPosts" })
+      // or
       queryClient.invalidateQueries({
         queryKey: backendActor.generateQueryKey({ functionName: "getPosts" }),
       })
@@ -331,7 +333,9 @@ import { backendActor } from "../reactor"
 // Define mutation once
 const createPostMutation = createMutation(backendActor, {
   functionName: "createPost",
-  refetchQueries: [backendActor.generateQueryKey({ functionName: "getPosts" })],
+  invalidateQueries: [
+    backendActor.generateQueryKey({ functionName: "getPosts" }),
+  ],
 })
 
 // Use in components

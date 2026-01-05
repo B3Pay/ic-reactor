@@ -231,8 +231,8 @@ export interface BaseQueryResult<
   /** Fetch data in loader (uses ensureQueryData for cache-first) */
   fetch: () => Promise<TSelected>
 
-  /** Invalidate and refetch cache */
-  refetch: () => Promise<void>
+  /** Invalidate the cache (refetches if query is active) */
+  invalidate: () => Promise<void>
 
   /** Get query key (for advanced React Query usage) */
   getQueryKey: () => QueryKey
@@ -323,8 +323,8 @@ export interface MutationConfig<
   functionName: M
   /** Call configuration for the actor method */
   callConfig?: CallConfig
-  /** Queries to refetch upon successful mutation */
-  refetchQueries?: QueryKey[]
+  /** Queries to invalidate upon successful mutation */
+  invalidateQueries?: QueryKey[]
   /**
    * Callback for canister-level business logic errors.
    * Called when the canister returns a Result { Err: E } variant.
@@ -364,7 +364,7 @@ export type MutationFactoryConfig<
 
 /**
  * Options for useMutation hook.
- * Extends React Query's UseMutationOptions with refetchQueries support.
+ * Extends React Query's UseMutationOptions with invalidateQueries support.
  */
 export interface MutationHookOptions<
   A = BaseActor,
@@ -379,16 +379,16 @@ export interface MutationHookOptions<
   "mutationFn"
 > {
   /**
-   * Query keys to refetch upon successful mutation.
+   * Query keys to invalidate upon successful mutation.
    * Use query.getQueryKey() to get the key from a query result.
    *
    * @example
    * const balanceQuery = getIcpBalance(account)
    * useMutation({
-   *   refetchQueries: [balanceQuery.getQueryKey()],
+   *   invalidateQueries: [balanceQuery.getQueryKey()],
    * })
    */
-  refetchQueries?: (QueryKey | undefined)[]
+  invalidateQueries?: (QueryKey | undefined)[]
   /**
    * Callback for canister-level business logic errors.
    * Called when the canister returns a Result { Err: E } variant.
@@ -417,9 +417,9 @@ export interface MutationResult<
    * Accepts options to override/extend the factory config.
    *
    * @example
-   * // With refetchQueries to auto-update balance after transfer
+   * // With invalidateQueries to auto-update balance after transfer
    * const { mutate } = icpTransferMutation.useMutation({
-   *   refetchQueries: [userBalanceQuery], // Auto-refetch after success!
+   *   invalidateQueries: [userBalanceQuery], // Auto-invalidate after success!
    * })
    */
   useMutation: (

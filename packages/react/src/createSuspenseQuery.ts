@@ -1,7 +1,7 @@
 /**
  * Suspense Query Factory - Generic wrapper for React Suspense-based canister data
  *
- * Creates unified fetch/hook/refetch functions for any canister method.
+ * Creates unified fetch/hook/invalidate functions for any canister method.
  * Works with any Reactor instance.
  *
  * Uses `useSuspenseQuery` which:
@@ -111,10 +111,10 @@ const createSuspenseQueryImpl = <
     )
   }
 
-  // Refetch/invalidate function
-  const refetch = async (): Promise<void> => {
+  // Invalidate function
+  const invalidate = async (): Promise<void> => {
     const queryKey = getQueryKey()
-    await reactor.queryClient.refetchQueries({ queryKey })
+    await reactor.queryClient.invalidateQueries({ queryKey })
   }
 
   // Get data from cache without fetching
@@ -141,7 +141,7 @@ const createSuspenseQueryImpl = <
   return {
     fetch,
     useSuspenseQuery: useSuspenseQueryHook,
-    refetch,
+    invalidate,
     getQueryKey,
     getCacheData,
   }

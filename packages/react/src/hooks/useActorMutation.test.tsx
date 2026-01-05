@@ -188,14 +188,14 @@ describe("useActorMutation", () => {
     })
   })
 
-  describe("refetchQueries functionality", () => {
-    it("should accept refetchQueries option", () => {
+  describe("invalidateQueries functionality", () => {
+    it("should accept invalidateQueries option", () => {
       const { result } = renderHook(
         () =>
           useActorMutation({
             reactor,
             functionName: "update_user",
-            refetchQueries: [["test-canister", "get_user"]],
+            invalidateQueries: [["test-canister", "get_user"]],
           }),
         { wrapper }
       )
@@ -203,13 +203,13 @@ describe("useActorMutation", () => {
       expect(result.current.mutate).toBeInstanceOf(Function)
     })
 
-    it("should support refetchQueries with args", () => {
+    it("should support invalidateQueries with args", () => {
       const { result } = renderHook(
         () =>
           useActorMutation({
             reactor,
             functionName: "update_user",
-            refetchQueries: [["test-canister", "get_user", "user-1"]],
+            invalidateQueries: [["test-canister", "get_user", "user-1"]],
           }),
         { wrapper }
       )

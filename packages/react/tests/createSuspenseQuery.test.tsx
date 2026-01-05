@@ -121,7 +121,7 @@ describe("createSuspenseQuery", () => {
       expect(userQuery).toBeDefined()
       expect(userQuery.fetch).toBeInstanceOf(Function)
       expect(userQuery.useSuspenseQuery).toBeInstanceOf(Function)
-      expect(userQuery.refetch).toBeInstanceOf(Function)
+      expect(userQuery.invalidate).toBeInstanceOf(Function)
       expect(userQuery.getQueryKey).toBeInstanceOf(Function)
     })
 

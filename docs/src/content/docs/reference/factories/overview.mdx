@@ -16,7 +16,7 @@ Factory functions let you create **reusable, pre-configured** query and mutation
     loaders
   </Card>
   <Card title="Centralized Config" icon="setting">
-    Define `select`, `staleTime`, `refetchQueries` once — use everywhere
+    Define `select`, `staleTime`, `invalidateQueries` once — use everywhere
   </Card>
   <Card title="Cache Access" icon="magnifier">
     Read/invalidate cache outside of React components
@@ -121,7 +121,7 @@ export const getPostsQuery = createQueryFactory(backend, {
 // Mutation factories
 export const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  refetchQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
+  invalidateQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
 })
 
 // Query key helpers

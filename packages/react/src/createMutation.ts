@@ -45,7 +45,7 @@ const createMutationImpl = <
   const {
     functionName,
     callConfig,
-    refetchQueries: factoryRefetchQueries,
+    invalidateQueries: factoryInvalidateQueries,
     onSuccess: factoryOnSuccess,
     onCanisterError: factoryOnCanisterError,
     onError: factoryOnError,
@@ -67,7 +67,7 @@ const createMutationImpl = <
   const useMutationHook = (options?: MutationHookOptions<A, M, T>) => {
     // Extract our custom options
     const {
-      refetchQueries: hookRefetchQueries,
+      invalidateQueries: hookInvalidateQueries,
       onCanisterError: hookOnCanisterError,
       ...restOptions
     } = options || {}
@@ -78,21 +78,21 @@ const createMutationImpl = <
         ...restOptions,
         mutationFn: execute,
         onSuccess: async (...args) => {
-          // 1. Handle factory-level refetchQueries
-          if (factoryRefetchQueries) {
+          // 1. Handle factory-level invalidateQueries
+          if (factoryInvalidateQueries) {
             await Promise.all(
-              factoryRefetchQueries.map((queryKey) => {
-                return reactor.queryClient.refetchQueries({ queryKey })
+              factoryInvalidateQueries.map((queryKey) => {
+                return reactor.queryClient.invalidateQueries({ queryKey })
               })
             )
           }
 
-          // 2. Handle hook-level refetchQueries
-          if (hookRefetchQueries) {
+          // 2. Handle hook-level invalidateQueries
+          if (hookInvalidateQueries) {
             await Promise.all(
-              hookRefetchQueries.map((queryKey) => {
+              hookInvalidateQueries.map((queryKey) => {
                 if (queryKey) {
-                  return reactor.queryClient.refetchQueries({ queryKey })
+                  return reactor.queryClient.invalidateQueries({ queryKey })
                 }
                 return Promise.resolve()
               })

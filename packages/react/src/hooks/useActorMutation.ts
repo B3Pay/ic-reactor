@@ -30,7 +30,7 @@ export interface UseActorMutationParameters<
   reactor: Reactor<A, T>
   functionName: M
   callConfig?: CallConfig
-  refetchQueries?: QueryKey[]
+  invalidateQueries?: QueryKey[]
 }
 
 export type UseActorMutationConfig<
@@ -66,7 +66,7 @@ export const useActorMutation = <
 >({
   reactor,
   functionName,
-  refetchQueries,
+  invalidateQueries,
   onSuccess,
   callConfig,
   ...options
@@ -96,10 +96,10 @@ export const useActorMutation = <
         >
       >
     ) => {
-      if (refetchQueries) {
+      if (invalidateQueries) {
         await Promise.all(
-          refetchQueries.map((queryKey) =>
-            reactor.queryClient.refetchQueries({ queryKey })
+          invalidateQueries.map((queryKey) =>
+            reactor.queryClient.invalidateQueries({ queryKey })
           )
         )
       }
@@ -107,7 +107,7 @@ export const useActorMutation = <
         await onSuccess(...params)
       }
     },
-    [reactor, refetchQueries, onSuccess]
+    [reactor, invalidateQueries, onSuccess]
   )
 
   // Memoize mutation options

@@ -124,7 +124,7 @@ export function createActorHooks<A, T extends TransformKey>(
     }) as ActorHooks<A, T>["useActorSuspenseInfiniteQuery"],
 
     useActorMutation: ((config) => {
-      const { onSuccess, refetchQueries, ...options } = config
+      const { onSuccess, invalidateQueries, ...options } = config
       return createMutation(reactor, config).useMutation(options)
     }) as ActorHooks<A, T>["useActorMutation"],
   }

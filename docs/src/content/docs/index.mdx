@@ -77,7 +77,7 @@ const { data, isPending, refetch } = useActorQuery({
 // Invalidate after mutations — just like TanStack Query
 const { mutate } = useActorMutation({
   functionName: "transfer",
-  refetchQueries: [backend.generateQueryKey({ functionName: "getBalance" })],
+  invalidateQueries: [backend.generateQueryKey({ functionName: "getBalance" })],
 })
 ```
 

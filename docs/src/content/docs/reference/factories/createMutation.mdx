@@ -6,7 +6,7 @@ editUrl: false
 
 import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
 
-`createMutation` creates a reusable mutation object with pre-configured callbacks and refetch logic. Perfect for update/insert operations that need to invalidate related queries.
+`createMutation` creates a reusable mutation object with pre-configured callbacks and invalidation logic. Perfect for update/insert operations that need to invalidate related queries.
 
 ## Import
 
@@ -22,22 +22,22 @@ import { backend } from "./reactor"
 
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  refetchQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
+  invalidateQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
 })
 ```
 
 ## Configuration
 
-| Option            | Type                                        | Description                                 |
-| ----------------- | ------------------------------------------- | ------------------------------------------- |
-| `functionName`    | `string`                                    | The canister method to call (Required)      |
-| `callConfig`      | `CallConfig`                                | IC call configuration                       |
-| `refetchQueries`  | `QueryKey[]`                                | Queries to refetch on success               |
-| `onSuccess`       | `(data, variables, context) => void`        | Called on success                           |
-| `onError`         | `(error, variables, context) => void`       | Called on any error (network or canister)   |
-| `onCanisterError` | `(error, variables) => void`                | Called specifically on canister logic error |
-| `onSettled`       | `(data, error, variables, context) => void` | Called after mutation                       |
-| `onMutate`        | `(variables) => Promise<context>`           | Called before mutation (optimistic updates) |
+| Option              | Type                                        | Description                                 |
+| ------------------- | ------------------------------------------- | ------------------------------------------- |
+| `functionName`      | `string`                                    | The canister method to call (Required)      |
+| `callConfig`        | `CallConfig`                                | IC call configuration                       |
+| `invalidateQueries` | `QueryKey[]`                                | Queries to invalidate on success            |
+| `onSuccess`         | `(data, variables, context) => void`        | Called on success                           |
+| `onError`           | `(error, variables, context) => void`       | Called on any error (network or canister)   |
+| `onCanisterError`   | `(error, variables) => void`                | Called specifically on canister logic error |
+| `onSettled`         | `(data, error, variables, context) => void` | Called after mutation                       |
+| `onMutate`          | `(variables) => Promise<context>`           | Called before mutation (optimistic updates) |
 
 ## Handling Canister Errors
 
@@ -96,7 +96,7 @@ import { backend } from "../../reactor"
 
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  refetchQueries: [
+  invalidateQueries: [
     backend.generateQueryKey({ functionName: "getPosts" }),
   ],
 })
@@ -201,7 +201,7 @@ interface TransferForm {
 
 const transferMutation = createMutation(backend, {
   functionName: "transfer",
-  refetchQueries: [
+  invalidateQueries: [
     backend.generateQueryKey({ functionName: "getBalance" }),
   ],
 })
@@ -272,7 +272,7 @@ You can provide a list of query keys OR a function that returns them based on th
 ```typescript
 const createCommentMutation = createMutation(backend, {
   functionName: "createComment",
-  refetchQueries: [
+  invalidateQueries: [
     backend.generateQueryKey({ functionName: "getUserActivity" }),
   ],
 })
@@ -299,8 +299,8 @@ function CommentForm({ postId }) {
   const queryClient = useQueryClient()
 
   const { mutate } = createCommentMutation.useMutation({
-    // Refetch the post and comments after mutation
-    refetchQueries: [getPostKey(postId), getCommentsKey(postId)],
+    // Invalidate the post and comments after mutation
+    invalidateQueries: [getPostKey(postId), getCommentsKey(postId)],
   })
 
   // ...
@@ -321,7 +321,7 @@ const postsQuery = createQuery(backend, {
 
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  refetchQueries: [
+  invalidateQueries: [
     // Use the factory's getQueryKey method
     postsQuery.getQueryKey(),
   ],
@@ -392,21 +392,21 @@ function DeleteButton({ postId }: { postId: string }) {
 
 ## Best Practices
 
-### 1. Define Refetch Queries
+### 1. Define Invalidate Queries
 
 Always specify which queries should be invalidated:
 
 ```typescript
-// ✅ Good - explicitly refetch related data
+// ✅ Good - explicitly invalidate related data
 const mutation = createMutation(backend, {
   functionName: "createPost",
-  refetchQueries: [
+  invalidateQueries: [
     backend.generateQueryKey({ functionName: "getPosts" }),
     backend.generateQueryKey({ functionName: "getPostCount" }),
   ],
 })
 
-// ❌ Bad - no refetch, cache becomes stale
+// ❌ Bad - no invalidation, cache becomes stale
 const mutation = createMutation(backend, {
   functionName: "createPost",
 })
@@ -439,8 +439,8 @@ Disable buttons and show loading indicators:
 ## Notes
 
 <Aside type="tip">
-  Use `refetchQueries` for automatic cache invalidation. This is more reliable
-  than manually calling `queryClient.invalidateQueries()`.
+  Use `invalidateQueries` for automatic cache invalidation. This is more
+  reliable than manually calling `queryClient.invalidateQueries()`.
 </Aside>
 
 <Aside type="note">

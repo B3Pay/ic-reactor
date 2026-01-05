@@ -118,7 +118,7 @@ describe("createQuery", () => {
       expect(userQuery).toBeDefined()
       expect(userQuery.fetch).toBeInstanceOf(Function)
       expect(userQuery.useQuery).toBeInstanceOf(Function)
-      expect(userQuery.refetch).toBeInstanceOf(Function)
+      expect(userQuery.invalidate).toBeInstanceOf(Function)
       expect(userQuery.getQueryKey).toBeInstanceOf(Function)
     })
 

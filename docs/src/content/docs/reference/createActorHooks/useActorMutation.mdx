@@ -54,16 +54,16 @@ function CreatePost() {
 
 ### Optional Options
 
-| Option           | Type                 | Default | Description                      |
-| ---------------- | -------------------- | ------- | -------------------------------- |
-| `callConfig`     | `CallConfig`         | -       | IC agent call configuration      |
-| `refetchQueries` | `QueryKey[]`         | -       | Query keys to refetch on success |
-| `retry`          | `number \| boolean`  | `0`     | Number of retry attempts         |
-| `retryDelay`     | `number \| function` | -       | Delay between retries            |
-| `onMutate`       | `function`           | -       | Called before mutation           |
-| `onSuccess`      | `function`           | -       | Called on successful mutation    |
-| `onError`        | `function`           | -       | Called on mutation error         |
-| `onSettled`      | `function`           | -       | Called after success or error    |
+| Option              | Type                 | Default | Description                         |
+| ------------------- | -------------------- | ------- | ----------------------------------- |
+| `callConfig`        | `CallConfig`         | -       | IC agent call configuration         |
+| `invalidateQueries` | `QueryKey[]`         | -       | Query keys to invalidate on success |
+| `retry`             | `number \| boolean`  | `0`     | Number of retry attempts            |
+| `retryDelay`        | `number \| function` | -       | Delay between retries               |
+| `onMutate`          | `function`           | -       | Called before mutation              |
+| `onSuccess`         | `function`           | -       | Called on successful mutation       |
+| `onError`           | `function`           | -       | Called on mutation error            |
+| `onSettled`         | `function`           | -       | Called after success or error       |
 
 ### Callback Signatures
 
@@ -132,14 +132,14 @@ const { mutate } = useActorMutation({
 })
 ```
 
-### Refetch Queries After Mutation
+### Invalidate Queries After Mutation
 
 ```tsx
 import { backend } from "../reactor"
 
 const { mutate } = useActorMutation({
   functionName: "createPost",
-  refetchQueries: [
+  invalidateQueries: [
     backend.generateQueryKey({ functionName: "getPosts" }),
     backend.generateQueryKey({ functionName: "getPostCount" }),
   ],
@@ -343,9 +343,9 @@ Types are automatically inferred from your actor interface.
 ## Notes
 
 <Aside type="tip">
-  Use `refetchQueries` for simple cases where you just need to refresh related
-  data. For more complex scenarios (optimistic updates, cache manipulation), use
-  `onSuccess` with the QueryClient.
+  Use `invalidateQueries` for simple cases where you just need to refresh
+  related data. For more complex scenarios (optimistic updates, cache
+  manipulation), use `onSuccess` with the QueryClient.
 </Aside>
 
 <Aside type="caution">

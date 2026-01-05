@@ -220,13 +220,13 @@ describe("createMutation", () => {
     })
   })
 
-  describe("refetchQueries", () => {
-    it("should refetch queries on success", async () => {
-      const refetchSpy = vi.spyOn(queryClient, "refetchQueries")
+  describe("invalidateQueries", () => {
+    it("should invalidate queries on success", async () => {
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
 
       const updateUser = createMutation(mockReactor, {
         functionName: "updateUser",
-        refetchQueries: [["test-canister", "getUser"]],
+        invalidateQueries: [["test-canister", "getUser"]],
       })
 
       const { result } = renderHook(() => updateUser.useMutation(), {
@@ -241,7 +241,7 @@ describe("createMutation", () => {
         expect(result.current.isSuccess).toBe(true)
       })
 
-      expect(refetchSpy).toHaveBeenCalledWith({
+      expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: ["test-canister", "getUser"],
       })
     })

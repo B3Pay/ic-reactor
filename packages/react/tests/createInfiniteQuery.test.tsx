@@ -104,7 +104,7 @@ describe("createInfiniteQuery", () => {
 
       expect(postsQuery.fetch).toBeDefined()
       expect(postsQuery.useInfiniteQuery).toBeDefined()
-      expect(postsQuery.refetch).toBeDefined()
+      expect(postsQuery.invalidate).toBeDefined()
       expect(postsQuery.getQueryKey).toBeDefined()
       expect(postsQuery.getCacheData).toBeDefined()
     })
@@ -304,7 +304,7 @@ describe("createInfiniteQuery", () => {
         mockReactor.callMethod as ReturnType<typeof vi.fn>
       ).mock.calls.length
 
-      await postsQuery.refetch()
+      await postsQuery.invalidate()
 
       expect(
         (mockReactor.callMethod as ReturnType<typeof vi.fn>).mock.calls.length
@@ -444,7 +444,7 @@ describe("createInfiniteQueryFactory", () => {
 
     expect(postsQuery.fetch).toBeDefined()
     expect(postsQuery.useInfiniteQuery).toBeDefined()
-    expect(postsQuery.refetch).toBeDefined()
+    expect(postsQuery.invalidate).toBeDefined()
   })
 
   it("should fetch data with dynamic args", async () => {
