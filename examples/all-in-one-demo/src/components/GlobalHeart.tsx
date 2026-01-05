@@ -1,6 +1,6 @@
-import { useHeart } from "../hooks/useHeart"
+import { useHeart } from "../lib/useHeart"
 import { ControlPanel } from "./ControlPanel"
-import type { FrontendLog } from "../types"
+import type { FrontendLog } from "../lib/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"

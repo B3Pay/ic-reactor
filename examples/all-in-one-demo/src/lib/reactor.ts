@@ -7,9 +7,9 @@ import {
   createAuthHooks,
   createInfiniteQuery,
 } from "@ic-reactor/react"
-import { canisterId, idlFactory } from "./declarations/backend"
+import { canisterId, idlFactory } from "../declarations/backend"
 import { QueryClient } from "@tanstack/react-query"
-import type { _SERVICE } from "./declarations/backend/backend.did"
+import type { _SERVICE } from "../declarations/backend/backend.did"
 
 export const queryClient = new QueryClient()
 

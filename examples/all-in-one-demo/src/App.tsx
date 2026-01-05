@@ -5,10 +5,10 @@ import {
   getLogs,
   getPosts,
   queryClient,
-} from "./reactor"
+} from "./lib/reactor"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { QueryClientProvider, useIsFetching } from "@tanstack/react-query"
-import { useLogs } from "./hooks/useLogs"
+import { useLogs } from "./lib/useLogs"
 import { GlobalHeart } from "./components/GlobalHeart"
 import { LogConsole, BackendLogConsole } from "./components/LogConsole"
 import { PostSection } from "./components/PostSection"

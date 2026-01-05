@@ -1,6 +1,11 @@
 import React, { useOptimistic, useTransition } from "react"
-import { likeHeart, unlikeHeart, getLikes, useUserPrincipal } from "../reactor"
-import type { FrontendLog } from "../types"
+import {
+  likeHeart,
+  unlikeHeart,
+  getLikes,
+  useUserPrincipal,
+} from "../lib/reactor"
+import type { FrontendLog } from "../lib/types"
 
 /**
  * Custom hook to handle the Global Heart logic.

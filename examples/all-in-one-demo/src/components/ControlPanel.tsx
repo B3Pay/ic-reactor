@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
-import { toggleChaosMode, getChaosStatus } from "../reactor"
-import type { FrontendLog } from "../types"
+import { toggleChaosMode, getChaosStatus } from "../lib/reactor"
+import type { FrontendLog } from "../lib/types"
 import { Button } from "@/components/ui/button"
 import { Shield, Flame } from "lucide-react"
 

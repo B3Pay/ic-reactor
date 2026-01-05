@@ -4,8 +4,8 @@ import {
   getPosts,
   getPostsCount,
   useUserPrincipal,
-} from "../reactor"
-import type { FrontendLog } from "../types"
+} from "../lib/reactor"
+import type { FrontendLog } from "../lib/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"

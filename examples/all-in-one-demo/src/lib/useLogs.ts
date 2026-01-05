@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react"
-import type { FrontendLog } from "../types"
+import type { FrontendLog } from "../lib/types"
 
 /**
  * Custom hook to manage frontend logs.

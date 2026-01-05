@@ -1,4 +1,4 @@
-import { getLogs } from "../reactor"
+import { getLogs } from "../lib/reactor"
 import { Card, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Terminal, Database } from "lucide-react"

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useAgentState, useAuth } from "../reactor"
+import { useAgentState, useAuth } from "../lib/reactor"
 import {
   Card,
   CardContent,
