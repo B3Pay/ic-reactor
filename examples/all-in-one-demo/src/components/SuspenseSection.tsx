@@ -1,12 +1,9 @@
 import { Suspense } from "react"
-import {
-  getLikesSuspense,
-  getPostsCountSuspense,
-  queryClient,
-} from "../lib/reactor"
+import { getLikesSuspense, getPostsCountSuspense } from "../lib/reactor"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { queryClient } from "@/lib/config"
 
 function NumberSkeleton() {
   return <Skeleton className="h-9 w-16 bg-muted/50" />

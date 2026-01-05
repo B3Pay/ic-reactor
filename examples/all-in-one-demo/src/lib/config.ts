@@ -1,12 +1,31 @@
 import {
+  ClientManager,
+  DisplayReactor,
   createMutation,
   createQuery,
   createSuspenseQuery,
   createAuthHooks,
   createInfiniteQuery,
 } from "@ic-reactor/react"
+import { canisterId, idlFactory } from "../declarations/backend"
+import { QueryClient } from "@tanstack/react-query"
 import type { _SERVICE } from "../declarations/backend/backend.did"
-import { clientManager, queryClient, reactor } from "./config"
+
+export const queryClient = new QueryClient()
+
+export const clientManager = new ClientManager({
+  queryClient,
+  withProcessEnv: true,
+  agentOptions: {
+    verifyQuerySignatures: false,
+  },
+})
+
+export const reactor = new DisplayReactor<_SERVICE>({
+  clientManager,
+  canisterId,
+  idlFactory,
+})
 
 export const { useAuth, useAgentState, useUserPrincipal } =
   createAuthHooks(clientManager)
@@ -48,13 +67,20 @@ export const getPostsCountSuspense = createSuspenseQuery(reactor, {
   functionName: "get_posts_count",
 })
 
-export const batchCreatePosts = createMutation(reactor, {
-  functionName: "batch_create_posts",
-  refetchQueries: [getPosts.getQueryKey(), getPostsCount.getQueryKey()],
-})
-
 export const getLikesSuspense = createSuspenseQuery(reactor, {
   functionName: "get_likes",
+})
+
+export const batchCreatePosts = createMutation(reactor, {
+  functionName: "batch_create_posts",
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["get_posts"] })
+    queryClient.invalidateQueries({ queryKey: ["get_logs"] })
+  },
+})
+
+export const createPost = createMutation(reactor, {
+  functionName: "create_post",
 })
 
 export const toggleChaosMode = createMutation(reactor, {

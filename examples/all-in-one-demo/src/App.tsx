@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react"
-import {
-  clientManager,
-  getLikes,
-  getLogs,
-  getPosts,
-  queryClient,
-  useAgentState,
-} from "./lib/reactor"
+import { getLikes, getLogs, getPosts, useAgentState } from "./lib/reactor"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { QueryClientProvider, useIsFetching } from "@tanstack/react-query"
 import { useLogs } from "./lib/useLogs"
@@ -21,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Code, ChevronDown, ChevronUp } from "lucide-react"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
+import { clientManager, queryClient } from "./lib/config"
 
 /**
  * Root Application Component.
@@ -28,6 +22,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
  */
 export default function App() {
   const { isInitialized } = useAgentState()
+  console.log("isInitialized", isInitialized)
 
   useEffect(() => {
     clientManager.initialize()
