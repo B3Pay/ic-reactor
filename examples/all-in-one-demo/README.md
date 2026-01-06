@@ -23,7 +23,7 @@ We have recorded short walkthroughs to demonstrate the key features:
 ## 🛠 Prerequisites
 
 - [DFX SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install/index.mdx)
-- Node.js and pnpm
+- Node.js and npm
 
 ## 🚀 Setup & Run
 
@@ -52,13 +52,13 @@ We have recorded short walkthroughs to demonstrate the key features:
 4.  **Install Frontend Dependencies:**
 
     ```bash
-    pnpm install
+    npm install
     ```
 
 5.  **Start the Development Server:**
 
     ```bash
-    pnpm dev
+    npm dev
     ```
 
     Open `http://localhost:5173` to explore the demo!
