@@ -10,12 +10,12 @@ A powerful example demonstrating dynamic canister method calls by parsing Candid
 
 ## Features Demonstrated
 
-- `CandidReactor` for dynamic canister interactions
+- `CandidDisplayReactor` for dynamic canister interactions with display transformations
 - Runtime Candid interface string parsing
 - `queryDynamic` for one-shot query calls
 - `callDynamic` for one-shot update calls
-- BigInt serialization for display
-- JSON argument parsing
+- Automatic bigint → string conversion (no manual serialization needed!)
+- JSON argument parsing with display types
 - Error handling with user-friendly feedback
 
 ## Links
@@ -46,7 +46,7 @@ A powerful example demonstrating dynamic canister method calls by parsing Candid
 ## Key Code
 
 ```typescript
-import { CandidReactor } from "@ic-reactor/candid"
+import { CandidDisplayReactor } from "@ic-reactor/candid"
 import { ClientManager } from "@ic-reactor/core"
 
 // Create a client manager
@@ -54,8 +54,9 @@ const clientManager = new ClientManager({
   queryClient: new QueryClient(),
 })
 
-// Create a CandidReactor instance
-const reactor = new CandidReactor({
+// Create a CandidDisplayReactor instance
+// It automatically converts bigint → string, Principal → string
+const reactor = new CandidDisplayReactor({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger
   clientManager,
 })
@@ -67,7 +68,7 @@ const candidInterface = `service : {
   icrc1_balance_of : (record { owner : principal }) -> (nat) query;
 }`
 
-// Execute a dynamic query
+// Execute a dynamic query - result is already display-friendly!
 const result = await reactor.queryDynamic({
   functionName: "icrc1_name",
   candid: candidInterface,
@@ -75,6 +76,15 @@ const result = await reactor.queryDynamic({
 })
 
 console.log(result) // "Internet Computer"
+
+// Query balance with display types
+const balance = await reactor.queryDynamic({
+  functionName: "icrc1_balance_of",
+  candid: candidInterface,
+  args: [{ owner: "aaaaa-aa" }], // Principal as string!
+})
+
+console.log(balance) // "1000000" (string, not bigint!)
 ```
 
 ## Use Cases
@@ -91,7 +101,13 @@ console.log(result) // "Internet Computer"
 </Aside>
 
 <Aside type="note">
-  The `CandidReactor` parses the Candid interface string at runtime using the
-  `@ic-reactor/parser` package. This allows for maximum flexibility when working
-  with dynamic canister interfaces.
+  The `CandidDisplayReactor` combines dynamic Candid parsing with automatic
+  display transformations. This means `bigint` values are automatically
+  converted to `string`, making them safe for JSON serialization and UI display.
+</Aside>
+
+<Aside type="tip" title="CandidReactor vs CandidDisplayReactor">
+  Use `CandidReactor` if you need raw Candid types (`bigint`, `Principal`). Use
+  `CandidDisplayReactor` if you're building UIs and want automatic string
+  conversion.
 </Aside>

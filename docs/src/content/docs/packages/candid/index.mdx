@@ -30,11 +30,12 @@ Most IC applications know which canisters they'll interact with at build time. B
   <Card title="CandidReactor" icon="puzzle">
     Extends Reactor with dynamic method registration and calling
   </Card>
+  <Card title="CandidDisplayReactor" icon="star">
+    Dynamic Reactor with automatic display type transformations (bigint →
+    string)
+  </Card>
   <Card title="Local Parsing" icon="seti:config">
     Optional WASM parser for fast, offline Candid compilation
-  </Card>
-  <Card title="Full Reactor Integration" icon="approve-check">
-    All standard Reactor methods work after initialization
   </Card>
 </CardGrid>
 
@@ -122,14 +123,17 @@ const definition = await adapter.getCandidDefinition(
 
 ## Core Concepts
 
-### CandidReactor vs CandidAdapter
+### Choosing the Right Class
 
-| Class           | Purpose                                         |
-| --------------- | ----------------------------------------------- |
-| `CandidReactor` | Full Reactor with dynamic IDL initialization    |
-| `CandidAdapter` | Low-level Candid fetching and parsing utilities |
+| Class                  | Purpose                                                    |
+| ---------------------- | ---------------------------------------------------------- |
+| `CandidReactor`        | Dynamic Reactor with raw Candid types                      |
+| `CandidDisplayReactor` | Dynamic Reactor with display transformations (UI-friendly) |
+| `CandidAdapter`        | Low-level Candid fetching and parsing utilities            |
 
-**Use `CandidReactor`** when you want the full Reactor experience (caching, hooks, etc.) with dynamic canisters.
+**Use `CandidReactor`** when you want raw Candid types (`bigint`, `Principal`) and full Reactor experience.
+
+**Use `CandidDisplayReactor`** when building UIs — it automatically converts `bigint` to `string`, `Principal` to `string`, and supports form validation.
 
 **Use `CandidAdapter`** when you need fine-grained control over Candid fetching, or you're building your own abstractions.
 
@@ -165,6 +169,7 @@ const definition = adapter.compileLocal(candidSource)
 ## See Also
 
 - [CandidReactor](/ic-reactor/v3/packages/candid/candidreactor) — Full reference for CandidReactor
+- [CandidDisplayReactor](/ic-reactor/v3/packages/candid/candiddisplayreactor) — Dynamic Reactor with display transformations
 - [CandidAdapter](/ic-reactor/v3/packages/candid/candidadapter) — Full reference for CandidAdapter
 - [Reactor](/ic-reactor/v3/reference/reactor) — Base Reactor class documentation
 - [Error Handling](/ic-reactor/v3/guides/error-handling) — Handle canister errors

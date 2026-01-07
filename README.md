@@ -20,17 +20,20 @@ IC Reactor provides seamless integration between your applications and Internet 
 - 🔒 **End-to-End Type Safety** - From Candid to your components
 - ⚡ **TanStack Query Integration** - Automatic caching, background refetching, optimistic updates
 - 🔄 **Auto Transformations** - BigInt to string, Principal to text, and more with DisplayReactor
-- ⚛️ **React Ready** - `useActorQuery`, `useActorInfiniteQuery`, `useActorMutation` and more.
+- ⚛️ **React Ready** - `useActorQuery`, `useActorInfiniteQuery`, `useActorMutation` and more
 - 📦 **Result Unwrapping** - Automatic `Ok`/`Err` handling from Candid Result types
 - 🏗️ **Multi-Actor Support** - Manage multiple canisters with shared authentication
 - 🔐 **Internet Identity** - Seamless authentication integration
+- 🔍 **Dynamic Candid** - Runtime Candid parsing for building explorers and dev tools
 
 ## 📦 Packages
 
-| Package                                 | Description                                                 |
-| --------------------------------------- | ----------------------------------------------------------- |
-| [`@ic-reactor/core`](./packages/core)   | Core library with ClientManager, Reactor, and query caching |
-| [`@ic-reactor/react`](./packages/react) | React hooks for seamless integration (re-exports core)      |
+| Package                                   | Description                                                                      |
+| ----------------------------------------- | -------------------------------------------------------------------------------- |
+| [`@ic-reactor/core`](./packages/core)     | Core library with ClientManager, Reactor, DisplayReactor, and query caching      |
+| [`@ic-reactor/react`](./packages/react)   | React hooks for seamless integration (`useActorQuery`, `useActorMutation`, etc.) |
+| [`@ic-reactor/candid`](./packages/candid) | Dynamic Candid fetching, parsing, and `CandidReactor` / `CandidDisplayReactor`   |
+| [`@ic-reactor/parser`](./packages/parser) | Local WASM-based Candid parser (offline, fast compilation)                       |
 
 ## 🚀 Quick Start
 
@@ -43,7 +46,10 @@ pnpm add @ic-reactor/react@beta @icp-sdk/core @tanstack/react-query
 # For non-React apps
 pnpm add @ic-reactor/core@beta @icp-sdk/core @tanstack/query-core
 
-# Optional: Internet Identity authentication
+# For dynamic Candid (optional)
+pnpm add @ic-reactor/candid@beta @ic-reactor/parser
+
+# For Internet Identity authentication (optional)
 pnpm add @icp-sdk/auth
 ```
 
@@ -93,16 +99,52 @@ function Greeting() {
 }
 ```
 
+### Dynamic Candid (for Explorers & Dev Tools)
+
+```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+import { ClientManager } from "@ic-reactor/core"
+
+const clientManager = new ClientManager()
+
+// Create a reactor for ANY canister - no pre-generated types needed!
+const reactor = new CandidDisplayReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger
+  clientManager,
+})
+
+// Initialize from network (fetches Candid automatically)
+await reactor.initialize()
+
+// Call methods with display-friendly types (bigint → string)
+const balance = await reactor.callMethod({
+  functionName: "icrc1_balance_of",
+  args: [{ owner: "aaaaa-aa" }], // Principal as string!
+})
+
+console.log(balance) // "1000000" (string, ready for UI display)
+```
+
 ## 🎯 Why Reactor Instead of Actor?
 
-| Feature                | Standard Actor | Reactor               |
-| ---------------------- | -------------- | --------------------- |
-| Type-safe method calls | ✅             | ✅                    |
-| Query caching          | ❌             | ✅ Built-in           |
-| Automatic refetching   | ❌             | ✅ Background updates |
-| Result unwrapping      | ❌ Manual      | ✅ Automatic          |
-| Error typing           | ❌ Generic     | ✅ `CanisterError<E>` |
-| Identity sharing       | ❌ Per-actor   | ✅ Via ClientManager  |
+| Feature                 | Standard Actor | Reactor               |
+| ----------------------- | -------------- | --------------------- |
+| Type-safe method calls  | ✅             | ✅                    |
+| Query caching           | ❌             | ✅ Built-in           |
+| Automatic refetching    | ❌             | ✅ Background updates |
+| Result unwrapping       | ❌ Manual      | ✅ Automatic          |
+| Error typing            | ❌ Generic     | ✅ `CanisterError<E>` |
+| Identity sharing        | ❌ Per-actor   | ✅ Via ClientManager  |
+| Display transformations | ❌             | ✅ DisplayReactor     |
+
+## 🏃 Examples
+
+| Example                                       | Description                                        |
+| --------------------------------------------- | -------------------------------------------------- |
+| [Candid Parser](./examples/candid-parser)     | Dynamic canister calls with runtime Candid parsing |
+| [TanStack Router](./examples/tanstack-router) | Full app with routing and authentication           |
+| [Codec Demo](./examples/codec-demo)           | Type transformation demonstrations                 |
+| [TypeScript Demo](./examples/typescript-demo) | Pure TypeScript usage (no React)                   |
 
 ### Run Documentation Locally
 
@@ -111,14 +153,6 @@ cd docs
 pnpm install
 pnpm dev
 ```
-
-## 🏃 Examples
-
-| Example                                       | Description                              |
-| --------------------------------------------- | ---------------------------------------- |
-| [TanStack Router](./examples/tanstack-router) | Full app with routing and authentication |
-| [Codec Demo](./examples/codec-demo)           | Type transformation demonstrations       |
-| [TypeScript Demo](./examples/typescript-demo) | Pure TypeScript usage                    |
 
 ## 🛠️ Development
 

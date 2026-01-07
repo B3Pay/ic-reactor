@@ -9,7 +9,7 @@ prev: true
 
 > **isCanisterError**\<`E`\>(`error`): `error is CanisterError<E>`
 
-Defined in: [errors/index.ts:152](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/errors/index.ts#L152)
+Defined in: [errors/index.ts:152](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/errors/index.ts#L152)
 
 Type guard to check if an error is a CanisterError.
 Preserves the generic type E from the input when used in type narrowing.
@@ -44,7 +44,7 @@ if (isCanisterError(err)) {
 
 > **isCanisterError**(`error`): `error is CanisterError<unknown>`
 
-Defined in: [errors/index.ts:155](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/errors/index.ts#L155)
+Defined in: [errors/index.ts:155](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/errors/index.ts#L155)
 
 Type guard to check if an error is a CanisterError.
 Preserves the generic type E from the input when used in type narrowing.

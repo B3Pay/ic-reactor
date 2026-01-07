@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [display/visitor.ts:8](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L8)
+Defined in: [display/visitor.ts:8](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L8)
 
 ## Extends
 
@@ -31,7 +31,7 @@ Defined in: [display/visitor.ts:8](https://github.com/B3Pay/ic-reactor/blob/4618
 
 > **visitType**\<`T`\>(`t`, `data`): `ZodType`
 
-Defined in: [display/visitor.ts:9](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L9)
+Defined in: [display/visitor.ts:9](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L9)
 
 #### Type Parameters
 
@@ -63,7 +63,7 @@ Defined in: [display/visitor.ts:9](https://github.com/B3Pay/ic-reactor/blob/4618
 
 > **visitPrimitive**\<`T`\>(`t`, `data`): `ZodType`
 
-Defined in: [display/visitor.ts:13](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L13)
+Defined in: [display/visitor.ts:13](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L13)
 
 #### Type Parameters
 
@@ -95,7 +95,7 @@ Defined in: [display/visitor.ts:13](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitEmpty**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:17](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L17)
+Defined in: [display/visitor.ts:17](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L17)
 
 #### Parameters
 
@@ -121,7 +121,7 @@ Defined in: [display/visitor.ts:17](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitBool**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:21](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L21)
+Defined in: [display/visitor.ts:21](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L21)
 
 #### Parameters
 
@@ -147,7 +147,7 @@ Defined in: [display/visitor.ts:21](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitNull**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:25](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L25)
+Defined in: [display/visitor.ts:25](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L25)
 
 #### Parameters
 
@@ -173,7 +173,7 @@ Defined in: [display/visitor.ts:25](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitReserved**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:29](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L29)
+Defined in: [display/visitor.ts:29](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L29)
 
 #### Parameters
 
@@ -199,7 +199,7 @@ Defined in: [display/visitor.ts:29](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitText**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:33](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L33)
+Defined in: [display/visitor.ts:33](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L33)
 
 #### Parameters
 
@@ -225,7 +225,7 @@ Defined in: [display/visitor.ts:33](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitNumber**\<`T`\>(`t`, `data`): `ZodType`
 
-Defined in: [display/visitor.ts:37](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L37)
+Defined in: [display/visitor.ts:37](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L37)
 
 #### Type Parameters
 
@@ -257,7 +257,7 @@ Defined in: [display/visitor.ts:37](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitInt**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:41](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L41)
+Defined in: [display/visitor.ts:41](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L41)
 
 #### Parameters
 
@@ -283,7 +283,7 @@ Defined in: [display/visitor.ts:41](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitNat**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:52](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L52)
+Defined in: [display/visitor.ts:52](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L52)
 
 #### Parameters
 
@@ -309,7 +309,7 @@ Defined in: [display/visitor.ts:52](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitFloat**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:63](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L63)
+Defined in: [display/visitor.ts:63](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L63)
 
 #### Parameters
 
@@ -335,7 +335,7 @@ Defined in: [display/visitor.ts:63](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitFixedInt**(`t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:67](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L67)
+Defined in: [display/visitor.ts:67](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L67)
 
 #### Parameters
 
@@ -361,7 +361,7 @@ Defined in: [display/visitor.ts:67](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitFixedNat**(`t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:86](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L86)
+Defined in: [display/visitor.ts:86](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L86)
 
 #### Parameters
 
@@ -387,7 +387,7 @@ Defined in: [display/visitor.ts:86](https://github.com/B3Pay/ic-reactor/blob/461
 
 > **visitPrincipal**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:103](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L103)
+Defined in: [display/visitor.ts:103](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L103)
 
 #### Parameters
 
@@ -413,7 +413,7 @@ Defined in: [display/visitor.ts:103](https://github.com/B3Pay/ic-reactor/blob/46
 
 > **visitConstruct**\<`T`\>(`t`, `data`): `ZodType`
 
-Defined in: [display/visitor.ts:120](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L120)
+Defined in: [display/visitor.ts:120](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L120)
 
 #### Type Parameters
 
@@ -445,7 +445,7 @@ Defined in: [display/visitor.ts:120](https://github.com/B3Pay/ic-reactor/blob/46
 
 > **visitVec**\<`T`\>(`_t`, `elemType`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:124](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L124)
+Defined in: [display/visitor.ts:124](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L124)
 
 #### Type Parameters
 
@@ -481,7 +481,7 @@ Defined in: [display/visitor.ts:124](https://github.com/B3Pay/ic-reactor/blob/46
 
 > **visitOpt**\<`T`\>(`_t`, `elemType`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:184](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L184)
+Defined in: [display/visitor.ts:184](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L184)
 
 #### Type Parameters
 
@@ -517,7 +517,7 @@ Defined in: [display/visitor.ts:184](https://github.com/B3Pay/ic-reactor/blob/46
 
 > **visitRecord**(`_t`, `fields`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:213](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L213)
+Defined in: [display/visitor.ts:213](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L213)
 
 #### Parameters
 
@@ -547,7 +547,7 @@ Defined in: [display/visitor.ts:213](https://github.com/B3Pay/ic-reactor/blob/46
 
 > **visitTuple**\<`T`\>(`_t`, `components`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:261](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L261)
+Defined in: [display/visitor.ts:261](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L261)
 
 #### Type Parameters
 
@@ -583,7 +583,7 @@ Defined in: [display/visitor.ts:261](https://github.com/B3Pay/ic-reactor/blob/46
 
 > **visitVariant**(`_t`, `fields`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:290](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L290)
+Defined in: [display/visitor.ts:290](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L290)
 
 #### Parameters
 
@@ -613,7 +613,7 @@ Defined in: [display/visitor.ts:290](https://github.com/B3Pay/ic-reactor/blob/46
 
 > **visitRec**\<`T`\>(`_t`, `ty`, `data`): `ZodType`
 
-Defined in: [display/visitor.ts:385](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L385)
+Defined in: [display/visitor.ts:385](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L385)
 
 #### Type Parameters
 
@@ -649,7 +649,7 @@ Defined in: [display/visitor.ts:385](https://github.com/B3Pay/ic-reactor/blob/46
 
 > **visitFunc**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:394](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L394)
+Defined in: [display/visitor.ts:394](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L394)
 
 #### Parameters
 
@@ -675,7 +675,7 @@ Defined in: [display/visitor.ts:394](https://github.com/B3Pay/ic-reactor/blob/46
 
 > **visitService**(`_t`, `_data`): `ZodType`
 
-Defined in: [display/visitor.ts:428](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/display/visitor.ts#L428)
+Defined in: [display/visitor.ts:428](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/visitor.ts#L428)
 
 #### Parameters
 

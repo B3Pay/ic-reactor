@@ -1,0 +1,402 @@
+---
+title: CandidDisplayReactor
+description: Dynamic Reactor with display type transformations and runtime Candid initialization
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+`CandidDisplayReactor` combines the dynamic Candid capabilities of `CandidReactor` with the automatic display transformations of `DisplayReactor`. It provides the best of both worlds: **runtime Candid parsing** and **human-friendly type conversions**.
+
+## Overview
+
+This class is ideal for building UIs that interact with dynamic canisters:
+
+- **Display transformations**: `bigint` → `string`, `Principal` → `string`, optionals unwrapped
+- **Dynamic Candid parsing**: Initialize from Candid source or fetch from network
+- **Optional validation**: Register validators for form inputs
+- **All standard Reactor methods**: `callMethod()`, `fetchQuery()`, `invalidateQueries()`
+
+```typescript
+const reactor = new CandidDisplayReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
+await reactor.initialize() // Fetch IDL from network
+
+// Results are already display-friendly (strings, not bigint)!
+const balance = await reactor.callMethod({
+  functionName: "icrc1_balance_of",
+  args: [{ owner: "aaaaa-aa" }], // Principal as string!
+})
+
+console.log(balance) // "1000000" (string, not bigint)
+```
+
+## Import
+
+```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+```
+
+## Constructor
+
+```typescript
+new CandidDisplayReactor(config: CandidDisplayReactorParameters)
+```
+
+### Parameters
+
+| Parameter       | Type                        | Required | Description                                      |
+| --------------- | --------------------------- | -------- | ------------------------------------------------ |
+| `canisterId`    | `CanisterId`                | Yes      | The canister ID to interact with                 |
+| `clientManager` | `ClientManager`             | Yes      | Client manager from `@ic-reactor/core`           |
+| `candid`        | `string`                    | No       | Candid service definition (avoids network fetch) |
+| `idlFactory`    | `InterfaceFactory`          | No       | IDL factory (if already available)               |
+| `validators`    | `Record<string, Validator>` | No       | Initial validators for method arguments          |
+
+### Initialization Options
+
+<Tabs>
+  <TabItem label="Fetch from Network">
+    ```typescript
+    const reactor = new CandidDisplayReactor({
+      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+      clientManager,
+    })
+    
+    // Fetches Candid from canister metadata
+    await reactor.initialize()
+    
+    // Now call with display types
+    const balance = await reactor.callMethod({
+      functionName: "icrc1_balance_of",
+      args: [{ owner: "aaaaa-aa" }], // string, not Principal!
+    })
+    // balance is "1000000" (string, not bigint)
+    ```
+  </TabItem>
+  <TabItem label="Provide Candid String">
+    ```typescript
+    const reactor = new CandidDisplayReactor({
+      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+      clientManager,
+      candid: `service : {
+        icrc1_name : () -> (text) query;
+        icrc1_balance_of : (record { owner : principal }) -> (nat) query;
+      }`,
+    })
+    
+    // Parses provided Candid (no network fetch)
+    await reactor.initialize()
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+## Type Transformations
+
+`CandidDisplayReactor` automatically converts Candid types to display-friendly formats:
+
+| Candid Type      | Display Type | Example                                  |
+| ---------------- | ------------ | ---------------------------------------- |
+| `nat`, `int`     | `string`     | `1000000n` → `"1000000"`                 |
+| `nat64`, `int64` | `string`     | `1234567890n` → `"1234567890"`           |
+| `principal`      | `string`     | `Principal.fromText(...)` → `"aaaaa-aa"` |
+| `opt T`          | `T \| null`  | `[value]` → `value`, `[]` → `null`       |
+| `blob` (small)   | `string`     | Hex-encoded string                       |
+
+<Aside type="tip">
+  These transformations work bidirectionally! You can pass display types as
+  arguments (e.g., `"aaaaa-aa"` for Principal), and they'll be converted to
+  Candid types automatically.
+</Aside>
+
+---
+
+## Methods
+
+### initialize()
+
+Fetch or parse Candid and update the service definition with display codecs.
+
+```typescript
+await reactor.initialize()
+```
+
+If `candid` was provided in the constructor, it parses that. Otherwise, fetches from the network.
+
+---
+
+### registerMethod(options)
+
+Register a single method by its Candid signature, with display codec generation.
+
+```typescript
+await reactor.registerMethod({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+})
+
+// Now use with display types!
+const balance = await reactor.callMethod({
+  functionName: "icrc1_balance_of",
+  args: [{ owner: "aaaaa-aa" }], // string input
+})
+// balance is string (not bigint)
+```
+
+---
+
+### registerMethods(methods)
+
+Register multiple methods at once.
+
+```typescript
+await reactor.registerMethods([
+  { functionName: "icrc1_name", candid: "() -> (text) query" },
+  { functionName: "icrc1_symbol", candid: "() -> (text) query" },
+  {
+    functionName: "icrc1_balance_of",
+    candid: "(record { owner : principal }) -> (nat) query",
+  },
+])
+```
+
+---
+
+## Validation (Inherited from DisplayReactor)
+
+Add form validation that works with display types:
+
+```typescript
+// Register a validator
+reactor.registerValidator("transfer", ([input]) => {
+  const issues = []
+
+  // input.to is string (not Principal)
+  if (!input.to) {
+    issues.push({ path: ["to"], message: "Recipient is required" })
+  }
+
+  // input.amount is string (not bigint)
+  if (!/^\d+$/.test(input.amount)) {
+    issues.push({ path: ["amount"], message: "Must be a valid number" })
+  }
+
+  return issues.length > 0 ? { success: false, issues } : { success: true }
+})
+
+// Validation runs automatically on callMethod()
+try {
+  await reactor.callMethod({
+    functionName: "transfer",
+    args: [{ to: "", amount: "abc" }],
+  })
+} catch (err) {
+  // ValidationError with issues
+}
+```
+
+### Validation Methods
+
+| Method                        | Description                           |
+| ----------------------------- | ------------------------------------- |
+| `registerValidator(name, fn)` | Register a validator for a method     |
+| `unregisterValidator(name)`   | Remove a validator                    |
+| `hasValidator(name)`          | Check if a validator exists           |
+| `validate(name, args)`        | Validate without calling the canister |
+| `callMethodWithValidation()`  | Call with async validator support     |
+
+---
+
+## One-Shot Dynamic Calls
+
+For quick calls without explicit registration:
+
+### queryDynamic(options)
+
+Perform a dynamic query with display transformations.
+
+```typescript
+const balance = await reactor.queryDynamic<string>({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner: "aaaaa-aa" }], // Display types!
+})
+// balance is "1000000" (string)
+```
+
+---
+
+### callDynamic(options)
+
+Perform a dynamic update call with display transformations.
+
+```typescript
+const result = await reactor.callDynamic({
+  functionName: "transfer",
+  candid:
+    "(record { to : principal; amount : nat }) -> (variant { Ok : nat; Err : text })",
+  args: [{ to: "aaaaa-aa", amount: "100" }], // Strings!
+})
+```
+
+---
+
+### fetchQueryDynamic(options)
+
+Dynamic query with TanStack Query caching.
+
+```typescript
+const balance = await reactor.fetchQueryDynamic({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner: "aaaaa-aa" }],
+})
+// Subsequent calls return cached result
+```
+
+---
+
+## Examples
+
+### UI-Friendly Token Balance
+
+```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+async function getTokenBalance(canisterId: string, owner: string) {
+  const reactor = new CandidDisplayReactor({ canisterId, clientManager })
+
+  await reactor.registerMethod({
+    functionName: "icrc1_balance_of",
+    candid: "(record { owner : principal }) -> (nat) query",
+  })
+
+  // Pass Principal as string, get balance as string
+  const balance = await reactor.callMethod({
+    functionName: "icrc1_balance_of" as any,
+    args: [{ owner }], // owner is a string like "aaaaa-aa"
+  })
+
+  return balance // "1000000" - ready for UI display!
+}
+```
+
+### Form with Validation
+
+```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+const reactor = new CandidDisplayReactor({
+  canisterId,
+  clientManager,
+  candid: `service : {
+    transfer : (record { to : principal; amount : nat }) -> (variant { Ok : nat; Err : text });
+  }`,
+})
+
+await reactor.initialize()
+
+// Add form validation
+reactor.registerValidator("transfer", ([input]) => {
+  if (!input.to || input.to.length < 5) {
+    return {
+      success: false,
+      issues: [{ path: ["to"], message: "Invalid principal" }],
+    }
+  }
+  if (!input.amount || parseInt(input.amount) <= 0) {
+    return {
+      success: false,
+      issues: [{ path: ["amount"], message: "Amount must be positive" }],
+    }
+  }
+  return { success: true }
+})
+
+// Use in form submission
+async function handleSubmit(formData: { to: string; amount: string }) {
+  try {
+    const result = await reactor.callMethod({
+      functionName: "transfer",
+      args: [formData], // Direct from form - no conversion needed!
+    })
+    console.log("Success:", result)
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      // Show form errors
+      err.issues.forEach((issue) => {
+        console.log(`${issue.path}: ${issue.message}`)
+      })
+    }
+  }
+}
+```
+
+### React Integration
+
+```tsx
+import { useQuery, useMutation } from "@tanstack/react-query"
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+// Create a reusable hook for dynamic canister queries
+function useDynamicBalance(reactor: CandidDisplayReactor, owner: string) {
+  return useQuery({
+    queryKey: [reactor.canisterId.toString(), "icrc1_balance_of", owner],
+    queryFn: async () => {
+      await reactor.registerMethod({
+        functionName: "icrc1_balance_of",
+        candid: "(record { owner : principal }) -> (nat) query",
+      })
+      return reactor.callMethod({
+        functionName: "icrc1_balance_of" as any,
+        args: [{ owner }], // String input
+      })
+    },
+  })
+}
+
+function BalanceDisplay({ canisterId, owner }: Props) {
+  const reactor = useMemo(
+    () => new CandidDisplayReactor({ canisterId, clientManager }),
+    [canisterId]
+  )
+
+  const { data: balance, isLoading } = useDynamicBalance(reactor, owner)
+
+  if (isLoading) return <div>Loading...</div>
+
+  // balance is already a string - no formatting needed!
+  return <div>Balance: {balance}</div>
+}
+```
+
+---
+
+## When to Use
+
+| Use Case                     | Recommended Class      |
+| ---------------------------- | ---------------------- |
+| Dynamic canister, raw types  | `CandidReactor`        |
+| Dynamic canister, UI display | `CandidDisplayReactor` |
+| Known canister, raw types    | `Reactor`              |
+| Known canister, UI display   | `DisplayReactor`       |
+
+<Aside type="tip" title="Perfect for UI Development">
+  Use `CandidDisplayReactor` when building user interfaces that need to: -
+  Display large numbers (bigint → string) - Work with form inputs (string
+  Principal IDs) - Validate user input before canister calls
+</Aside>
+
+---
+
+## See Also
+
+- [CandidReactor](/ic-reactor/v3/packages/candid/candidreactor) — Dynamic Reactor without display transformations
+- [DisplayReactor](/ic-reactor/v3/reference/displayreactor) — Static Reactor with display transformations
+- [CandidAdapter](/ic-reactor/v3/packages/candid/candidadapter) — Low-level Candid utilities
+- [@ic-reactor/candid Overview](/ic-reactor/v3/packages/candid/) — Package overview

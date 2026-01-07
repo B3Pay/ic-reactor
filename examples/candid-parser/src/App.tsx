@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { CandidReactor } from "@ic-reactor/candid"
+import { CandidDisplayReactor } from "@ic-reactor/candid"
 import { ClientManager } from "@ic-reactor/core"
 import ReactJson from "@microlink/react-json-view"
 import { QueryClient } from "@tanstack/react-query"
@@ -35,13 +35,17 @@ function App() {
     setResult(null)
 
     try {
-      // Create reactor instance
-      const reactor = new CandidReactor({
+      // Create reactor instance with display transformations
+      // CandidDisplayReactor automatically converts:
+      // - bigint → string
+      // - Principal → string
+      // - [T] | [] → T | null
+      const reactor = new CandidDisplayReactor({
         canisterId,
         clientManager,
       })
 
-      // Parse arguments
+      // Parse arguments (already in display format - strings for Principal/bigint)
       let args = []
       try {
         args = JSON.parse(argsInput)
@@ -54,14 +58,14 @@ function App() {
 
       let res
       if (callType === "query") {
-        // Use queryDynamic for one-shot query
+        // Use queryDynamic for one-shot query with display transformations
         res = await reactor.queryDynamic({
           functionName,
           candid,
           args,
         })
       } else {
-        // Use callDynamic for one-shot update
+        // Use callDynamic for one-shot update with display transformations
         res = await reactor.callDynamic({
           functionName,
           candid,
@@ -69,23 +73,13 @@ function App() {
         })
       }
 
-      // Handle BigInt serialization for display
-      const serializableRes = JSON.parse(
-        JSON.stringify(res, (_, v) =>
-          typeof v === "bigint" ? v.toString() + "n" : v
-        )
-      )
-
+      // No need for BigInt serialization - CandidDisplayReactor already converts to strings!
       // Wrap primitive values in an object for ReactJson
       // ReactJson requires a valid object, not primitives
-      if (
-        serializableRes === null ||
-        typeof serializableRes !== "object" ||
-        Array.isArray(serializableRes)
-      ) {
-        setResult({ value: serializableRes })
+      if (res === null || typeof res !== "object" || Array.isArray(res)) {
+        setResult({ value: res })
       } else {
-        setResult(serializableRes)
+        setResult(res)
       }
     } catch (err) {
       console.error(err)
