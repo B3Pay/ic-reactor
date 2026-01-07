@@ -168,7 +168,7 @@ export const candidSidebar = {
 export const parserSidebar = {
   label: "@ic-reactor/parser",
   items: [
-    { label: "Overview", link: "/packages/parser/" },
+    { label: "Overview", link: "/packages/parser" },
     { label: "API Reference", link: "/packages/parser/reference" },
   ],
 }
