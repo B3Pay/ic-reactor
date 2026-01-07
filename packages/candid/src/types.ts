@@ -61,3 +61,22 @@ export interface ReactorParser {
    */
   validateIDL(candidSource: string): boolean
 }
+
+/**
+ * Options for calling a canister method with inline Candid.
+ */
+export interface CallOptions<T extends unknown[] = unknown[]> {
+  /** The method name to call. */
+  methodName: string
+  /**
+   * The Candid signature for the method.
+   * Can be either a method signature like "(text) -> (text) query"
+   * or a full service definition like "service : { greet: (text) -> (text) query }".
+   */
+  candid: string
+  /**
+   * The arguments to pass to the method.
+   * These will be encoded using the Candid types from the signature.
+   */
+  args?: T
+}

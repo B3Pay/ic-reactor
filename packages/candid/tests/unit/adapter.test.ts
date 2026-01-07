@@ -564,7 +564,7 @@ describe("CandidAdapter", () => {
         validateIDL: vi.fn(),
       }
 
-      await adapter.initializeParser(mockParser)
+      await adapter.loadParser(mockParser)
       expect(adapter.hasParser).toBe(true)
     })
 
@@ -576,7 +576,7 @@ describe("CandidAdapter", () => {
         new Map([["candid", candidSource]])
       )
 
-      const result = await adapter.fetchCandidDefinition(
+      const result = await adapter.fetchCandidSource(
         "ryjl3-tyaaa-aaaaa-aaaba-cai"
       )
       expect(result).toBe(candidSource)
@@ -590,7 +590,7 @@ describe("CandidAdapter", () => {
       }
 
       await adapter.loadParser(mockParser)
-      const result = adapter.parseDidToJs("service {}")
+      const result = adapter.compileLocal("service {}")
       expect(result).toBe("compiled")
     })
 
@@ -602,7 +602,7 @@ describe("CandidAdapter", () => {
       }
 
       await adapter.loadParser(mockParser)
-      const result = adapter.validateIDL("service {}")
+      const result = adapter.validateCandid("service {}")
       expect(result).toBe(true)
     })
   })

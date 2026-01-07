@@ -194,7 +194,9 @@ type CanisterId = string | Principal
 
 3. **Evaluation**: The compiled JavaScript is dynamically imported to extract the `idlFactory` and optional `init` function.
 
-4. **Identity Changes**: The adapter subscribes to identity changes from the ClientManager. When the identity changes, it re-evaluates the default didjs canister ID (unless a custom one was provided).
+4. **Dynamic Execution**: For `call` and `query` methods, the adapter wraps the provided Candid signature in a temporary service definition, compiles it to an `idlFactory`, and then uses an `Actor` to encode arguments and execute the call reliably.
+
+5. **Identity Changes**: The adapter subscribes to identity changes from the ClientManager. When the identity changes, it re-evaluates the default didjs canister ID (unless a custom one was provided).
 
 ## Standalone Usage
 
