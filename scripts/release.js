@@ -35,6 +35,7 @@ console.log(`\n🚀 Starting release process for v${version}...\n`)
 updatePackageJson("package.json", version)
 updatePackageJson("packages/core/package.json", version)
 updatePackageJson("packages/react/package.json", version)
+updatePackageJson("packages/candid/package.json", version)
 
 // 2. Update library lockfile while examples still point to workspace
 console.log("\n🔗 Updating lockfile (pnpm install)...")
@@ -78,7 +79,7 @@ if (shouldPublish || dryRun) {
   console.log(`\n📤 Publishing to npm${dryRun ? " (DRY RUN)" : ""}...`)
   try {
     // Only publish @ic-reactor/core and @ic-reactor/react (not parser, docs, e2e, etc.)
-    const publishCmd = `pnpm --filter "@ic-reactor/core" --filter "@ic-reactor/react" publish --no-git-checks --access public${dryRun ? " --dry-run" : ""}`
+    const publishCmd = `pnpm --filter "@ic-reactor/core" --filter "@ic-reactor/react" --filter "@ic-reactor/candid" publish --no-git-checks --access public${dryRun ? " --dry-run" : ""}`
     console.log(`Running: ${publishCmd}\n`)
     execSync(publishCmd, { stdio: "inherit", cwd: rootDir })
     console.log("\n✅ Published successfully!")
