@@ -1,0 +1,44 @@
+---
+import type { Props } from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/Sidebar.astro';
+
+const { sidebar } = Astro.props;
+const pathname = Astro.url.pathname;
+
+let filteredSidebar = sidebar;
+
+// Helper to find specific package groups
+// Note: We rely on the structure defined in astro.config.mjs
+const packagesGroup = sidebar?.find((group) => group.label === 'Packages' && 'items' in group) as any;
+
+if (pathname.includes('/packages/candid')) {
+  // CANDID VIEW
+  // Find the candid group inside Packages
+  const candidGroup = packagesGroup?.items.find((item: any) => item.label === '@ic-reactor/candid' && 'items' in item);
+  if (candidGroup && 'items' in candidGroup) {
+    filteredSidebar = candidGroup.items;
+  } else {
+    // Fallback if structure changes, maybe show nothing or just the package group?
+    // If not found, we might want to show empty or all? Let's show all for safety or just the packages group
+    filteredSidebar = packagesGroup ? [packagesGroup] : sidebar; 
+  }
+} else if (pathname.includes('/packages/parser')) {
+  // PARSER VIEW
+  const parserGroup = packagesGroup?.items.find((item: any) => item.label === '@ic-reactor/parser' && 'items' in item);
+   if (parserGroup && 'items' in parserGroup) {
+    filteredSidebar = parserGroup.items;
+  } else {
+    filteredSidebar = packagesGroup ? [packagesGroup] : sidebar;
+  }
+
+} else {
+  // CORE / REACT VIEW
+  // Filter out the 'Packages' group entirely, OR just the packages we treat as separate.
+  // The user said: "other things should not be displayed" when viewing Core.
+  // Core is the default view.
+  // So we remove "Packages" group from the default view.
+  filteredSidebar = sidebar?.filter((group) => group.label !== 'Packages');
+}
+---
+
+<Default {...Astro.props} sidebar={filteredSidebar} />
