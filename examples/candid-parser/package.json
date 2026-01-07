@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/candid": "^3.0.0-beta.8",
+    "@ic-reactor/candid": "^3.0.1-beta.0",
     "@ic-reactor/core": "^3.0.1-beta.0",
     "@ic-reactor/react": "^3.0.1-beta.0",
     "react": "^19.2.3",
