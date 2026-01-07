@@ -7,7 +7,7 @@ export default defineConfig({
   base: "/ic-reactor/v3",
   integrations: [
     starlight({
-      title: "IC-Reactor v3",
+      title: "IC-Reactor",
       logo: {
         src: "./src/assets/icon.svg",
       },
@@ -28,11 +28,6 @@ export default defineConfig({
           label: "GitHub",
           icon: "github",
           href: "https://github.com/b3pay/ic-reactor",
-        },
-        {
-          label: "v2 Docs",
-          icon: "open-book",
-          href: "https://b3pay.github.io/ic-reactor/",
         },
       ],
       editLink: {
@@ -284,6 +279,9 @@ export default defineConfig({
         },
       ],
       customCss: ["./src/styles/custom.css"],
+      components: {
+        SiteTitle: "./src/components/SiteTitle.astro",
+      },
     }),
   ],
 })
