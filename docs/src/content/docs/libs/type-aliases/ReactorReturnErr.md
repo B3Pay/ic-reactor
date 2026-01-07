@@ -7,7 +7,7 @@ prev: true
 
 > **ReactorReturnErr**\<`A`, `M`, `Transform`\> = [`CanisterError`](../classes/CanisterError.md)\<[`TransformReturnRegistry`](../interfaces/TransformReturnRegistry.md)\<[`ErrResult`](ErrResult.md)\<[`ActorMethodReturnType`](ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>\[`Transform`\]\> \| [`CallError`](../classes/CallError.md)
 
-Defined in: [types/reactor.ts:142](https://github.com/B3Pay/ic-reactor/blob/2c4a4d6d0734eef45eb58617a4984eddfb64f9d9/packages/core/src/types/reactor.ts#L142)
+Defined in: [types/reactor.ts:142](https://github.com/B3Pay/ic-reactor/blob/b38e21a4f5fbba372b591197117f8b9d957059d2/packages/core/src/types/reactor.ts#L142)
 
 ## Type Parameters
 

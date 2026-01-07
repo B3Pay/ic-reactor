@@ -5,15 +5,51 @@ import Default from '@astrojs/starlight/components/SiteTitle.astro';
 
 <div class="site-title-wrapper">
   <Default {...Astro.props} />
-  <div class="version-dropdown">
-    <select id="version-select" onchange="handleVersionChange(event)">
-      <option value="v3" selected>v3</option>
-      <option value="v2">v2</option>
-    </select>
+  <div class="controls-group">
+    <div class="dropdown-wrapper">
+      <select id="package-select" onchange="handlePackageChange(event)" aria-label="Select package">
+        <option value="core" selected>Core / React</option>
+        <option value="candid">@ic-reactor/candid</option>
+        <option value="parser">@ic-reactor/parser</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <div class="dropdown-wrapper">
+      <select id="version-select" onchange="handleVersionChange(event)" aria-label="Select version">
+        <option value="v3" selected>v3</option>
+        <option value="v2">v2</option>
+      </select>
+    </div>
   </div>
 </div>
 
 <script is:inline>
+  // Set initial package selection based on URL
+  document.addEventListener('DOMContentLoaded', () => {
+    const path = window.location.pathname;
+    const packageSelect = document.getElementById('package-select');
+    
+    if (path.includes('/packages/candid')) {
+      packageSelect.value = 'candid';
+    } else if (path.includes('/packages/parser')) {
+      packageSelect.value = 'parser';
+    } else {
+      packageSelect.value = 'core';
+    }
+  });
+
+  function handlePackageChange(event) {
+    const pkg = event.target.value;
+    if (pkg === 'candid') {
+      window.location.href = '/ic-reactor/v3/packages/candid/';
+    } else if (pkg === 'parser') {
+      // Assuming parser page exists or will exist, otherwise to main packages for now
+      window.location.href = '/ic-reactor/v3/packages/parser/'; 
+    } else {
+      window.location.href = '/ic-reactor/v3/';
+    }
+  }
+
   function handleVersionChange(event) {
     const version = event.target.value;
     if (version === 'v2') {
@@ -28,39 +64,49 @@ import Default from '@astrojs/starlight/components/SiteTitle.astro';
   .site-title-wrapper {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 1rem;
   }
 
-  .version-dropdown {
+  .controls-group {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
+    background-color: var(--sl-color-gray-6);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    padding: 0.125rem;
   }
 
-  .version-dropdown select {
+  .divider {
+    width: 1px;
+    height: 1.25rem;
+    background-color: var(--sl-color-gray-5);
+  }
+
+  .dropdown-wrapper select {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    background-color: var(--sl-color-gray-6);
-    border: 1px solid var(--sl-color-gray-5);
-    border-radius: 0.375rem;
+    background-color: transparent;
+    border: none;
     color: var(--sl-color-text);
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 500;
-    padding: 0.25rem 1.75rem 0.25rem 0.5rem;
+    padding: 0.25rem 1.5rem 0.25rem 0.5rem;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 0.5rem center;
-    transition: border-color 0.2s, background-color 0.2s;
+    background-position: right 0.25rem center;
+    border-radius: 0.25rem;
   }
 
-  .version-dropdown select:hover {
-    border-color: var(--sl-color-accent);
+  .dropdown-wrapper select:hover {
     background-color: var(--sl-color-gray-5);
+    color: var(--sl-color-white);
   }
-
-  .version-dropdown select:focus {
-    outline: 2px solid var(--sl-color-accent);
-    outline-offset: 2px;
+  
+  .dropdown-wrapper select:focus {
+    outline: none;
+    background-color: var(--sl-color-gray-5);
   }
 </style>
