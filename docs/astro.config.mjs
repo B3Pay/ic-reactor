@@ -92,6 +92,10 @@ export default defineConfig({
               link: "/packages/candid/candidreactor",
             },
             {
+              label: "CandidDisplayReactor",
+              link: "/packages/candid/candiddisplayreactor",
+            },
+            {
               label: "createAuthHooks",
               items: [
                 {
