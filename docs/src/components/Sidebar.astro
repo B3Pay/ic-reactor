@@ -17,18 +17,17 @@ if (pathname.includes('/packages/candid')) {
   // Find the candid group inside Packages
   const candidGroup = packagesGroup?.items.find((item: any) => item.label === '@ic-reactor/candid');
   
-  if (candidGroup && 'items' in candidGroup) {
+  if (candidGroup && candidGroup.items) {
      // We want to show the ITEMS of the candid group as the root sidebar
     filteredSidebar = candidGroup.items;
   } else {
     // If not found, try to just show the packages group itself as a fallback
-    // Or if candidGroup exists but has no items? 
     filteredSidebar = candidGroup ? [candidGroup] : (packagesGroup ? [packagesGroup] : sidebar);
   }
 } else if (pathname.includes('/packages/parser')) {
   // PARSER VIEW
   const parserGroup = packagesGroup?.items.find((item: any) => item.label === '@ic-reactor/parser');
-   if (parserGroup && 'items' in parserGroup) {
+   if (parserGroup && parserGroup.items) {
     filteredSidebar = parserGroup.items;
   } else {
     filteredSidebar = parserGroup ? [parserGroup] : (packagesGroup ? [packagesGroup] : sidebar);
