@@ -14,6 +14,7 @@ jobs:
     name: Release to npm
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         workspace:
@@ -76,6 +77,7 @@ jobs:
           npm publish "$TARBALL" --access public --tag $TAG
 
       - name: Create GitHub Release
+        if: matrix.workspace == 'packages/core'
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
