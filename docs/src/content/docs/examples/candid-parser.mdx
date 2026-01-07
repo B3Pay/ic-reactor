@@ -1,0 +1,97 @@
+---
+title: "Candid Parser"
+description: Dynamic canister calls using runtime Candid interface parsing
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+A powerful example demonstrating dynamic canister method calls by parsing Candid interface strings at runtime. Perfect for building explorers, developer tools, or any application that needs to interact with canisters without pre-generated type definitions.
+
+## Features Demonstrated
+
+- `CandidReactor` for dynamic canister interactions
+- Runtime Candid interface string parsing
+- `queryDynamic` for one-shot query calls
+- `callDynamic` for one-shot update calls
+- BigInt serialization for display
+- JSON argument parsing
+- Error handling with user-friendly feedback
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/candid-parser?embed=1&theme=dark&file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/candid-parser"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/candid-parser?embed=1&theme=dark&file=src/App.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor Candid Parser Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Key Code
+
+```typescript
+import { CandidReactor } from "@ic-reactor/candid"
+import { ClientManager } from "@ic-reactor/core"
+
+// Create a client manager
+const clientManager = new ClientManager({
+  queryClient: new QueryClient(),
+})
+
+// Create a CandidReactor instance
+const reactor = new CandidReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger
+  clientManager,
+})
+
+// Define your Candid interface as a string
+const candidInterface = `service : {
+  icrc1_name : () -> (text) query;
+  icrc1_symbol : () -> (text) query;
+  icrc1_balance_of : (record { owner : principal }) -> (nat) query;
+}`
+
+// Execute a dynamic query
+const result = await reactor.queryDynamic({
+  functionName: "icrc1_name",
+  candid: candidInterface,
+  args: [],
+})
+
+console.log(result) // "Internet Computer"
+```
+
+## Use Cases
+
+- **Canister Explorers**: Build tools that can interact with any canister by pasting its Candid interface
+- **Developer Debugging**: Test canister methods without setting up full type definitions
+- **Admin Dashboards**: Create dynamic admin panels for managing multiple canisters
+- **Learning Tools**: Help developers understand Candid interfaces interactively
+
+<Aside type="tip">
+  This example connects to the ICP Ledger mainnet canister by default, so it
+  works without a local replica. Try changing the canister ID and Candid
+  interface to explore other canisters!
+</Aside>
+
+<Aside type="note">
+  The `CandidReactor` parses the Candid interface string at runtime using the
+  `@ic-reactor/parser` package. This allows for maximum flexibility when working
+  with dynamic canister interfaces.
+</Aside>

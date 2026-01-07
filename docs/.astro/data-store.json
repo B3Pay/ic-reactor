@@ -306,7 +306,9 @@
     3620,
     3621,
     3631,
-    3632
+    3632,
+    3641,
+    3642
   ],
   "contributing",
   {
@@ -495,9 +497,9 @@
   [],
   { "hidden": 19, "attrs": 86 },
   {},
-  "import { Card, CardGrid, LinkCard } from \"@astrojs/starlight/components\"\n\nExplore IC Reactor through live, interactive examples. Each example can be opened in StackBlitz for hands-on experimentation.\n\n\u003CCardGrid>\n  \u003CLinkCard\n    title=\"Query Demo\"\n    description=\"Queries, suspense, and real-time data fetching from mainnet ICP ledgers\"\n    href=\"/ic-reactor/v3/examples/query-demo\"\n  />\n  \u003CLinkCard\n    title=\"TanStack Router\"\n    description=\"Full app with routing, loaders, and authentication\"\n    href=\"/ic-reactor/v3/examples/tanstack-router\"\n  />\n  \u003CLinkCard\n    title=\"Codec Demo\"\n    description=\"Automatic type transformations with DisplayReactor\"\n    href=\"/ic-reactor/v3/examples/codec-demo\"\n  />\n  \u003CLinkCard\n    title=\"Infinite Query\"\n    description=\"Infinite scrolling and pagination\"\n    href=\"/ic-reactor/v3/examples/infinite-query\"\n  />\n  \u003CLinkCard\n    title=\"TypeScript Demo\"\n    description=\"Pure TypeScript usage without React\"\n    href=\"/ic-reactor/v3/examples/typescript-demo\"\n  />\n\u003C/CardGrid>\n\n## Running Examples Locally\n\n```bash\ngit clone https://github.com/b3pay/ic-reactor.git\ncd ic-reactor-v3\n\n# Install dependencies\npnpm install\n\n# Build packages first\npnpm build\n\n# Run a specific example\ncd examples/query-demo\npnpm dev\n```",
+  "import { Card, CardGrid, LinkCard } from \"@astrojs/starlight/components\"\n\nExplore IC Reactor through live, interactive examples. Each example can be opened in StackBlitz for hands-on experimentation.\n\n\u003CCardGrid>\n  \u003CLinkCard\n    title=\"Query Demo\"\n    description=\"Queries, suspense, and real-time data fetching from mainnet ICP ledgers\"\n    href=\"/ic-reactor/v3/examples/query-demo\"\n  />\n  \u003CLinkCard\n    title=\"TanStack Router\"\n    description=\"Full app with routing, loaders, and authentication\"\n    href=\"/ic-reactor/v3/examples/tanstack-router\"\n  />\n  \u003CLinkCard\n    title=\"Codec Demo\"\n    description=\"Automatic type transformations with DisplayReactor\"\n    href=\"/ic-reactor/v3/examples/codec-demo\"\n  />\n  \u003CLinkCard\n    title=\"Infinite Query\"\n    description=\"Infinite scrolling and pagination\"\n    href=\"/ic-reactor/v3/examples/infinite-query\"\n  />\n  \u003CLinkCard\n    title=\"TypeScript Demo\"\n    description=\"Pure TypeScript usage without React\"\n    href=\"/ic-reactor/v3/examples/typescript-demo\"\n  />\n  \u003CLinkCard\n    title=\"Candid Parser\"\n    description=\"Dynamic canister calls with runtime Candid parsing\"\n    href=\"/ic-reactor/v3/examples/candid-parser\"\n  />\n\u003C/CardGrid>\n\n## Running Examples Locally\n\n```bash\ngit clone https://github.com/b3pay/ic-reactor.git\ncd ic-reactor-v3\n\n# Install dependencies\npnpm install\n\n# Build packages first\npnpm build\n\n# Run a specific example\ncd examples/query-demo\npnpm dev\n```",
   "src/content/docs/examples/index.mdx",
-  "a4997ba7658462dd",
+  "594455cd11f1d6e4",
   "examples/infinite-query",
   {
     "id": 90,
@@ -7000,5 +7002,32 @@
   {},
   "## Exports\n\nThe package exports two main functions for converting Candid definitions.\n\n### `didToJs`\n\n`didToJs(candid: string): string`\n\nCompiles a Candid interface string into a JavaScript module string.\n\n**Parameters:**\n\n- `candid`: The Candid interface definition string.\n\n**Returns:**\n\n- A string containing the JavaScript module source.\n\n**Output Exports:**\nThe generated JavaScript module exports:\n\n- `idlFactory`: An `IDL.InterfaceFactory` function.\n- `init`: A function that returns initialization arguments.\n\n```typescript\nconst js = didToJs(\"service:{}\")\n// export const idlFactory ...\n```\n\n### `didToTs`\n\n`didToTs(candid: string): string`\n\nCompiles a Candid interface string into a TypeScript declaration string.\n\n**Parameters:**\n\n- `candid`: The Candid interface definition string.\n\n**Returns:**\n\n- A string containing the TypeScript declaration source.\n\n**Output Includes:**\n\n- Imports from `@icp-sdk/core` (or legacy `@dfinity/agent`).\n- `_SERVICE` interface defining the actor type.\n- `idlFactory` and `init` type declarations.\n\n```typescript\nconst ts = didToTs(\"service:{}\")\n// export interface _SERVICE ...\n```\n\n## Module Formats\n\nThe package builds for multiple targets to ensure compatibility across environments.\n\n| Folder         | Format     | Environment              |\n| :------------- | :--------- | :----------------------- |\n| `dist/web`     | ES Modules | Browsers                 |\n| `dist/nodejs`  | CommonJS   | Node.js                  |\n| `dist/bundler` | ES Modules | Bundlers (Webpack, Vite) |\n\nMost modern bundlers (Vite, Next.js) will automatically pick up the correct version via `package.json` exports.",
   "src/content/docs/packages/parser/reference.mdx",
-  "65d5b11529681cac"
+  "65d5b11529681cac",
+  "examples/candid-parser",
+  {
+    "id": 3641,
+    "data": 3643,
+    "body": 3649,
+    "filePath": 3650,
+    "digest": 3651,
+    "deferredRender": 15
+  },
+  {
+    "title": 3644,
+    "description": 3645,
+    "editUrl": 19,
+    "head": 3646,
+    "template": 17,
+    "sidebar": 3647,
+    "pagefind": 15,
+    "draft": 19
+  },
+  "Candid Parser",
+  "Dynamic canister calls using runtime Candid interface parsing",
+  [],
+  { "hidden": 19, "attrs": 3648 },
+  {},
+  "import { Aside, LinkCard, CardGrid } from \"@astrojs/starlight/components\"\n\nA powerful example demonstrating dynamic canister method calls by parsing Candid interface strings at runtime. Perfect for building explorers, developer tools, or any application that needs to interact with canisters without pre-generated type definitions.\n\n## Features Demonstrated\n\n- `CandidReactor` for dynamic canister interactions\n- Runtime Candid interface string parsing\n- `queryDynamic` for one-shot query calls\n- `callDynamic` for one-shot update calls\n- BigInt serialization for display\n- JSON argument parsing\n- Error handling with user-friendly feedback\n\n## Links\n\n\u003CCardGrid>\n  \u003CLinkCard\n    title=\"Open in StackBlitz\"\n    description=\"Edit and run in your browser\"\n    href=\"https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/candid-parser?embed=1&theme=dark&file=src/App.tsx\"\n  />\n  \u003CLinkCard\n    title=\"View on GitHub\"\n    description=\"Browse the source code\"\n    href=\"https://github.com/b3pay/ic-reactor/tree/main/examples/candid-parser\"\n  />\n\u003C/CardGrid>\n\n## Live Preview\n\n\u003Ciframe\n  src=\"https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/candid-parser?embed=1&theme=dark&file=src/App.tsx&view=preview\"\n  style=\"width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;\"\n  title=\"IC Reactor Candid Parser Demo\"\n  allow=\"accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking\"\n  sandbox=\"allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts\"\n/>\n\n## Key Code\n\n```typescript\nimport { CandidReactor } from \"@ic-reactor/candid\"\nimport { ClientManager } from \"@ic-reactor/core\"\n\n// Create a client manager\nconst clientManager = new ClientManager({\n  queryClient: new QueryClient(),\n})\n\n// Create a CandidReactor instance\nconst reactor = new CandidReactor({\n  canisterId: \"ryjl3-tyaaa-aaaaa-aaaba-cai\", // ICP Ledger\n  clientManager,\n})\n\n// Define your Candid interface as a string\nconst candidInterface = `service : {\n  icrc1_name : () -> (text) query;\n  icrc1_symbol : () -> (text) query;\n  icrc1_balance_of : (record { owner : principal }) -> (nat) query;\n}`\n\n// Execute a dynamic query\nconst result = await reactor.queryDynamic({\n  functionName: \"icrc1_name\",\n  candid: candidInterface,\n  args: [],\n})\n\nconsole.log(result) // \"Internet Computer\"\n```\n\n## Use Cases\n\n- **Canister Explorers**: Build tools that can interact with any canister by pasting its Candid interface\n- **Developer Debugging**: Test canister methods without setting up full type definitions\n- **Admin Dashboards**: Create dynamic admin panels for managing multiple canisters\n- **Learning Tools**: Help developers understand Candid interfaces interactively\n\n\u003CAside type=\"tip\">\n  This example connects to the ICP Ledger mainnet canister by default, so it\n  works without a local replica. Try changing the canister ID and Candid\n  interface to explore other canisters!\n\u003C/Aside>\n\n\u003CAside type=\"note\">\n  The `CandidReactor` parses the Candid interface string at runtime using the\n  `@ic-reactor/parser` package. This allows for maximum flexibility when working\n  with dynamic canister interfaces.\n\u003C/Aside>",
+  "src/content/docs/examples/candid-parser.mdx",
+  "54866375ff419f3f"
 ]
