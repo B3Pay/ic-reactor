@@ -9,6 +9,7 @@ import { PostSection } from "./components/PostSection"
 import { AgentStatus } from "./components/AgentStatus"
 import { AnalyticsSection } from "./components/AnalyticsSection"
 import { SuspenseSection } from "./components/SuspenseSection"
+import { FooterSection } from "./components/FooterSection"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Code, ChevronDown, ChevronUp } from "lucide-react"
@@ -376,6 +377,8 @@ data?.map(post => (
             >
               <PostSection addLog={addLog} />
             </Section>
+
+            <FooterSection />
           </main>
 
           <aside className="flex flex-col gap-6 lg:sticky lg:top-6 h-fit">

@@ -1,13 +1,31 @@
-# All-in-one Example
+# All-in-One ic-reactor Demo
 
-This example demonstrates how to implement optimistic updates using `@ic-reactor/react` and a Rust backend.
+A comprehensive example demonstrating the power of `@ic-reactor/react` v3. This demo showcases advanced patterns like Optimistic UI, Suspense Queries, Infinite Scrolling, and Authentication.
 
-## Prerequisites
+## 📺 See it in Action
+
+We have recorded short walkthroughs to demonstrate the key features:
+
+|                                 **Optimistic UI & Chaos Mode**                                 |                                  **Suspense & Infinite Scroll**                                  |
+| :--------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------: |
+| [![Optimistic UI](https://img.youtube.com/vi/5kgLdzH6LgM/0.jpg)](https://youtu.be/5kgLdzH6LgM) | [![Infinite Scroll](https://img.youtube.com/vi/ue4haSsMw_4/0.jpg)](https://youtu.be/ue4haSsMw_4) |
+|                          [Watch Video](https://youtu.be/5kgLdzH6LgM)                           |                           [Watch Video](https://youtu.be/ue4haSsMw_4)                            |
+
+## ✨ Features
+
+- **Optimistic Updates**: Instant UI feedback with automatic rollback on failure (Chaos Mode).
+- **Infinite Scroll**: Seamless pagination using `createInfiniteQuery`.
+- **Suspense Support**: Declarative data fetching with `createSuspenseQuery`.
+- **Authentication**: Easy Internet Identity login with `useAuth`.
+- **Real-time Logs**: Activity console tracking frontend/backend states.
+- **Type Safety**: Full TypeScript support generated from Candid.
+
+## 🛠 Prerequisites
 
 - [DFX SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install/index.mdx)
-- Node.js and pnpm
+- Node.js and npm
 
-## Setup
+## 🚀 Setup & Run
 
 1.  **Start the local replica:**
 
@@ -15,59 +33,39 @@ This example demonstrates how to implement optimistic updates using `@ic-reactor
     dfx start --clean --background
     ```
 
-2.  **Deploy the backend canister:**
+2.  **Deploy the canisters:**
 
     ```bash
-    dfx deploy backend
+    dfx deploy
     ```
 
-3.  **Create a post:**
+    _Note: Ensure your `.env` file is updated with the correct `CANISTER_ID_BACKEND` if not automatically handled by your environment setup._
 
-    We need some initial data to interact with. Run this command to create a post with ID `0`:
+3.  **Seed Initial Data (Optional):**
+
+    Create a post to start interacting immediately:
 
     ```bash
-    dfx canister call backend create_post '("Hello from Optimistic UI!")'
+    dfx canister call backend create_post '("Hello from ic-reactor v3!")'
     ```
 
-    _Note: The first post created will have ID `0`, which matches the hardcoded ID in `src/App.tsx`._
-
-4.  **Update Canister ID:**
-
-    After deployment, get the canister ID:
+4.  **Install Frontend Dependencies:**
 
     ```bash
-    dfx canister id backend
+    npm install
     ```
 
-    Update `src/declarations/backend.ts` with this ID:
-
-    ```typescript
-    export const canisterId = "your-canister-id-here"
-    ```
-
-    _Alternatively, if you use `dfx generate`, it handles this, but this example uses manual declarations for simplicity._
-
-## Running the Frontend
-
-1.  **Install dependencies:**
+5.  **Start the Development Server:**
 
     ```bash
-    pnpm install
+    npm dev
     ```
 
-2.  **Start the dev server:**
+    Open `http://localhost:5173` to explore the demo!
 
-    ```bash
-    pnpm dev
-    ```
+## 🧪 What to Try
 
-3.  **Open the app:**
-
-    Go to `http://localhost:5173` (or whatever port Vite uses).
-
-## What to Look For
-
-- Click "Like" or "Unlike".
-- Notice the UI updates **instantly**.
-- Check the Network tab to see the actual request finishing slightly later.
-- If the request fails (e.g., stop the replica), the UI will roll back to the previous state.
+- **Global Heart**: Click the heart. Notice it updates instantly (Optimistic). toggle **Chaos Mode** and click again to see it roll back automatically.
+- **Infinite Feed**: Scroll down the posts list. Watch it fetch new pages automatically without blocking the UI.
+- **Suspense**: Use React DevTools to "Suspend" the component and see the skeleton loading states.
+- **Login**: Authenticate with Internet Identity to see your Principal ID.
