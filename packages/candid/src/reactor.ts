@@ -79,6 +79,64 @@ export class CandidReactor<A = BaseActor> extends Reactor<A> {
     return this.decodeResult<T>(func.retTypes, rawResult)
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  // TANSTACK QUERY INTEGRATION
+  // ══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Generate a query key for dynamic calls (for TanStack Query caching).
+   */
+  public generateQueryKeyDynamic(options: CallOptions): unknown[] {
+    const queryKey: unknown[] = [
+      this.canisterId.toString(),
+      "dynamic",
+      options.functionName,
+      options.candid,
+    ]
+    if (options.args?.length) {
+      queryKey.push(options.args)
+    }
+    if (options.queryKey?.length) {
+      queryKey.push(...options.queryKey)
+    }
+    return queryKey
+  }
+
+  /**
+   * Get query options for TanStack Query (for use with useQuery, etc.).
+   */
+  public getQueryOptionsDynamic<T = unknown>(options: CallOptions) {
+    return {
+      queryKey: this.generateQueryKeyDynamic(options),
+      queryFn: () => this.queryDynamic<T>(options),
+    }
+  }
+
+  /**
+   * Fetch data using a dynamic Candid signature with TanStack Query caching.
+   */
+  public async fetchQueryDynamic<T = unknown>(
+    options: CallOptions
+  ): Promise<T> {
+    const queryOptions = this.getQueryOptionsDynamic<T>(options)
+    return this.queryClient.ensureQueryData(queryOptions)
+  }
+
+  /**
+   * Invalidate cached queries for dynamic calls.
+   */
+  public invalidateQueriesDynamic(options?: Partial<CallOptions>) {
+    const queryKey = options
+      ? this.generateQueryKeyDynamic(options as CallOptions)
+      : [this.canisterId.toString(), "dynamic"]
+
+    this.queryClient.invalidateQueries({ queryKey })
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // HELPERS
+  // ══════════════════════════════════════════════════════════════════════
+
   /**
    * Parse CallOptions to extract the IDL function type and arguments.
    */

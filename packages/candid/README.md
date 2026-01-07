@@ -105,7 +105,21 @@ const result = await reactor.queryCall({ functionName: "icrc1_name" })
 
 // OR perform dynamic calls with ad-hoc signatures
 const balance = await reactor.queryDynamic({
-  methodName: "icrc1_balance_of",
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner: Principal.fromText("...") }],
+})
+
+// With TanStack Query caching
+const cachedBalance = await reactor.fetchQueryDynamic({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner: Principal.fromText("...") }],
+})
+
+// Get query options for useQuery
+const queryOptions = reactor.getQueryOptionsDynamic({
+  functionName: "icrc1_balance_of",
   candid: "(record { owner : principal }) -> (nat) query",
   args: [{ owner: Principal.fromText("...") }],
 })
@@ -223,11 +237,22 @@ new CandidReactor(config: CandidReactorParameters)
 
 #### Methods
 
+##### Dynamic Calls
+
 | Method                  | Description                                                 |
 | ----------------------- | ----------------------------------------------------------- |
 | `initialize()`          | Parse provided Candid or fetch from network, update service |
 | `callDynamic(options)`  | Execute update call with dynamic signature                  |
 | `queryDynamic(options)` | Execute query call with dynamic signature                   |
+
+##### TanStack Query Integration
+
+| Method                               | Description                          |
+| ------------------------------------ | ------------------------------------ |
+| `fetchQueryDynamic(options)`         | Fetch with TanStack Query caching    |
+| `getQueryOptionsDynamic(options)`    | Get query options for useQuery       |
+| `generateQueryKeyDynamic(options)`   | Generate cache key for dynamic calls |
+| `invalidateQueriesDynamic(options?)` | Invalidate cached dynamic queries    |
 
 ### Types
 

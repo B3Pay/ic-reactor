@@ -79,4 +79,9 @@ export interface CallOptions<T extends unknown[] = unknown[]> {
    * These will be encoded using the Candid types from the signature.
    */
   args?: T
+  /**
+   * Additional query key parts for TanStack Query caching.
+   * Used by fetchQueryDynamic and getQueryOptionsDynamic.
+   */
+  queryKey?: unknown[]
 }
