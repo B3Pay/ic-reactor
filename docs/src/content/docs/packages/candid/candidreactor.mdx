@@ -1,0 +1,338 @@
+---
+title: CandidReactor
+description: Dynamic Reactor with runtime Candid initialization
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+`CandidReactor` extends the core `Reactor` class to support **dynamic canister interaction**. It can fetch or parse Candid at runtime, register methods dynamically, and then use all standard Reactor methods.
+
+## Overview
+
+The key insight is that `CandidReactor` **injects methods into the service** at runtime. After initialization (or method registration), all standard Reactor infrastructure works automatically:
+
+- `callMethod()` — Direct method calls
+- `fetchQuery()` — TanStack Query caching
+- `getQueryOptions()` — For React hooks
+- `invalidateQueries()` — Cache invalidation
+
+```typescript
+const reactor = new CandidReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
+await reactor.initialize() // Fetch IDL from network
+
+// Now it works like a regular Reactor!
+const name = await reactor.callMethod({ functionName: "icrc1_name" })
+```
+
+## Import
+
+```typescript
+import { CandidReactor } from "@ic-reactor/candid"
+```
+
+## Constructor
+
+```typescript
+new CandidReactor(config: CandidReactorParameters)
+```
+
+### Parameters
+
+| Parameter       | Type               | Required | Description                                      |
+| --------------- | ------------------ | -------- | ------------------------------------------------ |
+| `canisterId`    | `CanisterId`       | Yes      | The canister ID to interact with                 |
+| `clientManager` | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`           |
+| `candid`        | `string`           | No       | Candid service definition (avoids network fetch) |
+| `idlFactory`    | `InterfaceFactory` | No       | IDL factory (if already available)               |
+| `actor`         | `A`                | No       | Existing actor instance                          |
+
+### Initialization Options
+
+<Tabs>
+  <TabItem label="Fetch from Network">
+    ```typescript
+    const reactor = new CandidReactor({
+      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+      clientManager,
+    })
+    
+    // Fetches Candid from canister metadata
+    await reactor.initialize()
+    ```
+  </TabItem>
+  <TabItem label="Provide Candid String">
+    ```typescript
+    const reactor = new CandidReactor({
+      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+      clientManager,
+      candid: `service : {
+        icrc1_name : () -> (text) query;
+        icrc1_balance_of : (record { owner : principal }) -> (nat) query;
+      }`,
+    })
+    
+    // Parses provided Candid (no network fetch)
+    await reactor.initialize()
+    ```
+  </TabItem>
+  <TabItem label="Register Individual Methods">
+    ```typescript
+    const reactor = new CandidReactor({
+      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+      clientManager,
+    })
+    
+    // Register methods one at a time
+    await reactor.registerMethod({
+      functionName: "icrc1_balance_of",
+      candid: "(record { owner : principal }) -> (nat) query",
+    })
+    ```
+  </TabItem>
+</Tabs>
+
+## Methods
+
+### initialize()
+
+Fetch or parse Candid and update the service definition.
+
+```typescript
+await reactor.initialize()
+```
+
+If `candid` was provided in the constructor, it parses that. Otherwise, fetches from the network.
+
+---
+
+### registerMethod(options)
+
+Register a single method by its Candid signature.
+
+```typescript
+await reactor.registerMethod({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+})
+```
+
+After registration, all standard Reactor methods work with this function name.
+
+#### Parameters
+
+| Option         | Type     | Description                          |
+| -------------- | -------- | ------------------------------------ |
+| `functionName` | `string` | The method name to register          |
+| `candid`       | `string` | Candid signature or full service def |
+
+---
+
+### registerMethods(methods)
+
+Register multiple methods at once.
+
+```typescript
+await reactor.registerMethods([
+  { functionName: "icrc1_name", candid: "() -> (text) query" },
+  { functionName: "icrc1_symbol", candid: "() -> (text) query" },
+  {
+    functionName: "icrc1_balance_of",
+    candid: "(record { owner : principal }) -> (nat) query",
+  },
+])
+```
+
+---
+
+### hasMethod(functionName)
+
+Check if a method is registered.
+
+```typescript
+if (reactor.hasMethod("icrc1_balance_of")) {
+  // Method is available
+}
+```
+
+---
+
+### getMethodNames()
+
+Get all registered method names.
+
+```typescript
+const methods = reactor.getMethodNames()
+// ["icrc1_name", "icrc1_symbol", "icrc1_balance_of", ...]
+```
+
+---
+
+## One-Shot Dynamic Calls
+
+For quick calls without explicit registration, use these convenience methods. They register the method (if not already registered) and call it in one step.
+
+### queryDynamic(options)
+
+Perform a dynamic query call.
+
+```typescript
+const balance = await reactor.queryDynamic<bigint>({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner: Principal.fromText("...") }],
+})
+```
+
+---
+
+### callDynamic(options)
+
+Perform a dynamic update call.
+
+```typescript
+const result = await reactor.callDynamic({
+  functionName: "transfer",
+  candid:
+    "(record { to : principal; amount : nat }) -> (variant { Ok : nat; Err : text })",
+  args: [{ to: recipient, amount: 100n }],
+})
+```
+
+---
+
+### fetchQueryDynamic(options)
+
+Perform a dynamic query with TanStack Query caching.
+
+```typescript
+const cachedBalance = await reactor.fetchQueryDynamic({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner }],
+})
+```
+
+<Aside type="tip">
+  After the first call, `fetchQueryDynamic` returns cached data. Use this for
+  data that doesn't change frequently.
+</Aside>
+
+---
+
+## Standard Reactor Methods
+
+After initialization or method registration, all inherited Reactor methods work:
+
+| Method                | Description                       |
+| --------------------- | --------------------------------- |
+| `callMethod()`        | Direct canister call              |
+| `fetchQuery()`        | Fetch with TanStack Query caching |
+| `getQueryOptions()`   | Get options for `useQuery`        |
+| `getQueryData()`      | Get cached data without fetching  |
+| `invalidateQueries()` | Invalidate cached queries         |
+| `generateQueryKey()`  | Generate cache key for a method   |
+
+See [Reactor](/ic-reactor/v3/reference/reactor) for full documentation.
+
+---
+
+## Properties
+
+| Property  | Type            | Description                |
+| --------- | --------------- | -------------------------- |
+| `adapter` | `CandidAdapter` | The internal CandidAdapter |
+
+All inherited Reactor properties are also available (`canisterId`, `agent`, `queryClient`, etc.).
+
+---
+
+## Examples
+
+### Canister Explorer
+
+```typescript
+async function exploreCanister(canisterId: string) {
+  const reactor = new CandidReactor({ canisterId, clientManager })
+  await reactor.initialize()
+
+  console.log("Methods:", reactor.getMethodNames())
+
+  // Try calling a common method
+  if (reactor.hasMethod("icrc1_name")) {
+    const name = await reactor.callMethod({ functionName: "icrc1_name" })
+    console.log("Token name:", name)
+  }
+}
+```
+
+### Dynamic Token Balance Checker
+
+```typescript
+async function getTokenBalance(canisterId: string, owner: Principal) {
+  const reactor = new CandidReactor({ canisterId, clientManager })
+
+  // Register just the method we need
+  await reactor.registerMethod({
+    functionName: "icrc1_balance_of",
+    candid: "(record { owner : principal }) -> (nat) query",
+  })
+
+  // Use fetchQuery for caching
+  return reactor.fetchQuery({
+    functionName: "icrc1_balance_of" as any,
+    args: [{ owner }],
+  })
+}
+```
+
+### React Hook Integration
+
+```typescript
+import { useQuery } from "@tanstack/react-query"
+
+function useDynamicQuery(
+  reactor: CandidReactor,
+  functionName: string,
+  candid: string,
+  args?: unknown[]
+) {
+  return useQuery({
+    queryKey: [reactor.canisterId.toString(), functionName, args],
+    queryFn: async () => {
+      await reactor.registerMethod({ functionName, candid })
+      return reactor.callMethod({ functionName: functionName as any, args })
+    },
+  })
+}
+```
+
+---
+
+## Best Practices
+
+<Aside type="tip" title="Use initialize() for full canisters">
+  If you need many methods from a canister, use `initialize()` to fetch the
+  complete Candid. It's more efficient than registering methods individually.
+</Aside>
+
+<Aside type="tip" title="Cache Candid definitions">
+  For production apps, consider caching Candid definitions locally to avoid
+  repeated network fetches.
+</Aside>
+
+<Aside type="caution" title="Type safety is limited">
+  Dynamic calls return `unknown` by default. Use the generic parameter (e.g., `queryDynamic<bigint>`) to add type hints, but remember these aren't verified at runtime.
+</Aside>
+
+---
+
+## See Also
+
+- [CandidAdapter](/ic-reactor/v3/packages/candid/candidadapter) — Low-level Candid utilities
+- [Reactor](/ic-reactor/v3/reference/reactor) — Base Reactor class
+- [@ic-reactor/candid Overview](/ic-reactor/v3/packages/candid/) — Package overview

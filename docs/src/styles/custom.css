@@ -147,3 +147,18 @@ h6 {
     gap: 0.5rem !important;
   }
 }
+
+/* Toggle visibility based on package mode */
+body[data-package-mode="core"] .react-only {
+  display: none !important;
+}
+
+/* Hide groups marked with our hacky badge (if used) */
+body[data-package-mode="core"] li:has(.react-badge-marker) {
+  display: none !important;
+}
+
+/* Hide the badge itself if it leaks into view */
+.react-badge-marker {
+  display: none !important;
+}

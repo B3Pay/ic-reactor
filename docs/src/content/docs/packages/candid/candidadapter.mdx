@@ -1,0 +1,304 @@
+---
+title: CandidAdapter
+description: Low-level utilities for fetching and parsing Candid definitions
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+`CandidAdapter` provides low-level utilities for fetching Candid definitions from canisters and compiling them to IDL factories. Use it when you need fine-grained control over Candid handling.
+
+## Overview
+
+The adapter supports multiple methods for obtaining Candid:
+
+1. **Canister Metadata** — Query the canister's `__get_candid_interface_tmp_hack` method
+2. **didjs Canister** — Use the didjs canister to compile Candid to JavaScript
+3. **Local Parser** — Use the optional [`@ic-reactor/parser`](/ic-reactor/v3/packages/parser) for offline compilation
+
+```typescript
+import { CandidAdapter } from "@ic-reactor/candid"
+
+const adapter = new CandidAdapter({ clientManager })
+
+// Fetch and parse in one call
+const { idlFactory } = await adapter.getCandidDefinition(
+  "ryjl3-tyaaa-aaaaa-aaaba-cai"
+)
+```
+
+## Import
+
+```typescript
+import { CandidAdapter } from "@ic-reactor/candid"
+```
+
+## Constructor
+
+```typescript
+new CandidAdapter(config: CandidAdapterParameters)
+```
+
+### Parameters
+
+| Parameter         | Type                  | Required | Description                      |
+| ----------------- | --------------------- | -------- | -------------------------------- |
+| `clientManager`   | `CandidClientManager` | Yes      | Client manager with agent access |
+| `didjsCanisterId` | `CanisterId`          | No       | Custom didjs canister ID         |
+
+The didjs canister ID is auto-selected based on network:
+
+- **IC Mainnet**: `a4gq6-oaaaa-aaaab-qaa4q-cai`
+- **Local**: `a4gq6-oaaaa-aaaab-qaa4q-cai` (same, but requires local deployment)
+
+---
+
+## Methods
+
+### getCandidDefinition(canisterId)
+
+Fetch and parse Candid for a canister in one call.
+
+```typescript
+const { idlFactory, init } = await adapter.getCandidDefinition(
+  "ryjl3-tyaaa-aaaaa-aaaba-cai"
+)
+
+// Use the idlFactory
+const service = idlFactory({ IDL })
+console.log(service._fields) // Method definitions
+```
+
+#### Returns
+
+```typescript
+interface CandidDefinition {
+  idlFactory: IDL.InterfaceFactory
+  init?: (args: { IDL: typeof IDL }) => IDL.Type<unknown>[]
+}
+```
+
+---
+
+### fetchCandidSource(canisterId)
+
+Fetch raw Candid source text from a canister.
+
+```typescript
+const candidSource = await adapter.fetchCandidSource(
+  "ryjl3-tyaaa-aaaaa-aaaba-cai"
+)
+console.log(candidSource)
+// service { icrc1_name : () -> (text) query; ... }
+```
+
+<Aside type="note">
+  This method queries the canister's metadata. It doesn't parse or compile the
+  Candid.
+</Aside>
+
+---
+
+### parseCandidSource(candidSource)
+
+Parse Candid source text into an IDL factory.
+
+```typescript
+const candidSource = `
+  service : {
+    greet : (text) -> (text) query;
+  }
+`
+
+const { idlFactory } = await adapter.parseCandidSource(candidSource)
+```
+
+This method:
+
+1. Tries local parsing if the parser is loaded
+2. Falls back to remote compilation via didjs canister
+
+---
+
+### loadParser()
+
+Load the local WASM parser for offline compilation.
+
+```typescript
+import { CandidAdapter } from "@ic-reactor/candid"
+import "@ic-reactor/parser" // Required peer dependency
+
+const adapter = new CandidAdapter({ clientManager })
+
+// Load the parser (only needed once)
+await adapter.loadParser()
+
+// Now compileLocal works
+const definition = adapter.compileLocal(candidSource)
+```
+
+<Aside type="tip">
+  Load the parser once at app startup for best performance. It's a ~2MB WASM
+  module.
+</Aside>
+
+---
+
+### compileLocal(candidSource)
+
+Compile Candid using the local WASM parser (synchronous after loading).
+
+```typescript
+// Requires loadParser() first
+const { idlFactory } = adapter.compileLocal(candidSource)
+```
+
+**Throws** if the parser hasn't been loaded.
+
+---
+
+### compileRemote(candidSource)
+
+Compile Candid using the didjs canister.
+
+```typescript
+const { idlFactory } = await adapter.compileRemote(candidSource)
+```
+
+This is the fallback method when local parsing isn't available.
+
+---
+
+### validateCandid(candidSource)
+
+Validate Candid syntax without compiling.
+
+```typescript
+await adapter.loadParser()
+
+const isValid = adapter.validateCandid(`
+  service {
+    greet: (text) -> (text) query;
+  }
+`)
+console.log(isValid) // true
+```
+
+Requires the parser to be loaded.
+
+---
+
+## Properties
+
+| Property          | Type                  | Description                  |
+| ----------------- | --------------------- | ---------------------------- |
+| `clientManager`   | `CandidClientManager` | The client manager instance  |
+| `didjsCanisterId` | `CanisterId`          | The didjs canister ID in use |
+
+---
+
+## Examples
+
+### Basic Usage
+
+```typescript
+import { CandidAdapter } from "@ic-reactor/candid"
+import { ClientManager } from "@ic-reactor/core"
+
+const clientManager = new ClientManager()
+await clientManager.initialize()
+
+const adapter = new CandidAdapter({ clientManager })
+
+// Get full definition
+const { idlFactory } = await adapter.getCandidDefinition(
+  "ryjl3-tyaaa-aaaaa-aaaba-cai"
+)
+
+// List methods
+const service = idlFactory({ IDL })
+for (const [name, func] of service._fields) {
+  console.log(`${name}: ${func.toString()}`)
+}
+```
+
+### With Local Parser
+
+```typescript
+import { CandidAdapter } from "@ic-reactor/candid"
+import "@ic-reactor/parser"
+
+const adapter = new CandidAdapter({ clientManager })
+
+// Load parser once at startup
+await adapter.loadParser()
+
+// All subsequent compilations are local (fast!)
+const candidSource = await adapter.fetchCandidSource(canisterId)
+const { idlFactory } = adapter.compileLocal(candidSource)
+```
+
+### Error Handling
+
+```typescript
+try {
+  const definition = await adapter.getCandidDefinition(canisterId)
+} catch (error) {
+  if (error.message.includes("has no query method")) {
+    console.log("Canister doesn't expose Candid metadata")
+  } else if (error.message.includes("compilation failed")) {
+    console.log("Invalid Candid syntax")
+  } else {
+    throw error
+  }
+}
+```
+
+### Method Signature Parsing
+
+For dynamic calls, you can parse individual method signatures:
+
+```typescript
+// Parse a method signature wrapped in a service
+const methodSignature = "(record { owner : principal }) -> (nat) query"
+const serviceSource = `service : { my_method : ${methodSignature}; }`
+
+const { idlFactory } = await adapter.parseCandidSource(serviceSource)
+const service = idlFactory({ IDL })
+
+// Extract the method's type information
+const funcField = service._fields.find(([name]) => name === "my_method")
+const func = funcField[1]
+
+console.log("Arg types:", func.argTypes)
+console.log("Return types:", func.retTypes)
+console.log("Is query:", func.annotations.includes("query"))
+```
+
+---
+
+## Best Practices
+
+<Aside type="tip" title="Load parser at startup">
+  If you'll parse multiple Candid definitions, load the parser once at app
+  initialization rather than per-parse.
+</Aside>
+
+<Aside type="tip" title="Cache Candid sources">
+  Consider caching Candid sources in localStorage or IndexedDB to avoid repeated
+  network fetches.
+</Aside>
+
+<Aside type="caution" title="Handle missing metadata">
+  Not all canisters expose Candid metadata. Have a fallback strategy or handle
+  the error gracefully.
+</Aside>
+
+---
+
+## See Also
+
+- [CandidReactor](/ic-reactor/v3/packages/candid/candidreactor) — High-level dynamic Reactor
+- [@ic-reactor/candid Overview](/ic-reactor/v3/packages/candid/) — Package overview
+- [@ic-reactor/parser](/ic-reactor/v3/packages/parser) — Local WASM parser reference
+- [Reactor](/ic-reactor/v3/reference/reactor) — Base Reactor class

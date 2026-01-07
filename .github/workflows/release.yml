@@ -19,6 +19,7 @@ jobs:
         workspace:
           - packages/core
           - packages/react
+          - packages/candid
     steps:
       - name: Checkout
         uses: actions/checkout@v6

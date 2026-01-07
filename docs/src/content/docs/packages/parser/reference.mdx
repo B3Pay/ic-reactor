@@ -1,0 +1,71 @@
+---
+title: API Reference
+description: Detailed reference for the @ic-reactor/parser package
+editUrl: false
+---
+
+## Exports
+
+The package exports two main functions for converting Candid definitions.
+
+### `didToJs`
+
+`didToJs(candid: string): string`
+
+Compiles a Candid interface string into a JavaScript module string.
+
+**Parameters:**
+
+- `candid`: The Candid interface definition string.
+
+**Returns:**
+
+- A string containing the JavaScript module source.
+
+**Output Exports:**
+The generated JavaScript module exports:
+
+- `idlFactory`: An `IDL.InterfaceFactory` function.
+- `init`: A function that returns initialization arguments.
+
+```typescript
+const js = didToJs("service:{}")
+// export const idlFactory ...
+```
+
+### `didToTs`
+
+`didToTs(candid: string): string`
+
+Compiles a Candid interface string into a TypeScript declaration string.
+
+**Parameters:**
+
+- `candid`: The Candid interface definition string.
+
+**Returns:**
+
+- A string containing the TypeScript declaration source.
+
+**Output Includes:**
+
+- Imports from `@icp-sdk/core` (or legacy `@dfinity/agent`).
+- `_SERVICE` interface defining the actor type.
+- `idlFactory` and `init` type declarations.
+
+```typescript
+const ts = didToTs("service:{}")
+// export interface _SERVICE ...
+```
+
+## Module Formats
+
+The package builds for multiple targets to ensure compatibility across environments.
+
+| Folder         | Format     | Environment              |
+| :------------- | :--------- | :----------------------- |
+| `dist/web`     | ES Modules | Browsers                 |
+| `dist/nodejs`  | CommonJS   | Node.js                  |
+| `dist/bundler` | ES Modules | Bundlers (Webpack, Vite) |
+
+Most modern bundlers (Vite, Next.js) will automatically pick up the correct version via `package.json` exports.

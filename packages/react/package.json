@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/react",
-  "version": "3.0.0-beta.7",
+  "version": "3.0.0-beta.8",
   "description": "IC Reactor React Library",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -57,7 +57,7 @@
   "devDependencies": {
     "@icp-sdk/auth": "^5.0.0",
     "@icp-sdk/core": "^5.0.0",
-    "@size-limit/preset-small-lib": "^11.2.0",
+    "@size-limit/preset-small-lib": "^12.0.0",
     "@tanstack/react-query": "^5.90",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

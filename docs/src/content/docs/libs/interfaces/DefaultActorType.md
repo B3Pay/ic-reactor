@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/reactor.ts:15](https://github.com/B3Pay/ic-reactor/blob/7036734963f96dc0d6af031acb9e17758f8a7cd1/packages/core/src/types/reactor.ts#L15)
+Defined in: [types/reactor.ts:15](https://github.com/B3Pay/ic-reactor/blob/4618b1fd582f00e75c259e0bc6fa022ad77dba5b/packages/core/src/types/reactor.ts#L15)
 
 ## Indexable
 

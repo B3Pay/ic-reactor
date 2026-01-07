@@ -7,7 +7,7 @@ export default defineConfig({
   base: "/ic-reactor/v3",
   integrations: [
     starlight({
-      title: "IC-Reactor v3",
+      title: "IC Reactor",
       logo: {
         src: "./src/assets/icon.svg",
       },
@@ -72,7 +72,10 @@ export default defineConfig({
         {
           label: "Guides",
           items: [
-            { label: "Authentication", link: "/guides/authentication" },
+            {
+              label: "Authentication",
+              link: "/guides/authentication",
+            },
             { label: "Type Safety", link: "/guides/type-safety" },
             { label: "Error Handling", link: "/guides/error-handling" },
             { label: "AI Friendliness", link: "/guides/ai-friendliness" },
@@ -81,14 +84,12 @@ export default defineConfig({
         {
           label: "Reference",
           items: [
-            {
-              label: "ClientManager",
-              link: "/reference/clientmanager",
-            },
+            { label: "ClientManager", link: "/reference/clientmanager" },
             { label: "Reactor", link: "/reference/reactor" },
+            { label: "DisplayReactor", link: "/reference/displayreactor" },
             {
-              label: "DisplayReactor",
-              link: "/reference/displayreactor",
+              label: "CandidReactor",
+              link: "/packages/candid/candidreactor",
             },
             {
               label: "createAuthHooks",
@@ -143,10 +144,7 @@ export default defineConfig({
             {
               label: "Factories",
               items: [
-                {
-                  label: "Overview",
-                  link: "/reference/factories/overview",
-                },
+                { label: "Overview", link: "/reference/factories/overview" },
                 {
                   label: "createQuery",
                   link: "/reference/factories/createquery",
@@ -169,39 +167,7 @@ export default defineConfig({
                 },
               ],
             },
-            // {
-            //   label: "Reactor Hooks",
-            //   items: [
-            //     {
-            //       label: "Overview",
-            //       link: "/reference/reactorhooks/overview",
-            //     },
-            //     {
-            //       label: "useReactorQuery",
-            //       link: "/reference/reactorhooks/usereactorquery",
-            //     },
-            //     {
-            //       label: "useReactorMutation",
-            //       link: "/reference/reactorhooks/usereactormutation",
-            //     },
-            //     {
-            //       label: "useReactorSuspenseQuery",
-            //       link: "/reference/reactorhooks/usereactorsuspensequery",
-            //     },
-            //     {
-            //       label: "useReactorInfiniteQuery",
-            //       link: "/reference/reactorhooks/usereactorinfinitequery",
-            //     },
-            //     {
-            //       label: "useReactorSuspenseInfiniteQuery",
-            //       link: "/reference/reactorhooks/usereactorsuspenseinfinitequery",
-            //     },
-            //   ],
-            // },
-            {
-              label: "Validation",
-              link: "/reference/reactvalidation",
-            },
+            { label: "Validation", link: "/reference/reactvalidation" },
           ],
         },
         {
@@ -227,10 +193,7 @@ export default defineConfig({
           label: "API Reference",
           collapsed: true,
           items: [
-            {
-              label: "Overview",
-              link: "/libs",
-            },
+            { label: "Overview", link: "/libs" },
             {
               label: "Classes",
               collapsed: true,
@@ -258,8 +221,37 @@ export default defineConfig({
             },
           ],
         },
+        {
+          label: "Packages",
+          items: [
+            {
+              label: "@ic-reactor/candid",
+              items: [
+                { label: "Overview", link: "/packages/candid/" },
+                {
+                  label: "CandidReactor",
+                  link: "/packages/candid/candidreactor",
+                },
+                {
+                  label: "CandidAdapter",
+                  link: "/packages/candid/candidadapter",
+                },
+              ],
+            },
+            {
+              label: "@ic-reactor/parser",
+              items: [
+                { label: "Overview", link: "/packages/parser" },
+                { label: "API Reference", link: "/packages/parser/reference" },
+              ],
+            },
+          ],
+        },
       ],
       customCss: ["./src/styles/custom.css"],
+      components: {
+        SiteTitle: "./src/components/SiteTitle.astro",
+      },
     }),
   ],
 })
