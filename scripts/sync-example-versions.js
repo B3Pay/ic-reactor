@@ -34,7 +34,7 @@ if (cliVersion === "workspace") {
 console.log(`\n📦 Syncing @ic-reactor/* to version: ${targetVersion}\n`)
 
 // IC Reactor packages to update
-const packages = ["@ic-reactor/core", "@ic-reactor/react"]
+const packages = ["@ic-reactor/core", "@ic-reactor/react", "@ic-reactor/candid"]
 
 // Get all example directories
 const examples = readdirSync(examplesDir).filter((name) => {
