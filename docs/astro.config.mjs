@@ -7,7 +7,7 @@ export default defineConfig({
   base: "/ic-reactor/v3",
   integrations: [
     starlight({
-      title: "IC-Reactor",
+      title: "ic-reactor",
       logo: {
         src: "./src/assets/icon.svg",
       },
@@ -72,7 +72,10 @@ export default defineConfig({
         {
           label: "Guides",
           items: [
-            { label: "Authentication", link: "/guides/authentication" },
+            {
+              label: "Authentication",
+              link: "/guides/authentication",
+            },
             { label: "Type Safety", link: "/guides/type-safety" },
             { label: "Error Handling", link: "/guides/error-handling" },
             { label: "AI Friendliness", link: "/guides/ai-friendliness" },

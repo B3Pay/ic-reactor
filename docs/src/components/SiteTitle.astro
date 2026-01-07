@@ -5,12 +5,14 @@ import Default from '@astrojs/starlight/components/SiteTitle.astro';
 
 <div class="site-title-wrapper">
   <Default {...Astro.props} />
+  /
   <div class="controls-group">
     <div class="dropdown-wrapper">
       <select id="package-select" onchange="handlePackageChange(event)" aria-label="Select package">
-        <option value="core" selected>Core / React</option>
-        <option value="candid">@ic-reactor/candid</option>
-        <option value="parser">@ic-reactor/parser</option>
+        <option value="core">core</option>
+        <option value="react">react</option>
+        <option value="candid">candid</option>
+        <option value="parser">parser</option>
       </select>
     </div>
     <div class="divider"></div>
@@ -24,32 +26,62 @@ import Default from '@astrojs/starlight/components/SiteTitle.astro';
 </div>
 
 <script is:inline>
-  // Set initial package selection based on URL
-  document.addEventListener('DOMContentLoaded', () => {
+  function updatePackageState() {
     const path = window.location.pathname;
     const packageSelect = document.getElementById('package-select');
+    if (!packageSelect) return;
     
+    // Check if we are in a package path
     if (path.includes('/packages/candid')) {
       packageSelect.value = 'candid';
     } else if (path.includes('/packages/parser')) {
       packageSelect.value = 'parser';
     } else {
-      packageSelect.value = 'core';
-    }
-  });
-
-  function handlePackageChange(event) {
-    const pkg = event.target.value;
-    if (pkg === 'candid') {
-      window.location.href = '/ic-reactor/v3/packages/candid/';
-    } else if (pkg === 'parser') {
-      // Assuming parser page exists or will exist, otherwise to main packages for now
-      window.location.href = '/ic-reactor/v3/packages/parser/'; 
-    } else {
-      window.location.href = '/ic-reactor/v3/';
+      const pref = localStorage.getItem('docs-preference') || 'react';
+      packageSelect.value = pref;
+      document.body.dataset.packageMode = pref;
+      document.documentElement.dataset.packageMode = pref; // Sync html for early hide
     }
   }
 
+  // Initial load
+  document.addEventListener('DOMContentLoaded', updatePackageState);
+  
+  // View Transitions support
+  document.addEventListener('astro:page-load', updatePackageState);
+
+  function handlePackageChange(event) {
+    const pkg = event.target.value;
+    const currentPath = window.location.pathname;
+
+    if (pkg === 'candid') {
+      window.location.href = '/ic-reactor/v3/packages/candid/';
+    } else if (pkg === 'parser') {
+      window.location.href = '/ic-reactor/v3/packages/parser/'; 
+    } else {
+      // Core or React
+      localStorage.setItem('docs-preference', pkg);
+      document.body.dataset.packageMode = pkg;
+      document.documentElement.dataset.packageMode = pkg;
+      
+      // If we are currently in a dedicated package folder, go to root.
+      if (currentPath.includes('/packages/')) {
+        window.location.href = '/ic-reactor/v3/';
+      }
+    }
+  }
+
+  function handleVersionChange(event) {
+    const version = event.target.value;
+    if (version === 'v2') {
+      window.location.href = 'https://b3pay.github.io/ic-reactor/';
+    } else if (version === 'v3') {
+      window.location.href = '/ic-reactor/v3/';
+    }
+  }
+</script>
+
+<script is:inline>
   function handleVersionChange(event) {
     const version = event.target.value;
     if (version === 'v2') {
