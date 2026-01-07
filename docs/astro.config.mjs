@@ -1,7 +1,6 @@
 import { defineConfig } from "astro/config"
 import starlight from "@astrojs/starlight"
 import starlightPageActions from "starlight-page-actions"
-import { coreSidebar, candidSidebar, parserSidebar } from "./sidebar.mjs"
 
 export default defineConfig({
   site: "https://b3pay.github.io",
