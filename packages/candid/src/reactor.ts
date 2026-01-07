@@ -59,60 +59,58 @@ export class CandidReactor<A = BaseActor> extends Reactor<A> {
    * Performs an update call to the canister using a Candid signature.
    */
   public async callDynamic<T = unknown>(options: CallOptions): Promise<T> {
-    return this._executeDynamicMethod("call", options)
+    const { func, args } = await this.parseDynamicOptions(options)
+    const rawResult = await this.executeCall(
+      options.functionName,
+      IDL.encode(func.argTypes, args)
+    )
+    return this.decodeResult<T>(func.retTypes, rawResult)
   }
 
   /**
    * Performs a query call to the canister using a Candid signature.
    */
   public async queryDynamic<T = unknown>(options: CallOptions): Promise<T> {
-    return this._executeDynamicMethod("query", options)
+    const { func, args } = await this.parseDynamicOptions(options)
+    const rawResult = await this.executeQuery(
+      options.functionName,
+      IDL.encode(func.argTypes, args)
+    )
+    return this.decodeResult<T>(func.retTypes, rawResult)
   }
 
-  private async _executeDynamicMethod<T>(
-    mode: "call" | "query",
-    { functionName, candid, args = [] }: CallOptions
-  ): Promise<T> {
-    // 1. Construct service definition if needed
-    let serviceSource = candid
-    if (!candid.includes("service :")) {
-      serviceSource = `service : { ${functionName} : ${candid}; }`
-    }
+  /**
+   * Parse CallOptions to extract the IDL function type and arguments.
+   */
+  private async parseDynamicOptions({
+    functionName,
+    candid,
+    args = [],
+  }: CallOptions) {
+    const serviceSource = candid.includes("service :")
+      ? candid
+      : `service : { ${functionName} : ${candid}; }`
 
-    // 2. Parse Candid to get IDL types
-    const definition = await this.adapter.parseCandidSource(serviceSource)
-    const service = definition.idlFactory({ IDL })
+    const { idlFactory } = await this.adapter.parseCandidSource(serviceSource)
+    const service = idlFactory({ IDL })
 
-    // 3. Get the function type
     const funcField = service._fields.find(([name]) => name === functionName)
     if (!funcField) {
       throw new Error(
-        `Method ${functionName} not found in the provided Candid signature`
+        `Method "${functionName}" not found in the provided Candid signature`
       )
     }
-    const func = funcField[1]
 
-    // 4. Encode arguments
-    const encodedArgs = IDL.encode(func.argTypes, args)
+    return { func: funcField[1], args }
+  }
 
-    // 5. Execute using parent's methods
-    let rawResult: Uint8Array
-    if (mode === "query") {
-      rawResult = await this.executeQuery(functionName, encodedArgs)
-    } else {
-      rawResult = await this.executeCall(functionName, encodedArgs)
-    }
-
-    // 6. Decode result
-    const decoded = IDL.decode(func.retTypes, rawResult)
-
-    // Handle single, zero, and multiple return values
-    return (
-      decoded.length === 0
-        ? undefined
-        : decoded.length === 1
-          ? decoded[0]
-          : decoded
-    ) as T
+  /**
+   * Decode raw result bytes using IDL types.
+   */
+  private decodeResult<T>(retTypes: IDL.Type[], rawResult: Uint8Array): T {
+    const decoded = IDL.decode(retTypes, rawResult)
+    if (decoded.length === 0) return undefined as T
+    if (decoded.length === 1) return decoded[0] as T
+    return decoded as T
   }
 }
