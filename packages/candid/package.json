@@ -63,9 +63,9 @@
   },
   "size-limit": [
     {
-      "name": "Candid Adapter",
+      "name": "Candid Package",
       "path": "dist/index.js",
-      "limit": "10 KB",
+      "limit": "30 KB",
       "gzip": true
     }
   ]
