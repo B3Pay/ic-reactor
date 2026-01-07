@@ -1,30 +1,9 @@
+import type { BaseActor, ReactorParameters } from "@ic-reactor/core"
+import type { CandidReactorParameters, DynamicMethodOptions } from "./types"
+
 import { Reactor } from "@ic-reactor/core"
 import { CandidAdapter } from "./adapter"
 import { IDL } from "@icp-sdk/core/candid"
-
-import type { CanisterId } from "./types"
-import type { BaseActor, ReactorParameters } from "@ic-reactor/core"
-
-export interface CandidReactorParameters<A = BaseActor> extends Omit<
-  ReactorParameters<A>,
-  "idlFactory" | "actor"
-> {
-  canisterId: CanisterId
-  candid?: string
-  idlFactory?: IDL.InterfaceFactory
-  actor?: A
-}
-
-export interface DynamicMethodOptions {
-  /** The method name to register. */
-  functionName: string
-  /**
-   * The Candid signature for the method.
-   * Can be either a method signature like "(text) -> (text) query"
-   * or a full service definition like "service : { greet: (text) -> (text) query }".
-   */
-  candid: string
-}
 
 export class CandidReactor<A = BaseActor> extends Reactor<A> {
   public adapter: CandidAdapter

@@ -1,11 +1,31 @@
 import type { HttpAgent, Identity } from "@icp-sdk/core/agent"
-import type { Principal } from "@icp-sdk/core/principal"
 import type { IDL } from "@icp-sdk/core/candid"
+import type { BaseActor, CanisterId, ReactorParameters } from "@ic-reactor/core"
 
-/**
- * Represents a Canister ID, which can be either a string or a Principal object.
- */
-export type CanisterId = string | Principal
+export interface DynamicMethodOptions {
+  /** The method name to register. */
+  functionName: string
+  /**
+   * The Candid signature for the method.
+   * Can be either a method signature like "(text) -> (text) query"
+   * or a full service definition like "service : { greet: (text) -> (text) query }".
+   */
+  candid: string
+}
+
+export interface CandidReactorParameters<A = BaseActor> extends Omit<
+  ReactorParameters<A>,
+  "idlFactory" | "actor"
+> {
+  /** The canister ID. */
+  canisterId: CanisterId
+  /** The Candid source code. */
+  candid?: string
+  /** The IDL interface factory. */
+  idlFactory?: IDL.InterfaceFactory
+  /** The actor instance. */
+  actor?: A
+}
 
 /**
  * Minimal interface for ClientManager that CandidAdapter depends on.
@@ -27,7 +47,7 @@ export interface CandidAdapterParameters {
   /** The client manager that provides agent and identity access. */
   clientManager: CandidClientManager
   /** The canister ID of the didjs canister for compiling Candid to JavaScript. */
-  didjsCanisterId?: string
+  didjsCanisterId?: CanisterId
 }
 
 /**

@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest"
 import type {
-  CanisterId,
   CandidClientManager,
   CandidAdapterParameters,
   CandidDefinition,
@@ -9,6 +8,7 @@ import type {
 import type { HttpAgent, Identity } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { IDL } from "@icp-sdk/core/candid"
+import type { CanisterId } from "@ic-reactor/core"
 
 describe("Types", () => {
   describe("CanisterId", () => {

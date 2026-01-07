@@ -1,7 +1,6 @@
 import type { HttpAgent } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 import type {
-  CanisterId,
   CandidAdapterParameters,
   CandidDefinition,
   CandidClientManager,
@@ -12,6 +11,7 @@ import { CanisterStatus } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { DEFAULT_IC_DIDJS_ID, DEFAULT_LOCAL_DIDJS_ID } from "./constants"
 import { importCandidDefinition, noop } from "./utils"
+import { CanisterId } from "@ic-reactor/core"
 
 /**
  * CandidAdapter provides functionality to fetch and parse Candid definitions
@@ -49,7 +49,7 @@ export class CandidAdapter {
   public clientManager: CandidClientManager
 
   /** The canister ID of the didjs canister for remote Candid compilation. */
-  public didjsCanisterId: string
+  public didjsCanisterId: CanisterId
 
   /** The optional local parser module. */
   private parserModule?: ReactorParser
