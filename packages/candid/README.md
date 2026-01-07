@@ -141,6 +141,33 @@ const cachedBalance = await reactor.fetchQuery({
 console.log(reactor.getMethodNames())
 ```
 
+#### One-Shot Dynamic Calls
+
+For quick one-off calls, use convenience methods that register and call in one step:
+
+```typescript
+// queryDynamic - register + call in one step
+const symbol = await reactor.queryDynamic({
+  functionName: "icrc1_symbol",
+  candid: "() -> (text) query",
+})
+
+// callDynamic - for update calls
+const result = await reactor.callDynamic({
+  functionName: "transfer",
+  candid:
+    "(record { to : principal; amount : nat }) -> (variant { Ok : nat; Err : text })",
+  args: [{ to: recipient, amount: 100n }],
+})
+
+// fetchQueryDynamic - with TanStack Query caching
+const cachedBalance = await reactor.fetchQueryDynamic({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner }],
+})
+```
+
 ### Fetch Raw Candid Source
 
 ```typescript
@@ -253,13 +280,16 @@ new CandidReactor(config: CandidReactorParameters)
 
 #### Methods
 
-| Method                     | Description                                                 |
-| -------------------------- | ----------------------------------------------------------- |
-| `initialize()`             | Parse provided Candid or fetch from network, update service |
-| `registerMethod(options)`  | Register a method by its Candid signature                   |
-| `registerMethods(methods)` | Register multiple methods at once                           |
-| `hasMethod(functionName)`  | Check if a method is registered                             |
-| `getMethodNames()`         | Get all registered method names                             |
+| Method                       | Description                                                 |
+| ---------------------------- | ----------------------------------------------------------- |
+| `initialize()`               | Parse provided Candid or fetch from network, update service |
+| `registerMethod(options)`    | Register a method by its Candid signature                   |
+| `registerMethods(methods)`   | Register multiple methods at once                           |
+| `hasMethod(functionName)`    | Check if a method is registered                             |
+| `getMethodNames()`           | Get all registered method names                             |
+| `callDynamic(options)`       | One-shot: register + update call                            |
+| `queryDynamic(options)`      | One-shot: register + query call                             |
+| `fetchQueryDynamic(options)` | One-shot: register + cached query                           |
 
 After initialization or registration, all standard `Reactor` methods work:
 

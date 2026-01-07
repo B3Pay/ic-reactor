@@ -120,4 +120,77 @@ export class CandidReactor<A = BaseActor> extends Reactor<A> {
   public getMethodNames(): string[] {
     return this.service._fields.map(([name]) => name)
   }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // DYNAMIC CALL SHORTCUTS
+  // ══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Perform a dynamic update call in one step.
+   * Registers the method if not already registered, then calls it.
+   *
+   * @example
+   * ```typescript
+   * const result = await reactor.callDynamic({
+   *   functionName: "transfer",
+   *   candid: "(record { to : principal; amount : nat }) -> (variant { Ok : nat; Err : text })",
+   *   args: [{ to: Principal.fromText("..."), amount: 100n }]
+   * })
+   * ```
+   */
+  public async callDynamic<T = unknown>(
+    options: DynamicMethodOptions & { args?: unknown[] }
+  ): Promise<T> {
+    await this.registerMethod(options)
+    return this.callMethod({
+      functionName: options.functionName as any,
+      args: options.args as any,
+    }) as T
+  }
+
+  /**
+   * Perform a dynamic query call in one step.
+   * Registers the method if not already registered, then calls it.
+   *
+   * @example
+   * ```typescript
+   * const balance = await reactor.queryDynamic({
+   *   functionName: "icrc1_balance_of",
+   *   candid: "(record { owner : principal }) -> (nat) query",
+   *   args: [{ owner: Principal.fromText("...") }]
+   * })
+   * ```
+   */
+  public async queryDynamic<T = unknown>(
+    options: DynamicMethodOptions & { args?: unknown[] }
+  ): Promise<T> {
+    await this.registerMethod(options)
+    return this.callMethod({
+      functionName: options.functionName as any,
+      args: options.args as any,
+    }) as T
+  }
+
+  /**
+   * Fetch with dynamic Candid and TanStack Query caching.
+   * Registers the method if not already registered, then fetches with caching.
+   *
+   * @example
+   * ```typescript
+   * const balance = await reactor.fetchQueryDynamic({
+   *   functionName: "icrc1_balance_of",
+   *   candid: "(record { owner : principal }) -> (nat) query",
+   *   args: [{ owner }]
+   * })
+   * ```
+   */
+  public async fetchQueryDynamic<T = unknown>(
+    options: DynamicMethodOptions & { args?: unknown[] }
+  ): Promise<T> {
+    await this.registerMethod(options)
+    return this.fetchQuery({
+      functionName: options.functionName as any,
+      args: options.args as any,
+    }) as T
+  }
 }

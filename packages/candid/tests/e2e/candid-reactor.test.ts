@@ -78,4 +78,15 @@ describe("CandidReactor E2E", () => {
     expect(methodNames).toContain("icrc1_name")
     console.log("✅ Registered methods:", methodNames.slice(0, 5), "...")
   })
+
+  it("should perform one-shot dynamic query with queryDynamic", async () => {
+    // Use queryDynamic for a one-shot call (registers + calls in one step)
+    const symbol = await reactor.queryDynamic<string>({
+      functionName: "icrc1_symbol",
+      candid: "() -> (text) query",
+    })
+
+    expect(symbol).toBe("ICP")
+    console.log(`✅ queryDynamic successful: ${symbol}`)
+  })
 })
