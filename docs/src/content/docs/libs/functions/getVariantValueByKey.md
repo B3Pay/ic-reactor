@@ -7,7 +7,7 @@ prev: true
 
 > **getVariantValueByKey**\<`T`, `K`\>(`variant`, `key`): [`CandidVariantValue`](../type-aliases/CandidVariantValue.md)\<`T`, `K`\>
 
-Defined in: [utils/candid.ts:95](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/utils/candid.ts#L95)
+Defined in: [utils/candid.ts:95](https://github.com/B3Pay/ic-reactor/blob/88126d5d2dfbc2b99d2902449702514e86b6784e/packages/core/src/utils/candid.ts#L95)
 
 ## Type Parameters
 

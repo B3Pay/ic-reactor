@@ -29,6 +29,11 @@ export default defineConfig({
           icon: "github",
           href: "https://github.com/b3pay/ic-reactor",
         },
+        {
+          label: "v2 Docs",
+          icon: "open-book",
+          href: "https://b3pay.github.io/ic-reactor/",
+        },
       ],
       editLink: {
         baseUrl: "https://github.com/b3pay/ic-reactor/edit/main/docs/",

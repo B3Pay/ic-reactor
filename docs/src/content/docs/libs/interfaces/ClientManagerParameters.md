@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:14](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/client.ts#L14)
+Defined in: [types/client.ts:14](https://github.com/B3Pay/ic-reactor/blob/88126d5d2dfbc2b99d2902449702514e86b6784e/packages/core/src/types/client.ts#L14)
 
 Parameters for configuring a ClientManager instance.
 
@@ -15,7 +15,7 @@ Parameters for configuring a ClientManager instance.
 
 > **queryClient**: `QueryClient`
 
-Defined in: [types/client.ts:18](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/client.ts#L18)
+Defined in: [types/client.ts:18](https://github.com/B3Pay/ic-reactor/blob/88126d5d2dfbc2b99d2902449702514e86b6784e/packages/core/src/types/client.ts#L18)
 
 The TanStack QueryClient used for caching and state management.
 
@@ -25,7 +25,7 @@ The TanStack QueryClient used for caching and state management.
 
 > `optional` **agentOptions**: `HttpAgentOptions`
 
-Defined in: [types/client.ts:22](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/client.ts#L22)
+Defined in: [types/client.ts:22](https://github.com/B3Pay/ic-reactor/blob/88126d5d2dfbc2b99d2902449702514e86b6784e/packages/core/src/types/client.ts#L22)
 
 Optional configuration for the underlying HttpAgent.
 
@@ -35,7 +35,7 @@ Optional configuration for the underlying HttpAgent.
 
 > `optional` **port**: `number`
 
-Defined in: [types/client.ts:26](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/client.ts#L26)
+Defined in: [types/client.ts:26](https://github.com/B3Pay/ic-reactor/blob/88126d5d2dfbc2b99d2902449702514e86b6784e/packages/core/src/types/client.ts#L26)
 
 The port used for the local IC replica (default is 4943).
 
@@ -45,7 +45,7 @@ The port used for the local IC replica (default is 4943).
 
 > `optional` **withLocalEnv**: `boolean`
 
-Defined in: [types/client.ts:30](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/client.ts#L30)
+Defined in: [types/client.ts:30](https://github.com/B3Pay/ic-reactor/blob/88126d5d2dfbc2b99d2902449702514e86b6784e/packages/core/src/types/client.ts#L30)
 
 If true, configures the agent for a local environment.
 
@@ -55,7 +55,7 @@ If true, configures the agent for a local environment.
 
 > `optional` **withProcessEnv**: `boolean`
 
-Defined in: [types/client.ts:34](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/client.ts#L34)
+Defined in: [types/client.ts:34](https://github.com/B3Pay/ic-reactor/blob/88126d5d2dfbc2b99d2902449702514e86b6784e/packages/core/src/types/client.ts#L34)
 
 If true, auto-configures the agent based on process.env settings.
 
@@ -65,7 +65,7 @@ If true, auto-configures the agent based on process.env settings.
 
 > `optional` **authClient**: `AuthClient`
 
-Defined in: [types/client.ts:42](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/client.ts#L42)
+Defined in: [types/client.ts:42](https://github.com/B3Pay/ic-reactor/blob/88126d5d2dfbc2b99d2902449702514e86b6784e/packages/core/src/types/client.ts#L42)
 
 Optional pre-initialized AuthClient instance.
 If provided, the manager will use this instance instead of dynamically importing
