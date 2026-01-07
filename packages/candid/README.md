@@ -8,6 +8,7 @@ Lightweight adapter for fetching and parsing Candid definitions from Internet Co
 - **Multiple Retrieval Methods**: Supports both canister metadata and the temporary hack method
 - **Local Parsing**: Use the optional WASM-based parser for fast, offline Candid compilation
 - **Remote Fallback**: Falls back to the didjs canister for Candid-to-JavaScript compilation
+- **Dynamic Reactor**: Includes `CandidReactor` for dynamic IDL fetching and interaction
 - **Lightweight**: Uses raw `agent.query` calls - no Actor overhead
 - **ClientManager Compatible**: Seamlessly integrates with `@ic-reactor/core`
 
@@ -68,6 +69,46 @@ await adapter.loadParser()
 const { idlFactory } = await adapter.getCandidDefinition(
   "ryjl3-tyaaa-aaaaa-aaaba-cai"
 )
+```
+
+### CandidReactor (Dynamic Interaction)
+
+`CandidReactor` extends the core `Reactor` class but initializes by fetching the IDL from the network (or using a provided Candid string), and adds support for dynamic signature-based calls.
+
+```typescript
+import { CandidReactor } from "@ic-reactor/candid"
+import { ClientManager } from "@ic-reactor/core"
+
+const clientManager = new ClientManager()
+await clientManager.initialize()
+
+// Option 1: Fetch Candid from network
+const reactor = new CandidReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+await reactor.initialize() // Fetches IDL from network
+
+// Option 2: Provide Candid string directly (no network fetch)
+const reactor = new CandidReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+  candid: `service : {
+    icrc1_name : () -> (text) query;
+    icrc1_balance_of : (record { owner : principal }) -> (nat) query;
+  }`,
+})
+await reactor.initialize() // Parses provided Candid string
+
+// Now you can use standard Reactor methods with the fetched/provided IDL
+const result = await reactor.queryCall({ functionName: "icrc1_name" })
+
+// OR perform dynamic calls with ad-hoc signatures
+const balance = await reactor.queryDynamic({
+  methodName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner: Principal.fromText("...") }],
+})
 ```
 
 ### Fetch Raw Candid Source
@@ -161,6 +202,32 @@ new CandidAdapter(params: CandidAdapterParameters)
 | Method          | Description                          |
 | --------------- | ------------------------------------ |
 | `unsubscribe()` | Cleanup identity change subscription |
+
+### `CandidReactor`
+
+Extends `Reactor` from `@ic-reactor/core`.
+
+#### Constructor
+
+```typescript
+new CandidReactor(config: CandidReactorParameters)
+```
+
+| Parameter       | Type               | Required | Description                                      |
+| --------------- | ------------------ | -------- | ------------------------------------------------ |
+| `canisterId`    | `CanisterId`       | Yes      | The canister ID to interact with                 |
+| `clientManager` | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`           |
+| `candid`        | `string`           | No       | Candid service definition (avoids network fetch) |
+| `idlFactory`    | `InterfaceFactory` | No       | IDL factory (if already available)               |
+| `actor`         | `A`                | No       | Existing actor instance                          |
+
+#### Methods
+
+| Method                  | Description                                                 |
+| ----------------------- | ----------------------------------------------------------- |
+| `initialize()`          | Parse provided Candid or fetch from network, update service |
+| `callDynamic(options)`  | Execute update call with dynamic signature                  |
+| `queryDynamic(options)` | Execute query call with dynamic signature                   |
 
 ### Types
 

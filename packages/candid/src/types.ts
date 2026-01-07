@@ -67,7 +67,7 @@ export interface ReactorParser {
  */
 export interface CallOptions<T extends unknown[] = unknown[]> {
   /** The method name to call. */
-  methodName: string
+  functionName: string
   /**
    * The Candid signature for the method.
    * Can be either a method signature like "(text) -> (text) query"
