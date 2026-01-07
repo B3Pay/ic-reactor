@@ -73,7 +73,7 @@ const { idlFactory } = await adapter.getCandidDefinition(
 
 ### CandidReactor (Dynamic Interaction)
 
-`CandidReactor` extends the core `Reactor` class but initializes by fetching the IDL from the network (or using a provided Candid string), and adds support for dynamic signature-based calls.
+`CandidReactor` extends the core `Reactor` class, allowing you to work with canisters without compile-time IDL. After initialization, **all standard Reactor methods work automatically**.
 
 ```typescript
 import { CandidReactor } from "@ic-reactor/candid"
@@ -100,29 +100,45 @@ const reactor = new CandidReactor({
 })
 await reactor.initialize() // Parses provided Candid string
 
-// Now you can use standard Reactor methods with the fetched/provided IDL
-const result = await reactor.queryCall({ functionName: "icrc1_name" })
+// Now use standard Reactor methods!
+const name = await reactor.callMethod({ functionName: "icrc1_name" })
+const balance = await reactor.fetchQuery({
+  functionName: "icrc1_balance_of",
+  args: [{ owner }],
+})
+```
 
-// OR perform dynamic calls with ad-hoc signatures
-const balance = await reactor.queryDynamic({
+#### Registering Methods Dynamically
+
+You can also register individual methods on-the-fly:
+
+```typescript
+// Start with just a canister ID
+const reactor = new CandidReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
+// Register a method by its Candid signature
+await reactor.registerMethod({
   functionName: "icrc1_balance_of",
   candid: "(record { owner : principal }) -> (nat) query",
-  args: [{ owner: Principal.fromText("...") }],
+})
+
+// Now all standard Reactor methods work with this method!
+const balance = await reactor.callMethod({
+  functionName: "icrc1_balance_of",
+  args: [{ owner }],
 })
 
 // With TanStack Query caching
-const cachedBalance = await reactor.fetchQueryDynamic({
+const cachedBalance = await reactor.fetchQuery({
   functionName: "icrc1_balance_of",
-  candid: "(record { owner : principal }) -> (nat) query",
-  args: [{ owner: Principal.fromText("...") }],
+  args: [{ owner }],
 })
 
-// Get query options for useQuery
-const queryOptions = reactor.getQueryOptionsDynamic({
-  functionName: "icrc1_balance_of",
-  candid: "(record { owner : principal }) -> (nat) query",
-  args: [{ owner: Principal.fromText("...") }],
-})
+// Check registered methods
+console.log(reactor.getMethodNames())
 ```
 
 ### Fetch Raw Candid Source
@@ -237,22 +253,21 @@ new CandidReactor(config: CandidReactorParameters)
 
 #### Methods
 
-##### Dynamic Calls
+| Method                     | Description                                                 |
+| -------------------------- | ----------------------------------------------------------- |
+| `initialize()`             | Parse provided Candid or fetch from network, update service |
+| `registerMethod(options)`  | Register a method by its Candid signature                   |
+| `registerMethods(methods)` | Register multiple methods at once                           |
+| `hasMethod(functionName)`  | Check if a method is registered                             |
+| `getMethodNames()`         | Get all registered method names                             |
 
-| Method                  | Description                                                 |
-| ----------------------- | ----------------------------------------------------------- |
-| `initialize()`          | Parse provided Candid or fetch from network, update service |
-| `callDynamic(options)`  | Execute update call with dynamic signature                  |
-| `queryDynamic(options)` | Execute query call with dynamic signature                   |
+After initialization or registration, all standard `Reactor` methods work:
 
-##### TanStack Query Integration
-
-| Method                               | Description                          |
-| ------------------------------------ | ------------------------------------ |
-| `fetchQueryDynamic(options)`         | Fetch with TanStack Query caching    |
-| `getQueryOptionsDynamic(options)`    | Get query options for useQuery       |
-| `generateQueryKeyDynamic(options)`   | Generate cache key for dynamic calls |
-| `invalidateQueriesDynamic(options?)` | Invalidate cached dynamic queries    |
+- `callMethod()` - Execute a method call
+- `fetchQuery()` - Fetch with TanStack Query caching
+- `getQueryOptions()` - Get query options for React hooks
+- `invalidateQueries()` - Invalidate cached queries
+- etc.
 
 ### Types
 

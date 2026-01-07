@@ -45,21 +45,37 @@ describe("CandidReactor E2E", () => {
     console.log("✅ Mainnet IDL fetched. Method count:", service._fields.length)
   })
 
-  it("should perform dynamic query using signature", async () => {
-    const name = await reactor.queryDynamic({
+  it("should register a dynamic method and call it using standard Reactor methods", async () => {
+    // Register a method dynamically
+    await reactor.registerMethod({
       functionName: "icrc1_name",
       candid: "() -> (text) query",
     })
+
+    // Verify it's registered
+    expect(reactor.hasMethod("icrc1_name")).toBe(true)
+
+    // Use standard Reactor callMethod
+    const name = await reactor.callMethod({
+      functionName: "icrc1_name" as any,
+    })
+
     expect(name).toBe("Internet Computer")
-    console.log(`✅ Dynamic query successful: ${name}`)
+    console.log(`✅ Standard callMethod successful: ${name}`)
   })
 
-  it("should fail gracefully if dynamic method name doesn't match signature", async () => {
+  it("should fail to register method with wrong signature", async () => {
     await expect(
-      reactor.queryDynamic({
-        functionName: "wrong_method",
-        candid: "() -> (text) query",
+      reactor.registerMethod({
+        functionName: "wrong_method_name",
+        candid: "service : { actual_method : () -> (text) query }",
       })
-    ).rejects.toThrow(/Canister has no query method 'wrong_method'/)
+    ).rejects.toThrow('Method "wrong_method_name" not found')
+  })
+
+  it("should list all registered method names", async () => {
+    const methodNames = reactor.getMethodNames()
+    expect(methodNames).toContain("icrc1_name")
+    console.log("✅ Registered methods:", methodNames.slice(0, 5), "...")
   })
 })

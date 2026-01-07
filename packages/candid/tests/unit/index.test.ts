@@ -82,6 +82,7 @@ describe("Package Exports", () => {
       // All exports should be documented
       const knownExports = [
         "CandidAdapter",
+        "CandidReactor",
         "DEFAULT_IC_DIDJS_ID",
         "DEFAULT_LOCAL_DIDJS_ID",
         "noop",

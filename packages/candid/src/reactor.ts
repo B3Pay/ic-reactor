@@ -2,7 +2,7 @@ import { Reactor } from "@ic-reactor/core"
 import { CandidAdapter } from "./adapter"
 import { IDL } from "@icp-sdk/core/candid"
 
-import type { CallOptions, CanisterId } from "./types"
+import type { CanisterId } from "./types"
 import type { BaseActor, ReactorParameters } from "@ic-reactor/core"
 
 export interface CandidReactorParameters<A = BaseActor> extends Omit<
@@ -13,6 +13,17 @@ export interface CandidReactorParameters<A = BaseActor> extends Omit<
   candid?: string
   idlFactory?: IDL.InterfaceFactory
   actor?: A
+}
+
+export interface DynamicMethodOptions {
+  /** The method name to register. */
+  functionName: string
+  /**
+   * The Candid signature for the method.
+   * Can be either a method signature like "(text) -> (text) query"
+   * or a full service definition like "service : { greet: (text) -> (text) query }".
+   */
+  candid: string
 }
 
 export class CandidReactor<A = BaseActor> extends Reactor<A> {
@@ -38,16 +49,16 @@ export class CandidReactor<A = BaseActor> extends Reactor<A> {
   /**
    * Initializes the reactor by parsing the provided Candid string or fetching it from the network.
    * This updates the internal service definition with the actual canister interface.
+   *
+   * After initialization, all standard Reactor methods (callMethod, fetchQuery, etc.) work.
    */
   public async initialize(): Promise<void> {
     let idlFactory: IDL.InterfaceFactory
 
     if (this.candidSource) {
-      // Use provided Candid string
       const definition = await this.adapter.parseCandidSource(this.candidSource)
       idlFactory = definition.idlFactory
     } else {
-      // Fetch from network
       const definition = await this.adapter.getCandidDefinition(this.canisterId)
       idlFactory = definition.idlFactory
     }
@@ -56,119 +67,78 @@ export class CandidReactor<A = BaseActor> extends Reactor<A> {
   }
 
   /**
-   * Performs an update call to the canister using a Candid signature.
+   * Register a dynamic method by its Candid signature.
+   * After registration, all standard Reactor methods work with this method name.
+   *
+   * @example
+   * ```typescript
+   * // Register a method
+   * await reactor.registerMethod({
+   *   functionName: "icrc1_balance_of",
+   *   candid: "(record { owner : principal }) -> (nat) query"
+   * })
+   *
+   * // Now use standard Reactor methods!
+   * const balance = await reactor.callMethod({
+   *   functionName: "icrc1_balance_of",
+   *   args: [{ owner }]
+   * })
+   *
+   * // Or with caching
+   * const cachedBalance = await reactor.fetchQuery({
+   *   functionName: "icrc1_balance_of",
+   *   args: [{ owner }]
+   * })
+   * ```
    */
-  public async callDynamic<T = unknown>(options: CallOptions): Promise<T> {
-    const { func, args } = await this.parseDynamicOptions(options)
-    const rawResult = await this.executeCall(
-      options.functionName,
-      IDL.encode(func.argTypes, args)
+  public async registerMethod(options: DynamicMethodOptions): Promise<void> {
+    const { functionName, candid } = options
+
+    // Check if method already registered
+    const existing = this.service._fields.find(
+      ([name]) => name === functionName
     )
-    return this.decodeResult<T>(func.retTypes, rawResult)
-  }
+    if (existing) return
 
-  /**
-   * Performs a query call to the canister using a Candid signature.
-   */
-  public async queryDynamic<T = unknown>(options: CallOptions): Promise<T> {
-    const { func, args } = await this.parseDynamicOptions(options)
-    const rawResult = await this.executeQuery(
-      options.functionName,
-      IDL.encode(func.argTypes, args)
-    )
-    return this.decodeResult<T>(func.retTypes, rawResult)
-  }
-
-  // ══════════════════════════════════════════════════════════════════════
-  // TANSTACK QUERY INTEGRATION
-  // ══════════════════════════════════════════════════════════════════════
-
-  /**
-   * Generate a query key for dynamic calls (for TanStack Query caching).
-   */
-  public generateQueryKeyDynamic(options: CallOptions): unknown[] {
-    const queryKey: unknown[] = [
-      this.canisterId.toString(),
-      "dynamic",
-      options.functionName,
-      options.candid,
-    ]
-    if (options.args?.length) {
-      queryKey.push(options.args)
-    }
-    if (options.queryKey?.length) {
-      queryKey.push(...options.queryKey)
-    }
-    return queryKey
-  }
-
-  /**
-   * Get query options for TanStack Query (for use with useQuery, etc.).
-   */
-  public getQueryOptionsDynamic<T = unknown>(options: CallOptions) {
-    return {
-      queryKey: this.generateQueryKeyDynamic(options),
-      queryFn: () => this.queryDynamic<T>(options),
-    }
-  }
-
-  /**
-   * Fetch data using a dynamic Candid signature with TanStack Query caching.
-   */
-  public async fetchQueryDynamic<T = unknown>(
-    options: CallOptions
-  ): Promise<T> {
-    const queryOptions = this.getQueryOptionsDynamic<T>(options)
-    return this.queryClient.ensureQueryData(queryOptions)
-  }
-
-  /**
-   * Invalidate cached queries for dynamic calls.
-   */
-  public invalidateQueriesDynamic(options?: Partial<CallOptions>) {
-    const queryKey = options
-      ? this.generateQueryKeyDynamic(options as CallOptions)
-      : [this.canisterId.toString(), "dynamic"]
-
-    this.queryClient.invalidateQueries({ queryKey })
-  }
-
-  // ══════════════════════════════════════════════════════════════════════
-  // HELPERS
-  // ══════════════════════════════════════════════════════════════════════
-
-  /**
-   * Parse CallOptions to extract the IDL function type and arguments.
-   */
-  private async parseDynamicOptions({
-    functionName,
-    candid,
-    args = [],
-  }: CallOptions) {
+    // Parse the Candid signature
     const serviceSource = candid.includes("service :")
       ? candid
       : `service : { ${functionName} : ${candid}; }`
 
     const { idlFactory } = await this.adapter.parseCandidSource(serviceSource)
-    const service = idlFactory({ IDL })
+    const parsedService = idlFactory({ IDL })
 
-    const funcField = service._fields.find(([name]) => name === functionName)
+    const funcField = parsedService._fields.find(
+      ([name]) => name === functionName
+    )
     if (!funcField) {
       throw new Error(
         `Method "${functionName}" not found in the provided Candid signature`
       )
     }
 
-    return { func: funcField[1], args }
+    // Inject into our service
+    this.service._fields.push(funcField)
   }
 
   /**
-   * Decode raw result bytes using IDL types.
+   * Register multiple methods at once.
    */
-  private decodeResult<T>(retTypes: IDL.Type[], rawResult: Uint8Array): T {
-    const decoded = IDL.decode(retTypes, rawResult)
-    if (decoded.length === 0) return undefined as T
-    if (decoded.length === 1) return decoded[0] as T
-    return decoded as T
+  public async registerMethods(methods: DynamicMethodOptions[]): Promise<void> {
+    await Promise.all(methods.map((m) => this.registerMethod(m)))
+  }
+
+  /**
+   * Check if a method is registered (either from initialize or registerMethod).
+   */
+  public hasMethod(functionName: string): boolean {
+    return this.service._fields.some(([name]) => name === functionName)
+  }
+
+  /**
+   * Get all registered method names.
+   */
+  public getMethodNames(): string[] {
+    return this.service._fields.map(([name]) => name)
   }
 }
