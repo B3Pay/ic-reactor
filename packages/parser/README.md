@@ -1,85 +1,80 @@
-<div align="center">
+# @ic-reactor/parser
 
-  <h1><code>wasm-pack-template</code></h1>
+A high-performance **WASM-based parser** for the DFINITY Candid language, built for the `ic-reactor` ecosystem.
 
-<strong>A template for kick starting a Rust and WebAssembly project using <a href="https://github.com/rustwasm/wasm-pack">wasm-pack</a>.</strong>
+This package compiles Candid interface definitions (`.did` files) into JavaScript and TypeScript bindings directly in the browser or Node.js environment, without needing to interact with a remote canister.
 
-  <p>
-    <a href="https://travis-ci.org/rustwasm/wasm-pack-template"><img src="https://img.shields.io/travis/rustwasm/wasm-pack-template.svg?style=flat-square" alt="Build Status" /></a>
-  </p>
+## Features
 
-  <h3>
-    <a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html">Tutorial</a>
-    <span> | </span>
-    <a href="https://discordapp.com/channels/442252698964721669/443151097398296587">Chat</a>
-  </h3>
+- **Blazing Fast**: Built with Rust and compiled to WebAssembly.
+- **Offline Capable**: Parse Candid strings entirely on the client side.
+- **Zero Dependencies**: Does not rely on the `didjs` canister.
+- **Universal**: Works in the browser and Node.js.
 
-<sub>Built with 🦀🕸 by <a href="https://rustwasm.github.io/">The Rust and WebAssembly Working Group</a></sub>
+## Installation
 
-</div>
-
-## About
-
-[**📚 Read this template tutorial! 📚**][template-docs]
-
-This template is designed for compiling Rust libraries into WebAssembly and
-publishing the resulting package to NPM.
-
-Be sure to check out [other `wasm-pack` tutorials online][tutorials] for other
-templates and usages of `wasm-pack`.
-
-[tutorials]: https://rustwasm.github.io/docs/wasm-pack/tutorials/index.html
-[template-docs]: https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html
-
-## 🚴 Usage
-
-### 🐑 Use `cargo generate` to Clone this Template
-
-[Learn more about `cargo generate` here.](https://github.com/ashleygwilliams/cargo-generate)
-
-```
-cargo generate --git https://github.com/rustwasm/wasm-pack-template.git --name my-project
-cd my-project
+```bash
+npm install @ic-reactor/parser
 ```
 
-### 🛠️ Build with `wasm-pack build`
+## Usage
 
-```
-wasm-pack build
-```
+### Converting Candid to JavaScript
 
-### 🔬 Test in Headless Browsers with `wasm-pack test`
+```typescript
+import { didToJs } from "@ic-reactor/parser"
 
-```
-wasm-pack test --headless --firefox
-```
+const candid = `service : {
+  greet : (text) -> (text) query;
+}`
 
-### 🎁 Publish to NPM with `wasm-pack publish`
-
-```
-wasm-pack publish
+const jsCode = didToJs(candid)
+console.log(jsCode)
 ```
 
-## 🔋 Batteries Included
+**Output:**
 
-- [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) for communicating
-  between WebAssembly and JavaScript.
-- [`console_error_panic_hook`](https://github.com/rustwasm/console_error_panic_hook)
-  for logging panic messages to the developer console.
-- `LICENSE-APACHE` and `LICENSE-MIT`: most Rust projects are licensed this way, so these are included for you
+```javascript
+export const idlFactory = ({ IDL }) => {
+  return IDL.Service({ greet: IDL.Func([IDL.Text], [IDL.Text], ["query"]) })
+}
+export const init = ({ IDL }) => {
+  return []
+}
+```
+
+### Converting Candid to TypeScript
+
+```typescript
+import { didToTs } from "@ic-reactor/parser"
+
+const tsCode = didToTs(candid)
+console.log(tsCode)
+```
+
+**Output:**
+
+```typescript
+import type { Principal } from "@icp-sdk/core/principal"
+import type { ActorMethod } from "@icp-sdk/core/agent"
+import type { IDL } from "@icp-sdk/core/candid"
+
+export interface _SERVICE {
+  greet: ActorMethod<[string], string>
+}
+export declare const idlFactory: IDL.InterfaceFactory
+export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[]
+```
+
+## Integration with IC-Reactor
+
+This package is used internally by `@ic-reactor/candid` and `@ic-reactor/core` to enable local parsing strategies.
+
+```typescript
+import { createCandidAdapter } from "@ic-reactor/core"
+// The parser is dynamically imported if available
+```
 
 ## License
 
-Licensed under either of
-
-- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
-
-### Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally
-submitted for inclusion in the work by you, as defined in the Apache-2.0
-license, shall be dual licensed as above, without any additional terms or
-conditions.
+MIT

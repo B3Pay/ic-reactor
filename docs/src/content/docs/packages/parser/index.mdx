@@ -1,0 +1,91 @@
+---
+title: "@ic-reactor/parser"
+description: WASM-based Candid parser and transformer for the Internet Computer
+editUrl: false
+---
+
+import { Aside, Card, CardGrid } from "@astrojs/starlight/components"
+
+The `@ic-reactor/parser` package is a high-performance **WASM-based parser** for the DFINITY Candid language. It compiles Candid interface definitions (`.did` files) into JavaScript and TypeScript bindings directly in the browser or Node.js environment.
+
+## Why This Package?
+
+While `@ic-reactor/candid` handles the fetching and interaction logic, this package provides the raw parsing power.
+
+- **Fast & Local** — No need to call a remote `didjs` canister to compile Candid.
+- **Offline Capable** — Parse Candid strings entirely on the client side.
+- **Type Generation** — Generate TypeScript interfaces on the fly.
+
+<CardGrid>
+  <Card title="Candid to JS" icon="javascript">
+    Compiles Candid strings to `idlFactory` and `init` exports for `HttpAgent`.
+  </Card>
+  <Card title="Candid to TS" icon="seti:typescript">
+    Generates full TypeScript type definitions from Candid.
+  </Card>
+  <Card title="WASM Power" icon="rocket">
+    Built with Rust and compiled to WebAssembly for performance.
+  </Card>
+</CardGrid>
+
+## Installation
+
+```bash
+npm install @ic-reactor/parser
+```
+
+## Usage
+
+### Basic Usage
+
+Import the parser and use the synchronous methods `didToJs` or `didToTs`.
+
+<Aside type="caution">
+  This package uses WebAssembly. In some environments (like standard Create
+  React App or older bundlers), you may need specific configuration to load WASM
+  files.
+</Aside>
+
+```typescript
+import { didToJs, didToTs } from "@ic-reactor/parser"
+
+const candid = "service:{icrc1_name:()->(text) query;}"
+
+// Convert to JavaScript (idlFactory)
+const js = didToJs(candid)
+console.log(js)
+// Output:
+// export const idlFactory = ({ IDL }) => {
+//   return IDL.Service({ 'icrc1_name' : IDL.Func([], [IDL.Text], ['query']) });
+// };
+// export const init = ({ IDL }) => { return []; };
+
+// Convert to TypeScript definitions
+const ts = didToTs(candid)
+console.log(ts)
+// Output:
+// import type { Principal } from '@icp-sdk/core/principal';
+// ...
+// export interface _SERVICE { 'icrc1_name' : ActorMethod<[], string> }
+// ...
+```
+
+### Integration with Core
+
+This package is designed to work seamlessly with `@ic-reactor/candid`. When you initialize a `CandidAdapter` or `CandidReactor`, it can automatically use this parser if it's installed/loaded.
+
+```typescript
+import { createCandidAdapter } from "@ic-reactor/core"
+
+const adapter = createCandidAdapter({ agentManager })
+
+// This internally loads the WASM from @ic-reactor/parser if available
+await adapter.initializeParser()
+
+const { idlFactory } = adapter.parseDidToJs("service:{}")
+```
+
+## See Also
+
+- [API Reference](/ic-reactor/v3/packages/parser/reference) — Detailed function documentation
+- [@ic-reactor/candid](/ic-reactor/v3/packages/candid/) — Dynamic fetching and interaction
