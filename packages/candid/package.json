@@ -1,0 +1,70 @@
+{
+  "name": "@ic-reactor/candid",
+  "version": "3.0.0-beta.1",
+  "description": "IC Reactor Candid Adapter - Fetch and parse Candid definitions from Internet Computer canisters",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist tsconfig.tsbuildinfo && tsc -b",
+    "test": "vitest run",
+    "version:sync": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); fs.writeFileSync('./src/version.ts', '/**\\n * Library version - automatically synced from package.json.\\n */\\nexport const VERSION = \\\"' + pkg.version + '\\\"\\n');\"",
+    "size": "size-limit",
+    "analyze": "size-limit --why"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B3Pay/ic-reactor",
+    "directory": "packages/candid"
+  },
+  "bugs": {
+    "url": "https://github.com/B3Pay/ic-reactor/issues"
+  },
+  "homepage": "https://ic-reactor.dev",
+  "keywords": [
+    "internet-computer",
+    "icp",
+    "dfinity",
+    "candid",
+    "web3",
+    "blockchain",
+    "canister",
+    "actor",
+    "reactor"
+  ],
+  "author": "Behrad Deylami",
+  "license": "MIT",
+  "dependencies": {},
+  "peerDependencies": {
+    "@icp-sdk/core": "^5.0.0"
+  },
+  "peerDependenciesMeta": {},
+  "devDependencies": {
+    "@icp-sdk/core": "^5.0.0",
+    "@size-limit/preset-small-lib": "^11.2.0",
+    "@types/node": "^24.10.1",
+    "size-limit": "^11.2.0",
+    "vitest": "^4.0.16"
+  },
+  "size-limit": [
+    {
+      "name": "Candid Adapter",
+      "path": "dist/index.js",
+      "limit": "10 KB",
+      "gzip": true
+    }
+  ]
+}
