@@ -22,21 +22,24 @@ npm install @ic-reactor/parser
 - **Multiple Retrieval Methods**: Supports both canister metadata and the temporary hack method
 - **Local Parsing**: Use the WASM-based parser for fast, offline Candid compilation
 - **Remote Fallback**: Falls back to the didjs canister for Candid-to-JavaScript compilation
-- **Agent Integration**: Works with HTTP agents and agent managers
+- **ClientManager Integration**: Seamlessly integrates with `@ic-reactor/core` ClientManager
 
 ## Usage
 
-### Basic Usage
+### With ClientManager (Recommended)
 
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
-import { HttpAgent, Actor } from "@icp-sdk/core/agent"
+import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
 
-// Create an agent
-const agent = await HttpAgent.create()
+// Create and initialize ClientManager
+const queryClient = new QueryClient()
+const clientManager = new ClientManager({ queryClient })
+await clientManager.initialize()
 
 // Create the adapter
-const adapter = new CandidAdapter({ agent })
+const adapter = new CandidAdapter({ clientManager })
 
 // Get the Candid definition for a canister
 const { idlFactory } = await adapter.getCandidDefinition(
@@ -44,22 +47,28 @@ const { idlFactory } = await adapter.getCandidDefinition(
 )
 
 // Use it to create an actor
+import { Actor } from "@icp-sdk/core/agent"
+
 const actor = Actor.createActor(idlFactory, {
-  agent,
+  agent: clientManager.agent,
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
 })
 ```
 
-### With Local Parser (Recommended)
+### With Local Parser (Recommended for Performance)
 
 For faster processing without network requests:
 
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
-import { HttpAgent } from "@icp-sdk/core/agent"
+import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
 
-const agent = await HttpAgent.create()
-const adapter = new CandidAdapter({ agent })
+const queryClient = new QueryClient()
+const clientManager = new ClientManager({ queryClient })
+await clientManager.initialize()
+
+const adapter = new CandidAdapter({ clientManager })
 
 // Initialize the local parser
 await adapter.initializeParser()
@@ -68,20 +77,6 @@ await adapter.initializeParser()
 const { idlFactory } = await adapter.getCandidDefinition(
   "ryjl3-tyaaa-aaaaa-aaaba-cai"
 )
-```
-
-### With Agent Manager
-
-If you're using an agent manager that handles agent lifecycle:
-
-```typescript
-import { CandidAdapter } from "@ic-reactor/candid"
-import { createClientManager } from "@ic-reactor/core"
-
-const clientManager = createClientManager()
-const adapter = new CandidAdapter({ agentManager: clientManager })
-
-// The adapter will automatically update when the agent changes
 ```
 
 ### Fetch Raw Candid Definition
@@ -121,27 +116,33 @@ console.log(isValid) // true
 new CandidAdapter(params: CandidAdapterParameters)
 ```
 
-| Parameter         | Type           | Required | Description                     |
-| ----------------- | -------------- | -------- | ------------------------------- |
-| `agent`           | `HttpAgent`    | No\*     | The HTTP agent to use           |
-| `agentManager`    | `AgentManager` | No\*     | Agent manager for subscriptions |
-| `didjsCanisterId` | `string`       | No       | Custom didjs canister ID        |
+| Parameter         | Type                  | Required | Description                                            |
+| ----------------- | --------------------- | -------- | ------------------------------------------------------ |
+| `clientManager`   | `CandidClientManager` | Yes      | The client manager providing agent and identity access |
+| `didjsCanisterId` | `string`              | No       | Custom didjs canister ID                               |
 
-\*Either `agent` or `agentManager` must be provided.
+#### Properties
+
+| Property          | Type                  | Description                                  |
+| ----------------- | --------------------- | -------------------------------------------- |
+| `clientManager`   | `CandidClientManager` | The client manager instance                  |
+| `agent`           | `HttpAgent`           | The HTTP agent from the client manager       |
+| `didjsCanisterId` | `string`              | The didjs canister ID for remote compilation |
 
 #### Methods
 
-| Method                                         | Description                       |
-| ---------------------------------------------- | --------------------------------- |
-| `initializeParser(module?)`                    | Initialize the local WASM parser  |
-| `getCandidDefinition(canisterId)`              | Get parsed Candid definition      |
-| `fetchCandidDefinition(canisterId)`            | Get raw Candid source string      |
-| `getFromMetadata(canisterId)`                  | Get Candid from canister metadata |
-| `getFromTmpHack(canisterId)`                   | Get Candid via tmp hack method    |
-| `evaluateCandidDefinition(data)`               | Parse Candid string to definition |
-| `fetchDidTojs(candidSource, didjsCanisterId?)` | Compile Candid remotely           |
-| `parseDidToJs(candidSource)`                   | Compile Candid locally            |
-| `validateIDL(candidSource)`                    | Validate Candid source            |
+| Method                                         | Description                          |
+| ---------------------------------------------- | ------------------------------------ |
+| `initializeParser(module?)`                    | Initialize the local WASM parser     |
+| `getCandidDefinition(canisterId)`              | Get parsed Candid definition         |
+| `fetchCandidDefinition(canisterId)`            | Get raw Candid source string         |
+| `getFromMetadata(canisterId)`                  | Get Candid from canister metadata    |
+| `getFromTmpHack(canisterId)`                   | Get Candid via tmp hack method       |
+| `evaluateCandidDefinition(data)`               | Parse Candid string to definition    |
+| `fetchDidTojs(candidSource, didjsCanisterId?)` | Compile Candid remotely              |
+| `parseDidToJs(candidSource)`                   | Compile Candid locally               |
+| `validateIDL(candidSource)`                    | Validate Candid source               |
+| `unsubscribe()`                                | Cleanup identity change subscription |
 
 ### Types
 
@@ -152,9 +153,14 @@ interface CandidDefinition {
 }
 
 interface CandidAdapterParameters {
-  agent?: HttpAgent
-  agentManager?: AgentManager
+  clientManager: CandidClientManager
   didjsCanisterId?: string
+}
+
+interface CandidClientManager {
+  agent: HttpAgent
+  isLocal: boolean
+  subscribe(callback: (identity: Identity) => void): () => void
 }
 
 type CanisterId = string | Principal
@@ -169,6 +175,21 @@ type CanisterId = string | Principal
    - Falls back to the remote didjs canister - requires network request
 
 3. **Evaluation**: The compiled JavaScript is then dynamically imported to extract the `idlFactory` and optional `init` function.
+
+4. **Identity Changes**: The adapter subscribes to identity changes from the ClientManager. When the identity changes, it re-evaluates the default didjs canister ID (unless a custom one was provided).
+
+## Integration with @ic-reactor/core
+
+The `CandidAdapter` is designed to work seamlessly with the `ClientManager` from `@ic-reactor/core`. The `CandidClientManager` interface matches the `ClientManager` class:
+
+```typescript
+import { ClientManager } from "@ic-reactor/core"
+import { CandidAdapter } from "@ic-reactor/candid"
+
+// ClientManager implements CandidClientManager interface
+const clientManager = new ClientManager({ queryClient })
+const adapter = new CandidAdapter({ clientManager })
+```
 
 ## License
 

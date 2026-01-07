@@ -7,6 +7,7 @@ import type {
   CanisterId,
   CandidAdapterParameters,
   CandidDefinition,
+  CandidClientManager,
   ReactorParser,
 } from "./types"
 import { DEFAULT_IC_DIDJS_ID, DEFAULT_LOCAL_DIDJS_ID } from "./constants"
@@ -27,10 +28,14 @@ import { importCandidDefinition, noop } from "./utils"
  * @example
  * ```typescript
  * import { CandidAdapter } from "@ic-reactor/candid"
- * import { HttpAgent } from "@icp-sdk/core/agent"
+ * import { ClientManager } from "@ic-reactor/core"
+ * import { QueryClient } from "@tanstack/query-core"
  *
- * const agent = await HttpAgent.create()
- * const adapter = new CandidAdapter({ agent })
+ * const queryClient = new QueryClient()
+ * const clientManager = new ClientManager({ queryClient })
+ * await clientManager.initialize()
+ *
+ * const adapter = new CandidAdapter({ clientManager })
  *
  * // Optionally initialize the local parser for faster processing
  * await adapter.initializeParser()
@@ -40,8 +45,8 @@ import { importCandidDefinition, noop } from "./utils"
  * ```
  */
 export class CandidAdapter {
-  /** The HTTP agent used for making requests. */
-  public agent: HttpAgent
+  /** The client manager providing agent and identity access. */
+  public clientManager: CandidClientManager
 
   /** The canister ID of the didjs canister for remote Candid compilation. */
   public didjsCanisterId: string
@@ -49,33 +54,33 @@ export class CandidAdapter {
   /** The optional local parser module. */
   private parserModule?: ReactorParser
 
-  /** Function to unsubscribe from agent updates. */
-  public unsubscribeAgent: () => void = noop
+  /** Function to unsubscribe from identity updates. */
+  public unsubscribe: () => void = noop
 
   /**
    * Creates a new CandidAdapter instance.
    *
    * @param params - The adapter parameters.
-   * @throws Error if neither agent nor agentManager is provided.
    */
-  constructor({
-    agentManager,
-    agent,
-    didjsCanisterId,
-  }: CandidAdapterParameters) {
-    if (agent) {
-      this.agent = agent
-    } else if (agentManager) {
-      this.agent = agentManager.getAgent()
-      this.unsubscribeAgent = agentManager.subscribeAgent((agent) => {
-        this.agent = agent
-        this.didjsCanisterId = didjsCanisterId || this.getDefaultDidJsId()
-      })
-    } else {
-      throw new Error("No agent or agentManager provided")
-    }
-
+  constructor({ clientManager, didjsCanisterId }: CandidAdapterParameters) {
+    this.clientManager = clientManager
     this.didjsCanisterId = didjsCanisterId || this.getDefaultDidJsId()
+
+    // Subscribe to identity changes to update didjs canister ID if needed
+    this.unsubscribe = clientManager.subscribe(() => {
+      // Re-evaluate didjs canister ID when identity changes
+      // (in case the network context changes)
+      if (!didjsCanisterId) {
+        this.didjsCanisterId = this.getDefaultDidJsId()
+      }
+    })
+  }
+
+  /**
+   * The HTTP agent from the client manager.
+   */
+  get agent(): HttpAgent {
+    return this.clientManager.agent
   }
 
   /**
@@ -119,7 +124,7 @@ export class CandidAdapter {
    * @returns The default didjs canister ID.
    */
   private getDefaultDidJsId(): string {
-    return this.agent.isLocal?.() === true
+    return this.clientManager.isLocal
       ? DEFAULT_LOCAL_DIDJS_ID
       : DEFAULT_IC_DIDJS_ID
   }
@@ -173,7 +178,7 @@ export class CandidAdapter {
    * const { idlFactory } = await adapter.getCandidDefinition("ryjl3-tyaaa-aaaaa-aaaba-cai")
    *
    * const actor = Actor.createActor(idlFactory, {
-   *   agent,
+   *   agent: clientManager.agent,
    *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai"
    * })
    * ```

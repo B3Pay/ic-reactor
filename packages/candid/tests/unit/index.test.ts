@@ -11,14 +11,18 @@ describe("Package Exports", () => {
     })
 
     it("should be constructible", () => {
-      const mockAgent = {
-        isLocal: () => false,
-        query: () => Promise.resolve({}),
-        call: () => Promise.resolve({}),
+      const mockClientManager = {
+        agent: {
+          isLocal: () => false,
+          query: () => Promise.resolve({}),
+          call: () => Promise.resolve({}),
+        },
+        isLocal: false,
+        subscribe: () => () => {},
       }
 
       const adapter = new CandidPackage.CandidAdapter({
-        agent: mockAgent as any,
+        clientManager: mockClientManager as any,
       })
 
       expect(adapter).toBeInstanceOf(CandidPackage.CandidAdapter)

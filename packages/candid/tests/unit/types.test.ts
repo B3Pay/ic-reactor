@@ -1,12 +1,12 @@
-import { describe, it, expect, expectTypeOf } from "vitest"
+import { describe, it, expect } from "vitest"
 import type {
   CanisterId,
-  AgentManager,
+  CandidClientManager,
   CandidAdapterParameters,
   CandidDefinition,
   ReactorParser,
 } from "../../src/types"
-import type { HttpAgent } from "@icp-sdk/core/agent"
+import type { HttpAgent, Identity } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { IDL } from "@icp-sdk/core/candid"
 
@@ -30,102 +30,98 @@ describe("Types", () => {
     })
   })
 
-  describe("AgentManager", () => {
-    it("should define required methods", () => {
-      const mockAgentManager: AgentManager = {
-        getAgent: () =>
-          ({
-            query: () => Promise.resolve({}),
-            call: () => Promise.resolve({}),
-          }) as unknown as HttpAgent,
-        subscribeAgent: (callback) => {
-          // Return unsubscribe function
-          return () => {}
-        },
+  describe("CandidClientManager", () => {
+    it("should define required properties", () => {
+      const mockClientManager: CandidClientManager = {
+        agent: {
+          query: () => Promise.resolve({}),
+          call: () => Promise.resolve({}),
+        } as unknown as HttpAgent,
+        isLocal: false,
+        subscribe: (callback) => () => {},
       }
 
-      expect(typeof mockAgentManager.getAgent).toBe("function")
-      expect(typeof mockAgentManager.subscribeAgent).toBe("function")
+      expect(mockClientManager.agent).toBeDefined()
+      expect(typeof mockClientManager.isLocal).toBe("boolean")
+      expect(typeof mockClientManager.subscribe).toBe("function")
     })
 
-    it("should return HttpAgent from getAgent", () => {
+    it("should return HttpAgent from agent property", () => {
       const mockAgent = {
         query: () => Promise.resolve({}),
         call: () => Promise.resolve({}),
       } as unknown as HttpAgent
 
-      const mockAgentManager: AgentManager = {
-        getAgent: () => mockAgent,
-        subscribeAgent: () => () => {},
+      const mockClientManager: CandidClientManager = {
+        agent: mockAgent,
+        isLocal: false,
+        subscribe: () => () => {},
       }
 
-      const agent = mockAgentManager.getAgent()
-      expect(agent).toBe(mockAgent)
+      expect(mockClientManager.agent).toBe(mockAgent)
     })
 
-    it("should return unsubscribe function from subscribeAgent", () => {
+    it("should return unsubscribe function from subscribe", () => {
       let subscribed = true
-      const mockAgentManager: AgentManager = {
-        getAgent: () => ({}) as HttpAgent,
-        subscribeAgent: (callback) => {
+      const mockClientManager: CandidClientManager = {
+        agent: {} as HttpAgent,
+        isLocal: false,
+        subscribe: (callback) => {
           return () => {
             subscribed = false
           }
         },
       }
 
-      const unsubscribe = mockAgentManager.subscribeAgent(() => {})
+      const unsubscribe = mockClientManager.subscribe(() => {})
       expect(typeof unsubscribe).toBe("function")
 
       unsubscribe()
       expect(subscribed).toBe(false)
     })
+
+    it("should have isLocal property", () => {
+      const localClientManager: CandidClientManager = {
+        agent: {} as HttpAgent,
+        isLocal: true,
+        subscribe: () => () => {},
+      }
+
+      const icClientManager: CandidClientManager = {
+        agent: {} as HttpAgent,
+        isLocal: false,
+        subscribe: () => () => {},
+      }
+
+      expect(localClientManager.isLocal).toBe(true)
+      expect(icClientManager.isLocal).toBe(false)
+    })
   })
 
   describe("CandidAdapterParameters", () => {
-    it("should allow agent only", () => {
+    it("should require clientManager", () => {
       const params: CandidAdapterParameters = {
-        agent: {} as HttpAgent,
-      }
-
-      expect(params.agent).toBeDefined()
-      expect(params.agentManager).toBeUndefined()
-    })
-
-    it("should allow agentManager only", () => {
-      const params: CandidAdapterParameters = {
-        agentManager: {
-          getAgent: () => ({}) as HttpAgent,
-          subscribeAgent: () => () => {},
+        clientManager: {
+          agent: {} as HttpAgent,
+          isLocal: false,
+          subscribe: () => () => {},
         },
       }
 
-      expect(params.agentManager).toBeDefined()
-      expect(params.agent).toBeUndefined()
+      expect(params.clientManager).toBeDefined()
     })
 
     it("should allow optional didjsCanisterId", () => {
       const params: CandidAdapterParameters = {
-        agent: {} as HttpAgent,
+        clientManager: {
+          agent: {} as HttpAgent,
+          isLocal: false,
+          subscribe: () => () => {},
+        },
         didjsCanisterId: "custom-canister-id",
       }
 
       expect(params.didjsCanisterId).toBe("custom-canister-id")
-    })
-
-    it("should allow all parameters", () => {
-      const params: CandidAdapterParameters = {
-        agent: {} as HttpAgent,
-        agentManager: {
-          getAgent: () => ({}) as HttpAgent,
-          subscribeAgent: () => () => {},
-        },
-        didjsCanisterId: "custom-id",
-      }
-
-      expect(params.agent).toBeDefined()
-      expect(params.agentManager).toBeDefined()
-      expect(params.didjsCanisterId).toBeDefined()
     })
   })
 

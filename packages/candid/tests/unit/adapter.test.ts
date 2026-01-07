@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { CandidAdapter } from "../../src/adapter"
 import type {
-  AgentManager,
+  CandidClientManager,
   ReactorParser,
   CandidAdapterParameters,
 } from "../../src/types"
@@ -9,6 +9,7 @@ import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
 } from "../../src/constants"
+import type { HttpAgent, Identity } from "@icp-sdk/core/agent"
 
 // Mock the @icp-sdk/core/agent module
 vi.mock("@icp-sdk/core/agent", async () => {
@@ -29,7 +30,7 @@ import { Actor, CanisterStatus } from "@icp-sdk/core/agent"
 
 describe("CandidAdapter", () => {
   let mockAgent: any
-  let mockAgentManager: AgentManager
+  let mockClientManager: CandidClientManager
 
   beforeEach(() => {
     // Reset all mocks before each test
@@ -43,109 +44,88 @@ describe("CandidAdapter", () => {
       getPrincipal: vi.fn(),
     }
 
-    // Create a mock agent manager
-    mockAgentManager = {
-      getAgent: vi.fn().mockReturnValue(mockAgent),
-      subscribeAgent: vi.fn().mockReturnValue(vi.fn()),
+    // Create a mock client manager
+    mockClientManager = {
+      agent: mockAgent,
+      isLocal: false,
+      subscribe: vi.fn().mockReturnValue(vi.fn()),
     }
   })
 
   describe("Constructor", () => {
-    it("should create adapter with agent", () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+    it("should create adapter with clientManager", () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
+      expect(adapter.clientManager).toBe(mockClientManager)
       expect(adapter.agent).toBe(mockAgent)
       expect(adapter.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
     })
 
-    it("should create adapter with agentManager", () => {
-      const adapter = new CandidAdapter({ agentManager: mockAgentManager })
+    it("should subscribe to identity changes", () => {
+      new CandidAdapter({ clientManager: mockClientManager })
 
-      expect(adapter.agent).toBe(mockAgent)
-      expect(mockAgentManager.getAgent).toHaveBeenCalled()
-      expect(mockAgentManager.subscribeAgent).toHaveBeenCalled()
-    })
-
-    it("should throw error if neither agent nor agentManager is provided", () => {
-      expect(() => {
-        new CandidAdapter({} as CandidAdapterParameters)
-      }).toThrow("No agent or agentManager provided")
+      expect(mockClientManager.subscribe).toHaveBeenCalled()
     })
 
     it("should use custom didjsCanisterId if provided", () => {
       const customId = "custom-canister-id"
       const adapter = new CandidAdapter({
-        agent: mockAgent,
+        clientManager: mockClientManager,
         didjsCanisterId: customId,
       })
 
       expect(adapter.didjsCanisterId).toBe(customId)
     })
 
-    it("should use local didjs ID when agent is local", () => {
-      mockAgent.isLocal.mockReturnValue(true)
-      const adapter = new CandidAdapter({ agent: mockAgent })
-
-      expect(adapter.didjsCanisterId).toBe(DEFAULT_LOCAL_DIDJS_ID)
-    })
-
-    it("should use IC didjs ID when agent is not local", () => {
-      mockAgent.isLocal.mockReturnValue(false)
-      const adapter = new CandidAdapter({ agent: mockAgent })
-
-      expect(adapter.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
-    })
-
-    it("should handle agent without isLocal method", () => {
-      const agentWithoutIsLocal = {
-        query: vi.fn(),
-        call: vi.fn(),
+    it("should use local didjs ID when clientManager.isLocal is true", () => {
+      const localClientManager: CandidClientManager = {
+        ...mockClientManager,
+        isLocal: true,
       }
+      const adapter = new CandidAdapter({ clientManager: localClientManager })
 
-      const adapter = new CandidAdapter({ agent: agentWithoutIsLocal as any })
-
-      // Should default to IC ID when isLocal is undefined
-      expect(adapter.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
-    })
-
-    it("should set up agent subscription with agentManager", () => {
-      const subscribeCallback = vi.fn()
-      mockAgentManager.subscribeAgent = vi.fn().mockImplementation((cb) => {
-        subscribeCallback.mockImplementation(cb)
-        return vi.fn()
-      })
-
-      const adapter = new CandidAdapter({ agentManager: mockAgentManager })
-
-      // Simulate agent change
-      const newAgent = { ...mockAgent, isLocal: vi.fn().mockReturnValue(true) }
-      subscribeCallback(newAgent)
-
-      expect(adapter.agent).toBe(newAgent)
       expect(adapter.didjsCanisterId).toBe(DEFAULT_LOCAL_DIDJS_ID)
     })
 
-    it("should provide unsubscribeAgent function", () => {
+    it("should use IC didjs ID when clientManager.isLocal is false", () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
+
+      expect(adapter.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
+    })
+
+    it("should provide unsubscribe function", () => {
       const mockUnsubscribe = vi.fn()
-      mockAgentManager.subscribeAgent = vi.fn().mockReturnValue(mockUnsubscribe)
+      mockClientManager.subscribe = vi.fn().mockReturnValue(mockUnsubscribe)
 
-      const adapter = new CandidAdapter({ agentManager: mockAgentManager })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
-      adapter.unsubscribeAgent()
+      adapter.unsubscribe()
       expect(mockUnsubscribe).toHaveBeenCalled()
     })
+  })
 
-    it("should have noop unsubscribeAgent when using direct agent", () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+  describe("agent getter", () => {
+    it("should return the agent from clientManager", () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
-      // Should not throw when called
-      expect(() => adapter.unsubscribeAgent()).not.toThrow()
+      expect(adapter.agent).toBe(mockAgent)
+    })
+
+    it("should return updated agent when clientManager agent changes", () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
+      expect(adapter.agent).toBe(mockAgent)
+
+      // Simulate agent change
+      const newAgent = { ...mockAgent, test: "new" }
+      ;(mockClientManager as any).agent = newAgent
+
+      expect(adapter.agent).toBe(newAgent)
     })
   })
 
   describe("initializeParser", () => {
     it("should accept custom parser module", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockParser: ReactorParser = {
         didToJs: vi.fn().mockReturnValue("export const idlFactory = () => {}"),
         validateIDL: vi.fn().mockReturnValue(true),
@@ -158,10 +138,8 @@ describe("CandidAdapter", () => {
       expect(mockParser.didToJs).toHaveBeenCalledWith("service {}")
     })
 
-    it("should not call parser default function when module provided directly", async () => {
-      // When a module is provided directly, we skip the require path
-      // and therefore don't call default()
-      const adapter = new CandidAdapter({ agent: mockAgent })
+    it("should not call parser default when module provided directly", async () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockDefault = vi.fn().mockResolvedValue(undefined)
       const mockParser: ReactorParser = {
         default: mockDefault,
@@ -172,12 +150,11 @@ describe("CandidAdapter", () => {
       await adapter.initializeParser(mockParser)
 
       // When passing module directly, default is NOT called
-      // (default is only called in the require() path)
       expect(mockDefault).not.toHaveBeenCalled()
     })
 
     it("should not call default if not available", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockParser: ReactorParser = {
         didToJs: vi.fn(),
         validateIDL: vi.fn(),
@@ -187,7 +164,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should throw error if require fails and no module provided", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       // This should throw because @ic-reactor/parser is not installed
       await expect(adapter.initializeParser()).rejects.toThrow(
@@ -198,7 +175,7 @@ describe("CandidAdapter", () => {
 
   describe("getFromMetadata", () => {
     it("should fetch candid from canister metadata", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockCandid = "service { greet: (text) -> (text) query }"
 
       ;(CanisterStatus.request as any).mockResolvedValue(
@@ -218,7 +195,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should return undefined if candid not in metadata", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       ;(CanisterStatus.request as any).mockResolvedValue(new Map())
 
@@ -232,7 +209,7 @@ describe("CandidAdapter", () => {
 
   describe("getFromTmpHack", () => {
     it("should fetch candid using tmp hack method", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockCandid = "service { greet: (text) -> (text) query }"
 
       const mockActor = {
@@ -248,7 +225,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should throw if tmp hack method fails", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       const mockActor = {
         __get_candid_interface_tmp_hack: vi
@@ -265,7 +242,7 @@ describe("CandidAdapter", () => {
 
   describe("fetchCandidDefinition", () => {
     it("should prefer metadata over tmp hack", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const metadataCandid = "service { from_metadata: () -> () }"
 
       ;(CanisterStatus.request as any).mockResolvedValue(
@@ -282,7 +259,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should fall back to tmp hack if metadata fails", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const tmpHackCandid = "service { from_tmp_hack: () -> () }"
 
       ;(CanisterStatus.request as any).mockRejectedValue(
@@ -304,7 +281,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should fall back to tmp hack if metadata returns empty", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const tmpHackCandid = "service { from_tmp_hack: () -> () }"
 
       ;(CanisterStatus.request as any).mockResolvedValue(new Map())
@@ -324,7 +301,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should throw if both methods fail", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       ;(CanisterStatus.request as any).mockRejectedValue(
         new Error("Metadata failed")
@@ -345,7 +322,7 @@ describe("CandidAdapter", () => {
 
   describe("parseDidToJs", () => {
     it("should throw if parser not initialized", () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       expect(() => adapter.parseDidToJs("service {}")).toThrow(
         "Parser module not available"
@@ -353,7 +330,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should call parser didToJs method", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockParser: ReactorParser = {
         didToJs: vi.fn().mockReturnValue("export const idlFactory = () => {}"),
         validateIDL: vi.fn(),
@@ -369,7 +346,7 @@ describe("CandidAdapter", () => {
 
   describe("validateIDL", () => {
     it("should throw if parser not initialized", () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       expect(() => adapter.validateIDL("service {}")).toThrow(
         "Parser module not available"
@@ -377,7 +354,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should call parser validateIDL method", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockParser: ReactorParser = {
         didToJs: vi.fn(),
         validateIDL: vi.fn().mockReturnValue(true),
@@ -391,7 +368,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should return false for invalid IDL", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockParser: ReactorParser = {
         didToJs: vi.fn(),
         validateIDL: vi.fn().mockReturnValue(false),
@@ -406,7 +383,7 @@ describe("CandidAdapter", () => {
 
   describe("fetchDidTojs", () => {
     it("should call remote didjs canister", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const compiledJs = ["export const idlFactory = () => {}"]
 
       const mockDidjs = {
@@ -422,7 +399,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should use custom didjsCanisterId if provided", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const customId = "custom-didjs-id"
 
       const mockDidjs = {
@@ -439,7 +416,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should use default didjsCanisterId if not provided", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       const mockDidjs = {
         did_to_js: vi.fn().mockResolvedValue(["compiled"]),
@@ -457,7 +434,7 @@ describe("CandidAdapter", () => {
 
   describe("evaluateCandidDefinition", () => {
     it("should prefer local parser over remote", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockParser: ReactorParser = {
         didToJs: vi.fn().mockReturnValue(`
           export const idlFactory = ({ IDL }) => {
@@ -476,7 +453,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should fall back to remote if local parser fails", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockParser: ReactorParser = {
         didToJs: vi.fn().mockImplementation(() => {
           throw new Error("Parse error")
@@ -505,7 +482,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should fall back to remote if local parser returns empty", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const mockParser: ReactorParser = {
         didToJs: vi.fn().mockReturnValue(""),
         validateIDL: vi.fn(),
@@ -530,7 +507,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should throw if both local and remote fail", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       const mockDidjs = {
         did_to_js: vi.fn().mockResolvedValue([[]]),
@@ -543,7 +520,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should return undefined idlFactory if compilation returns empty string", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       // When didjs returns an empty string, we get undefined exports
       const mockDidjs = {
@@ -558,7 +535,7 @@ describe("CandidAdapter", () => {
 
   describe("getCandidDefinition", () => {
     it("should fetch and evaluate candid definition", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const candidSource = "service { test: () -> () query }"
 
       ;(CanisterStatus.request as any).mockResolvedValue(
@@ -587,7 +564,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should throw with canister ID in error message", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const canisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
 
       ;(CanisterStatus.request as any).mockRejectedValue(new Error("Failed"))
@@ -607,7 +584,7 @@ describe("CandidAdapter", () => {
 
   describe("Edge Cases", () => {
     it("should handle Principal as canisterId", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const candidSource = "service {}"
 
       ;(CanisterStatus.request as any).mockResolvedValue(
@@ -634,7 +611,7 @@ describe("CandidAdapter", () => {
     })
 
     it("should handle very long candid definitions", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       // Generate a large number of methods
       const methods = Array.from(
@@ -664,8 +641,8 @@ describe("CandidAdapter", () => {
     })
 
     it("should handle unicode in candid definitions", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
-      const unicodeCandid = "service { greet: (text) -> (text) query }" // Contains unicode description comment
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
+      const unicodeCandid = "service { greet: (text) -> (text) query }"
 
       ;(CanisterStatus.request as any).mockResolvedValue(
         new Map([["candid", unicodeCandid]])

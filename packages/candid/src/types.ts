@@ -1,4 +1,4 @@
-import type { HttpAgent } from "@icp-sdk/core/agent"
+import type { HttpAgent, Identity } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { IDL } from "@icp-sdk/core/candid"
 
@@ -8,21 +8,24 @@ import type { IDL } from "@icp-sdk/core/candid"
 export type CanisterId = string | Principal
 
 /**
- * Interface for the AgentManager that provides agent access and subscription.
+ * Minimal interface for ClientManager that CandidAdapter depends on.
+ * This allows the candid package to work with ClientManager without importing the full core package.
  */
-export interface AgentManager {
-  getAgent(): HttpAgent
-  subscribeAgent(callback: (agent: HttpAgent) => void): () => void
+export interface CandidClientManager {
+  /** The HTTP agent used for making requests. */
+  agent: HttpAgent
+  /** Whether the agent is connected to a local network. */
+  isLocal: boolean
+  /** Subscribe to identity changes. Returns an unsubscribe function. */
+  subscribe(callback: (identity: Identity) => void): () => void
 }
 
 /**
  * Parameters for initializing the CandidAdapter.
  */
 export interface CandidAdapterParameters {
-  /** The HTTP agent to use for requests. */
-  agent?: HttpAgent
-  /** The agent manager for subscribing to agent changes. */
-  agentManager?: AgentManager
+  /** The client manager that provides agent and identity access. */
+  clientManager: CandidClientManager
   /** The canister ID of the didjs canister for compiling Candid to JavaScript. */
   didjsCanisterId?: string
 }

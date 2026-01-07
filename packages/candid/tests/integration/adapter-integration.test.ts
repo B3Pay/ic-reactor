@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { CandidAdapter } from "../../src/adapter"
-import type { ReactorParser } from "../../src/types"
+import type { CandidClientManager, ReactorParser } from "../../src/types"
 import { importCandidDefinition } from "../../src/utils"
 import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
 } from "../../src/constants"
+import type { HttpAgent, Identity } from "@icp-sdk/core/agent"
 
 // Mock the @icp-sdk/core/agent module
 vi.mock("@icp-sdk/core/agent", async () => {
@@ -21,13 +22,14 @@ vi.mock("@icp-sdk/core/agent", async () => {
   }
 })
 
-import { Actor, CanisterStatus, HttpAgent } from "@icp-sdk/core/agent"
+import { Actor, CanisterStatus } from "@icp-sdk/core/agent"
 
 /**
  * Integration tests that verify the complete workflows
  */
 describe("CandidAdapter Integration", () => {
   let mockAgent: any
+  let mockClientManager: CandidClientManager
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -38,12 +40,18 @@ describe("CandidAdapter Integration", () => {
       call: vi.fn(),
       getPrincipal: vi.fn(),
     }
+
+    mockClientManager = {
+      agent: mockAgent,
+      isLocal: false,
+      subscribe: vi.fn().mockReturnValue(vi.fn()),
+    }
   })
 
   describe("Full Workflow: Fetch and Parse Candid", () => {
     it("should complete full workflow with metadata and local parser", async () => {
       // Setup
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const candidSource = `service { greet: (text) -> (text) query }`
 
       // Mock metadata retrieval
@@ -80,7 +88,7 @@ describe("CandidAdapter Integration", () => {
 
     it("should complete full workflow with fallback to tmp hack and remote parser", async () => {
       // Setup
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const candidSource = `service { ping: () -> () query }`
       const compiledJs = `
         export const idlFactory = ({ IDL }) => {
@@ -130,67 +138,92 @@ describe("CandidAdapter Integration", () => {
     })
   })
 
-  describe("Agent Switching Scenarios", () => {
-    it("should handle switching between local and IC agents", () => {
-      const localAgent = {
-        isLocal: vi.fn().mockReturnValue(true),
-        query: vi.fn(),
-        call: vi.fn(),
-        getPrincipal: vi.fn(),
-      } as unknown as HttpAgent
+  describe("ClientManager Integration", () => {
+    it("should handle switching between local and IC environments", () => {
+      const localClientManager: CandidClientManager = {
+        agent: mockAgent,
+        isLocal: true,
+        subscribe: vi.fn().mockReturnValue(vi.fn()),
+      }
 
-      const icAgent = {
-        isLocal: vi.fn().mockReturnValue(false),
-        query: vi.fn(),
-        call: vi.fn(),
-        getPrincipal: vi.fn(),
-      } as unknown as HttpAgent
+      const icClientManager: CandidClientManager = {
+        agent: mockAgent,
+        isLocal: false,
+        subscribe: vi.fn().mockReturnValue(vi.fn()),
+      }
 
-      // Start with local agent
-      const adapter = new CandidAdapter({ agent: localAgent })
-      expect(adapter.didjsCanisterId).toBe(DEFAULT_LOCAL_DIDJS_ID)
+      // Start with local client manager
+      const adapterLocal = new CandidAdapter({
+        clientManager: localClientManager,
+      })
+      expect(adapterLocal.didjsCanisterId).toBe(DEFAULT_LOCAL_DIDJS_ID)
 
-      // Create new adapter with IC agent
-      const adapter2 = new CandidAdapter({ agent: icAgent })
-      expect(adapter2.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
+      // Create new adapter with IC client manager
+      const adapterIC = new CandidAdapter({ clientManager: icClientManager })
+      expect(adapterIC.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
     })
 
-    it("should update didjs ID when agent changes via manager", () => {
-      let agentCallback: ((agent: HttpAgent) => void) | null = null
+    it("should re-evaluate didjs ID when identity changes", () => {
+      let identityCallback: ((identity: Identity) => void) | null = null
 
-      const localAgent = {
-        isLocal: vi.fn().mockReturnValue(true),
-        query: vi.fn(),
-      } as unknown as HttpAgent
-
-      const icAgent = {
-        isLocal: vi.fn().mockReturnValue(false),
-        query: vi.fn(),
-      } as unknown as HttpAgent
-
-      const mockAgentManager = {
-        getAgent: vi.fn().mockReturnValue(localAgent),
-        subscribeAgent: vi.fn().mockImplementation((callback) => {
-          agentCallback = callback
+      // Start as local
+      const clientManager: CandidClientManager = {
+        agent: mockAgent,
+        isLocal: true,
+        subscribe: vi.fn().mockImplementation((callback) => {
+          identityCallback = callback
           return vi.fn()
         }),
       }
 
-      // Create adapter with local agent
-      const adapter = new CandidAdapter({ agentManager: mockAgentManager })
+      // Create adapter with local client manager (no custom didjsCanisterId)
+      const adapter = new CandidAdapter({ clientManager })
       expect(adapter.didjsCanisterId).toBe(DEFAULT_LOCAL_DIDJS_ID)
 
-      // Simulate agent change to IC
-      agentCallback!(icAgent)
+      // Simulate identity change and network switch to IC
+      ;(clientManager as any).isLocal = false
 
-      expect(adapter.agent).toBe(icAgent)
+      // Trigger identity change callback
+      identityCallback!({} as Identity)
+
+      // Should now use IC didjs ID
       expect(adapter.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
+    })
+
+    it("should not change custom didjsCanisterId on identity changes", () => {
+      let identityCallback: ((identity: Identity) => void) | null = null
+      const customId = "my-custom-didjs"
+
+      const clientManager: CandidClientManager = {
+        agent: mockAgent,
+        isLocal: true,
+        subscribe: vi.fn().mockImplementation((callback) => {
+          identityCallback = callback
+          return vi.fn()
+        }),
+      }
+
+      // Create adapter with custom didjsCanisterId
+      const adapter = new CandidAdapter({
+        clientManager,
+        didjsCanisterId: customId,
+      })
+      expect(adapter.didjsCanisterId).toBe(customId)
+
+      // Simulate network switch
+      ;(clientManager as any).isLocal = false
+
+      // Trigger identity change
+      identityCallback!({} as Identity)
+
+      // Should still use custom ID
+      expect(adapter.didjsCanisterId).toBe(customId)
     })
   })
 
   describe("Parser Scenarios", () => {
     it("should validate and parse complex Candid definitions", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       const complexCandid = `
         type User = record {
@@ -254,7 +287,7 @@ describe("CandidAdapter Integration", () => {
     })
 
     it("should handle parser returning empty on invalid Candid", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
       const mockParser: ReactorParser = {
         didToJs: vi.fn().mockReturnValue(""),
@@ -273,7 +306,7 @@ describe("CandidAdapter Integration", () => {
 
   describe("Error Recovery Scenarios", () => {
     it("should recover from metadata failure", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const candidSource = "service { test: () -> () }"
 
       // First call fails (metadata)
@@ -297,7 +330,7 @@ describe("CandidAdapter Integration", () => {
     })
 
     it("should recover from empty metadata", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const candidSource = "service { test: () -> () }"
 
       // Metadata returns empty
@@ -321,7 +354,7 @@ describe("CandidAdapter Integration", () => {
     })
 
     it("should properly report when all methods fail", async () => {
-      const adapter = new CandidAdapter({ agent: mockAgent })
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
       const canisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
 
       // All methods fail
@@ -401,31 +434,44 @@ describe("CandidAdapter Integration", () => {
   describe("Memory and Cleanup", () => {
     it("should properly cleanup subscriptions", () => {
       const unsubscribeMock = vi.fn()
-      const mockAgentManager = {
-        getAgent: vi.fn().mockReturnValue(mockAgent),
-        subscribeAgent: vi.fn().mockReturnValue(unsubscribeMock),
+      const clientManager: CandidClientManager = {
+        agent: mockAgent,
+        isLocal: false,
+        subscribe: vi.fn().mockReturnValue(unsubscribeMock),
       }
 
-      const adapter = new CandidAdapter({ agentManager: mockAgentManager })
+      const adapter = new CandidAdapter({ clientManager })
 
       // Verify subscription was set up
-      expect(mockAgentManager.subscribeAgent).toHaveBeenCalled()
+      expect(clientManager.subscribe).toHaveBeenCalled()
 
       // Cleanup
-      adapter.unsubscribeAgent()
+      adapter.unsubscribe()
       expect(unsubscribeMock).toHaveBeenCalled()
 
       // Multiple calls should be safe
-      expect(() => adapter.unsubscribeAgent()).not.toThrow()
+      expect(() => adapter.unsubscribe()).not.toThrow()
     })
 
     it("should handle multiple adapter instances independently", async () => {
-      const adapter1 = new CandidAdapter({
+      const clientManager1: CandidClientManager = {
         agent: mockAgent,
+        isLocal: false,
+        subscribe: vi.fn().mockReturnValue(vi.fn()),
+      }
+
+      const clientManager2: CandidClientManager = {
+        agent: mockAgent,
+        isLocal: true,
+        subscribe: vi.fn().mockReturnValue(vi.fn()),
+      }
+
+      const adapter1 = new CandidAdapter({
+        clientManager: clientManager1,
         didjsCanisterId: "custom-1",
       })
       const adapter2 = new CandidAdapter({
-        agent: mockAgent,
+        clientManager: clientManager2,
         didjsCanisterId: "custom-2",
       })
 
