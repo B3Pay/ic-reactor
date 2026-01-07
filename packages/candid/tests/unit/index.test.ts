@@ -83,6 +83,8 @@ describe("Package Exports", () => {
       const knownExports = [
         "CandidAdapter",
         "CandidReactor",
+        "CandidDisplayReactor",
+        "CandidDisplayReactorParameters",
         "DEFAULT_IC_DIDJS_ID",
         "DEFAULT_LOCAL_DIDJS_ID",
         "noop",
