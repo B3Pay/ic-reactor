@@ -1,26 +1,27 @@
 {
-  "name": "ckbtc-wallet",
+  "name": "candid-parser-example",
   "private": true,
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 3000",
-    "build": "vite build && tsc --noEmit",
+    "dev": "vite",
+    "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ic-reactor/candid": "^3.0.0-beta.8",
     "@ic-reactor/core": "^3.0.1-beta.0",
     "@ic-reactor/react": "^3.0.1-beta.0",
-    "@icp-sdk/auth": "^5.0.0",
-    "@icp-sdk/core": "^5.0.0",
-    "@tanstack/react-query": "^5.90",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "@tanstack/react-query": "^5.90",
+    "@microlink/react-json-view": "^1.27.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
+    "@vitejs/plugin-react": "^5.1.2",
     "typescript": "^5.9.3",
-    "vite": "^7.3.0"
+    "vite": "^7.3.1"
   }
 }
