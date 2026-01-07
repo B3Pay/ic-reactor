@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/reactor.ts:155](https://github.com/B3Pay/ic-reactor/blob/7036734963f96dc0d6af031acb9e17758f8a7cd1/packages/core/src/types/reactor.ts#L155)
+Defined in: [types/reactor.ts:155](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/reactor.ts#L155)
 
 Helper type for actor method codecs returend by getCodec
 
@@ -25,7 +25,7 @@ Helper type for actor method codecs returend by getCodec
 
 > **args**: [`ActorDisplayCodec`](ActorDisplayCodec.md)\<[`ArgsType`](../type-aliases/ArgsType.md)\<[`ActorMethodParameters`](../type-aliases/ActorMethodParameters.md)\<`A`\[`M`\]\>\>, [`DisplayOf`](../type-aliases/DisplayOf.md)\<[`ArgsType`](../type-aliases/ArgsType.md)\<[`ActorMethodParameters`](../type-aliases/ActorMethodParameters.md)\<`A`\[`M`\]\>\>\>\>
 
-Defined in: [types/reactor.ts:156](https://github.com/B3Pay/ic-reactor/blob/7036734963f96dc0d6af031acb9e17758f8a7cd1/packages/core/src/types/reactor.ts#L156)
+Defined in: [types/reactor.ts:156](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/reactor.ts#L156)
 
 ---
 
@@ -33,4 +33,4 @@ Defined in: [types/reactor.ts:156](https://github.com/B3Pay/ic-reactor/blob/7036
 
 > **result**: [`ActorDisplayCodec`](ActorDisplayCodec.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>, [`DisplayOf`](../type-aliases/DisplayOf.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>
 
-Defined in: [types/reactor.ts:160](https://github.com/B3Pay/ic-reactor/blob/7036734963f96dc0d6af031acb9e17758f8a7cd1/packages/core/src/types/reactor.ts#L160)
+Defined in: [types/reactor.ts:160](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/types/reactor.ts#L160)

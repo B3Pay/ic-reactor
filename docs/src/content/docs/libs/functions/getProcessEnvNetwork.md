@@ -7,7 +7,7 @@ prev: true
 
 > **getProcessEnvNetwork**(): `string`
 
-Defined in: [utils/helper.ts:25](https://github.com/B3Pay/ic-reactor/blob/7036734963f96dc0d6af031acb9e17758f8a7cd1/packages/core/src/utils/helper.ts#L25)
+Defined in: [utils/helper.ts:25](https://github.com/B3Pay/ic-reactor/blob/de913204726233462f237fb113d2e247e1a70bd6/packages/core/src/utils/helper.ts#L25)
 
 Retrieves the network from the process environment variables.
 

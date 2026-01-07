@@ -1,0 +1,169 @@
+---
+title: "@ic-reactor/candid"
+description: Dynamic Candid fetching, parsing, and runtime canister interaction
+editUrl: false
+---
+
+import {
+  Aside,
+  Card,
+  CardGrid,
+  Tabs,
+  TabItem,
+} from "@astrojs/starlight/components"
+
+The `@ic-reactor/candid` package enables **dynamic canister interaction** without compile-time IDL. Perfect for building tools, explorers, or any application that needs to interact with canisters discovered at runtime.
+
+## Why This Package?
+
+Most IC applications know which canisters they'll interact with at build time. But some applications need to:
+
+- **Build canister explorers** — Discover and interact with any canister
+- **Create wallet UIs** — Support arbitrary token standards dynamically
+- **Debug tools** — Inspect methods on unknown canisters
+- **Dynamic integrations** — Add support for new canisters without redeploying
+
+<CardGrid>
+  <Card title="Dynamic IDL Fetching" icon="rocket">
+    Fetch Candid definitions from canister metadata or compile via didjs
+  </Card>
+  <Card title="CandidReactor" icon="puzzle">
+    Extends Reactor with dynamic method registration and calling
+  </Card>
+  <Card title="Local Parsing" icon="seti:config">
+    Optional WASM parser for fast, offline Candid compilation
+  </Card>
+  <Card title="Full Reactor Integration" icon="approve-check">
+    All standard Reactor methods work after initialization
+  </Card>
+</CardGrid>
+
+## Installation
+
+```bash
+npm install @ic-reactor/candid @ic-reactor/core
+```
+
+For local parsing (recommended for production):
+
+```bash
+npm install @ic-reactor/parser
+```
+
+## Quick Start
+
+### Using CandidReactor
+
+The easiest way to interact with canisters dynamically:
+
+```typescript
+import { CandidReactor } from "@ic-reactor/candid"
+import { ClientManager } from "@ic-reactor/core"
+
+const clientManager = new ClientManager()
+await clientManager.initialize()
+
+// Create a reactor for any canister
+const reactor = new CandidReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger
+  clientManager,
+})
+
+// Fetch IDL from network
+await reactor.initialize()
+
+// Now all standard Reactor methods work!
+const name = await reactor.callMethod({ functionName: "icrc1_name" })
+console.log(name) // "Internet Computer"
+```
+
+### One-Shot Dynamic Calls
+
+For quick one-off calls, use the convenience methods:
+
+```typescript
+// Query with inline Candid signature
+const balance = await reactor.queryDynamic({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner: Principal.fromText("...") }],
+})
+
+// With TanStack Query caching
+const cachedBalance = await reactor.fetchQueryDynamic({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner }],
+})
+```
+
+### Using CandidAdapter Directly
+
+For more control over Candid fetching and parsing:
+
+```typescript
+import { CandidAdapter } from "@ic-reactor/candid"
+
+const adapter = new CandidAdapter({ clientManager })
+
+// Fetch Candid source
+const candidSource = await adapter.fetchCandidSource(
+  "ryjl3-tyaaa-aaaaa-aaaba-cai"
+)
+
+// Parse to IDL factory
+const { idlFactory } = await adapter.parseCandidSource(candidSource)
+
+// Or do both in one call
+const definition = await adapter.getCandidDefinition(
+  "ryjl3-tyaaa-aaaaa-aaaba-cai"
+)
+```
+
+## Core Concepts
+
+### CandidReactor vs CandidAdapter
+
+| Class           | Purpose                                         |
+| --------------- | ----------------------------------------------- |
+| `CandidReactor` | Full Reactor with dynamic IDL initialization    |
+| `CandidAdapter` | Low-level Candid fetching and parsing utilities |
+
+**Use `CandidReactor`** when you want the full Reactor experience (caching, hooks, etc.) with dynamic canisters.
+
+**Use `CandidAdapter`** when you need fine-grained control over Candid fetching, or you're building your own abstractions.
+
+### Candid Fetching Methods
+
+The adapter tries multiple methods to get a canister's Candid:
+
+1. **Canister Metadata** (preferred) — Queries `__get_candid_interface_tmp_hack`
+2. **didjs Canister** (fallback) — Uses the didjs canister to compile Candid to JS
+
+<Aside type="tip">
+  The metadata method is faster and doesn't require external dependencies. Most
+  modern canisters support it.
+</Aside>
+
+### Local vs Remote Parsing
+
+```typescript
+// Remote parsing (default) — Uses didjs canister
+const definition = await adapter.parseCandidSource(candidSource)
+
+// Local parsing — Faster, offline, requires @ic-reactor/parser
+await adapter.loadParser()
+const definition = adapter.compileLocal(candidSource)
+```
+
+<Aside type="note">
+  Local parsing requires the `@ic-reactor/parser` package. It's recommended for
+  production to reduce network latency.
+</Aside>
+
+## See Also
+
+- [CandidReactor](/ic-reactor/v3/packages/candid/candidreactor) — Full reference for CandidReactor
+- [CandidAdapter](/ic-reactor/v3/packages/candid/candidadapter) — Full reference for CandidAdapter
+- [Reactor](/ic-reactor/v3/reference/reactor) — Base Reactor class documentation
+- [Error Handling](/ic-reactor/v3/guides/error-handling) — Handle canister errors

@@ -79,6 +79,25 @@ export default defineConfig({
           ],
         },
         {
+          label: "Packages",
+          items: [
+            {
+              label: "@ic-reactor/candid",
+              items: [
+                { label: "Overview", link: "/packages/candid/" },
+                {
+                  label: "CandidReactor",
+                  link: "/packages/candid/candidreactor",
+                },
+                {
+                  label: "CandidAdapter",
+                  link: "/packages/candid/candidadapter",
+                },
+              ],
+            },
+          ],
+        },
+        {
           label: "Reference",
           items: [
             {
