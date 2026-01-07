@@ -8,7 +8,7 @@ export default defineConfig({
   base: "/ic-reactor/v3",
   integrations: [
     starlight({
-      title: "ic-reactor",
+      title: "IC Reactor",
       logo: {
         src: "./src/assets/icon.svg",
       },
@@ -88,6 +88,10 @@ export default defineConfig({
             { label: "ClientManager", link: "/reference/clientmanager" },
             { label: "Reactor", link: "/reference/reactor" },
             { label: "DisplayReactor", link: "/reference/displayreactor" },
+            {
+              label: "CandidReactor",
+              link: "/packages/candid/candidreactor",
+            },
             {
               label: "createAuthHooks",
               items: [
