@@ -41,6 +41,10 @@ import {
   SuspenseInfiniteQueryConfig,
 } from "./createSuspenseInfiniteQuery"
 import { createMutation } from "./createMutation"
+import {
+  useActorMethod,
+  UseActorMethodParameters,
+} from "./hooks/useActorMethod"
 import { QueryConfig, SuspenseQueryConfig, MutationConfig } from "./types"
 
 export type ActorHooks<A, T extends TransformKey> = {
@@ -85,6 +89,10 @@ export type ActorHooks<A, T extends TransformKey> = {
   useActorMutation: <M extends FunctionName<A>>(
     config: MutationConfig<A, M, T>
   ) => UseMutationResult<ReactorReturnOk<A, M, T>, ReactorReturnErr<A, M, T>>
+
+  useActorMethod: <M extends FunctionName<A>>(
+    config: Omit<UseActorMethodParameters<A, M, T>, "reactor">
+  ) => ReturnType<typeof useActorMethod<A, M, T>>
 }
 
 export function createActorHooks<A>(
@@ -127,5 +135,12 @@ export function createActorHooks<A, T extends TransformKey>(
       const { onSuccess, invalidateQueries, ...options } = config
       return createMutation(reactor, config).useMutation(options)
     }) as ActorHooks<A, T>["useActorMutation"],
+
+    useActorMethod: (config) =>
+      useActorMethod({ ...config, reactor } as UseActorMethodParameters<
+        A,
+        any,
+        T
+      >),
   }
 }

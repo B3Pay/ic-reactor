@@ -102,7 +102,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   /**
    * Check if a method is a query method (query or composite_query).
    */
-  protected isQueryMethod<M extends FunctionName<A>>(methodName: M): boolean {
+  public isQueryMethod<M extends FunctionName<A>>(methodName: M): boolean {
     const func = this.getFuncClass(methodName)
     if (!func) return false
     return (

@@ -28,6 +28,7 @@ const {
   useActorInfiniteQuery,
   useActorSuspenseInfiniteQuery,
   useActorMutation,
+  useActorMethod,
 } = createActorHooks(backend)
 ```
 
@@ -98,6 +99,7 @@ createActorHooks(reactor: Reactor<A, T>)
 | [`useActorQuery`](/ic-reactor/v3/reference/createactorhooks/useactorquery)                                 | Hook | Query hook for fetching data         |
 | [`useActorSuspenseQuery`](/ic-reactor/v3/reference/createactorhooks/useactorsuspensequery)                 | Hook | Suspense-enabled query hook          |
 | [`useActorMutation`](/ic-reactor/v3/reference/createactorhooks/useactormutation)                           | Hook | Mutation hook for updates            |
+| [`useActorMethod`](/ic-reactor/v3/reference/createactorhooks/useactormethod)                               | Hook | Unified hook for queries & updates   |
 | [`useActorInfiniteQuery`](/ic-reactor/v3/reference/createactorhooks/useactorinfinitequery)                 | Hook | Infinite query hook for pagination   |
 | [`useActorSuspenseInfiniteQuery`](/ic-reactor/v3/reference/createactorhooks/useactorsuspenseinfinitequery) | Hook | Suspense-enabled infinite query hook |
 
@@ -138,6 +140,8 @@ export const {
   useActorSuspenseQuery,
   useActorInfiniteQuery,
   useActorSuspenseInfiniteQuery,
+  useActorMutation,
+  useActorMethod,
 } = createActorHooks(backend)
 
 // Create auth hooks

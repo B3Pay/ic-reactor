@@ -132,6 +132,10 @@ export default defineConfig({
                   link: "/reference/createactorhooks/useactormutation",
                 },
                 {
+                  label: "useActorMethod",
+                  link: "/reference/createactorhooks/useactormethod",
+                },
+                {
                   label: "useActorSuspenseQuery",
                   link: "/reference/createactorhooks/useactorsuspensequery",
                 },
@@ -170,6 +174,10 @@ export default defineConfig({
                   link: "/reference/factories/createsuspenseinfinitequery",
                 },
               ],
+            },
+            {
+              label: "Reactor Hooks",
+              link: "/reference/reactorhooks",
             },
             { label: "Validation", link: "/reference/reactvalidation" },
           ],

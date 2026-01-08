@@ -1,0 +1,102 @@
+---
+title: useActorMethod
+description: Bound unified hook for calling both query and mutation methods
+---
+
+`useActorMethod` is a unified hook for calling canister methods that automatically handles both query and mutation methods based on the Candid interface. It is the bound version of `useReactorMethod` and is generated per-canister using `createActorHooks`.
+
+## Features
+
+- **Automatic Detection**: Determines query vs mutation based on Candid annotations (`query`, `composite_query`).
+- **Unified Interface**: Same hook structure regardless of method type.
+- **TypeScript Support**: Full type safety for arguments and return types.
+- **Cache Invalidation**: Built-in support for invalidating queries after successful mutations.
+
+## Import
+
+```typescript
+import { createActorHooks } from "@ic-reactor/react"
+
+const { useActorMethod } = createActorHooks(backend)
+```
+
+## Usage
+
+### Query Method (Auto-fetches)
+
+For query methods, the hook behaves like `useActorQuery` and fetches data on mount.
+
+```tsx
+function Balance({ owner }: { owner: string }) {
+  const { data, isLoading, error } = useActorMethod({
+    functionName: "icrc1_balance_of",
+    args: [{ owner }],
+  })
+
+  if (isLoading) return <div>Loading...</div>
+  return <div>Balance: {data?.toString()}</div>
+}
+```
+
+### Mutation Method (Manual Call)
+
+For update methods, the hook behaves like `useActorMutation`. Data is only fetched when you call the `call` function.
+
+```tsx
+function Transfer() {
+  const { call, isPending, data } = useActorMethod({
+    functionName: "transfer",
+    invalidateQueries: [["icrc1_balance_of"]], // Optional: invalidate queries after success
+  })
+
+  const handleTransfer = async () => {
+    await call([{ to: "recipient", amount: 100n }])
+    alert("Transfer successful!")
+  }
+
+  return (
+    <button onClick={handleTransfer} disabled={isPending}>
+      {isPending ? "Transferring..." : "Transfer"}
+    </button>
+  )
+}
+```
+
+## Options
+
+| Option              | Type                   | Description                                                 |
+| :------------------ | :--------------------- | :---------------------------------------------------------- |
+| `functionName`      | `M`                    | **Required**. The method name to call on the canister.      |
+| `args`              | `ReactorArgs<A, M, T>` | Arguments to pass to the method.                            |
+| `callConfig`        | `CallConfig`           | Agent call configuration (e.g., `effectiveCanisterId`).     |
+| `queryKey`          | `QueryKey`             | Custom query key for queries.                               |
+| `enabled`           | `boolean`              | For query methods: whether to auto-fetch (default: `true`). |
+| `staleTime`         | `number`               | For query methods: how long data stays fresh (ms).          |
+| `refetchInterval`   | `number \| false`      | For query methods: polling interval in ms.                  |
+| `onSuccess`         | `(data) => void`       | Callback when the method call succeeds.                     |
+| `onError`           | `(error) => void`      | Callback when the method call fails.                        |
+| `invalidateQueries` | `QueryKey[]`           | For mutations: keys to invalidate after success.            |
+
+## Return Value
+
+| Property         | Type                                    | Description                                                        |
+| :--------------- | :-------------------------------------- | :----------------------------------------------------------------- |
+| `data`           | `ReactorReturnOk<A, M, T> \| undefined` | The returned data from the method call.                            |
+| `call`           | `(args?) => Promise<data>`              | Function to trigger the method call manually.                      |
+| `isLoading`      | `boolean`                               | Whether the method is currently executing (alias for `isPending`). |
+| `isPending`      | `boolean`                               | Whether the method is currently executing.                         |
+| `isError`        | `boolean`                               | Whether the last call resulted in an error.                        |
+| `isSuccess`      | `boolean`                               | Whether the method has completed successfully.                     |
+| `error`          | `ReactorReturnErr<A, M, T> \| null`     | The error object if one occurred.                                  |
+| `isQuery`        | `boolean`                               | `true` if it's a query method, `false` otherwise.                  |
+| `functionType`   | `FunctionType`                          | `"query"`, `"update"`, or `"composite_query"`.                     |
+| `reset`          | `() => void`                            | Clears the state (data and error).                                 |
+| `refetch`        | `() => Promise`                         | For queries: manually refetches the data.                          |
+| `queryResult`    | `UseQueryResult`                        | The raw result if it's a query.                                    |
+| `mutationResult` | `UseMutationResult`                     | The raw result if it's a mutation.                                 |
+
+## See Also
+
+- [useReactorMethod](/ic-reactor/v3/reference/reactorhooks/usereactormethod) — Raw version
+- [useActorQuery](/ic-reactor/v3/reference/createactorhooks/useactorquery)
+- [useActorMutation](/ic-reactor/v3/reference/createactorhooks/useactormutation)
