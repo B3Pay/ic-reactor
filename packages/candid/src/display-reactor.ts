@@ -17,6 +17,8 @@ export interface CandidDisplayReactorParameters<A = BaseActor> extends Omit<
   DisplayReactorParameters<A>,
   "idlFactory" | "actor"
 > {
+  /** The canister ID. */
+  canisterId: string
   /** The Candid source code. If not provided, the canister's Candid will be fetched. */
   candid?: string
   /** The IDL interface factory. */
