@@ -26,8 +26,8 @@ export default defineConfig({
     // Automatically generates TypeScript bindings from the Candid .did file.
     // Supports hot module replacement - edit .did and bindings update!
     icpBindgen({
-      didFile: "../../backend/backend.did",
-      outDir: "./src/backend/api",
+      didFile: "../backend/backend.did",
+      outDir: "./src/bindings/backend",
     }),
   ],
 

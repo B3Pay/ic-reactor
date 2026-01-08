@@ -22,4 +22,4 @@ sync:
     # Upload built assets to the asset canister
     - type: assets
       dirs:
-        - app/dist
+        - dist

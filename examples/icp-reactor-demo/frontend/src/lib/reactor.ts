@@ -20,7 +20,10 @@ import {
   createQueryFactory,
 } from "@ic-reactor/react"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
-import { _SERVICE, idlFactory } from "../backend/api/declarations/backend.did"
+import {
+  _SERVICE,
+  idlFactory,
+} from "../bindings/backend/declarations/backend.did"
 
 // Import generated bindings from @icp-sdk/bindgen
 // These are auto-generated when you run `npm run generate` or when
