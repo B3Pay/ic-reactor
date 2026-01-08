@@ -8,16 +8,16 @@
  * This aligns with the Candid interface in backend.did
  */
 
-actor {
+persistent actor {
   // ═══════════════════════════════════════════════════════════════════════
   // STATE
   // ═══════════════════════════════════════════════════════════════════════
 
   /// Optional message that can be set by users
-  stable var message : ?Text = null;
+  var message : ?Text = null;
 
   /// Counter that can be incremented
-  stable var counter : Nat = 0;
+  var counter : Nat = 0;
 
   // ═══════════════════════════════════════════════════════════════════════
   // QUERY METHODS (fast, read-only)
