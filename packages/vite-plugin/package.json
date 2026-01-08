@@ -1,0 +1,45 @@
+{
+  "name": "@ic-reactor/vite-plugin",
+  "version": "0.1.0",
+  "description": "Vite plugin for zero-config IC reactor generation from Candid files",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+  },
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "internet-computer",
+    "candid",
+    "ic-reactor",
+    "dfinity",
+    "icp"
+  ],
+  "author": "Behrad Deylami",
+  "license": "MIT",
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^6.0.0"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^6.0.0"
+  }
+}

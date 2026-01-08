@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://github.com/dfinity/icp-cli/raw/refs/tags/v0.1.0-beta.2/docs/schemas/canister-yaml-schema.json
+
+name: frontend
+
+build:
+  steps:
+    # Download the asset canister WASM
+    - type: pre-built
+      url: https://github.com/dfinity/sdk/raw/89243f2268b6d0ec77d589b7b1b27af931f70edd/src/distributed/assetstorage.wasm.gz
+      sha256: b312a16c3179cf8384afa852e468c1333b7439d4c5a39f26df69b12320f629f8
+
+    # Install npm dependencies
+    - type: script
+      command: npm ci
+
+    # Build the frontend app
+    - type: script
+      command: npm run build
+
+sync:
+  steps:
+    # Upload built assets to the asset canister
+    - type: assets
+      dirs:
+        - app/dist

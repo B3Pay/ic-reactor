@@ -1,0 +1,13 @@
+// Backend Candid interface
+// This defines the API for our Hello World canister
+
+service : {
+    // Query methods (fast, read-only)
+    greet : (text) -> (text) query;
+    get_message : () -> (opt text) query;
+    get_counter : () -> (nat) query;
+    
+    // Update methods (slower, can modify state)
+    set_message : (text) -> ();
+    increment : () -> (nat);
+}

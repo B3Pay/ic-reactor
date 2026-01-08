@@ -1,0 +1,7 @@
+{
+  "name": "icp-reactor-demo-frontend",
+  "private": true,
+  "workspaces": [
+    "app"
+  ]
+}
