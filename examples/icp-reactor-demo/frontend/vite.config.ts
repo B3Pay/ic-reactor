@@ -77,10 +77,10 @@ export default defineConfig({
       "Set-Cookie": `ic_env=${encodeURIComponent(buildIcEnvCookie())}; SameSite=Lax;`,
     },
 
-    // Proxy API calls to local replica
+    // Proxy API calls to local replica (icp-cli uses port 8000)
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:4943",
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
       },
     },

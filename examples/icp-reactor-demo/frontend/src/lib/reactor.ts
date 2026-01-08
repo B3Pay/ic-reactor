@@ -91,18 +91,23 @@ export const queryClient = new QueryClient({
 function getAgentOptions() {
   const env = safeGetCanisterEnv<AppCanisterEnv>()
 
-  // In production, use the root key from the cookie
-  // In development, let the agent fetch it from the replica
-  if (env?.IC_ROOT_KEY && !import.meta.env.DEV) {
+  // Development mode - use Vite proxy and root key from cookie
+  if (import.meta.env.DEV) {
+    // Use the current origin which goes through Vite's proxy
+    // The proxy in vite.config.ts forwards /api/* to the local replica
+    // This avoids CORS issues when fetching root key or making calls
     return {
-      rootKey: env.IC_ROOT_KEY,
-      verifyQuerySignatures: true,
+      host: window.location.origin,
+      // Pass the root key from cookie so agent doesn't need to fetch it
+      rootKey: env?.IC_ROOT_KEY,
+      verifyQuerySignatures: false,
     }
   }
 
-  // Development mode
+  // Production mode - use root key from asset canister's ic_env cookie
   return {
-    verifyQuerySignatures: false,
+    rootKey: env?.IC_ROOT_KEY,
+    verifyQuerySignatures: true,
   }
 }
 
