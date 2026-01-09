@@ -1,6 +1,6 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
-import { icpBindgen } from "@icp-sdk/bindgen/plugins/vite"
+import { icReactorPlugin } from "./plugins/ic-reactor-plugin"
 import fs from "fs"
 import path from "path"
 
@@ -56,13 +56,26 @@ export default defineConfig({
     react(),
 
     // ═══════════════════════════════════════════════════════════════════════
-    // @icp-sdk/bindgen Plugin
+    // IC-Reactor Plugin (Custom!)
     // ═══════════════════════════════════════════════════════════════════════
-    // Automatically generates TypeScript bindings from the Candid .did file.
-    // Supports hot module replacement - edit .did and bindings update!
-    icpBindgen({
-      didFile: "../backend/backend.did",
-      outDir: "./src/bindings/backend",
+    // Instead of @icp-sdk/bindgen's default actor generation, this plugin:
+    // 1. Generates only the declarations (idlFactory + types)
+    // 2. Creates ic-reactor hooks (createQuery, createMutation, etc.)
+    // 3. Sets up ClientManager and DisplayReactor automatically
+    //
+    // Result: Just import and use hooks - zero manual setup!
+    icReactorPlugin({
+      canisters: [
+        {
+          name: "backend",
+          didFile: "../backend/backend.did",
+          // outDir: "./src/canisters/backend", // default
+          useDisplayReactor: true, // Converts bigint → string, etc.
+        },
+        // Add more canisters here:
+        // { name: "ledger", didFile: "../ledger/ledger.did" },
+      ],
+      outDir: "./src/canisters",
     }),
   ],
 

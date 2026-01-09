@@ -1,35 +1,55 @@
 /**
- * IC-Reactor Demo App
+ * IC-Reactor Demo App - ZERO CONFIG EDITION!
  *
- * Demonstrates the integration of ic-reactor with the new ICP SDK ecosystem:
- * - Runtime canister ID resolution via ic_env cookie
- * - Auto-generated bindings from @icp-sdk/bindgen
- * - Type-safe React hooks from ic-reactor
+ * This demonstrates the power of the @ic-reactor/vite-plugin:
+ *
+ * 🎯 BEFORE: 200+ lines of manual setup in reactor.ts
+ * ✅ AFTER:  Just import hooks and use them!
+ *
+ * The plugin auto-generates:
+ * - ClientManager & QueryClient (singleton)
+ * - DisplayReactor for each canister
+ * - Query hooks for all query methods
+ * - Mutation hooks for all update methods
+ * - Auth hooks (useAuth, useAgentState, useUserPrincipal)
  */
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useState } from "react"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎉 THE MAGIC: Just import and use!
+// ═══════════════════════════════════════════════════════════════════════════
+// All these hooks are AUTO-GENERATED from backend.did by our Vite plugin.
+// No manual reactor.ts setup required!
 import {
+  // Core exports
   queryClient,
-  clientManager,
+
+  // Auth hooks
   useAuth,
   useAgentState,
-  greetQuery,
-  getMessageQuery,
-  getCounterQuery,
-  setMessageMutation,
-  incrementMutation,
-  getCounterSuspense,
-} from "./lib/reactor"
+
+  // Query hooks (auto-generated)
+  useGreet,
+  useGetMessage,
+  useGetCounter,
+  useGetCounterSuspense,
+
+  // Mutation hooks (auto-generated)
+  useSetMessage,
+  useIncrement,
+} from "./canisters/backend"
+
 import "./App.css"
+
+// ═══════════════════════════════════════════════════════════════════════════
+// APP
+// ═══════════════════════════════════════════════════════════════════════════
 
 export default function App() {
   const { isInitialized, error } = useAgentState()
-
-  useEffect(() => {
-    clientManager.initialize()
-  }, [])
 
   if (error) {
     return (
@@ -62,6 +82,7 @@ function MainApp() {
     <div className="app">
       <Header />
       <main className="main">
+        <ZeroConfigBanner />
         <AuthSection />
         <GreetSection />
         <MessageSection />
@@ -74,6 +95,46 @@ function MainApp() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ZERO CONFIG BANNER
+// ═══════════════════════════════════════════════════════════════════════════
+
+function ZeroConfigBanner() {
+  return (
+    <section className="section banner">
+      <h2>🚀 Zero-Config Experience</h2>
+      <div className="banner-content">
+        <div className="banner-item">
+          <span className="banner-icon">📜</span>
+          <span className="banner-text">
+            Edit <code>backend.did</code>
+          </span>
+        </div>
+        <div className="banner-arrow">→</div>
+        <div className="banner-item">
+          <span className="banner-icon">⚡</span>
+          <span className="banner-text">Hooks auto-generated</span>
+        </div>
+        <div className="banner-arrow">→</div>
+        <div className="banner-item">
+          <span className="banner-icon">✨</span>
+          <span className="banner-text">Import & use!</span>
+        </div>
+      </div>
+      <pre className="code-preview">
+        {`// That's it! No manual setup!
+import { useGreet, useIncrement } from "./canisters/backend"
+
+function MyComponent() {
+  const { data } = useGreet({ args: ["World"] })
+  const { mutate } = useIncrement()
+  return <button onClick={() => mutate([])}>Count: {data}</button>
+}`}
+      </pre>
+    </section>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HEADER
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -82,10 +143,10 @@ function Header() {
     <header className="header">
       <div className="logo">
         <span className="logo-icon">⚛️</span>
-        <h1>IC-Reactor + ICP-CLI</h1>
+        <h1>IC-Reactor Vite Plugin</h1>
       </div>
       <p className="subtitle">
-        Zero-config canister integration with runtime environment resolution
+        Auto-generated React hooks from Candid • Zero manual setup
       </p>
     </header>
   )
@@ -135,7 +196,15 @@ function AuthSection() {
 
 function GreetSection() {
   const [name, setName] = useState("World")
-  const { data: greeting, isLoading, refetch } = greetQuery([name]).useQuery()
+
+  // 🎯 Auto-generated hook! Just pass args and use.
+  const {
+    data: greeting,
+    isLoading,
+    refetch,
+  } = useGreet({
+    args: [name],
+  })
 
   return (
     <section className="section">
@@ -169,8 +238,10 @@ function GreetSection() {
 
 function MessageSection() {
   const [newMessage, setNewMessage] = useState("")
-  const { data: message, isLoading } = getMessageQuery.useQuery()
-  const { mutate: setMessage, isPending } = setMessageMutation.useMutation()
+
+  // 🎯 Auto-generated hooks!
+  const { data: message, isLoading } = useGetMessage()
+  const { mutate: setMessage, isPending } = useSetMessage()
 
   const handleSetMessage = () => {
     if (newMessage.trim()) {
@@ -214,12 +285,13 @@ function MessageSection() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// COUNTER SECTION (Regular Query)
+// COUNTER SECTION
 // ═══════════════════════════════════════════════════════════════════════════
 
 function CounterSection() {
-  const { data: counter, isLoading, isFetching } = getCounterQuery.useQuery()
-  const { mutate: increment, isPending } = incrementMutation.useMutation()
+  // 🎯 Auto-generated hooks!
+  const { data: counter, isLoading, isFetching } = useGetCounter()
+  const { mutate: increment, isPending } = useIncrement()
 
   return (
     <section className="section">
@@ -263,7 +335,8 @@ function SuspenseCounterSection() {
 }
 
 function SuspenseCounter() {
-  const { data: counter } = getCounterSuspense.useSuspenseQuery()
+  // 🎯 Auto-generated suspense hook!
+  const { data: counter } = useGetCounterSuspense()
   return <div className="counter-display">{counter}</div>
 }
 
@@ -283,12 +356,12 @@ function Footer() {
   return (
     <footer className="footer">
       <p>
-        <strong>IC-Reactor v3</strong> + <strong>ICP-CLI</strong> +{" "}
-        <strong>@icp-sdk/bindgen</strong>
+        <strong>@ic-reactor/vite-plugin</strong> • Auto-generated hooks from
+        Candid
       </p>
       <p className="footer-note">
-        Built for the DFINITY DX Team Demo • Runtime canister ID via ic_env
-        cookie
+        Edit <code>backend.did</code> → Hooks regenerate automatically → Import
+        & use!
       </p>
     </footer>
   )
