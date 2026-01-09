@@ -61,6 +61,12 @@ export interface IcReactorPluginOptions {
   canisters: CanisterConfig[]
   /** Base output directory (default: ./src/canisters) */
   outDir?: string
+  /**
+   * Path to import ClientManager from (relative to generated file).
+   * The file at this path should export: { clientManager: ClientManager }
+   * Default: "../../lib/client"
+   */
+  clientManagerPath?: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -225,7 +231,9 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
 
         // Step 2: Generate the reactor file
         const clientManagerPath =
-          canister.clientManagerPath ?? "../../lib/client"
+          canister.clientManagerPath ??
+          options.clientManagerPath ??
+          "../../lib/client"
         const reactorContent = generateReactorFile(
           canister.name,
           canister.useDisplayReactor ?? true,
