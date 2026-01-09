@@ -252,9 +252,7 @@ function MessageSection() {
         {isLoading ? (
           <span className="loading-text">Loading...</span>
         ) : (
-          <span className="message">
-            {message?.[0] ?? <em>No message set</em>}
-          </span>
+          <span className="message">{message ?? <em>No message set</em>}</span>
         )}
       </div>
       <div className="message-input">
