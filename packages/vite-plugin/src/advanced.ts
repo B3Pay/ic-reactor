@@ -153,6 +153,7 @@ export function icReactorAdvancedPlugin(
               actor: {
                 disabled: true,
               },
+              force: true,
             },
           })
 

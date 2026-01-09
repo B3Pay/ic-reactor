@@ -1,6 +1,6 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
-import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+import { icReactorAdvancedPlugin } from "@ic-reactor/vite-plugin"
 import fs from "fs"
 import path from "path"
 
@@ -64,11 +64,16 @@ export default defineConfig({
     // 3. Sets up ClientManager and DisplayReactor automatically
     //
     // Result: Just import and use hooks - zero manual setup!
-    icReactorPlugin({
+    icReactorAdvancedPlugin({
       canisters: [
         {
           name: "backend",
           didFile: "../backend/backend.did",
+          useDisplayReactor: true,
+        },
+        {
+          name: "counter",
+          didFile: "../backend/counter.did",
           useDisplayReactor: true,
         },
       ],
