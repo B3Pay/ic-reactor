@@ -3,20 +3,17 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: counter
- * Generated: 2026-01-09T12:04:49.120Z
+ * Generated: 2026-01-09T12:13:21.734Z
  *
  * This file provides type-safe React hooks for interacting with the
  * counter canister using ic-reactor.
  */
 
 import { DisplayReactor, createQuery, createMutation } from "@ic-reactor/react"
-import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // USER-PROVIDED CLIENT MANAGER
 // ═══════════════════════════════════════════════════════════════════════════
-// The clientManager is imported from the user's own configuration file.
-// This allows full customization of agent options, network settings, etc.
 import { clientManager } from "../../lib/client"
 
 // Import generated declarations from @icp-sdk/bindgen
@@ -26,25 +23,7 @@ import { idlFactory, type _SERVICE } from "./declarations/counter.did"
 // CANISTER ID RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface CounterCanisterEnv {
-  readonly "PUBLIC_CANISTER_ID:counter": string
-}
-
 type CounterService = _SERVICE
-
-/**
- * Get canister ID from runtime environment (ic_env cookie)
- * Falls back to a placeholder in development
- */
-function getCounterCanisterId(): string {
-  const env = safeGetCanisterEnv<CounterCanisterEnv>()
-
-  if (env?.["PUBLIC_CANISTER_ID:counter"]) {
-    return env["PUBLIC_CANISTER_ID:counter"]
-  }
-
-  throw new Error("[ic-reactor] counter canister ID not found in ic_env cookie")
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE
@@ -54,9 +33,8 @@ function getCounterCanisterId(): string {
  * Counter Reactor with Display type transformations.
  * Automatically converts bigint → string, Principal → string, etc.
  */
-export const counterReactor = new DisplayReactor<_SERVICE>({
+export const counterReactor = new DisplayReactor<CounterService>({
   clientManager,
-  canisterId: getCounterCanisterId(),
   idlFactory,
   name: "counter",
 })
@@ -87,6 +65,5 @@ export const useIncrementMutation = (options?: any) =>
 // ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════
-
 export { idlFactory }
 export type { CounterService }

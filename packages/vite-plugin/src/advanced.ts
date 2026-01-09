@@ -120,7 +120,7 @@ type ${pascalName}Service = _SERVICE
  * ${pascalName} Reactor with ${useDisplayReactor ? "Display" : "Candid"} type transformations.
  * ${useDisplayReactor ? "Automatically converts bigint → string, Principal → string, etc." : "Uses raw Candid types."}
  */
-export const ${camelName}Reactor = new ${reactorType}<_SERVICE>({
+export const ${camelName}Reactor = new ${reactorType}<${pascalName}Service>({
   clientManager,
   idlFactory,
   name: "${canisterName}",

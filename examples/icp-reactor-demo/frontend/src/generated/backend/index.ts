@@ -3,20 +3,17 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: backend
- * Generated: 2026-01-09T12:04:49.118Z
+ * Generated: 2026-01-09T12:13:21.732Z
  *
  * This file provides type-safe React hooks for interacting with the
  * backend canister using ic-reactor.
  */
 
 import { DisplayReactor, createQuery, createMutation } from "@ic-reactor/react"
-import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // USER-PROVIDED CLIENT MANAGER
 // ═══════════════════════════════════════════════════════════════════════════
-// The clientManager is imported from the user's own configuration file.
-// This allows full customization of agent options, network settings, etc.
 import { clientManager } from "../../lib/client"
 
 // Import generated declarations from @icp-sdk/bindgen
@@ -26,25 +23,7 @@ import { idlFactory, type _SERVICE } from "./declarations/backend.did"
 // CANISTER ID RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface BackendCanisterEnv {
-  readonly "PUBLIC_CANISTER_ID:backend": string
-}
-
 type BackendService = _SERVICE
-
-/**
- * Get canister ID from runtime environment (ic_env cookie)
- * Falls back to a placeholder in development
- */
-function getBackendCanisterId(): string {
-  const env = safeGetCanisterEnv<BackendCanisterEnv>()
-
-  if (env?.["PUBLIC_CANISTER_ID:backend"]) {
-    return env["PUBLIC_CANISTER_ID:backend"]
-  }
-
-  throw new Error("[ic-reactor] backend canister ID not found in ic_env cookie")
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE
@@ -54,9 +33,8 @@ function getBackendCanisterId(): string {
  * Backend Reactor with Display type transformations.
  * Automatically converts bigint → string, Principal → string, etc.
  */
-export const backendReactor = new DisplayReactor<_SERVICE>({
+export const backendReactor = new DisplayReactor<BackendService>({
   clientManager,
-  canisterId: getBackendCanisterId(),
   idlFactory,
   name: "backend",
 })
@@ -111,6 +89,5 @@ export const useIncrementMutation = (options?: any) =>
 // ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════
-
 export { idlFactory }
 export type { BackendService }
