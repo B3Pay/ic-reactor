@@ -62,6 +62,7 @@ describe("CandidAdapter & ActorHooks Type Safety", () => {
 
   describe("Standard Reactor", () => {
     const reactor = new Reactor<TestActor>({
+      name: "test",
       idlFactory,
       canisterId,
       clientManager,
@@ -89,6 +90,7 @@ describe("CandidAdapter & ActorHooks Type Safety", () => {
 
   describe("DisplayReactor", () => {
     const displayReactor = new DisplayReactor<TestActor>({
+      name: "test",
       idlFactory,
       canisterId,
       clientManager,
