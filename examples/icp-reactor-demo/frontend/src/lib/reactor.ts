@@ -121,7 +121,6 @@ function getAgentOptions() {
  */
 export const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: false, // We use ic_env cookie instead!
   agentOptions: getAgentOptions(),
 })
 

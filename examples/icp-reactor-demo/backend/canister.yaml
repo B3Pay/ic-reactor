@@ -5,6 +5,6 @@ name: backend
 recipe:
   type: "@dfinity/motoko"
   configuration:
-    main: src/main.mo
+    main: main.mo
     args: --incremental-gc
     candid: backend.did

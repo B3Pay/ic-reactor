@@ -31,7 +31,6 @@ function loadCanisterIds(): Record<string, string> {
 
 // Load canister IDs from icp-cli cache
 const canisterIds = loadCanisterIds()
-const BACKEND_CANISTER_ID = canisterIds.backend || ""
 
 // Local replica root key (used for development only)
 const IC_ROOT_KEY_HEX =
