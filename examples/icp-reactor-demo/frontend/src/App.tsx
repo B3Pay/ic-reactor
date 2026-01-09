@@ -3,7 +3,7 @@
  *
  * This demonstrates the power of the @ic-reactor/vite-plugin:
  *
- * 🎯 The plugin generates ONLY the reactor and hooks
+ * 🎯 The plugin generates ONLY the reactor and canister-specific hooks
  * ✅ You control the ClientManager and QueryClient
  *
  * Project structure:
@@ -24,12 +24,9 @@ import { queryClient, useAuth, useAgentState } from "./lib/client"
 // AUTO-GENERATED: Canister-specific hooks
 // ═══════════════════════════════════════════════════════════════════════════
 import {
-  useGreet,
-  useGetMessage,
-  useGetCounter,
-  useGetCounterSuspense,
-  useSetMessage,
-  useIncrement,
+  useBackendQuery,
+  useBackendMutation,
+  useBackendSuspenseQuery,
 } from "./generated/backend"
 
 import "./App.css"
@@ -114,8 +111,7 @@ export const { useAuth } = createAuthHooks(clientManager)
 
 // src/canisters/backend/index.ts (AUTO-GENERATED)
 import { clientManager } from "../../lib/client"
-export const useGreet = ...
-export const useIncrement = ...`}
+export const { useBackendQuery, useBackendMutation } = ...`}
       </pre>
     </section>
   )
@@ -184,8 +180,15 @@ function AuthSection() {
 function GreetSection() {
   const [name, setName] = useState("World")
 
-  // 🎯 Auto-generated hook! Just pass args and use.
-  const { data: greeting, isLoading, refetch } = useGreet({ args: [name] })
+  // 🎯 Auto-generated hook! Just pass function name and args.
+  const {
+    data: greeting,
+    isLoading,
+    refetch,
+  } = useBackendQuery({
+    functionName: "greet",
+    args: [name],
+  })
 
   return (
     <section className="section">
@@ -221,8 +224,18 @@ function MessageSection() {
   const [newMessage, setNewMessage] = useState("")
 
   // 🎯 Auto-generated hooks!
-  const { data: message, isLoading } = useGetMessage()
-  const { mutate: setMessage, isPending } = useSetMessage()
+  const {
+    data: message,
+    isLoading,
+    refetch,
+  } = useBackendQuery({
+    functionName: "get_message",
+  })
+
+  const { mutate: setMessage, isPending } = useBackendMutation({
+    functionName: "set_message",
+    onSuccess: () => refetch(), // Manually refetch after mutation
+  })
 
   const handleSetMessage = () => {
     if (newMessage.trim()) {
@@ -271,8 +284,20 @@ function MessageSection() {
 
 function CounterSection() {
   // 🎯 Auto-generated hooks!
-  const { data: counter, isLoading, isFetching } = useGetCounter()
-  const { mutate: increment, isPending } = useIncrement()
+  const {
+    data: counter,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useBackendQuery({
+    functionName: "get_counter",
+    refetchInterval: 3000, // Explicitly set refetch interval
+  })
+
+  const { mutate: increment, isPending } = useBackendMutation({
+    functionName: "increment",
+    onSuccess: () => refetch(),
+  })
 
   return (
     <section className="section">
@@ -317,7 +342,9 @@ function SuspenseCounterSection() {
 
 function SuspenseCounter() {
   // 🎯 Auto-generated suspense hook!
-  const { data: counter } = useGetCounterSuspense()
+  const { data: counter } = useBackendSuspenseQuery({
+    functionName: "get_counter",
+  })
   return <div className="counter-display">{counter}</div>
 }
 
