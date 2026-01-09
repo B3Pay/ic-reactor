@@ -6,30 +6,36 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: backend
- * Generated: 2026-01-09T08:05:09.338Z
+ * Generated: 2026-01-09T08:18:27.175Z
  *
  * This file provides type-safe React hooks for interacting with the
  * backend canister using ic-reactor.
  */
 
-import { QueryClient } from "@tanstack/react-query"
 import {
-  ClientManager,
   DisplayReactor,
   createQuery,
   createQueryFactory,
   createMutation,
   createSuspenseQuery,
-  createAuthHooks,
 } from "@ic-reactor/react"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
+
+// ═══════════════════════════════════════════════════════════════════════════
+// USER-PROVIDED CLIENT MANAGER
+// ═══════════════════════════════════════════════════════════════════════════
+// The clientManager is imported from the user's own configuration file.
+// This allows full customization of agent options, network settings, etc.
+import { clientManager } from "../../lib/client"
+
+// Import generated declarations from @icp-sdk/bindgen
 import {
   idlFactory,
   type _SERVICE,
 } from "./declarations/declarations/backend.did"
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CANISTER ENVIRONMENT
+// CANISTER ID RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface BackendCanisterEnv {
@@ -50,60 +56,6 @@ function getBackendCanisterId(): string {
   console.warn("[ic-reactor] backend canister ID not found in ic_env cookie")
   return "aaaaa-aa" // Fallback
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// GLOBAL CLIENT MANAGER (Singleton)
-// ═══════════════════════════════════════════════════════════════════════════
-
-let _queryClient: QueryClient | null = null
-let _clientManager: ClientManager | null = null
-
-function getQueryClient(): QueryClient {
-  if (!_queryClient) {
-    _queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          staleTime: 1000 * 60,
-          gcTime: 1000 * 60 * 5,
-          retry: 1,
-          refetchOnWindowFocus: false,
-        },
-      },
-    })
-  }
-  return _queryClient
-}
-
-function getClientManager(): ClientManager {
-  if (!_clientManager) {
-    const env = safeGetCanisterEnv()
-    _clientManager = new ClientManager({
-      queryClient: getQueryClient(),
-      agentOptions: {
-        host:
-          typeof window !== "undefined" ? window.location.origin : undefined,
-        rootKey: env?.IC_ROOT_KEY,
-        verifyQuerySignatures: false,
-      },
-    })
-    _clientManager.initialize().catch(console.error)
-  }
-  return _clientManager
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// EXPORTS: Query Client & Client Manager
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const queryClient = getQueryClient()
-export const clientManager = getClientManager()
-
-// ═══════════════════════════════════════════════════════════════════════════
-// AUTH HOOKS
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const { useAuth, useAgentState, useUserPrincipal } =
-  createAuthHooks(clientManager)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE

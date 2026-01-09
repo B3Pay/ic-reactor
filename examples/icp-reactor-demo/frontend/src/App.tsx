@@ -3,15 +3,12 @@
  *
  * This demonstrates the power of the @ic-reactor/vite-plugin:
  *
- * 🎯 BEFORE: 200+ lines of manual setup in reactor.ts
- * ✅ AFTER:  Just import hooks and use them!
+ * 🎯 The plugin generates ONLY the reactor and hooks
+ * ✅ You control the ClientManager and QueryClient
  *
- * The plugin auto-generates:
- * - ClientManager & QueryClient (singleton)
- * - DisplayReactor for each canister
- * - Query hooks for all query methods
- * - Mutation hooks for all update methods
- * - Auth hooks (useAuth, useAgentState, useUserPrincipal)
+ * Project structure:
+ * - src/lib/client.ts        → Your ClientManager & auth hooks (you own this)
+ * - src/canisters/backend/   → Auto-generated reactor & hooks (don't edit)
  */
 
 import { Suspense, useState } from "react"
@@ -19,25 +16,18 @@ import { QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🎉 THE MAGIC: Just import and use!
+// USER-OWNED: ClientManager, QueryClient, Auth Hooks
 // ═══════════════════════════════════════════════════════════════════════════
-// All these hooks are AUTO-GENERATED from backend.did by our Vite plugin.
-// No manual reactor.ts setup required!
+import { queryClient, useAuth, useAgentState } from "./lib/client"
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTO-GENERATED: Canister-specific hooks
+// ═══════════════════════════════════════════════════════════════════════════
 import {
-  // Core exports
-  queryClient,
-
-  // Auth hooks
-  useAuth,
-  useAgentState,
-
-  // Query hooks (auto-generated)
   useGreet,
   useGetMessage,
   useGetCounter,
   useGetCounterSuspense,
-
-  // Mutation hooks (auto-generated)
   useSetMessage,
   useIncrement,
 } from "./canisters/backend"
@@ -101,34 +91,31 @@ function MainApp() {
 function ZeroConfigBanner() {
   return (
     <section className="section banner">
-      <h2>🚀 Zero-Config Experience</h2>
+      <h2>🚀 Clean Separation of Concerns</h2>
       <div className="banner-content">
         <div className="banner-item">
-          <span className="banner-icon">📜</span>
+          <span className="banner-icon">👤</span>
           <span className="banner-text">
-            Edit <code>backend.did</code>
+            You own <code>lib/client.ts</code>
           </span>
         </div>
-        <div className="banner-arrow">→</div>
+        <div className="banner-arrow">+</div>
         <div className="banner-item">
           <span className="banner-icon">⚡</span>
-          <span className="banner-text">Hooks auto-generated</span>
-        </div>
-        <div className="banner-arrow">→</div>
-        <div className="banner-item">
-          <span className="banner-icon">✨</span>
-          <span className="banner-text">Import & use!</span>
+          <span className="banner-text">
+            Plugin generates <code>canisters/*</code>
+          </span>
         </div>
       </div>
       <pre className="code-preview">
-        {`// That's it! No manual setup!
-import { useGreet, useIncrement } from "./canisters/backend"
+        {`// src/lib/client.ts (YOU OWN THIS)
+export const clientManager = new ClientManager({ ... })
+export const { useAuth } = createAuthHooks(clientManager)
 
-function MyComponent() {
-  const { data } = useGreet({ args: ["World"] })
-  const { mutate } = useIncrement()
-  return <button onClick={() => mutate([])}>Count: {data}</button>
-}`}
+// src/canisters/backend/index.ts (AUTO-GENERATED)
+import { clientManager } from "../../lib/client"
+export const useGreet = ...
+export const useIncrement = ...`}
       </pre>
     </section>
   )
@@ -146,7 +133,7 @@ function Header() {
         <h1>IC-Reactor Vite Plugin</h1>
       </div>
       <p className="subtitle">
-        Auto-generated React hooks from Candid • Zero manual setup
+        Auto-generated React hooks from Candid • You control the ClientManager
       </p>
     </header>
   )
@@ -198,13 +185,7 @@ function GreetSection() {
   const [name, setName] = useState("World")
 
   // 🎯 Auto-generated hook! Just pass args and use.
-  const {
-    data: greeting,
-    isLoading,
-    refetch,
-  } = useGreet({
-    args: [name],
-  })
+  const { data: greeting, isLoading, refetch } = useGreet({ args: [name] })
 
   return (
     <section className="section">
@@ -356,12 +337,10 @@ function Footer() {
   return (
     <footer className="footer">
       <p>
-        <strong>@ic-reactor/vite-plugin</strong> • Auto-generated hooks from
-        Candid
+        <strong>@ic-reactor/vite-plugin</strong> • You own the ClientManager
       </p>
       <p className="footer-note">
-        Edit <code>backend.did</code> → Hooks regenerate automatically → Import
-        & use!
+        Edit <code>backend.did</code> → Hooks regenerate → Import & use!
       </p>
     </footer>
   )

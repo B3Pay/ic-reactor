@@ -2,7 +2,13 @@
  * IC-Reactor Vite Plugin
  *
  * A Vite plugin that generates ic-reactor hooks from Candid .did files.
- * Wraps @icp-sdk/bindgen for declarations, then generates React hooks.
+ *
+ * ⚠️ IMPORTANT: This plugin ONLY generates the reactor and hooks.
+ * The user is responsible for creating and configuring:
+ * - ClientManager
+ * - QueryClient
+ *
+ * The generated file will import the clientManager from a user-specified path.
  *
  * Usage:
  * ```ts
@@ -12,7 +18,11 @@
  *   plugins: [
  *     icReactorPlugin({
  *       canisters: [
- *         { name: "backend", didFile: "../backend/backend.did" }
+ *         {
+ *           name: "backend",
+ *           didFile: "../backend/backend.did",
+ *           clientManagerPath: "../lib/client" // User provides their own ClientManager
+ *         }
  *       ]
  *     })
  *   ]
@@ -38,6 +48,12 @@ export interface CanisterConfig {
   outDir?: string
   /** Use DisplayReactor for React-friendly types (default: true) */
   useDisplayReactor?: boolean
+  /**
+   * Path to import ClientManager from (relative to generated file).
+   * The file at this path should export: { clientManager: ClientManager }
+   * Default: "../../lib/client"
+   */
+  clientManagerPath?: string
 }
 
 export interface IcReactorPluginOptions {
@@ -64,31 +80,6 @@ function toCamelCase(str: string): string {
 }
 
 /**
- * Parse the generated .did.d.ts file to extract method info
- */
-function parseServiceMethods(
-  dtsContent: string
-): Array<{ name: string; isQuery: boolean; hasArgs: boolean }> {
-  const methods: Array<{ name: string; isQuery: boolean; hasArgs: boolean }> =
-    []
-
-  // Match ActorMethod<[args], return> patterns
-  const methodRegex = /(\w+):\s*ActorMethod<\[(.*?)\],\s*(.*?)>/g
-  let match
-
-  while ((match = methodRegex.exec(dtsContent)) !== null) {
-    const [, methodName, args] = match
-    methods.push({
-      name: methodName,
-      hasArgs: args.trim().length > 0,
-      isQuery: false, // Will be determined from .did.js
-    })
-  }
-
-  return methods
-}
-
-/**
  * Parse the idlFactory to determine query vs update methods
  */
 function parseIdlFactory(
@@ -100,8 +91,6 @@ function parseIdlFactory(
   >()
 
   // Match: 'methodName' : IDL.Func([args], [return], ['query']?)
-  // or: methodName: IDL.Func([args], [return], ["query"]?)
-  // The bindgen uses single quotes: 'get_counter' : IDL.Func([], [IDL.Nat], ['query'])
   const funcRegex =
     /['"]?(\w+)['"]?\s*:\s*IDL\.Func\(\[(.*?)\],\s*\[(.*?)\],\s*\[(.*?)\]\)/g
   let match
@@ -128,7 +117,8 @@ function generateReactorFile(
     string,
     { isQuery: boolean; argTypes: string; returnType: string }
   >,
-  useDisplayReactor: boolean
+  useDisplayReactor: boolean,
+  clientManagerPath: string
 ): string {
   const pascalName = toPascalCase(canisterName)
   const camelName = toCamelCase(canisterName)
@@ -225,21 +215,27 @@ export const use${toPascalCase(methodName)} = ${hookName}Mutation.useMutation
  * ${canisterName} canister using ic-reactor.
  */
 
-import { QueryClient } from "@tanstack/react-query"
 import {
-  ClientManager,
   ${reactorType},
   createQuery,
   createQueryFactory,
   createMutation,
   createSuspenseQuery,
-  createAuthHooks,
 } from "@ic-reactor/react"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
+
+// ═══════════════════════════════════════════════════════════════════════════
+// USER-PROVIDED CLIENT MANAGER
+// ═══════════════════════════════════════════════════════════════════════════
+// The clientManager is imported from the user's own configuration file.
+// This allows full customization of agent options, network settings, etc.
+import { clientManager } from "${clientManagerPath}"
+
+// Import generated declarations from @icp-sdk/bindgen
 import { idlFactory, type _SERVICE } from "./declarations/declarations/${canisterName}.did"
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CANISTER ENVIRONMENT
+// CANISTER ID RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ${pascalName}CanisterEnv {
@@ -260,58 +256,6 @@ function get${pascalName}CanisterId(): string {
   console.warn("[ic-reactor] ${canisterName} canister ID not found in ic_env cookie")
   return "aaaaa-aa" // Fallback
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// GLOBAL CLIENT MANAGER (Singleton)
-// ═══════════════════════════════════════════════════════════════════════════
-
-let _queryClient: QueryClient | null = null
-let _clientManager: ClientManager | null = null
-
-function getQueryClient(): QueryClient {
-  if (!_queryClient) {
-    _queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          staleTime: 1000 * 60,
-          gcTime: 1000 * 60 * 5,
-          retry: 1,
-          refetchOnWindowFocus: false,
-        },
-      },
-    })
-  }
-  return _queryClient
-}
-
-function getClientManager(): ClientManager {
-  if (!_clientManager) {
-    const env = safeGetCanisterEnv()
-    _clientManager = new ClientManager({
-      queryClient: getQueryClient(),
-      agentOptions: {
-        host: typeof window !== "undefined" ? window.location.origin : undefined,
-        rootKey: env?.IC_ROOT_KEY,
-        verifyQuerySignatures: false,
-      },
-    })
-    _clientManager.initialize().catch(console.error)
-  }
-  return _clientManager
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// EXPORTS: Query Client & Client Manager
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const queryClient = getQueryClient()
-export const clientManager = getClientManager()
-
-// ═══════════════════════════════════════════════════════════════════════════
-// AUTH HOOKS
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const { useAuth, useAgentState, useUserPrincipal } = createAuthHooks(clientManager)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE
@@ -379,6 +323,17 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
             didFile: canister.didFile,
             outDir: declarationsDir,
           })
+
+          // Remove the actor file that bindgen generates - we don't need it
+          // ic-reactor provides its own reactor pattern instead
+          const actorFilePath = path.join(
+            declarationsDir,
+            `${canister.name}.ts`
+          )
+          if (fs.existsSync(actorFilePath)) {
+            fs.unlinkSync(actorFilePath)
+          }
+
           console.log(
             `[ic-reactor] Declarations generated at ${declarationsDir}`
           )
@@ -388,12 +343,10 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
         }
 
         // Step 2: Parse the generated files
-        // Note: bindgen creates files at outDir/declarations/<name>.did.js
         const actualDeclarationsDir = path.join(declarationsDir, "declarations")
         let jsPath = path.join(actualDeclarationsDir, `${canister.name}.did.js`)
 
         if (!fs.existsSync(jsPath)) {
-          // Try the directly specified path as fallback
           const fallbackPath = path.join(
             declarationsDir,
             `${canister.name}.did.js`
@@ -415,10 +368,13 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
         )
 
         // Step 3: Generate the reactor file
+        const clientManagerPath =
+          canister.clientManagerPath ?? "../../lib/client"
         const reactorContent = generateReactorFile(
           canister.name,
           methodMap,
-          canister.useDisplayReactor ?? true
+          canister.useDisplayReactor ?? true,
+          clientManagerPath
         )
 
         const reactorPath = path.join(outDir, "index.ts")
@@ -439,7 +395,6 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
           console.log(
             `[ic-reactor] Detected change in ${file}, regenerating...`
           )
-          // Trigger a full reload to regenerate
           server.restart()
         }
       }
