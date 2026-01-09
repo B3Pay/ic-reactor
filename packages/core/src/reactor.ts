@@ -59,6 +59,10 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
         : DEFAULT_POLLING_OPTIONS
 
     const { idlFactory } = config
+    if (!idlFactory) {
+      throw new Error(`[ic-reactor] idlFactory is missing for ${this.name}`)
+    }
+
     let canisterId = config.canisterId
 
     if (!canisterId) {

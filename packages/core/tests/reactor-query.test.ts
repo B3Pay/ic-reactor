@@ -57,6 +57,7 @@ describe("Reactor.getQueryOptions", () => {
     } as unknown as ClientManager
 
     reactor = new Reactor<MockActor>({
+      name: "mock-reactor",
       clientManager: mockClientManager,
       canisterId: mockCanisterId,
       idlFactory: testIdlFactory,

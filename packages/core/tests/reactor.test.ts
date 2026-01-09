@@ -49,36 +49,18 @@ describe("Reactor Constructor", () => {
     vi.clearAllMocks()
   })
 
-  it("should initialize with provided actor and extract metadata", () => {
-    const mockService = mockIdlFactory({ IDL })
-    const mockActor = {} as any
-
-    // Mock Actor helper methods for legacy actor path
-    ;(Actor.canisterIdOf as any).mockReturnValue(mockPrincipal)
-    ;(Actor.interfaceOf as any).mockReturnValue(mockService)
-
-    const reactor = new Reactor({
-      clientManager: mockClientManager,
-      actor: mockActor,
-    })
-
-    expect(reactor.canisterId.toString()).toBe(mockCanisterId)
-    expect(reactor.service).toBe(mockService)
-
-    expect(Actor.canisterIdOf).toHaveBeenCalled()
-    expect(Actor.interfaceOf).toHaveBeenCalled()
-  })
-
   it("should throw error if actor not provided and missing requirements", () => {
     expect(() => {
       new Reactor({
+        name: "test-reactor",
         clientManager: mockClientManager,
       } as any)
-    }).toThrow("Either actor or canisterId and idlFactory are required")
+    }).toThrow("idlFactory is missing for test-reactor")
   })
 
   it("should initialize with idlFactory and canisterId", () => {
     const reactor = new Reactor({
+      name: "test-reactor",
       clientManager: mockClientManager,
       canisterId: mockCanisterId,
       idlFactory: mockIdlFactory,
@@ -132,6 +114,7 @@ describe("Reactor Method Calls", () => {
     } as unknown as ClientManager
 
     reactor = new Reactor<TestActor>({
+      name: "test-reactor",
       clientManager: mockClientManager,
       canisterId: mockCanisterId,
       idlFactory: testIdlFactory,

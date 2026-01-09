@@ -27,6 +27,7 @@ describe("ICP Integration Test", () => {
 
     // 3. Initialize Reactor for ICP Ledger
     const ledgerReactor = new Reactor<LedgerActor>({
+      name: "ledger-reactor",
       clientManager,
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       idlFactory,
@@ -61,15 +62,11 @@ describe("ICP Integration Test", () => {
       symbol: ActorMethod<[], { symbol: string }>
     }>
 
-    const actor = Actor.createActor<LedgerActor>(idlFactory, {
-      canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
-      agent: clientManager.agent,
-    })
-
     // 3. Initialize Reactor for ICP Ledger
     const ledgerReactor = new Reactor({
+      name: "ledger-reactor",
       clientManager,
-      actor,
+      idlFactory,
     })
 
     // 4. Call the 'symbol' method

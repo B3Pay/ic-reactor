@@ -91,6 +91,7 @@ describe("Reactor autoCodecs with Result Unwrapping", () => {
 
   it("should transform AND unwrap Ok result when autoCodecs is true", async () => {
     const reactor = new Reactor<TestActor, "display">({
+      name: "test-reactor",
       clientManager: mockClientManager,
       canisterId: mockCanisterId,
       idlFactory: testIdlFactory,
@@ -113,6 +114,7 @@ describe("Reactor autoCodecs with Result Unwrapping", () => {
 
   it("should throw CanisterError with typed err when autoCodecs is true", async () => {
     const reactor = new Reactor<TestActor, "display">({
+      name: "test-reactor",
       clientManager: mockClientManager,
       canisterId: mockCanisterId,
       idlFactory: testIdlFactory,
@@ -139,6 +141,7 @@ describe("Reactor autoCodecs with Result Unwrapping", () => {
 
   it("should ALSO unwrap when autoCodecs is false (extractOkResult always runs)", async () => {
     const reactor = new Reactor<TestActor>({
+      name: "test-reactor",
       clientManager: mockClientManager,
       canisterId: mockCanisterId,
       idlFactory: testIdlFactory,
@@ -160,6 +163,7 @@ describe("Reactor autoCodecs with Result Unwrapping", () => {
 
   it("should return plain results unchanged when autoCodecs is true", async () => {
     const reactor = new Reactor<TestActor, "display">({
+      name: "test-reactor",
       clientManager: mockClientManager,
       canisterId: mockCanisterId,
       idlFactory: testIdlFactory,
@@ -178,6 +182,7 @@ describe("Reactor autoCodecs with Result Unwrapping", () => {
 
   it("should transform AND unwrap complex Ok objects", async () => {
     const reactor = new Reactor<TestActor, "display">({
+      name: "test-reactor",
       clientManager: mockClientManager,
       canisterId: mockCanisterId,
       idlFactory: testIdlFactory,

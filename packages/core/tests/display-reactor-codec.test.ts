@@ -58,6 +58,7 @@ describe("DisplayReactor Codec Functionality", () => {
   const queryClient = new QueryClient()
   const clientManager = new ClientManager({ queryClient })
   const reactor = new DisplayReactor<TestActor>({
+    name: "test-reactor",
     idlFactory,
     canisterId,
     clientManager,

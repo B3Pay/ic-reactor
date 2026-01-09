@@ -10,6 +10,7 @@ describe("TodoActor Test", () => {
   })
 
   const todoActor = new DisplayReactor<typeof todo>({
+    name: "todo-reactor",
     idlFactory,
     canisterId,
     clientManager,
