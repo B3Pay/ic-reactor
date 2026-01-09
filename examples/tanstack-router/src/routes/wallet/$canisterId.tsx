@@ -17,6 +17,7 @@ export const Route = createFileRoute("/wallet/$canisterId")({
   loader: async ({ params: { canisterId } }) => {
     const reactor = new DisplayReactor<Ledger>({
       clientManager,
+      name: `ledger-${canisterId}`,
       canisterId,
       idlFactory: ledgerIdlFactory,
     })
