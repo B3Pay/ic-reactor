@@ -3,13 +3,19 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: backend
- * Generated: 2026-01-09T12:22:06.815Z
+ * Generated: 2026-01-09T12:39:45.164Z
  *
  * This file provides type-safe React hooks for interacting with the
  * backend canister using ic-reactor.
  */
 
-import { DisplayReactor, createQuery, createMutation } from "@ic-reactor/react"
+import {
+  DisplayReactor,
+  createActorHooks,
+  createAuthHooks,
+  createQuery,
+  createMutation,
+} from "@ic-reactor/react"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // USER-PROVIDED CLIENT MANAGER
@@ -35,51 +41,84 @@ export const backendReactor = new DisplayReactor<BackendService>({
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// QUERY HOOKS
+// ACTOR & AUTH HOOKS
+// ═══════════════════════════════════════════════════════════════════════════
+export const {
+  useActorQuery,
+  useActorMutation,
+  useActorSuspenseQuery,
+  useActorInfiniteQuery,
+  useActorSuspenseInfiniteQuery,
+  useActorMethod,
+} = createActorHooks(backendReactor)
+
+export const useBackendQuery = useActorQuery
+export const useBackendMutation = useActorMutation
+export const useBackendSuspenseQuery = useActorSuspenseQuery
+export const useBackendInfiniteQuery = useActorInfiniteQuery
+export const useBackendSuspenseInfiniteQuery = useActorSuspenseInfiniteQuery
+export const useBackendMethod = useActorMethod
+
+export const { useAuth, useAgentState, useUserPrincipal } =
+  createAuthHooks(clientManager)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// METHOD HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const useGreetQuery = (
   args: Parameters<BackendService["greet"]>,
   options?: any
 ) =>
-  createQuery(backendReactor, {
+  useActorQuery({
     functionName: "greet",
     args,
-  }).useQuery(options)
+    ...options,
+  })
 
 export const useGetMessageQuery = (
   args: Parameters<BackendService["get_message"]>,
   options?: any
 ) =>
-  createQuery(backendReactor, {
+  useActorQuery({
     functionName: "get_message",
     args,
-  }).useQuery(options)
+    ...options,
+  })
+
+export const getMessageQuery = createQuery(backendReactor, {
+  functionName: "get_message",
+})
 
 export const useGetCounterQuery = (
   args: Parameters<BackendService["get_counter"]>,
   options?: any
 ) =>
-  createQuery(backendReactor, {
+  useActorQuery({
     functionName: "get_counter",
     args,
-  }).useQuery(options)
+    ...options,
+  })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MUTATION HOOKS
-// ═══════════════════════════════════════════════════════════════════════════
+export const getCounterQuery = createQuery(backendReactor, {
+  functionName: "get_counter",
+})
 
 export const useSetMessageMutation = (options?: any) =>
-  createMutation(backendReactor, {
+  useActorMutation({
     functionName: "set_message",
     ...options,
-  }).useMutation(options)
+  })
 
 export const useIncrementMutation = (options?: any) =>
-  createMutation(backendReactor, {
+  useActorMutation({
     functionName: "increment",
     ...options,
-  }).useMutation(options)
+  })
+
+export const incrementMutation = createMutation(backendReactor, {
+  functionName: "increment",
+})
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS

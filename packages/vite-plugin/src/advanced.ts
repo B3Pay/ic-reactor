@@ -16,27 +16,34 @@ function toCamelCase(str: string): string {
   return pascal.charAt(0).toLowerCase() + pascal.slice(1)
 }
 
-function extractMethods(didContent: string) {
-  // Simple regex to extract method names and types
+interface MethodInfo {
+  name: string
+  type: "query" | "mutation"
+  hasArgs: boolean
+}
+
+function extractMethods(didContent: string): MethodInfo[] {
+  // Simple regex to extract method names, types, and args
   // Looks for: name : (...) -> (...) [query]
   const methodRegex =
     /([a-zA-Z0-9_]+)\s*:\s*(?:func\s*)?\(([\s\S]*?)\)\s*->\s*\(([\s\S]*?)\)\s*(query|composite_query)?/g
 
-  const queries: string[] = []
-  const mutations: string[] = []
+  const methods: MethodInfo[] = []
 
   let match
   while ((match = methodRegex.exec(didContent)) !== null) {
     const name = match[1]
+    const args = match[2].trim()
     const isQuery = !!match[4]
-    if (isQuery) {
-      queries.push(name)
-    } else {
-      mutations.push(name)
-    }
+
+    methods.push({
+      name,
+      type: isQuery ? "query" : "mutation",
+      hasArgs: args.length > 0,
+    })
   }
 
-  return { queries, mutations }
+  return methods
 }
 
 function generateAdvancedReactorFile(
@@ -49,34 +56,51 @@ function generateAdvancedReactorFile(
   const camelName = toCamelCase(canisterName)
   const reactorType = useDisplayReactor ? "DisplayReactor" : "Reactor"
 
-  const { queries, mutations } = extractMethods(didContent)
+  const methods = extractMethods(didContent)
 
-  const queryHooks = queries.map((method) => {
-    const pascalMethod = toPascalCase(method)
-    return `
+  const hooks = methods.map(({ name, type, hasArgs }) => {
+    const pascalMethod = toPascalCase(name)
+    const camelMethod = toCamelCase(name)
+
+    if (type === "query") {
+      const hook = `
 export const use${pascalMethod}Query = (
-  args: Parameters<${pascalName}Service["${method}"]>,
+  args: Parameters<${pascalName}Service["${name}"]>,
   options?: any
 ) => 
   useActorQuery({
-    functionName: "${method}",
+    functionName: "${name}",
     args,
     ...options,
   })
 `
-  })
-
-  const mutationHooks = mutations.map((method) => {
-    const pascalMethod = toPascalCase(method)
-    return `
+      const staticQuery = !hasArgs
+        ? `
+export const ${camelMethod}Query = createQuery(${camelName}Reactor, {
+  functionName: "${name}",
+})
+`
+        : ""
+      return hook + staticQuery
+    } else {
+      const hook = `
 export const use${pascalMethod}Mutation = (
   options?: any
 ) =>
   useActorMutation({
-    functionName: "${method}",
+    functionName: "${name}",
     ...options,
   })
 `
+      const staticMutation = !hasArgs
+        ? `
+export const ${camelMethod}Mutation = createMutation(${camelName}Reactor, {
+  functionName: "${name}",
+})
+`
+        : ""
+      return hook + staticMutation
+    }
   })
 
   return `/**
@@ -94,6 +118,8 @@ import {
   ${reactorType},
   createActorHooks,
   createAuthHooks,
+  createQuery,
+  createMutation,
 } from "@ic-reactor/react"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -134,19 +160,21 @@ export const {
   useActorMethod,
 } = createActorHooks(${camelName}Reactor)
 
+export const use${pascalName}Query = useActorQuery
+export const use${pascalName}Mutation = useActorMutation
+export const use${pascalName}SuspenseQuery = useActorSuspenseQuery
+export const use${pascalName}InfiniteQuery = useActorInfiniteQuery
+export const use${pascalName}SuspenseInfiniteQuery = useActorSuspenseInfiniteQuery
+export const use${pascalName}Method = useActorMethod
+
 export const { useAuth, useAgentState, useUserPrincipal } = createAuthHooks(
   clientManager
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
-// QUERY HOOKS
+// METHOD HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
-${queryHooks.join("")}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MUTATION HOOKS
-// ═══════════════════════════════════════════════════════════════════════════
-${mutationHooks.join("")}
+${hooks.join("")}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS

@@ -3,13 +3,19 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: counter
- * Generated: 2026-01-09T12:22:06.816Z
+ * Generated: 2026-01-09T12:39:45.166Z
  *
  * This file provides type-safe React hooks for interacting with the
  * counter canister using ic-reactor.
  */
 
-import { DisplayReactor, createQuery, createMutation } from "@ic-reactor/react"
+import {
+  DisplayReactor,
+  createActorHooks,
+  createAuthHooks,
+  createQuery,
+  createMutation,
+} from "@ic-reactor/react"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // USER-PROVIDED CLIENT MANAGER
@@ -35,27 +41,54 @@ export const counterReactor = new DisplayReactor<CounterService>({
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// QUERY HOOKS
+// ACTOR & AUTH HOOKS
+// ═══════════════════════════════════════════════════════════════════════════
+export const {
+  useActorQuery,
+  useActorMutation,
+  useActorSuspenseQuery,
+  useActorInfiniteQuery,
+  useActorSuspenseInfiniteQuery,
+  useActorMethod,
+} = createActorHooks(counterReactor)
+
+export const useCounterQuery = useActorQuery
+export const useCounterMutation = useActorMutation
+export const useCounterSuspenseQuery = useActorSuspenseQuery
+export const useCounterInfiniteQuery = useActorInfiniteQuery
+export const useCounterSuspenseInfiniteQuery = useActorSuspenseInfiniteQuery
+export const useCounterMethod = useActorMethod
+
+export const { useAuth, useAgentState, useUserPrincipal } =
+  createAuthHooks(clientManager)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// METHOD HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const useGetCountQuery = (
   args: Parameters<CounterService["get_count"]>,
   options?: any
 ) =>
-  createQuery(counterReactor, {
+  useActorQuery({
     functionName: "get_count",
     args,
-  }).useQuery(options)
+    ...options,
+  })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MUTATION HOOKS
-// ═══════════════════════════════════════════════════════════════════════════
+export const getCountQuery = createQuery(counterReactor, {
+  functionName: "get_count",
+})
 
 export const useIncrementMutation = (options?: any) =>
-  createMutation(counterReactor, {
+  useActorMutation({
     functionName: "increment",
     ...options,
-  }).useMutation(options)
+  })
+
+export const incrementMutation = createMutation(counterReactor, {
+  functionName: "increment",
+})
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS
