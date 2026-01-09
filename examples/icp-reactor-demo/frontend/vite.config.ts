@@ -1,6 +1,6 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
-import { icReactorPlugin } from "./plugins/ic-reactor-plugin"
+import { icReactorBindgen } from "@ic-reactor/vite-plugin"
 import fs from "fs"
 import path from "path"
 
@@ -64,18 +64,18 @@ export default defineConfig({
     // 3. Sets up ClientManager and DisplayReactor automatically
     //
     // Result: Just import and use hooks - zero manual setup!
-    icReactorPlugin({
+    icReactorBindgen({
       canisters: [
         {
           name: "backend",
-          didFile: "../backend/backend.did",
-          // outDir: "./src/canisters/backend", // default
+          didPath: "../backend/backend.did",
+          // outputPath: "./src/canisters/backend/backend.reactor.ts", // default
           useDisplayReactor: true, // Converts bigint → string, etc.
         },
         // Add more canisters here:
-        // { name: "ledger", didFile: "../ledger/ledger.did" },
+        // { name: "ledger", didPath: "../ledger/ledger.did" },
       ],
-      outDir: "./src/canisters",
+      outputDir: "./src/generated",
     }),
   ],
 

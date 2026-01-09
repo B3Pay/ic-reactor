@@ -11,7 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/react": "^3.0.2-beta.1",
+    "@ic-reactor/react": "workspace:*",
     "@icp-sdk/core": "^5.0.0",
     "@tanstack/react-query": "^5.90",
     "@tanstack/react-query-devtools": "^5.91.0",
@@ -19,6 +19,7 @@
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@ic-reactor/vite-plugin": "workspace:*",
     "@icp-sdk/bindgen": "^0.2.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

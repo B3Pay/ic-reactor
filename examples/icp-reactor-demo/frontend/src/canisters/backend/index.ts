@@ -6,7 +6,7 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: backend
- * Generated: 2026-01-09T08:18:27.175Z
+ * Generated: 2026-01-09T08:40:45.249Z
  *
  * This file provides type-safe React hooks for interacting with the
  * backend canister using ic-reactor.
@@ -53,8 +53,7 @@ function getBackendCanisterId(): string {
     return env["PUBLIC_CANISTER_ID:backend"]
   }
 
-  console.warn("[ic-reactor] backend canister ID not found in ic_env cookie")
-  return "aaaaa-aa" // Fallback
+  throw new Error("[ic-reactor] backend canister ID not found in ic_env cookie")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -98,7 +98,9 @@ function parseIdlFactory(
   while ((match = funcRegex.exec(jsContent)) !== null) {
     const [, methodName, argTypes, returnType, annotations] = match
     methodMap.set(methodName, {
-      isQuery: annotations.includes("query"),
+      isQuery:
+        annotations.includes("query") ||
+        annotations.includes("composite_query"),
       argTypes: argTypes.trim(),
       returnType: returnType.trim(),
     })
@@ -253,8 +255,7 @@ function get${pascalName}CanisterId(): string {
     return env["PUBLIC_CANISTER_ID:${canisterName}"]
   }
 
-  console.warn("[ic-reactor] ${canisterName} canister ID not found in ic_env cookie")
-  return "aaaaa-aa" // Fallback
+  throw new Error("[ic-reactor] ${canisterName} canister ID not found in ic_env cookie")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -322,6 +323,11 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
           await generate({
             didFile: canister.didFile,
             outDir: declarationsDir,
+            output: {
+              actor: {
+                disabled: true,
+              },
+            },
           })
 
           // Remove the actor file that bindgen generates - we don't need it

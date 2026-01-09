@@ -8,17 +8,17 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts",
-    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+    "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch --tsconfig tsconfig.json"
   },
   "keywords": [
     "vite",
@@ -38,6 +38,7 @@
     "chokidar": "^4.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.9.0",
     "vite": "^6.0.0"
