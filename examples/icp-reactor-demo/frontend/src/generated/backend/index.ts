@@ -3,7 +3,7 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: backend
- * Generated: 2026-01-09T12:16:18.076Z
+ * Generated: 2026-01-09T12:22:06.815Z
  *
  * This file provides type-safe React hooks for interacting with the
  * backend canister using ic-reactor.

@@ -3,7 +3,7 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: counter
- * Generated: 2026-01-09T12:16:18.078Z
+ * Generated: 2026-01-09T12:22:06.816Z
  *
  * This file provides type-safe React hooks for interacting with the
  * counter canister using ic-reactor.

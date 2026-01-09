@@ -57,11 +57,12 @@ function generateAdvancedReactorFile(
 export const use${pascalMethod}Query = (
   args: Parameters<${pascalName}Service["${method}"]>,
   options?: any
-) =>
-  createQuery(${camelName}Reactor, {
+) => 
+  useActorQuery({
     functionName: "${method}",
     args,
-  }).useQuery(options)
+    ...options,
+  })
 `
   })
 
@@ -71,10 +72,10 @@ export const use${pascalMethod}Query = (
 export const use${pascalMethod}Mutation = (
   options?: any
 ) =>
-  createMutation(${camelName}Reactor, {
+  useActorMutation({
     functionName: "${method}",
     ...options,
-  }).useMutation(options)
+  })
 `
   })
 
@@ -91,8 +92,8 @@ export const use${pascalMethod}Mutation = (
 
 import {
   ${reactorType},
-  createQuery,
-  createMutation,
+  createActorHooks,
+  createAuthHooks,
 } from "@ic-reactor/react"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -120,6 +121,22 @@ export const ${camelName}Reactor = new ${reactorType}<${pascalName}Service>({
   idlFactory,
   name: "${canisterName}",
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTOR & AUTH HOOKS
+// ═══════════════════════════════════════════════════════════════════════════
+export const {
+  useActorQuery,
+  useActorMutation,
+  useActorSuspenseQuery,
+  useActorInfiniteQuery,
+  useActorSuspenseInfiniteQuery,
+  useActorMethod,
+} = createActorHooks(${camelName}Reactor)
+
+export const { useAuth, useAgentState, useUserPrincipal } = createAuthHooks(
+  clientManager
+)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY HOOKS
