@@ -63,9 +63,8 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
 
     if (!canisterId) {
       const env = safeGetCanisterEnv()
-      console.log(env)
-      const key = `PUBLIC_CANISTER_ID:${this.name}` as keyof typeof env
-      canisterId = env?.[key] as string | undefined
+      const key = `PUBLIC_CANISTER_ID:${this.name}`
+      canisterId = env?.[key]
 
       if (!canisterId) {
         console.warn(
