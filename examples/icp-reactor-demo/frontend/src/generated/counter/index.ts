@@ -3,7 +3,7 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: counter
- * Generated: 2026-01-09T12:13:21.734Z
+ * Generated: 2026-01-09T12:16:18.078Z
  *
  * This file provides type-safe React hooks for interacting with the
  * counter canister using ic-reactor.
@@ -20,14 +20,9 @@ import { clientManager } from "../../lib/client"
 import { idlFactory, type _SERVICE } from "./declarations/counter.did"
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CANISTER ID RESOLUTION
-// ═══════════════════════════════════════════════════════════════════════════
-
-type CounterService = _SERVICE
-
-// ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════
+type CounterService = _SERVICE
 
 /**
  * Counter Reactor with Display type transformations.

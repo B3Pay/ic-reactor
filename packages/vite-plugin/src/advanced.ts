@@ -107,14 +107,9 @@ import {
 } from "./declarations/${canisterName}.did"
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CANISTER ID RESOLUTION
-// ═══════════════════════════════════════════════════════════════════════════
-
-type ${pascalName}Service = _SERVICE
-
-// ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════
+type ${pascalName}Service = _SERVICE
 
 /**
  * ${pascalName} Reactor with ${useDisplayReactor ? "Display" : "Candid"} type transformations.

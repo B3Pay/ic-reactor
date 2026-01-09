@@ -3,7 +3,7 @@
  * DO NOT EDIT MANUALLY
  *
  * Canister: backend
- * Generated: 2026-01-09T12:13:21.732Z
+ * Generated: 2026-01-09T12:16:18.076Z
  *
  * This file provides type-safe React hooks for interacting with the
  * backend canister using ic-reactor.
@@ -20,14 +20,9 @@ import { clientManager } from "../../lib/client"
 import { idlFactory, type _SERVICE } from "./declarations/backend.did"
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CANISTER ID RESOLUTION
-// ═══════════════════════════════════════════════════════════════════════════
-
-type BackendService = _SERVICE
-
-// ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════
+type BackendService = _SERVICE
 
 /**
  * Backend Reactor with Display type transformations.
