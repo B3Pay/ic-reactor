@@ -18,7 +18,7 @@ import type {
   ReactorCallParams,
 } from "./types/reactor"
 
-import { Actor, DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
+import { DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { generateKey, extractOkResult } from "./utils/helper"
@@ -50,7 +50,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public service: IDL.ServiceClass
   public pollingOptions: PollingOptions
 
-  constructor(config: ReactorParameters<A>) {
+  constructor(config: ReactorParameters) {
     this.clientManager = config.clientManager
     this.name = config.name
     this.pollingOptions =
@@ -58,34 +58,24 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
         ? config.pollingOptions
         : DEFAULT_POLLING_OPTIONS
 
-    if ("actor" in config && config.actor) {
-      // Legacy: if an actor is passed, extract service and canisterId from it
-      this.canisterId = Actor.canisterIdOf(config.actor as unknown as Actor)
-      this.service = Actor.interfaceOf(config.actor as unknown as Actor)
-    } else if ("idlFactory" in config) {
-      const { idlFactory } = config
-      let canisterId = config.canisterId
+    const { idlFactory } = config
+    let canisterId = config.canisterId
+
+    if (!canisterId) {
+      const env = safeGetCanisterEnv()
+      const key = `PUBLIC_CANISTER_ID:${this.name}` as keyof typeof env
+      canisterId = env?.[key] as string | undefined
 
       if (!canisterId) {
-        const env = safeGetCanisterEnv()
-        const key = `PUBLIC_CANISTER_ID:${this.name}` as keyof typeof env
-        canisterId = env?.[key] as string | undefined
-
-        if (!canisterId) {
-          console.warn(
-            `[ic-reactor] ${this.name} canister ID not found in ic_env cookie`
-          )
-          canisterId = "aaaaa-aa" // Fallback
-        }
+        console.warn(
+          `[ic-reactor] ${this.name} canister ID not found in ic_env cookie`
+        )
+        canisterId = "aaaaa-aa" // Fallback
       }
-
-      this.canisterId = Principal.from(canisterId)
-      this.service = idlFactory({ IDL })
-    } else {
-      throw new Error(
-        "Either actor or idlFactory are required (" + this.name + ")"
-      )
     }
+
+    this.canisterId = Principal.from(canisterId)
+    this.service = idlFactory({ IDL })
 
     // Register this canister ID for delegation during login
     this.clientManager.registerCanisterId(this.canisterId.toString(), this.name)
