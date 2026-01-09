@@ -39,13 +39,13 @@ interface BaseReactorParameters extends Omit<
   "agent" | "effectiveCanisterId" | "canisterId"
 > {
   clientManager: ClientManager
-  name?: string
+  name: string
 }
 
 export type ReactorParameters<A = BaseActor> =
   | (BaseReactorParameters & {
       idlFactory: IDL.InterfaceFactory
-      canisterId: CanisterId
+      canisterId?: CanisterId
     })
   | (BaseReactorParameters & {
       actor: A

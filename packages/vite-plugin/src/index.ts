@@ -106,7 +106,6 @@ import {
   ${reactorType},
   createActorHooks,
 } from "@ic-reactor/react"
-import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // USER-PROVIDED CLIENT MANAGER
@@ -122,29 +121,6 @@ import {
 } from "./declarations/declarations/${canisterName}.did"
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CANISTER ID RESOLUTION
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface ${pascalName}CanisterEnv {
-  readonly "PUBLIC_CANISTER_ID:${canisterName}": string
-}
-
-/**
- * Get canister ID from runtime environment (ic_env cookie)
- * Falls back to a placeholder in development
- */
-function get${pascalName}CanisterId(): string {
-  const env = safeGetCanisterEnv<${pascalName}CanisterEnv>()
-
-  if (env?.["PUBLIC_CANISTER_ID:${canisterName}"]) {
-    return env["PUBLIC_CANISTER_ID:${canisterName}"]
-  }
-
-  console.warn("[ic-reactor] ${canisterName} canister ID not found in ic_env cookie")
-  return "aaaaa-aa" // Fallback
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -154,7 +130,6 @@ function get${pascalName}CanisterId(): string {
  */
 export const ${camelName}Reactor = new ${reactorType}<_SERVICE>({
   clientManager,
-  canisterId: get${pascalName}CanisterId(),
   idlFactory,
   name: "${canisterName}",
 })

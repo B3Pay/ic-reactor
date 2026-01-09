@@ -27,6 +27,7 @@ import {
   processUpdateCallResponse,
 } from "./utils/agent"
 import { CallError, CanisterError } from "./errors"
+import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 /**
  * Reactor class for interacting with IC canisters.
@@ -51,7 +52,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
 
   constructor(config: ReactorParameters<A>) {
     this.clientManager = config.clientManager
-    this.name = config.name || ""
+    this.name = config.name
     this.pollingOptions =
       "pollingOptions" in config && config.pollingOptions
         ? config.pollingOptions
@@ -61,13 +62,29 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       // Legacy: if an actor is passed, extract service and canisterId from it
       this.canisterId = Actor.canisterIdOf(config.actor as unknown as Actor)
       this.service = Actor.interfaceOf(config.actor as unknown as Actor)
-    } else if ("canisterId" in config && "idlFactory" in config) {
-      const { canisterId, idlFactory } = config
+    } else if ("idlFactory" in config) {
+      const { idlFactory } = config
+      let canisterId = config.canisterId
+
+      if (!canisterId) {
+        const env = safeGetCanisterEnv()
+        const key = `PUBLIC_CANISTER_ID:${this.name}` as keyof typeof env
+        canisterId = env?.[key] as string | undefined
+
+        if (!canisterId) {
+          console.warn(
+            `[ic-reactor] ${this.name} canister ID not found in ic_env cookie`
+          )
+          canisterId = "aaaaa-aa" // Fallback
+        }
+      }
 
       this.canisterId = Principal.from(canisterId)
       this.service = idlFactory({ IDL })
     } else {
-      throw new Error("Either actor or canisterId and idlFactory are required")
+      throw new Error(
+        "Either actor or idlFactory are required (" + this.name + ")"
+      )
     }
 
     // Register this canister ID for delegation during login
