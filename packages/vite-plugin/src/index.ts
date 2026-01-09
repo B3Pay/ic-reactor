@@ -1,70 +1,53 @@
 /**
- * @ic-reactor/vite-plugin
+ * IC-Reactor Vite Plugin
  *
  * A Vite plugin that generates ic-reactor hooks from Candid .did files.
- * Works seamlessly with @icp-sdk/bindgen for type generation.
  *
- * Design Philosophy:
- * - User owns the ClientManager and QueryClient (configured in their own file)
- * - Plugin ONLY generates: reactor instance + hooks
- * - Uses @icp-sdk/bindgen for idlFactory and types
+ * ⚠️ IMPORTANT: This plugin ONLY generates the reactor and hooks.
+ * The user is responsible for creating and configuring:
+ * - ClientManager
+ * - QueryClient
  *
- * @example
+ * The generated file will import the clientManager from a user-specified path.
+ *
+ * Usage:
  * ```ts
- * // vite.config.ts
- * import { icReactorBindgen } from "@ic-reactor/vite-plugin";
+ * import { icReactorPlugin } from "./plugins/ic-reactor-plugin"
  *
  * export default defineConfig({
  *   plugins: [
- *     react(),
- *     icReactorBindgen({
+ *     icReactorPlugin({
  *       canisters: [
  *         {
  *           name: "backend",
- *           didPath: "../backend/backend.did",
- *           clientManagerPath: "../lib/client"  // User provides their own
+ *           didFile: "../backend/backend.did",
+ *           clientManagerPath: "../lib/client" // User provides their own ClientManager
  *         }
  *       ]
  *     })
  *   ]
- * });
+ * })
  * ```
  */
 
-import type { Plugin, ViteDevServer } from "vite"
-import fs from "node:fs"
-import path from "node:path"
-import { watch, type FSWatcher } from "chokidar"
+import type { Plugin } from "vite"
+import { generate } from "@icp-sdk/bindgen/core"
+import fs from "fs"
+import path from "path"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface CanisterConfig {
-  /**
-   * The name of the canister (used for naming generated files and hooks).
-   * Should match the canister name in icp.toml / dfx.json
-   */
+  /** Name of the canister (used for variable naming) */
   name: string
-
-  /**
-   * Path to the .did file (relative to vite.config.ts or absolute).
-   * Example: "../backend/backend.did"
-   */
-  didPath: string
-
-  /**
-   * Optional: Override the output path for the generated reactor file.
-   * Defaults to: `{outputDir}/{name}/index.ts`
-   */
-  outputPath?: string
-
-  /**
-   * Optional: Use "display" transformation (converts bigint/Principal to strings).
-   * Defaults to true for better React ergonomics.
-   */
+  /** Path to the .did file */
+  didFile: string
+  /** Output directory (default: ./src/canisters/<name>) */
+  outDir?: string
+  /** Use DisplayReactor for React-friendly types (default: true) */
   useDisplayReactor?: boolean
-
   /**
    * Path to import ClientManager from (relative to generated file).
    * The file at this path should export: { clientManager: ClientManager }
@@ -73,195 +56,152 @@ export interface CanisterConfig {
   clientManagerPath?: string
 }
 
-export interface IcReactorBindgenOptions {
-  /**
-   * List of canisters to generate reactor files for.
-   */
+export interface IcReactorPluginOptions {
+  /** List of canisters to generate hooks for */
   canisters: CanisterConfig[]
-
-  /**
-   * Output directory for generated files.
-   * Defaults to "src/canisters"
-   */
-  outputDir?: string
-
-  /**
-   * Whether to watch for changes in development mode.
-   * Defaults to true
-   */
-  watch?: boolean
+  /** Base output directory (default: ./src/canisters) */
+  outDir?: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CANDID PARSER
+// UTILITIES
 // ═══════════════════════════════════════════════════════════════════════════
-
-interface CandidMethod {
-  name: string
-  isQuery: boolean
-  argTypes: string[]
-  returnType: string
-  hasResult: boolean
-}
-
-interface CandidService {
-  methods: CandidMethod[]
-}
-
-/**
- * Parse a Candid IDL file to extract method signatures.
- */
-function parseCandidFile(filePath: string): CandidService {
-  const content = fs.readFileSync(filePath, "utf-8")
-  const methods: CandidMethod[] = []
-
-  // Match service method declarations
-  const serviceMatch = content.match(/service\s*:\s*\{([^}]+)\}/)
-  if (!serviceMatch) {
-    console.warn(
-      `[icReactorBindgen] No service definition found in ${filePath}`
-    )
-    return { methods: [] }
-  }
-
-  const serviceBlock = serviceMatch[1]
-  const methodRegex =
-    /(\w+)\s*:\s*\(([^)]*)\)\s*->\s*\(([^)]*)\)\s*(query|composite_query)?/g
-
-  let match
-  while ((match = methodRegex.exec(serviceBlock)) !== null) {
-    const [, name, args, returnType, queryAnnotation] = match
-    methods.push({
-      name,
-      isQuery:
-        queryAnnotation === "query" || queryAnnotation === "composite_query",
-      argTypes: args
-        .split(",")
-        .map((a) => a.trim())
-        .filter(Boolean),
-      returnType: returnType.trim(),
-      hasResult:
-        returnType.includes("variant") &&
-        returnType.includes("Ok") &&
-        returnType.includes("Err"),
-    })
-  }
-
-  return { methods }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CODE GENERATOR
-// ═══════════════════════════════════════════════════════════════════════════
-
-function toCamelCase(str: string): string {
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-}
 
 function toPascalCase(str: string): string {
-  const camel = toCamelCase(str)
-  return camel.charAt(0).toUpperCase() + camel.slice(1)
+  return str
+    .split(/[-_]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("")
+}
+
+function toCamelCase(str: string): string {
+  const pascal = toPascalCase(str)
+  return pascal.charAt(0).toLowerCase() + pascal.slice(1)
 }
 
 /**
- * Generate the reactor configuration file for a canister.
+ * Parse the idlFactory to determine query vs update methods
  */
+function parseIdlFactory(
+  jsContent: string
+): Map<string, { isQuery: boolean; argTypes: string; returnType: string }> {
+  const methodMap = new Map<
+    string,
+    { isQuery: boolean; argTypes: string; returnType: string }
+  >()
+
+  // Match: 'methodName' : IDL.Func([args], [return], ['query']?)
+  const funcRegex =
+    /['"]?(\w+)['"]?\s*:\s*IDL\.Func\(\[(.*?)\],\s*\[(.*?)\],\s*\[(.*?)\]\)/g
+  let match
+
+  while ((match = funcRegex.exec(jsContent)) !== null) {
+    const [, methodName, argTypes, returnType, annotations] = match
+    methodMap.set(methodName, {
+      isQuery:
+        annotations.includes("query") ||
+        annotations.includes("composite_query"),
+      argTypes: argTypes.trim(),
+      returnType: returnType.trim(),
+    })
+  }
+
+  return methodMap
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GENERATOR
+// ═══════════════════════════════════════════════════════════════════════════
+
 function generateReactorFile(
-  canister: CanisterConfig,
-  service: CandidService
+  canisterName: string,
+  methods: Map<
+    string,
+    { isQuery: boolean; argTypes: string; returnType: string }
+  >,
+  useDisplayReactor: boolean,
+  clientManagerPath: string
 ): string {
-  const {
-    name,
-    useDisplayReactor = true,
-    clientManagerPath = "../../lib/client",
-  } = canister
-  const ReactorClass = useDisplayReactor ? "DisplayReactor" : "Reactor"
+  const pascalName = toPascalCase(canisterName)
+  const camelName = toCamelCase(canisterName)
+  const reactorType = useDisplayReactor ? "DisplayReactor" : "Reactor"
 
-  const queryMethods = service.methods.filter((m) => m.isQuery)
-  const updateMethods = service.methods.filter((m) => !m.isQuery)
-
-  // Track query keys for cache invalidation
+  // Separate queries and mutations
+  const queries: string[] = []
+  const mutations: string[] = []
   const queryKeys: string[] = []
 
-  // Generate query hooks
-  const queryHooks = queryMethods
-    .map((m) => {
-      const hookName = `use${toPascalCase(m.name)}`
-      const queryName = `${toCamelCase(m.name)}Query`
-      const hasArgs = m.argTypes.length > 0
-      queryKeys.push(m.name)
+  for (const [methodName, info] of methods) {
+    const hookName = toCamelCase(methodName)
+    const hasArgs = info.argTypes.length > 0
+
+    if (info.isQuery) {
+      queryKeys.push(methodName)
 
       if (hasArgs) {
-        return `
+        // Use createQueryFactory for queries with arguments
+        queries.push(`
 /**
- * Query: ${m.name}
- * Args: (${m.argTypes.join(", ")})
- * Returns: ${m.returnType}
+ * Query: ${methodName}
+ * Args: (${info.argTypes})
+ * Returns: ${info.returnType || "void"}
  */
-export const ${queryName} = createQueryFactory(${toCamelCase(name)}Reactor, {
-  functionName: "${m.name}",
+export const ${hookName}Query = createQueryFactory(${camelName}Reactor, {
+  functionName: "${methodName}",
 })
-export const ${hookName} = (options: { args: Parameters<_SERVICE["${m.name}"]> } & Record<string, unknown> = { args: [] as any }) =>
-  ${queryName}(options.args).useQuery(options)
-export const ${hookName}Suspense = (options: { args: Parameters<_SERVICE["${m.name}"]> } & Record<string, unknown> = { args: [] as any }) =>
-  createSuspenseQuery(${toCamelCase(name)}Reactor, { functionName: "${m.name}" }).useSuspenseQuery(options)
-`
+// Usage: ${hookName}Query([arg1, arg2]).useQuery() or use${toPascalCase(methodName)}({ args: [arg1] })
+export const use${toPascalCase(methodName)} = (options: { args: Parameters<_SERVICE["${methodName}"]> } & Record<string, unknown> = { args: [] as any }) => 
+  ${hookName}Query(options.args).useQuery(options)
+`)
       } else {
-        return `
+        // Use createQuery for queries without arguments
+        queries.push(`
 /**
- * Query: ${m.name}
+ * Query: ${methodName}
  * No arguments
- * Returns: ${m.returnType}
+ * Returns: ${info.returnType || "void"}
  */
-export const ${queryName} = createQuery(${toCamelCase(name)}Reactor, {
-  functionName: "${m.name}",
+export const ${hookName}Query = createQuery(${camelName}Reactor, {
+  functionName: "${methodName}",
 })
-export const ${hookName} = ${queryName}.useQuery
-export const ${hookName}Suspense = createSuspenseQuery(${toCamelCase(name)}Reactor, {
-  functionName: "${m.name}",
+export const use${toPascalCase(methodName)} = ${hookName}Query.useQuery
+export const use${toPascalCase(methodName)}Suspense = createSuspenseQuery(${camelName}Reactor, {
+  functionName: "${methodName}",
 }).useSuspenseQuery
-`
+`)
       }
-    })
-    .join("")
-
-  // Generate mutation hooks
-  const mutationHooks = updateMethods
-    .map((m) => {
-      const hookName = `use${toPascalCase(m.name)}`
-      const mutationName = `${toCamelCase(m.name)}Mutation`
-
+    } else {
       // Find related queries to invalidate
       const relatedQueries = queryKeys
         .filter((q) =>
           q
             .toLowerCase()
             .includes(
-              m.name
+              methodName
                 .replace(/^(set_|update_|delete_|add_|create_|remove_)/, "")
                 .toLowerCase()
             )
         )
         .map((q) => `${toCamelCase(q)}Query.getQueryKey()`)
 
-      return `
+      mutations.push(`
 /**
- * Mutation: ${m.name}
- * ${m.argTypes.length > 0 ? `Args: (${m.argTypes.join(", ")})` : "No arguments"}
- * Returns: ${m.returnType}
+ * Mutation: ${methodName}
+ * ${info.argTypes ? `Args: (${info.argTypes})` : "No arguments"}
+ * Returns: ${info.returnType || "void"}
  */
-export const ${mutationName} = createMutation(${toCamelCase(name)}Reactor, {
-  functionName: "${m.name}",${
+export const ${hookName}Mutation = createMutation(${camelName}Reactor, {
+  functionName: "${methodName}",${
     relatedQueries.length > 0
       ? `
   invalidateQueries: [${relatedQueries.join(", ")}],`
       : ""
   }
 })
-export const ${hookName} = ${mutationName}.useMutation
-`
-    })
-    .join("")
+export const use${toPascalCase(methodName)} = ${hookName}Mutation.useMutation
+`)
+    }
+  }
 
   return `/* eslint-disable */
 // @ts-nocheck
@@ -270,15 +210,15 @@ export const ${hookName} = ${mutationName}.useMutation
  * AUTO-GENERATED BY @ic-reactor/vite-plugin
  * DO NOT EDIT MANUALLY
  *
- * Source: ${canister.didPath}
+ * Canister: ${canisterName}
  * Generated: ${new Date().toISOString()}
  *
  * This file provides type-safe React hooks for interacting with the
- * ${name} canister using ic-reactor.
+ * ${canisterName} canister using ic-reactor.
  */
 
 import {
-  ${ReactorClass},
+  ${reactorType},
   createQuery,
   createQueryFactory,
   createMutation,
@@ -294,28 +234,28 @@ import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { clientManager } from "${clientManagerPath}"
 
 // Import generated declarations from @icp-sdk/bindgen
-import { idlFactory, type _SERVICE } from "./declarations/${name}.did"
+import { idlFactory, type _SERVICE } from "./declarations/declarations/${canisterName}.did"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CANISTER ID RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface ${toPascalCase(name)}CanisterEnv {
-  readonly "PUBLIC_CANISTER_ID:${name}": string
+interface ${pascalName}CanisterEnv {
+  readonly "PUBLIC_CANISTER_ID:${canisterName}": string
 }
 
 /**
  * Get canister ID from runtime environment (ic_env cookie)
+ * Falls back to a placeholder in development
  */
-function get${toPascalCase(name)}CanisterId(): string {
-  const env = safeGetCanisterEnv<${toPascalCase(name)}CanisterEnv>()
+function get${pascalName}CanisterId(): string {
+  const env = safeGetCanisterEnv<${pascalName}CanisterEnv>()
 
-  if (env?.["PUBLIC_CANISTER_ID:${name}"]) {
-    return env["PUBLIC_CANISTER_ID:${name}"]
+  if (env?.["PUBLIC_CANISTER_ID:${canisterName}"]) {
+    return env["PUBLIC_CANISTER_ID:${canisterName}"]
   }
 
-  console.warn("[ic-reactor] ${name} canister ID not found in ic_env cookie")
-  return "aaaaa-aa" // Fallback
+  throw new Error("[ic-reactor] ${canisterName} canister ID not found in ic_env cookie")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -323,226 +263,149 @@ function get${toPascalCase(name)}CanisterId(): string {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * ${toPascalCase(name)} Reactor with ${useDisplayReactor ? "Display" : "Candid"} type transformations.
+ * ${pascalName} Reactor with ${useDisplayReactor ? "Display" : "Candid"} type transformations.
  * ${useDisplayReactor ? "Automatically converts bigint → string, Principal → string, etc." : "Uses raw Candid types."}
  */
-export const ${toCamelCase(name)}Reactor = new ${ReactorClass}<_SERVICE>({
+export const ${camelName}Reactor = new ${reactorType}<_SERVICE>({
   clientManager,
-  canisterId: get${toPascalCase(name)}CanisterId(),
+  canisterId: get${pascalName}CanisterId(),
   idlFactory,
-  name: "${name}",
+  name: "${canisterName}",
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
-${queryHooks}
+${queries.join("\n")}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MUTATION HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
-${mutationHooks}
+${mutations.join("\n")}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════
 
 export { idlFactory }
-export type { _SERVICE as ${toPascalCase(name)}Service }
-export { ${toCamelCase(name)}Reactor as reactor }
+export type { _SERVICE as ${pascalName}Service }
+export { ${camelName}Reactor as reactor }
 `
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// BINDGEN INTEGRATION
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Run @icp-sdk/bindgen to generate declarations
- */
-async function runBindgen(
-  didPath: string,
-  outDir: string,
-  canisterName: string
-): Promise<void> {
-  // Try to dynamically import @icp-sdk/bindgen
-  // Use a variable to prevent TypeScript from trying to resolve the module
-  const bindgenModule = "@icp-sdk/bindgen/core"
-  try {
-    const { generate } = (await import(/* @vite-ignore */ bindgenModule)) as {
-      generate: (options: { didFile: string; outDir: string }) => Promise<void>
-    }
-
-    // Clean existing declarations before regenerating
-    if (fs.existsSync(outDir)) {
-      fs.rmSync(outDir, { recursive: true, force: true })
-    }
-    fs.mkdirSync(outDir, { recursive: true })
-
-    await generate({
-      didFile: didPath,
-      outDir,
-    })
-
-    // Remove the actor file that bindgen generates - we don't need it
-    const actorFilePath = path.join(outDir, `${canisterName}.ts`)
-    if (fs.existsSync(actorFilePath)) {
-      fs.unlinkSync(actorFilePath)
-    }
-  } catch (error) {
-    console.warn(`[icReactorBindgen] Could not run @icp-sdk/bindgen: ${error}`)
-    console.warn(`[icReactorBindgen] Make sure @icp-sdk/bindgen is installed`)
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VITE PLUGIN
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function icReactorBindgen(options: IcReactorBindgenOptions): Plugin {
-  const {
-    canisters,
-    outputDir = "src/canisters",
-    watch: shouldWatch = true,
-  } = options
-  let root: string
-  let watcher: FSWatcher | null = null
-
-  /**
-   * Generate reactor file for a single canister
-   */
-  async function generateForCanister(canister: CanisterConfig) {
-    const didPath = path.isAbsolute(canister.didPath)
-      ? canister.didPath
-      : path.resolve(root, canister.didPath)
-
-    if (!fs.existsSync(didPath)) {
-      console.warn(`[icReactorBindgen] .did file not found: ${didPath}`)
-      console.warn(
-        `[icReactorBindgen] Run 'icp build' to generate the .did file`
-      )
-      return
-    }
-
-    try {
-      // Determine output directory for this canister
-      const canisterOutDir = canister.outputPath
-        ? path.dirname(path.resolve(root, canister.outputPath))
-        : path.resolve(root, outputDir, canister.name)
-
-      // Step 1: Run bindgen to generate declarations
-      const declarationsDir = path.join(canisterOutDir, "declarations")
-      await runBindgen(didPath, declarationsDir, canister.name)
-      console.log(
-        `[icReactorBindgen] ✅ Declarations generated at ${path.relative(root, declarationsDir)}`
-      )
-
-      // Step 2: Parse the .did file
-      const service = parseCandidFile(didPath)
-      console.log(
-        `[icReactorBindgen]    Methods: ${service.methods.length} (${service.methods.filter((m) => m.isQuery).length} queries, ${service.methods.filter((m) => !m.isQuery).length} updates)`
-      )
-
-      // Step 3: Generate the reactor file
-      const code = generateReactorFile(canister, service)
-
-      const outputPath =
-        canister.outputPath ??
-        path.resolve(root, outputDir, canister.name, "index.ts")
-
-      // Ensure output directory exists
-      fs.mkdirSync(path.dirname(outputPath), { recursive: true })
-
-      // Write the generated file
-      fs.writeFileSync(outputPath, code, "utf-8")
-
-      console.log(
-        `[icReactorBindgen] ✅ Generated: ${path.relative(root, outputPath)}`
-      )
-    } catch (error) {
-      console.error(
-        `[icReactorBindgen] ❌ Failed to generate for ${canister.name}:`,
-        error
-      )
-    }
-  }
-
-  /**
-   * Generate all reactor files
-   */
-  async function generateAll() {
-    console.log(`[icReactorBindgen] 🔄 Generating reactor files...`)
-    for (const canister of canisters) {
-      await generateForCanister(canister)
-    }
-  }
+export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
+  const baseOutDir = options.outDir ?? "./src/canisters"
 
   return {
-    name: "ic-reactor-bindgen",
-
-    configResolved(config) {
-      root = config.root
-    },
+    name: "ic-reactor-plugin",
 
     async buildStart() {
-      await generateAll()
-    },
+      for (const canister of options.canisters) {
+        const outDir = canister.outDir ?? path.join(baseOutDir, canister.name)
+        const declarationsDir = path.join(outDir, "declarations")
 
-    configureServer(server: ViteDevServer) {
-      if (!shouldWatch) return
-
-      // Watch .did files for changes
-      const didPaths = canisters.map((c) =>
-        path.isAbsolute(c.didPath) ? c.didPath : path.resolve(root, c.didPath)
-      )
-
-      watcher = watch(didPaths, {
-        ignoreInitial: true,
-        awaitWriteFinish: {
-          stabilityThreshold: 100,
-          pollInterval: 50,
-        },
-      })
-
-      watcher.on("change", async (changedPath) => {
         console.log(
-          `[icReactorBindgen] 📝 .did file changed: ${path.basename(changedPath)}`
+          `[ic-reactor] Generating hooks for ${canister.name} from ${canister.didFile}`
         )
 
-        // Find the canister that matches this .did file
-        const canister = canisters.find((c) => {
-          const didPath = path.isAbsolute(c.didPath)
-            ? c.didPath
-            : path.resolve(root, c.didPath)
-          return didPath === changedPath
-        })
-
-        if (canister) {
-          await generateForCanister(canister)
-
-          // Trigger HMR by sending full reload
-          server.ws.send({ type: "full-reload" })
+        // Clean existing declarations before regenerating
+        if (fs.existsSync(declarationsDir)) {
+          fs.rmSync(declarationsDir, { recursive: true, force: true })
         }
-      })
+        fs.mkdirSync(declarationsDir, { recursive: true })
 
-      watcher.on("add", async (addedPath) => {
+        // Step 1: Use @icp-sdk/bindgen to generate declarations
+        try {
+          await generate({
+            didFile: canister.didFile,
+            outDir: declarationsDir,
+            output: {
+              actor: {
+                disabled: true,
+              },
+            },
+          })
+
+          // Remove the actor file that bindgen generates - we don't need it
+          // ic-reactor provides its own reactor pattern instead
+          const actorFilePath = path.join(
+            declarationsDir,
+            `${canister.name}.ts`
+          )
+          if (fs.existsSync(actorFilePath)) {
+            fs.unlinkSync(actorFilePath)
+          }
+
+          console.log(
+            `[ic-reactor] Declarations generated at ${declarationsDir}`
+          )
+        } catch (error) {
+          console.error(`[ic-reactor] Failed to generate declarations:`, error)
+          continue
+        }
+
+        // Step 2: Parse the generated files
+        const actualDeclarationsDir = path.join(declarationsDir, "declarations")
+        let jsPath = path.join(actualDeclarationsDir, `${canister.name}.did.js`)
+
+        if (!fs.existsSync(jsPath)) {
+          const fallbackPath = path.join(
+            declarationsDir,
+            `${canister.name}.did.js`
+          )
+          if (fs.existsSync(fallbackPath)) {
+            jsPath = fallbackPath
+          } else {
+            console.error(`[ic-reactor] Generated file not found: ${jsPath}`)
+            console.error(`[ic-reactor] Also tried: ${fallbackPath}`)
+            continue
+          }
+        }
+
+        const jsContent = fs.readFileSync(jsPath, "utf-8")
+        const methodMap = parseIdlFactory(jsContent)
+
         console.log(
-          `[icReactorBindgen] 🆕 .did file created: ${path.basename(addedPath)}`
+          `[ic-reactor] Found ${methodMap.size} methods: ${[...methodMap.keys()].join(", ")}`
         )
-        await generateAll()
-      })
 
-      console.log(
-        `[icReactorBindgen] 👀 Watching ${didPaths.length} .did file(s) for changes`
-      )
+        // Step 3: Generate the reactor file
+        const clientManagerPath =
+          canister.clientManagerPath ?? "../../lib/client"
+        const reactorContent = generateReactorFile(
+          canister.name,
+          methodMap,
+          canister.useDisplayReactor ?? true,
+          clientManagerPath
+        )
+
+        const reactorPath = path.join(outDir, "index.ts")
+        fs.mkdirSync(outDir, { recursive: true })
+        fs.writeFileSync(reactorPath, reactorContent)
+
+        console.log(`[ic-reactor] Reactor hooks generated at ${reactorPath}`)
+      }
     },
 
-    closeBundle() {
-      if (watcher) {
-        watcher.close()
+    handleHotUpdate({ file, server }) {
+      // Watch for .did file changes and regenerate
+      if (file.endsWith(".did")) {
+        const canister = options.canisters.find(
+          (c) => path.resolve(c.didFile) === file
+        )
+        if (canister) {
+          console.log(
+            `[ic-reactor] Detected change in ${file}, regenerating...`
+          )
+          server.restart()
+        }
       }
     },
   }
 }
 
-export default icReactorBindgen
+export default icReactorPlugin
