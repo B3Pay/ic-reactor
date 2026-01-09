@@ -9,6 +9,7 @@ import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryClient } from "@tanstack/react-query"
 
 import { HttpAgent } from "@icp-sdk/core/agent"
+import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import {
   IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
@@ -88,6 +89,24 @@ export class ClientManager {
       isAuthenticating: false,
       isAuthenticated: false,
       error: undefined,
+    }
+
+    const canisterEnv =
+      typeof window !== "undefined" ? safeGetCanisterEnv() : undefined
+    const isDev =
+      typeof import.meta !== "undefined" && (import.meta as any).env?.DEV
+
+    if (isDev && typeof window !== "undefined") {
+      agentOptions.host = agentOptions.host ?? window.location.origin
+      agentOptions.verifyQuerySignatures =
+        agentOptions.verifyQuerySignatures ?? false
+    } else {
+      agentOptions.verifyQuerySignatures =
+        agentOptions.verifyQuerySignatures ?? true
+    }
+
+    if (canisterEnv?.IC_ROOT_KEY) {
+      agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
     }
 
     if (withProcessEnv) {

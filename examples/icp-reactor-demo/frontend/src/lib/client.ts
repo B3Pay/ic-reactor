@@ -12,7 +12,6 @@
 
 import { QueryClient } from "@tanstack/react-query"
 import { ClientManager, createAuthHooks } from "@ic-reactor/react"
-import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY CLIENT
@@ -34,33 +33,6 @@ export const queryClient = new QueryClient({
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AGENT OPTIONS
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Get agent options based on the canister environment.
- * In development, uses the Vite proxy; in production, uses the ic_env cookie.
- */
-function getAgentOptions() {
-  const env = safeGetCanisterEnv()
-
-  // Development mode - use Vite proxy
-  if (import.meta.env.DEV) {
-    return {
-      host: window.location.origin,
-      rootKey: env?.IC_ROOT_KEY,
-      verifyQuerySignatures: false,
-    }
-  }
-
-  // Production mode - use root key from asset canister's cookie
-  return {
-    rootKey: env?.IC_ROOT_KEY,
-    verifyQuerySignatures: true,
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // CLIENT MANAGER
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -77,7 +49,6 @@ function getAgentOptions() {
  */
 export const clientManager = new ClientManager({
   queryClient,
-  agentOptions: getAgentOptions(),
 })
 
 // Initialize on load
