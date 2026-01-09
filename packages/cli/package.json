@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/cli",
-  "version": "3.0.0",
+  "version": "0.0.0-dev3",
   "type": "module",
   "description": "CLI tool to generate shadcn-style React hooks for ICP canisters",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
     "cli",
     "codegen"
   ],
-  "author": "B3Pay",
+  "author": "Behrad Deylami",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -34,6 +34,7 @@
   "homepage": "https://github.com/B3Pay/ic-reactor#readme",
   "dependencies": {
     "@clack/prompts": "^0.9.1",
+    "@icp-sdk/bindgen": "^0.2.1",
     "@icp-sdk/core": "^5.0.0",
     "commander": "^13.1.0",
     "picocolors": "^1.1.1"

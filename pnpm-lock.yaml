@@ -227,6 +227,9 @@ importers:
       '@clack/prompts':
         specifier: ^0.9.1
         version: 0.9.1
+      '@icp-sdk/bindgen':
+        specifier: ^0.2.1
+        version: 0.2.1
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0

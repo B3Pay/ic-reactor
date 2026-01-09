@@ -64,18 +64,24 @@ export function saveConfig(
 }
 
 /**
- * Get the project root (where package.json is)
+ * Get the project root directory.
+ *
+ * Priority:
+ * 1. Directory containing reactor.config.json (if found)
+ * 2. Current working directory (default for new projects)
+ *
+ * Note: We intentionally don't traverse up looking for package.json
+ * as this can cause issues when running in subdirectories or when
+ * parent directories have their own package.json files.
  */
 export function getProjectRoot(): string {
-  let currentDir = process.cwd()
-
-  while (currentDir !== path.dirname(currentDir)) {
-    if (fs.existsSync(path.join(currentDir, "package.json"))) {
-      return currentDir
-    }
-    currentDir = path.dirname(currentDir)
+  // First, check if there's a reactor.config.json in the current directory or parents
+  const configPath = findConfigFile()
+  if (configPath) {
+    return path.dirname(configPath)
   }
 
+  // Default to current working directory for new projects
   return process.cwd()
 }
 

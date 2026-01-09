@@ -24,6 +24,7 @@ import {
   generateInfiniteQueryHook,
 } from "../generators/index.js"
 import { getHookFileName } from "../utils/naming.js"
+import { generateDeclarations } from "../utils/bindgen.js"
 import type { MethodInfo, HookType } from "../types.js"
 
 interface AddOptions {
@@ -139,8 +140,14 @@ export async function addCommand(options: AddOptions) {
   if (options.all) {
     selectedMethods = methods
   } else if (options.methods && options.methods.length > 0) {
-    selectedMethods = methods.filter((m) => options.methods!.includes(m.name))
-    const notFound = options.methods.filter(
+    // Parse comma-separated method names
+    const requestedMethods = options.methods
+      .flatMap((m) => m.split(","))
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0)
+
+    selectedMethods = methods.filter((m) => requestedMethods.includes(m.name))
+    const notFound = requestedMethods.filter(
       (name) => !methods.some((m) => m.name === name)
     )
     if (notFound.length > 0) {
@@ -205,6 +212,11 @@ export async function addCommand(options: AddOptions) {
             label: "Suspense Infinite Query",
             hint: "Paginated with Suspense",
           },
+          {
+            value: "skip",
+            label: "Skip",
+            hint: "Don't generate hook for this method",
+          },
         ],
       })
 
@@ -213,10 +225,49 @@ export async function addCommand(options: AddOptions) {
         process.exit(0)
       }
 
+      // Skip this method if user chose "skip"
+      if (hookType === "skip") {
+        p.log.info(`Skipping ${pc.dim(method.name)}`)
+        continue
+      }
+
       methodsWithHookTypes.push({ method, hookType: hookType as HookType })
     } else {
+      // For mutations, also allow skipping
+      const hookType = await p.select({
+        message: `Hook type for ${pc.yellow(method.name)} (mutation)`,
+        options: [
+          {
+            value: "mutation",
+            label: "Mutation",
+            hint: "Standard mutation hook",
+          },
+          {
+            value: "skip",
+            label: "Skip",
+            hint: "Don't generate hook for this method",
+          },
+        ],
+      })
+
+      if (p.isCancel(hookType)) {
+        p.cancel("Cancelled.")
+        process.exit(0)
+      }
+
+      if (hookType === "skip") {
+        p.log.info(`Skipping ${pc.dim(method.name)}`)
+        continue
+      }
+
       methodsWithHookTypes.push({ method, hookType: "mutation" })
     }
+  }
+
+  // Check if any methods were selected after skipping
+  if (methodsWithHookTypes.length === 0) {
+    p.log.warn("All methods were skipped. Nothing to generate.")
+    process.exit(0)
   }
 
   // Generate files
@@ -232,11 +283,30 @@ export async function addCommand(options: AddOptions) {
   // Generate reactor.ts if it doesn't exist
   const reactorPath = path.join(canisterOutDir, "reactor.ts")
   if (!fileExists(reactorPath)) {
+    // Generate TypeScript declarations using bindgen
+    spinner.message("Generating TypeScript declarations...")
+    const bindgenResult = await generateDeclarations({
+      didFile: didFilePath,
+      outDir: canisterOutDir,
+      canisterName: selectedCanister,
+    })
+
+    if (bindgenResult.success) {
+      generatedFiles.push("declarations/")
+    } else {
+      p.log.warn(`Could not generate declarations: ${bindgenResult.error}`)
+      p.log.info(
+        `You can manually run: npx @icp-sdk/bindgen --input ${didFilePath} --output ${canisterOutDir}/declarations`
+      )
+    }
+
+    spinner.message("Generating reactor...")
     const reactorContent = generateReactorFile({
       canisterName: selectedCanister,
       canisterConfig: canisterConfig,
       config: config,
       outDir: canisterOutDir,
+      hasDeclarations: bindgenResult.success,
     })
     fs.writeFileSync(reactorPath, reactorContent)
     generatedFiles.push("reactor.ts")
