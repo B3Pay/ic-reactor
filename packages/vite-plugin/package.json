@@ -32,7 +32,13 @@
   "author": "Behrad Deylami",
   "license": "MIT",
   "peerDependencies": {
-    "vite": "^5.0.0 || ^6.0.0"
+    "@icp-sdk/bindgen": "^0.2.0",
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@icp-sdk/bindgen": {
+      "optional": true
+    }
   },
   "dependencies": {
     "chokidar": "^4.0.0"

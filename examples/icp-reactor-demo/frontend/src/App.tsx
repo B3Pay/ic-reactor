@@ -30,7 +30,7 @@ import {
   useGetCounterSuspense,
   useSetMessage,
   useIncrement,
-} from "./canisters/backend"
+} from "./generated/backend"
 
 import "./App.css"
 

@@ -283,6 +283,9 @@ importers:
 
   packages/vite-plugin:
     dependencies:
+      '@icp-sdk/bindgen':
+        specifier: ^0.2.0
+        version: 0.2.1
       chokidar:
         specifier: ^4.0.0
         version: 4.0.3
@@ -1380,6 +1383,10 @@ packages:
     resolution: {integrity: sha512-TaPfdaELT7s0vTIFOmCnlCmhPdL7kABA7+2Q0YNAUWIa/FFiwq6ffGPLvr0U0+2zFLaLQ4l7UCB2zf7vo6PFPQ==}
     peerDependencies:
       '@icp-sdk/core': ^5
+
+  '@icp-sdk/bindgen@0.2.1':
+    resolution: {integrity: sha512-/YXJcYdqb4Qi+c33NVU8BgY4O/ZVqOQy+eYH4fSu5asT5/eAQl5NNgsjMTkhbGknRbxm8N9/ZopzAf2GX0n5lg==}
+    hasBin: true
 
   '@icp-sdk/core@5.0.0':
     resolution: {integrity: sha512-t6iRbdylHG57MicWRpR1uMTFXRW7GCzec6KAg55CBwDHbHLQDKikQ252lmlcEa80DrKa3LPvMKYZEUYjEq5XUQ==}
@@ -6569,6 +6576,10 @@ snapshots:
     dependencies:
       '@icp-sdk/core': 5.0.0
       idb: 7.1.1
+
+  '@icp-sdk/bindgen@0.2.1':
+    dependencies:
+      commander: 14.0.2
 
   '@icp-sdk/core@5.0.0':
     dependencies:
