@@ -9,15 +9,15 @@ export class CandidReactor<A = BaseActor> extends Reactor<A> {
   public adapter: CandidAdapter
   private candidSource?: string
 
-  constructor(config: CandidReactorParameters<A>) {
+  constructor(config: CandidReactorParameters) {
     // If idlFactory/actor are missing, use a dummy one to satisfy Reactor constructor
     const superConfig = { ...config }
 
-    if (!superConfig.idlFactory && !superConfig.actor) {
+    if (!superConfig.idlFactory) {
       superConfig.idlFactory = (config: { IDL: any }) => config.IDL.Service({})
     }
 
-    super(superConfig as ReactorParameters<A>)
+    super(superConfig as ReactorParameters)
 
     this.candidSource = config.candid
     this.adapter = new CandidAdapter({

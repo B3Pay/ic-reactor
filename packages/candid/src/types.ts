@@ -1,6 +1,6 @@
 import type { HttpAgent, Identity } from "@icp-sdk/core/agent"
 import type { IDL } from "@icp-sdk/core/candid"
-import type { BaseActor, CanisterId, ReactorParameters } from "@ic-reactor/core"
+import type { CanisterId, ReactorParameters } from "@ic-reactor/core"
 
 export interface DynamicMethodOptions {
   /** The method name to register. */
@@ -13,8 +13,8 @@ export interface DynamicMethodOptions {
   candid: string
 }
 
-export interface CandidReactorParameters<A = BaseActor> extends Omit<
-  ReactorParameters<A>,
+export interface CandidReactorParameters extends Omit<
+  ReactorParameters,
   "idlFactory" | "actor"
 > {
   /** The canister ID. */
@@ -23,8 +23,6 @@ export interface CandidReactorParameters<A = BaseActor> extends Omit<
   candid?: string
   /** The IDL interface factory. */
   idlFactory?: IDL.InterfaceFactory
-  /** The actor instance. */
-  actor?: A
 }
 
 /**
