@@ -124,7 +124,7 @@ import { clientManager } from "${clientManagerPath}"
 import {
   idlFactory,
   type _SERVICE,
-} from "./declarations/declarations/${canisterName}.did"
+} from "./declarations/${canisterName}.did"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE
@@ -201,25 +201,21 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
 
         // Step 1: Use @icp-sdk/bindgen to generate declarations
         try {
+          // Ensure the output directory exists
+          if (!fs.existsSync(outDir)) {
+            fs.mkdirSync(outDir, { recursive: true })
+          }
+
           await generate({
             didFile: canister.didFile,
-            outDir: declarationsDir,
+            outDir, // Pass the parent directory; bindgen appends "declarations"
             output: {
               actor: {
                 disabled: true,
               },
+              force: true,
             },
           })
-
-          // Remove the actor file that bindgen generates - we don't need it
-          // ic-reactor provides its own reactor pattern instead
-          const actorFilePath = path.join(
-            declarationsDir,
-            `${canister.name}.ts`
-          )
-          if (fs.existsSync(actorFilePath)) {
-            fs.unlinkSync(actorFilePath)
-          }
 
           console.log(
             `[ic-reactor] Declarations generated at ${declarationsDir}`
