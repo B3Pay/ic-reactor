@@ -111,6 +111,7 @@ const clientManager = new ClientManager({ queryClient })
 const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
 })
 

@@ -66,6 +66,7 @@ await clientManager.initialize()
 
 // Create a reactor for any canister
 const reactor = new CandidReactor({
+  name: "ledger",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger
   clientManager,
 })

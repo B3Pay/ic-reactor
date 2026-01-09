@@ -19,6 +19,7 @@ The key insight is that `CandidReactor` **injects methods into the service** at 
 
 ```typescript
 const reactor = new CandidReactor({
+  name: "dynamic-candid-actor",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
 })
@@ -45,8 +46,9 @@ new CandidReactor(config: CandidReactorParameters)
 
 | Parameter       | Type               | Required | Description                                      |
 | --------------- | ------------------ | -------- | ------------------------------------------------ |
-| `canisterId`    | `CanisterId`       | Yes      | The canister ID to interact with                 |
 | `clientManager` | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`           |
+| `name`          | `string`           | Yes      | Required for logging & environment lookup        |
+| `canisterId`    | `CanisterId`       | No       | Optional if defined in environment               |
 | `candid`        | `string`           | No       | Candid service definition (avoids network fetch) |
 | `idlFactory`    | `InterfaceFactory` | No       | IDL factory (if already available)               |
 | `actor`         | `A`                | No       | Existing actor instance                          |
@@ -57,6 +59,7 @@ new CandidReactor(config: CandidReactorParameters)
   <TabItem label="Fetch from Network">
     ```typescript
     const reactor = new CandidReactor({
+      name: "my-actor",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       clientManager,
     })
@@ -68,6 +71,7 @@ new CandidReactor(config: CandidReactorParameters)
   <TabItem label="Provide Candid String">
     ```typescript
     const reactor = new CandidReactor({
+      name: "ledger-actor",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       clientManager,
       candid: `service : {
@@ -83,6 +87,7 @@ new CandidReactor(config: CandidReactorParameters)
   <TabItem label="Register Individual Methods">
     ```typescript
     const reactor = new CandidReactor({
+      name: "ledger-actor",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       clientManager,
     })
@@ -257,7 +262,11 @@ All inherited Reactor properties are also available (`canisterId`, `agent`, `que
 
 ```typescript
 async function exploreCanister(canisterId: string) {
-  const reactor = new CandidReactor({ canisterId, clientManager })
+  const reactor = new CandidReactor({
+    name: "explorer",
+    canisterId,
+    clientManager,
+  })
   await reactor.initialize()
 
   console.log("Methods:", reactor.getMethodNames())
@@ -274,7 +283,11 @@ async function exploreCanister(canisterId: string) {
 
 ```typescript
 async function getTokenBalance(canisterId: string, owner: Principal) {
-  const reactor = new CandidReactor({ canisterId, clientManager })
+  const reactor = new CandidReactor({
+    name: "balance-fetcher",
+    canisterId,
+    clientManager,
+  })
 
   // Register just the method we need
   await reactor.registerMethod({

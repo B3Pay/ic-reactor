@@ -66,6 +66,7 @@ This tutorial walks you through creating your first IC Reactor integration with 
    export const backend = new Reactor<_SERVICE>({
      clientManager,
      idlFactory,
+     name: "backend",
      canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
    })
    ```

@@ -26,6 +26,7 @@ Candid (the IC's interface description language) has its own type system that do
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId,
 })
 
@@ -112,6 +113,7 @@ import { idlFactory, type _SERVICE } from "../declarations/backend"
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
 })
 ```
@@ -129,6 +131,7 @@ import { idlFactory, type _SERVICE } from "../declarations/backend"
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
 })
 
@@ -261,6 +264,7 @@ import { DisplayReactor } from "@ic-reactor/core"
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: "...",
 })
 
@@ -276,7 +280,7 @@ const balance = await backend.callMethod({
 
 ```typescript
 // Create DisplayReactor and hooks
-const backend = new DisplayReactor<_SERVICE>({ clientManager, idlFactory, canisterId })
+const backend = new DisplayReactor<_SERVICE>({ clientManager, idlFactory, name: "backend", canisterId })
 const { useActorQuery } = createActorHooks(backend)
 
 function Balance({ principal }: { principal: string }) {
@@ -462,6 +466,7 @@ import { DisplayReactor } from "@ic-reactor/core"
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId,
 })
 
