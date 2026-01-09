@@ -262,3 +262,5 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
 }
 
 export default icReactorPlugin
+
+export * from "./advanced"
