@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IC Reactor CLI Configuration",
+  "description": "Configuration file for @ic-reactor/cli",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "outDir": {
+      "type": "string",
+      "description": "Output directory for generated hooks (relative to project root)",
+      "default": "src/canisters"
+    },
+    "canisters": {
+      "type": "object",
+      "description": "Canister configurations",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "didFile": {
+            "type": "string",
+            "description": "Path to the .did file (relative to project root)"
+          },
+          "clientManagerPath": {
+            "type": "string",
+            "description": "Import path to the client manager (relative from generated hooks)",
+            "default": "../../lib/client"
+          },
+          "useDisplayReactor": {
+            "type": "boolean",
+            "description": "Use DisplayReactor for automatic type transformations (bigint → string, etc.)",
+            "default": true
+          },
+          "canisterId": {
+            "type": "string",
+            "description": "Optional fixed canister ID (defaults to environment-based resolution)"
+          }
+        },
+        "required": ["didFile"]
+      }
+    },
+    "generatedHooks": {
+      "type": "object",
+      "description": "Tracks which methods have generated hooks (managed by CLI)",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": ["outDir", "canisters"]
+}

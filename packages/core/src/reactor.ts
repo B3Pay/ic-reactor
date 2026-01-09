@@ -282,15 +282,15 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       func.annotations.includes("composite_query")
 
     // Execute the call
-    let rawResult: Uint8Array
+    let rawResponse: Uint8Array
     if (isQuery) {
-      rawResult = await this.executeQuery(
+      rawResponse = await this.executeQuery(
         String(params.functionName),
         arg,
         params.callConfig
       )
     } else {
-      rawResult = await this.executeCall(
+      rawResponse = await this.executeCall(
         String(params.functionName),
         arg,
         params.callConfig
@@ -298,10 +298,10 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     }
 
     // Decode the result
-    const decoded = IDL.decode(func.retTypes, rawResult)
+    const decoded = IDL.decode(func.retTypes, rawResponse)
 
     // Handle single, zero, and multiple return values appropriately
-    const result = (
+    const response = (
       decoded.length === 0
         ? undefined
         : decoded.length === 1
@@ -309,7 +309,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
           : decoded
     ) as ActorMethodReturnType<A[M]>
 
-    return this.transformResult(params.functionName, result)
+    return this.transformResult(params.functionName, response)
   }
 
   /**
@@ -345,13 +345,13 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     const effectiveCanisterId =
       callConfig?.effectiveCanisterId ?? this.canisterId
 
-    const result = await agent.query(this.canisterId, {
+    const response = await agent.query(this.canisterId, {
       methodName,
       arg,
       effectiveCanisterId,
     })
 
-    return processQueryCallResponse(result, this.canisterId, methodName)
+    return processQueryCallResponse(response, this.canisterId, methodName)
   }
 
   /**
@@ -364,7 +364,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   ): Promise<Uint8Array> {
     const agent = this.clientManager.agent
 
-    const result = await agent.call(this.canisterId, {
+    const response = await agent.call(this.canisterId, {
       methodName,
       arg,
       effectiveCanisterId: callConfig?.effectiveCanisterId,
@@ -372,7 +372,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     })
 
     return await processUpdateCallResponse(
-      result,
+      response,
       this.canisterId,
       methodName,
       agent,
