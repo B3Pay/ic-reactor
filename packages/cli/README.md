@@ -80,7 +80,7 @@ Options:
 
 ### `add`
 
-Add hooks for canister methods.
+Add hooks for canister methods (from local .did file).
 
 ```bash
 npx @ic-reactor/cli add [options]
@@ -89,6 +89,31 @@ Options:
   -c, --canister <name>      Canister to add hooks for
   -m, --methods <methods...> Specific methods to generate
   -a, --all                  Add hooks for all methods
+```
+
+### `fetch`
+
+**Fetch Candid from a live canister** and generate hooks. No local .did file needed!
+
+```bash
+npx @ic-reactor/cli fetch [options]
+
+Options:
+  -i, --canister-id <id>     Canister ID to fetch from
+  -n, --network <network>    Network: 'ic' or 'local' (default: ic)
+  --name <name>              Name for the canister in generated code
+  -m, --methods <methods...> Specific methods to generate
+  -a, --all                  Add hooks for all methods
+```
+
+**Example:**
+
+```bash
+# Fetch from IC mainnet
+npx @ic-reactor/cli fetch -i ryjl3-tyaaa-aaaaa-aaaba-cai
+
+# Fetch from local replica
+npx @ic-reactor/cli fetch -i bkyz2-fmaaa-aaaaa-qaaaq-cai -n local
 ```
 
 ### `list`

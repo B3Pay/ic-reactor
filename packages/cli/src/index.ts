@@ -11,6 +11,7 @@ import { initCommand } from "./commands/init.js"
 import { addCommand } from "./commands/add.js"
 import { syncCommand } from "./commands/sync.js"
 import { listCommand } from "./commands/list.js"
+import { fetchCommand } from "./commands/fetch.js"
 import pc from "picocolors"
 
 const program = new Command()
@@ -31,11 +32,21 @@ program
 
 program
   .command("add")
-  .description("Add hooks for canister methods (interactive)")
+  .description("Add hooks for canister methods (from local .did file)")
   .option("-c, --canister <name>", "Canister name to add hooks for")
   .option("-m, --methods <methods...>", "Method names to generate hooks for")
   .option("-a, --all", "Add hooks for all methods")
   .action(addCommand)
+
+program
+  .command("fetch")
+  .description("Fetch Candid from a live canister and generate hooks")
+  .option("-i, --canister-id <id>", "Canister ID to fetch from")
+  .option("-n, --network <network>", "Network: 'ic' or 'local'", "ic")
+  .option("--name <name>", "Name for the canister in generated code")
+  .option("-m, --methods <methods...>", "Method names to generate hooks for")
+  .option("-a, --all", "Add hooks for all methods")
+  .action(fetchCommand)
 
 program
   .command("sync")
