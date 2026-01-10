@@ -8,7 +8,7 @@
  */
 
 import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
-import { clientManager } from "../../client"
+import { clientManager } from "../../lib/client"
 import { idlFactory, type _SERVICE } from "./declarations/icrc1.did"
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -2,7 +2,7 @@ import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 import { RouterProvider, createRouter } from "@tanstack/react-router"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
-import { queryClient } from "./client.tsx"
+import { queryClient } from "./lib/client.tsx"
 import { routeTree } from "./routeTree.gen"
 
 import "./styles.css"

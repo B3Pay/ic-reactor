@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/B3Pay/ic-reactor/main/packages/cli/schema.json",
+  "$schema": "../../packages/cli/schema.json",
   "outDir": "src/canisters",
   "clientManagerPath": "../../client",
   "canisters": {
@@ -12,7 +12,7 @@
     "ledger": [
       "icrc1_name",
       "icrc1_symbol",
-      "icrc1_decimals",
+      { "name": "icrc1_decimals", "type": "suspenseQuery" },
       "icrc1_balance_of",
       "icrc1_transfer"
     ]

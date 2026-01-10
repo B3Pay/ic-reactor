@@ -10,7 +10,7 @@ export const Transfer = ({
   decimals,
   invalidateQueries,
 }: {
-  decimals: number | undefined
+  decimals: number
   invalidateQueries: QueryKey
 }) => {
   const [to, setTo] = useState("")

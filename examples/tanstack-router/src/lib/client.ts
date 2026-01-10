@@ -10,12 +10,12 @@ export const queryClient = new QueryClient({
   },
 })
 
+// @ts-ignore
+window.__TANSTACK_QUERY_CLIENT__ = queryClient
+
 export const clientManager = new ClientManager({
   withProcessEnv: true,
   queryClient,
 })
 
 export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
-
-// @ts-ignore
-window.__TANSTACK_QUERY_CLIENT__ = queryClient
