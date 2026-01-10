@@ -16,7 +16,7 @@
  */
 
 import { createMutation } from "@ic-reactor/react"
-import { ledgerReactor, type LedgerService } from "../reactor"
+import { ledgerReactor } from "../reactor"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MUTATION INSTANCE

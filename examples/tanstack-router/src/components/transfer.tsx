@@ -3,17 +3,17 @@ import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
 import { isCanisterError, type DisplayReactor } from "@ic-reactor/core"
-import type { Ledger } from "@/client"
 import { TransferError } from "./transfer-error"
 import type { QueryKey } from "@tanstack/react-query"
 import { useReactorMutation } from "@ic-reactor/react"
+import { LedgerService } from "@/canisters/ledger/reactor"
 
 export const Transfer = ({
   reactor,
   decimals,
   invalidateQueries,
 }: {
-  reactor: DisplayReactor<Ledger>
+  reactor: DisplayReactor<LedgerService>
   decimals: number | undefined
   invalidateQueries?: QueryKey
 }) => {
@@ -29,9 +29,9 @@ export const Transfer = ({
   } = useReactorMutation({
     reactor,
     functionName: "icrc1_transfer",
-    onSuccess: (blockIndex: string) => {
-      // blockIndex is typed as string (the Ok value from the canister)
-      setResult(`Transfer successful! Block index: ${blockIndex}`)
+    onSuccess: (blockIndex) => {
+      // blockIndex is the Ok value from the canister
+      setResult(`Transfer successful! Block index: ${String(blockIndex)}`)
       setTo("")
       setAmount("")
     },

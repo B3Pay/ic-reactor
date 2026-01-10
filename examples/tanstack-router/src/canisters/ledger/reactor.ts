@@ -7,11 +7,7 @@
  * You can customize this file to add global configuration.
  */
 
-import {
-  DisplayReactor,
-  createActorHooks,
-  createAuthHooks,
-} from "@ic-reactor/react"
+import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
 import { clientManager } from "../../client"
 import { idlFactory, type _SERVICE } from "./declarations/icrc1.did"
 
@@ -36,11 +32,11 @@ export const ledgerReactor = new DisplayReactor<LedgerService>({
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BASE HOOKS
+// ACTOR HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Base actor hooks - use these directly or import method-specific hooks.
+ * Actor hooks for ledger - use these directly or import method-specific hooks.
  */
 export const {
   useActorQuery,
@@ -50,15 +46,3 @@ export const {
   useActorSuspenseInfiniteQuery,
   useActorMethod,
 } = createActorHooks(ledgerReactor)
-
-/**
- * Auth hooks for the client manager.
- */
-export const { useAuth, useAgentState, useUserPrincipal } =
-  createAuthHooks(clientManager)
-
-// ═══════════════════════════════════════════════════════════════════════════
-// RE-EXPORTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-export { idlFactory }

@@ -1,68 +1,43 @@
 import { createFileRoute } from "@tanstack/react-router"
-import {
-  ledgerIdlFactory,
-  useUserPrincipal,
-  createLedgerQueries,
-  clientManager,
-  type Ledger,
-} from "@/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Transfer } from "@/components/transfer"
-import { createQuery, DisplayReactor } from "@ic-reactor/react"
-import { useMemo } from "react"
+import { clientManager } from "@/client"
+
+// Import CLI-generated hooks
+import { ledgerReactor } from "@/canisters/ledger/reactor"
+import {
+  icrc1NameQuery,
+  icrc1SymbolQuery,
+  icrc1DecimalsQuery,
+  icrc1BalanceOfQuery,
+} from "@/canisters/ledger/hooks"
 
 export const Route = createFileRoute("/wallet/$canisterId")({
   component: TokenWallet,
   loader: async ({ params: { canisterId } }) => {
-    const reactor = new DisplayReactor<Ledger>({
-      clientManager,
-      name: `ledger-${canisterId}`,
-      canisterId,
-      idlFactory: ledgerIdlFactory,
-    })
+    ledgerReactor.setCanisterId(canisterId)
 
-    const { nameQuery, symbolQuery, decimalsQuery } =
-      await createLedgerQueries(reactor)
-
-    // Prefetch name and symbol in loader
-    await Promise.all([nameQuery.fetch(), symbolQuery.fetch()])
-
-    return {
-      reactor,
-      nameQuery,
-      symbolQuery,
-      decimalsQuery,
-    }
+    const principal = await clientManager.getUserPrincipal()
+    return { principal }
   },
 })
 
 function TokenWallet() {
-  const { reactor, nameQuery, symbolQuery, decimalsQuery } =
-    Route.useLoaderData()
   const navigate = Route.useNavigate()
+  const { principal } = Route.useLoaderData()
 
-  const principal = useUserPrincipal()
-
-  // Use the query factories - data is typed and cached
-  const { data: name } = nameQuery.useQuery()
-  const { data: symbol } = symbolQuery.useQuery()
-  const { data: decimals } = decimalsQuery.useQuery()
-
-  const balanceQuery = useMemo(
-    () =>
-      createQuery(reactor, {
-        functionName: "icrc1_balance_of",
-        args: [{ owner: principal?.toString() || "" }],
-      }),
-    [reactor, principal]
-  )
-
+  const balanceQuery = icrc1BalanceOfQuery([{ owner: principal.toString() }])
   const { data: balance, isLoading, error, refetch } = balanceQuery.useQuery()
+
+  // Use CLI-generated query factories
+  const { data: name } = icrc1NameQuery.useQuery()
+  const { data: symbol } = icrc1SymbolQuery.useQuery()
+  const { data: decimals } = icrc1DecimalsQuery.useQuery()
 
   // Helper to refresh all queries for this canister
   const handleRefreshAll = () => {
-    reactor.invalidateQueries()
+    ledgerReactor.invalidateQueries()
   }
 
   // Helper to refresh just balance query
@@ -141,7 +116,7 @@ function TokenWallet() {
 
       {principal && (
         <Transfer
-          reactor={reactor}
+          reactor={ledgerReactor}
           decimals={decimals}
           invalidateQueries={balanceQuery.getQueryKey()}
         />
