@@ -16,6 +16,7 @@ import type {
   ReactorReturnOk,
   ReactorQueryParams,
   ReactorCallParams,
+  CanisterId,
 } from "./types/reactor"
 
 import { DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
@@ -82,6 +83,27 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     this.service = idlFactory({ IDL })
 
     // Register this canister ID for delegation during login
+    this.clientManager.registerCanisterId(this.canisterId.toString(), this.name)
+  }
+
+  /**
+   * Set the canister ID for this reactor.
+   * Useful for dynamically switching between canisters of the same type (e.g., multiple ICRC tokens).
+   *
+   * @param canisterId - The new canister ID (as string or Principal)
+   *
+   * @example
+   * ```typescript
+   * // Switch to a different ledger canister
+   * ledgerReactor.setCanisterId("ryjl3-tyaaa-aaaaa-aaaba-cai")
+   *
+   * // Then use queries/mutations as normal
+   * const { data } = icrc1NameQuery.useQuery()
+   * ```
+   */
+  public setCanisterId(canisterId: CanisterId): void {
+    this.canisterId = Principal.from(canisterId)
+    // Register the new canister ID for delegation
     this.clientManager.registerCanisterId(this.canisterId.toString(), this.name)
   }
 

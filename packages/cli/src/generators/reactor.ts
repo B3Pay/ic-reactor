@@ -95,12 +95,6 @@ export const {
   useActorSuspenseInfiniteQuery,
   useActorMethod,
 } = createActorHooks(${reactorName})
-
-// ═══════════════════════════════════════════════════════════════════════════
-// RE-EXPORTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-export { idlFactory }
 `
   }
 

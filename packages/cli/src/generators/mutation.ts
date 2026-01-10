@@ -10,7 +10,6 @@ import {
   getHookExportName,
   getReactHookName,
   getReactorName,
-  getServiceTypeName,
 } from "../utils/naming.js"
 
 export interface MutationHookOptions {
@@ -27,7 +26,6 @@ export function generateMutationHook(options: MutationHookOptions): string {
 
   const pascalMethod = toPascalCase(method.name)
   const reactorName = getReactorName(canisterName)
-  const serviceName = getServiceTypeName(canisterName)
   const hookExportName = getHookExportName(method.name, "mutation")
   const reactHookName = getReactHookName(method.name, "mutation")
 
@@ -49,7 +47,7 @@ export function generateMutationHook(options: MutationHookOptions): string {
  */
 
 import { createMutation } from "@ic-reactor/react"
-import { ${reactorName}, type ${serviceName} } from "../reactor"
+import { ${reactorName} } from "../reactor"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MUTATION INSTANCE
