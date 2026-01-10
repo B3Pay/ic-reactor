@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [reactor.ts:42](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L42)
+Defined in: [reactor.ts:44](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L44)
 
 Reactor class for interacting with IC canisters.
 
@@ -39,13 +39,13 @@ The type transformation to apply (default: candid = raw Candid types)
 
 > **new Reactor**\<`A`, `T`\>(`config`): `Reactor`\<`A`, `T`\>
 
-Defined in: [reactor.ts:52](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L52)
+Defined in: [reactor.ts:54](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L54)
 
 #### Parameters
 
 ##### config
 
-[`ReactorParameters`](../type-aliases/ReactorParameters.md)\<`A`\>
+[`ReactorParameters`](../interfaces/ReactorParameters.md)
 
 #### Returns
 
@@ -57,7 +57,7 @@ Defined in: [reactor.ts:52](https://github.com/B3Pay/ic-reactor/blob/da8695f8b96
 
 > `readonly` **\_actor**: `A`
 
-Defined in: [reactor.ts:44](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L44)
+Defined in: [reactor.ts:46](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L46)
 
 Phantom type brand for inference - never assigned at runtime
 
@@ -67,7 +67,7 @@ Phantom type brand for inference - never assigned at runtime
 
 > `readonly` **transform**: `T`
 
-Defined in: [reactor.ts:45](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L45)
+Defined in: [reactor.ts:47](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L47)
 
 ---
 
@@ -75,7 +75,7 @@ Defined in: [reactor.ts:45](https://github.com/B3Pay/ic-reactor/blob/da8695f8b96
 
 > **clientManager**: [`ClientManager`](ClientManager.md)
 
-Defined in: [reactor.ts:46](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L46)
+Defined in: [reactor.ts:48](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L48)
 
 ---
 
@@ -83,7 +83,7 @@ Defined in: [reactor.ts:46](https://github.com/B3Pay/ic-reactor/blob/da8695f8b96
 
 > **name**: `string`
 
-Defined in: [reactor.ts:47](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L47)
+Defined in: [reactor.ts:49](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L49)
 
 ---
 
@@ -91,7 +91,7 @@ Defined in: [reactor.ts:47](https://github.com/B3Pay/ic-reactor/blob/da8695f8b96
 
 > **canisterId**: `Principal`
 
-Defined in: [reactor.ts:48](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L48)
+Defined in: [reactor.ts:50](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L50)
 
 ---
 
@@ -99,7 +99,7 @@ Defined in: [reactor.ts:48](https://github.com/B3Pay/ic-reactor/blob/da8695f8b96
 
 > **service**: `ServiceClass`
 
-Defined in: [reactor.ts:49](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L49)
+Defined in: [reactor.ts:51](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L51)
 
 ---
 
@@ -107,7 +107,7 @@ Defined in: [reactor.ts:49](https://github.com/B3Pay/ic-reactor/blob/da8695f8b96
 
 > **pollingOptions**: `PollingOptions`
 
-Defined in: [reactor.ts:50](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L50)
+Defined in: [reactor.ts:52](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L52)
 
 ## Accessors
 
@@ -117,7 +117,7 @@ Defined in: [reactor.ts:50](https://github.com/B3Pay/ic-reactor/blob/da8695f8b96
 
 > **get** **queryClient**(): `QueryClient`
 
-Defined in: [reactor.ts:399](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L399)
+Defined in: [reactor.ts:432](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L432)
 
 Get the query client from clientManager.
 This is the recommended way to access the query client for direct queries.
@@ -134,7 +134,7 @@ This is the recommended way to access the query client for direct queries.
 
 > **get** **agent**(): `HttpAgent`
 
-Defined in: [reactor.ts:407](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L407)
+Defined in: [reactor.ts:440](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L440)
 
 Get the agent from clientManager.
 This is the recommended way to access the agent for direct calls.
@@ -145,11 +145,44 @@ This is the recommended way to access the agent for direct calls.
 
 ## Methods
 
+### setCanisterId()
+
+> **setCanisterId**(`canisterId`): `void`
+
+Defined in: [reactor.ts:104](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L104)
+
+Set the canister ID for this reactor.
+Useful for dynamically switching between canisters of the same type (e.g., multiple ICRC tokens).
+
+#### Parameters
+
+##### canisterId
+
+[`CanisterId`](../type-aliases/CanisterId.md)
+
+The new canister ID (as string or Principal)
+
+#### Returns
+
+`void`
+
+#### Example
+
+```typescript
+// Switch to a different ledger canister
+ledgerReactor.setCanisterId("ryjl3-tyaaa-aaaaa-aaaba-cai")
+
+// Then use queries/mutations as normal
+const { data } = icrc1NameQuery.useQuery()
+```
+
+---
+
 ### getServiceInterface()
 
 > **getServiceInterface**(): `ServiceClass`
 
-Defined in: [reactor.ts:86](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L86)
+Defined in: [reactor.ts:119](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L119)
 
 Get the service interface (IDL.ServiceClass) for this reactor.
 Useful for introspection and codec generation.
@@ -162,11 +195,37 @@ The service interface
 
 ---
 
+### isQueryMethod()
+
+> **isQueryMethod**\<`M`\>(`methodName`): `boolean`
+
+Defined in: [reactor.ts:138](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L138)
+
+Check if a method is a query method (query or composite_query).
+
+#### Type Parameters
+
+##### M
+
+`M` _extends_ `string`
+
+#### Parameters
+
+##### methodName
+
+`M`
+
+#### Returns
+
+`boolean`
+
+---
+
 ### generateQueryKey()
 
 > **generateQueryKey**\<`M`\>(`params`): readonly `unknown`[]
 
-Defined in: [reactor.ts:147](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L147)
+Defined in: [reactor.ts:180](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L180)
 
 #### Type Parameters
 
@@ -190,7 +249,7 @@ readonly `unknown`[]
 
 > **getQueryOptions**\<`M`\>(`params`): `FetchQueryOptions`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
-Defined in: [reactor.ts:167](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L167)
+Defined in: [reactor.ts:200](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L200)
 
 #### Type Parameters
 
@@ -214,7 +273,7 @@ Defined in: [reactor.ts:167](https://github.com/B3Pay/ic-reactor/blob/da8695f8b9
 
 > **invalidateQueries**\<`M`\>(`params?`): `void`
 
-Defined in: [reactor.ts:214](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L214)
+Defined in: [reactor.ts:247](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L247)
 
 Invalidate cached queries for this canister.
 This will mark matching queries as stale and trigger a refetch for any active queries.
@@ -256,7 +315,7 @@ reactor.invalidateQueries({ functionName: "getUser", args: ["user-1"] })
 
 > **callMethod**\<`M`\>(`params`): `Promise`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
-Defined in: [reactor.ts:254](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L254)
+Defined in: [reactor.ts:287](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L287)
 
 Call a canister method directly using agent.call() or agent.query().
 This is the recommended approach for interacting with canisters.
@@ -300,7 +359,7 @@ const result = await reactor.callMethod({
 
 > **fetchQuery**\<`M`\>(`params`): `Promise`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
-Defined in: [reactor.ts:308](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L308)
+Defined in: [reactor.ts:341](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L341)
 
 Fetch data from the canister and cache it using React Query.
 This method ensures the data is in the cache and returns it.
@@ -327,7 +386,7 @@ This method ensures the data is in the cache and returns it.
 
 > **getQueryData**\<`M`\>(`params`): [`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\> \| `undefined`
 
-Defined in: [reactor.ts:318](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L318)
+Defined in: [reactor.ts:351](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L351)
 
 Get the current data from the cache without fetching.
 
@@ -353,7 +412,7 @@ Get the current data from the cache without fetching.
 
 > **subnetId**(): `Promise`\<`Principal`\>
 
-Defined in: [reactor.ts:379](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L379)
+Defined in: [reactor.ts:412](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L412)
 
 Get the subnet ID for this canister.
 
@@ -367,7 +426,7 @@ Get the subnet ID for this canister.
 
 > **subnetState**(`options`): `Promise`\<`ReadStateResponse`\>
 
-Defined in: [reactor.ts:386](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/reactor.ts#L386)
+Defined in: [reactor.ts:419](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/reactor.ts#L419)
 
 Get the subnet state for this canister.
 

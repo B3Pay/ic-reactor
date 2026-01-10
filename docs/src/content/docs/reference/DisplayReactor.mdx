@@ -276,6 +276,35 @@ const balance = await backend.callMethod({
 // balance is string, not bigint
 ```
 
+### Dynamic Canister Switching
+
+Like `Reactor`, `DisplayReactor` supports dynamic canister switching via `setCanisterId`. This is particularly useful for multi-token wallets:
+
+````typescript
+import { DisplayReactor } from "@ic-reactor/core"
+import { idlFactory, type _SERVICE } from "./declarations/icrc1"
+
+// Create a reusable ICRC-1 token reactor
+const tokenReactor = new DisplayReactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  name: "token",
+})
+
+async function getTokenInfo(canisterId: string) {
+  // Switch to the target token canister
+  tokenReactor.setCanisterId(canisterId)
+
+  // Queries and mutations now target the new canister
+  const [name, symbol, decimals] = await Promise.all([
+    tokenReactor.callMethod({ functionName: "icrc1_name" }),
+    tokenReactor.callMethod({ functionName: "icrc1_symbol" }),
+    tokenReactor.callMethod({ functionName: "icrc1_decimals" }),
+  ])
+
+  return { name, symbol, decimals } // All display types (strings)
+}
+
 ### With React Hooks
 
 ```typescript
@@ -292,7 +321,7 @@ function Balance({ principal }: { principal: string }) {
   // balance is string, ready for display
   return <span>{balance} ICP</span>
 }
-```
+````
 
 ### Handling Variants
 

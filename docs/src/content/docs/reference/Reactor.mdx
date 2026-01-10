@@ -235,6 +235,34 @@ console.log(service._fields) // Array of [methodName, FuncClass]
 
 Useful for introspection and codec generation.
 
+---
+
+### setCanisterId
+
+Dynamically update the canister ID for this reactor. This is useful when you want to reuse a reactor instance to interact with different canisters of the same type (e.g., multiple ICRC tokens).
+
+```typescript
+// Switch to a different ledger canister
+ledgerReactor.setCanisterId("ryjl3-tyaaa-aaaaa-aaaba-cai")
+
+// Or use a Principal
+ledgerReactor.setCanisterId(Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"))
+```
+
+#### Parameters
+
+| Option       | Type                  | Description         |
+| ------------ | --------------------- | ------------------- |
+| `canisterId` | `string \| Principal` | The new canister ID |
+
+<Aside type="note">
+  After calling `setCanisterId`, you should invalidate any cached queries since
+  they were for the previous canister. Call `reactor.invalidateQueries()` after
+  switching.
+</Aside>
+
+---
+
 ## Examples
 
 ### Complete Setup
@@ -350,6 +378,43 @@ export const ledger = new Reactor<LedgerService>({
   canisterId: import.meta.env.VITE_LEDGER_CANISTER_ID,
   name: "ledger",
 })
+```
+
+### Dynamic Canister Switching
+
+Use `setCanisterId` to reuse a single reactor instance for multiple canisters of the same type. This is useful for multi-token wallets or canister explorers:
+
+```typescript
+import { createFileRoute } from "@tanstack/react-router"
+import { ledgerReactor } from "@/canisters/ledger/reactor"
+import { icrc1NameQuery, icrc1SymbolQuery } from "@/canisters/ledger/hooks"
+
+export const Route = createFileRoute("/wallet/$canisterId")({
+  component: TokenWallet,
+  loader: async ({ params: { canisterId } }) => {
+    // Switch reactor to target the canister from URL
+    ledgerReactor.setCanisterId(canisterId)
+
+    // Prefetch token info
+    await Promise.all([icrc1NameQuery.fetch(), icrc1SymbolQuery.fetch()])
+
+    return {}
+  },
+})
+
+function TokenWallet() {
+  // Queries automatically use the canister set by setCanisterId
+  const { data: name } = icrc1NameQuery.useQuery()
+  const { data: symbol } = icrc1SymbolQuery.useQuery()
+
+  return (
+    <div>
+      <h1>
+        {name} ({symbol})
+      </h1>
+    </div>
+  )
+}
 ```
 
 ### fetchQuery

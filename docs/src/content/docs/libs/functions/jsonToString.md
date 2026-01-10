@@ -7,7 +7,7 @@ prev: true
 
 > **jsonToString**(`value`): `string`
 
-Defined in: [utils/helper.ts:113](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/utils/helper.ts#L113)
+Defined in: [utils/helper.ts:113](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/utils/helper.ts#L113)
 
 Converts a JSON-serializable value to a string, handling BigInt values.
 

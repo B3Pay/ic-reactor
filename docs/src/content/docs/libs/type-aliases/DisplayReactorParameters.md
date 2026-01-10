@@ -5,9 +5,9 @@ next: true
 prev: true
 ---
 
-> **DisplayReactorParameters**\<`A`\> = [`ReactorParameters`](ReactorParameters.md)\<`A`\> & `object`
+> **DisplayReactorParameters**\<`A`\> = [`ReactorParameters`](../interfaces/ReactorParameters.md) & `object`
 
-Defined in: [display-reactor.ts:76](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display-reactor.ts#L76)
+Defined in: [types/display-reactor.ts:63](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/types/display-reactor.ts#L63)
 
 ## Type Declaration
 

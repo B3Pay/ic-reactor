@@ -15,7 +15,7 @@ This class is ideal for building UIs that interact with dynamic canisters:
 - **Display transformations**: `bigint` → `string`, `Principal` → `string`, optionals unwrapped
 - **Dynamic Candid parsing**: Initialize from Candid source or fetch from network
 - **Optional validation**: Register validators for form inputs
-- **All standard Reactor methods**: `callMethod()`, `fetchQuery()`, `invalidateQueries()`
+- **All standard Reactor methods**: `callMethod()`, `fetchQuery()`, `invalidateQueries()`, `setCanisterId()`
 
 ```typescript
 const reactor = new CandidDisplayReactor({

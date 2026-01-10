@@ -7,7 +7,7 @@ prev: true
 
 > **ReactorArgs**\<`A`, `M`, `Transform`\> = [`TransformArgsRegistry`](../interfaces/TransformArgsRegistry.md)\<[`ActorMethodParameters`](ActorMethodParameters.md)\<`A`\[`M`\]\>\>\[`Transform`\]
 
-Defined in: [types/reactor.ts:126](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/types/reactor.ts#L126)
+Defined in: [types/reactor.ts:119](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/types/reactor.ts#L119)
 
 Apply argument transformation based on the transform key.
 Looks up the transform in TransformArgsRegistry.

@@ -7,7 +7,7 @@ prev: true
 
 > **transformArgsWithCodec**\<`T`\>(`argsCodec`, `args`): `T`
 
-Defined in: [display/helper.ts:38](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/display/helper.ts#L38)
+Defined in: [display/helper.ts:38](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/display/helper.ts#L38)
 
 ## Type Parameters
 
