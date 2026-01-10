@@ -106,11 +106,16 @@ export async function syncCommand(options: SyncOptions) {
       continue
     }
 
+    // Normalize hooks to objects
+    const hooks = generatedMethods.map((h) =>
+      typeof h === "string" ? { name: h } : h
+    )
+
     // Check for removed methods
     const currentMethodNames = methods.map((m) => m.name)
-    const removedMethods = generatedMethods.filter(
-      (name) => !currentMethodNames.includes(name)
-    )
+    const removedMethods = hooks
+      .filter((h) => !currentMethodNames.includes(h.name))
+      .map((h) => h.name)
 
     if (removedMethods.length > 0) {
       p.log.warn(
@@ -119,7 +124,8 @@ export async function syncCommand(options: SyncOptions) {
     }
 
     // Check for new methods
-    const newMethods = methods.filter((m) => !generatedMethods.includes(m.name))
+    const generatedNames = hooks.map((h) => h.name)
+    const newMethods = methods.filter((m) => !generatedNames.includes(m.name))
 
     if (newMethods.length > 0) {
       p.log.info(
@@ -171,7 +177,8 @@ export async function syncCommand(options: SyncOptions) {
     const hooksOutDir = path.join(canisterOutDir, "hooks")
     ensureDir(hooksOutDir)
 
-    for (const methodName of generatedMethods) {
+    for (const hookConfig of hooks) {
+      const methodName = hookConfig.name
       const method = methods.find((m) => m.name === methodName)
 
       if (!method) {
@@ -180,29 +187,31 @@ export async function syncCommand(options: SyncOptions) {
         continue
       }
 
-      // Determine hook type from existing file
-      const queryFileName = getHookFileName(methodName, "query")
-      const mutationFileName = getHookFileName(methodName, "mutation")
-      const infiniteQueryFileName = getHookFileName(methodName, "infiniteQuery")
+      // Determine hook type
+      let hookType: string = hookConfig.type || (method.type as string)
 
+      // If no explicit type in config, try to infer from existing files (backward compat)
+      if (!hookConfig.type) {
+        const infiniteQueryFileName = getHookFileName(
+          methodName,
+          "infiniteQuery"
+        )
+        if (fs.existsSync(path.join(hooksOutDir, infiniteQueryFileName))) {
+          hookType = "infiniteQuery"
+        }
+      }
+
+      const fileName = getHookFileName(methodName, hookType)
       let content: string
-      let fileName: string
 
-      if (fs.existsSync(path.join(hooksOutDir, infiniteQueryFileName))) {
-        // Keep as infinite query (user configured this)
-        fileName = infiniteQueryFileName
-        // Skip regeneration to preserve user customizations
-        totalSkipped++
-        continue
-      } else if (method.type === "query") {
-        fileName = queryFileName
+      if (hookType.includes("Query")) {
         content = generateQueryHook({
           canisterName,
           method,
           config,
+          type: hookType as any,
         })
       } else {
-        fileName = mutationFileName
         content = generateMutationHook({
           canisterName,
           method,

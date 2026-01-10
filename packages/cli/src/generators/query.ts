@@ -4,23 +4,31 @@
  * Generates createQuery-based hooks for canister query methods.
  */
 
-import type { MethodInfo, ReactorConfig } from "../types.js"
+import type { MethodInfo, ReactorConfig, HookType } from "../types.js"
 import { getHookExportName, getReactorName } from "../utils/naming.js"
 
 export interface QueryHookOptions {
   canisterName: string
   method: MethodInfo
   config: ReactorConfig
+  type?: HookType
 }
 
 /**
  * Generate a query hook file content
  */
 export function generateQueryHook(options: QueryHookOptions): string {
-  const { canisterName, method } = options
+  const { canisterName, method, type = "query" } = options
 
   const reactorName = getReactorName(canisterName)
-  const hookExportName = getHookExportName(method.name, "query")
+  const hookExportName = getHookExportName(method.name, type)
+
+  const isSuspense = type === "suspenseQuery"
+  const creatorFn = isSuspense ? "createSuspenseQuery" : "createQuery"
+  const factoryFn = isSuspense
+    ? "createSuspenseQueryFactory"
+    : "createQueryFactory"
+  const hookName = isSuspense ? "useSuspenseQuery" : "useQuery"
 
   if (method.hasArgs) {
     // Query with arguments - use factory pattern
@@ -31,7 +39,7 @@ export function generateQueryHook(options: QueryHookOptions): string {
  *
  * @example
  * // Use in components
- * const { data, isLoading } = ${hookExportName}([arg1, arg2]).useQuery()
+ * const { data } = ${hookExportName}([arg1, arg2]).${hookName}()
  *
  * // Prefetch in loaders
  * const data = await ${hookExportName}([arg1, arg2]).fetch()
@@ -43,7 +51,7 @@ export function generateQueryHook(options: QueryHookOptions): string {
  * const key = ${hookExportName}([arg1, arg2]).getQueryKey()
  */
 
-import { createQueryFactory } from "@ic-reactor/react"
+import { ${factoryFn} } from "@ic-reactor/react"
 import { ${reactorName} } from "../reactor"
 
 /**
@@ -52,10 +60,11 @@ import { ${reactorName} } from "../reactor"
  * Creates a query instance with the provided arguments.
  * Each unique set of args gets its own cached query.
  */
-export const ${hookExportName} = createQueryFactory(${reactorName}, {
+export const ${hookExportName} = ${factoryFn}(${reactorName}, {
   functionName: "${method.name}",
   // Customize your query options:
-  // staleTime: 5 * 60 * 1000,
+  // refetchInterval: 60 * 1000, // Refetch every 60 seconds
+  // staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   // select: (data) => data,
 })
 `
@@ -68,7 +77,7 @@ export const ${hookExportName} = createQueryFactory(${reactorName}, {
  *
  * @example
  * // Use in components
- * const { data, isLoading } = ${hookExportName}.useQuery()
+ * const { data } = ${hookExportName}.${hookName}()
  *
  * // Prefetch in loaders
  * const data = await ${hookExportName}.fetch()
@@ -80,23 +89,24 @@ export const ${hookExportName} = createQueryFactory(${reactorName}, {
  * const key = ${hookExportName}.getQueryKey()
  */
 
-import { createQuery } from "@ic-reactor/react"
+import { ${creatorFn} } from "@ic-reactor/react"
 import { ${reactorName} } from "../reactor"
 
 /**
  * Query for ${method.name}
  *
  * Provides:
- * - .useQuery() - React hook
+ * - .${hookName}() - React hook
  * - .fetch() - Direct fetch (for loaders)
  * - .invalidate() - Invalidate cache
  * - .getQueryKey() - Get query key
  * - .getCacheData() - Read from cache
  */
-export const ${hookExportName} = createQuery(${reactorName}, {
+export const ${hookExportName} = ${creatorFn}(${reactorName}, {
   functionName: "${method.name}",
   // Customize your query options:
-  // staleTime: 5 * 60 * 1000,
+  // refetchInterval: 60 * 1000, // Refetch every 60 seconds
+  // staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   // select: (data) => data,
 })
 `

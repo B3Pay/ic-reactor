@@ -4,12 +4,21 @@
 
 /**
  * Convert string to PascalCase
+ * Handles snake_case, kebab-case, and camelCase inputs
  * @example toPascalCase("get_message") -> "GetMessage"
+ * @example toPascalCase("suspenseQuery") -> "SuspenseQuery"
  */
 export function toPascalCase(str: string): string {
-  return str
-    .split(/[-_]/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+  // First split by - and _
+  const parts = str.split(/[-_]/)
+
+  return parts
+    .map((part) => {
+      // For each part, capitalize first letter
+      // But preserve existing camelCase within the part
+      if (part.length === 0) return ""
+      return part.charAt(0).toUpperCase() + part.slice(1)
+    })
     .join("")
 }
 

@@ -45,9 +45,31 @@
       "type": "object",
       "description": "Tracks which methods have generated hooks (managed by CLI)",
       "additionalProperties": {
-        "type": "array",
         "items": {
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "query",
+                    "mutation",
+                    "suspenseQuery",
+                    "infiniteQuery",
+                    "suspenseInfiniteQuery"
+                  ]
+                }
+              },
+              "required": ["name"]
+            }
+          ]
         }
       }
     }

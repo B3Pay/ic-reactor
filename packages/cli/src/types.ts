@@ -21,6 +21,11 @@ export interface CanisterConfig {
   canisterId?: string
 }
 
+export interface HookConfig {
+  name: string
+  type?: HookType
+}
+
 export interface ReactorConfig {
   /** Schema version */
   $schema?: string
@@ -31,7 +36,7 @@ export interface ReactorConfig {
   /** Canister configurations */
   canisters: Record<string, CanisterConfig>
   /** Track which hooks have been generated */
-  generatedHooks: Record<string, string[]>
+  generatedHooks: Record<string, Array<string | HookConfig>>
 }
 
 export interface GeneratorOptions {

@@ -4,18 +4,19 @@
  * Generates createInfiniteQuery-based hooks for paginated canister methods.
  */
 
-import type { MethodInfo, ReactorConfig } from "../types.js"
+import type { MethodInfo, ReactorConfig, HookType } from "../types.js"
 import {
   toPascalCase,
-  toCamelCase,
   getReactorName,
   getServiceTypeName,
+  getHookExportName,
 } from "../utils/naming.js"
 
 export interface InfiniteQueryHookOptions {
   canisterName: string
   method: MethodInfo
   config: ReactorConfig
+  type?: HookType
 }
 
 /**
@@ -24,12 +25,12 @@ export interface InfiniteQueryHookOptions {
 export function generateInfiniteQueryHook(
   options: InfiniteQueryHookOptions
 ): string {
-  const { canisterName, method } = options
+  const { canisterName, method, type = "infiniteQuery" } = options
 
   const pascalMethod = toPascalCase(method.name)
-  const camelMethod = toCamelCase(method.name)
   const reactorName = getReactorName(canisterName)
   const serviceName = getServiceTypeName(canisterName)
+  const hookExportName = getHookExportName(method.name, type)
 
   return `/**
  * Infinite Query Hook: ${method.name}
@@ -46,7 +47,7 @@ export function generateInfiniteQueryHook(
  *   fetchNextPage,
  *   hasNextPage,
  *   isFetching,
- * } = ${camelMethod}InfiniteQuery.useInfiniteQuery()
+ * } = ${hookExportName}.useInfiniteQuery()
  *
  * // Flatten all pages
  * const allItems = data?.pages.flatMap(page => page.items) ?? []
@@ -82,7 +83,7 @@ type PageCursor = number
  * - .getQueryKey() - Get query key
  * - .getCacheData() - Read from cache
  */
-export const ${camelMethod}InfiniteQuery = createInfiniteQuery(${reactorName}, {
+export const ${hookExportName} = createInfiniteQuery(${reactorName}, {
   functionName: "${method.name}",
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -153,16 +154,16 @@ export const ${camelMethod}InfiniteQuery = createInfiniteQuery(${reactorName}, {
 /**
  * React hook for paginated ${method.name}
  */
-export const use${pascalMethod}InfiniteQuery = ${camelMethod}InfiniteQuery.useInfiniteQuery
+export const use${pascalMethod}InfiniteQuery = ${hookExportName}.useInfiniteQuery
 
 /**
  * Fetch first page of ${method.name}
  */
-export const fetch${pascalMethod}FirstPage = ${camelMethod}InfiniteQuery.fetch
+export const fetch${pascalMethod}FirstPage = ${hookExportName}.fetch
 
 /**
  * Invalidate all cached pages
  */
-export const invalidate${pascalMethod}Pages = ${camelMethod}InfiniteQuery.invalidate
+export const invalidate${pascalMethod}Pages = ${hookExportName}.invalidate
 `
 }
