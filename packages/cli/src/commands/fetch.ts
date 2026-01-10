@@ -467,7 +467,7 @@ function generateReactorFileForFetch(options: {
  * You can customize this file to add global configuration.
  */
 
-import { ${reactorType}, createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import { ${reactorType}, createActorHooks } from "@ic-reactor/react"
 import { clientManager } from "${clientManagerPath}"
 
 // Import generated declarations
@@ -490,11 +490,11 @@ export const ${reactorName} = new ${reactorType}<${serviceName}>({
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BASE HOOKS
+// ACTOR HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Base actor hooks - use these directly or import method-specific hooks.
+ * Actor hooks for ${canisterName} - use these directly or import method-specific hooks.
  */
 export const {
   useActorQuery,
@@ -504,11 +504,6 @@ export const {
   useActorSuspenseInfiniteQuery,
   useActorMethod,
 } = createActorHooks(${reactorName})
-
-/**
- * Auth hooks for the client manager.
- */
-export const { useAuth, useAgentState, useUserPrincipal } = createAuthHooks(clientManager)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS
@@ -529,7 +524,7 @@ export type { ${serviceName} }
  * You can customize this file to add global configuration.
  */
 
-import { ${reactorType}, createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import { ${reactorType}, createActorHooks } from "@ic-reactor/react"
 import { clientManager } from "${clientManagerPath}"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -566,11 +561,11 @@ export const ${reactorName} = new ${reactorType}<${serviceName}>({
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BASE HOOKS
+// ACTOR HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Base actor hooks - use these directly or import method-specific hooks.
+ * Actor hooks for ${canisterName} - use these directly or import method-specific hooks.
  */
 export const {
   useActorQuery,
@@ -580,11 +575,6 @@ export const {
   useActorSuspenseInfiniteQuery,
   useActorMethod,
 } = createActorHooks(${reactorName})
-
-/**
- * Auth hooks for the client manager.
- */
-export const { useAuth, useAgentState, useUserPrincipal } = createAuthHooks(clientManager)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RE-EXPORTS
