@@ -108,3 +108,41 @@ export function Transfer({ owner }: { owner: string }) {
     </Card>
   )
 }
+
+export function TransferSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Transfer Token</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={() => {}} className="space-y-4">
+          <div>
+            <label className="text-sm text-gray-400 block mb-1">
+              To Principal
+            </label>
+            <Input
+              type="text"
+              value=""
+              onChange={() => {}}
+              placeholder="aaaaa-aa..."
+            />
+          </div>
+          <div>
+            <label className="text-sm text-gray-400 block mb-1">Amount</label>
+            <Input
+              type="number"
+              value=""
+              onChange={() => {}}
+              placeholder="0.00"
+              step="any"
+            />
+          </div>
+          <Button type="submit" disabled={true} className="w-full">
+            Transfer
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}

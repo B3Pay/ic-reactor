@@ -4,18 +4,19 @@ import {
   icrc1DecimalsSuspenseQuery,
   icrc1BalanceOfSuspenseQuery,
 } from "@/canisters/ledger/hooks"
-import { TokenSymbol } from "./token-symbol"
+import { TokenSymbol, TokenSymbolSkeleton } from "./token-symbol"
 
 export function TokenBalanceSkeleton() {
   return (
     <>
       <div className="flex justify-between items-center">
         <label className="text-sm text-gray-400 block mb-1">Balance</label>
-        <div className="mt-2 h-8" /> {/* Spacer for button alignment */}
+        <div className="mt-2 h-8" />
       </div>
       <div className="flex items-baseline gap-2 mt-1">
         <Skeleton className="h-9 w-40" />
-        <Skeleton className="h-6 w-12" />
+        sadqw
+        <TokenSymbolSkeleton />
       </div>
     </>
   )
@@ -28,7 +29,14 @@ export function TokenBalance({ owner }: { owner: string }) {
     error,
     refetch,
     isFetching,
-  } = icrc1BalanceOfSuspenseQuery([{ owner }]).useSuspenseQuery()
+  } = icrc1BalanceOfSuspenseQuery([{ owner }]).useSuspenseQuery({
+    select: (balance) => {
+      const decimalsNum = Number(decimals)
+      // Use Number() for display precision - aware of limitation for >2^53
+      const balanceNum = Number(balance)
+      return balanceNum / Math.pow(10, decimalsNum)
+    },
+  })
 
   return (
     <>
@@ -49,12 +57,10 @@ export function TokenBalance({ owner }: { owner: string }) {
           <div className="text-red-400">Error: {error.message}</div>
         ) : (
           <div className="text-3xl font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-purple-400">
-            {(Number(balance) / Math.pow(10, Number(decimals))).toFixed(4)}
+            {balance.toFixed(4)}
           </div>
         )}
-        <span className="text-gray-400">
-          <TokenSymbol />
-        </span>
+        <TokenSymbol />
       </div>
     </>
   )

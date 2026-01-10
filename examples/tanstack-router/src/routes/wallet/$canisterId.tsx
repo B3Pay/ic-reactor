@@ -6,7 +6,7 @@ import { ledgerReactor } from "@/canisters/ledger/reactor"
 import { TokenBalance, TokenBalanceSkeleton } from "@/components/token-balance"
 import { TokenName } from "@/components/token-name"
 import { TokenSymbol } from "@/components/token-symbol"
-import { Transfer } from "@/components/transfer"
+import { Transfer, TransferSkeleton } from "@/components/transfer"
 import { Suspense } from "react"
 
 export const Route = createFileRoute("/wallet/$canisterId")({
@@ -23,6 +23,34 @@ function TokenWallet() {
   // Helper to refresh all queries for this canister
   const handleRefreshAll = () => {
     ledgerReactor.invalidateQueries()
+  }
+
+  if (!principal || principal.isAnonymous()) {
+    return (
+      <div className="flex flex-col gap-2 w-full max-w-md">
+        <div className="flex justify-between">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate({ to: "/wallet" })}
+          >
+            ← Back to Tokens
+          </Button>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <div className="flex items-center gap-1">
+                <TokenName /> (<TokenSymbol />) Wallet
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center py-6 text-gray-400">
+            Please connect your wallet to view details.
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -48,31 +76,27 @@ function TokenWallet() {
             </div>
           </CardTitle>
         </CardHeader>
-        {principal && (
-          <CardContent className="space-y-6">
-            <div>
-              <label className="text-sm text-gray-400 block mb-1">
-                Principal ID
-              </label>
-              <code className="block p-3 bg-black/30 rounded text-xs font-mono break-all text-gray-300">
-                {principal.toString() || "Not authenticated"}
-              </code>
-            </div>
+        <CardContent className="space-y-6">
+          <div>
+            <label className="text-sm text-gray-400 block mb-1">
+              Principal ID
+            </label>
+            <code className="block p-3 bg-black/30 rounded text-xs font-mono break-all text-gray-300">
+              {principal.toString()}
+            </code>
+          </div>
 
-            <div>
-              <Suspense fallback={<TokenBalanceSkeleton />}>
-                <TokenBalance owner={principal.toString()} />
-              </Suspense>
-            </div>
-          </CardContent>
-        )}
+          <div>
+            <Suspense fallback={<TokenBalanceSkeleton />}>
+              <TokenBalance owner={principal.toString()} />
+            </Suspense>
+          </div>
+        </CardContent>
       </Card>
 
-      {principal && (
-        <Suspense fallback={null}>
-          <Transfer owner={principal.toString()} />
-        </Suspense>
-      )}
+      <Suspense fallback={<TransferSkeleton />}>
+        <Transfer owner={principal.toString()} />
+      </Suspense>
     </div>
   )
 }
