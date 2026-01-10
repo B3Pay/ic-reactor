@@ -210,7 +210,20 @@ export async function syncCommand(options: SyncOptions) {
         })
       }
 
-      fs.writeFileSync(path.join(hooksOutDir, fileName), content)
+      const filePath = path.join(hooksOutDir, fileName)
+
+      // Check if file exists and has been customized
+      if (fs.existsSync(filePath)) {
+        const existingContent = fs.readFileSync(filePath, "utf-8")
+
+        // If content is different from what we'd generate, skip (user customized)
+        if (existingContent !== content) {
+          totalSkipped++
+          continue
+        }
+      }
+
+      fs.writeFileSync(filePath, content)
       totalUpdated++
     }
   }
