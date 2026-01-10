@@ -46,9 +46,21 @@ export async function generateDeclarations(
   const declarationsDir = path.join(outDir, "declarations")
 
   try {
+    // Ensure the output directory exists
+    if (!fs.existsSync(outDir)) {
+      fs.mkdirSync(outDir, { recursive: true })
+    }
+
+    // Clean existing declarations before regenerating
+    if (fs.existsSync(declarationsDir)) {
+      fs.rmSync(declarationsDir, { recursive: true, force: true })
+    }
+    fs.mkdirSync(declarationsDir, { recursive: true })
+
+    // Note: bindgen appends "declarations" internally, so we pass the parent directory
     await generate({
       didFile,
-      outDir: declarationsDir,
+      outDir, // Pass the parent directory; bindgen appends "declarations"
       output: {
         actor: {
           disabled: true, // We don't need actor creation, we use Reactor

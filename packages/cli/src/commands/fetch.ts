@@ -299,7 +299,6 @@ export async function fetchCommand(options: FetchOptions) {
   // Add canister to config
   const canisterConfig: CanisterConfig = {
     didFile: `./candid/${canisterName}.did`,
-    clientManagerPath: "../../lib/client",
     useDisplayReactor: true,
     canisterId: canisterId,
   }
@@ -347,6 +346,7 @@ export async function fetchCommand(options: FetchOptions) {
   const reactorContent = generateReactorFileForFetch({
     canisterName,
     canisterConfig,
+    config,
     canisterId,
     hasDeclarations: bindgenResult.success,
   })
@@ -433,10 +433,12 @@ export async function fetchCommand(options: FetchOptions) {
 function generateReactorFileForFetch(options: {
   canisterName: string
   canisterConfig: CanisterConfig
+  config: ReactorConfig
   canisterId: string
   hasDeclarations: boolean
 }): string {
-  const { canisterName, canisterConfig, canisterId, hasDeclarations } = options
+  const { canisterName, canisterConfig, config, canisterId, hasDeclarations } =
+    options
 
   const pascalName =
     canisterName.charAt(0).toUpperCase() + canisterName.slice(1)
@@ -445,8 +447,14 @@ function generateReactorFileForFetch(options: {
   const reactorType =
     canisterConfig.useDisplayReactor !== false ? "DisplayReactor" : "Reactor"
 
+  // Calculate relative path to client manager (canister-specific → global → default)
   const clientManagerPath =
-    canisterConfig.clientManagerPath ?? "../../lib/client"
+    canisterConfig.clientManagerPath ??
+    config.clientManagerPath ??
+    "../../lib/client"
+
+  // Calculate relative path to declarations (use DID file name)
+  const didFileName = path.basename(canisterConfig.didFile)
 
   // Generate different imports based on whether declarations were generated
   if (hasDeclarations) {
@@ -463,7 +471,7 @@ import { ${reactorType}, createActorHooks, createAuthHooks } from "@ic-reactor/r
 import { clientManager } from "${clientManagerPath}"
 
 // Import generated declarations
-import { idlFactory, type _SERVICE as ${serviceName} } from "./declarations/${canisterName}.did"
+import { idlFactory, type _SERVICE as ${serviceName} } from "./declarations/${didFileName}"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REACTOR INSTANCE
@@ -532,7 +540,7 @@ import { clientManager } from "${clientManagerPath}"
 // npx @icp-sdk/bindgen --input ./candid/${canisterName}.did --output ./${canisterName}/declarations
 
 // For now, import just the IDL factory (you may need to create this manually)
-// import { idlFactory, type _SERVICE as ${serviceName} } from "./declarations/${canisterName}.did"
+// import { idlFactory, type _SERVICE as ${serviceName} } from "./declarations/${didFileName}"
 
 // Fallback generic type - replace with generated types
 type ${serviceName} = Record<string, (...args: unknown[]) => Promise<unknown>>

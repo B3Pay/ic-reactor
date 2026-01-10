@@ -4,6 +4,7 @@
  * Generates the shared reactor instance file for a canister.
  */
 
+import path from "node:path"
 import type { ReactorConfig, CanisterConfig } from "../types.js"
 import {
   toPascalCase,
@@ -31,12 +32,15 @@ export function generateReactorFile(options: ReactorGeneratorOptions): string {
   const reactorType =
     canisterConfig.useDisplayReactor !== false ? "DisplayReactor" : "Reactor"
 
-  // Calculate relative path to client manager
+  // Calculate relative path to client manager (canister-specific → global → default)
   const clientManagerPath =
-    canisterConfig.clientManagerPath ?? "../../lib/client"
+    canisterConfig.clientManagerPath ??
+    options.config.clientManagerPath ??
+    "../../lib/client"
 
-  // Calculate relative path to declarations
-  const declarationsPath = `./declarations/${canisterName}.did`
+  // Calculate relative path to declarations (use DID file name, not canister name)
+  const didFileName = path.basename(canisterConfig.didFile)
+  const declarationsPath = `./declarations/${didFileName}`
 
   if (hasDeclarations) {
     return `/**

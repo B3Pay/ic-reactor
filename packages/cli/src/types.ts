@@ -26,6 +26,8 @@ export interface ReactorConfig {
   $schema?: string
   /** Output directory for generated files */
   outDir: string
+  /** Default path to client manager import (can be overridden per canister) */
+  clientManagerPath?: string
   /** Canister configurations */
   canisters: Record<string, CanisterConfig>
   /** Track which hooks have been generated */

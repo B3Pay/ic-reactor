@@ -21,6 +21,7 @@ import {
   generateMutationHook,
 } from "../generators/index.js"
 import { getHookFileName } from "../utils/naming.js"
+import { generateDeclarations } from "../utils/bindgen.js"
 import type { MethodInfo } from "../types.js"
 
 interface SyncOptions {
@@ -126,8 +127,35 @@ export async function syncCommand(options: SyncOptions) {
       )
     }
 
-    // Regenerate reactor.ts
+    // Regenerate declarations if missing
     const canisterOutDir = path.join(projectRoot, config.outDir, canisterName)
+    const declarationsDir = path.join(canisterOutDir, "declarations")
+
+    // Check if declarations exist and have files (not just nested empty dir)
+    const declarationsExist =
+      fs.existsSync(declarationsDir) &&
+      fs
+        .readdirSync(declarationsDir)
+        .some((f) => f.endsWith(".ts") || f.endsWith(".js"))
+
+    if (!declarationsExist) {
+      spinner.message(`Regenerating declarations for ${canisterName}...`)
+      const bindgenResult = await generateDeclarations({
+        didFile: didFilePath,
+        outDir: canisterOutDir,
+        canisterName,
+      })
+
+      if (bindgenResult.success) {
+        totalUpdated++
+      } else {
+        p.log.warn(
+          `Could not regenerate declarations for ${canisterName}: ${bindgenResult.error}`
+        )
+      }
+    }
+
+    // Regenerate reactor.ts
     const reactorPath = path.join(canisterOutDir, "reactor.ts")
 
     const reactorContent = generateReactorFile({

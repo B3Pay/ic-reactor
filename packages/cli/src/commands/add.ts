@@ -407,7 +407,6 @@ async function promptForNewCanister(projectRoot: string) {
     name: name as string,
     config: {
       didFile: didFile as string,
-      clientManagerPath: "../../lib/client",
       useDisplayReactor: true,
     },
   }
