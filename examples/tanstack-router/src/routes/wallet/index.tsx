@@ -1,14 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
-import { Button } from "../../components/ui/button"
-import { Input } from "../../components/ui/input"
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "../../components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 export const Route = createFileRoute("/wallet/")({
   component: WalletSelection,

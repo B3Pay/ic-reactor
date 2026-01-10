@@ -28,7 +28,5 @@ import { ledgerReactor } from "../reactor"
  */
 export const icrc1BalanceOfQuery = createQueryFactory(ledgerReactor, {
   functionName: "icrc1_balance_of",
-  // Customize your query options:
   staleTime: 5 * 1000,
-  // select: (data) => data,
 })
