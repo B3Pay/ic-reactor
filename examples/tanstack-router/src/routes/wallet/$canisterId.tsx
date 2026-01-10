@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Transfer } from "@/components/transfer"
 import { clientManager } from "@/client"
 
-// Import CLI-generated hooks
 import { ledgerReactor } from "@/canisters/ledger/reactor"
 import {
   icrc1NameQuery,
@@ -116,7 +115,6 @@ function TokenWallet() {
 
       {principal && (
         <Transfer
-          reactor={ledgerReactor}
           decimals={decimals}
           invalidateQueries={balanceQuery.getQueryKey()}
         />

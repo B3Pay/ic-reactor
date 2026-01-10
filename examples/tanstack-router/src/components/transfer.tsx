@@ -2,20 +2,16 @@ import { useState } from "react"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
-import { isCanisterError, type DisplayReactor } from "@ic-reactor/core"
 import { TransferError } from "./transfer-error"
 import type { QueryKey } from "@tanstack/react-query"
-import { useReactorMutation } from "@ic-reactor/react"
-import { LedgerService } from "@/canisters/ledger/reactor"
+import { useIcrc1TransferMutation } from "@/canisters/ledger/hooks"
 
 export const Transfer = ({
-  reactor,
   decimals,
   invalidateQueries,
 }: {
-  reactor: DisplayReactor<LedgerService>
   decimals: number | undefined
-  invalidateQueries?: QueryKey
+  invalidateQueries: QueryKey
 }) => {
   const [to, setTo] = useState("")
   const [amount, setAmount] = useState("")
@@ -26,24 +22,19 @@ export const Transfer = ({
     isPending,
     error,
     reset,
-  } = useReactorMutation({
-    reactor,
-    functionName: "icrc1_transfer",
+  } = useIcrc1TransferMutation({
     onSuccess: (blockIndex) => {
       // blockIndex is the Ok value from the canister
       setResult(`Transfer successful! Block index: ${String(blockIndex)}`)
       setTo("")
       setAmount("")
     },
-    onError: (err: Error) => {
+    onCanisterError: (err) => {
       // err is typed as CanisterError<TransferError> | CallError ✓
       // Error is handled by the error display below
-      console.log(
-        "Transfer error:",
-        isCanisterError(err) ? (err as any).err._type : err
-      )
+      console.log("Transfer error:", err.err._type)
     },
-    invalidateQueries: invalidateQueries ? [invalidateQueries] : undefined,
+    invalidateQueries: [invalidateQueries],
   })
 
   const handleSubmit = (e: React.FormEvent) => {
