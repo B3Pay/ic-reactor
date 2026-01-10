@@ -5,6 +5,6 @@
  */
 export * from "./icrc1NameQuery"
 export * from "./icrc1SymbolQuery"
-export * from "./icrc1BalanceOfQuery"
+export * from "./icrc1BalanceOfSuspenseQuery"
 export * from "./icrc1TransferMutation"
 export * from "./icrc1DecimalsSuspenseQuery"

@@ -3,13 +3,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useUserPrincipal } from "@/lib/client"
 import { ledgerReactor } from "@/canisters/ledger/reactor"
-import {
-  TokenBalance,
-  TokenDecimalsSkeleton,
-  TokenName,
-  TokenSymbol,
-  TokenTransfer,
-} from "@/components/token-info"
+import { TokenBalance, TokenBalanceSkeleton } from "@/components/token-balance"
+import { TokenName } from "@/components/token-name"
+import { TokenSymbol } from "@/components/token-symbol"
+import { Transfer } from "@/components/transfer"
 import { Suspense } from "react"
 
 export const Route = createFileRoute("/wallet/$canisterId")({
@@ -51,27 +48,29 @@ function TokenWallet() {
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <label className="text-sm text-gray-400 block mb-1">
-              Principal ID
-            </label>
-            <code className="block p-3 bg-black/30 rounded text-xs font-mono break-all text-gray-300">
-              {principal?.toString() || "Not authenticated"}
-            </code>
-          </div>
+        {principal && (
+          <CardContent className="space-y-6">
+            <div>
+              <label className="text-sm text-gray-400 block mb-1">
+                Principal ID
+              </label>
+              <code className="block p-3 bg-black/30 rounded text-xs font-mono break-all text-gray-300">
+                {principal.toString() || "Not authenticated"}
+              </code>
+            </div>
 
-          <div>
-            <Suspense fallback={<TokenDecimalsSkeleton />}>
-              <TokenBalance principal={principal} />
-            </Suspense>
-          </div>
-        </CardContent>
+            <div>
+              <Suspense fallback={<TokenBalanceSkeleton />}>
+                <TokenBalance owner={principal.toString()} />
+              </Suspense>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {principal && (
         <Suspense fallback={null}>
-          <TokenTransfer principal={principal} />
+          <Transfer owner={principal.toString()} />
         </Suspense>
       )}
     </div>

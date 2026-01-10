@@ -1,7 +1,7 @@
 {
   "$schema": "../../packages/cli/schema.json",
   "outDir": "src/canisters",
-  "clientManagerPath": "../../client",
+  "clientManagerPath": "../../lib/client",
   "canisters": {
     "ledger": {
       "didFile": "./icrc1.did",
@@ -13,7 +13,7 @@
       "icrc1_name",
       "icrc1_symbol",
       { "name": "icrc1_decimals", "type": "suspenseQuery" },
-      "icrc1_balance_of",
+      { "name": "icrc1_balance_of", "type": "suspenseQuery" },
       "icrc1_transfer"
     ]
   }
