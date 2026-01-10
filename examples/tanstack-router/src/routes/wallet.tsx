@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useAuth } from "@/reactor"
+import { useAuth } from "@/client"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/wallet")({

@@ -5,7 +5,7 @@ import {
   createLedgerQueries,
   clientManager,
   type Ledger,
-} from "@/reactor"
+} from "@/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Transfer } from "@/components/transfer"

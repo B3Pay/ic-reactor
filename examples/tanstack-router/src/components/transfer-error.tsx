@@ -1,6 +1,6 @@
 import { isCanisterError, isCallError } from "@ic-reactor/core"
 import type { ReactorReturnErr } from "@ic-reactor/core"
-import type { Ledger } from "@/reactor"
+import type { Ledger } from "@/client"
 
 // Type for the transfer error from the ICRC1 ledger
 export type TransferErrorType = ReactorReturnErr<
