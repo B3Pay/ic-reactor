@@ -13,9 +13,8 @@ export function TokenBalanceSkeleton() {
         <label className="text-sm text-gray-400 block mb-1">Balance</label>
         <div className="mt-2 h-8" />
       </div>
-      <div className="flex items-baseline gap-2 mt-1">
+      <div className="flex items-baseline gap-2">
         <Skeleton className="h-9 w-40" />
-        sadqw
         <TokenSymbolSkeleton />
       </div>
     </>
