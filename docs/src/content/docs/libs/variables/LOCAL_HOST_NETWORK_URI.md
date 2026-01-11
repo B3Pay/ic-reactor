@@ -7,4 +7,4 @@ prev: true
 
 > `const` **LOCAL_HOST_NETWORK_URI**: `"http://127.0.0.1:4943"` = `"http://127.0.0.1:4943"`
 
-Defined in: [utils/constants.ts:7](https://github.com/B3Pay/ic-reactor/blob/534a301ea2c4fadb0e5f381aff14d655ec8a719d/packages/core/src/utils/constants.ts#L7)
+Defined in: [utils/constants.ts:7](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/utils/constants.ts#L7)

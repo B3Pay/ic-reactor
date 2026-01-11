@@ -78,14 +78,15 @@ const clientManager = new ClientManager({
 
 ## Constructor Options
 
-| Option           | Type               | Default  | Description                          |
-| ---------------- | ------------------ | -------- | ------------------------------------ |
-| `queryClient`    | `QueryClient`      | Required | TanStack Query client instance       |
-| `authClient`     | `AuthClient`       | -        | Pre-initialized AuthClient instance  |
-| `withProcessEnv` | `boolean`          | `false`  | Auto-detect network from DFX_NETWORK |
-| `withLocalEnv`   | `boolean`          | `false`  | Force local development mode         |
-| `port`           | `number`           | `4943`   | Local replica port                   |
-| `agentOptions`   | `HttpAgentOptions` | `{}`     | Additional HttpAgent options         |
+| Option            | Type               | Default  | Description                                                 |
+| ----------------- | ------------------ | -------- | ----------------------------------------------------------- |
+| `queryClient`     | `QueryClient`      | Required | TanStack Query client instance                              |
+| `authClient`      | `AuthClient`       | -        | Pre-initialized AuthClient instance                         |
+| `withProcessEnv`  | `boolean`          | `false`  | Auto-detect network from DFX_NETWORK                        |
+| `withLocalEnv`    | `boolean`          | `false`  | Force local development mode                                |
+| `withCanisterEnv` | `boolean`          | `false`  | ⚠️ **EXPERIMENTAL** - Use canister env from `ic_env` cookie |
+| `port`            | `number`           | `4943`   | Local replica port                                          |
+| `agentOptions`    | `HttpAgentOptions` | `{}`     | Additional HttpAgent options                                |
 
 ## Properties
 
@@ -339,6 +340,40 @@ const clientManager = new ClientManager({
   },
 })
 ```
+
+### Canister Environment (Experimental)
+
+<Aside type="caution">
+  The `withCanisterEnv` option is **experimental** and may cause issues with
+  update calls on localhost development. Use with caution and only when you need
+  automatic environment detection from the `@icp-sdk` toolchain.
+</Aside>
+
+When using the `@icp-sdk` toolchain (e.g., `icp-cli`), the development server injects environment information via an `ic_env` cookie. The `withCanisterEnv` option enables reading this cookie to automatically configure:
+
+- Agent host from `window.location.origin` in dev mode
+- Query signature verification (disabled in dev mode for performance)
+- Root key from the cookie for local replica certificate verification
+
+```typescript
+// ⚠️ EXPERIMENTAL - May cause issues with update calls on localhost
+const clientManager = new ClientManager({
+  queryClient,
+  withCanisterEnv: true,
+})
+```
+
+**When to use:**
+
+- You're using `@icp-sdk` / `icp-cli` for development
+- You want automatic environment detection without manual configuration
+- You understand the experimental nature and potential issues
+
+**When NOT to use:**
+
+- For production deployments
+- When you need reliable update calls on localhost
+- When using `dfx` directly (use `withProcessEnv` instead)
 
 ### With Pre-initialized AuthClient
 
