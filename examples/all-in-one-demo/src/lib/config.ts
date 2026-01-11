@@ -7,23 +7,27 @@ import {
   createAuthHooks,
   createInfiniteQuery,
 } from "@ic-reactor/react"
-import { canisterId, idlFactory } from "../declarations/backend"
+import { idlFactory } from "../declarations/backend"
 import { QueryClient } from "@tanstack/react-query"
 import type { _SERVICE } from "../declarations/backend/backend.did"
 
 export const queryClient = new QueryClient()
 
+// Using withCanisterEnv to read canister IDs from the ic_env cookie
+// This is the approach used by ICP CLI for passing environment variables to the frontend
 export const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: true,
+  withCanisterEnv: true,
   agentOptions: {
     verifyQuerySignatures: false,
   },
 })
 
+// The canister name "backend" is used to look up the canister ID from the ic_env cookie
+// The cookie is set by the ICP CLI dev server or the asset canister in production
 export const reactor = new DisplayReactor<_SERVICE>({
   clientManager,
-  canisterId,
+  name: "backend",
   idlFactory,
 })
 

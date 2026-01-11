@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://github.com/dfinity/icp-cli/raw/refs/tags/v0.1.0-beta.2/docs/schemas/icp-yaml-schema.json
+
+# ICP CLI project configuration
+# Use `icp network start` to start a local replica
+# Use `icp deploy` to deploy all canisters
+
+canisters:
+  - backend
+  - internet_identity
