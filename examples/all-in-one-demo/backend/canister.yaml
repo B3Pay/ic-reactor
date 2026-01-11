@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://github.com/dfinity/icp-cli/raw/refs/tags/v0.1.0-beta.2/docs/schemas/canister-yaml-schema.json
+
+name: backend
+
+recipe:
+  type: "@dfinity/motoko"
+  configuration:
+    main: main.mo
+    args: --incremental-gc
+    candid: backend.did

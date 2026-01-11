@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://github.com/dfinity/icp-cli/raw/refs/tags/v0.1.0-beta.2/docs/schemas/canister-yaml-schema.json
+
+# Internet Identity canister for authentication
+# Uses the official pre-built development wasm from DFINITY
+
+name: internet_identity
+
+build:
+  steps:
+    - type: pre-built
+      url: https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz
