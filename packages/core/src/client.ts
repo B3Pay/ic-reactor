@@ -132,7 +132,10 @@ export class ClientManager {
     }
 
     this.#agent = HttpAgent.createSync(agentOptions)
-    this.updateAgentState({ isLocalhost: this.isLocal })
+    this.updateAgentState({
+      isLocalhost: this.isLocal,
+      network: this.network,
+    })
 
     if (authClient) {
       this.#authClient = authClient
