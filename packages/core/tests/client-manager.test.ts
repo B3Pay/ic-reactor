@@ -140,7 +140,7 @@ describe("ClientManager", () => {
         isInitialized: false,
         isInitializing: false,
         error: undefined,
-        network: undefined,
+        network: "ic",
         isLocalhost: false,
       })
     })
