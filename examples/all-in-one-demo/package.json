@@ -6,12 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "generate": "icp-bindgen --did-file ./backend/backend.did --out-dir ./src/declarations/backend --force"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@ic-reactor/core": "^3.0.3-beta.1",
-    "@ic-reactor/react": "3.0.3-beta.1",
+    "@ic-reactor/react": "^3.0.3-beta.1",
     "@icp-sdk/auth": "^5.0.0",
     "@icp-sdk/core": "^5.0.0",
     "@radix-ui/react-scroll-area": "^1.2.10",
@@ -28,6 +27,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@ic-reactor/vite-plugin": "^0.1.0",
     "@icp-sdk/bindgen": "^0.2.1",
     "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.2.7",

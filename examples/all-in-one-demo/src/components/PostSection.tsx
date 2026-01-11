@@ -1,10 +1,5 @@
 import { useRef, useEffect, useMemo, useState } from "react"
-import {
-  batchCreatePosts,
-  getPosts,
-  getPostsCount,
-  useUserPrincipal,
-} from "../lib/reactor"
+import { batchCreatePosts, getPosts, getPostsCount } from "../lib/factories"
 import type { FrontendLog } from "../lib/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,6 +14,7 @@ import {
   Minimize2,
   ArrowUp,
 } from "lucide-react"
+import { useUserPrincipal } from "@/lib/authHooks"
 
 interface PostSectionProps {
   addLog: (type: FrontendLog["type"], message: string) => void

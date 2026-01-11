@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useAgentState, useAuth } from "../lib/reactor"
+import { useAgentState, useAuth } from "../lib/authHooks"
 import {
   Card,
   CardContent,
@@ -21,6 +21,7 @@ import {
   LogOut,
   LogIn,
 } from "lucide-react"
+import { clientManager } from "@/lib/client"
 
 interface AgentStatusProps {
   addLog: (type: "optimistic" | "success" | "error", message: string) => void
@@ -214,22 +215,17 @@ export function AgentStatus({ addLog }: AgentStatusProps) {
                   </div>
                   <div className="text-sm font-medium flex items-center gap-2">
                     <span
-                      className={`w-2 h-2 rounded-full ${process.env.DFX_NETWORK === "local" ? "bg-amber-400" : "bg-green-400"}`}
+                      className={`w-2 h-2 rounded-full ${agentState.isLocalhost ? "bg-amber-400" : "bg-green-400"}`}
                     />
-                    {process.env.DFX_NETWORK === "local"
-                      ? "Localhost"
-                      : "Mainnet"}
+                    {agentState.network === "local" ? "Local" : "Mainnet"}
                   </div>
                 </div>
                 <div className="bg-slate-950/40 p-2.5 rounded border border-border/30">
                   <div className="text-[10px] text-muted-foreground uppercase mb-1">
                     Backend Canister
                   </div>
-                  <div
-                    className="text-xs font-mono text-slate-300 truncate"
-                    title={process.env.CANISTER_ID_BACKEND}
-                  >
-                    {process.env.CANISTER_ID_BACKEND || "Unknown"}
+                  <div className="text-xs font-mono text-slate-300 truncate">
+                    {clientManager.connectedCanisterIds().toString()}
                   </div>
                 </div>
               </div>
