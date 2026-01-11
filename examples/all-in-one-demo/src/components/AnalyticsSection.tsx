@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { getLogs } from "../lib/reactor"
+import { getLogs } from "../lib/factories"
 import { Card, CardContent } from "@/components/ui/card"
 import { BarChart3, MessageSquare, Users, Activity } from "lucide-react"
 

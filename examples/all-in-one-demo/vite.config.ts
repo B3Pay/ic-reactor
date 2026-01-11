@@ -1,6 +1,7 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+import tailwindcss from "@tailwindcss/vite"
 import path from "path"
 import fs from "fs"
 
@@ -52,6 +53,7 @@ console.log("[icp-cli] Loaded canister IDs:", canisterIds)
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     icReactorPlugin({
       canisters: [
         {

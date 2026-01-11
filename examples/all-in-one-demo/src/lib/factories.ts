@@ -2,38 +2,31 @@ import {
   createMutation,
   createQuery,
   createSuspenseQuery,
-  createAuthHooks,
   createInfiniteQuery,
 } from "@ic-reactor/react"
 
-import { clientManager, queryClient } from "./client"
-export { clientManager, queryClient }
+import { queryClient } from "./client"
 import { backendReactor } from "../canisters/backend"
 
-export const reactor = backendReactor
-
-export const { useAuth, useAgentState, useUserPrincipal } =
-  createAuthHooks(clientManager)
-
-export const likeHeart = createMutation(reactor, {
+export const likeHeart = createMutation(backendReactor, {
   functionName: "like",
 })
 
-export const unlikeHeart = createMutation(reactor, {
+export const unlikeHeart = createMutation(backendReactor, {
   functionName: "unlike",
 })
 
-export const getLikes = createQuery(reactor, {
+export const getLikes = createQuery(backendReactor, {
   functionName: "get_likes",
   refetchInterval: 3000,
 })
 
-export const getLogs = createQuery(reactor, {
+export const getLogs = createQuery(backendReactor, {
   functionName: "get_logs",
   refetchInterval: 1000,
 })
 
-export const getPosts = createInfiniteQuery(reactor, {
+export const getPosts = createInfiniteQuery(backendReactor, {
   functionName: "get_posts",
   initialPageParam: 0n,
   getArgs: (offset) => [offset.toString(), "5"] as const,
@@ -43,20 +36,20 @@ export const getPosts = createInfiniteQuery(reactor, {
   },
 })
 
-export const getPostsCount = createQuery(reactor, {
+export const getPostsCount = createQuery(backendReactor, {
   functionName: "get_posts_count",
   refetchInterval: 5000,
 })
 
-export const getPostsCountSuspense = createSuspenseQuery(reactor, {
+export const getPostsCountSuspense = createSuspenseQuery(backendReactor, {
   functionName: "get_posts_count",
 })
 
-export const getLikesSuspense = createSuspenseQuery(reactor, {
+export const getLikesSuspense = createSuspenseQuery(backendReactor, {
   functionName: "get_likes",
 })
 
-export const batchCreatePosts = createMutation(reactor, {
+export const batchCreatePosts = createMutation(backendReactor, {
   functionName: "batch_create_posts",
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ["get_posts"] })
@@ -64,15 +57,15 @@ export const batchCreatePosts = createMutation(reactor, {
   },
 })
 
-export const createPost = createMutation(reactor, {
+export const createPost = createMutation(backendReactor, {
   functionName: "create_post",
 })
 
-export const toggleChaosMode = createMutation(reactor, {
+export const toggleChaosMode = createMutation(backendReactor, {
   functionName: "toggle_chaos_mode",
 })
 
-export const getChaosStatus = createQuery(reactor, {
+export const getChaosStatus = createQuery(backendReactor, {
   functionName: "get_chaos_status",
   refetchInterval: 5000,
 })

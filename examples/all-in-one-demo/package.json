@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "generate": "icp-bindgen --did-file ./backend/backend.did --out-dir ./src/declarations/backend --force"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@ic-reactor/core": "^3.0.3-beta.1",
