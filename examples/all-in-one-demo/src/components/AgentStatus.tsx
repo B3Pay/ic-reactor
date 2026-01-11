@@ -31,7 +31,6 @@ export function AgentStatus({ addLog }: AgentStatusProps) {
   const { login, logout, principal, isAuthenticated, isAuthenticating } =
     useAuth()
   const agentState = useAgentState()
-  console.log(agentState)
   const [copied, setCopied] = useState(false)
 
   const copyPrincipal = () => {

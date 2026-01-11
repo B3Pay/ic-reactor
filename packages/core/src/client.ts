@@ -60,6 +60,8 @@ export class ClientManager {
 
   private initPromise?: Promise<void>
   private authPromise?: Promise<Identity | undefined>
+  private port: number
+  private internetIdentityId?: string
 
   /**
    * Creates a new instance of ClientManager.
@@ -67,7 +69,7 @@ export class ClientManager {
    * @param parameters - Configuration options for the agent and network environment.
    */
   constructor({
-    port = 4943,
+    port = 8000,
     withLocalEnv,
     withProcessEnv,
     withCanisterEnv,
@@ -92,11 +94,21 @@ export class ClientManager {
       error: undefined,
     }
 
+    this.port = port
+
     // EXPERIMENTAL: Use canister environment from ic_env cookie when enabled
     // ⚠️ This may cause issues with update calls on localhost development
     if (withCanisterEnv) {
       const canisterEnv =
         typeof window !== "undefined" ? safeGetCanisterEnv() : undefined
+
+      if (canisterEnv) {
+        this.internetIdentityId =
+          canisterEnv["internet_identity"] ||
+          canisterEnv["PUBLIC_CANISTER_ID:internet_identity"] ||
+          canisterEnv["CANISTER_ID_INTERNET_IDENTITY"]
+      }
+
       const isDev =
         typeof import.meta !== "undefined" && (import.meta as any).env?.DEV
 
@@ -454,6 +466,9 @@ export class ClientManager {
 
   private getDefaultIdentityProvider(): string {
     if (this.isLocal) {
+      if (this.internetIdentityId) {
+        return `http://${this.internetIdentityId}.localhost:${this.port}`
+      }
       return LOCAL_INTERNET_IDENTITY_PROVIDER
     } else {
       return IC_INTERNET_IDENTITY_PROVIDER

@@ -8,7 +8,4 @@ export const queryClient = new QueryClient()
 export const clientManager = new ClientManager({
   queryClient,
   withCanisterEnv: true,
-  agentOptions: {
-    verifyQuerySignatures: false,
-  },
 })

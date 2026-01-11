@@ -4,6 +4,12 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@dfinity/agent': npm:@icp-sdk/core@^5.0.0
+  '@dfinity/candid': npm:@icp-sdk/candid@^5.0.0
+  '@dfinity/principal': npm:@icp-sdk/principal@^5.0.0
+  '@dfinity/identity': npm:@icp-sdk/identity@^5.0.0
+
 importers:
 
   .:
@@ -152,11 +158,11 @@ importers:
   examples/all-in-one-demo:
     dependencies:
       '@ic-reactor/core':
-        specifier: ^3.0.3-beta.1
-        version: 3.0.3-beta.1(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
+        specifier: workspace:^
+        version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: 3.0.3-beta.1
-        version: 3.0.3-beta.1(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: workspace:^
+        version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^5.0.0
         version: 5.0.0(@icp-sdk/core@5.0.0)
@@ -1501,25 +1507,6 @@ packages:
   '@happy-dom/global-registrator@20.0.11':
     resolution: {integrity: sha512-GqNqiShBT/lzkHTMC/slKBrvN0DsD4Di8ssBk4aDaVgEn+2WMzE6DXxq701ndSXj7/0cJ8mNT71pM7Bnrr6JRw==}
     engines: {node: '>=20.0.0'}
-
-  '@ic-reactor/core@3.0.3-beta.1':
-    resolution: {integrity: sha512-/AeCPr6sORtg9v/J7kEgbYehZuPRyVLtAmEhctjfmez7QsiydNYCeB6Dpa4AjSfoz8adUu0VyoRuJdsJnaA9bA==}
-    peerDependencies:
-      '@icp-sdk/auth': ^5.0.0
-      '@icp-sdk/core': ^5.0.0
-      '@tanstack/query-core': ^5.0.0
-    peerDependenciesMeta:
-      '@icp-sdk/auth':
-        optional: true
-      '@tanstack/query-core':
-        optional: true
-
-  '@ic-reactor/react@3.0.3-beta.1':
-    resolution: {integrity: sha512-WlKuRC8qrAahSz+LVkny+/ghC9t1xcMgQZNjz1F5TDLDWxEWGCLp+sb44rTFpSYWP1kNL9+FvWvVnX0UmtFKIQ==}
-    peerDependencies:
-      '@tanstack/react-query': ^5.0.0
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
 
   '@icp-sdk/auth@5.0.0':
     resolution: {integrity: sha512-TaPfdaELT7s0vTIFOmCnlCmhPdL7kABA7+2Q0YNAUWIa/FFiwq6ffGPLvr0U0+2zFLaLQ4l7UCB2zf7vo6PFPQ==}
@@ -7169,26 +7156,6 @@ snapshots:
     dependencies:
       '@types/node': 20.19.27
       happy-dom: 20.0.11
-
-  '@ic-reactor/core@3.0.3-beta.1(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)':
-    dependencies:
-      '@icp-sdk/core': 5.0.0
-      '@noble/curves': 2.0.1
-      zod: 4.3.5
-    optionalDependencies:
-      '@icp-sdk/auth': 5.0.0(@icp-sdk/core@5.0.0)
-      '@tanstack/query-core': 5.90.16
-
-  '@ic-reactor/react@3.0.3-beta.1(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)(@tanstack/react-query@5.90.16(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
-    dependencies:
-      '@ic-reactor/core': 3.0.3-beta.1(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.16)
-      '@tanstack/react-query': 5.90.16(react@19.2.3)
-      react: 19.2.3
-      react-dom: 19.2.3(react@19.2.3)
-    transitivePeerDependencies:
-      - '@icp-sdk/auth'
-      - '@icp-sdk/core'
-      - '@tanstack/query-core'
 
   '@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0)':
     dependencies:
