@@ -11,10 +11,10 @@ export function TokenBalanceSkeleton() {
     <>
       <div className="flex justify-between items-center">
         <label className="text-sm text-gray-400 block mb-1">Balance</label>
-        <div className="mt-2 h-8" />
+        <Skeleton className="mt-2 h-5 w-28" />
       </div>
       <div className="flex items-baseline gap-2">
-        <Skeleton className="h-9 w-40" />
+        <Skeleton className="h-8 w-26" />
         <TokenSymbolSkeleton />
       </div>
     </>
