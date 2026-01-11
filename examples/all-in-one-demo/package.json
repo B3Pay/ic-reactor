@@ -27,7 +27,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
-    "@ic-reactor/vite-plugin": "workspace:^",
+    "@ic-reactor/vite-plugin": "^3.0.3-beta.2",
     "@icp-sdk/bindgen": "^0.2.1",
     "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.2.7",
