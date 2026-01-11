@@ -2,8 +2,6 @@ packages:
   - "packages/*"
   - "e2e"
   - "docs"
-  - "examples/icp-reactor-demo/frontend"
-  - "examples/tanstack-router"
 # Note: examples/* intentionally excluded from workspace
 # Examples use real npm versions for StackBlitz/CodeSandbox compatibility
 # Run `pnpm sync:examples` after releases to update example versions
