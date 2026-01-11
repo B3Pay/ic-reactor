@@ -1,5 +1,6 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
+import { icReactorPlugin } from "@ic-reactor/vite-plugin"
 import path from "path"
 import fs from "fs"
 
@@ -49,7 +50,18 @@ console.log("[icp-cli] Loaded canister IDs:", canisterIds)
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    icReactorPlugin({
+      canisters: [
+        {
+          name: "backend",
+          didFile: "./backend/backend.did",
+          clientManagerPath: "../../lib/client",
+        },
+      ],
+    }),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
