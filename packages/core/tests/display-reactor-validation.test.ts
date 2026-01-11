@@ -4,12 +4,12 @@ import {
   ClientManager,
   ValidationError,
   fromZodSchema,
-  ValidationResult,
 } from "../src"
 import { IDL } from "@icp-sdk/core/candid"
 import { QueryClient } from "@tanstack/query-core"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { Principal } from "@icp-sdk/core/principal"
+import { ValidationResult } from "../src/types/display-reactor"
 
 // Define test actor type - these are CANDID types
 interface TestActor {
@@ -57,6 +57,7 @@ describe("DisplayReactor with Validation", () => {
   describe("basic validation functionality", () => {
     it("should register and check validators", () => {
       const reactor = new DisplayReactor<TestActor>({
+        name: "test-reactor",
         idlFactory,
         canisterId,
         clientManager,
@@ -75,6 +76,7 @@ describe("DisplayReactor with Validation", () => {
 
     it("should accept initial validators in config", () => {
       const reactor = new DisplayReactor<TestActor>({
+        name: "test-reactor",
         idlFactory,
         canisterId,
         clientManager,
@@ -93,6 +95,7 @@ describe("DisplayReactor with Validation", () => {
   describe("validation with display types", () => {
     it("should validate display types (strings, not Principal/bigint)", async () => {
       const reactor = new DisplayReactor<TestActor>({
+        name: "test-reactor",
         idlFactory,
         canisterId,
         clientManager,
@@ -140,6 +143,7 @@ describe("DisplayReactor with Validation", () => {
 
     it("should throw ValidationError when validation fails in callMethod", async () => {
       const reactor = new DisplayReactor<TestActor>({
+        name: "test-reactor",
         idlFactory,
         canisterId,
         clientManager,
@@ -170,6 +174,7 @@ describe("DisplayReactor with Validation", () => {
 
     it("should pass valid arguments through transformation and call", async () => {
       const reactor = new DisplayReactor<TestActor>({
+        name: "test-reactor",
         idlFactory,
         canisterId,
         clientManager,
@@ -203,6 +208,7 @@ describe("DisplayReactor with Validation", () => {
   describe("async validation support", () => {
     it("should support async validators with callMethodWithValidation", async () => {
       const reactor = new DisplayReactor<TestActor>({
+        name: "test-reactor",
         idlFactory,
         canisterId,
         clientManager,
@@ -236,6 +242,7 @@ describe("DisplayReactor with Validation", () => {
   describe("form validation pattern", () => {
     it("should validate Principal format using display types", async () => {
       const reactor = new DisplayReactor<TestActor>({
+        name: "test-reactor",
         idlFactory,
         canisterId,
         clientManager,

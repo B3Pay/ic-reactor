@@ -32,6 +32,7 @@ describe("hooks", () => {
   const clientManager = new ClientManager({ queryClient })
 
   const reactor = new Reactor<TestActor>({
+    name: "test",
     clientManager,
     canisterId: "test-canister",
     idlFactory: ({ IDL }: any) =>

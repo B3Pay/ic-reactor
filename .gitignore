@@ -4,3 +4,5 @@ dist
 target
 .env
 .dfx
+.icp
+.mops

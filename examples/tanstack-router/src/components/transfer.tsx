@@ -2,21 +2,15 @@ import { useState } from "react"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
-import { isCanisterError, type DisplayReactor } from "@ic-reactor/core"
-import type { Ledger } from "@/reactor"
 import { TransferError } from "./transfer-error"
-import type { QueryKey } from "@tanstack/react-query"
-import { useReactorMutation } from "@ic-reactor/react"
+import {
+  icrc1BalanceOfSuspenseQuery,
+  icrc1DecimalsSuspenseQuery,
+  useIcrc1TransferMutation,
+} from "@/canisters/ledger/hooks"
 
-export const Transfer = ({
-  reactor,
-  decimals,
-  invalidateQueries,
-}: {
-  reactor: DisplayReactor<Ledger>
-  decimals: number | undefined
-  invalidateQueries?: QueryKey
-}) => {
+export function Transfer({ owner }: { owner: string }) {
+  const { data: decimals } = icrc1DecimalsSuspenseQuery.useSuspenseQuery()
   const [to, setTo] = useState("")
   const [amount, setAmount] = useState("")
   const [result, setResult] = useState<string | null>(null)
@@ -26,24 +20,19 @@ export const Transfer = ({
     isPending,
     error,
     reset,
-  } = useReactorMutation({
-    reactor,
-    functionName: "icrc1_transfer",
-    onSuccess: (blockIndex: string) => {
-      // blockIndex is typed as string (the Ok value from the canister)
-      setResult(`Transfer successful! Block index: ${blockIndex}`)
+  } = useIcrc1TransferMutation({
+    onSuccess: (blockIndex) => {
+      // blockIndex is the Ok value from the canister
+      icrc1BalanceOfSuspenseQuery([{ owner }]).invalidate()
+      setResult(`Transfer successful! Block index: ${String(blockIndex)}`)
       setTo("")
       setAmount("")
     },
-    onError: (err: Error) => {
+    onCanisterError: (err) => {
       // err is typed as CanisterError<TransferError> | CallError ✓
       // Error is handled by the error display below
-      console.log(
-        "Transfer error:",
-        isCanisterError(err) ? (err as any).err._type : err
-      )
+      console.log("Transfer error:", err.err._type)
     },
-    invalidateQueries: invalidateQueries ? [invalidateQueries] : undefined,
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -51,11 +40,6 @@ export const Transfer = ({
     setResult(null)
     reset() // Clear any previous errors
     if (!to || !amount) return
-
-    if (decimals === undefined) {
-      setResult("Token decimals not loaded yet")
-      return
-    }
 
     try {
       const multiplier = Math.pow(10, Number(decimals))
@@ -67,8 +51,6 @@ export const Transfer = ({
       setResult(`Invalid Principal ID or Amount: ${(err as Error).message}`)
     }
   }
-
-  const isLoading = decimals === undefined || isPending
 
   return (
     <Card>
@@ -98,8 +80,8 @@ export const Transfer = ({
               step="any"
             />
           </div>
-          <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading ? "Transferring..." : "Transfer"}
+          <Button type="submit" disabled={isPending} className="w-full">
+            {isPending ? "Transferring..." : "Transfer"}
           </Button>
 
           {/* Success Message */}
@@ -118,9 +100,47 @@ export const Transfer = ({
           {/* Error Display with Type-Safe Rendering */}
           {error && (
             <div className="p-3 bg-red-500/10 text-red-400 rounded border border-red-500/20">
-              <TransferError error={error as any} />
+              <TransferError error={error} />
             </div>
           )}
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function TransferSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Transfer Token</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={() => {}} className="space-y-4">
+          <div>
+            <label className="text-sm text-gray-400 block mb-1">
+              To Principal
+            </label>
+            <Input
+              type="text"
+              value=""
+              onChange={() => {}}
+              placeholder="aaaaa-aa..."
+            />
+          </div>
+          <div>
+            <label className="text-sm text-gray-400 block mb-1">Amount</label>
+            <Input
+              type="number"
+              value=""
+              onChange={() => {}}
+              placeholder="0.00"
+              step="any"
+            />
+          </div>
+          <Button type="submit" disabled={true} className="w-full">
+            Transfer
+          </Button>
         </form>
       </CardContent>
     </Card>

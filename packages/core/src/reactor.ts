@@ -16,9 +16,10 @@ import type {
   ReactorReturnOk,
   ReactorQueryParams,
   ReactorCallParams,
+  CanisterId,
 } from "./types/reactor"
 
-import { Actor, DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
+import { DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { generateKey, extractOkResult } from "./utils/helper"
@@ -27,6 +28,7 @@ import {
   processUpdateCallResponse,
 } from "./utils/agent"
 import { CallError, CanisterError } from "./errors"
+import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 /**
  * Reactor class for interacting with IC canisters.
@@ -49,28 +51,59 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public service: IDL.ServiceClass
   public pollingOptions: PollingOptions
 
-  constructor(config: ReactorParameters<A>) {
+  constructor(config: ReactorParameters) {
     this.clientManager = config.clientManager
-    this.name = config.name || ""
+    this.name = config.name
     this.pollingOptions =
       "pollingOptions" in config && config.pollingOptions
         ? config.pollingOptions
         : DEFAULT_POLLING_OPTIONS
 
-    if ("actor" in config && config.actor) {
-      // Legacy: if an actor is passed, extract service and canisterId from it
-      this.canisterId = Actor.canisterIdOf(config.actor as unknown as Actor)
-      this.service = Actor.interfaceOf(config.actor as unknown as Actor)
-    } else if ("canisterId" in config && "idlFactory" in config) {
-      const { canisterId, idlFactory } = config
-
-      this.canisterId = Principal.from(canisterId)
-      this.service = idlFactory({ IDL })
-    } else {
-      throw new Error("Either actor or canisterId and idlFactory are required")
+    const { idlFactory } = config
+    if (!idlFactory) {
+      throw new Error(`[ic-reactor] idlFactory is missing for ${this.name}`)
     }
 
+    let canisterId = config.canisterId
+
+    if (!canisterId) {
+      const env = safeGetCanisterEnv()
+      const key = `PUBLIC_CANISTER_ID:${this.name}`
+      canisterId = env?.[key]
+
+      if (!canisterId) {
+        console.warn(
+          `[ic-reactor] ${this.name} canister ID not found in ic_env cookie`
+        )
+        canisterId = "aaaaa-aa" // Fallback
+      }
+    }
+
+    this.canisterId = Principal.from(canisterId)
+    this.service = idlFactory({ IDL })
+
     // Register this canister ID for delegation during login
+    this.clientManager.registerCanisterId(this.canisterId.toString(), this.name)
+  }
+
+  /**
+   * Set the canister ID for this reactor.
+   * Useful for dynamically switching between canisters of the same type (e.g., multiple ICRC tokens).
+   *
+   * @param canisterId - The new canister ID (as string or Principal)
+   *
+   * @example
+   * ```typescript
+   * // Switch to a different ledger canister
+   * ledgerReactor.setCanisterId("ryjl3-tyaaa-aaaaa-aaaba-cai")
+   *
+   * // Then use queries/mutations as normal
+   * const { data } = icrc1NameQuery.useQuery()
+   * ```
+   */
+  public setCanisterId(canisterId: CanisterId): void {
+    this.canisterId = Principal.from(canisterId)
+    // Register the new canister ID for delegation
     this.clientManager.registerCanisterId(this.canisterId.toString(), this.name)
   }
 
@@ -271,15 +304,15 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       func.annotations.includes("composite_query")
 
     // Execute the call
-    let rawResult: Uint8Array
+    let rawResponse: Uint8Array
     if (isQuery) {
-      rawResult = await this.executeQuery(
+      rawResponse = await this.executeQuery(
         String(params.functionName),
         arg,
         params.callConfig
       )
     } else {
-      rawResult = await this.executeCall(
+      rawResponse = await this.executeCall(
         String(params.functionName),
         arg,
         params.callConfig
@@ -287,10 +320,10 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     }
 
     // Decode the result
-    const decoded = IDL.decode(func.retTypes, rawResult)
+    const decoded = IDL.decode(func.retTypes, rawResponse)
 
     // Handle single, zero, and multiple return values appropriately
-    const result = (
+    const response = (
       decoded.length === 0
         ? undefined
         : decoded.length === 1
@@ -298,7 +331,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
           : decoded
     ) as ActorMethodReturnType<A[M]>
 
-    return this.transformResult(params.functionName, result)
+    return this.transformResult(params.functionName, response)
   }
 
   /**
@@ -334,13 +367,13 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     const effectiveCanisterId =
       callConfig?.effectiveCanisterId ?? this.canisterId
 
-    const result = await agent.query(this.canisterId, {
+    const response = await agent.query(this.canisterId, {
       methodName,
       arg,
       effectiveCanisterId,
     })
 
-    return processQueryCallResponse(result, this.canisterId, methodName)
+    return processQueryCallResponse(response, this.canisterId, methodName)
   }
 
   /**
@@ -353,7 +386,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   ): Promise<Uint8Array> {
     const agent = this.clientManager.agent
 
-    const result = await agent.call(this.canisterId, {
+    const response = await agent.call(this.canisterId, {
       methodName,
       arg,
       effectiveCanisterId: callConfig?.effectiveCanisterId,
@@ -361,7 +394,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     })
 
     return await processUpdateCallResponse(
-      result,
+      response,
       this.canisterId,
       methodName,
       agent,

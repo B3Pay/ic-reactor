@@ -1,0 +1,26 @@
+{
+  "name": "icp-reactor-demo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "IC-Reactor Demo with icp-cli",
+  "type": "module",
+  "scripts": {
+    "start": "icp network start",
+    "stop": "icp network stop",
+    "deploy": "icp deploy",
+    "deploy:backend": "icp deploy backend",
+    "deploy:frontend": "icp deploy frontend",
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "generate": "npm run generate --prefix frontend",
+    "clean": "rm -rf .icp frontend/dist backend/.mops"
+  },
+  "keywords": [
+    "internet-computer",
+    "icp",
+    "ic-reactor",
+    "motoko",
+    "react"
+  ],
+  "license": "MIT"
+}

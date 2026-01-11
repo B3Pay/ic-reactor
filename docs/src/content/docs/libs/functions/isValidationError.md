@@ -7,7 +7,7 @@ prev: true
 
 > **isValidationError**(`error`): `error is ValidationError`
 
-Defined in: [errors/index.ts:244](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/errors/index.ts#L244)
+Defined in: [errors/index.ts:244](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/errors/index.ts#L244)
 
 Type guard to check if an error is a ValidationError
 

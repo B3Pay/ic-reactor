@@ -27,6 +27,7 @@ describe("CandidReactor E2E", () => {
 
     // ICP Ledger Canister
     reactor = new CandidReactor<TestActor>({
+      name: "test",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       clientManager,
     })

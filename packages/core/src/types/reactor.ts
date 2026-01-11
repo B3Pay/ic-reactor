@@ -34,22 +34,15 @@ export type ActorMethodParameters<T> =
 export type ActorMethodReturnType<T> =
   T extends ActorMethod<any, infer Ret> ? Ret : never
 
-interface BaseReactorParameters extends Omit<
+export interface ReactorParameters extends Omit<
   ActorConfig,
   "agent" | "effectiveCanisterId" | "canisterId"
 > {
   clientManager: ClientManager
-  name?: string
+  name: string
+  idlFactory: IDL.InterfaceFactory
+  canisterId?: CanisterId
 }
-
-export type ReactorParameters<A = BaseActor> =
-  | (BaseReactorParameters & {
-      idlFactory: IDL.InterfaceFactory
-      canisterId: CanisterId
-    })
-  | (BaseReactorParameters & {
-      actor: A
-    })
 
 export type ActorMethodType<A, M extends keyof A> = {
   (...args: ActorMethodParameters<A[M]>): Promise<ActorMethodReturnType<A[M]>>

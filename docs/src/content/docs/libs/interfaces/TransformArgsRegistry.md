@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/reactor.ts:86](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/types/reactor.ts#L86)
+Defined in: [types/reactor.ts:79](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/types/reactor.ts#L79)
 
 ## Type Parameters
 
@@ -19,7 +19,7 @@ Defined in: [types/reactor.ts:86](https://github.com/B3Pay/ic-reactor/blob/da869
 
 > **candid**: `T`
 
-Defined in: [types/reactor.ts:87](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/types/reactor.ts#L87)
+Defined in: [types/reactor.ts:80](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/types/reactor.ts#L80)
 
 ---
 
@@ -27,4 +27,4 @@ Defined in: [types/reactor.ts:87](https://github.com/B3Pay/ic-reactor/blob/da869
 
 > **display**: `AsDisplayArgs`\<`T`\>
 
-Defined in: [types/reactor.ts:88](https://github.com/B3Pay/ic-reactor/blob/da8695f8b962cbcaf1070b3825d97a5664f71b4e/packages/core/src/types/reactor.ts#L88)
+Defined in: [types/reactor.ts:81](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/types/reactor.ts#L81)

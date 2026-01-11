@@ -54,6 +54,7 @@ import { idlFactory, type _SERVICE } from "../declarations/backend"
 const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
 })
 
@@ -73,6 +74,7 @@ import { idlFactory, type _SERVICE } from "../declarations/backend"
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: "...",
 })
 
@@ -195,6 +197,7 @@ const clientManager = new ClientManager({
 const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
 })
 

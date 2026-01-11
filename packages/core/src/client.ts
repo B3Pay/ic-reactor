@@ -9,6 +9,7 @@ import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryClient } from "@tanstack/react-query"
 
 import { HttpAgent } from "@icp-sdk/core/agent"
+import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import {
   IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
@@ -69,6 +70,7 @@ export class ClientManager {
     port = 4943,
     withLocalEnv,
     withProcessEnv,
+    withCanisterEnv,
     agentOptions = {},
     queryClient,
     authClient,
@@ -90,6 +92,28 @@ export class ClientManager {
       error: undefined,
     }
 
+    // EXPERIMENTAL: Use canister environment from ic_env cookie when enabled
+    // ⚠️ This may cause issues with update calls on localhost development
+    if (withCanisterEnv) {
+      const canisterEnv =
+        typeof window !== "undefined" ? safeGetCanisterEnv() : undefined
+      const isDev =
+        typeof import.meta !== "undefined" && (import.meta as any).env?.DEV
+
+      if (isDev && typeof window !== "undefined") {
+        agentOptions.host = agentOptions.host ?? window.location.origin
+        agentOptions.verifyQuerySignatures =
+          agentOptions.verifyQuerySignatures ?? false
+      } else {
+        agentOptions.verifyQuerySignatures =
+          agentOptions.verifyQuerySignatures ?? true
+      }
+
+      if (canisterEnv?.IC_ROOT_KEY) {
+        agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
+      }
+    }
+
     if (withProcessEnv) {
       const processNetwork = getProcessEnvNetwork()
       if (processNetwork === "ic") {
@@ -102,7 +126,8 @@ export class ClientManager {
       }
     } else if (withLocalEnv) {
       agentOptions.host = `http://127.0.0.1:${port}`
-    } else {
+    } else if (!withCanisterEnv) {
+      // Only set default host if withCanisterEnv hasn't already configured it
       agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI
     }
 

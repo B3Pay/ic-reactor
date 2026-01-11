@@ -15,10 +15,11 @@ This class is ideal for building UIs that interact with dynamic canisters:
 - **Display transformations**: `bigint` → `string`, `Principal` → `string`, optionals unwrapped
 - **Dynamic Candid parsing**: Initialize from Candid source or fetch from network
 - **Optional validation**: Register validators for form inputs
-- **All standard Reactor methods**: `callMethod()`, `fetchQuery()`, `invalidateQueries()`
+- **All standard Reactor methods**: `callMethod()`, `fetchQuery()`, `invalidateQueries()`, `setCanisterId()`
 
 ```typescript
 const reactor = new CandidDisplayReactor({
+  name: "my-dynamic-actor",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
 })
@@ -50,8 +51,9 @@ new CandidDisplayReactor(config: CandidDisplayReactorParameters)
 
 | Parameter       | Type                        | Required | Description                                      |
 | --------------- | --------------------------- | -------- | ------------------------------------------------ |
-| `canisterId`    | `CanisterId`                | Yes      | The canister ID to interact with                 |
 | `clientManager` | `ClientManager`             | Yes      | Client manager from `@ic-reactor/core`           |
+| `name`          | `string`                    | Yes      | Required for logging & environment lookup        |
+| `canisterId`    | `CanisterId`                | No       | Optional if defined in environment               |
 | `candid`        | `string`                    | No       | Candid service definition (avoids network fetch) |
 | `idlFactory`    | `InterfaceFactory`          | No       | IDL factory (if already available)               |
 | `validators`    | `Record<string, Validator>` | No       | Initial validators for method arguments          |
@@ -62,6 +64,7 @@ new CandidDisplayReactor(config: CandidDisplayReactorParameters)
   <TabItem label="Fetch from Network">
     ```typescript
     const reactor = new CandidDisplayReactor({
+      name: "dynamic-actor",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       clientManager,
     })
@@ -80,6 +83,7 @@ new CandidDisplayReactor(config: CandidDisplayReactorParameters)
   <TabItem label="Provide Candid String">
     ```typescript
     const reactor = new CandidDisplayReactor({
+      name: "ledger",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       clientManager,
       candid: `service : {
@@ -269,7 +273,11 @@ const balance = await reactor.fetchQueryDynamic({
 import { CandidDisplayReactor } from "@ic-reactor/candid"
 
 async function getTokenBalance(canisterId: string, owner: string) {
-  const reactor = new CandidDisplayReactor({ canisterId, clientManager })
+  const reactor = new CandidDisplayReactor({
+    name: "token-checker",
+    canisterId,
+    clientManager,
+  })
 
   await reactor.registerMethod({
     functionName: "icrc1_balance_of",
@@ -292,6 +300,7 @@ async function getTokenBalance(canisterId: string, owner: string) {
 import { CandidDisplayReactor } from "@ic-reactor/candid"
 
 const reactor = new CandidDisplayReactor({
+  name: "transfer-actor",
   canisterId,
   clientManager,
   candid: `service : {
@@ -362,7 +371,12 @@ function useDynamicBalance(reactor: CandidDisplayReactor, owner: string) {
 
 function BalanceDisplay({ canisterId, owner }: Props) {
   const reactor = useMemo(
-    () => new CandidDisplayReactor({ canisterId, clientManager }),
+    () =>
+      new CandidDisplayReactor({
+        name: `balance-${canisterId}`,
+        canisterId,
+        clientManager,
+      }),
     [canisterId]
   )
 

@@ -62,6 +62,7 @@ describe("CandidAdapter & ActorHooks Type Safety", () => {
 
   describe("Standard Reactor", () => {
     const reactor = new Reactor<TestActor>({
+      name: "test",
       idlFactory,
       canisterId,
       clientManager,
@@ -89,6 +90,7 @@ describe("CandidAdapter & ActorHooks Type Safety", () => {
 
   describe("DisplayReactor", () => {
     const displayReactor = new DisplayReactor<TestActor>({
+      name: "test",
       idlFactory,
       canisterId,
       clientManager,
@@ -101,6 +103,9 @@ describe("CandidAdapter & ActorHooks Type Safety", () => {
     })
 
     beforeAll(async () => {
+      vi.spyOn(clientManager.agent, "fetchRootKey").mockResolvedValue(
+        new Uint8Array(0).buffer as any
+      )
       await clientManager.initializeAgent()
     })
 
