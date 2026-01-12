@@ -41,7 +41,7 @@
     }
   },
   "dependencies": {
-    "chokidar": "^4.0.0"
+    "chokidar": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
