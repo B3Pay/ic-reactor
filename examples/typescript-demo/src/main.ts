@@ -107,6 +107,7 @@ async function updateToken(canisterId: string) {
     const newActor =
       actorsRecord[canisterId] ||
       (actorsRecord[canisterId] = new Reactor<Ledger>({
+        name: canisterId,
         clientManager,
         idlFactory: ledgerIdlFactory,
         canisterId,
