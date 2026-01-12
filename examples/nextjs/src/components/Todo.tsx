@@ -37,7 +37,7 @@ const RenderTodo = ({ id, completed, description }: TodoProps) => {
         <div
           className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 ${
             checked
-              ? "bg-gradient-to-br from-emerald-500 to-cyan-500 border-emerald-400"
+              ? "bg-linear-to-br from-emerald-500 to-cyan-500 border-emerald-400"
               : "border-slate-500/50 group-hover:border-slate-400/70"
           } ${isPending ? "opacity-50" : ""}`}
         >
