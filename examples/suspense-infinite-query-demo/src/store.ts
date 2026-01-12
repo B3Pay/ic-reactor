@@ -29,6 +29,7 @@ export const clientManager = new ClientManager({
 
 // 3. Setup Reactor (interacts with specific canister)
 export const reactor = new Reactor<_SERVICE>({
+  name: "backend",
   clientManager,
   canisterId,
   idlFactory,

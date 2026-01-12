@@ -55,9 +55,9 @@ export const icrc1TransferMutation = createMutation(ledgerReactor, {
   // },
 
   // Handle all errors (network, canister, etc.)
-  onError: (error, variables, context) => {
-    console.error("Error:", error)
-  },
+  // onError: (error, variables, context) => {
+  //   console.error("Error:", error)
+  // },
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
