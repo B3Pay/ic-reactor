@@ -46,20 +46,23 @@ export const clientManager = new ClientManager({
 // ICP Ledger with DisplayReactor for human-readable display values
 export const icpReactor = new DisplayReactor<Ledger>({
   clientManager,
+  name: "icp",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   idlFactory: ledgerIdlFactory,
 })
 
 // ckBTC Ledger
-export const ckBTCManager = new DisplayReactor<Ledger>({
+export const ckBTCReactor = new DisplayReactor<Ledger>({
   clientManager,
+  name: "ckbtc",
   canisterId: "mxzaz-hqaaa-aaaar-qaada-cai",
   idlFactory: ledgerIdlFactory,
 })
 
 // ckETH Ledger
-export const ckETHManager = new DisplayReactor<Ledger>({
+export const ckETHReactor = new DisplayReactor<Ledger>({
   clientManager,
+  name: "cketh",
   canisterId: "ss2fx-dyaaa-aaaar-qacoq-cai",
   idlFactory: ledgerIdlFactory,
 })
@@ -176,7 +179,7 @@ export const getIcpBalance = createSuspenseQueryFactory(icpReactor, {
 /**
  * Factory for ckBTC balance queries with formatted output.
  */
-export const getCkBtcBalance = createSuspenseQueryFactory(ckBTCManager, {
+export const getCkBtcBalance = createSuspenseQueryFactory(ckBTCReactor, {
   functionName: "icrc1_balance_of",
   select: (balance) => formatBalance(balance, "ckBTC"),
 })
@@ -184,7 +187,7 @@ export const getCkBtcBalance = createSuspenseQueryFactory(ckBTCManager, {
 /**
  * Factory for ckETH balance queries with formatted output.
  */
-export const getCkEthBalance = createSuspenseQueryFactory(ckETHManager, {
+export const getCkEthBalance = createSuspenseQueryFactory(ckETHReactor, {
   functionName: "icrc1_balance_of",
   select: (balance) => formatBalance(balance, "ckETH"),
 })
