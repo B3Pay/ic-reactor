@@ -5,10 +5,10 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@dfinity/agent': npm:@icp-sdk/core@^5.0.0
-  '@dfinity/candid': npm:@icp-sdk/candid@^5.0.0
-  '@dfinity/principal': npm:@icp-sdk/principal@^5.0.0
-  '@dfinity/identity': npm:@icp-sdk/identity@^5.0.0
+  '@dfinity/agent': npm:@icp-sdk/core/agent@^5.0.0
+  '@dfinity/candid': npm:@icp-sdk/core/candid@^5.0.0
+  '@dfinity/principal': npm:@icp-sdk/core/principal@^5.0.0
+  '@dfinity/identity': npm:@icp-sdk/core/identity@^5.0.0
 
 importers:
 
@@ -312,9 +312,6 @@ importers:
       '@icp-sdk/bindgen':
         specifier: ^0.2.0
         version: 0.2.1
-      chokidar:
-        specifier: ^4.0.0
-        version: 4.0.3
     devDependencies:
       '@types/node':
         specifier: ^25.0.6

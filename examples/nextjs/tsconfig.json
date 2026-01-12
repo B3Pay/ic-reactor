@@ -9,20 +9,20 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "baseUrl": ".",
     "paths": {
+      "@dfinity/*": [
+        "./node_modules/@icp-sdk/core/lib/cjs/*/dist/index.d.ts",
+        "./node_modules/@icp-sdk/core/lib/cjs/*/index.d.ts",
+        "./node_modules/@icp-sdk/core/lib/cjs/*"
+      ],
       "*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "src/**/*"],
-  "exclude": ["node_modules", "out"]
+  "include": ["next-env.d.ts", ".next/types/**/*.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
 }

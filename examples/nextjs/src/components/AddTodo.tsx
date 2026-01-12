@@ -19,7 +19,7 @@ const AddTodo = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-indigo-500 rounded-lg flex items-center justify-center">
+        <div className="w-8 h-8 bg-linear-to-br from-cyan-500 to-indigo-500 rounded-lg flex items-center justify-center">
           <svg
             className="w-4 h-4 text-white"
             fill="none"
@@ -52,7 +52,7 @@ const AddTodo = () => {
         <button
           type="submit"
           disabled={isPending || !todo.trim()}
-          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-medium transition-all duration-300 shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[120px]"
+          className="px-6 py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-medium transition-all duration-300 shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-30"
         >
           {isPending ? (
             <>

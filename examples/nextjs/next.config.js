@@ -25,6 +25,9 @@ module.exports = {
     "@ic-reactor/core",
     "@icp-sdk/core",
     "@icp-sdk/auth",
+    "@icp-sdk/candid",
+    "@icp-sdk/principal",
+    "@icp-sdk/identity",
     "@dfinity/agent",
     "@dfinity/candid",
     "@dfinity/principal"
@@ -32,11 +35,54 @@ module.exports = {
 
   // Turbopack configuration (Next.js 16+ default bundler)
   turbopack: {
-    // Add any Turbopack-specific configuration here if needed
+    rules: {
+      "@dfinity/agent": {
+        alias: require("path").resolve(__dirname, "node_modules/@icp-sdk/core")
+      },
+      "@dfinity/candid": {
+        alias: require("path").resolve(
+          __dirname,
+          "node_modules/@icp-sdk/core/candid"
+        )
+      },
+      "@dfinity/principal": {
+        alias: require("path").resolve(
+          __dirname,
+          "node_modules/@icp-sdk/core/principal"
+        )
+      },
+      "@dfinity/identity": {
+        alias: require("path").resolve(
+          __dirname,
+          "node_modules/@icp-sdk/core/identity"
+        )
+      }
+    }
   },
 
   // Webpack configuration (for production builds or --webpack flag)
   webpack: (config, { isServer }) => {
+    // Add aliases for @dfinity packages to map to @icp-sdk packages
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@dfinity/agent": require("path").resolve(
+        __dirname,
+        "node_modules/@icp-sdk/core"
+      ),
+      "@dfinity/candid": require("path").resolve(
+        __dirname,
+        "node_modules/@icp-sdk/core/candid"
+      ),
+      "@dfinity/principal": require("path").resolve(
+        __dirname,
+        "node_modules/@icp-sdk/core/principal"
+      ),
+      "@dfinity/identity": require("path").resolve(
+        __dirname,
+        "node_modules/@icp-sdk/core/identity"
+      )
+    }
+
     // Fix for ESM directory imports
     config.resolve.extensionAlias = {
       ".js": [".js", ".ts", ".tsx"]

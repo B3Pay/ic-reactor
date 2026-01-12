@@ -1,6 +1,6 @@
 {
   "name": "ic-reactor",
-  "version": "3.0.3-beta.2",
+  "version": "3.0.3-beta.3",
   "type": "module",
   "private": true,
   "description": "The modern, type-safe library for building Internet Computer applications",
@@ -49,10 +49,10 @@
   },
   "pnpm": {
     "overrides": {
-      "@dfinity/agent": "npm:@icp-sdk/core@^5.0.0",
-      "@dfinity/candid": "npm:@icp-sdk/candid@^5.0.0",
-      "@dfinity/principal": "npm:@icp-sdk/principal@^5.0.0",
-      "@dfinity/identity": "npm:@icp-sdk/identity@^5.0.0"
+      "@dfinity/agent": "npm:@icp-sdk/core/agent@^5.0.0",
+      "@dfinity/candid": "npm:@icp-sdk/core/candid@^5.0.0",
+      "@dfinity/principal": "npm:@icp-sdk/core/principal@^5.0.0",
+      "@dfinity/identity": "npm:@icp-sdk/core/identity@^5.0.0"
     }
   }
 }
