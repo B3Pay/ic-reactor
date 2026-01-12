@@ -1,5 +1,5 @@
 import { Todo } from "declarations/todo/todo.did"
-import React, { useState } from "react"
+import { useState } from "react"
 import { useMutateTodo } from "service/todo"
 
 interface TodoProps extends Todo {}

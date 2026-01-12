@@ -1,17 +1,12 @@
-"use client"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { AppProps } from "next/app"
-import { clientManager, queryClient, useAgentState } from "reactor"
-import "styles/global.css"
+import { queryClient, useAgentState } from "service/client"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
-import { useEffect } from "react"
+
+import "styles/global.css"
 
 const App: React.FC<AppProps> = ({ Component, pageProps }) => {
   const { isInitialized } = useAgentState()
-
-  useEffect(() => {
-    clientManager.initialize()
-  }, [])
 
   if (!isInitialized) return null
 

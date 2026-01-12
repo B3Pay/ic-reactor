@@ -1,4 +1,3 @@
-import React from "react"
 import { useQueryTodo } from "service/todo"
 import RenderTodo from "./Todo"
 
