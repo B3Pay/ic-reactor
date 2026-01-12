@@ -42,6 +42,9 @@
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
+    "@dfinity/agent": "^3.4.3",
+    "@dfinity/candid": "^3.4.3",
+    "@dfinity/principal": "^3.4.3",
     "@tanstack/react-query-devtools": "^5.91.2",
     "@types/node": "20.9.4",
     "@types/react": "19.2.7",

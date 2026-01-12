@@ -1,5 +1,4 @@
-import React from "react"
-import { useAuth } from "../reactor"
+import { useAuth } from "../service/client"
 
 const Login = () => {
   const { login, logout, identity, isAuthenticating, isAuthenticated, error } =

@@ -1,7 +1,9 @@
-export const formatBalance = (bal: bigint | string | undefined) => {
+export const formatBalance = (
+  bal: bigint | string | undefined,
+  decimals = 8
+) => {
   if (bal === undefined) return "—"
   const balance = BigInt(bal)
-  const decimals = 8
   const factor = BigInt(10 ** decimals)
   const integerPart = balance / factor
   const fractionalPart = balance % factor

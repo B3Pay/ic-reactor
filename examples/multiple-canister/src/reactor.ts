@@ -45,6 +45,7 @@ export const clientManager = new ClientManager({
 
 // ICP Ledger (ICRC2)
 export const icpLedger = new Reactor<ICRC2>({
+  name: "ICP Ledger",
   clientManager,
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   idlFactory: icrc2IdlFactory,
@@ -52,6 +53,7 @@ export const icpLedger = new Reactor<ICRC2>({
 
 // ICDV Token
 export const icdvToken = new Reactor<ICDV>({
+  name: "ICDV Token",
   clientManager,
   canisterId: "agtsn-xyaaa-aaaag-ak3kq-cai",
   idlFactory: icdvIdlFactory,

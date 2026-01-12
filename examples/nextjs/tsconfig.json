@@ -9,7 +9,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
@@ -24,5 +24,5 @@
     }
   },
   "include": ["next-env.d.ts", "src/**/*"],
-  "exclude": ["node_modules", "out", ".next"]
+  "exclude": ["node_modules", "out"]
 }

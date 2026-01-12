@@ -19,5 +19,39 @@ module.exports = {
   images: {
     unoptimized: true
   },
+  // Transpile IC Reactor packages
+  transpilePackages: [
+    "@ic-reactor/react",
+    "@ic-reactor/core",
+    "@icp-sdk/core",
+    "@icp-sdk/auth",
+    "@dfinity/agent",
+    "@dfinity/candid",
+    "@dfinity/principal"
+  ],
+
+  // Turbopack configuration (Next.js 16+ default bundler)
+  turbopack: {
+    // Add any Turbopack-specific configuration here if needed
+  },
+
+  // Webpack configuration (for production builds or --webpack flag)
+  webpack: (config, { isServer }) => {
+    // Fix for ESM directory imports
+    config.resolve.extensionAlias = {
+      ".js": [".js", ".ts", ".tsx"]
+    }
+
+    // Fix for packages that need node polyfills
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        buffer: false,
+        crypto: false,
+        stream: false
+      }
+    }
+    return config
+  },
   staticPageGenerationTimeout: 100
 }

@@ -64,12 +64,7 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
 
       const amount = amountRef.current?.value || "0"
       const address = addressRef.current?.value || ""
-      retrieveBtc([
-        {
-          amount,
-          address,
-        },
-      ])
+      retrieveBtc([{ amount, address }])
     },
   })
 
@@ -154,12 +149,7 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
       <form onSubmit={onSubmit}>
         <div className="form-group">
           <label className="form-label">BTC Address</label>
-          <input
-            ref={addressRef}
-            type="text"
-            placeholder="bc1q... or 3... or 1..."
-            required
-          />
+          <input ref={addressRef} type="text" placeholder="bc1q..." required />
         </div>
 
         <div className="form-group">
