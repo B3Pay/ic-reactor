@@ -1,4 +1,3 @@
-import { Principal } from "@icp-sdk/core/principal"
 import { generateKey } from "@ic-reactor/core"
 import { useRef } from "react"
 import {
@@ -8,35 +7,34 @@ import {
   retrieveBtcMutation,
   CKBTC_MINTER_CANISTER_ID,
 } from "./reactor"
+import { formatBalance } from "./util"
 
 interface MinterRetrieveBTCProps {
-  userPrincipal: Principal
+  userPrincipal: string
 }
 
 const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
   userPrincipal,
 }) => {
-  const minterCanisterId = Principal.fromText(CKBTC_MINTER_CANISTER_ID)
-
   const addressRef = useRef<HTMLInputElement>(null)
   const amountRef = useRef<HTMLInputElement>(null)
 
   // Balance query
   const {
-    refetch: refetchBalance,
     data: balance,
+    refetch: refetchBalance,
     isLoading: balanceLoading,
-  } = balanceQuery([{ owner: userPrincipal, subaccount: [] }]).useQuery()
+  } = balanceQuery([{ owner: userPrincipal }]).useQuery()
 
   // Allowance query
   const {
-    refetch: refetchAllowance,
     data: allowance,
+    refetch: refetchAllowance,
     isLoading: allowanceLoading,
   } = allowanceQuery([
     {
-      account: { owner: userPrincipal, subaccount: [] },
-      spender: { owner: minterCanisterId, subaccount: [] },
+      account: { owner: userPrincipal },
+      spender: { owner: CKBTC_MINTER_CANISTER_ID },
     },
   ]).useQuery()
 
@@ -70,7 +68,6 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
         {
           amount,
           address,
-          from_subaccount: [],
         },
       ])
     },
@@ -79,25 +76,13 @@ const MinterRetrieveBTC: React.FC<MinterRetrieveBTCProps> = ({
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault()
 
-    const amount = BigInt(amountRef.current?.value || "0")
+    const amount = amountRef.current?.value || "0"
     approve([
       {
-        spender: { owner: minterCanisterId, subaccount: [] },
+        spender: { owner: CKBTC_MINTER_CANISTER_ID },
         amount,
-        fee: [],
-        memo: [],
-        created_at_time: [],
-        from_subaccount: [],
-        expected_allowance: [],
-        expires_at: [],
       },
     ])
-  }
-
-  const formatBalance = (bal: bigint | undefined) => {
-    if (bal === undefined) return "—"
-    // Assuming 8 decimals for ckBTC
-    return Number(bal / 100000000n).toFixed(8)
   }
 
   const isProcessing = approveLoading || retrieveBtcLoading

@@ -1,4 +1,3 @@
-import { Principal } from "@icp-sdk/core/principal"
 import { useRef } from "react"
 import { transferMutation } from "./reactor"
 
@@ -11,22 +10,10 @@ const CKBTCTransfer = () => {
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const principal = principalRef.current?.value || ""
+    const owner = principalRef.current?.value || ""
     const amount = amountRef.current?.value || ""
 
-    mutate([
-      {
-        to: {
-          owner: Principal.fromText(principal),
-          subaccount: [],
-        },
-        amount: BigInt(amount),
-        fee: [],
-        memo: [],
-        created_at_time: [],
-        from_subaccount: [],
-      },
-    ])
+    mutate([{ to: { owner }, amount }])
   }
 
   // Helper to format result for display

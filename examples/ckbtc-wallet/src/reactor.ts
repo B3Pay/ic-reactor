@@ -4,7 +4,7 @@
  * This file demonstrates how to set up reactors for interacting with
  * ckBTC Ledger and Minter canisters using the v3 API.
  */
-import { ClientManager, DisplayReactor, Reactor } from "@ic-reactor/core"
+import { ClientManager, DisplayReactor } from "@ic-reactor/core"
 import {
   createActorHooks,
   createAuthHooks,
@@ -43,8 +43,9 @@ export const clientManager = new ClientManager({
 // ============================================================================
 
 // ckBTC Ledger on testnet
-export const ckbtcLedger = new Reactor<CkbtcLedger>({
+export const ckbtcLedger = new DisplayReactor<CkbtcLedger>({
   clientManager,
+  name: "ckbtcLedger",
   canisterId: "mc6ru-gyaaa-aaaar-qaaaq-cai",
   idlFactory: ckbtcIdlFactory,
 })
@@ -52,6 +53,7 @@ export const ckbtcLedger = new Reactor<CkbtcLedger>({
 // ckBTC Minter on testnet
 export const ckbtcMinter = new DisplayReactor<CkbtcMinter>({
   clientManager,
+  name: "ckbtcMinter",
   canisterId: "ml52i-qqaaa-aaaar-qaaba-cai",
   idlFactory: minterIdlFactory,
 })

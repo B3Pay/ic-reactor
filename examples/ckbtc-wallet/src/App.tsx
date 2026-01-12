@@ -62,12 +62,10 @@ const App = () => {
       {/* Main Content */}
       {isAuthenticated && userPrincipal ? (
         <div className="wallet-content">
-          <GetBTCAddress userPrincipal={userPrincipal}>
-            <CkbtcUpdateBalance userPrincipal={userPrincipal}>
-              <MinterRetrieveBTC userPrincipal={userPrincipal} />
-              <CKBTCTransfer />
-            </CkbtcUpdateBalance>
-          </GetBTCAddress>
+          <GetBTCAddress userPrincipal={userPrincipal.toString()} />
+          <CkbtcUpdateBalance userPrincipal={userPrincipal.toString()} />
+          <MinterRetrieveBTC userPrincipal={userPrincipal.toString()} />
+          <CKBTCTransfer />
         </div>
       ) : (
         <div className="empty-state">
