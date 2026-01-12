@@ -30,8 +30,8 @@
     "generate": "dfx generate"
   },
   "dependencies": {
-    "@ic-reactor/core": "^3.0.3-beta.3",
-    "@ic-reactor/react": "^3.0.3-beta.3",
+    "@ic-reactor/core": "^3.0.3-beta.4",
+    "@ic-reactor/react": "^3.0.3-beta.4",
     "@icp-sdk/auth": "^5.0.0",
     "@icp-sdk/core": "^5.0.0",
     "@tailwindcss/postcss": "^4.1.18",
