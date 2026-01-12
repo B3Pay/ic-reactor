@@ -49,10 +49,10 @@
   },
   "pnpm": {
     "overrides": {
-      "@dfinity/agent": "npm:@icp-sdk/core@^5.0.0",
-      "@dfinity/candid": "npm:@icp-sdk/candid@^5.0.0",
-      "@dfinity/principal": "npm:@icp-sdk/principal@^5.0.0",
-      "@dfinity/identity": "npm:@icp-sdk/identity@^5.0.0"
+      "@dfinity/agent": "npm:@icp-sdk/core/core@^5.0.0",
+      "@dfinity/candid": "npm:@icp-sdk/core/candid@^5.0.0",
+      "@dfinity/principal": "npm:@icp-sdk/core/principal@^5.0.0",
+      "@dfinity/identity": "npm:@icp-sdk/core/identity@^5.0.0"
     }
   }
 }
