@@ -13,7 +13,6 @@ import {
   useState,
 } from "react"
 import { Reactor } from "@ic-reactor/core"
-import { IDL } from "@icp-sdk/core/candid"
 import { createActorHooks, ActorHooks } from "@ic-reactor/react"
 import { idlFactory, type ICRC1 } from "./declarations/icrc1"
 import { clientManager } from "./reactor"
@@ -63,13 +62,13 @@ const ICRC1Provider: React.FC<ICRC1ProviderProps> = ({
     try {
       setError(null)
       const reactor = new Reactor<ICRC1>({
+        name: "icrc1",
         clientManager,
         canisterId,
-        idlFactory: idlFactory as IDL.InterfaceFactory,
+        idlFactory,
       })
 
-      const actorHooks = createActorHooks(reactor) as ICRC1Hooks
-      return actorHooks
+      return createActorHooks(reactor)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       throw e

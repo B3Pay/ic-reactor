@@ -29,6 +29,7 @@ const UserWallet = ({ principal }: UserWalletProps) => {
     onSuccess: (data) => {
       setTransferError(null)
       setTransferSuccess(`Transfer successful! Block: ${data?.toString()}`)
+      refetch()
       // Clear form
       if (amountRef.current) amountRef.current.value = ""
     },
