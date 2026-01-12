@@ -90,7 +90,7 @@ const App = () => {
         <p>
           Powered by{" "}
           <a
-            href="https://github.com/AstroX-Labs/ic-reactor"
+            href="https://github.com/b3pay/ic-reactor"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: "var(--color-primary)" }}

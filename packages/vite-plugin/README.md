@@ -260,7 +260,7 @@ icReactorPlugin({
 
 ## Integration with ICP CLI
 
-If you're using [icp-cli](https://github.com/AstroxNetwork/icp-cli), configure your `vite.config.ts` to pass canister IDs via the `ic_env` cookie:
+If you're using [icp-cli](https://github.com/b3pay/icp-cli), configure your `vite.config.ts` to pass canister IDs via the `ic_env` cookie:
 
 ```typescript
 // vite.config.ts
