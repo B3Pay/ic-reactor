@@ -12,10 +12,10 @@
     "@ic-reactor/candid": "^3.0.3-beta.2",
     "@ic-reactor/core": "^3.0.3-beta.2",
     "@ic-reactor/react": "^3.0.3-beta.2",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
+    "@microlink/react-json-view": "^1.27.0",
     "@tanstack/react-query": "^5.90",
-    "@microlink/react-json-view": "^1.27.0"
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",

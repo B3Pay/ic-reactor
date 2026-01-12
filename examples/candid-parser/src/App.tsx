@@ -1,8 +1,8 @@
 import { useState } from "react"
-import { CandidDisplayReactor } from "@ic-reactor/candid"
 import { ClientManager } from "@ic-reactor/core"
 import ReactJson from "@microlink/react-json-view"
 import { QueryClient } from "@tanstack/react-query"
+import { CandidDisplayReactor } from "@ic-reactor/candid"
 
 // Initialize basic client manager
 const clientManager = new ClientManager({
@@ -23,7 +23,9 @@ function App() {
   const [candid, setCandid] = useState(DEFAULT_CANDID)
   const [functionName, setFunctionName] = useState(DEFAULT_FUNC)
   const [argsInput, setArgsInput] = useState(DEFAULT_ARGS)
-  const [callType, setCallType] = useState<"query" | "call">("query")
+  const [callType, setCallType] = useState<
+    "query" | "call" | "composite_query"
+  >("query")
 
   const [result, setResult] = useState<unknown>(null)
   const [error, setError] = useState<string | null>(null)
@@ -41,6 +43,7 @@ function App() {
       // - Principal → string
       // - [T] | [] → T | null
       const reactor = new CandidDisplayReactor({
+        name: "Candid Display Reactor",
         canisterId,
         clientManager,
       })
@@ -57,7 +60,7 @@ function App() {
       console.log("Calling with:", { functionName, args, candid })
 
       let res
-      if (callType === "query") {
+      if (callType === "query" || callType === "composite_query") {
         // Use queryDynamic for one-shot query with display transformations
         res = await reactor.queryDynamic({
           functionName,

@@ -33,7 +33,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://ic-reactor.dev",
+  "homepage": "https://b3pay.github.io/ic-reactor/v3/packages/candid/",
   "keywords": [
     "internet-computer",
     "icp",
