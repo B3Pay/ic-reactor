@@ -15,7 +15,7 @@ importers:
   .:
     devDependencies:
       '@types/node':
-        specifier: ^25.0.3
+        specifier: ^25.0.6
         version: 25.0.6
       husky:
         specifier: ^9.1.7
@@ -168,8 +168,8 @@ importers:
         specifier: ^12.0.0
         version: 12.0.0(size-limit@12.0.0)
       '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.7
+        specifier: ^25.0.6
+        version: 25.0.6
       size-limit:
         specifier: ^12.0.0
         version: 12.0.0
@@ -196,8 +196,8 @@ importers:
         version: 1.1.1
     devDependencies:
       '@types/node':
-        specifier: ^22.10.5
-        version: 22.19.5
+        specifier: ^25.0.6
+        version: 25.0.6
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(postcss@8.5.6)(typescript@5.9.3)(yaml@2.8.2)
@@ -230,8 +230,8 @@ importers:
         specifier: ^5.90
         version: 5.90.16(react@19.2.3)
       '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.7
+        specifier: ^25.0.6
+        version: 25.0.6
       fake-indexeddb:
         specifier: ^6.2.5
         version: 6.2.5
@@ -317,7 +317,7 @@ importers:
         version: 4.0.3
     devDependencies:
       '@types/node':
-        specifier: ^25.0.3
+        specifier: ^25.0.6
         version: 25.0.6
       tsup:
         specifier: ^8.5.1
@@ -2083,12 +2083,6 @@ packages:
 
   '@types/node@20.19.28':
     resolution: {integrity: sha512-VyKBr25BuFDzBFCK5sUM6ZXiWfqgCTwTAOK8qzGV/m9FCirXYDlmczJ+d5dXBAQALGCdRRdbteKYfJ84NGEusw==}
-
-  '@types/node@22.19.5':
-    resolution: {integrity: sha512-HfF8+mYcHPcPypui3w3mvzuIErlNOh2OAG+BCeBZCEwyiD5ls2SiCwEyT47OELtf7M3nHxBdu0FsmzdKxkN52Q==}
-
-  '@types/node@24.10.7':
-    resolution: {integrity: sha512-+054pVMzVTmRQV8BhpGv3UyfZ2Llgl8rdpDTon+cUH9+na0ncBVXj3wTUKh14+Kiz18ziM3b4ikpP5/Pc0rQEQ==}
 
   '@types/node@25.0.6':
     resolution: {integrity: sha512-NNu0sjyNxpoiW3YuVFfNz7mxSQ+S4X2G28uqg2s+CzoqoQjLPsWSbsFFyztIAqt2vb8kfEAsJNepMGPTxFDx3Q==}
@@ -7374,14 +7368,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@22.19.5':
-    dependencies:
-      undici-types: 6.21.0
-
-  '@types/node@24.10.7':
-    dependencies:
-      undici-types: 7.16.0
-
   '@types/node@25.0.6':
     dependencies:
       undici-types: 7.16.0
@@ -11243,19 +11229,6 @@ snapshots:
       tinyglobby: 0.2.15
     optionalDependencies:
       '@types/node': 25.0.6
-      fsevents: 2.3.3
-      yaml: 2.8.2
-
-  vite@7.3.1(@types/node@24.10.7)(yaml@2.8.2):
-    dependencies:
-      esbuild: 0.27.2
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
-      postcss: 8.5.6
-      rollup: 4.55.1
-      tinyglobby: 0.2.15
-    optionalDependencies:
-      '@types/node': 24.10.7
       fsevents: 2.3.3
       yaml: 2.8.2
 
