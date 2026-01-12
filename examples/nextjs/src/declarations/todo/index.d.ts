@@ -3,9 +3,9 @@ import type {
   HttpAgentOptions,
   ActorConfig,
   Agent
-} from "@icp-sdk/core/agent"
-import type { Principal } from "@icp-sdk/core/principal"
-import type { IDL } from "@icp-sdk/core/candid"
+} from "@dfinity/agent"
+import type { Principal } from "@dfinity/principal"
+import type { IDL } from "@dfinity/candid"
 
 import { _SERVICE } from "./todo.did"
 

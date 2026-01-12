@@ -11,7 +11,5 @@ export const clientManager = new ClientManager({
   }
 })
 
-clientManager.initialize().catch(console.error)
-
 export const { useAuth, useAgentState, useUserPrincipal } =
   createAuthHooks(clientManager)
