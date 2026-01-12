@@ -2,6 +2,7 @@
   "name": "ic-rust-nextjs",
   "version": "1.0.1",
   "private": true,
+  "type": "module",
   "author": "b3hr4d <b3hr4d@live.com>",
   "description": "Internet Computer Rust + NextJS Template",
   "keywords": [
@@ -29,8 +30,8 @@
     "generate": "dfx generate"
   },
   "dependencies": {
-    "@ic-reactor/core": "^3.0.3-beta.2",
-    "@ic-reactor/react": "^3.0.3-beta.2",
+    "@ic-reactor/core": "^3.0.3-beta.3",
+    "@ic-reactor/react": "^3.0.3-beta.3",
     "@icp-sdk/auth": "^5.0.0",
     "@icp-sdk/core": "^5.0.0",
     "@tailwindcss/postcss": "^4.1.18",

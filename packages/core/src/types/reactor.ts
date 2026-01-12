@@ -40,7 +40,7 @@ export interface ReactorParameters extends Omit<
 > {
   clientManager: ClientManager
   name: string
-  idlFactory: IDL.InterfaceFactory
+  idlFactory: (IDL: any) => IDL.ServiceClass
   canisterId?: CanisterId
 }
 
