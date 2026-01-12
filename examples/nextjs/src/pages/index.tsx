@@ -19,12 +19,12 @@ function HomePage() {
 
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-[100px] animate-pulse" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-linear-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-[100px] animate-pulse" />
         <div
-          className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-cyan-500/20 to-indigo-500/20 rounded-full blur-[100px] animate-pulse"
+          className="absolute -bottom-40 -left-40 w-80 h-80 bg-linear-to-br from-cyan-500/20 to-indigo-500/20 rounded-full blur-[100px] animate-pulse"
           style={{ animationDelay: "1s" }}
         />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full blur-[120px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-linear-to-br from-purple-500/10 to-pink-500/10 rounded-full blur-[120px]" />
       </div>
 
       {/* Main content */}
@@ -32,7 +32,7 @@ function HomePage() {
         {/* Header */}
         <header className="text-center mb-12">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <div className="w-12 h-12 bg-linear-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25">
               <svg
                 className="w-7 h-7 text-white"
                 fill="none"
@@ -48,7 +48,7 @@ function HomePage() {
               </svg>
             </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent mb-3">
+          <h1 className="text-4xl md:text-5xl font-bold bg-linear-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent mb-3">
             IC Todo App
           </h1>
           <p className="text-slate-400 text-lg max-w-md mx-auto">
@@ -63,7 +63,7 @@ function HomePage() {
 
         {/* Todo App Container */}
         <div className="w-full max-w-2xl">
-          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl shadow-black/20 overflow-hidden">
+          <div className="bg-linear-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl shadow-black/20 overflow-hidden">
             {/* Add Todo Section */}
             <div className="p-6 border-b border-slate-700/50">
               <AddTodo />

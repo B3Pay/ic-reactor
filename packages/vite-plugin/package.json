@@ -40,9 +40,6 @@
       "optional": true
     }
   },
-  "dependencies": {
-    "chokidar": "^5.0.0"
-  },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "tsup": "^8.5.1",
