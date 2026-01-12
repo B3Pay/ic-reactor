@@ -2,9 +2,7 @@ import { Todo } from "declarations/todo/todo.did"
 import { useState } from "react"
 import { useMutateTodo } from "service/todo"
 
-interface TodoProps extends Todo {}
-
-const RenderTodo = ({ id, completed, description }: TodoProps) => {
+const RenderTodo = ({ id, completed, description }: Todo) => {
   const { mutate, error, isPending } = useMutateTodo({
     functionName: "toggleTodo"
   })
