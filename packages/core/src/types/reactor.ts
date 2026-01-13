@@ -2,7 +2,7 @@ import type {
   ActorMethod,
   ActorSubclass,
   CallConfig,
-  ActorConfig,
+  PollingOptions,
 } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryKey } from "@tanstack/query-core"
@@ -33,14 +33,12 @@ export type ActorMethodParameters<T> =
 export type ActorMethodReturnType<T> =
   T extends ActorMethod<any, infer Ret> ? Ret : never
 
-export interface ReactorParameters extends Omit<
-  ActorConfig,
-  "agent" | "effectiveCanisterId" | "canisterId"
-> {
+export interface ReactorParameters {
   clientManager: ClientManager
   name: string
   idlFactory: (IDL: any) => any
   canisterId?: CanisterId
+  pollingOptions?: PollingOptions
 }
 
 export type ActorMethodType<A, M extends keyof A> = {

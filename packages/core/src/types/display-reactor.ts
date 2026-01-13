@@ -60,7 +60,9 @@ export type DisplayValidator<A, M extends FunctionName<A>> = Validator<
 // DisplayReactor Parameters
 // ============================================================================
 
-export type DisplayReactorParameters<A = BaseActor> = ReactorParameters & {
+export interface DisplayReactorParameters<
+  A = BaseActor,
+> extends ReactorParameters {
   /**
    * Optional initial validators to register.
    * Validators receive display types (strings for Principal, bigint, etc.)
