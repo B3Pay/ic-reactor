@@ -5,7 +5,6 @@ import type {
   ActorConfig,
 } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
-import type { IDL } from "@icp-sdk/core/candid"
 import type { QueryKey } from "@tanstack/query-core"
 import type { ClientManager } from "../client"
 import type { CallError, CanisterError } from "../errors"
@@ -40,7 +39,7 @@ export interface ReactorParameters extends Omit<
 > {
   clientManager: ClientManager
   name: string
-  idlFactory: (IDL: any) => IDL.ServiceClass
+  idlFactory: (IDL: any) => any
   canisterId?: CanisterId
 }
 
