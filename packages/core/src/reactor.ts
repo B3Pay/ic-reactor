@@ -107,6 +107,25 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     this.clientManager.registerCanisterId(this.canisterId.toString(), this.name)
   }
 
+  /**
+   * Set the canister name for this reactor.
+   * Useful for dynamically switching between canisters of the same type (e.g., multiple ICRC tokens).
+   *
+   * @param name - The new canister name
+   *
+   * @example
+   * ```typescript
+   * // Switch to a different ledger canister
+   * ledgerReactor.setCanisterName("icrc1")
+   *
+   * // Then use queries/mutations as normal
+   * const { data } = icrc1NameQuery.useQuery()
+   * ```
+   */
+  public setCanisterName(name: string): void {
+    this.name = name
+  }
+
   protected verifyCanister() {
     // Optional: add any verification logic here
   }
