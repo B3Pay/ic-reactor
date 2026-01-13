@@ -42,11 +42,6 @@ describe("Package Exports", () => {
   })
 
   describe("Utils", () => {
-    it("should export noop function", () => {
-      expect(CandidPackage.noop).toBeDefined()
-      expect(typeof CandidPackage.noop).toBe("function")
-    })
-
     it("should export importCandidDefinition function", () => {
       expect(CandidPackage.importCandidDefinition).toBeDefined()
       expect(typeof CandidPackage.importCandidDefinition).toBe("function")
@@ -61,7 +56,6 @@ describe("Package Exports", () => {
       "DEFAULT_IC_DIDJS_ID",
       "DEFAULT_LOCAL_DIDJS_ID",
       // Utils
-      "noop",
       "importCandidDefinition",
     ]
 
@@ -87,7 +81,6 @@ describe("Package Exports", () => {
         "CandidDisplayReactorParameters",
         "DEFAULT_IC_DIDJS_ID",
         "DEFAULT_LOCAL_DIDJS_ID",
-        "noop",
         "importCandidDefinition",
       ]
 

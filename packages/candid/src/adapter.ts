@@ -10,7 +10,7 @@ import type {
 import { CanisterStatus } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { DEFAULT_IC_DIDJS_ID, DEFAULT_LOCAL_DIDJS_ID } from "./constants"
-import { importCandidDefinition, noop } from "./utils"
+import { importCandidDefinition } from "./utils"
 import { CanisterId } from "@ic-reactor/core"
 
 /**
@@ -442,3 +442,5 @@ export class CandidAdapter {
     return this.validateCandid(candidSource)
   }
 }
+
+const noop = () => {}

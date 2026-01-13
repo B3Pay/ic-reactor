@@ -1,11 +1,6 @@
 import type { CandidDefinition } from "./types"
 
 /**
- * A no-operation function placeholder.
- */
-export const noop = () => {}
-
-/**
  * Imports and evaluates a Candid definition from JavaScript code.
  *
  * @param candidJs - The JavaScript code containing the Candid definition.

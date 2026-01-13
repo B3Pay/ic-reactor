@@ -1,5 +1,8 @@
 import type { BaseActor, DisplayReactorParameters } from "@ic-reactor/core"
-import type { DynamicMethodOptions } from "./types"
+import type {
+  CandidDisplayReactorParameters,
+  DynamicMethodOptions,
+} from "./types"
 
 import {
   DisplayReactor,
@@ -8,24 +11,6 @@ import {
 } from "@ic-reactor/core"
 import { CandidAdapter } from "./adapter"
 import { IDL } from "@icp-sdk/core/candid"
-
-// ============================================================================
-// CandidDisplayReactor Parameters
-// ============================================================================
-
-export interface CandidDisplayReactorParameters<A = BaseActor> extends Omit<
-  DisplayReactorParameters<A>,
-  "idlFactory" | "actor"
-> {
-  /** The canister ID. */
-  canisterId: string
-  /** The Candid source code. If not provided, the canister's Candid will be fetched. */
-  candid?: string
-  /** The IDL interface factory. */
-  idlFactory?: IDL.InterfaceFactory
-  /** The actor instance. */
-  actor?: A
-}
 
 // ============================================================================
 // CandidDisplayReactor
@@ -84,20 +69,23 @@ export class CandidDisplayReactor<A = BaseActor> extends DisplayReactor<A> {
   private candidSource?: string
 
   constructor(config: CandidDisplayReactorParameters<A>) {
-    // If idlFactory/actor are missing, use a dummy one to satisfy DisplayReactor constructor
     const superConfig = { ...config }
 
-    if (!superConfig.idlFactory && !superConfig.actor) {
-      // Use `any` for IDL to avoid type compatibility issues across package versions
-      superConfig.idlFactory = (config: { IDL: any }) => config.IDL.Service({})
+    if (!superConfig.idlFactory) {
+      superConfig.idlFactory = ({ IDL }) => IDL.Service({})
     }
 
     super(superConfig as DisplayReactorParameters<A>)
 
     this.candidSource = config.candid
-    this.adapter = new CandidAdapter({
-      clientManager: this.clientManager,
-    })
+
+    if (config.adapter) {
+      this.adapter = config.adapter
+    } else {
+      this.adapter = new CandidAdapter({
+        clientManager: this.clientManager,
+      })
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════

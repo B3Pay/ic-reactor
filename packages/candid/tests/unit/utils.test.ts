@@ -1,27 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { noop, importCandidDefinition } from "../../src/utils"
+import { describe, it, expect } from "vitest"
+import { importCandidDefinition } from "../../src/utils"
 
 describe("Utils", () => {
-  describe("noop", () => {
-    it("should be a function", () => {
-      expect(typeof noop).toBe("function")
-    })
-
-    it("should return undefined when called", () => {
-      const result = noop()
-      expect(result).toBeUndefined()
-    })
-
-    it("should not throw when called", () => {
-      expect(() => noop()).not.toThrow()
-    })
-
-    it("should be usable as a default callback", () => {
-      let unsubscribe: () => void = noop
-      expect(() => unsubscribe()).not.toThrow()
-    })
-  })
-
   describe("importCandidDefinition", () => {
     it("should throw error for invalid JavaScript code", async () => {
       const invalidJs = "this is not valid javascript code {{{{"

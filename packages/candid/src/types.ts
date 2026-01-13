@@ -1,6 +1,12 @@
 import type { HttpAgent, Identity } from "@icp-sdk/core/agent"
 import type { IDL } from "@icp-sdk/core/candid"
-import type { CanisterId, ReactorParameters } from "@ic-reactor/core"
+import type {
+  BaseActor,
+  CanisterId,
+  DisplayReactorParameters,
+  ReactorParameters,
+} from "@ic-reactor/core"
+import type { CandidAdapter } from "./adapter"
 
 export interface DynamicMethodOptions {
   /** The method name to register. */
@@ -15,14 +21,34 @@ export interface DynamicMethodOptions {
 
 export interface CandidReactorParameters extends Omit<
   ReactorParameters,
-  "idlFactory" | "actor"
+  "idlFactory"
 > {
   /** The canister ID. */
-  canisterId: CanisterId
-  /** The Candid source code. */
+  canisterId?: CanisterId
+  /** The Candid source code. If not provided, the canister's Candid will be fetched. */
   candid?: string
   /** The IDL interface factory. */
-  idlFactory?: IDL.InterfaceFactory
+  idlFactory?: (IDL: any) => any
+  /** The Candid adapter. */
+  adapter?: CandidAdapter
+}
+
+// ============================================================================
+// CandidDisplayReactor Parameters
+// ============================================================================
+
+export interface CandidDisplayReactorParameters<A = BaseActor> extends Omit<
+  DisplayReactorParameters<A>,
+  "idlFactory"
+> {
+  /** The canister ID. */
+  canisterId?: CanisterId
+  /** The Candid source code. If not provided, the canister's Candid will be fetched. */
+  candid?: string
+  /** The IDL interface factory. */
+  idlFactory?: (IDL: any) => any
+  /** The Candid adapter. */
+  adapter?: CandidAdapter
 }
 
 /**
