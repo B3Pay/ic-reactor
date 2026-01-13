@@ -16,9 +16,9 @@
     "baseUrl": ".",
     "paths": {
       "@dfinity/*": [
-        "./node_modules/@icp-sdk/core/lib/cjs/*/dist/index.d.ts",
-        "./node_modules/@icp-sdk/core/lib/cjs/*/index.d.ts",
-        "./node_modules/@icp-sdk/core/lib/cjs/*"
+        "./node_modules/@icp-sdk/core/lib/esm/*/dist/index.d.ts",
+        "./node_modules/@icp-sdk/core/lib/esm/*/index.d.ts",
+        "./node_modules/@icp-sdk/core/lib/esm/*"
       ],
       "*": ["./src/*"]
     },
