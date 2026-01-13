@@ -4,18 +4,13 @@ const envList = require("dotenv").config({ path: "./.env" }).parsed || {}
 // Adjust the path to get version from package.json
 const { version } = require("./package.json")
 
-envList.NEXT_PUBLIC_IC_HOST =
-  envList.DFX_NETWORK === "ic" ? "https://icp-api.io" : "http://127.0.0.1:4943"
-
 envList.NEXT_PUBLIC_VERSION = version
 
 /** @type {import('next').NextConfig} */
 module.exports = {
   output: "export",
   env: envList,
-  turbopack: {
-    root: __dirname
-  },
+
   images: {
     unoptimized: true
   },
@@ -23,40 +18,29 @@ module.exports = {
   transpilePackages: [
     "@ic-reactor/react",
     "@ic-reactor/core",
-    "@icp-sdk/core",
-    "@icp-sdk/auth",
-    "@icp-sdk/candid",
-    "@icp-sdk/principal",
-    "@icp-sdk/identity",
+    "@icp-sdk/core/agent",
+    "@icp-sdk/core/auth",
+    "@icp-sdk/core/candid",
+    "@icp-sdk/core/principal",
+    "@icp-sdk/core/identity",
     "@dfinity/agent",
     "@dfinity/candid",
+    "@dfinity/identity",
     "@dfinity/principal"
   ],
 
   // Turbopack configuration (Next.js 16+ default bundler)
+  /*
+   * Turbopack configuration
+   * Fixes "rule.loaders is not iterable" by using resolveAlias instead of rules for aliasing
+   */
   turbopack: {
-    rules: {
-      "@dfinity/agent": {
-        alias: require("path").resolve(__dirname, "node_modules/@icp-sdk/core")
-      },
-      "@dfinity/candid": {
-        alias: require("path").resolve(
-          __dirname,
-          "node_modules/@icp-sdk/core/candid"
-        )
-      },
-      "@dfinity/principal": {
-        alias: require("path").resolve(
-          __dirname,
-          "node_modules/@icp-sdk/core/principal"
-        )
-      },
-      "@dfinity/identity": {
-        alias: require("path").resolve(
-          __dirname,
-          "node_modules/@icp-sdk/core/identity"
-        )
-      }
+    root: __dirname,
+    resolveAlias: {
+      "@dfinity/agent": "./node_modules/@icp-sdk/core/lib/esm/agent",
+      "@dfinity/candid": "./node_modules/@icp-sdk/core/lib/esm/candid",
+      "@dfinity/principal": "./node_modules/@icp-sdk/core/lib/esm/principal",
+      "@dfinity/identity": "./node_modules/@icp-sdk/core/lib/esm/identity"
     }
   },
 
@@ -65,22 +49,10 @@ module.exports = {
     // Add aliases for @dfinity packages to map to @icp-sdk packages
     config.resolve.alias = {
       ...config.resolve.alias,
-      "@dfinity/agent": require("path").resolve(
-        __dirname,
-        "node_modules/@icp-sdk/core"
-      ),
-      "@dfinity/candid": require("path").resolve(
-        __dirname,
-        "node_modules/@icp-sdk/core/candid"
-      ),
-      "@dfinity/principal": require("path").resolve(
-        __dirname,
-        "node_modules/@icp-sdk/core/principal"
-      ),
-      "@dfinity/identity": require("path").resolve(
-        __dirname,
-        "node_modules/@icp-sdk/core/identity"
-      )
+      "@dfinity/agent": "./node_modules/@icp-sdk/core/agent",
+      "@dfinity/candid": "./node_modules/@icp-sdk/core/candid",
+      "@dfinity/principal": "./node_modules/@icp-sdk/core/principal",
+      "@dfinity/identity": "./node_modules/@icp-sdk/core/identity"
     }
 
     // Fix for ESM directory imports

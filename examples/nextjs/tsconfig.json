@@ -21,7 +21,8 @@
         "./node_modules/@icp-sdk/core/lib/cjs/*"
       ],
       "*": ["./src/*"]
-    }
+    },
+    "incremental": true
   },
   "include": ["next-env.d.ts", ".next/types/**/*.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
