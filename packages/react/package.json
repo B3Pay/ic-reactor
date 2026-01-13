@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/react",
-  "version": "3.0.3-beta.5",
+  "version": "3.0.4-beta.0",
   "description": "IC Reactor React Library",
   "main": "dist/index.js",
   "module": "dist/index.js",
