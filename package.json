@@ -6,7 +6,9 @@
   "description": "The modern, type-safe library for building Internet Computer applications",
   "scripts": {
     "build": "pnpm -r --filter \"./packages/**\" build",
+    "build:ci": "pnpm -r --filter \"./packages/**\" --filter \"!./packages/parser\" build",
     "test": "pnpm -r --filter \"./packages/**\" test",
+    "test:ci": "pnpm -r --filter \"./packages/**\" --filter \"!./packages/parser\" test",
     "test-e2e": "cd e2e && sh ./test.sh",
     "docs:build": "cd docs && pnpm build",
     "docs:preview": "cd docs && pnpm preview",
