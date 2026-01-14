@@ -233,6 +233,52 @@ const { mutate } = useActorMutation({
 mutate([{ name: "Alice", email: "alice@example.com" }]) // ✅ Type-safe args
 ```
 
+## Type Exports
+
+The package exports types for all hooks with two naming conventions:
+
+### `UseActor*` Types (for bound hooks)
+
+For hooks created by `createActorHooks` where the reactor is already bound:
+
+```typescript
+import type {
+  UseActorQueryParameters,
+  UseActorQueryResult,
+  UseActorMutationParameters,
+  UseActorMutationResult,
+  UseActorSuspenseQueryParameters,
+  UseActorSuspenseQueryResult,
+  UseActorInfiniteQueryParameters,
+  UseActorInfiniteQueryResult,
+  UseActorSuspenseInfiniteQueryParameters,
+  UseActorSuspenseInfiniteQueryResult,
+} from "@ic-reactor/react"
+```
+
+### `UseReactor*` Types (for direct hooks)
+
+For direct hook usage where you pass the reactor explicitly:
+
+```typescript
+import type {
+  UseReactorQueryParameters,
+  UseReactorQueryResult,
+  UseReactorMutationParameters,
+  UseReactorMutationResult,
+  UseReactorMethodParameters,
+  UseReactorMethodResult,
+  // ... and more
+} from "@ic-reactor/react"
+```
+
+<Aside type="note">
+  All parameter types extend react-query's base types (`QueryObserverOptions`,
+  `UseMutationOptions`, `UseInfiniteQueryOptions`). This means you get access to
+  all standard react-query options like `gcTime`, `retry`,
+  `refetchOnWindowFocus`, `networkMode`, `placeholderData`, etc.
+</Aside>
+
 ## See Also
 
 - [useActorQuery](/ic-reactor/v3/reference/createactorhooks/useactorquery) — Query hook reference
