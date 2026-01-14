@@ -87,6 +87,7 @@ export type {
   UseActorSuspenseInfiniteQueryResult,
 } from "./useActorSuspenseInfiniteQuery.js"
 
-// Note: UseActorMethodParameters for the Method hook is the same as UseReactorMethodParameters
-// since it requires a reactor. Use Omit<UseReactorMethodParameters<...>, "reactor"> if needed.
-export type { UseActorMethodResult } from "./useActorMethod.js"
+export type {
+  UseActorMethodConfig as UseActorMethodParameters,
+  UseActorMethodResult,
+} from "./useActorMethod.js"

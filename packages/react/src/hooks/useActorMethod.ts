@@ -76,6 +76,16 @@ export interface UseActorMethodParameters<
 }
 
 /**
+ * Configuration type for bound useActorMethod hook (reactor omitted).
+ * For use with createActorHooks.
+ */
+export type UseActorMethodConfig<
+  A = BaseActor,
+  M extends FunctionName<A> = FunctionName<A>,
+  T extends TransformKey = "candid",
+> = Omit<UseActorMethodParameters<A, M, T>, "reactor">
+
+/**
  * Result type for useActorMethod hook.
  * Provides a unified interface for both query and mutation methods.
  */
