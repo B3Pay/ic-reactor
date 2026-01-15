@@ -185,7 +185,7 @@ export function useActorMethod<
     return reactor.generateQueryKey({
       functionName,
       args,
-    } as any)
+    })
   }, [reactor, functionName, args, customQueryKey])
 
   // ============================================================================
@@ -204,7 +204,7 @@ export function useActorMethod<
             functionName,
             args,
             callConfig,
-          } as any)
+          })
           onSuccess?.(result)
           return result
         } catch (error) {
@@ -213,7 +213,6 @@ export function useActorMethod<
         }
       },
       enabled: isQuery && enabled,
-      staleTime: queryOptions.staleTime ?? 5 * 60 * 1000, // 5 minutes default
       ...queryOptions,
     },
     reactor.queryClient
@@ -234,7 +233,7 @@ export function useActorMethod<
           functionName,
           args: mutationArgs ?? args,
           callConfig,
-        } as any)
+        })
         return result
       },
       onSuccess: (data) => {
@@ -264,12 +263,15 @@ export function useActorMethod<
       if (isQuery) {
         // For queries, refetch with new args if provided
         if (callArgs !== undefined) {
-          // Call directly if args changed
+          // Call the method with new args
           const result = await reactor.callMethod({
             functionName,
             args: callArgs,
             callConfig,
-          } as any)
+          })
+          // Update the cache using the HOOK's queryKey (not a key based on callArgs)
+          // This ensures the component re-renders since useQuery subscribes to this key
+          reactor.queryClient.setQueryData(queryKey, result)
           onSuccess?.(result)
           return result
         }
@@ -289,6 +291,7 @@ export function useActorMethod<
       reactor,
       functionName,
       callConfig,
+      queryKey,
       queryResult,
       mutationResult,
       onSuccess,
