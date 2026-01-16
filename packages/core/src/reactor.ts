@@ -44,7 +44,7 @@ import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   /** Phantom type brand for inference - never assigned at runtime */
   declare readonly _actor: A
-  public readonly transform: T = "candid" as T
+  public readonly transform: TransformKey = "candid"
   public clientManager: ClientManager
   public name: string
   public canisterId: Principal
