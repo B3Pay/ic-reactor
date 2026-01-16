@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/core",
-  "version": "3.0.5-beta.4",
+  "version": "3.0.6-beta.0",
   "description": "IC Reactor Core Library",
   "main": "dist/index.js",
   "module": "dist/index.js",
