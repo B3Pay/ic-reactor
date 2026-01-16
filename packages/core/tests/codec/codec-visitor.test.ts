@@ -603,6 +603,151 @@ describe("Codec Schema Visitor - Tuple Types", () => {
   })
 })
 
+it("should convert Vec<Tuple(Text, Complex)> to Map", () => {
+  const mapType = IDL.Vec(IDL.Tuple(IDL.Text, IDL.Principal))
+  type CandidMap = Array<[string, Principal]>
+
+  const codec = didToDisplayCodec<CandidMap>(mapType)
+
+  // Decode: Array of tuples → Map
+  const candidValue: CandidMap = [
+    ["key1", Principal.fromText("aaaaa-aa")],
+    ["key2", Principal.fromText("2vxsx-fae")],
+    ["key3", Principal.fromText("rrkah-fqaaa-aaaaa-aaaaq-cai")],
+  ]
+
+  const display = codec.asDisplay(candidValue)
+  expect(display).toBeInstanceOf(Map)
+  expect(display.get("key1")).toBe("aaaaa-aa")
+  expect(display.get("key2")).toBe("2vxsx-fae")
+  expect(display.get("key3")).toBe("rrkah-fqaaa-aaaaa-aaaaq-cai")
+  expect(display.size).toBe(3)
+
+  // Encode: Map → Array of tuples
+  const mapValue = new Map([
+    ["foo", Principal.fromText("aaaaa-aa")],
+    ["hello", Principal.fromText("2vxsx-fae")],
+  ])
+
+  const roundTrip = codec.asCandid(mapValue as any)
+  expect(roundTrip).toEqual([
+    ["foo", Principal.fromText("aaaaa-aa")],
+    ["hello", Principal.fromText("2vxsx-fae")],
+  ])
+
+  // Round-trip test
+  const originalMap = new Map([
+    ["a", "aaaaa-aa"],
+    ["b", "2vxsx-fae"],
+  ])
+  const encoded = codec.asCandid(originalMap as any)
+  const decoded = codec.asDisplay(encoded)
+  expect(decoded).toBeInstanceOf(Map)
+  expect(decoded.get("a")).toBe("aaaaa-aa")
+  expect(decoded.get("b")).toBe("2vxsx-fae")
+})
+
+it("should handle complex recursive Map structures (Value type)", () => {
+  const Value = IDL.Rec()
+  Value.fill(
+    IDL.Variant({
+      Nat64: IDL.Nat64,
+      Text: IDL.Text,
+      Blob: IDL.Vec(IDL.Nat8),
+      Principal: IDL.Principal,
+      Array: IDL.Vec(Value),
+      Map: IDL.Vec(IDL.Tuple(IDL.Text, Value)),
+    })
+  )
+
+  type CandidValue =
+    | { Nat64: bigint }
+    | { Text: string }
+    | { Blob: Uint8Array }
+    | { Principal: Principal }
+    | { Array: CandidValue[] }
+    | { Map: Array<[string, CandidValue]> }
+
+  const codec = didToDisplayCodec<CandidValue>(Value)
+
+  // Construct a complex value similar to the image
+  const candidValue: CandidValue = {
+    Map: [
+      ["fee_col_block", { Nat64: 0n }],
+      ["phash", { Blob: new Uint8Array(32).fill(1) }],
+      ["ts", { Nat64: 1722243244968812371n }],
+      [
+        "tx",
+        {
+          Map: [
+            ["amt", { Nat64: 263747688n }],
+            ["fee", { Nat64: 10000n }],
+            [
+              "from",
+              { Array: [{ Principal: Principal.fromText("aaaaa-aa") }] },
+            ],
+            ["memo", { Blob: new Uint8Array(8).fill(2) }],
+            ["op", { Text: "xfer" }],
+            ["to", { Array: [{ Principal: Principal.fromText("2vxsx-fae") }] }],
+          ],
+        },
+      ],
+    ],
+  }
+
+  const display = codec.asDisplay(candidValue) as any
+
+  // display should be { _type: "Map", Map: Map<string, any> }
+  expect(display._type).toBe("Map")
+  const map = display.Map
+  expect(map).toBeInstanceOf(Map)
+
+  // Test Nat64 transformation (string in display)
+  expect(map.get("fee_col_block")).toEqual({ _type: "Nat64", Nat64: "0" })
+  expect(map.get("ts")).toEqual({
+    _type: "Nat64",
+    Nat64: "1722243244968812371",
+  })
+
+  // Test Blob transformation (hex string if small)
+  expect(typeof map.get("phash").Blob).toBe("string")
+  expect(map.get("phash").Blob).toMatch(/^0x/)
+
+  // Test nested Map
+  const tx = map.get("tx")
+  expect(tx._type).toBe("Map")
+  const txMap = tx.Map
+  expect(txMap).toBeInstanceOf(Map)
+  expect(txMap.get("op")).toEqual({ _type: "Text", Text: "xfer" })
+  expect(txMap.get("amt")).toEqual({ _type: "Nat64", Nat64: "263747688" })
+  expect(txMap.get("fee")).toEqual({ _type: "Nat64", Nat64: "10000" })
+  expect(txMap.get("from")).toEqual({
+    _type: "Array",
+    Array: [{ _type: "Principal", Principal: "aaaaa-aa" }],
+  })
+  expect(txMap.get("memo")).toEqual({
+    _type: "Blob",
+    Blob: "0x0202020202020202",
+  })
+
+  // Test nested Array and Principal
+  const from = txMap.get("from")
+  expect(from._type).toBe("Array")
+  expect(from.Array).toHaveLength(1)
+  expect(from.Array[0]).toEqual({
+    _type: "Principal",
+    Principal: "aaaaa-aa",
+  })
+
+  const to = txMap.get("to")
+  expect(to._type).toBe("Array")
+  expect(to.Array[0].Principal).toBe("2vxsx-fae")
+
+  // Round-trip test
+  const roundTrip = codec.asCandid(display) as CandidValue
+  expect(roundTrip).toEqual(candidValue)
+})
+
 describe("Codec Schema Visitor - Batch Generation", () => {
   it("should generate multiple codecs at once", () => {
     const codecs = didToDisplayCodecs({
