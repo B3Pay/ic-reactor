@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import React from "react"
-import { ClientManager, Reactor } from "@ic-reactor/core"
+import { ClientManager, Reactor, CallError } from "@ic-reactor/core"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useActorMethod } from "./useActorMethod"
 import { ActorMethod } from "@icp-sdk/core/agent"
@@ -399,7 +399,11 @@ describe("useActorMethod - Mutation Method Options", () => {
 
   it("should call onError callback for mutations", async () => {
     const error = new Error("Transfer failed")
-    vi.spyOn(reactor, "callMethod").mockRejectedValue(error)
+    const callError = new CallError(
+      `Failed to call method "transfer": ${error.message}`,
+      error
+    )
+    vi.spyOn(reactor, "callMethod").mockRejectedValue(callError)
 
     const onError = vi.fn()
 
@@ -420,7 +424,13 @@ describe("useActorMethod - Mutation Method Options", () => {
     }
 
     await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(onError).toHaveBeenCalledWith(error)
+    await waitFor(() => expect(result.current.error).toBe(callError))
+    expect(onError).toHaveBeenCalledWith(expect.any(CallError))
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("Transfer failed"),
+      })
+    )
   })
 
   it("should invalidate multiple queries on successful mutation", async () => {
@@ -481,7 +491,11 @@ describe("useActorMethod - Error Handling", () => {
 
   it("should handle query method errors", async () => {
     const error = new Error("Query failed")
-    vi.spyOn(reactor, "callMethod").mockRejectedValue(error)
+    const callError = new CallError(
+      `Failed to query method "greet": ${error.message}`,
+      error
+    )
+    vi.spyOn(reactor, "callMethod").mockRejectedValue(callError)
 
     const onError = vi.fn()
 
@@ -497,13 +511,23 @@ describe("useActorMethod - Error Handling", () => {
     )
 
     await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(result.current.error).toBe(error)
-    expect(onError).toHaveBeenCalledWith(error)
+    expect(result.current.error).toBeInstanceOf(CallError)
+    expect(result.current.error?.message).toContain("Query failed")
+    expect(onError).toHaveBeenCalledWith(expect.any(CallError))
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("Query failed"),
+      })
+    )
   })
 
   it("should handle mutation method errors", async () => {
     const error = new Error("Transfer failed")
-    vi.spyOn(reactor, "callMethod").mockRejectedValue(error)
+    const callError = new CallError(
+      `Failed to call method "transfer": ${error.message}`,
+      error
+    )
+    vi.spyOn(reactor, "callMethod").mockRejectedValue(callError)
 
     const { result } = renderHook(
       () =>
@@ -521,7 +545,8 @@ describe("useActorMethod - Error Handling", () => {
     }
 
     await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(result.current.error).toBe(error)
+    expect(result.current.error).toBeInstanceOf(CallError)
+    expect(result.current.error?.message).toContain("Transfer failed")
   })
 })
 
