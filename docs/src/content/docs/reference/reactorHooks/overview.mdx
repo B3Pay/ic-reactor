@@ -76,6 +76,56 @@ const { data } = useReactorQuery({
 })
 ```
 
+## Type Exports
+
+The hooks export types with two naming conventions:
+
+### `UseReactor*` Types (with reactor parameter)
+
+For direct hook usage where you pass the reactor explicitly:
+
+```typescript
+import type {
+  UseReactorQueryParameters,
+  UseReactorQueryResult,
+  UseReactorMutationParameters,
+  UseReactorMutationResult,
+  UseReactorSuspenseQueryParameters,
+  UseReactorSuspenseQueryResult,
+  UseReactorInfiniteQueryParameters,
+  UseReactorInfiniteQueryResult,
+  UseReactorSuspenseInfiniteQueryParameters,
+  UseReactorSuspenseInfiniteQueryResult,
+  UseReactorMethodParameters,
+  UseReactorMethodResult,
+} from "@ic-reactor/react"
+```
+
+### `UseActor*` Types (without reactor parameter)
+
+For use with `createActorHooks` where the reactor is already bound:
+
+```typescript
+import type {
+  UseActorQueryParameters,
+  UseActorQueryResult,
+  UseActorMutationParameters,
+  UseActorMutationResult,
+  UseActorSuspenseQueryParameters,
+  UseActorSuspenseQueryResult,
+  UseActorInfiniteQueryParameters,
+  UseActorInfiniteQueryResult,
+  UseActorSuspenseInfiniteQueryParameters,
+  UseActorSuspenseInfiniteQueryResult,
+} from "@ic-reactor/react"
+```
+
+<Aside type="note">
+  All parameter types extend react-query's base types. This means you get access
+  to all standard react-query options like `gcTime`, `retry`,
+  `refetchOnWindowFocus`, `networkMode`, `placeholderData`, etc.
+</Aside>
+
 <Aside type="tip">
   These hooks are essentially the "raw" versions of the hooks created by
   `createActorHooks`. In fact, `createActorHooks` uses these hooks internally!

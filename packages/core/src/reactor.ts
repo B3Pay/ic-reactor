@@ -27,7 +27,7 @@ import {
   processQueryCallResponse,
   processUpdateCallResponse,
 } from "./utils/agent"
-import { CallError, CanisterError } from "./errors"
+import { CallError, CanisterError, ValidationError } from "./errors"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 /**
@@ -44,7 +44,7 @@ import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   /** Phantom type brand for inference - never assigned at runtime */
   declare readonly _actor: A
-  public readonly transform: T = "candid" as T
+  public readonly transform: TransformKey = "candid"
   public clientManager: ClientManager
   public name: string
   public canisterId: Principal
@@ -221,27 +221,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   ): FetchQueryOptions<ReactorReturnOk<A, M, T>> {
     return {
       queryKey: this.generateQueryKey(params),
-      queryFn: async () => {
-        try {
-          return await this.callMethod(params)
-        } catch (error) {
-          // Re-throw CanisterError as-is (business logic error from canister)
-          if (error instanceof CanisterError) {
-            throw error
-          }
-
-          let message = `Failed to query method "${String(
-            params.functionName
-          )}": `
-
-          // Wrap other errors in CallError (network/agent issues)
-          if (error instanceof Error) {
-            throw new CallError(message + error.message, error)
-          }
-
-          throw new CallError(message + String(error), error)
-        }
-      },
+      queryFn: () => this.callMethod(params),
     }
   }
 
@@ -306,51 +286,70 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public async callMethod<M extends FunctionName<A>>(
     params: Omit<ReactorCallParams<A, M, T>, "queryKey">
   ): Promise<ReactorReturnOk<A, M, T>> {
-    const func = this.getFuncClass(params.functionName)
-    if (!func) {
-      throw new Error(`Method ${String(params.functionName)} not found`)
-    }
+    try {
+      const func = this.getFuncClass(params.functionName)
+      if (!func) {
+        throw new Error(`Method ${String(params.functionName)} not found`)
+      }
 
-    // Transform args
-    const transformedArgs = this.transformArgs(params.functionName, params.args)
-
-    // Encode arguments using Candid
-    const arg = IDL.encode(func.argTypes, transformedArgs)
-
-    // Determine if this is a query or update call
-    const isQuery =
-      func.annotations.includes("query") ||
-      func.annotations.includes("composite_query")
-
-    // Execute the call
-    let rawResponse: Uint8Array
-    if (isQuery) {
-      rawResponse = await this.executeQuery(
-        String(params.functionName),
-        arg,
-        params.callConfig
+      // Transform args
+      const transformedArgs = this.transformArgs(
+        params.functionName,
+        params.args
       )
-    } else {
-      rawResponse = await this.executeCall(
-        String(params.functionName),
-        arg,
-        params.callConfig
-      )
+
+      // Encode arguments using Candid
+      const arg = IDL.encode(func.argTypes, transformedArgs)
+
+      // Determine if this is a query or update call
+      const isQuery =
+        func.annotations.includes("query") ||
+        func.annotations.includes("composite_query")
+
+      // Execute the call
+      let rawResponse: Uint8Array
+      if (isQuery) {
+        rawResponse = await this.executeQuery(
+          String(params.functionName),
+          arg,
+          params.callConfig
+        )
+      } else {
+        rawResponse = await this.executeCall(
+          String(params.functionName),
+          arg,
+          params.callConfig
+        )
+      }
+
+      // Decode the result
+      const decoded = IDL.decode(func.retTypes, rawResponse)
+
+      // Handle single, zero, and multiple return values appropriately
+      const response = (
+        decoded.length === 0
+          ? undefined
+          : decoded.length === 1
+            ? decoded[0]
+            : decoded
+      ) as ActorMethodReturnType<A[M]>
+
+      return this.transformResult(params.functionName, response)
+    } catch (error) {
+      // Re-throw CanisterError as-is (business logic error from canister)
+      if (error instanceof CanisterError || error instanceof ValidationError) {
+        throw error
+      }
+
+      const message = `Failed to call method "${String(params.functionName)}": `
+
+      // Wrap other errors in CallError (network/agent issues)
+      if (error instanceof Error) {
+        throw new CallError(message + error.message, error)
+      }
+
+      throw new CallError(message + String(error), error)
     }
-
-    // Decode the result
-    const decoded = IDL.decode(func.retTypes, rawResponse)
-
-    // Handle single, zero, and multiple return values appropriately
-    const response = (
-      decoded.length === 0
-        ? undefined
-        : decoded.length === 1
-          ? decoded[0]
-          : decoded
-    ) as ActorMethodReturnType<A[M]>
-
-    return this.transformResult(params.functionName, response)
   }
 
   /**

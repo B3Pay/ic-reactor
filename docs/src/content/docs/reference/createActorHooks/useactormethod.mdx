@@ -64,18 +64,37 @@ function Transfer() {
 
 ## Options
 
-| Option              | Type                   | Description                                                 |
-| :------------------ | :--------------------- | :---------------------------------------------------------- |
-| `functionName`      | `M`                    | **Required**. The method name to call on the canister.      |
-| `args`              | `ReactorArgs<A, M, T>` | Arguments to pass to the method.                            |
-| `callConfig`        | `CallConfig`           | Agent call configuration (e.g., `effectiveCanisterId`).     |
-| `queryKey`          | `QueryKey`             | Custom query key for queries.                               |
-| `enabled`           | `boolean`              | For query methods: whether to auto-fetch (default: `true`). |
-| `staleTime`         | `number`               | For query methods: how long data stays fresh (ms).          |
-| `refetchInterval`   | `number \| false`      | For query methods: polling interval in ms.                  |
-| `onSuccess`         | `(data) => void`       | Callback when the method call succeeds.                     |
-| `onError`           | `(error) => void`      | Callback when the method call fails.                        |
-| `invalidateQueries` | `QueryKey[]`           | For mutations: keys to invalidate after success.            |
+`UseActorMethodParameters` extends react-query's `QueryObserverOptions`, giving you access to all standard react-query options plus our custom actor options.
+
+### Custom Options
+
+| Option              | Type                   | Description                                             |
+| :------------------ | :--------------------- | :------------------------------------------------------ |
+| `functionName`      | `M`                    | **Required**. The method name to call on the canister.  |
+| `args`              | `ReactorArgs<A, M, T>` | Arguments to pass to the method.                        |
+| `callConfig`        | `CallConfig`           | Agent call configuration (e.g., `effectiveCanisterId`). |
+| `queryKey`          | `QueryKey`             | Custom query key for queries.                           |
+| `onSuccess`         | `(data) => void`       | Callback when the method call succeeds.                 |
+| `onError`           | `(error) => void`      | Callback when the method call fails.                    |
+| `invalidateQueries` | `QueryKey[]`           | For mutations: keys to invalidate after success.        |
+
+### Inherited from React Query
+
+All react-query options are available:
+
+| Option                 | Type                 | Default     | Description                                              |
+| :--------------------- | :------------------- | :---------- | :------------------------------------------------------- |
+| `enabled`              | `boolean`            | `true`      | For queries: whether to auto-fetch.                      |
+| `staleTime`            | `number`             | `300000`    | How long data stays fresh (ms).                          |
+| `gcTime`               | `number`             | `300000`    | Time before unused data is garbage collected (ms).       |
+| `refetchInterval`      | `number \| false`    | `false`     | Polling interval in ms.                                  |
+| `refetchOnWindowFocus` | `boolean`            | `true`      | Refetch when window regains focus.                       |
+| `refetchOnMount`       | `boolean`            | `true`      | Refetch when component mounts.                           |
+| `refetchOnReconnect`   | `boolean`            | `true`      | Refetch when network reconnects.                         |
+| `retry`                | `number \| boolean`  | `3`         | Number of retry attempts.                                |
+| `retryDelay`           | `number \| function` | exponential | Delay between retries.                                   |
+| `networkMode`          | `string`             | `"online"`  | Network mode (`"online"`, `"always"`, `"offlineFirst"`). |
+| `placeholderData`      | `TData \| function`  | -           | Placeholder data while loading.                          |
 
 ## Return Value
 

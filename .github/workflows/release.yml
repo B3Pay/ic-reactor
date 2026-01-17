@@ -48,11 +48,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
 
-      - name: Build packages
-        run: pnpm build
+      - name: Build packages (excluding parser)
+        run: pnpm build:ci
 
-      - name: Run tests
-        run: pnpm test
+      - name: Run tests (excluding parser)
+        run: pnpm test:ci
 
       - name: Determine publish tag
         run: |

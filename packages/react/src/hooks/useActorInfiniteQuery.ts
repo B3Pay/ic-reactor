@@ -3,6 +3,7 @@ import {
   QueryKey,
   useInfiniteQuery,
   UseInfiniteQueryResult,
+  UseInfiniteQueryOptions,
   InfiniteData,
 } from "@tanstack/react-query"
 import {
@@ -15,40 +16,45 @@ import {
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
 
+/**
+ * Parameters for useActorInfiniteQuery hook.
+ * Extends react-query's UseInfiniteQueryOptions with custom reactor params.
+ */
 export interface UseActorInfiniteQueryParameters<
   A,
   M extends FunctionName<A>,
   T extends TransformKey = "candid",
   TPageParam = unknown,
+  TSelected = InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>,
+> extends Omit<
+  UseInfiniteQueryOptions<
+    ReactorReturnOk<A, M, T>,
+    ReactorReturnErr<A, M, T>,
+    TSelected,
+    QueryKey,
+    TPageParam
+  >,
+  "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"
 > {
+  /** The reactor instance to use for method calls */
   reactor: Reactor<A, T>
+  /** The method name to call on the canister */
   functionName: M
+  /** Function to get args from page parameter */
   getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>
+  /** Agent call configuration (effectiveCanisterId, etc.) */
   callConfig?: CallConfig
+  /** Custom query key (auto-generated if not provided) */
   queryKey?: QueryKey
+  /** Initial page parameter */
   initialPageParam: TPageParam
+  /** Function to determine next page parameter */
   getNextPageParam: (
     lastPage: ReactorReturnOk<A, M, T>,
     allPages: ReactorReturnOk<A, M, T>[],
     lastPageParam: TPageParam,
     allPageParams: TPageParam[]
   ) => TPageParam | undefined | null
-  getPreviousPageParam?: (
-    firstPage: ReactorReturnOk<A, M, T>,
-    allPages: ReactorReturnOk<A, M, T>[],
-    firstPageParam: TPageParam,
-    allPageParams: TPageParam[]
-  ) => TPageParam | undefined | null
-  maxPages?: number
-  enabled?: boolean
-  staleTime?: number
-  gcTime?: number
-  refetchOnWindowFocus?: boolean
-  refetchOnMount?: boolean
-  refetchOnReconnect?: boolean
-  select?: (
-    data: InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>
-  ) => InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>
 }
 
 export type UseActorInfiniteQueryConfig<

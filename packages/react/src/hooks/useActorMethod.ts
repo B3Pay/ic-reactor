@@ -5,6 +5,7 @@ import {
   type UseQueryResult,
   type UseMutationResult,
   type QueryKey,
+  type QueryObserverOptions,
 } from "@tanstack/react-query"
 import {
   Reactor,
@@ -20,11 +21,25 @@ import { CallConfig } from "@icp-sdk/core/agent"
 
 /**
  * Configuration for useActorMethod hook.
+ * Extends react-query's QueryObserverOptions with custom reactor params.
+ *
+ * This is a unified hook that handles both query and mutation methods.
+ * Query-specific options (like refetchInterval) only apply to query methods.
+ * Mutation-specific options (like invalidateQueries) only apply to mutation methods.
  */
 export interface UseActorMethodParameters<
   A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>,
   T extends TransformKey = "candid",
+> extends Omit<
+  QueryObserverOptions<
+    ReactorReturnOk<A, M, T>,
+    ReactorReturnErr<A, M, T>,
+    ReactorReturnOk<A, M, T>,
+    ReactorReturnOk<A, M, T>,
+    QueryKey
+  >,
+  "queryKey" | "queryFn"
 > {
   /** The reactor instance to use for method calls */
   reactor: Reactor<A, T>
@@ -42,39 +57,33 @@ export interface UseActorMethodParameters<
   queryKey?: QueryKey
 
   /**
-   * For query methods: Whether to auto-fetch on mount (default: true)
-   * For mutation methods: This is ignored
-   */
-  enabled?: boolean
-
-  /**
-   * For query methods: How long data stays fresh before refetching (ms)
-   * Default: 5 minutes
-   */
-  staleTime?: number
-
-  /**
-   * For query methods: Refetch interval in milliseconds
-   * Set to a number to enable polling
-   */
-  refetchInterval?: number | false
-
-  /**
-   * Callback when the method call succeeds
+   * Callback when the method call succeeds.
+   * Works for both query and mutation methods.
    */
   onSuccess?: (data: ReactorReturnOk<A, M, T>) => void
 
   /**
-   * Callback when the method call fails
+   * Callback when the method call fails.
+   * Works for both query and mutation methods.
    */
   onError?: (error: ReactorReturnErr<A, M, T>) => void
 
   /**
-   * Query keys to invalidate after a successful mutation
-   * Only applies to mutation methods
+   * Query keys to invalidate after a successful mutation.
+   * Only applies to mutation methods (updates).
    */
   invalidateQueries?: QueryKey[]
 }
+
+/**
+ * Configuration type for bound useActorMethod hook (reactor omitted).
+ * For use with createActorHooks.
+ */
+export type UseActorMethodConfig<
+  A = BaseActor,
+  M extends FunctionName<A> = FunctionName<A>,
+  T extends TransformKey = "candid",
+> = Omit<UseActorMethodParameters<A, M, T>, "reactor">
 
 /**
  * Result type for useActorMethod hook.
@@ -158,11 +167,10 @@ export function useActorMethod<
   callConfig,
   queryKey: customQueryKey,
   enabled = true,
-  staleTime = 5 * 60 * 1000, // 5 minutes default
-  refetchInterval,
   onSuccess,
   onError,
   invalidateQueries,
+  ...queryOptions
 }: UseActorMethodParameters<A, M, T>): UseActorMethodResult<A, M, T> {
   // Determine if this is a query method by checking the IDL
   const isQuery = useMemo(() => {
@@ -177,7 +185,7 @@ export function useActorMethod<
     return reactor.generateQueryKey({
       functionName,
       args,
-    } as any)
+    })
   }, [reactor, functionName, args, customQueryKey])
 
   // ============================================================================
@@ -196,7 +204,7 @@ export function useActorMethod<
             functionName,
             args,
             callConfig,
-          } as any)
+          })
           onSuccess?.(result)
           return result
         } catch (error) {
@@ -205,8 +213,7 @@ export function useActorMethod<
         }
       },
       enabled: isQuery && enabled,
-      staleTime,
-      refetchInterval: refetchInterval || undefined,
+      ...queryOptions,
     },
     reactor.queryClient
   )
@@ -226,7 +233,7 @@ export function useActorMethod<
           functionName,
           args: mutationArgs ?? args,
           callConfig,
-        } as any)
+        })
         return result
       },
       onSuccess: (data) => {
@@ -256,12 +263,15 @@ export function useActorMethod<
       if (isQuery) {
         // For queries, refetch with new args if provided
         if (callArgs !== undefined) {
-          // Call directly if args changed
+          // Call the method with new args
           const result = await reactor.callMethod({
             functionName,
             args: callArgs,
             callConfig,
-          } as any)
+          })
+          // Update the cache using the HOOK's queryKey (not a key based on callArgs)
+          // This ensures the component re-renders since useQuery subscribes to this key
+          reactor.queryClient.setQueryData(queryKey, result)
           onSuccess?.(result)
           return result
         }
@@ -281,6 +291,7 @@ export function useActorMethod<
       reactor,
       functionName,
       callConfig,
+      queryKey,
       queryResult,
       mutationResult,
       onSuccess,
