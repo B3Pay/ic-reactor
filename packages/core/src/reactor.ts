@@ -221,9 +221,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   ): FetchQueryOptions<ReactorReturnOk<A, M, T>> {
     return {
       queryKey: this.generateQueryKey(params),
-      queryFn: async () => {
-        return await this.callMethod(params)
-      },
+      queryFn: () => this.callMethod(params),
     }
   }
 
