@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/core": "^3.0.6-beta.2",
-    "@ic-reactor/react": "^3.0.6-beta.2",
+    "@ic-reactor/core": "^3.0.6-beta.3",
+    "@ic-reactor/react": "^3.0.6-beta.3",
     "@icp-sdk/auth": "^5.0.0",
     "@icp-sdk/core": "^5.0.0",
     "@radix-ui/react-scroll-area": "^1.2.10",
