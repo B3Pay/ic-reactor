@@ -258,37 +258,53 @@ export function useActorMethod<
   // Unified Call Function
   // ============================================================================
 
-  const call = async (
-    callArgs?: ReactorArgs<A, M, T>
-  ): Promise<ReactorReturnOk<A, M, T> | undefined> => {
-    if (isQuery) {
-      // For queries, refetch with new args if provided
-      if (callArgs !== undefined) {
-        try {
-          const result = await reactor.callMethod({
-            functionName,
-            args: callArgs,
-            callConfig,
-          })
-          // Update the cache using the HOOK's queryKey
-          reactor.queryClient.setQueryData(queryKey, result)
-          onSuccess?.(result)
-          return result
-        } catch (error) {
-          onError?.(error as ReactorReturnErr<A, M, T>)
-          return undefined
+  const call = useCallback(
+    async (
+      callArgs?: ReactorArgs<A, M, T>
+    ): Promise<ReactorReturnOk<A, M, T> | undefined> => {
+      if (isQuery) {
+        // For queries, refetch with new args if provided
+        if (callArgs !== undefined) {
+          try {
+            const result = await reactor.queryClient.fetchQuery({
+              queryKey,
+              queryFn: () =>
+                reactor.callMethod({
+                  functionName,
+                  args: callArgs,
+                  callConfig,
+                }),
+              staleTime: 0,
+            })
+            onSuccess?.(result)
+            return result
+          } catch (error) {
+            onError?.(error as ReactorReturnErr<A, M, T>)
+            return undefined
+          }
         }
+        // Otherwise just refetch
+        const { data } = await queryResult.refetch()
+        return data
+      } else {
+        // For mutations, execute with provided args
+        return mutationResult
+          .mutateAsync(callArgs as ReactorArgs<A, M, T>)
+          .catch(() => undefined)
       }
-      // Otherwise just refetch
-      const { data } = await queryResult.refetch()
-      return data
-    } else {
-      // For mutations, execute with provided args
-      return mutationResult
-        .mutateAsync(callArgs as ReactorArgs<A, M, T>)
-        .catch(() => undefined)
-    }
-  }
+    },
+    [
+      isQuery,
+      reactor,
+      functionName,
+      callConfig,
+      queryKey,
+      queryResult,
+      mutationResult,
+      onSuccess,
+      onError,
+    ]
+  )
 
   // ============================================================================
   // Reset Function
