@@ -87,22 +87,39 @@ export const isNullish = (value: unknown): value is null | undefined =>
 export const nonNullish = <T>(value: T | null | undefined): value is T =>
   value !== null && value !== undefined
 
-export const uint8ArrayToHex = (
-  bytes: Uint8Array | number[]
-): `0x${string}` => {
-  const hex = Array.from(bytes)
+/**
+ * Converts a Uint8Array or number array to a hex string (without 0x prefix)
+ */
+export const uint8ArrayToHex = (bytes: Uint8Array | number[]): string => {
+  return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("")
-  return `0x${hex}`
 }
 
+/**
+ * Converts a hex string to Uint8Array (accepts with or without 0x prefix)
+ */
 export const hexToUint8Array = (hex: string): Uint8Array<ArrayBuffer> => {
-  if (hex.startsWith("0x")) {
-    hex = hex.slice(2)
-  }
+  // Normalize: remove 0x prefix if present and filter invalid chars
+  const normalized = hex
+    .replace(/^0x/i, "")
+    .replace(/[^0-9a-f]/gi, "")
+    .toLowerCase()
+
+  // Handle odd-length hex strings by padding with leading zero
+  const paddedHex = normalized.length % 2 ? `0${normalized}` : normalized
+
   return new Uint8Array(
-    hex.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
+    paddedHex.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
   )
+}
+
+/**
+ * Formats hex string with 0x prefix for display purposes
+ */
+export const formatHexDisplay = (hex: string): `0x${string}` => {
+  const normalized = hex.replace(/^0x/i, "")
+  return `0x${normalized}`
 }
 
 /**
