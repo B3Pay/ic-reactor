@@ -250,7 +250,7 @@ describe("Codec Visitor - Todo Types", () => {
 
       const displayValue = codec.asDisplay(candidValue)
       expect(displayValue).toEqual({
-        content: "0x48656c6c6f", // "Hello" in hex
+        content: "48656c6c6f", // "Hello" in hex
         hash: "sha256-hash",
       })
 

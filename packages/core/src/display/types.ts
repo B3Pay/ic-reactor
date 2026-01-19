@@ -46,7 +46,7 @@ type AsObject<T> = CombineObjects<
 
 type AsOptional<T> = T extends [infer U] ? NullishType<DisplayOf<U>> : never
 
-export type BlobType = Uint8Array | number[] | `0x${string}`
+export type BlobType = Uint8Array | number[] | string
 
 export type NullishType<T> = T | null | undefined
 

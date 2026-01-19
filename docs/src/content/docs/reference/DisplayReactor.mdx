@@ -80,7 +80,7 @@ You'd normally need to write conversion logic everywhere in your app:
   createdAt: "1703500800000000000",     // string - parse as needed
   metadata: Map { "a" => 1, "b" => 2 }, // JavaScript Map - iterable
   status: { _type: "Active" },          // Normalized variant
-  avatar: "0x89504e47...",              // Small blobs → hex string
+  avatar: "89504e47...",              // Small blobs → hex string
   description: null,                    // null instead of []
 }
 ```
@@ -177,7 +177,7 @@ const { useActorQuery, useActorMutation, reactor } = createActorHooks(backend)
 | Candid            | TypeScript   | Display      | Notes                           |
 | ----------------- | ------------ | ------------ | ------------------------------- |
 | `principal`       | `Principal`  | `string`     | e.g., `"rrkah-fqaaa..."`        |
-| `blob` ≤512 bytes | `Uint8Array` | `string`     | Hex format: `"0x89504e..."`     |
+| `blob` ≤512 bytes | `Uint8Array` | `string`     | Hex format: `"89504e..."`       |
 | `blob` >512 bytes | `Uint8Array` | `Uint8Array` | Unchanged (avoids huge strings) |
 
 #### Container Types
@@ -374,8 +374,8 @@ Blobs (`vec nat8`) are handled intelligently based on size:
 // Candid: blob (vec nat8)
 
 // Small blob example (e.g., a hash, signature, or small icon)
-const hash = user.passwordHash // "0x2cf24dba5fb0a30e..."
-const signature = tx.signature // "0x3045022100ab..."
+const hash = user.passwordHash // "2cf24dba5fb0a30e..."
+const signature = tx.signature // "3045022100ab..."
 
 // Large blob example (e.g., image data)
 const imageData = user.avatar // Uint8Array (stays as-is)
@@ -384,7 +384,7 @@ const imageData = user.avatar // Uint8Array (stays as-is)
 mutate([
   {
     // Hex string input (DisplayReactor converts to Uint8Array)
-    hash: "0x2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c",
+    hash: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c",
 
     // Or Uint8Array directly
     data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),

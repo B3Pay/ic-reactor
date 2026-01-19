@@ -183,10 +183,10 @@ describe("Zod Codec - didToDisplayCodec", () => {
       // Small blobs get converted to hex
       const decoded = codec.asDisplay(bytes)
       expect(typeof decoded).toBe("string")
-      expect(decoded).toMatch(/^0x[0-9a-f]+$/)
+      expect(decoded).toMatch(/^[0-9a-f]+$/)
 
       // Hex strings get converted back to Uint8Array
-      const encoded = codec.asCandid("0x01020304") as Uint8Array
+      const encoded = codec.asCandid("01020304") as Uint8Array
       expect(encoded).toBeInstanceOf(Uint8Array)
       expect(Array.from(encoded)).toEqual([1, 2, 3, 4])
     })

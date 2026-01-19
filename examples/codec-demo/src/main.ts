@@ -494,7 +494,7 @@ function formatObject(
       if (format === "candid") {
         return `Uint8Array(${value.length}) [${Array.from(value.slice(0, 4)).join(", ")}...]`
       }
-      return `"0x${Array.from(value)
+      return `"${Array.from(value)
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("")}"`
     }

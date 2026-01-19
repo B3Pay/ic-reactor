@@ -263,7 +263,7 @@ describe("Codec Schema Visitor - Variant Types", () => {
     expect(
       codec.asDisplay({
         Crypto: {
-          address: "0x123...",
+          address: "123...",
           amount: 5000000n,
           confirmations: [6n],
         },
@@ -271,7 +271,7 @@ describe("Codec Schema Visitor - Variant Types", () => {
     ).toEqual({
       _type: "Crypto",
       Crypto: {
-        address: "0x123...",
+        address: "123...",
         amount: "5000000",
         confirmations: "6",
       },
@@ -282,14 +282,14 @@ describe("Codec Schema Visitor - Variant Types", () => {
       codec.asCandid({
         _type: "Crypto",
         Crypto: {
-          address: "0x123...",
+          address: "123...",
           amount: "5000000",
           confirmations: "6",
         },
       })
     ).toEqual({
       Crypto: {
-        address: "0x123...",
+        address: "123...",
         amount: 5000000n,
         confirmations: [6n],
       },
@@ -507,7 +507,7 @@ describe("Codec Schema Visitor - Array Types", () => {
     const smallArray = new Uint8Array([1, 2, 3, 4, 5])
     const displayValue = codec.asDisplay(smallArray)
     expect(typeof displayValue).toBe("string")
-    expect(displayValue).toMatch(/^0x[0-9a-f]+$/i)
+    expect(displayValue).toMatch(/^[0-9a-f]+$/i)
 
     // Large array -> stays as Uint8Array
     const largeArray = new Uint8Array(600)
@@ -711,7 +711,7 @@ it("should handle complex recursive Map structures (Value type)", () => {
 
   // Test Blob transformation (hex string if small)
   expect(typeof map.get("phash").Blob).toBe("string")
-  expect(map.get("phash").Blob).toMatch(/^0x/)
+  expect(map.get("phash").Blob).toMatch(/^[0-9a-f]+$/i)
 
   // Test nested Map
   const tx = map.get("tx")
@@ -727,7 +727,7 @@ it("should handle complex recursive Map structures (Value type)", () => {
   })
   expect(txMap.get("memo")).toEqual({
     _type: "Blob",
-    Blob: "0x0202020202020202",
+    Blob: "0202020202020202",
   })
 
   // Test nested Array and Principal
@@ -1512,7 +1512,7 @@ describe("Codec Schema Visitor - Project Candid Types", () => {
       Ethereum: {
         Erc20: {
           ledger_id: "sv3dd-oaaaa-aaaar-qacoa-cai",
-          contract_address: "0x1234567890abcdef",
+          contract_address: "1234567890abcdef",
         },
       },
     })
@@ -1522,7 +1522,7 @@ describe("Codec Schema Visitor - Project Candid Types", () => {
         _type: "Erc20",
         Erc20: {
           ledger_id: "sv3dd-oaaaa-aaaar-qacoa-cai",
-          contract_address: "0x1234567890abcdef",
+          contract_address: "1234567890abcdef",
         },
       },
     })
