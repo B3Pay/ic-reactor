@@ -510,7 +510,7 @@ describe("Codec Schema Visitor - Array Types", () => {
     expect(displayValue).toMatch(/^0x[0-9a-f]+$/i)
 
     // Large array -> stays as Uint8Array
-    const largeArray = new Uint8Array(200)
+    const largeArray = new Uint8Array(600)
     const displayLarge = codec.asDisplay(largeArray)
     expect(displayLarge).toBeInstanceOf(Uint8Array)
   })
