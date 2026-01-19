@@ -98,8 +98,8 @@ const candidBalance = codec.result.toCandid("1000000000000") // 1000000000000n
 | `nat`, `int`, `nat64`, `int64`             | `bigint`            | `string`               | Large numbers stay precise |
 | `nat8-32`, `int8-32`, `float32`, `float64` | `number`            | `number`               | Small numbers unchanged    |
 | `principal`                                | `Principal`         | `string`               | Ready for display          |
-| `blob` (≤96 bytes)                         | `Uint8Array`        | `string` (`0x...`)     | Hex encoded                |
-| `blob` (>96 bytes)                         | `Uint8Array`        | `Uint8Array`           | Too large for hex          |
+| `blob` (≤512 bytes)                        | `Uint8Array`        | `string` (`0x...`)     | Hex encoded                |
+| `blob` (>512 bytes)                        | `Uint8Array`        | `Uint8Array`           | Too large for hex          |
 | `opt T`                                    | `[] \| [T]`         | `T \| null`            | Cleaner nullability        |
 | `vec (text, T)`                            | `Array<[text, T]>`  | `Map<string, T>`       | Key-value pairs            |
 | `variant { A }`                            | `{ A: null }`       | `{ _type: "A" }`       | Normalized variants        |

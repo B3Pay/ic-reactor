@@ -193,8 +193,8 @@ describe("Zod Codec - didToDisplayCodec", () => {
 
     it("should handle large Vec of Nat8 as Uint8Array without hex conversion", () => {
       const codec = didToDisplayCodec<Uint8Array>(IDL.Vec(IDL.Nat8))
-      // Create a large array (> 96 bytes)
-      const largeBytes = new Uint8Array(100).fill(42)
+      // Create a large array (> 512 bytes)
+      const largeBytes = new Uint8Array(1000).fill(42)
 
       const decoded = codec.asDisplay(largeBytes)
       expect(decoded).toBeInstanceOf(Uint8Array)

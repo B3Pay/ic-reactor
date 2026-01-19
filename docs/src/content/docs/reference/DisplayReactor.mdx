@@ -174,11 +174,11 @@ const { useActorQuery, useActorMutation, reactor } = createActorHooks(backend)
 
 #### Identity & Binary Types
 
-| Candid           | TypeScript   | Display      | Notes                           |
-| ---------------- | ------------ | ------------ | ------------------------------- |
-| `principal`      | `Principal`  | `string`     | e.g., `"rrkah-fqaaa..."`        |
-| `blob` ≤96 bytes | `Uint8Array` | `string`     | Hex format: `"0x89504e..."`     |
-| `blob` >96 bytes | `Uint8Array` | `Uint8Array` | Unchanged (avoids huge strings) |
+| Candid            | TypeScript   | Display      | Notes                           |
+| ----------------- | ------------ | ------------ | ------------------------------- |
+| `principal`       | `Principal`  | `string`     | e.g., `"rrkah-fqaaa..."`        |
+| `blob` ≤512 bytes | `Uint8Array` | `string`     | Hex format: `"0x89504e..."`     |
+| `blob` >512 bytes | `Uint8Array` | `Uint8Array` | Unchanged (avoids huge strings) |
 
 #### Container Types
 
@@ -367,8 +367,8 @@ const avatar = user.avatar // Already null or value
 
 Blobs (`vec nat8`) are handled intelligently based on size:
 
-- **Small blobs (≤96 bytes)**: Converted to hex strings for easy display and storage
-- **Large blobs (>96 bytes)**: Stay as `Uint8Array` to avoid huge hex strings
+- **Small blobs (≤512 bytes)**: Converted to hex strings for easy display and storage
+- **Large blobs (>512 bytes)**: Stay as `Uint8Array` to avoid huge hex strings
 
 ```typescript
 // Candid: blob (vec nat8)

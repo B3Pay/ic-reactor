@@ -124,14 +124,14 @@ function Greeting() {
 
 ### Reactor vs DisplayReactor
 
-| Feature       | `Reactor`        | `DisplayReactor`            |
-| ------------- | ---------------- | --------------------------- |
-| Types         | Raw Candid types | Display-friendly types      |
-| BigInt        | `bigint`         | `string`                    |
-| Principal     | `Principal`      | `string`                    |
-| Vec nat8      | `Uint8Array`     | <= 96 bytes: `string` (hex) |
-| Result        | Unwrapped        | Unwrapped                   |
-| Form-friendly | No               | Yes                         |
+| Feature       | `Reactor`        | `DisplayReactor`             |
+| ------------- | ---------------- | ---------------------------- |
+| Types         | Raw Candid types | Display-friendly types       |
+| BigInt        | `bigint`         | `string`                     |
+| Principal     | `Principal`      | `string`                     |
+| Vec nat8      | `Uint8Array`     | <= 512 bytes: `string` (hex) |
+| Result        | Unwrapped        | Unwrapped                    |
+| Form-friendly | No               | Yes                          |
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/react"

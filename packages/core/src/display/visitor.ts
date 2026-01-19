@@ -140,7 +140,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
         {
           decode: (val) => {
             if (!val) return val
-            if (val.length <= 96) return uint8ArrayToHex(val)
+            if (val.length <= 512) return uint8ArrayToHex(val)
             return val as Uint8Array<ArrayBuffer>
           },
           encode: (val) => {
