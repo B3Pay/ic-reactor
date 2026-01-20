@@ -92,7 +92,8 @@ import { idlFactory, type _SERVICE } from "./declarations/my_canister"
 const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
-  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  name: "backend", // Required: explicit name
+  // canisterId: "...", // Optional: omitted if using environment variables
 })
 ```
 
@@ -131,6 +132,7 @@ interface ClientManagerParameters {
   port?: number // Local replica port (default: 4943)
   withLocalEnv?: boolean // Force local network
   withProcessEnv?: boolean // Read DFX_NETWORK from env
+  withCanisterEnv?: boolean // Read canister IDs from environment
   agentOptions?: HttpAgentOptions // Custom agent options
   authClient?: AuthClient // Pre-configured auth client
 }
@@ -199,8 +201,8 @@ clientManager.isLocal // boolean
 interface ReactorParameters<A> {
   clientManager: ClientManager
   idlFactory: IDL.InterfaceFactory
-  canisterId: string | Principal
-  name?: string // Optional display name
+  name: string // Required display name
+  canisterId?: string | Principal // Optional if using env vars
   pollingOptions?: PollingOptions // Custom polling for update calls
 }
 ```

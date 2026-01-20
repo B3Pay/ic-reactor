@@ -86,6 +86,7 @@ await clientManager.initialize()
 const reactor = new CandidReactor({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
+  name: "my-canister",
 })
 await reactor.initialize() // Fetches IDL from network
 
@@ -93,6 +94,7 @@ await reactor.initialize() // Fetches IDL from network
 const reactor = new CandidReactor({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
+  name: "my-canister",
   candid: `service : {
     icrc1_name : () -> (text) query;
     icrc1_balance_of : (record { owner : principal }) -> (nat) query;
@@ -117,6 +119,7 @@ You can also register individual methods on-the-fly:
 const reactor = new CandidReactor({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
+  name: "my-canister",
 })
 
 // Register a method by its Candid signature
@@ -272,8 +275,9 @@ new CandidReactor(config: CandidReactorParameters)
 
 | Parameter       | Type               | Required | Description                                      |
 | --------------- | ------------------ | -------- | ------------------------------------------------ |
-| `canisterId`    | `CanisterId`       | Yes      | The canister ID to interact with                 |
+| `name`          | `string`           | Yes      | Name of the canister/reactor                     |
 | `clientManager` | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`           |
+| `canisterId`    | `CanisterId`       | No       | The canister ID (optional if using env vars)     |
 | `candid`        | `string`           | No       | Candid service definition (avoids network fetch) |
 | `idlFactory`    | `InterfaceFactory` | No       | IDL factory (if already available)               |
 | `actor`         | `A`                | No       | Existing actor instance                          |

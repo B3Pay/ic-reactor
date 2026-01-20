@@ -49,16 +49,17 @@ import { idlFactory, type _SERVICE } from "./declarations/my_canister"
 export const queryClient = new QueryClient()
 
 // Create client manager (handles identity and agent)
+// Create client manager (handles identity and agent)
 export const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: true, // Reads DFX_NETWORK from environment
+  withCanisterEnv: true, // Reads canister IDs from environment/cookies
 })
 
 // Create reactor for your canister
 export const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
-  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  name: "backend", // Required: explicit name for the reactor
 })
 ```
 
