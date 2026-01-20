@@ -49,6 +49,7 @@
   },
   "files": [
     "dist",
+    "src",
     "schema.json"
   ],
   "publishConfig": {
