@@ -315,21 +315,39 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           !val ||
           typeof val !== "object" ||
           Array.isArray(val) ||
-          val instanceof Principal ||
-          !("_type" in val)
+          val instanceof Principal
         ) {
           return val
         }
 
         try {
-          const key = val._type
-          const fieldType = fields.find(([n]) => n === key)?.[1]
-          if (fieldType?.name === "null") return { [key]: null }
+          // Format 1: With _type property (from decode output)
+          if ("_type" in val) {
+            const key = val._type
+            const fieldType = fields.find(([n]) => n === key)?.[1]
+            if (fieldType?.name === "null") return { [key]: null }
 
-          if (key in variantCodecs && nonNullish(val[key])) {
-            return { [key]: encode(variantCodecs[key], val[key]) }
+            if (key in variantCodecs && nonNullish(val[key])) {
+              return { [key]: encode(variantCodecs[key], val[key]) }
+            }
+            return { [key]: null }
           }
-          return { [key]: null }
+
+          // Format 2: Without _type (direct variant format from forms: { Add: value })
+          const keys = Object.keys(val)
+          if (keys.length === 1) {
+            const key = keys[0]
+            const fieldType = fields.find(([n]) => n === key)?.[1]
+            if (fieldType?.name === "null") return { [key]: null }
+
+            if (key in variantCodecs && nonNullish(val[key])) {
+              return { [key]: encode(variantCodecs[key], val[key]) }
+            }
+            return { [key]: null }
+          }
+
+          // Unknown format - return as-is
+          return val
         } catch {
           return val
         }
