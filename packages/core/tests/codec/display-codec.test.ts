@@ -361,6 +361,123 @@ describe("Zod Codec - didToDisplayCodec", () => {
         Ok: { id: 456n, name: "Bob" },
       })
     })
+
+    // NEW: Test encoding without _type (direct form format)
+    it("should encode variant without _type (direct form format)", () => {
+      const ResultType = IDL.Variant({
+        Ok: IDL.Text,
+        Err: IDL.Text,
+      })
+      const codec = didToDisplayCodec(ResultType)
+
+      // Form sends { Ok: "success" } without _type
+      const encodedOk = codec.asCandid({ Ok: "success" })
+      expect(encodedOk).toEqual({ Ok: "success" })
+
+      const encodedErr = codec.asCandid({ Err: "failed" })
+      expect(encodedErr).toEqual({ Err: "failed" })
+    })
+
+    // NEW: Test encoding variant with null value without _type
+    it("should encode null variant without _type", () => {
+      const StatusType = IDL.Variant({
+        Active: IDL.Null,
+        Completed: IDL.Null,
+      })
+      const codec = didToDisplayCodec(StatusType)
+
+      // Direct format
+      const encoded = codec.asCandid({ Active: null })
+      expect(encoded).toEqual({ Active: null })
+    })
+
+    // NEW: Test variant with vec of records containing principals (B3Forge case)
+    it("should encode variant with vec of records containing principals", () => {
+      const StationType = IDL.Record({
+        name: IDL.Text,
+        labels: IDL.Vec(IDL.Text),
+        canister_id: IDL.Principal,
+      })
+      const ManageStationsType = IDL.Variant({
+        Add: IDL.Vec(StationType),
+        Remove: IDL.Vec(IDL.Principal),
+        Update: IDL.Vec(
+          IDL.Record({
+            station: StationType,
+            index: IDL.Opt(IDL.Nat64),
+          })
+        ),
+      })
+      const codec = didToDisplayCodec(ManageStationsType)
+
+      const principalText = "kioij-yyaaa-aaaab-qdroq-cai"
+
+      // Test encoding with _type format (from decode)
+      const encodedWithType = codec.asCandid({
+        _type: "Add",
+        Add: [
+          {
+            name: "B3Forge",
+            labels: ["B3ForgeUi"],
+            canister_id: principalText,
+          },
+        ],
+      })
+
+      expect(encodedWithType).toHaveProperty("Add")
+      expect((encodedWithType as any).Add[0].canister_id).toBeInstanceOf(
+        Principal
+      )
+      expect((encodedWithType as any).Add[0].canister_id.toText()).toBe(
+        principalText
+      )
+
+      // Test encoding without _type format (from form - the key fix!)
+      const encodedWithoutType = codec.asCandid({
+        Add: [
+          {
+            name: "B3Forge",
+            labels: ["B3ForgeUi"],
+            canister_id: principalText,
+          },
+        ],
+      })
+
+      expect(encodedWithoutType).toHaveProperty("Add")
+      expect((encodedWithoutType as any).Add[0].canister_id).toBeInstanceOf(
+        Principal
+      )
+      expect((encodedWithoutType as any).Add[0].canister_id.toText()).toBe(
+        principalText
+      )
+    })
+
+    // NEW: Test variant with complex nested record without _type
+    it("should encode variant with nested record containing principal without _type", () => {
+      const TransferType = IDL.Variant({
+        Ok: IDL.Record({
+          to: IDL.Principal,
+          amount: IDL.Nat,
+        }),
+        Err: IDL.Text,
+      })
+      const codec = didToDisplayCodec(TransferType)
+
+      const principalText = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+      // Encode without _type (form format)
+      const encoded = codec.asCandid({
+        Ok: {
+          to: principalText,
+          amount: "1000000",
+        },
+      })
+
+      expect(encoded).toHaveProperty("Ok")
+      expect((encoded as any).Ok.to).toBeInstanceOf(Principal)
+      expect((encoded as any).Ok.to.toText()).toBe(principalText)
+      expect((encoded as any).Ok.amount).toBe(1000000n)
+    })
   })
 
   describe("Tuple Types", () => {
