@@ -977,4 +977,560 @@ describe("ResultFieldVisitor", () => {
       })
     })
   })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // resolve() Method Tests
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("resolve() Method", () => {
+    describe("Primitive Types", () => {
+      it("should resolve text field with value", () => {
+        const field = IDL.Text.accept(visitor, "message") as TextResultField
+        const resolved = field.resolve("Hello World")
+
+        expect(resolved.field).toBe(field)
+        expect(resolved.value).toBe("Hello World")
+      })
+
+      it("should resolve number field with value", () => {
+        const field = IDL.Nat.accept(visitor, "amount") as NumberResultField
+        const resolved = field.resolve("1000000")
+
+        expect(resolved.field).toBe(field)
+        expect(resolved.value).toBe("1000000")
+      })
+
+      it("should resolve boolean field with value", () => {
+        const field = IDL.Bool.accept(visitor, "active") as BooleanResultField
+        const resolved = field.resolve(true)
+
+        expect(resolved.field).toBe(field)
+        expect(resolved.value).toBe(true)
+      })
+
+      it("should resolve null field", () => {
+        const field = IDL.Null.accept(visitor, "empty") as NullResultField
+        const resolved = field.resolve(null)
+
+        expect(resolved.field).toBe(field)
+        expect(resolved.value).toBe(null)
+      })
+
+      it("should resolve principal field with string value", () => {
+        const field = IDL.Principal.accept(
+          visitor,
+          "owner"
+        ) as PrincipalResultField
+        const resolved = field.resolve("aaaaa-aa")
+
+        expect(resolved.field).toBe(field)
+        expect(resolved.value).toBe("aaaaa-aa")
+      })
+    })
+
+    describe("Record Type", () => {
+      it("should resolve record with nested field values", () => {
+        const recordType = IDL.Record({
+          name: IDL.Text,
+          age: IDL.Nat32,
+          active: IDL.Bool,
+        })
+        const field = recordType.accept(visitor, "user") as RecordResultField
+
+        const resolved = field.resolve({
+          name: "Alice",
+          age: 30,
+          active: true,
+        })
+
+        expect(resolved.field).toBe(field)
+        const value = resolved.value as Record<
+          string,
+          { field: ResultField; value: unknown }
+        >
+        expect(value.name.value).toBe("Alice")
+        expect(value.age.value).toBe(30)
+        expect(value.active.value).toBe(true)
+      })
+
+      it("should handle null record value", () => {
+        const recordType = IDL.Record({ name: IDL.Text })
+        const field = recordType.accept(visitor, "user") as RecordResultField
+
+        const resolved = field.resolve(null)
+        expect(resolved.value).toBe(null)
+      })
+    })
+
+    describe("Variant Type", () => {
+      it("should resolve variant with active option", () => {
+        const variantType = IDL.Variant({
+          Ok: IDL.Text,
+          Err: IDL.Text,
+        })
+        const field = variantType.accept(
+          visitor,
+          "result"
+        ) as VariantResultField
+
+        const resolved = field.resolve({ Ok: "Success" })
+
+        expect(resolved.field).toBe(field)
+        const value = resolved.value as {
+          option: string
+          value: { field: ResultField; value: unknown }
+        }
+        expect(value.option).toBe("Ok")
+        expect(value.value.value).toBe("Success")
+      })
+
+      it("should resolve variant with Err option", () => {
+        const variantType = IDL.Variant({
+          Ok: IDL.Nat,
+          Err: IDL.Text,
+        })
+        const field = variantType.accept(
+          visitor,
+          "result"
+        ) as VariantResultField
+
+        const resolved = field.resolve({ Err: "Something went wrong" })
+
+        const value = resolved.value as {
+          option: string
+          value: { field: ResultField; value: unknown }
+        }
+        expect(value.option).toBe("Err")
+        expect(value.value.value).toBe("Something went wrong")
+      })
+
+      it("should handle null variant value", () => {
+        const variantType = IDL.Variant({ A: IDL.Null, B: IDL.Text })
+        const field = variantType.accept(
+          visitor,
+          "choice"
+        ) as VariantResultField
+
+        const resolved = field.resolve(null)
+        expect(resolved.value).toBe(null)
+      })
+    })
+
+    describe("Tuple Type", () => {
+      it("should resolve tuple with indexed values", () => {
+        const tupleType = IDL.Tuple(IDL.Text, IDL.Nat, IDL.Bool)
+        const field = tupleType.accept(visitor, "data") as TupleResultField
+
+        const resolved = field.resolve(["hello", "123", true])
+
+        expect(resolved.field).toBe(field)
+        const value = resolved.value as Array<{
+          field: ResultField
+          value: unknown
+        }>
+        expect(value).toHaveLength(3)
+        expect(value[0].value).toBe("hello")
+        expect(value[1].value).toBe("123")
+        expect(value[2].value).toBe(true)
+      })
+
+      it("should handle null tuple value", () => {
+        const tupleType = IDL.Tuple(IDL.Text, IDL.Nat)
+        const field = tupleType.accept(visitor, "pair") as TupleResultField
+
+        const resolved = field.resolve(null)
+        expect(resolved.value).toBe(null)
+      })
+    })
+
+    describe("Optional Type", () => {
+      it("should resolve optional with value", () => {
+        const optType = IDL.Opt(IDL.Text)
+        const field = optType.accept(visitor, "nickname") as OptionalResultField
+
+        const resolved = field.resolve("Bob")
+
+        expect(resolved.field).toBe(field)
+        const inner = resolved.value as { field: ResultField; value: unknown }
+        expect(inner.value).toBe("Bob")
+      })
+
+      it("should resolve optional with null", () => {
+        const optType = IDL.Opt(IDL.Text)
+        const field = optType.accept(visitor, "nickname") as OptionalResultField
+
+        const resolved = field.resolve(null)
+
+        expect(resolved.field).toBe(field)
+        expect(resolved.value).toBe(null)
+      })
+    })
+
+    describe("Vector Type", () => {
+      it("should resolve vector with array of values", () => {
+        const vecType = IDL.Vec(IDL.Text)
+        const field = vecType.accept(visitor, "tags") as VectorResultField
+
+        const resolved = field.resolve(["a", "b", "c"])
+
+        expect(resolved.field).toBe(field)
+        const value = resolved.value as Array<{
+          field: ResultField
+          value: unknown
+        }>
+        expect(value).toHaveLength(3)
+        expect(value[0].value).toBe("a")
+        expect(value[1].value).toBe("b")
+        expect(value[2].value).toBe("c")
+      })
+
+      it("should handle empty vector", () => {
+        const vecType = IDL.Vec(IDL.Nat)
+        const field = vecType.accept(visitor, "numbers") as VectorResultField
+
+        const resolved = field.resolve([])
+
+        const value = resolved.value as Array<{
+          field: ResultField
+          value: unknown
+        }>
+        expect(value).toHaveLength(0)
+      })
+
+      it("should handle null vector value", () => {
+        const vecType = IDL.Vec(IDL.Text)
+        const field = vecType.accept(visitor, "items") as VectorResultField
+
+        const resolved = field.resolve(null)
+        expect(resolved.value).toBe(null)
+      })
+    })
+
+    describe("Blob Type", () => {
+      it("should resolve blob with hex string value", () => {
+        const blobType = IDL.Vec(IDL.Nat8)
+        const field = blobType.accept(visitor, "data") as BlobResultField
+
+        const resolved = field.resolve("0x1234abcd")
+
+        expect(resolved.field).toBe(field)
+        expect(resolved.value).toBe("0x1234abcd")
+      })
+    })
+
+    describe("Recursive Type", () => {
+      it("should resolve recursive type", () => {
+        const Node = IDL.Rec()
+        Node.fill(
+          IDL.Record({
+            value: IDL.Nat,
+            children: IDL.Vec(Node),
+          })
+        )
+
+        const field = Node.accept(visitor, "tree") as RecursiveResultField
+
+        const resolved = field.resolve({
+          value: "42",
+          children: [],
+        })
+
+        // The recursive type should delegate to its inner record type
+        expect(resolved.field.type).toBe("record")
+      })
+    })
+
+    describe("Nested Structures", () => {
+      it("should resolve deeply nested structure", () => {
+        const nestedType = IDL.Record({
+          user: IDL.Record({
+            profile: IDL.Record({
+              name: IDL.Text,
+              verified: IDL.Bool,
+            }),
+          }),
+        })
+
+        const field = nestedType.accept(visitor, "data") as RecordResultField
+
+        const resolved = field.resolve({
+          user: {
+            profile: {
+              name: "Alice",
+              verified: true,
+            },
+          },
+        })
+
+        const value = resolved.value as Record<
+          string,
+          { field: ResultField; value: unknown }
+        >
+        const userValue = value.user.value as Record<
+          string,
+          { field: ResultField; value: unknown }
+        >
+        const profileValue = userValue.profile.value as Record<
+          string,
+          { field: ResultField; value: unknown }
+        >
+        expect(profileValue.name.value).toBe("Alice")
+        expect(profileValue.verified.value).toBe(true)
+      })
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // generateMetadata() Method Tests
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("generateMetadata() Method", () => {
+    it("should generate metadata for single return value", () => {
+      const service = IDL.Service({
+        getName: IDL.Func([], [IDL.Text], ["query"]),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["getName"] as MethodResultMeta
+
+      const result = methodMeta.generateMetadata(["Alice"])
+      console.log("🚀 ~ result:", result)
+
+      expect(result.functionName).toBe("getName")
+      expect(result.functionType).toBe("query")
+      expect(result.results).toHaveLength(1)
+      expect(result.results[0].value).toBe("Alice")
+      expect(result.results[0].field.type).toBe("text")
+    })
+
+    it("should generate metadata for multiple return values", () => {
+      const service = IDL.Service({
+        getStats: IDL.Func([], [IDL.Nat, IDL.Nat, IDL.Text], ["query"]),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["getStats"] as MethodResultMeta
+
+      const result = methodMeta.generateMetadata(["100", "200", "active"])
+
+      expect(result.results).toHaveLength(3)
+      expect(result.results[0].value).toBe("100")
+      expect(result.results[0].field.type).toBe("number")
+      expect(result.results[1].value).toBe("200")
+      expect(result.results[2].value).toBe("active")
+      expect(result.results[2].field.type).toBe("text")
+    })
+
+    it("should generate metadata for record return value", () => {
+      const service = IDL.Service({
+        getUser: IDL.Func(
+          [],
+          [IDL.Record({ name: IDL.Text, balance: IDL.Nat })],
+          ["query"]
+        ),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["getUser"] as MethodResultMeta
+
+      const result = methodMeta.generateMetadata([
+        { name: "Bob", balance: "1000" },
+      ])
+
+      expect(result.results).toHaveLength(1)
+      expect(result.results[0].field.type).toBe("record")
+
+      const recordValue = result.results[0].value as Record<
+        string,
+        { field: ResultField; value: unknown }
+      >
+      expect(recordValue.name.value).toBe("Bob")
+      expect(recordValue.balance.value).toBe("1000")
+    })
+
+    it("should generate metadata for Result variant", () => {
+      const service = IDL.Service({
+        transfer: IDL.Func(
+          [],
+          [IDL.Variant({ Ok: IDL.Nat, Err: IDL.Text })],
+          []
+        ),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["transfer"] as MethodResultMeta
+
+      // Test Ok case
+      const okResult = methodMeta.generateMetadata([{ Ok: "12345" }])
+      expect(okResult.results[0].field.type).toBe("variant")
+      expect(
+        (okResult.results[0].field as VariantResultField).displayType
+      ).toBe("result")
+
+      const okValue = okResult.results[0].value as {
+        option: string
+        value: { field: ResultField; value: unknown }
+      }
+      expect(okValue.option).toBe("Ok")
+      expect(okValue.value.value).toBe("12345")
+
+      // Test Err case
+      const errResult = methodMeta.generateMetadata([
+        { Err: "Insufficient funds" },
+      ])
+      const errValue = errResult.results[0].value as {
+        option: string
+        value: { field: ResultField; value: unknown }
+      }
+      expect(errValue.option).toBe("Err")
+      expect(errValue.value.value).toBe("Insufficient funds")
+    })
+
+    it("should generate metadata for optional return value", () => {
+      const service = IDL.Service({
+        findUser: IDL.Func([], [IDL.Opt(IDL.Text)], ["query"]),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["findUser"] as MethodResultMeta
+
+      // Test with value
+      const foundResult = methodMeta.generateMetadata(["Alice"])
+      expect(foundResult.results[0].field.type).toBe("optional")
+      const foundInner = foundResult.results[0].value as {
+        field: ResultField
+        value: unknown
+      }
+      expect(foundInner.value).toBe("Alice")
+
+      // Test with null
+      const notFoundResult = methodMeta.generateMetadata([null])
+      expect(notFoundResult.results[0].value).toBe(null)
+    })
+
+    it("should generate metadata for vector return value", () => {
+      const service = IDL.Service({
+        getItems: IDL.Func([], [IDL.Vec(IDL.Text)], ["query"]),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["getItems"] as MethodResultMeta
+
+      const result = methodMeta.generateMetadata([["item1", "item2", "item3"]])
+
+      expect(result.results[0].field.type).toBe("vector")
+      const vecValue = result.results[0].value as Array<{
+        field: ResultField
+        value: unknown
+      }>
+      expect(vecValue).toHaveLength(3)
+      expect(vecValue[0].value).toBe("item1")
+      expect(vecValue[1].value).toBe("item2")
+      expect(vecValue[2].value).toBe("item3")
+    })
+
+    it("should generate metadata for update function", () => {
+      const service = IDL.Service({
+        setName: IDL.Func([IDL.Text], [IDL.Bool], []),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["setName"] as MethodResultMeta
+
+      expect(methodMeta.functionType).toBe("update")
+
+      const result = methodMeta.generateMetadata([true])
+      expect(result.functionType).toBe("update")
+      expect(result.results[0].value).toBe(true)
+    })
+
+    it("should generate metadata for complex ICRC-1 like response", () => {
+      const Account = IDL.Record({
+        owner: IDL.Principal,
+        subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
+      })
+
+      const TransferResult = IDL.Variant({
+        Ok: IDL.Nat,
+        Err: IDL.Variant({
+          InsufficientFunds: IDL.Record({ balance: IDL.Nat }),
+          InvalidAccount: IDL.Null,
+          TooOld: IDL.Null,
+        }),
+      })
+
+      const service = IDL.Service({
+        icrc1_transfer: IDL.Func([], [TransferResult], []),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["icrc1_transfer"] as MethodResultMeta
+
+      // Test successful transfer
+      const successResult = methodMeta.generateMetadata([{ Ok: "1000" }])
+      const successValue = successResult.results[0].value as {
+        option: string
+        value: { field: ResultField; value: unknown }
+      }
+      expect(successValue.option).toBe("Ok")
+      expect(successValue.value.value).toBe("1000")
+
+      // Test error case
+      const errorResult = methodMeta.generateMetadata([
+        { Err: { InsufficientFunds: { balance: "50" } } },
+      ])
+      const errorValue = errorResult.results[0].value as {
+        option: string
+        value: { field: ResultField; value: unknown }
+      }
+      expect(errorValue.option).toBe("Err")
+
+      const innerError = errorValue.value.value as {
+        option: string
+        value: { field: ResultField; value: unknown }
+      }
+      expect(innerError.option).toBe("InsufficientFunds")
+    })
+
+    it("should handle empty return", () => {
+      const service = IDL.Service({
+        doSomething: IDL.Func([], [], []),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["doSomething"] as MethodResultMeta
+
+      expect(methodMeta.returnCount).toBe(0)
+
+      const result = methodMeta.generateMetadata([])
+      expect(result.results).toHaveLength(0)
+    })
+  })
 })
