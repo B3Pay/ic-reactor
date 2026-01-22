@@ -43,8 +43,8 @@ export interface ResultFieldBase {
   type: FieldType
   /** Human-readable label from Candid */
   label: string
-  /** The specific value of this field */
-  value?: any
+  /** The specific value of this field (always present; use null when missing) */
+  value: any
   /** Display hint for UI enhancement */
   displayHint?: DisplayHint
   /** How to format the text based on field name analysis */
@@ -102,8 +102,8 @@ export interface NullResultField extends ResultFieldBase {
 export interface BlobResultField extends ResultFieldBase {
   type: "blob"
   displayHint: "hex"
-  /** Raw hex string or byte array for small blobs */
-  value?: string | Uint8Array | number[]
+  /** Raw hex string or byte array for small blobs; `null` when missing */
+  value: string | Uint8Array | number[] | null
 }
 
 /**
@@ -112,11 +112,11 @@ export interface BlobResultField extends ResultFieldBase {
 export interface LargeBlobResultField extends ResultFieldBase {
   type: "blob-large"
   displayHint: "hex"
-  /** Summary object provided by the visitor */
+  /** Summary object provided by the visitor; `value` can be null when not present */
   value: {
     hash: string
-    /** Optional hex string or bytes if available */
-    value?: string | Uint8Array | number[]
+    /** Hex string or bytes if available; null when absent */
+    value: string | Uint8Array | number[] | null
     length: number
   }
 }
