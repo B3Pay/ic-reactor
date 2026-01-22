@@ -34,6 +34,10 @@ Most IC applications know which canisters they'll interact with at build time. B
     Dynamic Reactor with automatic display type transformations (bigint →
     string)
   </Card>
+  <Card title="MetadataDisplayReactor" icon="document">
+    Display Reactor with visitor-based metadata for form building and result
+    display
+  </Card>
   <Card title="Local Parsing" icon="seti:config">
     Optional WASM parser for fast, offline Candid compilation
   </Card>
@@ -126,15 +130,18 @@ const definition = await adapter.getCandidDefinition(
 
 ### Choosing the Right Class
 
-| Class                  | Purpose                                                    |
-| ---------------------- | ---------------------------------------------------------- |
-| `CandidReactor`        | Dynamic Reactor with raw Candid types                      |
-| `CandidDisplayReactor` | Dynamic Reactor with display transformations (UI-friendly) |
-| `CandidAdapter`        | Low-level Candid fetching and parsing utilities            |
+| Class                    | Purpose                                                    |
+| ------------------------ | ---------------------------------------------------------- |
+| `CandidReactor`          | Dynamic Reactor with raw Candid types                      |
+| `CandidDisplayReactor`   | Dynamic Reactor with display transformations (UI-friendly) |
+| `MetadataDisplayReactor` | Display Reactor with form & result metadata generation     |
+| `CandidAdapter`          | Low-level Candid fetching and parsing utilities            |
 
 **Use `CandidReactor`** when you want raw Candid types (`bigint`, `Principal`) and full Reactor experience.
 
 **Use `CandidDisplayReactor`** when building UIs — it automatically converts `bigint` to `string`, `Principal` to `string`, and supports form validation.
+
+**Use `MetadataDisplayReactor`** when building dynamic forms or result displays — it generates structured field metadata from Candid types.
 
 **Use `CandidAdapter`** when you need fine-grained control over Candid fetching, or you're building your own abstractions.
 
@@ -171,6 +178,7 @@ const definition = adapter.compileLocal(candidSource)
 
 - [CandidReactor](/ic-reactor/v3/packages/candid/candidreactor) — Full reference for CandidReactor
 - [CandidDisplayReactor](/ic-reactor/v3/packages/candid/candiddisplayreactor) — Dynamic Reactor with display transformations
+- [MetadataDisplayReactor](/ic-reactor/v3/packages/candid/metadatadisplayreactor) — Display Reactor with form & result metadata
 - [CandidAdapter](/ic-reactor/v3/packages/candid/candidadapter) — Full reference for CandidAdapter
 - [Reactor](/ic-reactor/v3/reference/reactor) — Base Reactor class documentation
 - [Error Handling](/ic-reactor/v3/guides/error-handling) — Handle canister errors
