@@ -95,13 +95,13 @@ The reactor uses the **visitor pattern** to generate metadata from Candid types:
 │                                                                             │
 │  INITIALIZATION (once, from raw IDL types):                                 │
 │                                                                             │
-│    IDL.Service ──► ArgumentFieldVisitor ──► ServiceArgumentsMeta           │
+│    IDL.Service ──► ArgumentFieldVisitor ──► ServiceArgumentsMeta            │
 │                                              { methodName: {                │
-│                                                  fields: ArgumentField[],  │
+│                                                  fields: ArgumentField[],   │
 │                                                  defaultValues: [...]       │
 │                                              }}                             │
 │                                                                             │
-│    IDL.Service ──► ResultFieldVisitor ──► ServiceResultMeta                │
+│    IDL.Service ──► ResultFieldVisitor ──► ServiceResultMeta                 │
 │                                            { methodName: {                  │
 │                                                resultFields: ResultField[], │
 │                                                returnCount: number          │
@@ -111,10 +111,10 @@ The reactor uses the **visitor pattern** to generate metadata from Candid types:
 │                                                                             │
 │  RUNTIME (per method call):                                                 │
 │                                                                             │
-│    INPUT:  Display Values ──► encode ──► Candid Values ──► Canister        │
-│    OUTPUT: Canister ──► Candid Values ──► decode ──► Display Values        │
+│    INPUT:  Display Values ──► encode ──► Candid Values ──► Canister         │
+│    OUTPUT: Canister ──► Candid Values ──► decode ──► Display Values         │
 │                                                                             │
-│    RENDERING: ResultField (metadata) + Display Value ──► UI Component      │
+│    RENDERING: ResultField (metadata) + Display Value ──► UI Component       │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -152,20 +152,20 @@ interface MethodArgumentsMeta {
 
 Each field includes type, label, and path for form binding:
 
-| Field Type  | Properties                                        |
-| ----------- | ------------------------------------------------- | ----- | ---- |
-| `record`    | `fields: ArgumentField[]`, `defaultValues: {...}` |
-| `variant`   | `fields: ArgumentField[]`, `options: string[]`    |
-| `tuple`     | `fields: ArgumentField[]`, `defaultValues: [...]` |
-| `optional`  | `innerField: ArgumentField`, `defaultValue: null` |
-| `vector`    | `itemField: ArgumentField`, `defaultValue: []`    |
-| `blob`      | `itemField: ArgumentField`, `defaultValue: ""`    |
-| `recursive` | `extract: () => ArgumentField`                    |
-| `principal` | `defaultValue: ""`, `minLength`, `maxLength`      |
-| `number`    | `defaultValue: ""`, `candidType: "nat"            | "int" | ...` |
-| `text`      | `defaultValue: ""`                                |
-| `boolean`   | `defaultValue: false`                             |
-| `null`      | `defaultValue: null`                              |
+| Field Type  | Properties                                              |
+| ----------- | ------------------------------------------------------- |
+| `record`    | `fields: ArgumentField[]`, `defaultValues: {...}`       |
+| `variant`   | `fields: ArgumentField[]`, `options: string[]`          |
+| `tuple`     | `fields: ArgumentField[]`, `defaultValues: [...]`       |
+| `optional`  | `innerField: ArgumentField`, `defaultValue: null`       |
+| `vector`    | `itemField: ArgumentField`, `defaultValue: []`          |
+| `blob`      | `itemField: ArgumentField`, `defaultValue: ""`          |
+| `recursive` | `extract: () => ArgumentField`                          |
+| `principal` | `defaultValue: ""`, `minLength`, `maxLength`            |
+| `number`    | `defaultValue: ""`, `candidType: "nat" \| "int" \| ...` |
+| `text`      | `defaultValue: ""`                                      |
+| `boolean`   | `defaultValue: false`                                   |
+| `null`      | `defaultValue: null`                                    |
 
 ### Example: Form Generation
 
