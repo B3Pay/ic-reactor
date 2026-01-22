@@ -471,7 +471,6 @@ describe("MetadataDisplayReactor", () => {
 
       const resultField = meta.resultFields[0] as VariantResultField
       expect(resultField.type).toBe("variant")
-      expect(resultField.isResultType).toBe(true)
       expect(resultField.displayType).toBe("result")
       expect(resultField.options).toContain("Ok")
       expect(resultField.options).toContain("Err")
@@ -696,7 +695,6 @@ describe("MetadataDisplayReactor", () => {
       expect(resultMeta.resultFields).toHaveLength(1)
 
       const resultVariant = resultMeta.resultFields[0] as VariantResultField
-      expect(resultVariant.isResultType).toBe(true)
     })
 
     it("should not duplicate already registered methods", async () => {
@@ -957,7 +955,6 @@ describe("MetadataDisplayReactor", () => {
       ) as MethodResultMeta<unknown>
       const field = meta.resultFields[0] as VariantResultField
 
-      expect(field.isResultType).toBe(true)
       expect(field.displayType).toBe("result")
 
       // 2. Mock Candid Data (Ok)
@@ -983,7 +980,6 @@ describe("MetadataDisplayReactor", () => {
       const displayErr = codec.result.asDisplay(mockErr)
       // The visitor doesn't auto-unwrap Result types during DECODE constant
       // It creates a structure that might be unwrapped later or is kept as variant
-      // Actually DisplayCodecVisitor check "isResultType" in logic?
       // No, it handles variants generically.
 
       // Let's see what displayErr looks like

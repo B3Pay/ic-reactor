@@ -397,7 +397,6 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("variant")
       expect(field.displayType).toBe("result") // Special result type
-      expect(field.isResultType).toBe(true)
       expect(field.options).toContain("Ok")
       expect(field.options).toContain("Err")
 
@@ -426,7 +425,6 @@ describe("ResultFieldVisitor", () => {
       })
       const field = resultType.accept(visitor, "result") as VariantResultField
 
-      expect(field.isResultType).toBe(true)
       expect(field.displayType).toBe("result")
 
       const okField = field.optionFields.find(
@@ -438,7 +436,6 @@ describe("ResultFieldVisitor", () => {
         (f) => f.label === "Err"
       ) as VariantResultField
       expect(errField.type).toBe("variant")
-      expect(errField.isResultType).toBe(false)
     })
 
     it("should not detect non-Result variant with Ok and other options", () => {
@@ -449,7 +446,6 @@ describe("ResultFieldVisitor", () => {
       })
       const field = weirdType.accept(visitor, "status") as VariantResultField
 
-      expect(field.isResultType).toBe(false) // Not exactly Ok/Err pair
       expect(field.displayType).toBe("variant")
     })
   })
@@ -674,7 +670,6 @@ describe("ResultFieldVisitor", () => {
 
       const resultField = meta.resultFields[0] as VariantResultField
       expect(resultField.type).toBe("variant")
-      expect(resultField.isResultType).toBe(true)
       expect(resultField.displayType).toBe("result")
     })
 
@@ -754,10 +749,7 @@ describe("ResultFieldVisitor", () => {
         "transfer"
       ] as MethodResultMeta<unknown>
       expect(transferMeta.functionType).toBe("update")
-      expect(
-        (transferMeta.resultFields[0] as VariantResultField).isResultType
-      ).toBe(true)
-
+      expect(transferMeta.returnCount).toBe(1)
       // Check get_metadata
       const getMetadataMeta = (serviceMeta as any)[
         "get_metadata"
@@ -816,7 +808,6 @@ describe("ResultFieldVisitor", () => {
         "result"
       ) as VariantResultField
 
-      expect(field.isResultType).toBe(true)
       expect(field.displayType).toBe("result")
 
       const okField = field.optionFields.find(
