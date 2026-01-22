@@ -50,9 +50,9 @@ export interface MethodResultMeta<A = BaseActor> {
   returnCount: number
 }
 
-interface Context {
+interface Context<V = unknown> {
   label?: string
-  value?: unknown
+  value?: V
 }
 
 /**
@@ -67,8 +67,8 @@ interface Context {
  * - blob → string (base64/hex)
  * - Result variants (Ok/Err) may be pre-unwrapped at the retType level
  */
-export class VisitResultField<A = BaseActor> extends IDL.Visitor<
-  Context,
+export class VisitResultField<A = BaseActor, V = unknown> extends IDL.Visitor<
+  Context<V>,
   ResultField | MethodResultMeta<A> | ServiceResultFields<A>
 > {
   private getNumberFormat(label?: string): NumberFormat {
@@ -119,7 +119,10 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     return 0
   }
 
-  public visitType<T>(_t: IDL.Type<T>, context: Context): UnknownResultField {
+  public visitType<T>(
+    _t: IDL.Type<T>,
+    context: Context<V>
+  ): UnknownResultField {
     return {
       type: "unknown",
       label: context.label ?? "",
@@ -128,7 +131,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitNull(_t: IDL.NullClass, context: Context): NullResultField {
+  public visitNull(_t: IDL.NullClass, context: Context<V>): NullResultField {
     return {
       type: "null",
       label: context.label ?? "",
@@ -137,7 +140,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitBool(_t: IDL.BoolClass, context: Context): BooleanResultField {
+  public visitBool(_t: IDL.BoolClass, context: Context<V>): BooleanResultField {
     return {
       type: "boolean",
       label: context.label ?? "",
@@ -146,7 +149,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitInt(_t: IDL.IntClass, context: Context): NumberResultField {
+  public visitInt(_t: IDL.IntClass, context: Context<V>): NumberResultField {
     return {
       type: "number",
       label: context.label ?? "",
@@ -157,7 +160,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitNat(_t: IDL.NatClass, context: Context): NumberResultField {
+  public visitNat(_t: IDL.NatClass, context: Context<V>): NumberResultField {
     return {
       type: "number",
       label: context.label ?? "",
@@ -168,7 +171,10 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitFloat(_t: IDL.FloatClass, context: Context): NumberResultField {
+  public visitFloat(
+    _t: IDL.FloatClass,
+    context: Context<V>
+  ): NumberResultField {
     return {
       type: "number",
       label: context.label ?? "",
@@ -181,7 +187,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
 
   public visitPrincipal(
     _t: IDL.PrincipalClass,
-    context: Context
+    context: Context<V>
   ): PrincipalResultField {
     return {
       type: "principal",
@@ -192,7 +198,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitText(_t: IDL.TextClass, context: Context): TextResultField {
+  public visitText(_t: IDL.TextClass, context: Context<V>): TextResultField {
     return {
       type: "text",
       label: context.label ?? "",
@@ -204,7 +210,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
 
   public visitBlob(
     _t: IDL.VecClass<number>,
-    context: Context
+    context: Context<V>
   ): BlobResultField | LargeBlobResultField {
     const val = context.value
 
@@ -251,7 +257,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitOpt<T>(
     _t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
-    context: Context
+    context: Context<V>
   ): OptionalResultField {
     // CandidDisplayReactor transforms opt T → T | null
     // So context.value is either the unwrapped value or null (not [value] or [])
@@ -274,7 +280,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitRecord(
     _t: IDL.RecordClass,
     fields: [string, IDL.Type<any>][],
-    context: Context
+    context: Context<V>
   ): ResultField {
     const resultFields = fields.map(
       ([key, type]) =>
@@ -296,7 +302,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitTuple<T extends any[]>(
     _t: IDL.TupleClass<T>,
     components: IDL.Type<any>[],
-    context: Context
+    context: Context<V>
   ): TupleResultField {
     const fields = components.map(
       (type, index) =>
@@ -318,7 +324,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitVariant(
     _t: IDL.VariantClass,
     fields: [string, IDL.Type<any>][],
-    context: Context
+    context: Context<V>
   ): VariantResultField | ResultField {
     const options = fields.map(([key]) => key)
     const optionFields = fields.map(
@@ -342,7 +348,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitVec<T>(
     _t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
-    context: Context
+    context: Context<V>
   ): VectorResultField | BlobResultField | LargeBlobResultField {
     // Check if it's blob by type
     if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
@@ -375,7 +381,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitRec<T>(
     t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
-    context: Context
+    context: Context<V>
   ): RecursiveResultField {
     if (!ty) {
       throw new Error("Recursive type undefined")
@@ -388,16 +394,16 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
       label: context.label ?? "",
       value: context.value,
       typeName: t.name,
-      extract: (value?: unknown) =>
+      extract: ((value?: any) =>
         ty.accept(this, {
           label: context.label ?? "",
-          value: value !== undefined ? value : context.value,
-        }) as ResultField,
+          value: value !== undefined ? (value as V) : context.value,
+        }) as ResultField) as (value?: unknown) => ResultField,
       displayHint: "none",
     }
   }
 
-  public visitFunc(t: IDL.FuncClass, context: Context): MethodResultMeta<A> {
+  public visitFunc(t: IDL.FuncClass, context: Context<V>): MethodResultMeta<A> {
     const functionName = context.label as FunctionName<A>
 
     // context.value is the array of returns if present
@@ -431,7 +437,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
 
   public visitFixedInt(
     _t: IDL.FixedIntClass,
-    context: Context
+    context: Context<V>
   ): NumberResultField {
     return {
       type: "number",
@@ -445,7 +451,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
 
   public visitFixedNat(
     _t: IDL.FixedNatClass,
-    context: Context
+    context: Context<V>
   ): NumberResultField {
     return {
       type: "number",
