@@ -51,8 +51,8 @@ export interface MethodResultMeta<A = BaseActor> {
 }
 
 interface Context {
-  label: string
-  value?: any
+  label?: string
+  value?: unknown
 }
 
 /**
@@ -71,14 +71,14 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   Context,
   ResultField | MethodResultMeta<A> | ServiceResultFields<A>
 > {
-  private getNumberFormat(label: string): NumberFormat {
+  private getNumberFormat(label?: string): NumberFormat {
     if (!label) return "normal"
     if (TAMESTAMP_KEYS_REGEX.test(label)) return "timestamp"
     if (CYCLE_KEYS_REGEX.test(label)) return "cycle"
     return "normal"
   }
 
-  private getTextFormat(label: string, value?: any): TextFormat {
+  private getTextFormat(label?: string, value?: unknown): TextFormat {
     if (typeof value === "string") {
       if (isImage(value)) return "plain"
       if (isBtcAddress(value)) return "btc"
@@ -100,25 +100,29 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     if (/ethereum|eth/i.test(label)) return "eth"
     if (
       /account_id|account_identifier|ledger_account|block_hash|transaction_hash|tx_hash/i.test(
-        label
+        label as string
       )
     )
       return "account-id"
-    if (/canister|principal/i.test(label)) return "principal"
+    if (/canister|principal/i.test(label as string)) return "principal"
     return "plain"
   }
 
-  // Helpers for blob handling: compute byte length, convert to Uint8Array, and compute a small crc32 hash
-  private getBlobByteLength(value?: any): number {
+  // Helpers for blob handling: compute byte length from common buffer shapes
+  private getBlobByteLength(value?: unknown): number {
     if (!value) return 0
     if (value instanceof Uint8Array) return value.length
+    if (Array.isArray(value)) return value.length
+    if (value instanceof ArrayBuffer) return value.byteLength
+    const maybe = value as { length?: number }
+    if (typeof maybe.length === "number") return maybe.length
     return 0
   }
 
   public visitType<T>(_t: IDL.Type<T>, context: Context): UnknownResultField {
     return {
       type: "unknown",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       displayHint: "none",
     }
@@ -127,7 +131,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitNull(_t: IDL.NullClass, context: Context): NullResultField {
     return {
       type: "null",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       displayHint: "none",
     }
@@ -136,7 +140,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitBool(_t: IDL.BoolClass, context: Context): BooleanResultField {
     return {
       type: "boolean",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       displayHint: "none",
     }
@@ -145,7 +149,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitInt(_t: IDL.IntClass, context: Context): NumberResultField {
     return {
       type: "number",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       numberFormat: this.getNumberFormat(context.label),
       candidType: "int",
@@ -156,7 +160,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitNat(_t: IDL.NatClass, context: Context): NumberResultField {
     return {
       type: "number",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       numberFormat: this.getNumberFormat(context.label),
       candidType: "nat",
@@ -167,7 +171,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitFloat(_t: IDL.FloatClass, context: Context): NumberResultField {
     return {
       type: "number",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       numberFormat: "value",
       candidType: "float",
@@ -181,7 +185,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   ): PrincipalResultField {
     return {
       type: "principal",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       displayHint: "truncate",
       checkIsCanisterId: (v) => isCanisterId(v as string),
@@ -191,7 +195,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitText(_t: IDL.TextClass, context: Context): TextResultField {
     return {
       type: "text",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       textFormat: this.getTextFormat(context.label, context.value),
       displayHint: "none",
@@ -202,24 +206,43 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     _t: IDL.VecClass<number>,
     context: Context
   ): BlobResultField | LargeBlobResultField {
-    if (typeof context.value === "string") {
+    const val = context.value
+
+    if (typeof val === "string") {
       return {
         type: "blob",
-        label: context.label,
-        value: context.value,
+        label: context.label ?? "",
+        value: val,
         displayHint: "hex",
       }
     }
 
-    const byteLength = this.getBlobByteLength(context.value)
+    const byteLength = this.getBlobByteLength(val)
+
+    const normalizedValue: string | Uint8Array | number[] | undefined = (() => {
+      if (val == null) return undefined
+      if (val instanceof Uint8Array) return val
+      if (val instanceof ArrayBuffer) return new Uint8Array(val)
+      if (Array.isArray(val) && val.every((n) => typeof n === "number"))
+        return val as number[]
+      return undefined
+    })()
+
+    const hashInput: Uint8Array = ((): Uint8Array => {
+      if (typeof normalizedValue === "string")
+        return new TextEncoder().encode(normalizedValue)
+      if (normalizedValue instanceof Uint8Array) return normalizedValue
+      if (Array.isArray(normalizedValue)) return new Uint8Array(normalizedValue)
+      return new Uint8Array()
+    })()
 
     return {
       type: "blob-large",
-      label: context.label,
+      label: context.label ?? "",
       value: {
         length: byteLength,
-        hash: bytesToHex(sha256(context.value)),
-        value: context.value,
+        hash: bytesToHex(sha256(hashInput)),
+        value: normalizedValue,
       },
       displayHint: "hex",
     }
@@ -241,7 +264,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
 
     return {
       type: "optional",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       innerField,
       displayHint: "none",
@@ -253,13 +276,17 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     fields: [string, IDL.Type<any>][],
     context: Context
   ): ResultField {
-    const resultFields = fields.map(([key, type]) =>
-      type.accept(this, { label: key, value: context.value?.[key] })
+    const resultFields = fields.map(
+      ([key, type]) =>
+        type.accept(this, {
+          label: key,
+          value: (context.value as Record<string, any>)?.[key],
+        }) as ResultField
     ) as ResultField[]
 
     return {
       type: "record",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       fields: resultFields,
       displayHint: resultFields.length > 5 ? "truncate" : "none",
@@ -271,13 +298,17 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     components: IDL.Type<any>[],
     context: Context
   ): TupleResultField {
-    const fields = components.map((type, index) =>
-      type.accept(this, { label: `_${index}`, value: context.value?.[index] })
+    const fields = components.map(
+      (type, index) =>
+        type.accept(this, {
+          label: `_${index}`,
+          value: (context.value as any[])?.[index],
+        }) as ResultField
     ) as ResultField[]
 
     return {
       type: "tuple",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       fields,
       displayHint: "none",
@@ -290,13 +321,17 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     context: Context
   ): VariantResultField | ResultField {
     const options = fields.map(([key]) => key)
-    const optionFields = fields.map(([key, type]) =>
-      type.accept(this, { label: key, value: context.value?.[key] })
+    const optionFields = fields.map(
+      ([key, type]) =>
+        type.accept(this, {
+          label: key,
+          value: (context.value as Record<string, any>)?.[key],
+        }) as ResultField
     ) as ResultField[]
 
     return {
       type: "variant",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       options,
       optionFields,
@@ -309,8 +344,6 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     context: Context
   ): VectorResultField | BlobResultField | LargeBlobResultField {
-    console.log("🚀 ~ VisitResultField ~ visitVec ~ ty:", ty)
-    console.log("🚀 ~ VisitResultField ~ visitVec ~ context:", context)
     // Check if it's blob by type
     if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
       return this.visitBlob(_t as IDL.VecClass<number>, context)
@@ -328,11 +361,10 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
             ty.accept(this, { label: "item", value: entry }) as ResultField
         )
       : undefined
-    console.log("🚀 ~ VisitResultField ~ visitVec ~ items:", items)
 
     return {
       type: "vector",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       itemField,
       items,
@@ -353,12 +385,12 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     // The extract function is called at render time with the actual value
     return {
       type: "recursive",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       typeName: t.name,
       extract: (value?: unknown) =>
         ty.accept(this, {
-          label: context.label,
+          label: context.label ?? "",
           value: value !== undefined ? value : context.value,
         }) as ResultField,
       displayHint: "none",
@@ -369,11 +401,12 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
     const functionName = context.label as FunctionName<A>
 
     // context.value is the array of returns if present
-    const resultFields = t.retTypes.map((retType, index) =>
-      retType.accept(this, {
-        label: `__ret${index}`,
-        value: context.value?.[index],
-      })
+    const resultFields = t.retTypes.map(
+      (retType, index) =>
+        retType.accept(this, {
+          label: `__ret${index}`,
+          value: (context.value as any[])?.[index],
+        }) as ResultField
     ) as ResultField[]
 
     return {
@@ -387,7 +420,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   public visitService(t: IDL.ServiceClass): ServiceResultFields<A> {
     const methodFields = t._fields.reduce((acc, [functionName, func]) => {
       acc[functionName as FunctionName<A>] = func.accept(this, {
-        label: functionName,
+        label: functionName as unknown as string,
       }) as MethodResultMeta<A>
 
       return acc
@@ -402,7 +435,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   ): NumberResultField {
     return {
       type: "number",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       numberFormat: this.getNumberFormat(context.label),
       candidType: "int",
@@ -416,7 +449,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
   ): NumberResultField {
     return {
       type: "number",
-      label: context.label,
+      label: context.label ?? "",
       value: context.value,
       numberFormat: this.getNumberFormat(context.label),
       candidType: "nat",
