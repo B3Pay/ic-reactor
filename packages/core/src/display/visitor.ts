@@ -163,12 +163,13 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
       return z.codec(z.any(), z.any(), {
         decode: (val) => {
           if (!Array.isArray(val)) return val
-          return new Map(
-            val.map((elem) => elemCodec.decode(elem)) as [string, string][]
+          return Object.fromEntries(
+            val.map((elem) => elemCodec.decode(elem)) as [string, any][]
           )
         },
         encode: (val) => {
-          const entries = val instanceof Map ? Array.from(val.entries()) : val
+          const entries =
+            val && typeof val === "object" ? Object.entries(val) : val
           if (!Array.isArray(entries)) return entries
           return entries.map((elem) => elemCodec.encode(elem))
         },

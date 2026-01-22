@@ -1,7 +1,6 @@
 import { ClientManager } from "@ic-reactor/core"
-import { MetadataDisplayReactor, ArgumentField } from "@ic-reactor/candid"
+import { MetadataDisplayReactor } from "@ic-reactor/candid"
 import { QueryClient } from "@tanstack/query-core"
-import { NumberArgumentField } from "@ic-reactor/candid/dist/visitor/arguments"
 
 const clientManager = new ClientManager({
   queryClient: new QueryClient(),
@@ -87,51 +86,7 @@ function updateUI() {
         <pre>${JSON.stringify(resultMeta, replacer, 2)}</pre>
       </div>
     </div>
-    
-    <div id="dynamic-form" style="padding: 20px; background: #1a1a1a; margin-bottom: 20px;">
-      <h4>Interactive Form</h4>
-      <div id="inputs-area"></div>
-    </div>
   `
-
-  const inputsArea = document.getElementById("inputs-area")!
-
-  // Render Simple Inputs
-  argMeta.fields.forEach((field, idx) => {
-    const inputWrapper = document.createElement("div")
-    inputWrapper.style.marginBottom = "10px"
-
-    const label = document.createElement("label")
-    label.textContent = field.label || `Argument ${idx}`
-    label.style.display = "block"
-    label.style.marginBottom = "5px"
-    inputWrapper.appendChild(label)
-
-    if (isSimpleField(field)) {
-      const input = document.createElement("input")
-      input.id = `input-${idx}`
-      input.style.width = "100%"
-      input.style.padding = "8px"
-
-      if (field.type === "number") {
-        input.placeholder = (field as NumberArgumentField).candidType
-      } else if (field.type === "boolean") {
-        input.type = "checkbox"
-        input.style.width = "auto"
-      } else {
-        input.placeholder = field.type
-      }
-
-      inputWrapper.appendChild(input)
-    } else {
-      const note = document.createElement("div")
-      note.textContent = `Complex type (${field.type}) - Input not supported in simple demo`
-      note.style.color = "#888"
-      inputWrapper.appendChild(note)
-    }
-
-    inputsArea.appendChild(inputWrapper)
-  })
 
   // Setup Call Button
   callBtn.onclick = async () => {
@@ -139,38 +94,16 @@ function updateUI() {
       resultContainer.style.display = "block"
       resultDisplay.textContent = "Calling..."
 
-      const args = argMeta.fields.map((field, idx) => {
-        if (!isSimpleField(field)) return undefined // Skip complex for now
-
-        const input = document.getElementById(
-          `input-${idx}`
-        ) as HTMLInputElement
-        if (!input) return undefined
-
-        if (field.type === "boolean") return input.checked
-        if (field.type === "number") {
-          if (input.value === "") return undefined
-          return input.value // DisplayReactor handles string -> bigint conversion!
-        }
-        return input.value
-      })
-
-      console.log("Calling with args:", args)
-
       const result = await reactor.callMethod({
         functionName: methodName as any,
-        args: args as any,
       })
+      console.log(result)
 
       resultDisplay.textContent = JSON.stringify(result, replacer, 2)
     } catch (e) {
       resultDisplay.textContent = `Error: ${e}`
     }
   }
-}
-
-function isSimpleField(field: ArgumentField): boolean {
-  return ["text", "number", "principal", "boolean", "null"].includes(field.type)
 }
 
 function replacer(_: string, value: any) {

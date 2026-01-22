@@ -1,28 +1,23 @@
-import { describe, it, expect, beforeAll, beforeEach } from "vitest"
-import { MetadataDisplayReactor } from "../../src/metadata-display-reactor"
-import { HttpAgent, ActorMethod } from "@icp-sdk/core/agent"
 import { ClientManager } from "@ic-reactor/core"
+import { ActorMethod, HttpAgent } from "@icp-sdk/core/agent"
+import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { MetadataDisplayReactor } from "../../src/metadata-display-reactor"
 import type {
   MethodArgumentsMeta,
-  ArgumentField,
+  NumberArgumentField,
+  OptionalArgumentField,
+  PrincipalArgumentField,
   RecordArgumentField,
   VariantArgumentField,
-  OptionalArgumentField,
-  NumberArgumentField,
-  TextArgumentField,
-  PrincipalArgumentField,
-  BlobArgumentField,
 } from "../../src/visitor/arguments"
 import type {
   MethodResultMeta,
-  ResultField,
   NumberResultField,
-  TextResultField,
+  OptionalResultField,
   RecordResultField,
+  TextResultField,
   VariantResultField,
   VectorResultField,
-  OptionalResultField,
-  BlobResultField,
 } from "../../src/visitor/returns"
 
 // ════════════════════════════════════════════════════════════════════════════
