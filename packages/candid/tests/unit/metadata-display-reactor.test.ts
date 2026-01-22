@@ -877,11 +877,122 @@ describe("MetadataDisplayReactor", () => {
       expect(meta.resultFields[10].displayType).toBe("array") // vec
     })
   })
-})
+  describe("Data Mocking & Verification", () => {
+    let reactor: MetadataDisplayReactor
 
-// ════════════════════════════════════════════════════════════════════════════
-// E2E Tests (requires network)
-// ════════════════════════════════════════════════════════════════════════════
+    beforeAll(async () => {
+      reactor = new MetadataDisplayReactor({
+        name: "mock-test",
+        canisterId: "aaaaa-aa",
+        clientManager: createMockClientManager(),
+        candid: ICRC1_SERVICE_CANDID,
+      })
+      await reactor.initialize()
+    })
+
+    it("should verify nat result transformation matches metadata", () => {
+      const methodName = "icrc1_fee"
+
+      // 1. Get Metadata
+      const meta = reactor.getResultMeta(
+        methodName
+      ) as MethodResultMeta<unknown>
+      const field = meta.resultFields[0] as NumberResultField
+
+      expect(field.type).toBe("number")
+      expect(field.displayType).toBe("string")
+
+      // 2. Mock Candid Data
+      const mockCandid = 10_000n
+
+      // 3. Transform using Codec
+      const codec = (reactor as any).getCodec(methodName)
+      const displayData = codec.result.asDisplay(mockCandid)
+
+      // 4. Verify Data matches Metadata expectation
+      expect(typeof displayData).toBe("string")
+      expect(displayData).toBe("10000")
+    })
+
+    it("should verify complex metadata result matches structure", () => {
+      const methodName = "icrc1_metadata"
+
+      // 1. Get Metadata
+      const meta = reactor.getResultMeta(
+        methodName
+      ) as MethodResultMeta<unknown>
+      const field = meta.resultFields[0] as VectorResultField
+
+      expect(field.type).toBe("vector")
+      expect(field.displayType).toBe("array")
+
+      // 2. Mock Candid Data (Vec of Records)
+      const mockCandid = [
+        ["icrc1:name", { Text: "Test Token" }],
+        ["icrc1:decimals", { Nat: 8n }],
+      ]
+
+      // 3. Transform using Codec
+      const codec = (reactor as any).getCodec(methodName)
+      const displayData = codec.result.asDisplay(mockCandid)
+
+      // 4. Verify Data matches Metadata expectation
+      // Vec<(Text, Value)> is converted to Object!
+      expect(typeof displayData).toBe("object")
+      expect(Array.isArray(displayData)).toBe(false)
+
+      expect(displayData).toHaveProperty("icrc1:name")
+      expect((displayData as any)["icrc1:name"]).toEqual({ Text: "Test Token" })
+    })
+
+    it("should verify Result variant unwrapping matches metadata", () => {
+      const methodName = "icrc1_transfer"
+
+      // 1. Get Metadata
+      const meta = reactor.getResultMeta(
+        methodName
+      ) as MethodResultMeta<unknown>
+      const field = meta.resultFields[0] as VariantResultField
+
+      expect(field.isResultType).toBe(true)
+      expect(field.displayType).toBe("result")
+
+      // 2. Mock Candid Data (Ok)
+      const mockOk = { Ok: 12345n }
+
+      // 3. Transform using Codec
+      const codec = (reactor as any).getCodec(methodName)
+      const displayOk = codec.result.asDisplay(mockOk)
+
+      // Result unwrapping happens in DisplayReactor, NOT codec
+      // So here we get { Ok: "12345" }
+      expect(displayOk).toHaveProperty("Ok")
+      expect((displayOk as any).Ok).toBe("12345")
+
+      // 4. Mock Candid Data (Err)
+      const mockErr = { Err: { InsufficientFunds: { balance: 100n } } }
+
+      // For Err, codec returns it as is (DisplayReactor handles the throw)
+      // Wait, let's check code. DisplayCodecVisitor handles options.
+      // Result unwrapping happens in DisplayReactor.callMethod, NOT in the codec itself?
+      // Let's verify DisplayCodec logic for Variant.
+
+      const displayErr = codec.result.asDisplay(mockErr)
+      // The visitor doesn't auto-unwrap Result types during DECODE constant
+      // It creates a structure that might be unwrapped later or is kept as variant
+      // Actually DisplayCodecVisitor check "isResultType" in logic?
+      // No, it handles variants generically.
+
+      // Let's see what displayErr looks like
+      // Expected: { Err: { _type: "InsufficientFunds", InsufficientFunds: { balance: "100" } } }
+      // Or similar normalized variant structure
+
+      expect(displayErr).toHaveProperty("Err")
+      expect(displayErr.Err).toHaveProperty("InsufficientFunds")
+      expect(displayErr.Err.InsufficientFunds.balance).toBe("100")
+    })
+  })
+})
 
 describe("MetadataDisplayReactor E2E", () => {
   let reactor: MetadataDisplayReactor<TestActor>
