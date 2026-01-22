@@ -30,7 +30,8 @@ import type {
 } from "./types"
 import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 import { IDL } from "../types"
-import { sha256 } from "sha2"
+import { sha256 } from "@noble/hashes/sha2"
+import { bytesToHex } from "@noble/hashes/utils"
 
 /**
  * Service-level result fields mapping
@@ -217,7 +218,7 @@ export class VisitResultField<A = BaseActor> extends IDL.Visitor<
       label: context.label,
       value: {
         length: byteLength,
-        hash: sha256(context.value),
+        hash: bytesToHex(sha256(context.value)),
         value: context.value,
       },
       displayHint: "hex",

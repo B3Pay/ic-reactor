@@ -50,11 +50,10 @@
   "license": "MIT",
   "dependencies": {
     "@ic-reactor/core": "workspace:^",
-    "sha2": "link:@noble/hashes/sha2"
+    "@noble/hashes": "^2.0"
   },
   "peerDependencies": {
-    "@icp-sdk/core": "^5.0.0",
-    "sha2": "link:@noble/hashes/sha2"
+    "@icp-sdk/core": "^5.0.0"
   },
   "peerDependenciesMeta": {},
   "devDependencies": {
