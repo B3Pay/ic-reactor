@@ -1,0 +1,151 @@
+const TAMESTAMP_KEYS = [
+  "time",
+  "date",
+  "deadline",
+  "timestamp",
+  "timestamp_nanos",
+  "statusAt",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "validUntil",
+  "status_at",
+  "created_at",
+  "updated_at",
+  "deleted_at",
+  "valid_until",
+]
+
+export const TAMESTAMP_KEYS_REGEX = new RegExp(
+  // eslint-disable-next-line no-useless-escape
+  TAMESTAMP_KEYS.map((key) => `^[\w-]*${key}[\w-]*$`).join("|"),
+  "i"
+)
+
+const VALUE_KEYS = [
+  "value",
+  "amount",
+  "balance",
+  "price",
+  "total_supply",
+  "totalSupply",
+  "quantity",
+]
+
+export const VALUE_KEYS_REGEX = new RegExp(
+  // eslint-disable-next-line no-useless-escape
+  VALUE_KEYS.map((key) => `^[\w-]*${key}[\w-]*$`).join("|"),
+  "i"
+)
+
+const CYCLE_KEYS = ["cycle", "cycles"]
+
+export const CYCLE_KEYS_REGEX = new RegExp(
+  // eslint-disable-next-line no-useless-escape
+  CYCLE_KEYS.map((key) => `^[\w-]*${key}[\w-]*$`).join("|"),
+  "i"
+)
+
+export const WALLET_TEST = [
+  "wallet",
+  "balance",
+  "transfer",
+  "send",
+  "topup",
+  "receive",
+  "deposit",
+  "withdraw",
+  "pay",
+  "claim",
+  "refund",
+  "reward",
+  "tip",
+  "buy",
+  "sell",
+  "purchase",
+  "order",
+  "checkout",
+  "cart",
+  "invoice",
+  "payment",
+  "credit",
+  "debit",
+  "transaction",
+  "history",
+  "statement",
+  "account",
+  "address",
+  "fund",
+  "staking",
+  "bond",
+  "unbond",
+  "delegate",
+  "undelegate",
+  "approve",
+  "allowance",
+]
+
+export const SETTING_TEST = [
+  "setting",
+  "version",
+  "set",
+  "update",
+  "change",
+  "modify",
+  "edit",
+  "remove",
+  "delete",
+  "add",
+  "create",
+  "clear",
+  "reset",
+  "revoke",
+  "renew",
+  "replace",
+  "upgrade",
+  "load",
+  "upload",
+  "downgrade",
+  "install",
+  "role",
+  "uninstall",
+  "enable",
+  "disable",
+  "activate",
+  "deactivate",
+  "suspend",
+  "resume",
+  "pause",
+  "start",
+  "stop",
+  "restart",
+  "refresh",
+  "reload",
+  "reboot",
+  "shutdown",
+  "terminate",
+  "kill",
+  "abort",
+  "cancel",
+]
+
+export const STATUS_TEST = [
+  "status",
+  "state",
+  "condition",
+  "phase",
+  "step",
+  "stage",
+  "level",
+  "wasm",
+  "detail",
+  "info",
+  "message",
+  "note",
+  "log",
+  "bug",
+  "error",
+  "capacity",
+  "partition",
+  "timer",
+]

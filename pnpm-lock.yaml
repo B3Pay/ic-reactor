@@ -160,6 +160,9 @@ importers:
       '@ic-reactor/core':
         specifier: workspace:^
         version: link:../core
+      sha2:
+        specifier: link:@noble/hashes/sha2
+        version: link:@noble/hashes/sha2
     devDependencies:
       '@icp-sdk/core':
         specifier: ^5.0.0

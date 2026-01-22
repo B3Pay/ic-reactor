@@ -49,10 +49,12 @@
   "author": "Behrad Deylami",
   "license": "MIT",
   "dependencies": {
-    "@ic-reactor/core": "workspace:^"
+    "@ic-reactor/core": "workspace:^",
+    "sha2": "link:@noble/hashes/sha2"
   },
   "peerDependencies": {
-    "@icp-sdk/core": "^5.0.0"
+    "@icp-sdk/core": "^5.0.0",
+    "sha2": "link:@noble/hashes/sha2"
   },
   "peerDependenciesMeta": {},
   "devDependencies": {

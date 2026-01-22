@@ -10,7 +10,10 @@
     "noEmit": false,
     "allowImportingTsExtensions": false,
     "lib": ["ES2020", "DOM"],
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "paths": {
+      "sha2": ["./node_modules/@noble/hashes/sha2"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "**/*.spec.ts", "tests/**/*"]
