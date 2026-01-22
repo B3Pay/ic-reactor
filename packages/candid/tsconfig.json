@@ -13,5 +13,6 @@
     "moduleResolution": "bundler"
   },
   "include": ["src/**/*"],
-  "exclude": ["**/*.test.ts", "**/*.spec.ts", "tests/**/*"]
+  "exclude": ["**/*.test.ts", "**/*.spec.ts", "tests/**/*"],
+  "references": [{ "path": "../core" }]
 }

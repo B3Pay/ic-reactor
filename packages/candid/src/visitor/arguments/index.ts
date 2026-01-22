@@ -1,5 +1,5 @@
-import { isQuery } from "../../helpers"
-import { IDL, type BaseActor, type FunctionName } from "../../types"
+import { isQuery } from "../helpers"
+import { IDL } from "../types"
 import type {
   TanstackAllArgTypes,
   TanstackArgTypeFromIDLType,
@@ -7,14 +7,15 @@ import type {
   TanstackMethodField,
   TanstackServiceField,
   TanstackVariantArg,
+  MethodArgsDefaultValues,
 } from "./types"
-import type { MethodArgsDefaultValues } from "../args/types"
-import { VisitResultField } from "../../result"
-import { ResultField } from "@/visitor/result/types"
+import { VisitResultField } from "../returns"
+import { ResultField } from "../returns/types"
+import { BaseActor, FunctionName } from "@ic-reactor/core"
 
 export * from "./types"
 
-export class VisitTanstackField<A = BaseActor> extends IDL.Visitor<
+export class VisitTanstackField<A = BaseActor, V = unknown> extends IDL.Visitor<
   string,
   | TanstackMethodField<A>
   | TanstackAllArgTypes<IDL.Type>
@@ -85,7 +86,7 @@ export class VisitTanstackField<A = BaseActor> extends IDL.Visitor<
     ) as MethodArgsDefaultValues<FunctionName<A>>
 
     // Generate result fields using the lean result visitor (for display rendering)
-    const resultVisitor = new VisitResultField<A>()
+    const resultVisitor = new VisitResultField<A, V>()
 
     const generateField = (data: unknown) => {
       const results = Array.isArray(data)

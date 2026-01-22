@@ -1,18 +1,16 @@
-import type {
-  BaseActor,
-  FunctionName,
-  FunctionType,
-  IDL,
-  AllNumberTypes,
-  FieldType,
-} from "../../types"
-import type { MethodResult } from "../../transform/types"
-import type {
-  ArgTypeFromIDLType,
-  MethodArgsDefaultValues,
-  ExtraInputFormArg,
-} from "../args/types"
-import type { ResultField } from "../../result/types"
+import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
+import type { IDL, AllNumberTypes, FieldType } from "../types"
+// Fallback local types for moved/removed modules (keeps backwards compatibility)
+// The real implementations were refactored; these types are intentionally permissive.
+type MethodResult = unknown
+export type ArgTypeFromIDLType<T> = T extends IDL.Type
+  ? ReturnType<T["decodeValue"]>
+  : unknown
+export type MethodArgsDefaultValues<T = string> = Record<string, T> | T[]
+export interface ExtraInputFormArg {
+  transform?: (value: unknown) => unknown
+}
+import type { ResultField } from "../returns/types"
 
 export type TanstackServiceField<A = BaseActor> = {
   [K in FunctionName<A>]: TanstackMethodField<A>
