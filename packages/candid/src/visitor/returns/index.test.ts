@@ -1297,7 +1297,6 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["getName"] as MethodResultMeta
 
       const result = methodMeta.generateMetadata(["Alice"])
-      console.log("🚀 ~ result:", result)
 
       expect(result.functionName).toBe("getName")
       expect(result.functionType).toBe("query")
@@ -1492,6 +1491,8 @@ describe("ResultFieldVisitor", () => {
 
       // Test successful transfer
       const successResult = methodMeta.generateMetadata([{ Ok: "1000" }])
+      console.log("🚀 ~ result:", JSON.stringify(successResult, null, 2))
+
       const successValue = successResult.results[0].value as {
         option: string
         value: { field: ResultField; value: unknown }
@@ -1531,6 +1532,248 @@ describe("ResultFieldVisitor", () => {
 
       const result = methodMeta.generateMetadata([])
       expect(result.results).toHaveLength(0)
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // generateMetadataWithRaw() Method Tests
+  // ════════════════════════════════════════════════════════════════════════════
+
+  describe("generateMetadataWithRaw() Method", () => {
+    it("should include both raw and display values for single return", () => {
+      const service = IDL.Service({
+        getBalance: IDL.Func([], [IDL.Nat], ["query"]),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["getBalance"] as MethodResultMeta
+
+      // Simulate raw BigInt and display string
+      const rawData = [BigInt(1000000)]
+      const displayData = ["1000000"]
+
+      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+
+      expect(result.functionName).toBe("getBalance")
+      expect(result.functionType).toBe("query")
+      expect(result.rawData).toEqual(rawData)
+      expect(result.displayData).toEqual(displayData)
+      expect(result.results).toHaveLength(1)
+      expect(result.results[0].value).toBe("1000000")
+      expect(result.results[0].raw).toBe(BigInt(1000000))
+      expect(result.results[0].field.type).toBe("number")
+    })
+
+    it("should include both raw and display values for multiple returns", () => {
+      const service = IDL.Service({
+        getStats: IDL.Func([], [IDL.Nat64, IDL.Text, IDL.Bool], ["query"]),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["getStats"] as MethodResultMeta
+
+      const rawData = [BigInt(9007199254740993), "active", true]
+      const displayData = ["9007199254740993", "active", true]
+
+      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+
+      expect(result.results).toHaveLength(3)
+
+      // nat64 → string display, BigInt raw
+      expect(result.results[0].value).toBe("9007199254740993")
+      expect(result.results[0].raw).toBe(BigInt(9007199254740993))
+      expect(result.results[0].field.candidType).toBe("nat64")
+
+      // text → same for both
+      expect(result.results[1].value).toBe("active")
+      expect(result.results[1].raw).toBe("active")
+
+      // bool → same for both
+      expect(result.results[2].value).toBe(true)
+      expect(result.results[2].raw).toBe(true)
+    })
+
+    it("should handle record with raw and display values", () => {
+      const service = IDL.Service({
+        getUser: IDL.Func(
+          [],
+          [IDL.Record({ name: IDL.Text, balance: IDL.Nat })],
+          ["query"]
+        ),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["getUser"] as MethodResultMeta
+
+      const rawData = [{ name: "Alice", balance: BigInt(500) }]
+      const displayData = [{ name: "Alice", balance: "500" }]
+
+      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+
+      expect(result.results[0].raw).toEqual({
+        name: "Alice",
+        balance: BigInt(500),
+      })
+
+      const recordValue = result.results[0].value as Record<
+        string,
+        { field: ResultField; value: unknown }
+      >
+      expect(recordValue.name.value).toBe("Alice")
+      expect(recordValue.balance.value).toBe("500")
+    })
+
+    it("should handle Result variant with raw and display values", () => {
+      const service = IDL.Service({
+        transfer: IDL.Func(
+          [],
+          [IDL.Variant({ Ok: IDL.Nat, Err: IDL.Text })],
+          []
+        ),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["transfer"] as MethodResultMeta
+
+      // Test Ok case with raw BigInt
+      const rawData = [{ Ok: BigInt(12345) }]
+      const displayData = [{ Ok: "12345" }]
+
+      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+
+      expect(result.results[0].raw).toEqual({ Ok: BigInt(12345) })
+
+      const variantValue = result.results[0].value as {
+        option: string
+        value: { field: ResultField; value: unknown }
+      }
+      expect(variantValue.option).toBe("Ok")
+      expect(variantValue.value.value).toBe("12345")
+    })
+
+    it("should preserve raw Principal object", () => {
+      const { Principal } = require("@icp-sdk/core/principal")
+
+      const service = IDL.Service({
+        getOwner: IDL.Func([], [IDL.Principal], ["query"]),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["getOwner"] as MethodResultMeta
+
+      const principal = Principal.fromText("aaaaa-aa")
+      const rawData = [principal]
+      const displayData = ["aaaaa-aa"]
+
+      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+
+      expect(result.results[0].value).toBe("aaaaa-aa")
+      expect(result.results[0].raw).toBe(principal)
+      expect(result.results[0].field.type).toBe("principal")
+    })
+
+    it("should handle vector with raw and display values", () => {
+      const service = IDL.Service({
+        getAmounts: IDL.Func([], [IDL.Vec(IDL.Nat)], ["query"]),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["getAmounts"] as MethodResultMeta
+
+      const rawData = [[BigInt(100), BigInt(200), BigInt(300)]]
+      const displayData = [["100", "200", "300"]]
+
+      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+
+      expect(result.results[0].raw).toEqual([
+        BigInt(100),
+        BigInt(200),
+        BigInt(300),
+      ])
+
+      const vecValue = result.results[0].value as Array<{
+        field: ResultField
+        value: unknown
+      }>
+      expect(vecValue).toHaveLength(3)
+      expect(vecValue[0].value).toBe("100")
+      expect(vecValue[1].value).toBe("200")
+      expect(vecValue[2].value).toBe("300")
+    })
+
+    it("should handle optional with raw and display values", () => {
+      const service = IDL.Service({
+        findBalance: IDL.Func([], [IDL.Opt(IDL.Nat)], ["query"]),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["findBalance"] as MethodResultMeta
+
+      // Test with value
+      const rawDataWithValue = [BigInt(999)]
+      const displayDataWithValue = ["999"]
+
+      const resultWithValue = methodMeta.generateMetadataWithRaw(
+        rawDataWithValue,
+        displayDataWithValue
+      )
+
+      expect(resultWithValue.results[0].raw).toBe(BigInt(999))
+      const innerValue = resultWithValue.results[0].value as {
+        field: ResultField
+        value: unknown
+      }
+      expect(innerValue.value).toBe("999")
+
+      // Test with null
+      const rawDataNull = [null]
+      const displayDataNull = [null]
+
+      const resultNull = methodMeta.generateMetadataWithRaw(
+        rawDataNull,
+        displayDataNull
+      )
+      expect(resultNull.results[0].raw).toBe(null)
+      expect(resultNull.results[0].value).toBe(null)
+    })
+
+    it("should handle empty return", () => {
+      const service = IDL.Service({
+        doNothing: IDL.Func([], [], []),
+      })
+
+      const serviceMeta = service.accept(
+        visitor,
+        "service"
+      ) as ServiceResultMeta
+      const methodMeta = serviceMeta["doNothing"] as MethodResultMeta
+
+      const result = methodMeta.generateMetadataWithRaw([], [])
+
+      expect(result.results).toHaveLength(0)
+      expect(result.rawData).toEqual([])
+      expect(result.displayData).toEqual([])
     })
   })
 })

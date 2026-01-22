@@ -22,6 +22,7 @@ import type {
   MethodResultMeta,
   ServiceResultMeta,
   ResolvedMethodResult,
+  ResolvedMethodResultWithRaw,
 } from "./types"
 import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 
@@ -151,12 +152,36 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       }
     }
 
+    const generateMetadataWithRaw = (
+      rawData: unknown[],
+      displayData: unknown[]
+    ): ResolvedMethodResultWithRaw<A> => {
+      const results: ResultFieldWithValue[] = resultFields.map(
+        (field, index) => {
+          const resolved = field.resolve(displayData[index])
+          return {
+            ...resolved,
+            raw: rawData[index],
+          }
+        }
+      )
+
+      return {
+        functionType,
+        functionName: functionName as FunctionName<A>,
+        results,
+        rawData,
+        displayData,
+      }
+    }
+
     return {
       functionType,
       functionName: functionName as FunctionName<A>,
       resultFields,
       returnCount: t.retTypes.length,
       generateMetadata,
+      generateMetadataWithRaw,
     }
   }
 
