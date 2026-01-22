@@ -1,25 +1,60 @@
 import { isQuery } from "../helpers"
 import { IDL } from "../types"
 import type {
-  TanstackAllArgTypes,
-  TanstackArgTypeFromIDLType,
-  TanstackFieldProps,
-  TanstackMethodField,
-  TanstackServiceField,
-  TanstackVariantArg,
-  MethodArgsDefaultValues,
+  ArgumentField,
+  RecordArgumentField,
+  VariantArgumentField,
+  TupleArgumentField,
+  OptionalArgumentField,
+  VectorArgumentField,
+  BlobArgumentField,
+  RecursiveArgumentField,
+  PrincipalArgumentField,
+  NumberArgumentField,
+  BooleanArgumentField,
+  NullArgumentField,
+  TextArgumentField,
+  UnknownArgumentField,
+  MethodArgumentsMeta,
+  ServiceArgumentsMeta,
 } from "./types"
-import { VisitResultField } from "../returns"
-import { ResultField } from "../returns/types"
 import { BaseActor, FunctionName } from "@ic-reactor/core"
 
 export * from "./types"
 
-export class VisitTanstackField<A = BaseActor, V = unknown> extends IDL.Visitor<
+/**
+ * ArgumentFieldVisitor generates metadata for form input fields from Candid IDL types.
+ *
+ * ## Design Principles
+ *
+ * 1. **Works with raw IDL types** - generates metadata at initialization time
+ * 2. **No value dependencies** - metadata is independent of actual values
+ * 3. **Form-framework agnostic** - output can be used with TanStack, React Hook Form, etc.
+ * 4. **Efficient** - single traversal, no runtime type checking
+ *
+ * ## Output Structure
+ *
+ * Each field has:
+ * - `type`: The field type (record, variant, text, number, etc.)
+ * - `label`: Human-readable label from Candid
+ * - `path`: Dot-notation path for form binding (e.g., "0.owner")
+ * - `defaultValue`: Initial value for the form
+ * - Type-specific properties (options for variant, fields for record, etc.)
+ *
+ * @example
+ * ```typescript
+ * const visitor = new ArgumentFieldVisitor()
+ * const serviceMeta = service.accept(visitor, null)
+ *
+ * // For a specific method
+ * const methodMeta = serviceMeta["icrc1_transfer"]
+ * // methodMeta.fields = [{ type: "record", fields: [...] }]
+ * // methodMeta.defaultValues = [{ to: "", amount: "" }]
+ * ```
+ */
+export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   string,
-  | TanstackMethodField<A>
-  | TanstackAllArgTypes<IDL.Type>
-  | TanstackServiceField<A>
+  ArgumentField | MethodArgumentsMeta<A> | ServiceArgumentsMeta<A>
 > {
   private pathStack: string[] = []
 
@@ -36,162 +71,91 @@ export class VisitTanstackField<A = BaseActor, V = unknown> extends IDL.Visitor<
     return this.pathStack[this.pathStack.length - 1] ?? ""
   }
 
-  private resolveDefaultValue(field: {
-    defaultValue?: unknown
-    defaultValues?: unknown
-  }): unknown {
-    if (typeof field.defaultValue !== "undefined") {
-      return field.defaultValue
-    }
-
-    return field.defaultValues
-  }
-
-  private asField<T>(value: unknown): T {
-    return value as T
-  }
-
-  private buildFieldProps(mode?: "value" | "array"): TanstackFieldProps {
-    const name = this.currentPath()
-
-    return {
-      name,
-      ...(mode ? { mode } : {}),
-    }
-  }
-
   private childPath(key: string | number): string {
     const parent = this.currentPath()
-    // Use bracket notation for numeric indices (TanStack Form array format)
     if (typeof key === "number") {
       return parent ? `${parent}[${key}]` : String(key)
     }
     return parent ? `${parent}.${key}` : key
   }
 
+  // ════════════════════════════════════════════════════════════════════════
+  // Service & Function Level
+  // ════════════════════════════════════════════════════════════════════════
+
+  public visitService(t: IDL.ServiceClass): ServiceArgumentsMeta<A> {
+    const result = {} as ServiceArgumentsMeta<A>
+
+    for (const [functionName, func] of t._fields) {
+      result[functionName as FunctionName<A>] = func.accept(
+        this,
+        functionName
+      ) as MethodArgumentsMeta<A>
+    }
+
+    return result
+  }
+
   public visitFunc(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
-  ): TanstackMethodField<A> {
+  ): MethodArgumentsMeta<A> {
     const functionType = isQuery(t) ? "query" : "update"
 
-    // Generate input argument fields (for form rendering)
     const fields = t.argTypes.map((arg, index) => {
-      return this.asField<TanstackAllArgTypes<IDL.Type>>(
-        this.withPath(`[${index}]`, () => arg.accept(this, `__arg${index}`))
-      )
+      return this.withPath(`[${index}]`, () =>
+        arg.accept(this, `__arg${index}`)
+      ) as ArgumentField
     })
-    const defaultValues = fields.map(
-      (field) => this.resolveDefaultValue(field) ?? {}
-    ) as MethodArgsDefaultValues<FunctionName<A>>
 
-    // Generate result fields using the lean result visitor (for display rendering)
-    const resultVisitor = new VisitResultField<A, V>()
-
-    const generateField = (data: unknown) => {
-      const results = Array.isArray(data)
-        ? data
-        : t.retTypes.length > 1
-          ? [data]
-          : [data]
-
-      return t.retTypes.map((retType, index) => {
-        let actualType = retType
-        let actualValue = results[index]
-
-        // Unwrap Result types (Ok/Err) at the retType level
-        if (retType instanceof IDL.VariantClass) {
-          const fields = retType._fields
-          const options = fields.map(([key]) => key)
-
-          if (
-            options.length === 2 &&
-            options.includes("Ok") &&
-            options.includes("Err")
-          ) {
-            const okField = fields.find(([key]) => key === "Ok")
-            if (okField && actualValue !== null && actualValue !== undefined) {
-              if (typeof actualValue === "object" && actualValue !== null) {
-                if ("Ok" in actualValue) {
-                  // Explicit Ok: unwrap to inner type and value
-                  actualType = okField[1]
-                  actualValue = actualValue.Ok
-                } else if ("Err" in actualValue) {
-                  // Err case: keep as variant to show error
-                  // Don't unwrap, let visitor handle it
-                } else {
-                  // Implicit unwrap: object exists but not wrapped in {Ok:...} or {Err:...}
-                  // This means CandidDisplayReactor already unwrapped the Result
-                  actualType = okField[1]
-                  // actualValue is already the unwrapped value
-                }
-              } else {
-                // Implicit unwrap: primitive value (not an object)
-                actualType = okField[1]
-              }
-            } else if (
-              okField &&
-              (actualValue === null || actualValue === undefined)
-            ) {
-              // No value yet, default to Ok type
-              actualType = okField[1]
-            }
-          }
-        }
-
-        return actualType.accept(resultVisitor, {
-          label: `__ret${index}`,
-          value: actualValue,
-        }) as ResultField
-      })
-    }
+    const defaultValues = fields.map((field) => this.extractDefaultValue(field))
 
     return {
       functionType,
       functionName,
-      defaultValues,
       fields,
-      generateField,
+      defaultValues,
     }
   }
 
+  private extractDefaultValue(field: ArgumentField): unknown {
+    if ("defaultValue" in field) {
+      return field.defaultValue
+    }
+    if ("defaultValues" in field) {
+      return field.defaultValues
+    }
+    return undefined
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Compound Types
+  // ════════════════════════════════════════════════════════════════════════
+
   public visitRecord(
     _t: IDL.RecordClass,
-    _fields: Array<[string, IDL.Type]>,
+    fields_: Array<[string, IDL.Type]>,
     label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
+  ): RecordArgumentField {
+    const path = this.currentPath()
+    const fields: ArgumentField[] = []
+    const defaultValues: Record<string, unknown> = {}
 
-    const { fields, defaultValues } = _fields.reduce(
-      (acc, [key, type]) => {
-        const field = this.asField<TanstackAllArgTypes<typeof type>>(
-          this.withPath(this.childPath(key), () => type.accept(this, key))
-        )
+    for (const [key, type] of fields_) {
+      const field = this.withPath(this.childPath(key), () =>
+        type.accept(this, key)
+      ) as ArgumentField
 
-        acc.fields.push(field)
-        acc.defaultValues[key] =
-          (field as { defaultValue?: unknown; defaultValues?: unknown })
-            .defaultValue ??
-          (field as { defaultValues?: unknown }).defaultValues
-
-        return acc
-      },
-      {
-        fields: [] as TanstackAllArgTypes<IDL.Type>[],
-        defaultValues: {} as Record<
-          string,
-          TanstackArgTypeFromIDLType<IDL.Type>
-        >,
-      }
-    )
+      fields.push(field)
+      defaultValues[key] = this.extractDefaultValue(field)
+    }
 
     return {
-      type: "record" as const,
+      type: "record",
       label,
-      name,
+      path,
       fields,
       defaultValues,
-      fieldProps: this.buildFieldProps(),
     }
   }
 
@@ -199,45 +163,33 @@ export class VisitTanstackField<A = BaseActor, V = unknown> extends IDL.Visitor<
     _t: IDL.VariantClass,
     fields_: Array<[string, IDL.Type]>,
     label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
+  ): VariantArgumentField {
+    const path = this.currentPath()
+    const fields: ArgumentField[] = []
+    const options: string[] = []
 
-    const { fields, options } = fields_.reduce(
-      (acc, [key, type]) => {
-        const field = this.asField<TanstackAllArgTypes<typeof type>>(
-          this.withPath(this.childPath(key), () => type.accept(this, key))
-        )
+    for (const [key, type] of fields_) {
+      const field = this.withPath(this.childPath(key), () =>
+        type.accept(this, key)
+      ) as ArgumentField
 
-        acc.fields.push(field)
-        acc.options.push(key)
+      fields.push(field)
+      options.push(key)
+    }
 
-        return acc
-      },
-      {
-        fields: [] as TanstackAllArgTypes<IDL.Type>[],
-        options: [] as string[],
-      }
-    )
-
-    const defaultValue = options[0]
-
+    const defaultOption = options[0]
     const defaultValues = {
-      [defaultValue]:
-        (fields[0] as { defaultValue?: unknown; defaultValues?: unknown })
-          .defaultValue ??
-        (fields[0] as { defaultValues?: unknown }).defaultValues ??
-        {},
+      [defaultOption]: this.extractDefaultValue(fields[0]),
     }
 
     return {
-      type: "variant" as const,
+      type: "variant",
+      label,
+      path,
       fields,
       options,
-      label,
-      name,
-      defaultValue,
+      defaultOption,
       defaultValues,
-      fieldProps: this.buildFieldProps(),
     }
   }
 
@@ -245,58 +197,27 @@ export class VisitTanstackField<A = BaseActor, V = unknown> extends IDL.Visitor<
     _t: IDL.TupleClass<T>,
     components: IDL.Type[],
     label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
+  ): TupleArgumentField {
+    const path = this.currentPath()
+    const fields: ArgumentField[] = []
+    const defaultValues: unknown[] = []
 
-    const { fields, defaultValues } = components.reduce(
-      (acc, type, index) => {
-        const field = this.asField<TanstackAllArgTypes<typeof type>>(
-          this.withPath(this.childPath(index), () =>
-            type.accept(this, `_${index}_`)
-          )
-        )
+    for (let index = 0; index < components.length; index++) {
+      const type = components[index]
+      const field = this.withPath(this.childPath(index), () =>
+        type.accept(this, `_${index}_`)
+      ) as ArgumentField
 
-        acc.fields.push(field)
-        acc.defaultValues.push(
-          (field as { defaultValue?: unknown; defaultValues?: unknown })
-            .defaultValue ??
-            (field as { defaultValues?: unknown }).defaultValues
-        )
-
-        return acc
-      },
-      {
-        fields: [] as TanstackAllArgTypes<IDL.Type>[],
-        defaultValues: [] as TanstackArgTypeFromIDLType<IDL.Type>[],
-      }
-    )
-
-    return {
-      type: "tuple" as const,
-      fields,
-      label,
-      name,
-      defaultValues,
-      fieldProps: this.buildFieldProps("array"),
+      fields.push(field)
+      defaultValues.push(this.extractDefaultValue(field))
     }
-  }
-
-  public visitRec<T>(
-    _t: IDL.RecClass<T>,
-    ty: IDL.ConstructType<T>,
-    label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
 
     return {
-      type: "recursive" as const,
+      type: "tuple",
       label,
-      name,
-      extract: () =>
-        this.withPath(name, () =>
-          ty.accept(this, label)
-        ) as unknown as TanstackVariantArg<IDL.Type>,
-      fieldProps: this.buildFieldProps(),
+      path,
+      fields,
+      defaultValues,
     }
   }
 
@@ -304,20 +225,19 @@ export class VisitTanstackField<A = BaseActor, V = unknown> extends IDL.Visitor<
     _t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
+  ): OptionalArgumentField {
+    const path = this.currentPath()
 
-    const field = this.asField<TanstackAllArgTypes<typeof ty>>(
-      this.withPath(this.childPath(0), () => ty.accept(this, label))
-    )
+    const innerField = this.withPath(this.childPath(0), () =>
+      ty.accept(this, label)
+    ) as ArgumentField
 
     return {
-      type: "optional" as const,
-      field,
-      defaultValue: null,
+      type: "optional",
       label,
-      name,
-      fieldProps: this.buildFieldProps(),
+      path,
+      innerField,
+      defaultValue: null,
     }
   }
 
@@ -325,162 +245,161 @@ export class VisitTanstackField<A = BaseActor, V = unknown> extends IDL.Visitor<
     _t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
+  ): VectorArgumentField | BlobArgumentField {
+    const path = this.currentPath()
 
-    const field = this.asField<TanstackAllArgTypes<typeof ty>>(
-      this.withPath(this.childPath(0), () => ty.accept(this, label))
-    )
+    // Check if it's blob (vec nat8)
+    const isBlob = ty instanceof IDL.FixedNatClass && ty._bits === 8
 
-    const isBlob = "_bits" in ty && ty._bits === 8
+    const itemField = this.withPath(this.childPath(0), () =>
+      ty.accept(this, label)
+    ) as ArgumentField
 
-    return isBlob
-      ? {
-          type: "blob" as const,
-          field,
-          defaultValue: "",
-          label,
-          name,
-          fieldProps: this.buildFieldProps(),
-        }
-      : {
-          type: "vector" as const,
-          field,
-          defaultValue: [],
-          label,
-          name,
-          fieldProps: this.buildFieldProps("array"),
-        }
-  }
-
-  public visitType<T>(
-    _t: IDL.Type<T>,
-    label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
+    if (isBlob) {
+      return {
+        type: "blob",
+        label,
+        path,
+        itemField,
+        defaultValue: "",
+      }
+    }
 
     return {
-      type: "unknown" as const,
+      type: "vector",
       label,
-      name,
-      defaultValue: undefined as TanstackArgTypeFromIDLType<IDL.Type>,
-      fieldProps: this.buildFieldProps(),
+      path,
+      itemField,
+      defaultValue: [],
     }
   }
+
+  public visitRec<T>(
+    _t: IDL.RecClass<T>,
+    ty: IDL.ConstructType<T>,
+    label: string
+  ): RecursiveArgumentField {
+    const path = this.currentPath()
+
+    return {
+      type: "recursive",
+      label,
+      path,
+      // Lazy extraction to prevent infinite loops
+      extract: () =>
+        this.withPath(path, () => ty.accept(this, label)) as ArgumentField,
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Primitive Types
+  // ════════════════════════════════════════════════════════════════════════
 
   public visitPrincipal(
     _t: IDL.PrincipalClass,
     label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
-
+  ): PrincipalArgumentField {
     return {
-      type: "principal" as const,
+      type: "principal",
+      label,
+      path: this.currentPath(),
+      defaultValue: "",
       maxLength: 64,
       minLength: 7,
-      label,
-      name,
-      required: true as const,
-      defaultValue: "",
-      fieldProps: this.buildFieldProps(),
     }
   }
 
-  public visitBool(
-    _t: IDL.BoolClass,
-    label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
-
+  public visitText(_t: IDL.TextClass, label: string): TextArgumentField {
     return {
-      type: "boolean" as const,
+      type: "text",
       label,
-      name,
-      required: true as const,
+      path: this.currentPath(),
+      defaultValue: "",
+    }
+  }
+
+  public visitBool(_t: IDL.BoolClass, label: string): BooleanArgumentField {
+    return {
+      type: "boolean",
+      label,
+      path: this.currentPath(),
       defaultValue: false,
-      fieldProps: this.buildFieldProps(),
     }
   }
 
-  public visitNull(
-    _t: IDL.NullClass,
-    label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
-
+  public visitNull(_t: IDL.NullClass, label: string): NullArgumentField {
     return {
-      type: "null" as const,
+      type: "null",
       label,
-      name,
+      path: this.currentPath(),
       defaultValue: null,
-      fieldProps: this.buildFieldProps(),
     }
   }
 
-  public visitText(
-    _t: IDL.TextClass,
-    label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
-
+  // Numbers - all use string for display format
+  private visitNumberType(
+    label: string,
+    candidType: string
+  ): NumberArgumentField {
     return {
-      type: "text" as const,
-      required: true as const,
+      type: "number",
       label,
-      name,
+      path: this.currentPath(),
       defaultValue: "",
-      fieldProps: this.buildFieldProps(),
+      candidType,
     }
   }
 
-  public visitNumber<T>(
-    _t: IDL.Type<T>,
+  public visitInt(_t: IDL.IntClass, label: string): NumberArgumentField {
+    return this.visitNumberType(label, "int")
+  }
+
+  public visitNat(_t: IDL.NatClass, label: string): NumberArgumentField {
+    return this.visitNumberType(label, "nat")
+  }
+
+  public visitFloat(_t: IDL.FloatClass, label: string): NumberArgumentField {
+    return this.visitNumberType(label, "float")
+  }
+
+  public visitFixedInt(
+    t: IDL.FixedIntClass,
     label: string
-  ): TanstackAllArgTypes<IDL.Type> {
-    const name = this.currentPath()
+  ): NumberArgumentField {
+    return this.visitNumberType(label, `int${t._bits}`)
+  }
 
+  public visitFixedNat(
+    t: IDL.FixedNatClass,
+    label: string
+  ): NumberArgumentField {
+    return this.visitNumberType(label, `nat${t._bits}`)
+  }
+
+  public visitType<T>(_t: IDL.Type<T>, label: string): UnknownArgumentField {
     return {
-      type: "number" as const,
-      required: true as const,
+      type: "unknown",
       label,
-      name,
-      defaultValue: "",
-      fieldProps: this.buildFieldProps(),
+      path: this.currentPath(),
+      defaultValue: undefined,
     }
   }
+}
 
-  public visitInt(t: IDL.IntClass, label: string) {
-    return this.visitNumber(t, label)
-  }
+// ════════════════════════════════════════════════════════════════════════════
+// Legacy Exports (for backward compatibility)
+// ════════════════════════════════════════════════════════════════════════════
 
-  public visitNat(t: IDL.NatClass, label: string) {
-    return this.visitNumber(t, label)
-  }
+/**
+ * @deprecated Use ArgumentFieldVisitor instead
+ */
+export { ArgumentFieldVisitor as VisitTanstackField }
 
-  public visitFloat(t: IDL.FloatClass, label: string) {
-    return this.visitNumber(t, label)
-  }
-
-  public visitFixedInt(t: IDL.FixedIntClass, label: string) {
-    return this.visitNumber(t, label)
-  }
-
-  public visitFixedNat(t: IDL.FixedNatClass, label: string) {
-    return this.visitNumber(t, label)
-  }
-
-  public visitService(t: IDL.ServiceClass): TanstackServiceField<A> {
-    const methodFields = t._fields.reduce((acc, services) => {
-      const functionName = services[0] as FunctionName<A>
-      const func = services[1]
-
-      acc[functionName] = this.asField<TanstackMethodField<A>>(
-        func.accept(this, functionName)
-      )
-
-      return acc
-    }, {} as TanstackServiceField<A>)
-
-    return methodFields
-  }
+/**
+ * @deprecated Use ArgumentField instead
+ */
+export type {
+  ArgumentField as TanstackAllArgTypes,
+  MethodArgumentsMeta as TanstackMethodField,
+  ServiceArgumentsMeta as TanstackServiceField,
 }

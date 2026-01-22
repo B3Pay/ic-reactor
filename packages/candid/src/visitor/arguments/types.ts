@@ -1,195 +1,165 @@
 import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
-import type { IDL, AllNumberTypes, FieldType } from "../types"
-// Fallback local types for moved/removed modules (keeps backwards compatibility)
-// The real implementations were refactored; these types are intentionally permissive.
-type MethodResult = unknown
-export type ArgTypeFromIDLType<T> = T extends IDL.Type
-  ? ReturnType<T["decodeValue"]>
-  : unknown
-export type MethodArgsDefaultValues<T = string> = Record<string, T> | T[]
-export interface ExtraInputFormArg {
-  transform?: (value: unknown) => unknown
-}
-import type { ResultField } from "../returns/types"
 
-export type TanstackServiceField<A = BaseActor> = {
-  [K in FunctionName<A>]: TanstackMethodField<A>
-}
+// ════════════════════════════════════════════════════════════════════════════
+// Field Type Union
+// ════════════════════════════════════════════════════════════════════════════
 
-export interface TanstackMethodField<A = BaseActor> {
-  functionName: FunctionName<A>
-  functionType: FunctionType
-  /** Input argument fields for form rendering */
-  fields: TanstackAllArgTypes<IDL.Type>[] | []
-  /** Default values for the form */
-  defaultValues: MethodArgsDefaultValues<FunctionName<A>>
-  /** Result fields for display rendering (lean, UI-focused) */
-  generateField: (data: unknown) => ResultField[]
-}
+export type ArgumentFieldType =
+  | "record"
+  | "variant"
+  | "tuple"
+  | "optional"
+  | "vector"
+  | "blob"
+  | "recursive"
+  | "principal"
+  | "number"
+  | "text"
+  | "boolean"
+  | "null"
+  | "unknown"
 
-export type TanstackFieldProps = {
-  name: string
-  mode?: "value" | "array"
-}
+// ════════════════════════════════════════════════════════════════════════════
+// Base Field Interface
+// ════════════════════════════════════════════════════════════════════════════
 
-export interface TanstackDefaultArg extends ExtraInputFormArg {
-  type: FieldType
+export interface ArgumentFieldBase {
+  /** The field type */
+  type: ArgumentFieldType
+  /** Human-readable label from Candid */
   label: string
-  name: string
-  fieldProps: TanstackFieldProps
-  defaultValue?: ArgTypeFromIDLType<IDL.Type>
-  defaultValues?:
-    | ArgTypeFromIDLType<IDL.Type>[]
-    | Record<string, ArgTypeFromIDLType<IDL.Type>>
-  transform?: (value: unknown) => MethodResult
+  /** Dot-notation path for form binding (e.g., "0.owner", "[0].to") */
+  path: string
 }
 
-export interface TanstackRecordArg<
-  T extends IDL.Type,
-> extends TanstackDefaultArg {
+// ════════════════════════════════════════════════════════════════════════════
+// Compound Types
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface RecordArgumentField extends ArgumentFieldBase {
   type: "record"
-  fields: TanstackAllArgTypes<T>[]
-  defaultValues: Record<string, ArgTypeFromIDLType<T>>
+  fields: ArgumentField[]
+  defaultValues: Record<string, unknown>
 }
 
-export interface TanstackVariantArg<
-  T extends IDL.Type,
-> extends TanstackDefaultArg {
+export interface VariantArgumentField extends ArgumentFieldBase {
   type: "variant"
+  fields: ArgumentField[]
   options: string[]
-  defaultValue: string
-  fields: TanstackAllArgTypes<T>[]
-  defaultValues: ArgTypeFromIDLType<T>
+  defaultOption: string
+  defaultValues: Record<string, unknown>
 }
 
-export interface TanstackTupleArg<
-  T extends IDL.Type,
-> extends TanstackDefaultArg {
+export interface TupleArgumentField extends ArgumentFieldBase {
   type: "tuple"
-  fields: TanstackAllArgTypes<T>[]
-  defaultValues: ArgTypeFromIDLType<T>[]
+  fields: ArgumentField[]
+  defaultValues: unknown[]
 }
 
-export interface TanstackOptionalArg extends TanstackDefaultArg {
+export interface OptionalArgumentField extends ArgumentFieldBase {
   type: "optional"
-  field: TanstackAllArgTypes<IDL.Type>
+  innerField: ArgumentField
   defaultValue: null
 }
 
-export interface TanstackVectorArg extends TanstackDefaultArg {
+export interface VectorArgumentField extends ArgumentFieldBase {
   type: "vector"
-  field: TanstackAllArgTypes<IDL.Type>
+  itemField: ArgumentField
   defaultValue: []
 }
 
-export interface TanstackBlobArg extends TanstackDefaultArg {
+export interface BlobArgumentField extends ArgumentFieldBase {
   type: "blob"
-  field: TanstackAllArgTypes<IDL.Type>
+  itemField: ArgumentField
+  /** Default is empty hex string */
   defaultValue: string
 }
 
-export interface TanstackRecursiveArg extends TanstackDefaultArg {
+export interface RecursiveArgumentField extends ArgumentFieldBase {
   type: "recursive"
-  name: string
-  extract: () => TanstackVariantArg<IDL.Type>
+  /** Lazily extract the inner field to prevent infinite loops */
+  extract: () => ArgumentField
 }
 
-export interface TanstackPrincipalArg extends TanstackDefaultArg {
+// ════════════════════════════════════════════════════════════════════════════
+// Primitive Types
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface PrincipalArgumentField extends ArgumentFieldBase {
   type: "principal"
-  required: true
+  /** Display format: string */
+  defaultValue: string
   maxLength: number
   minLength: number
-  defaultValue: string
 }
 
-export interface TanstackNumberArg extends TanstackDefaultArg {
+export interface NumberArgumentField extends ArgumentFieldBase {
   type: "number"
-  min?: number | string
-  max?: number | string
-  required: true
+  /** Display format: string (for bigint compatibility) */
+  defaultValue: string
+  /** Original Candid type: nat, int, nat64, etc. */
+  candidType: string
+}
+
+export interface TextArgumentField extends ArgumentFieldBase {
+  type: "text"
   defaultValue: string
 }
 
-export interface TanstackBooleanArg extends TanstackDefaultArg {
+export interface BooleanArgumentField extends ArgumentFieldBase {
   type: "boolean"
-  required: true
   defaultValue: boolean
 }
 
-export interface TanstackNullArg extends TanstackDefaultArg {
+export interface NullArgumentField extends ArgumentFieldBase {
   type: "null"
-  required: true
   defaultValue: null
 }
 
-export interface TanstackInputArg<
-  T extends IDL.Type,
-> extends TanstackDefaultArg {
-  required?: true
-  defaultValue: ArgTypeFromIDLType<T>
+export interface UnknownArgumentField extends ArgumentFieldBase {
+  type: "unknown"
+  defaultValue: undefined
 }
 
-export type TanstackDynamicArgType<T extends FieldType> = T extends "record"
-  ? TanstackRecordArg<IDL.Type>
-  : T extends "variant"
-    ? TanstackVariantArg<IDL.Type>
-    : T extends "tuple"
-      ? TanstackTupleArg<IDL.Type>
-      : T extends "optional"
-        ? TanstackOptionalArg
-        : T extends "vector"
-          ? TanstackVectorArg
-          : T extends "blob"
-            ? TanstackBlobArg
-            : T extends "recursive"
-              ? TanstackRecursiveArg
-              : T extends "unknown"
-                ? TanstackInputArg<IDL.Type>
-                : T extends "text"
-                  ? TanstackInputArg<IDL.TextClass>
-                  : T extends "number"
-                    ? TanstackNumberArg
-                    : T extends "principal"
-                      ? TanstackPrincipalArg
-                      : T extends "boolean"
-                        ? TanstackInputArg<IDL.BoolClass>
-                        : T extends "null"
-                          ? TanstackInputArg<IDL.NullClass>
-                          : never
+// ════════════════════════════════════════════════════════════════════════════
+// Union Type
+// ════════════════════════════════════════════════════════════════════════════
 
-export type TanstackDynamicArgTypeByClass<T extends IDL.Type> =
-  T extends IDL.RecordClass
-    ? TanstackRecordArg<T>
-    : T extends IDL.TupleClass<IDL.Type[]>
-      ? TanstackTupleArg<T>
-      : T extends IDL.VariantClass
-        ? TanstackVariantArg<T>
-        : T extends IDL.VecClass<IDL.Type>
-          ? TanstackVectorArg
-          : T extends IDL.OptClass<IDL.Type>
-            ? TanstackOptionalArg
-            : T extends IDL.RecClass<IDL.Type>
-              ? TanstackRecursiveArg
-              : T extends IDL.PrincipalClass
-                ? TanstackPrincipalArg
-                : T extends AllNumberTypes
-                  ? TanstackNumberArg
-                  : TanstackInputArg<T>
+export type ArgumentField =
+  | RecordArgumentField
+  | VariantArgumentField
+  | TupleArgumentField
+  | OptionalArgumentField
+  | VectorArgumentField
+  | BlobArgumentField
+  | RecursiveArgumentField
+  | PrincipalArgumentField
+  | NumberArgumentField
+  | TextArgumentField
+  | BooleanArgumentField
+  | NullArgumentField
+  | UnknownArgumentField
 
-export type TanstackAllArgTypes<T extends IDL.Type> =
-  | TanstackRecordArg<T>
-  | TanstackTupleArg<T>
-  | TanstackVariantArg<T>
-  | TanstackVectorArg
-  | TanstackOptionalArg
-  | TanstackBlobArg
-  | TanstackRecursiveArg
-  | TanstackPrincipalArg
-  | TanstackNumberArg
-  | TanstackBooleanArg
-  | TanstackNullArg
-  | TanstackInputArg<T>
+// ════════════════════════════════════════════════════════════════════════════
+// Method & Service Level
+// ════════════════════════════════════════════════════════════════════════════
 
-export type TanstackArgTypeFromIDLType<T> = T extends IDL.Type
-  ? ReturnType<T["decodeValue"]>
-  : IDL.Type
+export interface MethodArgumentsMeta<A = BaseActor> {
+  functionType: FunctionType
+  functionName: FunctionName<A>
+  fields: ArgumentField[]
+  defaultValues: unknown[]
+}
+
+export type ServiceArgumentsMeta<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodArgumentsMeta<A>
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Type Utilities
+// ════════════════════════════════════════════════════════════════════════════
+
+export type ArgumentFieldByType<T extends ArgumentFieldType> = Extract<
+  ArgumentField,
+  { type: T }
+>

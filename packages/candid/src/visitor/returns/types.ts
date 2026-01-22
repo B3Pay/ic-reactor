@@ -1,18 +1,44 @@
-import type { IDL, FieldType, AllNumberTypes, Principal } from "../types"
+import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 
-/**
- * Display hints for UI/UX enhancements in result rendering.
- * These guide how a value should be displayed beyond just its type.
- */
-export type DisplayHint =
-  | "copyable" // Show copy button
-  | "linkable" // Can be linked (e.g., to dashboard)
-  | "timestamp" // Format as date/time
-  | "currency" // Format with decimal places
-  | "hex" // Show as hex string
-  | "truncate" // Truncate long values
-  | "code" // Display as code/monospace
-  | "none" // No special formatting
+// ════════════════════════════════════════════════════════════════════════════
+// Field Type Union
+// ════════════════════════════════════════════════════════════════════════════
+
+export type ResultFieldType =
+  | "record"
+  | "variant"
+  | "tuple"
+  | "optional"
+  | "vector"
+  | "blob"
+  | "recursive"
+  | "principal"
+  | "number"
+  | "text"
+  | "boolean"
+  | "null"
+  | "unknown"
+
+// ════════════════════════════════════════════════════════════════════════════
+// Display Type (what it becomes after transformation)
+// ════════════════════════════════════════════════════════════════════════════
+
+export type DisplayType =
+  | "string" // Principal, nat, int, nat64, int64, blob, text
+  | "number" // float32, float64, nat8-nat32, int8-int32
+  | "boolean" // bool
+  | "null" // null
+  | "object" // record
+  | "array" // vec, tuple
+  | "variant" // variant (not Result)
+  | "result" // variant { Ok, Err } - unwrapped to Ok value
+  | "nullable" // opt T → T | null
+  | "recursive" // rec types
+  | "unknown" // fallback
+
+// ════════════════════════════════════════════════════════════════════════════
+// Format Hints
+// ════════════════════════════════════════════════════════════════════════════
 
 /**
  * Number-specific formatting hints derived from field names.
@@ -35,223 +61,194 @@ export type TextFormat =
   | "principal"
 
 /**
- * Base interface for all result field types.
- * Keep it minimal - only what's needed for rendering.
+ * Display hints for UI rendering.
  */
+export type DisplayHint =
+  | "copyable" // Show copy button
+  | "linkable" // Can be linked
+  | "truncate" // Truncate long values
+  | "hex" // Display as hex
+  | "code" // Display as code/monospace
+  | "none" // No special formatting
+
+// ════════════════════════════════════════════════════════════════════════════
+// Base Field Interface
+// ════════════════════════════════════════════════════════════════════════════
+
 export interface ResultFieldBase {
-  /** Candid type category */
-  type: FieldType
+  /** The Candid type category */
+  type: ResultFieldType
   /** Human-readable label from Candid */
   label: string
-  /** The specific value of this field (always present; use null when missing) */
-  value: any
-  /** Display hint for UI enhancement */
-  displayHint?: DisplayHint
-  /** How to format the text based on field name analysis */
-  textFormat?: TextFormat
-}
-
-/**
- * Principal result field - always copyable and linkable
- */
-export interface PrincipalResultField extends ResultFieldBase {
-  type: "principal"
-  /**
-   * Check if a principal value is a canister ID.
-   * All canister IDs on the Internet Computer end with "-cai" suffix.
-   */
-  checkIsCanisterId: (value: string | Principal) => boolean
-  displayHint: DisplayHint
-}
-
-/**
- * Number result field with format hints
- */
-export interface NumberResultField extends ResultFieldBase {
-  type: "number"
-  /** How to format the number based on field name analysis */
-  numberFormat: NumberFormat
-  /** Original Candid type name (nat, int, nat64, etc.) */
+  /** Original Candid type name */
   candidType: string
+  /** What it becomes after display transformation */
+  displayType: DisplayType
 }
 
-/**
- * Text result field
- */
-export interface TextResultField extends ResultFieldBase {
-  type: "text"
+// ════════════════════════════════════════════════════════════════════════════
+// Compound Types
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface RecordResultField extends ResultFieldBase {
+  type: "record"
+  displayType: "object"
+  fields: ResultField[]
 }
 
-/**
- * Boolean result field
- */
-export interface BooleanResultField extends ResultFieldBase {
-  type: "boolean"
+export interface VariantResultField extends ResultFieldBase {
+  type: "variant"
+  displayType: "variant" | "result"
+  options: string[]
+  optionFields: ResultField[]
+  /** True if this is a Result type (Ok/Err pattern) */
+  isResultType: boolean
 }
 
-/**
- * Null result field
- */
-export interface NullResultField extends ResultFieldBase {
-  type: "null"
+export interface TupleResultField extends ResultFieldBase {
+  type: "tuple"
+  displayType: "array"
+  fields: ResultField[]
 }
 
-/**
- * Blob result field (small blobs represented as hex or bytes)
- */
-export interface BlobResultField extends ResultFieldBase {
-  type: "blob"
-  displayHint: "hex"
-  /** Raw hex string or byte array for small blobs; `null` when missing */
-  value: string | Uint8Array | number[] | null
-}
-
-/**
- * Large blob summary (avoid rendering entire payload)
- */
-export interface LargeBlobResultField extends ResultFieldBase {
-  type: "blob-large"
-  displayHint: "hex"
-  /** Summary object provided by the visitor; `value` can be null when not present */
-  value: {
-    hash: string
-    /** Hex string or bytes if available; null when absent */
-    value: string | Uint8Array | number[] | null
-    length: number
-  }
-}
-
-/**
- * Optional result field - wraps another field type
- */
 export interface OptionalResultField extends ResultFieldBase {
   type: "optional"
-  /** The inner field type when value is present */
+  displayType: "nullable"
   innerField: ResultField
 }
 
-/**
- * Vector result field - array of items
- */
 export interface VectorResultField extends ResultFieldBase {
   type: "vector"
-  /** Type definition for each item in the array */
+  displayType: "array"
   itemField: ResultField
-  /** Optional per-item field instances with values filled in when available */
-  items?: ResultField[]
 }
 
-/**
- * Table result field - vector of records suitable for table display
- */
-export interface TableResultField extends ResultFieldBase {
-  type: "table"
-  /** Column names for table header */
-  columns: string[]
-  /** Field definitions for each column */
-  columnFields: ResultField[]
+export interface BlobResultField extends ResultFieldBase {
+  type: "blob"
+  displayType: "string"
+  displayHint: "hex"
 }
 
-/**
- * Record result field - object with named fields
- */
-export interface RecordResultField extends ResultFieldBase {
-  type: "record"
-  /** Named fields in the record */
-  fields: ResultField[]
-}
-
-/**
- * Tuple result field - fixed-length array
- */
-export interface TupleResultField extends ResultFieldBase {
-  type: "tuple"
-  /** Fields for each tuple position */
-  fields: ResultField[]
-}
-
-/**
- * Variant result field - tagged union type
- */
-export interface VariantResultField extends ResultFieldBase {
-  type: "variant"
-  /** Possible option names */
-  options: string[]
-  /** Field definition for each option's value */
-  optionFields: ResultField[]
-}
-
-/**
- * Recursive result field - self-referential type
- */
 export interface RecursiveResultField extends ResultFieldBase {
   type: "recursive"
-  /** Type name for display */
+  displayType: "recursive"
   typeName: string
-  /** Lazily extract the inner field definition. Pass a value to generate with that value. */
-  extract: (value?: unknown) => ResultField
+  /** Lazily extract the inner field to prevent infinite loops */
+  extract: () => ResultField
 }
 
-/**
- * Unknown/fallback result field
- */
+// ════════════════════════════════════════════════════════════════════════════
+// Primitive Types
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface PrincipalResultField extends ResultFieldBase {
+  type: "principal"
+  displayType: "string"
+  textFormat: TextFormat
+}
+
+export interface NumberResultField extends ResultFieldBase {
+  type: "number"
+  displayType: "string" | "number"
+  numberFormat: NumberFormat
+}
+
+export interface TextResultField extends ResultFieldBase {
+  type: "text"
+  displayType: "string"
+  textFormat: TextFormat
+}
+
+export interface BooleanResultField extends ResultFieldBase {
+  type: "boolean"
+  displayType: "boolean"
+}
+
+export interface NullResultField extends ResultFieldBase {
+  type: "null"
+  displayType: "null"
+}
+
 export interface UnknownResultField extends ResultFieldBase {
   type: "unknown"
+  displayType: "unknown"
 }
 
-/**
- * Union of all result field types
- */
+// ════════════════════════════════════════════════════════════════════════════
+// Union Type
+// ════════════════════════════════════════════════════════════════════════════
+
 export type ResultField =
+  | RecordResultField
+  | VariantResultField
+  | TupleResultField
+  | OptionalResultField
+  | VectorResultField
+  | BlobResultField
+  | RecursiveResultField
   | PrincipalResultField
   | NumberResultField
   | TextResultField
   | BooleanResultField
   | NullResultField
-  | BlobResultField
-  | LargeBlobResultField
-  | OptionalResultField
-  | VectorResultField
-  | TableResultField
-  | RecordResultField
-  | TupleResultField
-  | VariantResultField
-  | RecursiveResultField
   | UnknownResultField
 
-/**
- * Method-level result metadata
- */
-export interface MethodResultFields {
-  /** Array of return type field definitions */
-  fields: ResultField[]
-  /** Number of return values */
+// ════════════════════════════════════════════════════════════════════════════
+// Method & Service Level
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface MethodResultMeta<A = BaseActor> {
+  functionType: FunctionType
+  functionName: FunctionName<A>
+  resultFields: ResultField[]
   returnCount: number
 }
 
-/**
- * Type utilities
- */
-export type ResultFieldByType<T extends FieldType> = Extract<
+export type ServiceResultMeta<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodResultMeta<A>
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Type Utilities
+// ════════════════════════════════════════════════════════════════════════════
+
+export type ResultFieldByType<T extends ResultFieldType> = Extract<
   ResultField,
   { type: T }
 >
 
-export type DynamicResultFieldByClass<T extends IDL.Type> =
-  T extends IDL.RecordClass
-    ? RecordResultField
-    : T extends IDL.TupleClass<IDL.Type[]>
-      ? TupleResultField
-      : T extends IDL.VariantClass
-        ? VariantResultField
-        : T extends IDL.VecClass<IDL.Type>
-          ? VectorResultField
-          : T extends IDL.OptClass<IDL.Type>
-            ? OptionalResultField
-            : T extends IDL.RecClass<IDL.Type>
-              ? RecursiveResultField
-              : T extends IDL.PrincipalClass
-                ? PrincipalResultField
-                : T extends AllNumberTypes
-                  ? NumberResultField
-                  : ResultField
+// ════════════════════════════════════════════════════════════════════════════
+// Helper Types for Rendering
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * A result field paired with its transformed value for rendering.
+ * This is what you use at render time.
+ */
+export interface ResultFieldWithValue<T = unknown> {
+  field: ResultField
+  value: T
+}
+
+/**
+ * Method result with both metadata and transformed values.
+ */
+export interface MethodResultWithValues<A = BaseActor> {
+  meta: MethodResultMeta<A>
+  values: unknown[]
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Legacy Type Aliases (for backward compatibility)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * @deprecated Use MethodResultMeta instead
+ */
+export type MethodResultFields = {
+  fields: ResultField[]
+  returnCount: number
+}
+
+// Keep some types that might be referenced from old code
+export type { ResultFieldType as FieldType } from "./types"
