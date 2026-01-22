@@ -942,7 +942,10 @@ describe("MetadataDisplayReactor", () => {
       expect(Array.isArray(displayData)).toBe(false)
 
       expect(displayData).toHaveProperty("icrc1:name")
-      expect((displayData as any)["icrc1:name"]).toEqual({ Text: "Test Token" })
+      expect(displayData["icrc1:name"]).toEqual({
+        _type: "Text",
+        Text: "Test Token",
+      })
     })
 
     it("should verify Result variant unwrapping matches metadata", () => {
@@ -967,7 +970,7 @@ describe("MetadataDisplayReactor", () => {
       // Result unwrapping happens in DisplayReactor, NOT codec
       // So here we get { Ok: "12345" }
       expect(displayOk).toHaveProperty("Ok")
-      expect((displayOk as any).Ok).toBe("12345")
+      expect(displayOk.Ok).toBe("12345")
 
       // 4. Mock Candid Data (Err)
       const mockErr = { Err: { InsufficientFunds: { balance: 100n } } }
