@@ -994,6 +994,19 @@ describe("MetadataDisplayReactor", () => {
       expect(displayErr.Err).toHaveProperty("InsufficientFunds")
       expect(displayErr.Err.InsufficientFunds.balance).toBe("100")
     })
+
+    it("should resolve metadata with data using resolve()", () => {
+      const methodName = "icrc1_fee"
+      const meta = reactor.getResultMeta(
+        methodName
+      ) as MethodResultMeta<unknown>
+      const field = meta.resultFields[0]
+      const data = "100"
+
+      const resolved = field.resolve(data)
+      expect(resolved.value).toBe("100")
+      expect(resolved.field.type).toBe("number")
+    })
   })
 })
 

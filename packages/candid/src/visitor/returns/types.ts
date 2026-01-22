@@ -84,6 +84,11 @@ export interface ResultFieldBase {
   candidType: string
   /** What it becomes after display transformation */
   displayType: DisplayType
+  /**
+   * Combine metadata with value to create a render-ready tree.
+   * This allows "zipping" the static schema with dynamic runtime data.
+   */
+  resolve(value: unknown): ResultFieldWithValue
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -101,8 +106,6 @@ export interface VariantResultField extends ResultFieldBase {
   displayType: "variant" | "result"
   options: string[]
   optionFields: ResultField[]
-  /** True if this is a Result type (Ok/Err pattern) */
-  isResultType: boolean
 }
 
 export interface TupleResultField extends ResultFieldBase {
@@ -194,14 +197,53 @@ export type ResultField =
   | UnknownResultField
 
 // ════════════════════════════════════════════════════════════════════════════
+// Helper Types for Rendering
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * A result field paired with its transformed value for rendering.
+ * Can contain nested resolved fields for compound types.
+ */
+export interface ResultFieldWithValue<T = unknown> {
+  field: ResultField
+  value: T
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // Method & Service Level
 // ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resolved method result containing metadata and resolved field values.
+ * This is the output of `generateMetadata()`.
+ */
+export interface ResolvedMethodResult<A = BaseActor> {
+  functionType: FunctionType
+  functionName: FunctionName<A>
+  /** Resolved fields with their values attached */
+  results: ResultFieldWithValue[]
+}
 
 export interface MethodResultMeta<A = BaseActor> {
   functionType: FunctionType
   functionName: FunctionName<A>
   resultFields: ResultField[]
   returnCount: number
+  /**
+   * Generate metadata by resolving each result field with its corresponding value.
+   * This "zips" the static schema with dynamic runtime data for easy rendering.
+   *
+   * @param data - Array of return values from the canister method call
+   * @returns Resolved method result with metadata attached to each value
+   *
+   * @example
+   * ```ts
+   * const result = await actor.myMethod()
+   * const resolved = methodField.generateMetadata(result)
+   * // resolved.results contains fields with their values for rendering
+   * ```
+   */
+  generateMetadata(data: unknown[]): ResolvedMethodResult<A>
 }
 
 export type ServiceResultMeta<A = BaseActor> = {
@@ -216,39 +258,3 @@ export type ResultFieldByType<T extends ResultFieldType> = Extract<
   ResultField,
   { type: T }
 >
-
-// ════════════════════════════════════════════════════════════════════════════
-// Helper Types for Rendering
-// ════════════════════════════════════════════════════════════════════════════
-
-/**
- * A result field paired with its transformed value for rendering.
- * This is what you use at render time.
- */
-export interface ResultFieldWithValue<T = unknown> {
-  field: ResultField
-  value: T
-}
-
-/**
- * Method result with both metadata and transformed values.
- */
-export interface MethodResultWithValues<A = BaseActor> {
-  meta: MethodResultMeta<A>
-  values: unknown[]
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// Legacy Type Aliases (for backward compatibility)
-// ════════════════════════════════════════════════════════════════════════════
-
-/**
- * @deprecated Use MethodResultMeta instead
- */
-export type MethodResultFields = {
-  fields: ResultField[]
-  returnCount: number
-}
-
-// Keep some types that might be referenced from old code
-export type { ResultFieldType as FieldType } from "./types"

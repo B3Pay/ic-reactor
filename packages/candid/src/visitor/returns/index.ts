@@ -3,6 +3,7 @@ import { TAMESTAMP_KEYS_REGEX, CYCLE_KEYS_REGEX } from "../constants"
 import { IDL } from "../types"
 import type {
   ResultField,
+  ResultFieldWithValue,
   NumberFormat,
   TextFormat,
   RecordResultField,
@@ -20,6 +21,7 @@ import type {
   UnknownResultField,
   MethodResultMeta,
   ServiceResultMeta,
+  ResolvedMethodResult,
 } from "./types"
 import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 
@@ -34,6 +36,7 @@ export * from "./types"
  * 2. **No value dependencies** - metadata describes structure, not specific values
  * 3. **Describes display format** - includes hints for how values will appear after transformation
  * 4. **Efficient** - single traversal, reusable metadata
+ * 5. **Resolvable** - metadata can be combined with values at runtime via .resolve(val)
  *
  * ## Key Insight: Metadata vs Values
  *
@@ -136,11 +139,24 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       retType.accept(this, `__ret${index}`)
     ) as ResultField[]
 
+    const generateMetadata = (data: unknown[]): ResolvedMethodResult<A> => {
+      const results: ResultFieldWithValue[] = resultFields.map((field, index) =>
+        field.resolve(data[index])
+      )
+
+      return {
+        functionType,
+        functionName: functionName as FunctionName<A>,
+        results,
+      }
+    }
+
     return {
       functionType,
       functionName: functionName as FunctionName<A>,
       resultFields,
       returnCount: t.retTypes.length,
+      generateMetadata,
     }
   }
 
@@ -157,13 +173,28 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       ([key, type]) => type.accept(this, key) as ResultField
     )
 
-    return {
+    const field: RecordResultField = {
       type: "record",
       label,
       candidType: "record",
       displayType: "object",
       fields,
+      resolve(value: unknown): ResultFieldWithValue {
+        const record = value as Record<string, unknown> | null | undefined
+        if (record == null) {
+          return { field, value: null }
+        }
+
+        const resolvedFields: Record<string, ResultFieldWithValue> = {}
+        for (const f of fields) {
+          resolvedFields[f.label] = f.resolve(record[f.label])
+        }
+
+        return { field, value: resolvedFields }
+      },
     }
+
+    return field
   }
 
   public visitVariant(
@@ -179,21 +210,42 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       optionFields.push(type.accept(this, key) as ResultField)
     }
 
-    // Check if this is a Result type (Ok/Err pattern)
-    const isResultType =
-      options.length === 2 &&
-      ((options.includes("Ok") && options.includes("Err")) ||
-        (options.includes("ok") && options.includes("err")))
+    // Detect if this is a Result type (has Ok and Err options)
+    const isResult = options.includes("Ok") && options.includes("Err")
+    const displayType = isResult ? "result" : "variant"
 
-    return {
+    const field: VariantResultField = {
       type: "variant",
       label,
       candidType: "variant",
-      displayType: isResultType ? "result" : "variant",
+      displayType,
       options,
       optionFields,
-      isResultType,
+      resolve(value: unknown): ResultFieldWithValue {
+        if (value == null) {
+          return { field, value: null }
+        }
+
+        const variant = value as Record<string, unknown>
+        const activeOption = Object.keys(variant)[0]
+        const activeValue = variant[activeOption]
+        const optionIndex = options.indexOf(activeOption)
+        const optionField = optionFields[optionIndex]
+
+        return {
+          field,
+          value: {
+            option: activeOption,
+            value: optionField?.resolve(activeValue) ?? {
+              field: optionField,
+              value: activeValue,
+            },
+          },
+        }
+      },
     }
+
+    return field
   }
 
   public visitTuple<T extends IDL.Type[]>(
@@ -205,13 +257,24 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       (type, index) => type.accept(this, `_${index}`) as ResultField
     )
 
-    return {
+    const field: TupleResultField = {
       type: "tuple",
       label,
       candidType: "tuple",
       displayType: "array",
       fields,
+      resolve(value: unknown): ResultFieldWithValue {
+        const tuple = value as unknown[] | null | undefined
+        if (tuple == null) {
+          return { field, value: null }
+        }
+
+        const resolvedItems = fields.map((f, index) => f.resolve(tuple[index]))
+        return { field, value: resolvedItems }
+      },
     }
+
+    return field
   }
 
   public visitOpt<T>(
@@ -221,13 +284,22 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   ): OptionalResultField {
     const innerField = ty.accept(this, label) as ResultField
 
-    return {
+    const field: OptionalResultField = {
       type: "optional",
       label,
       candidType: "opt",
       displayType: "nullable",
       innerField,
+      resolve(value: unknown): ResultFieldWithValue {
+        // After display transformation, opt becomes T | null
+        if (value == null) {
+          return { field, value: null }
+        }
+        return { field, value: innerField.resolve(value) }
+      },
     }
+
+    return field
   }
 
   public visitVec<T>(
@@ -237,24 +309,39 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   ): VectorResultField | BlobResultField {
     // Check if it's blob (vec nat8)
     if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
-      return {
+      const blobField: BlobResultField = {
         type: "blob",
         label,
         candidType: "blob",
         displayType: "string", // Transformed to hex string
         displayHint: "hex",
+        resolve(value: unknown): ResultFieldWithValue {
+          return { field: blobField, value }
+        },
       }
+      return blobField
     }
 
     const itemField = ty.accept(this, "item") as ResultField
 
-    return {
+    const field: VectorResultField = {
       type: "vector",
       label,
       candidType: "vec",
       displayType: "array",
       itemField,
+      resolve(value: unknown): ResultFieldWithValue {
+        const vec = value as unknown[] | null | undefined
+        if (vec == null) {
+          return { field, value: null }
+        }
+
+        const resolvedItems = vec.map((item) => itemField.resolve(item))
+        return { field, value: resolvedItems }
+      },
     }
+
+    return field
   }
 
   public visitRec<T>(
@@ -262,15 +349,25 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     ty: IDL.ConstructType<T>,
     label: string
   ): RecursiveResultField {
-    return {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this
+
+    const field: RecursiveResultField = {
       type: "recursive",
       label,
       candidType: "rec",
       displayType: "recursive",
       typeName: t.name,
       // Lazy extraction to prevent infinite loops
-      extract: () => ty.accept(this, label) as ResultField,
+      extract: () => ty.accept(self, label) as ResultField,
+      resolve(value: unknown): ResultFieldWithValue {
+        // Extract the inner field and resolve with it
+        const innerField = field.extract()
+        return innerField.resolve(value)
+      },
     }
+
+    return field
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -281,111 +378,152 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     _t: IDL.PrincipalClass,
     label: string
   ): PrincipalResultField {
-    return {
+    const field: PrincipalResultField = {
       type: "principal",
       label,
       candidType: "principal",
       displayType: "string", // Principal.toText()
       textFormat: this.getTextFormat(label),
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 
   public visitText(_t: IDL.TextClass, label: string): TextResultField {
-    return {
+    const field: TextResultField = {
       type: "text",
       label,
       candidType: "text",
       displayType: "string",
       textFormat: this.getTextFormat(label),
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 
   public visitBool(_t: IDL.BoolClass, label: string): BooleanResultField {
-    return {
+    const field: BooleanResultField = {
       type: "boolean",
       label,
       candidType: "bool",
       displayType: "boolean",
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 
   public visitNull(_t: IDL.NullClass, label: string): NullResultField {
-    return {
+    const field: NullResultField = {
       type: "null",
       label,
       candidType: "null",
       displayType: "null",
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 
   // Numbers
   public visitInt(_t: IDL.IntClass, label: string): NumberResultField {
-    return {
+    const field: NumberResultField = {
       type: "number",
       label,
       candidType: "int",
       displayType: "string", // BigInt → string
       numberFormat: this.getNumberFormat(label),
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 
   public visitNat(_t: IDL.NatClass, label: string): NumberResultField {
-    return {
+    const field: NumberResultField = {
       type: "number",
       label,
       candidType: "nat",
       displayType: "string", // BigInt → string
       numberFormat: this.getNumberFormat(label),
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 
   public visitFloat(t: IDL.FloatClass, label: string): NumberResultField {
-    return {
+    const field: NumberResultField = {
       type: "number",
       label,
       candidType: `float${t._bits}`,
       displayType: "number", // Floats stay as numbers
       numberFormat: this.getNumberFormat(label),
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 
   public visitFixedInt(t: IDL.FixedIntClass, label: string): NumberResultField {
     const bits = t._bits
-    return {
+    const field: NumberResultField = {
       type: "number",
       label,
       candidType: `int${bits}`,
       displayType: bits <= 32 ? "number" : "string", // int64 → string
       numberFormat: this.getNumberFormat(label),
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 
   public visitFixedNat(t: IDL.FixedNatClass, label: string): NumberResultField {
     const bits = t._bits
-    return {
+    const field: NumberResultField = {
       type: "number",
       label,
       candidType: `nat${bits}`,
       displayType: bits <= 32 ? "number" : "string", // nat64 → string
       numberFormat: this.getNumberFormat(label),
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 
   public visitType<T>(_t: IDL.Type<T>, label: string): UnknownResultField {
-    return {
+    const field: UnknownResultField = {
       type: "unknown",
       label,
       candidType: "unknown",
       displayType: "unknown",
+      resolve(value: unknown): ResultFieldWithValue {
+        return { field, value }
+      },
     }
+
+    return field
   }
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// Legacy Export (for backward compatibility)
-// ════════════════════════════════════════════════════════════════════════════
-
-/**
- * @deprecated Use ResultFieldVisitor instead
- */
-export { ResultFieldVisitor as VisitResultField }
