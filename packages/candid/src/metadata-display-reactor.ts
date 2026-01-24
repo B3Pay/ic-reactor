@@ -8,7 +8,6 @@ import type {
   CandidDisplayReactorParameters,
   DynamicMethodOptions,
 } from "./types"
-
 import {
   ArgumentFieldVisitor,
   MethodArgumentsMeta,
@@ -181,23 +180,5 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
     const meta = this.getResultMeta(options.functionName as any)!
 
     return { result, meta }
-  }
-
-  /**
-   * Perform a dynamic query call in one step with display type transformations.
-   */
-  public override async queryDynamic<T = unknown>(
-    options: DynamicMethodOptions & { args?: unknown[] }
-  ): Promise<T> {
-    return super.queryDynamic(options) as Promise<T>
-  }
-
-  /**
-   * Fetch with dynamic Candid and TanStack Query caching.
-   */
-  public override async fetchQueryDynamic<T = unknown>(
-    options: DynamicMethodOptions & { args?: unknown[] }
-  ): Promise<T> {
-    return super.fetchQueryDynamic(options) as Promise<T>
   }
 }
