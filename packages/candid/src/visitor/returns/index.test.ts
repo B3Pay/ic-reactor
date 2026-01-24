@@ -1553,14 +1553,12 @@ describe("ResultFieldVisitor", () => {
 
       // Simulate raw BigInt and display string
       const rawData = [BigInt(1000000)]
-      const displayData = ["1000000"]
 
-      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+      const result = methodMeta.generateMetadata(rawData)
 
       expect(result.functionName).toBe("getBalance")
       expect(result.functionType).toBe("query")
-      expect(result.rawData).toEqual(rawData)
-      expect(result.displayData).toEqual(displayData)
+      expect(result.results).toEqual(rawData)
       expect(result.results).toHaveLength(1)
       expect(result.results[0].value).toBe("1000000")
       expect(result.results[0].raw).toBe(BigInt(1000000))
@@ -1579,9 +1577,8 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["getStats"] as MethodResultMeta
 
       const rawData = [BigInt(9007199254740993), "active", true]
-      const displayData = ["9007199254740993", "active", true]
 
-      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+      const result = methodMeta.generateMetadata(rawData)
 
       expect(result.results).toHaveLength(3)
 
@@ -1615,9 +1612,8 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["getUser"] as MethodResultMeta
 
       const rawData = [{ name: "Alice", balance: BigInt(500) }]
-      const displayData = [{ name: "Alice", balance: "500" }]
 
-      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+      const result = methodMeta.generateMetadata(rawData)
 
       expect(result.results[0].raw).toEqual({
         name: "Alice",
@@ -1649,9 +1645,8 @@ describe("ResultFieldVisitor", () => {
 
       // Test Ok case with raw BigInt
       const rawData = [{ Ok: BigInt(12345) }]
-      const displayData = [{ Ok: "12345" }]
 
-      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+      const result = methodMeta.generateMetadata(rawData)
 
       expect(result.results[0].raw).toEqual({ Ok: BigInt(12345) })
 
@@ -1678,9 +1673,8 @@ describe("ResultFieldVisitor", () => {
 
       const principal = Principal.fromText("aaaaa-aa")
       const rawData = [principal]
-      const displayData = ["aaaaa-aa"]
 
-      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+      const result = methodMeta.generateMetadata(rawData)
 
       expect(result.results[0].value).toBe("aaaaa-aa")
       expect(result.results[0].raw).toBe(principal)
@@ -1699,9 +1693,8 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["getAmounts"] as MethodResultMeta
 
       const rawData = [[BigInt(100), BigInt(200), BigInt(300)]]
-      const displayData = [["100", "200", "300"]]
 
-      const result = methodMeta.generateMetadataWithRaw(rawData, displayData)
+      const result = methodMeta.generateMetadata(rawData)
 
       expect(result.results[0].raw).toEqual([
         BigInt(100),
@@ -1732,12 +1725,8 @@ describe("ResultFieldVisitor", () => {
 
       // Test with value
       const rawDataWithValue = [BigInt(999)]
-      const displayDataWithValue = ["999"]
 
-      const resultWithValue = methodMeta.generateMetadataWithRaw(
-        rawDataWithValue,
-        displayDataWithValue
-      )
+      const resultWithValue = methodMeta.generateMetadata(rawDataWithValue)
 
       expect(resultWithValue.results[0].raw).toBe(BigInt(999))
       const innerValue = resultWithValue.results[0].value as {
@@ -1748,12 +1737,8 @@ describe("ResultFieldVisitor", () => {
 
       // Test with null
       const rawDataNull = [null]
-      const displayDataNull = [null]
 
-      const resultNull = methodMeta.generateMetadataWithRaw(
-        rawDataNull,
-        displayDataNull
-      )
+      const resultNull = methodMeta.generateMetadata(rawDataNull)
       expect(resultNull.results[0].raw).toBe(null)
       expect(resultNull.results[0].value).toBe(null)
     })
@@ -1769,11 +1754,9 @@ describe("ResultFieldVisitor", () => {
       ) as ServiceResultMeta
       const methodMeta = serviceMeta["doNothing"] as MethodResultMeta
 
-      const result = methodMeta.generateMetadataWithRaw([], [])
+      const result = methodMeta.generateMetadata([])
 
       expect(result.results).toHaveLength(0)
-      expect(result.rawData).toEqual([])
-      expect(result.displayData).toEqual([])
     })
   })
 })
