@@ -206,9 +206,7 @@ export type ResultField =
  */
 export interface ResultFieldWithValue<T = unknown> {
   field: ResultField
-  /** The display-transformed value (BigInt → string, Principal → string, etc.) */
   value: T
-  /** The raw untransformed Candid value (BigInt, Principal, etc.) */
   raw?: unknown
 }
 
@@ -223,7 +221,6 @@ export interface ResultFieldWithValue<T = unknown> {
 export interface ResolvedMethodResult<A = BaseActor> {
   functionType: FunctionType
   functionName: FunctionName<A>
-  /** Resolved fields with their display values attached */
   results: ResultFieldWithValue[]
 }
 

@@ -1,11 +1,9 @@
 import { isQuery } from "../helpers"
-import { TAMESTAMP_KEYS_REGEX, CYCLE_KEYS_REGEX } from "../constants"
+import { checkTextFormat, checkNumberFormat } from "../constants"
 import { IDL } from "../types"
 import type {
   ResultField,
   ResultFieldWithValue,
-  NumberFormat,
-  TextFormat,
   RecordResultField,
   VariantResultField,
   TupleResultField,
@@ -22,7 +20,6 @@ import type {
   MethodResultMeta,
   ServiceResultMeta,
   ResolvedMethodResult,
-  ResolvedMethodResultWithRaw,
 } from "./types"
 import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 
@@ -83,37 +80,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   ResultField | MethodResultMeta<A> | ServiceResultMeta<A>
 > {
   // ════════════════════════════════════════════════════════════════════════
-  // Format Detection (from label names)
-  // ════════════════════════════════════════════════════════════════════════
-
-  private getNumberFormat(label?: string): NumberFormat {
-    if (!label) return "normal"
-    if (TAMESTAMP_KEYS_REGEX.test(label)) return "timestamp"
-    if (CYCLE_KEYS_REGEX.test(label)) return "cycle"
-    return "normal"
-  }
-
-  private getTextFormat(label?: string): TextFormat {
-    if (!label) return "plain"
-    if (TAMESTAMP_KEYS_REGEX.test(label)) return "timestamp"
-    if (/email|mail/i.test(label)) return "email"
-    if (/phone|tel|mobile/i.test(label)) return "phone"
-    if (/url|link|website/i.test(label)) return "url"
-    if (/uuid|guid/i.test(label)) return "uuid"
-    if (/bitcoin|btc/i.test(label)) return "btc"
-    if (/ethereum|eth/i.test(label)) return "eth"
-    if (
-      /account_id|account_identifier|ledger_account|block_hash|transaction_hash|tx_hash/i.test(
-        label
-      )
-    ) {
-      return "account-id"
-    }
-    if (/canister|principal/i.test(label)) return "principal"
-    return "plain"
-  }
-
-  // ════════════════════════════════════════════════════════════════════════
   // Service & Function Level
   // ════════════════════════════════════════════════════════════════════════
 
@@ -152,36 +118,12 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       }
     }
 
-    const generateMetadataWithRaw = (
-      rawData: unknown[],
-      displayData: unknown[]
-    ): ResolvedMethodResultWithRaw<A> => {
-      const results: ResultFieldWithValue[] = resultFields.map(
-        (field, index) => {
-          const resolved = field.resolve(displayData[index])
-          return {
-            ...resolved,
-            raw: rawData[index],
-          }
-        }
-      )
-
-      return {
-        functionType,
-        functionName: functionName as FunctionName<A>,
-        results,
-        rawData,
-        displayData,
-      }
-    }
-
     return {
       functionType,
       functionName: functionName as FunctionName<A>,
       resultFields,
       returnCount: t.retTypes.length,
       generateMetadata,
-      generateMetadataWithRaw,
     }
   }
 
@@ -218,7 +160,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         return { field, value: resolvedFields }
       },
     }
-
     return field
   }
 
@@ -425,7 +366,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: "principal",
       displayType: "string", // Principal.toText()
-      textFormat: this.getTextFormat(label),
+      textFormat: checkTextFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
         return { field, value }
       },
@@ -440,7 +381,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: "text",
       displayType: "string",
-      textFormat: this.getTextFormat(label),
+      textFormat: checkTextFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
         return { field, value }
       },
@@ -484,7 +425,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: "int",
       displayType: "string", // BigInt → string
-      numberFormat: this.getNumberFormat(label),
+      numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
         return { field, value }
       },
@@ -499,7 +440,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: "nat",
       displayType: "string", // BigInt → string
-      numberFormat: this.getNumberFormat(label),
+      numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
         return { field, value }
       },
@@ -514,7 +455,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: `float${t._bits}`,
       displayType: "number", // Floats stay as numbers
-      numberFormat: this.getNumberFormat(label),
+      numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
         return { field, value }
       },
@@ -530,7 +471,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: `int${bits}`,
       displayType: bits <= 32 ? "number" : "string", // int64 → string
-      numberFormat: this.getNumberFormat(label),
+      numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
         return { field, value }
       },
@@ -546,7 +487,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: `nat${bits}`,
       displayType: bits <= 32 ? "number" : "string", // nat64 → string
-      numberFormat: this.getNumberFormat(label),
+      numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
         return { field, value }
       },

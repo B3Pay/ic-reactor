@@ -1,3 +1,5 @@
+import type { TextFormat, NumberFormat } from "./returns/types"
+
 const TAMESTAMP_KEYS = [
   "time",
   "date",
@@ -16,136 +18,47 @@ const TAMESTAMP_KEYS = [
   "valid_until",
 ]
 
-export const TAMESTAMP_KEYS_REGEX = new RegExp(
+const TAMESTAMP_KEYS_REGEX = new RegExp(
   // eslint-disable-next-line no-useless-escape
   TAMESTAMP_KEYS.map((key) => `^[\w-]*${key}[\w-]*$`).join("|"),
   "i"
 )
 
-const VALUE_KEYS = [
-  "value",
-  "amount",
-  "balance",
-  "price",
-  "total_supply",
-  "totalSupply",
-  "quantity",
-]
-
-export const VALUE_KEYS_REGEX = new RegExp(
-  // eslint-disable-next-line no-useless-escape
-  VALUE_KEYS.map((key) => `^[\w-]*${key}[\w-]*$`).join("|"),
-  "i"
-)
-
 const CYCLE_KEYS = ["cycle", "cycles"]
 
-export const CYCLE_KEYS_REGEX = new RegExp(
+const CYCLE_KEYS_REGEX = new RegExp(
   // eslint-disable-next-line no-useless-escape
   CYCLE_KEYS.map((key) => `^[\w-]*${key}[\w-]*$`).join("|"),
   "i"
 )
 
-export const WALLET_TEST = [
-  "wallet",
-  "balance",
-  "transfer",
-  "send",
-  "topup",
-  "receive",
-  "deposit",
-  "withdraw",
-  "pay",
-  "claim",
-  "refund",
-  "reward",
-  "tip",
-  "buy",
-  "sell",
-  "purchase",
-  "order",
-  "checkout",
-  "cart",
-  "invoice",
-  "payment",
-  "credit",
-  "debit",
-  "transaction",
-  "history",
-  "statement",
-  "account",
-  "address",
-  "fund",
-  "staking",
-  "bond",
-  "unbond",
-  "delegate",
-  "undelegate",
-  "approve",
-  "allowance",
-]
+const EMAIL_KEYS_REGEX = /email|mail/i
+const PHONE_KEYS_REGEX = /phone|tel|mobile/i
+const URL_KEYS_REGEX = /url|link|website/i
+const UUID_KEYS_REGEX = /uuid|guid/i
+const BITCOIN_KEYS_REGEX = /bitcoin|btc/i
+const ETHEREUM_KEYS_REGEX = /ethereum|eth/i
+const ACCOUNT_ID_KEYS_REGEX =
+  /account_id|account_identifier|ledger_account|block_hash|transaction_hash|tx_hash/i
+const PRINCIPAL_KEYS_REGEX = /canister|principal/i
 
-export const SETTING_TEST = [
-  "setting",
-  "version",
-  "set",
-  "update",
-  "change",
-  "modify",
-  "edit",
-  "remove",
-  "delete",
-  "add",
-  "create",
-  "clear",
-  "reset",
-  "revoke",
-  "renew",
-  "replace",
-  "upgrade",
-  "load",
-  "upload",
-  "downgrade",
-  "install",
-  "role",
-  "uninstall",
-  "enable",
-  "disable",
-  "activate",
-  "deactivate",
-  "suspend",
-  "resume",
-  "pause",
-  "start",
-  "stop",
-  "restart",
-  "refresh",
-  "reload",
-  "reboot",
-  "shutdown",
-  "terminate",
-  "kill",
-  "abort",
-  "cancel",
-]
+export const checkTextFormat = (label?: string): TextFormat => {
+  if (!label) return "plain"
+  if (TAMESTAMP_KEYS_REGEX.test(label)) return "timestamp"
+  if (EMAIL_KEYS_REGEX.test(label)) return "email"
+  if (PHONE_KEYS_REGEX.test(label)) return "phone"
+  if (URL_KEYS_REGEX.test(label)) return "url"
+  if (UUID_KEYS_REGEX.test(label)) return "uuid"
+  if (BITCOIN_KEYS_REGEX.test(label)) return "btc"
+  if (ETHEREUM_KEYS_REGEX.test(label)) return "eth"
+  if (ACCOUNT_ID_KEYS_REGEX.test(label)) return "account-id"
+  if (PRINCIPAL_KEYS_REGEX.test(label)) return "principal"
+  return "plain"
+}
 
-export const STATUS_TEST = [
-  "status",
-  "state",
-  "condition",
-  "phase",
-  "step",
-  "stage",
-  "level",
-  "wasm",
-  "detail",
-  "info",
-  "message",
-  "note",
-  "log",
-  "bug",
-  "error",
-  "capacity",
-  "partition",
-  "timer",
-]
+export const checkNumberFormat = (label?: string): NumberFormat => {
+  if (!label) return "normal"
+  if (TAMESTAMP_KEYS_REGEX.test(label)) return "timestamp"
+  if (CYCLE_KEYS_REGEX.test(label)) return "cycle"
+  return "normal"
+}

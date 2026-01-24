@@ -91,7 +91,8 @@ export interface TransformArgsRegistry<T> {
  * }
  * ```
  */
-export interface TransformReturnRegistry<T> {
+// @ts-expect-error - A is used in module augmentation
+export interface TransformReturnRegistry<T, A = BaseActor> {
   candid: T
   display: DisplayOf<T>
 }
@@ -127,7 +128,7 @@ export type ReactorReturnOk<
   A,
   M extends FunctionName<A>,
   Transform extends TransformKey = "candid",
-> = TransformReturnRegistry<OkResult<ActorMethodReturnType<A[M]>>>[Transform]
+> = TransformReturnRegistry<OkResult<ActorMethodReturnType<A[M]>>, A>[Transform]
 
 export type ReactorReturnErr<
   A,
@@ -135,7 +136,10 @@ export type ReactorReturnErr<
   Transform extends TransformKey = "candid",
 > =
   | CanisterError<
-      TransformReturnRegistry<ErrResult<ActorMethodReturnType<A[M]>>>[Transform]
+      TransformReturnRegistry<
+        ErrResult<ActorMethodReturnType<A[M]>>,
+        A
+      >[Transform]
     >
   | CallError
 

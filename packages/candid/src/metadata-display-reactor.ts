@@ -115,8 +115,8 @@ import {
  * ```
  */
 declare module "@ic-reactor/core" {
-  interface TransformReturnRegistry<T> {
-    metadata: ResolvedMethodResult<T>
+  interface TransformReturnRegistry<T, A = BaseActor> {
+    metadata: ResolvedMethodResult<A>
   }
   interface TransformArgsRegistry<T> {
     metadata: TransformArgsRegistry<T>["display"]
