@@ -1,14 +1,18 @@
-import type { BaseActor, DisplayReactorParameters } from "@ic-reactor/core"
+import type {
+  ActorMethodReturnType,
+  DisplayReactorParameters,
+  FunctionName,
+} from "@ic-reactor/core"
 import type {
   CandidDisplayReactorParameters,
   DynamicMethodOptions,
 } from "./types"
-
 import {
   DisplayReactor,
   didToDisplayCodec,
   didTypeFromArray,
 } from "@ic-reactor/core"
+import type { BaseActor } from "@ic-reactor/core"
 import { CandidAdapter } from "./adapter"
 import { IDL } from "@icp-sdk/core/candid"
 
@@ -24,7 +28,7 @@ import {
   MethodResultMeta,
   ServiceResultMeta,
   ResultField,
-  ResolvedMethodResultWithRaw,
+  ResolvedMethodResult,
 } from "./visitor/returns"
 
 // ============================================================================
@@ -110,7 +114,20 @@ import {
  * })
  * ```
  */
-export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<A> {
+declare module "@ic-reactor/core" {
+  interface TransformReturnRegistry<T> {
+    metadata: ResolvedMethodResult<T>
+  }
+  interface TransformArgsRegistry<T> {
+    metadata: TransformArgsRegistry<T>["display"]
+  }
+}
+
+export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<
+  A,
+  "metadata"
+> {
+  public readonly transform = "metadata" as const
   public adapter: CandidAdapter
   private candidSource?: string
 
@@ -217,6 +234,37 @@ export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<A> {
   // ══════════════════════════════════════════════════════════════════════════
   // METADATA ACCESS
   // ══════════════════════════════════════════════════════════════════════════
+  protected transformResult<M extends FunctionName<A>>(
+    methodName: M,
+    result: ActorMethodReturnType<A[M]>
+  ): ResolvedMethodResult<A> {
+    const codecs = (this as any).codecs as Map<
+      string,
+      { args: any; result: any }
+    >
+    const codec = codecs.get(methodName)
+    if (!codec) {
+      throw new Error(`Method "${methodName}" not found`)
+    }
+
+    // Transform to display values
+    const displayValue = codec.result.asDisplay(result)
+
+    // Get metadata and generate resolved result
+    const meta = this.getResultMeta(methodName)
+    if (!meta) {
+      throw new Error(`No metadata found for method "${methodName}"`)
+    }
+
+    const displayData: unknown[] =
+      meta.returnCount === 0
+        ? []
+        : meta.returnCount === 1
+          ? [displayValue]
+          : (displayValue as unknown[])
+
+    return meta.generateMetadata(displayData) as ResolvedMethodResult<A>
+  }
 
   /**
    * Get argument field metadata for a method.
@@ -315,123 +363,6 @@ export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<A> {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // RAW METHOD CALLS (without display transformation)
-  // ══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Call a method and return the raw untransformed Candid values.
-   * Use this when you need the original BigInt, Principal, etc. values.
-   *
-   * @example
-   * ```ts
-   * const rawResult = await reactor.callMethodRaw({
-   *   functionName: "icrc1_balance_of",
-   *   args: [{ owner: "aaaaa-aa", subaccount: null }]
-   * })
-   * // rawResult[0] is BigInt, not string
-   * ```
-   */
-  public async callMethodRaw<T = unknown[]>(options: {
-    functionName: string
-    args?: unknown[]
-  }): Promise<T> {
-    const { functionName, args = [] } = options
-
-    // Get the codec for encoding args
-    const codecs = (this as any).codecs as Map<
-      string,
-      { args: any; result: any }
-    >
-    const codec = codecs.get(functionName)
-    if (!codec) {
-      throw new Error(`Method "${functionName}" not found`)
-    }
-
-    // Get the function class
-    const func = this.getFuncClass(functionName as any)
-    if (!func) {
-      throw new Error(`Method "${functionName}" not found in service`)
-    }
-
-    // Encode args (display → candid)
-    const encodedArgs = codec.args.encode(args)
-
-    // Encode to binary
-    const arg = IDL.encode(func.argTypes, encodedArgs)
-
-    // Determine if query or update
-    const isQuery =
-      func.annotations.includes("query") ||
-      func.annotations.includes("composite_query")
-
-    // Execute the call
-    let rawResponse: Uint8Array
-    if (isQuery) {
-      rawResponse = await (this as any).executeQuery(functionName, arg)
-    } else {
-      rawResponse = await (this as any).executeCall(functionName, arg)
-    }
-
-    // Decode to raw Candid types (no display transformation)
-    const decoded = IDL.decode(func.retTypes, rawResponse)
-
-    return decoded as T
-  }
-
-  /**
-   * Call a method and return both raw and display-transformed results with full metadata.
-   * This is the most comprehensive method for rendering UIs that need both values.
-   *
-   * @example
-   * ```ts
-   * const { results, rawData, displayData } = await reactor.callMethodWithMetadata({
-   *   functionName: "icrc1_balance_of",
-   *   args: [{ owner: "aaaaa-aa", subaccount: null }]
-   * })
-   *
-   * // results[0].field → metadata (candidType: "nat", displayType: "string", etc.)
-   * // results[0].value → "1000000" (display string)
-   * // results[0].raw → BigInt(1000000) (raw Candid value)
-   * ```
-   */
-  public async callMethodWithMetadata(options: {
-    functionName: string
-    args?: unknown[]
-  }): Promise<ResolvedMethodResultWithRaw<A>> {
-    const { functionName, args = [] } = options
-
-    // Get raw result (untransformed)
-    const rawData = await this.callMethodRaw<unknown[]>({
-      functionName,
-      args,
-    })
-
-    // Get codecs for display transformation
-    const codecs = (this as any).codecs as Map<
-      string,
-      { args: any; result: any }
-    >
-    const codec = codecs.get(functionName)
-    if (!codec) {
-      throw new Error(`Method "${functionName}" not found`)
-    }
-
-    // Transform to display values
-    const displayData = codec.result.decode(rawData)
-
-    // Get metadata and generate resolved result
-    const meta = this.getResultMeta(functionName)
-    if (!meta) {
-      throw new Error(`No metadata found for method "${functionName}"`)
-    }
-
-    return meta.generateMetadataWithRaw(
-      rawData,
-      displayData
-    ) as ResolvedMethodResultWithRaw<A>
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
   // DYNAMIC CALL SHORTCUTS
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -477,7 +408,7 @@ export type {
   ResultField,
   MethodResultMeta,
   ServiceResultMeta,
-  ResolvedMethodResultWithRaw,
+  ResolvedMethodResult,
 }
 
 // Re-export visitors

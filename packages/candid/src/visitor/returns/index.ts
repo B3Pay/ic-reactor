@@ -252,13 +252,30 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         }
 
         const variant = value as Record<string, unknown>
-        const activeOption = Object.keys(variant)[0]
+        const optionsInValue = Object.keys(variant)
+        // For Result variants from DisplayCodec, we might have { "Err": { ... } } or { "Ok": ... }
+        // We need to find which key matches one of our options
+        const activeOption = optionsInValue.find((opt) => options.includes(opt))
+
+        if (!activeOption) {
+          // Fallback or error case?
+          return { field, value: null }
+        }
+
         const activeValue = variant[activeOption]
         const optionIndex = options.indexOf(activeOption)
         const optionField = optionFields[optionIndex]
 
+        // Create a specific field that only contains the active option
+        // This reduces noise in the output by removing unused variant options
+        const specificField: VariantResultField = {
+          ...field,
+          options, // Keep all options
+          optionFields: [optionField], // Keep only the active field
+        }
+
         return {
-          field,
+          field: specificField,
           value: {
             option: activeOption,
             value: optionField?.resolve(activeValue) ?? {

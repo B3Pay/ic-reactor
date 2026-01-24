@@ -1,5 +1,7 @@
 import { ClientManager } from "@ic-reactor/core"
-import { ActorMethod, HttpAgent } from "@icp-sdk/core/agent"
+import { ActorMethod, ActorSubclass, HttpAgent } from "@icp-sdk/core/agent"
+import { IDL } from "@icp-sdk/core/candid"
+import { Principal } from "@icp-sdk/core/principal"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { MetadataDisplayReactor } from "../../src/metadata-display-reactor"
 import type {
@@ -24,7 +26,7 @@ import type {
 // Test Actor Interface
 // ════════════════════════════════════════════════════════════════════════════
 
-interface TestActor {
+type TestActor = ActorSubclass<{
   icrc1_name: ActorMethod<[], string>
   icrc1_symbol: ActorMethod<[], string>
   icrc1_decimals: ActorMethod<[], number>
@@ -46,7 +48,7 @@ interface TestActor {
     ],
     { Ok: bigint } | { Err: unknown }
   >
-}
+}>
 
 // ════════════════════════════════════════════════════════════════════════════
 // Mock Client Manager
@@ -1061,8 +1063,10 @@ describe("MetadataDisplayReactor E2E", () => {
       functionName: "icrc1_name" as any,
     })
 
-    expect(result).toBe("Internet Computer")
-    console.log("✅ icrc1_name result:", result)
+    // result is now ResolvedMethodResultWithRaw
+    // We check the display value of the first result
+    expect((result as any).results[0].value).toBe("Internet Computer")
+    console.log("✅ icrc1_name result:", (result as any).results[0].value)
   })
 
   it("should call method with metadata using callDynamicWithMeta", async () => {
@@ -1076,11 +1080,14 @@ describe("MetadataDisplayReactor E2E", () => {
       candid: "() -> (text) query",
     })
 
-    expect(result).toBe("ICP")
+    expect((result as any).results[0].value).toBe("ICP")
     expect(meta).toBeDefined()
     expect(meta.resultFields).toHaveLength(1)
     expect(meta.resultFields[0].type).toBe("text")
-    console.log("✅ callDynamicWithMeta result:", result)
+    console.log(
+      "✅ callDynamicWithMeta result:",
+      (result as any).results[0].value
+    )
   })
 
   it("should return balance as string (display transformation)", async () => {
@@ -1093,9 +1100,112 @@ describe("MetadataDisplayReactor E2E", () => {
       functionName: "icrc1_fee",
       candid: "() -> (nat) query",
     })
+    console.log("✅ icrc1_fee result:", fee)
 
     // Fee should be transformed to string (display format)
-    expect(typeof fee).toBe("string")
-    console.log("✅ icrc1_fee (string):", fee)
+    expect(typeof (fee as any).results[0].value).toBe("string")
+    console.log("✅ icrc1_fee (string):", (fee as any).results[0].value)
+  })
+})
+
+describe("Complex Result Handling (Mocked)", () => {
+  let reactor: MetadataDisplayReactor
+  let mockAgent: any
+
+  beforeAll(async () => {
+    const client = createMockClientManager()
+    mockAgent = client.agent
+
+    reactor = new MetadataDisplayReactor({
+      name: "variant-test",
+      canisterId: "aaaaa-aa",
+      clientManager: client,
+      candid: ICRC1_SERVICE_CANDID,
+    })
+    await reactor.initialize()
+  })
+
+  // We need to define the type for accessing private method
+  type ReactorWithProtected = MetadataDisplayReactor & {
+    executeCall: (methodName: string, arg: Uint8Array) => Promise<Uint8Array>
+    getFuncClass: (methodName: string) => IDL.FuncClass
+  }
+
+  it("should handle Ok result", async () => {
+    const functionName = "icrc1_transfer"
+    const mockResult = { Ok: 100n }
+
+    // Mock the update call execution
+    ;(reactor as unknown as ReactorWithProtected).executeCall = async () => {
+      const func = (reactor as unknown as ReactorWithProtected).getFuncClass(
+        functionName
+      ) as IDL.FuncClass
+      return new Uint8Array(IDL.encode(func.retTypes, [mockResult]))
+    }
+
+    const result = await reactor.callMethod({
+      functionName: functionName as any,
+      args: [
+        {
+          to: { owner: Principal.fromText("aaaaa-aa"), subaccount: [] },
+          amount: 100n,
+          fee: [],
+          memo: [],
+          created_at_time: [],
+        },
+      ],
+    })
+
+    const resAny = result as any
+    expect(resAny.results).toHaveLength(1)
+    const fieldResult = resAny.results[0]
+
+    expect(fieldResult.field.type).toBe("variant")
+    expect(fieldResult.field.displayType).toBe("result")
+
+    // Check that we have the extracted Ok value structure
+    expect(fieldResult.value).toHaveProperty("option", "Ok")
+    // Check the value inside Ok (nat -> string)
+    expect(fieldResult.value.value.value).toBe("100")
+    console.log("✅ Ok result:", fieldResult.value)
+  })
+
+  it("should handle Err result", async () => {
+    const functionName = "icrc1_transfer"
+    const mockResult = { Err: { InsufficientFunds: { balance: 50n } } }
+
+    // Mock the update call execution
+    ;(reactor as unknown as ReactorWithProtected).executeCall = async () => {
+      const func = (reactor as unknown as ReactorWithProtected).getFuncClass(
+        functionName
+      ) as IDL.FuncClass
+      return new Uint8Array(IDL.encode(func.retTypes, [mockResult]))
+    }
+
+    const result = await reactor.callMethod({
+      functionName: functionName as any,
+      args: [
+        {
+          to: { owner: Principal.fromText("aaaaa-aa"), subaccount: [] },
+          amount: 100n,
+          fee: [],
+          memo: [],
+          created_at_time: [],
+        },
+      ],
+    })
+
+    const resAny = result as any
+    const fieldResult = resAny.results[0]
+
+    expect(fieldResult.value).toHaveProperty("option", "Err")
+
+    // Check the value inside Err
+    // Err -> value -> option: InsufficientFunds -> value -> { balance: 50 }
+    const errContent = fieldResult.value.value
+    console.log("✅ Err result:", JSON.stringify(errContent, null, 2))
+
+    expect(errContent.value).toHaveProperty("option", "InsufficientFunds")
+    expect(errContent.value.value.value.balance.value).toBe("50")
   })
 })

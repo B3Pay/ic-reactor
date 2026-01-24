@@ -227,21 +227,6 @@ export interface ResolvedMethodResult<A = BaseActor> {
   results: ResultFieldWithValue[]
 }
 
-/**
- * Resolved method result containing both raw and display values.
- * This is the output of `generateMetadataWithRaw()`.
- */
-export interface ResolvedMethodResultWithRaw<A = BaseActor> {
-  functionType: FunctionType
-  functionName: FunctionName<A>
-  /** Resolved fields with both raw and display values attached */
-  results: ResultFieldWithValue[]
-  /** The raw untransformed return values from the canister */
-  rawData: unknown[]
-  /** The display-transformed return values */
-  displayData: unknown[]
-}
-
 export interface MethodResultMeta<A = BaseActor> {
   functionType: FunctionType
   functionName: FunctionName<A>
@@ -262,28 +247,6 @@ export interface MethodResultMeta<A = BaseActor> {
    * ```
    */
   generateMetadata(data: unknown[]): ResolvedMethodResult<A>
-
-  /**
-   * Generate metadata by resolving each result field with both raw and display values.
-   * Use this when you need access to both the original Candid values and display-ready strings.
-   *
-   * @param rawData - Array of raw untransformed return values (BigInt, Principal, etc.)
-   * @param displayData - Array of display-transformed return values (strings, etc.)
-   * @returns Resolved method result with both raw and display values attached
-   *
-   * @example
-   * ```ts
-   * const rawResult = await reactor.callMethodRaw({ functionName: "myMethod", args: [] })
-   * const displayResult = await reactor.callMethod({ functionName: "myMethod", args: [] })
-   * const resolved = methodMeta.generateMetadataWithRaw(rawResult, displayResult)
-   * // resolved.results[0].raw → BigInt(1000000)
-   * // resolved.results[0].value → "1000000"
-   * ```
-   */
-  generateMetadataWithRaw(
-    rawData: unknown[],
-    displayData: unknown[]
-  ): ResolvedMethodResultWithRaw<A>
 }
 
 export type ServiceResultMeta<A = BaseActor> = {
