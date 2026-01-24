@@ -144,15 +144,18 @@ export type ArgumentField =
 // Method & Service Level
 // ════════════════════════════════════════════════════════════════════════════
 
-export interface MethodArgumentsMeta<A = BaseActor> {
+export interface MethodArgumentsMeta<
+  A = BaseActor,
+  Name extends FunctionName<A> = FunctionName<A>,
+> {
   functionType: FunctionType
-  functionName: FunctionName<A>
+  functionName: Name
   fields: ArgumentField[]
   defaultValues: unknown[]
 }
 
 export type ServiceArgumentsMeta<A = BaseActor> = {
-  [K in FunctionName<A>]: MethodArgumentsMeta<A>
+  [K in FunctionName<A>]: MethodArgumentsMeta<A, K>
 }
 
 // ════════════════════════════════════════════════════════════════════════════

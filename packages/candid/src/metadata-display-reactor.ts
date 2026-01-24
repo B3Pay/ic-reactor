@@ -147,20 +147,20 @@ export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
    * Get argument field metadata for a method.
    * Use this to generate input forms.
    */
-  public getArgumentMeta<M extends string>(
+  public getArgumentMeta<M extends FunctionName<A>>(
     methodName: M
-  ): MethodArgumentsMeta<A> | undefined {
-    return (this.argumentMeta as any)?.[methodName]
+  ): MethodArgumentsMeta<A, M> | undefined {
+    return this.argumentMeta?.[methodName]
   }
 
   /**
    * Get result field metadata for a method.
    * Use this to render results.
    */
-  public getResultMeta<M extends string>(
+  public getResultMeta<M extends FunctionName<A>>(
     methodName: M
-  ): MethodResultMeta<A> | undefined {
-    return (this.resultMeta as any)?.[methodName]
+  ): MethodResultMeta<A, M> | undefined {
+    return this.resultMeta?.[methodName]
   }
 
   /**
@@ -253,7 +253,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
       args: options.args as any,
     })) as T
 
-    const meta = this.getResultMeta(options.functionName)!
+    const meta = this.getResultMeta(options.functionName as any)!
 
     return { result, meta }
   }

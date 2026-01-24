@@ -3,6 +3,7 @@ import type {
   FunctionName,
   DisplayOf,
   FunctionType,
+  ActorMethodReturnType,
 } from "@ic-reactor/core"
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -229,9 +230,12 @@ export interface ResolvedMethodResult<A = BaseActor> {
   results: ResultFieldWithValue[]
 }
 
-export interface MethodResultMeta<A = BaseActor> {
+export interface MethodResultMeta<
+  A = BaseActor,
+  Name extends FunctionName<A> = FunctionName<A>,
+> {
   functionType: FunctionType
-  functionName: FunctionName<A>
+  functionName: Name
   resultFields: ResultField[]
   returnCount: number
   /**
@@ -248,11 +252,13 @@ export interface MethodResultMeta<A = BaseActor> {
    * // resolved.results contains fields with their display values for rendering
    * ```
    */
-  generateMetadata(data: unknown): ResolvedMethodResult<A>
+  generateMetadata(
+    data: ActorMethodReturnType<A[Name]>
+  ): ResolvedMethodResult<A>
 }
 
 export type ServiceResultMeta<A = BaseActor> = {
-  [K in FunctionName<A>]: MethodResultMeta<A>
+  [K in FunctionName<A>]: MethodResultMeta<A, K>
 }
 
 // ════════════════════════════════════════════════════════════════════════════

@@ -29,7 +29,7 @@ describe("ResultFieldVisitor", () => {
   describe("Primitive Types", () => {
     it("should handle text type", () => {
       const textType = IDL.Text
-      const field = textType.accept(visitor, "message") as TextResultField
+      const field = visitor.visitText(textType, "message")
 
       expect(field.type).toBe("text")
       expect(field.label).toBe("message")
@@ -39,55 +39,34 @@ describe("ResultFieldVisitor", () => {
     })
 
     it("should handle text with special label detection", () => {
-      const emailField = IDL.Text.accept(visitor, "email") as TextResultField
+      const emailField = visitor.visitText(IDL.Text, "email")
       expect(emailField.textFormat).toBe("email")
 
-      const urlField = IDL.Text.accept(
-        visitor,
-        "website_url"
-      ) as TextResultField
+      const urlField = visitor.visitText(IDL.Text, "website_url")
       expect(urlField.textFormat).toBe("url")
 
-      const phoneField = IDL.Text.accept(
-        visitor,
-        "phone_number"
-      ) as TextResultField
+      const phoneField = visitor.visitText(IDL.Text, "phone_number")
       expect(phoneField.textFormat).toBe("phone")
 
-      const uuidField = IDL.Text.accept(
-        visitor,
-        "transaction_uuid"
-      ) as TextResultField
+      const uuidField = visitor.visitText(IDL.Text, "transaction_uuid")
       expect(uuidField.textFormat).toBe("uuid")
 
-      const btcField = IDL.Text.accept(
-        visitor,
-        "btc_address"
-      ) as TextResultField
+      const btcField = visitor.visitText(IDL.Text, "btc_address")
       expect(btcField.textFormat).toBe("btc")
 
-      const ethField = IDL.Text.accept(
-        visitor,
-        "ethereum_address"
-      ) as TextResultField
+      const ethField = visitor.visitText(IDL.Text, "ethereum_address")
       expect(ethField.textFormat).toBe("eth")
 
-      const accountIdField = IDL.Text.accept(
-        visitor,
-        "account_id"
-      ) as TextResultField
+      const accountIdField = visitor.visitText(IDL.Text, "account_id")
       expect(accountIdField.textFormat).toBe("account-id")
 
-      const principalField = IDL.Text.accept(
-        visitor,
-        "canister_id"
-      ) as TextResultField
+      const principalField = visitor.visitText(IDL.Text, "canister_id")
       expect(principalField.textFormat).toBe("principal")
     })
 
     it("should handle bool type", () => {
       const boolType = IDL.Bool
-      const field = boolType.accept(visitor, "isActive") as BooleanResultField
+      const field = visitor.visitBool(boolType, "isActive")
 
       expect(field.type).toBe("boolean")
       expect(field.label).toBe("isActive")
@@ -97,7 +76,7 @@ describe("ResultFieldVisitor", () => {
 
     it("should handle null type", () => {
       const nullType = IDL.Null
-      const field = nullType.accept(visitor, "empty") as NullResultField
+      const field = visitor.visitNull(nullType, "empty")
 
       expect(field.type).toBe("null")
       expect(field.candidType).toBe("null")
@@ -106,10 +85,7 @@ describe("ResultFieldVisitor", () => {
 
     it("should handle principal type", () => {
       const principalType = IDL.Principal
-      const field = principalType.accept(
-        visitor,
-        "owner"
-      ) as PrincipalResultField
+      const field = visitor.visitPrincipal(IDL.Principal, "owner")
 
       expect(field.type).toBe("principal")
       expect(field.label).toBe("owner")
@@ -125,7 +101,7 @@ describe("ResultFieldVisitor", () => {
   describe("Number Types", () => {
     describe("BigInt types (display as string)", () => {
       it("should map nat to string display type", () => {
-        const field = IDL.Nat.accept(visitor, "amount") as NumberResultField
+        const field = visitor.visitNat(IDL.Nat, "amount")
 
         expect(field.type).toBe("number")
         expect(field.candidType).toBe("nat")
@@ -134,7 +110,7 @@ describe("ResultFieldVisitor", () => {
       })
 
       it("should map int to string display type", () => {
-        const field = IDL.Int.accept(visitor, "balance") as NumberResultField
+        const field = visitor.visitInt(IDL.Int, "balance")
 
         expect(field.type).toBe("number")
         expect(field.candidType).toBe("int")
@@ -142,10 +118,7 @@ describe("ResultFieldVisitor", () => {
       })
 
       it("should map nat64 to string display type", () => {
-        const field = IDL.Nat64.accept(
-          visitor,
-          "timestamp"
-        ) as NumberResultField
+        const field = visitor.visitFixedNat(IDL.Nat64, "timestamp")
 
         expect(field.type).toBe("number")
         expect(field.candidType).toBe("nat64")
@@ -153,7 +126,7 @@ describe("ResultFieldVisitor", () => {
       })
 
       it("should map int64 to string display type", () => {
-        const field = IDL.Int64.accept(visitor, "offset") as NumberResultField
+        const field = visitor.visitFixedInt(IDL.Int64, "offset")
 
         expect(field.type).toBe("number")
         expect(field.candidType).toBe("int64")
@@ -163,7 +136,7 @@ describe("ResultFieldVisitor", () => {
 
     describe("Small int types (display as number)", () => {
       it("should map nat8 to number display type", () => {
-        const field = IDL.Nat8.accept(visitor, "byte") as NumberResultField
+        const field = visitor.visitFixedNat(IDL.Nat8, "byte")
 
         expect(field.type).toBe("number")
         expect(field.candidType).toBe("nat8")
@@ -171,28 +144,28 @@ describe("ResultFieldVisitor", () => {
       })
 
       it("should map nat16 to number display type", () => {
-        const field = IDL.Nat16.accept(visitor, "port") as NumberResultField
+        const field = visitor.visitFixedNat(IDL.Nat16, "port")
 
         expect(field.candidType).toBe("nat16")
         expect(field.displayType).toBe("number")
       })
 
       it("should map nat32 to number display type", () => {
-        const field = IDL.Nat32.accept(visitor, "count") as NumberResultField
+        const field = visitor.visitFixedNat(IDL.Nat32, "count")
 
         expect(field.candidType).toBe("nat32")
         expect(field.displayType).toBe("number")
       })
 
       it("should map int8 to number display type", () => {
-        const field = IDL.Int8.accept(visitor, "temp") as NumberResultField
+        const field = visitor.visitFixedInt(IDL.Int8, "temp")
 
         expect(field.candidType).toBe("int8")
         expect(field.displayType).toBe("number")
       })
 
       it("should map int32 to number display type", () => {
-        const field = IDL.Int32.accept(visitor, "index") as NumberResultField
+        const field = visitor.visitFixedInt(IDL.Int32, "index")
 
         expect(field.candidType).toBe("int32")
         expect(field.displayType).toBe("number")
@@ -201,14 +174,14 @@ describe("ResultFieldVisitor", () => {
 
     describe("Float types (display as number)", () => {
       it("should map float32 to number display type", () => {
-        const field = IDL.Float32.accept(visitor, "rate") as NumberResultField
+        const field = visitor.visitFloat(IDL.Float32, "rate")
 
         expect(field.candidType).toBe("float32")
         expect(field.displayType).toBe("number")
       })
 
       it("should map float64 to number display type", () => {
-        const field = IDL.Float64.accept(visitor, "price") as NumberResultField
+        const field = visitor.visitFloat(IDL.Float64, "price")
 
         expect(field.candidType).toBe("float64")
         expect(field.displayType).toBe("number")
@@ -217,48 +190,30 @@ describe("ResultFieldVisitor", () => {
 
     describe("Number format detection", () => {
       it("should detect timestamp format from label", () => {
-        const timestampField = IDL.Nat64.accept(
-          visitor,
-          "created_at"
-        ) as NumberResultField
+        const timestampField = visitor.visitFixedNat(IDL.Nat64, "created_at")
         expect(timestampField.numberFormat).toBe("timestamp")
 
-        const dateField = IDL.Nat.accept(
-          visitor,
-          "timestamp_nanos"
-        ) as NumberResultField
+        const dateField = visitor.visitNat(IDL.Nat, "timestamp_nanos")
         expect(dateField.numberFormat).toBe("timestamp")
 
-        const deadlineField = IDL.Nat.accept(
-          visitor,
-          "deadline"
-        ) as NumberResultField
+        const deadlineField = visitor.visitNat(IDL.Nat, "deadline")
         expect(deadlineField.numberFormat).toBe("timestamp")
       })
 
       it("should detect cycle format from label", () => {
-        const cycleField = IDL.Nat.accept(
-          visitor,
-          "cycles"
-        ) as NumberResultField
+        const cycleField = visitor.visitNat(IDL.Nat, "cycles")
         expect(cycleField.numberFormat).toBe("cycle")
 
         // "cycle" as standalone word
-        const cycleSingleField = IDL.Nat.accept(
-          visitor,
-          "cycle"
-        ) as NumberResultField
+        const cycleSingleField = visitor.visitNat(IDL.Nat, "cycle")
         expect(cycleSingleField.numberFormat).toBe("cycle")
       })
 
       it("should default to normal format", () => {
-        const amountField = IDL.Nat.accept(
-          visitor,
-          "amount"
-        ) as NumberResultField
+        const amountField = visitor.visitNat(IDL.Nat, "amount")
         expect(amountField.numberFormat).toBe("normal")
 
-        const countField = IDL.Nat.accept(visitor, "count") as NumberResultField
+        const countField = visitor.visitNat(IDL.Nat, "count")
         expect(countField.numberFormat).toBe("normal")
       })
     })
@@ -274,7 +229,14 @@ describe("ResultFieldVisitor", () => {
         name: IDL.Text,
         age: IDL.Nat,
       })
-      const field = recordType.accept(visitor, "person") as RecordResultField
+      const field = visitor.visitRecord(
+        recordType,
+        [
+          ["name", IDL.Text],
+          ["age", IDL.Nat],
+        ],
+        "person"
+      )
 
       expect(field.type).toBe("record")
       expect(field.label).toBe("person")
@@ -282,14 +244,16 @@ describe("ResultFieldVisitor", () => {
       expect(field.displayType).toBe("object")
       expect(field.fields).toHaveLength(2)
 
-      const nameField = field.fields.find(
-        (f) => f.label === "name"
-      ) as TextResultField
+      const nameField = field.fields.find((f) => f.label === "name")
+      if (!nameField || nameField.type !== "text") {
+        throw new Error("Name field not found or not text")
+      }
       expect(nameField.displayType).toBe("string")
 
-      const ageField = field.fields.find(
-        (f) => f.label === "age"
-      ) as NumberResultField
+      const ageField = field.fields.find((f) => f.label === "age")
+      if (!ageField || ageField.type !== "number") {
+        throw new Error("Age field not found or not number")
+      }
       expect(ageField.displayType).toBe("string") // nat → string
     })
 
@@ -302,13 +266,22 @@ describe("ResultFieldVisitor", () => {
         name: IDL.Text,
         address: addressType,
       })
-      const field = personType.accept(visitor, "user") as RecordResultField
+      const field = visitor.visitRecord(
+        personType,
+        [
+          ["name", IDL.Text],
+          ["address", addressType],
+        ],
+        "user"
+      )
 
       expect(field.type).toBe("record")
 
-      const addressField = field.fields.find(
-        (f) => f.label === "address"
-      ) as RecordResultField
+      const addressField = field.fields.find((f) => f.label === "address")
+      if (!addressField || addressField.type !== "record") {
+        throw new Error("Address field not found or not a record")
+      }
+
       expect(addressField.type).toBe("record")
       expect(addressField.displayType).toBe("object")
       expect(addressField.fields).toHaveLength(2)
@@ -319,20 +292,32 @@ describe("ResultFieldVisitor", () => {
         owner: IDL.Principal,
         subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
       })
-      const field = accountType.accept(visitor, "account") as RecordResultField
+      const field = visitor.visitRecord(
+        accountType,
+        [
+          ["owner", IDL.Principal],
+          ["subaccount", IDL.Opt(IDL.Vec(IDL.Nat8))],
+        ],
+        "account"
+      )
 
       expect(field.type).toBe("record")
 
-      const ownerField = field.fields.find(
-        (f) => f.label === "owner"
-      ) as PrincipalResultField
+      const ownerField = field.fields.find((f) => f.label === "owner")
+      if (!ownerField || ownerField.type !== "principal") {
+        throw new Error("Owner field not found or not principal")
+      }
       expect(ownerField.type).toBe("principal")
       expect(ownerField.displayType).toBe("string")
 
-      const subaccountField = field.fields.find(
-        (f) => f.label === "subaccount"
-      ) as OptionalResultField
+      const subaccountField = field.fields.find((f) => f.label === "subaccount")
+      if (!subaccountField || subaccountField.type !== "optional") {
+        throw new Error("Subaccount field not found or not optional")
+      }
       expect(subaccountField.type).toBe("optional")
+      if (subaccountField.innerField.type !== "blob") {
+        throw new Error("Subaccount inner field is not blob")
+      }
       expect(subaccountField.innerField.type).toBe("blob")
     })
   })
@@ -344,7 +329,15 @@ describe("ResultFieldVisitor", () => {
         Inactive: IDL.Null,
         Pending: IDL.Null,
       })
-      const field = statusType.accept(visitor, "status") as VariantResultField
+      const field = visitor.visitVariant(
+        statusType,
+        [
+          ["Active", IDL.Null],
+          ["Inactive", IDL.Null],
+          ["Pending", IDL.Null],
+        ],
+        "status"
+      )
 
       expect(field.type).toBe("variant")
       expect(field.candidType).toBe("variant")
@@ -368,7 +361,28 @@ describe("ResultFieldVisitor", () => {
           amount: IDL.Nat,
         }),
       })
-      const field = eventType.accept(visitor, "event") as VariantResultField
+      const field = visitor.visitVariant(
+        eventType,
+        [
+          [
+            "Transfer",
+            IDL.Record({
+              from: IDL.Principal,
+              to: IDL.Principal,
+              amount: IDL.Nat,
+            }),
+          ],
+          ["Approve", IDL.Nat],
+          [
+            "Mint",
+            IDL.Record({
+              to: IDL.Principal,
+              amount: IDL.Nat,
+            }),
+          ],
+        ],
+        "event"
+      )
 
       expect(field.type).toBe("variant")
       expect(field.options).toContain("Transfer")
@@ -378,13 +392,18 @@ describe("ResultFieldVisitor", () => {
 
       const transferField = field.optionFields.find(
         (f) => f.label === "Transfer"
-      ) as RecordResultField
+      )
+
+      if (!transferField || transferField.type !== "record") {
+        throw new Error("Transfer field not found or not record")
+      }
       expect(transferField.type).toBe("record")
       expect(transferField.fields).toHaveLength(3)
 
-      const approveField = field.optionFields.find(
-        (f) => f.label === "Approve"
-      ) as NumberResultField
+      const approveField = field.optionFields.find((f) => f.label === "Approve")
+      if (!approveField || approveField.type !== "number") {
+        throw new Error("Approve field not found or not number")
+      }
       expect(approveField.type).toBe("number")
     })
 
@@ -393,21 +412,30 @@ describe("ResultFieldVisitor", () => {
         Ok: IDL.Nat,
         Err: IDL.Text,
       })
-      const field = resultType.accept(visitor, "result") as VariantResultField
+      const field = visitor.visitVariant(
+        resultType,
+        [
+          ["Ok", IDL.Nat],
+          ["Err", IDL.Text],
+        ],
+        "result"
+      )
 
       expect(field.type).toBe("variant")
       expect(field.displayType).toBe("result") // Special result type
       expect(field.options).toContain("Ok")
       expect(field.options).toContain("Err")
 
-      const okField = field.optionFields.find(
-        (f) => f.label === "Ok"
-      ) as NumberResultField
+      const okField = field.optionFields.find((f) => f.label === "Ok")
+      if (!okField || okField.type !== "number") {
+        throw new Error("Ok field not found or not number")
+      }
       expect(okField.displayType).toBe("string")
 
-      const errField = field.optionFields.find(
-        (f) => f.label === "Err"
-      ) as TextResultField
+      const errField = field.optionFields.find((f) => f.label === "Err")
+      if (!errField || errField.type !== "text") {
+        throw new Error("Err field not found or not text")
+      }
       expect(errField.displayType).toBe("string")
     })
 
@@ -423,18 +451,40 @@ describe("ResultFieldVisitor", () => {
           InvalidInput: IDL.Text,
         }),
       })
-      const field = resultType.accept(visitor, "result") as VariantResultField
+      const field = visitor.visitVariant(
+        resultType,
+        [
+          [
+            "Ok",
+            IDL.Record({
+              id: IDL.Nat,
+              data: IDL.Vec(IDL.Nat8),
+            }),
+          ],
+          [
+            "Err",
+            IDL.Variant({
+              NotFound: IDL.Null,
+              Unauthorized: IDL.Null,
+              InvalidInput: IDL.Text,
+            }),
+          ],
+        ],
+        "result"
+      )
 
       expect(field.displayType).toBe("result")
 
-      const okField = field.optionFields.find(
-        (f) => f.label === "Ok"
-      ) as RecordResultField
+      const okField = field.optionFields.find((f) => f.label === "Ok")
+      if (!okField || okField.type !== "record") {
+        throw new Error("Ok field not found or not record")
+      }
       expect(okField.type).toBe("record")
 
-      const errField = field.optionFields.find(
-        (f) => f.label === "Err"
-      ) as VariantResultField
+      const errField = field.optionFields.find((f) => f.label === "Err")
+      if (!errField || errField.type !== "variant") {
+        throw new Error("Err field not found or not variant")
+      }
       expect(errField.type).toBe("variant")
     })
 
@@ -444,7 +494,15 @@ describe("ResultFieldVisitor", () => {
         Pending: IDL.Null,
         Processing: IDL.Text,
       })
-      const field = weirdType.accept(visitor, "status") as VariantResultField
+      const field = visitor.visitVariant(
+        weirdType,
+        [
+          ["Ok", IDL.Nat],
+          ["Pending", IDL.Null],
+          ["Processing", IDL.Text],
+        ],
+        "status"
+      )
 
       expect(field.displayType).toBe("variant")
     })
@@ -453,7 +511,7 @@ describe("ResultFieldVisitor", () => {
   describe("Tuple Types", () => {
     it("should handle simple tuple", () => {
       const tupleType = IDL.Tuple(IDL.Text, IDL.Nat)
-      const field = tupleType.accept(visitor, "pair") as TupleResultField
+      const field = visitor.visitTuple(tupleType, [IDL.Text, IDL.Nat], "pair")
 
       expect(field.type).toBe("tuple")
       expect(field.candidType).toBe("tuple")
@@ -470,12 +528,21 @@ describe("ResultFieldVisitor", () => {
         IDL.Bool,
         IDL.Vec(IDL.Nat8)
       )
-      const field = tupleType.accept(visitor, "data") as TupleResultField
+      const field = visitor.visitTuple(
+        tupleType,
+        [IDL.Principal, IDL.Nat64, IDL.Bool, IDL.Vec(IDL.Nat8)],
+        "data"
+      )
 
       expect(field.fields).toHaveLength(4)
       expect(field.fields[0].type).toBe("principal")
       expect(field.fields[1].type).toBe("number")
-      expect((field.fields[1] as NumberResultField).displayType).toBe("string") // nat64 → string
+      const numField = field.fields[1]
+      if (numField.type === "number") {
+        expect(numField.displayType).toBe("string") // nat64 → string
+      } else {
+        throw new Error("Expected number field")
+      }
       expect(field.fields[2].type).toBe("boolean")
       expect(field.fields[3].type).toBe("blob")
     })
@@ -484,7 +551,7 @@ describe("ResultFieldVisitor", () => {
   describe("Optional Types", () => {
     it("should handle optional primitive", () => {
       const optType = IDL.Opt(IDL.Text)
-      const field = optType.accept(visitor, "nickname") as OptionalResultField
+      const field = visitor.visitOpt(optType, IDL.Text, "nickname")
 
       expect(field.type).toBe("optional")
       expect(field.candidType).toBe("opt")
@@ -493,82 +560,108 @@ describe("ResultFieldVisitor", () => {
     })
 
     it("should handle optional record", () => {
-      const optType = IDL.Opt(
-        IDL.Record({
-          name: IDL.Text,
-          value: IDL.Nat,
-        })
-      )
-      const field = optType.accept(visitor, "metadata") as OptionalResultField
+      const recordInOpt = IDL.Record({
+        name: IDL.Text,
+        value: IDL.Nat,
+      })
+      const optType = IDL.Opt(recordInOpt)
+      const field = visitor.visitOpt(optType, recordInOpt, "metadata")
 
       expect(field.type).toBe("optional")
       expect(field.innerField.type).toBe("record")
     })
 
     it("should handle nested optional", () => {
-      const optType = IDL.Opt(IDL.Opt(IDL.Nat))
-      const field = optType.accept(
-        visitor,
-        "maybeNumber"
-      ) as OptionalResultField
+      const innerOpt = IDL.Opt(IDL.Nat)
+      const optType = IDL.Opt(innerOpt)
+      const field = visitor.visitOpt(optType, innerOpt, "maybeNumber")
 
       expect(field.type).toBe("optional")
       expect(field.innerField.type).toBe("optional")
-      expect((field.innerField as OptionalResultField).innerField.type).toBe(
-        "number"
-      )
+      const inner = field.innerField
+      if (inner.type === "optional") {
+        expect(inner.innerField.type).toBe("number")
+      } else {
+        throw new Error("Inner field is not optional")
+      }
     })
   })
 
   describe("Vector Types", () => {
     it("should handle vector of primitives", () => {
       const vecType = IDL.Vec(IDL.Text)
-      const field = vecType.accept(visitor, "tags") as VectorResultField
+      const field = visitor.visitVec(vecType, IDL.Text, "tags")
 
       expect(field.type).toBe("vector")
       expect(field.candidType).toBe("vec")
       expect(field.displayType).toBe("array")
-      expect(field.itemField.type).toBe("text")
+      if (field.type === "vector") {
+        expect(field.itemField.type).toBe("text")
+      } else {
+        throw new Error("Field is not a vector")
+      }
     })
 
     it("should handle vector of records", () => {
-      const vecType = IDL.Vec(
-        IDL.Record({
-          id: IDL.Nat,
-          name: IDL.Text,
-        })
-      )
-      const field = vecType.accept(visitor, "items") as VectorResultField
+      const recType = IDL.Record({
+        id: IDL.Nat,
+        name: IDL.Text,
+      })
+      const vecType = IDL.Vec(recType)
+      const field = visitor.visitVec(vecType, recType, "items")
 
       expect(field.type).toBe("vector")
-      expect(field.itemField.type).toBe("record")
+      if (field.type === "vector") {
+        expect(field.itemField.type).toBe("record")
+      } else {
+        throw new Error("Field is not a vector")
+      }
     })
 
     it("should handle blob (vec nat8)", () => {
       const blobType = IDL.Vec(IDL.Nat8)
-      const field = blobType.accept(visitor, "data") as BlobResultField
+      const field = visitor.visitVec(blobType, IDL.Nat8, "data")
 
       expect(field.type).toBe("blob")
       expect(field.candidType).toBe("blob")
       expect(field.displayType).toBe("string") // Blob → hex string
-      expect(field.displayHint).toBe("hex")
+      if (field.type === "blob") {
+        expect(field.displayHint).toBe("hex")
+      } else {
+        throw new Error("Field is not a blob")
+      }
     })
 
     it("should handle nested vectors", () => {
-      const nestedVecType = IDL.Vec(IDL.Vec(IDL.Nat))
-      const field = nestedVecType.accept(visitor, "matrix") as VectorResultField
+      const innerVec = IDL.Vec(IDL.Nat)
+      const nestedVecType = IDL.Vec(innerVec)
+      const field = visitor.visitVec(nestedVecType, innerVec, "matrix")
 
       expect(field.type).toBe("vector")
-      expect(field.itemField.type).toBe("vector")
+      if (field.type === "vector") {
+        expect(field.itemField.type).toBe("vector")
+      } else {
+        throw new Error("Field is not a vector")
+      }
     })
 
     it("should handle vec of tuples (Map-like)", () => {
-      const mapType = IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))
-      const field = mapType.accept(visitor, "metadata") as VectorResultField
+      const tupleType = IDL.Tuple(IDL.Text, IDL.Nat)
+      const mapType = IDL.Vec(tupleType)
+      const field = visitor.visitVec(
+        mapType,
+        tupleType,
+        "metadata"
+      ) as VectorResultField
 
       expect(field.type).toBe("vector")
       expect(field.itemField.type).toBe("tuple")
-      expect((field.itemField as TupleResultField).fields).toHaveLength(2)
+      const itemField = field.itemField
+      if (itemField.type === "tuple") {
+        expect(itemField.fields).toHaveLength(2)
+      } else {
+        throw new Error("Item field is not tuple")
+      }
     })
   })
 
@@ -585,7 +678,17 @@ describe("ResultFieldVisitor", () => {
         })
       )
 
-      const field = Tree.accept(visitor, "tree") as RecursiveResultField
+      const field = visitor.visitRec(
+        Tree,
+        IDL.Variant({
+          Leaf: IDL.Nat,
+          Node: IDL.Record({
+            left: Tree,
+            right: Tree,
+          }),
+        }),
+        "tree"
+      )
 
       expect(field.type).toBe("recursive")
       expect(field.candidType).toBe("rec")
@@ -594,7 +697,10 @@ describe("ResultFieldVisitor", () => {
       expect(typeof field.extract).toBe("function")
 
       // Extract should return the variant
-      const extracted = field.extract() as VariantResultField
+      const extracted = field.extract()
+      if (extracted.type !== "variant") {
+        throw new Error("Extracted field is not variant")
+      }
       expect(extracted.type).toBe("variant")
       expect(extracted.options).toContain("Leaf")
       expect(extracted.options).toContain("Node")
@@ -612,11 +718,24 @@ describe("ResultFieldVisitor", () => {
         })
       )
 
-      const field = List.accept(visitor, "list") as RecursiveResultField
+      const field = visitor.visitRec(
+        List,
+        IDL.Variant({
+          Nil: IDL.Null,
+          Cons: IDL.Record({
+            head: IDL.Nat,
+            tail: List,
+          }),
+        }),
+        "list"
+      )
 
       expect(field.type).toBe("recursive")
 
-      const extracted = field.extract() as VariantResultField
+      const extracted = field.extract()
+      if (extracted.type !== "variant") {
+        throw new Error("Extracted field is not variant")
+      }
       expect(extracted.options).toEqual(["Nil", "Cons"])
     })
   })
@@ -628,20 +747,22 @@ describe("ResultFieldVisitor", () => {
   describe("Function Types", () => {
     it("should handle query function with single return", () => {
       const funcType = IDL.Func([IDL.Principal], [IDL.Nat], ["query"])
-      const meta = funcType.accept(
-        visitor,
-        "get_balance"
-      ) as MethodResultMeta<unknown>
+      const meta = visitor.visitFunc(funcType, "get_balance")
 
       expect(meta.functionType).toBe("query")
       expect(meta.functionName).toBe("get_balance")
       expect(meta.returnCount).toBe(1)
       expect(meta.resultFields).toHaveLength(1)
 
-      const returnField = meta.resultFields[0] as NumberResultField
-      expect(returnField.type).toBe("number")
-      expect(returnField.candidType).toBe("nat")
-      expect(returnField.displayType).toBe("string")
+      expect(meta.resultFields).toHaveLength(1)
+
+      const returnField = meta.resultFields[0]
+      if (returnField.type === "number") {
+        expect(returnField.candidType).toBe("nat")
+        expect(returnField.displayType).toBe("string")
+      } else {
+        throw new Error("Return field is not number")
+      }
     })
 
     it("should handle update function with Result return", () => {
@@ -660,25 +781,22 @@ describe("ResultFieldVisitor", () => {
         ],
         []
       )
-      const meta = funcType.accept(
-        visitor,
-        "transfer"
-      ) as MethodResultMeta<unknown>
+      const meta = visitor.visitFunc(funcType, "transfer")
 
       expect(meta.functionType).toBe("update")
       expect(meta.returnCount).toBe(1)
 
-      const resultField = meta.resultFields[0] as VariantResultField
-      expect(resultField.type).toBe("variant")
-      expect(resultField.displayType).toBe("result")
+      const resultField = meta.resultFields[0]
+      if (resultField.type === "variant") {
+        expect(resultField.displayType).toBe("result")
+      } else {
+        throw new Error("Result field is not variant")
+      }
     })
 
     it("should handle function with multiple returns", () => {
       const funcType = IDL.Func([], [IDL.Text, IDL.Nat, IDL.Bool], ["query"])
-      const meta = funcType.accept(
-        visitor,
-        "get_info"
-      ) as MethodResultMeta<unknown>
+      const meta = visitor.visitFunc(funcType, "get_info")
 
       expect(meta.returnCount).toBe(3)
       expect(meta.resultFields).toHaveLength(3)
@@ -689,7 +807,7 @@ describe("ResultFieldVisitor", () => {
 
     it("should handle function with no returns", () => {
       const funcType = IDL.Func([IDL.Text], [], [])
-      const meta = funcType.accept(visitor, "log") as MethodResultMeta<unknown>
+      const meta = visitor.visitFunc(funcType, "log")
 
       expect(meta.returnCount).toBe(0)
       expect(meta.resultFields).toHaveLength(0)
@@ -726,34 +844,28 @@ describe("ResultFieldVisitor", () => {
         ),
       })
 
-      const serviceMeta = serviceType.accept(
-        visitor,
-        null as any
-      ) as ServiceResultMeta<unknown>
+      const serviceMeta = visitor.visitService(serviceType)
 
       expect(Object.keys(serviceMeta)).toHaveLength(3)
 
       // Check get_balance
-      const getBalanceMeta = (serviceMeta as any)[
-        "get_balance"
-      ] as MethodResultMeta<unknown>
+      const getBalanceMeta = serviceMeta["get_balance"]
       expect(getBalanceMeta.functionType).toBe("query")
       expect(getBalanceMeta.returnCount).toBe(1)
       expect(getBalanceMeta.resultFields[0].type).toBe("number")
-      expect(
-        (getBalanceMeta.resultFields[0] as NumberResultField).displayType
-      ).toBe("string")
+      const balanceField = getBalanceMeta.resultFields[0]
+      if (balanceField.type === "number") {
+        expect(balanceField.displayType).toBe("string")
+      } else {
+        throw new Error("Balance field is not number")
+      }
 
       // Check transfer
-      const transferMeta = (serviceMeta as any)[
-        "transfer"
-      ] as MethodResultMeta<unknown>
+      const transferMeta = serviceMeta["transfer"]
       expect(transferMeta.functionType).toBe("update")
       expect(transferMeta.returnCount).toBe(1)
       // Check get_metadata
-      const getMetadataMeta = (serviceMeta as any)[
-        "get_metadata"
-      ] as MethodResultMeta<unknown>
+      const getMetadataMeta = serviceMeta["get_metadata"]
       expect(getMetadataMeta.returnCount).toBe(1)
       expect(getMetadataMeta.resultFields[0].type).toBe("vector")
     })
@@ -775,17 +887,18 @@ describe("ResultFieldVisitor", () => {
         [IDL.Nat],
         ["query"]
       )
-      const meta = funcType.accept(
-        visitor,
-        "icrc1_balance_of"
-      ) as MethodResultMeta<unknown>
+      const meta = visitor.visitFunc(funcType, "icrc1_balance_of")
 
       expect(meta.functionType).toBe("query")
       expect(meta.returnCount).toBe(1)
 
-      const balanceField = meta.resultFields[0] as NumberResultField
-      expect(balanceField.candidType).toBe("nat")
-      expect(balanceField.displayType).toBe("string")
+      const balanceField = meta.resultFields[0]
+      if (balanceField.type === "number") {
+        expect(balanceField.candidType).toBe("nat")
+        expect(balanceField.displayType).toBe("string")
+      } else {
+        throw new Error("Balance field is not number")
+      }
     })
 
     it("should handle ICRC-1 transfer return", () => {
@@ -803,22 +916,46 @@ describe("ResultFieldVisitor", () => {
         }),
       })
 
-      const field = TransferResult.accept(
-        visitor,
+      const field = visitor.visitVariant(
+        TransferResult,
+        [
+          ["Ok", IDL.Nat], // Block index
+          [
+            "Err",
+            IDL.Variant({
+              BadFee: IDL.Record({ expected_fee: IDL.Nat }),
+              BadBurn: IDL.Record({ min_burn_amount: IDL.Nat }),
+              InsufficientFunds: IDL.Record({ balance: IDL.Nat }),
+              TooOld: IDL.Null,
+              CreatedInFuture: IDL.Record({ ledger_time: IDL.Nat64 }),
+              Duplicate: IDL.Record({ duplicate_of: IDL.Nat }),
+              TemporarilyUnavailable: IDL.Null,
+              GenericError: IDL.Record({
+                error_code: IDL.Nat,
+                message: IDL.Text,
+              }),
+            }),
+          ],
+        ],
         "result"
-      ) as VariantResultField
+      )
 
       expect(field.displayType).toBe("result")
 
-      const okField = field.optionFields.find(
-        (f) => f.label === "Ok"
-      ) as NumberResultField
+      const okField = field.optionFields.find((f) => f.label === "Ok")
+
+      if (!okField || okField.type !== "number") {
+        throw new Error("Ok field is not number")
+      }
+
       expect(okField.candidType).toBe("nat")
       expect(okField.displayType).toBe("string")
 
-      const errField = field.optionFields.find(
-        (f) => f.label === "Err"
-      ) as VariantResultField
+      const errField = field.optionFields.find((f) => f.label === "Err")
+      if (!errField || errField.type !== "variant") {
+        throw new Error("Err field is not variant")
+      }
+
       expect(errField.type).toBe("variant")
       expect(errField.options).toContain("InsufficientFunds")
       expect(errField.options).toContain("GenericError")
@@ -843,17 +980,41 @@ describe("ResultFieldVisitor", () => {
         idle_cycles_burned_per_day: IDL.Nat,
       })
 
-      const field = CanisterStatusResponse.accept(
-        visitor,
+      const field = visitor.visitRecord(
+        CanisterStatusResponse,
+        [
+          [
+            "status",
+            IDL.Variant({
+              running: IDL.Null,
+              stopping: IDL.Null,
+              stopped: IDL.Null,
+            }),
+          ],
+          [
+            "settings",
+            IDL.Record({
+              controllers: IDL.Vec(IDL.Principal),
+              compute_allocation: IDL.Nat,
+              memory_allocation: IDL.Nat,
+              freezing_threshold: IDL.Nat,
+            }),
+          ],
+          ["module_hash", IDL.Opt(IDL.Vec(IDL.Nat8))],
+          ["memory_size", IDL.Nat],
+          ["cycles", IDL.Nat],
+          ["idle_cycles_burned_per_day", IDL.Nat],
+        ],
         "status"
-      ) as RecordResultField
+      )
 
       expect(field.type).toBe("record")
 
       // Check status variant
-      const statusField = field.fields.find(
-        (f) => f.label === "status"
-      ) as VariantResultField
+      const statusField = field.fields.find((f) => f.label === "status")
+      if (!statusField || statusField.type !== "variant") {
+        throw new Error("Status field is not variant")
+      }
       expect(statusField.type).toBe("variant")
       expect(statusField.options).toContain("running")
       expect(statusField.options).toContain("stopping")
@@ -861,21 +1022,26 @@ describe("ResultFieldVisitor", () => {
       expect(statusField.options).toHaveLength(3)
 
       // Check settings record
-      const settingsField = field.fields.find(
-        (f) => f.label === "settings"
-      ) as RecordResultField
+      const settingsField = field.fields.find((f) => f.label === "settings")
+      if (!settingsField || settingsField.type !== "record") {
+        throw new Error("Settings field is not record")
+      }
       expect(settingsField.type).toBe("record")
 
       const controllersField = settingsField.fields.find(
         (f) => f.label === "controllers"
-      ) as VectorResultField
+      )
+      if (!controllersField || controllersField.type !== "vector") {
+        throw new Error("Controllers field is not vector")
+      }
       expect(controllersField.type).toBe("vector")
       expect(controllersField.itemField.type).toBe("principal")
 
       // Check cycles - should detect special format
-      const cyclesField = field.fields.find(
-        (f) => f.label === "cycles"
-      ) as NumberResultField
+      const cyclesField = field.fields.find((f) => f.label === "cycles")
+      if (!cyclesField || cyclesField.type !== "number") {
+        throw new Error("Cycles field is not number")
+      }
       expect(cyclesField.numberFormat).toBe("cycle")
 
       // Check module_hash - optional blob
@@ -912,10 +1078,40 @@ describe("ResultFieldVisitor", () => {
         reward_status: IDL.Nat32,
       })
 
-      const field = ProposalInfo.accept(
-        visitor,
+      const field = visitor.visitRecord(
+        ProposalInfo,
+        [
+          ["id", IDL.Opt(IDL.Record({ id: IDL.Nat64 }))],
+          ["status", IDL.Nat32],
+          ["topic", IDL.Nat32],
+          [
+            "failure_reason",
+            IDL.Opt(
+              IDL.Record({ error_type: IDL.Nat32, error_message: IDL.Text })
+            ),
+          ],
+          [
+            "ballots",
+            IDL.Vec(
+              IDL.Tuple(
+                IDL.Nat64,
+                IDL.Record({
+                  vote: IDL.Nat32,
+                  voting_power: IDL.Nat64,
+                })
+              )
+            ),
+          ],
+          ["proposal_timestamp_seconds", IDL.Nat64],
+          ["reward_event_round", IDL.Nat64],
+          ["deadline_timestamp_seconds", IDL.Opt(IDL.Nat64)],
+          ["executed_timestamp_seconds", IDL.Nat64],
+          ["reject_cost_e8s: IDL.Nat64", IDL.Nat64], // Fixed label in original
+          ["proposer", IDL.Opt(IDL.Record({ id: IDL.Nat64 }))],
+          ["reward_status", IDL.Nat32],
+        ],
         "proposal"
-      ) as RecordResultField
+      )
 
       expect(field.type).toBe("record")
       expect(field.fields.length).toBeGreaterThan(8)
@@ -923,18 +1119,25 @@ describe("ResultFieldVisitor", () => {
       // Check timestamp field (note: the label pattern matching may not match "proposal_timestamp_seconds")
       const timestampField = field.fields.find(
         (f) => f.label === "proposal_timestamp_seconds"
-      ) as NumberResultField
+      )
+      if (!timestampField || timestampField.type !== "number") {
+        throw new Error("Timestamp field not found or not number")
+      }
       expect(timestampField.type).toBe("number")
       expect(timestampField.displayType).toBe("string") // nat64 → string
 
       // Check ballots - vec of tuples
-      const ballotsField = field.fields.find(
-        (f) => f.label === "ballots"
-      ) as VectorResultField
+      const ballotsField = field.fields.find((f) => f.label === "ballots")
+      if (!ballotsField || ballotsField.type !== "vector") {
+        throw new Error("Ballots field not found or not vector")
+      }
       expect(ballotsField.type).toBe("vector")
       expect(ballotsField.itemField.type).toBe("tuple")
 
-      const ballotTuple = ballotsField.itemField as TupleResultField
+      const ballotTuple = ballotsField.itemField
+      if (ballotTuple.type !== "tuple") {
+        throw new Error("Ballot item is not tuple")
+      }
       expect(ballotTuple.fields).toHaveLength(2)
       expect(ballotTuple.fields[0].type).toBe("number") // nat64
       expect(ballotTuple.fields[1].type).toBe("record") // ballot record
@@ -972,8 +1175,12 @@ describe("ResultFieldVisitor", () => {
       ]
 
       testCases.forEach(({ type, expectedDisplay }) => {
-        const field = type.accept(visitor, "test") as ResultField
-        expect(field.displayType).toBe(expectedDisplay)
+        const field = type.accept(visitor, "test")
+        if (typeof field === "object" && "displayType" in field) {
+          expect(field.displayType).toBe(expectedDisplay)
+        } else {
+          throw new Error("Expected a ResultField")
+        }
       })
     })
   })
@@ -985,7 +1192,7 @@ describe("ResultFieldVisitor", () => {
   describe("resolve() Method", () => {
     describe("Primitive Types", () => {
       it("should resolve text field with value", () => {
-        const field = IDL.Text.accept(visitor, "message") as TextResultField
+        const field = visitor.visitText(IDL.Text, "message")
         const resolved = field.resolve("Hello World")
 
         expect(resolved.field).toBe(field)
@@ -993,7 +1200,7 @@ describe("ResultFieldVisitor", () => {
       })
 
       it("should resolve number field with value", () => {
-        const field = IDL.Nat.accept(visitor, "amount") as NumberResultField
+        const field = visitor.visitNat(IDL.Nat, "amount")
         const resolved = field.resolve(BigInt(1000000))
 
         expect(resolved.field).toBe(field)
@@ -1001,7 +1208,7 @@ describe("ResultFieldVisitor", () => {
       })
 
       it("should resolve boolean field with value", () => {
-        const field = IDL.Bool.accept(visitor, "active") as BooleanResultField
+        const field = visitor.visitBool(IDL.Bool, "active")
         const resolved = field.resolve(true)
 
         expect(resolved.field).toBe(field)
@@ -1009,7 +1216,7 @@ describe("ResultFieldVisitor", () => {
       })
 
       it("should resolve null field", () => {
-        const field = IDL.Null.accept(visitor, "empty") as NullResultField
+        const field = visitor.visitNull(IDL.Null, "empty")
         const resolved = field.resolve(null)
 
         expect(resolved.field).toBe(field)
@@ -1017,10 +1224,7 @@ describe("ResultFieldVisitor", () => {
       })
 
       it("should resolve principal field with string value", () => {
-        const field = IDL.Principal.accept(
-          visitor,
-          "owner"
-        ) as PrincipalResultField
+        const field = visitor.visitPrincipal(IDL.Principal, "owner")
         const resolved = field.resolve("aaaaa-aa")
 
         expect(resolved.field).toBe(field)
@@ -1035,7 +1239,15 @@ describe("ResultFieldVisitor", () => {
           age: IDL.Nat32,
           active: IDL.Bool,
         })
-        const field = recordType.accept(visitor, "user") as RecordResultField
+        const field = visitor.visitRecord(
+          recordType,
+          [
+            ["name", IDL.Text],
+            ["age", IDL.Nat32],
+            ["active", IDL.Bool],
+          ],
+          "user"
+        )
 
         const resolved = field.resolve({
           name: "Alice",
@@ -1055,7 +1267,11 @@ describe("ResultFieldVisitor", () => {
 
       it("should handle null record value", () => {
         const recordType = IDL.Record({ name: IDL.Text })
-        const field = recordType.accept(visitor, "user") as RecordResultField
+        const field = visitor.visitRecord(
+          recordType,
+          [["name", IDL.Text]],
+          "user"
+        )
 
         const resolved = field.resolve(null)
         expect(resolved.value).toBe(null)
@@ -1068,10 +1284,14 @@ describe("ResultFieldVisitor", () => {
           Ok: IDL.Text,
           Err: IDL.Text,
         })
-        const field = variantType.accept(
-          visitor,
+        const field = visitor.visitVariant(
+          variantType,
+          [
+            ["Ok", IDL.Text],
+            ["Err", IDL.Text],
+          ],
           "result"
-        ) as VariantResultField
+        )
 
         const resolved = field.resolve({ Ok: "Success" })
 
@@ -1088,10 +1308,14 @@ describe("ResultFieldVisitor", () => {
           Ok: IDL.Nat,
           Err: IDL.Text,
         })
-        const field = variantType.accept(
-          visitor,
+        const field = visitor.visitVariant(
+          variantType,
+          [
+            ["Ok", IDL.Nat],
+            ["Err", IDL.Text],
+          ],
           "result"
-        ) as VariantResultField
+        )
 
         const resolved = field.resolve({ Err: "Something went wrong" })
 
@@ -1105,10 +1329,14 @@ describe("ResultFieldVisitor", () => {
 
       it("should handle null variant value", () => {
         const variantType = IDL.Variant({ A: IDL.Null, B: IDL.Text })
-        const field = variantType.accept(
-          visitor,
+        const field = visitor.visitVariant(
+          variantType,
+          [
+            ["A", IDL.Null],
+            ["B", IDL.Text],
+          ],
           "choice"
-        ) as VariantResultField
+        )
 
         const resolved = field.resolve(null)
         expect(resolved.value).toBe(null)
@@ -1118,7 +1346,11 @@ describe("ResultFieldVisitor", () => {
     describe("Tuple Type", () => {
       it("should resolve tuple with indexed values", () => {
         const tupleType = IDL.Tuple(IDL.Text, IDL.Nat, IDL.Bool)
-        const field = tupleType.accept(visitor, "data") as TupleResultField
+        const field = visitor.visitTuple(
+          tupleType,
+          [IDL.Text, IDL.Nat, IDL.Bool],
+          "data"
+        )
 
         const resolved = field.resolve(["hello", 123n, true])
 
@@ -1135,7 +1367,7 @@ describe("ResultFieldVisitor", () => {
 
       it("should handle null tuple value", () => {
         const tupleType = IDL.Tuple(IDL.Text, IDL.Nat)
-        const field = tupleType.accept(visitor, "pair") as TupleResultField
+        const field = visitor.visitTuple(tupleType, [IDL.Text, IDL.Nat], "pair")
 
         const resolved = field.resolve(null)
         expect(resolved.value).toBe(null)
@@ -1145,7 +1377,7 @@ describe("ResultFieldVisitor", () => {
     describe("Optional Type", () => {
       it("should resolve optional with value", () => {
         const optType = IDL.Opt(IDL.Text)
-        const field = optType.accept(visitor, "nickname") as OptionalResultField
+        const field = visitor.visitOpt(optType, IDL.Text, "nickname")
 
         const resolved = field.resolve(["Bob"])
 
@@ -1156,7 +1388,7 @@ describe("ResultFieldVisitor", () => {
 
       it("should resolve optional with null", () => {
         const optType = IDL.Opt(IDL.Text)
-        const field = optType.accept(visitor, "nickname") as OptionalResultField
+        const field = visitor.visitOpt(optType, IDL.Text, "nickname")
 
         const resolved = field.resolve(null)
 
@@ -1168,7 +1400,7 @@ describe("ResultFieldVisitor", () => {
     describe("Vector Type", () => {
       it("should resolve vector with array of values", () => {
         const vecType = IDL.Vec(IDL.Text)
-        const field = vecType.accept(visitor, "tags") as VectorResultField
+        const field = visitor.visitVec(vecType, IDL.Text, "tags")
 
         const resolved = field.resolve(["a", "b", "c"])
 
@@ -1185,7 +1417,7 @@ describe("ResultFieldVisitor", () => {
 
       it("should handle empty vector", () => {
         const vecType = IDL.Vec(IDL.Nat)
-        const field = vecType.accept(visitor, "numbers") as VectorResultField
+        const field = visitor.visitVec(vecType, IDL.Nat, "numbers")
 
         const resolved = field.resolve([])
 
@@ -1198,7 +1430,7 @@ describe("ResultFieldVisitor", () => {
 
       it("should handle null vector value", () => {
         const vecType = IDL.Vec(IDL.Text)
-        const field = vecType.accept(visitor, "items") as VectorResultField
+        const field = visitor.visitVec(vecType, IDL.Text, "items")
 
         const resolved = field.resolve(null)
         expect(resolved.value).toBe(null)
@@ -1208,7 +1440,7 @@ describe("ResultFieldVisitor", () => {
     describe("Blob Type", () => {
       it("should resolve blob with hex string value", () => {
         const blobType = IDL.Vec(IDL.Nat8)
-        const field = blobType.accept(visitor, "data") as BlobResultField
+        const field = visitor.visitVec(blobType, IDL.Nat8, "data")
 
         const resolved = field.resolve(new Uint8Array([0x12, 0x34, 0xab, 0xcd]))
 
@@ -1227,7 +1459,15 @@ describe("ResultFieldVisitor", () => {
           })
         )
 
-        const field = Node.accept(visitor, "tree") as RecursiveResultField
+        const field = visitor.visitRec(
+          Node,
+          // We can just pass null or the constructed type if available, but visitRec implementation calls extract which calls accept on the internal type.
+          IDL.Record({
+            value: IDL.Nat,
+            children: IDL.Vec(Node),
+          }),
+          "tree"
+        )
 
         const resolved = field.resolve({
           value: BigInt(42),
@@ -1250,7 +1490,21 @@ describe("ResultFieldVisitor", () => {
           }),
         })
 
-        const field = nestedType.accept(visitor, "data") as RecordResultField
+        const field = visitor.visitRecord(
+          nestedType,
+          [
+            [
+              "user",
+              IDL.Record({
+                profile: IDL.Record({
+                  name: IDL.Text,
+                  verified: IDL.Bool,
+                }),
+              }),
+            ],
+          ],
+          "data"
+        )
 
         const resolved = field.resolve({
           user: {
@@ -1289,11 +1543,10 @@ describe("ResultFieldVisitor", () => {
         getName: IDL.Func([], [IDL.Text], ["query"]),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["getName"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["getName"]
 
       const result = methodMeta.generateMetadata("Alice")
 
@@ -1309,11 +1562,10 @@ describe("ResultFieldVisitor", () => {
         getStats: IDL.Func([], [IDL.Nat, IDL.Nat, IDL.Text], ["query"]),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["getStats"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["getStats"]
 
       const result = methodMeta.generateMetadata([
         BigInt(100),
@@ -1338,11 +1590,10 @@ describe("ResultFieldVisitor", () => {
         ),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["getUser"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["getUser"]
 
       const result = methodMeta.generateMetadata({
         name: "Bob",
@@ -1352,12 +1603,16 @@ describe("ResultFieldVisitor", () => {
       expect(result.results).toHaveLength(1)
       expect(result.results[0].field.type).toBe("record")
 
-      const recordValue = result.results[0].value as Record<
+      const recordValue = result.results[0].value
+      if (typeof recordValue !== "object" || recordValue === null) {
+        throw new Error("Expected record value object")
+      }
+      const val = recordValue as Record<
         string,
         { field: ResultField; value: unknown }
       >
-      expect(recordValue.name.value).toBe("Bob")
-      expect(recordValue.balance.value).toBe("1000")
+      expect(val.name.value).toBe("Bob")
+      expect(val.balance.value).toBe("1000")
     })
 
     it("should generate metadata for Result variant", () => {
@@ -1369,18 +1624,19 @@ describe("ResultFieldVisitor", () => {
         ),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["transfer"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["transfer"]
 
       // Test Ok case
       const okResult = methodMeta.generateMetadata({ Ok: BigInt(12345) })
       expect(okResult.results[0].field.type).toBe("variant")
-      expect(
-        (okResult.results[0].field as VariantResultField).displayType
-      ).toBe("result")
+      if (okResult.results[0].field.type === "variant") {
+        expect(okResult.results[0].field.displayType).toBe("result")
+      } else {
+        throw new Error("Expected variant field")
+      }
 
       const okValue = okResult.results[0].value as {
         option: string
@@ -1406,11 +1662,10 @@ describe("ResultFieldVisitor", () => {
         findUser: IDL.Func([], [IDL.Opt(IDL.Text)], ["query"]),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["findUser"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["findUser"]
 
       // Test with value - Optional is [value]
       const foundResult = methodMeta.generateMetadata(["Alice"])
@@ -1431,11 +1686,10 @@ describe("ResultFieldVisitor", () => {
         getItems: IDL.Func([], [IDL.Vec(IDL.Text)], ["query"]),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["getItems"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["getItems"]
 
       const result = methodMeta.generateMetadata(["item1", "item2", "item3"])
 
@@ -1455,11 +1709,10 @@ describe("ResultFieldVisitor", () => {
         setName: IDL.Func([IDL.Text], [IDL.Bool], []),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["setName"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["setName"]
 
       expect(methodMeta.functionType).toBe("update")
 
@@ -1491,11 +1744,10 @@ describe("ResultFieldVisitor", () => {
         icrc1_transfer: IDL.Func([], [TransferResult], []),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["icrc1_transfer"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["icrc1_transfer"]
 
       // Test successful transfer
       const successResult = methodMeta.generateMetadata({ Ok: BigInt(1000) })
@@ -1525,11 +1777,11 @@ describe("ResultFieldVisitor", () => {
       }
       expect(errorValue.option).toBe("Err")
 
-      const innerError = errorValue.value.value as {
-        option: string
-        value: { field: ResultField; value: unknown }
+      const val = errorValue.value.value
+      if (typeof val !== "object" || val === null || !("option" in val)) {
+        throw new Error("Expected variant value object")
       }
-      expect(innerError.option).toBe("InsufficientFunds")
+      expect(val.option).toBe("InsufficientFunds")
     })
 
     it("should handle empty return", () => {
@@ -1537,11 +1789,10 @@ describe("ResultFieldVisitor", () => {
         doSomething: IDL.Func([], [], []),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["doSomething"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["doSomething"]
 
       expect(methodMeta.returnCount).toBe(0)
 
@@ -1560,11 +1811,10 @@ describe("ResultFieldVisitor", () => {
         getBalance: IDL.Func([], [IDL.Nat], ["query"]),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["getBalance"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["getBalance"]
 
       // Simulate raw BigInt and display string
       const rawData = [BigInt(1000000)]
@@ -1585,11 +1835,10 @@ describe("ResultFieldVisitor", () => {
         getStats: IDL.Func([], [IDL.Nat64, IDL.Text, IDL.Bool], ["query"]),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["getStats"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["getStats"]
 
       // Use BigInt with string to safe safe integer
       const rawData = [BigInt("9007199254740993"), "active", true]
@@ -1621,11 +1870,10 @@ describe("ResultFieldVisitor", () => {
         ),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["getUser"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["getUser"]
 
       const rawData = [{ name: "Alice", balance: BigInt(500) }]
       const result = methodMeta.generateMetadata(rawData[0])
@@ -1635,12 +1883,16 @@ describe("ResultFieldVisitor", () => {
         balance: BigInt(500),
       })
 
-      const recordValue = result.results[0].value as Record<
+      const recordValue = result.results[0].value
+      if (typeof recordValue !== "object" || recordValue === null) {
+        throw new Error("Expected record value object")
+      }
+      const val = recordValue as Record<
         string,
         { field: ResultField; value: unknown }
       >
-      expect(recordValue.name.value).toBe("Alice")
-      expect(recordValue.balance.value).toBe("500")
+      expect(val.name.value).toBe("Alice")
+      expect(val.balance.value).toBe("500")
     })
 
     it("should handle Result variant with raw and display values", () => {
@@ -1652,11 +1904,10 @@ describe("ResultFieldVisitor", () => {
         ),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["transfer"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["transfer"]
 
       // Test Ok case with raw BigInt
       const rawData = [{ Ok: BigInt(12345) }]
@@ -1665,12 +1916,17 @@ describe("ResultFieldVisitor", () => {
 
       expect(result.results[0].raw).toEqual({ Ok: BigInt(12345) })
 
-      const variantValue = result.results[0].value as {
-        option: string
-        value: { field: ResultField; value: unknown }
+      const variantValue = result.results[0].value
+      if (
+        typeof variantValue !== "object" ||
+        variantValue === null ||
+        !("option" in variantValue)
+      ) {
+        throw new Error("Expected variant value object")
       }
       expect(variantValue.option).toBe("Ok")
-      expect(variantValue.value.value).toBe("12345")
+      const innerVal = variantValue.value
+      expect(innerVal.value).toBe("12345")
     })
 
     it("should preserve raw Principal object", () => {
@@ -1680,11 +1936,10 @@ describe("ResultFieldVisitor", () => {
         getOwner: IDL.Func([], [IDL.Principal], ["query"]),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["getOwner"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["getOwner"]
 
       const principal = Principal.fromText("aaaaa-aa")
       const rawData = [principal]
@@ -1701,20 +1956,19 @@ describe("ResultFieldVisitor", () => {
         getAmounts: IDL.Func([], [IDL.Vec(IDL.Nat)], ["query"]),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["getAmounts"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["getAmounts"]
 
       const rawData = [[BigInt(100), BigInt(200), BigInt(300)]]
 
       const result = methodMeta.generateMetadata(rawData[0])
 
-      const vecValue = result.results[0].value as Array<{
-        field: ResultField
-        value: unknown
-      }>
+      const vecValue = result.results[0].value
+      if (!Array.isArray(vecValue)) {
+        throw new Error("Expected vector value array")
+      }
       expect(vecValue).toHaveLength(3)
       expect(vecValue[0].value).toBe("100")
       expect(vecValue[1].value).toBe("200")
@@ -1726,11 +1980,10 @@ describe("ResultFieldVisitor", () => {
         findBalance: IDL.Func([], [IDL.Opt(IDL.Nat)], ["query"]),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["findBalance"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["findBalance"]
 
       // Test with value - Optional is [value]
       const rawDataWithValue = [[BigInt(999)]]
@@ -1738,11 +1991,15 @@ describe("ResultFieldVisitor", () => {
       const resultWithValue = methodMeta.generateMetadata(rawDataWithValue[0])
 
       expect(resultWithValue.results[0].raw).toEqual([BigInt(999)])
-      const innerValue = resultWithValue.results[0].value as {
-        field: ResultField
-        value: unknown
+      const innerValue = resultWithValue.results[0].value
+      if (
+        typeof innerValue !== "object" ||
+        innerValue === null ||
+        !("value" in innerValue)
+      ) {
+        throw new Error("Expected optional value object")
       }
-      expect(innerValue.value).toBe("999")
+      expect((innerValue as any).value).toBe("999")
 
       // Test with null - Optional is []
       const rawDataNull = [[]]
@@ -1757,11 +2014,10 @@ describe("ResultFieldVisitor", () => {
         doNothing: IDL.Func([], [], []),
       })
 
-      const serviceMeta = service.accept(
-        visitor,
-        "service"
-      ) as ServiceResultMeta
-      const methodMeta = serviceMeta["doNothing"] as MethodResultMeta
+      const serviceMeta = visitor.visitService(
+        service as unknown as IDL.ServiceClass
+      )
+      const methodMeta = serviceMeta["doNothing"]
 
       const result = methodMeta.generateMetadata([])
 
