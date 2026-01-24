@@ -1696,7 +1696,7 @@ describe("ResultFieldVisitor", () => {
 
       const result = methodMeta.generateMetadata(rawData)
 
-      expect(result.results[0].raw).toEqual([
+      expect(result.results[0].value).toEqual([
         BigInt(100),
         BigInt(200),
         BigInt(300),

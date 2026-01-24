@@ -1,4 +1,9 @@
-import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
+import type {
+  BaseActor,
+  FunctionName,
+  DisplayOf,
+  FunctionType,
+} from "@ic-reactor/core"
 
 // ════════════════════════════════════════════════════════════════════════════
 // Field Type Union
@@ -206,8 +211,8 @@ export type ResultField =
  */
 export interface ResultFieldWithValue<T = unknown> {
   field: ResultField
-  value: T
-  raw?: unknown
+  value: DisplayOf<T>
+  raw: T
 }
 
 // ════════════════════════════════════════════════════════════════════════════

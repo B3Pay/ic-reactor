@@ -1134,7 +1134,14 @@ describe("Complex Result Handling (Mocked)", () => {
     // Check the value inside Err
     // Err -> value -> option: InsufficientFunds -> value -> { balance: 50 }
     const errContent = fieldResult.value.value
-    console.log("✅ Err result:", JSON.stringify(errContent, null, 2))
+    console.log(
+      "✅ Err result:",
+      JSON.stringify(
+        fieldResult,
+        (_, v) => (typeof v === "bigint" ? v.toString() : v),
+        2
+      )
+    )
 
     expect(errContent.value).toHaveProperty("option", "InsufficientFunds")
     expect(errContent.value.value.value.balance.value).toBe("50")

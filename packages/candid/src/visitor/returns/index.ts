@@ -1,4 +1,4 @@
-import { isQuery, uint8ArrayToHexString } from "../helpers"
+import { isQuery } from "../helpers"
 import { checkTextFormat, checkNumberFormat } from "../constants"
 import { IDL } from "../types"
 import type {
@@ -21,6 +21,7 @@ import type {
   ServiceResultMeta,
   ResolvedMethodResult,
 } from "./types"
+import { DisplayCodecVisitor } from "@ic-reactor/core"
 import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 
 export * from "./types"
@@ -79,6 +80,8 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   string,
   ResultField | MethodResultMeta<A> | ServiceResultMeta<A>
 > {
+  private displayVisitor = new DisplayCodecVisitor()
+
   // ════════════════════════════════════════════════════════════════════════
   // Service & Function Level
   // ════════════════════════════════════════════════════════════════════════
@@ -149,7 +152,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(value: unknown): ResultFieldWithValue {
         const record = value as Record<string, unknown> | null | undefined
         if (record == null) {
-          return { field, value: null }
+          return { field, value: null, raw: value }
         }
 
         const resolvedFields: Record<string, ResultFieldWithValue> = {}
@@ -157,7 +160,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           resolvedFields[f.label] = f.resolve(record[f.label])
         }
 
-        return { field, value: resolvedFields }
+        return { field, value: resolvedFields, raw: value }
       },
     }
     return field
@@ -189,7 +192,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       optionFields,
       resolve(value: unknown): ResultFieldWithValue {
         if (value == null) {
-          return { field, value: null }
+          return { field, value: null, raw: value }
         }
 
         const variant = value as Record<string, unknown>
@@ -197,7 +200,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         const activeOption = optionsInValue.find((opt) => options.includes(opt))
 
         if (!activeOption) {
-          return { field, value: null }
+          return { field, value: null, raw: value }
         }
 
         const activeValue = variant[activeOption]
@@ -217,8 +220,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
             value: optionField?.resolve(activeValue) ?? {
               field: optionField,
               value: activeValue,
+              raw: activeValue,
             },
           },
+          raw: value,
         }
       },
     }
@@ -244,11 +249,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(value: unknown): ResultFieldWithValue {
         const tuple = value as unknown[] | null | undefined
         if (tuple == null) {
-          return { field, value: null }
+          return { field, value: null, raw: value }
         }
 
         const resolvedItems = fields.map((f, index) => f.resolve(tuple[index]))
-        return { field, value: resolvedItems }
+        return { field, value: resolvedItems, raw: value }
       },
     }
 
@@ -271,9 +276,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(value: unknown): ResultFieldWithValue {
         const opt = value as [unknown] | [] | null | undefined
         if (opt == null || opt.length === 0) {
-          return { field, value: null }
+          return { field, value: null, raw: value }
         }
-        return { field, value: innerField.resolve(opt[0]) }
+        return { field, value: innerField.resolve(opt[0]), raw: value }
       },
     }
 
@@ -287,6 +292,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   ): VectorResultField | BlobResultField {
     // Check if it's blob (vec nat8)
     if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
+      const codec = _t.accept(this.displayVisitor, null) as any
       const blobField: BlobResultField = {
         type: "blob",
         label,
@@ -296,7 +302,8 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         resolve(value: unknown): ResultFieldWithValue {
           return {
             field: blobField,
-            value: uint8ArrayToHexString(value as any),
+            value: codec.decode(value),
+            raw: value,
           }
         },
       }
@@ -314,11 +321,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(value: unknown): ResultFieldWithValue {
         const vec = value as unknown[] | null | undefined
         if (vec == null) {
-          return { field, value: null }
+          return { field, value: null, raw: value }
         }
 
         const resolvedItems = vec.map((item) => itemField.resolve(item))
-        return { field, value: resolvedItems }
+        return { field, value: resolvedItems, raw: value }
       },
     }
 
@@ -356,9 +363,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   // ════════════════════════════════════════════════════════════════════════
 
   public visitPrincipal(
-    _t: IDL.PrincipalClass,
+    t: IDL.PrincipalClass,
     label: string
   ): PrincipalResultField {
+    const codec = t.accept(this.displayVisitor, null) as any
     const field: PrincipalResultField = {
       type: "principal",
       label,
@@ -366,10 +374,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "string", // Principal.toText()
       textFormat: checkTextFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        const principal = value as { toText?: () => string }
         return {
           field,
-          value: principal?.toText ? principal.toText() : String(value),
+          value: codec.decode(value),
+          raw: value,
         }
       },
     }
@@ -377,7 +385,8 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return field
   }
 
-  public visitText(_t: IDL.TextClass, label: string): TextResultField {
+  public visitText(t: IDL.TextClass, label: string): TextResultField {
+    const codec = t.accept(this.displayVisitor, null) as any
     const field: TextResultField = {
       type: "text",
       label,
@@ -385,35 +394,37 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "string",
       textFormat: checkTextFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        return { field, value: codec.parse(value), raw: value }
       },
     }
 
     return field
   }
 
-  public visitBool(_t: IDL.BoolClass, label: string): BooleanResultField {
+  public visitBool(t: IDL.BoolClass, label: string): BooleanResultField {
+    const codec = t.accept(this.displayVisitor, null) as any
     const field: BooleanResultField = {
       type: "boolean",
       label,
       candidType: "bool",
       displayType: "boolean",
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        return { field, value: codec.parse(value), raw: value }
       },
     }
 
     return field
   }
 
-  public visitNull(_t: IDL.NullClass, label: string): NullResultField {
+  public visitNull(t: IDL.NullClass, label: string): NullResultField {
+    const codec = t.accept(this.displayVisitor, null) as any
     const field: NullResultField = {
       type: "null",
       label,
       candidType: "null",
       displayType: "null",
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        return { field, value: codec.parse(value), raw: value }
       },
     }
 
@@ -421,7 +432,8 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   // Numbers
-  public visitInt(_t: IDL.IntClass, label: string): NumberResultField {
+  public visitInt(t: IDL.IntClass, label: string): NumberResultField {
+    const codec = t.accept(this.displayVisitor, null) as any
     const field: NumberResultField = {
       type: "number",
       label,
@@ -429,14 +441,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "string", // BigInt → string
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value: String(value) }
+        return { field, value: codec.decode(value), raw: value }
       },
     }
 
     return field
   }
 
-  public visitNat(_t: IDL.NatClass, label: string): NumberResultField {
+  public visitNat(t: IDL.NatClass, label: string): NumberResultField {
+    const codec = t.accept(this.displayVisitor, null) as any
     const field: NumberResultField = {
       type: "number",
       label,
@@ -444,7 +457,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "string", // BigInt → string
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value: String(value) }
+        return { field, value: codec.decode(value), raw: value }
       },
     }
 
@@ -452,6 +465,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitFloat(t: IDL.FloatClass, label: string): NumberResultField {
+    const codec = t.accept(this.displayVisitor, null) as any
     const field: NumberResultField = {
       type: "number",
       label,
@@ -459,7 +473,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "number", // Floats stay as numbers
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        return { field, value: codec.parse(value), raw: value }
       },
     }
 
@@ -468,6 +482,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
   public visitFixedInt(t: IDL.FixedIntClass, label: string): NumberResultField {
     const bits = t._bits
+    const codec = t.accept(this.displayVisitor, null) as any
     const field: NumberResultField = {
       type: "number",
       label,
@@ -475,7 +490,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: bits <= 32 ? "number" : "string", // int64 → string
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value: bits <= 32 ? Number(value) : String(value) }
+        return {
+          field,
+          value: bits <= 32 ? codec.parse(value) : codec.decode(value),
+          raw: value,
+        }
       },
     }
 
@@ -484,6 +503,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
   public visitFixedNat(t: IDL.FixedNatClass, label: string): NumberResultField {
     const bits = t._bits
+    const codec = t.accept(this.displayVisitor, null) as any
     const field: NumberResultField = {
       type: "number",
       label,
@@ -491,7 +511,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: bits <= 32 ? "number" : "string", // nat64 → string
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value: bits <= 32 ? Number(value) : String(value) }
+        return {
+          field,
+          value: bits <= 32 ? codec.parse(value) : codec.decode(value),
+          raw: value,
+        }
       },
     }
 
@@ -505,7 +529,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "unknown",
       displayType: "unknown",
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        return { field, value, raw: value }
       },
     }
 
