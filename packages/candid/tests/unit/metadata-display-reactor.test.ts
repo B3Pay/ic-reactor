@@ -890,120 +890,51 @@ describe("MetadataDisplayReactor", () => {
       await reactor.initialize()
     })
 
-    it("should verify nat result transformation matches metadata", () => {
-      const methodName = "icrc1_fee"
-
-      // 1. Get Metadata
-      const meta = reactor.getResultMeta(
-        methodName
-      ) as MethodResultMeta<unknown>
-      const field = meta.resultFields[0] as NumberResultField
-
-      expect(field.type).toBe("number")
-      expect(field.displayType).toBe("string")
-
-      // 2. Mock Candid Data
-      const mockCandid = 10_000n
-
-      // 3. Transform using Codec
-      const codec = (reactor as any).getCodec(methodName)
-      const displayData = codec.result.asDisplay(mockCandid)
-
-      // 4. Verify Data matches Metadata expectation
-      expect(typeof displayData).toBe("string")
-      expect(displayData).toBe("10000")
-    })
-
-    it("should verify complex metadata result matches structure", () => {
-      const methodName = "icrc1_metadata"
-
-      // 1. Get Metadata
-      const meta = reactor.getResultMeta(
-        methodName
-      ) as MethodResultMeta<unknown>
-      const field = meta.resultFields[0] as VectorResultField
-
-      expect(field.type).toBe("vector")
-      expect(field.displayType).toBe("array")
-
-      // 2. Mock Candid Data (Vec of Records)
-      const mockCandid = [
-        ["icrc1:name", { Text: "Test Token" }],
-        ["icrc1:decimals", { Nat: 8n }],
-      ]
-
-      // 3. Transform using Codec
-      const codec = (reactor as any).getCodec(methodName)
-      const displayData = codec.result.asDisplay(mockCandid)
-
-      // 4. Verify Data matches Metadata expectation
-      // Vec<(Text, Value)> is converted to Object!
-      expect(typeof displayData).toBe("object")
-      expect(Array.isArray(displayData)).toBe(false)
-
-      expect(displayData).toHaveProperty("icrc1:name")
-      expect(displayData["icrc1:name"]).toEqual({
-        _type: "Text",
-        Text: "Test Token",
-      })
-    })
-
-    it("should verify Result variant unwrapping matches metadata", () => {
-      const methodName = "icrc1_transfer"
-
-      // 1. Get Metadata
-      const meta = reactor.getResultMeta(
-        methodName
-      ) as MethodResultMeta<unknown>
-      const field = meta.resultFields[0] as VariantResultField
-
-      expect(field.displayType).toBe("result")
-
-      // 2. Mock Candid Data (Ok)
-      const mockOk = { Ok: 12345n }
-
-      // 3. Transform using Codec
-      const codec = (reactor as any).getCodec(methodName)
-      const displayOk = codec.result.asDisplay(mockOk)
-
-      // Result unwrapping happens in DisplayReactor, NOT codec
-      // So here we get { Ok: "12345" }
-      expect(displayOk).toHaveProperty("Ok")
-      expect(displayOk.Ok).toBe("12345")
-
-      // 4. Mock Candid Data (Err)
-      const mockErr = { Err: { InsufficientFunds: { balance: 100n } } }
-
-      // For Err, codec returns it as is (DisplayReactor handles the throw)
-      // Wait, let's check code. DisplayCodecVisitor handles options.
-      // Result unwrapping happens in DisplayReactor.callMethod, NOT in the codec itself?
-      // Let's verify DisplayCodec logic for Variant.
-
-      const displayErr = codec.result.asDisplay(mockErr)
-      // The visitor doesn't auto-unwrap Result types during DECODE constant
-      // It creates a structure that might be unwrapped later or is kept as variant
-      // No, it handles variants generically.
-
-      // Let's see what displayErr looks like
-      // Expected: { Err: { _type: "InsufficientFunds", InsufficientFunds: { balance: "100" } } }
-      // Or similar normalized variant structure
-
-      expect(displayErr).toHaveProperty("Err")
-      expect(displayErr.Err).toHaveProperty("InsufficientFunds")
-      expect(displayErr.Err.InsufficientFunds.balance).toBe("100")
-    })
-
     it("should resolve metadata with data using resolve()", () => {
       const methodName = "icrc1_fee"
       const meta = reactor.getResultMeta(
         methodName
       ) as MethodResultMeta<unknown>
       const field = meta.resultFields[0]
-      const data = "100"
+      // Use BigInt because we are simulating raw Candid value from Reactor
+      const data = 100n
 
       const resolved = field.resolve(data)
       expect(resolved.value).toBe("100")
       expect(resolved.field.type).toBe("number")
+    })
+
+    it("should resolve complex metadata result correctly", () => {
+      const methodName = "icrc1_metadata"
+      const meta = reactor.getResultMeta(
+        methodName
+      ) as MethodResultMeta<unknown>
+      const field = meta.resultFields[0] as VectorResultField
+
+      // Mock Candid Data (Vec of Records) as returned by IDL decode
+      const mockCandid = [
+        ["icrc1:name", { Text: "Test Token" }],
+        ["icrc1:decimals", { Nat: 8n }],
+      ]
+
+      const resolved = field.resolve(mockCandid)
+      const displayData = resolved.value
+
+      // Vec field resolves to Array of values
+      expect(Array.isArray(displayData)).toBe(true)
+      const arr = displayData as any[]
+      expect(arr).toHaveLength(2)
+
+      // First item: Tuple(Text, Variant)
+      // Resolved value structure depends on Tuple resolver
+      // Tuple resolver returns array of resolved items
+      const item1 = arr[0]
+      // item1 is ResultFieldWithValue { field: Tuple..., value: [ "icrc1:name", { option: "Text", ... } ] }
+      expect(item1.value[0].value).toBe("icrc1:name")
+
+      const variantVal = item1.value[1].value
+      expect(variantVal.option).toBe("Text")
+      expect(variantVal.value.value).toBe("Test Token")
     })
   })
 })

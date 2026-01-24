@@ -1,4 +1,4 @@
-import { isQuery } from "../helpers"
+import { isQuery, uint8ArrayToHexString } from "../helpers"
 import { checkTextFormat, checkNumberFormat } from "../constants"
 import { IDL } from "../types"
 import type {
@@ -194,12 +194,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
         const variant = value as Record<string, unknown>
         const optionsInValue = Object.keys(variant)
-        // For Result variants from DisplayCodec, we might have { "Err": { ... } } or { "Ok": ... }
-        // We need to find which key matches one of our options
         const activeOption = optionsInValue.find((opt) => options.includes(opt))
 
         if (!activeOption) {
-          // Fallback or error case?
           return { field, value: null }
         }
 
@@ -207,12 +204,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         const optionIndex = options.indexOf(activeOption)
         const optionField = optionFields[optionIndex]
 
-        // Create a specific field that only contains the active option
-        // This reduces noise in the output by removing unused variant options
         const specificField: VariantResultField = {
           ...field,
-          options, // Keep all options
-          optionFields: [optionField], // Keep only the active field
+          options,
+          optionFields: [optionField],
         }
 
         return {
@@ -274,11 +269,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "nullable",
       innerField,
       resolve(value: unknown): ResultFieldWithValue {
-        // After display transformation, opt becomes T | null
-        if (value == null) {
+        const opt = value as [unknown] | [] | null | undefined
+        if (opt == null || opt.length === 0) {
           return { field, value: null }
         }
-        return { field, value: innerField.resolve(value) }
+        return { field, value: innerField.resolve(opt[0]) }
       },
     }
 
@@ -299,7 +294,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         displayType: "string", // Transformed to hex string
         displayHint: "hex",
         resolve(value: unknown): ResultFieldWithValue {
-          return { field: blobField, value }
+          return {
+            field: blobField,
+            value: uint8ArrayToHexString(value as any),
+          }
         },
       }
       return blobField
@@ -368,7 +366,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "string", // Principal.toText()
       textFormat: checkTextFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        const principal = value as { toText?: () => string }
+        return {
+          field,
+          value: principal?.toText ? principal.toText() : String(value),
+        }
       },
     }
 
@@ -427,7 +429,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "string", // BigInt → string
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        return { field, value: String(value) }
       },
     }
 
@@ -442,7 +444,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "string", // BigInt → string
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        return { field, value: String(value) }
       },
     }
 
@@ -473,7 +475,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: bits <= 32 ? "number" : "string", // int64 → string
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        return { field, value: bits <= 32 ? Number(value) : String(value) }
       },
     }
 
@@ -489,7 +491,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: bits <= 32 ? "number" : "string", // nat64 → string
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value }
+        return { field, value: bits <= 32 ? Number(value) : String(value) }
       },
     }
 

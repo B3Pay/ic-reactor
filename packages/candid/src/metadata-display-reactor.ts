@@ -1,17 +1,13 @@
 import type {
   ActorMethodReturnType,
-  DisplayReactorParameters,
+  ReactorParameters,
   FunctionName,
 } from "@ic-reactor/core"
 import type {
   CandidDisplayReactorParameters,
   DynamicMethodOptions,
 } from "./types"
-import {
-  DisplayReactor,
-  didToDisplayCodec,
-  didTypeFromArray,
-} from "@ic-reactor/core"
+import { Reactor } from "@ic-reactor/core"
 import type { BaseActor } from "@ic-reactor/core"
 import { CandidAdapter } from "./adapter"
 import { IDL } from "@icp-sdk/core/candid"
@@ -36,83 +32,14 @@ import {
 // ============================================================================
 
 /**
- * MetadataDisplayReactor combines display transformations with visitor-based
- * metadata generation for both input forms and result display.
+ * MetadataDisplayReactor combines visitor-based metadata generation
+ * for both input forms and result display.
  *
  * ## Architecture
  *
- * ```
- * ┌─────────────────────────────────────────────────────────────────────────────┐
- * │                        MetadataDisplayReactor                               │
- * ├─────────────────────────────────────────────────────────────────────────────┤
- * │                                                                             │
- * │  INITIALIZATION (once, from raw IDL types):                                 │
- * │                                                                             │
- * │    IDL.Service ──► ArgumentFieldVisitor ──► ServiceArgumentsMeta            │
- * │                                              { methodName: {                │
- * │                                                  fields: ArgumentField[],   │
- * │                                                  defaultValues: [...]       │
- * │                                              }}                             │
- * │                                                                             │
- * │    IDL.Service ──► ResultFieldVisitor ──► ServiceResultMeta                 │
- * │                                            { methodName: {                  │
- * │                                                resultFields: ResultField[], │
- * │                                                returnCount: number          │
- * │                                            }}                               │
- * │                                                                             │
- * ├─────────────────────────────────────────────────────────────────────────────┤
- * │                                                                             │
- * │  RUNTIME (per method call):                                                 │
- * │                                                                             │
- * │    INPUT FLOW:                                                              │
- * │    Display Values ──► DisplayCodec.encode() ──► Candid Values ──► Canister  │
- * │    (strings)                                     (bigint, Principal)        │
- * │                                                                             │
- * │    OUTPUT FLOW:                                                             │
- * │    Canister ──► Candid Values ──► DisplayCodec.decode() ──► Display Values  │
- * │                 (bigint, Principal)                         (strings)       │
- * │                                                                             │
- * │    RENDERING:                                                               │
- * │    ResultField (metadata) + Display Value ──► UI Component                  │
- * │                                                                             │
- * └─────────────────────────────────────────────────────────────────────────────┘
- * ```
- *
- * ## Key Insight: Metadata vs Values
- *
- * - **Metadata** is generated once from raw IDL types (no values involved)
- * - **Values** are transformed at runtime via DisplayCodec
- * - At render time, pair metadata with transformed values
- *
- * @example
- * ```typescript
- * const reactor = new MetadataDisplayReactor({
- *   clientManager,
- *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
- * })
- *
- * await reactor.initialize()
- *
- * // Get input field metadata (for form generation)
- * const argMeta = reactor.getArgumentMeta("icrc1_transfer")
- * // argMeta.fields describes the form structure
- * // argMeta.defaultValues provides initial values
- *
- * // Get result field metadata (for display)
- * const resultMeta = reactor.getResultMeta("icrc1_transfer")
- * // resultMeta.resultFields describes how to display results
- *
- * // Call method with display values
- * const result = await reactor.callMethod({
- *   functionName: "icrc1_transfer",
- *   args: [{ to: "aaaaa-aa", amount: "1000000" }]
- * })
- *
- * // Render result using metadata
- * resultMeta.resultFields.forEach((field, i) => {
- *   renderField(field, result[i]) // field = metadata, result[i] = transformed value
- * })
- * ```
+ * It extends the base Reactor and adds metadata generation capabilities.
+ * Unlike DisplayReactor, it does not use a separate codec for transformation.
+ * Instead, it uses the metadata visitor to resolve raw values into display-ready structures.
  */
 declare module "@ic-reactor/core" {
   interface TransformReturnRegistry<T, A = BaseActor> {
@@ -123,7 +50,7 @@ declare module "@ic-reactor/core" {
   }
 }
 
-export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<
+export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
   A,
   "metadata"
 > {
@@ -146,7 +73,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<
       superConfig.idlFactory = ({ IDL }) => IDL.Service({})
     }
 
-    super(superConfig as DisplayReactorParameters<A>)
+    super(superConfig as ReactorParameters)
 
     this.candidSource = config.candid
 
@@ -181,9 +108,6 @@ export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<
 
     // Generate metadata using visitors
     this.generateMetadata()
-
-    // Initialize display codecs for value transformation
-    this.reinitializeCodecs()
   }
 
   /**
@@ -206,31 +130,6 @@ export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<
     ) as ServiceResultMeta<A>
   }
 
-  /**
-   * Re-initialize the display codecs after the service has been updated.
-   */
-  private reinitializeCodecs(): void {
-    const fields = this.getServiceInterface()?._fields
-    if (!fields) return
-
-    const codecs = (this as any).codecs as Map<
-      string,
-      { args: any; result: any }
-    >
-
-    for (const [methodName, funcType] of fields) {
-      if (codecs.has(methodName)) continue
-
-      const argsIdlType = didTypeFromArray(funcType.argTypes)
-      const retIdlType = didTypeFromArray(funcType.retTypes)
-
-      codecs.set(methodName, {
-        args: didToDisplayCodec(argsIdlType),
-        result: didToDisplayCodec(retIdlType),
-      })
-    }
-  }
-
   // ══════════════════════════════════════════════════════════════════════════
   // METADATA ACCESS
   // ══════════════════════════════════════════════════════════════════════════
@@ -238,18 +137,6 @@ export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<
     methodName: M,
     result: ActorMethodReturnType<A[M]>
   ): ResolvedMethodResult<A> {
-    const codecs = (this as any).codecs as Map<
-      string,
-      { args: any; result: any }
-    >
-    const codec = codecs.get(methodName)
-    if (!codec) {
-      throw new Error(`Method "${methodName}" not found`)
-    }
-
-    // Transform to display values
-    const displayValue = codec.result.asDisplay(result)
-
     // Get metadata and generate resolved result
     const meta = this.getResultMeta(methodName)
     if (!meta) {
@@ -260,8 +147,8 @@ export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<
       meta.returnCount === 0
         ? []
         : meta.returnCount === 1
-          ? [displayValue]
-          : (displayValue as unknown[])
+          ? [result]
+          : (result as unknown[])
 
     return meta.generateMetadata(displayData) as ResolvedMethodResult<A>
   }
@@ -336,9 +223,6 @@ export class MetadataDisplayReactor<A = BaseActor> extends DisplayReactor<
 
     // Regenerate metadata
     this.generateMetadata()
-
-    // Re-initialize codecs
-    this.reinitializeCodecs()
   }
 
   /**
