@@ -2,11 +2,8 @@ import type {
   ActorMethodReturnType,
   BaseActor,
   FunctionName,
-  ReactorParameters,
 } from "@ic-reactor/core"
-import { Reactor } from "@ic-reactor/core"
-import { IDL } from "@icp-sdk/core/candid"
-import { CandidAdapter } from "./adapter"
+import { CandidDisplayReactor } from "./display-reactor"
 import type {
   CandidDisplayReactorParameters,
   DynamicMethodOptions,
@@ -47,13 +44,11 @@ declare module "@ic-reactor/core" {
   }
 }
 
-export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
+export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   A,
   "metadata"
 > {
-  public readonly transform = "metadata" as const
-  public adapter: CandidAdapter
-  private candidSource?: string
+  public override readonly transform = "metadata" as const
 
   // Metadata storage
   private argumentMeta: ServiceArgumentsMeta<A> | null = null
@@ -64,23 +59,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
   private static resultVisitor = new ResultFieldVisitor()
 
   constructor(config: CandidDisplayReactorParameters<A>) {
-    const superConfig = { ...config }
-
-    if (!superConfig.idlFactory) {
-      superConfig.idlFactory = ({ IDL }) => IDL.Service({})
-    }
-
-    super(superConfig as ReactorParameters)
-
-    this.candidSource = config.candid
-
-    if (config.adapter) {
-      this.adapter = config.adapter
-    } else {
-      this.adapter = new CandidAdapter({
-        clientManager: this.clientManager,
-      })
-    }
+    super(config)
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -90,18 +69,8 @@ export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
   /**
    * Initializes the reactor by parsing Candid and generating all metadata.
    */
-  public async initialize(): Promise<void> {
-    let idlFactory: IDL.InterfaceFactory
-
-    if (this.candidSource) {
-      const definition = await this.adapter.parseCandidSource(this.candidSource)
-      idlFactory = definition.idlFactory
-    } else {
-      const definition = await this.adapter.getCandidDefinition(this.canisterId)
-      idlFactory = definition.idlFactory
-    }
-
-    this.service = idlFactory({ IDL })
+  public override async initialize(): Promise<void> {
+    await super.initialize()
 
     // Generate metadata using visitors
     this.generateMetadata()
@@ -130,19 +99,6 @@ export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
   // ══════════════════════════════════════════════════════════════════════════
   // METADATA ACCESS
   // ══════════════════════════════════════════════════════════════════════════
-  protected transformResult<M extends FunctionName<A>>(
-    methodName: M,
-    result: ActorMethodReturnType<A[M]>
-  ): ResolvedMethodResult<A> {
-    // Get metadata and generate resolved result
-    const meta = this.getResultMeta(methodName)
-    if (!meta) {
-      throw new Error(`No metadata found for method "${methodName}"`)
-    }
-
-    return meta.generateMetadata(result) as ResolvedMethodResult<A>
-  }
-
   /**
    * Get argument field metadata for a method.
    * Use this to generate input forms.
@@ -180,65 +136,34 @@ export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
   // ══════════════════════════════════════════════════════════════════════════
   // DYNAMIC METHOD REGISTRATION
   // ══════════════════════════════════════════════════════════════════════════
-
   /**
    * Register a dynamic method by its Candid signature.
+   * After registration, all DisplayReactor methods work with display type transformations.
    */
-  public async registerMethod(options: DynamicMethodOptions): Promise<void> {
-    const { functionName, candid } = options
-
-    const existing = this.service._fields.find(
-      ([name]) => name === functionName
-    )
-    if (existing) return
-
-    const serviceSource = candid.includes("service :")
-      ? candid
-      : `service : { ${functionName} : ${candid}; }`
-
-    const { idlFactory } = await this.adapter.parseCandidSource(serviceSource)
-    const parsedService = idlFactory({ IDL })
-
-    const funcField = parsedService._fields.find(
-      ([name]) => name === functionName
-    )
-    if (!funcField) {
-      throw new Error(
-        `Method "${functionName}" not found in the provided Candid signature`
-      )
-    }
-
-    // Inject into our service
-    this.service._fields.push(funcField)
+  public override async registerMethod(
+    options: DynamicMethodOptions
+  ): Promise<void> {
+    await super.registerMethod(options)
 
     // Regenerate metadata
     this.generateMetadata()
   }
 
-  /**
-   * Register multiple methods at once.
-   */
-  public async registerMethods(methods: DynamicMethodOptions[]): Promise<void> {
-    await Promise.all(methods.map((m) => this.registerMethod(m)))
-  }
-
-  /**
-   * Check if a method is registered.
-   */
-  public hasMethod(functionName: string): boolean {
-    return this.service._fields.some(([name]) => name === functionName)
-  }
-
-  /**
-   * Get all registered method names.
-   */
-  public getMethodNames(): string[] {
-    return this.service._fields.map(([name]) => name)
-  }
-
   // ══════════════════════════════════════════════════════════════════════════
   // DYNAMIC CALL SHORTCUTS
   // ══════════════════════════════════════════════════════════════════════════
+  protected override transformResult<M extends FunctionName<A>>(
+    methodName: M,
+    result: ActorMethodReturnType<A[M]>
+  ): ResolvedMethodResult<A> {
+    // Get metadata and generate resolved result
+    const meta = this.getResultMeta(methodName)
+    if (!meta) {
+      throw new Error(`No metadata found for method "${methodName}"`)
+    }
+
+    return meta.generateMetadata(result) as ResolvedMethodResult<A>
+  }
 
   /**
    * Perform a dynamic call and return result with metadata.
@@ -259,15 +184,20 @@ export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
   }
 
   /**
-   * Perform a dynamic call.
+   * Perform a dynamic query call in one step with display type transformations.
    */
-  public async callDynamic<T = unknown>(
+  public override async queryDynamic<T = unknown>(
     options: DynamicMethodOptions & { args?: unknown[] }
   ): Promise<T> {
-    await this.registerMethod(options)
-    return this.callMethod({
-      functionName: options.functionName as any,
-      args: options.args as any,
-    }) as T
+    return super.queryDynamic(options) as Promise<T>
+  }
+
+  /**
+   * Fetch with dynamic Candid and TanStack Query caching.
+   */
+  public override async fetchQueryDynamic<T = unknown>(
+    options: DynamicMethodOptions & { args?: unknown[] }
+  ): Promise<T> {
+    return super.fetchQueryDynamic(options) as Promise<T>
   }
 }

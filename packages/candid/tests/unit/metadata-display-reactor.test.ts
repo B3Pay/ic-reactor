@@ -25,6 +25,10 @@ import type {
 // ════════════════════════════════════════════════════════════════════════════
 // Test Actor Interface
 // ════════════════════════════════════════════════════════════════════════════
+interface Account {
+  owner: Principal
+  subaccount: [] | [Uint8Array | number[]]
+}
 
 type TestActor = ActorSubclass<{
   icrc1_name: ActorMethod<[], string>
@@ -32,14 +36,11 @@ type TestActor = ActorSubclass<{
   icrc1_decimals: ActorMethod<[], number>
   icrc1_fee: ActorMethod<[], bigint>
   icrc1_total_supply: ActorMethod<[], bigint>
-  icrc1_balance_of: ActorMethod<
-    [{ owner: { toString(): string }; subaccount: [] | [Uint8Array] }],
-    bigint
-  >
+  icrc1_balance_of: ActorMethod<[Account], bigint>
   icrc1_transfer: ActorMethod<
     [
       {
-        to: { owner: { toString(): string }; subaccount: [] | [Uint8Array] }
+        to: Account
         amount: bigint
         fee: [] | [bigint]
         memo: [] | [Uint8Array]
@@ -81,9 +82,9 @@ const SIMPLE_SERVICE_CANDID = `
 `
 
 const ICRC1_SERVICE_CANDID = `
-  type Account = record {
-    owner : principal;
-    subaccount : opt blob;
+  type Account = record { 
+    owner : principal; 
+    subaccount : opt blob
   };
 
   type TransferArg = record {
@@ -1084,12 +1085,10 @@ describe("MetadataDisplayReactor E2E", () => {
 })
 
 describe("Complex Result Handling (Mocked)", () => {
-  let reactor: MetadataDisplayReactor
-  let mockAgent: any
+  let reactor: MetadataDisplayReactor<TestActor>
 
   beforeAll(async () => {
     const client = createMockClientManager()
-    mockAgent = client.agent
 
     reactor = new MetadataDisplayReactor({
       name: "variant-test",
@@ -1119,14 +1118,11 @@ describe("Complex Result Handling (Mocked)", () => {
     }
 
     const result = await reactor.callMethod({
-      functionName: functionName as any,
+      functionName,
       args: [
         {
-          to: { owner: Principal.fromText("aaaaa-aa"), subaccount: [] },
-          amount: 100n,
-          fee: [],
-          memo: [],
-          created_at_time: [],
+          to: { owner: "aaaaa-aa" },
+          amount: "100",
         },
       ],
     })
@@ -1156,14 +1152,11 @@ describe("Complex Result Handling (Mocked)", () => {
     }
 
     const result = await reactor.callMethod({
-      functionName: functionName as any,
+      functionName,
       args: [
         {
-          to: { owner: Principal.fromText("aaaaa-aa"), subaccount: [] },
-          amount: 100n,
-          fee: [],
-          memo: [],
-          created_at_time: [],
+          to: { owner: "aaaaa-aa" },
+          amount: "100",
         },
       ],
     })

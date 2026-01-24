@@ -100,7 +100,7 @@ export interface TransformReturnRegistry<T, A = BaseActor> {
 /**
  * Helper type to transform args array elements using ToDisplay
  */
-type AsDisplayArgs<T> = T extends readonly unknown[]
+export type AsDisplayArgs<T> = T extends readonly unknown[]
   ? { [K in keyof T]: DisplayOf<T[K]> }
   : DisplayOf<T>
 
