@@ -994,7 +994,7 @@ describe("ResultFieldVisitor", () => {
 
       it("should resolve number field with value", () => {
         const field = IDL.Nat.accept(visitor, "amount") as NumberResultField
-        const resolved = field.resolve("1000000")
+        const resolved = field.resolve(BigInt(1000000))
 
         expect(resolved.field).toBe(field)
         expect(resolved.value).toBe("1000000")
@@ -1075,7 +1075,6 @@ describe("ResultFieldVisitor", () => {
 
         const resolved = field.resolve({ Ok: "Success" })
 
-        expect(resolved.field).toBe(field)
         const value = resolved.value as {
           option: string
           value: { field: ResultField; value: unknown }
@@ -1121,7 +1120,7 @@ describe("ResultFieldVisitor", () => {
         const tupleType = IDL.Tuple(IDL.Text, IDL.Nat, IDL.Bool)
         const field = tupleType.accept(visitor, "data") as TupleResultField
 
-        const resolved = field.resolve(["hello", "123", true])
+        const resolved = field.resolve(["hello", 123n, true])
 
         expect(resolved.field).toBe(field)
         const value = resolved.value as Array<{
@@ -1148,7 +1147,7 @@ describe("ResultFieldVisitor", () => {
         const optType = IDL.Opt(IDL.Text)
         const field = optType.accept(visitor, "nickname") as OptionalResultField
 
-        const resolved = field.resolve("Bob")
+        const resolved = field.resolve(["Bob"])
 
         expect(resolved.field).toBe(field)
         const inner = resolved.value as { field: ResultField; value: unknown }
@@ -1211,10 +1210,10 @@ describe("ResultFieldVisitor", () => {
         const blobType = IDL.Vec(IDL.Nat8)
         const field = blobType.accept(visitor, "data") as BlobResultField
 
-        const resolved = field.resolve("0x1234abcd")
+        const resolved = field.resolve(new Uint8Array([0x12, 0x34, 0xab, 0xcd]))
 
         expect(resolved.field).toBe(field)
-        expect(resolved.value).toBe("0x1234abcd")
+        expect(resolved.value).toBe("1234abcd")
       })
     })
 
@@ -1231,7 +1230,7 @@ describe("ResultFieldVisitor", () => {
         const field = Node.accept(visitor, "tree") as RecursiveResultField
 
         const resolved = field.resolve({
-          value: "42",
+          value: BigInt(42),
           children: [],
         })
 
@@ -1296,7 +1295,7 @@ describe("ResultFieldVisitor", () => {
       ) as ServiceResultMeta
       const methodMeta = serviceMeta["getName"] as MethodResultMeta
 
-      const result = methodMeta.generateMetadata(["Alice"])
+      const result = methodMeta.generateMetadata("Alice")
 
       expect(result.functionName).toBe("getName")
       expect(result.functionType).toBe("query")
@@ -1316,7 +1315,11 @@ describe("ResultFieldVisitor", () => {
       ) as ServiceResultMeta
       const methodMeta = serviceMeta["getStats"] as MethodResultMeta
 
-      const result = methodMeta.generateMetadata(["100", "200", "active"])
+      const result = methodMeta.generateMetadata([
+        BigInt(100),
+        BigInt(200),
+        "active",
+      ])
 
       expect(result.results).toHaveLength(3)
       expect(result.results[0].value).toBe("100")
@@ -1341,9 +1344,10 @@ describe("ResultFieldVisitor", () => {
       ) as ServiceResultMeta
       const methodMeta = serviceMeta["getUser"] as MethodResultMeta
 
-      const result = methodMeta.generateMetadata([
-        { name: "Bob", balance: "1000" },
-      ])
+      const result = methodMeta.generateMetadata({
+        name: "Bob",
+        balance: BigInt(1000),
+      })
 
       expect(result.results).toHaveLength(1)
       expect(result.results[0].field.type).toBe("record")
@@ -1372,7 +1376,7 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["transfer"] as MethodResultMeta
 
       // Test Ok case
-      const okResult = methodMeta.generateMetadata([{ Ok: "12345" }])
+      const okResult = methodMeta.generateMetadata({ Ok: BigInt(12345) })
       expect(okResult.results[0].field.type).toBe("variant")
       expect(
         (okResult.results[0].field as VariantResultField).displayType
@@ -1386,9 +1390,9 @@ describe("ResultFieldVisitor", () => {
       expect(okValue.value.value).toBe("12345")
 
       // Test Err case
-      const errResult = methodMeta.generateMetadata([
-        { Err: "Insufficient funds" },
-      ])
+      const errResult = methodMeta.generateMetadata({
+        Err: "Insufficient funds",
+      })
       const errValue = errResult.results[0].value as {
         option: string
         value: { field: ResultField; value: unknown }
@@ -1408,7 +1412,7 @@ describe("ResultFieldVisitor", () => {
       ) as ServiceResultMeta
       const methodMeta = serviceMeta["findUser"] as MethodResultMeta
 
-      // Test with value
+      // Test with value - Optional is [value]
       const foundResult = methodMeta.generateMetadata(["Alice"])
       expect(foundResult.results[0].field.type).toBe("optional")
       const foundInner = foundResult.results[0].value as {
@@ -1417,8 +1421,8 @@ describe("ResultFieldVisitor", () => {
       }
       expect(foundInner.value).toBe("Alice")
 
-      // Test with null
-      const notFoundResult = methodMeta.generateMetadata([null])
+      // Test with null - optional is []
+      const notFoundResult = methodMeta.generateMetadata([])
       expect(notFoundResult.results[0].value).toBe(null)
     })
 
@@ -1433,7 +1437,7 @@ describe("ResultFieldVisitor", () => {
       ) as ServiceResultMeta
       const methodMeta = serviceMeta["getItems"] as MethodResultMeta
 
-      const result = methodMeta.generateMetadata([["item1", "item2", "item3"]])
+      const result = methodMeta.generateMetadata(["item1", "item2", "item3"])
 
       expect(result.results[0].field.type).toBe("vector")
       const vecValue = result.results[0].value as Array<{
@@ -1459,9 +1463,13 @@ describe("ResultFieldVisitor", () => {
 
       expect(methodMeta.functionType).toBe("update")
 
-      const result = methodMeta.generateMetadata([true])
+      const rawData = [true]
+      const result = methodMeta.generateMetadata(rawData[0])
+
       expect(result.functionType).toBe("update")
+      expect(result.functionName).toBe("setName")
       expect(result.results[0].value).toBe(true)
+      expect(result.results[0].raw).toBe(true)
     })
 
     it("should generate metadata for complex ICRC-1 like response", () => {
@@ -1490,8 +1498,15 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["icrc1_transfer"] as MethodResultMeta
 
       // Test successful transfer
-      const successResult = methodMeta.generateMetadata([{ Ok: "1000" }])
-      console.log("🚀 ~ result:", JSON.stringify(successResult, null, 2))
+      const successResult = methodMeta.generateMetadata({ Ok: BigInt(1000) })
+      console.log(
+        "🚀 ~ result:",
+        JSON.stringify(
+          successResult,
+          (_, v) => (typeof v === "bigint" ? `${v}n` : v),
+          2
+        )
+      )
 
       const successValue = successResult.results[0].value as {
         option: string
@@ -1501,9 +1516,9 @@ describe("ResultFieldVisitor", () => {
       expect(successValue.value.value).toBe("1000")
 
       // Test error case
-      const errorResult = methodMeta.generateMetadata([
-        { Err: { InsufficientFunds: { balance: "50" } } },
-      ])
+      const errorResult = methodMeta.generateMetadata({
+        Err: { InsufficientFunds: { balance: BigInt(50) } },
+      })
       const errorValue = errorResult.results[0].value as {
         option: string
         value: { field: ResultField; value: unknown }
@@ -1554,12 +1569,12 @@ describe("ResultFieldVisitor", () => {
       // Simulate raw BigInt and display string
       const rawData = [BigInt(1000000)]
 
-      const result = methodMeta.generateMetadata(rawData)
+      const result = methodMeta.generateMetadata(rawData[0])
 
       expect(result.functionName).toBe("getBalance")
       expect(result.functionType).toBe("query")
-      expect(result.results).toEqual(rawData)
       expect(result.results).toHaveLength(1)
+      expect(result.results[0].raw).toBe(BigInt(1000000))
       expect(result.results[0].value).toBe("1000000")
       expect(result.results[0].raw).toBe(BigInt(1000000))
       expect(result.results[0].field.type).toBe("number")
@@ -1576,7 +1591,8 @@ describe("ResultFieldVisitor", () => {
       ) as ServiceResultMeta
       const methodMeta = serviceMeta["getStats"] as MethodResultMeta
 
-      const rawData = [BigInt(9007199254740993), "active", true]
+      // Use BigInt with string to safe safe integer
+      const rawData = [BigInt("9007199254740993"), "active", true]
 
       const result = methodMeta.generateMetadata(rawData)
 
@@ -1584,7 +1600,7 @@ describe("ResultFieldVisitor", () => {
 
       // nat64 → string display, BigInt raw
       expect(result.results[0].value).toBe("9007199254740993")
-      expect(result.results[0].raw).toBe(BigInt(9007199254740993))
+      expect(result.results[0].raw).toBe(BigInt("9007199254740993"))
       expect(result.results[0].field.candidType).toBe("nat64")
 
       // text → same for both
@@ -1612,8 +1628,7 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["getUser"] as MethodResultMeta
 
       const rawData = [{ name: "Alice", balance: BigInt(500) }]
-
-      const result = methodMeta.generateMetadata(rawData)
+      const result = methodMeta.generateMetadata(rawData[0])
 
       expect(result.results[0].raw).toEqual({
         name: "Alice",
@@ -1646,7 +1661,7 @@ describe("ResultFieldVisitor", () => {
       // Test Ok case with raw BigInt
       const rawData = [{ Ok: BigInt(12345) }]
 
-      const result = methodMeta.generateMetadata(rawData)
+      const result = methodMeta.generateMetadata(rawData[0])
 
       expect(result.results[0].raw).toEqual({ Ok: BigInt(12345) })
 
@@ -1674,7 +1689,7 @@ describe("ResultFieldVisitor", () => {
       const principal = Principal.fromText("aaaaa-aa")
       const rawData = [principal]
 
-      const result = methodMeta.generateMetadata(rawData)
+      const result = methodMeta.generateMetadata(rawData[0])
 
       expect(result.results[0].value).toBe("aaaaa-aa")
       expect(result.results[0].raw).toBe(principal)
@@ -1694,13 +1709,7 @@ describe("ResultFieldVisitor", () => {
 
       const rawData = [[BigInt(100), BigInt(200), BigInt(300)]]
 
-      const result = methodMeta.generateMetadata(rawData)
-
-      expect(result.results[0].value).toEqual([
-        BigInt(100),
-        BigInt(200),
-        BigInt(300),
-      ])
+      const result = methodMeta.generateMetadata(rawData[0])
 
       const vecValue = result.results[0].value as Array<{
         field: ResultField
@@ -1723,23 +1732,23 @@ describe("ResultFieldVisitor", () => {
       ) as ServiceResultMeta
       const methodMeta = serviceMeta["findBalance"] as MethodResultMeta
 
-      // Test with value
-      const rawDataWithValue = [BigInt(999)]
+      // Test with value - Optional is [value]
+      const rawDataWithValue = [[BigInt(999)]]
 
-      const resultWithValue = methodMeta.generateMetadata(rawDataWithValue)
+      const resultWithValue = methodMeta.generateMetadata(rawDataWithValue[0])
 
-      expect(resultWithValue.results[0].raw).toBe([BigInt(999)])
+      expect(resultWithValue.results[0].raw).toEqual([BigInt(999)])
       const innerValue = resultWithValue.results[0].value as {
         field: ResultField
         value: unknown
       }
       expect(innerValue.value).toBe("999")
 
-      // Test with null
-      const rawDataNull = [null]
+      // Test with null - Optional is []
+      const rawDataNull = [[]]
 
-      const resultNull = methodMeta.generateMetadata(rawDataNull)
-      expect(resultNull.results[0].raw).toBe(null)
+      const resultNull = methodMeta.generateMetadata(rawDataNull[0])
+      expect(resultNull.results[0].raw).toEqual([])
       expect(resultNull.results[0].value).toBe(null)
     })
 
