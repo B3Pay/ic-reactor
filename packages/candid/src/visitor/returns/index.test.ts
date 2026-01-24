@@ -1916,7 +1916,7 @@ describe("ResultFieldVisitor", () => {
 
       expect(result.results[0].raw).toEqual({ Ok: BigInt(12345) })
 
-      const variantValue = result.results[0].value
+      const variantValue = result.results[0].value as any
       if (
         typeof variantValue !== "object" ||
         variantValue === null ||
