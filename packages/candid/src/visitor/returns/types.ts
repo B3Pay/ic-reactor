@@ -248,7 +248,7 @@ export interface MethodResultMeta<A = BaseActor> {
    * // resolved.results contains fields with their display values for rendering
    * ```
    */
-  generateMetadata(data: unknown[]): ResolvedMethodResult<A>
+  generateMetadata(data: unknown): ResolvedMethodResult<A>
 }
 
 export type ServiceResultMeta<A = BaseActor> = {

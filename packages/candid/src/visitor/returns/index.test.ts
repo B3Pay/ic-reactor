@@ -1728,7 +1728,7 @@ describe("ResultFieldVisitor", () => {
 
       const resultWithValue = methodMeta.generateMetadata(rawDataWithValue)
 
-      expect(resultWithValue.results[0].raw).toBe(BigInt(999))
+      expect(resultWithValue.results[0].raw).toBe([BigInt(999)])
       const innerValue = resultWithValue.results[0].value as {
         field: ResultField
         value: unknown

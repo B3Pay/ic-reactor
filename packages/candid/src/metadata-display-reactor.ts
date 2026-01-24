@@ -1,30 +1,27 @@
 import type {
   ActorMethodReturnType,
-  ReactorParameters,
+  BaseActor,
   FunctionName,
+  ReactorParameters,
 } from "@ic-reactor/core"
+import { Reactor } from "@ic-reactor/core"
+import { IDL } from "@icp-sdk/core/candid"
+import { CandidAdapter } from "./adapter"
 import type {
   CandidDisplayReactorParameters,
   DynamicMethodOptions,
 } from "./types"
-import { Reactor } from "@ic-reactor/core"
-import type { BaseActor } from "@ic-reactor/core"
-import { CandidAdapter } from "./adapter"
-import { IDL } from "@icp-sdk/core/candid"
 
-// Import the new clean visitors
 import {
   ArgumentFieldVisitor,
   MethodArgumentsMeta,
   ServiceArgumentsMeta,
-  ArgumentField,
 } from "./visitor/arguments"
 import {
-  ResultFieldVisitor,
   MethodResultMeta,
-  ServiceResultMeta,
-  ResultField,
   ResolvedMethodResult,
+  ResultFieldVisitor,
+  ServiceResultMeta,
 } from "./visitor/returns"
 
 // ============================================================================
@@ -143,14 +140,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
       throw new Error(`No metadata found for method "${methodName}"`)
     }
 
-    const displayData: unknown[] =
-      meta.returnCount === 0
-        ? []
-        : meta.returnCount === 1
-          ? [result]
-          : (result as unknown[])
-
-    return meta.generateMetadata(displayData) as ResolvedMethodResult<A>
+    return meta.generateMetadata(result) as ResolvedMethodResult<A>
   }
 
   /**
@@ -281,19 +271,3 @@ export class MetadataDisplayReactor<A = BaseActor> extends Reactor<
     }) as T
   }
 }
-
-// Re-export visitor types
-export type {
-  // Argument types
-  ArgumentField,
-  MethodArgumentsMeta,
-  ServiceArgumentsMeta,
-  // Result types
-  ResultField,
-  MethodResultMeta,
-  ServiceResultMeta,
-  ResolvedMethodResult,
-}
-
-// Re-export visitors
-export { ArgumentFieldVisitor, ResultFieldVisitor }

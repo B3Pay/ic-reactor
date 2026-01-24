@@ -101,7 +101,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
   public visitFunc(
     t: IDL.FuncClass,
-    functionName: string
+    functionName: FunctionName<A>
   ): MethodResultMeta<A> {
     const functionType: FunctionType = isQuery(t) ? "query" : "update"
 
@@ -109,21 +109,28 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       retType.accept(this, `__ret${index}`)
     ) as ResultField[]
 
-    const generateMetadata = (data: unknown[]): ResolvedMethodResult<A> => {
-      const results: ResultFieldWithValue[] = resultFields.map((field, index) =>
-        field.resolve(data[index])
+    const generateMetadata = (data: unknown): ResolvedMethodResult<A> => {
+      const dataArray: unknown[] =
+        resultFields.length === 0
+          ? []
+          : resultFields.length === 1
+            ? [data]
+            : (data as unknown[])
+
+      const results = resultFields.map((field, index) =>
+        field.resolve(dataArray[index])
       )
 
       return {
         functionType,
-        functionName: functionName as FunctionName<A>,
+        functionName,
         results,
       }
     }
 
     return {
       functionType,
-      functionName: functionName as FunctionName<A>,
+      functionName,
       resultFields,
       returnCount: t.retTypes.length,
       generateMetadata,
@@ -394,7 +401,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "string",
       textFormat: checkTextFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value: codec.parse(value), raw: value }
+        return { field, value: codec.decode(value), raw: value }
       },
     }
 
@@ -409,7 +416,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "bool",
       displayType: "boolean",
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value: codec.parse(value), raw: value }
+        return { field, value: codec.decode(value), raw: value }
       },
     }
 
@@ -424,7 +431,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "null",
       displayType: "null",
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value: codec.parse(value), raw: value }
+        return { field, value: codec.decode(value), raw: value }
       },
     }
 
@@ -473,7 +480,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "number", // Floats stay as numbers
       numberFormat: checkNumberFormat(label),
       resolve(value: unknown): ResultFieldWithValue {
-        return { field, value: codec.parse(value), raw: value }
+        return { field, value: codec.decode(value), raw: value }
       },
     }
 
@@ -492,7 +499,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(value: unknown): ResultFieldWithValue {
         return {
           field,
-          value: bits <= 32 ? codec.parse(value) : codec.decode(value),
+          value: codec.decode(value),
           raw: value,
         }
       },
@@ -513,7 +520,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(value: unknown): ResultFieldWithValue {
         return {
           field,
-          value: bits <= 32 ? codec.parse(value) : codec.decode(value),
+          value: codec.decode(value),
           raw: value,
         }
       },

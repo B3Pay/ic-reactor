@@ -1022,16 +1022,14 @@ describe("MetadataDisplayReactor E2E", () => {
   })
 
   it("should return balance as string (display transformation)", async () => {
-    await reactor.registerMethod({
-      functionName: "icrc1_fee",
-      candid: "() -> (nat) query",
-    })
-
     const fee = await reactor.callDynamic({
       functionName: "icrc1_fee",
       candid: "() -> (nat) query",
     })
-    console.log("✅ icrc1_fee result:", fee)
+    console.log(
+      "✅ icrc1_fee result:",
+      JSON.stringify(fee, (_, v) => (typeof v === "bigint" ? `${v}n` : v), 2)
+    )
 
     // Fee should be transformed to string (display format)
     expect(typeof (fee as any).results[0].value).toBe("string")
@@ -1137,8 +1135,8 @@ describe("Complex Result Handling (Mocked)", () => {
     console.log(
       "✅ Err result:",
       JSON.stringify(
-        fieldResult,
-        (_, v) => (typeof v === "bigint" ? v.toString() : v),
+        errContent,
+        (_, v) => (typeof v === "bigint" ? `${v}n` : v),
         2
       )
     )
