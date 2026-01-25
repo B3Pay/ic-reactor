@@ -19,7 +19,6 @@ const TAMESTAMP_KEYS = [
 ]
 
 const TAMESTAMP_KEYS_REGEX = new RegExp(
-  // eslint-disable-next-line no-useless-escape
   TAMESTAMP_KEYS.map((key) => `^[\\w-]*${key}[\\w-]*$`).join("|"),
   "i"
 )
@@ -27,7 +26,6 @@ const TAMESTAMP_KEYS_REGEX = new RegExp(
 const CYCLE_KEYS = ["cycle", "cycles"]
 
 const CYCLE_KEYS_REGEX = new RegExp(
-  // eslint-disable-next-line no-useless-escape
   CYCLE_KEYS.map((key) => `^[\\w-]*${key}[\\w-]*$`).join("|"),
   "i"
 )
