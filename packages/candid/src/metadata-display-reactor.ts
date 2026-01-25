@@ -35,11 +35,11 @@ import {
  * Instead, it uses the metadata visitor to resolve raw values into display-ready structures.
  */
 declare module "@ic-reactor/core" {
-  interface TransformReturnRegistry<T, A = BaseActor> {
-    metadata: ResolvedMethodResult<A>
-  }
   interface TransformArgsRegistry<T> {
     metadata: TransformArgsRegistry<T>["display"]
+  }
+  interface TransformReturnRegistry<T, A = BaseActor> {
+    metadata: ResolvedMethodResult<A>
   }
 }
 
