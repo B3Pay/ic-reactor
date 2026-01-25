@@ -1,4 +1,8 @@
-import type { BaseActor, DisplayReactorParameters } from "@ic-reactor/core"
+import type {
+  BaseActor,
+  DisplayReactorParameters,
+  TransformKey,
+} from "@ic-reactor/core"
 import type {
   CandidDisplayReactorParameters,
   DynamicMethodOptions,
@@ -64,7 +68,11 @@ import { IDL } from "@icp-sdk/core/candid"
  * })
  * ```
  */
-export class CandidDisplayReactor<A = BaseActor> extends DisplayReactor<A> {
+export class CandidDisplayReactor<
+  A = BaseActor,
+  T extends TransformKey = "display",
+> extends DisplayReactor<A, T> {
+  public readonly transform = "display" as T
   public adapter: CandidAdapter
   private candidSource?: string
 

@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@ic-reactor/core": "^3.0.7-beta.2",
-    "@ic-reactor/react": "^3.0.7-beta.2",
+    "@ic-reactor/core": "^3.0.8-beta.0",
+    "@ic-reactor/react": "^3.0.8-beta.0",
     "@icp-sdk/auth": "^5.0.0",
     "@icp-sdk/core": "^5.0.0",
     "@tanstack/react-query": "^5.90.16",

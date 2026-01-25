@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MetadataDisplayReactor Demo</title>
+    <style>
+      :root {
+        font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+        font-weight: 400;
+        color-scheme: light dark;
+        color: rgba(255, 255, 255, 0.87);
+        background-color: #242424;
+      }
+      body {
+        margin: 0;
+        display: flex;
+        place-items: center;
+        min-width: 320px;
+        min-height: 100vh;
+      }
+      #app {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 2rem;
+        text-align: center;
+      }
+      .card {
+        padding: 2em;
+        background-color: #1a1a1a;
+        border-radius: 8px;
+        margin-top: 20px;
+        text-align: left;
+      }
+      input,
+      button,
+      select {
+        padding: 8px;
+        margin: 4px;
+        border-radius: 4px;
+        border: 1px solid #444;
+        background: #333;
+        color: white;
+      }
+      button {
+        cursor: pointer;
+        background: #646cff;
+        border-color: #646cff;
+      }
+      button:hover {
+        background: #535bf2;
+      }
+      pre {
+        background: #111;
+        padding: 1em;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+      .form-field {
+        margin-bottom: 1em;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.5em;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <h1>MetadataDisplayReactor Demo</h1>
+
+      <div class="card">
+        <h3>Connect to Canister</h3>
+        <input
+          id="canister-id"
+          type="text"
+          value="ryjl3-tyaaa-aaaaa-aaaba-cai"
+          placeholder="Canister ID"
+          style="width: 300px"
+        />
+        <button id="connect-btn">Connect & Fetch IDL</button>
+      </div>
+
+      <div id="methods-container" class="card" style="display: none">
+        <h3>Methods</h3>
+        <select
+          id="method-select"
+          style="width: 100%; margin-bottom: 20px"
+        ></select>
+
+        <div id="form-container"></div>
+        <button id="call-btn" style="margin-top: 20px; width: 100%">
+          Call Method
+        </button>
+      </div>
+
+      <div id="result-container" class="card" style="display: none">
+        <h3>Result</h3>
+        <pre id="result-display"></pre>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

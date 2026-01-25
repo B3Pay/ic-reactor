@@ -14,9 +14,10 @@ import {
   ReactorReturnOk,
   ActorMethodCodecs,
   BaseActor,
+  TransformKey,
 } from "./types/reactor"
 import { extractOkResult } from "./utils/helper"
-import { ValidationError, ValidationIssue } from "./errors"
+import { ValidationError } from "./errors"
 import {
   DisplayReactorParameters,
   DisplayValidator,
@@ -73,8 +74,11 @@ import {
  * })
  * ```
  */
-export class DisplayReactor<A = BaseActor> extends Reactor<A, "display"> {
-  public readonly transform = "display"
+export class DisplayReactor<
+  A = BaseActor,
+  T extends TransformKey = "display",
+> extends Reactor<A, T> {
+  public readonly transform = "display" as T
   private codecs: Map<
     string,
     { args: ActorDisplayCodec; result: ActorDisplayCodec }
@@ -213,7 +217,7 @@ export class DisplayReactor<A = BaseActor> extends Reactor<A, "display"> {
    */
   async validate<M extends FunctionName<A>>(
     methodName: M,
-    args: ReactorArgs<A, M, "display">
+    args: ReactorArgs<A, M, T>
   ): Promise<ValidationResult> {
     const validator = this.validators.get(methodName)
     if (!validator) {
@@ -249,11 +253,11 @@ export class DisplayReactor<A = BaseActor> extends Reactor<A, "display"> {
    */
   async callMethodWithValidation<M extends FunctionName<A>>(params: {
     functionName: M
-    args?: ReactorArgs<A, M, "display">
+    args?: ReactorArgs<A, M, T>
     callConfig?: Parameters<
       Reactor<A, "display">["callMethod"]
     >[0]["callConfig"]
-  }): Promise<ReactorReturnOk<A, M, "display">> {
+  }): Promise<ReactorReturnOk<A, M, T>> {
     // Run async validation first (on display types)
     if (params.args) {
       const result = await this.validate(params.functionName, params.args)
@@ -269,6 +273,7 @@ export class DisplayReactor<A = BaseActor> extends Reactor<A, "display"> {
     }
 
     try {
+      // @ts-ignore
       return await this.callMethod(params)
     } finally {
       // Restore validator
@@ -289,13 +294,14 @@ export class DisplayReactor<A = BaseActor> extends Reactor<A, "display"> {
    */
   protected transformArgs<M extends FunctionName<A>>(
     methodName: M,
-    args?: ReactorArgs<A, M, "display">
+    args?: ReactorArgs<A, M, T>
   ): ActorMethodParameters<A[M]> {
     // 1. Validate FIRST (on display types)
     const validator = this.validators.get(methodName)
+    const displayArgs = args as unknown as ReactorArgs<A, M, "display">
 
-    if (validator && args) {
-      const result = validator(args)
+    if (validator && displayArgs) {
+      const result = validator(displayArgs)
 
       // Handle Promise (async validator)
       if (
@@ -319,7 +325,7 @@ export class DisplayReactor<A = BaseActor> extends Reactor<A, "display"> {
       const codec = this.codecs.get(methodName)!
       return transformArgsWithCodec<ActorMethodParameters<A[M]>>(
         codec.args,
-        args
+        displayArgs
       )
     }
     if (!args) {
@@ -336,7 +342,7 @@ export class DisplayReactor<A = BaseActor> extends Reactor<A, "display"> {
   protected transformResult<M extends FunctionName<A>>(
     methodName: M,
     result: ActorMethodReturnType<A[M]>
-  ): ReactorReturnOk<A, M, "display"> {
+  ): ReactorReturnOk<A, M, T> {
     let transformedResult = result
     // 1. Apply display transformation to the FULL result
     if (this.codecs.has(methodName)) {
@@ -346,64 +352,10 @@ export class DisplayReactor<A = BaseActor> extends Reactor<A, "display"> {
 
     // 2. Extract Ok value from the TRANSFORMED (or raw) result
     //    This handles { ok: T } / { err: E } from Motoko/Rust canisters
-    return extractOkResult(transformedResult) as ReactorReturnOk<
+    return extractOkResult(transformedResult) as unknown as ReactorReturnOk<
       A,
       M,
-      "display"
+      T
     >
-  }
-}
-
-// ============================================================================
-// Zod Integration Helper
-// ============================================================================
-
-/**
- * Create a validator from a Zod schema.
- * This is a utility function to easily integrate Zod schemas as validators.
- *
- * @param schema - A Zod schema to validate against
- * @returns A Validator function compatible with DisplayReactor
- *
- * @example
- * ```typescript
- * import { z } from "zod"
- * import { fromZodSchema } from "@ic-reactor/core"
- *
- * const transferSchema = z.object({
- *   to: z.string().min(1, "Recipient is required"),
- *   amount: z.string().regex(/^\d+$/, "Must be a valid number"),
- * })
- *
- * reactor.registerValidator("transfer", fromZodSchema(transferSchema))
- * ```
- */
-export function fromZodSchema<T>(schema: {
-  safeParse: (data: unknown) => {
-    success: boolean
-    error?: {
-      issues: Array<{
-        path: (string | number)[]
-        message: string
-        code?: string
-      }>
-    }
-  }
-}): Validator<T[]> {
-  return (args: T[]): ValidationResult => {
-    // Validate the first argument (common IC pattern)
-    const result = schema.safeParse(args[0])
-
-    if (result.success) {
-      return { success: true }
-    }
-
-    const issues: ValidationIssue[] = result.error!.issues.map((issue) => ({
-      path: issue.path,
-      message: issue.message,
-      code: issue.code,
-    }))
-
-    return { success: false, issues }
   }
 }

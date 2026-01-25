@@ -78,9 +78,9 @@ You'd normally need to write conversion logic everywhere in your app:
   balance: "1000000000",                // string - easy to display
   owner: "rrkah-fqaaa-aaaaa-aaaaq-cai", // string - already formatted
   createdAt: "1703500800000000000",     // string - parse as needed
-  metadata: Map { "a" => 1, "b" => 2 }, // JavaScript Map - iterable
+  metadata: { "a": 1, "b": 2 },         // Plain Object - simple access
   status: { _type: "Active" },          // Normalized variant
-  avatar: "89504e47...",              // Small blobs → hex string
+  avatar: "89504e47...",                // Small blobs → hex string
   description: null,                    // null instead of []
 }
 ```
@@ -182,12 +182,12 @@ const { useActorQuery, useActorMutation, reactor } = createActorHooks(backend)
 
 #### Container Types
 
-| Candid           | TypeScript      | Display          | Notes                          |
-| ---------------- | --------------- | ---------------- | ------------------------------ |
-| `opt T`          | `[T] \| []`     | `T \| null`      | Nullish instead of empty array |
-| `vec T`          | `T[]`           | `Display<T>[]`   | Elements are transformed       |
-| `vec (text, T)`  | `[string, T][]` | `Map<string, T>` | Key-value pairs as Map         |
-| `record { ... }` | `{ ... }`       | `{ ... }`        | Nested fields transformed      |
+| Candid           | TypeScript      | Display                | Notes                          |
+| ---------------- | --------------- | ---------------------- | ------------------------------ |
+| `opt T`          | `[T] \| []`     | `T \| null`            | Nullish instead of empty array |
+| `vec T`          | `T[]`           | `Display<T>[]`         | Elements are transformed       |
+| `vec (text, T)`  | `[string, T][]` | `{ [key: string]: T }` | Key-value pairs as Object      |
+| `record { ... }` | `{ ... }`       | `{ ... }`              | Nested fields transformed      |
 
 #### Variant Types
 
@@ -392,9 +392,9 @@ mutate([
 ])
 ```
 
-### Working with Maps
+### Working with Key-Value Pairs
 
-Candid's `vec (text, T)` becomes a real JavaScript Map:
+Candid's `vec (text, T)` becomes a plain JavaScript Object:
 
 ```typescript
 // Without DisplayReactor
@@ -405,11 +405,11 @@ const metadata: Array<[string, string]> = [
 const value = metadata.find(([k]) => k === "key1")?.[1]
 
 // With DisplayReactor
-const metadata: Map<string, string> = new Map([
-  ["key1", "val1"],
-  ["key2", "val2"],
-])
-const value = metadata.get("key1")
+const metadata = {
+  key1: "val1",
+  key2: "val2",
+}
+const value = metadata["key1"]
 ```
 
 ### Form Handling

@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/candid",
-  "version": "3.0.7-beta.2",
+  "version": "3.0.8-beta.0",
   "description": "IC Reactor Candid Adapter - Fetch and parse Candid definitions from Internet Computer canisters",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -49,7 +49,8 @@
   "author": "Behrad Deylami",
   "license": "MIT",
   "dependencies": {
-    "@ic-reactor/core": "workspace:^"
+    "@ic-reactor/core": "workspace:^",
+    "@noble/hashes": "^1.8.0"
   },
   "peerDependencies": {
     "@icp-sdk/core": "^5.0.0"

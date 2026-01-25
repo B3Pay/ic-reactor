@@ -558,13 +558,13 @@ describe("Codec Schema Visitor - Tuple Types", () => {
     expect(codec.asCandid([])).toEqual([])
   })
 
-  it("should convert Vec<Tuple(Text, Text)> to Map", () => {
+  it("should convert Vec<Tuple(Text, Text)> to Object", () => {
     const mapType = IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))
     type CandidMap = Array<[string, string]>
 
     const codec = didToDisplayCodec<CandidMap>(mapType)
 
-    // Decode: Array of tuples → Map
+    // Decode: Array of tuples → Object
     const candidValue: CandidMap = [
       ["key1", "value1"],
       ["key2", "value2"],
@@ -572,14 +572,14 @@ describe("Codec Schema Visitor - Tuple Types", () => {
     ]
 
     const display = codec.asDisplay(candidValue)
-    expect(display).toBeInstanceOf(Map)
-    expect(display.get("key1")).toBe("value1")
-    expect(display.get("key2")).toBe("value2")
-    expect(display.get("key3")).toBe("value3")
-    expect(display.size).toBe(3)
+    expect(display).toBeInstanceOf(Object)
+    expect(display["key1"]).toBe("value1")
+    expect(display["key2"]).toBe("value2")
+    expect(display["key3"]).toBe("value3")
+    expect(Object.keys(display).length).toBe(3)
 
-    // Encode: Map → Array of tuples
-    const mapValue = new Map([
+    // Encode: Object → Array of tuples
+    const mapValue = new Object([
       ["foo", "bar"],
       ["hello", "world"],
     ])
@@ -591,25 +591,25 @@ describe("Codec Schema Visitor - Tuple Types", () => {
     ])
 
     // Round-trip test
-    const originalMap = new Map([
+    const originalMap = new Object([
       ["a", "1"],
       ["b", "2"],
     ])
     const encoded = codec.asCandid(originalMap as any)
     const decoded = codec.asDisplay(encoded)
-    expect(decoded).toBeInstanceOf(Map)
-    expect(decoded.get("a")).toBe("1")
-    expect(decoded.get("b")).toBe("2")
+    expect(decoded).toBeInstanceOf(Object)
+    expect(decoded["a"]).toBe("1")
+    expect(decoded["b"]).toBe("2")
   })
 })
 
-it("should convert Vec<Tuple(Text, Complex)> to Map", () => {
+it("should convert Vec<Tuple(Text, Complex)> to Object", () => {
   const mapType = IDL.Vec(IDL.Tuple(IDL.Text, IDL.Principal))
   type CandidMap = Array<[string, Principal]>
 
   const codec = didToDisplayCodec<CandidMap>(mapType)
 
-  // Decode: Array of tuples → Map
+  // Decode: Array of tuples → Object
   const candidValue: CandidMap = [
     ["key1", Principal.fromText("aaaaa-aa")],
     ["key2", Principal.fromText("2vxsx-fae")],
@@ -617,14 +617,14 @@ it("should convert Vec<Tuple(Text, Complex)> to Map", () => {
   ]
 
   const display = codec.asDisplay(candidValue)
-  expect(display).toBeInstanceOf(Map)
-  expect(display.get("key1")).toBe("aaaaa-aa")
-  expect(display.get("key2")).toBe("2vxsx-fae")
-  expect(display.get("key3")).toBe("rrkah-fqaaa-aaaaa-aaaaq-cai")
-  expect(display.size).toBe(3)
+  expect(display).toBeInstanceOf(Object)
+  expect(display["key1"]).toBe("aaaaa-aa")
+  expect(display["key2"]).toBe("2vxsx-fae")
+  expect(display["key3"]).toBe("rrkah-fqaaa-aaaaa-aaaaq-cai")
+  expect(Object.keys(display).length).toBe(3)
 
-  // Encode: Map → Array of tuples
-  const mapValue = new Map([
+  // Encode: Object → Array of tuples
+  const mapValue = new Object([
     ["foo", Principal.fromText("aaaaa-aa")],
     ["hello", Principal.fromText("2vxsx-fae")],
   ])
@@ -636,18 +636,18 @@ it("should convert Vec<Tuple(Text, Complex)> to Map", () => {
   ])
 
   // Round-trip test
-  const originalMap = new Map([
+  const originalMap = new Object([
     ["a", "aaaaa-aa"],
     ["b", "2vxsx-fae"],
   ])
   const encoded = codec.asCandid(originalMap as any)
   const decoded = codec.asDisplay(encoded)
-  expect(decoded).toBeInstanceOf(Map)
-  expect(decoded.get("a")).toBe("aaaaa-aa")
-  expect(decoded.get("b")).toBe("2vxsx-fae")
+  expect(decoded).toBeInstanceOf(Object)
+  expect(decoded["a"]).toBe("aaaaa-aa")
+  expect(decoded["b"]).toBe("2vxsx-fae")
 })
 
-it("should handle complex recursive Map structures (Value type)", () => {
+it("should handle complex recursive Object structures (Value type)", () => {
   const Value = IDL.Rec()
   Value.fill(
     IDL.Variant({
@@ -700,38 +700,38 @@ it("should handle complex recursive Map structures (Value type)", () => {
   // display should be { _type: "Map", Map: Map<string, any> }
   expect(display._type).toBe("Map")
   const map = display.Map
-  expect(map).toBeInstanceOf(Map)
+  expect(map).toBeInstanceOf(Object)
 
   // Test Nat64 transformation (string in display)
-  expect(map.get("fee_col_block")).toEqual({ _type: "Nat64", Nat64: "0" })
-  expect(map.get("ts")).toEqual({
+  expect(map["fee_col_block"]).toEqual({ _type: "Nat64", Nat64: "0" })
+  expect(map["ts"]).toEqual({
     _type: "Nat64",
     Nat64: "1722243244968812371",
   })
 
   // Test Blob transformation (hex string if small)
-  expect(typeof map.get("phash").Blob).toBe("string")
-  expect(map.get("phash").Blob).toMatch(/^[0-9a-f]+$/i)
+  expect(typeof map["phash"].Blob).toBe("string")
+  expect(map["phash"].Blob).toMatch(/^[0-9a-f]+$/i)
 
   // Test nested Map
-  const tx = map.get("tx")
+  const tx = map["tx"]
   expect(tx._type).toBe("Map")
   const txMap = tx.Map
-  expect(txMap).toBeInstanceOf(Map)
-  expect(txMap.get("op")).toEqual({ _type: "Text", Text: "xfer" })
-  expect(txMap.get("amt")).toEqual({ _type: "Nat64", Nat64: "263747688" })
-  expect(txMap.get("fee")).toEqual({ _type: "Nat64", Nat64: "10000" })
-  expect(txMap.get("from")).toEqual({
+  expect(txMap).toBeInstanceOf(Object)
+  expect(txMap["op"]).toEqual({ _type: "Text", Text: "xfer" })
+  expect(txMap["amt"]).toEqual({ _type: "Nat64", Nat64: "263747688" })
+  expect(txMap["fee"]).toEqual({ _type: "Nat64", Nat64: "10000" })
+  expect(txMap["from"]).toEqual({
     _type: "Array",
     Array: [{ _type: "Principal", Principal: "aaaaa-aa" }],
   })
-  expect(txMap.get("memo")).toEqual({
+  expect(txMap["memo"]).toEqual({
     _type: "Blob",
     Blob: "0202020202020202",
   })
 
   // Test nested Array and Principal
-  const from = txMap.get("from")
+  const from = txMap["from"]
   expect(from._type).toBe("Array")
   expect(from.Array).toHaveLength(1)
   expect(from.Array[0]).toEqual({
@@ -739,7 +739,7 @@ it("should handle complex recursive Map structures (Value type)", () => {
     Principal: "aaaaa-aa",
   })
 
-  const to = txMap.get("to")
+  const to = txMap["to"]
   expect(to._type).toBe("Array")
   expect(to.Array[0].Principal).toBe("2vxsx-fae")
 
@@ -1361,9 +1361,9 @@ describe("Codec Schema Visitor - Project Candid Types", () => {
     expect(display.code).toBe("NOT_FOUND")
     expect(display.message).toBe("Order not found")
     expect(display.details).toBeDefined()
-    expect(display.details).toBeInstanceOf(Map)
-    expect(display.details?.get("field")).toBe("order_id")
-    expect(display.details?.get("value")).toBe("123")
+    expect(display.details).toBeInstanceOf(Object)
+    expect(display.details?.["field"]).toBe("order_id")
+    expect(display.details?.["value"]).toBe("123")
     // Error without details
     const simpleError: ApiError = {
       code: "UNAUTHORIZED",

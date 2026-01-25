@@ -68,7 +68,7 @@ export type DisplayOf<T> =
       : IsCandidVariant<T> extends true
         ? VariantUnionOf<T>
         : T extends Array<[string, infer B]>
-          ? Map<string, DisplayOf<B>>
+          ? Record<string, DisplayOf<B>>
           : T extends (infer U)[]
             ? DisplayOf<U>[]
             : T extends null
