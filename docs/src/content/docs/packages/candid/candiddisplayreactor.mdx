@@ -44,7 +44,9 @@ import { CandidDisplayReactor } from "@ic-reactor/candid"
 ## Constructor
 
 ```typescript
-new CandidDisplayReactor(config: CandidDisplayReactorParameters)
+new CandidDisplayReactor<A = BaseActor, T extends TransformKey = "display">(
+  config: CandidDisplayReactorParameters
+)
 ```
 
 ### Parameters
@@ -393,12 +395,14 @@ function BalanceDisplay({ canisterId, owner }: Props) {
 
 ## When to Use
 
-| Use Case                     | Recommended Class      |
-| ---------------------------- | ---------------------- |
-| Dynamic canister, raw types  | `CandidReactor`        |
-| Dynamic canister, UI display | `CandidDisplayReactor` |
-| Known canister, raw types    | `Reactor`              |
-| Known canister, UI display   | `DisplayReactor`       |
+| Use Case                            | Recommended Class        |
+| ----------------------------------- | ------------------------ |
+| Dynamic form generation             | `MetadataDisplayReactor` |
+| Dynamic result rendering with types | `MetadataDisplayReactor` |
+| Dynamic canister, UI display        | `CandidDisplayReactor`   |
+| Dynamic canister, raw types         | `CandidReactor`          |
+| Known canister, UI display          | `DisplayReactor`         |
+| Known canister, raw types           | `Reactor`                |
 
 <Aside type="tip" title="Perfect for UI Development">
   Use `CandidDisplayReactor` when building user interfaces that need to: -

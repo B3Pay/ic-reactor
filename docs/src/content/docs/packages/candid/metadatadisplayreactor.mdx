@@ -54,11 +54,25 @@ const argMeta = reactor.getArgumentMeta("icrc1_transfer")
 const resultMeta = reactor.getResultMeta("icrc1_transfer")
 // resultMeta.resultFields[0] = { type: "variant", displayType: "result", isResultType: true, ... }
 
-// Call with display types and render results
+// Call with transformed results wrapped in metadata
 const result = await reactor.callMethod({
   functionName: "icrc1_transfer",
   args: [{ to: { owner: "aaaaa-aa" }, amount: "1000000" }],
 })
+
+/**
+ * result = {
+ *   functionName: "icrc1_transfer",
+ *   results: [
+ *     {
+ *       field: { type: "variant", displayType: "result", ... },
+ *       value: { option: "Ok", value: { ... } },
+ *       raw: { Ok: 1000000n }
+ *     }
+ *   ],
+ *   ...
+ * }
+ */
 ```
 
 ## Import
@@ -236,9 +250,8 @@ The visitor automatically detects Result variants (Ok/Err pattern):
 const meta = reactor.getResultMeta("icrc1_transfer")
 const resultField = meta.resultFields[0] as VariantResultField
 
-if (resultField.isResultType) {
+if (resultField.displayType === "result") {
   console.log("This is a Result type!")
-  console.log("displayType:", resultField.displayType) // "result"
 
   // Access Ok and Err field definitions
   const okField = resultField.optionFields.find((f) => f.label === "Ok")
@@ -310,14 +323,20 @@ await reactor.registerMethod({
   candid: "(text, nat) -> (variant { Ok : nat; Err : text })",
 })
 
-// Metadata is automatically generated
+// Metadata is generated and display codecs are initialized
 const meta = reactor.getArgumentMeta("custom_method")
 const resultMeta = reactor.getResultMeta("custom_method")
+
+// Now all Reactor methods work with display types + metadata wrapping
+const result = await reactor.callMethod({
+  functionName: "custom_method",
+  args: ["hello", "100"],
+})
 ```
 
 ### callDynamicWithMeta(options)
 
-Call a method and get both result and metadata:
+Call a method (registering it if needed) and get both the top-level metadata and the wrapped result in one step.
 
 ```typescript
 const { result, meta } = await reactor.callDynamicWithMeta({
@@ -325,8 +344,32 @@ const { result, meta } = await reactor.callDynamicWithMeta({
   candid: "() -> (nat) query",
 })
 
-// result = "10000" (string, display format)
-// meta = { resultFields: [{ type: "number", displayType: "string", ... }] }
+// result = { functionName: "icrc1_fee", results: [...] }
+// meta = { resultFields: [...], returnCount: 1 }
+```
+
+### queryDynamic(options)
+
+Perform a dynamic query call. Returns `ResolvedMethodResult`.
+
+```typescript
+const result = await reactor.queryDynamic({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner: "aaaaa-aa" }],
+})
+```
+
+### fetchQueryDynamic(options)
+
+Perform a dynamic query call with TanStack Query caching. Returns `ResolvedMethodResult`.
+
+```typescript
+const result = await reactor.fetchQueryDynamic({
+  functionName: "icrc1_balance_of",
+  candid: "(record { owner : principal }) -> (nat) query",
+  args: [{ owner: "aaaaa-aa" }],
+})
 ```
 
 ---
