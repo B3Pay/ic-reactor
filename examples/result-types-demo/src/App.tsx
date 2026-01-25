@@ -27,7 +27,8 @@ function App() {
   const visitor = new ResultFieldVisitor()
   const serviceClass = testIDL({ IDL })
   const serviceMeta = visitor.visitService(serviceClass)
-
+  // Get metadata for 'get_user'
+  const getUserMeta = serviceMeta["get_user"]
   // Mock data matching the IDL
   const mockUser = {
     name: "Alice",
@@ -40,10 +41,6 @@ function App() {
       ["Bob", Principal.fromText("uxrrr-q7777-77774-qaaaq-cai")],
     ],
   }
-
-  // Get metadata for 'get_user'
-  const getUserMeta = serviceMeta["get_user"]
-
   // Generate resolved metadata with values
   // We pass the raw value, and it returns the structure with display values
   const resolved = getUserMeta.generateMetadata(mockUser)
