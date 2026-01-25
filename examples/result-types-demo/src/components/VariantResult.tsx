@@ -5,7 +5,6 @@ import { ResultRenderer } from "./ResultRenderer"
 export const VariantResult: React.FC<{
   result: ResultFieldWithValue<"variant">
 }> = ({ result }) => {
-  console.log(result)
   // result.value is { option: string, value: ResultFieldWithValue }
   const { option, value: innerValue } = result.value
 

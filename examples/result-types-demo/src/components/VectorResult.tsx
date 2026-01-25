@@ -4,7 +4,9 @@ import { ResultRenderer } from "./ResultRenderer"
 export const VectorResult: React.FC<{
   result: ResultFieldWithValue<"vector">
 }> = ({ result }) => {
-  const items = result.value as ResultFieldWithValue[]
+  const items = result.value
+
+  if (!items) return <div>Null Vector</div>
 
   return (
     <div

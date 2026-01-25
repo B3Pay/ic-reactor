@@ -1,7 +1,6 @@
 import type {
   BaseActor,
   FunctionName,
-  DisplayOf,
   FunctionType,
   ActorMethodReturnType,
 } from "@ic-reactor/core"
@@ -205,26 +204,123 @@ export type ResultField =
   | UnknownResultField
 
 // ════════════════════════════════════════════════════════════════════════════
-// Helper Types for Rendering
+// Result Field With Value Interfaces
 // ════════════════════════════════════════════════════════════════════════════
+
+export interface RecordResultWithValue<V = unknown> {
+  field: RecordResultField
+  value: Record<string, ResultFieldWithValue>
+  raw: V
+}
+
+export interface VariantResultWithValue<V = unknown> {
+  field: VariantResultField
+  value: { option: string; value: ResultFieldWithValue }
+  raw: V
+}
+
+export interface TupleResultWithValue<V = unknown> {
+  field: TupleResultField
+  value: ResultFieldWithValue[]
+  raw: V
+}
+
+export interface OptionalResultWithValue<V = unknown> {
+  field: OptionalResultField
+  value: ResultFieldWithValue | null
+  raw: V
+}
+
+export interface VectorResultWithValue<V = unknown> {
+  field: VectorResultField
+  value: ResultFieldWithValue[]
+  raw: V
+}
+
+export interface BlobResultWithValue<V = unknown> {
+  field: BlobResultField
+  value: string
+  raw: V
+}
+
+export interface RecursiveResultWithValue<V = unknown> {
+  field: RecursiveResultField
+  // Resolves to the specific inner type which is also a ResultFieldWithValue
+  value: ResultFieldWithValue
+  raw: V
+}
+
+export interface PrincipalResultWithValue<V = unknown> {
+  field: PrincipalResultField
+  value: string
+  raw: V
+}
+
+export interface NumberResultWithValue<V = unknown> {
+  field: NumberResultField
+  value: string | number
+  raw: V
+}
+
+export interface TextResultWithValue<V = unknown> {
+  field: TextResultField
+  value: string
+  raw: V
+}
+
+export interface BooleanResultWithValue<V = unknown> {
+  field: BooleanResultField
+  value: boolean
+  raw: V
+}
+
+export interface NullResultWithValue<V = unknown> {
+  field: NullResultField
+  value: null
+  raw: V
+}
+
+export interface UnknownResultWithValue<V = unknown> {
+  field: UnknownResultField
+  value: unknown
+  raw: V
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Maps and Helper Types
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Mapping from ResultFieldType string to the corresponding *ResultWithValue interface.
+ */
+export type ResultWithValueMap<V = unknown> = {
+  record: RecordResultWithValue<V>
+  variant: VariantResultWithValue<V>
+  tuple: TupleResultWithValue<V>
+  optional: OptionalResultWithValue<V>
+  vector: VectorResultWithValue<V>
+  blob: BlobResultWithValue<V>
+  recursive: RecursiveResultWithValue<V>
+  principal: PrincipalResultWithValue<V>
+  number: NumberResultWithValue<V>
+  text: TextResultWithValue<V>
+  boolean: BooleanResultWithValue<V>
+  null: NullResultWithValue<V>
+  unknown: UnknownResultWithValue<V>
+}
 
 /**
  * A result field paired with its transformed value for rendering.
  * Can contain nested resolved fields for compound types.
+ *
+ * It is a discriminated union of all specific result types.
  */
-export type ResultFieldWithValue<P = unknown, V = unknown> = [P] extends [
-  ResultFieldType,
-]
-  ? {
-      field: ResultFieldByType<P>
-      value: DisplayOf<V>
-      raw: V
-    }
-  : {
-      field: ResultField
-      value: DisplayOf<P>
-      raw: P
-    }
+export type ResultFieldWithValue<
+  P = unknown,
+  V = unknown,
+> = P extends ResultFieldType
+  ? ResultWithValueMap<V>[P]
+  : ResultWithValueMap<V>[ResultFieldType]
 
 // ════════════════════════════════════════════════════════════════════════════
 // Method & Service Level
@@ -271,12 +367,3 @@ export interface MethodResultMeta<
 export type ServiceResultMeta<A = BaseActor> = {
   [K in FunctionName<A>]: MethodResultMeta<A, K>
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// Type Utilities
-// ════════════════════════════════════════════════════════════════════════════
-
-export type ResultFieldByType<T extends ResultFieldType> = Extract<
-  ResultField,
-  { type: T }
->

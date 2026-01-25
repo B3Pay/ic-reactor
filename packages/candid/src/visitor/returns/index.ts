@@ -166,8 +166,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       fields,
       resolve(value: unknown): ResultFieldWithValue<"record"> {
         const record = value as Record<string, unknown> | null | undefined
-        if (record == null) {
-          return { field, value: null, raw: value }
+        if (!record) {
+          throw new Error(
+            `Expected record for field ${label}, but got ${value}`
+          )
         }
 
         const resolvedFields: Record<string, ResultFieldWithValue> = {}
@@ -207,7 +209,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       optionFields,
       resolve(value: unknown): ResultFieldWithValue<"variant"> {
         if (value == null) {
-          return { field, value: null, raw: value }
+          throw new Error(`Expected variant for field ${label}, but got null`)
         }
 
         const variant = value as Record<string, unknown>
@@ -215,7 +217,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         const activeOption = optionsInValue.find((opt) => options.includes(opt))
 
         if (!activeOption) {
-          return { field, value: null, raw: value }
+          throw new Error(
+            `Expected variant option for field ${label}, but got none`
+          )
         }
 
         const activeValue = variant[activeOption]
@@ -264,7 +268,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(value: unknown): ResultFieldWithValue<"tuple"> {
         const tuple = value as unknown[] | null | undefined
         if (tuple == null) {
-          return { field, value: null, raw: value }
+          throw new Error(`Expected tuple for field ${label}, but got null`)
         }
 
         const resolvedItems = fields.map((f, index) => f.resolve(tuple[index]))
@@ -336,7 +340,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(value: unknown): ResultFieldWithValue<"vector"> {
         const vec = value as unknown[] | null | undefined
         if (vec == null) {
-          return { field, value: null, raw: value }
+          throw new Error(`Expected vector for field ${label}, but got null`)
         }
 
         const resolvedItems = vec.map((item) => itemField.resolve(item))
@@ -366,7 +370,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(value: unknown): ResultFieldWithValue {
         // Extract the inner field and resolve with it
         const innerField = field.extract()
-        return innerField.resolve(value)
+        return innerField.resolve(value) // Resolve to union type
       },
     }
 
