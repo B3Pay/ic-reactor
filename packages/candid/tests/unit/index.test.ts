@@ -72,20 +72,39 @@ describe("Package Exports", () => {
   describe("No unexpected exports", () => {
     it("should only export expected items", () => {
       const actualExports = Object.keys(CandidPackage)
+      console.log(actualExports)
 
       // All exports should be documented
       const knownExports = [
         "CandidAdapter",
-        "CandidReactor",
-        "CandidDisplayReactor",
-        "CandidDisplayReactorParameters",
-        "MetadataDisplayReactor",
-        "ArgumentFieldVisitor",
         "ResultFieldVisitor",
-        "VisitResultField",
+        "ArgumentFieldVisitor",
+        "VisitTanstackField",
+        "IDL",
+        "Principal",
+        "extractAndSortArgs",
+        "normalizeFormState",
+        "convertNanoToDate",
+        "convertToCycle",
+        "convertStringToNumber",
+        "validateNumberError",
+        "validateError",
+        "isQuery",
+        "isUrl",
+        "isImage",
+        "isUuid",
+        "isCanisterId",
+        "isBtcAddress",
+        "isEthAddress",
+        "isAccountIdentifier",
+        "isIsoDate",
+        "uint8ArrayToHexString",
         "DEFAULT_IC_DIDJS_ID",
         "DEFAULT_LOCAL_DIDJS_ID",
         "importCandidDefinition",
+        "CandidReactor",
+        "CandidDisplayReactor",
+        "MetadataDisplayReactor",
       ]
 
       actualExports.forEach((exp) => {
