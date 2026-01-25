@@ -228,6 +228,7 @@ export interface ResolvedMethodResult<A = BaseActor> {
   functionType: FunctionType
   functionName: FunctionName<A>
   results: ResultFieldWithValue[]
+  raw: ActorMethodReturnType<A[FunctionName<A>]>
 }
 
 export interface MethodResultMeta<

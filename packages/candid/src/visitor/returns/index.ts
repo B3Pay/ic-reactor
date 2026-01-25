@@ -22,7 +22,12 @@ import type {
   ResolvedMethodResult,
 } from "./types"
 import { DisplayCodecVisitor } from "@ic-reactor/core"
-import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
+import type {
+  ActorMethodReturnType,
+  BaseActor,
+  FunctionName,
+  FunctionType,
+} from "@ic-reactor/core"
 
 export * from "./types"
 
@@ -109,7 +114,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       retType.accept(this, `__ret${index}`)
     ) as ResultField[]
 
-    const generateMetadata = (data: unknown): ResolvedMethodResult<A> => {
+    const generateMetadata = (
+      data: ActorMethodReturnType<A[FunctionName<A>]>
+    ): ResolvedMethodResult<A> => {
       const dataArray: unknown[] =
         resultFields.length === 0
           ? []
@@ -125,6 +132,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         functionType,
         functionName,
         results,
+        raw: data,
       }
     }
 
