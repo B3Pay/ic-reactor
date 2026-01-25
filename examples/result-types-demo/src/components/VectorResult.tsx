@@ -23,11 +23,20 @@ export const VectorResult: React.FC<{
           <span style={{ color: "#888" }}>Empty</span>
         ) : (
           items.map((item, index) => (
-            <div key={index} style={{ marginBottom: "5px" }}>
+            <div
+              key={index}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "5px",
+              }}
+            >
               <span style={{ marginRight: "5px", color: "#888" }}>
                 [{index}]
               </span>
-              <ResultRenderer result={item} />
+              <div style={{ flex: 1 }}>
+                <ResultRenderer result={item} />
+              </div>
             </div>
           ))
         )}
