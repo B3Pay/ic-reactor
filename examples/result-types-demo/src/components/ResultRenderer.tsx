@@ -6,6 +6,7 @@ import { RecordResult } from "./RecordResult"
 import { VariantResult } from "./VariantResult"
 import { VectorResult } from "./VectorResult"
 import { OptionalResult } from "./OptionalResult"
+import { TupleResult } from "./TupleResult"
 
 export const ResultRenderer: React.FC<{ result: ResultFieldWithValue }> = ({
   result,
@@ -27,6 +28,8 @@ export const ResultRenderer: React.FC<{ result: ResultFieldWithValue }> = ({
       return (
         <VariantResult result={result as ResultFieldWithValue<"variant">} />
       )
+    case "tuple":
+      return <TupleResult result={result as ResultFieldWithValue<"tuple">} />
     case "vector":
       return <VectorResult result={result as ResultFieldWithValue<"vector">} />
     case "optional":

@@ -1,4 +1,4 @@
-import { IDL, ResultFieldVisitor } from "@ic-reactor/candid"
+import { IDL, Principal, ResultFieldVisitor } from "@ic-reactor/candid"
 import { ResultRenderer } from "./components/ResultRenderer"
 
 // Define a test IDL
@@ -13,6 +13,7 @@ const testIDL = ({ IDL }: { IDL: any }) => {
       User: IDL.Null,
       Guest: IDL.Null,
     }),
+    identity: IDL.Tuple(IDL.Text, IDL.Principal),
   })
 
   return IDL.Service({
@@ -34,6 +35,7 @@ function App() {
     is_active: true,
     tags: ["react", "candid", "icp"],
     role: { Admin: null },
+    identity: ["Alice", Principal.fromText("aaaaa-aa")],
   }
 
   // Get metadata for 'get_user'
