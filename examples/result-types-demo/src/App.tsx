@@ -63,8 +63,8 @@ function App() {
       </h1>
       <p style={{ fontSize: "1.2em" }}>
         This demo renders purely based on the <code>ResultFieldEnumValue</code>{" "}
-        structure produced by
-        <code>ResultFieldVisitor</code>. Each component is strictly typed.
+        structure produced by <code>ResultFieldVisitor</code>. Each component is
+        strictly typed.
       </p>
 
       <div style={{ marginTop: "30px" }}>
