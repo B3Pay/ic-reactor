@@ -13,8 +13,8 @@
     "vite": "^7.3.1"
   },
   "dependencies": {
-    "@ic-reactor/candid": "workspace:*",
-    "@ic-reactor/core": "workspace:*",
+    "@ic-reactor/candid": "^3.0.8-beta.0",
+    "@ic-reactor/core": "^3.0.8-beta.0",
     "@icp-sdk/core": "^5.0.0",
     "@tanstack/query-core": "^5.0.0"
   }
