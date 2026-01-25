@@ -1,5 +1,6 @@
-export { CandidAdapter } from "./adapter"
+export * from "./adapter"
 export * from "./types"
+export * from "./visitor"
 export * from "./constants"
 export * from "./utils"
 export * from "./reactor"
