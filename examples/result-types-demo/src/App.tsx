@@ -13,7 +13,7 @@ const testIDL = ({ IDL }: { IDL: any }) => {
       User: IDL.Null,
       Guest: IDL.Null,
     }),
-    identity: IDL.Tuple(IDL.Text, IDL.Principal),
+    identity: IDL.Vec(IDL.Tuple(IDL.Text, IDL.Principal)),
   })
 
   return IDL.Service({
@@ -35,7 +35,10 @@ function App() {
     is_active: true,
     tags: ["react", "candid", "icp"],
     role: { Admin: null },
-    identity: ["Alice", Principal.fromText("aaaaa-aa")],
+    identity: [
+      ["Alice", Principal.fromText("aaaaa-aa")],
+      ["Bob", Principal.fromText("2ibo7-dia")],
+    ],
   }
 
   // Get metadata for 'get_user'

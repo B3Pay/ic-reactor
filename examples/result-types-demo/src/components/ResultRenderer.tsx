@@ -11,8 +11,6 @@ import { TupleResult } from "./TupleResult"
 export const ResultRenderer: React.FC<{ result: ResultFieldWithValue }> = ({
   result,
 }) => {
-  if (!result || !result.field) return <div>Invalid Result</div>
-
   switch (result.field.type) {
     case "text":
       return <TextResult result={result as ResultFieldWithValue<"text">} />

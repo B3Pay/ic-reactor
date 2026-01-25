@@ -37,17 +37,6 @@ export const TupleResult: React.FC<{
               borderRadius: "4px",
             }}
           >
-            <span
-              style={{
-                marginRight: "5px",
-                fontSize: "0.8em",
-                color: "#666",
-                display: "block",
-                marginBottom: "2px",
-              }}
-            >
-              Item {index}
-            </span>
             <ResultRenderer result={item} />
           </div>
         ))}
