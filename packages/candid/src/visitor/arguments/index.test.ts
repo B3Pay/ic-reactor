@@ -1,23 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import { ArgumentFieldVisitor } from "./index"
-import type {
-  ArgumentField,
-  RecordArgumentField,
-  VariantArgumentField,
-  TupleArgumentField,
-  OptionalArgumentField,
-  VectorArgumentField,
-  BlobArgumentField,
-  RecursiveArgumentField,
-  NumberArgumentField,
-  TextArgumentField,
-  PrincipalArgumentField,
-  BooleanArgumentField,
-  NullArgumentField,
-  MethodArgumentsMeta,
-  ServiceArgumentsMeta,
-} from "./types"
 
 describe("ArgumentFieldVisitor", () => {
   const visitor = new ArgumentFieldVisitor()
