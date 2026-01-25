@@ -164,7 +164,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "record",
       displayType: "object",
       fields,
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"record"> {
         const record = value as Record<string, unknown> | null | undefined
         if (record == null) {
           return { field, value: null, raw: value }
@@ -205,7 +205,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType,
       options,
       optionFields,
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"variant"> {
         if (value == null) {
           return { field, value: null, raw: value }
         }
@@ -261,7 +261,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "tuple",
       displayType: "array",
       fields,
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"tuple"> {
         const tuple = value as unknown[] | null | undefined
         if (tuple == null) {
           return { field, value: null, raw: value }
@@ -288,7 +288,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "opt",
       displayType: "nullable",
       innerField,
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"optional"> {
         const opt = value as [unknown] | [] | null | undefined
         if (opt == null || opt.length === 0) {
           return { field, value: null, raw: value }
@@ -314,7 +314,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         candidType: "blob",
         displayType: "string", // Transformed to hex string
         displayHint: "hex",
-        resolve(value: unknown): ResultFieldWithValue {
+        resolve(value: unknown): ResultFieldWithValue<"blob"> {
           return {
             field: blobField,
             value: codec.decode(value),
@@ -333,7 +333,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "vec",
       displayType: "array",
       itemField,
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"vector"> {
         const vec = value as unknown[] | null | undefined
         if (vec == null) {
           return { field, value: null, raw: value }
@@ -388,7 +388,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "principal",
       displayType: "string", // Principal.toText()
       textFormat: checkTextFormat(label),
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"principal"> {
         return {
           field,
           value: codec.decode(value),
@@ -408,7 +408,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "text",
       displayType: "string",
       textFormat: checkTextFormat(label),
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"text"> {
         return { field, value: codec.decode(value), raw: value }
       },
     }
@@ -423,7 +423,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: "bool",
       displayType: "boolean",
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"boolean"> {
         return { field, value: codec.decode(value), raw: value }
       },
     }
@@ -438,7 +438,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: "null",
       displayType: "null",
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"null"> {
         return { field, value: codec.decode(value), raw: value }
       },
     }
@@ -455,7 +455,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "int",
       displayType: "string", // BigInt → string
       numberFormat: checkNumberFormat(label),
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"number"> {
         return { field, value: codec.decode(value), raw: value }
       },
     }
@@ -471,7 +471,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "nat",
       displayType: "string", // BigInt → string
       numberFormat: checkNumberFormat(label),
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"number"> {
         return { field, value: codec.decode(value), raw: value }
       },
     }
@@ -487,7 +487,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: `float${t._bits}`,
       displayType: "number", // Floats stay as numbers
       numberFormat: checkNumberFormat(label),
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"number"> {
         return { field, value: codec.decode(value), raw: value }
       },
     }
@@ -504,7 +504,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: `int${bits}`,
       displayType: bits <= 32 ? "number" : "string", // int64 → string
       numberFormat: checkNumberFormat(label),
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"number"> {
         return {
           field,
           value: codec.decode(value),
@@ -525,7 +525,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: `nat${bits}`,
       displayType: bits <= 32 ? "number" : "string", // nat64 → string
       numberFormat: checkNumberFormat(label),
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"number"> {
         return {
           field,
           value: codec.decode(value),
@@ -543,7 +543,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: "unknown",
       displayType: "unknown",
-      resolve(value: unknown): ResultFieldWithValue {
+      resolve(value: unknown): ResultFieldWithValue<"unknown"> {
         return { field, value, raw: value }
       },
     }

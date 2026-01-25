@@ -81,9 +81,11 @@ export type DisplayHint =
 // Base Field Interface
 // ════════════════════════════════════════════════════════════════════════════
 
-export interface ResultFieldBase {
+export interface ResultFieldBase<
+  Type extends ResultFieldType = ResultFieldType,
+> {
   /** The Candid type category */
-  type: ResultFieldType
+  type: Type
   /** Human-readable label from Candid */
   label: string
   /** Original Candid type name */
@@ -94,45 +96,45 @@ export interface ResultFieldBase {
    * Combine metadata with value to create a render-ready tree.
    * This allows "zipping" the static schema with dynamic runtime data.
    */
-  resolve(value: unknown): ResultFieldWithValue
+  resolve(value: unknown): ResultFieldWithValue<Type>
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // Compound Types
 // ════════════════════════════════════════════════════════════════════════════
 
-export interface RecordResultField extends ResultFieldBase {
+export interface RecordResultField extends ResultFieldBase<"record"> {
   type: "record"
   displayType: "object"
   fields: ResultField[]
 }
 
-export interface VariantResultField extends ResultFieldBase {
+export interface VariantResultField extends ResultFieldBase<"variant"> {
   type: "variant"
   displayType: "variant" | "result"
   options: string[]
   optionFields: ResultField[]
 }
 
-export interface TupleResultField extends ResultFieldBase {
+export interface TupleResultField extends ResultFieldBase<"tuple"> {
   type: "tuple"
   displayType: "array"
   fields: ResultField[]
 }
 
-export interface OptionalResultField extends ResultFieldBase {
+export interface OptionalResultField extends ResultFieldBase<"optional"> {
   type: "optional"
   displayType: "nullable"
   innerField: ResultField
 }
 
-export interface VectorResultField extends ResultFieldBase {
+export interface VectorResultField extends ResultFieldBase<"vector"> {
   type: "vector"
   displayType: "array"
   itemField: ResultField
 }
 
-export interface BlobResultField extends ResultFieldBase {
+export interface BlobResultField extends ResultFieldBase<"blob"> {
   type: "blob"
   displayType: "string"
   displayHint: "hex"
@@ -150,35 +152,35 @@ export interface RecursiveResultField extends ResultFieldBase {
 // Primitive Types
 // ════════════════════════════════════════════════════════════════════════════
 
-export interface PrincipalResultField extends ResultFieldBase {
+export interface PrincipalResultField extends ResultFieldBase<"principal"> {
   type: "principal"
   displayType: "string"
   textFormat: TextFormat
 }
 
-export interface NumberResultField extends ResultFieldBase {
+export interface NumberResultField extends ResultFieldBase<"number"> {
   type: "number"
   displayType: "string" | "number"
   numberFormat: NumberFormat
 }
 
-export interface TextResultField extends ResultFieldBase {
+export interface TextResultField extends ResultFieldBase<"text"> {
   type: "text"
   displayType: "string"
   textFormat: TextFormat
 }
 
-export interface BooleanResultField extends ResultFieldBase {
+export interface BooleanResultField extends ResultFieldBase<"boolean"> {
   type: "boolean"
   displayType: "boolean"
 }
 
-export interface NullResultField extends ResultFieldBase {
+export interface NullResultField extends ResultFieldBase<"null"> {
   type: "null"
   displayType: "null"
 }
 
-export interface UnknownResultField extends ResultFieldBase {
+export interface UnknownResultField extends ResultFieldBase<"unknown"> {
   type: "unknown"
   displayType: "unknown"
 }
@@ -210,11 +212,19 @@ export type ResultField =
  * A result field paired with its transformed value for rendering.
  * Can contain nested resolved fields for compound types.
  */
-export interface ResultFieldWithValue<T = unknown> {
-  field: ResultField
-  value: DisplayOf<T>
-  raw: T
-}
+export type ResultFieldWithValue<P = unknown, V = unknown> = [P] extends [
+  ResultFieldType,
+]
+  ? {
+      field: ResultFieldByType<P>
+      value: DisplayOf<V>
+      raw: V
+    }
+  : {
+      field: ResultField
+      value: DisplayOf<P>
+      raw: P
+    }
 
 // ════════════════════════════════════════════════════════════════════════════
 // Method & Service Level
