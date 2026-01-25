@@ -44,7 +44,6 @@ function App() {
   // Generate resolved metadata with values
   // We pass the raw value, and it returns the structure with display values
   const resolved = getUserMeta.generateMetadata(mockUser)
-  const userResult = resolved.results[0]
 
   return (
     <div
@@ -88,7 +87,7 @@ function App() {
           }}
         >
           {JSON.stringify(
-            userResult,
+            resolved,
             (_, value) =>
               typeof value === "bigint" ? `${value.toString()}n` : value,
             2
