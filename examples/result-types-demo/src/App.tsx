@@ -37,7 +37,7 @@ function App() {
     role: { Admin: null },
     identity: [
       ["Alice", Principal.fromText("aaaaa-aa")],
-      ["Bob", Principal.fromText("2ibo7-dia")],
+      ["Bob", Principal.fromText("uxrrr-q7777-77774-qaaaq-cai")],
     ],
   }
 

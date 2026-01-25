@@ -229,7 +229,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         const specificField: VariantResultField = {
           ...field,
           options,
-          optionFields: [optionField],
         }
 
         return {
