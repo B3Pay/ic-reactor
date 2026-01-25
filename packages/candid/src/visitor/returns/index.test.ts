@@ -1273,8 +1273,9 @@ describe("ResultFieldVisitor", () => {
           "user"
         )
 
-        const resolved = field.resolve(null)
-        expect(resolved.value).toBe(null)
+        expect(() => field.resolve(null)).toThrow(
+          "Expected record for field user, but got null"
+        )
       })
     })
 
@@ -1338,8 +1339,9 @@ describe("ResultFieldVisitor", () => {
           "choice"
         )
 
-        const resolved = field.resolve(null)
-        expect(resolved.value).toBe(null)
+        expect(() => field.resolve(null)).toThrow(
+          "Expected variant for field choice, but got null"
+        )
       })
     })
 
@@ -1369,8 +1371,9 @@ describe("ResultFieldVisitor", () => {
         const tupleType = IDL.Tuple(IDL.Text, IDL.Nat)
         const field = visitor.visitTuple(tupleType, [IDL.Text, IDL.Nat], "pair")
 
-        const resolved = field.resolve(null)
-        expect(resolved.value).toBe(null)
+        expect(() => field.resolve(null)).toThrow(
+          "Expected tuple for field pair, but got null"
+        )
       })
     })
 
@@ -1432,8 +1435,9 @@ describe("ResultFieldVisitor", () => {
         const vecType = IDL.Vec(IDL.Text)
         const field = visitor.visitVec(vecType, IDL.Text, "items")
 
-        const resolved = field.resolve(null)
-        expect(resolved.value).toBe(null)
+        expect(() => field.resolve(null)).toThrow(
+          "Expected vector for field items, but got null"
+        )
       })
     })
 
