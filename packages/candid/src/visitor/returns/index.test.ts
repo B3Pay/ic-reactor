@@ -243,15 +243,15 @@ describe("ResultFieldVisitor", () => {
       expect(field.label).toBe("person")
       expect(field.candidType).toBe("record")
       expect(field.displayType).toBe("object")
-      expect(field.fields).toHaveLength(2)
+      expect(Object.keys(field.fields)).toHaveLength(2)
 
-      const nameField = field.fields.find((f) => f.label === "name")
+      const nameField = field.fields["name"]
       if (!nameField || nameField.type !== "text") {
         throw new Error("Name field not found or not text")
       }
       expect(nameField.displayType).toBe("string")
 
-      const ageField = field.fields.find((f) => f.label === "age")
+      const ageField = field.fields["age"]
       if (!ageField || ageField.type !== "number") {
         throw new Error("Age field not found or not number")
       }
@@ -278,14 +278,14 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("record")
 
-      const addressField = field.fields.find((f) => f.label === "address")
+      const addressField = field.fields["address"] as RecordNode
       if (!addressField || addressField.type !== "record") {
         throw new Error("Address field not found or not a record")
       }
 
       expect(addressField.type).toBe("record")
       expect(addressField.displayType).toBe("object")
-      expect(addressField.fields).toHaveLength(2)
+      expect(Object.keys(addressField.fields)).toHaveLength(2)
     })
 
     it("should handle ICRC-1 account record", () => {
@@ -304,21 +304,23 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("record")
 
-      const ownerField = field.fields.find((f) => f.label === "owner")
+      const ownerField = field.fields["owner"]
       if (!ownerField || ownerField.type !== "principal") {
         throw new Error("Owner field not found or not principal")
       }
       expect(ownerField.type).toBe("principal")
       expect(ownerField.displayType).toBe("string")
 
-      const subaccountField = field.fields.find(
-        (f) => f.label === "subaccount"
-      ) as OptionalNode
+      const subaccountField = field.fields["subaccount"] as OptionalNode
       if (!subaccountField || subaccountField.type !== "optional") {
         throw new Error("Subaccount field not found or not optional")
       }
       expect(subaccountField.type).toBe("optional")
-      expect(subaccountField.inner.type).toBe("blob")
+      // Resolve an example value to validate inner blob type
+      const subaccountResolved = subaccountField.resolve([
+        new Uint8Array([1, 2, 3]),
+      ])
+      expect((subaccountResolved.value as ResolvedNode).type).toBe("blob")
     })
   })
 
@@ -342,10 +344,14 @@ describe("ResultFieldVisitor", () => {
       expect(field.type).toBe("variant")
       expect(field.candidType).toBe("variant")
       expect(field.displayType).toBe("variant")
-      expect(field.options).toContain("Active")
-      expect(field.options).toContain("Inactive")
-      expect(field.options).toContain("Pending")
-      expect(field.options).toHaveLength(3)
+      // Validate options by resolving each option
+      const resolvedActive = field.resolve({ Active: null })
+      expect(resolvedActive.selected).toBe("Active")
+      expect(resolvedActive.selectedOption.type).toBe("null")
+      const resolvedInactive = field.resolve({ Inactive: null })
+      expect(resolvedInactive.selected).toBe("Inactive")
+      const resolvedPending = field.resolve({ Pending: null })
+      expect(resolvedPending.selected).toBe("Pending")
     })
 
     it("should handle variant with payloads", () => {
@@ -385,26 +391,19 @@ describe("ResultFieldVisitor", () => {
       )
 
       expect(field.type).toBe("variant")
-      expect(field.options).toContain("Transfer")
-      expect(field.options).toContain("Approve")
-      expect(field.options).toContain("Mint")
-      expect(field.options).toHaveLength(3)
+      // Validate Transfer payload
+      const transferResolved = field.resolve({
+        Transfer: { from: "aaaaa-aa", to: "bbbbb-bb", amount: BigInt(1) },
+      })
+      expect(transferResolved.selected).toBe("Transfer")
+      expect(transferResolved.selectedOption.type).toBe("record")
+      expect(
+        Object.keys((transferResolved.selectedOption as RecordNode).fields)
+      ).toHaveLength(3)
 
-      const transferField = field.optionNodes.find(
-        (f) => f.label === "Transfer"
-      )
-
-      if (!transferField || transferField.type !== "record") {
-        throw new Error("Transfer field not found or not record")
-      }
-      expect(transferField.type).toBe("record")
-      expect(transferField.fields).toHaveLength(3)
-
-      const approveField = field.optionNodes.find((f) => f.label === "Approve")
-      if (!approveField || approveField.type !== "number") {
-        throw new Error("Approve field not found or not number")
-      }
-      expect(approveField.type).toBe("number")
+      const approveResolved = field.resolve({ Approve: BigInt(5) })
+      expect(approveResolved.selected).toBe("Approve")
+      expect(approveResolved.selectedOption.type).toBe("number")
     })
 
     it("should detect Result variant (Ok/Err)", () => {
@@ -423,20 +422,16 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("variant")
       expect(field.displayType).toBe("result") // Special result type
-      expect(field.options).toContain("Ok")
-      expect(field.options).toContain("Err")
 
-      const okField = field.optionNodes.find((f) => f.label === "Ok")
-      if (!okField || okField.type !== "number") {
-        throw new Error("Ok field not found or not number")
-      }
-      expect(okField.displayType).toBe("string")
+      const okResolved = field.resolve({ Ok: BigInt(1) })
+      expect(okResolved.selected).toBe("Ok")
+      expect(okResolved.selectedOption.type).toBe("number")
+      expect(okResolved.selectedOption.displayType).toBe("string")
 
-      const errField = field.optionNodes.find((f) => f.label === "Err")
-      if (!errField || errField.type !== "text") {
-        throw new Error("Err field not found or not text")
-      }
-      expect(errField.displayType).toBe("string")
+      const errResolved = field.resolve({ Err: "error" })
+      expect(errResolved.selected).toBe("Err")
+      expect(errResolved.selectedOption.type).toBe("text")
+      expect(errResolved.selectedOption.displayType).toBe("string")
     })
 
     it("should detect complex Result variant", () => {
@@ -475,17 +470,15 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.displayType).toBe("result")
 
-      const okField = field.optionNodes.find((f) => f.label === "Ok")
-      if (!okField || okField.type !== "record") {
-        throw new Error("Ok field not found or not record")
-      }
-      expect(okField.type).toBe("record")
+      const okResolved = field.resolve({
+        Ok: { id: BigInt(1), data: new Uint8Array([1, 2, 3]) },
+      })
+      expect(okResolved.selected).toBe("Ok")
+      expect(okResolved.selectedOption.type).toBe("record")
 
-      const errField = field.optionNodes.find((f) => f.label === "Err")
-      if (!errField || errField.type !== "variant") {
-        throw new Error("Err field not found or not variant")
-      }
-      expect(errField.type).toBe("variant")
+      const errResolved = field.resolve({ Err: { NotFound: null } })
+      expect(errResolved.selected).toBe("Err")
+      expect(errResolved.selectedOption.type).toBe("variant")
     })
 
     it("should not detect non-Result variant with Ok and other options", () => {
@@ -556,7 +549,9 @@ describe("ResultFieldVisitor", () => {
       expect(field.type).toBe("optional")
       expect(field.candidType).toBe("opt")
       expect(field.displayType).toBe("nullable") // opt T → T | null
-      expect(field.inner.type).toBe("text")
+      // Validate inner by resolving a value
+      const optResolved = field.resolve(["Bob"])
+      expect((optResolved.value as ResolvedNode).type).toBe("text")
     })
 
     it("should handle optional record", () => {
@@ -568,7 +563,9 @@ describe("ResultFieldVisitor", () => {
       const field = visitor.visitOpt(optType, recordInOpt, "metadata")
 
       expect(field.type).toBe("optional")
-      expect(field.inner.type).toBe("record")
+      // Validate inner by resolving a record
+      const metaResolved = field.resolve([{ name: "x", value: BigInt(1) }])
+      expect((metaResolved.value as ResolvedNode).type).toBe("record")
     })
 
     it("should handle nested optional", () => {
@@ -577,9 +574,11 @@ describe("ResultFieldVisitor", () => {
       const field = visitor.visitOpt(optType, innerOpt, "maybeNumber")
 
       expect(field.type).toBe("optional")
-      expect(field.inner.type).toBe("optional")
-      const innerNode = field.inner as OptionalNode
-      expect(innerNode.inner.type).toBe("number")
+      // Validate nested optional by resolving a nested array
+      const nestedResolved = field.resolve([[BigInt(1)]])
+      expect((nestedResolved.value as ResolvedNode).type).toBe("optional")
+      const innerResolved = nestedResolved.value as OptionalNode
+      expect((innerResolved.value as ResolvedNode).type).toBe("number")
     })
   })
 
@@ -591,11 +590,10 @@ describe("ResultFieldVisitor", () => {
       expect(field.type).toBe("vector")
       expect(field.candidType).toBe("vec")
       expect(field.displayType).toBe("array")
-      if (field.type === "vector") {
-        expect(field.item.type).toBe("text")
-      } else {
-        throw new Error("Field is not a vector")
-      }
+      // Validate items by resolving
+      const vecResolved = field.resolve(["a", "b", "c"]) as VectorNode
+      expect(vecResolved.items).toHaveLength(3)
+      expect(vecResolved.items[0].value).toBe("a")
     })
 
     it("should handle vector of records", () => {
@@ -607,11 +605,9 @@ describe("ResultFieldVisitor", () => {
       const field = visitor.visitVec(vecType, recType, "items")
 
       expect(field.type).toBe("vector")
-      if (field.type === "vector") {
-        expect(field.item.type).toBe("record")
-      } else {
-        throw new Error("Field is not a vector")
-      }
+      // Validate by resolving
+      const itemsResolved = field.resolve([{ id: BigInt(1), name: "x" }])
+      expect(itemsResolved.items[0].type).toBe("record")
     })
 
     it("should handle blob (vec nat8)", () => {
@@ -621,11 +617,11 @@ describe("ResultFieldVisitor", () => {
       expect(field.type).toBe("blob")
       expect(field.candidType).toBe("blob")
       expect(field.displayType).toBe("string") // Blob → hex string
-      if (field.type === "blob") {
-        expect(field.displayHint).toBe("hex")
-      } else {
-        throw new Error("Field is not a blob")
-      }
+      // Validate by resolving a Uint8Array
+      const blobResolved = field.resolve(
+        new Uint8Array([0x12, 0x34, 0xab, 0xcd])
+      )
+      expect(blobResolved.value).toBe("1234abcd")
     })
 
     it("should handle nested vectors", () => {
@@ -634,11 +630,9 @@ describe("ResultFieldVisitor", () => {
       const field = visitor.visitVec(nestedVecType, innerVec, "matrix")
 
       expect(field.type).toBe("vector")
-      if (field.type === "vector") {
-        expect(field.item.type).toBe("vector")
-      } else {
-        throw new Error("Field is not a vector")
-      }
+      // Validate nested items via resolve
+      const nestedResolved = field.resolve([[BigInt(1)]])
+      expect(nestedResolved.items[0].type).toBe("vector")
     })
 
     it("should handle vec of tuples (Map-like)", () => {
@@ -651,8 +645,10 @@ describe("ResultFieldVisitor", () => {
       ) as VectorNode
 
       expect(field.type).toBe("vector")
-      expect(field.item.type).toBe("tuple")
-      const item = field.item as TupleNode
+      // Validate by resolving a tuple item
+      const vecTupleResolved = field.resolve([["a", BigInt(1)]])
+      expect(vecTupleResolved.items[0].type).toBe("tuple")
+      const item = vecTupleResolved.items[0] as TupleNode
       if (item.type === "tuple") {
         expect(item.items).toHaveLength(2)
       } else {
@@ -689,17 +685,10 @@ describe("ResultFieldVisitor", () => {
       expect(field.type).toBe("recursive")
       expect(field.candidType).toBe("rec")
       expect(field.displayType).toBe("recursive")
-      expect(field.typeName).toBeDefined()
-      expect(typeof field.extract).toBe("function")
-
-      // Extract should return the variant
-      const extracted = field.extract()
-      if (extracted.type !== "variant") {
-        throw new Error("Extracted field is not variant")
-      }
-      expect(extracted.type).toBe("variant")
-      expect((extracted as VariantNode).options).toContain("Leaf")
-      expect((extracted as VariantNode).options).toContain("Node")
+      // Resolve to inspect inner schema
+      const treeResolved = field.resolve({ Leaf: BigInt(1) })
+      expect(treeResolved.inner.type).toBe("variant")
+      expect((treeResolved.inner as ResolvedNode).selected).toBe("Leaf")
     })
 
     it("should handle recursive linked list", () => {
@@ -728,9 +717,9 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("recursive")
 
-      const extractedNode = field.extract()
-      expect(extractedNode.type).toBe("variant")
-      expect((extractedNode as VariantNode).options).toEqual(["Nil", "Cons"])
+      const listResolved = field.resolve({ Nil: null })
+      expect(listResolved.inner.type).toBe("variant")
+      expect((listResolved.inner as ResolvedNode).selected).toBe("Nil")
     })
   })
 
@@ -936,23 +925,28 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.displayType).toBe("result")
 
-      const okField = field.optionNodes.find((f) => f.label === "Ok")
-
-      if (!okField || okField.type !== "number") {
+      const okResolved = field.resolve({ Ok: BigInt(123) })
+      if ((okResolved.selectedOption as ResolvedNode).type !== "number") {
         throw new Error("Ok field is not number")
       }
+      expect((okResolved.selectedOption as ResolvedNode).candidType).toBe("nat")
+      expect((okResolved.selectedOption as ResolvedNode).displayType).toBe(
+        "string"
+      )
 
-      expect(okField.candidType).toBe("nat")
-      expect(okField.displayType).toBe("string")
-
-      const errField = field.optionNodes.find((f) => f.label === "Err")
-      if (!errField || errField.type !== "variant") {
-        throw new Error("Err field is not variant")
-      }
-
-      expect(errField.type).toBe("variant")
-      expect((errField as VariantNode).options).toContain("InsufficientFunds")
-      expect((errField as VariantNode).options).toContain("GenericError")
+      const errResolved = field.resolve({
+        Err: { InsufficientFunds: { balance: BigInt(0) } },
+      })
+      const innerErr = errResolved.selectedOption as ResolvedNode
+      expect(innerErr.type).toBe("variant")
+      const insufficient = (innerErr as any).resolve({
+        InsufficientFunds: { balance: BigInt(0) },
+      })
+      expect(insufficient.selected).toBe("InsufficientFunds")
+      const generic = (innerErr as any).resolve({
+        GenericError: { error_code: BigInt(1), message: "err" },
+      })
+      expect(generic.selected).toBe("GenericError")
     })
 
     it("should handle SNS canister status return", () => {
@@ -1005,50 +999,46 @@ describe("ResultFieldVisitor", () => {
       expect(field.type).toBe("record")
 
       // Check status variant
-      const statusField = field.fields.find(
-        (f) => f.label === "status"
-      ) as VariantNode
+      const statusField = field.fields["status"] as VariantNode
       if (!statusField || statusField.type !== "variant") {
         throw new Error("Status field not found or not variant")
       }
       expect(statusField.type).toBe("variant")
       expect(statusField.displayType).toBe("variant")
-      expect(statusField.options).toHaveLength(3)
+      // Validate via resolving options
+      const statusResolved = statusField.resolve({ running: null })
+      expect(statusResolved.selected).toBe("running")
 
       // Check settings record
-      const settingsField = field.fields.find(
-        (f) => f.label === "settings"
-      ) as RecordNode
+      const settingsField = field.fields["settings"] as RecordNode
       if (!settingsField || settingsField.type !== "record") {
         throw new Error("Settings field not found or not record")
       }
       expect(settingsField.type).toBe("record")
       expect(settingsField.displayType).toBe("object")
 
-      const controllersField = settingsField.fields.find(
-        (f) => f.label === "controllers"
-      ) as VectorNode
+      const controllersField = settingsField.fields["controllers"] as VectorNode
       if (!controllersField || controllersField.type !== "vector") {
         throw new Error("Controllers field not found or not vector")
       }
       expect(controllersField.type).toBe("vector")
-      expect(controllersField.item.type).toBe("principal")
+      // Validate item type via resolve
+      const controllersResolved = controllersField.resolve(["aaaaa-aa"])
+      expect(controllersResolved.items[0].type).toBe("principal")
 
       // Check cycles - should detect special format
-      const cyclesField = field.fields.find(
-        (f) => f.label === "cycles"
-      ) as NumberNode
+      const cyclesField = field.fields["cycles"] as NumberNode
       if (!cyclesField || cyclesField.type !== "number") {
         throw new Error("Cycles field not found or not number")
       }
       expect(cyclesField.format).toBe("cycle")
 
       // Check module_hash - optional blob
-      const moduleHashField = field.fields.find(
-        (f) => f.label === "module_hash"
-      ) as OptionalNode
+      const moduleHashField = field.fields["module_hash"] as OptionalNode
       expect(moduleHashField.type).toBe("optional")
-      expect(moduleHashField.inner.type).toBe("blob")
+      // Validate via resolving a sample blob
+      const moduleHashResolved = moduleHashField.resolve([new Uint8Array([1])])
+      expect((moduleHashResolved.value as ResolvedNode).type).toBe("blob")
     })
 
     it("should handle complex governance proposal types", () => {
@@ -1116,9 +1106,7 @@ describe("ResultFieldVisitor", () => {
       expect(field.fields).toHaveLength(12)
 
       // Check timestamp field (note: the label pattern matching may not match "proposal_timestamp_seconds")
-      const timestampField = field.fields.find(
-        (f) => f.label === "proposal_timestamp_seconds"
-      )
+      const timestampField = field.fields["proposal_timestamp_seconds"]
       if (!timestampField || timestampField.type !== "number") {
         throw new Error("Timestamp field not found or not number")
       }
@@ -1126,18 +1114,20 @@ describe("ResultFieldVisitor", () => {
       expect(timestampField.displayType).toBe("string") // nat64 → string
 
       // Check ballots - vec of tuples
-      const ballotsField = field.fields.find((f) => f.label === "ballots")
+      const ballotsField = field.fields["ballots"]
       if (!ballotsField || ballotsField.type !== "vector") {
         throw new Error("Ballots field not found or not vector")
       }
       expect(ballotsField.type).toBe("vector")
-      expect(ballotsField.item.type).toBe("tuple")
-
-      const ballotTuple = ballotsField.item
+      // Validate via resolve
+      const ballotsResolved = ballotsField.resolve([
+        [BigInt(1), { vote: 1, voting_power: BigInt(2) }],
+      ])
+      const ballotTuple = ballotsResolved.items[0]
       if (ballotTuple.type !== "tuple") {
         throw new Error("Ballot item is not tuple")
       }
-      expect(ballotTuple.items).toHaveLength(2)
+      expect((ballotTuple as TupleNode).items).toHaveLength(2)
       expect(ballotTuple.items[0].type).toBe("number") // nat64
       expect(ballotTuple.items[1].type).toBe("record") // ballot record
     })
@@ -1245,10 +1235,10 @@ describe("ResultFieldVisitor", () => {
         })
 
         expect(resolved.type).toBe(field.type)
-        const value = resolved.value as Record<string, ResolvedNode>
-        expect(value.name.value).toBe("Alice")
-        expect(value.age.value).toBe(30)
-        expect(value.active.value).toBe(true)
+        const value = resolved.fields as Record<string, ResolvedNode>
+        expect(value["name"].value).toBe("Alice")
+        expect(value["age"].value).toBe(30)
+        expect(value["active"].value).toBe(true)
       })
 
       it("should handle null record value", () => {
@@ -1282,12 +1272,9 @@ describe("ResultFieldVisitor", () => {
 
         const resolved = field.resolve({ Ok: "Success" })
         expect(resolved.type).toBe(field.type)
-        const value = resolved.value as {
-          option: string
-          data: ResolvedNode
-        }
-        expect(value.option).toBe("Ok")
-        expect(value.data.value).toBe("Success")
+        expect(resolved.selected).toBe("Ok")
+        const data = resolved.selectedOption as ResolvedNode
+        expect(data.value).toBe("Success")
       })
 
       it("should resolve variant with Err option", () => {
@@ -1306,12 +1293,9 @@ describe("ResultFieldVisitor", () => {
 
         const resolved = field.resolve({ Err: "Something went wrong" })
 
-        const value = resolved.value as {
-          option: string
-          data: ResolvedNode
-        }
-        expect(value.option).toBe("Err")
-        expect(value.data.value).toBe("Something went wrong")
+        expect(resolved.selected).toBe("Err")
+        const data = resolved.selectedOption as ResolvedNode
+        expect(data.value).toBe("Something went wrong")
       })
 
       it("should handle null variant value", () => {
@@ -1343,10 +1327,7 @@ describe("ResultFieldVisitor", () => {
         const resolved = field.resolve(["hello", 123n, true])
 
         expect(resolved.type).toBe(field.type)
-        const value = resolved.value as Array<{
-          field: ResultField
-          value: unknown
-        }>
+        const value = resolved.items as ResolvedNode[]
         expect(value).toHaveLength(3)
         expect(value[0].value).toBe("hello")
         expect(value[1].value).toBe("123")
@@ -1392,10 +1373,7 @@ describe("ResultFieldVisitor", () => {
         const resolved = field.resolve(["a", "b", "c"])
 
         expect(resolved.type).toBe(field.type)
-        const value = resolved.value as Array<{
-          field: ResultField
-          value: unknown
-        }>
+        const value = resolved.items as ResolvedNode[]
         expect(value).toHaveLength(3)
         expect(value[0].value).toBe("a")
         expect(value[1].value).toBe("b")
@@ -1503,14 +1481,14 @@ describe("ResultFieldVisitor", () => {
           },
         })
 
-        const value = resolved.value as Record<string, ResolvedNode>
-        const userValue = value.user.value as Record<string, ResolvedNode>
-        const profileValue = userValue.profile.value as Record<
+        const value = resolved.fields as Record<string, ResolvedNode>
+        const userValue = value.user as ResolvedNode
+        const profileValue = userValue.fields["profile"] as Record<
           string,
           ResolvedNode
         >
-        expect(profileValue.name.value).toBe("Alice")
-        expect(profileValue.verified.value).toBe(true)
+        expect(profileValue["name"].value).toBe("Alice")
+        expect(profileValue["verified"].value).toBe(true)
       })
     })
   })

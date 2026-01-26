@@ -12,14 +12,16 @@ import type {
   RecordArgumentField,
   VariantArgumentField,
 } from "../../src/visitor/arguments"
-import type {
-  MethodResultMeta,
-  NumberResultField,
-  OptionalResultField,
-  RecordResultField,
-  TextResultField,
-  VariantResultField,
-  VectorResultField,
+import {
+  MethodMeta,
+  NumberNode,
+  OptionalNode,
+  RecordNode,
+  ResolvedNode,
+  TextNode,
+  TupleNode,
+  VariantNode,
+  VectorNode,
 } from "../../src/visitor/returns"
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -425,9 +427,9 @@ describe("MetadataDisplayReactor", () => {
       expect(meta).toBeDefined()
       expect(meta.functionType).toBe("query")
       expect(meta.returnCount).toBe(1)
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const nameField = meta.resultFields[0]
+      const nameField = meta.returns[0]
       if (nameField.type !== "text") {
         throw new Error("Expected text field")
       }
@@ -440,9 +442,9 @@ describe("MetadataDisplayReactor", () => {
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const decimalsField = meta.resultFields[0]
+      const decimalsField = meta.returns[0]
       if (decimalsField.type !== "number") {
         throw new Error("Expected number field")
       }
@@ -456,9 +458,9 @@ describe("MetadataDisplayReactor", () => {
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const feeField = meta.resultFields[0]
+      const feeField = meta.returns[0]
       if (feeField.type !== "number") {
         throw new Error("Expected number field")
       }
@@ -473,9 +475,9 @@ describe("MetadataDisplayReactor", () => {
 
       expect(meta).toBeDefined()
       expect(meta.functionType).toBe("query")
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const balanceField = meta.resultFields[0]
+      const balanceField = meta.returns[0]
       if (balanceField.type !== "number") {
         throw new Error("Expected number field")
       }
@@ -490,34 +492,37 @@ describe("MetadataDisplayReactor", () => {
 
       expect(meta).toBeDefined()
       expect(meta.functionType).toBe("update")
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const resultField = meta.resultFields[0]
+      const resultField = meta.returns[0]
       if (resultField.type !== "variant") {
         throw new Error("Expected variant field")
       }
       expect(resultField.type).toBe("variant")
       expect(resultField.displayType).toBe("result")
-      expect(resultField.options).toContain("Ok")
-      expect(resultField.options).toContain("Err")
 
-      // Check Ok field
-      const okField = resultField.optionFields.find((f) => f.label === "Ok")
-      if (!okField || okField.type !== "number") {
-        throw new Error("Ok field not found or not number")
-      }
+      // Validate Ok by resolving
+      const okResolved = resultField.resolve({ Ok: BigInt(1) }) as VariantNode
+      expect(okResolved.selected).toBe("Ok")
+      const okField = okResolved.selectedOption
       expect(okField.type).toBe("number")
       expect(okField.candidType).toBe("nat")
       expect(okField.displayType).toBe("string")
 
-      // Check Err field (nested variant)
-      const errField = resultField.optionFields.find((f) => f.label === "Err")
-      if (!errField || errField.type !== "variant") {
-        throw new Error("Err field not found or not variant")
-      }
+      // Check Err field (nested variant) by resolving an Err payload
+      const errResolved = resultField.resolve({
+        Err: { InsufficientFunds: { balance: BigInt(0) } },
+      }) as VariantNode
+      const errField = errResolved.selectedOption
       expect(errField.type).toBe("variant")
-      expect(errField.options).toContain("InsufficientFunds")
-      expect(errField.options).toContain("GenericError")
+      const insuff = (errField as any).resolve({
+        InsufficientFunds: { balance: BigInt(0) },
+      })
+      expect(insuff.selected).toBe("InsufficientFunds")
+      const gen = (errField as any).resolve({
+        GenericError: { error_code: BigInt(1), message: "err" },
+      })
+      expect(gen.selected).toBe("GenericError")
     })
 
     it("should generate result metadata for icrc1_metadata", () => {
@@ -525,15 +530,15 @@ describe("MetadataDisplayReactor", () => {
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const metadataField = meta.resultFields[0] as VectorResultField
+      const metadataField = meta.returns[0] as VectorNode
       expect(metadataField.type).toBe("vector")
       expect(metadataField.displayType).toBe("array")
 
-      // Item is a tuple (text, variant)
-      // Since Vec<Tuple> is represented differently, we just check it's a valid structure
-      expect(metadataField.itemField).toBeDefined()
+      // Validate by resolving a sample metadata vec
+      const itemResolved = metadataField.resolve([["t", { Nat: BigInt(1) }]])
+      expect(itemResolved.items[0].type).toBe("tuple")
     })
 
     it("should return undefined for non-existent method", () => {
@@ -595,24 +600,30 @@ describe("MetadataDisplayReactor", () => {
 
       expect(meta).toBeDefined()
       expect(meta.functionType).toBe("query")
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const optionalField = meta.resultFields[0]
+      const optionalField = meta.returns[0]
       if (optionalField.type !== "optional") {
         throw new Error("Expected optional field")
       }
       expect(optionalField.type).toBe("optional")
       expect(optionalField.displayType).toBe("nullable")
 
-      const innerRecord = optionalField.innerField
-      if (innerRecord.type !== "record") {
-        throw new Error("Expected record field")
-      }
+      // Validate inner record by resolving an example user
+      const resolved = optionalField.resolve([
+        {
+          id: BigInt(1),
+          name: "u",
+          email: null,
+          status: { Active: null },
+          created_at: BigInt(1),
+          tags: ["t"],
+          metadata: null,
+        },
+      ]) as OptionalNode
+      const innerRecord = resolved.value as ResolvedNode
       expect(innerRecord.type).toBe("record")
-      expect(innerRecord.fields.length).toBeGreaterThanOrEqual(5)
-
-      // Check for expected fields
-      const labels = innerRecord.fields.map((f) => f.label)
+      const labels = Object.keys((innerRecord as RecordNode).fields)
       expect(labels).toContain("id")
       expect(labels).toContain("name")
       expect(labels).toContain("email")
@@ -626,21 +637,27 @@ describe("MetadataDisplayReactor", () => {
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const vecField = meta.resultFields[0]
+      const vecField = meta.returns[0]
       if (vecField.type !== "vector") {
         throw new Error("Expected vector field")
       }
       expect(vecField.type).toBe("vector")
       expect(vecField.displayType).toBe("array")
 
-      // Item should be UserData record
-      const itemField = vecField.itemField
-      if (itemField.type !== "record") {
-        throw new Error("Expected record field")
-      }
-      expect(itemField.type).toBe("record")
+      // Item should be UserData record (validate via resolve)
+      const vecResolved = vecField.resolve([
+        {
+          id: BigInt(1),
+          name: "x",
+          email: null,
+          status: { Active: null },
+          created_at: BigInt(1),
+          tags: [],
+        },
+      ]) as VectorNode
+      expect(vecResolved.items[0].type).toBe("record")
     })
 
     it("should handle simple Ok/Err variant without payload (delete_user)", () => {
@@ -648,41 +665,49 @@ describe("MetadataDisplayReactor", () => {
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const resultField = meta.resultFields[0]
+      const resultField = meta.returns[0]
       if (resultField.type !== "variant") {
         throw new Error("Expected variant field")
       }
       expect(resultField.type).toBe("variant")
-      expect(resultField.options).toContain("Ok")
-      expect(resultField.options).toContain("Err")
+      // Validate via resolve
+      const okResolved = resultField.resolve({ Ok: null }) as VariantNode
+      expect(okResolved.selected).toBe("Ok")
+      const errResolved = resultField.resolve({ Err: "e" }) as VariantNode
+      expect(errResolved.selected).toBe("Err")
     })
 
     it("should detect timestamp format in created_at field", () => {
       const meta = reactor.getResultMeta("get_user")
       if (!meta) throw new Error("Metadata not found")
 
-      const optionalField = meta.resultFields[0]
+      const optionalField = meta.returns[0]
       if (optionalField.type !== "optional") {
         throw new Error("Expected optional field")
       }
-      const innerRecord = optionalField.innerField
-      if (innerRecord.type !== "record") {
-        throw new Error("Expected record field")
-      }
-
-      const createdAtField = innerRecord.fields.find(
-        (f) => f.label === "created_at"
-      )
+      // Resolve to inspect created_at
+      const resolved = optionalField.resolve([
+        {
+          id: BigInt(1),
+          name: "x",
+          email: null,
+          status: { Active: null },
+          created_at: BigInt(1),
+          tags: [],
+        },
+      ]) as OptionalNode
+      const innerRecord = resolved.value as RecordNode
+      const createdAtField = innerRecord.fields["created_at"] as NumberNode
       if (!createdAtField || createdAtField.type !== "number") {
         throw new Error("CreatedAt field not found or not number")
       }
 
       expect(createdAtField.type).toBe("number")
       expect(createdAtField.candidType).toBe("nat64")
+      expect(createdAtField.format).toBe("timestamp")
       expect(createdAtField.displayType).toBe("string") // nat64 → string
-      expect(createdAtField.numberFormat).toBe("timestamp") // Detected from label
     })
   })
 
@@ -745,9 +770,9 @@ describe("MetadataDisplayReactor", () => {
       const resultMeta = reactor.getResultMeta("complex_method")
       if (!resultMeta) throw new Error("Metadata not found")
       expect(resultMeta).toBeDefined()
-      expect(resultMeta.resultFields).toHaveLength(1)
+      expect(resultMeta.returns).toHaveLength(1)
 
-      const resultVariant = resultMeta.resultFields[0]
+      const resultVariant = resultMeta.returns[0]
       if (resultVariant.type !== "variant") {
         throw new Error("Expected variant field")
       }
@@ -844,28 +869,22 @@ describe("MetadataDisplayReactor", () => {
       expect(allResultMeta).toHaveProperty("set_count")
 
       // Check greet result
-      const greetMeta = (allResultMeta as any)[
-        "greet"
-      ] as MethodResultMeta<unknown>
+      const greetMeta = (allResultMeta as any)["greet"] as MethodMeta
       expect(greetMeta.returnCount).toBe(1)
-      expect(greetMeta.resultFields[0].type).toBe("text")
+      expect(greetMeta.returns[0].type).toBe("text")
 
       // Check get_count result
-      const getCountMeta = (allResultMeta as any)[
-        "get_count"
-      ] as MethodResultMeta<unknown>
+      const getCountMeta = (allResultMeta as any)["get_count"] as MethodMeta
       expect(getCountMeta.returnCount).toBe(1)
-      expect(getCountMeta.resultFields[0].type).toBe("number")
-      const field = getCountMeta.resultFields[0]
+      expect(getCountMeta.returns[0].type).toBe("number")
+      const field = getCountMeta.returns[0]
       if (field.type !== "number") {
         throw new Error("Expected number field")
       }
       expect(field.displayType).toBe("string")
 
       // Check set_count result (no return)
-      const setCountMeta = (allResultMeta as any)[
-        "set_count"
-      ] as MethodResultMeta<unknown>
+      const setCountMeta = (allResultMeta as any)["set_count"] as MethodMeta
       expect(setCountMeta.returnCount).toBe(0)
     })
   })
@@ -906,10 +925,10 @@ describe("MetadataDisplayReactor", () => {
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
-      expect(meta.resultFields).toHaveLength(11)
+      expect(meta.returns).toHaveLength(11)
 
       // Verify display types
-      const fields = meta.resultFields as any[]
+      const fields = meta.returns as any[]
       expect(fields[0].displayType).toBe("string") // nat
       expect(fields[1].displayType).toBe("string") // int
       expect(fields[2].displayType).toBe("string") // nat64
@@ -940,20 +959,20 @@ describe("MetadataDisplayReactor", () => {
       const methodName = "icrc1_fee"
       const meta = reactor.getResultMeta(methodName)
       if (!meta) throw new Error("Metadata not found")
-      const field = meta.resultFields[0]
+      const field = meta.returns[0]
       // Use BigInt because we are simulating raw Candid value from Reactor
       const data = 100n
 
-      const resolved = field.resolve(data)
+      const resolved = field.resolve(data) as NumberNode
       expect(resolved.value).toBe("100")
-      expect(resolved.field.type).toBe("number")
+      expect(resolved.type).toBe("number")
     })
 
     it("should resolve complex metadata result correctly", () => {
       const methodName = "icrc1_metadata"
       const meta = reactor.getResultMeta(methodName)
       if (!meta) throw new Error("Metadata not found")
-      const field = meta.resultFields[0]
+      const field = meta.returns[0]
       if (field.type !== "vector") {
         throw new Error("Expected vector field")
       }
@@ -964,8 +983,8 @@ describe("MetadataDisplayReactor", () => {
         ["icrc1:decimals", { Nat: 8n }],
       ]
 
-      const resolved = field.resolve(mockCandid)
-      const displayData = resolved.value
+      const resolved = field.resolve(mockCandid) as TupleNode
+      const displayData = resolved.items
 
       // Vec field resolves to Array of values
       expect(Array.isArray(displayData)).toBe(true)
@@ -1032,8 +1051,8 @@ describe("MetadataDisplayReactor E2E", () => {
 
     const resultMeta = reactor.getResultMeta("icrc1_name")
     expect(resultMeta).toBeDefined()
-    expect(resultMeta!.resultFields).toHaveLength(1)
-    expect(resultMeta!.resultFields[0].type).toBe("text")
+    expect(resultMeta!.returns).toHaveLength(1)
+    expect(resultMeta!.returns[0].type).toBe("text")
   })
 
   it("should call method and return transformed result", async () => {
@@ -1060,8 +1079,8 @@ describe("MetadataDisplayReactor E2E", () => {
 
     expect((result as any).results[0].value).toBe("ICP")
     expect(meta).toBeDefined()
-    expect(meta.resultFields).toHaveLength(1)
-    expect(meta.resultFields[0].type).toBe("text")
+    expect(meta.returns).toHaveLength(1)
+    expect(meta.returns[0].type).toBe("text")
     console.log(
       "✅ callDynamicWithMeta result:",
       (result as any).results[0].value
@@ -1130,6 +1149,8 @@ describe("Complex Result Handling (Mocked)", () => {
     const fieldResult = (result as any).results[0]
 
     expect(fieldResult.field.type).toBe("variant")
+    expect(fieldResult.field.displayType).toBe("result")
+    // Ensure resolved payload shape
     expect(fieldResult.field.displayType).toBe("result")
 
     // Check that we have the extracted Ok value structure
