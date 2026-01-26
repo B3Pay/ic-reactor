@@ -1064,13 +1064,9 @@ describe("MetadataDisplayReactor E2E", () => {
 
   it("should call method and return transformed result", async () => {
     const result = await reactor.callMethod({
-      functionName: "icrc1_name" as any,
+      functionName: "icrc1_name",
     })
-
-    // result is now ResolvedMethodResultWithRaw
-    // We check the display value of the first result
-    expect((result as any).results[0].value).toBe("Internet Computer")
-    console.log("✅ icrc1_name result:", (result as any).results[0].value)
+    expect(result.results[0].value).toBe("Internet Computer")
   })
 
   it("should call method with metadata using callDynamicWithMeta", async () => {
