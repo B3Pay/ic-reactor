@@ -14,10 +14,10 @@ export const VariantResult: React.FC<{
     }}
   >
     <strong>
-      {result.label} (Variant: {result.value.option}):
+      {result.label} (Variant: {result.value.key}):
     </strong>
     <div style={{ paddingLeft: "20px" }}>
-      <ResultRenderer result={result.value.data} />
+      <ResultRenderer result={result.value.node} />
     </div>
   </div>
 )

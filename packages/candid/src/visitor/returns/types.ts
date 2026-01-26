@@ -88,9 +88,9 @@ export type ResultNode<T extends NodeType = NodeType> = ResultNodeBase<T> &
 // ════════════════════════════════════════════════════════════════════════════
 
 type NodeTypeExtras<T extends NodeType> = T extends "record"
-  ? { fields: ResultNode[] }
+  ? { fields: Record<string, ResultNode> }
   : T extends "variant"
-    ? { options: string[]; optionNodes: ResultNode[] }
+    ? { options: Record<string, ResultNode> }
     : T extends "tuple"
       ? { items: ResultNode[] }
       : T extends "optional"
@@ -114,7 +114,7 @@ type NodeTypeExtras<T extends NodeType> = T extends "record"
 type NodeValue<T extends NodeType> = T extends "record"
   ? Record<string, ResolvedNode>
   : T extends "variant"
-    ? { option: string; data: ResolvedNode }
+    ? { key: string; node: ResolvedNode }
     : T extends "tuple"
       ? ResolvedNode[]
       : T extends "optional"

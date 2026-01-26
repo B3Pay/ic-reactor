@@ -14,13 +14,9 @@ export const RecordResult: React.FC<{
   >
     <strong>{result.label} (Record):</strong>
     <div style={{ paddingLeft: "20px" }}>
-      {result.fields.map((field) => {
-        const childResult = result.value?.[field.label] as
-          | ResolvedNode
-          | undefined
-        if (!childResult) return null
-        return <ResultRenderer key={field.label} result={childResult} />
-      })}
+      {Object.entries(result.value).map(([key, value]) => (
+        <ResultRenderer key={key} result={value} />
+      ))}
     </div>
   </div>
 )

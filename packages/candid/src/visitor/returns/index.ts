@@ -120,7 +120,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     fields_: Array<[string, IDL.Type]>,
     label: string
   ): ResultNode<"record"> {
-    const fields = fields_.map(([k, t]) => t.accept(this, k) as ResultNode)
+    const fields: Record<string, ResultNode> = {}
+    for (const [key, type] of fields_) {
+      fields[key] = type.accept(this, key) as ResultNode
+    }
 
     const node: ResultNode<"record"> = {
       type: "record",
@@ -134,14 +137,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         }
         const recordData = data as Record<string, unknown>
         const value: Record<string, ResolvedNode> = {}
-        fields.forEach((node) => {
-          value[node.label] = node.resolve(recordData[node.label])
-        })
-        return {
-          ...node,
-          value,
-          raw: data,
-        } as ResolvedNode<"record">
+        for (const [key, field] of Object.entries(fields)) {
+          value[key] = field.resolve(recordData[key])
+        }
+        return { ...node, value, raw: data }
       },
     }
     return node
@@ -152,9 +151,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     fields_: Array<[string, IDL.Type]>,
     label: string
   ): ResultNode<"variant"> {
-    const options = fields_.map(([k]) => k)
-    const optionNodes = fields_.map(([k, t]) => t.accept(this, k) as ResultNode)
-    const isResult = options.includes("Ok") && options.includes("Err")
+    const options: Record<string, ResultNode> = {}
+    for (const [key, type] of fields_) {
+      options[key] = type.accept(this, key) as ResultNode
+    }
+    const isResult = "Ok" in options && "Err" in options
 
     const node: ResultNode<"variant"> = {
       type: "variant",
@@ -162,7 +163,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: "variant",
       displayType: isResult ? "result" : "variant",
       options,
-      optionNodes,
       resolve(data: unknown): ResolvedNode<"variant"> {
         if (data === null || data === undefined) {
           throw new Error(
@@ -170,19 +170,16 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           )
         }
         const variantData = data as Record<string, unknown>
-        const option = Object.keys(variantData)[0]
-        const optionNode = optionNodes.find((node) => node.label === option)
+        const key = Object.keys(variantData)[0]
+        const optionNode = options[key]
         if (!optionNode) {
-          throw new Error(`Option ${option} not found in variant`)
+          throw new Error(`Option ${key} not found in variant`)
         }
         return {
           ...node,
-          value: {
-            option,
-            data: optionNode.resolve(variantData[option]),
-          },
+          value: { key, node: optionNode.resolve(variantData[key]) },
           raw: data,
-        } as ResolvedNode<"variant">
+        }
       },
     }
     return node
