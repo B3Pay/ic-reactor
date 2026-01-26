@@ -84,29 +84,21 @@ type NodeTypeExtras<T extends NodeType> = T extends "record"
   ? { fields: Record<string, ResultNodeRef> }
   : T extends "variant"
     ? { options: Record<string, ResultNodeRef>; selected?: string }
-    : T extends "tuple"
+    : T extends "tuple" | "vector"
       ? { items: ResultNodeRef[] }
-      : T extends "optional"
+      : T extends "optional" | "recursive"
         ? { inner: ResultNodeRef | null }
-        : T extends "vector"
-          ? { items?: ResultNodeRef[]; item: ResultNodeRef }
-          : T extends "blob"
-            ? { displayHint: "hex"; value?: string }
-            : T extends "recursive"
-              ? {
-                  typeName: string
-                  extract: () => ResultNodeRef
-                  value?: ResultNodeRef
-                }
-              : T extends "number"
-                ? { format: NumberFormat; value?: string | number }
-                : T extends "text" | "principal"
-                  ? { format: TextFormat; value?: string }
-                  : T extends "boolean"
-                    ? { value?: boolean }
-                    : T extends "null"
-                      ? { value?: null }
-                      : { value?: unknown } // unknown
+        : T extends "blob"
+          ? { value?: string }
+          : T extends "number"
+            ? { format?: NumberFormat; value?: string | number }
+            : T extends "text" | "principal"
+              ? { format?: TextFormat; value?: string }
+              : T extends "boolean"
+                ? { value?: boolean }
+                : T extends "null"
+                  ? { value?: null }
+                  : { value?: unknown } // unknown
 
 /**
  * A unified result node that contains both schema and resolved value.

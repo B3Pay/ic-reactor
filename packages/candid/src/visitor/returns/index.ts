@@ -252,7 +252,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         label,
         candidType: "blob",
         displayType: "string",
-        displayHint: "hex",
         resolve(data: unknown): ResolvedNode<"blob"> {
           return { ...node, value: codec.decode(data) as string, raw: data }
         },
@@ -260,14 +259,14 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       return node
     }
 
-    const item = ty.accept(this, "item") as ResultNode
+    const itemSchema = ty.accept(this, "item") as ResultNode
 
     const node: ResultNode<"vector"> = {
       type: "vector",
       label,
       candidType: "vec",
       displayType: "array",
-      item,
+      items: [], // empty schema placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"vector"> {
         if (data === null || data === undefined) {
           throw new Error(`Expected vector for field ${label}, but got ${data}`)
@@ -275,7 +274,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         const vectorData = data as unknown[]
         return {
           ...node,
-          items: vectorData.map((v) => item.resolve(v)),
+          items: vectorData.map((v) => itemSchema.resolve(v)),
           raw: data,
         }
       },
@@ -284,23 +283,24 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitRec<T>(
-    t: IDL.RecClass<T>,
+    _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     label: string
   ): ResultNode<"recursive"> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
+    // Lazy extraction to prevent infinite loops
+    let innerSchema: ResultNode | null = null
+    const getInner = () =>
+      (innerSchema ??= ty.accept(self, label) as ResultNode)
 
     const node: ResultNode<"recursive"> = {
       type: "recursive",
       label,
       candidType: "rec",
       displayType: "recursive",
-      typeName: t.name,
-      extract: () => ty.accept(self, label) as ResultNode,
+      inner: null, // null until resolved
       resolve(data: unknown): ResolvedNode<"recursive"> {
-        const innerResolved = node.extract().resolve(data)
-        return { ...node, value: innerResolved, raw: data }
+        return { ...node, inner: getInner().resolve(data), raw: data }
       },
     }
     return node
