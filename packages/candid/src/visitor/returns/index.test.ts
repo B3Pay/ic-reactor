@@ -606,7 +606,9 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("vector")
       // Validate by resolving
-      const itemsResolved = field.resolve([{ id: BigInt(1), name: "x" }])
+      const itemsResolved = field.resolve([
+        { id: BigInt(1), name: "x" },
+      ]) as VectorNode
       expect(itemsResolved.items[0].type).toBe("record")
     })
 
@@ -631,7 +633,7 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("vector")
       // Validate nested items via resolve
-      const nestedResolved = field.resolve([[BigInt(1)]])
+      const nestedResolved = field.resolve([[BigInt(1)]]) as VectorNode
       expect(nestedResolved.items[0].type).toBe("vector")
     })
 
@@ -686,9 +688,9 @@ describe("ResultFieldVisitor", () => {
       expect(field.candidType).toBe("rec")
       expect(field.displayType).toBe("recursive")
       // Resolve to inspect inner schema
-      const treeResolved = field.resolve({ Leaf: BigInt(1) })
+      const treeResolved = field.resolve({ Leaf: BigInt(1) }) as RecursiveNode
       expect(treeResolved.inner.type).toBe("variant")
-      expect((treeResolved.inner as ResolvedNode).selected).toBe("Leaf")
+      expect((treeResolved.inner as VariantNode).selected).toBe("Leaf")
     })
 
     it("should handle recursive linked list", () => {
@@ -717,9 +719,9 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("recursive")
 
-      const listResolved = field.resolve({ Nil: null })
+      const listResolved = field.resolve({ Nil: null }) as RecursiveNode
       expect(listResolved.inner.type).toBe("variant")
-      expect((listResolved.inner as ResolvedNode).selected).toBe("Nil")
+      expect((listResolved.inner as VariantNode).selected).toBe("Nil")
     })
   })
 
@@ -1103,7 +1105,7 @@ describe("ResultFieldVisitor", () => {
       )
 
       expect(field.type).toBe("record")
-      expect(field.fields).toHaveLength(12)
+      expect(Object.keys(field.fields)).toHaveLength(12)
 
       // Check timestamp field (note: the label pattern matching may not match "proposal_timestamp_seconds")
       const timestampField = field.fields["proposal_timestamp_seconds"]
@@ -1122,12 +1124,13 @@ describe("ResultFieldVisitor", () => {
       // Validate via resolve
       const ballotsResolved = ballotsField.resolve([
         [BigInt(1), { vote: 1, voting_power: BigInt(2) }],
-      ])
-      const ballotTuple = ballotsResolved.items[0]
+      ]) as TupleNode
+      expect(ballotsResolved.items).toHaveLength(1)
+      const ballotTuple = ballotsResolved.items[0] as TupleNode
       if (ballotTuple.type !== "tuple") {
         throw new Error("Ballot item is not tuple")
       }
-      expect((ballotTuple as TupleNode).items).toHaveLength(2)
+      expect(ballotTuple.items).toHaveLength(2)
       expect(ballotTuple.items[0].type).toBe("number") // nat64
       expect(ballotTuple.items[1].type).toBe("record") // ballot record
     })
@@ -1370,7 +1373,7 @@ describe("ResultFieldVisitor", () => {
         const vecType = IDL.Vec(IDL.Text)
         const field = visitor.visitVec(vecType, IDL.Text, "tags")
 
-        const resolved = field.resolve(["a", "b", "c"])
+        const resolved = field.resolve(["a", "b", "c"]) as VectorNode
 
         expect(resolved.type).toBe(field.type)
         const value = resolved.items as ResolvedNode[]
@@ -1384,12 +1387,11 @@ describe("ResultFieldVisitor", () => {
         const vecType = IDL.Vec(IDL.Nat)
         const field = visitor.visitVec(vecType, IDL.Nat, "numbers")
 
-        const resolved = field.resolve([])
+        const resolved = field.resolve([]) as VectorNode
 
-        const value = resolved.value as Array<{
-          field: ResultField
-          value: unknown
-        }>
+        expect(resolved.type).toBe(field.type)
+
+        const value = resolved.items as ResolvedNode[]
         expect(value).toHaveLength(0)
       })
 
@@ -1482,13 +1484,14 @@ describe("ResultFieldVisitor", () => {
         })
 
         const value = resolved.fields as Record<string, ResolvedNode>
-        const userValue = value.user as ResolvedNode
-        const profileValue = userValue.fields["profile"] as Record<
-          string,
-          ResolvedNode
-        >
-        expect(profileValue["name"].value).toBe("Alice")
-        expect(profileValue["verified"].value).toBe(true)
+        const userNode = value.user as RecordNode
+        if (userNode.type !== "record") {
+          throw new Error("User node is not a record")
+        }
+        const profileNode = userNode.fields["profile"] as RecordNode
+        const profileFields = profileNode.fields as Record<string, ResolvedNode>
+        expect(profileFields["name"].value).toBe("Alice")
+        expect(profileFields["verified"].value).toBe(true)
       })
     })
   })
@@ -1559,11 +1562,11 @@ describe("ResultFieldVisitor", () => {
       expect(result.results).toHaveLength(1)
       expect(result.results[0].type).toBe("record")
 
-      const recordValue = result.results[0].value
-      if (typeof recordValue !== "object" || recordValue === null) {
-        throw new Error("Expected record value object")
+      const recordNode = result.results[0] as RecordNode
+      if (recordNode.type !== "record") {
+        throw new Error("Expected record node")
       }
-      const val = recordValue as Record<string, ResolvedNode>
+      const val = recordNode.fields as Record<string, ResolvedNode>
       expect(val.name.value).toBe("Bob")
       expect(val.balance.value).toBe("1000")
     })
@@ -1591,23 +1594,21 @@ describe("ResultFieldVisitor", () => {
         throw new Error("Expected variant field")
       }
 
-      const okValue = okResult.results[0].value as {
-        option: string
-        data: ResolvedNode
-      }
-      expect(okValue.option).toBe("Ok")
-      expect(okValue.data.value).toBe("12345")
+      const okValue = okResult.results[0] as ResolvedNode
+      expect((okValue as any).selected).toBe("Ok")
+      expect(((okValue as any).selectedOption as ResolvedNode).value).toBe(
+        "12345"
+      )
 
       // Test Err case
       const errResult = methodMeta.resolve({
         Err: "Insufficient funds",
       })
-      const errValue = errResult.results[0].value as {
-        option: string
-        data: ResolvedNode
-      }
-      expect(errValue.option).toBe("Err")
-      expect(errValue.data.value).toBe("Insufficient funds")
+      const errValue = errResult.results[0] as ResolvedNode
+      expect((errValue as any).selected).toBe("Err")
+      expect(((errValue as any).selectedOption as ResolvedNode).value).toBe(
+        "Insufficient funds"
+      )
     })
 
     it("should generate metadata for optional return value", () => {
@@ -1623,11 +1624,8 @@ describe("ResultFieldVisitor", () => {
       // Test with value - Optional is [value]
       const foundResult = methodMeta.resolve(["Alice"])
       expect(foundResult.results[0].type).toBe("optional")
-      const foundInner = foundResult.results[0].value as {
-        field: ResultField
-        value: unknown
-      }
-      expect(foundInner.value).toBe("Alice")
+      const foundInner = foundResult.results[0] as OptionalNode
+      expect(foundInner.value?.value).toBe("Alice")
 
       // Test with null - optional is []
       const notFoundResult = methodMeta.resolve([])
@@ -1647,14 +1645,12 @@ describe("ResultFieldVisitor", () => {
       const result = methodMeta.resolve(["item1", "item2", "item3"])
 
       expect(result.results[0].type).toBe("vector")
-      const vecValue = result.results[0].value as Array<{
-        field: ResultField
-        value: unknown
-      }>
-      expect(vecValue).toHaveLength(3)
-      expect(vecValue[0].value).toBe("item1")
-      expect(vecValue[1].value).toBe("item2")
-      expect(vecValue[2].value).toBe("item3")
+      const vecNode = result.results[0] as ResolvedNode
+      const vecItems = (vecNode as any).items as ResolvedNode[]
+      expect(vecItems).toHaveLength(3)
+      expect(vecItems[0].value).toBe("item1")
+      expect(vecItems[1].value).toBe("item2")
+      expect(vecItems[2].value).toBe("item3")
     })
 
     it("should generate metadata for update function", () => {
@@ -1713,28 +1709,24 @@ describe("ResultFieldVisitor", () => {
         )
       )
 
-      const successValue = successResult.results[0].value as {
-        option: string
-        data: ResolvedNode
-      }
-      expect(successValue.option).toBe("Ok")
-      expect(successValue.data.value).toBe("1000")
+      const successValue = successResult.results[0] as ResolvedNode
+      expect((successValue as any).selected).toBe("Ok")
+      expect(((successValue as any).selectedOption as ResolvedNode).value).toBe(
+        "1000"
+      )
 
       // Test error case
       const errorResult = methodMeta.resolve({
         Err: { InsufficientFunds: { balance: BigInt(50) } },
       })
-      const errorValue = errorResult.results[0].value as {
-        option: string
-        data: ResolvedNode
-      }
-      expect(errorValue.option).toBe("Err")
+      const errorValue = errorResult.results[0] as ResolvedNode
+      expect((errorValue as any).selected).toBe("Err")
 
-      const val = errorValue.data.value as any
-      if (typeof val !== "object" || val === null || !("option" in val)) {
+      const val = (errorValue as any).selectedOption as ResolvedNode
+      if (typeof val !== "object" || val === null || !("selected" in val)) {
         throw new Error("Expected variant value object")
       }
-      expect(val.option).toBe("InsufficientFunds")
+      expect((val as any).selected).toBe("InsufficientFunds")
     })
 
     it("should handle empty return", () => {
@@ -1836,11 +1828,11 @@ describe("ResultFieldVisitor", () => {
         balance: BigInt(500),
       })
 
-      const recordValue = result.results[0].value
-      if (typeof recordValue !== "object" || recordValue === null) {
-        throw new Error("Expected record value object")
+      const recordNode = result.results[0] as RecordNode
+      if (recordNode.type !== "record") {
+        throw new Error("Expected record node")
       }
-      const val = recordValue as Record<string, ResolvedNode>
+      const val = recordNode.fields as Record<string, ResolvedNode>
       expect(val.name.value).toBe("Alice")
       expect(val.balance.value).toBe("500")
     })
@@ -1866,16 +1858,9 @@ describe("ResultFieldVisitor", () => {
 
       expect(result.results[0].raw).toEqual({ Ok: BigInt(12345) })
 
-      const variantValue = result.results[0].value as any
-      if (
-        typeof variantValue !== "object" ||
-        variantValue === null ||
-        !("option" in variantValue)
-      ) {
-        throw new Error("Expected variant value object")
-      }
-      expect(variantValue.option).toBe("Ok")
-      const innerVal = variantValue.data
+      const variantValue = result.results[0] as ResolvedNode
+      expect((variantValue as any).selected).toBe("Ok")
+      const innerVal = (variantValue as any).selectedOption as ResolvedNode
       expect(innerVal.value).toBe("12345")
     })
 
@@ -1915,10 +1900,8 @@ describe("ResultFieldVisitor", () => {
 
       const result = methodMeta.resolve(rawData[0])
 
-      const vecValue = result.results[0].value
-      if (!Array.isArray(vecValue)) {
-        throw new Error("Expected vector value array")
-      }
+      const vecNode = result.results[0] as ResolvedNode
+      const vecValue = (vecNode as any).items as ResolvedNode[]
       expect(vecValue).toHaveLength(3)
       expect(vecValue[0].value).toBe("100")
       expect(vecValue[1].value).toBe("200")

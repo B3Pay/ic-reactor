@@ -84,7 +84,7 @@ type NodeTypeExtras<T extends NodeType> = T extends "record"
       : T extends "optional"
         ? { value: ResultNode | null }
         : T extends "recursive"
-          ? { inner: ResultNode | null }
+          ? { inner: ResultNode }
           : T extends "blob"
             ? { value: string }
             : T extends "number"
@@ -110,6 +110,7 @@ export type ResultNode<T extends NodeType = NodeType> = ResultNodeBase<T> &
   NodeTypeExtras<T> & {
     /** Resolve this node with a value, returning a new resolved node */
     resolve(data: unknown): ResolvedNode<T>
+    value?: unknown
   }
 
 /**

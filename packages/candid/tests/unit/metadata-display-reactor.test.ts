@@ -995,12 +995,19 @@ describe("MetadataDisplayReactor", () => {
       // Resolved value structure depends on Tuple resolver
       // Tuple resolver returns array of resolved items
       const item1 = arr[0]
-      // item1 is ResultFieldWithValue { field: Tuple..., value: [ "icrc1:name", { option: "Text", ... } ] }
-      expect(item1.value[0].value).toBe("icrc1:name")
+      // item1 may be a wrapper with a 'value' field or a resolved tuple node with 'items'
+      const firstElem = Array.isArray((item1 as any).value)
+        ? (item1 as any).value[0]
+        : (item1 as any).items[0]
+      expect(firstElem.value).toBe("icrc1:name")
 
-      const variantVal = item1.value[1].value
-      expect(variantVal.option).toBe("Text")
-      expect(variantVal.value.value).toBe("Test Token")
+      const variantVal = Array.isArray((item1 as any).value)
+        ? ((item1 as any).value[1].value as ResolvedNode)
+        : ((item1 as any).items[1] as ResolvedNode)
+      expect((variantVal as any).selected).toBe("Text")
+      expect(((variantVal as any).selectedOption as ResolvedNode).value).toBe(
+        "Test Token"
+      )
     })
   })
 })
@@ -1148,16 +1155,19 @@ describe("Complex Result Handling (Mocked)", () => {
 
     const fieldResult = (result as any).results[0]
 
-    expect(fieldResult.field.type).toBe("variant")
-    expect(fieldResult.field.displayType).toBe("result")
-    // Ensure resolved payload shape
-    expect(fieldResult.field.displayType).toBe("result")
+    // Support both shapes: { field, value } and direct resolved node
+    const fieldSchema = fieldResult.field ?? fieldResult
+    expect(fieldSchema.type).toBe("variant")
+    expect(fieldSchema.displayType).toBe("result")
 
+    const fieldValue = fieldResult.value ?? fieldResult
     // Check that we have the extracted Ok value structure
-    expect(fieldResult.value).toHaveProperty("option", "Ok")
+    expect((fieldValue as any).selected).toBe("Ok")
     // Check the value inside Ok (nat -> string)
-    expect(fieldResult.value.value.value).toBe("100")
-    console.log("✅ Ok result:", fieldResult.value)
+    expect(((fieldValue as any).selectedOption as ResolvedNode).value).toBe(
+      "100"
+    )
+    console.log("✅ Ok result:", fieldValue)
   })
 
   it("should handle Err result", async () => {
@@ -1184,21 +1194,22 @@ describe("Complex Result Handling (Mocked)", () => {
 
     const fieldResult = (result as any).results[0]
 
-    expect(fieldResult.value).toHaveProperty("option", "Err")
+    const fieldValue = fieldResult.value ?? fieldResult
+    expect((fieldValue as any).selected).toBe("Err")
 
     // Check the value inside Err
-    // Err -> value -> option: InsufficientFunds -> value -> { balance: 50 }
-    const errContent = fieldResult.value.value
+    const errInner = (fieldValue as any).selectedOption as ResolvedNode
     console.log(
       "✅ Err result:",
       JSON.stringify(
-        errContent,
+        errInner,
         (_, v) => (typeof v === "bigint" ? `${v}n` : v),
         2
       )
     )
 
-    expect(errContent.value).toHaveProperty("option", "InsufficientFunds")
-    expect(errContent.value.value.value.balance.value).toBe("50")
+    expect((errInner as any).selected).toBe("InsufficientFunds")
+    const innerRecord = (errInner as any).selectedOption as RecordNode
+    expect((innerRecord.fields as any).balance.value).toBe("50")
   })
 })
