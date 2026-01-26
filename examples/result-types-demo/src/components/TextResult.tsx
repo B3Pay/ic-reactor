@@ -1,15 +1,15 @@
-import { ResultFieldWithValue } from "@ic-reactor/candid"
+import { ResolvedNode } from "@ic-reactor/candid"
 
-export const TextResult: React.FC<{ result: ResultFieldWithValue<"text"> }> = ({
+export const TextResult: React.FC<{ result: ResolvedNode<"text"> }> = ({
   result,
 }) => (
   <div
     style={{ padding: "5px", border: "1px solid #ccc", borderRadius: "4px" }}
   >
-    <strong>{result.field.label}: </strong>
+    <strong>{result.label}: </strong>
     <span>{result.value}</span>
     <span style={{ marginLeft: "10px", fontSize: "0.8em", color: "#666" }}>
-      (Format: {result.field.textFormat})
+      (Format: {result.format})
     </span>
   </div>
 )

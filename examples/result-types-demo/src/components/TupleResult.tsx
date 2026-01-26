@@ -1,8 +1,8 @@
-import { ResultFieldWithValue } from "@ic-reactor/candid"
+import { ResolvedNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const TupleResult: React.FC<{
-  result: ResultFieldWithValue<"tuple">
+  result: ResolvedNode<"tuple">
 }> = ({ result }) => (
   <div
     style={{
@@ -13,7 +13,7 @@ export const TupleResult: React.FC<{
       backgroundColor: "#f9f9f9",
     }}
   >
-    <strong>{result.field.label || "Tuple"}:</strong>
+    <strong>{result.label || "Tuple"}:</strong>
     <div
       style={{
         paddingLeft: "10px",

@@ -1,9 +1,9 @@
 import React from "react"
-import { ResultFieldWithValue } from "@ic-reactor/candid"
+import { ResolvedNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const VariantResult: React.FC<{
-  result: ResultFieldWithValue<"variant">
+  result: ResolvedNode<"variant">
 }> = ({ result }) => (
   <div
     style={{
@@ -14,10 +14,10 @@ export const VariantResult: React.FC<{
     }}
   >
     <strong>
-      {result.field.label} (Variant: {result.value.option}):
+      {result.label} (Variant: {result.value.option}):
     </strong>
     <div style={{ paddingLeft: "20px" }}>
-      <ResultRenderer result={result.value.value} />
+      <ResultRenderer result={result.value.data} />
     </div>
   </div>
 )

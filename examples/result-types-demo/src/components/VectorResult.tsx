@@ -1,8 +1,8 @@
-import { ResultFieldWithValue } from "@ic-reactor/candid"
+import { ResolvedNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const VectorResult: React.FC<{
-  result: ResultFieldWithValue<"vector">
+  result: ResolvedNode<"vector">
 }> = ({ result }) => (
   <div
     style={{
@@ -12,7 +12,7 @@ export const VectorResult: React.FC<{
       margin: "5px 0",
     }}
   >
-    <strong>{result.field.label || "Vector"}:</strong>
+    <strong>{result.label || "Vector"}:</strong>
     <div style={{ paddingLeft: "20px", marginTop: "5px" }}>
       {result.value.length === 0 ? (
         <span style={{ color: "#888" }}>Empty</span>

@@ -43,7 +43,7 @@ function App() {
   }
   // Generate resolved metadata with values
   // We pass the raw value, and it returns the structure with display values
-  const resolved = getUserMeta.generateMetadata(mockUser)
+  const resolved = getUserMeta.resolve(mockUser)
 
   return (
     <div
@@ -66,7 +66,7 @@ function App() {
       <div style={{ marginTop: "30px" }}>
         <h2>Dynamic Record Rendering</h2>
         {resolved.results.map((result) => (
-          <ResultRenderer key={result.field.label} result={result} />
+          <ResultRenderer key={result.label} result={result} />
         ))}
       </div>
 

@@ -14,10 +14,10 @@ import {
   ServiceArgumentsMeta,
 } from "./visitor/arguments"
 import {
-  MethodResultMeta,
+  MethodMeta,
   ResolvedMethodResult,
   ResultFieldVisitor,
-  ServiceResultMeta,
+  ServiceMeta,
 } from "./visitor/returns"
 
 // ============================================================================
@@ -51,7 +51,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
 
   // Metadata storage
   private argumentMeta: ServiceArgumentsMeta<A> | null = null
-  private resultMeta: ServiceResultMeta<A> | null = null
+  private resultMeta: ServiceMeta<A> | null = null
 
   // Visitors (stateless, can be reused)
   private static argVisitor = new ArgumentFieldVisitor()
@@ -92,7 +92,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
     this.resultMeta = service.accept(
       MetadataDisplayReactor.resultVisitor,
       null as any
-    ) as ServiceResultMeta<A>
+    ) as ServiceMeta<A>
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -114,7 +114,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
    */
   public getResultMeta<M extends FunctionName<A>>(
     methodName: M
-  ): MethodResultMeta<A, M> | undefined {
+  ): MethodMeta<A, M> | undefined {
     return this.resultMeta?.[methodName]
   }
 
@@ -128,7 +128,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   /**
    * Get all result metadata.
    */
-  public getAllResultMeta(): ServiceResultMeta<A> | null {
+  public getAllResultMeta(): ServiceMeta<A> | null {
     return this.resultMeta
   }
 
@@ -161,7 +161,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
       throw new Error(`No metadata found for method "${methodName}"`)
     }
 
-    return meta.generateMetadata(result) as ResolvedMethodResult<A>
+    return meta.resolve(result)
   }
 
   /**
@@ -169,7 +169,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
    */
   public async callDynamicWithMeta<T = unknown>(
     options: DynamicMethodOptions & { args?: unknown[] }
-  ): Promise<{ result: T; meta: MethodResultMeta<A> }> {
+  ): Promise<{ result: T; meta: MethodMeta<A> }> {
     await this.registerMethod(options)
 
     const result = (await this.callMethod({

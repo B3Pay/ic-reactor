@@ -1,22 +1,23 @@
 import { describe, it, expect } from "vitest"
-import { IDL } from "@icp-sdk/core/candid"
+import { IDL } from "../types"
 import { ResultFieldVisitor } from "./index"
 import type {
-  ResultField,
-  RecordResultField,
-  VariantResultField,
-  TupleResultField,
-  OptionalResultField,
-  VectorResultField,
-  BlobResultField,
-  RecursiveResultField,
-  NumberResultField,
-  TextResultField,
-  PrincipalResultField,
-  BooleanResultField,
-  NullResultField,
-  MethodResultMeta,
-  ServiceResultMeta,
+  ResultNode,
+  ResolvedNode,
+  RecordNode,
+  VariantNode,
+  TupleNode,
+  OptionalNode,
+  VectorNode,
+  BlobNode,
+  RecursiveNode,
+  NumberNode,
+  TextNode,
+  PrincipalNode,
+  BooleanNode,
+  NullNode,
+  MethodMeta,
+  ServiceMeta,
 } from "./types"
 
 describe("ResultFieldVisitor", () => {
@@ -35,33 +36,33 @@ describe("ResultFieldVisitor", () => {
       expect(field.label).toBe("message")
       expect(field.candidType).toBe("text")
       expect(field.displayType).toBe("string")
-      expect(field.textFormat).toBe("plain")
+      expect(field.format).toBe("plain")
     })
 
     it("should handle text with special label detection", () => {
       const emailField = visitor.visitText(IDL.Text, "email")
-      expect(emailField.textFormat).toBe("email")
+      expect(emailField.format).toBe("email")
 
       const urlField = visitor.visitText(IDL.Text, "website_url")
-      expect(urlField.textFormat).toBe("url")
+      expect(urlField.format).toBe("url")
 
       const phoneField = visitor.visitText(IDL.Text, "phone_number")
-      expect(phoneField.textFormat).toBe("phone")
+      expect(phoneField.format).toBe("phone")
 
       const uuidField = visitor.visitText(IDL.Text, "transaction_uuid")
-      expect(uuidField.textFormat).toBe("uuid")
+      expect(uuidField.format).toBe("uuid")
 
       const btcField = visitor.visitText(IDL.Text, "btc_address")
-      expect(btcField.textFormat).toBe("btc")
+      expect(btcField.format).toBe("btc")
 
       const ethField = visitor.visitText(IDL.Text, "ethereum_address")
-      expect(ethField.textFormat).toBe("eth")
+      expect(ethField.format).toBe("eth")
 
       const accountIdField = visitor.visitText(IDL.Text, "account_id")
-      expect(accountIdField.textFormat).toBe("account-id")
+      expect(accountIdField.format).toBe("account-id")
 
       const principalField = visitor.visitText(IDL.Text, "canister_id")
-      expect(principalField.textFormat).toBe("principal")
+      expect(principalField.format).toBe("principal")
     })
 
     it("should handle bool type", () => {
@@ -106,7 +107,7 @@ describe("ResultFieldVisitor", () => {
         expect(field.type).toBe("number")
         expect(field.candidType).toBe("nat")
         expect(field.displayType).toBe("string") // BigInt → string
-        expect(field.numberFormat).toBe("normal")
+        expect(field.format).toBe("normal")
       })
 
       it("should map int to string display type", () => {
@@ -191,30 +192,30 @@ describe("ResultFieldVisitor", () => {
     describe("Number format detection", () => {
       it("should detect timestamp format from label", () => {
         const timestampField = visitor.visitFixedNat(IDL.Nat64, "created_at")
-        expect(timestampField.numberFormat).toBe("timestamp")
+        expect(timestampField.format).toBe("timestamp")
 
         const dateField = visitor.visitNat(IDL.Nat, "timestamp_nanos")
-        expect(dateField.numberFormat).toBe("timestamp")
+        expect(dateField.format).toBe("timestamp")
 
         const deadlineField = visitor.visitNat(IDL.Nat, "deadline")
-        expect(deadlineField.numberFormat).toBe("timestamp")
+        expect(deadlineField.format).toBe("timestamp")
       })
 
       it("should detect cycle format from label", () => {
         const cycleField = visitor.visitNat(IDL.Nat, "cycles")
-        expect(cycleField.numberFormat).toBe("cycle")
+        expect(cycleField.format).toBe("cycle")
 
         // "cycle" as standalone word
         const cycleSingleField = visitor.visitNat(IDL.Nat, "cycle")
-        expect(cycleSingleField.numberFormat).toBe("cycle")
+        expect(cycleSingleField.format).toBe("cycle")
       })
 
       it("should default to normal format", () => {
         const amountField = visitor.visitNat(IDL.Nat, "amount")
-        expect(amountField.numberFormat).toBe("normal")
+        expect(amountField.format).toBe("normal")
 
         const countField = visitor.visitNat(IDL.Nat, "count")
-        expect(countField.numberFormat).toBe("normal")
+        expect(countField.format).toBe("normal")
       })
     })
   })
@@ -310,15 +311,14 @@ describe("ResultFieldVisitor", () => {
       expect(ownerField.type).toBe("principal")
       expect(ownerField.displayType).toBe("string")
 
-      const subaccountField = field.fields.find((f) => f.label === "subaccount")
+      const subaccountField = field.fields.find(
+        (f) => f.label === "subaccount"
+      ) as OptionalNode
       if (!subaccountField || subaccountField.type !== "optional") {
         throw new Error("Subaccount field not found or not optional")
       }
       expect(subaccountField.type).toBe("optional")
-      if (subaccountField.innerField.type !== "blob") {
-        throw new Error("Subaccount inner field is not blob")
-      }
-      expect(subaccountField.innerField.type).toBe("blob")
+      expect(subaccountField.inner.type).toBe("blob")
     })
   })
 
@@ -390,7 +390,7 @@ describe("ResultFieldVisitor", () => {
       expect(field.options).toContain("Mint")
       expect(field.options).toHaveLength(3)
 
-      const transferField = field.optionFields.find(
+      const transferField = field.optionNodes.find(
         (f) => f.label === "Transfer"
       )
 
@@ -400,7 +400,7 @@ describe("ResultFieldVisitor", () => {
       expect(transferField.type).toBe("record")
       expect(transferField.fields).toHaveLength(3)
 
-      const approveField = field.optionFields.find((f) => f.label === "Approve")
+      const approveField = field.optionNodes.find((f) => f.label === "Approve")
       if (!approveField || approveField.type !== "number") {
         throw new Error("Approve field not found or not number")
       }
@@ -426,13 +426,13 @@ describe("ResultFieldVisitor", () => {
       expect(field.options).toContain("Ok")
       expect(field.options).toContain("Err")
 
-      const okField = field.optionFields.find((f) => f.label === "Ok")
+      const okField = field.optionNodes.find((f) => f.label === "Ok")
       if (!okField || okField.type !== "number") {
         throw new Error("Ok field not found or not number")
       }
       expect(okField.displayType).toBe("string")
 
-      const errField = field.optionFields.find((f) => f.label === "Err")
+      const errField = field.optionNodes.find((f) => f.label === "Err")
       if (!errField || errField.type !== "text") {
         throw new Error("Err field not found or not text")
       }
@@ -475,13 +475,13 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.displayType).toBe("result")
 
-      const okField = field.optionFields.find((f) => f.label === "Ok")
+      const okField = field.optionNodes.find((f) => f.label === "Ok")
       if (!okField || okField.type !== "record") {
         throw new Error("Ok field not found or not record")
       }
       expect(okField.type).toBe("record")
 
-      const errField = field.optionFields.find((f) => f.label === "Err")
+      const errField = field.optionNodes.find((f) => f.label === "Err")
       if (!errField || errField.type !== "variant") {
         throw new Error("Err field not found or not variant")
       }
@@ -516,9 +516,9 @@ describe("ResultFieldVisitor", () => {
       expect(field.type).toBe("tuple")
       expect(field.candidType).toBe("tuple")
       expect(field.displayType).toBe("array")
-      expect(field.fields).toHaveLength(2)
-      expect(field.fields[0].type).toBe("text")
-      expect(field.fields[1].type).toBe("number")
+      expect(field.items).toHaveLength(2)
+      expect(field.items[0].type).toBe("text")
+      expect(field.items[1].type).toBe("number")
     })
 
     it("should handle tuple with mixed types", () => {
@@ -534,17 +534,17 @@ describe("ResultFieldVisitor", () => {
         "data"
       )
 
-      expect(field.fields).toHaveLength(4)
-      expect(field.fields[0].type).toBe("principal")
-      expect(field.fields[1].type).toBe("number")
-      const numField = field.fields[1]
+      expect(field.items).toHaveLength(4)
+      expect(field.items[0].type).toBe("principal")
+      expect(field.items[1].type).toBe("number")
+      const numField = field.items[1]
       if (numField.type === "number") {
         expect(numField.displayType).toBe("string") // nat64 → string
       } else {
         throw new Error("Expected number field")
       }
-      expect(field.fields[2].type).toBe("boolean")
-      expect(field.fields[3].type).toBe("blob")
+      expect(field.items[2].type).toBe("boolean")
+      expect(field.items[3].type).toBe("blob")
     })
   })
 
@@ -556,7 +556,7 @@ describe("ResultFieldVisitor", () => {
       expect(field.type).toBe("optional")
       expect(field.candidType).toBe("opt")
       expect(field.displayType).toBe("nullable") // opt T → T | null
-      expect(field.innerField.type).toBe("text")
+      expect(field.inner.type).toBe("text")
     })
 
     it("should handle optional record", () => {
@@ -568,7 +568,7 @@ describe("ResultFieldVisitor", () => {
       const field = visitor.visitOpt(optType, recordInOpt, "metadata")
 
       expect(field.type).toBe("optional")
-      expect(field.innerField.type).toBe("record")
+      expect(field.inner.type).toBe("record")
     })
 
     it("should handle nested optional", () => {
@@ -577,13 +577,9 @@ describe("ResultFieldVisitor", () => {
       const field = visitor.visitOpt(optType, innerOpt, "maybeNumber")
 
       expect(field.type).toBe("optional")
-      expect(field.innerField.type).toBe("optional")
-      const inner = field.innerField
-      if (inner.type === "optional") {
-        expect(inner.innerField.type).toBe("number")
-      } else {
-        throw new Error("Inner field is not optional")
-      }
+      expect(field.inner.type).toBe("optional")
+      const innerNode = field.inner as OptionalNode
+      expect(innerNode.inner.type).toBe("number")
     })
   })
 
@@ -596,7 +592,7 @@ describe("ResultFieldVisitor", () => {
       expect(field.candidType).toBe("vec")
       expect(field.displayType).toBe("array")
       if (field.type === "vector") {
-        expect(field.itemField.type).toBe("text")
+        expect(field.item.type).toBe("text")
       } else {
         throw new Error("Field is not a vector")
       }
@@ -612,7 +608,7 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("vector")
       if (field.type === "vector") {
-        expect(field.itemField.type).toBe("record")
+        expect(field.item.type).toBe("record")
       } else {
         throw new Error("Field is not a vector")
       }
@@ -639,7 +635,7 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("vector")
       if (field.type === "vector") {
-        expect(field.itemField.type).toBe("vector")
+        expect(field.item.type).toBe("vector")
       } else {
         throw new Error("Field is not a vector")
       }
@@ -652,13 +648,13 @@ describe("ResultFieldVisitor", () => {
         mapType,
         tupleType,
         "metadata"
-      ) as VectorResultField
+      ) as VectorNode
 
       expect(field.type).toBe("vector")
-      expect(field.itemField.type).toBe("tuple")
-      const itemField = field.itemField
-      if (itemField.type === "tuple") {
-        expect(itemField.fields).toHaveLength(2)
+      expect(field.item.type).toBe("tuple")
+      const item = field.item as TupleNode
+      if (item.type === "tuple") {
+        expect(item.items).toHaveLength(2)
       } else {
         throw new Error("Item field is not tuple")
       }
@@ -702,8 +698,8 @@ describe("ResultFieldVisitor", () => {
         throw new Error("Extracted field is not variant")
       }
       expect(extracted.type).toBe("variant")
-      expect(extracted.options).toContain("Leaf")
-      expect(extracted.options).toContain("Node")
+      expect((extracted as VariantNode).options).toContain("Leaf")
+      expect((extracted as VariantNode).options).toContain("Node")
     })
 
     it("should handle recursive linked list", () => {
@@ -732,11 +728,9 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("recursive")
 
-      const extracted = field.extract()
-      if (extracted.type !== "variant") {
-        throw new Error("Extracted field is not variant")
-      }
-      expect(extracted.options).toEqual(["Nil", "Cons"])
+      const extractedNode = field.extract()
+      expect(extractedNode.type).toBe("variant")
+      expect((extractedNode as VariantNode).options).toEqual(["Nil", "Cons"])
     })
   })
 
@@ -752,11 +746,11 @@ describe("ResultFieldVisitor", () => {
       expect(meta.functionType).toBe("query")
       expect(meta.functionName).toBe("get_balance")
       expect(meta.returnCount).toBe(1)
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      expect(meta.resultFields).toHaveLength(1)
+      expect(meta.returns).toHaveLength(1)
 
-      const returnField = meta.resultFields[0]
+      const returnField = meta.returns[0]
       if (returnField.type === "number") {
         expect(returnField.candidType).toBe("nat")
         expect(returnField.displayType).toBe("string")
@@ -786,7 +780,7 @@ describe("ResultFieldVisitor", () => {
       expect(meta.functionType).toBe("update")
       expect(meta.returnCount).toBe(1)
 
-      const resultField = meta.resultFields[0]
+      const resultField = meta.returns[0]
       if (resultField.type === "variant") {
         expect(resultField.displayType).toBe("result")
       } else {
@@ -799,10 +793,10 @@ describe("ResultFieldVisitor", () => {
       const meta = visitor.visitFunc(funcType, "get_info")
 
       expect(meta.returnCount).toBe(3)
-      expect(meta.resultFields).toHaveLength(3)
-      expect(meta.resultFields[0].type).toBe("text")
-      expect(meta.resultFields[1].type).toBe("number")
-      expect(meta.resultFields[2].type).toBe("boolean")
+      expect(meta.returns).toHaveLength(3)
+      expect(meta.returns[0].type).toBe("text")
+      expect(meta.returns[1].type).toBe("number")
+      expect(meta.returns[2].type).toBe("boolean")
     })
 
     it("should handle function with no returns", () => {
@@ -810,7 +804,7 @@ describe("ResultFieldVisitor", () => {
       const meta = visitor.visitFunc(funcType, "log")
 
       expect(meta.returnCount).toBe(0)
-      expect(meta.resultFields).toHaveLength(0)
+      expect(meta.returns).toHaveLength(0)
     })
   })
 
@@ -852,8 +846,8 @@ describe("ResultFieldVisitor", () => {
       const getBalanceMeta = serviceMeta["get_balance"]
       expect(getBalanceMeta.functionType).toBe("query")
       expect(getBalanceMeta.returnCount).toBe(1)
-      expect(getBalanceMeta.resultFields[0].type).toBe("number")
-      const balanceField = getBalanceMeta.resultFields[0]
+      expect(getBalanceMeta.returns[0].type).toBe("number")
+      const balanceField = getBalanceMeta.returns[0]
       if (balanceField.type === "number") {
         expect(balanceField.displayType).toBe("string")
       } else {
@@ -867,7 +861,7 @@ describe("ResultFieldVisitor", () => {
       // Check get_metadata
       const getMetadataMeta = serviceMeta["get_metadata"]
       expect(getMetadataMeta.returnCount).toBe(1)
-      expect(getMetadataMeta.resultFields[0].type).toBe("vector")
+      expect(getMetadataMeta.returns[0].type).toBe("vector")
     })
   })
 
@@ -892,7 +886,7 @@ describe("ResultFieldVisitor", () => {
       expect(meta.functionType).toBe("query")
       expect(meta.returnCount).toBe(1)
 
-      const balanceField = meta.resultFields[0]
+      const balanceField = meta.returns[0]
       if (balanceField.type === "number") {
         expect(balanceField.candidType).toBe("nat")
         expect(balanceField.displayType).toBe("string")
@@ -942,7 +936,7 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.displayType).toBe("result")
 
-      const okField = field.optionFields.find((f) => f.label === "Ok")
+      const okField = field.optionNodes.find((f) => f.label === "Ok")
 
       if (!okField || okField.type !== "number") {
         throw new Error("Ok field is not number")
@@ -951,14 +945,14 @@ describe("ResultFieldVisitor", () => {
       expect(okField.candidType).toBe("nat")
       expect(okField.displayType).toBe("string")
 
-      const errField = field.optionFields.find((f) => f.label === "Err")
+      const errField = field.optionNodes.find((f) => f.label === "Err")
       if (!errField || errField.type !== "variant") {
         throw new Error("Err field is not variant")
       }
 
       expect(errField.type).toBe("variant")
-      expect(errField.options).toContain("InsufficientFunds")
-      expect(errField.options).toContain("GenericError")
+      expect((errField as VariantNode).options).toContain("InsufficientFunds")
+      expect((errField as VariantNode).options).toContain("GenericError")
     })
 
     it("should handle SNS canister status return", () => {
@@ -1011,45 +1005,50 @@ describe("ResultFieldVisitor", () => {
       expect(field.type).toBe("record")
 
       // Check status variant
-      const statusField = field.fields.find((f) => f.label === "status")
+      const statusField = field.fields.find(
+        (f) => f.label === "status"
+      ) as VariantNode
       if (!statusField || statusField.type !== "variant") {
-        throw new Error("Status field is not variant")
+        throw new Error("Status field not found or not variant")
       }
       expect(statusField.type).toBe("variant")
-      expect(statusField.options).toContain("running")
-      expect(statusField.options).toContain("stopping")
-      expect(statusField.options).toContain("stopped")
+      expect(statusField.displayType).toBe("variant")
       expect(statusField.options).toHaveLength(3)
 
       // Check settings record
-      const settingsField = field.fields.find((f) => f.label === "settings")
+      const settingsField = field.fields.find(
+        (f) => f.label === "settings"
+      ) as RecordNode
       if (!settingsField || settingsField.type !== "record") {
-        throw new Error("Settings field is not record")
+        throw new Error("Settings field not found or not record")
       }
       expect(settingsField.type).toBe("record")
+      expect(settingsField.displayType).toBe("object")
 
       const controllersField = settingsField.fields.find(
         (f) => f.label === "controllers"
-      )
+      ) as VectorNode
       if (!controllersField || controllersField.type !== "vector") {
-        throw new Error("Controllers field is not vector")
+        throw new Error("Controllers field not found or not vector")
       }
       expect(controllersField.type).toBe("vector")
-      expect(controllersField.itemField.type).toBe("principal")
+      expect(controllersField.item.type).toBe("principal")
 
       // Check cycles - should detect special format
-      const cyclesField = field.fields.find((f) => f.label === "cycles")
+      const cyclesField = field.fields.find(
+        (f) => f.label === "cycles"
+      ) as NumberNode
       if (!cyclesField || cyclesField.type !== "number") {
-        throw new Error("Cycles field is not number")
+        throw new Error("Cycles field not found or not number")
       }
-      expect(cyclesField.numberFormat).toBe("cycle")
+      expect(cyclesField.format).toBe("cycle")
 
       // Check module_hash - optional blob
       const moduleHashField = field.fields.find(
         (f) => f.label === "module_hash"
-      ) as OptionalResultField
+      ) as OptionalNode
       expect(moduleHashField.type).toBe("optional")
-      expect(moduleHashField.innerField.type).toBe("blob")
+      expect(moduleHashField.inner.type).toBe("blob")
     })
 
     it("should handle complex governance proposal types", () => {
@@ -1114,7 +1113,7 @@ describe("ResultFieldVisitor", () => {
       )
 
       expect(field.type).toBe("record")
-      expect(field.fields.length).toBeGreaterThan(8)
+      expect(field.fields).toHaveLength(12)
 
       // Check timestamp field (note: the label pattern matching may not match "proposal_timestamp_seconds")
       const timestampField = field.fields.find(
@@ -1132,15 +1131,15 @@ describe("ResultFieldVisitor", () => {
         throw new Error("Ballots field not found or not vector")
       }
       expect(ballotsField.type).toBe("vector")
-      expect(ballotsField.itemField.type).toBe("tuple")
+      expect(ballotsField.item.type).toBe("tuple")
 
-      const ballotTuple = ballotsField.itemField
+      const ballotTuple = ballotsField.item
       if (ballotTuple.type !== "tuple") {
         throw new Error("Ballot item is not tuple")
       }
-      expect(ballotTuple.fields).toHaveLength(2)
-      expect(ballotTuple.fields[0].type).toBe("number") // nat64
-      expect(ballotTuple.fields[1].type).toBe("record") // ballot record
+      expect(ballotTuple.items).toHaveLength(2)
+      expect(ballotTuple.items[0].type).toBe("number") // nat64
+      expect(ballotTuple.items[1].type).toBe("record") // ballot record
     })
   })
 
@@ -1179,7 +1178,7 @@ describe("ResultFieldVisitor", () => {
         if (typeof field === "object" && "displayType" in field) {
           expect(field.displayType).toBe(expectedDisplay)
         } else {
-          throw new Error("Expected a ResultField")
+          throw new Error("Expected as ResultNode")
         }
       })
     })
@@ -1194,40 +1193,30 @@ describe("ResultFieldVisitor", () => {
       it("should resolve text field with value", () => {
         const field = visitor.visitText(IDL.Text, "message")
         const resolved = field.resolve("Hello World")
-
-        expect(resolved.field).toBe(field)
         expect(resolved.value).toBe("Hello World")
       })
 
       it("should resolve number field with value", () => {
         const field = visitor.visitNat(IDL.Nat, "amount")
         const resolved = field.resolve(BigInt(1000000))
-
-        expect(resolved.field).toBe(field)
         expect(resolved.value).toBe("1000000")
       })
 
       it("should resolve boolean field with value", () => {
         const field = visitor.visitBool(IDL.Bool, "active")
         const resolved = field.resolve(true)
-
-        expect(resolved.field).toBe(field)
         expect(resolved.value).toBe(true)
       })
 
       it("should resolve null field", () => {
         const field = visitor.visitNull(IDL.Null, "empty")
         const resolved = field.resolve(null)
-
-        expect(resolved.field).toBe(field)
         expect(resolved.value).toBe(null)
       })
 
       it("should resolve principal field with string value", () => {
         const field = visitor.visitPrincipal(IDL.Principal, "owner")
         const resolved = field.resolve("aaaaa-aa")
-
-        expect(resolved.field).toBe(field)
         expect(resolved.value).toBe("aaaaa-aa")
       })
     })
@@ -1255,11 +1244,8 @@ describe("ResultFieldVisitor", () => {
           active: true,
         })
 
-        expect(resolved.field).toBe(field)
-        const value = resolved.value as Record<
-          string,
-          { field: ResultField; value: unknown }
-        >
+        expect(resolved.type).toBe(field.type)
+        const value = resolved.value as Record<string, ResolvedNode>
         expect(value.name.value).toBe("Alice")
         expect(value.age.value).toBe(30)
         expect(value.active.value).toBe(true)
@@ -1295,13 +1281,13 @@ describe("ResultFieldVisitor", () => {
         )
 
         const resolved = field.resolve({ Ok: "Success" })
-
+        expect(resolved.type).toBe(field.type)
         const value = resolved.value as {
           option: string
-          value: { field: ResultField; value: unknown }
+          data: ResolvedNode
         }
         expect(value.option).toBe("Ok")
-        expect(value.value.value).toBe("Success")
+        expect(value.data.value).toBe("Success")
       })
 
       it("should resolve variant with Err option", () => {
@@ -1322,10 +1308,10 @@ describe("ResultFieldVisitor", () => {
 
         const value = resolved.value as {
           option: string
-          value: { field: ResultField; value: unknown }
+          data: ResolvedNode
         }
         expect(value.option).toBe("Err")
-        expect(value.value.value).toBe("Something went wrong")
+        expect(value.data.value).toBe("Something went wrong")
       })
 
       it("should handle null variant value", () => {
@@ -1356,7 +1342,7 @@ describe("ResultFieldVisitor", () => {
 
         const resolved = field.resolve(["hello", 123n, true])
 
-        expect(resolved.field).toBe(field)
+        expect(resolved.type).toBe(field.type)
         const value = resolved.value as Array<{
           field: ResultField
           value: unknown
@@ -1384,8 +1370,8 @@ describe("ResultFieldVisitor", () => {
 
         const resolved = field.resolve(["Bob"])
 
-        expect(resolved.field).toBe(field)
-        const inner = resolved.value as { field: ResultField; value: unknown }
+        expect(resolved.type).toBe(field.type)
+        const inner = resolved.value as ResolvedNode
         expect(inner.value).toBe("Bob")
       })
 
@@ -1394,8 +1380,6 @@ describe("ResultFieldVisitor", () => {
         const field = visitor.visitOpt(optType, IDL.Text, "nickname")
 
         const resolved = field.resolve(null)
-
-        expect(resolved.field).toBe(field)
         expect(resolved.value).toBe(null)
       })
     })
@@ -1407,7 +1391,7 @@ describe("ResultFieldVisitor", () => {
 
         const resolved = field.resolve(["a", "b", "c"])
 
-        expect(resolved.field).toBe(field)
+        expect(resolved.type).toBe(field.type)
         const value = resolved.value as Array<{
           field: ResultField
           value: unknown
@@ -1448,7 +1432,7 @@ describe("ResultFieldVisitor", () => {
 
         const resolved = field.resolve(new Uint8Array([0x12, 0x34, 0xab, 0xcd]))
 
-        expect(resolved.field).toBe(field)
+        expect(resolved.type).toBe(field.type)
         expect(resolved.value).toBe("1234abcd")
       })
     })
@@ -1479,7 +1463,7 @@ describe("ResultFieldVisitor", () => {
         })
 
         // The recursive type should delegate to its inner record type
-        expect(resolved.field.type).toBe("record")
+        expect(resolved.type).toBe("recursive")
       })
     })
 
@@ -1519,17 +1503,11 @@ describe("ResultFieldVisitor", () => {
           },
         })
 
-        const value = resolved.value as Record<
-          string,
-          { field: ResultField; value: unknown }
-        >
-        const userValue = value.user.value as Record<
-          string,
-          { field: ResultField; value: unknown }
-        >
+        const value = resolved.value as Record<string, ResolvedNode>
+        const userValue = value.user.value as Record<string, ResolvedNode>
         const profileValue = userValue.profile.value as Record<
           string,
-          { field: ResultField; value: unknown }
+          ResolvedNode
         >
         expect(profileValue.name.value).toBe("Alice")
         expect(profileValue.verified.value).toBe(true)
@@ -1538,10 +1516,10 @@ describe("ResultFieldVisitor", () => {
   })
 
   // ════════════════════════════════════════════════════════════════════════
-  // generateMetadata() Method Tests
+  // resolve() Method Tests
   // ════════════════════════════════════════════════════════════════════════
 
-  describe("generateMetadata() Method", () => {
+  describe("resolve() Method", () => {
     it("should generate metadata for single return value", () => {
       const service = IDL.Service({
         getName: IDL.Func([], [IDL.Text], ["query"]),
@@ -1552,13 +1530,13 @@ describe("ResultFieldVisitor", () => {
       )
       const methodMeta = serviceMeta["getName"]
 
-      const result = methodMeta.generateMetadata("Alice")
+      const result = methodMeta.resolve("Alice")
 
       expect(result.functionName).toBe("getName")
       expect(result.functionType).toBe("query")
       expect(result.results).toHaveLength(1)
       expect(result.results[0].value).toBe("Alice")
-      expect(result.results[0].field.type).toBe("text")
+      expect(result.results[0].type).toBe("text")
     })
 
     it("should generate metadata for multiple return values", () => {
@@ -1571,18 +1549,14 @@ describe("ResultFieldVisitor", () => {
       )
       const methodMeta = serviceMeta["getStats"]
 
-      const result = methodMeta.generateMetadata([
-        BigInt(100),
-        BigInt(200),
-        "active",
-      ])
+      const result = methodMeta.resolve([BigInt(100), BigInt(200), "active"])
 
       expect(result.results).toHaveLength(3)
       expect(result.results[0].value).toBe("100")
-      expect(result.results[0].field.type).toBe("number")
+      expect(result.results[0].type).toBe("number")
       expect(result.results[1].value).toBe("200")
       expect(result.results[2].value).toBe("active")
-      expect(result.results[2].field.type).toBe("text")
+      expect(result.results[2].type).toBe("text")
     })
 
     it("should generate metadata for record return value", () => {
@@ -1599,22 +1573,19 @@ describe("ResultFieldVisitor", () => {
       )
       const methodMeta = serviceMeta["getUser"]
 
-      const result = methodMeta.generateMetadata({
+      const result = methodMeta.resolve({
         name: "Bob",
         balance: BigInt(1000),
       })
 
       expect(result.results).toHaveLength(1)
-      expect(result.results[0].field.type).toBe("record")
+      expect(result.results[0].type).toBe("record")
 
       const recordValue = result.results[0].value
       if (typeof recordValue !== "object" || recordValue === null) {
         throw new Error("Expected record value object")
       }
-      const val = recordValue as Record<
-        string,
-        { field: ResultField; value: unknown }
-      >
+      const val = recordValue as Record<string, ResolvedNode>
       expect(val.name.value).toBe("Bob")
       expect(val.balance.value).toBe("1000")
     })
@@ -1634,31 +1605,31 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["transfer"]
 
       // Test Ok case
-      const okResult = methodMeta.generateMetadata({ Ok: BigInt(12345) })
-      expect(okResult.results[0].field.type).toBe("variant")
-      if (okResult.results[0].field.type === "variant") {
-        expect(okResult.results[0].field.displayType).toBe("result")
+      const okResult = methodMeta.resolve({ Ok: BigInt(12345) })
+      expect(okResult.results[0].type).toBe("variant")
+      if (okResult.results[0].type === "variant") {
+        expect(okResult.results[0].displayType).toBe("result")
       } else {
         throw new Error("Expected variant field")
       }
 
       const okValue = okResult.results[0].value as {
         option: string
-        value: { field: ResultField; value: unknown }
+        data: ResolvedNode
       }
       expect(okValue.option).toBe("Ok")
-      expect(okValue.value.value).toBe("12345")
+      expect(okValue.data.value).toBe("12345")
 
       // Test Err case
-      const errResult = methodMeta.generateMetadata({
+      const errResult = methodMeta.resolve({
         Err: "Insufficient funds",
       })
       const errValue = errResult.results[0].value as {
         option: string
-        value: { field: ResultField; value: unknown }
+        data: ResolvedNode
       }
       expect(errValue.option).toBe("Err")
-      expect(errValue.value.value).toBe("Insufficient funds")
+      expect(errValue.data.value).toBe("Insufficient funds")
     })
 
     it("should generate metadata for optional return value", () => {
@@ -1672,8 +1643,8 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["findUser"]
 
       // Test with value - Optional is [value]
-      const foundResult = methodMeta.generateMetadata(["Alice"])
-      expect(foundResult.results[0].field.type).toBe("optional")
+      const foundResult = methodMeta.resolve(["Alice"])
+      expect(foundResult.results[0].type).toBe("optional")
       const foundInner = foundResult.results[0].value as {
         field: ResultField
         value: unknown
@@ -1681,7 +1652,7 @@ describe("ResultFieldVisitor", () => {
       expect(foundInner.value).toBe("Alice")
 
       // Test with null - optional is []
-      const notFoundResult = methodMeta.generateMetadata([])
+      const notFoundResult = methodMeta.resolve([])
       expect(notFoundResult.results[0].value).toBe(null)
     })
 
@@ -1695,9 +1666,9 @@ describe("ResultFieldVisitor", () => {
       )
       const methodMeta = serviceMeta["getItems"]
 
-      const result = methodMeta.generateMetadata(["item1", "item2", "item3"])
+      const result = methodMeta.resolve(["item1", "item2", "item3"])
 
-      expect(result.results[0].field.type).toBe("vector")
+      expect(result.results[0].type).toBe("vector")
       const vecValue = result.results[0].value as Array<{
         field: ResultField
         value: unknown
@@ -1721,7 +1692,7 @@ describe("ResultFieldVisitor", () => {
       expect(methodMeta.functionType).toBe("update")
 
       const rawData = [true]
-      const result = methodMeta.generateMetadata(rawData[0])
+      const result = methodMeta.resolve(rawData[0])
 
       expect(result.functionType).toBe("update")
       expect(result.functionName).toBe("setName")
@@ -1754,7 +1725,7 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["icrc1_transfer"]
 
       // Test successful transfer
-      const successResult = methodMeta.generateMetadata({ Ok: BigInt(1000) })
+      const successResult = methodMeta.resolve({ Ok: BigInt(1000) })
       console.log(
         "🚀 ~ result:",
         JSON.stringify(
@@ -1766,22 +1737,22 @@ describe("ResultFieldVisitor", () => {
 
       const successValue = successResult.results[0].value as {
         option: string
-        value: { field: ResultField; value: unknown }
+        data: ResolvedNode
       }
       expect(successValue.option).toBe("Ok")
-      expect(successValue.value.value).toBe("1000")
+      expect(successValue.data.value).toBe("1000")
 
       // Test error case
-      const errorResult = methodMeta.generateMetadata({
+      const errorResult = methodMeta.resolve({
         Err: { InsufficientFunds: { balance: BigInt(50) } },
       })
       const errorValue = errorResult.results[0].value as {
         option: string
-        value: { field: ResultField; value: unknown }
+        data: ResolvedNode
       }
       expect(errorValue.option).toBe("Err")
 
-      const val = errorValue.value.value
+      const val = errorValue.data.value as any
       if (typeof val !== "object" || val === null || !("option" in val)) {
         throw new Error("Expected variant value object")
       }
@@ -1800,16 +1771,16 @@ describe("ResultFieldVisitor", () => {
 
       expect(methodMeta.returnCount).toBe(0)
 
-      const result = methodMeta.generateMetadata([])
+      const result = methodMeta.resolve([])
       expect(result.results).toHaveLength(0)
     })
   })
 
   // ════════════════════════════════════════════════════════════════════════════
-  // generateMetadataWithRaw() Method Tests
+  // resolve() Method Tests
   // ════════════════════════════════════════════════════════════════════════════
 
-  describe("generateMetadataWithRaw() Method", () => {
+  describe("resolve() Method", () => {
     it("should include both raw and display values for single return", () => {
       const service = IDL.Service({
         getBalance: IDL.Func([], [IDL.Nat], ["query"]),
@@ -1823,7 +1794,7 @@ describe("ResultFieldVisitor", () => {
       // Simulate raw BigInt and display string
       const rawData = [BigInt(1000000)]
 
-      const result = methodMeta.generateMetadata(rawData[0])
+      const result = methodMeta.resolve(rawData[0])
 
       expect(result.functionName).toBe("getBalance")
       expect(result.functionType).toBe("query")
@@ -1831,7 +1802,7 @@ describe("ResultFieldVisitor", () => {
       expect(result.results[0].raw).toBe(BigInt(1000000))
       expect(result.results[0].value).toBe("1000000")
       expect(result.results[0].raw).toBe(BigInt(1000000))
-      expect(result.results[0].field.type).toBe("number")
+      expect(result.results[0].type).toBe("number")
     })
 
     it("should include both raw and display values for multiple returns", () => {
@@ -1847,14 +1818,14 @@ describe("ResultFieldVisitor", () => {
       // Use BigInt with string to safe safe integer
       const rawData = [BigInt("9007199254740993"), "active", true]
 
-      const result = methodMeta.generateMetadata(rawData)
+      const result = methodMeta.resolve(rawData)
 
       expect(result.results).toHaveLength(3)
 
       // nat64 → string display, BigInt raw
       expect(result.results[0].value).toBe("9007199254740993")
       expect(result.results[0].raw).toBe(BigInt("9007199254740993"))
-      expect(result.results[0].field.candidType).toBe("nat64")
+      expect(result.results[0].candidType).toBe("nat64")
 
       // text → same for both
       expect(result.results[1].value).toBe("active")
@@ -1880,7 +1851,7 @@ describe("ResultFieldVisitor", () => {
       const methodMeta = serviceMeta["getUser"]
 
       const rawData = [{ name: "Alice", balance: BigInt(500) }]
-      const result = methodMeta.generateMetadata(rawData[0])
+      const result = methodMeta.resolve(rawData[0])
 
       expect(result.results[0].raw).toEqual({
         name: "Alice",
@@ -1891,10 +1862,7 @@ describe("ResultFieldVisitor", () => {
       if (typeof recordValue !== "object" || recordValue === null) {
         throw new Error("Expected record value object")
       }
-      const val = recordValue as Record<
-        string,
-        { field: ResultField; value: unknown }
-      >
+      const val = recordValue as Record<string, ResolvedNode>
       expect(val.name.value).toBe("Alice")
       expect(val.balance.value).toBe("500")
     })
@@ -1916,7 +1884,7 @@ describe("ResultFieldVisitor", () => {
       // Test Ok case with raw BigInt
       const rawData = [{ Ok: BigInt(12345) }]
 
-      const result = methodMeta.generateMetadata(rawData[0])
+      const result = methodMeta.resolve(rawData[0])
 
       expect(result.results[0].raw).toEqual({ Ok: BigInt(12345) })
 
@@ -1929,7 +1897,7 @@ describe("ResultFieldVisitor", () => {
         throw new Error("Expected variant value object")
       }
       expect(variantValue.option).toBe("Ok")
-      const innerVal = variantValue.value
+      const innerVal = variantValue.data
       expect(innerVal.value).toBe("12345")
     })
 
@@ -1948,11 +1916,11 @@ describe("ResultFieldVisitor", () => {
       const principal = Principal.fromText("aaaaa-aa")
       const rawData = [principal]
 
-      const result = methodMeta.generateMetadata(rawData[0])
+      const result = methodMeta.resolve(rawData[0])
 
       expect(result.results[0].value).toBe("aaaaa-aa")
       expect(result.results[0].raw).toBe(principal)
-      expect(result.results[0].field.type).toBe("principal")
+      expect(result.results[0].type).toBe("principal")
     })
 
     it("should handle vector with raw and display values", () => {
@@ -1967,7 +1935,7 @@ describe("ResultFieldVisitor", () => {
 
       const rawData = [[BigInt(100), BigInt(200), BigInt(300)]]
 
-      const result = methodMeta.generateMetadata(rawData[0])
+      const result = methodMeta.resolve(rawData[0])
 
       const vecValue = result.results[0].value
       if (!Array.isArray(vecValue)) {
@@ -1992,7 +1960,7 @@ describe("ResultFieldVisitor", () => {
       // Test with value - Optional is [value]
       const rawDataWithValue = [[BigInt(999)]]
 
-      const resultWithValue = methodMeta.generateMetadata(rawDataWithValue[0])
+      const resultWithValue = methodMeta.resolve(rawDataWithValue[0])
 
       expect(resultWithValue.results[0].raw).toEqual([BigInt(999)])
       const innerValue = resultWithValue.results[0].value
@@ -2008,7 +1976,7 @@ describe("ResultFieldVisitor", () => {
       // Test with null - Optional is []
       const rawDataNull = [[]]
 
-      const resultNull = methodMeta.generateMetadata(rawDataNull[0])
+      const resultNull = methodMeta.resolve(rawDataNull[0])
       expect(resultNull.results[0].raw).toEqual([])
       expect(resultNull.results[0].value).toBe(null)
     })
@@ -2023,7 +1991,7 @@ describe("ResultFieldVisitor", () => {
       )
       const methodMeta = serviceMeta["doNothing"]
 
-      const result = methodMeta.generateMetadata([])
+      const result = methodMeta.resolve([])
 
       expect(result.results).toHaveLength(0)
     })

@@ -1,8 +1,8 @@
-import { ResultFieldWithValue } from "@ic-reactor/candid"
+import { ResolvedNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const RecordResult: React.FC<{
-  result: ResultFieldWithValue<"record">
+  result: ResolvedNode<"record">
 }> = ({ result }) => (
   <div
     style={{
@@ -12,11 +12,11 @@ export const RecordResult: React.FC<{
       margin: "5px 0",
     }}
   >
-    <strong>{result.field.label} (Record):</strong>
+    <strong>{result.label} (Record):</strong>
     <div style={{ paddingLeft: "20px" }}>
-      {result.field.fields.map((field) => {
+      {result.fields.map((field) => {
         const childResult = result.value?.[field.label] as
-          | ResultFieldWithValue
+          | ResolvedNode
           | undefined
         if (!childResult) return null
         return <ResultRenderer key={field.label} result={childResult} />
