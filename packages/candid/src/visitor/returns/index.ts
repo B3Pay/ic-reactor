@@ -178,7 +178,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         return {
           ...node,
           selected,
-          options: { [selected]: optionNode.resolve(variantData[selected]) },
+          options: {
+            ...node.options,
+            [selected]: optionNode.resolve(variantData[selected]),
+          },
           raw: data,
         }
       },
