@@ -40,7 +40,7 @@ function primitiveNode<T extends NodeType>(
   codec: Codec,
   extras: object = {}
 ): ResultNode<T> {
-  const node = {
+  const node: ResultNode<T> = {
     type,
     label,
     candidType,
@@ -51,9 +51,9 @@ function primitiveNode<T extends NodeType>(
         ...node,
         value: codec.decode(data),
         raw: data,
-      } as ResolvedNode<T>
+      } as unknown as ResolvedNode<T>
     },
-  } as ResultNode<T>
+  } as unknown as ResultNode<T>
   return node
 }
 
@@ -136,11 +136,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           throw new Error(`Expected record for field ${label}, but got ${data}`)
         }
         const recordData = data as Record<string, unknown>
-        const value: Record<string, ResolvedNode> = {}
+        const resolvedFields: Record<string, ResolvedNode> = {}
         for (const [key, field] of Object.entries(fields)) {
-          value[key] = field.resolve(recordData[key])
+          resolvedFields[key] = field.resolve(recordData[key])
         }
-        return { ...node, value, raw: data }
+        return { ...node, fields: resolvedFields, raw: data }
       },
     }
     return node
@@ -170,14 +170,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           )
         }
         const variantData = data as Record<string, unknown>
-        const key = Object.keys(variantData)[0]
-        const optionNode = options[key]
+        const selected = Object.keys(variantData)[0]
+        const optionNode = options[selected]
         if (!optionNode) {
-          throw new Error(`Option ${key} not found in variant`)
+          throw new Error(`Option ${selected} not found in variant`)
         }
         return {
           ...node,
-          value: { key, node: optionNode.resolve(variantData[key]) },
+          selected,
+          options: { [selected]: optionNode.resolve(variantData[selected]) },
           raw: data,
         }
       },
@@ -207,9 +208,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         const tupleData = data as unknown[]
         return {
           ...node,
-          value: items.map((item, i) => item.resolve(tupleData[i])),
+          items: items.map((item, i) => item.resolve(tupleData[i])),
           raw: data,
-        } as ResolvedNode<"tuple">
+        }
       },
     }
     return node
@@ -230,12 +231,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       inner,
       resolve(data: unknown): ResolvedNode<"optional"> {
         const opt = data as T[]
-        return {
-          ...node,
-          value:
-            Array.isArray(opt) && opt.length > 0 ? inner.resolve(opt[0]) : null,
-          raw: data,
-        } as ResolvedNode<"optional">
+        const resolved =
+          Array.isArray(opt) && opt.length > 0 ? inner.resolve(opt[0]) : null
+        return { ...node, inner: resolved, raw: data }
       },
     }
     return node
@@ -277,9 +275,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         const vectorData = data as unknown[]
         return {
           ...node,
-          value: vectorData.map((v) => item.resolve(v)),
+          items: vectorData.map((v) => item.resolve(v)),
           raw: data,
-        } as ResolvedNode<"vector">
+        }
       },
     }
     return node

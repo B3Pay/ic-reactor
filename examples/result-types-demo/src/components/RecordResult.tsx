@@ -14,7 +14,7 @@ export const RecordResult: React.FC<{
   >
     <strong>{result.label} (Record):</strong>
     <div style={{ paddingLeft: "20px" }}>
-      {Object.entries(result.value).map(([key, value]) => (
+      {Object.entries(result.fields).map(([key, value]) => (
         <ResultRenderer key={key} result={value} />
       ))}
     </div>

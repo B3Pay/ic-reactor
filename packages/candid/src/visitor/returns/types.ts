@@ -66,84 +66,67 @@ interface ResultNodeBase<T extends NodeType = NodeType> {
   candidType: string
   /** What it becomes after display transformation */
   displayType: DisplayType
+  /** Original raw value before transformation (present after resolution) */
+  raw?: unknown
 }
+
+// Forward declaration for recursive types
+export interface ResultNodeRef extends ResultNodeBase {
+  resolve(data: unknown): ResultNodeRef & { raw: unknown }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Type-Specific Extras (embedded directly in node)
+// For compound types, children are stored directly in their respective fields
+// ════════════════════════════════════════════════════════════════════════════
+
+type NodeTypeExtras<T extends NodeType> = T extends "record"
+  ? { fields: Record<string, ResultNodeRef> }
+  : T extends "variant"
+    ? { options: Record<string, ResultNodeRef>; selected?: string }
+    : T extends "tuple"
+      ? { items: ResultNodeRef[] }
+      : T extends "optional"
+        ? { inner: ResultNodeRef | null }
+        : T extends "vector"
+          ? { items?: ResultNodeRef[]; item: ResultNodeRef }
+          : T extends "blob"
+            ? { displayHint: "hex"; value?: string }
+            : T extends "recursive"
+              ? {
+                  typeName: string
+                  extract: () => ResultNodeRef
+                  value?: ResultNodeRef
+                }
+              : T extends "number"
+                ? { format: NumberFormat; value?: string | number }
+                : T extends "text" | "principal"
+                  ? { format: TextFormat; value?: string }
+                  : T extends "boolean"
+                    ? { value?: boolean }
+                    : T extends "null"
+                      ? { value?: null }
+                      : { value?: unknown } // unknown
 
 /**
  * A unified result node that contains both schema and resolved value.
- * When used as schema only, `value` and `raw` are undefined.
- * When resolved, `value` contains the display-ready data and `raw` the original.
+ * When used as schema only, `raw` is undefined.
+ * When resolved, `raw` contains the original data.
+ *
+ * Compound types (record, variant, tuple, optional, vector) store
+ * resolved children directly in their structure fields.
+ * Primitive types store the display value in `value`.
  */
 export type ResultNode<T extends NodeType = NodeType> = ResultNodeBase<T> &
   NodeTypeExtras<T> & {
-    /** Display-ready value (present after resolution) */
-    value?: NodeValue<T>
-    /** Original raw value before transformation */
-    raw?: unknown
     /** Resolve this node with a value, returning a new resolved node */
     resolve(data: unknown): ResolvedNode<T>
   }
 
-// ════════════════════════════════════════════════════════════════════════════
-// Type-Specific Extras (embedded directly in node)
-// ════════════════════════════════════════════════════════════════════════════
-
-type NodeTypeExtras<T extends NodeType> = T extends "record"
-  ? { fields: Record<string, ResultNode> }
-  : T extends "variant"
-    ? { options: Record<string, ResultNode> }
-    : T extends "tuple"
-      ? { items: ResultNode[] }
-      : T extends "optional"
-        ? { inner: ResultNode }
-        : T extends "vector"
-          ? { item: ResultNode }
-          : T extends "blob"
-            ? { displayHint: "hex" }
-            : T extends "recursive"
-              ? { typeName: string; extract: () => ResultNode }
-              : T extends "number"
-                ? { format: NumberFormat }
-                : T extends "text" | "principal"
-                  ? { format: TextFormat }
-                  : object // boolean, null, unknown have no extras
-
-// ════════════════════════════════════════════════════════════════════════════
-// Resolved Value Types (what `value` contains after resolution)
-// ════════════════════════════════════════════════════════════════════════════
-
-type NodeValue<T extends NodeType> = T extends "record"
-  ? Record<string, ResolvedNode>
-  : T extends "variant"
-    ? { key: string; node: ResolvedNode }
-    : T extends "tuple"
-      ? ResolvedNode[]
-      : T extends "optional"
-        ? ResolvedNode | null
-        : T extends "vector"
-          ? ResolvedNode[]
-          : T extends "blob"
-            ? string
-            : T extends "recursive"
-              ? ResolvedNode
-              : T extends "principal" | "text"
-                ? string
-                : T extends "number"
-                  ? string | number
-                  : T extends "boolean"
-                    ? boolean
-                    : T extends "null"
-                      ? null
-                      : unknown
-
-// ════════════════════════════════════════════════════════════════════════════
-// Resolved Node (node with value populated)
-// ════════════════════════════════════════════════════════════════════════════
-
 /**
- * A resolved node has `value` and `raw` populated.
+ * A resolved node has `raw` populated and children resolved.
  */
 export type ResolvedNode<T extends NodeType = NodeType> = ResultNode<T> & {
-  value: NodeValue<T>
   raw: unknown
 }
 
