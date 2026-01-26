@@ -1,4 +1,4 @@
-import { ResolvedNode } from "@ic-reactor/candid"
+import type { ResolvedNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const OptionalResult: React.FC<{
@@ -10,7 +10,7 @@ export const OptionalResult: React.FC<{
       <span style={{ color: "#aaa", fontStyle: "italic" }}>null</span>
     ) : (
       <div style={{ display: "inline-block", verticalAlign: "top" }}>
-        <ResultRenderer result={result.value.value as ResolvedNode} />
+        <ResultRenderer result={result.value} />
       </div>
     )}
   </div>

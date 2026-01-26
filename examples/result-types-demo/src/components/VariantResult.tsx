@@ -1,5 +1,4 @@
-import React from "react"
-import { ResolvedNode } from "@ic-reactor/candid"
+import type { ResolvedNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const VariantResult: React.FC<{
@@ -14,10 +13,10 @@ export const VariantResult: React.FC<{
     }}
   >
     <strong>
-      {result.label} (Variant: {result.value.key}):
+      {result.label} (Variant: {result.label}):
     </strong>
     <div style={{ paddingLeft: "20px" }}>
-      <ResultRenderer result={result.value.node} />
+      <ResultRenderer result={result.selectedOption} />
     </div>
   </div>
 )

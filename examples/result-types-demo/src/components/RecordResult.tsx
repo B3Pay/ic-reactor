@@ -1,4 +1,4 @@
-import { ResolvedNode } from "@ic-reactor/candid"
+import type { ResolvedNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const RecordResult: React.FC<{

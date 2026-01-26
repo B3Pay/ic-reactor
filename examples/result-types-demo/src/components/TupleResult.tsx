@@ -1,4 +1,4 @@
-import { ResolvedNode } from "@ic-reactor/candid"
+import type { ResolvedNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const TupleResult: React.FC<{
@@ -23,7 +23,7 @@ export const TupleResult: React.FC<{
         marginTop: "5px",
       }}
     >
-      {result.value.map((item, index) => (
+      {result.items.map((item, index) => (
         <div
           key={index}
           style={{

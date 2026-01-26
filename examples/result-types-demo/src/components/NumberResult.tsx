@@ -1,4 +1,4 @@
-import { ResolvedNode } from "@ic-reactor/candid"
+import type { ResolvedNode } from "@ic-reactor/candid"
 
 export const NumberResult: React.FC<{
   result: ResolvedNode<"number">

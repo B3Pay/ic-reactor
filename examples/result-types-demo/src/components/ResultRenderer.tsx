@@ -6,11 +6,11 @@ import { VariantResult } from "./VariantResult"
 import { VectorResult } from "./VectorResult"
 import { OptionalResult } from "./OptionalResult"
 import { TupleResult } from "./TupleResult"
-import { ResolvedNode } from "@ic-reactor/candid"
+import type { ResolvedNode, ResultNode } from "@ic-reactor/candid"
 
-export const ResultRenderer: React.FC<{ result: ResolvedNode }> = ({
-  result,
-}) => {
+export const ResultRenderer: React.FC<{
+  result: ResolvedNode | ResultNode
+}> = ({ result }) => {
   console.log(result)
   switch (result.type) {
     case "text":
@@ -30,14 +30,18 @@ export const ResultRenderer: React.FC<{ result: ResolvedNode }> = ({
     case "optional":
       return <OptionalResult result={result as ResolvedNode<"optional">} />
     case "principal":
-      return <div>Principal: {String(result.value)}</div>
+      return (
+        <div>
+          Principal: {String((result as ResolvedNode<"principal">).value)}
+        </div>
+      )
     case "null":
       return <div>Null</div>
     // Add other types as needed
     default:
       return (
         <div style={{ color: "red" }}>
-          Unknown type: {result.type} ({JSON.stringify(result.value)})
+          Unknown type: {result.type} ({JSON.stringify(result.raw)})
         </div>
       )
   }

@@ -1,4 +1,4 @@
-import { ResolvedNode } from "@ic-reactor/candid"
+import type { ResolvedNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const VectorResult: React.FC<{
@@ -14,10 +14,10 @@ export const VectorResult: React.FC<{
   >
     <strong>{result.label || "Vector"}:</strong>
     <div style={{ paddingLeft: "20px", marginTop: "5px" }}>
-      {result.value.length === 0 ? (
+      {result.items.length === 0 ? (
         <span style={{ color: "#888" }}>Empty</span>
       ) : (
-        result.value.map((item, index) => (
+        result.items.map((item, index) => (
           <div
             key={index}
             style={{
@@ -26,7 +26,9 @@ export const VectorResult: React.FC<{
               marginBottom: "5px",
             }}
           >
-            <span style={{ marginRight: "5px", color: "#888" }}>[{index}]</span>
+            <span style={{ marginRight: "5px", color: "#888" }}>
+              [{index + 1}]
+            </span>
             <div style={{ flex: 1 }}>
               <ResultRenderer result={item} />
             </div>
