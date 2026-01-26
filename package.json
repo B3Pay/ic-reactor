@@ -1,6 +1,6 @@
 {
   "name": "ic-reactor",
-  "version": "--",
+  "version": "3.0.10-beta.2",
   "type": "module",
   "private": true,
   "description": "The modern, type-safe library for building Internet Computer applications",
