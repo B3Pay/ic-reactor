@@ -11,6 +11,7 @@ import { TupleResult } from "./TupleResult"
 export const ResultRenderer: React.FC<{ result: ResultFieldWithValue }> = ({
   result,
 }) => {
+  console.log(result)
   switch (result.field.type) {
     case "text":
       return <TextResult result={result as ResultFieldWithValue<"text">} />

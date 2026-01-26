@@ -185,25 +185,6 @@ export interface UnknownResultField extends ResultFieldBase<"unknown"> {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Union Type
-// ════════════════════════════════════════════════════════════════════════════
-
-export type ResultField =
-  | RecordResultField
-  | VariantResultField
-  | TupleResultField
-  | OptionalResultField
-  | VectorResultField
-  | BlobResultField
-  | RecursiveResultField
-  | PrincipalResultField
-  | NumberResultField
-  | TextResultField
-  | BooleanResultField
-  | NullResultField
-  | UnknownResultField
-
-// ════════════════════════════════════════════════════════════════════════════
 // Result Field With Value Interfaces
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -215,7 +196,7 @@ export interface RecordResultWithValue<V = unknown> {
 
 export interface VariantResultWithValue<V = unknown> {
   field: VariantResultField
-  value: { option: string; value: ResultFieldWithValue }
+  value: ResultFieldWithValue
   raw: V
 }
 
@@ -336,6 +317,25 @@ export interface ResolvedMethodResult<A = BaseActor> {
   results: ResultFieldWithValue[]
   raw: ActorMethodReturnType<A[FunctionName<A>]>
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// Union Type
+// ════════════════════════════════════════════════════════════════════════════
+
+export type ResultField =
+  | RecordResultField
+  | VariantResultField
+  | TupleResultField
+  | OptionalResultField
+  | VectorResultField
+  | BlobResultField
+  | RecursiveResultField
+  | PrincipalResultField
+  | NumberResultField
+  | TextResultField
+  | BooleanResultField
+  | NullResultField
+  | UnknownResultField
 
 export interface MethodResultMeta<
   A = BaseActor,
