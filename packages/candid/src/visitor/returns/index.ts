@@ -298,7 +298,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: "rec",
       displayType: "recursive",
-      inner: null, // null until resolved
+      inner: {} as ResultNode, // placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"recursive"> {
         return { ...node, inner: getInner().resolve(data), raw: data }
       },
