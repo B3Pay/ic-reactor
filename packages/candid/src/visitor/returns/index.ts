@@ -151,18 +151,17 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     fields_: Array<[string, IDL.Type]>,
     label: string
   ): ResultNode<"variant"> {
-    const options: Record<string, ResultNode> = {}
+    const selectedOption: Record<string, ResultNode> = {}
     for (const [key, type] of fields_) {
-      options[key] = type.accept(this, key) as ResultNode
+      selectedOption[key] = type.accept(this, key) as ResultNode
     }
-    const isResult = "Ok" in options && "Err" in options
-
+    const isResult = "Ok" in selectedOption && "Err" in selectedOption
     const node: ResultNode<"variant"> = {
       type: "variant",
       label,
       candidType: "variant",
       displayType: isResult ? "result" : "variant",
-      options,
+      selectedOption: {} as ResultNode, // placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"variant"> {
         if (data === null || data === undefined) {
           throw new Error(
@@ -171,17 +170,14 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         }
         const variantData = data as Record<string, unknown>
         const selected = Object.keys(variantData)[0]
-        const optionNode = options[selected]
+        const optionNode = selectedOption[selected]
         if (!optionNode) {
           throw new Error(`Option ${selected} not found in variant`)
         }
         return {
           ...node,
           selected,
-          options: {
-            ...node.options,
-            [selected]: optionNode.resolve(variantData[selected]),
-          },
+          selectedOption: optionNode.resolve(variantData[selected]),
           raw: data,
         }
       },
@@ -231,12 +227,12 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       candidType: "opt",
       displayType: "nullable",
-      inner,
+      value: null, // null until resolved
       resolve(data: unknown): ResolvedNode<"optional"> {
         const opt = data as T[]
         const resolved =
           Array.isArray(opt) && opt.length > 0 ? inner.resolve(opt[0]) : null
-        return { ...node, inner: resolved, raw: data }
+        return { ...node, value: resolved, raw: data }
       },
     }
     return node
@@ -255,6 +251,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         label,
         candidType: "blob",
         displayType: "string",
+        value: "", // empty schema placeholder, populated on resolve
         resolve(data: unknown): ResolvedNode<"blob"> {
           return { ...node, value: codec.decode(data) as string, raw: data }
         },

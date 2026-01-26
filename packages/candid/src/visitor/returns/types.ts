@@ -70,35 +70,32 @@ interface ResultNodeBase<T extends NodeType = NodeType> {
   raw?: unknown
 }
 
-// Forward declaration for recursive types
-export interface ResultNodeRef extends ResultNodeBase {
-  resolve(data: unknown): ResultNodeRef & { raw: unknown }
-}
-
 // ════════════════════════════════════════════════════════════════════════════
 // Type-Specific Extras (embedded directly in node)
 // For compound types, children are stored directly in their respective fields
 // ════════════════════════════════════════════════════════════════════════════
 
 type NodeTypeExtras<T extends NodeType> = T extends "record"
-  ? { fields: Record<string, ResultNodeRef> }
+  ? { fields: Record<string, ResultNode> }
   : T extends "variant"
-    ? { options: Record<string, ResultNodeRef>; selected?: string }
+    ? { selectedOption: ResultNode; selected?: string }
     : T extends "tuple" | "vector"
-      ? { items: ResultNodeRef[] }
-      : T extends "optional" | "recursive"
-        ? { inner: ResultNodeRef | null }
-        : T extends "blob"
-          ? { value?: string }
-          : T extends "number"
-            ? { format?: NumberFormat; value?: string | number }
-            : T extends "text" | "principal"
-              ? { format?: TextFormat; value?: string }
-              : T extends "boolean"
-                ? { value?: boolean }
-                : T extends "null"
-                  ? { value?: null }
-                  : { value?: unknown } // unknown
+      ? { items: ResultNode[] }
+      : T extends "optional"
+        ? { value: ResultNode | null }
+        : T extends "recursive"
+          ? { inner: ResultNode | null }
+          : T extends "blob"
+            ? { value: string }
+            : T extends "number"
+              ? { format: NumberFormat; value: string | number }
+              : T extends "text" | "principal"
+                ? { format: TextFormat; value: string }
+                : T extends "boolean"
+                  ? { value: boolean }
+                  : T extends "null"
+                    ? { value: null }
+                    : { value: unknown } // unknown
 
 /**
  * A unified result node that contains both schema and resolved value.
