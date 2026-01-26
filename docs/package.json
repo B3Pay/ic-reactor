@@ -10,8 +10,8 @@
     "preview": "pnpm build && npx serve dist/local -p 3000"
   },
   "devDependencies": {
-    "@astrojs/starlight": "^0.37.3",
-    "astro": "^5.16.11",
+    "@astrojs/starlight": "^0.37.4",
+    "astro": "^5.16.15",
     "serve": "^14.2.0",
     "typedoc": "^0.28.16",
     "typedoc-plugin-frontmatter": "^1.3.0",
