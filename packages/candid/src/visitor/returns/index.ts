@@ -48,11 +48,17 @@ function primitiveNode<T extends NodeType>(
     displayType,
     ...extras,
     resolve(data: unknown): ResolvedNode<T> {
-      return {
-        ...node,
-        value: codec.decode(data),
-        raw: data,
-      } as unknown as ResolvedNode<T>
+      try {
+        return {
+          ...node,
+          value: codec.decode(data),
+          raw: data,
+        } as unknown as ResolvedNode<T>
+      } catch (e) {
+        throw new Error(
+          `Failed to decode field "${label}" of type ${type} (${candidType}) with data: ${JSON.stringify(data)}. Error: ${e}`
+        )
+      }
     },
   } as unknown as ResultNode<T>
   return node
@@ -68,8 +74,19 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 > {
   private codec = new DisplayCodecVisitor()
 
+  private recCache = new Map<IDL.RecClass<any>, ResultNode<"recursive">>()
+
   private getCodec(t: IDL.Type): Codec {
-    return t.accept(this.codec, null) as Codec
+    const codec = t.accept(this.codec, null) as any
+    return {
+      decode: (v: unknown) => {
+        try {
+          return typeof codec?.decode === "function" ? codec.decode(v) : v
+        } catch {
+          return v
+        }
+      },
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -138,8 +155,20 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         }
         const recordData = data as Record<string, unknown>
         const resolvedFields: Record<string, ResolvedNode> = {}
+        let index = 0
         for (const [key, field] of Object.entries(fields)) {
-          resolvedFields[key] = field.resolve(recordData[key])
+          // Try named key first, then try numeric index (for tuples/indexed records)
+          const value =
+            recordData[key] !== undefined ? recordData[key] : recordData[index]
+
+          if (!field || typeof field.resolve !== "function") {
+            throw new Error(
+              `Field "${key}" in record "${label}" is not a valid ResultNode. Got: ${JSON.stringify(field)}`
+            )
+          }
+
+          resolvedFields[key] = field.resolve(value)
+          index++
         }
         return { ...node, fields: resolvedFields, raw: data }
       },
@@ -170,10 +199,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           )
         }
         const variantData = data as Record<string, unknown>
-        const selected = Object.keys(variantData)[0]
+        // Support both raw { Selected: value } and transformed { _type: 'Selected', Selected: value }
+        const selected =
+          (variantData._type as string) || Object.keys(variantData)[0]
         const optionNode = selectedOption[selected]
+
         if (!optionNode) {
-          throw new Error(`Option ${selected} not found in variant`)
+          throw new Error(
+            `Option ${selected} not found in variant ${label}. Available options: ${Object.keys(selectedOption).join(", ")}`
+          )
         }
         return {
           ...node,
@@ -230,9 +264,16 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "nullable",
       value: null, // null until resolved
       resolve(data: unknown): ResolvedNode<"optional"> {
-        const opt = data as T[]
-        const resolved =
-          Array.isArray(opt) && opt.length > 0 ? inner.resolve(opt[0]) : null
+        // If data is an array (raw format [T] or []), unwrap it.
+        // Otherwise, use data directly (already transformed or null/undefined).
+        const resolved = Array.isArray(data)
+          ? data.length > 0
+            ? inner.resolve(data[0])
+            : null
+          : data !== null && data !== undefined
+            ? inner.resolve(data)
+            : null
+
         return { ...node, value: resolved, raw: data }
       },
     }
@@ -304,6 +345,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     ty: IDL.ConstructType<T>,
     label: string
   ): ResultNode<"recursive"> {
+    if (this.recCache.has(_t)) {
+      return this.recCache.get(_t)! as ResultNode<"recursive">
+    }
+
     const self = this
     // Lazy extraction to prevent infinite loops
     let innerSchema: ResultNode | null = null
@@ -320,6 +365,8 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         return { ...node, inner: getInner().resolve(data), raw: data }
       },
     }
+
+    this.recCache.set(_t, node)
     return node
   }
 

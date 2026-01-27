@@ -1974,3 +1974,165 @@ describe("ResultFieldVisitor", () => {
     })
   })
 })
+
+describe("ResultFieldVisitor Reproduction - User reported issue", () => {
+  const visitor = new ResultFieldVisitor()
+
+  it("should handle record data provided as an array (tuple-like) even if IDL has names", () => {
+    const Rule = IDL.Variant({
+      Quorum: IDL.Record({
+        min_approved: IDL.Nat,
+        approvers: IDL.Variant({ Group: IDL.Vec(IDL.Principal) }),
+      }),
+    })
+
+    const NamedRule = IDL.Record({
+      description: IDL.Opt(IDL.Text),
+      id: IDL.Text,
+      name: IDL.Text,
+      rule: Rule,
+    })
+
+    const field = visitor.visitRecord(
+      NamedRule,
+      [
+        ["description", IDL.Opt(IDL.Text)],
+        ["id", IDL.Text],
+        ["name", IDL.Text],
+        ["rule", Rule],
+      ],
+      "NamedRule"
+    )
+
+    // Simulate lib-agent returning an array for a named record
+    const arrayData = [
+      [], // description (empty opt)
+      "1253ec41-ef1d-4317-bb82-2366fc34f37c", // id
+      "Admin approval", // name
+      { Quorum: { min_approved: BigInt(1), approvers: { Group: [] } } }, // rule
+    ]
+
+    // Before the fix, this would throw because arrayData["rule"] is undefined
+    const resolved = field.resolve(arrayData)
+
+    expect(resolved.fields.id.value).toBe(
+      "1253ec41-ef1d-4317-bb82-2366fc34f37c"
+    )
+    expect(resolved.fields.name.value).toBe("Admin approval")
+
+    const ruleNode = resolved.fields.rule as VariantNode
+    expect(ruleNode.selected).toBe("Quorum")
+  })
+
+  it("should handle already transformed variant data with _type", () => {
+    const Rule = IDL.Variant({
+      Quorum: IDL.Text,
+    })
+
+    const field = visitor.visitVariant(Rule, [["Quorum", IDL.Text]], "Rule")
+
+    // Data transformed by DisplayCodecVisitor
+    const transformedData = {
+      _type: "Quorum",
+      Quorum: "some text",
+    }
+
+    // Before the fix, this would throw because transformedData["Quorum"] is there but
+    // Object.keys(transformedData)[0] is "_type"
+    const resolved = field.resolve(transformedData)
+
+    expect(resolved.selected).toBe("Quorum")
+    expect(resolved.selectedOption.value).toBe("some text")
+  })
+
+  it("should handle already transformed optional data (unwrapped)", () => {
+    const OptText = IDL.Opt(IDL.Text)
+    const field = visitor.visitOpt(OptText, IDL.Text, "maybeText")
+
+    // Raw format is [value]
+    expect(field.resolve(["hello"]).value?.value).toBe("hello")
+    expect(field.resolve([]).value).toBeNull()
+
+    // Transformed format is just the value
+    expect(field.resolve("hello").value?.value).toBe("hello")
+    expect(field.resolve(null).value).toBeNull()
+    expect(field.resolve(undefined).value).toBeNull()
+  })
+
+  it("should provide a better error message when an option is missing", () => {
+    const MyVariant = IDL.Variant({ A: IDL.Null, B: IDL.Null })
+    const field = visitor.visitVariant(
+      MyVariant,
+      [
+        ["A", IDL.Null],
+        ["B", IDL.Null],
+      ],
+      "MyVariant"
+    )
+
+    expect(() => field.resolve({ C: null })).toThrow(
+      /Option C not found in variant MyVariant. Available options: A, B/
+    )
+  })
+
+  describe("Recursive types", () => {
+    it("should handle recursive variant with transformed data", () => {
+      const Rule = IDL.Rec()
+      const RuleType = IDL.Variant({
+        Quorum: IDL.Record({
+          min_approved: IDL.Nat,
+        }),
+        Nested: Rule,
+      })
+      Rule.fill(RuleType)
+
+      const field = visitor.visitRec(Rule, RuleType, "rule")
+
+      // Transformed data (using _type)
+      const transformedData = {
+        _type: "Quorum",
+        Quorum: {
+          min_approved: "1",
+        },
+      }
+
+      // This should work because Rule.resolve calls Variant.resolve
+      const resolved = field.resolve(transformedData) as RecursiveNode
+      const variantNode = resolved.inner as VariantNode
+
+      expect(variantNode.selected).toBe("Quorum")
+      expect(variantNode.selectedOption.type).toBe("record")
+    })
+
+    it("should handle deeply nested recursive variant with transformed data", () => {
+      const Rule = IDL.Rec()
+      const RuleType = IDL.Variant({
+        Quorum: IDL.Record({
+          min_approved: IDL.Nat,
+        }),
+        Nested: Rule,
+      })
+      Rule.fill(RuleType)
+
+      const field = visitor.visitRec(Rule, RuleType, "rule")
+
+      const transformedData = {
+        _type: "Nested",
+        Nested: {
+          _type: "Quorum",
+          Quorum: {
+            min_approved: "2",
+          },
+        },
+      }
+
+      const resolved = field.resolve(transformedData) as RecursiveNode
+      const variantNode = resolved.inner as VariantNode
+      expect(variantNode.selected).toBe("Nested")
+
+      const nestedResolved = variantNode.selectedOption as RecursiveNode
+      const innerVariant = nestedResolved.inner as VariantNode
+      expect(innerVariant.selected).toBe("Quorum")
+    })
+  })
+})

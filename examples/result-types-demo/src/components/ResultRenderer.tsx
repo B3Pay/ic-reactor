@@ -38,6 +38,10 @@ export const ResultRenderer: React.FC<{
           Principal: {String((result as ResolvedNode<"principal">).value)}
         </div>
       )
+    case "recursive":
+      return (
+        <ResultRenderer result={(result as ResolvedNode<"recursive">).inner} />
+      )
     case "null":
       return <div>Null</div>
     // Add other types as needed
