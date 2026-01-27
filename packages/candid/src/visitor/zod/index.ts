@@ -8,20 +8,12 @@ import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import * as z from "zod"
 
+// import { isQuery } from "../helpers"
+// import { MethodZodSchema, ServiceZodSchema } from "./types"
+
 export * from "./types"
 
-/**
- * Context data passed through the visitor during traversal.
- * Can be extended to track recursive types, naming, etc.
- */
-interface VisitorContext {
-  /** Map of recursive type names to their Zod schemas (for handling IDL.Rec) */
-  recursiveTypes: Map<string, z.ZodTypeAny>
-  /** Current depth in the type tree (for debugging/limits) */
-  depth: number
-  /** Optional field name for better error messages */
-  fieldName?: string
-}
+//
 
 /**
  * Visitor implementation that converts Candid IDL types to Zod schemas.
@@ -29,36 +21,29 @@ interface VisitorContext {
  * The Visitor pattern allows us to traverse the IDL type tree and build
  * corresponding Zod schemas at each node.
  */
-export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
+export class IDLToZodVisitor extends IDL.Visitor<string, z.ZodTypeAny> {
+  public recursiveTypes: Map<string, z.ZodTypeAny> = new Map()
+
   /**
    * Entry point for visiting any type.
    * This method dispatches to the appropriate specific visitor method.
    */
-  visitType<T>(
-    t: IDL.Type<T>,
-    data: VisitorContext
-  ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
-    return t.accept(this, data)
+  visitType<T>(t: IDL.Type<T>, label: string): z.ZodTypeAny {
+    return t.accept(this, label)
   }
 
   /**
    * Handle primitive types by delegating to specific methods
    */
-  visitPrimitive<T>(
-    t: IDL.PrimitiveType<T>,
-    data: VisitorContext
-  ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
-    return t.accept(this, data)
+  visitPrimitive<T>(t: IDL.PrimitiveType<T>, label: string): z.ZodTypeAny {
+    return t.accept(this, label)
   }
 
   /**
    * IDL.Empty - A type with no inhabitants
    * Maps to z.never() since it can never be instantiated
    */
-  visitEmpty(
-    _t: IDL.EmptyClass,
-    _data: VisitorContext
-  ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
+  visitEmpty(_t: IDL.EmptyClass, _label: string): z.ZodTypeAny {
     return z.never()
   }
 
@@ -68,7 +53,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitBool(
     _t: IDL.BoolClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     return z.boolean()
   }
@@ -79,7 +64,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitNull(
     _t: IDL.NullClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     return z.null()
   }
@@ -90,7 +75,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitReserved(
     _t: IDL.ReservedClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     return z.any()
   }
@@ -101,7 +86,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitText(
     _t: IDL.TextClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     return z.string()
   }
@@ -110,11 +95,8 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    * IDL.Number - Generic number type
    * Most number types delegate to specific methods
    */
-  visitNumber<T>(
-    t: IDL.PrimitiveType<T>,
-    data: VisitorContext
-  ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
-    return t.accept(this, data)
+  visitNumber<T>(t: IDL.PrimitiveType<T>, label: string): z.ZodTypeAny {
+    return t.accept(this, label)
   }
 
   /**
@@ -123,7 +105,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitInt(
     _t: IDL.IntClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     return z.bigint()
   }
@@ -134,7 +116,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitNat(
     _t: IDL.NatClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     return z.bigint().nonnegative()
   }
@@ -145,7 +127,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitFloat(
     _t: IDL.FloatClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     return z.number()
   }
@@ -156,7 +138,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitFixedInt(
     t: IDL.FixedIntClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     // Check the bit size from the type
     const bits = t._bits
@@ -176,7 +158,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitFixedNat(
     t: IDL.FixedNatClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     const bits = t._bits
 
@@ -193,7 +175,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
    */
   visitPrincipal(
     _t: IDL.PrincipalClass,
-    _data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     return z.custom<Principal>(
       (val): val is Principal => val instanceof Principal,
@@ -206,11 +188,8 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
   /**
    * Handle construct types (Vec, Opt, Record, Variant, etc.)
    */
-  visitConstruct<T>(
-    t: IDL.ConstructType<T>,
-    data: VisitorContext
-  ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
-    return t.accept(this, { ...data, depth: data.depth + 1 })
+  visitConstruct<T>(t: IDL.ConstructType<T>, label: string): z.ZodTypeAny {
+    return t.accept(this, label)
   }
 
   /**
@@ -220,9 +199,9 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
   visitVec<T>(
     _t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
-    data: VisitorContext
+    label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
-    const innerSchema = ty.accept(this, { ...data, depth: data.depth + 1 })
+    const innerSchema = ty.accept(this, label) as z.ZodTypeAny
     return z.array(innerSchema)
   }
 
@@ -233,9 +212,9 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
   visitOpt<T>(
     _t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
-    data: VisitorContext
+    label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
-    const innerSchema = ty.accept(this, { ...data, depth: data.depth + 1 })
+    const innerSchema = ty.accept(this, label) as z.ZodTypeAny
     return innerSchema.nullish()
   }
 
@@ -246,16 +225,12 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
   visitRecord(
     _t: IDL.RecordClass,
     fields: Array<[string, IDL.Type]>,
-    data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     const shape: Record<string, z.ZodTypeAny> = {}
 
     for (const [fieldName, fieldType] of fields) {
-      shape[fieldName] = fieldType.accept(this, {
-        ...data,
-        depth: data.depth + 1,
-        fieldName,
-      })
+      shape[fieldName] = fieldType.accept(this, fieldName) as z.ZodTypeAny
     }
 
     return z.object(shape)
@@ -268,15 +243,11 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
   visitTuple<T extends any[]>(
     _t: IDL.TupleClass<T>,
     components: IDL.Type[],
-    data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     const schemas = components.map((component, idx) =>
-      component.accept(this, {
-        ...data,
-        depth: data.depth + 1,
-        fieldName: `[${idx}]`,
-      })
-    )
+      component.accept(this, `[${idx}]`)
+    ) as z.ZodTypeAny[]
 
     return z.tuple(schemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
   }
@@ -292,7 +263,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
   visitVariant(
     _t: IDL.VariantClass,
     fields: Array<[string, IDL.Type]>,
-    data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     const variants: z.ZodTypeAny[] = []
 
@@ -306,11 +277,10 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
         )
       } else {
         // Non-null variant: { TagName: Type }
-        const innerSchema = variantType.accept(this, {
-          ...data,
-          depth: data.depth + 1,
-          fieldName: variantName,
-        })
+        const innerSchema = variantType.accept(
+          this,
+          variantName
+        ) as z.ZodTypeAny
 
         variants.push(
           z.object({
@@ -320,7 +290,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
       }
     }
 
-    return z.union(variants)
+    return z.union(variants as [z.ZodTypeAny, ...z.ZodTypeAny[]])
   }
 
   /**
@@ -330,67 +300,43 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
   visitRec<T>(
     _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
-    data: VisitorContext
+    _label: string
   ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
     const typeName = ty.name || "RecursiveType"
 
     // Check if we've already started processing this recursive type
-    if (data.recursiveTypes.has(typeName)) {
-      return data.recursiveTypes.get(typeName)!
+    if (this.recursiveTypes.has(typeName)) {
+      return this.recursiveTypes.get(typeName)!
     }
 
     // Create a lazy schema that will be resolved later
     const lazySchema = z.lazy(() => {
-      return ty.accept(this, { ...data, depth: data.depth + 1 })
+      return ty.accept(this, typeName) as z.ZodTypeAny
     })
 
     // Store it for future references
-    data.recursiveTypes.set(typeName, lazySchema)
+    this.recursiveTypes.set(typeName, lazySchema)
 
     return lazySchema
   }
 
   /**
    * IDL.Func - Function type
-   * Functions are opaque in Candid, map to z.any()
+   * Maps to z.tuple([z.custom<Principal>, z.string()])
    */
-  visitFunc(
-    t: IDL.FuncClass,
-    data: VisitorContext
-  ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
-    const args = t.argTypes.map((type) => type.accept(this, data))
-    const rets = t.retTypes.map((type) => type.accept(this, data))
-
-    return z.object({
-      args: z.tuple(args as [z.ZodTypeAny, ...z.ZodTypeAny[]]),
-      rets: z.tuple(rets as [z.ZodTypeAny, ...z.ZodTypeAny[]]),
-    })
+  visitFunc(_t: IDL.FuncClass, _label: string): z.ZodTypeAny {
+    return z.tuple([
+      z.custom<Principal>((val) => val instanceof Principal),
+      z.string(),
+    ])
   }
 
   /**
    * IDL.Service - Service type
-   * Services are opaque, map to z.any()
+   * Maps to z.custom<Principal>
    */
-  visitService(
-    t: IDL.ServiceClass,
-    data: VisitorContext
-  ): z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> {
-    const result: Partial<Record<string, any>> = {}
-
-    const serviceFields = t._fields || []
-
-    for (const [methodName, methodType] of serviceFields) {
-      const funcSchema = this.visitFunc(methodType, data) as z.ZodObject<{
-        args: z.ZodTuple
-        rets: z.ZodTuple
-      }>
-      result[methodName] = {
-        inputSchema: funcSchema.shape.args,
-        outputSchema: funcSchema.shape.rets,
-      }
-    }
-
-    return z.object(result)
+  visitService(_t: IDL.ServiceClass, _label: string): z.ZodTypeAny {
+    return z.custom<Principal>((val) => val instanceof Principal)
   }
 }
 
@@ -437,12 +383,7 @@ export class IDLToZodVisitor extends IDL.Visitor<VisitorContext, z.ZodTypeAny> {
  */
 export function idlToZod<T = any>(idlType: IDL.Type<any>): z.ZodType<T> {
   const converter = new IDLToZodVisitor()
-  const context: VisitorContext = {
-    recursiveTypes: new Map(),
-    depth: 0,
-  }
-
-  return converter.visitType(idlType, context) as z.ZodType<T>
+  return converter.visitType(idlType, "") as z.ZodType<T>
 }
 
 /**
@@ -520,30 +461,22 @@ export function idlFactoryToZod<T extends BaseActor = BaseActor>(
   idlFactory: (args: { IDL: typeof IDL }) => IDL.ServiceClass
 ): FactoryZodResult<T> {
   const converter = new IDLToZodVisitor()
-  const context: VisitorContext = {
-    recursiveTypes: new Map(),
-    depth: 0,
-  }
-
   const service = idlFactory({ IDL })
-  // Use a plain record for mutable assignment, then cast to the typed result on return
-  const result: Partial<Record<string, any>> = {}
+  const result = {} as FactoryZodResult<T>
 
-  // Extract types from the service definition
-  // Note: This is a simplified version - you may need to customize based on your needs
-  const serviceFields = service._fields || []
+  for (const [methodName, func] of service._fields) {
+    const args = func.argTypes.map((type, index) =>
+      type.accept(converter, `arg${index}`)
+    ) as z.ZodTypeAny[]
+    const rets = func.retTypes.map((type, index) =>
+      type.accept(converter, `ret${index}`)
+    ) as z.ZodTypeAny[]
 
-  for (const [methodName, methodType] of serviceFields) {
-    const funcSchema = converter.visitFunc(methodType, context) as z.ZodObject<{
-      args: z.ZodTuple
-      rets: z.ZodTuple
-    }>
-    // Transform the func schema to match FactoryZodResult structure
-    result[methodName] = {
-      inputSchema: funcSchema.shape.args,
-      outputSchema: funcSchema.shape.rets,
-    }
+    result[methodName as FunctionName<T>] = {
+      inputSchema: z.tuple(args as [z.ZodTypeAny, ...z.ZodTypeAny[]]),
+      outputSchema: z.tuple(rets as [z.ZodTypeAny, ...z.ZodTypeAny[]]),
+    } as any
   }
 
-  return result as FactoryZodResult<T>
+  return result
 }

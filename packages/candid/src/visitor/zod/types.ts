@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 import { Principal } from "@icp-sdk/core/principal"
 import {
   CandidVariantKey,
@@ -77,3 +78,17 @@ export type ZodSchemaOf<T> =
               : T extends object
                 ? ZodObjectOf<T>
                 : ZodCommonTypeOf<T>
+
+export interface MethodZodSchema<
+  A = BaseActor,
+  Name extends FunctionName<A> = FunctionName<A>,
+> {
+  functionType: FunctionType
+  functionName: Name
+  inputSchema: z.ZodTuple
+  outputSchema: z.ZodTuple
+}
+
+export type ServiceZodSchema<A = BaseActor> = {
+  [K in FunctionName<A>]: MethodZodSchema<A, K>
+}
