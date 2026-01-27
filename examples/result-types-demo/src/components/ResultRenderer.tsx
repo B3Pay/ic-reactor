@@ -6,6 +6,7 @@ import { VariantResult } from "./VariantResult"
 import { VectorResult } from "./VectorResult"
 import { OptionalResult } from "./OptionalResult"
 import { TupleResult } from "./TupleResult"
+import { BlobResult } from "./BlobResult"
 import type { ResolvedNode, ResultNode } from "@ic-reactor/candid"
 
 export const ResultRenderer: React.FC<{
@@ -13,6 +14,8 @@ export const ResultRenderer: React.FC<{
 }> = ({ result }) => {
   console.log(result)
   switch (result.type) {
+    case "blob":
+      return <BlobResult result={result as ResolvedNode<"blob">} />
     case "text":
       return <TextResult result={result as ResolvedNode<"text">} />
     case "number":

@@ -13,7 +13,8 @@ import type {
 } from "./types"
 
 export * from "./types"
-import { DisplayCodecVisitor } from "@ic-reactor/core"
+import { sha256 } from "@noble/hashes/sha2"
+import { DisplayCodecVisitor, uint8ArrayToHex } from "@ic-reactor/core"
 import type {
   ActorMethodReturnType,
   BaseActor,
@@ -251,9 +252,25 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         label,
         candidType: "blob",
         displayType: "string",
+        length: 0,
+        hash: "",
         value: "", // empty schema placeholder, populated on resolve
         resolve(data: unknown): ResolvedNode<"blob"> {
-          return { ...node, value: codec.decode(data) as string, raw: data }
+          const value = codec.decode(data) as string | Uint8Array
+          return {
+            ...node,
+            value,
+            displayType: typeof value === "string" ? "string" : "blob",
+            hash: uint8ArrayToHex(
+              sha256(
+                data instanceof Uint8Array
+                  ? data
+                  : new Uint8Array(data as number[])
+              )
+            ),
+            length: value.length,
+            raw: data,
+          }
         },
       }
       return node

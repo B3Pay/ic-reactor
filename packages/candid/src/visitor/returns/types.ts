@@ -35,6 +35,7 @@ export type DisplayType =
   | "result"
   | "nullable"
   | "recursive"
+  | "blob"
   | "unknown"
 
 export type NumberFormat = "timestamp" | "cycle" | "value" | "token" | "normal"
@@ -68,6 +69,8 @@ interface ResultNodeBase<T extends NodeType = NodeType> {
   displayType: DisplayType
   /** Original raw value before transformation (present after resolution) */
   raw?: unknown
+  /** Value after display transformation (present after resolution) */
+  value?: unknown
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -86,7 +89,7 @@ type NodeTypeExtras<T extends NodeType> = T extends "record"
         : T extends "recursive"
           ? { inner: ResultNode }
           : T extends "blob"
-            ? { value: string }
+            ? { value: string | Uint8Array; hash: string; length: number }
             : T extends "number"
               ? { format: NumberFormat; value: string | number }
               : T extends "text" | "principal"
@@ -110,7 +113,6 @@ export type ResultNode<T extends NodeType = NodeType> = ResultNodeBase<T> &
   NodeTypeExtras<T> & {
     /** Resolve this node with a value, returning a new resolved node */
     resolve(data: unknown): ResolvedNode<T>
-    value?: unknown
   }
 
 /**
