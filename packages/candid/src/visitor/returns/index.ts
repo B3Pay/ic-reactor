@@ -341,12 +341,12 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitRec<T>(
-    _t: IDL.RecClass<T>,
+    t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     label: string
   ): ResultNode<"recursive"> {
-    if (this.recCache.has(_t)) {
-      return this.recCache.get(_t)! as ResultNode<"recursive">
+    if (this.recCache.has(t)) {
+      return this.recCache.get(t)! as ResultNode<"recursive">
     }
 
     const self = this
@@ -366,7 +366,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       },
     }
 
-    this.recCache.set(_t, node)
+    this.recCache.set(t, node)
     return node
   }
 
