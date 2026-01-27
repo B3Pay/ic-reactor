@@ -16,9 +16,18 @@ const testIDL = ({ IDL }: { IDL: any }) => {
     identity: IDL.Vec(IDL.Tuple(IDL.Text, IDL.Principal)),
   })
 
+  const Category = IDL.Rec()
+  Category.fill(
+    IDL.Record({
+      name: IDL.Text,
+      subcategories: IDL.Vec(Category),
+    })
+  )
+
   return IDL.Service({
     get_user: IDL.Func([], [User], ["query"]),
     get_version: IDL.Func([], [IDL.Nat], ["query"]),
+    get_categories: IDL.Func([], [Category], ["query"]),
   })
 }
 
@@ -43,7 +52,28 @@ function App() {
   }
   // Generate resolved metadata with values
   // We pass the raw value, and it returns the structure with display values
+  // Get metadata for 'get_categories'
+  const getCategoriesMeta = serviceMeta["get_categories"]
+
+  const mockCategories = {
+    name: "Electronics",
+    subcategories: [
+      {
+        name: "Computers",
+        subcategories: [
+          { name: "Laptops", subcategories: [] },
+          { name: "Desktops", subcategories: [] },
+        ],
+      },
+      {
+        name: "Phones",
+        subcategories: [],
+      },
+    ],
+  }
+
   const resolved = getUserMeta.resolve(mockUser)
+  const resolvedCategories = getCategoriesMeta.resolve(mockCategories)
 
   return (
     <div
@@ -65,8 +95,15 @@ function App() {
 
       <div style={{ marginTop: "30px" }}>
         <h2>Dynamic Record Rendering</h2>
-        {resolved.results.map((result) => (
-          <ResultRenderer key={result.label} result={result} />
+        {resolved.results.map((result, i) => (
+          <ResultRenderer key={i} result={result} />
+        ))}
+      </div>
+
+      <div style={{ marginTop: "40px" }}>
+        <h2>Recursive Type Rendering</h2>
+        {resolvedCategories.results.map((result, i) => (
+          <ResultRenderer key={i} result={result} />
         ))}
       </div>
 
@@ -87,7 +124,7 @@ function App() {
           }}
         >
           {JSON.stringify(
-            resolved,
+            { user: resolved, categories: resolvedCategories },
             (_, value) =>
               typeof value === "bigint" ? `${value.toString()}n` : value,
             2
