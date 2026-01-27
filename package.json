@@ -55,6 +55,9 @@
       "@dfinity/candid": "npm:@icp-sdk/core/candid@^5.0.0",
       "@dfinity/principal": "npm:@icp-sdk/core/principal@^5.0.0",
       "@dfinity/identity": "npm:@icp-sdk/core/identity@^5.0.0"
-    }
+    },
+    "ignoredBuiltDependencies": [
+      "wasm-pack"
+    ]
   }
 }

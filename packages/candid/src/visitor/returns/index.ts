@@ -12,8 +12,7 @@ import type {
   TextFormat,
 } from "./types"
 
-export * from "./types"
-import { sha256 } from "@noble/hashes/sha2"
+import { sha256 } from "@noble/hashes/sha2.js"
 import { DisplayCodecVisitor, uint8ArrayToHex } from "@ic-reactor/core"
 import type {
   ActorMethodReturnType,
