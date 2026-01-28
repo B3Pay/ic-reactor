@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest"
-import { IDL } from "../types"
 import { ResultFieldVisitor } from "./index"
 import type {
   ResultNode,
@@ -19,6 +18,7 @@ import type {
   MethodMeta,
   ServiceMeta,
 } from "./types"
+import { IDL } from "@icp-sdk/core/candid"
 
 describe("ResultFieldVisitor", () => {
   const visitor = new ResultFieldVisitor()

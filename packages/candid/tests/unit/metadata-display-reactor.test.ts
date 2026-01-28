@@ -4,14 +4,6 @@ import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { MetadataDisplayReactor } from "../../src/metadata-display-reactor"
-import type {
-  MethodArgumentsMeta,
-  NumberArgumentField,
-  OptionalArgumentField,
-  PrincipalArgumentField,
-  RecordArgumentField,
-  VariantArgumentField,
-} from "../../src/visitor/arguments"
 import {
   MethodMeta,
   NumberNode,
@@ -346,10 +338,10 @@ describe("MetadataDisplayReactor", () => {
       const amountField = transferArgField.fields.find(
         (f) => f.label === "amount"
       )
-      if (!amountField || amountField.type !== "number") {
-        throw new Error("Amount field not found or not number")
+      if (!amountField || amountField.type !== "text") {
+        throw new Error("Amount field not found or not text")
       }
-      expect(amountField.type).toBe("number")
+      expect(amountField.type).toBe("text")
       expect(amountField.candidType).toBe("nat")
       expect(amountField.defaultValue).toBe("")
 
@@ -359,7 +351,7 @@ describe("MetadataDisplayReactor", () => {
         throw new Error("Fee field not found or not optional")
       }
       expect(feeField.type).toBe("optional")
-      expect(feeField.innerField.type).toBe("number")
+      expect(feeField.innerField.type).toBe("text")
 
       // Check 'memo' field (optional blob)
       const memoField = transferArgField.fields.find((f) => f.label === "memo")
@@ -377,7 +369,7 @@ describe("MetadataDisplayReactor", () => {
         throw new Error("CreatedAt field not found or not optional")
       }
       expect(createdAtField.type).toBe("optional")
-      expect(createdAtField.innerField.type).toBe("number")
+      expect(createdAtField.innerField.type).toBe("text")
     })
 
     it("should generate default values for transfer", () => {
@@ -387,10 +379,7 @@ describe("MetadataDisplayReactor", () => {
       expect(meta.defaultValues).toHaveLength(1)
       expect(meta.defaultValues[0]).toBeDefined()
 
-      const defaultTransferArg = meta.defaultValues[0] as Record<
-        string,
-        unknown
-      >
+      const defaultTransferArg = meta.defaultValues[0]
       expect(defaultTransferArg).toHaveProperty("to")
       expect(defaultTransferArg).toHaveProperty("amount")
       expect(defaultTransferArg).toHaveProperty("fee")
@@ -573,10 +562,10 @@ describe("MetadataDisplayReactor", () => {
 
       // First arg is nat64 (user ID)
       const idField = meta.fields[0]
-      if (idField.type !== "number") {
-        throw new Error("Expected number field")
+      if (idField.type !== "text") {
+        throw new Error("Expected text field")
       }
-      expect(idField.type).toBe("number")
+      expect(idField.type).toBe("text")
       expect(idField.candidType).toBe("nat64")
 
       // Second arg is Status variant
@@ -591,7 +580,7 @@ describe("MetadataDisplayReactor", () => {
 
       // Pending has a nat64 payload
       const pendingField = statusField.fields.find((f) => f.label === "Pending")
-      expect(pendingField?.type).toBe("number")
+      expect(pendingField?.type).toBe("text")
     })
 
     it("should handle optional record result (get_user)", () => {
@@ -761,7 +750,7 @@ describe("MetadataDisplayReactor", () => {
       expect(argRecord.fields).toHaveLength(2)
 
       const userIdField = argRecord.fields.find((f) => f.label === "user_id")
-      expect(userIdField?.type).toBe("number")
+      expect(userIdField?.type).toBe("text")
 
       const dataField = argRecord.fields.find((f) => f.label === "data")
       expect(dataField?.type).toBe("blob")
@@ -829,7 +818,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should return all argument metadata", () => {
-      const allArgMeta = reactor.getAllArgumentMeta()
+      const allArgMeta = reactor.getAllArgumentMeta()!
 
       expect(allArgMeta).not.toBeNull()
       expect(allArgMeta).toHaveProperty("greet")
@@ -837,27 +826,23 @@ describe("MetadataDisplayReactor", () => {
       expect(allArgMeta).toHaveProperty("set_count")
 
       // Check greet method
-      const greetMeta = (allArgMeta as any)[
-        "greet"
-      ] as MethodArgumentsMeta<unknown>
+      const greetMeta = allArgMeta.greet
+
       expect(greetMeta.functionType).toBe("query")
       expect(greetMeta.fields).toHaveLength(1)
       expect(greetMeta.fields[0].type).toBe("text")
 
       // Check get_count method (no args)
-      const getCountMeta = (allArgMeta as any)[
-        "get_count"
-      ] as MethodArgumentsMeta<unknown>
+      const getCountMeta = allArgMeta.get_count
+
       expect(getCountMeta.functionType).toBe("query")
       expect(getCountMeta.fields).toHaveLength(0)
 
       // Check set_count method
-      const setCountMeta = (allArgMeta as any)[
-        "set_count"
-      ] as MethodArgumentsMeta<unknown>
+      const setCountMeta = allArgMeta.set_count
       expect(setCountMeta.functionType).toBe("update")
       expect(setCountMeta.fields).toHaveLength(1)
-      expect(setCountMeta.fields[0].type).toBe("number")
+      expect(setCountMeta.fields[0].type).toBe("text")
     })
 
     it("should return all result metadata", () => {

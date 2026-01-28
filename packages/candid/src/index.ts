@@ -1,7 +1,6 @@
 export * from "./adapter"
 export * from "./types"
 export * from "./visitor"
-export type { ResolvedNode } from "./visitor/returns/types"
 export * from "./constants"
 export * from "./utils"
 export * from "./reactor"

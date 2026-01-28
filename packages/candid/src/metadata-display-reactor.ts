@@ -10,8 +10,8 @@ import type {
 } from "./types"
 import {
   ArgumentFieldVisitor,
-  MethodArgumentsMeta,
-  ServiceArgumentsMeta,
+  ArgumentsMeta,
+  ArgumentsServiceMeta,
 } from "./visitor/arguments"
 import {
   MethodMeta,
@@ -50,7 +50,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   public override readonly transform = "metadata" as const
 
   // Metadata storage
-  private argumentMeta: ServiceArgumentsMeta<A> | null = null
+  private argumentMeta: ArgumentsServiceMeta<A> | null = null
   private resultMeta: ServiceMeta<A> | null = null
 
   // Visitors (stateless, can be reused)
@@ -86,7 +86,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
     this.argumentMeta = service.accept(
       MetadataDisplayReactor.argVisitor,
       null as any
-    ) as ServiceArgumentsMeta<A>
+    ) as ArgumentsServiceMeta<A>
 
     // Generate result metadata
     this.resultMeta = service.accept(
@@ -104,7 +104,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
    */
   public getArgumentMeta<M extends FunctionName<A>>(
     methodName: M
-  ): MethodArgumentsMeta<A, M> | undefined {
+  ): ArgumentsMeta<A, M> | undefined {
     return this.argumentMeta?.[methodName]
   }
 
@@ -121,7 +121,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   /**
    * Get all argument metadata.
    */
-  public getAllArgumentMeta(): ServiceArgumentsMeta<A> | null {
+  public getAllArgumentMeta(): ArgumentsServiceMeta<A> | null {
     return this.argumentMeta
   }
 

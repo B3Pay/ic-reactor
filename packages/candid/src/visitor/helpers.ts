@@ -1,4 +1,4 @@
-import { IDL } from "./types"
+import { IDL } from "@icp-sdk/core/candid"
 
 export const extractAndSortArgs = <T extends Record<string, unknown>>(
   argsObject: T

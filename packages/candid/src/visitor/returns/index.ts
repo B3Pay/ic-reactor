@@ -1,6 +1,5 @@
 import { isQuery } from "../helpers"
 import { checkTextFormat, checkNumberFormat } from "../constants"
-import { IDL } from "../types"
 import type {
   ResultNode,
   ResolvedNode,
@@ -12,8 +11,8 @@ import type {
   TextFormat,
 } from "./types"
 
-export * from "./types"
-import { sha256 } from "@noble/hashes/sha2"
+import { sha256 } from "@noble/hashes/sha2.js"
+import { IDL } from "@icp-sdk/core/candid"
 import { DisplayCodecVisitor, uint8ArrayToHex } from "@ic-reactor/core"
 import type {
   ActorMethodReturnType,

@@ -79,9 +79,6 @@ describe("Package Exports", () => {
         "CandidAdapter",
         "ResultFieldVisitor",
         "ArgumentFieldVisitor",
-        "VisitTanstackField",
-        "IDL",
-        "Principal",
         "extractAndSortArgs",
         "normalizeFormState",
         "convertNanoToDate",
@@ -105,6 +102,11 @@ describe("Package Exports", () => {
         "CandidReactor",
         "CandidDisplayReactor",
         "MetadataDisplayReactor",
+        // Type guard utilities
+        "isFieldType",
+        "isCompoundField",
+        "isPrimitiveField",
+        "hasChildFields",
       ]
 
       actualExports.forEach((exp) => {
