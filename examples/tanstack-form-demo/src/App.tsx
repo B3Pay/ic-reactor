@@ -20,7 +20,7 @@ const UserProfile = IDL.Record({
     theme: IDL.Variant({
       Light: IDL.Null,
       Dark: IDL.Null,
-      System: IDL.Null,
+      System: IDL.Text,
     }),
   }),
 })
@@ -112,7 +112,11 @@ function FieldRenderer({
       <form.Field
         name={name}
         validators={{
-          onChange: field.schema,
+          onChange: ["record", "variant", "tuple", "vector"].includes(
+            field.type
+          )
+            ? undefined
+            : field.schema,
         }}
         children={(fieldApi: any) => (
           <div>
@@ -229,8 +233,6 @@ function FieldInput({
     )
   }
 
-  // ... (text, number, boolean, vector handled or same as before) ...
-
   if (field.type === "text") {
     return (
       <input
@@ -238,7 +240,7 @@ function FieldInput({
         value={fieldApi.state.value ?? ""}
         onBlur={fieldApi.handleBlur}
         onChange={(e) => fieldApi.handleChange(e.target.value)}
-        style={{ width: "100%", padding: "4px" }}
+        style={{ width: "80%", padding: "4px" }}
       />
     )
   }
@@ -250,7 +252,7 @@ function FieldInput({
         value={fieldApi.state.value ?? ""}
         onBlur={fieldApi.handleBlur}
         onChange={(e) => fieldApi.handleChange(e.target.value)}
-        style={{ width: "100%", padding: "4px" }}
+        style={{ width: "80%", padding: "4px" }}
       />
     )
   }
@@ -290,7 +292,7 @@ function FieldInput({
             <button
               type="button"
               onClick={() => fieldApi.removeValue(i)}
-              style={{ marginLeft: "4px", color: "red" }}
+              style={{ padding: "8px", color: "red" }}
             >
               X
             </button>
