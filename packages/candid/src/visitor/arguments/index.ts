@@ -300,7 +300,12 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     // because the value replaces null directly (not nested)
     const innerField = ty.accept(this, label) as Field
 
-    const schema = z.union([innerField.schema, z.null()])
+    const schema = z.union([
+      innerField.schema,
+      z.null(),
+      z.undefined().transform(() => null),
+      z.literal("").transform(() => null),
+    ])
 
     // Helper to get the inner default when enabling the optional
     const getInnerDefault = (): unknown => innerField.defaultValue
