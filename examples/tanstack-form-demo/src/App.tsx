@@ -145,13 +145,6 @@ function FieldRenderer({
   )
 }
 
-// Helper to extract default value
-function getDefaultValue(field: ArgumentField): any {
-  if ("defaultValue" in field) return field.defaultValue
-  if ("defaultValues" in field) return field.defaultValues
-  return undefined
-}
-
 function FieldInput({
   field,
   fieldApi,
@@ -198,17 +191,7 @@ function FieldInput({
         <select
           value={currentKey}
           onChange={(e) => {
-            const newKey = e.target.value
-            const newOptionField = field.fields.find((f) => f.label === newKey)
-
-            // If the new variant option has a payload, we need its default value.
-            // If it's null type (unit variant), default value is null.
-            let newVal = null
-            if (newOptionField && newOptionField.type !== "null") {
-              newVal = getDefaultValue(newOptionField)
-            }
-
-            fieldApi.handleChange({ [newKey]: newVal })
+            fieldApi.handleChange({ [e.target.value]: null })
           }}
           style={{ marginBottom: "8px" }}
         >
@@ -307,8 +290,7 @@ function FieldInput({
         <button
           type="button"
           onClick={() => {
-            const defaultItemVal = getDefaultValue(field.itemField)
-            fieldApi.pushValue(defaultItemVal)
+            fieldApi.pushValue(field.itemField.defaultValue)
           }}
         >
           Add Item
