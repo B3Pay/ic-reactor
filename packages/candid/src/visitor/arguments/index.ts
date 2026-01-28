@@ -84,6 +84,16 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return parent ? `${parent}.${key}` : key
   }
 
+  private extractDefaultValue(field: ArgumentField): unknown {
+    if ("defaultValue" in field) {
+      return field.defaultValue
+    }
+    if ("defaultValues" in field) {
+      return field.defaultValues
+    }
+    return undefined
+  }
+
   // ════════════════════════════════════════════════════════════════════════
   // Service & Function Level
   // ════════════════════════════════════════════════════════════════════════
@@ -126,16 +136,6 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       defaultValues,
       schema,
     }
-  }
-
-  private extractDefaultValue(field: ArgumentField): unknown {
-    if ("defaultValue" in field) {
-      return field.defaultValue
-    }
-    if ("defaultValues" in field) {
-      return field.defaultValues
-    }
-    return undefined
   }
 
   // ════════════════════════════════════════════════════════════════════════
