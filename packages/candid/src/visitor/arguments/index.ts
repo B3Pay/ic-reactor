@@ -25,10 +25,6 @@ import * as z from "zod"
 
 export * from "./types"
 
-export interface VisitorOptions {
-  isRequired?: boolean
-}
-
 /**
  * ArgumentFieldVisitor generates metadata for form input fields from Candid IDL types.
  *
