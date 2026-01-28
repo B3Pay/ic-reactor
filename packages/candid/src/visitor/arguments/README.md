@@ -32,7 +32,7 @@ console.log(transferMeta)
 //   functionName: "icrc1_transfer",
 //   functionType: "update",
 //   fields: [...],        // Field definitions for rendering
-//   defaultValue: [...],  // Default values for the form (array of argument defaults)
+//   defaultValues: [...], // Default values for the form (array of argument defaults)
 //   schema: ZodSchema,    // Zod schema for validation
 //   argCount: 1,          // Number of arguments
 //   isNoArgs: false       // Whether the function takes no arguments
@@ -59,11 +59,11 @@ Each field in `meta.fields` has the following properties:
   schema: ZodSchema,            // Zod schema for this field
   candidType: "text",           // Original Candid type
   ui: {                         // Optional UI hints
-    placeholder: "...",
-    description: "...",
+    placeholder: "e.g. 100",
   },
   // Type-specific properties:
-  // - For numbers: min, max, unsigned, isFloat, bits
+  // - For "number" fields (Nat8, Int32, Float): min, max, unsigned, isFloat, bits
+  // - For "text" fields (Nat, Int, Nat64): (handled as text for BigInt support)
   // - For variants: options, optionMap, getOptionDefault()
   // - For vectors: itemField, getItemDefault()
   // - For optionals: innerField, getInnerDefault()
@@ -71,61 +71,44 @@ Each field in `meta.fields` has the following properties:
 }
 ```
 
-### 4. Integration with React Hook Form
+### 4. Special Handling & Validation
 
-The generated Zod schema can be directly used with `react-hook-form` using the `@hookform/resolvers/zod` adapter.
+#### BigInts as Text
 
-```tsx
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+Large integer types (`Nat`, `Int`, `Nat64`, `Int64`, `Nat32` > 32-bit representations) are generated with `type: "text"`.
 
-function MethodForm({ meta }) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    defaultValues: meta.defaultValue, // Use generated default values
-    resolver: zodResolver(meta.schema), // Use generated Zod schema
-  })
+- **Reason**: Standard JavaScript numbers lose precision for values > `2^53 - 1`. HTML number inputs can be unreliable for large integers.
+- **Validation**: The Zod schema strictly validates these as **strings containing only digits** (or sign for signed types).
+- **Label**: They retain their `candidType` (e.g. `nat`) for reference.
 
-  const onSubmit = (data) => {
-    // data is strictly typed and validated according to the Candid types
-    console.log(data)
-  }
+#### Strict Validation
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      {meta.fields.map((field, index) => (
-        <div key={index}>
-          <label>{field.label}</label>
-          <input {...register(`${index}`)} />
-          {errors[index] && <span>{errors[index].message}</span>}
-        </div>
-      ))}
-      <button type="submit">Call Method</button>
-    </form>
-  )
-}
-```
+- **Required Fields**: Text and Number fields include `.min(1, "Required")`. Empty strings are rejected.
+  - **Integers**: Regex validation ensures only digits (no decimals).
+  - **Floats**: Float32/Float64 allow decimal points (e.g., `123.1`) and are validated using standard `!isNaN(Number(val))`.
+- **Principals**: Validated using `Principal.fromText()`. Empty strings are rejected.
+
+#### Optional Fields
+
+- **Behavior**: Optional fields (`Opt`) wrap the inner schema.
+- **Empty Handling**: An empty string input (`""`) is automatically transformed to `null` (Candid `null` / `None`), ensuring optional fields can be cleared.
 
 ### 5. Integration with TanStack Form
 
-The generated metadata works seamlessly with `@tanstack/react-form`. The `name` property on each field is already formatted for TanStack Form's path notation.
+The visitor is optimized for standard form libraries like TanStack Form.
 
 ```tsx
 import { useForm } from "@tanstack/react-form"
-import { zodValidator } from "@tanstack/zod-form-adapter"
 
 function MethodForm({ meta }) {
   const form = useForm({
-    defaultValues: meta.defaultValue,
-    validatorAdapter: zodValidator(),
+    defaultValues: meta.defaultValues,
     validators: {
-      onChange: meta.schema,
+      onChange: meta.schema, // Use generated Zod schema for validation
     },
     onSubmit: async ({ value }) => {
-      console.log(value)
+      console.log("Structured Data:", value)
+      // value is ready to be passed to strict Candid adapters
     },
   })
 
@@ -137,34 +120,48 @@ function MethodForm({ meta }) {
         form.handleSubmit()
       }}
     >
-      {meta.fields.map((argField, index) => (
-        <form.Field
-          key={index}
-          name={argField.name} // Use the pre-formatted name, e.g., "[0]"
-          children={(fieldApi) => (
+      {meta.fields.map((field) => (
+        <form.Field key={field.name} name={field.name}>
+          {(fieldApi) => (
             <div>
-              <label>{argField.label}</label>
+              <label>{field.label}</label>
               <input
+                type={
+                  field.type === "text" || field.type === "principal"
+                    ? "text"
+                    : field.type
+                }
                 value={fieldApi.state.value}
-                onBlur={fieldApi.handleBlur}
                 onChange={(e) => fieldApi.handleChange(e.target.value)}
+                placeholder={field.ui?.placeholder}
               />
-              {fieldApi.state.meta.errors ? (
-                <span>{fieldApi.state.meta.errors.join(", ")}</span>
-              ) : null}
+              {fieldApi.state.meta.errors.map((err) => (
+                <span key={err} className="error">
+                  {err}
+                </span>
+              ))}
             </div>
           )}
-        />
+        </form.Field>
       ))}
-      <button type="submit">Call Method</button>
+      <button type="submit">Submit</button>
     </form>
   )
 }
 ```
 
-### 6. Working with Vectors (Arrays)
+### 6. Dynamic Fields
 
-Use `mode="array"` for vector fields and the `getItemDefault()` helper to add new items:
+For **Vectors** and **Variants**, you can access helper paths dynamically:
+
+- **Vector**: Field name `items` -> Item name `items[0]`, `items[1]`.
+- **Record**: Field name `user` -> Nested `user.name`.
+
+The `name` property in the metadata is pre-calculated to match this structure (e.g., `[0].args.user.name` if it's the first argument).
+
+### 7. Working with Vectors (Arrays)
+
+Use helper methods like `getItemDefault()` to manage array items.
 
 ```tsx
 function VectorField({ field, form }) {
@@ -172,32 +169,13 @@ function VectorField({ field, form }) {
     <form.Field name={field.name} mode="array">
       {(arrayFieldApi) => (
         <div>
-          <label>{field.label}</label>
           {arrayFieldApi.state.value.map((_, index) => (
-            <form.Field
-              key={index}
-              name={`${field.name}[${index}]`}
-              children={(itemApi) => (
-                <div>
-                  <input
-                    value={itemApi.state.value}
-                    onChange={(e) => itemApi.handleChange(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => arrayFieldApi.removeValue(index)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
-            />
+             /* Render items using field.name + [index] */
           ))}
           <button
-            type="button"
-            onClick={() => arrayFieldApi.pushValue(field.getItemDefault())}
+             onClick={() => arrayFieldApi.pushValue(field.getItemDefault())}
           >
-            Add Item
+             Add Item
           </button>
         </div>
       )}
@@ -206,83 +184,25 @@ function VectorField({ field, form }) {
 }
 ```
 
-### 7. Working with Variants
+### 8. Working with Variants
 
-Use `optionMap` for quick lookup and `getOptionDefault()` for changing variants:
-
-```tsx
-function VariantField({ field, form }) {
-  const selectedKey = Object.keys(form.getFieldValue(field.name))[0]
-
-  return (
-    <div>
-      <label>{field.label}</label>
-      <select
-        value={selectedKey}
-        onChange={(e) => {
-          const newValue = field.getOptionDefault(e.target.value)
-          form.setFieldValue(field.name, newValue)
-        }}
-      >
-        {field.options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-
-      {/* Render the payload for the selected option */}
-      {field.optionMap.get(selectedKey)?.type !== "null" && (
-        <DynamicField
-          field={field.optionMap.get(selectedKey)}
-          form={form}
-          baseName={`${field.name}.${selectedKey}`}
-        />
-      )}
-    </div>
-  )
-}
-```
-
-### 8. Working with Optionals
-
-Use `getInnerDefault()` when enabling an optional field:
+Use `optionMap` for lookup and `getOptionDefault()` for switching types.
 
 ```tsx
-function OptionalField({ field, form }) {
-  const currentValue = form.getFieldValue(field.name)
-  const isEnabled = currentValue !== null
-
-  return (
-    <div>
-      <label>
-        <input
-          type="checkbox"
-          checked={isEnabled}
-          onChange={(e) => {
-            if (e.target.checked) {
-              form.setFieldValue(field.name, field.getInnerDefault())
-            } else {
-              form.setFieldValue(field.name, null)
-            }
-          }}
-        />
-        {field.label}
-      </label>
-
-      {isEnabled && (
-        <DynamicField
-          field={field.innerField}
-          form={form}
-          baseName={field.name}
-        />
-      )}
-    </div>
-  )
-}
+<select
+  onChange={(e) => {
+    // Switch variant type and default value
+    const newValue = field.getOptionDefault(e.target.value)
+    form.setFieldValue(field.name, newValue)
+  }}
+>
+  {field.options.map((opt) => (
+    <option key={opt}>{opt}</option>
+  ))}
+</select>
 ```
 
-## Type Guards
+### 9. Type Guards
 
 The library exports type guard utilities for safer type narrowing:
 
@@ -293,41 +213,18 @@ import {
   isPrimitiveField,
 } from "@ic-reactor/candid"
 
-// Check for specific field type
 if (isFieldType(field, "record")) {
-  // field is now typed as RecordArgumentField
-  console.log(field.fieldMap)
-}
-
-// Check if field is compound (record, variant, tuple, vector, optional)
-if (isCompoundField(field)) {
-  // Handle nested rendering
-}
-
-// Check if field is primitive (text, number, boolean, principal, null)
-if (isPrimitiveField(field)) {
-  // Render simple input
+  // field is RecordArgumentField
 }
 ```
 
-## Schema Validation Rules
+### 10. Recursive Types
 
-The generated Zod schema enforces stricter rules than standard Candid types to ensure valid user input:
-
-- **Principals**: Validated using `Principal.fromText()`. Strings must be valid text representations.
-- **Numbers**: Accepted as strings (to support BigInt precision in forms) and validated as numeric. Fixed-width types have min/max constraints.
-- **Blobs**: Specific validation for hex strings or byte arrays.
-- **Optionals**: Handle `null` and `undefined` correctly using `.nullish()`.
-
-## Recursive Types
-
-Recursive types (like linked lists or trees) are handled using `z.lazy()` to prevent infinite recursion during schema generation. The form can dynamically render fields as needed using the `extract()` method on the recursive field metadata:
+Recursive types (like linked lists) use `z.lazy()` schemas. Use `field.extract()` to get the inner definition when rendering.
 
 ```tsx
-function RecursiveField({ field, form }) {
-  // Lazily extract the inner field definition
+function RecursiveField({ field }) {
   const innerField = useMemo(() => field.extract(), [field])
-
-  return <DynamicField field={innerField} form={form} baseName={field.name} />
+  return <DynamicField field={innerField} ... />
 }
 ```

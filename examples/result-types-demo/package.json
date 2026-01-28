@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/candid": "^3.0.11-beta.2",
-    "@ic-reactor/core": "^3.0.11-beta.2",
+    "@ic-reactor/candid": "^3.0.12-beta.0",
+    "@ic-reactor/core": "^3.0.12-beta.0",
     "@vitejs/plugin-react": "^5.1.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
