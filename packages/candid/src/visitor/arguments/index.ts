@@ -261,13 +261,15 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       ty.accept(this, label)
     ) as ArgumentField
 
+    const schema = innerField.schema.nullish().transform((v) => v ?? null)
+
     return {
       type: "optional",
       label,
       path,
       innerField,
       defaultValue: null,
-      schema: innerField.schema.nullish(),
+      schema,
     }
   }
 
@@ -286,7 +288,11 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     ) as ArgumentField
 
     if (isBlob) {
-      const schema = z.union([z.string(), z.any()])
+      const schema = z.union([
+        z.string(),
+        z.array(z.number()),
+        z.instanceof(Uint8Array),
+      ])
       return {
         type: "blob",
         label,
@@ -348,9 +354,18 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): PrincipalArgumentField {
     const schema = z.custom<Principal>(
-      (val) =>
-        val instanceof Principal ||
-        (typeof val === "string" && val.length >= 7 && val.length <= 64),
+      (val) => {
+        if (val instanceof Principal) return true
+        if (typeof val === "string") {
+          try {
+            Principal.fromText(val)
+            return true
+          } catch {
+            return false
+          }
+        }
+        return false
+      },
       {
         message: "Invalid Principal",
       }
