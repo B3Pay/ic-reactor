@@ -34,25 +34,44 @@ export * from "./types"
  * 2. **No value dependencies** - metadata is independent of actual values
  * 3. **Form-framework agnostic** - output can be used with TanStack, React Hook Form, etc.
  * 4. **Efficient** - single traversal, no runtime type checking
+ * 5. **TanStack Form optimized** - name paths compatible with TanStack Form patterns
  *
  * ## Output Structure
  *
  * Each field has:
  * - `type`: The field type (record, variant, text, number, etc.)
  * - `label`: Human-readable label from Candid
- * - `path`: Dot-notation path for form binding (e.g., "0.owner")
+ * - `name`: TanStack Form compatible path (e.g., "[0]", "[0].owner", "tags[1]")
  * - `defaultValue`: Initial value for the form
+ * - `schema`: Zod schema for validation
  * - Type-specific properties (options for variant, fields for record, etc.)
+ * - Helper methods for dynamic forms (getOptionDefault, getItemDefault, etc.)
+ *
+ * ## Usage with TanStack Form
  *
  * @example
  * ```typescript
+ * import { useForm } from '@tanstack/react-form'
+ * import { ArgumentFieldVisitor } from '@ic-reactor/candid'
+ *
  * const visitor = new ArgumentFieldVisitor()
  * const serviceMeta = service.accept(visitor, null)
- *
- * // For a specific method
  * const methodMeta = serviceMeta["icrc1_transfer"]
- * // methodMeta.fields = [{ type: "record", fields: [...] }]
- * // methodMeta.defaultValues = [{ to: "", amount: "" }]
+ *
+ * const form = useForm({
+ *   defaultValues: methodMeta.defaultValue,
+ *   validators: { onBlur: methodMeta.schema },
+ *   onSubmit: async ({ value }) => {
+ *     await actor.icrc1_transfer(...value)
+ *   }
+ * })
+ *
+ * // Render fields dynamically
+ * methodMeta.fields.map((field, index) => (
+ *   <form.Field key={index} name={field.name}>
+ *     {(fieldApi) => <DynamicInput field={field} fieldApi={fieldApi} />}
+ *   </form.Field>
+ * ))
  * ```
  */
 export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
@@ -61,27 +80,27 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
 > {
   public recursiveSchemas: Map<string, z.ZodTypeAny> = new Map()
 
-  private pathStack: string[] = []
+  private nameStack: string[] = []
 
-  private withPath<T>(path: string, fn: () => T): T {
-    this.pathStack.push(path)
+  /**
+   * Execute function with a name segment pushed onto the stack.
+   * Automatically manages stack cleanup.
+   */
+  private withName<T>(name: string, fn: () => T): T {
+    this.nameStack.push(name)
     try {
       return fn()
     } finally {
-      this.pathStack.pop()
+      this.nameStack.pop()
     }
   }
 
-  private currentPath(): string {
-    return this.pathStack[this.pathStack.length - 1] ?? ""
-  }
-
-  private childPath(key: string | number): string {
-    const parent = this.currentPath()
-    if (typeof key === "number") {
-      return parent ? `${parent}[${key}]` : String(key)
-    }
-    return parent ? `${parent}.${key}` : key
+  /**
+   * Get the current full name path for form binding.
+   * Returns empty string for root level.
+   */
+  private currentName(): string {
+    return this.nameStack.join("")
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -106,18 +125,30 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     functionName: FunctionName<A>
   ): MethodArgumentsMeta<A> {
     const functionType = isQuery(t) ? "query" : "update"
+    const argCount = t.argTypes.length
 
     const fields = t.argTypes.map((arg, index) => {
-      return this.withPath(`[${index}]`, () =>
+      return this.withName(`[${index}]`, () =>
         arg.accept(this, `__arg${index}`)
       ) as ArgumentField
     })
 
     const defaultValue = fields.map((field) => field.defaultValue)
 
-    const schema = z.tuple(
-      fields.map((field) => field.schema) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
-    )
+    // Handle empty args case for schema
+    // For no-arg functions, use an empty array schema
+    // For functions with args, use a proper tuple schema
+    const schema =
+      argCount === 0
+        ? (z.tuple([]) as unknown as z.ZodTuple<
+            [z.ZodTypeAny, ...z.ZodTypeAny[]]
+          >)
+        : z.tuple(
+            fields.map((field) => field.schema) as [
+              z.ZodTypeAny,
+              ...z.ZodTypeAny[],
+            ]
+          )
 
     return {
       functionType,
@@ -125,6 +156,8 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       fields,
       defaultValue,
       schema,
+      argCount,
+      isNoArgs: argCount === 0,
     }
   }
 
@@ -137,18 +170,19 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     fields_: Array<[string, IDL.Type]>,
     label: string
   ): RecordArgumentField {
-    const path = this.currentPath()
+    const name = this.currentName()
     const fields: ArgumentField[] = []
+    const fieldMap = new Map<string, ArgumentField>()
     const defaultValue: Record<string, unknown> = {}
-
     const schemaShape: Record<string, z.ZodTypeAny> = {}
 
     for (const [key, type] of fields_) {
-      const field = this.withPath(this.childPath(key), () =>
+      const field = this.withName(name ? `.${key}` : key, () =>
         type.accept(this, key)
       ) as ArgumentField
 
       fields.push(field)
+      fieldMap.set(key, field)
       defaultValue[key] = field.defaultValue
       schemaShape[key] = field.schema
     }
@@ -158,10 +192,12 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "record",
       label,
-      path,
+      name,
       fields,
+      fieldMap,
       defaultValue,
       schema,
+      candidType: "record",
     }
   }
 
@@ -170,39 +206,52 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     fields_: Array<[string, IDL.Type]>,
     label: string
   ): VariantArgumentField {
-    const path = this.currentPath()
+    const name = this.currentName()
     const fields: ArgumentField[] = []
     const options: string[] = []
-
+    const optionMap = new Map<string, ArgumentField>()
     const variantSchemas: z.ZodTypeAny[] = []
 
     for (const [key, type] of fields_) {
-      const field = this.withPath(this.childPath(key), () =>
+      const field = this.withName(`.${key}`, () =>
         type.accept(this, key)
       ) as ArgumentField
 
       fields.push(field)
       options.push(key)
-
+      optionMap.set(key, field)
       variantSchemas.push(z.object({ [key]: field.schema }))
     }
 
     const defaultOption = options[0]
+    const firstField = fields[0]
     const defaultValue = {
-      [defaultOption]: fields[0].defaultValue,
+      [defaultOption]: firstField.defaultValue,
     }
 
     const schema = z.union(variantSchemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
 
+    // Helper to get default value for any option
+    const getOptionDefault = (option: string): Record<string, unknown> => {
+      const optField = optionMap.get(option)
+      if (!optField) {
+        throw new Error(`Unknown variant option: ${option}`)
+      }
+      return { [option]: optField.defaultValue }
+    }
+
     return {
       type: "variant",
       label,
-      path,
+      name,
       fields,
       options,
       defaultOption,
+      optionMap,
       defaultValue,
       schema,
+      getOptionDefault,
+      candidType: "variant",
     }
   }
 
@@ -211,15 +260,14 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     components: IDL.Type[],
     label: string
   ): TupleArgumentField {
-    const path = this.currentPath()
+    const name = this.currentName()
     const fields: ArgumentField[] = []
     const defaultValue: unknown[] = []
-
     const schemas: z.ZodTypeAny[] = []
 
     for (let index = 0; index < components.length; index++) {
       const type = components[index]
-      const field = this.withPath(this.childPath(index), () =>
+      const field = this.withName(`[${index}]`, () =>
         type.accept(this, `_${index}_`)
       ) as ArgumentField
 
@@ -233,10 +281,11 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "tuple",
       label,
-      path,
+      name,
       fields,
       defaultValue,
       schema,
+      candidType: "tuple",
     }
   }
 
@@ -245,21 +294,26 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     label: string
   ): OptionalArgumentField {
-    const path = this.currentPath()
+    const name = this.currentName()
 
-    const innerField = this.withPath(this.childPath(0), () =>
-      ty.accept(this, label)
-    ) as ArgumentField
+    // For optional, the inner field keeps the same name path
+    // because the value replaces null directly (not nested)
+    const innerField = ty.accept(this, label) as ArgumentField
 
     const schema = innerField.schema.nullish().transform((v) => v ?? null)
+
+    // Helper to get the inner default when enabling the optional
+    const getInnerDefault = (): unknown => innerField.defaultValue
 
     return {
       type: "optional",
       label,
-      path,
+      name,
       innerField,
       defaultValue: null,
       schema,
+      getInnerDefault,
+      candidType: "opt",
     }
   }
 
@@ -268,13 +322,14 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     ty: IDL.Type<T>,
     label: string
   ): VectorArgumentField | BlobArgumentField {
-    const path = this.currentPath()
+    const name = this.currentName()
 
     // Check if it's blob (vec nat8)
     const isBlob = ty instanceof IDL.FixedNatClass && ty._bits === 8
 
-    const itemField = this.withPath(this.childPath(0), () =>
-      ty.accept(this, label)
+    // Item field uses [0] as template path
+    const itemField = this.withName("[0]", () =>
+      ty.accept(this, `${label}_item`)
     ) as ArgumentField
 
     if (isBlob) {
@@ -286,22 +341,29 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       return {
         type: "blob",
         label,
-        path,
+        name,
         itemField,
         defaultValue: "",
         schema,
+        acceptedFormats: ["hex", "base64", "file"],
+        candidType: "blob",
       }
     }
 
     const schema = z.array(itemField.schema)
 
+    // Helper to get a new item with default values
+    const getItemDefault = (): unknown => itemField.defaultValue
+
     return {
       type: "vector",
       label,
-      path,
+      name,
       itemField,
       defaultValue: [],
       schema,
+      getItemDefault,
+      candidType: "vec",
     }
   }
 
@@ -310,7 +372,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     ty: IDL.ConstructType<T>,
     label: string
   ): RecursiveArgumentField {
-    const path = this.currentPath()
+    const name = this.currentName()
     const typeName = ty.name || "RecursiveType"
 
     let schema: z.ZodTypeAny
@@ -322,15 +384,23 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       this.recursiveSchemas.set(typeName, schema)
     }
 
+    // Lazy extraction to prevent infinite loops
+    const extract = (): ArgumentField =>
+      this.withName(name, () => ty.accept(this, label)) as ArgumentField
+
+    // Helper to get inner default (evaluates lazily)
+    const getInnerDefault = (): unknown => extract().defaultValue
+
     return {
       type: "recursive",
       label,
-      path,
-      // Lazy extraction to prevent infinite loops
-      extract: () =>
-        this.withPath(path, () => ty.accept(this, label)) as ArgumentField,
+      name,
+      typeName,
+      extract,
       defaultValue: undefined,
       schema,
+      getInnerDefault,
+      candidType: "rec",
     }
   }
 
@@ -346,6 +416,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       (val) => {
         if (val instanceof Principal) return true
         if (typeof val === "string") {
+          if (val === "") return true // Allow empty for optional cases
           try {
             Principal.fromText(val)
             return true
@@ -356,17 +427,22 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
         return false
       },
       {
-        message: "Invalid Principal",
+        message: "Invalid Principal format",
       }
     )
+
     return {
       type: "principal",
       label,
-      path: this.currentPath(),
+      name: this.currentName(),
       defaultValue: "",
       maxLength: 64,
       minLength: 7,
       schema,
+      candidType: "principal",
+      ui: {
+        placeholder: "aaaaa-aa or full principal ID",
+      },
     }
   }
 
@@ -374,9 +450,13 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "text",
       label,
-      path: this.currentPath(),
+      name: this.currentName(),
       defaultValue: "",
-      schema: z.string().min(1, "Field is required"),
+      schema: z.string(),
+      candidType: "text",
+      ui: {
+        placeholder: "Enter text...",
+      },
     }
   }
 
@@ -384,9 +464,10 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "boolean",
       label,
-      path: this.currentPath(),
+      name: this.currentName(),
       defaultValue: false,
       schema: z.boolean(),
+      candidType: "bool",
     }
   }
 
@@ -394,58 +475,104 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "null",
       label,
-      path: this.currentPath(),
+      name: this.currentName(),
       defaultValue: null,
       schema: z.null(),
+      candidType: "null",
     }
   }
 
-  // Numbers - all use string for display format
+  // ════════════════════════════════════════════════════════════════════════
+  // Number Types with Constraints
+  // ════════════════════════════════════════════════════════════════════════
+
   private visitNumberType(
     label: string,
-    candidType: string
+    candidType: string,
+    options: {
+      unsigned: boolean
+      isFloat: boolean
+      bits?: number
+      min?: string
+      max?: string
+    }
   ): NumberArgumentField {
     return {
       type: "number",
       label,
-      path: this.currentPath(),
+      name: this.currentName(),
       defaultValue: "",
       candidType,
       schema: z.string(),
+      ...options,
+      ui: {
+        placeholder: options.isFloat ? "0.0" : "0",
+      },
     }
   }
 
   public visitInt(_t: IDL.IntClass, label: string): NumberArgumentField {
-    return this.visitNumberType(label, "int")
+    return this.visitNumberType(label, "int", {
+      unsigned: false,
+      isFloat: false,
+    })
   }
 
   public visitNat(_t: IDL.NatClass, label: string): NumberArgumentField {
-    return this.visitNumberType(label, "nat")
+    return this.visitNumberType(label, "nat", {
+      unsigned: true,
+      isFloat: false,
+    })
   }
 
   public visitFloat(t: IDL.FloatClass, label: string): NumberArgumentField {
-    return this.visitNumberType(label, `float${t._bits}`)
+    return this.visitNumberType(label, `float${t._bits}`, {
+      unsigned: false,
+      isFloat: true,
+      bits: t._bits,
+    })
   }
 
   public visitFixedInt(
     t: IDL.FixedIntClass,
     label: string
   ): NumberArgumentField {
-    return this.visitNumberType(label, `int${t._bits}`)
+    const bits = t._bits
+    // Calculate min/max for signed integers
+    const max = (BigInt(2) ** BigInt(bits - 1) - BigInt(1)).toString()
+    const min = (-(BigInt(2) ** BigInt(bits - 1))).toString()
+
+    return this.visitNumberType(label, `int${bits}`, {
+      unsigned: false,
+      isFloat: false,
+      bits,
+      min,
+      max,
+    })
   }
 
   public visitFixedNat(
     t: IDL.FixedNatClass,
     label: string
   ): NumberArgumentField {
-    return this.visitNumberType(label, `nat${t._bits}`)
+    const bits = t._bits
+    // Calculate max for unsigned integers
+    const max = (BigInt(2) ** BigInt(bits) - BigInt(1)).toString()
+
+    return this.visitNumberType(label, `nat${bits}`, {
+      unsigned: true,
+      isFloat: false,
+      bits,
+      min: "0",
+      max,
+    })
   }
 
   public visitType<T>(_t: IDL.Type<T>, label: string): UnknownArgumentField {
     return {
       type: "unknown",
       label,
-      path: this.currentPath(),
+      name: this.currentName(),
       defaultValue: undefined,
       schema: z.any(),
     }

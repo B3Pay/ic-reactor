@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
-import { ArgumentFieldVisitor } from "./index"
+import { ArgumentFieldVisitor, VectorArgumentField } from "./index"
 
 describe("ArgumentFieldVisitor", () => {
   const visitor = new ArgumentFieldVisitor()
@@ -57,6 +57,8 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.label).toBe("amount")
       expect(field.candidType).toBe("nat")
       expect(field.defaultValue).toBe("")
+      expect(field.unsigned).toBe(true)
+      expect(field.isFloat).toBe(false)
     })
 
     it("should handle int type", () => {
@@ -64,16 +66,21 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("number")
       expect(field.candidType).toBe("int")
+      expect(field.unsigned).toBe(false)
+      expect(field.isFloat).toBe(false)
     })
 
-    it("should handle nat8 type", () => {
+    it("should handle nat8 type with min/max", () => {
       const field = visitor.visitFixedNat(IDL.Nat8 as IDL.FixedNatClass, "byte")
 
       expect(field.type).toBe("number")
       expect(field.candidType).toBe("nat8")
+      expect(field.bits).toBe(8)
+      expect(field.min).toBe("0")
+      expect(field.max).toBe("255")
     })
 
-    it("should handle nat64 type", () => {
+    it("should handle nat64 type with min/max", () => {
       const field = visitor.visitFixedNat(
         IDL.Nat64 as IDL.FixedNatClass,
         "timestamp"
@@ -81,9 +88,12 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("number")
       expect(field.candidType).toBe("nat64")
+      expect(field.bits).toBe(64)
+      expect(field.min).toBe("0")
+      expect(field.max).toBe("18446744073709551615")
     })
 
-    it("should handle int32 type", () => {
+    it("should handle int32 type with min/max", () => {
       const field = visitor.visitFixedInt(
         IDL.Int32 as IDL.FixedIntClass,
         "count"
@@ -91,13 +101,17 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("number")
       expect(field.candidType).toBe("int32")
+      expect(field.bits).toBe(32)
+      expect(field.min).toBe("-2147483648")
+      expect(field.max).toBe("2147483647")
     })
 
     it("should handle float64 type", () => {
       const field = visitor.visitFloat(IDL.Float64 as IDL.FloatClass, "price")
 
       expect(field.type).toBe("number")
-      expect(field.candidType).toBe("float")
+      expect(field.candidType).toBe("float64")
+      expect(field.isFloat).toBe(true)
     })
   })
 
@@ -123,6 +137,8 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.type).toBe("record")
       expect(field.label).toBe("person")
       expect(field.fields).toHaveLength(2)
+      expect(field.fieldMap.has("name")).toBe(true)
+      expect(field.fieldMap.has("age")).toBe(true)
 
       const nameField = field.fields.find((f) => f.label === "name")
       if (!nameField || nameField.type !== "text") {
@@ -138,7 +154,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(ageField.type).toBe("number")
       expect(ageField.candidType).toBe("nat")
 
-      expect(field.defaultValues).toEqual({
+      expect(field.defaultValue).toEqual({
         name: "",
         age: "",
       })
@@ -172,7 +188,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(addressField.type).toBe("record")
       expect(addressField.fields).toHaveLength(2)
 
-      expect(field.defaultValues).toEqual({
+      expect(field.defaultValue).toEqual({
         name: "",
         address: {
           street: "",
@@ -261,10 +277,15 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.options).toEqual(["Inactive", "Active", "Pending"])
       expect(field.defaultOption).toBe("Inactive")
       expect(field.fields).toHaveLength(3)
+      expect(field.optionMap.has("Active")).toBe(true)
 
       field.fields.forEach((f) => {
         expect(f.type).toBe("null")
       })
+
+      // Test getOptionDefault helper
+      expect(field.getOptionDefault("Active")).toEqual({ Active: null })
+      expect(field.getOptionDefault("Pending")).toEqual({ Pending: null })
     })
 
     it("should handle variant with payloads", () => {
@@ -360,7 +381,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.fields).toHaveLength(2)
       expect(field.fields[0].type).toBe("text")
       expect(field.fields[1].type).toBe("number")
-      expect(field.defaultValues).toEqual(["", ""])
+      expect(field.defaultValue).toEqual(["", ""])
     })
 
     it("triple tuple", () => {
@@ -376,7 +397,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.fields[0].type).toBe("principal")
       expect(field.fields[1].type).toBe("number")
       expect(field.fields[2].type).toBe("boolean")
-      expect(field.defaultValues).toEqual(["", "", false])
+      expect(field.defaultValue).toEqual(["", "", false])
     })
   })
 
@@ -389,6 +410,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.label).toBe("nickname")
       expect(field.defaultValue).toBe(null)
       expect(field.innerField.type).toBe("text")
+      expect(field.getInnerDefault()).toBe("")
     })
 
     it("should handle optional record", () => {
@@ -408,6 +430,9 @@ describe("ArgumentFieldVisitor", () => {
       } else {
         throw new Error("Inner field is not record")
       }
+
+      // Test getInnerDefault helper
+      expect(field.getInnerDefault()).toEqual({ name: "", value: "" })
     })
 
     it("should handle nested optional", () => {
@@ -430,12 +455,17 @@ describe("ArgumentFieldVisitor", () => {
   describe("Vector Types", () => {
     it("should handle vector of primitives", () => {
       const vecType = IDL.Vec(IDL.Text)
-      const field = visitor.visitVec(vecType, IDL.Text, "tags")
+      const field = visitor.visitVec(
+        vecType,
+        IDL.Text,
+        "tags"
+      ) as VectorArgumentField
 
       expect(field.type).toBe("vector")
       expect(field.label).toBe("tags")
       expect(field.defaultValue).toEqual([])
       expect(field.itemField.type).toBe("text")
+      expect(field.getItemDefault()).toBe("")
     })
 
     it("should handle vector of records", () => {
@@ -444,7 +474,11 @@ describe("ArgumentFieldVisitor", () => {
         name: IDL.Text,
       })
       const vecType = IDL.Vec(recType)
-      const field = visitor.visitVec(vecType, recType, "items")
+      const field = visitor.visitVec(
+        vecType,
+        recType,
+        "items"
+      ) as VectorArgumentField
 
       expect(field.type).toBe("vector")
       expect(field.itemField.type).toBe("record")
@@ -454,6 +488,9 @@ describe("ArgumentFieldVisitor", () => {
       } else {
         throw new Error("Item field is not record")
       }
+
+      // Test getItemDefault helper
+      expect(field.getItemDefault()).toEqual({ id: "", name: "" })
     })
 
     it("blob (vec nat8)", () => {
@@ -463,6 +500,9 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.type).toBe("blob")
       expect(field.label).toBe("data")
       expect(field.defaultValue).toBe("")
+      if (field.type === "blob") {
+        expect(field.acceptedFormats).toEqual(["hex", "base64", "file"])
+      }
     })
 
     it("should handle nested vectors", () => {
@@ -508,7 +548,9 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("recursive")
       expect(field.label).toBe("tree")
+      expect(field.typeName).toBeDefined()
       expect(typeof field.extract).toBe("function")
+      expect(typeof field.getInnerDefault).toBe("function")
 
       // Extract should return a variant
       const extracted = field.extract()
@@ -575,7 +617,9 @@ describe("ArgumentFieldVisitor", () => {
       expect(meta.functionName).toBe("lookup")
       expect(meta.fields).toHaveLength(1)
       expect(meta.fields[0].type).toBe("text")
-      expect(meta.defaultValues).toEqual([""])
+      expect(meta.defaultValue).toEqual([""])
+      expect(meta.argCount).toBe(1)
+      expect(meta.isNoArgs).toBe(false)
     })
 
     it("should handle update function", () => {
@@ -620,6 +664,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(meta.fields[0].type).toBe("principal")
       expect(meta.fields[1].type).toBe("number")
       expect(meta.fields[2].type).toBe("optional")
+      expect(meta.argCount).toBe(3)
     })
 
     it("should handle function with no arguments", () => {
@@ -628,7 +673,9 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(meta.functionType).toBe("query")
       expect(meta.fields).toHaveLength(0)
-      expect(meta.defaultValues).toEqual([])
+      expect(meta.defaultValue).toEqual([])
+      expect(meta.argCount).toBe(0)
+      expect(meta.isNoArgs).toBe(true)
     })
   })
 
@@ -685,15 +732,16 @@ describe("ArgumentFieldVisitor", () => {
       const getMetadataMeta = serviceMeta["get_metadata"]
       expect(getMetadataMeta.functionType).toBe("query")
       expect(getMetadataMeta.fields).toHaveLength(0)
+      expect(getMetadataMeta.isNoArgs).toBe(true)
     })
   })
 
   // ════════════════════════════════════════════════════════════════════════
-  // Path Generation
+  // Name (Path) Generation
   // ════════════════════════════════════════════════════════════════════════
 
-  describe("Path Generation", () => {
-    it("should generate correct paths for nested records", () => {
+  describe("Name Generation", () => {
+    it("should generate correct names for nested records", () => {
       const funcType = IDL.Func(
         [
           IDL.Record({
@@ -713,28 +761,28 @@ describe("ArgumentFieldVisitor", () => {
       if (argRecord.type !== "record") {
         throw new Error("Expected record field")
       }
-      expect(argRecord.path).toBe("[0]")
+      expect(argRecord.name).toBe("[0]")
 
       const userRecord = argRecord.fields.find((f) => f.label === "user")
       if (!userRecord || userRecord.type !== "record") {
         throw new Error("User record not found or not record")
       }
-      expect(userRecord.path).toBe("[0].user")
+      expect(userRecord.name).toBe("[0].user")
 
       const nameField = userRecord.fields.find((f) => f.label === "name")
       if (!nameField || nameField.type !== "text") {
         throw new Error("Name field not found or not text")
       }
-      expect(nameField.path).toBe("[0].user.name")
+      expect(nameField.name).toBe("[0].user.name")
 
       const ageField = userRecord.fields.find((f) => f.label === "age")
       if (!ageField || ageField.type !== "number") {
         throw new Error("Age field not found or not number")
       }
-      expect(ageField.path).toBe("[0].user.age")
+      expect(ageField.name).toBe("[0].user.age")
     })
 
-    it("should generate correct paths for vectors", () => {
+    it("should generate correct names for vectors", () => {
       const funcType = IDL.Func([IDL.Vec(IDL.Text)], [], [])
       const meta = visitor.visitFunc(funcType, "addTags")
 
@@ -742,8 +790,8 @@ describe("ArgumentFieldVisitor", () => {
       if (vecField.type !== "vector") {
         throw new Error("Expected vector field")
       }
-      expect(vecField.path).toBe("[0]")
-      expect(vecField.itemField.path).toBe("[0][0]")
+      expect(vecField.name).toBe("[0]")
+      expect(vecField.itemField.name).toBe("[0][0]")
     })
   })
 
@@ -877,6 +925,54 @@ describe("ArgumentFieldVisitor", () => {
       }
       expect(transferField.type).toBe("record")
       expect(transferField.fields.length).toBeGreaterThan(3)
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Helper Methods
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("Helper Methods", () => {
+    it("variant getOptionDefault should return correct defaults", () => {
+      const statusType = IDL.Variant({
+        Active: IDL.Null,
+        Pending: IDL.Record({ reason: IDL.Text }),
+      })
+      const field = visitor.visitVariant(
+        statusType,
+        [
+          ["Active", IDL.Null],
+          ["Pending", IDL.Record({ reason: IDL.Text })],
+        ],
+        "status"
+      )
+
+      expect(field.getOptionDefault("Active")).toEqual({ Active: null })
+      expect(field.getOptionDefault("Pending")).toEqual({
+        Pending: { reason: "" },
+      })
+    })
+
+    it("vector getItemDefault should return item default", () => {
+      const vecType = IDL.Vec(IDL.Record({ name: IDL.Text }))
+      const field = visitor.visitVec(
+        vecType,
+        IDL.Record({ name: IDL.Text }),
+        "items"
+      ) as VectorArgumentField
+
+      expect(field.getItemDefault()).toEqual({ name: "" })
+    })
+
+    it("optional getInnerDefault should return inner default", () => {
+      const optType = IDL.Opt(IDL.Record({ value: IDL.Nat }))
+      const field = visitor.visitOpt(
+        optType,
+        IDL.Record({ value: IDL.Nat }),
+        "config"
+      )
+
+      expect(field.getInnerDefault()).toEqual({ value: "" })
     })
   })
 })

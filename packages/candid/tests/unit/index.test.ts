@@ -105,6 +105,10 @@ describe("Package Exports", () => {
         "CandidReactor",
         "CandidDisplayReactor",
         "MetadataDisplayReactor",
+        // Type guard utilities
+        "isFieldType",
+        "isCompoundField",
+        "isPrimitiveField",
       ]
 
       actualExports.forEach((exp) => {

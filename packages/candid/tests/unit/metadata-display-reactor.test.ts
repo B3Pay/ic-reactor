@@ -282,7 +282,7 @@ describe("MetadataDisplayReactor", () => {
       expect(meta.functionType).toBe("query")
       expect(meta.functionName).toBe("icrc1_name")
       expect(meta.fields).toHaveLength(0)
-      expect(meta.defaultValues).toEqual([])
+      expect(meta.defaultValue).toEqual([])
     })
 
     it("should generate argument metadata for icrc1_balance_of", () => {
@@ -384,13 +384,10 @@ describe("MetadataDisplayReactor", () => {
       const meta = reactor.getArgumentMeta("icrc1_transfer")
       if (!meta) throw new Error("Metadata not found")
 
-      expect(meta.defaultValues).toHaveLength(1)
-      expect(meta.defaultValues[0]).toBeDefined()
+      expect(meta.defaultValue).toHaveLength(1)
+      expect(meta.defaultValue[0]).toBeDefined()
 
-      const defaultTransferArg = meta.defaultValues[0] as Record<
-        string,
-        unknown
-      >
+      const defaultTransferArg = meta.defaultValue[0] as Record<string, unknown>
       expect(defaultTransferArg).toHaveProperty("to")
       expect(defaultTransferArg).toHaveProperty("amount")
       expect(defaultTransferArg).toHaveProperty("fee")
