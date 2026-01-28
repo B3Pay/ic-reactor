@@ -4,14 +4,6 @@ import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { MetadataDisplayReactor } from "../../src/metadata-display-reactor"
-import type {
-  MethodArgumentsMeta,
-  NumberArgumentField,
-  OptionalArgumentField,
-  PrincipalArgumentField,
-  RecordArgumentField,
-  VariantArgumentField,
-} from "../../src/visitor/arguments"
 import {
   MethodMeta,
   NumberNode,
@@ -282,7 +274,7 @@ describe("MetadataDisplayReactor", () => {
       expect(meta.functionType).toBe("query")
       expect(meta.functionName).toBe("icrc1_name")
       expect(meta.fields).toHaveLength(0)
-      expect(meta.defaultValue).toEqual([])
+      expect(meta.defaultValues).toEqual([])
     })
 
     it("should generate argument metadata for icrc1_balance_of", () => {
@@ -384,10 +376,10 @@ describe("MetadataDisplayReactor", () => {
       const meta = reactor.getArgumentMeta("icrc1_transfer")
       if (!meta) throw new Error("Metadata not found")
 
-      expect(meta.defaultValue).toHaveLength(1)
-      expect(meta.defaultValue[0]).toBeDefined()
+      expect(meta.defaultValues).toHaveLength(1)
+      expect(meta.defaultValues[0]).toBeDefined()
 
-      const defaultTransferArg = meta.defaultValue[0] as Record<string, unknown>
+      const defaultTransferArg = meta.defaultValues[0]
       expect(defaultTransferArg).toHaveProperty("to")
       expect(defaultTransferArg).toHaveProperty("amount")
       expect(defaultTransferArg).toHaveProperty("fee")
@@ -826,7 +818,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should return all argument metadata", () => {
-      const allArgMeta = reactor.getAllArgumentMeta()
+      const allArgMeta = reactor.getAllArgumentMeta()!
 
       expect(allArgMeta).not.toBeNull()
       expect(allArgMeta).toHaveProperty("greet")
@@ -834,24 +826,20 @@ describe("MetadataDisplayReactor", () => {
       expect(allArgMeta).toHaveProperty("set_count")
 
       // Check greet method
-      const greetMeta = (allArgMeta as any)[
-        "greet"
-      ] as MethodArgumentsMeta<unknown>
+      const greetMeta = allArgMeta.greet
+
       expect(greetMeta.functionType).toBe("query")
       expect(greetMeta.fields).toHaveLength(1)
       expect(greetMeta.fields[0].type).toBe("text")
 
       // Check get_count method (no args)
-      const getCountMeta = (allArgMeta as any)[
-        "get_count"
-      ] as MethodArgumentsMeta<unknown>
+      const getCountMeta = allArgMeta.get_count
+
       expect(getCountMeta.functionType).toBe("query")
       expect(getCountMeta.fields).toHaveLength(0)
 
       // Check set_count method
-      const setCountMeta = (allArgMeta as any)[
-        "set_count"
-      ] as MethodArgumentsMeta<unknown>
+      const setCountMeta = allArgMeta.set_count
       expect(setCountMeta.functionType).toBe("update")
       expect(setCountMeta.fields).toHaveLength(1)
       expect(setCountMeta.fields[0].type).toBe("number")

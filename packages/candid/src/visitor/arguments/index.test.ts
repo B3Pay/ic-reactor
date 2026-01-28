@@ -609,7 +609,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(meta.functionName).toBe("lookup")
       expect(meta.fields).toHaveLength(1)
       expect(meta.fields[0].type).toBe("text")
-      expect(meta.defaultValue).toEqual([""])
+      expect(meta.defaultValues).toEqual([""])
       expect(meta.argCount).toBe(1)
       expect(meta.isNoArgs).toBe(false)
     })
@@ -665,7 +665,7 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(meta.functionType).toBe("query")
       expect(meta.fields).toHaveLength(0)
-      expect(meta.defaultValue).toEqual([])
+      expect(meta.defaultValues).toEqual([])
       expect(meta.argCount).toBe(0)
       expect(meta.isNoArgs).toBe(true)
     })

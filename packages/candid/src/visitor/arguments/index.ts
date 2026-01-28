@@ -133,7 +133,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       ) as Field
     })
 
-    const defaultValue = fields.map((field) => field.defaultValue)
+    const defaultValues = fields.map((field) => field.defaultValue)
 
     // Handle empty args case for schema
     // For no-arg functions, use an empty array schema
@@ -150,24 +150,14 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
             ]
           )
 
-    // Ready-to-use options for TanStack Form's useForm hook
-    const formOptions = {
-      defaultValues: defaultValue,
-      validators: {
-        onChange: schema,
-        onBlur: schema,
-      },
-    }
-
     return {
       functionType,
       functionName,
       fields,
-      defaultValue,
+      defaultValues: defaultValues,
       schema,
       argCount,
       isNoArgs: argCount === 0,
-      formOptions,
     }
   }
 

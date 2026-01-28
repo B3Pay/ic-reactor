@@ -79,7 +79,7 @@ interface CandidFormProps {
 
 function CandidForm({ meta, onSubmitSuccess }: CandidFormProps) {
   const form = useForm({
-    defaultValues: meta.defaultValue as unknown[],
+    defaultValues: meta.defaultValues,
     validators: {
       onChange: meta.schema,
       onBlur: meta.schema,

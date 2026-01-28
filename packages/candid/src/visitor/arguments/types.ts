@@ -286,26 +286,13 @@ export interface ArgumentsMeta<
   /** Argument field definitions for rendering */
   fields: Field[]
   /** Default values for all arguments (as a tuple) */
-  defaultValue: unknown[]
+  defaultValues: unknown[]
   /** Combined Zod schema for all arguments */
   schema: z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]]>
   /** Number of arguments */
   argCount: number
   /** Whether the function takes no arguments */
   isNoArgs: boolean
-  /**
-   * Ready-to-use options for TanStack Form's useForm hook.
-   * Includes defaultValues and validators configured with the schema.
-   *
-   * @example
-   * ```tsx
-   * const form = useForm({
-   *   ...meta.formOptions,
-   *   onSubmit: async ({ value }) => { ... }
-   * })
-   * ```
-   */
-  formOptions: FormOptions
 }
 
 /**
