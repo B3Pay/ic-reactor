@@ -1,4 +1,5 @@
 import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
+import * as z from "zod"
 
 // ════════════════════════════════════════════════════════════════════════════
 // Field Type Union
@@ -30,6 +31,8 @@ export interface ArgumentFieldBase {
   label: string
   /** Dot-notation path for form binding (e.g., "0.owner", "[0].to") */
   path: string
+  /** Zod schema for validation */
+  schema: z.ZodTypeAny
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -152,6 +155,7 @@ export interface MethodArgumentsMeta<
   functionName: Name
   fields: ArgumentField[]
   defaultValues: unknown[]
+  schema: z.ZodTuple<any, any>
 }
 
 export type ServiceArgumentsMeta<A = BaseActor> = {

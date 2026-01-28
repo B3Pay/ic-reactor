@@ -7,13 +7,9 @@ import {
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import * as z from "zod"
-
-// import { isQuery } from "../helpers"
-// import { MethodZodSchema, ServiceZodSchema } from "./types"
+import { isQuery } from "../helpers"
 
 export * from "./types"
-
-//
 
 /**
  * Visitor implementation that converts Candid IDL types to Zod schemas.
@@ -382,8 +378,8 @@ export class IDLToZodVisitor extends IDL.Visitor<string, z.ZodTypeAny> {
  * // StatusSchema validates and returns EscrowStatus type
  */
 export function idlToZod<T = any>(idlType: IDL.Type<any>): z.ZodType<T> {
-  const converter = new IDLToZodVisitor()
-  return converter.visitType(idlType, "") as z.ZodType<T>
+  const visitor = new IDLToZodVisitor()
+  return visitor.visitType(idlType, "") as z.ZodType<T>
 }
 
 /**
@@ -435,14 +431,21 @@ export function idlTypesToZod<
   return result as { [K in keyof TTypes]: z.ZodType<TTypes[K]> }
 }
 
+export type MethodZodResult<
+  A = BaseActor,
+  K extends FunctionName<A> = FunctionName<A>,
+> = {
+  functionType: "query" | "update"
+  functionName: K
+  inputSchema: z.ZodType<ActorMethodParameters<A[K]>>
+  outputSchema: z.ZodType<ActorMethodReturnType<A[K]>>
+}
+
 export type FactoryZodResult<
   A = BaseActor,
   M extends FunctionName<A> = FunctionName<A>,
 > = {
-  [K in M]: {
-    inputSchema: z.ZodType<ActorMethodParameters<A[K]>>
-    outputSchema: z.ZodType<ActorMethodReturnType<A[K]>>
-  }
+  [K in M]: MethodZodResult<A, K>
 }
 
 /**
@@ -465,16 +468,19 @@ export function idlFactoryToZod<T extends BaseActor = BaseActor>(
   const result = {} as FactoryZodResult<T>
 
   for (const [methodName, func] of service._fields) {
+    const functionType = isQuery(func) ? "query" : "update"
     const args = func.argTypes.map((type, index) =>
       type.accept(converter, `arg${index}`)
-    ) as z.ZodTypeAny[]
+    ) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
     const rets = func.retTypes.map((type, index) =>
       type.accept(converter, `ret${index}`)
-    ) as z.ZodTypeAny[]
+    ) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
 
     result[methodName as FunctionName<T>] = {
-      inputSchema: z.tuple(args as [z.ZodTypeAny, ...z.ZodTypeAny[]]),
-      outputSchema: z.tuple(rets as [z.ZodTypeAny, ...z.ZodTypeAny[]]),
+      functionType,
+      functionName: methodName as FunctionName<T>,
+      inputSchema: z.tuple(args),
+      outputSchema: z.tuple(rets),
     } as any
   }
 

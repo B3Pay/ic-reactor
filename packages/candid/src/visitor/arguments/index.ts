@@ -1,5 +1,4 @@
 import { isQuery } from "../helpers"
-import { IDL } from "../types"
 import type {
   ArgumentField,
   RecordArgumentField,
@@ -18,7 +17,11 @@ import type {
   MethodArgumentsMeta,
   ServiceArgumentsMeta,
 } from "./types"
+
+import { IDL } from "@icp-sdk/core/candid"
+import { Principal } from "@icp-sdk/core/principal"
 import { BaseActor, FunctionName } from "@ic-reactor/core"
+import * as z from "zod"
 
 export * from "./types"
 
@@ -56,6 +59,8 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   string,
   ArgumentField | MethodArgumentsMeta<A> | ServiceArgumentsMeta<A>
 > {
+  public recursiveSchemas: Map<string, z.ZodTypeAny> = new Map()
+
   private pathStack: string[] = []
 
   private withPath<T>(path: string, fn: () => T): T {
@@ -110,11 +115,16 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
     const defaultValues = fields.map((field) => this.extractDefaultValue(field))
 
+    const schema = z.tuple(
+      fields.map((field) => field.schema) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
+    )
+
     return {
       functionType,
       functionName,
       fields,
       defaultValues,
+      schema,
     }
   }
 
@@ -141,6 +151,8 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     const fields: ArgumentField[] = []
     const defaultValues: Record<string, unknown> = {}
 
+    const schemaShape: Record<string, z.ZodTypeAny> = {}
+
     for (const [key, type] of fields_) {
       const field = this.withPath(this.childPath(key), () =>
         type.accept(this, key)
@@ -148,7 +160,10 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
       fields.push(field)
       defaultValues[key] = this.extractDefaultValue(field)
+      schemaShape[key] = field.schema
     }
+
+    const schema = z.object(schemaShape)
 
     return {
       type: "record",
@@ -156,6 +171,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       path,
       fields,
       defaultValues,
+      schema,
     }
   }
 
@@ -168,6 +184,8 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     const fields: ArgumentField[] = []
     const options: string[] = []
 
+    const variantSchemas: z.ZodTypeAny[] = []
+
     for (const [key, type] of fields_) {
       const field = this.withPath(this.childPath(key), () =>
         type.accept(this, key)
@@ -175,12 +193,16 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
       fields.push(field)
       options.push(key)
+
+      variantSchemas.push(z.object({ [key]: field.schema }))
     }
 
     const defaultOption = options[0]
     const defaultValues = {
       [defaultOption]: this.extractDefaultValue(fields[0]),
     }
+
+    const schema = z.union(variantSchemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
 
     return {
       type: "variant",
@@ -190,6 +212,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       options,
       defaultOption,
       defaultValues,
+      schema,
     }
   }
 
@@ -202,6 +225,8 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     const fields: ArgumentField[] = []
     const defaultValues: unknown[] = []
 
+    const schemas: z.ZodTypeAny[] = []
+
     for (let index = 0; index < components.length; index++) {
       const type = components[index]
       const field = this.withPath(this.childPath(index), () =>
@@ -210,7 +235,10 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
       fields.push(field)
       defaultValues.push(this.extractDefaultValue(field))
+      schemas.push(field.schema)
     }
+
+    const schema = z.tuple(schemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
 
     return {
       type: "tuple",
@@ -218,6 +246,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       path,
       fields,
       defaultValues,
+      schema,
     }
   }
 
@@ -232,12 +261,15 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       ty.accept(this, label)
     ) as ArgumentField
 
+    const schema = innerField.schema.nullish()
+
     return {
       type: "optional",
       label,
       path,
       innerField,
       defaultValue: null,
+      schema,
     }
   }
 
@@ -256,14 +288,18 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     ) as ArgumentField
 
     if (isBlob) {
+      const schema = z.union([z.string(), z.array(z.number())])
       return {
         type: "blob",
         label,
         path,
         itemField,
         defaultValue: "",
+        schema,
       }
     }
+
+    const schema = z.array(itemField.schema)
 
     return {
       type: "vector",
@@ -271,6 +307,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       path,
       itemField,
       defaultValue: [],
+      schema,
     }
   }
 
@@ -280,6 +317,18 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): RecursiveArgumentField {
     const path = this.currentPath()
+    const typeName = ty.name || "RecursiveType"
+
+    let schema: z.ZodTypeAny
+
+    if (this.recursiveSchemas.has(typeName)) {
+      schema = this.recursiveSchemas.get(typeName)!
+    } else {
+      schema = z.lazy(() => {
+        return (ty.accept(this, label) as ArgumentField).schema
+      })
+      this.recursiveSchemas.set(typeName, schema)
+    }
 
     return {
       type: "recursive",
@@ -288,6 +337,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       // Lazy extraction to prevent infinite loops
       extract: () =>
         this.withPath(path, () => ty.accept(this, label)) as ArgumentField,
+      schema,
     }
   }
 
@@ -299,6 +349,14 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     _t: IDL.PrincipalClass,
     label: string
   ): PrincipalArgumentField {
+    const schema = z.custom<Principal>(
+      (val) =>
+        val instanceof Principal ||
+        (typeof val === "string" && val.length >= 7 && val.length <= 64),
+      {
+        message: "Invalid Principal",
+      }
+    )
     return {
       type: "principal",
       label,
@@ -306,33 +364,40 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       defaultValue: "",
       maxLength: 64,
       minLength: 7,
+      schema,
     }
   }
 
   public visitText(_t: IDL.TextClass, label: string): TextArgumentField {
+    const schema = z.string()
     return {
       type: "text",
       label,
       path: this.currentPath(),
       defaultValue: "",
+      schema,
     }
   }
 
   public visitBool(_t: IDL.BoolClass, label: string): BooleanArgumentField {
+    const schema = z.boolean()
     return {
       type: "boolean",
       label,
       path: this.currentPath(),
       defaultValue: false,
+      schema,
     }
   }
 
   public visitNull(_t: IDL.NullClass, label: string): NullArgumentField {
+    const schema = z.null()
     return {
       type: "null",
       label,
       path: this.currentPath(),
       defaultValue: null,
+      schema,
     }
   }
 
@@ -341,12 +406,14 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     label: string,
     candidType: string
   ): NumberArgumentField {
+    const schema = z.string()
     return {
       type: "number",
       label,
       path: this.currentPath(),
       defaultValue: "",
       candidType,
+      schema,
     }
   }
 
@@ -377,29 +444,13 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitType<T>(_t: IDL.Type<T>, label: string): UnknownArgumentField {
+    const schema = z.any()
     return {
       type: "unknown",
       label,
       path: this.currentPath(),
       defaultValue: undefined,
+      schema,
     }
   }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// Legacy Exports (for backward compatibility)
-// ════════════════════════════════════════════════════════════════════════════
-
-/**
- * @deprecated Use ArgumentFieldVisitor instead
- */
-export { ArgumentFieldVisitor as VisitTanstackField }
-
-/**
- * @deprecated Use ArgumentField instead
- */
-export type {
-  ArgumentField as TanstackAllArgTypes,
-  MethodArgumentsMeta as TanstackMethodField,
-  ServiceArgumentsMeta as TanstackServiceField,
 }

@@ -1,19 +1,17 @@
 import type {
-  BaseActor,
-  DisplayReactorParameters,
-  TransformKey,
-} from "@ic-reactor/core"
-import type {
   CandidDisplayReactorParameters,
   DynamicMethodOptions,
 } from "./types"
+import { CandidAdapter } from "./adapter"
 
 import {
+  BaseActor,
+  DisplayReactorParameters,
+  TransformKey,
   DisplayReactor,
   didToDisplayCodec,
   didTypeFromArray,
 } from "@ic-reactor/core"
-import { CandidAdapter } from "./adapter"
 import { IDL } from "@icp-sdk/core/candid"
 
 // ============================================================================
