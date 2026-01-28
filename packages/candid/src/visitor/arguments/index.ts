@@ -300,12 +300,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     // because the value replaces null directly (not nested)
     const innerField = ty.accept(this, label) as Field
 
-    const schema = z.union([
-      innerField.schema,
-      z.null(),
-      z.undefined().transform(() => null),
-      z.literal("").transform(() => null),
-    ])
+    const schema = z.union([innerField.schema, z.null()])
 
     // Helper to get the inner default when enabling the optional
     const getInnerDefault = (): unknown => innerField.defaultValue
@@ -497,13 +492,34 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       min?: string
       max?: string
     }
-  ): NumberField {
+  ): NumberField | TextField {
     let schema = z.string().min(1, "Required")
 
-    if (options.unsigned) {
+    if (options.isFloat) {
+      schema = schema.refine((val) => !isNaN(Number(val)), "Must be a number")
+    } else if (options.unsigned) {
       schema = schema.regex(/^\d+$/, "Must be a positive number")
     } else {
       schema = schema.regex(/^-?\d+$/, "Must be a number")
+    }
+
+    // Use "text" type for large numbers (BigInt) to ensure precision and better UI handling
+    // Standard number input has issues with large integers
+    const isBigInt = !options.isFloat && (!options.bits || options.bits > 32)
+    const type = isBigInt ? "text" : "number"
+
+    if (type === "text") {
+      return {
+        type: "text",
+        label,
+        name: this.currentName(),
+        defaultValue: "",
+        candidType,
+        schema,
+        ui: {
+          placeholder: options.unsigned ? "e.g. 100000" : "e.g. -100000",
+        },
+      }
     }
 
     return {
@@ -512,7 +528,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       name: this.currentName(),
       defaultValue: "",
       candidType,
-      schema,
+      schema: schema,
       ...options,
       ui: {
         placeholder: options.isFloat ? "0.0" : "0",
@@ -520,14 +536,14 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitInt(_t: IDL.IntClass, label: string): NumberField {
+  public visitInt(_t: IDL.IntClass, label: string): NumberField | TextField {
     return this.visitNumberType(label, "int", {
       unsigned: false,
       isFloat: false,
     })
   }
 
-  public visitNat(_t: IDL.NatClass, label: string): NumberField {
+  public visitNat(_t: IDL.NatClass, label: string): NumberField | TextField {
     return this.visitNumberType(label, "nat", {
       unsigned: true,
       isFloat: false,
@@ -539,10 +555,13 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       unsigned: false,
       isFloat: true,
       bits: t._bits,
-    })
+    }) as NumberField
   }
 
-  public visitFixedInt(t: IDL.FixedIntClass, label: string): NumberField {
+  public visitFixedInt(
+    t: IDL.FixedIntClass,
+    label: string
+  ): NumberField | TextField {
     const bits = t._bits
     // Calculate min/max for signed integers
     const max = (BigInt(2) ** BigInt(bits - 1) - BigInt(1)).toString()
@@ -557,7 +576,10 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     })
   }
 
-  public visitFixedNat(t: IDL.FixedNatClass, label: string): NumberField {
+  public visitFixedNat(
+    t: IDL.FixedNatClass,
+    label: string
+  ): NumberField | TextField {
     const bits = t._bits
     // Calculate max for unsigned integers
     const max = (BigInt(2) ** BigInt(bits) - BigInt(1)).toString()

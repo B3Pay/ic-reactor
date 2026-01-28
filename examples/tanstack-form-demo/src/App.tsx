@@ -25,6 +25,7 @@ import "./index.css"
 const UserProfile = IDL.Record({
   username: IDL.Text,
   age: IDL.Nat,
+  height: IDL.Float32,
   email: IDL.Text,
   bio: IDL.Opt(IDL.Text),
   tags: IDL.Vec(IDL.Text),
@@ -82,7 +83,6 @@ function CandidForm({ meta, onSubmitSuccess }: CandidFormProps) {
     defaultValues: meta.defaultValues,
     validators: {
       onChange: meta.schema,
-      onBlur: meta.schema,
     },
     onSubmit: async ({ value }) => {
       console.log("Form Submitted:", JSON.stringify(value, null, 2))
@@ -267,7 +267,10 @@ function FieldInput({ field, fieldApi, form }: FieldInputProps) {
 
 function RecordInput({ field, form }: { field: RecordField; form: any }) {
   return (
-    <div className="record-container">
+    <div
+      className="record-container"
+      style={field.name === "[0]" ? { borderLeft: "none" } : undefined}
+    >
       {field.fields.map((childField) => (
         <DynamicField key={childField.name} field={childField} form={form} />
       ))}
@@ -381,11 +384,18 @@ function OptionalInput({
 
       {hasValue && (
         <div className="optional-content">
-          <FieldInput
-            field={field.innerField}
-            fieldApi={fieldApi}
-            form={form}
-          />
+          <form.Field name={field.innerField.name}>
+            {(itemApi: any) => (
+              <>
+                <FieldInput
+                  field={field.innerField}
+                  fieldApi={itemApi}
+                  form={form}
+                />
+                <FieldErrors fieldApi={itemApi} />
+              </>
+            )}
+          </form.Field>
         </div>
       )}
     </div>
@@ -415,30 +425,30 @@ function VectorInput({
     <div className="vector-container">
       <div className="vector-items">
         {items.map((_, index) => (
-          <div key={index} className="vector-item">
-            <div className="vector-item-content">
-              <form.Field name={`${field.name}[${index}]`}>
-                {(itemApi: any) => (
-                  <>
+          <form.Field key={index} name={`${field.name}[${index}]`}>
+            {(itemApi: any) => (
+              <>
+                <div className="vector-item">
+                  <span className="vector-item-content">
                     <FieldInput
                       field={field.itemField}
                       fieldApi={itemApi}
                       form={form}
                     />
-                    <FieldErrors fieldApi={itemApi} />
-                  </>
-                )}
-              </form.Field>
-            </div>
-            <button
-              type="button"
-              className="btn btn-icon btn-danger"
-              onClick={() => handleRemove(index)}
-              title="Remove item"
-            >
-              ✕
-            </button>
-          </div>
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-icon btn-danger"
+                    onClick={() => handleRemove(index)}
+                    title="Remove item"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <FieldErrors fieldApi={itemApi} />
+              </>
+            )}
+          </form.Field>
         ))}
       </div>
 
@@ -515,7 +525,7 @@ function NumberInput({
         type={field.isFloat ? "number" : "text"}
         inputMode="numeric"
         className="input number-input"
-        value={(fieldApi.state.value as string) ?? ""}
+        value={fieldApi.state.value ?? ""}
         onChange={(e) => fieldApi.handleChange(e.target.value)}
         onBlur={fieldApi.handleBlur}
         placeholder={field.ui?.placeholder ?? "0"}

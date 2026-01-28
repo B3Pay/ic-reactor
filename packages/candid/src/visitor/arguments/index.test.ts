@@ -53,31 +53,32 @@ describe("ArgumentFieldVisitor", () => {
     it("should handle nat type", () => {
       const field = visitor.visitNat(IDL.Nat, "amount")
 
-      expect(field.type).toBe("number")
+      expect(field.type).toBe("text")
       expect(field.label).toBe("amount")
       expect(field.candidType).toBe("nat")
       expect(field.defaultValue).toBe("")
-      expect(field.unsigned).toBe(true)
-      expect(field.isFloat).toBe(false)
+      // TextField doesn't have isFloat or unsigned properties in the types
     })
 
     it("should handle int type", () => {
       const field = visitor.visitInt(IDL.Int, "balance")
 
-      expect(field.type).toBe("number")
+      expect(field.type).toBe("text")
       expect(field.candidType).toBe("int")
-      expect(field.unsigned).toBe(false)
-      expect(field.isFloat).toBe(false)
     })
 
     it("should handle nat8 type with min/max", () => {
       const field = visitor.visitFixedNat(IDL.Nat8 as IDL.FixedNatClass, "byte")
 
-      expect(field.type).toBe("number")
-      expect(field.candidType).toBe("nat8")
-      expect(field.bits).toBe(8)
-      expect(field.min).toBe("0")
-      expect(field.max).toBe("255")
+      if (field.type === "number") {
+        expect(field.type).toBe("number")
+        expect(field.candidType).toBe("nat8")
+        expect(field.bits).toBe(8)
+        expect(field.min).toBe("0")
+        expect(field.max).toBe("255")
+      } else {
+        throw new Error("Expected number field for nat8")
+      }
     })
 
     it("should handle nat64 type with min/max", () => {
@@ -86,11 +87,9 @@ describe("ArgumentFieldVisitor", () => {
         "timestamp"
       )
 
-      expect(field.type).toBe("number")
+      expect(field.type).toBe("text")
       expect(field.candidType).toBe("nat64")
-      expect(field.bits).toBe(64)
-      expect(field.min).toBe("0")
-      expect(field.max).toBe("18446744073709551615")
+      // Large numbers are now text fields and don't carry bit/min/max metadata in the same way
     })
 
     it("should handle int32 type with min/max", () => {
@@ -99,11 +98,15 @@ describe("ArgumentFieldVisitor", () => {
         "count"
       )
 
-      expect(field.type).toBe("number")
-      expect(field.candidType).toBe("int32")
-      expect(field.bits).toBe(32)
-      expect(field.min).toBe("-2147483648")
-      expect(field.max).toBe("2147483647")
+      if (field.type === "number") {
+        expect(field.type).toBe("number")
+        expect(field.candidType).toBe("int32")
+        expect(field.bits).toBe(32)
+        expect(field.min).toBe("-2147483648")
+        expect(field.max).toBe("2147483647")
+      } else {
+        throw new Error("Expected number field for int32")
+      }
     })
 
     it("should handle float64 type", () => {
@@ -111,7 +114,9 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("number")
       expect(field.candidType).toBe("float64")
-      expect(field.isFloat).toBe(true)
+      if (field.type === "number") {
+        expect(field.isFloat).toBe(true)
+      }
     })
   })
 
@@ -148,10 +153,10 @@ describe("ArgumentFieldVisitor", () => {
       expect(nameField.defaultValue).toBe("")
 
       const ageField = field.fields.find((f) => f.label === "age")
-      if (!ageField || ageField.type !== "number") {
-        throw new Error("Age field not found or not number")
+      if (!ageField || ageField.type !== "text") {
+        throw new Error("Age field not found or not text")
       }
-      expect(ageField.type).toBe("number")
+      expect(ageField.type).toBe("text")
       expect(ageField.candidType).toBe("nat")
 
       expect(field.defaultValue).toEqual({
@@ -239,10 +244,10 @@ describe("ArgumentFieldVisitor", () => {
 
       // Check 'amount' field
       const amountField = field.fields.find((f) => f.label === "amount")
-      if (!amountField || amountField.type !== "number") {
-        throw new Error("Amount field not found or not number")
+      if (!amountField || amountField.type !== "text") {
+        throw new Error("Amount field not found or not text")
       }
-      expect(amountField.type).toBe("number")
+      expect(amountField.type).toBe("text")
       expect(amountField.candidType).toBe("nat")
 
       // Check optional 'fee' field
@@ -251,7 +256,7 @@ describe("ArgumentFieldVisitor", () => {
         throw new Error("Fee field not found or not optional")
       }
       expect(feeField.type).toBe("optional")
-      expect(feeField.innerField.type).toBe("number")
+      expect(feeField.innerField.type).toBe("text")
     })
   })
 
@@ -333,10 +338,10 @@ describe("ArgumentFieldVisitor", () => {
       expect(transferField.fields).toHaveLength(2)
 
       const burnField = field.fields.find((f) => f.label === "Burn")
-      if (!burnField || burnField.type !== "number") {
-        throw new Error("Burn field not found or not number")
+      if (!burnField || burnField.type !== "text") {
+        throw new Error("Burn field not found or not text")
       }
-      expect(burnField.type).toBe("number")
+      expect(burnField.type).toBe("text")
     })
 
     it("should handle Result variant (Ok/Err)", () => {
@@ -358,10 +363,10 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.options).toContain("Err")
 
       const okField = field.fields.find((f) => f.label === "Ok")
-      if (!okField || okField.type !== "number") {
-        throw new Error("Ok field not found or not number")
+      if (!okField || okField.type !== "text") {
+        throw new Error("Ok field not found or not text")
       }
-      expect(okField.type).toBe("number")
+      expect(okField.type).toBe("text")
 
       const errField = field.fields.find((f) => f.label === "Err")
       if (!errField || errField.type !== "text") {
@@ -380,7 +385,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.label).toBe("pair")
       expect(field.fields).toHaveLength(2)
       expect(field.fields[0].type).toBe("text")
-      expect(field.fields[1].type).toBe("number")
+      expect(field.fields[1].type).toBe("text")
       expect(field.defaultValue).toEqual(["", ""])
     })
 
@@ -395,7 +400,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.type).toBe("tuple")
       expect(field.fields).toHaveLength(3)
       expect(field.fields[0].type).toBe("principal")
-      expect(field.fields[1].type).toBe("number")
+      expect(field.fields[1].type).toBe("text")
       expect(field.fields[2].type).toBe("boolean")
       expect(field.defaultValue).toEqual(["", "", false])
     })
@@ -445,7 +450,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.innerField.type).toBe("optional")
       const inner = field.innerField
       if (inner.type === "optional") {
-        expect(inner.innerField.type).toBe("number")
+        expect(inner.innerField.type).toBe("text")
       } else {
         throw new Error("Inner field is not optional")
       }
@@ -506,7 +511,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.itemField.type).toBe("vector")
       const item = field.itemField
       if (item.type === "vector") {
-        expect(item.itemField.type).toBe("number")
+        expect(item.itemField.type).toBe("text")
       } else {
         throw new Error("Item field is not vector")
       }
@@ -654,7 +659,7 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(meta.fields).toHaveLength(3)
       expect(meta.fields[0].type).toBe("principal")
-      expect(meta.fields[1].type).toBe("number")
+      expect(meta.fields[1].type).toBe("text")
       expect(meta.fields[2].type).toBe("optional")
       expect(meta.argCount).toBe(3)
     })
@@ -768,8 +773,8 @@ describe("ArgumentFieldVisitor", () => {
       expect(nameField.name).toBe("[0].user.name")
 
       const ageField = userRecord.fields.find((f) => f.label === "age")
-      if (!ageField || ageField.type !== "number") {
-        throw new Error("Age field not found or not number")
+      if (!ageField || ageField.type !== "text") {
+        throw new Error("Age field not found or not text")
       }
       expect(ageField.name).toBe("[0].user.age")
     })
@@ -841,10 +846,10 @@ describe("ArgumentFieldVisitor", () => {
 
       // Check amount field
       const amountField = field.fields.find((f) => f.label === "amount")
-      if (!amountField || amountField.type !== "number") {
-        throw new Error("Amount field not found or not number")
+      if (!amountField || amountField.type !== "text") {
+        throw new Error("Amount field not found or not text")
       }
-      expect(amountField.type).toBe("number")
+      expect(amountField.type).toBe("text")
       expect(amountField.candidType).toBe("nat")
     })
 
