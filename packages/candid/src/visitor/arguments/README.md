@@ -137,6 +137,91 @@ function MethodForm({ meta }) {
 }
 ```
 
+### 5. Field-Level Validation with TanStack Form
+
+You can also perform granular validation at the field level using `field.schema`. This is useful when you want to validate individual inputs as the user types, rather than checking the entire form schema at the root.
+
+```tsx
+import { useForm } from "@tanstack/react-form"
+import { zodValidator } from "@tanstack/zod-form-adapter"
+
+function FieldLevelValidationForm({ meta }) {
+  const form = useForm({
+    defaultValues: meta.defaultValues,
+    validatorAdapter: zodValidator(),
+    onSubmit: async ({ value }) => {
+      console.log(value)
+    },
+  })
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        form.handleSubmit()
+      }}
+    >
+      {meta.fields.map((argField, index) => (
+        <form.Field
+          key={index}
+          name={`[${index}]`}
+          // Use the specific schema for this argument field
+          validators={{
+            onChange: argField.schema,
+          }}
+          children={(field) => (
+            <div>
+              <label>{argField.label}</label>
+              <input
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+              {field.state.meta.errors ? (
+                <span className="error">
+                  {field.state.meta.errors.join(", ")}
+                </span>
+              ) : null}
+            </div>
+          )}
+        />
+      ))}
+      <button type="submit">Call Method</button>
+    </form>
+  )
+}
+```
+
+### 6. Custom Revalidation Logic
+
+You can fine-tune when validation occurs using `revalidateLogic` from `@tanstack/react-form`. This allows you to set different validation modes before and after the first submission (e.g., validate specific fields on submit first, then on blur/change after errors are present).
+
+```tsx
+import { useForm, revalidateLogic } from "@tanstack/react-form"
+
+function RevalidationForm({ meta }) {
+  const form = useForm({
+    defaultValues: meta.defaultValues,
+    validatorAdapter: zodValidator(),
+    // Validate on 'submit' initially, then 'change' after first submission
+    validationLogic: revalidateLogic({
+      mode: "submit",
+      modeAfterSubmission: "change",
+    }),
+    validators: {
+      // The schema is applied based on the logic defined above
+      onDynamic: meta.schema,
+    },
+    onSubmit: async ({ value }) => {
+      console.log(value)
+    },
+  })
+
+  // ... render form
+}
+```
+
 ## Schema Validation Rules
 
 The generated Zod schema enforces stricter rules than standard Candid types to ensure valid user input:
