@@ -261,15 +261,13 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       ty.accept(this, label)
     ) as ArgumentField
 
-    const schema = innerField.schema.nullish()
-
     return {
       type: "optional",
       label,
       path,
       innerField,
       defaultValue: null,
-      schema,
+      schema: innerField.schema.nullish(),
     }
   }
 
@@ -288,7 +286,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     ) as ArgumentField
 
     if (isBlob) {
-      const schema = z.union([z.string(), z.array(z.number())])
+      const schema = z.union([z.string(), z.any()])
       return {
         type: "blob",
         label,
@@ -369,35 +367,32 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitText(_t: IDL.TextClass, label: string): TextArgumentField {
-    const schema = z.string()
     return {
       type: "text",
       label,
       path: this.currentPath(),
       defaultValue: "",
-      schema,
+      schema: z.string(),
     }
   }
 
   public visitBool(_t: IDL.BoolClass, label: string): BooleanArgumentField {
-    const schema = z.boolean()
     return {
       type: "boolean",
       label,
       path: this.currentPath(),
       defaultValue: false,
-      schema,
+      schema: z.boolean(),
     }
   }
 
   public visitNull(_t: IDL.NullClass, label: string): NullArgumentField {
-    const schema = z.null()
     return {
       type: "null",
       label,
       path: this.currentPath(),
       defaultValue: null,
-      schema,
+      schema: z.null(),
     }
   }
 
@@ -406,14 +401,13 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     label: string,
     candidType: string
   ): NumberArgumentField {
-    const schema = z.string()
     return {
       type: "number",
       label,
       path: this.currentPath(),
       defaultValue: "",
       candidType,
-      schema,
+      schema: z.string(),
     }
   }
 
@@ -444,13 +438,12 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitType<T>(_t: IDL.Type<T>, label: string): UnknownArgumentField {
-    const schema = z.any()
     return {
       type: "unknown",
       label,
       path: this.currentPath(),
       defaultValue: undefined,
-      schema,
+      schema: z.any(),
     }
   }
 }
