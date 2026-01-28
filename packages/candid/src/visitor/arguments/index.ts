@@ -84,16 +84,6 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return parent ? `${parent}.${key}` : key
   }
 
-  private extractDefaultValue(field: ArgumentField): unknown {
-    if ("defaultValue" in field) {
-      return field.defaultValue
-    }
-    if ("defaultValues" in field) {
-      return field.defaultValues
-    }
-    return undefined
-  }
-
   // ════════════════════════════════════════════════════════════════════════
   // Service & Function Level
   // ════════════════════════════════════════════════════════════════════════
@@ -123,7 +113,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       ) as ArgumentField
     })
 
-    const defaultValues = fields.map((field) => this.extractDefaultValue(field))
+    const defaultValue = fields.map((field) => field.defaultValue)
 
     const schema = z.tuple(
       fields.map((field) => field.schema) as [z.ZodTypeAny, ...z.ZodTypeAny[]]
@@ -133,7 +123,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       functionType,
       functionName,
       fields,
-      defaultValues,
+      defaultValue,
       schema,
     }
   }
@@ -149,7 +139,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   ): RecordArgumentField {
     const path = this.currentPath()
     const fields: ArgumentField[] = []
-    const defaultValues: Record<string, unknown> = {}
+    const defaultValue: Record<string, unknown> = {}
 
     const schemaShape: Record<string, z.ZodTypeAny> = {}
 
@@ -159,7 +149,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       ) as ArgumentField
 
       fields.push(field)
-      defaultValues[key] = this.extractDefaultValue(field)
+      defaultValue[key] = field.defaultValue
       schemaShape[key] = field.schema
     }
 
@@ -170,7 +160,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       path,
       fields,
-      defaultValues,
+      defaultValue,
       schema,
     }
   }
@@ -198,8 +188,8 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
 
     const defaultOption = options[0]
-    const defaultValues = {
-      [defaultOption]: this.extractDefaultValue(fields[0]),
+    const defaultValue = {
+      [defaultOption]: fields[0].defaultValue,
     }
 
     const schema = z.union(variantSchemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
@@ -211,7 +201,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       fields,
       options,
       defaultOption,
-      defaultValues,
+      defaultValue,
       schema,
     }
   }
@@ -223,7 +213,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   ): TupleArgumentField {
     const path = this.currentPath()
     const fields: ArgumentField[] = []
-    const defaultValues: unknown[] = []
+    const defaultValue: unknown[] = []
 
     const schemas: z.ZodTypeAny[] = []
 
@@ -234,7 +224,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       ) as ArgumentField
 
       fields.push(field)
-      defaultValues.push(this.extractDefaultValue(field))
+      defaultValue.push(field.defaultValue)
       schemas.push(field.schema)
     }
 
@@ -245,7 +235,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       path,
       fields,
-      defaultValues,
+      defaultValue,
       schema,
     }
   }
@@ -339,6 +329,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       // Lazy extraction to prevent infinite loops
       extract: () =>
         this.withPath(path, () => ty.accept(this, label)) as ArgumentField,
+      defaultValue: undefined,
       schema,
     }
   }

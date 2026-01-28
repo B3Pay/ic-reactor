@@ -33,6 +33,8 @@ export interface ArgumentFieldBase {
   path: string
   /** Zod schema for validation */
   schema: z.ZodTypeAny
+  /** Default value for the field */
+  defaultValue: unknown
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -42,7 +44,7 @@ export interface ArgumentFieldBase {
 export interface RecordArgumentField extends ArgumentFieldBase {
   type: "record"
   fields: ArgumentField[]
-  defaultValues: Record<string, unknown>
+  defaultValue: Record<string, unknown>
 }
 
 export interface VariantArgumentField extends ArgumentFieldBase {
@@ -50,13 +52,13 @@ export interface VariantArgumentField extends ArgumentFieldBase {
   fields: ArgumentField[]
   options: string[]
   defaultOption: string
-  defaultValues: Record<string, unknown>
+  defaultValue: Record<string, unknown>
 }
 
 export interface TupleArgumentField extends ArgumentFieldBase {
   type: "tuple"
   fields: ArgumentField[]
-  defaultValues: unknown[]
+  defaultValue: unknown[]
 }
 
 export interface OptionalArgumentField extends ArgumentFieldBase {
@@ -82,6 +84,7 @@ export interface RecursiveArgumentField extends ArgumentFieldBase {
   type: "recursive"
   /** Lazily extract the inner field to prevent infinite loops */
   extract: () => ArgumentField
+  defaultValue: undefined
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -154,7 +157,7 @@ export interface MethodArgumentsMeta<
   functionType: FunctionType
   functionName: Name
   fields: ArgumentField[]
-  defaultValues: unknown[]
+  defaultValue: Record<string, unknown> | unknown[]
   schema: z.ZodTuple<any, any>
 }
 

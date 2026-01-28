@@ -57,7 +57,7 @@ function App() {
 
 function MethodForm({ meta }: { meta: MethodArgumentsMeta }) {
   const form = useForm({
-    defaultValues: meta.defaultValues,
+    defaultValues: meta.defaultValue,
     validators: {
       onBlur: meta.schema,
     },
@@ -173,12 +173,9 @@ function FieldInput({
 
   if (field.type === "variant") {
     // Robust variant handling
-    const currentValue = fieldApi.state.value || field.defaultValues
+    const currentValue = fieldApi.state.value || field.defaultValue
     // Ensure we have at least one key
     const currentKey = Object.keys(currentValue)[0] || field.defaultOption
-
-    // Find schema for current key to potentially render input
-    // (though for simple enum variants without payload, just the select is enough)
 
     return (
       <div
@@ -191,7 +188,17 @@ function FieldInput({
         <select
           value={currentKey}
           onChange={(e) => {
-            fieldApi.handleChange({ [e.target.value]: null })
+            const newKey = e.target.value
+            const newOptionField = field.fields.find((f) => f.label === newKey)
+
+            // If the new variant option has a payload, we need its default value.
+            // If it's null type (unit variant), default value is null.
+            let newVal = null
+            if (newOptionField && newOptionField.type !== "null") {
+              newVal = newOptionField.defaultValue
+            }
+
+            fieldApi.handleChange({ [newKey]: newVal })
           }}
           style={{ marginBottom: "8px" }}
         >
@@ -221,6 +228,8 @@ function FieldInput({
       </div>
     )
   }
+
+  // ... (text, number, boolean, vector handled or same as before) ...
 
   if (field.type === "text") {
     return (
@@ -311,7 +320,7 @@ function FieldInput({
             checked={hasValue}
             onChange={(e) => {
               if (e.target.checked) {
-                const defaultVal = getDefaultValue(field.innerField)
+                const defaultVal = field.innerField.defaultValue
                 fieldApi.handleChange(defaultVal ?? "")
               } else {
                 fieldApi.handleChange(null)
