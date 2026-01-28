@@ -434,8 +434,8 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return this.visitNumberType(label, "nat")
   }
 
-  public visitFloat(_t: IDL.FloatClass, label: string): NumberArgumentField {
-    return this.visitNumberType(label, "float")
+  public visitFloat(t: IDL.FloatClass, label: string): NumberArgumentField {
+    return this.visitNumberType(label, `float${t._bits}`)
   }
 
   public visitFixedInt(
