@@ -5,19 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@ic-reactor/candid": "workspace:*",
-    "@ic-reactor/core": "workspace:*",
     "@ic-reactor/react": "workspace:*",
     "@icp-sdk/core": "^5.0.0",
-    "@tanstack/form-core": "^1.28.0",
     "@tanstack/react-form": "^1.28.0",
-    "@tanstack/react-store": "^0.8.0",
-    "@tanstack/zod-form-adapter": "^0.42.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zod": "^4.3.6"

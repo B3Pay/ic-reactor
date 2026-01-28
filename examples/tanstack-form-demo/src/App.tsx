@@ -133,7 +133,9 @@ function FieldRenderer({
 
             {fieldApi.state.meta.errors ? (
               <div style={{ color: "red", fontSize: "0.8em" }}>
-                {fieldApi.state.meta.errors.join(", ")}
+                {fieldApi.state.meta.errors
+                  .map((e: any) => e?.message || String(e))
+                  .join(", ")}
               </div>
             ) : null}
           </div>

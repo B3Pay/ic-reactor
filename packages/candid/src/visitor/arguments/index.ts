@@ -25,6 +25,10 @@ import * as z from "zod"
 
 export * from "./types"
 
+export interface VisitorOptions {
+  isRequired?: boolean
+}
+
 /**
  * ArgumentFieldVisitor generates metadata for form input fields from Candid IDL types.
  *
@@ -385,7 +389,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       path: this.currentPath(),
       defaultValue: "",
-      schema: z.string(),
+      schema: z.string().min(1, "Field is required"),
     }
   }
 
