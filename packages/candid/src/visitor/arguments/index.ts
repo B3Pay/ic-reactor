@@ -328,9 +328,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     if (this.recursiveSchemas.has(typeName)) {
       schema = this.recursiveSchemas.get(typeName)!
     } else {
-      schema = z.lazy(() => {
-        return (ty.accept(this, label) as ArgumentField).schema
-      })
+      schema = z.lazy(() => (ty.accept(this, label) as ArgumentField).schema)
       this.recursiveSchemas.set(typeName, schema)
     }
 
