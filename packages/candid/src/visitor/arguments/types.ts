@@ -41,7 +41,7 @@ export interface FieldUIHints {
 // Base Field Interface
 // ════════════════════════════════════════════════════════════════════════════
 
-export interface ArgumentFieldBase<TValue = unknown> {
+export interface FieldBase<TValue = unknown> {
   /** The field type */
   type: ArgumentFieldType
   /** Human-readable label from Candid */
@@ -49,10 +49,17 @@ export interface ArgumentFieldBase<TValue = unknown> {
   /**
    * Form field name path for binding.
    * Uses bracket notation for array indices: `[0]`, `args[0].owner`, `tags[1]`
-   * Compatible with TanStack Form name patterns.
+   * Compatible with TanStack Form's `form.Field` name prop.
+   *
+   * @example
+   * ```tsx
+   * <form.Field name={field.name}>
+   *   {(fieldApi) => <input {...} />}
+   * </form.Field>
+   * ```
    */
   name: string
-  /** Zod schema for validation */
+  /** Zod schema for field validation */
   schema: z.ZodTypeAny
   /** Default value for the field */
   defaultValue: TValue
@@ -66,77 +73,99 @@ export interface ArgumentFieldBase<TValue = unknown> {
 // Compound Types
 // ════════════════════════════════════════════════════════════════════════════
 
-export interface RecordArgumentField extends ArgumentFieldBase<
-  Record<string, unknown>
-> {
+export interface RecordField extends FieldBase<Record<string, unknown>> {
   type: "record"
   /** Child fields in the record */
-  fields: ArgumentField[]
+  fields: Field[]
   /** Map of field label to its metadata for quick lookup */
-  fieldMap: Map<string, ArgumentField>
+  fieldMap: Map<string, Field>
 }
 
-export interface VariantArgumentField extends ArgumentFieldBase<
-  Record<string, unknown>
-> {
+export interface VariantField extends FieldBase<Record<string, unknown>> {
   type: "variant"
   /** All variant option fields */
-  fields: ArgumentField[]
+  fields: Field[]
   /** List of variant option names */
   options: string[]
   /** Default selected option */
   defaultOption: string
   /** Map of option name to its field metadata */
-  optionMap: Map<string, ArgumentField>
+  optionMap: Map<string, Field>
   /**
    * Get default value for a specific option.
    * Useful when switching between variant options.
+   *
+   * @example
+   * ```tsx
+   * const handleOptionChange = (newOption: string) => {
+   *   const newDefault = field.getOptionDefault(newOption)
+   *   fieldApi.handleChange(newDefault)
+   * }
+   * ```
    */
   getOptionDefault: (option: string) => Record<string, unknown>
 }
 
-export interface TupleArgumentField extends ArgumentFieldBase<unknown[]> {
+export interface TupleField extends FieldBase<unknown[]> {
   type: "tuple"
   /** Tuple element fields in order */
-  fields: ArgumentField[]
+  fields: Field[]
 }
 
-export interface OptionalArgumentField extends ArgumentFieldBase<null> {
+export interface OptionalField extends FieldBase<null> {
   type: "optional"
   /** The inner field when value is present */
-  innerField: ArgumentField
+  innerField: Field
   /**
    * Get default value when enabling the optional.
    * Returns the inner field's default value.
+   *
+   * @example
+   * ```tsx
+   * const handleToggle = (enabled: boolean) => {
+   *   if (enabled) {
+   *     fieldApi.handleChange(field.getInnerDefault())
+   *   } else {
+   *     fieldApi.handleChange(null)
+   *   }
+   * }
+   * ```
    */
   getInnerDefault: () => unknown
 }
 
-export interface VectorArgumentField extends ArgumentFieldBase<unknown[]> {
+export interface VectorField extends FieldBase<unknown[]> {
   type: "vector"
   /** Template field for vector items */
-  itemField: ArgumentField
+  itemField: Field
   /**
    * Get a new item with default values.
    * Used when adding items to the vector.
+   *
+   * @example
+   * ```tsx
+   * <button onClick={() => fieldApi.pushValue(field.getItemDefault())}>
+   *   Add Item
+   * </button>
+   * ```
    */
   getItemDefault: () => unknown
 }
 
-export interface BlobArgumentField extends ArgumentFieldBase<string> {
+export interface BlobField extends FieldBase<string> {
   type: "blob"
   /** Item field for individual bytes (nat8) */
-  itemField: ArgumentField
+  itemField: Field
   /** Accepted input formats */
   acceptedFormats: ("hex" | "base64" | "file")[]
 }
 
-export interface RecursiveArgumentField extends ArgumentFieldBase<undefined> {
+export interface RecursiveField extends FieldBase<undefined> {
   type: "recursive"
   /** Type name for the recursive type */
   typeName: string
   /** Lazily extract the inner field to prevent infinite loops */
-  extract: () => ArgumentField
+  extract: () => Field
   /**
    * Get default value for the recursive type.
    * Evaluates the inner type on demand.
@@ -148,13 +177,13 @@ export interface RecursiveArgumentField extends ArgumentFieldBase<undefined> {
 // Primitive Types
 // ════════════════════════════════════════════════════════════════════════════
 
-export interface PrincipalArgumentField extends ArgumentFieldBase<string> {
+export interface PrincipalField extends FieldBase<string> {
   type: "principal"
   maxLength: number
   minLength: number
 }
 
-export interface NumberArgumentField extends ArgumentFieldBase<string> {
+export interface NumberField extends FieldBase<string> {
   type: "number"
   /**
    * Original Candid type: nat, int, nat8, nat16, nat32, nat64, int8, int16, int32, int64, float32, float64
@@ -172,7 +201,7 @@ export interface NumberArgumentField extends ArgumentFieldBase<string> {
   max?: string
 }
 
-export interface TextArgumentField extends ArgumentFieldBase<string> {
+export interface TextField extends FieldBase<string> {
   type: "text"
   /** Minimum length constraint */
   minLength?: number
@@ -182,15 +211,15 @@ export interface TextArgumentField extends ArgumentFieldBase<string> {
   multiline?: boolean
 }
 
-export interface BooleanArgumentField extends ArgumentFieldBase<boolean> {
+export interface BooleanField extends FieldBase<boolean> {
   type: "boolean"
 }
 
-export interface NullArgumentField extends ArgumentFieldBase<null> {
+export interface NullField extends FieldBase<null> {
   type: "null"
 }
 
-export interface UnknownArgumentField extends ArgumentFieldBase<undefined> {
+export interface UnknownField extends FieldBase<undefined> {
   type: "unknown"
 }
 
@@ -198,26 +227,55 @@ export interface UnknownArgumentField extends ArgumentFieldBase<undefined> {
 // Union Type
 // ════════════════════════════════════════════════════════════════════════════
 
-export type ArgumentField =
-  | RecordArgumentField
-  | VariantArgumentField
-  | TupleArgumentField
-  | OptionalArgumentField
-  | VectorArgumentField
-  | BlobArgumentField
-  | RecursiveArgumentField
-  | PrincipalArgumentField
-  | NumberArgumentField
-  | TextArgumentField
-  | BooleanArgumentField
-  | NullArgumentField
-  | UnknownArgumentField
+export type Field =
+  | RecordField
+  | VariantField
+  | TupleField
+  | OptionalField
+  | VectorField
+  | BlobField
+  | RecursiveField
+  | PrincipalField
+  | NumberField
+  | TextField
+  | BooleanField
+  | NullField
+  | UnknownField
 
 // ════════════════════════════════════════════════════════════════════════════
-// Method & Service Level
+// Form Metadata - TanStack Form Integration
 // ════════════════════════════════════════════════════════════════════════════
 
-export interface MethodArgumentsMeta<
+/**
+ * Form metadata for a Candid method.
+ * Contains all information needed to create a TanStack Form instance.
+ *
+ * @example
+ * ```tsx
+ * import { useForm } from '@tanstack/react-form'
+ *
+ * function MethodForm({ meta }: { meta: FormMeta }) {
+ *   const form = useForm({
+ *     ...meta.formOptions,
+ *     onSubmit: async ({ value }) => {
+ *       await actor[meta.functionName](...value)
+ *     }
+ *   })
+ *
+ *   return (
+ *     <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }}>
+ *       {meta.fields.map(field => (
+ *         <form.Field key={field.name} name={field.name}>
+ *           {(fieldApi) => <DynamicInput field={field} fieldApi={fieldApi} />}
+ *         </form.Field>
+ *       ))}
+ *       <button type="submit">Submit</button>
+ *     </form>
+ *   )
+ * }
+ * ```
+ */
+export interface ArgumentsMeta<
   A = BaseActor,
   Name extends FunctionName<A> = FunctionName<A>,
 > {
@@ -225,8 +283,8 @@ export interface MethodArgumentsMeta<
   functionType: FunctionType
   /** The function name */
   functionName: Name
-  /** Argument field definitions */
-  fields: ArgumentField[]
+  /** Argument field definitions for rendering */
+  fields: Field[]
   /** Default values for all arguments (as a tuple) */
   defaultValue: unknown[]
   /** Combined Zod schema for all arguments */
@@ -235,51 +293,97 @@ export interface MethodArgumentsMeta<
   argCount: number
   /** Whether the function takes no arguments */
   isNoArgs: boolean
+  /**
+   * Ready-to-use options for TanStack Form's useForm hook.
+   * Includes defaultValues and validators configured with the schema.
+   *
+   * @example
+   * ```tsx
+   * const form = useForm({
+   *   ...meta.formOptions,
+   *   onSubmit: async ({ value }) => { ... }
+   * })
+   * ```
+   */
+  formOptions: FormOptions
 }
 
-export type ServiceArgumentsMeta<A = BaseActor> = {
-  [K in FunctionName<A>]: MethodArgumentsMeta<A, K>
+/**
+ * Options that can be spread into useForm().
+ * Pre-configured with defaultValues and validators.
+ */
+export interface FormOptions {
+  /** Initial form values */
+  defaultValues: unknown[]
+  /** Validators using the Zod schema */
+  validators: {
+    onChange: z.ZodTypeAny
+    onBlur: z.ZodTypeAny
+  }
+}
+
+/**
+ * Service-level form metadata.
+ * Maps each method name to its FormMeta.
+ */
+export type ArgumentsServiceMeta<A = BaseActor> = {
+  [K in FunctionName<A>]: ArgumentsMeta<A, K>
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Type Utilities
+// Type Utilities & Guards
 // ════════════════════════════════════════════════════════════════════════════
 
 /** Extract a specific field type */
-export type ArgumentFieldByType<T extends ArgumentFieldType> = Extract<
-  ArgumentField,
+export type FieldByType<T extends ArgumentFieldType> = Extract<
+  Field,
   { type: T }
 >
 
-/** Check if field is a compound type */
-export type CompoundArgumentField =
-  | RecordArgumentField
-  | VariantArgumentField
-  | TupleArgumentField
-  | OptionalArgumentField
-  | VectorArgumentField
-  | RecursiveArgumentField
+/** Compound field types that contain other fields */
+export type CompoundField =
+  | RecordField
+  | VariantField
+  | TupleField
+  | OptionalField
+  | VectorField
+  | RecursiveField
 
-/** Check if field is a primitive type */
-export type PrimitiveArgumentField =
-  | PrincipalArgumentField
-  | NumberArgumentField
-  | TextArgumentField
-  | BooleanArgumentField
-  | NullArgumentField
+/** Primitive field types */
+export type PrimitiveField =
+  | PrincipalField
+  | NumberField
+  | TextField
+  | BooleanField
+  | NullField
 
-/** Type guard for field types */
+/**
+ * Type guard for checking specific field types.
+ *
+ * @example
+ * ```tsx
+ * function FieldInput({ field }: { field: Field }) {
+ *   if (isFieldType(field, 'record')) {
+ *     // field is now typed as RecordField
+ *     return <RecordInput field={field} />
+ *   }
+ *   if (isFieldType(field, 'text')) {
+ *     // field is now typed as TextField
+ *     return <TextInput field={field} />
+ *   }
+ *   // ...
+ * }
+ * ```
+ */
 export function isFieldType<T extends ArgumentFieldType>(
-  field: ArgumentField,
+  field: Field,
   type: T
-): field is ArgumentFieldByType<T> {
+): field is FieldByType<T> {
   return field.type === type
 }
 
-/** Check if a field is a compound type */
-export function isCompoundField(
-  field: ArgumentField
-): field is CompoundArgumentField {
+/** Check if a field is a compound type (contains other fields) */
+export function isCompoundField(field: Field): field is CompoundField {
   return [
     "record",
     "variant",
@@ -291,8 +395,13 @@ export function isCompoundField(
 }
 
 /** Check if a field is a primitive type */
-export function isPrimitiveField(
-  field: ArgumentField
-): field is PrimitiveArgumentField {
+export function isPrimitiveField(field: Field): field is PrimitiveField {
   return ["principal", "number", "text", "boolean", "null"].includes(field.type)
+}
+
+/** Check if a field has children (for iteration) */
+export function hasChildFields(
+  field: Field
+): field is RecordField | VariantField | TupleField {
+  return "fields" in field && Array.isArray((field as RecordField).fields)
 }

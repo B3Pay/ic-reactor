@@ -1,26 +1,21 @@
 import { useMemo } from "react"
 import {
   ArgumentFieldVisitor,
-  type ArgumentField,
-  type MethodArgumentsMeta,
-  type RecordArgumentField,
-  type VariantArgumentField,
-  type TupleArgumentField,
-  type OptionalArgumentField,
-  type VectorArgumentField,
-  type BlobArgumentField,
-  type RecursiveArgumentField,
-  type PrincipalArgumentField,
-  type NumberArgumentField,
-  type TextArgumentField,
-  type BooleanArgumentField,
+  type ArgumentsMeta,
+  type Field,
+  type RecordField,
+  type VariantField,
+  type TupleField,
+  type OptionalField,
+  type VectorField,
+  type BlobField,
+  type RecursiveField,
+  type PrincipalField,
+  type NumberField,
+  type TextField,
 } from "@ic-reactor/candid"
 import { IDL } from "@icp-sdk/core/candid"
-import {
-  useForm,
-  type FieldApi,
-  type ReactFormExtendedApi,
-} from "@tanstack/react-form"
+import { useForm } from "@tanstack/react-form"
 import "./index.css"
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -49,7 +44,7 @@ const UserProfile = IDL.Record({
 
 const visitor = new ArgumentFieldVisitor()
 const funcType = IDL.Func([UserProfile], [], [])
-const meta = visitor.visitFunc(funcType, "updateProfile") as MethodArgumentsMeta
+const meta = visitor.visitFunc(funcType, "updateProfile")
 
 // ════════════════════════════════════════════════════════════════════════════
 // Main App Component
@@ -78,19 +73,20 @@ function App() {
 // ════════════════════════════════════════════════════════════════════════════
 
 interface CandidFormProps {
-  meta: MethodArgumentsMeta
+  meta: ArgumentsMeta
   onSubmitSuccess?: (values: unknown[]) => void
 }
 
 function CandidForm({ meta, onSubmitSuccess }: CandidFormProps) {
   const form = useForm({
-    defaultValues: meta.defaultValue,
+    defaultValues: meta.defaultValue as unknown[],
     validators: {
+      onChange: meta.schema,
       onBlur: meta.schema,
     },
     onSubmit: async ({ value }) => {
       console.log("Form Submitted:", JSON.stringify(value, null, 2))
-      onSubmitSuccess?.(value as unknown[])
+      onSubmitSuccess?.(value)
       alert("Form submitted successfully!\n\n" + JSON.stringify(value, null, 2))
     },
   })
@@ -110,37 +106,48 @@ function CandidForm({ meta, onSubmitSuccess }: CandidFormProps) {
         ))}
       </div>
 
-      <div className="form-actions">
-        <form.Subscribe
-          selector={(state) => ({
-            canSubmit: state.canSubmit,
-            isSubmitting: state.isSubmitting,
-            isDirty: state.isDirty,
-          })}
-        >
-          {({ canSubmit, isSubmitting, isDirty }) => (
-            <>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => form.reset()}
-                disabled={!isDirty || isSubmitting}
-              >
-                Reset
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={!canSubmit || isSubmitting}
-              >
-                {isSubmitting ? <span className="loading-spinner" /> : null}
-                {isSubmitting ? "Submitting..." : "Submit"}
-              </button>
-            </>
-          )}
-        </form.Subscribe>
-      </div>
+      <FormActions form={form} />
     </form>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Form Actions Component
+// ════════════════════════════════════════════════════════════════════════════
+
+function FormActions({ form }: { form: any }) {
+  return (
+    <div className="form-actions">
+      <form.Subscribe
+        selector={(state: any) => ({
+          canSubmit: state.canSubmit,
+          isSubmitting: state.isSubmitting,
+          isDirty: state.isDirty,
+          isValid: state.isValid,
+        })}
+      >
+        {({ canSubmit, isSubmitting, isDirty, isValid }: any) => (
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => form.reset()}
+              disabled={!isDirty || isSubmitting}
+            >
+              Reset
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={!canSubmit || isSubmitting || !isValid}
+            >
+              {isSubmitting ? <span className="loading-spinner" /> : null}
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </button>
+          </>
+        )}
+      </form.Subscribe>
+    </div>
   )
 }
 
@@ -149,17 +156,17 @@ function CandidForm({ meta, onSubmitSuccess }: CandidFormProps) {
 // ════════════════════════════════════════════════════════════════════════════
 
 interface DynamicFieldProps {
-  field: ArgumentField
-  form: ReactFormExtendedApi<any>
+  field: Field
+  form: any
   parentName?: string
 }
 
 function DynamicField({ field, form, parentName }: DynamicFieldProps) {
-  const fieldName = parentName !== undefined ? `${parentName}` : field.name
+  const fieldName = parentName ?? field.name
 
   return (
     <form.Field name={fieldName}>
-      {(fieldApi) => (
+      {(fieldApi: any) => (
         <div className="field-container">
           <FieldLabel field={field} />
           <FieldInput field={field} fieldApi={fieldApi} form={form} />
@@ -174,8 +181,7 @@ function DynamicField({ field, form, parentName }: DynamicFieldProps) {
 // Field Label Component
 // ════════════════════════════════════════════════════════════════════════════
 
-function FieldLabel({ field }: { field: ArgumentField }) {
-  // Skip labels for certain compound types that have their own headers
+function FieldLabel({ field }: { field: Field }) {
   if (field.type === "null") return null
 
   return (
@@ -190,22 +196,28 @@ function FieldLabel({ field }: { field: ArgumentField }) {
 // Field Errors Component
 // ════════════════════════════════════════════════════════════════════════════
 
-function FieldErrors({ fieldApi }: { fieldApi: FieldApi<any, any> }) {
+function FieldErrors({ fieldApi }: { fieldApi: any }) {
   const errors = fieldApi.state.meta.errors
 
   if (!errors || errors.length === 0) return null
 
   return (
     <div className="field-errors">
-      {errors.map((error: unknown, i: number) => (
+      {errors.map((error: any, i: number) => (
         <span key={i} className="error-message">
-          {typeof error === "object" && error !== null && "message" in error
-            ? (error as { message: string }).message
-            : String(error)}
+          {formatError(error)}
         </span>
       ))}
     </div>
   )
+}
+
+function formatError(error: unknown): string {
+  if (typeof error === "string") return error
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: string }).message)
+  }
+  return String(error)
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -213,13 +225,12 @@ function FieldErrors({ fieldApi }: { fieldApi: FieldApi<any, any> }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 interface FieldInputProps {
-  field: ArgumentField
-  fieldApi: FieldApi<any, any>
-  form: ReactFormExtendedApi<any>
+  field: Field
+  fieldApi: any
+  form: any
 }
 
 function FieldInput({ field, fieldApi, form }: FieldInputProps) {
-  // Route to specific field type component
   switch (field.type) {
     case "record":
       return <RecordInput field={field} form={form} />
@@ -242,7 +253,7 @@ function FieldInput({ field, fieldApi, form }: FieldInputProps) {
     case "text":
       return <TextInput field={field} fieldApi={fieldApi} />
     case "boolean":
-      return <BooleanInput field={field} fieldApi={fieldApi} />
+      return <BooleanInput fieldApi={fieldApi} />
     case "null":
       return <NullInput />
     default:
@@ -254,13 +265,7 @@ function FieldInput({ field, fieldApi, form }: FieldInputProps) {
 // Compound Type Inputs
 // ════════════════════════════════════════════════════════════════════════════
 
-function RecordInput({
-  field,
-  form,
-}: {
-  field: RecordArgumentField
-  form: ReactFormExtendedApi<any>
-}) {
+function RecordInput({ field, form }: { field: RecordField; form: any }) {
   return (
     <div className="record-container">
       {field.fields.map((childField) => (
@@ -275,14 +280,17 @@ function VariantInput({
   fieldApi,
   form,
 }: {
-  field: VariantArgumentField
-  fieldApi: FieldApi<any, any>
-  form: ReactFormExtendedApi<any>
+  field: VariantField
+  fieldApi: any
+  form: any
 }) {
-  const currentValue = fieldApi.state.value || field.defaultValue
+  const currentValue = (fieldApi.state.value ?? field.defaultValue) as Record<
+    string,
+    unknown
+  >
   const currentOption = useMemo(() => {
-    const keys = Object.keys(currentValue || {})
-    return keys[0] || field.defaultOption
+    const keys = Object.keys(currentValue ?? {})
+    return keys[0] ?? field.defaultOption
   }, [currentValue, field.defaultOption])
 
   const currentOptionField = field.optionMap.get(currentOption)
@@ -309,7 +317,7 @@ function VariantInput({
       {currentOptionField && currentOptionField.type !== "null" && (
         <div className="variant-payload">
           <form.Field name={`${field.name}.${currentOption}`}>
-            {(payloadApi) => (
+            {(payloadApi: any) => (
               <div className="field-container">
                 <FieldLabel field={currentOptionField} />
                 <FieldInput
@@ -327,13 +335,7 @@ function VariantInput({
   )
 }
 
-function TupleInput({
-  field,
-  form,
-}: {
-  field: TupleArgumentField
-  form: ReactFormExtendedApi<any>
-}) {
+function TupleInput({ field, form }: { field: TupleField; form: any }) {
   return (
     <div className="tuple-container">
       {field.fields.map((itemField, index) => (
@@ -351,9 +353,9 @@ function OptionalInput({
   fieldApi,
   form,
 }: {
-  field: OptionalArgumentField
-  fieldApi: FieldApi<any, any>
-  form: ReactFormExtendedApi<any>
+  field: OptionalField
+  fieldApi: any
+  form: any
 }) {
   const hasValue =
     fieldApi.state.value !== null && fieldApi.state.value !== undefined
@@ -395,11 +397,11 @@ function VectorInput({
   fieldApi,
   form,
 }: {
-  field: VectorArgumentField
-  fieldApi: FieldApi<any, any>
-  form: ReactFormExtendedApi<any>
+  field: VectorField
+  fieldApi: any
+  form: any
 }) {
-  const items = (fieldApi.state.value as unknown[]) || []
+  const items = (fieldApi.state.value as unknown[]) ?? []
 
   const handleAdd = () => {
     fieldApi.pushValue(field.getItemDefault())
@@ -416,7 +418,7 @@ function VectorInput({
           <div key={index} className="vector-item">
             <div className="vector-item-content">
               <form.Field name={`${field.name}[${index}]`}>
-                {(itemApi) => (
+                {(itemApi: any) => (
                   <>
                     <FieldInput
                       field={field.itemField}
@@ -447,18 +449,12 @@ function VectorInput({
   )
 }
 
-function BlobInput({
-  field,
-  fieldApi,
-}: {
-  field: BlobArgumentField
-  fieldApi: FieldApi<any, any>
-}) {
+function BlobInput({ field, fieldApi }: { field: BlobField; fieldApi: any }) {
   return (
     <div className="blob-container">
       <textarea
         className="blob-input"
-        value={fieldApi.state.value ?? ""}
+        value={(fieldApi.state.value as string) ?? ""}
         onChange={(e) => fieldApi.handleChange(e.target.value)}
         onBlur={fieldApi.handleBlur}
         placeholder="Enter hex encoded bytes (e.g., 0x1234...)"
@@ -471,14 +467,7 @@ function BlobInput({
   )
 }
 
-function RecursiveInput({
-  field,
-  form,
-}: {
-  field: RecursiveArgumentField
-  form: ReactFormExtendedApi<any>
-}) {
-  // Extract inner field lazily
+function RecursiveInput({ field, form }: { field: RecursiveField; form: any }) {
   const innerField = useMemo(() => field.extract(), [field])
 
   return (
@@ -497,14 +486,14 @@ function PrincipalInput({
   field,
   fieldApi,
 }: {
-  field: PrincipalArgumentField
-  fieldApi: FieldApi<any, any>
+  field: PrincipalField
+  fieldApi: any
 }) {
   return (
     <input
       type="text"
       className="input principal-input"
-      value={fieldApi.state.value ?? ""}
+      value={(fieldApi.state.value as string) ?? ""}
       onChange={(e) => fieldApi.handleChange(e.target.value)}
       onBlur={fieldApi.handleBlur}
       placeholder={field.ui?.placeholder ?? "Principal ID"}
@@ -517,8 +506,8 @@ function NumberInput({
   field,
   fieldApi,
 }: {
-  field: NumberArgumentField
-  fieldApi: FieldApi<any, any>
+  field: NumberField
+  fieldApi: any
 }) {
   return (
     <div className="number-input-container">
@@ -526,7 +515,7 @@ function NumberInput({
         type={field.isFloat ? "number" : "text"}
         inputMode="numeric"
         className="input number-input"
-        value={fieldApi.state.value ?? ""}
+        value={(fieldApi.state.value as string) ?? ""}
         onChange={(e) => fieldApi.handleChange(e.target.value)}
         onBlur={fieldApi.handleBlur}
         placeholder={field.ui?.placeholder ?? "0"}
@@ -537,18 +526,14 @@ function NumberInput({
   )
 }
 
-function TextInput({
-  field,
-  fieldApi,
-}: {
-  field: TextArgumentField
-  fieldApi: FieldApi<any, any>
-}) {
+function TextInput({ field, fieldApi }: { field: TextField; fieldApi: any }) {
+  const value = (fieldApi.state.value as string) ?? ""
+
   if (field.multiline) {
     return (
       <textarea
         className="input text-input textarea"
-        value={fieldApi.state.value ?? ""}
+        value={value}
         onChange={(e) => fieldApi.handleChange(e.target.value)}
         onBlur={fieldApi.handleBlur}
         placeholder={field.ui?.placeholder ?? "Enter text..."}
@@ -561,7 +546,7 @@ function TextInput({
     <input
       type="text"
       className="input text-input"
-      value={fieldApi.state.value ?? ""}
+      value={value}
       onChange={(e) => fieldApi.handleChange(e.target.value)}
       onBlur={fieldApi.handleBlur}
       placeholder={field.ui?.placeholder ?? "Enter text..."}
@@ -569,13 +554,7 @@ function TextInput({
   )
 }
 
-function BooleanInput({
-  field,
-  fieldApi,
-}: {
-  field: BooleanArgumentField
-  fieldApi: FieldApi<any, any>
-}) {
+function BooleanInput({ fieldApi }: { fieldApi: any }) {
   return (
     <label className="boolean-container">
       <input
@@ -594,7 +573,7 @@ function NullInput() {
   return <span className="null-indicator">null</span>
 }
 
-function UnknownInput({ field }: { field: ArgumentField }) {
+function UnknownInput({ field }: { field: Field }) {
   return (
     <div className="unknown-container">
       <span className="unknown-warning">⚠️ Unsupported type: {field.type}</span>
@@ -607,15 +586,12 @@ function UnknownInput({ field }: { field: ArgumentField }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function formatLabel(label: string): string {
-  // Remove internal prefixes like __arg0
   if (label.startsWith("__arg")) {
     return `Argument ${label.slice(5)}`
   }
-  // Remove tuple index markers like _0_
   if (/^_\d+_$/.test(label)) {
     return `Item ${label.slice(1, -1)}`
   }
-  // Convert camelCase/snake_case to Title Case
   return label
     .replace(/_/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")

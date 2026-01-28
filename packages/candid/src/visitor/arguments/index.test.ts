@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
-import { ArgumentFieldVisitor, VectorArgumentField } from "./index"
+import { ArgumentFieldVisitor, VectorField } from "./index"
 
 describe("ArgumentFieldVisitor", () => {
   const visitor = new ArgumentFieldVisitor()
@@ -455,11 +455,7 @@ describe("ArgumentFieldVisitor", () => {
   describe("Vector Types", () => {
     it("should handle vector of primitives", () => {
       const vecType = IDL.Vec(IDL.Text)
-      const field = visitor.visitVec(
-        vecType,
-        IDL.Text,
-        "tags"
-      ) as VectorArgumentField
+      const field = visitor.visitVec(vecType, IDL.Text, "tags") as VectorField
 
       expect(field.type).toBe("vector")
       expect(field.label).toBe("tags")
@@ -474,11 +470,7 @@ describe("ArgumentFieldVisitor", () => {
         name: IDL.Text,
       })
       const vecType = IDL.Vec(recType)
-      const field = visitor.visitVec(
-        vecType,
-        recType,
-        "items"
-      ) as VectorArgumentField
+      const field = visitor.visitVec(vecType, recType, "items") as VectorField
 
       expect(field.type).toBe("vector")
       expect(field.itemField.type).toBe("record")
@@ -959,7 +951,7 @@ describe("ArgumentFieldVisitor", () => {
         vecType,
         IDL.Record({ name: IDL.Text }),
         "items"
-      ) as VectorArgumentField
+      ) as VectorField
 
       expect(field.getItemDefault()).toEqual({ name: "" })
     })

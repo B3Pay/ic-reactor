@@ -1,21 +1,21 @@
 import { isQuery } from "../helpers"
 import type {
-  ArgumentField,
-  RecordArgumentField,
-  VariantArgumentField,
-  TupleArgumentField,
-  OptionalArgumentField,
-  VectorArgumentField,
-  BlobArgumentField,
-  RecursiveArgumentField,
-  PrincipalArgumentField,
-  NumberArgumentField,
-  BooleanArgumentField,
-  NullArgumentField,
-  TextArgumentField,
-  UnknownArgumentField,
-  MethodArgumentsMeta,
-  ServiceArgumentsMeta,
+  Field,
+  RecordField,
+  VariantField,
+  TupleField,
+  OptionalField,
+  VectorField,
+  BlobField,
+  RecursiveField,
+  PrincipalField,
+  NumberField,
+  BooleanField,
+  NullField,
+  TextField,
+  UnknownField,
+  ArgumentsMeta,
+  ArgumentsServiceMeta,
 } from "./types"
 
 import { IDL } from "@icp-sdk/core/candid"
@@ -76,7 +76,7 @@ export * from "./types"
  */
 export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   string,
-  ArgumentField | MethodArgumentsMeta<A> | ServiceArgumentsMeta<A>
+  Field | ArgumentsMeta<A> | ArgumentsServiceMeta<A>
 > {
   public recursiveSchemas: Map<string, z.ZodTypeAny> = new Map()
 
@@ -107,14 +107,14 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   // Service & Function Level
   // ════════════════════════════════════════════════════════════════════════
 
-  public visitService(t: IDL.ServiceClass): ServiceArgumentsMeta<A> {
-    const result = {} as ServiceArgumentsMeta<A>
+  public visitService(t: IDL.ServiceClass): ArgumentsServiceMeta<A> {
+    const result = {} as ArgumentsServiceMeta<A>
 
     for (const [functionName, func] of t._fields) {
       result[functionName as FunctionName<A>] = func.accept(
         this,
         functionName
-      ) as MethodArgumentsMeta<A>
+      ) as ArgumentsMeta<A>
     }
 
     return result
@@ -123,14 +123,14 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   public visitFunc(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
-  ): MethodArgumentsMeta<A> {
+  ): ArgumentsMeta<A> {
     const functionType = isQuery(t) ? "query" : "update"
     const argCount = t.argTypes.length
 
     const fields = t.argTypes.map((arg, index) => {
       return this.withName(`[${index}]`, () =>
         arg.accept(this, `__arg${index}`)
-      ) as ArgumentField
+      ) as Field
     })
 
     const defaultValue = fields.map((field) => field.defaultValue)
@@ -150,6 +150,15 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
             ]
           )
 
+    // Ready-to-use options for TanStack Form's useForm hook
+    const formOptions = {
+      defaultValues: defaultValue,
+      validators: {
+        onChange: schema,
+        onBlur: schema,
+      },
+    }
+
     return {
       functionType,
       functionName,
@@ -158,6 +167,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       schema,
       argCount,
       isNoArgs: argCount === 0,
+      formOptions,
     }
   }
 
@@ -169,17 +179,17 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     _t: IDL.RecordClass,
     fields_: Array<[string, IDL.Type]>,
     label: string
-  ): RecordArgumentField {
+  ): RecordField {
     const name = this.currentName()
-    const fields: ArgumentField[] = []
-    const fieldMap = new Map<string, ArgumentField>()
+    const fields: Field[] = []
+    const fieldMap = new Map<string, Field>()
     const defaultValue: Record<string, unknown> = {}
     const schemaShape: Record<string, z.ZodTypeAny> = {}
 
     for (const [key, type] of fields_) {
       const field = this.withName(name ? `.${key}` : key, () =>
         type.accept(this, key)
-      ) as ArgumentField
+      ) as Field
 
       fields.push(field)
       fieldMap.set(key, field)
@@ -205,17 +215,17 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     _t: IDL.VariantClass,
     fields_: Array<[string, IDL.Type]>,
     label: string
-  ): VariantArgumentField {
+  ): VariantField {
     const name = this.currentName()
-    const fields: ArgumentField[] = []
+    const fields: Field[] = []
     const options: string[] = []
-    const optionMap = new Map<string, ArgumentField>()
+    const optionMap = new Map<string, Field>()
     const variantSchemas: z.ZodTypeAny[] = []
 
     for (const [key, type] of fields_) {
       const field = this.withName(`.${key}`, () =>
         type.accept(this, key)
-      ) as ArgumentField
+      ) as Field
 
       fields.push(field)
       options.push(key)
@@ -259,9 +269,9 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     _t: IDL.TupleClass<T>,
     components: IDL.Type[],
     label: string
-  ): TupleArgumentField {
+  ): TupleField {
     const name = this.currentName()
-    const fields: ArgumentField[] = []
+    const fields: Field[] = []
     const defaultValue: unknown[] = []
     const schemas: z.ZodTypeAny[] = []
 
@@ -269,7 +279,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       const type = components[index]
       const field = this.withName(`[${index}]`, () =>
         type.accept(this, `_${index}_`)
-      ) as ArgumentField
+      ) as Field
 
       fields.push(field)
       defaultValue.push(field.defaultValue)
@@ -293,14 +303,16 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     _t: IDL.OptClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): OptionalArgumentField {
+  ): OptionalField {
     const name = this.currentName()
 
     // For optional, the inner field keeps the same name path
     // because the value replaces null directly (not nested)
-    const innerField = ty.accept(this, label) as ArgumentField
+    const innerField = ty.accept(this, label) as Field
 
-    const schema = innerField.schema.nullish().transform((v) => v ?? null)
+    const schema = innerField.schema
+      .nullish()
+      .transform((v: unknown) => v ?? null)
 
     // Helper to get the inner default when enabling the optional
     const getInnerDefault = (): unknown => innerField.defaultValue
@@ -321,7 +333,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     _t: IDL.VecClass<T>,
     ty: IDL.Type<T>,
     label: string
-  ): VectorArgumentField | BlobArgumentField {
+  ): VectorField | BlobField {
     const name = this.currentName()
 
     // Check if it's blob (vec nat8)
@@ -330,7 +342,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     // Item field uses [0] as template path
     const itemField = this.withName("[0]", () =>
       ty.accept(this, `${label}_item`)
-    ) as ArgumentField
+    ) as Field
 
     if (isBlob) {
       const schema = z.union([
@@ -371,7 +383,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     label: string
-  ): RecursiveArgumentField {
+  ): RecursiveField {
     const name = this.currentName()
     const typeName = ty.name || "RecursiveType"
 
@@ -380,13 +392,13 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     if (this.recursiveSchemas.has(typeName)) {
       schema = this.recursiveSchemas.get(typeName)!
     } else {
-      schema = z.lazy(() => (ty.accept(this, label) as ArgumentField).schema)
+      schema = z.lazy(() => (ty.accept(this, label) as Field).schema)
       this.recursiveSchemas.set(typeName, schema)
     }
 
     // Lazy extraction to prevent infinite loops
-    const extract = (): ArgumentField =>
-      this.withName(name, () => ty.accept(this, label)) as ArgumentField
+    const extract = (): Field =>
+      this.withName(name, () => ty.accept(this, label)) as Field
 
     // Helper to get inner default (evaluates lazily)
     const getInnerDefault = (): unknown => extract().defaultValue
@@ -408,10 +420,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
   // Primitive Types
   // ════════════════════════════════════════════════════════════════════════
 
-  public visitPrincipal(
-    _t: IDL.PrincipalClass,
-    label: string
-  ): PrincipalArgumentField {
+  public visitPrincipal(_t: IDL.PrincipalClass, label: string): PrincipalField {
     const schema = z.custom<Principal>(
       (val) => {
         if (val instanceof Principal) return true
@@ -446,7 +455,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitText(_t: IDL.TextClass, label: string): TextArgumentField {
+  public visitText(_t: IDL.TextClass, label: string): TextField {
     return {
       type: "text",
       label,
@@ -460,7 +469,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitBool(_t: IDL.BoolClass, label: string): BooleanArgumentField {
+  public visitBool(_t: IDL.BoolClass, label: string): BooleanField {
     return {
       type: "boolean",
       label,
@@ -471,7 +480,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitNull(_t: IDL.NullClass, label: string): NullArgumentField {
+  public visitNull(_t: IDL.NullClass, label: string): NullField {
     return {
       type: "null",
       label,
@@ -496,7 +505,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       min?: string
       max?: string
     }
-  ): NumberArgumentField {
+  ): NumberField {
     return {
       type: "number",
       label,
@@ -511,21 +520,21 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
   }
 
-  public visitInt(_t: IDL.IntClass, label: string): NumberArgumentField {
+  public visitInt(_t: IDL.IntClass, label: string): NumberField {
     return this.visitNumberType(label, "int", {
       unsigned: false,
       isFloat: false,
     })
   }
 
-  public visitNat(_t: IDL.NatClass, label: string): NumberArgumentField {
+  public visitNat(_t: IDL.NatClass, label: string): NumberField {
     return this.visitNumberType(label, "nat", {
       unsigned: true,
       isFloat: false,
     })
   }
 
-  public visitFloat(t: IDL.FloatClass, label: string): NumberArgumentField {
+  public visitFloat(t: IDL.FloatClass, label: string): NumberField {
     return this.visitNumberType(label, `float${t._bits}`, {
       unsigned: false,
       isFloat: true,
@@ -533,10 +542,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     })
   }
 
-  public visitFixedInt(
-    t: IDL.FixedIntClass,
-    label: string
-  ): NumberArgumentField {
+  public visitFixedInt(t: IDL.FixedIntClass, label: string): NumberField {
     const bits = t._bits
     // Calculate min/max for signed integers
     const max = (BigInt(2) ** BigInt(bits - 1) - BigInt(1)).toString()
@@ -551,10 +557,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     })
   }
 
-  public visitFixedNat(
-    t: IDL.FixedNatClass,
-    label: string
-  ): NumberArgumentField {
+  public visitFixedNat(t: IDL.FixedNatClass, label: string): NumberField {
     const bits = t._bits
     // Calculate max for unsigned integers
     const max = (BigInt(2) ** BigInt(bits) - BigInt(1)).toString()
@@ -568,7 +571,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     })
   }
 
-  public visitType<T>(_t: IDL.Type<T>, label: string): UnknownArgumentField {
+  public visitType<T>(_t: IDL.Type<T>, label: string): UnknownField {
     return {
       type: "unknown",
       label,
