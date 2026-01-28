@@ -300,9 +300,12 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     // because the value replaces null directly (not nested)
     const innerField = ty.accept(this, label) as Field
 
-    const schema = innerField.schema
-      .nullish()
-      .transform((v: unknown) => v ?? null)
+    const schema = z.union([
+      innerField.schema,
+      z.null(),
+      z.undefined().transform(() => null),
+      z.literal("").transform(() => null),
+    ])
 
     // Helper to get the inner default when enabling the optional
     const getInnerDefault = (): unknown => innerField.defaultValue
@@ -415,7 +418,6 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       (val) => {
         if (val instanceof Principal) return true
         if (typeof val === "string") {
-          if (val === "") return true // Allow empty for optional cases
           try {
             Principal.fromText(val)
             return true
@@ -451,7 +453,7 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       name: this.currentName(),
       defaultValue: "",
-      schema: z.string(),
+      schema: z.string().min(1, "Required"),
       candidType: "text",
       ui: {
         placeholder: "Enter text...",
@@ -496,13 +498,21 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       max?: string
     }
   ): NumberField {
+    let schema = z.string().min(1, "Required")
+
+    if (options.unsigned) {
+      schema = schema.regex(/^\d+$/, "Must be a positive number")
+    } else {
+      schema = schema.regex(/^-?\d+$/, "Must be a number")
+    }
+
     return {
       type: "number",
       label,
       name: this.currentName(),
       defaultValue: "",
       candidType,
-      schema: z.string(),
+      schema,
       ...options,
       ui: {
         placeholder: options.isFloat ? "0.0" : "0",
