@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import {
-  ArgumentFieldVisitor,
+  FieldVisitor,
   type ArgumentsMeta,
   type Field,
   type RecordField,
@@ -43,7 +43,7 @@ const UserProfile = IDL.Record({
 // Generate Form Metadata
 // ════════════════════════════════════════════════════════════════════════════
 
-const visitor = new ArgumentFieldVisitor()
+const visitor = new FieldVisitor()
 const funcType = IDL.Func([UserProfile], [], [])
 const meta = visitor.visitFunc(funcType, "updateProfile")
 
