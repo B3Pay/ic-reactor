@@ -38,6 +38,9 @@ Most IC applications know which canisters they'll interact with at build time. B
     Display Reactor with visitor-based metadata for form building and result
     display
   </Card>
+  <Card title="FieldVisitor" icon="list-format">
+    Generate form field metadata from Candid IDL types for dynamic forms
+  </Card>
   <Card title="Local Parsing" icon="seti:config">
     Optional WASM parser for fast, offline Candid compilation
   </Card>
@@ -135,6 +138,7 @@ const definition = await adapter.getCandidDefinition(
 | `CandidReactor`          | Dynamic Reactor with raw Candid types                      |
 | `CandidDisplayReactor`   | Dynamic Reactor with display transformations (UI-friendly) |
 | `MetadataDisplayReactor` | Display Reactor with form & result metadata generation     |
+| `FieldVisitor`           | Generate form field metadata from Candid IDL types         |
 | `CandidAdapter`          | Low-level Candid fetching and parsing utilities            |
 
 **Use `CandidReactor`** when you want raw Candid types (`bigint`, `Principal`) and full Reactor experience.
@@ -179,6 +183,7 @@ const definition = adapter.compileLocal(candidSource)
 - [CandidReactor](/ic-reactor/v3/packages/candid/candidreactor) — Full reference for CandidReactor
 - [CandidDisplayReactor](/ic-reactor/v3/packages/candid/candiddisplayreactor) — Dynamic Reactor with display transformations
 - [MetadataDisplayReactor](/ic-reactor/v3/packages/candid/metadatadisplayreactor) — Display Reactor with form & result metadata
+- [FieldVisitor](/ic-reactor/v3/packages/candid/fieldvisitor) — Generate form field metadata from Candid IDL
 - [CandidAdapter](/ic-reactor/v3/packages/candid/candidadapter) — Full reference for CandidAdapter
 - [Reactor](/ic-reactor/v3/reference/reactor) — Base Reactor class documentation
 - [Error Handling](/ic-reactor/v3/guides/error-handling) — Handle canister errors

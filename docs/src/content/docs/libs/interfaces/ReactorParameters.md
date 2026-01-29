@@ -5,11 +5,11 @@ next: true
 prev: true
 ---
 
-Defined in: [types/reactor.ts:37](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/types/reactor.ts#L37)
+Defined in: [types/reactor.ts:36](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/reactor.ts#L36)
 
-## Extends
+## Extended by
 
-- `Omit`\<`ActorConfig`, `"agent"` \| `"effectiveCanisterId"` \| `"canisterId"`\>
+- [`DisplayReactorParameters`](DisplayReactorParameters.md)
 
 ## Properties
 
@@ -17,7 +17,7 @@ Defined in: [types/reactor.ts:37](https://github.com/B3Pay/ic-reactor/blob/712cb
 
 > **clientManager**: [`ClientManager`](../classes/ClientManager.md)
 
-Defined in: [types/reactor.ts:41](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/types/reactor.ts#L41)
+Defined in: [types/reactor.ts:37](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/reactor.ts#L37)
 
 ---
 
@@ -25,15 +25,25 @@ Defined in: [types/reactor.ts:41](https://github.com/B3Pay/ic-reactor/blob/712cb
 
 > **name**: `string`
 
-Defined in: [types/reactor.ts:42](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/types/reactor.ts#L42)
+Defined in: [types/reactor.ts:38](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/reactor.ts#L38)
 
 ---
 
-### idlFactory
+### idlFactory()
 
-> **idlFactory**: `InterfaceFactory`
+> **idlFactory**: (`IDL`) => `any`
 
-Defined in: [types/reactor.ts:43](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/types/reactor.ts#L43)
+Defined in: [types/reactor.ts:39](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/reactor.ts#L39)
+
+#### Parameters
+
+##### IDL
+
+`any`
+
+#### Returns
+
+`any`
 
 ---
 
@@ -41,4 +51,12 @@ Defined in: [types/reactor.ts:43](https://github.com/B3Pay/ic-reactor/blob/712cb
 
 > `optional` **canisterId**: [`CanisterId`](../type-aliases/CanisterId.md)
 
-Defined in: [types/reactor.ts:44](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/types/reactor.ts#L44)
+Defined in: [types/reactor.ts:40](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/reactor.ts#L40)
+
+---
+
+### pollingOptions?
+
+> `optional` **pollingOptions**: `PollingOptions`
+
+Defined in: [types/reactor.ts:41](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/reactor.ts#L41)

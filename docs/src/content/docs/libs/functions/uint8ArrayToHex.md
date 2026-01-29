@@ -5,9 +5,11 @@ next: true
 prev: true
 ---
 
-> **uint8ArrayToHex**(`bytes`): `` `0x${string}` ``
+> **uint8ArrayToHex**(`bytes`): `string`
 
-Defined in: [utils/helper.ts:90](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/utils/helper.ts#L90)
+Defined in: [utils/helper.ts:93](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/utils/helper.ts#L93)
+
+Converts a Uint8Array or number array to a hex string (without 0x prefix)
 
 ## Parameters
 
@@ -17,4 +19,4 @@ Defined in: [utils/helper.ts:90](https://github.com/B3Pay/ic-reactor/blob/712cb4
 
 ## Returns
 
-`` `0x${string}` ``
+`string`
