@@ -13,6 +13,7 @@ import {
   type PrincipalField,
   type NumberField,
   type TextField,
+  type FieldComponentType,
 } from "@ic-reactor/candid"
 import { IDL } from "@icp-sdk/core/candid"
 import { useForm } from "@tanstack/react-form"
@@ -48,6 +49,34 @@ const funcType = IDL.Func([UserProfile], [], [])
 const meta = visitor.visitFunc(funcType, "updateProfile")
 
 // ════════════════════════════════════════════════════════════════════════════
+// Component Map - Uses field.component for routing
+// ════════════════════════════════════════════════════════════════════════════
+
+type ComponentMapType = {
+  [K in FieldComponentType]: React.FC<{
+    field: Field
+    fieldApi: any
+    form: any
+  }>
+}
+
+const componentMap: ComponentMapType = {
+  "record-container": RecordInput,
+  "tuple-container": TupleInput,
+  "variant-select": VariantInput,
+  "optional-toggle": OptionalInput,
+  "vector-list": VectorInput,
+  "blob-upload": BlobInput,
+  "principal-input": PrincipalInput,
+  "text-input": TextInput,
+  "number-input": NumberInput,
+  "boolean-checkbox": BooleanInput,
+  "null-hidden": NullInput,
+  "recursive-lazy": RecursiveInput,
+  "unknown-fallback": UnknownInput,
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // Main App Component
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -57,8 +86,10 @@ function App() {
       <header className="app-header">
         <h1>🚀 TanStack Form + Candid</h1>
         <p className="app-description">
-          Dynamic forms generated from Candid IDL definitions with full type
-          safety and validation.
+          Dynamic forms generated from Candid IDL definitions using the new
+          <code>FieldVisitor</code> API with <code>displayLabel</code>,
+          <code>component</code>, <code>renderHint</code>, and{" "}
+          <code>inputProps</code>.
         </p>
       </header>
 
@@ -152,7 +183,7 @@ function FormActions({ form }: { form: any }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Dynamic Field Component - Routes to Specific Field Types
+// Dynamic Field Component - Uses field.component for routing
 // ════════════════════════════════════════════════════════════════════════════
 
 interface DynamicFieldProps {
@@ -169,6 +200,7 @@ function DynamicField({ field, form, parentName }: DynamicFieldProps) {
       {(fieldApi: any) => (
         <div className="field-container">
           <FieldLabel field={field} />
+          {/* Use the component map based on field.component */}
           <FieldInput field={field} fieldApi={fieldApi} form={form} />
           <FieldErrors fieldApi={fieldApi} />
         </div>
@@ -178,16 +210,18 @@ function DynamicField({ field, form, parentName }: DynamicFieldProps) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Field Label Component
+// Field Label Component - Uses displayLabel
 // ════════════════════════════════════════════════════════════════════════════
 
 function FieldLabel({ field }: { field: Field }) {
-  if (field.type === "null") return null
+  // Use renderHint to skip labels for null fields
+  if (field.component === "null-hidden") return null
 
   return (
     <label className="field-label">
-      <span className="label-text">{formatLabel(field.label)}</span>
-      <span className="label-type">{field.type}</span>
+      {/* Use the new displayLabel property instead of manual formatting */}
+      <span className="label-text">{field.displayLabel}</span>
+      <span className="label-type">{field.candidType ?? field.type}</span>
     </label>
   )
 }
@@ -221,7 +255,7 @@ function formatError(error: unknown): string {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Field Input Component - Renders Appropriate Input for Each Type
+// Field Input Component - Uses field.component for routing
 // ════════════════════════════════════════════════════════════════════════════
 
 interface FieldInputProps {
@@ -231,47 +265,31 @@ interface FieldInputProps {
 }
 
 function FieldInput({ field, fieldApi, form }: FieldInputProps) {
-  switch (field.type) {
-    case "record":
-      return <RecordInput field={field} form={form} />
-    case "variant":
-      return <VariantInput field={field} fieldApi={fieldApi} form={form} />
-    case "tuple":
-      return <TupleInput field={field} form={form} />
-    case "optional":
-      return <OptionalInput field={field} fieldApi={fieldApi} form={form} />
-    case "vector":
-      return <VectorInput field={field} fieldApi={fieldApi} form={form} />
-    case "blob":
-      return <BlobInput field={field} fieldApi={fieldApi} />
-    case "recursive":
-      return <RecursiveInput field={field} form={form} />
-    case "principal":
-      return <PrincipalInput field={field} fieldApi={fieldApi} />
-    case "number":
-      return <NumberInput field={field} fieldApi={fieldApi} />
-    case "text":
-      return <TextInput field={field} fieldApi={fieldApi} />
-    case "boolean":
-      return <BooleanInput fieldApi={fieldApi} />
-    case "null":
-      return <NullInput />
-    default:
-      return <UnknownInput field={field} />
-  }
+  // Use the component map based on field.component
+  const Component = componentMap[field.component]
+  return <Component field={field} fieldApi={fieldApi} form={form} />
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // Compound Type Inputs
 // ════════════════════════════════════════════════════════════════════════════
 
-function RecordInput({ field, form }: { field: RecordField; form: any }) {
+function RecordInput({
+  field,
+  form,
+}: {
+  field: Field
+  fieldApi: any
+  form: any
+}) {
+  const recordField = field as RecordField
+
   return (
     <div
       className="record-container"
       style={field.name === "[0]" ? { borderLeft: "none" } : undefined}
     >
-      {field.fields.map((childField) => (
+      {recordField.fields.map((childField) => (
         <DynamicField key={childField.name} field={childField} form={form} />
       ))}
     </div>
@@ -283,23 +301,25 @@ function VariantInput({
   fieldApi,
   form,
 }: {
-  field: VariantField
+  field: Field
   fieldApi: any
   form: any
 }) {
-  const currentValue = (fieldApi.state.value ?? field.defaultValue) as Record<
-    string,
-    unknown
-  >
-  const currentOption = useMemo(() => {
-    const keys = Object.keys(currentValue ?? {})
-    return keys[0] ?? field.defaultOption
-  }, [currentValue, field.defaultOption])
+  const variantField = field as VariantField
+  const currentValue = (fieldApi.state.value ??
+    variantField.defaultValue) as Record<string, unknown>
 
-  const currentOptionField = field.optionMap.get(currentOption)
+  // Use the new getSelectedOption helper method
+  const currentOption = useMemo(
+    () => variantField.getSelectedOption(currentValue),
+    [currentValue, variantField]
+  )
+
+  // Use the new getField helper method
+  const currentOptionField = variantField.getField(currentOption)
 
   const handleOptionChange = (newOption: string) => {
-    const newDefault = field.getOptionDefault(newOption)
+    const newDefault = variantField.getOptionDefault(newOption)
     fieldApi.handleChange(newDefault)
   }
 
@@ -310,16 +330,16 @@ function VariantInput({
         value={currentOption}
         onChange={(e) => handleOptionChange(e.target.value)}
       >
-        {field.options.map((option) => (
+        {variantField.options.map((option) => (
           <option key={option} value={option}>
-            {formatLabel(option)}
+            {option}
           </option>
         ))}
       </select>
 
-      {currentOptionField && currentOptionField.type !== "null" && (
+      {currentOptionField && currentOptionField.component !== "null-hidden" && (
         <div className="variant-payload">
-          <form.Field name={`${field.name}.${currentOption}`}>
+          <form.Field name={`${variantField.name}.${currentOption}`}>
             {(payloadApi: any) => (
               <div className="field-container">
                 <FieldLabel field={currentOptionField} />
@@ -338,10 +358,19 @@ function VariantInput({
   )
 }
 
-function TupleInput({ field, form }: { field: TupleField; form: any }) {
+function TupleInput({
+  field,
+  form,
+}: {
+  field: Field
+  fieldApi: any
+  form: any
+}) {
+  const tupleField = field as TupleField
+
   return (
     <div className="tuple-container">
-      {field.fields.map((itemField, index) => (
+      {tupleField.fields.map((itemField, index) => (
         <div key={index} className="tuple-item">
           <span className="tuple-index">{index}</span>
           <DynamicField field={itemField} form={form} />
@@ -356,16 +385,18 @@ function OptionalInput({
   fieldApi,
   form,
 }: {
-  field: OptionalField
+  field: Field
   fieldApi: any
   form: any
 }) {
-  const hasValue =
-    fieldApi.state.value !== null && fieldApi.state.value !== undefined
+  const optionalField = field as OptionalField
+
+  // Use the new isEnabled helper method
+  const hasValue = optionalField.isEnabled(fieldApi.state.value)
 
   const handleToggle = (enabled: boolean) => {
     if (enabled) {
-      fieldApi.handleChange(field.getInnerDefault())
+      fieldApi.handleChange(optionalField.getInnerDefault())
     } else {
       fieldApi.handleChange(null)
     }
@@ -384,11 +415,11 @@ function OptionalInput({
 
       {hasValue && (
         <div className="optional-content">
-          <form.Field name={field.innerField.name}>
+          <form.Field name={optionalField.innerField.name}>
             {(itemApi: any) => (
               <>
                 <FieldInput
-                  field={field.innerField}
+                  field={optionalField.innerField}
                   fieldApi={itemApi}
                   form={form}
                 />
@@ -407,14 +438,15 @@ function VectorInput({
   fieldApi,
   form,
 }: {
-  field: VectorField
+  field: Field
   fieldApi: any
   form: any
 }) {
+  const vectorField = field as VectorField
   const items = (fieldApi.state.value as unknown[]) ?? []
 
   const handleAdd = () => {
-    fieldApi.pushValue(field.getItemDefault())
+    fieldApi.pushValue(vectorField.getItemDefault())
   }
 
   const handleRemove = (index: number) => {
@@ -424,90 +456,129 @@ function VectorInput({
   return (
     <div className="vector-container">
       <div className="vector-items">
-        {items.map((_, index) => (
-          <form.Field key={index} name={`${field.name}[${index}]`}>
-            {(itemApi: any) => (
-              <>
-                <div className="vector-item">
-                  <span className="vector-item-content">
-                    <FieldInput
-                      field={field.itemField}
-                      fieldApi={itemApi}
-                      form={form}
-                    />
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-icon btn-danger"
-                    onClick={() => handleRemove(index)}
-                    title="Remove item"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <FieldErrors fieldApi={itemApi} />
-              </>
-            )}
-          </form.Field>
-        ))}
+        {items.map((_, index) => {
+          // Use the new createItemField helper method
+          const itemField = vectorField.createItemField(index)
+
+          return (
+            <form.Field key={index} name={itemField.name}>
+              {(itemApi: any) => (
+                <>
+                  <div className="vector-item">
+                    <span className="vector-item-content">
+                      <FieldInput
+                        field={itemField}
+                        fieldApi={itemApi}
+                        form={form}
+                      />
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-icon btn-danger"
+                      onClick={() => handleRemove(index)}
+                      title="Remove item"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <FieldErrors fieldApi={itemApi} />
+                </>
+              )}
+            </form.Field>
+          )
+        })}
       </div>
 
       <button type="button" className="btn btn-add" onClick={handleAdd}>
-        + Add {formatLabel(field.label)}
+        + Add {vectorField.displayLabel}
       </button>
     </div>
   )
 }
 
-function BlobInput({ field, fieldApi }: { field: BlobField; fieldApi: any }) {
+function BlobInput({
+  field,
+  fieldApi,
+}: {
+  field: Field
+  fieldApi: any
+  form: any
+}) {
+  const blobField = field as BlobField
+
+  const handleChange = (value: string) => {
+    // Use the new normalizeHex helper
+    const normalized = blobField.normalizeHex(value)
+    fieldApi.handleChange(normalized)
+  }
+
+  // Use the new validateInput helper for validation feedback
+  const validation = blobField.validateInput(fieldApi.state.value ?? "")
+
   return (
     <div className="blob-container">
       <textarea
         className="blob-input"
         value={(fieldApi.state.value as string) ?? ""}
-        onChange={(e) => fieldApi.handleChange(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         onBlur={fieldApi.handleBlur}
         placeholder="Enter hex encoded bytes (e.g., 0x1234...)"
         rows={3}
       />
-      <span className="blob-hint">
-        Accepted: {field.acceptedFormats.join(", ")}
-      </span>
+      <div className="blob-meta">
+        <span className="blob-hint">
+          Accepted: {blobField.acceptedFormats.join(", ")} | Max:{" "}
+          {blobField.limits.maxHexBytes} bytes
+        </span>
+        {!validation.valid && (
+          <span className="blob-error">{validation.error}</span>
+        )}
+      </div>
     </div>
   )
 }
 
-function RecursiveInput({ field, form }: { field: RecursiveField; form: any }) {
-  const innerField = useMemo(() => field.extract(), [field])
+function RecursiveInput({
+  field,
+  form,
+}: {
+  field: Field
+  fieldApi: any
+  form: any
+}) {
+  const recursiveField = field as RecursiveField
+  const innerField = useMemo(() => recursiveField.extract(), [recursiveField])
 
   return (
     <div className="recursive-container">
-      <span className="recursive-type">{field.typeName}</span>
+      <span className="recursive-type">{recursiveField.typeName}</span>
       <DynamicField field={innerField} form={form} parentName={field.name} />
     </div>
   )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Primitive Type Inputs
+// Primitive Type Inputs - Using inputProps
 // ════════════════════════════════════════════════════════════════════════════
 
 function PrincipalInput({
   field,
   fieldApi,
 }: {
-  field: PrincipalField
+  field: Field
   fieldApi: any
+  form: any
 }) {
+  const principalField = field as PrincipalField
+
   return (
     <input
-      type="text"
+      // Spread the new inputProps
+      {...principalField.inputProps}
       className="input principal-input"
       value={(fieldApi.state.value as string) ?? ""}
       onChange={(e) => fieldApi.handleChange(e.target.value)}
       onBlur={fieldApi.handleBlur}
-      placeholder={field.ui?.placeholder ?? "Principal ID"}
-      maxLength={field.maxLength}
     />
   )
 }
@@ -516,37 +587,46 @@ function NumberInput({
   field,
   fieldApi,
 }: {
-  field: NumberField
+  field: Field
   fieldApi: any
+  form: any
 }) {
+  const numberField = field as NumberField
+
   return (
     <div className="number-input-container">
       <input
-        type={field.isFloat ? "number" : "text"}
-        inputMode="numeric"
+        // Spread the new inputProps for type, min, max, step, inputMode, placeholder
+        {...numberField.inputProps}
         className="input number-input"
         value={fieldApi.state.value ?? ""}
         onChange={(e) => fieldApi.handleChange(e.target.value)}
         onBlur={fieldApi.handleBlur}
-        placeholder={field.ui?.placeholder ?? "0"}
-        step={field.isFloat ? "any" : undefined}
       />
-      <span className="number-type-hint">{field.candidType}</span>
+      <span className="number-type-hint">{numberField.candidType}</span>
     </div>
   )
 }
 
-function TextInput({ field, fieldApi }: { field: TextField; fieldApi: any }) {
+function TextInput({
+  field,
+  fieldApi,
+}: {
+  field: Field
+  fieldApi: any
+  form: any
+}) {
+  const textField = field as TextField
   const value = (fieldApi.state.value as string) ?? ""
 
-  if (field.multiline) {
+  if (textField.multiline) {
     return (
       <textarea
         className="input text-input textarea"
         value={value}
         onChange={(e) => fieldApi.handleChange(e.target.value)}
         onBlur={fieldApi.handleBlur}
-        placeholder={field.ui?.placeholder ?? "Enter text..."}
+        placeholder={textField.inputProps?.placeholder ?? "Enter text..."}
         rows={4}
       />
     )
@@ -554,17 +634,23 @@ function TextInput({ field, fieldApi }: { field: TextField; fieldApi: any }) {
 
   return (
     <input
-      type="text"
+      // Spread the new inputProps for type, placeholder, spellCheck, etc.
+      {...textField.inputProps}
       className="input text-input"
       value={value}
       onChange={(e) => fieldApi.handleChange(e.target.value)}
       onBlur={fieldApi.handleBlur}
-      placeholder={field.ui?.placeholder ?? "Enter text..."}
     />
   )
 }
 
-function BooleanInput({ fieldApi }: { fieldApi: any }) {
+function BooleanInput({
+  fieldApi,
+}: {
+  field: Field
+  fieldApi: any
+  form: any
+}) {
   return (
     <label className="boolean-container">
       <input
@@ -583,29 +669,14 @@ function NullInput() {
   return <span className="null-indicator">null</span>
 }
 
-function UnknownInput({ field }: { field: Field }) {
+function UnknownInput({ field }: { field: Field; fieldApi: any; form: any }) {
   return (
     <div className="unknown-container">
-      <span className="unknown-warning">⚠️ Unsupported type: {field.type}</span>
+      <span className="unknown-warning">
+        ⚠️ Unsupported component: {field.component}
+      </span>
     </div>
   )
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// Utility Functions
-// ════════════════════════════════════════════════════════════════════════════
-
-function formatLabel(label: string): string {
-  if (label.startsWith("__arg")) {
-    return `Argument ${label.slice(5)}`
-  }
-  if (/^_\d+_$/.test(label)) {
-    return `Item ${label.slice(1, -1)}`
-  }
-  return label
-    .replace(/_/g, " ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export default App
