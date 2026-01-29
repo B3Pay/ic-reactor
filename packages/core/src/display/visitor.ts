@@ -268,7 +268,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     })
   }
 
-  FieldVisitor(
+  visitVariant(
     _t: IDL.VariantClass,
     fields: Array<[string, IDL.Type]>,
     _data: unknown
