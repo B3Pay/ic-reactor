@@ -16,17 +16,115 @@ import type {
   UnknownField,
   ArgumentsMeta,
   ArgumentsServiceMeta,
+  RenderHint,
+  PrimitiveInputProps,
+  BlobLimits,
+  BlobValidationResult,
 } from "./types"
 
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { BaseActor, FunctionName } from "@ic-reactor/core"
 import * as z from "zod"
+import { formatLabel } from "./helpers"
 
 export * from "./types"
 
+// ════════════════════════════════════════════════════════════════════════════
+// Render Hint Helpers
+// ════════════════════════════════════════════════════════════════════════════
+
+const COMPOUND_RENDER_HINT: RenderHint = {
+  isCompound: true,
+  isPrimitive: false,
+}
+
+const TEXT_RENDER_HINT: RenderHint = {
+  isCompound: false,
+  isPrimitive: true,
+  inputType: "text",
+}
+
+const NUMBER_RENDER_HINT: RenderHint = {
+  isCompound: false,
+  isPrimitive: true,
+  inputType: "number",
+}
+
+const CHECKBOX_RENDER_HINT: RenderHint = {
+  isCompound: false,
+  isPrimitive: true,
+  inputType: "checkbox",
+}
+
+const FILE_RENDER_HINT: RenderHint = {
+  isCompound: false,
+  isPrimitive: true,
+  inputType: "file",
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Blob Field Helpers
+// ════════════════════════════════════════════════════════════════════════════
+
+const DEFAULT_BLOB_LIMITS: BlobLimits = {
+  maxHexBytes: 512,
+  maxFileBytes: 2 * 1024 * 1024, // 2MB
+  maxHexDisplayLength: 128,
+}
+
+function normalizeHex(input: string): string {
+  // Remove 0x prefix and convert to lowercase
+  let hex = input.toLowerCase()
+  if (hex.startsWith("0x")) {
+    hex = hex.slice(2)
+  }
+  // Remove any whitespace
+  hex = hex.replace(/\s/g, "")
+  return hex
+}
+
+function validateBlobInput(
+  value: string | Uint8Array,
+  limits: BlobLimits
+): BlobValidationResult {
+  if (value instanceof Uint8Array) {
+    if (value.length > limits.maxFileBytes) {
+      return {
+        valid: false,
+        error: `File size exceeds maximum of ${limits.maxFileBytes} bytes`,
+      }
+    }
+    return { valid: true }
+  }
+
+  // String input (hex)
+  const normalized = normalizeHex(value)
+  if (normalized.length === 0) {
+    return { valid: true } // Empty is valid
+  }
+
+  if (!/^[0-9a-f]*$/.test(normalized)) {
+    return { valid: false, error: "Invalid hex characters" }
+  }
+
+  if (normalized.length % 2 !== 0) {
+    return { valid: false, error: "Hex string must have even length" }
+  }
+
+  const byteLength = normalized.length / 2
+  if (byteLength > limits.maxHexBytes) {
+    return {
+      valid: false,
+      error: `Hex input exceeds maximum of ${limits.maxHexBytes} bytes`,
+    }
+  }
+
+  return { valid: true }
+}
+
 /**
- * ArgumentFieldVisitor generates metadata for form input fields from Candid IDL types.
+ * FieldVisitor generates metadata for form input fields from Candid IDL types.
  *
  * ## Design Principles
  *
@@ -40,8 +138,11 @@ export * from "./types"
  *
  * Each field has:
  * - `type`: The field type (record, variant, text, number, etc.)
- * - `label`: Human-readable label from Candid
+ * - `label`: Raw label from Candid
+ * - `displayLabel`: Human-readable formatted label
  * - `name`: TanStack Form compatible path (e.g., "[0]", "[0].owner", "tags[1]")
+ * - `component`: Suggested component type for rendering
+ * - `renderHint`: Hints for UI rendering strategy
  * - `defaultValue`: Initial value for the form
  * - `schema`: Zod schema for validation
  * - Type-specific properties (options for variant, fields for record, etc.)
@@ -52,9 +153,9 @@ export * from "./types"
  * @example
  * ```typescript
  * import { useForm } from '@tanstack/react-form'
- * import { ArgumentFieldVisitor } from '@ic-reactor/candid'
+ * import { FieldVisitor } from '@ic-reactor/candid'
  *
- * const visitor = new ArgumentFieldVisitor()
+ * const visitor = new FieldVisitor()
  * const serviceMeta = service.accept(visitor, null)
  * const methodMeta = serviceMeta["icrc1_transfer"]
  *
@@ -74,7 +175,7 @@ export * from "./types"
  * ))
  * ```
  */
-export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
+export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   string,
   Field | ArgumentsMeta<A> | ArgumentsServiceMeta<A>
 > {
@@ -192,7 +293,10 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "record",
       label,
+      displayLabel: formatLabel(label),
       name,
+      component: "record-container",
+      renderHint: COMPOUND_RENDER_HINT,
       fields,
       fieldMap,
       defaultValue,
@@ -240,10 +344,34 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       return { [option]: optField.defaultValue }
     }
 
+    // Helper to get field for a specific option
+    const getField = (option: string): Field => {
+      const optField = optionMap.get(option)
+      if (!optField) {
+        throw new Error(`Unknown variant option: ${option}`)
+      }
+      return optField
+    }
+
+    // Helper to get currently selected option from a value
+    const getSelectedOption = (value: Record<string, unknown>): string => {
+      const validKeys = Object.keys(value).filter((k) => options.includes(k))
+      return validKeys[0] ?? defaultOption
+    }
+
+    // Helper to get selected field from a value
+    const getSelectedField = (value: Record<string, unknown>): Field => {
+      const selectedOption = getSelectedOption(value)
+      return getField(selectedOption)
+    }
+
     return {
       type: "variant",
       label,
+      displayLabel: formatLabel(label),
       name,
+      component: "variant-select",
+      renderHint: COMPOUND_RENDER_HINT,
       fields,
       options,
       defaultOption,
@@ -251,6 +379,9 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       defaultValue,
       schema,
       getOptionDefault,
+      getField,
+      getSelectedOption,
+      getSelectedField,
       candidType: "variant",
     }
   }
@@ -281,7 +412,10 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "tuple",
       label,
+      displayLabel: formatLabel(label),
       name,
+      component: "tuple-container",
+      renderHint: COMPOUND_RENDER_HINT,
       fields,
       defaultValue,
       schema,
@@ -310,14 +444,23 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     // Helper to get the inner default when enabling the optional
     const getInnerDefault = (): unknown => innerField.defaultValue
 
+    // Helper to check if a value represents an enabled optional
+    const isEnabled = (value: unknown): boolean => {
+      return value !== null && typeof value !== "undefined"
+    }
+
     return {
       type: "optional",
       label,
+      displayLabel: formatLabel(label),
       name,
+      component: "optional-toggle",
+      renderHint: COMPOUND_RENDER_HINT,
       innerField,
       defaultValue: null,
       schema,
       getInnerDefault,
+      isEnabled,
       candidType: "opt",
     }
   }
@@ -343,14 +486,24 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
         z.array(z.number()),
         z.instanceof(Uint8Array),
       ])
+
+      const limits = { ...DEFAULT_BLOB_LIMITS }
+
       return {
         type: "blob",
         label,
+        displayLabel: formatLabel(label),
         name,
+        component: "blob-upload",
+        renderHint: FILE_RENDER_HINT,
         itemField,
         defaultValue: "",
         schema,
         acceptedFormats: ["hex", "base64", "file"],
+        limits,
+        normalizeHex,
+        validateInput: (value: string | Uint8Array) =>
+          validateBlobInput(value, limits),
         candidType: "blob",
       }
     }
@@ -360,14 +513,35 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     // Helper to get a new item with default values
     const getItemDefault = (): unknown => itemField.defaultValue
 
+    // Helper to create an item field for a specific index
+    const createItemField = (
+      index: number,
+      overrides?: { label?: string }
+    ): Field => {
+      // Replace [0] in template with actual index
+      const itemName = name ? `${name}[${index}]` : `[${index}]`
+      const itemLabel = overrides?.label ?? `Item ${index}`
+
+      return {
+        ...itemField,
+        name: itemName,
+        label: itemLabel,
+        displayLabel: formatLabel(itemLabel),
+      }
+    }
+
     return {
       type: "vector",
       label,
+      displayLabel: formatLabel(label),
       name,
+      component: "vector-list",
+      renderHint: COMPOUND_RENDER_HINT,
       itemField,
       defaultValue: [],
       schema,
       getItemDefault,
+      createItemField,
       candidType: "vec",
     }
   }
@@ -399,7 +573,10 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "recursive",
       label,
+      displayLabel: formatLabel(label),
       name,
+      component: "recursive-lazy",
+      renderHint: COMPOUND_RENDER_HINT,
       typeName,
       extract,
       defaultValue: undefined,
@@ -432,42 +609,67 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
       }
     )
 
+    const inputProps: PrimitiveInputProps = {
+      type: "text",
+      placeholder: "aaaaa-aa or full principal ID",
+      minLength: 7,
+      maxLength: 64,
+      spellCheck: false,
+      autoComplete: "off",
+    }
+
     return {
       type: "principal",
       label,
+      displayLabel: formatLabel(label),
       name: this.currentName(),
+      component: "principal-input",
+      renderHint: TEXT_RENDER_HINT,
       defaultValue: "",
       maxLength: 64,
       minLength: 7,
       schema,
+      inputProps,
       candidType: "principal",
-      ui: {
-        placeholder: "aaaaa-aa or full principal ID",
-      },
     }
   }
 
   public visitText(_t: IDL.TextClass, label: string): TextField {
+    const inputProps: PrimitiveInputProps = {
+      type: "text",
+      placeholder: "Enter text...",
+      spellCheck: true,
+    }
+
     return {
       type: "text",
       label,
+      displayLabel: formatLabel(label),
       name: this.currentName(),
+      component: "text-input",
+      renderHint: TEXT_RENDER_HINT,
       defaultValue: "",
       schema: z.string().min(1, "Required"),
+      inputProps,
       candidType: "text",
-      ui: {
-        placeholder: "Enter text...",
-      },
     }
   }
 
   public visitBool(_t: IDL.BoolClass, label: string): BooleanField {
+    const inputProps: PrimitiveInputProps = {
+      type: "checkbox",
+    }
+
     return {
       type: "boolean",
       label,
+      displayLabel: formatLabel(label),
       name: this.currentName(),
+      component: "boolean-checkbox",
+      renderHint: CHECKBOX_RENDER_HINT,
       defaultValue: false,
       schema: z.boolean(),
+      inputProps,
       candidType: "bool",
     }
   }
@@ -476,7 +678,13 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "null",
       label,
+      displayLabel: formatLabel(label),
       name: this.currentName(),
+      component: "null-hidden",
+      renderHint: {
+        isCompound: false,
+        isPrimitive: true,
+      },
       defaultValue: null,
       schema: z.null(),
       candidType: "null",
@@ -514,30 +722,50 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     const type = isBigInt ? "text" : "number"
 
     if (type === "text") {
+      const inputProps: PrimitiveInputProps = {
+        type: "text",
+        placeholder: options.unsigned ? "e.g. 100000" : "e.g. -100000",
+        inputMode: "numeric",
+        pattern: options.unsigned ? "\\d+" : "-?\\d+",
+        spellCheck: false,
+        autoComplete: "off",
+      }
+
       return {
         type: "text",
         label,
+        displayLabel: formatLabel(label),
         name: this.currentName(),
+        component: "text-input",
+        renderHint: TEXT_RENDER_HINT,
         defaultValue: "",
         candidType,
         schema,
-        ui: {
-          placeholder: options.unsigned ? "e.g. 100000" : "e.g. -100000",
-        },
+        inputProps,
       }
+    }
+
+    const inputProps: PrimitiveInputProps = {
+      type: "number",
+      placeholder: options.isFloat ? "0.0" : "0",
+      inputMode: options.isFloat ? "decimal" : "numeric",
+      min: options.min,
+      max: options.max,
+      step: options.isFloat ? "any" : "1",
     }
 
     return {
       type: "number",
       label,
+      displayLabel: formatLabel(label),
       name: this.currentName(),
+      component: "number-input",
+      renderHint: NUMBER_RENDER_HINT,
       defaultValue: "",
       candidType,
       schema: schema,
+      inputProps,
       ...options,
-      ui: {
-        placeholder: options.isFloat ? "0.0" : "0",
-      },
     }
   }
 
@@ -602,7 +830,13 @@ export class ArgumentFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return {
       type: "unknown",
       label,
+      displayLabel: formatLabel(label),
       name: this.currentName(),
+      component: "unknown-fallback",
+      renderHint: {
+        isCompound: false,
+        isPrimitive: false,
+      },
       defaultValue: undefined,
       schema: z.any(),
     }
