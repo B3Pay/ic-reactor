@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { ArgumentFieldVisitor } from "./index"
+import { FieldVisitor } from "./index"
 import * as z from "zod"
 
-describe("ArgumentFieldVisitor Schema Generation", () => {
-  const visitor = new ArgumentFieldVisitor()
+describe("FieldVisitor Schema Generation", () => {
+  const visitor = new FieldVisitor()
 
   // ════════════════════════════════════════════════════════════════════════
   // Primitive Types

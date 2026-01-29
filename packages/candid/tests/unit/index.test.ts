@@ -78,7 +78,7 @@ describe("Package Exports", () => {
       const knownExports = [
         "CandidAdapter",
         "ResultFieldVisitor",
-        "ArgumentFieldVisitor",
+        "FieldVisitor",
         "extractAndSortArgs",
         "normalizeFormState",
         "convertNanoToDate",
@@ -107,6 +107,8 @@ describe("Package Exports", () => {
         "isCompoundField",
         "isPrimitiveField",
         "hasChildFields",
+        // Label formatting utility
+        "formatLabel",
       ]
 
       actualExports.forEach((exp) => {

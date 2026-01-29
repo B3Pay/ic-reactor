@@ -25,6 +25,7 @@ description: Generated API reference documentation
 - [AgentState](interfaces/AgentState.md)
 - [AuthState](interfaces/AuthState.md)
 - [UpdateAgentParameters](interfaces/UpdateAgentParameters.md)
+- [DisplayReactorParameters](interfaces/DisplayReactorParameters.md)
 - [DefaultActorType](interfaces/DefaultActorType.md)
 - [ReactorParameters](interfaces/ReactorParameters.md)
 - [TransformArgsRegistry](interfaces/TransformArgsRegistry.md)
@@ -44,7 +45,6 @@ description: Generated API reference documentation
 - [ValidationResult](type-aliases/ValidationResult.md)
 - [Validator](type-aliases/Validator.md)
 - [DisplayValidator](type-aliases/DisplayValidator.md)
-- [DisplayReactorParameters](type-aliases/DisplayReactorParameters.md)
 - [BaseActor](type-aliases/BaseActor.md)
 - [FunctionName](type-aliases/FunctionName.md)
 - [FunctionType](type-aliases/FunctionType.md)
@@ -53,6 +53,7 @@ description: Generated API reference documentation
 - [ActorMethodReturnType](type-aliases/ActorMethodReturnType.md)
 - [ActorMethodType](type-aliases/ActorMethodType.md)
 - [ArgsType](type-aliases/ArgsType.md)
+- [AsDisplayArgs](type-aliases/AsDisplayArgs.md)
 - [TransformKey](type-aliases/TransformKey.md)
 - [ReactorArgs](type-aliases/ReactorArgs.md)
 - [ReactorReturnOk](type-aliases/ReactorReturnOk.md)
@@ -83,7 +84,6 @@ description: Generated API reference documentation
 
 ## Functions
 
-- [fromZodSchema](functions/fromZodSchema.md)
 - [didToDisplayCodec](functions/didToDisplayCodec.md)
 - [didToDisplayCodecs](functions/didToDisplayCodecs.md)
 - [transformArgsWithCodec](functions/transformArgsWithCodec.md)
@@ -108,5 +108,7 @@ description: Generated API reference documentation
 - [nonNullish](functions/nonNullish.md)
 - [uint8ArrayToHex](functions/uint8ArrayToHex.md)
 - [hexToUint8Array](functions/hexToUint8Array.md)
+- [formatHexDisplay](functions/formatHexDisplay.md)
 - [jsonToString](functions/jsonToString.md)
 - [createPollingStrategy](functions/createPollingStrategy.md)
+- [fromZodSchema](functions/fromZodSchema.md)

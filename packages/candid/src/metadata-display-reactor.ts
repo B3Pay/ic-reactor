@@ -9,7 +9,7 @@ import type {
   DynamicMethodOptions,
 } from "./types"
 import {
-  ArgumentFieldVisitor,
+  FieldVisitor,
   ArgumentsMeta,
   ArgumentsServiceMeta,
 } from "./visitor/arguments"
@@ -54,7 +54,7 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   private resultMeta: ServiceMeta<A> | null = null
 
   // Visitors (stateless, can be reused)
-  private static argVisitor = new ArgumentFieldVisitor()
+  private static argVisitor = new FieldVisitor()
   private static resultVisitor = new ResultFieldVisitor()
 
   constructor(config: CandidDisplayReactorParameters<A>) {

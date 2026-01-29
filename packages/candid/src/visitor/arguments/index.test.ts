@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
-import { ArgumentFieldVisitor, VectorField } from "./index"
+import { FieldVisitor, VectorField } from "./index"
 
 describe("ArgumentFieldVisitor", () => {
-  const visitor = new ArgumentFieldVisitor()
+  const visitor = new FieldVisitor()
 
   // ════════════════════════════════════════════════════════════════════════
   // Primitive Types
@@ -970,6 +970,405 @@ describe("ArgumentFieldVisitor", () => {
       )
 
       expect(field.getInnerDefault()).toEqual({ value: "" })
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // New Features - displayLabel, component, renderHint
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("displayLabel formatting", () => {
+    it("should format __arg labels correctly", () => {
+      const funcType = IDL.Func([IDL.Text, IDL.Nat], [], [])
+      const meta = visitor.visitFunc(funcType, "test")
+
+      expect(meta.fields[0].displayLabel).toBe("Arg 0")
+      expect(meta.fields[1].displayLabel).toBe("Arg 1")
+    })
+
+    it("should format tuple index labels correctly", () => {
+      const tupleType = IDL.Tuple(IDL.Text, IDL.Nat, IDL.Bool)
+      const field = visitor.visitTuple(
+        tupleType,
+        [IDL.Text, IDL.Nat, IDL.Bool],
+        "triple"
+      )
+
+      expect(field.fields[0].displayLabel).toBe("Item 0")
+      expect(field.fields[1].displayLabel).toBe("Item 1")
+      expect(field.fields[2].displayLabel).toBe("Item 2")
+    })
+
+    it("should format snake_case labels correctly", () => {
+      const recordType = IDL.Record({
+        created_at_time: IDL.Nat,
+        user_address: IDL.Text,
+      })
+      const field = visitor.visitRecord(
+        recordType,
+        [
+          ["created_at_time", IDL.Nat],
+          ["user_address", IDL.Text],
+        ],
+        "record"
+      )
+
+      const createdField = field.fields.find(
+        (f) => f.label === "created_at_time"
+      )
+      const userField = field.fields.find((f) => f.label === "user_address")
+
+      expect(createdField?.displayLabel).toBe("Created At Time")
+      expect(userField?.displayLabel).toBe("User Address")
+    })
+  })
+
+  describe("component hints", () => {
+    it("should have correct component for record", () => {
+      const recordType = IDL.Record({ name: IDL.Text })
+      const field = visitor.visitRecord(
+        recordType,
+        [["name", IDL.Text]],
+        "person"
+      )
+
+      expect(field.component).toBe("record-container")
+    })
+
+    it("should have correct component for variant", () => {
+      const variantType = IDL.Variant({ A: IDL.Null, B: IDL.Text })
+      const field = visitor.visitVariant(
+        variantType,
+        [
+          ["A", IDL.Null],
+          ["B", IDL.Text],
+        ],
+        "choice"
+      )
+
+      expect(field.component).toBe("variant-select")
+    })
+
+    it("should have correct component for optional", () => {
+      const optType = IDL.Opt(IDL.Text)
+      const field = visitor.visitOpt(optType, IDL.Text, "optional")
+
+      expect(field.component).toBe("optional-toggle")
+    })
+
+    it("should have correct component for vector", () => {
+      const vecType = IDL.Vec(IDL.Text)
+      const field = visitor.visitVec(vecType, IDL.Text, "vec") as VectorField
+
+      expect(field.component).toBe("vector-list")
+    })
+
+    it("should have correct component for blob", () => {
+      const blobType = IDL.Vec(IDL.Nat8)
+      const field = visitor.visitVec(blobType, IDL.Nat8, "blob")
+
+      expect(field.component).toBe("blob-upload")
+    })
+
+    it("should have correct component for text", () => {
+      const field = visitor.visitText(IDL.Text, "text")
+
+      expect(field.component).toBe("text-input")
+    })
+
+    it("should have correct component for number", () => {
+      const field = visitor.visitFloat(IDL.Float64 as IDL.FloatClass, "num")
+
+      expect(field.component).toBe("number-input")
+    })
+
+    it("should have correct component for boolean", () => {
+      const field = visitor.visitBool(IDL.Bool, "bool")
+
+      expect(field.component).toBe("boolean-checkbox")
+    })
+
+    it("should have correct component for principal", () => {
+      const field = visitor.visitPrincipal(IDL.Principal, "principal")
+
+      expect(field.component).toBe("principal-input")
+    })
+
+    it("should have correct component for null", () => {
+      const field = visitor.visitNull(IDL.Null, "null")
+
+      expect(field.component).toBe("null-hidden")
+    })
+  })
+
+  describe("renderHint properties", () => {
+    it("compound types should have isCompound: true", () => {
+      const recordField = visitor.visitRecord(
+        IDL.Record({ x: IDL.Text }),
+        [["x", IDL.Text]],
+        "rec"
+      )
+      const variantField = visitor.visitVariant(
+        IDL.Variant({ A: IDL.Null }),
+        [["A", IDL.Null]],
+        "var"
+      )
+      const optionalField = visitor.visitOpt(IDL.Opt(IDL.Text), IDL.Text, "opt")
+      const vectorField = visitor.visitVec(IDL.Vec(IDL.Text), IDL.Text, "vec")
+
+      expect(recordField.renderHint.isCompound).toBe(true)
+      expect(recordField.renderHint.isPrimitive).toBe(false)
+
+      expect(variantField.renderHint.isCompound).toBe(true)
+      expect(optionalField.renderHint.isCompound).toBe(true)
+      expect((vectorField as VectorField).renderHint.isCompound).toBe(true)
+    })
+
+    it("primitive types should have isPrimitive: true", () => {
+      const textField = visitor.visitText(IDL.Text, "text")
+      const boolField = visitor.visitBool(IDL.Bool, "bool")
+      const principalField = visitor.visitPrincipal(IDL.Principal, "principal")
+
+      expect(textField.renderHint.isPrimitive).toBe(true)
+      expect(textField.renderHint.isCompound).toBe(false)
+
+      expect(boolField.renderHint.isPrimitive).toBe(true)
+      expect(principalField.renderHint.isPrimitive).toBe(true)
+    })
+
+    it("should have correct inputType hints", () => {
+      const textField = visitor.visitText(IDL.Text, "text")
+      const boolField = visitor.visitBool(IDL.Bool, "bool")
+      const numField = visitor.visitFloat(IDL.Float64 as IDL.FloatClass, "num")
+
+      expect(textField.renderHint.inputType).toBe("text")
+      expect(boolField.renderHint.inputType).toBe("checkbox")
+      expect(numField.renderHint.inputType).toBe("number")
+    })
+  })
+
+  describe("inputProps for primitive types", () => {
+    it("text field should have inputProps", () => {
+      const field = visitor.visitText(IDL.Text, "text")
+
+      expect(field.inputProps).toBeDefined()
+      expect(field.inputProps.type).toBe("text")
+      expect(field.inputProps.placeholder).toBeDefined()
+    })
+
+    it("boolean field should have checkbox inputProps", () => {
+      const field = visitor.visitBool(IDL.Bool, "bool")
+
+      expect(field.inputProps).toBeDefined()
+      expect(field.inputProps.type).toBe("checkbox")
+    })
+
+    it("number field should have number inputProps with min/max", () => {
+      const field = visitor.visitFixedNat(IDL.Nat8 as IDL.FixedNatClass, "byte")
+
+      if (field.type === "number") {
+        expect(field.inputProps).toBeDefined()
+        expect(field.inputProps.type).toBe("number")
+        expect(field.inputProps.min).toBe("0")
+        expect(field.inputProps.max).toBe("255")
+      }
+    })
+
+    it("principal field should have inputProps with spellCheck disabled", () => {
+      const field = visitor.visitPrincipal(IDL.Principal, "principal")
+
+      expect(field.inputProps).toBeDefined()
+      expect(field.inputProps.spellCheck).toBe(false)
+      expect(field.inputProps.autoComplete).toBe("off")
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Enhanced Variant Helpers
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("Variant helper methods", () => {
+    it("getField should return the correct field for an option", () => {
+      const variantType = IDL.Variant({
+        Transfer: IDL.Record({ to: IDL.Principal, amount: IDL.Nat }),
+        Burn: IDL.Nat,
+      })
+      const field = visitor.visitVariant(
+        variantType,
+        [
+          ["Transfer", IDL.Record({ to: IDL.Principal, amount: IDL.Nat })],
+          ["Burn", IDL.Nat],
+        ],
+        "action"
+      )
+
+      const transferField = field.getField("Transfer")
+      expect(transferField.type).toBe("record")
+
+      const burnField = field.getField("Burn")
+      expect(burnField.type).toBe("text") // nat is rendered as text for large numbers
+    })
+
+    it("getSelectedOption should return the selected option from a value", () => {
+      const variantType = IDL.Variant({ A: IDL.Null, B: IDL.Text, C: IDL.Nat })
+      const field = visitor.visitVariant(
+        variantType,
+        [
+          ["A", IDL.Null],
+          ["B", IDL.Text],
+          ["C", IDL.Nat],
+        ],
+        "choice"
+      )
+
+      expect(field.getSelectedOption({ A: null })).toBe("A")
+      expect(field.getSelectedOption({ B: "hello" })).toBe("B")
+      expect(field.getSelectedOption({ C: "100" })).toBe("C")
+      // Falls back to default option for unknown values
+      expect(field.getSelectedOption({})).toBe("A")
+    })
+
+    it("getSelectedField should return the field for the selected option", () => {
+      const variantType = IDL.Variant({
+        Ok: IDL.Nat,
+        Err: IDL.Text,
+      })
+      const field = visitor.visitVariant(
+        variantType,
+        [
+          ["Ok", IDL.Nat],
+          ["Err", IDL.Text],
+        ],
+        "result"
+      )
+
+      const okField = field.getSelectedField({ Ok: "100" })
+      expect(okField.label).toBe("Ok")
+
+      const errField = field.getSelectedField({ Err: "error" })
+      expect(errField.label).toBe("Err")
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Optional isEnabled Helper
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("Optional isEnabled helper", () => {
+    it("should return true for non-null values", () => {
+      const optType = IDL.Opt(IDL.Text)
+      const field = visitor.visitOpt(optType, IDL.Text, "optional")
+
+      expect(field.isEnabled("hello")).toBe(true)
+      expect(field.isEnabled("")).toBe(true)
+      expect(field.isEnabled(0)).toBe(true)
+      expect(field.isEnabled(false)).toBe(true)
+      expect(field.isEnabled({})).toBe(true)
+    })
+
+    it("should return false for null and undefined", () => {
+      const optType = IDL.Opt(IDL.Text)
+      const field = visitor.visitOpt(optType, IDL.Text, "optional")
+
+      expect(field.isEnabled(null)).toBe(false)
+      expect(field.isEnabled(undefined)).toBe(false)
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Vector createItemField Helper
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("Vector createItemField helper", () => {
+    it("should create item field with correct index in name path", () => {
+      const funcType = IDL.Func([IDL.Vec(IDL.Text)], [], [])
+      const meta = visitor.visitFunc(funcType, "addItems")
+      const vecField = meta.fields[0] as VectorField
+
+      const item0 = vecField.createItemField(0)
+      expect(item0.name).toBe("[0][0]")
+
+      const item5 = vecField.createItemField(5)
+      expect(item5.name).toBe("[0][5]")
+    })
+
+    it("should use custom label when provided", () => {
+      const funcType = IDL.Func(
+        [IDL.Vec(IDL.Record({ name: IDL.Text }))],
+        [],
+        []
+      )
+      const meta = visitor.visitFunc(funcType, "addItems")
+      const vecField = meta.fields[0] as VectorField
+
+      const item = vecField.createItemField(3, { label: "Person 3" })
+      expect(item.label).toBe("Person 3")
+      expect(item.displayLabel).toBe("Person 3")
+    })
+
+    it("should use default label when not provided", () => {
+      const funcType = IDL.Func([IDL.Vec(IDL.Text)], [], [])
+      const meta = visitor.visitFunc(funcType, "addTags")
+      const vecField = meta.fields[0] as VectorField
+
+      const item = vecField.createItemField(2)
+      expect(item.label).toBe("Item 2")
+      expect(item.displayLabel).toBe("Item 2")
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Blob Field Utilities
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("Blob field utilities", () => {
+    it("should have limits defined", () => {
+      const blobType = IDL.Vec(IDL.Nat8)
+      const field = visitor.visitVec(blobType, IDL.Nat8, "data")
+
+      if (field.type === "blob") {
+        expect(field.limits).toBeDefined()
+        expect(field.limits.maxHexBytes).toBeGreaterThan(0)
+        expect(field.limits.maxFileBytes).toBeGreaterThan(0)
+        expect(field.limits.maxHexDisplayLength).toBeGreaterThan(0)
+      }
+    })
+
+    it("normalizeHex should remove 0x prefix and lowercase", () => {
+      const blobType = IDL.Vec(IDL.Nat8)
+      const field = visitor.visitVec(blobType, IDL.Nat8, "data")
+
+      if (field.type === "blob") {
+        expect(field.normalizeHex("0xDEADBEEF")).toBe("deadbeef")
+        expect(field.normalizeHex("DEADBEEF")).toBe("deadbeef")
+        expect(field.normalizeHex("0x")).toBe("")
+        expect(field.normalizeHex("abc123")).toBe("abc123")
+      }
+    })
+
+    it("validateInput should validate hex strings", () => {
+      const blobType = IDL.Vec(IDL.Nat8)
+      const field = visitor.visitVec(blobType, IDL.Nat8, "data")
+
+      if (field.type === "blob") {
+        // Valid inputs
+        expect(field.validateInput("").valid).toBe(true)
+        expect(field.validateInput("deadbeef").valid).toBe(true)
+        expect(field.validateInput("0x1234").valid).toBe(true)
+
+        // Invalid inputs
+        expect(field.validateInput("xyz").valid).toBe(false)
+        expect(field.validateInput("abc").valid).toBe(false) // odd length
+      }
+    })
+
+    it("validateInput should validate Uint8Array", () => {
+      const blobType = IDL.Vec(IDL.Nat8)
+      const field = visitor.visitVec(blobType, IDL.Nat8, "data")
+
+      if (field.type === "blob") {
+        expect(field.validateInput(new Uint8Array([1, 2, 3])).valid).toBe(true)
+      }
     })
   })
 })

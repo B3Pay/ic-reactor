@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [display-reactor.ts:76](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/display-reactor.ts#L76)
+Defined in: [display-reactor.ts:77](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/display-reactor.ts#L77)
 
 DisplayReactor provides automatic type transformations between Candid and
 display-friendly types, plus optional argument validation.
@@ -54,7 +54,7 @@ await reactor.callMethod({
 
 ## Extends
 
-- [`Reactor`](Reactor.md)\<`A`, `"display"`\>
+- [`Reactor`](Reactor.md)\<`A`, `T`\>
 
 ## Type Parameters
 
@@ -64,23 +64,27 @@ await reactor.callMethod({
 
 The actor service type
 
+### T
+
+`T` _extends_ [`TransformKey`](../type-aliases/TransformKey.md) = `"display"`
+
 ## Constructors
 
 ### Constructor
 
-> **new DisplayReactor**\<`A`\>(`config`): `DisplayReactor`\<`A`\>
+> **new DisplayReactor**\<`A`, `T`\>(`config`): `DisplayReactor`\<`A`, `T`\>
 
-Defined in: [display-reactor.ts:84](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/display-reactor.ts#L84)
+Defined in: [display-reactor.ts:88](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/display-reactor.ts#L88)
 
 #### Parameters
 
 ##### config
 
-[`DisplayReactorParameters`](../type-aliases/DisplayReactorParameters.md)\<`A`\>
+[`DisplayReactorParameters`](../interfaces/DisplayReactorParameters.md)\<`A`\>
 
 #### Returns
 
-`DisplayReactor`\<`A`\>
+`DisplayReactor`\<`A`, `T`\>
 
 #### Overrides
 
@@ -90,9 +94,9 @@ Defined in: [display-reactor.ts:84](https://github.com/B3Pay/ic-reactor/blob/712
 
 ### transform
 
-> `readonly` **transform**: `"display"` = `"display"`
+> `readonly` **transform**: `T`
 
-Defined in: [display-reactor.ts:77](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/display-reactor.ts#L77)
+Defined in: [display-reactor.ts:81](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/display-reactor.ts#L81)
 
 #### Overrides
 
@@ -104,7 +108,7 @@ Defined in: [display-reactor.ts:77](https://github.com/B3Pay/ic-reactor/blob/712
 
 > `readonly` **\_actor**: `A`
 
-Defined in: [reactor.ts:46](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L46)
+Defined in: [reactor.ts:46](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L46)
 
 Phantom type brand for inference - never assigned at runtime
 
@@ -118,7 +122,7 @@ Phantom type brand for inference - never assigned at runtime
 
 > **clientManager**: [`ClientManager`](ClientManager.md)
 
-Defined in: [reactor.ts:48](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L48)
+Defined in: [reactor.ts:48](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L48)
 
 #### Inherited from
 
@@ -130,7 +134,7 @@ Defined in: [reactor.ts:48](https://github.com/B3Pay/ic-reactor/blob/712cb4b02af
 
 > **name**: `string`
 
-Defined in: [reactor.ts:49](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L49)
+Defined in: [reactor.ts:49](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L49)
 
 #### Inherited from
 
@@ -142,7 +146,7 @@ Defined in: [reactor.ts:49](https://github.com/B3Pay/ic-reactor/blob/712cb4b02af
 
 > **canisterId**: `Principal`
 
-Defined in: [reactor.ts:50](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L50)
+Defined in: [reactor.ts:50](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L50)
 
 #### Inherited from
 
@@ -154,7 +158,7 @@ Defined in: [reactor.ts:50](https://github.com/B3Pay/ic-reactor/blob/712cb4b02af
 
 > **service**: `ServiceClass`
 
-Defined in: [reactor.ts:51](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L51)
+Defined in: [reactor.ts:51](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L51)
 
 #### Inherited from
 
@@ -166,7 +170,7 @@ Defined in: [reactor.ts:51](https://github.com/B3Pay/ic-reactor/blob/712cb4b02af
 
 > **pollingOptions**: `PollingOptions`
 
-Defined in: [reactor.ts:52](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L52)
+Defined in: [reactor.ts:52](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L52)
 
 #### Inherited from
 
@@ -180,7 +184,7 @@ Defined in: [reactor.ts:52](https://github.com/B3Pay/ic-reactor/blob/712cb4b02af
 
 > **get** **queryClient**(): `QueryClient`
 
-Defined in: [reactor.ts:432](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L432)
+Defined in: [reactor.ts:450](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L450)
 
 Get the query client from clientManager.
 This is the recommended way to access the query client for direct queries.
@@ -201,7 +205,7 @@ This is the recommended way to access the query client for direct queries.
 
 > **get** **agent**(): `HttpAgent`
 
-Defined in: [reactor.ts:440](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L440)
+Defined in: [reactor.ts:458](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L458)
 
 Get the agent from clientManager.
 This is the recommended way to access the agent for direct calls.
@@ -220,7 +224,7 @@ This is the recommended way to access the agent for direct calls.
 
 > **getCodec**\<`M`\>(`methodName`): [`ActorMethodCodecs`](../interfaces/ActorMethodCodecs.md)\<`A`, `M`\> \| `null`
 
-Defined in: [display-reactor.ts:133](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/display-reactor.ts#L133)
+Defined in: [display-reactor.ts:137](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/display-reactor.ts#L137)
 
 Get a codec for a specific method.
 Returns the args and result codecs for bidirectional transformation.
@@ -251,7 +255,7 @@ Object with args and result codecs, or null if not found
 
 > **registerValidator**\<`M`\>(`methodName`, `validator`): `void`
 
-Defined in: [display-reactor.ts:169](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/display-reactor.ts#L169)
+Defined in: [display-reactor.ts:173](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/display-reactor.ts#L173)
 
 Register a validator for a specific method.
 Validators receive display types (strings for Principal/bigint).
@@ -301,7 +305,7 @@ reactor.registerValidator("transfer", ([input]) => {
 
 > **unregisterValidator**\<`M`\>(`methodName`): `void`
 
-Defined in: [display-reactor.ts:179](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/display-reactor.ts#L179)
+Defined in: [display-reactor.ts:183](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/display-reactor.ts#L183)
 
 Unregister a validator for a specific method.
 
@@ -327,7 +331,7 @@ Unregister a validator for a specific method.
 
 > **hasValidator**\<`M`\>(`methodName`): `boolean`
 
-Defined in: [display-reactor.ts:186](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/display-reactor.ts#L186)
+Defined in: [display-reactor.ts:190](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/display-reactor.ts#L190)
 
 Check if a method has a registered validator.
 
@@ -353,7 +357,7 @@ Check if a method has a registered validator.
 
 > **validate**\<`M`\>(`methodName`, `args`): `Promise`\<[`ValidationResult`](../type-aliases/ValidationResult.md)\>
 
-Defined in: [display-reactor.ts:214](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/display-reactor.ts#L214)
+Defined in: [display-reactor.ts:218](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/display-reactor.ts#L218)
 
 Validate arguments without calling the canister.
 Arguments are in display format (strings for Principal/bigint).
@@ -375,7 +379,7 @@ The name of the method
 
 ##### args
 
-`AsDisplayArgs`\<[`ActorMethodParameters`](../type-aliases/ActorMethodParameters.md)\<`A`\[`M`\]\>\>
+[`ReactorArgs`](../type-aliases/ReactorArgs.md)\<`A`, `M`, `T`\>
 
 The display-type arguments to validate
 
@@ -407,9 +411,9 @@ if (!result.success) {
 
 ### callMethodWithValidation()
 
-> **callMethodWithValidation**\<`M`\>(`params`): `Promise`\<[`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>\>
+> **callMethodWithValidation**\<`M`\>(`params`): `Promise`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
-Defined in: [display-reactor.ts:250](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/display-reactor.ts#L250)
+Defined in: [display-reactor.ts:254](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/display-reactor.ts#L254)
 
 Call a method with async validation support.
 Use this instead of callMethod() when you have async validators.
@@ -430,7 +434,7 @@ Use this instead of callMethod() when you have async validators.
 
 ###### args?
 
-`AsDisplayArgs`\<[`ActorMethodParameters`](../type-aliases/ActorMethodParameters.md)\<`A`\[`M`\]\>\>
+[`ReactorArgs`](../type-aliases/ReactorArgs.md)\<`A`, `M`, `T`\>
 
 ###### callConfig?
 
@@ -438,7 +442,7 @@ Use this instead of callMethod() when you have async validators.
 
 #### Returns
 
-`Promise`\<[`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>\>
+`Promise`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
 #### Example
 
@@ -467,7 +471,7 @@ await reactor.callMethodWithValidation({
 
 > **setCanisterId**(`canisterId`): `void`
 
-Defined in: [reactor.ts:104](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L104)
+Defined in: [reactor.ts:104](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L104)
 
 Set the canister ID for this reactor.
 Useful for dynamically switching between canisters of the same type (e.g., multiple ICRC tokens).
@@ -500,11 +504,48 @@ const { data } = icrc1NameQuery.useQuery()
 
 ---
 
+### setCanisterName()
+
+> **setCanisterName**(`name`): `void`
+
+Defined in: [reactor.ts:125](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L125)
+
+Set the canister name for this reactor.
+Useful for dynamically switching between canisters of the same type (e.g., multiple ICRC tokens).
+
+#### Parameters
+
+##### name
+
+`string`
+
+The new canister name
+
+#### Returns
+
+`void`
+
+#### Example
+
+```typescript
+// Switch to a different ledger canister
+ledgerReactor.setCanisterName("icrc1")
+
+// Then use queries/mutations as normal
+const { data } = icrc1NameQuery.useQuery()
+```
+
+#### Inherited from
+
+[`Reactor`](Reactor.md).[`setCanisterName`](Reactor.md#setcanistername)
+
+---
+
 ### getServiceInterface()
 
 > **getServiceInterface**(): `ServiceClass`
 
-Defined in: [reactor.ts:119](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L119)
+Defined in: [reactor.ts:138](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L138)
 
 Get the service interface (IDL.ServiceClass) for this reactor.
 Useful for introspection and codec generation.
@@ -525,7 +566,7 @@ The service interface
 
 > **isQueryMethod**\<`M`\>(`methodName`): `boolean`
 
-Defined in: [reactor.ts:138](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L138)
+Defined in: [reactor.ts:157](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L157)
 
 Check if a method is a query method (query or composite_query).
 
@@ -555,7 +596,7 @@ Check if a method is a query method (query or composite_query).
 
 > **generateQueryKey**\<`M`\>(`params`): readonly `unknown`[]
 
-Defined in: [reactor.ts:180](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L180)
+Defined in: [reactor.ts:199](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L199)
 
 #### Type Parameters
 
@@ -567,7 +608,7 @@ Defined in: [reactor.ts:180](https://github.com/B3Pay/ic-reactor/blob/712cb4b02a
 
 ##### params
 
-[`ReactorQueryParams`](../interfaces/ReactorQueryParams.md)\<`A`, `M`, `"display"`\>
+[`ReactorQueryParams`](../interfaces/ReactorQueryParams.md)\<`A`, `M`, `T`\>
 
 #### Returns
 
@@ -581,9 +622,9 @@ readonly `unknown`[]
 
 ### getQueryOptions()
 
-> **getQueryOptions**\<`M`\>(`params`): `FetchQueryOptions`\<[`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>\>
+> **getQueryOptions**\<`M`\>(`params`): `FetchQueryOptions`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
-Defined in: [reactor.ts:200](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L200)
+Defined in: [reactor.ts:219](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L219)
 
 #### Type Parameters
 
@@ -595,11 +636,11 @@ Defined in: [reactor.ts:200](https://github.com/B3Pay/ic-reactor/blob/712cb4b02a
 
 ##### params
 
-[`ReactorCallParams`](../interfaces/ReactorCallParams.md)\<`A`, `M`, `"display"`\>
+[`ReactorCallParams`](../interfaces/ReactorCallParams.md)\<`A`, `M`, `T`\>
 
 #### Returns
 
-`FetchQueryOptions`\<[`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>\>
+`FetchQueryOptions`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
 #### Inherited from
 
@@ -611,7 +652,7 @@ Defined in: [reactor.ts:200](https://github.com/B3Pay/ic-reactor/blob/712cb4b02a
 
 > **invalidateQueries**\<`M`\>(`params?`): `void`
 
-Defined in: [reactor.ts:247](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L247)
+Defined in: [reactor.ts:246](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L246)
 
 Invalidate cached queries for this canister.
 This will mark matching queries as stale and trigger a refetch for any active queries.
@@ -626,7 +667,7 @@ This will mark matching queries as stale and trigger a refetch for any active qu
 
 ##### params?
 
-`Partial`\<[`ReactorQueryParams`](../interfaces/ReactorQueryParams.md)\<`A`, `M`, `"display"`\>\>
+`Partial`\<[`ReactorQueryParams`](../interfaces/ReactorQueryParams.md)\<`A`, `M`, `T`\>\>
 
 Optional parameters to filter the invalidation
 
@@ -655,9 +696,9 @@ reactor.invalidateQueries({ functionName: "getUser", args: ["user-1"] })
 
 ### callMethod()
 
-> **callMethod**\<`M`\>(`params`): `Promise`\<[`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>\>
+> **callMethod**\<`M`\>(`params`): `Promise`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
-Defined in: [reactor.ts:287](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L287)
+Defined in: [reactor.ts:286](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L286)
 
 Call a canister method directly using agent.call() or agent.query().
 This is the recommended approach for interacting with canisters.
@@ -676,7 +717,7 @@ This is the recommended approach for interacting with canisters.
 
 #### Returns
 
-`Promise`\<[`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>\>
+`Promise`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
 #### Example
 
@@ -703,9 +744,9 @@ const result = await reactor.callMethod({
 
 ### fetchQuery()
 
-> **fetchQuery**\<`M`\>(`params`): `Promise`\<[`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>\>
+> **fetchQuery**\<`M`\>(`params`): `Promise`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
-Defined in: [reactor.ts:341](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L341)
+Defined in: [reactor.ts:359](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L359)
 
 Fetch data from the canister and cache it using React Query.
 This method ensures the data is in the cache and returns it.
@@ -720,11 +761,11 @@ This method ensures the data is in the cache and returns it.
 
 ##### params
 
-[`ReactorCallParams`](../interfaces/ReactorCallParams.md)\<`A`, `M`, `"display"`\>
+[`ReactorCallParams`](../interfaces/ReactorCallParams.md)\<`A`, `M`, `T`\>
 
 #### Returns
 
-`Promise`\<[`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\>\>
+`Promise`\<[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\>\>
 
 #### Inherited from
 
@@ -734,9 +775,9 @@ This method ensures the data is in the cache and returns it.
 
 ### getQueryData()
 
-> **getQueryData**\<`M`\>(`params`): [`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\> \| `undefined`
+> **getQueryData**\<`M`\>(`params`): [`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\> \| `undefined`
 
-Defined in: [reactor.ts:351](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L351)
+Defined in: [reactor.ts:369](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L369)
 
 Get the current data from the cache without fetching.
 
@@ -750,11 +791,11 @@ Get the current data from the cache without fetching.
 
 ##### params
 
-[`ReactorQueryParams`](../interfaces/ReactorQueryParams.md)\<`A`, `M`, `"display"`\>
+[`ReactorQueryParams`](../interfaces/ReactorQueryParams.md)\<`A`, `M`, `T`\>
 
 #### Returns
 
-[`DisplayOf`](../type-aliases/DisplayOf.md)\<[`OkResult`](../type-aliases/OkResult.md)\<[`ActorMethodReturnType`](../type-aliases/ActorMethodReturnType.md)\<`A`\[`M`\]\>\>\> \| `undefined`
+[`ReactorReturnOk`](../type-aliases/ReactorReturnOk.md)\<`A`, `M`, `T`\> \| `undefined`
 
 #### Inherited from
 
@@ -766,7 +807,7 @@ Get the current data from the cache without fetching.
 
 > **subnetId**(): `Promise`\<`Principal`\>
 
-Defined in: [reactor.ts:412](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L412)
+Defined in: [reactor.ts:430](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L430)
 
 Get the subnet ID for this canister.
 
@@ -784,7 +825,7 @@ Get the subnet ID for this canister.
 
 > **subnetState**(`options`): `Promise`\<`ReadStateResponse`\>
 
-Defined in: [reactor.ts:419](https://github.com/B3Pay/ic-reactor/blob/712cb4b02afa232312fb1e7f5fb0ca16e419e7e8/packages/core/src/reactor.ts#L419)
+Defined in: [reactor.ts:437](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/reactor.ts#L437)
 
 Get the subnet state for this canister.
 

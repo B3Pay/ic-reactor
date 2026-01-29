@@ -1,0 +1,576 @@
+---
+title: FieldVisitor
+description: Generate form field metadata from Candid IDL types for dynamic forms
+editUrl: false
+---
+
+import {
+  Aside,
+  Tabs,
+  TabItem,
+  Card,
+  CardGrid,
+} from "@astrojs/starlight/components"
+
+`FieldVisitor` generates comprehensive form field metadata from Candid IDL types. Use it to build dynamic forms that adapt to any canister interface without manual type mapping.
+
+## Overview
+
+The visitor traverses Candid IDL types and produces metadata that includes:
+
+- **Field types** with validation schemas
+- **Display labels** automatically formatted from raw Candid labels
+- **Component hints** for UI rendering
+- **Input props** ready for HTML elements
+- **Helper methods** for dynamic forms (variants, optionals, vectors)
+
+```typescript
+import { FieldVisitor } from "@ic-reactor/candid"
+import { IDL } from "@icp-sdk/core/candid"
+
+const visitor = new FieldVisitor()
+const service = idlFactory({ IDL })
+
+// Generate metadata for all methods
+const serviceMeta = service.accept(visitor, null)
+
+// Get metadata for a specific method
+const transferMeta = serviceMeta["icrc1_transfer"]
+console.log(transferMeta.fields) // Field definitions
+console.log(transferMeta.schema) // Zod validation schema
+```
+
+## Import
+
+```typescript
+import { FieldVisitor } from "@ic-reactor/candid"
+```
+
+## Constructor
+
+```typescript
+new FieldVisitor<A = BaseActor>()
+```
+
+The generic parameter `A` allows type inference for your actor's method names.
+
+---
+
+## Usage
+
+### Basic Usage
+
+```typescript
+const visitor = new FieldVisitor()
+
+// Visit a service to get metadata for all methods
+const serviceMeta = service.accept(visitor, null)
+
+// Access a specific method's metadata
+const methodMeta = serviceMeta["my_method"]
+
+console.log(methodMeta.functionType) // "query" | "update"
+console.log(methodMeta.fields) // Array of Field objects
+console.log(methodMeta.schema) // Zod tuple schema for validation
+console.log(methodMeta.defaultValues) // Default values for form initialization
+```
+
+### With TanStack Form
+
+```typescript
+import { useForm } from '@tanstack/react-form'
+import { FieldVisitor } from '@ic-reactor/candid'
+
+const visitor = new FieldVisitor()
+const methodMeta = serviceMeta["icrc1_transfer"]
+
+const form = useForm({
+  defaultValues: methodMeta.defaultValues,
+  validators: { onBlur: methodMeta.schema },
+  onSubmit: async ({ value }) => {
+    await actor.icrc1_transfer(...value)
+  }
+})
+
+// Render fields dynamically
+methodMeta.fields.map((field, index) => (
+  <form.Field key={index} name={field.name}>
+    {(fieldApi) => <DynamicInput field={field} fieldApi={fieldApi} />}
+  </form.Field>
+))
+```
+
+---
+
+## Field Metadata
+
+Each field has the following base properties:
+
+| Property       | Type                 | Description                                   |
+| -------------- | -------------------- | --------------------------------------------- |
+| `type`         | `ArgumentFieldType`  | The field type (record, variant, text, etc.)  |
+| `label`        | `string`             | Raw label from Candid (`__arg0`, `_0_`, etc.) |
+| `displayLabel` | `string`             | Human-readable formatted label                |
+| `name`         | `string`             | TanStack Form compatible path                 |
+| `component`    | `FieldComponentType` | Suggested component type for rendering        |
+| `renderHint`   | `RenderHint`         | UI rendering strategy hints                   |
+| `schema`       | `z.ZodTypeAny`       | Zod schema for validation                     |
+| `defaultValue` | `TValue`             | Initial value for the field                   |
+| `candidType`   | `string`             | Original Candid type name                     |
+
+---
+
+## Field Component Types
+
+The `component` property suggests what UI component to render:
+
+| Component Type     | Use Case                           |
+| ------------------ | ---------------------------------- |
+| `record-container` | Record with nested fields          |
+| `tuple-container`  | Tuple with indexed elements        |
+| `variant-select`   | Variant with option selector       |
+| `optional-toggle`  | Optional field with enable/disable |
+| `vector-list`      | Dynamic list with add/remove       |
+| `blob-upload`      | File upload or hex input           |
+| `principal-input`  | Principal ID input                 |
+| `text-input`       | Text/string input                  |
+| `number-input`     | Numeric input (bounded types)      |
+| `boolean-checkbox` | Boolean toggle                     |
+| `null-hidden`      | Null type (typically hidden)       |
+| `recursive-lazy`   | Lazy-loaded recursive type         |
+| `unknown-fallback` | Fallback for unknown types         |
+
+### Example: Component Map
+
+```tsx
+const componentMap = {
+  "text-input": TextInput,
+  "number-input": NumberInput,
+  "boolean-checkbox": BooleanCheckbox,
+  "record-container": RecordContainer,
+  "variant-select": VariantSelect,
+  "optional-toggle": OptionalToggle,
+  "vector-list": VectorList,
+  "blob-upload": BlobUpload,
+  "principal-input": PrincipalInput,
+  "null-hidden": () => null,
+  "recursive-lazy": RecursiveField,
+  "unknown-fallback": FallbackField,
+}
+
+function DynamicField({ field }: { field: Field }) {
+  const Component = componentMap[field.component]
+  return <Component field={field} />
+}
+```
+
+---
+
+## Render Hints
+
+The `renderHint` property helps determine rendering strategy:
+
+```typescript
+interface RenderHint {
+  isCompound: boolean // true for record, variant, tuple, optional, vector
+  isPrimitive: boolean // true for text, number, boolean, null, principal
+  inputType?: InputType // 'text' | 'number' | 'checkbox' | 'select' | 'file'
+  description?: string // Help text from Candid
+}
+```
+
+### Example: Conditional Rendering
+
+```tsx
+function FieldRenderer({ field }: { field: Field }) {
+  if (field.renderHint.isCompound) {
+    return (
+      <Card title={field.displayLabel}>
+        <CompoundFieldContent field={field} />
+      </Card>
+    )
+  }
+
+  return (
+    <FormField label={field.displayLabel}>
+      <PrimitiveInput field={field} />
+    </FormField>
+  )
+}
+```
+
+---
+
+## Input Props (Primitive Fields)
+
+Primitive fields include pre-computed HTML input props:
+
+```typescript
+interface PrimitiveInputProps {
+  type?: "text" | "number" | "checkbox"
+  placeholder?: string
+  min?: string | number
+  max?: string | number
+  step?: string | number
+  pattern?: string
+  inputMode?: "text" | "numeric" | "decimal"
+  autoComplete?: string
+  spellCheck?: boolean
+  minLength?: number
+  maxLength?: number
+}
+```
+
+### Example: Spreading Input Props
+
+```tsx
+function TextInput({ field }: { field: TextField }) {
+  return (
+    <input
+      {...field.inputProps}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+    />
+  )
+}
+```
+
+---
+
+## Compound Field Types
+
+### RecordField
+
+Records have nested fields accessible by label:
+
+```typescript
+interface RecordField {
+  type: "record"
+  fields: Field[] // All nested fields
+  fieldMap: Map<string, Field> // Lookup by label
+  defaultValue: Record<string, unknown>
+}
+```
+
+### VariantField
+
+Variants include helper methods for selection:
+
+```typescript
+interface VariantField {
+  type: "variant"
+  fields: Field[] // All option fields
+  options: string[] // Option names
+  defaultOption: string // First option
+  optionMap: Map<string, Field> // Lookup by option
+
+  // Helper methods
+  getOptionDefault(option: string): Record<string, unknown>
+  getField(option: string): Field
+  getSelectedOption(value: Record<string, unknown>): string
+  getSelectedField(value: Record<string, unknown>): Field
+}
+```
+
+#### Example: Variant Selector
+
+```tsx
+function VariantField({ field, value, onChange }) {
+  const selectedOption = field.getSelectedOption(value)
+  const selectedField = field.getField(selectedOption)
+
+  return (
+    <div>
+      <select
+        value={selectedOption}
+        onChange={(e) => onChange(field.getOptionDefault(e.target.value))}
+      >
+        {field.options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+
+      <DynamicField field={selectedField} />
+    </div>
+  )
+}
+```
+
+### OptionalField
+
+Optional fields can be toggled:
+
+```typescript
+interface OptionalField {
+  type: "optional"
+  innerField: Field // The wrapped field
+  defaultValue: null // Always starts as null
+
+  // Helper methods
+  getInnerDefault(): unknown
+  isEnabled(value: unknown): boolean
+}
+```
+
+#### Example: Optional Toggle
+
+```tsx
+function OptionalField({ field, value, onChange }) {
+  const isEnabled = field.isEnabled(value)
+
+  return (
+    <div>
+      <label>
+        <input
+          type="checkbox"
+          checked={isEnabled}
+          onChange={(e) =>
+            onChange(e.target.checked ? field.getInnerDefault() : null)
+          }
+        />
+        Enable {field.displayLabel}
+      </label>
+
+      {isEnabled && <DynamicField field={field.innerField} />}
+    </div>
+  )
+}
+```
+
+### VectorField
+
+Vectors support dynamic item creation:
+
+```typescript
+interface VectorField {
+  type: "vector"
+  itemField: Field // Template for items
+  defaultValue: [] // Empty array
+
+  // Helper methods
+  getItemDefault(): unknown
+  createItemField(index: number, overrides?: { label?: string }): Field
+}
+```
+
+#### Example: Dynamic List
+
+```tsx
+function VectorField({ field, value, onChange }) {
+  const addItem = () => {
+    onChange([...value, field.getItemDefault()])
+  }
+
+  const removeItem = (index: number) => {
+    onChange(value.filter((_, i) => i !== index))
+  }
+
+  return (
+    <div>
+      {value.map((item, index) => {
+        const itemField = field.createItemField(index)
+        return (
+          <div key={index}>
+            <DynamicField field={itemField} />
+            <button onClick={() => removeItem(index)}>Remove</button>
+          </div>
+        )
+      })}
+      <button onClick={addItem}>Add Item</button>
+    </div>
+  )
+}
+```
+
+### BlobField
+
+Blob fields include validation utilities:
+
+```typescript
+interface BlobField {
+  type: "blob"
+  itemField: Field
+  acceptedFormats: ("hex" | "base64" | "file")[]
+  limits: {
+    maxHexBytes: number // 512
+    maxFileBytes: number // 2MB
+    maxHexDisplayLength: number
+  }
+
+  // Helper methods
+  normalizeHex(input: string): string
+  validateInput(value: string | Uint8Array): { valid: boolean; error?: string }
+}
+```
+
+---
+
+## Display Label Formatting
+
+The `displayLabel` property is automatically formatted from raw Candid labels:
+
+| Raw Label         | Display Label     |
+| ----------------- | ----------------- |
+| `__arg0`          | `Arg 0`           |
+| `_0_`             | `Item 0`          |
+| `created_at_time` | `Created At Time` |
+| `userAddress`     | `User Address`    |
+
+You can also use the exported `formatLabel` function:
+
+```typescript
+import { formatLabel } from "@ic-reactor/candid"
+
+formatLabel("__arg0") // "Arg 0"
+formatLabel("_0_") // "Item 0"
+formatLabel("created_at_time") // "Created At Time"
+```
+
+---
+
+## Type Guards
+
+The package exports type guard utilities:
+
+```typescript
+import {
+  isFieldType,
+  isCompoundField,
+  isPrimitiveField,
+  hasChildFields,
+} from "@ic-reactor/candid"
+
+// Check specific field type
+if (isFieldType(field, "record")) {
+  // field is now typed as RecordField
+  console.log(field.fields)
+}
+
+// Check compound vs primitive
+if (isCompoundField(field)) {
+  // field is RecordField | VariantField | TupleField | OptionalField | VectorField | RecursiveField
+}
+
+if (isPrimitiveField(field)) {
+  // field is PrincipalField | NumberField | TextField | BooleanField | NullField
+}
+
+// Check if field has children
+if (hasChildFields(field)) {
+  // field is RecordField | VariantField | TupleField
+  field.fields.forEach((child) => console.log(child.label))
+}
+```
+
+---
+
+## FieldProps Type Helper
+
+Use `FieldProps<T>` to type your field components:
+
+```tsx
+import type { FieldProps } from "@ic-reactor/candid"
+
+const VariantInput: React.FC<FieldProps<"variant">> = ({ field }) => {
+  // field is properly typed as VariantField
+  return (
+    <select>
+      {field.options.map((opt) => (
+        <option key={opt} value={opt}>
+          {opt}
+        </option>
+      ))}
+    </select>
+  )
+}
+```
+
+---
+
+## Complete Example
+
+```tsx
+import { FieldVisitor, Field, isFieldType } from "@ic-reactor/candid"
+import { useForm } from "@tanstack/react-form"
+
+function DynamicForm({ service, methodName }) {
+  const visitor = new FieldVisitor()
+  const serviceMeta = service.accept(visitor, null)
+  const methodMeta = serviceMeta[methodName]
+
+  const form = useForm({
+    defaultValues: methodMeta.defaultValues,
+    validators: { onChange: methodMeta.schema },
+    onSubmit: async ({ value }) => {
+      // Call the canister method
+    },
+  })
+
+  const renderField = (field: Field) => {
+    if (isFieldType(field, "record")) {
+      return (
+        <fieldset>
+          <legend>{field.displayLabel}</legend>
+          {field.fields.map((f) => renderField(f))}
+        </fieldset>
+      )
+    }
+
+    if (isFieldType(field, "text")) {
+      return (
+        <form.Field name={field.name}>
+          {(fieldApi) => (
+            <label>
+              {field.displayLabel}
+              <input {...field.inputProps} {...fieldApi.getInputProps()} />
+            </label>
+          )}
+        </form.Field>
+      )
+    }
+
+    // ... handle other field types
+  }
+
+  return (
+    <form onSubmit={form.handleSubmit}>
+      {methodMeta.fields.map(renderField)}
+      <button type="submit">Submit</button>
+    </form>
+  )
+}
+```
+
+---
+
+## Best Practices
+
+<Aside type="tip" title="Use component hints">
+  Build a component map based on `field.component` for cleaner code rather than
+  checking `field.type` manually.
+</Aside>
+
+<Aside type="tip" title="Leverage inputProps">
+  Spread `field.inputProps` onto HTML inputs to get proper placeholders, min/max
+  values, and input modes automatically.
+</Aside>
+
+<Aside type="tip" title="Use displayLabel for UI">
+  Always use `field.displayLabel` for user-facing labels rather than
+  `field.label` which contains raw Candid identifiers.
+</Aside>
+
+<Aside type="caution" title="Handle recursive types">
+  Recursive types use lazy extraction via `field.extract()`. Be careful to avoid
+  infinite loops when rendering deeply nested recursive structures.
+</Aside>
+
+---
+
+## See Also
+
+- [CandidReactor](/ic-reactor/v3/packages/candid/candidreactor) — High-level dynamic Reactor
+- [CandidAdapter](/ic-reactor/v3/packages/candid/candidadapter) — Low-level Candid utilities
+- [@ic-reactor/candid Overview](/ic-reactor/v3/packages/candid/) — Package overview

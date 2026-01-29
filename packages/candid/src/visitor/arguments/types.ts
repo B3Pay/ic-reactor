@@ -21,20 +21,119 @@ export type ArgumentFieldType =
   | "unknown"
 
 // ════════════════════════════════════════════════════════════════════════════
-// UI Hints for Form Rendering
+// Component Type Hints
 // ════════════════════════════════════════════════════════════════════════════
 
-export interface FieldUIHints {
-  /** Placeholder text for the input */
-  placeholder?: string
-  /** Description or help text for the field */
+/**
+ * Suggested component type for rendering the field.
+ * This eliminates the need for switch statements in the frontend.
+ *
+ * @example
+ * ```tsx
+ * const componentMap = {
+ *   'text-input': TextField,
+ *   'number-input': NumberField,
+ *   'boolean-checkbox': BooleanField,
+ *   // ...
+ * }
+ * const Component = componentMap[field.component]
+ * return <Component field={field} />
+ * ```
+ */
+export type FieldComponentType =
+  | "record-container"
+  | "tuple-container"
+  | "variant-select"
+  | "optional-toggle"
+  | "vector-list"
+  | "blob-upload"
+  | "principal-input"
+  | "text-input"
+  | "number-input"
+  | "boolean-checkbox"
+  | "null-hidden"
+  | "recursive-lazy"
+  | "unknown-fallback"
+
+// ════════════════════════════════════════════════════════════════════════════
+// Render Hints for UI Rendering Strategy
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Input type hints for HTML input elements.
+ * Used by primitive fields to suggest the appropriate input type.
+ */
+export type InputType =
+  | "text"
+  | "number"
+  | "checkbox"
+  | "select"
+  | "file"
+  | "textarea"
+
+/**
+ * Rendering hints for the UI.
+ * Eliminates the need for frontend to maintain COMPLEX_TYPES arrays.
+ *
+ * @example
+ * ```tsx
+ * // Frontend no longer needs:
+ * // const COMPLEX_TYPES = ["record", "tuple", "variant", "vector", "optional"]
+ *
+ * // Instead use:
+ * if (field.renderHint.isCompound) {
+ *   return <CompoundFieldRenderer field={field} />
+ * }
+ * return <PrimitiveInput field={field} />
+ * ```
+ */
+export interface RenderHint {
+  /** Whether this field has its own container/card styling (compound types) */
+  isCompound: boolean
+  /** Whether this is a leaf input (primitive types) */
+  isPrimitive: boolean
+  /** Suggested input type for HTML input elements */
+  inputType?: InputType
+  /** Description or help text for the field (derived from Candid) */
   description?: string
-  /** Whether the field is required */
-  required?: boolean
-  /** Whether the field should be disabled */
-  disabled?: boolean
-  /** Additional CSS class names */
-  className?: string
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Primitive Input Props
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Pre-computed HTML input props for primitive fields.
+ * Can be spread directly onto an input element.
+ *
+ * @example
+ * ```tsx
+ * <input {...field.inputProps} value={value} onChange={handleChange} />
+ * ```
+ */
+export interface PrimitiveInputProps {
+  /** HTML input type */
+  type?: "text" | "number" | "checkbox"
+  /** Placeholder text */
+  placeholder?: string
+  /** Minimum value for number inputs */
+  min?: string | number
+  /** Maximum value for number inputs */
+  max?: string | number
+  /** Step value for number inputs */
+  step?: string | number
+  /** Pattern for text inputs */
+  pattern?: string
+  /** Input mode for virtual keyboards */
+  inputMode?: "text" | "numeric" | "decimal"
+  /** Autocomplete hint */
+  autoComplete?: string
+  /** Whether to check spelling */
+  spellCheck?: boolean
+  /** Minimum length for text inputs */
+  minLength?: number
+  /** Maximum length for text inputs */
+  maxLength?: number
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -44,8 +143,18 @@ export interface FieldUIHints {
 export interface FieldBase<TValue = unknown> {
   /** The field type */
   type: ArgumentFieldType
-  /** Human-readable label from Candid */
+  /** Raw label from Candid: "__arg0", "_0_" */
   label: string
+  /**
+   * Pre-formatted display label for UI rendering.
+   * Transforms raw labels into human-readable format.
+   *
+   * @example
+   * "__arg0" => "Arg 0"
+   * "_0_" => "Item 0"
+   * "created_at_time" => "Created At Time"
+   */
+  displayLabel: string
   /**
    * Form field name path for binding.
    * Uses bracket notation for array indices: `[0]`, `args[0].owner`, `tags[1]`
@@ -59,14 +168,22 @@ export interface FieldBase<TValue = unknown> {
    * ```
    */
   name: string
+  /**
+   * Suggested component type for rendering this field.
+   * Eliminates the need for switch statements in the frontend.
+   */
+  component: FieldComponentType
+  /**
+   * Rendering hints for UI strategy.
+   * Use this to determine if the field needs a container or is a simple input.
+   */
+  renderHint: RenderHint
   /** Zod schema for field validation */
   schema: z.ZodTypeAny
   /** Default value for the field */
   defaultValue: TValue
   /** Original Candid type name for reference */
   candidType?: string
-  /** UI rendering hints */
-  ui?: FieldUIHints
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -104,6 +221,43 @@ export interface VariantField extends FieldBase<Record<string, unknown>> {
    * ```
    */
   getOptionDefault: (option: string) => Record<string, unknown>
+  /**
+   * Get the field for a specific option.
+   *
+   * @example
+   * ```tsx
+   * const transferField = field.getField("Transfer")
+   * ```
+   */
+  getField: (option: string) => Field
+  /**
+   * Get the currently selected option from a value.
+   * Returns the first valid key found, or the default option.
+   *
+   * @example
+   * ```tsx
+   * const selectedOption = field.getSelectedOption(currentValue)
+   * // { Transfer: {...} } => "Transfer"
+   * ```
+   */
+  getSelectedOption: (value: Record<string, unknown>) => string
+  /**
+   * Get the selected field from a value.
+   * Combines getSelectedOption and getField for convenience.
+   *
+   * @example
+   * ```tsx
+   * // Current (verbose):
+   * const validKeys = Object.keys(currentValue).filter(k => field.options.includes(k))
+   * const selected = validKeys[0] ?? field.options[0]
+   * const selectedIndex = Math.max(0, field.options.indexOf(selected))
+   * const selectedField = field.fields[selectedIndex]
+   *
+   * // Proposed (simple):
+   * const selectedField = field.getSelectedField(currentValue)
+   * ```
+   */
+  getSelectedField: (value: Record<string, unknown>) => Field
 }
 
 export interface TupleField extends FieldBase<unknown[]> {
@@ -132,6 +286,20 @@ export interface OptionalField extends FieldBase<null> {
    * ```
    */
   getInnerDefault: () => unknown
+  /**
+   * Check if a value represents an enabled optional.
+   * Returns true if the value is not null or undefined.
+   *
+   * @example
+   * ```tsx
+   * // Current:
+   * const enabled = fieldApi.state.value !== null && typeof fieldApi.state.value !== "undefined"
+   *
+   * // Proposed:
+   * const enabled = field.isEnabled(fieldApi.state.value)
+   * ```
+   */
+  isEnabled: (value: unknown) => boolean
 }
 
 export interface VectorField extends FieldBase<unknown[]> {
@@ -150,6 +318,47 @@ export interface VectorField extends FieldBase<unknown[]> {
    * ```
    */
   getItemDefault: () => unknown
+  /**
+   * Create a properly configured item field for a specific index.
+   * Handles name path and label generation.
+   *
+   * @example
+   * ```tsx
+   * // Current:
+   * renderField({
+   *   ...field.itemField,
+   *   label: itemLabel,
+   *   name: itemFieldName
+   * })
+   *
+   * // Proposed:
+   * const itemField = field.createItemField(index, { label: itemLabel })
+   * renderField(itemField)
+   * ```
+   */
+  createItemField: (index: number, overrides?: { label?: string }) => Field
+}
+
+/**
+ * Blob field size limits.
+ */
+export interface BlobLimits {
+  /** Maximum bytes when entering as hex (e.g., 512 bytes) */
+  maxHexBytes: number
+  /** Maximum file size in bytes (e.g., 2MB ICP limit) */
+  maxFileBytes: number
+  /** Maximum hex display length before truncation */
+  maxHexDisplayLength: number
+}
+
+/**
+ * Validation result for blob input.
+ */
+export interface BlobValidationResult {
+  /** Whether the input is valid */
+  valid: boolean
+  /** Error message if invalid */
+  error?: string
 }
 
 export interface BlobField extends FieldBase<string> {
@@ -158,6 +367,30 @@ export interface BlobField extends FieldBase<string> {
   itemField: Field
   /** Accepted input formats */
   acceptedFormats: ("hex" | "base64" | "file")[]
+  /** Size limits for blob input */
+  limits: BlobLimits
+  /**
+   * Normalize hex input (remove 0x prefix, lowercase, etc.)
+   *
+   * @example
+   * ```tsx
+   * const normalized = field.normalizeHex("0xDEADBEEF")
+   * // => "deadbeef"
+   * ```
+   */
+  normalizeHex: (input: string) => string
+  /**
+   * Validate blob input value.
+   *
+   * @example
+   * ```tsx
+   * const result = field.validateInput(value)
+   * if (!result.valid) {
+   *   setError(result.error)
+   * }
+   * ```
+   */
+  validateInput: (value: string | Uint8Array) => BlobValidationResult
 }
 
 export interface RecursiveField extends FieldBase<undefined> {
@@ -181,6 +414,14 @@ export interface PrincipalField extends FieldBase<string> {
   type: "principal"
   maxLength: number
   minLength: number
+  /**
+   * Pre-computed HTML input props for direct spreading.
+   * @example
+   * ```tsx
+   * <input {...field.inputProps} value={value} onChange={handleChange} />
+   * ```
+   */
+  inputProps: PrimitiveInputProps
 }
 
 export interface NumberField extends FieldBase<string> {
@@ -199,6 +440,14 @@ export interface NumberField extends FieldBase<string> {
   min?: string
   /** Maximum value constraint (for bounded types) */
   max?: string
+  /**
+   * Pre-computed HTML input props for direct spreading.
+   * @example
+   * ```tsx
+   * <input {...field.inputProps} value={value} onChange={handleChange} />
+   * ```
+   */
+  inputProps: PrimitiveInputProps
 }
 
 export interface TextField extends FieldBase<string> {
@@ -209,10 +458,26 @@ export interface TextField extends FieldBase<string> {
   maxLength?: number
   /** Whether to render as multiline textarea */
   multiline?: boolean
+  /**
+   * Pre-computed HTML input props for direct spreading.
+   * @example
+   * ```tsx
+   * <input {...field.inputProps} value={value} onChange={handleChange} />
+   * ```
+   */
+  inputProps: PrimitiveInputProps
 }
 
 export interface BooleanField extends FieldBase<boolean> {
   type: "boolean"
+  /**
+   * Pre-computed HTML input props for direct spreading.
+   * @example
+   * ```tsx
+   * <input {...field.inputProps} checked={value} onChange={handleChange} />
+   * ```
+   */
+  inputProps: PrimitiveInputProps
 }
 
 export interface NullField extends FieldBase<null> {
@@ -327,6 +592,28 @@ export type FieldByType<T extends ArgumentFieldType> = Extract<
   { type: T }
 >
 
+/**
+ * Props type helper for field components.
+ * Use this to type your field components for better DX.
+ *
+ * @example
+ * ```tsx
+ * const VariantField: React.FC<FieldProps<'variant'>> = ({ field, renderField }) => {
+ *   // field is properly typed as VariantField
+ *   return (
+ *     <div>
+ *       <select>{field.options.map(opt => ...)}</select>
+ *       {renderField?.(field.getSelectedField(currentValue))}
+ *     </div>
+ *   )
+ * }
+ * ```
+ */
+export type FieldProps<T extends ArgumentFieldType> = {
+  field: FieldByType<T>
+  renderField?: (child: Field) => React.ReactNode
+}
+
 /** Compound field types that contain other fields */
 export type CompoundField =
   | RecordField
@@ -345,50 +632,29 @@ export type PrimitiveField =
   | NullField
 
 /**
- * Type guard for checking specific field types.
+ * A complete mapping of component types to React components.
+ * Use this type when defining your component map.
  *
  * @example
  * ```tsx
- * function FieldInput({ field }: { field: Field }) {
- *   if (isFieldType(field, 'record')) {
- *     // field is now typed as RecordField
- *     return <RecordInput field={field} />
- *   }
- *   if (isFieldType(field, 'text')) {
- *     // field is now typed as TextField
- *     return <TextInput field={field} />
- *   }
+ * const componentMap: ComponentMap<typeof MyTextInput, typeof MyNumberInput, ...> = {
+ *   'text-input': MyTextInput,
+ *   'number-input': MyNumberInput,
  *   // ...
  * }
  * ```
  */
-export function isFieldType<T extends ArgumentFieldType>(
-  field: Field,
-  type: T
-): field is FieldByType<T> {
-  return field.type === type
+export type ComponentMap<
+  TComponents extends Record<FieldComponentType, unknown>,
+> = {
+  [K in FieldComponentType]: TComponents[K]
 }
 
-/** Check if a field is a compound type (contains other fields) */
-export function isCompoundField(field: Field): field is CompoundField {
-  return [
-    "record",
-    "variant",
-    "tuple",
-    "optional",
-    "vector",
-    "recursive",
-  ].includes(field.type)
-}
-
-/** Check if a field is a primitive type */
-export function isPrimitiveField(field: Field): field is PrimitiveField {
-  return ["principal", "number", "text", "boolean", "null"].includes(field.type)
-}
-
-/** Check if a field has children (for iteration) */
-export function hasChildFields(
-  field: Field
-): field is RecordField | VariantField | TupleField {
-  return "fields" in field && Array.isArray((field as RecordField).fields)
-}
+/**
+ * Get the component type for a given field component type.
+ * Useful for typing dynamic component lookups.
+ */
+export type GetComponentType<
+  TMap extends Partial<Record<FieldComponentType, unknown>>,
+  TKey extends FieldComponentType,
+> = TKey extends keyof TMap ? TMap[TKey] : never
