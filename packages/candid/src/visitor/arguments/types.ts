@@ -71,6 +71,33 @@ export type InputType =
   | "file"
   | "textarea"
 
+// ════════════════════════════════════════════════════════════════════════════
+// Format Detection Types (mirrors ResultFieldVisitor)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Detected format for text fields based on label heuristics.
+ * Used to provide format-specific validation and input props.
+ */
+export type TextFormat =
+  | "plain"
+  | "timestamp"
+  | "uuid"
+  | "url"
+  | "email"
+  | "phone"
+  | "btc"
+  | "eth"
+  | "account-id"
+  | "principal"
+  | "cycle"
+
+/**
+ * Detected format for number fields based on label heuristics.
+ * Used to provide format-specific validation and display.
+ */
+export type NumberFormat = "timestamp" | "cycle" | "value" | "token" | "normal"
+
 /**
  * Rendering hints for the UI.
  * Eliminates the need for frontend to maintain COMPLEX_TYPES arrays.
@@ -112,8 +139,8 @@ export interface RenderHint {
  * ```
  */
 export interface PrimitiveInputProps {
-  /** HTML input type */
-  type?: "text" | "number" | "checkbox"
+  /** HTML input type - includes format-specific types */
+  type?: "text" | "number" | "checkbox" | "email" | "url" | "tel"
   /** Placeholder text */
   placeholder?: string
   /** Minimum value for number inputs */
@@ -122,10 +149,10 @@ export interface PrimitiveInputProps {
   max?: string | number
   /** Step value for number inputs */
   step?: string | number
-  /** Pattern for text inputs */
+  /** Pattern for text inputs (e.g., phone numbers) */
   pattern?: string
   /** Input mode for virtual keyboards */
-  inputMode?: "text" | "numeric" | "decimal"
+  inputMode?: "text" | "numeric" | "decimal" | "email" | "tel" | "url"
   /** Autocomplete hint */
   autoComplete?: string
   /** Whether to check spelling */
@@ -415,6 +442,11 @@ export interface PrincipalField extends FieldBase<string> {
   maxLength: number
   minLength: number
   /**
+   * Detected format based on label heuristics.
+   * Useful for specialized rendering (e.g., canister links).
+   */
+  format: TextFormat
+  /**
    * Pre-computed HTML input props for direct spreading.
    * @example
    * ```tsx
@@ -441,6 +473,11 @@ export interface NumberField extends FieldBase<string> {
   /** Maximum value constraint (for bounded types) */
   max?: string
   /**
+   * Detected format based on label heuristics.
+   * Useful for specialized display (e.g., timestamp formatting).
+   */
+  format: NumberFormat
+  /**
    * Pre-computed HTML input props for direct spreading.
    * @example
    * ```tsx
@@ -459,7 +496,19 @@ export interface TextField extends FieldBase<string> {
   /** Whether to render as multiline textarea */
   multiline?: boolean
   /**
+   * Detected format based on label heuristics.
+   * Provides format-specific validation and input props.
+   *
+   * @example
+   * - "email" → type="email", inputMode="email"
+   * - "url" → type="url", inputMode="url"
+   * - "phone" → type="tel", inputMode="tel"
+   */
+  format: TextFormat
+  /**
    * Pre-computed HTML input props for direct spreading.
+   * Includes format-specific attributes (type="email", pattern, etc.).
+   *
    * @example
    * ```tsx
    * <input {...field.inputProps} value={value} onChange={handleChange} />

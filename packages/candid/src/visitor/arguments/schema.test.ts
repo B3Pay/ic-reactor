@@ -63,6 +63,108 @@ describe("FieldVisitor Schema Generation", () => {
   })
 
   // ════════════════════════════════════════════════════════════════════════
+  // Format Detection & Validation
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("Format Detection & Validation", () => {
+    describe("Text Formats", () => {
+      it("should detect email format", () => {
+        const field = visitor.visitText(IDL.Text, "user_email")
+
+        expect(field.format).toBe("email")
+        expect(field.inputProps).toMatchObject({
+          type: "email",
+          inputMode: "email",
+        })
+
+        // Valid email
+        expect(field.schema.parse("test@example.com")).toBe("test@example.com")
+        // Invalid email
+        expect(() => field.schema.parse("invalid-email")).toThrow()
+      })
+
+      it("should detect url format", () => {
+        const field = visitor.visitText(IDL.Text, "website_link")
+
+        expect(field.format).toBe("url")
+        expect(field.inputProps).toMatchObject({
+          type: "url",
+          inputMode: "url",
+        })
+
+        // Valid URL
+        expect(field.schema.parse("https://example.com")).toBe(
+          "https://example.com"
+        )
+        // Invalid URL
+        expect(() => field.schema.parse("not-a-url")).toThrow()
+      })
+
+      it("should detect uuid format", () => {
+        const field = visitor.visitText(IDL.Text, "transaction_uuid")
+
+        expect(field.format).toBe("uuid")
+
+        const validUuid = "123e4567-e89b-12d3-a456-426614174000"
+        expect(field.schema.parse(validUuid)).toBe(validUuid)
+
+        expect(() => field.schema.parse("invalid-uuid")).toThrow()
+      })
+
+      it("should detect ethereum address format", () => {
+        const field = visitor.visitText(IDL.Text, "eth_address")
+
+        expect(field.format).toBe("eth")
+        expect(field.inputProps.pattern).toContain("0x")
+      })
+
+      it("should fallback to plain text for unknown formats", () => {
+        const field = visitor.visitText(IDL.Text, "some_random_field")
+
+        expect(field.format).toBe("plain")
+        expect(field.inputProps).toMatchObject({
+          type: "text",
+        })
+      })
+    })
+
+    describe("Number Formats", () => {
+      it("should detect timestamp format", () => {
+        const field = visitor.visitInt(IDL.Int, "created_at")
+
+        expect(field.format).toBe("timestamp")
+      })
+
+      it("should detect cycle format", () => {
+        const field = visitor.visitNat(IDL.Nat, "cycles_balance")
+
+        expect(field.format).toBe("cycle")
+      })
+
+      it("should fallback to normal format", () => {
+        const field = visitor.visitNat(IDL.Nat, "quantity")
+
+        expect(field.format).toBe("plain")
+      })
+    })
+
+    describe("Principal Format", () => {
+      it("should detect principal format and set properties", () => {
+        const field = visitor.visitPrincipal(
+          IDL.Principal,
+          "controller_principal"
+        )
+
+        expect(field.format).toBe("principal")
+        expect(field.inputProps).toMatchObject({
+          minLength: 7,
+          maxLength: 64,
+        })
+      })
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════
   // Compound Types
   // ════════════════════════════════════════════════════════════════════════
 

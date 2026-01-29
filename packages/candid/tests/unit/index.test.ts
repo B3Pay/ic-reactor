@@ -107,7 +107,8 @@ describe("Package Exports", () => {
         "isCompoundField",
         "isPrimitiveField",
         "hasChildFields",
-        // Label formatting utility
+        "checkTextFormat",
+        "checkNumberFormat",
         "formatLabel",
       ]
 

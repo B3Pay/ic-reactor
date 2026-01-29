@@ -1,4 +1,5 @@
 import { isQuery } from "../helpers"
+import { checkTextFormat, checkNumberFormat } from "../constants"
 import type {
   Field,
   RecordField,
@@ -20,6 +21,8 @@ import type {
   PrimitiveInputProps,
   BlobLimits,
   BlobValidationResult,
+  TextFormat,
+  NumberFormat,
 } from "./types"
 
 import { IDL } from "@icp-sdk/core/candid"
@@ -29,6 +32,8 @@ import * as z from "zod"
 import { formatLabel } from "./helpers"
 
 export * from "./types"
+export * from "./helpers"
+export { checkTextFormat, checkNumberFormat } from "../constants"
 
 // ════════════════════════════════════════════════════════════════════════════
 // Render Hint Helpers
@@ -628,6 +633,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       defaultValue: "",
       maxLength: 64,
       minLength: 7,
+      format: checkTextFormat(label) as TextFormat,
       schema,
       inputProps,
       candidType: "principal",
@@ -635,11 +641,13 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitText(_t: IDL.TextClass, label: string): TextField {
-    const inputProps: PrimitiveInputProps = {
-      type: "text",
-      placeholder: "Enter text...",
-      spellCheck: true,
-    }
+    const format = checkTextFormat(label) as TextFormat
+
+    // Generate format-specific inputProps
+    const inputProps = this.getTextInputProps(format)
+
+    // Generate format-specific schema
+    const schema = this.getTextSchema(format)
 
     return {
       type: "text",
@@ -649,9 +657,106 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       component: "text-input",
       renderHint: TEXT_RENDER_HINT,
       defaultValue: "",
-      schema: z.string().min(1, "Required"),
+      format,
+      schema,
       inputProps,
       candidType: "text",
+    }
+  }
+
+  /**
+   * Generate format-specific input props for text fields.
+   */
+  private getTextInputProps(format: TextFormat): PrimitiveInputProps {
+    switch (format) {
+      case "email":
+        return {
+          type: "email",
+          placeholder: "email@example.com",
+          inputMode: "email",
+          autoComplete: "email",
+          spellCheck: false,
+        }
+      case "url":
+        return {
+          type: "url",
+          placeholder: "https://example.com",
+          inputMode: "url",
+          autoComplete: "url",
+          spellCheck: false,
+        }
+      case "phone":
+        return {
+          type: "tel",
+          placeholder: "+1 (555) 123-4567",
+          inputMode: "tel",
+          autoComplete: "tel",
+          spellCheck: false,
+        }
+      case "uuid":
+        return {
+          type: "text",
+          placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+          pattern:
+            "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+          spellCheck: false,
+          autoComplete: "off",
+        }
+      case "btc":
+        return {
+          type: "text",
+          placeholder: "bc1... or 1... or 3...",
+          spellCheck: false,
+          autoComplete: "off",
+        }
+      case "eth":
+        return {
+          type: "text",
+          placeholder: "0x...",
+          pattern: "0x[0-9a-fA-F]{40}",
+          spellCheck: false,
+          autoComplete: "off",
+        }
+      case "account-id":
+        return {
+          type: "text",
+          placeholder: "64-character hex string",
+          pattern: "[0-9a-fA-F]{64}",
+          maxLength: 64,
+          spellCheck: false,
+          autoComplete: "off",
+        }
+      case "principal":
+        return {
+          type: "text",
+          placeholder: "aaaaa-aa or full principal ID",
+          minLength: 7,
+          maxLength: 64,
+          spellCheck: false,
+          autoComplete: "off",
+        }
+      default:
+        return {
+          type: "text",
+          placeholder: "Enter text...",
+          spellCheck: true,
+        }
+    }
+  }
+
+  /**
+   * Generate format-specific zod schema for text fields.
+   */
+  private getTextSchema(format: TextFormat): z.ZodTypeAny {
+    switch (format) {
+      case "email":
+        return z.string().email("Invalid email address")
+      case "url":
+        return z.string().url("Invalid URL")
+      case "uuid":
+        return z.string().uuid("Invalid UUID")
+      default:
+        return z.string().min(1, "Required")
     }
   }
 
@@ -706,6 +811,8 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       max?: string
     }
   ): NumberField | TextField {
+    const format = checkNumberFormat(label) as NumberFormat
+
     let schema = z.string().min(1, "Required")
 
     if (options.isFloat) {
@@ -722,6 +829,11 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     const type = isBigInt ? "text" : "number"
 
     if (type === "text") {
+      // Propagate timestamp/cycle format if detected, otherwise default to plain
+      let textFormat: TextFormat = "plain"
+      if (format === "timestamp") textFormat = "timestamp"
+      if (format === "cycle") textFormat = "cycle"
+
       const inputProps: PrimitiveInputProps = {
         type: "text",
         placeholder: options.unsigned ? "e.g. 100000" : "e.g. -100000",
@@ -739,6 +851,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
         component: "text-input",
         renderHint: TEXT_RENDER_HINT,
         defaultValue: "",
+        format: textFormat,
         candidType,
         schema,
         inputProps,
@@ -763,6 +876,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       renderHint: NUMBER_RENDER_HINT,
       defaultValue: "",
       candidType,
+      format,
       schema: schema,
       inputProps,
       ...options,

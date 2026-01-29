@@ -106,17 +106,18 @@ methodMeta.fields.map((field, index) => (
 
 Each field has the following base properties:
 
-| Property       | Type                 | Description                                   |
-| -------------- | -------------------- | --------------------------------------------- |
-| `type`         | `ArgumentFieldType`  | The field type (record, variant, text, etc.)  |
-| `label`        | `string`             | Raw label from Candid (`__arg0`, `_0_`, etc.) |
-| `displayLabel` | `string`             | Human-readable formatted label                |
-| `name`         | `string`             | TanStack Form compatible path                 |
-| `component`    | `FieldComponentType` | Suggested component type for rendering        |
-| `renderHint`   | `RenderHint`         | UI rendering strategy hints                   |
-| `schema`       | `z.ZodTypeAny`       | Zod schema for validation                     |
-| `defaultValue` | `TValue`             | Initial value for the field                   |
-| `candidType`   | `string`             | Original Candid type name                     |
+| Property       | Type                           | Description                                   |
+| -------------- | ------------------------------ | --------------------------------------------- |
+| `type`         | `ArgumentFieldType`            | The field type (record, variant, text, etc.)  |
+| `label`        | `string`                       | Raw label from Candid (`__arg0`, `_0_`, etc.) |
+| `displayLabel` | `string`                       | Human-readable formatted label                |
+| `name`         | `string`                       | TanStack Form compatible path                 |
+| `component`    | `FieldComponentType`           | Suggested component type for rendering        |
+| `renderHint`   | `RenderHint`                   | UI rendering strategy hints                   |
+| `schema`       | `z.ZodTypeAny`                 | Zod schema for validation                     |
+| `defaultValue` | `TValue`                       | Initial value for the field                   |
+| `candidType`   | `string`                       | Original Candid type name                     |
+| `format`       | `TextFormat` \| `NumberFormat` | Detected format (email, url, etc.)            |
 
 ---
 
@@ -201,23 +202,73 @@ function FieldRenderer({ field }: { field: Field }) {
 
 ---
 
+## Format Detection
+
+The visitor automatically detects specialized formats based on argument labels:
+
+```typescript
+type TextFormat =
+  | "plain"
+  | "email"
+  | "url"
+  | "uuid"
+  | "phone"
+  | "principal"
+  | "btc"
+  | "eth"
+  | "account-id"
+
+type NumberFormat = "normal" | "timestamp" | "cycle" | "value" | "token"
+```
+
+This prop property `field.format` allows for rendering specialized UI components:
+
+```tsx
+function FormField({ field }) {
+  if (field.format === "email") {
+    return <EmailInput field={field} />
+  }
+  if (field.format === "timestamp") {
+    return <DatePicker field={field} />
+  }
+  // ...
+  return <TextInput field={field} />
+}
+```
+
+This detection also automatically populates `inputProps` with appropriate `type` and `pattern` attributes.
+
+---
+
 ## Input Props (Primitive Fields)
 
 Primitive fields include pre-computed HTML input props:
 
 ```typescript
 interface PrimitiveInputProps {
-  type?: "text" | "number" | "checkbox"
+  type?: "text" | "number" | "checkbox" | "email" | "url" | "tel"
   placeholder?: string
   min?: string | number
   max?: string | number
   step?: string | number
   pattern?: string
-  inputMode?: "text" | "numeric" | "decimal"
+  inputMode?: "text" | "numeric" | "decimal" | "email" | "tel" | "url"
   autoComplete?: string
   spellCheck?: boolean
   minLength?: number
   maxLength?: number
+}
+```
+
+For example, a field named `email` will result in:
+
+```typescript
+{
+  type: "email",
+  inputMode: "email",
+  autoComplete: "email",
+  placeholder: "email@example.com",
+  spellCheck: false
 }
 ```
 
