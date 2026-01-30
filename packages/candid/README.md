@@ -9,6 +9,7 @@ Lightweight adapter for fetching and parsing Candid definitions from Internet Co
 - **Local Parsing**: Use the optional WASM-based parser for fast, offline Candid compilation
 - **Remote Fallback**: Falls back to the didjs canister for Candid-to-JavaScript compilation
 - **Dynamic Reactor**: Includes `CandidReactor` for dynamic IDL fetching and interaction
+- **Dynamic Forms**: Generate rich form metadata with validation schemas using `FieldVisitor`
 - **Lightweight**: Uses raw `agent.query` calls - no Actor overhead
 - **ClientManager Compatible**: Seamlessly integrates with `@ic-reactor/core`
 
@@ -170,6 +171,33 @@ const cachedBalance = await reactor.fetchQueryDynamic({
   args: [{ owner }],
 })
 ```
+
+### FieldVisitor (Dynamic Forms)
+
+Generate type-safe, enhanced metadata for dynamic forms from Candid definitions.
+
+```typescript
+import { FieldVisitor } from "@ic-reactor/candid"
+
+const visitor = new FieldVisitor()
+const serviceMeta = service.accept(visitor, null)
+
+// Access method metadata
+const methodMeta = serviceMeta["icrc1_transfer"]
+
+// Detected field formats detected automatically
+const amountField = methodMeta.fields[1] // e.g. "amount"
+console.log(amountField.format) // "token"
+console.log(amountField.inputProps)
+// { type: "text", inputMode: "numeric", pattern: "\\d+", ... }
+```
+
+**Features:**
+
+- **Auto-Format Detection**: Identifies `email`, `url`, `uuid`, `timestamp`, `cycle`, `principal`, etc. based on labels.
+- **Enhanced Schemas**: Generates Zod schemas with specific validation (e.g., `z.string().email()`).
+- **Input Props**: Provides ready-to-use HTML attributes (`type="email"`, `pattern`, `min`, `max`) for primitive fields.
+- **Component Hints**: Suggests UI components (`variant-select`, `vector-list`, `blob-upload`).
 
 ### Fetch Raw Candid Source
 
