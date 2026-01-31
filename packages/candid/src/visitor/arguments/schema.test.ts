@@ -208,10 +208,16 @@ describe("FieldVisitor Schema Generation", () => {
       )
       const schema = field.schema as z.ZodUnion<any>
 
-      expect(schema.parse({ Ok: "Success" })).toEqual({ Ok: "Success" })
-      expect(schema.parse({ Err: "Error" })).toEqual({ Err: "Error" })
+      expect(schema.parse({ _type: "Ok", Ok: "Success" })).toEqual({
+        _type: "Ok",
+        Ok: "Success",
+      })
+      expect(schema.parse({ _type: "Err", Err: "Error" })).toEqual({
+        _type: "Err",
+        Err: "Error",
+      })
 
-      expect(() => schema.parse({ Other: "value" })).toThrow()
+      expect(() => schema.parse({ _type: "Other", Other: "value" })).toThrow()
     })
   })
 
@@ -281,12 +287,14 @@ describe("FieldVisitor Schema Generation", () => {
       const schema = field.schema
 
       const validList = {
+        _type: "Cons",
         Cons: {
           head: "1",
           tail: {
+            _type: "Cons",
             Cons: {
               head: "2",
-              tail: { Nil: null },
+              tail: { _type: "Nil" },
             },
           },
         },
