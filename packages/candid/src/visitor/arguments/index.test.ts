@@ -1400,4 +1400,40 @@ describe("ArgumentFieldVisitor", () => {
       }
     })
   })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Format Detection
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("Format Detection", () => {
+    it("should NOT detect eth format for method_name", () => {
+      const field = visitor.visitText(IDL.Text, "method_name")
+      expect(field.format).toBe("plain")
+    })
+
+    it("should detect eth format for my_eth_address", () => {
+      const field = visitor.visitText(IDL.Text, "my_eth_address")
+      expect(field.format).toBe("eth")
+    })
+
+    it("should detect eth format for myEthAddress", () => {
+      const field = visitor.visitText(IDL.Text, "myEthAddress")
+      expect(field.format).toBe("eth")
+    })
+
+    it("should detect eth format for ethereum", () => {
+      const field = visitor.visitText(IDL.Text, "ethereum")
+      expect(field.format).toBe("eth")
+    })
+
+    it("should detect btc format for bitcoin_address", () => {
+      const field = visitor.visitText(IDL.Text, "bitcoin_address")
+      expect(field.format).toBe("btc")
+    })
+
+    it("should NOT detect btc format for debt", () => {
+      const field = visitor.visitText(IDL.Text, "debt")
+      expect(field.format).toBe("plain")
+    })
+  })
 })

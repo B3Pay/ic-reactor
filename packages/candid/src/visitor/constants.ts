@@ -30,27 +30,36 @@ const CYCLE_KEYS_REGEX = new RegExp(
   "i"
 )
 
-const EMAIL_KEYS_REGEX = /email|mail/i
-const PHONE_KEYS_REGEX = /phone|tel|mobile/i
-const URL_KEYS_REGEX = /url|link|website/i
-const UUID_KEYS_REGEX = /uuid|guid/i
-const BITCOIN_KEYS_REGEX = /bitcoin|btc/i
-const ETHEREUM_KEYS_REGEX = /ethereum|eth/i
 const ACCOUNT_ID_KEYS_REGEX =
   /account_id|account_identifier|ledger_account|block_hash|transaction_hash|tx_hash/i
-const PRINCIPAL_KEYS_REGEX = /canister|principal/i
+
+const tokenize = (label: string): Set<string> => {
+  const parts = label
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[\s-]+/)
+  return new Set(parts)
+}
 
 export const checkTextFormat = (label?: string): TextFormat => {
   if (!label) return "plain"
+
   if (TAMESTAMP_KEYS_REGEX.test(label)) return "timestamp"
-  if (EMAIL_KEYS_REGEX.test(label)) return "email"
-  if (PHONE_KEYS_REGEX.test(label)) return "phone"
-  if (URL_KEYS_REGEX.test(label)) return "url"
-  if (UUID_KEYS_REGEX.test(label)) return "uuid"
-  if (BITCOIN_KEYS_REGEX.test(label)) return "btc"
-  if (ETHEREUM_KEYS_REGEX.test(label)) return "eth"
   if (ACCOUNT_ID_KEYS_REGEX.test(label)) return "account-id"
-  if (PRINCIPAL_KEYS_REGEX.test(label)) return "principal"
+
+  const tokens = tokenize(label)
+
+  if (tokens.has("email") || tokens.has("mail")) return "email"
+  if (tokens.has("phone") || tokens.has("tel") || tokens.has("mobile"))
+    return "phone"
+  if (tokens.has("url") || tokens.has("link") || tokens.has("website"))
+    return "url"
+  if (tokens.has("uuid") || tokens.has("guid")) return "uuid"
+  if (tokens.has("btc") || tokens.has("bitcoin")) return "btc"
+  if (tokens.has("eth") || tokens.has("ethereum")) return "eth"
+  if (tokens.has("principal") || tokens.has("canister")) return "principal"
+
   return "plain"
 }
 
