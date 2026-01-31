@@ -1,24 +1,14 @@
 import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 import * as z from "zod"
+import type { VisitorDataType, TextFormat, NumberFormat } from "../types"
+
+export type { TextFormat, NumberFormat }
 
 // ════════════════════════════════════════════════════════════════════════════
 // Field Type Union
 // ════════════════════════════════════════════════════════════════════════════
 
-export type ArgumentFieldType =
-  | "record"
-  | "variant"
-  | "tuple"
-  | "optional"
-  | "vector"
-  | "blob"
-  | "recursive"
-  | "principal"
-  | "number"
-  | "text"
-  | "boolean"
-  | "null"
-  | "unknown"
+export type ArgumentFieldType = VisitorDataType
 
 // ════════════════════════════════════════════════════════════════════════════
 // Component Type Hints
@@ -74,29 +64,6 @@ export type InputType =
 // ════════════════════════════════════════════════════════════════════════════
 // Format Detection Types (mirrors ResultFieldVisitor)
 // ════════════════════════════════════════════════════════════════════════════
-
-/**
- * Detected format for text fields based on label heuristics.
- * Used to provide format-specific validation and input props.
- */
-export type TextFormat =
-  | "plain"
-  | "timestamp"
-  | "uuid"
-  | "url"
-  | "email"
-  | "phone"
-  | "btc"
-  | "eth"
-  | "account-id"
-  | "principal"
-  | "cycle"
-
-/**
- * Detected format for number fields based on label heuristics.
- * Used to provide format-specific validation and display.
- */
-export type NumberFormat = "timestamp" | "cycle" | "value" | "token" | "normal"
 
 /**
  * Rendering hints for the UI.

@@ -26,3 +26,48 @@ export type AllNumberTypes =
   | IDL.FixedNatClass
   | IDL.FixedIntClass
   | IDL.FloatClass
+
+// ════════════════════════════════════════════════════════════════════════════
+// Shared Types for Visitors (Arguments & Returns)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * The core Candid type category used across visitors.
+ */
+export type VisitorDataType =
+  | "record"
+  | "variant"
+  | "tuple"
+  | "optional"
+  | "vector"
+  | "blob"
+  | "recursive"
+  | "principal"
+  | "number"
+  | "text"
+  | "boolean"
+  | "null"
+  | "unknown"
+
+/**
+ * Detected format for text fields based on label heuristics.
+ * Used to provide format-specific validation and display.
+ */
+export type TextFormat =
+  | "plain"
+  | "timestamp"
+  | "uuid"
+  | "url"
+  | "email"
+  | "phone"
+  | "btc"
+  | "eth"
+  | "account-id"
+  | "principal"
+  | "cycle"
+
+/**
+ * Detected format for number fields based on label heuristics.
+ * Used to provide format-specific validation and display.
+ */
+export type NumberFormat = "timestamp" | "cycle" | "value" | "token" | "normal"

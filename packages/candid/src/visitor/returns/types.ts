@@ -4,25 +4,15 @@ import type {
   FunctionType,
   ActorMethodReturnType,
 } from "@ic-reactor/core"
+import type { VisitorDataType, TextFormat, NumberFormat } from "../types"
+
+export type { TextFormat, NumberFormat }
 
 // ════════════════════════════════════════════════════════════════════════════
 // Core Types & Formats
 // ════════════════════════════════════════════════════════════════════════════
 
-export type NodeType =
-  | "record"
-  | "variant"
-  | "tuple"
-  | "optional"
-  | "vector"
-  | "blob"
-  | "recursive"
-  | "principal"
-  | "number"
-  | "text"
-  | "boolean"
-  | "null"
-  | "unknown"
+export type NodeType = VisitorDataType
 
 export type DisplayType =
   | "string"
@@ -37,19 +27,6 @@ export type DisplayType =
   | "recursive"
   | "blob"
   | "unknown"
-
-export type NumberFormat = "timestamp" | "cycle" | "value" | "token" | "normal"
-export type TextFormat =
-  | "plain"
-  | "timestamp"
-  | "uuid"
-  | "url"
-  | "email"
-  | "phone"
-  | "btc"
-  | "eth"
-  | "account-id"
-  | "principal"
 
 // ════════════════════════════════════════════════════════════════════════════
 // Unified Result Node - Single Structure for Schema & Resolved Data
