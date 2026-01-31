@@ -574,9 +574,9 @@ describe("MetadataDisplayReactor", () => {
         throw new Error("Expected variant field")
       }
       expect(statusField.type).toBe("variant")
-      expect(statusField.options).toContain("Active")
-      expect(statusField.options).toContain("Inactive")
-      expect(statusField.options).toContain("Pending")
+      expect(statusField.fields.some((f) => f.label === "Active")).toBe(true)
+      expect(statusField.fields.some((f) => f.label === "Inactive")).toBe(true)
+      expect(statusField.fields.some((f) => f.label === "Pending")).toBe(true)
 
       // Pending has a nat64 payload
       const pendingField = statusField.fields.find((f) => f.label === "Pending")

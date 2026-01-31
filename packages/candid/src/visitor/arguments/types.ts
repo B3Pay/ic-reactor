@@ -2,21 +2,14 @@ import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 import * as z from "zod"
 import type { VisitorDataType, TextFormat, NumberFormat } from "../types"
 
-export type { TextFormat, NumberFormat }
+export type { VisitorDataType, TextFormat, NumberFormat }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Field Type Union
-// ════════════════════════════════════════════════════════════════════════════
-
-export type ArgumentFieldType = VisitorDataType
-
-// ════════════════════════════════════════════════════════════════════════════
-// Component Type Hints
+// Component & UI Types
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
  * Suggested component type for rendering the field.
- * This eliminates the need for switch statements in the frontend.
  */
 export type FieldComponentType =
   | "record-container"
@@ -33,13 +26,8 @@ export type FieldComponentType =
   | "recursive-lazy"
   | "unknown-fallback"
 
-// ════════════════════════════════════════════════════════════════════════════
-// Render Hints for UI Rendering Strategy
-// ════════════════════════════════════════════════════════════════════════════
-
 /**
  * Input type hints for HTML input elements.
- * Used by primitive fields to suggest the appropriate input type.
  */
 export type InputType =
   | "text"
@@ -51,49 +39,28 @@ export type InputType =
 
 /**
  * Rendering hints for the UI.
- * Eliminates the need for frontend to maintain COMPLEX_TYPES arrays.
  */
 export interface RenderHint {
-  /** Whether this field has its own container/card styling (compound types) */
   isCompound: boolean
-  /** Whether this is a leaf input (primitive types) */
   isPrimitive: boolean
-  /** Suggested input type for HTML input elements */
   inputType?: InputType
-  /** Description or help text for the field (derived from Candid) */
   description?: string
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// Primitive Input Props
-// ════════════════════════════════════════════════════════════════════════════
-
 /**
  * Pre-computed HTML input props for primitive fields.
- * Can be spread directly onto an input element.
  */
 export interface PrimitiveInputProps {
-  /** HTML input type - includes format-specific types */
   type?: "text" | "number" | "checkbox" | "email" | "url" | "tel"
-  /** Placeholder text */
   placeholder?: string
-  /** Minimum value for number inputs */
   min?: string | number
-  /** Maximum value for number inputs */
   max?: string | number
-  /** Step value for number inputs */
   step?: string | number
-  /** Pattern for text inputs (e.g., phone numbers) */
   pattern?: string
-  /** Input mode for virtual keyboards */
   inputMode?: "text" | "numeric" | "decimal" | "email" | "tel" | "url"
-  /** Autocomplete hint */
   autoComplete?: string
-  /** Whether to check spelling */
   spellCheck?: boolean
-  /** Minimum length for text inputs */
   minLength?: number
-  /** Maximum length for text inputs */
   maxLength?: number
 }
 
@@ -102,196 +69,152 @@ export interface PrimitiveInputProps {
 // ════════════════════════════════════════════════════════════════════════════
 
 interface FieldBase<T extends VisitorDataType = VisitorDataType> {
-  /** The field type */
   type: T
-  /** Raw label from Candid: "__arg0", "_0_" */
   label: string
-  /** Pre-formatted display label for UI rendering */
   displayLabel: string
-  /** Form field name path for binding */
   name: string
-  /** Suggested component type for rendering this field */
   component: FieldComponentType
-  /** Rendering hints for UI strategy */
   renderHint: RenderHint
-  /** Zod schema for field validation */
   schema: z.ZodTypeAny
-  /** Original Candid type name for reference */
   candidType: string
+  defaultValue: unknown
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Type-Specific Extras
+// Field Extras
 // ════════════════════════════════════════════════════════════════════════════
 
-/**
- * Blob field size limits.
- */
 export interface BlobLimits {
-  /** Maximum bytes when entering as hex (e.g., 512 bytes) */
   maxHexBytes: number
-  /** Maximum file size in bytes (e.g., 2MB ICP limit) */
   maxFileBytes: number
-  /** Maximum hex display length before truncation */
   maxHexDisplayLength: number
 }
 
-/**
- * Validation result for blob input.
- */
 export interface BlobValidationResult {
-  /** Whether the input is valid */
   valid: boolean
-  /** Error message if invalid */
   error?: string
 }
 
+interface RecordExtras {
+  fields: FieldNode[]
+  defaultValue: Record<string, unknown>
+}
+
+interface VariantExtras {
+  fields: FieldNode[]
+  defaultOption: string
+  defaultValue: Record<string, unknown>
+}
+
+interface TupleExtras {
+  fields: FieldNode[]
+  defaultValue: unknown[]
+}
+
+interface OptionalExtras {
+  innerField: FieldNode
+  defaultValue: null
+  getInnerDefault: () => unknown
+  isEnabled: (value: unknown) => boolean
+}
+
+interface VectorExtras {
+  itemField: FieldNode
+  defaultValue: unknown[]
+  getItemDefault: () => unknown
+  createItemField: (index: number, overrides?: { label?: string }) => FieldNode
+}
+
+interface BlobExtras {
+  itemField: FieldNode
+  acceptedFormats: ("hex" | "base64" | "file")[]
+  limits: BlobLimits
+  normalizeHex: (input: string) => string
+  validateInput: (value: string | Uint8Array) => BlobValidationResult
+  defaultValue: string
+}
+
+interface RecursiveExtras {
+  typeName: string
+  extract: () => FieldNode
+  getInnerDefault: () => unknown
+  defaultValue: undefined
+}
+
+interface PrincipalExtras {
+  maxLength: number
+  minLength: number
+  format: TextFormat
+  inputProps: PrimitiveInputProps
+  defaultValue: string
+}
+
+interface NumberExtras {
+  unsigned: boolean
+  isFloat: boolean
+  bits?: number
+  min?: string
+  max?: string
+  format: NumberFormat
+  inputProps: PrimitiveInputProps
+  defaultValue: string
+}
+
+interface TextExtras {
+  minLength?: number
+  maxLength?: number
+  multiline?: boolean
+  format: TextFormat
+  inputProps: PrimitiveInputProps
+  defaultValue: string
+}
+
+interface BooleanExtras {
+  inputProps: PrimitiveInputProps
+  defaultValue: boolean
+}
+
+interface NullExtras {
+  defaultValue: null
+}
+
+interface UnknownExtras {
+  defaultValue: undefined
+}
+
 type FieldExtras<T extends VisitorDataType> = T extends "record"
-  ? {
-      /** Child fields in the record */
-      fields: FieldNode[]
-      /** Map of field label to its metadata for quick lookup */
-      fieldMap: Map<string, FieldNode>
-      defaultValue: Record<string, unknown>
-    }
+  ? RecordExtras
   : T extends "variant"
-    ? {
-        /** All variant option fields */
-        fields: FieldNode[]
-        /** List of variant option names */
-        options: string[]
-        /** Default selected option */
-        defaultOption: string
-        /** Map of option name to its field metadata */
-        optionMap: Map<string, FieldNode>
-        defaultValue: Record<string, unknown>
-        /** Get default value for a specific option */
-        getOptionDefault: (option: string) => Record<string, unknown>
-        /** Get the field for a specific option */
-        getField: (option: string) => FieldNode
-        /** Get the currently selected option from a value */
-        getSelectedOption: (value: Record<string, unknown>) => string
-        /** Get the selected field from a value */
-        getSelectedField: (value: Record<string, unknown>) => FieldNode
-      }
+    ? VariantExtras
     : T extends "tuple"
-      ? {
-          /** Tuple element fields in order */
-          fields: FieldNode[]
-          defaultValue: unknown[]
-        }
+      ? TupleExtras
       : T extends "optional"
-        ? {
-            /** The inner field when value is present */
-            innerField: FieldNode
-            defaultValue: null
-            /** Get default value when enabling the optional */
-            getInnerDefault: () => unknown
-            /** Check if a value represents an enabled optional */
-            isEnabled: (value: unknown) => boolean
-          }
+        ? OptionalExtras
         : T extends "vector"
-          ? {
-              /** Template field for vector items */
-              itemField: FieldNode
-              defaultValue: unknown[]
-              /** Get a new item with default values */
-              getItemDefault: () => unknown
-              /** Create a properly configured item field for a specific index */
-              createItemField: (
-                index: number,
-                overrides?: { label?: string }
-              ) => FieldNode
-            }
+          ? VectorExtras
           : T extends "blob"
-            ? {
-                /** Item field for individual bytes (nat8) */
-                itemField: FieldNode
-                /** Accepted input formats */
-                acceptedFormats: ("hex" | "base64" | "file")[]
-                /** Size limits for blob input */
-                limits: BlobLimits
-                /** Normalize hex input */
-                normalizeHex: (input: string) => string
-                /** Validate blob input value */
-                validateInput: (
-                  value: string | Uint8Array
-                ) => BlobValidationResult
-                defaultValue: string
-              }
+            ? BlobExtras
             : T extends "recursive"
-              ? {
-                  /** Type name for the recursive type */
-                  typeName: string
-                  /** Lazily extract the inner field to prevent infinite loops */
-                  extract: () => FieldNode
-                  /** Get default value for the recursive type (evaluates lazily) */
-                  getInnerDefault: () => unknown
-                  defaultValue: undefined
-                }
+              ? RecursiveExtras
               : T extends "principal"
-                ? {
-                    maxLength: number
-                    minLength: number
-                    /** Detected format based on label heuristics */
-                    format: TextFormat
-                    /** Pre-computed HTML input props */
-                    inputProps: PrimitiveInputProps
-                    defaultValue: string
-                  }
+                ? PrincipalExtras
                 : T extends "number"
-                  ? {
-                      /** Whether this is an unsigned type */
-                      unsigned: boolean
-                      /** Whether this is a floating point type */
-                      isFloat: boolean
-                      /** Bit width if applicable (8, 16, 32, 64, or undefined for unbounded) */
-                      bits?: number
-                      /** Minimum value constraint (for bounded types) */
-                      min?: string
-                      /** Maximum value constraint (for bounded types) */
-                      max?: string
-                      /** Detected format based on label heuristics */
-                      format: NumberFormat
-                      /** Pre-computed HTML input props */
-                      inputProps: PrimitiveInputProps
-                      defaultValue: string
-                    }
+                  ? NumberExtras
                   : T extends "text"
-                    ? {
-                        /** Minimum length constraint */
-                        minLength?: number
-                        /** Maximum length constraint */
-                        maxLength?: number
-                        /** Whether to render as multiline textarea */
-                        multiline?: boolean
-                        /** Detected format based on label heuristics */
-                        format: TextFormat
-                        /** Pre-computed HTML input props */
-                        inputProps: PrimitiveInputProps
-                        defaultValue: string
-                      }
+                    ? TextExtras
                     : T extends "boolean"
-                      ? {
-                          /** Pre-computed HTML input props */
-                          inputProps: PrimitiveInputProps
-                          defaultValue: boolean
-                        }
+                      ? BooleanExtras
                       : T extends "null"
-                        ? {
-                            defaultValue: null
-                          }
+                        ? NullExtras
                         : T extends "unknown"
-                          ? {
-                              defaultValue: undefined
-                            }
+                          ? UnknownExtras
                           : {}
 
 /**
  * A unified field node that contains all metadata needed for rendering.
  */
 export type FieldNode<T extends VisitorDataType = VisitorDataType> =
-  FieldBase<T> & FieldExtras<T>
+  T extends any ? FieldBase<T> & FieldExtras<T> : never
 
 export type RecordField = FieldNode<"record">
 export type VariantField = FieldNode<"variant">
@@ -308,75 +231,48 @@ export type NullField = FieldNode<"null">
 export type UnknownField = FieldNode<"unknown">
 
 // ════════════════════════════════════════════════════════════════════════════
-// Form Metadata - TanStack Form Integration
+// Form Metadata
 // ════════════════════════════════════════════════════════════════════════════
 
-/**
- * Form metadata for a Candid method.
- * Contains all information needed to create a TanStack Form instance.
- */
 export interface ArgumentsMeta<
   A = BaseActor,
   Name extends FunctionName<A> = FunctionName<A>,
 > {
-  /** Whether this is a "query" or "update" function */
   functionType: FunctionType
-  /** The function name */
   functionName: Name
-  /** Argument field definitions for rendering */
   fields: FieldNode[]
-  /** Default values for all arguments (as a tuple) */
   defaultValues: unknown[]
-  /** Combined Zod schema for all arguments */
   schema: z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]]>
-  /** Number of arguments */
   argCount: number
-  /** Whether the function takes no arguments */
   isNoArgs: boolean
 }
 
-/**
- * Options that can be spread into useForm().
- * Pre-configured with defaultValues and validators.
- */
 export interface FormOptions {
-  /** Initial form values */
   defaultValues: unknown[]
-  /** Validators using the Zod schema */
   validators: {
     onChange: z.ZodTypeAny
     onBlur: z.ZodTypeAny
   }
 }
 
-/**
- * Service-level form metadata.
- * Maps each method name to its FormMeta.
- */
 export type ArgumentsServiceMeta<A = BaseActor> = {
   [K in FunctionName<A>]: ArgumentsMeta<A, K>
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Type Utilities & Guards
+// Type Utilities
 // ════════════════════════════════════════════════════════════════════════════
 
-/** Extract a specific field type */
-export type FieldByType<T extends ArgumentFieldType> = Extract<
+export type FieldByType<T extends VisitorDataType> = Extract<
   FieldNode,
   { type: T }
 >
 
-/**
- * Props type helper for field components.
- * Use this to type your field components for better DX.
- */
-export type FieldProps<T extends ArgumentFieldType> = {
+export type FieldProps<T extends VisitorDataType> = {
   field: FieldByType<T>
   renderField?: (child: FieldNode) => React.ReactNode
 }
 
-/** Compound field types that contain other fields */
 export type CompoundField =
   | RecordField
   | VariantField
@@ -385,10 +281,20 @@ export type CompoundField =
   | VectorField
   | RecursiveField
 
-/** Primitive field types */
 export type PrimitiveField =
   | PrincipalField
   | NumberField
   | TextField
   | BooleanField
   | NullField
+
+export type ComponentMap<
+  TComponents extends Record<FieldComponentType, unknown>,
+> = {
+  [K in FieldComponentType]: TComponents[K]
+}
+
+export type GetComponentType<
+  TMap extends Partial<Record<FieldComponentType, unknown>>,
+  TKey extends FieldComponentType,
+> = TKey extends keyof TMap ? TMap[TKey] : never

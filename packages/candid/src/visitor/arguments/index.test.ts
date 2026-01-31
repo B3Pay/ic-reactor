@@ -148,8 +148,8 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.type).toBe("record")
       expect(field.label).toBe("person")
       expect(field.fields).toHaveLength(2)
-      expect(field.fieldMap.has("name")).toBe(true)
-      expect(field.fieldMap.has("age")).toBe(true)
+      expect(field.fields.some((f) => f.label === "name")).toBe(true)
+      expect(field.fields.some((f) => f.label === "age")).toBe(true)
 
       const nameField = field.fields.find((f) => f.label === "name")
       if (!nameField || nameField.type !== "text") {
@@ -289,18 +289,18 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("variant")
       expect(field.label).toBe("status")
-      expect(field.options).toEqual(["Inactive", "Active", "Pending"])
+      expect(field.fields.map((f) => f.label)).toEqual([
+        "Inactive",
+        "Active",
+        "Pending",
+      ])
       expect(field.defaultOption).toBe("Inactive")
       expect(field.fields).toHaveLength(3)
-      expect(field.optionMap.has("Active")).toBe(true)
+      expect(field.fields.some((f) => f.label === "Active")).toBe(true)
 
       field.fields.forEach((f) => {
         expect(f.type).toBe("null")
       })
-
-      // Test getOptionDefault helper
-      expect(field.getOptionDefault("Active")).toEqual({ _type: "Active" })
-      expect(field.getOptionDefault("Pending")).toEqual({ _type: "Pending" })
     })
 
     it("should handle variant with payloads", () => {
@@ -338,7 +338,11 @@ describe("ArgumentFieldVisitor", () => {
       )
 
       expect(field.type).toBe("variant")
-      expect(field.options).toEqual(["Approve", "Burn", "Transfer"]) // Sorted order
+      expect(field.fields.map((f) => f.label)).toEqual([
+        "Approve",
+        "Burn",
+        "Transfer",
+      ]) // Sorted order
 
       const transferField = field.fields.find(
         (f) => f.label === "Transfer"
@@ -371,8 +375,8 @@ describe("ArgumentFieldVisitor", () => {
       )
 
       expect(field.type).toBe("variant")
-      expect(field.options).toContain("Ok")
-      expect(field.options).toContain("Err")
+      expect(field.fields.some((f) => f.label === "Ok")).toBe(true)
+      expect(field.fields.some((f) => f.label === "Err")).toBe(true)
 
       const okField = field.fields.find((f) => f.label === "Ok")
       if (!okField || okField.type !== "text") {
@@ -567,8 +571,8 @@ describe("ArgumentFieldVisitor", () => {
         throw new Error("Extracted field is not variant")
       }
       expect(extracted.type).toBe("variant")
-      expect(extracted.options).toContain("Leaf")
-      expect(extracted.options).toContain("Node")
+      expect(extracted.fields.some((f) => f.label === "Leaf")).toBe(true)
+      expect(extracted.fields.some((f) => f.label === "Node")).toBe(true)
     })
 
     it("should handle recursive linked list", () => {
@@ -602,7 +606,7 @@ describe("ArgumentFieldVisitor", () => {
         throw new Error("Extracted field is not variant")
       }
       expect(extracted.type).toBe("variant")
-      expect(extracted.options).toEqual(["Nil", "Cons"])
+      expect(extracted.fields.map((f) => f.label)).toEqual(["Nil", "Cons"])
 
       const consField = extracted.fields.find(
         (f) => f.label === "Cons"
@@ -919,9 +923,13 @@ describe("ArgumentFieldVisitor", () => {
       )
 
       expect(field.type).toBe("variant")
-      expect(field.options).toContain("Motion")
-      expect(field.options).toContain("TransferSnsTreasuryFunds")
-      expect(field.options).toContain("UpgradeSnsControlledCanister")
+      expect(field.fields.some((f) => f.label === "Motion")).toBe(true)
+      expect(
+        field.fields.some((f) => f.label === "TransferSnsTreasuryFunds")
+      ).toBe(true)
+      expect(
+        field.fields.some((f) => f.label === "UpgradeSnsControlledCanister")
+      ).toBe(true)
 
       // Check Motion variant
       const motionField = field.fields.find(
@@ -963,12 +971,6 @@ describe("ArgumentFieldVisitor", () => {
         ],
         "status"
       )
-
-      expect(field.getOptionDefault("Active")).toEqual({ _type: "Active" })
-      expect(field.getOptionDefault("Pending")).toEqual({
-        _type: "Pending",
-        Pending: { reason: "" },
-      })
     })
 
     it("vector getItemDefault should return item default", () => {
@@ -1201,73 +1203,6 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.inputProps).toBeDefined()
       expect(field.inputProps.spellCheck).toBe(false)
       expect(field.inputProps.autoComplete).toBe("off")
-    })
-  })
-
-  // ════════════════════════════════════════════════════════════════════════
-  // Enhanced Variant Helpers
-  // ════════════════════════════════════════════════════════════════════════
-
-  describe("Variant helper methods", () => {
-    it("getField should return the correct field for an option", () => {
-      const variantType = IDL.Variant({
-        Transfer: IDL.Record({ to: IDL.Principal, amount: IDL.Nat }),
-        Burn: IDL.Nat,
-      })
-      const field = visitor.visitVariant(
-        variantType,
-        [
-          ["Transfer", IDL.Record({ to: IDL.Principal, amount: IDL.Nat })],
-          ["Burn", IDL.Nat],
-        ],
-        "action"
-      )
-
-      const transferField = field.getField("Transfer")
-      expect(transferField.type).toBe("record")
-
-      const burnField = field.getField("Burn")
-      expect(burnField.type).toBe("text") // nat is rendered as text for large numbers
-    })
-
-    it("getSelectedOption should return the selected option from a value", () => {
-      const variantType = IDL.Variant({ A: IDL.Null, B: IDL.Text, C: IDL.Nat })
-      const field = visitor.visitVariant(
-        variantType,
-        [
-          ["A", IDL.Null],
-          ["B", IDL.Text],
-          ["C", IDL.Nat],
-        ],
-        "choice"
-      )
-
-      expect(field.getSelectedOption({ A: null })).toBe("A")
-      expect(field.getSelectedOption({ B: "hello" })).toBe("B")
-      expect(field.getSelectedOption({ C: "100" })).toBe("C")
-      // Falls back to default option for unknown values
-      expect(field.getSelectedOption({})).toBe("A")
-    })
-
-    it("getSelectedField should return the field for the selected option", () => {
-      const variantType = IDL.Variant({
-        Ok: IDL.Nat,
-        Err: IDL.Text,
-      })
-      const field = visitor.visitVariant(
-        variantType,
-        [
-          ["Ok", IDL.Nat],
-          ["Err", IDL.Text],
-        ],
-        "result"
-      )
-
-      const okField = field.getSelectedField({ Ok: "100" })
-      expect(okField.label).toBe("Ok")
-
-      const errField = field.getSelectedField({ Err: "error" })
-      expect(errField.label).toBe("Err")
     })
   })
 

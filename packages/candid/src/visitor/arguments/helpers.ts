@@ -1,5 +1,5 @@
 import {
-  ArgumentFieldType,
+  VisitorDataType,
   CompoundField,
   FieldNode,
   FieldByType,
@@ -27,7 +27,7 @@ import {
  * }
  * ```
  */
-export function isFieldType<T extends ArgumentFieldType>(
+export function isFieldType<T extends VisitorDataType>(
   field: FieldNode,
   type: T
 ): field is FieldByType<T> {
