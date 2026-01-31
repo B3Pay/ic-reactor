@@ -31,7 +31,7 @@ const CYCLE_KEYS_REGEX = new RegExp(
 )
 
 const ACCOUNT_ID_KEYS_REGEX =
-  /account_id|account_identifier|ledger_account|block_hash|transaction_hash|tx_hash/i
+  /account_identifier|ledger_account|block_hash|transaction_hash|tx_hash/i
 
 const tokenize = (label: string): Set<string> => {
   const parts = label

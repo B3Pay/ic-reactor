@@ -58,7 +58,7 @@ describe("ResultFieldVisitor", () => {
       const ethField = visitor.visitText(IDL.Text, "ethereum_address")
       expect(ethField.format).toBe("eth")
 
-      const accountIdField = visitor.visitText(IDL.Text, "account_id")
+      const accountIdField = visitor.visitText(IDL.Text, "account_identifier")
       expect(accountIdField.format).toBe("account-id")
 
       const principalField = visitor.visitText(IDL.Text, "canister_id")
