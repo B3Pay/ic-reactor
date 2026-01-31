@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
-import { FieldVisitor, VectorField } from "./index"
+import {
+  FieldVisitor,
+  OptionalField,
+  RecordField,
+  VariantField,
+  VectorField,
+} from "./index"
 
 describe("ArgumentFieldVisitor", () => {
   const visitor = new FieldVisitor()
@@ -186,7 +192,9 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.type).toBe("record")
       expect(field.fields).toHaveLength(2)
 
-      const addressField = field.fields.find((f) => f.label === "address")
+      const addressField = field.fields.find(
+        (f) => f.label === "address"
+      ) as RecordField
       if (!addressField || addressField.type !== "record") {
         throw new Error("Address field not found or not record")
       }
@@ -235,7 +243,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.fields).toHaveLength(5)
 
       // Check 'to' field
-      const toField = field.fields.find((f) => f.label === "to")
+      const toField = field.fields.find((f) => f.label === "to") as RecordField
       if (!toField || toField.type !== "record") {
         throw new Error("To field not found or not record")
       }
@@ -251,7 +259,9 @@ describe("ArgumentFieldVisitor", () => {
       expect(amountField.candidType).toBe("nat")
 
       // Check optional 'fee' field
-      const feeField = field.fields.find((f) => f.label === "fee")
+      const feeField = field.fields.find(
+        (f) => f.label === "fee"
+      ) as OptionalField
       if (!feeField || feeField.type !== "optional") {
         throw new Error("Fee field not found or not optional")
       }
@@ -289,8 +299,8 @@ describe("ArgumentFieldVisitor", () => {
       })
 
       // Test getOptionDefault helper
-      expect(field.getOptionDefault("Active")).toEqual({ Active: null })
-      expect(field.getOptionDefault("Pending")).toEqual({ Pending: null })
+      expect(field.getOptionDefault("Active")).toEqual({ _type: "Active" })
+      expect(field.getOptionDefault("Pending")).toEqual({ _type: "Pending" })
     })
 
     it("should handle variant with payloads", () => {
@@ -330,7 +340,9 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.type).toBe("variant")
       expect(field.options).toEqual(["Approve", "Burn", "Transfer"]) // Sorted order
 
-      const transferField = field.fields.find((f) => f.label === "Transfer")
+      const transferField = field.fields.find(
+        (f) => f.label === "Transfer"
+      ) as RecordField
       if (!transferField || transferField.type !== "record") {
         throw new Error("Transfer field not found or not record")
       }
@@ -429,7 +441,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.type).toBe("optional")
       expect(field.innerField.type).toBe("record")
       expect(field.innerField.type).toBe("record")
-      const inner = field.innerField
+      const inner = field.innerField as RecordField
       if (inner.type === "record") {
         expect(inner.fields).toHaveLength(2)
       } else {
@@ -448,7 +460,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.type).toBe("optional")
       expect(field.innerField.type).toBe("optional")
       expect(field.innerField.type).toBe("optional")
-      const inner = field.innerField
+      const inner = field.innerField as OptionalField
       if (inner.type === "optional") {
         expect(inner.innerField.type).toBe("text")
       } else {
@@ -479,7 +491,7 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("vector")
       expect(field.itemField.type).toBe("record")
-      const item = field.itemField
+      const item = field.itemField as RecordField
       if (item.type === "record") {
         expect(item.fields).toHaveLength(2)
       } else {
@@ -509,7 +521,7 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("vector")
       expect(field.itemField.type).toBe("vector")
-      const item = field.itemField
+      const item = field.itemField as VectorField
       if (item.type === "vector") {
         expect(item.itemField.type).toBe("text")
       } else {
@@ -550,7 +562,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(typeof field.getInnerDefault).toBe("function")
 
       // Extract should return a variant
-      const extracted = field.extract()
+      const extracted = field.extract() as VariantField
       if (extracted.type !== "variant") {
         throw new Error("Extracted field is not variant")
       }
@@ -585,14 +597,16 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("recursive")
 
-      const extracted = field.extract()
+      const extracted = field.extract() as VariantField
       if (extracted.type !== "variant") {
         throw new Error("Extracted field is not variant")
       }
       expect(extracted.type).toBe("variant")
       expect(extracted.options).toEqual(["Nil", "Cons"])
 
-      const consField = extracted.fields.find((f) => f.label === "Cons")
+      const consField = extracted.fields.find(
+        (f) => f.label === "Cons"
+      ) as RecordField
       if (!consField || consField.type !== "record") {
         throw new Error("Cons field not found or not record")
       }
@@ -642,7 +656,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(meta.fields).toHaveLength(1)
       expect(meta.fields[0].type).toBe("record")
 
-      const recordField = meta.fields[0]
+      const recordField = meta.fields[0] as RecordField
       if (recordField.type !== "record") {
         throw new Error("Expected record field")
       }
@@ -754,13 +768,15 @@ describe("ArgumentFieldVisitor", () => {
       )
       const meta = visitor.visitFunc(funcType, "updateUser")
 
-      const argRecord = meta.fields[0]
+      const argRecord = meta.fields[0] as RecordField
       if (argRecord.type !== "record") {
         throw new Error("Expected record field")
       }
       expect(argRecord.name).toBe("[0]")
 
-      const userRecord = argRecord.fields.find((f) => f.label === "user")
+      const userRecord = argRecord.fields.find(
+        (f) => f.label === "user"
+      ) as RecordField
       if (!userRecord || userRecord.type !== "record") {
         throw new Error("User record not found or not record")
       }
@@ -783,7 +799,7 @@ describe("ArgumentFieldVisitor", () => {
       const funcType = IDL.Func([IDL.Vec(IDL.Text)], [], [])
       const meta = visitor.visitFunc(funcType, "addTags")
 
-      const vecField = meta.fields[0]
+      const vecField = meta.fields[0] as VectorField
       if (vecField.type !== "vector") {
         throw new Error("Expected vector field")
       }
@@ -837,7 +853,9 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.fields.length).toBeGreaterThan(5)
 
       // Check spender field
-      const spenderField = field.fields.find((f) => f.label === "spender")
+      const spenderField = field.fields.find(
+        (f) => f.label === "spender"
+      ) as RecordField
       if (!spenderField || spenderField.type !== "record") {
         throw new Error("Spender field not found or not record")
       }
@@ -906,7 +924,9 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.options).toContain("UpgradeSnsControlledCanister")
 
       // Check Motion variant
-      const motionField = field.fields.find((f) => f.label === "Motion")
+      const motionField = field.fields.find(
+        (f) => f.label === "Motion"
+      ) as RecordField
       if (!motionField || motionField.type !== "record") {
         throw new Error("Motion field not found or not record")
       }
@@ -916,7 +936,7 @@ describe("ArgumentFieldVisitor", () => {
       // Check TransferSnsTreasuryFunds variant
       const transferField = field.fields.find(
         (f) => f.label === "TransferSnsTreasuryFunds"
-      )
+      ) as RecordField
       if (!transferField || transferField.type !== "record") {
         throw new Error("Transfer field not found or not record")
       }
@@ -944,8 +964,9 @@ describe("ArgumentFieldVisitor", () => {
         "status"
       )
 
-      expect(field.getOptionDefault("Active")).toEqual({ Active: null })
+      expect(field.getOptionDefault("Active")).toEqual({ _type: "Active" })
       expect(field.getOptionDefault("Pending")).toEqual({
+        _type: "Pending",
         Pending: { reason: "" },
       })
     })
