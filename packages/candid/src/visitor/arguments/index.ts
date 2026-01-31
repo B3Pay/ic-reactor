@@ -329,16 +329,31 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       fields.push(field)
       options.push(key)
       optionMap.set(key, field)
-      variantSchemas.push(z.object({ [key]: field.schema }))
+
+      if (field.type === "null") {
+        variantSchemas.push(z.object({ _type: z.literal(key) }))
+      } else {
+        variantSchemas.push(
+          z.object({
+            _type: z.literal(key),
+            [key]: field.schema,
+          })
+        )
+      }
     }
 
     const defaultOption = options[0]
     const firstField = fields[0]
-    const defaultValue = {
-      [defaultOption]: firstField.defaultValue,
-    }
 
-    const schema = z.union(variantSchemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
+    const defaultValue =
+      firstField.type === "null"
+        ? { _type: defaultOption }
+        : {
+            _type: defaultOption,
+            [defaultOption]: firstField.defaultValue,
+          }
+
+    const schema = z.union(variantSchemas)
 
     // Helper to get default value for any option
     const getOptionDefault = (option: string): Record<string, unknown> => {
@@ -346,7 +361,9 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       if (!optField) {
         throw new Error(`Unknown variant option: ${option}`)
       }
-      return { [option]: optField.defaultValue }
+      return optField.type === "null"
+        ? { _type: option }
+        : { _type: option, [option]: optField.defaultValue }
     }
 
     // Helper to get field for a specific option
@@ -360,6 +377,9 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
 
     // Helper to get currently selected option from a value
     const getSelectedOption = (value: Record<string, unknown>): string => {
+      if (value._type && typeof value._type === "string") {
+        return value._type
+      }
       const validKeys = Object.keys(value).filter((k) => options.includes(k))
       return validKeys[0] ?? defaultOption
     }
