@@ -750,11 +750,11 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   private getTextSchema(format: TextFormat): z.ZodTypeAny {
     switch (format) {
       case "email":
-        return z.string().email("Invalid email address")
+        return z.email("Invalid email address")
       case "url":
-        return z.string().url("Invalid URL")
+        return z.url("Invalid URL")
       case "uuid":
-        return z.string().uuid("Invalid UUID")
+        return z.uuid("Invalid UUID")
       default:
         return z.string().min(1, "Required")
     }
@@ -877,7 +877,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       defaultValue: "",
       candidType,
       format,
-      schema: schema,
+      schema,
       inputProps,
       ...options,
     }
