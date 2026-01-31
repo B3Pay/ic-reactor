@@ -662,9 +662,9 @@ describe("MetadataDisplayReactor", () => {
       }
       expect(resultField.type).toBe("variant")
       // Validate via resolve
-      const okResolved = resultField.resolve({ Ok: null }) as VariantNode
+      const okResolved = resultField.resolve({ _type: "Ok" }) as VariantNode
       expect(okResolved.selected).toBe("Ok")
-      const errResolved = resultField.resolve({ Err: "e" }) as VariantNode
+      const errResolved = resultField.resolve({ _type: "Err" }) as VariantNode
       expect(errResolved.selected).toBe("Err")
     })
 

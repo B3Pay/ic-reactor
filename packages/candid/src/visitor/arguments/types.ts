@@ -291,14 +291,3 @@ export type PrimitiveField =
   | TextField
   | BooleanField
   | NullField
-
-export type ComponentMap<
-  TComponents extends Record<FieldComponentType, unknown>,
-> = {
-  [K in FieldComponentType]: TComponents[K]
-}
-
-export type GetComponentType<
-  TMap extends Partial<Record<FieldComponentType, unknown>>,
-  TKey extends FieldComponentType,
-> = TKey extends keyof TMap ? TMap[TKey] : never
