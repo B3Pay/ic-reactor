@@ -1,7 +1,7 @@
 import {
   ArgumentFieldType,
   CompoundField,
-  Field,
+  FieldNode,
   FieldByType,
   PrimitiveField,
   RecordField,
@@ -28,14 +28,14 @@ import {
  * ```
  */
 export function isFieldType<T extends ArgumentFieldType>(
-  field: Field,
+  field: FieldNode,
   type: T
 ): field is FieldByType<T> {
   return field.type === type
 }
 
 /** Check if a field is a compound type (contains other fields) */
-export function isCompoundField(field: Field): field is CompoundField {
+export function isCompoundField(field: FieldNode): field is CompoundField {
   return [
     "record",
     "variant",
@@ -47,13 +47,13 @@ export function isCompoundField(field: Field): field is CompoundField {
 }
 
 /** Check if a field is a primitive type */
-export function isPrimitiveField(field: Field): field is PrimitiveField {
+export function isPrimitiveField(field: FieldNode): field is PrimitiveField {
   return ["principal", "number", "text", "boolean", "null"].includes(field.type)
 }
 
 /** Check if a field has children (for iteration) */
 export function hasChildFields(
-  field: Field
+  field: FieldNode
 ): field is RecordField | VariantField | TupleField {
   return "fields" in field && Array.isArray((field as RecordField).fields)
 }

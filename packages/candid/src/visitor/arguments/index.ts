@@ -1,7 +1,7 @@
 import { isQuery } from "../helpers"
 import { checkTextFormat, checkNumberFormat } from "../constants"
 import type {
-  Field,
+  FieldNode,
   RecordField,
   VariantField,
   TupleField,
@@ -182,7 +182,7 @@ function validateBlobInput(
  */
 export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   string,
-  Field | ArgumentsMeta<A> | ArgumentsServiceMeta<A>
+  FieldNode | ArgumentsMeta<A> | ArgumentsServiceMeta<A>
 > {
   public recursiveSchemas: Map<string, z.ZodTypeAny> = new Map()
 
@@ -236,7 +236,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     const fields = t.argTypes.map((arg, index) => {
       return this.withName(`[${index}]`, () =>
         arg.accept(this, `__arg${index}`)
-      ) as Field
+      ) as FieldNode
     })
 
     const defaultValues = fields.map((field) => field.defaultValue)
@@ -277,15 +277,15 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): RecordField {
     const name = this.currentName()
-    const fields: Field[] = []
-    const fieldMap = new Map<string, Field>()
+    const fields: FieldNode[] = []
+    const fieldMap = new Map<string, FieldNode>()
     const defaultValue: Record<string, unknown> = {}
     const schemaShape: Record<string, z.ZodTypeAny> = {}
 
     for (const [key, type] of fields_) {
       const field = this.withName(name ? `.${key}` : key, () =>
         type.accept(this, key)
-      ) as Field
+      ) as FieldNode
 
       fields.push(field)
       fieldMap.set(key, field)
@@ -316,15 +316,15 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): VariantField {
     const name = this.currentName()
-    const fields: Field[] = []
+    const fields: FieldNode[] = []
     const options: string[] = []
-    const optionMap = new Map<string, Field>()
+    const optionMap = new Map<string, FieldNode>()
     const variantSchemas: z.ZodTypeAny[] = []
 
     for (const [key, type] of fields_) {
       const field = this.withName(`.${key}`, () =>
         type.accept(this, key)
-      ) as Field
+      ) as FieldNode
 
       fields.push(field)
       options.push(key)
@@ -350,7 +350,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
 
     // Helper to get field for a specific option
-    const getField = (option: string): Field => {
+    const getField = (option: string): FieldNode => {
       const optField = optionMap.get(option)
       if (!optField) {
         throw new Error(`Unknown variant option: ${option}`)
@@ -365,7 +365,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
 
     // Helper to get selected field from a value
-    const getSelectedField = (value: Record<string, unknown>): Field => {
+    const getSelectedField = (value: Record<string, unknown>): FieldNode => {
       const selectedOption = getSelectedOption(value)
       return getField(selectedOption)
     }
@@ -397,7 +397,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): TupleField {
     const name = this.currentName()
-    const fields: Field[] = []
+    const fields: FieldNode[] = []
     const defaultValue: unknown[] = []
     const schemas: z.ZodTypeAny[] = []
 
@@ -405,7 +405,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       const type = components[index]
       const field = this.withName(`[${index}]`, () =>
         type.accept(this, `_${index}_`)
-      ) as Field
+      ) as FieldNode
 
       fields.push(field)
       defaultValue.push(field.defaultValue)
@@ -437,7 +437,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
 
     // For optional, the inner field keeps the same name path
     // because the value replaces null directly (not nested)
-    const innerField = ty.accept(this, label) as Field
+    const innerField = ty.accept(this, label) as FieldNode
 
     const schema = z.union([
       innerField.schema,
@@ -483,7 +483,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     // Item field uses [0] as template path
     const itemField = this.withName("[0]", () =>
       ty.accept(this, `${label}_item`)
-    ) as Field
+    ) as FieldNode
 
     if (isBlob) {
       const schema = z.union([
@@ -522,7 +522,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     const createItemField = (
       index: number,
       overrides?: { label?: string }
-    ): Field => {
+    ): FieldNode => {
       // Replace [0] in template with actual index
       const itemName = name ? `${name}[${index}]` : `[${index}]`
       const itemLabel = overrides?.label ?? `Item ${index}`
@@ -564,13 +564,13 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     if (this.recursiveSchemas.has(typeName)) {
       schema = this.recursiveSchemas.get(typeName)!
     } else {
-      schema = z.lazy(() => (ty.accept(this, label) as Field).schema)
+      schema = z.lazy(() => (ty.accept(this, label) as FieldNode).schema)
       this.recursiveSchemas.set(typeName, schema)
     }
 
     // Lazy extraction to prevent infinite loops
-    const extract = (): Field =>
-      this.withName(name, () => ty.accept(this, label)) as Field
+    const extract = (): FieldNode =>
+      this.withName(name, () => ty.accept(this, label)) as FieldNode
 
     // Helper to get inner default (evaluates lazily)
     const getInnerDefault = (): unknown => extract().defaultValue
@@ -952,6 +952,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
         isPrimitive: false,
       },
       defaultValue: undefined,
+      candidType: "unknown",
       schema: z.any(),
     }
   }
