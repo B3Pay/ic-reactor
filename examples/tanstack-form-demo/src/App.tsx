@@ -306,16 +306,9 @@ function VariantInput({
   form: any
 }) {
   const variantField = field as VariantField
-  const currentValue = (fieldApi.state.value ??
-    variantField.defaultValue) as Record<string, unknown>
+  const currentValue = fieldApi.state.value ?? variantField.defaultValue
 
-  // Use the new getSelectedOption helper method
-  const currentOption = useMemo(
-    () => variantField.getSelectedOption(currentValue),
-    [currentValue, variantField]
-  )
-
-  // Use the new getField helper method
+  const currentOption = variantField.getSelectedOption(currentValue)
   const currentOptionField = variantField.getField(currentOption)
 
   const handleOptionChange = (newOption: string) => {
@@ -330,16 +323,16 @@ function VariantInput({
         value={currentOption}
         onChange={(e) => handleOptionChange(e.target.value)}
       >
-        {variantField.options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+        {variantField.fields.map((optionField) => (
+          <option key={optionField.label} value={optionField.label}>
+            {optionField.label}
           </option>
         ))}
       </select>
 
       {currentOptionField && currentOptionField.component !== "null-hidden" && (
         <div className="variant-payload">
-          <form.Field name={`${variantField.name}.${currentOption}`}>
+          <form.Field name={`${field.name}.${currentOption}`}>
             {(payloadApi: any) => (
               <div className="field-container">
                 <FieldLabel field={currentOptionField} />

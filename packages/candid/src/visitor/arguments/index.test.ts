@@ -298,9 +298,9 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.fields).toHaveLength(3)
       expect(field.fields.some((f) => f.label === "Active")).toBe(true)
 
-      field.fields.forEach((f) => {
-        expect(f.type).toBe("null")
-      })
+      // Test getOptionDefault helper
+      expect(field.getOptionDefault("Active")).toEqual({ _type: "Active" })
+      expect(field.getOptionDefault("Pending")).toEqual({ _type: "Pending" })
     })
 
     it("should handle variant with payloads", () => {
@@ -971,6 +971,12 @@ describe("ArgumentFieldVisitor", () => {
         ],
         "status"
       )
+
+      expect(field.getOptionDefault("Active")).toEqual({ _type: "Active" })
+      expect(field.getOptionDefault("Pending")).toEqual({
+        _type: "Pending",
+        Pending: { reason: "" },
+      })
     })
 
     it("vector getItemDefault should return item default", () => {
@@ -1203,6 +1209,73 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.inputProps).toBeDefined()
       expect(field.inputProps.spellCheck).toBe(false)
       expect(field.inputProps.autoComplete).toBe("off")
+    })
+  })
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Enhanced Variant Helpers
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("Variant helper methods", () => {
+    it("getField should return the correct field for an option", () => {
+      const variantType = IDL.Variant({
+        Transfer: IDL.Record({ to: IDL.Principal, amount: IDL.Nat }),
+        Burn: IDL.Nat,
+      })
+      const field = visitor.visitVariant(
+        variantType,
+        [
+          ["Transfer", IDL.Record({ to: IDL.Principal, amount: IDL.Nat })],
+          ["Burn", IDL.Nat],
+        ],
+        "action"
+      )
+
+      const transferField = field.getField("Transfer")
+      expect(transferField.type).toBe("record")
+
+      const burnField = field.getField("Burn")
+      expect(burnField.type).toBe("text") // nat is rendered as text for large numbers
+    })
+
+    it("getSelectedOption should return the selected option from a value", () => {
+      const variantType = IDL.Variant({ A: IDL.Null, B: IDL.Text, C: IDL.Nat })
+      const field = visitor.visitVariant(
+        variantType,
+        [
+          ["A", IDL.Null],
+          ["B", IDL.Text],
+          ["C", IDL.Nat],
+        ],
+        "choice"
+      )
+
+      expect(field.getSelectedOption({ A: null })).toBe("A")
+      expect(field.getSelectedOption({ B: "hello" })).toBe("B")
+      expect(field.getSelectedOption({ C: "100" })).toBe("C")
+      // Falls back to default option for unknown values
+      expect(field.getSelectedOption({})).toBe("A")
+    })
+
+    it("getSelectedField should return the field for the selected option", () => {
+      const variantType = IDL.Variant({
+        Ok: IDL.Nat,
+        Err: IDL.Text,
+      })
+      const field = visitor.visitVariant(
+        variantType,
+        [
+          ["Ok", IDL.Nat],
+          ["Err", IDL.Text],
+        ],
+        "result"
+      )
+
+      const okField = field.getSelectedField({ Ok: "100" })
+      expect(okField.label).toBe("Ok")
+
+      const errField = field.getSelectedField({ Err: "error" })
+      expect(errField.label).toBe("Err")
     })
   })
 

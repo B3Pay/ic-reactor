@@ -104,6 +104,10 @@ interface VariantExtras {
   fields: FieldNode[]
   defaultOption: string
   defaultValue: Record<string, unknown>
+  getOptionDefault: (option: string) => Record<string, unknown>
+  getField: (option: string) => FieldNode
+  getSelectedOption: (value: Record<string, unknown>) => string
+  getSelectedField: (value: Record<string, unknown>) => FieldNode
 }
 
 interface TupleExtras {
