@@ -18,17 +18,22 @@ const TAMESTAMP_KEYS = [
   "valid_until",
 ]
 
-const TAMESTAMP_KEYS_REGEX = new RegExp(
-  TAMESTAMP_KEYS.map((key) => `^[\\w-]*${key}[\\w-]*$`).join("|"),
-  "i"
-)
+// Fixed ReDoS vulnerability by eliminating nested quantifiers
+// Original pattern ^[\w-]*key[\w-]*$ had catastrophic backtracking
+// New approach: use simple substring matching (case-insensitive)
+const createKeyMatcher = (keys: string[]): ((str: string) => boolean) => {
+  const lowerKeys = keys.map((k) => k.toLowerCase())
+  return (str: string) => {
+    const lower = str.toLowerCase()
+    return lowerKeys.some((key) => lower.includes(key))
+  }
+}
+
+const isTimestampKey = createKeyMatcher(TAMESTAMP_KEYS)
 
 const CYCLE_KEYS = ["cycle", "cycles"]
 
-const CYCLE_KEYS_REGEX = new RegExp(
-  CYCLE_KEYS.map((key) => `^[\\w-]*${key}[\\w-]*$`).join("|"),
-  "i"
-)
+const isCycleKey = createKeyMatcher(CYCLE_KEYS)
 
 const ACCOUNT_ID_KEYS_REGEX =
   /account_identifier|ledger_account|block_hash|transaction_hash|tx_hash/i
@@ -45,7 +50,7 @@ const tokenize = (label: string): Set<string> => {
 export const checkTextFormat = (label?: string): TextFormat => {
   if (!label) return "plain"
 
-  if (TAMESTAMP_KEYS_REGEX.test(label)) return "timestamp"
+  if (isTimestampKey(label)) return "timestamp"
   if (ACCOUNT_ID_KEYS_REGEX.test(label)) return "account-id"
 
   const tokens = tokenize(label)
@@ -65,7 +70,7 @@ export const checkTextFormat = (label?: string): TextFormat => {
 
 export const checkNumberFormat = (label?: string): NumberFormat => {
   if (!label) return "normal"
-  if (TAMESTAMP_KEYS_REGEX.test(label)) return "timestamp"
-  if (CYCLE_KEYS_REGEX.test(label)) return "cycle"
+  if (isTimestampKey(label)) return "timestamp"
+  if (isCycleKey(label)) return "cycle"
   return "normal"
 }

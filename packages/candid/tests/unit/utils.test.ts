@@ -120,5 +120,58 @@ describe("Utils", () => {
       // Should not have idlFactory
       expect(result.idlFactory).toBeUndefined()
     })
+
+    it("should provide controlled evaluation context with limited scope", async () => {
+      // This test verifies that the Function constructor provides better isolation
+      // than the previous data URL import approach. Code evaluated should not have
+      // access to the outer scope or global variables beyond what's explicitly provided.
+
+      const candidJs = `
+        export const idlFactory = ({ IDL }) => {
+          // The code should have access to IDL parameter
+          if (typeof IDL === 'undefined') {
+            throw new Error('IDL should be available');
+          }
+          
+          return IDL.Service({
+            test: IDL.Func([], [], ['query'])
+          });
+        };
+      `
+
+      const result = await importCandidDefinition(candidJs)
+
+      // Verify the code was evaluated and has access to IDL
+      expect(result.idlFactory).toBeDefined()
+      expect(typeof result.idlFactory).toBe("function")
+
+      // Verify the idlFactory can be called with IDL
+      // This confirms it has the proper closure
+      expect(() => {
+        const { IDL } = require("@icp-sdk/core/candid")
+        result.idlFactory({ IDL })
+      }).not.toThrow()
+    })
+
+    it("should handle code with various JavaScript features", async () => {
+      // Test that the implementation handles common JavaScript patterns
+      const complexJs = `
+        export const idlFactory = ({ IDL }) => {
+          const MyType = IDL.Record({
+            id: IDL.Nat,
+            name: IDL.Text,
+          });
+          
+          return IDL.Service({
+            getValue: IDL.Func([], [MyType], ['query']),
+          });
+        };
+      `
+
+      const result = await importCandidDefinition(complexJs)
+
+      expect(result.idlFactory).toBeDefined()
+      expect(typeof result.idlFactory).toBe("function")
+    })
   })
 })

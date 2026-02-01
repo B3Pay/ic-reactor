@@ -223,34 +223,3 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
     return { result, meta }
   }
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// Factory Function
-// ════════════════════════════════════════════════════════════════════════════
-
-/**
- * Create and initialize a MetadataDisplayReactor.
- * This is a convenience function that creates the reactor and calls initialize().
- *
- * @param options Reactor configuration options
- * @returns Initialized MetadataDisplayReactor
- *
- * @example
- * ```typescript
- * const reactor = await createMetadataReactor({
- *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
- *   clientManager,
- *   name: "ICPLedger",
- * })
- *
- * // Reactor is ready to use
- * const methods = reactor.getMethodNames()
- * ```
- */
-export async function createMetadataReactor<A = BaseActor>(
-  options: CandidDisplayReactorParameters<A>
-): Promise<MetadataDisplayReactor<A>> {
-  const reactor = new MetadataDisplayReactor<A>(options)
-  await reactor.initialize()
-  return reactor
-}
