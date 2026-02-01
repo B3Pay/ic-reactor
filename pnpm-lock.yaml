@@ -158,11 +158,11 @@ importers:
   examples/tanstack-form-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.0.15-beta.0
-        version: 3.0.15-beta.0(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@noble/hashes@2.0.1)(@tanstack/query-core@5.90.20)(zod@4.3.6)
+        specifier: workspace:*
+        version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.0.15-beta.0
-        version: 3.0.15-beta.0(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.20(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)
+        specifier: workspace:*
+        version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
@@ -1461,33 +1461,6 @@ packages:
   '@happy-dom/global-registrator@20.3.9':
     resolution: {integrity: sha512-85JldWOJ084m//JlsTFSyc0SC/mRQ47FazaiiYztNTWpqxT1WTIib60quDyg0pLcQiHZ+4Z+ip/BteJGZukTTg==}
     engines: {node: '>=20.0.0'}
-
-  '@ic-reactor/candid@3.0.15-beta.0':
-    resolution: {integrity: sha512-K4p31bmKGi3TWH6frS5KdwdHkjPQHcmckIJWw9MXOESEdxaQG4jpgG3szqXAF3JCTBS7NyCV24g9ekHNsIqXDg==}
-    peerDependencies:
-      '@icp-sdk/core': ^5.0.0
-      '@noble/hashes': ^2.0.0
-      zod: ^4.3.5
-
-  '@ic-reactor/core@3.0.15-beta.0':
-    resolution: {integrity: sha512-lnEUPWIFLrvSstG5xYkbuScM4f+fhgg+7fEk4fyi41x0dhq0NfaBwsb5snDxcifm37DbCGdCEWpbfa+BCYGhSQ==}
-    peerDependencies:
-      '@icp-sdk/auth': ^5.0.0
-      '@icp-sdk/core': ^5.0.0
-      '@tanstack/query-core': ^5.0.0
-      zod: ^4.3.5
-    peerDependenciesMeta:
-      '@icp-sdk/auth':
-        optional: true
-      '@tanstack/query-core':
-        optional: true
-
-  '@ic-reactor/react@3.0.15-beta.0':
-    resolution: {integrity: sha512-c3Nk58Ll3U7qCxxyZ2y622nqcU1Blzg7JuWoSZEGdCMvzAjdImFNgjtruonNI6X5bc1aE7WxpJpuPc4Vu3GT6Q==}
-    peerDependencies:
-      '@tanstack/react-query': ^5.0.0
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
 
   '@icp-sdk/auth@5.0.0':
     resolution: {integrity: sha512-TaPfdaELT7s0vTIFOmCnlCmhPdL7kABA7+2Q0YNAUWIa/FFiwq6ffGPLvr0U0+2zFLaLQ4l7UCB2zf7vo6PFPQ==}
@@ -6609,36 +6582,6 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
-
-  '@ic-reactor/candid@3.0.15-beta.0(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@noble/hashes@2.0.1)(@tanstack/query-core@5.90.20)(zod@4.3.6)':
-    dependencies:
-      '@ic-reactor/core': 3.0.15-beta.0(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.20)(zod@4.3.6)
-      '@icp-sdk/core': 5.0.0
-      '@noble/hashes': 2.0.1
-      zod: 4.3.6
-    transitivePeerDependencies:
-      - '@icp-sdk/auth'
-      - '@tanstack/query-core'
-
-  '@ic-reactor/core@3.0.15-beta.0(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.20)(zod@4.3.6)':
-    dependencies:
-      '@icp-sdk/core': 5.0.0
-      zod: 4.3.6
-    optionalDependencies:
-      '@icp-sdk/auth': 5.0.0(@icp-sdk/core@5.0.0)
-      '@tanstack/query-core': 5.90.20
-
-  '@ic-reactor/react@3.0.15-beta.0(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.20(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)':
-    dependencies:
-      '@ic-reactor/core': 3.0.15-beta.0(@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0))(@icp-sdk/core@5.0.0)(@tanstack/query-core@5.90.20)(zod@4.3.6)
-      '@tanstack/react-query': 5.90.20(react@19.2.4)
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-    transitivePeerDependencies:
-      - '@icp-sdk/auth'
-      - '@icp-sdk/core'
-      - '@tanstack/query-core'
-      - zod
 
   '@icp-sdk/auth@5.0.0(@icp-sdk/core@5.0.0)':
     dependencies:
