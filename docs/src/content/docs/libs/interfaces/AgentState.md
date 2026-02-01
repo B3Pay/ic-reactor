@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:59](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/client.ts#L59)
+Defined in: [types/client.ts:59](https://github.com/B3Pay/ic-reactor/blob/54730e94e191e004381d2aa1cc1c772e288b8460/packages/core/src/types/client.ts#L59)
 
 Represents the state of an agent.
 
@@ -15,7 +15,7 @@ Represents the state of an agent.
 
 > **isInitialized**: `boolean`
 
-Defined in: [types/client.ts:63](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/client.ts#L63)
+Defined in: [types/client.ts:63](https://github.com/B3Pay/ic-reactor/blob/54730e94e191e004381d2aa1cc1c772e288b8460/packages/core/src/types/client.ts#L63)
 
 Indicates whether the agent has been initialized.
 
@@ -25,7 +25,7 @@ Indicates whether the agent has been initialized.
 
 > **isInitializing**: `boolean`
 
-Defined in: [types/client.ts:68](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/client.ts#L68)
+Defined in: [types/client.ts:68](https://github.com/B3Pay/ic-reactor/blob/54730e94e191e004381d2aa1cc1c772e288b8460/packages/core/src/types/client.ts#L68)
 
 Indicates whether the agent is in the process of initializing.
 
@@ -35,7 +35,7 @@ Indicates whether the agent is in the process of initializing.
 
 > **error**: `Error` \| `undefined`
 
-Defined in: [types/client.ts:73](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/client.ts#L73)
+Defined in: [types/client.ts:73](https://github.com/B3Pay/ic-reactor/blob/54730e94e191e004381d2aa1cc1c772e288b8460/packages/core/src/types/client.ts#L73)
 
 Represents an error associated with the agent, if any.
 
@@ -45,7 +45,7 @@ Represents an error associated with the agent, if any.
 
 > **network**: `string` \| `undefined`
 
-Defined in: [types/client.ts:78](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/client.ts#L78)
+Defined in: [types/client.ts:78](https://github.com/B3Pay/ic-reactor/blob/54730e94e191e004381d2aa1cc1c772e288b8460/packages/core/src/types/client.ts#L78)
 
 Represents the network associated with the agent, if any.
 
@@ -55,6 +55,6 @@ Represents the network associated with the agent, if any.
 
 > **isLocalhost**: `boolean`
 
-Defined in: [types/client.ts:83](https://github.com/B3Pay/ic-reactor/blob/4d02e8d8d928d42fa1d6f6a89a0eba4531459b4e/packages/core/src/types/client.ts#L83)
+Defined in: [types/client.ts:83](https://github.com/B3Pay/ic-reactor/blob/54730e94e191e004381d2aa1cc1c772e288b8460/packages/core/src/types/client.ts#L83)
 
 Indicates whether the agent is connected to a local network.

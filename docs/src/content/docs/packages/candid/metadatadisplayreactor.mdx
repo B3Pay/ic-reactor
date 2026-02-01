@@ -1,550 +1,955 @@
 ---
 title: MetadataDisplayReactor
-description: Dynamic Reactor with visitor-based metadata generation for forms and result display
-editUrl: false
+description: Complete guide to generating dynamic forms and rendering results from Candid interfaces
 ---
 
 import {
-  Aside,
   Tabs,
   TabItem,
+  Aside,
   Card,
   CardGrid,
+  Steps,
+  LinkCard,
 } from "@astrojs/starlight/components"
 
-`MetadataDisplayReactor` extends `CandidDisplayReactor` with **visitor-based metadata generation** for both form inputs and result display. It provides structured field definitions that are framework-agnostic and can be used with any UI library.
+# MetadataDisplayReactor
+
+The **MetadataDisplayReactor** is a powerful system for working with Internet Computer (IC) canisters that provides runtime metadata generation for building dynamic forms and rendering results. It enables you to create form interfaces that adapt to any canister's Candid interface without compile-time type definitions.
+
+<Aside type="tip">
+  This guide covers the complete architecture and usage patterns. For a quick
+  start, jump to the [Usage Examples](#usage-examples) section.
+</Aside>
 
 ## Overview
 
-This class is ideal for building **dynamic form UIs** and **result viewers** for canisters discovered at runtime:
+MetadataDisplayReactor solves a fundamental challenge: **How do you build a UI for a canister when you don't know its interface at compile time?**
 
-<CardGrid>
-  <Card title="Argument Metadata" icon="pencil">
-    Generate form field definitions with types, labels, paths, and default
-    values
-  </Card>
-  <Card title="Result Metadata" icon="star">
-    Generate display field definitions with type info and display
-    transformations
-  </Card>
-  <Card title="Framework Agnostic" icon="puzzle">
-    Works with TanStack Form, React Hook Form, or any UI library
-  </Card>
-  <Card title="Display Transformations" icon="rocket">
-    All `DisplayReactor` transformations (bigint → string, Principal → string)
-  </Card>
-</CardGrid>
+It provides:
 
-```typescript
-import { MetadataDisplayReactor } from "@ic-reactor/candid"
-
-const reactor = new MetadataDisplayReactor({
-  name: "my-dynamic-actor",
-  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
-  clientManager,
-})
-
-await reactor.initialize()
-
-// Get form field metadata
-const argMeta = reactor.getArgumentMeta("icrc1_transfer")
-// argMeta.fields = [{ type: "record", label: "__arg0", fields: [...], defaultValues: {...} }]
-
-// Get result display metadata
-const resultMeta = reactor.getResultMeta("icrc1_transfer")
-// resultMeta.resultFields[0] = { type: "variant", displayType: "result", isResultType: true, ... }
-
-// Call with transformed results wrapped in metadata
-const result = await reactor.callMethod({
-  functionName: "icrc1_transfer",
-  args: [{ to: { owner: "aaaaa-aa" }, amount: "1000000" }],
-})
-
-/**
- * result = {
- *   functionName: "icrc1_transfer",
- *   results: [
- *     {
- *       field: { type: "variant", displayType: "result", ... },
- *       value: { option: "Ok", value: { ... } },
- *       raw: { Ok: 1000000n }
- *     }
- *   ],
- *   ...
- * }
- */
-```
-
-## Import
-
-```typescript
-import { MetadataDisplayReactor } from "@ic-reactor/candid"
-```
-
-## Constructor
-
-```typescript
-new MetadataDisplayReactor(config: CandidDisplayReactorParameters)
-```
-
-### Parameters
-
-| Parameter       | Type            | Required | Description                                      |
-| --------------- | --------------- | -------- | ------------------------------------------------ |
-| `clientManager` | `ClientManager` | Yes      | Client manager from `@ic-reactor/core`           |
-| `name`          | `string`        | Yes      | Required for logging & environment lookup        |
-| `canisterId`    | `CanisterId`    | No       | Optional if defined in environment               |
-| `candid`        | `string`        | No       | Candid service definition (avoids network fetch) |
-
----
+- **Dynamic Candid parsing** - Parse canister interfaces at runtime
+- **Form metadata generation** - Generate comprehensive metadata for building input forms
+- **Result resolution** - Transform raw canister responses into display-friendly structures
+- **Type transformations** - Convert between Candid types (bigint, Principal) and UI types (strings)
+- **Validation schemas** - Built-in Zod schemas for each field type
 
 ## Architecture
 
-The reactor uses the **visitor pattern** to generate metadata from Candid types:
+### Class Hierarchy
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        MetadataDisplayReactor                               │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  INITIALIZATION (once, from raw IDL types):                                 │
-│                                                                             │
-│    IDL.Service ──► ArgumentFieldVisitor ──► ServiceArgumentsMeta            │
-│                                              { methodName: {                │
-│                                                  fields: ArgumentField[],   │
-│                                                  defaultValues: [...]       │
-│                                              }}                             │
-│                                                                             │
-│    IDL.Service ──► ResultFieldVisitor ──► ServiceResultMeta                 │
-│                                            { methodName: {                  │
-│                                                resultFields: ResultField[], │
-│                                                returnCount: number          │
-│                                            }}                               │
-│                                                                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  RUNTIME (per method call):                                                 │
-│                                                                             │
-│    INPUT:  Display Values ──► encode ──► Candid Values ──► Canister         │
-│    OUTPUT: Canister ──► Candid Values ──► decode ──► Display Values         │
-│                                                                             │
-│    RENDERING: ResultField (metadata) + Display Value ──► UI Component       │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+DisplayReactor (from @ic-reactor/core)
+    └── CandidDisplayReactor (display-reactor.ts)
+            └── MetadataDisplayReactor (metadata-display-reactor.ts)
 ```
 
-<Aside type="tip" title="Key Insight: Metadata vs Values">
-  **Metadata** is generated once from raw IDL types (no values involved).
-  **Values** are transformed at runtime via the display codec. At render time,
-  pair metadata with transformed values.
-</Aside>
+### Design Principles
 
----
+1. **Visitor Pattern** - Traverses Candid IDL types to generate metadata
+2. **Stateless Visitors** - Visitors are reusable and generate metadata at initialization
+3. **Form-Framework Agnostic** - Output works with TanStack Form, React Hook Form, or vanilla JS
+4. **Display Type Transformations** - `bigint → string`, `Principal → string` for easy UI handling
+5. **Lazy Evaluation** - Recursive types use lazy extraction to prevent infinite loops
 
-## Argument Metadata
+## Metadata Structure
 
-### getArgumentMeta(methodName)
+### Arguments Metadata (`ArgumentsMeta`)
 
-Get form field metadata for a method's arguments.
+When you call `getInputMeta(methodName)`, you receive comprehensive metadata for building input forms:
 
 ```typescript
-const meta = reactor.getArgumentMeta("icrc1_transfer")
-```
-
-#### Returns: `MethodArgumentsMeta`
-
-```typescript
-interface MethodArgumentsMeta {
+interface ArgumentsMeta<A, Name> {
   functionType: "query" | "update"
-  functionName: string
-  fields: ArgumentField[] // Form field definitions
-  defaultValues: unknown[] // Initial form values
+  functionName: Name
+  args: FieldNode[] // One FieldNode per argument
+  defaults: unknown[] // Default values for form initialization
+  schema: z.ZodTuple // Zod schema for validation
+  argCount: number
+  isEmpty: boolean // True if method takes no arguments
 }
 ```
 
-### ArgumentField Types
+### Field Node (`FieldNode`)
 
-Each field includes type, label, and path for form binding:
-
-| Field Type  | Properties                                              |
-| ----------- | ------------------------------------------------------- |
-| `record`    | `fields: ArgumentField[]`, `defaultValues: {...}`       |
-| `variant`   | `fields: ArgumentField[]`, `options: string[]`          |
-| `tuple`     | `fields: ArgumentField[]`, `defaultValues: [...]`       |
-| `optional`  | `innerField: ArgumentField`, `defaultValue: null`       |
-| `vector`    | `itemField: ArgumentField`, `defaultValue: []`          |
-| `blob`      | `itemField: ArgumentField`, `defaultValue: ""`          |
-| `recursive` | `extract: () => ArgumentField`                          |
-| `principal` | `defaultValue: ""`, `minLength`, `maxLength`            |
-| `number`    | `defaultValue: ""`, `candidType: "nat" \| "int" \| ...` |
-| `text`      | `defaultValue: ""`                                      |
-| `boolean`   | `defaultValue: false`                                   |
-| `null`      | `defaultValue: null`                                    |
-
-### Example: Form Generation
+Each `FieldNode` contains everything needed to render a form field:
 
 ```typescript
-const meta = reactor.getArgumentMeta("icrc1_transfer")
-
-// meta.fields[0] is a record with nested fields
-const transferArg = meta.fields[0] as RecordArgumentField
-console.log(transferArg.fields.map((f) => f.label))
-// ["to", "amount", "fee", "memo", "created_at_time"]
-
-// Use defaultValues to initialize your form
-const initialFormState = meta.defaultValues[0]
-// { to: { owner: "", subaccount: null }, amount: "", fee: null, ... }
+interface FieldNode {
+  type: VisitorDataType // "record" | "variant" | "text" | "number" | etc.
+  label: string // Raw Candid label (e.g., "__arg0", "owner")
+  displayLabel: string // Human-readable label (e.g., "Arg 0", "Owner")
+  name: string // TanStack Form path (e.g., "[0]", "[0].owner")
+  component: FieldComponentType // Suggested component
+  renderHint: RenderHint // UI hints
+  defaultValue: unknown // Initial form value
+  schema: z.ZodTypeAny // Zod validation schema
+  candidType: string // Original Candid type name
+  // Plus type-specific extras (fields, options, etc.)
+}
 ```
 
----
+### Field Types
+
+| Type        | Component          | Description                               |
+| ----------- | ------------------ | ----------------------------------------- |
+| `record`    | `record-container` | Nested object with named fields           |
+| `variant`   | `variant-select`   | Discriminated union (like enum with data) |
+| `tuple`     | `tuple-container`  | Fixed-length array                        |
+| `optional`  | `optional-toggle`  | Nullable field                            |
+| `vector`    | `vector-list`      | Dynamic array                             |
+| `blob`      | `blob-upload`      | Binary data (vec nat8)                    |
+| `recursive` | `recursive-lazy`   | Self-referential type                     |
+| `principal` | `principal-input`  | IC Principal                              |
+| `text`      | `text-input`       | String                                    |
+| `number`    | `number-input`     | Integer or float                          |
+| `boolean`   | `boolean-checkbox` | Boolean                                   |
+| `null`      | `null-hidden`      | Null type                                 |
+
+### Type-Specific Extras
+
+Each field type includes additional properties relevant to its nature:
+
+<Tabs>
+  <TabItem label="Record">
+```typescript
+interface RecordField {
+  type: "record"
+  fields: FieldNode[]                    // Child fields
+  defaultValue: Record<string, unknown>  // Object default
+}
+```
+  </TabItem>
+  <TabItem label="Variant">
+```typescript
+interface VariantField {
+  type: "variant"
+  options: FieldNode[]                   // Option fields
+  defaultOption: string                  // First option key
+  defaultValue: Record<string, unknown>  // Selected option value
+  getOptionDefault(option: string): Record<string, unknown>
+  getOption(option: string): FieldNode
+  getSelectedKey(value): string
+  getSelectedOption(value): FieldNode
+}
+```
+  </TabItem>
+  <TabItem label="Vector">
+```typescript
+interface VectorField {
+  type: "vector"
+  itemField: FieldNode                   // Template for items
+  defaultValue: unknown[]                // Empty array
+  getItemDefault(): unknown              // New item default
+  createItemField(index: number): FieldNode  // Create indexed field
+}
+```
+  </TabItem>
+  <TabItem label="Optional">
+```typescript
+interface OptionalField {
+  type: "optional"
+  innerField: FieldNode          // Inner type field
+  defaultValue: null             // Always null
+  getInnerDefault(): unknown     // Get inner default when enabling
+  isEnabled(value): boolean      // Check if value is set
+}
+```
+  </TabItem>
+  <TabItem label="Number">
+```typescript
+interface NumberField {
+  type: "number"
+  unsigned: boolean              // nat vs int
+  isFloat: boolean               // float32/64
+  bits?: number                  // 8, 16, 32, 64
+  min?: string                   // Min value as string
+  max?: string                   // Max value as string
+  format: NumberFormat           // "timestamp" | "cycle" | "normal"
+  inputProps: PrimitiveInputProps
+}
+```
+  </TabItem>
+  <TabItem label="Text">
+```typescript
+interface TextField {
+  type: "text"
+  minLength?: number
+  maxLength?: number
+  multiline?: boolean
+  format: TextFormat    // "email" | "url" | "phone" | "plain" | etc.
+  inputProps: PrimitiveInputProps
+}
+```
+  </TabItem>
+</Tabs>
 
 ## Result Metadata
 
-### getResultMeta(methodName)
+### Method Meta (`MethodMeta`)
 
-Get display metadata for a method's return values.
-
-```typescript
-const meta = reactor.getResultMeta("icrc1_transfer")
-```
-
-#### Returns: `MethodResultMeta`
+When you call `getOutputMeta(methodName)`, you receive metadata for rendering results:
 
 ```typescript
-interface MethodResultMeta {
-  functionType: "query" | "update"
-  functionName: string
-  resultFields: ResultField[] // Display field definitions
+interface MethodMeta<A, Name> {
+  functionType: FunctionType
+  functionName: Name
+  returns: ResultNode[] // Schema for return values
   returnCount: number
+  resolve(data): MethodResult<A> // Transform raw → display
 }
 ```
 
-### Display Type Mapping
-
-The `displayType` property tells you what the value will be **after transformation**:
-
-| Candid Type           | displayType  | Notes                              |
-| --------------------- | ------------ | ---------------------------------- |
-| `nat`, `int`          | `"string"`   | BigInt → string                    |
-| `nat64`, `int64`      | `"string"`   | BigInt → string                    |
-| `nat8` - `nat32`      | `"number"`   | Stays as JS number                 |
-| `int8` - `int32`      | `"number"`   | Stays as JS number                 |
-| `float32`, `float64`  | `"number"`   | Stays as JS number                 |
-| `principal`           | `"string"`   | Principal.toText()                 |
-| `text`                | `"string"`   | No transformation                  |
-| `bool`                | `"boolean"`  | No transformation                  |
-| `null`                | `"null"`     | No transformation                  |
-| `opt T`               | `"nullable"` | `[value]` → `value`, `[]` → `null` |
-| `vec nat8` (blob)     | `"string"`   | → hex string                       |
-| `vec T`               | `"array"`    | Transformed array                  |
-| `record {...}`        | `"object"`   | Transformed object                 |
-| `tuple (...)`         | `"array"`    | Transformed array                  |
-| `variant { Ok, Err }` | `"result"`   | Result type detected               |
-| `variant {...}`       | `"variant"`  | Regular variant                    |
-
-### Result Type Detection
-
-The visitor automatically detects Result variants (Ok/Err pattern):
+### Result Node (`ResultNode`)
 
 ```typescript
-const meta = reactor.getResultMeta("icrc1_transfer")
-const resultField = meta.resultFields[0] as VariantResultField
-
-if (resultField.displayType === "result") {
-  console.log("This is a Result type!")
-
-  // Access Ok and Err field definitions
-  const okField = resultField.optionFields.find((f) => f.label === "Ok")
-  const errField = resultField.optionFields.find((f) => f.label === "Err")
+interface ResultNode {
+  type: VisitorDataType // Same types as arguments
+  label: string // Field label
+  displayLabel: string // Human-readable label
+  candidType: string // Original Candid type
+  displayType: DisplayType // "string" | "number" | "object" | "array" | etc.
+  resolve(data): ResolvedNode // Transform raw value
 }
 ```
 
-### Format Detection
+### Display Types
 
-The visitor detects special formats from field labels:
+| DisplayType | Description                                |
+| ----------- | ------------------------------------------ |
+| `string`    | Text, Principal, large numbers (as string) |
+| `number`    | Small integers, floats                     |
+| `boolean`   | Boolean values                             |
+| `null`      | Null values                                |
+| `object`    | Records                                    |
+| `array`     | Vectors, Tuples                            |
+| `variant`   | Variant types                              |
+| `result`    | Special case for `Ok`/`Err` variants       |
+| `nullable`  | Optional types                             |
+| `recursive` | Self-referential types                     |
+| `blob`      | Binary data with hash                      |
 
-**Number Formats:**
-| Label Pattern | Format |
-|---------------|--------|
-| `*timestamp*`, `*created_at*`, `*date*` | `timestamp` |
-| `*cycle*`, `*cycles*` | `cycle` |
-| (default) | `normal` |
+### Resolution Process
 
-**Text Formats:**
-| Label Pattern | Format |
-|---------------|--------|
-| `*email*` | `email` |
-| `*url*`, `*link*` | `url` |
-| `*phone*` | `phone` |
-| `*uuid*` | `uuid` |
-| `*btc*`, `*bitcoin*` | `btc` |
-| `*eth*`, `*ethereum*` | `eth` |
-| `*account_id*` | `account-id` |
-| `*canister*`, `*principal*` | `principal` |
-
----
-
-## All Metadata Access
-
-### getAllArgumentMeta()
-
-Get metadata for all methods at once:
+The `resolve()` method transforms raw canister responses into display-ready structures:
 
 ```typescript
-const allArgMeta = reactor.getAllArgumentMeta()
+// Raw canister response
+const rawResult = { Ok: 1000000000n } // bigint
 
-// Access any method's metadata
-const transferMeta = allArgMeta["icrc1_transfer"]
-const balanceMeta = allArgMeta["icrc1_balance_of"]
+// Get metadata
+const meta = reactor.getOutputMeta("icrc1_transfer")
+
+// Resolve to display types
+const resolved = meta.resolve(rawResult)
+// resolved = {
+//   functionType: "update",
+//   functionName: "icrc1_transfer",
+//   results: [{
+//     type: "variant",
+//     selected: "Ok",
+//     selectedValue: {  // The resolved value of the selected option
+//       type: "number",
+//       value: "1000000000",  // String, not bigint!
+//       displayType: "string"
+//     },
+//     raw: { Ok: 1000000000n }
+//   }],
+//   raw: { Ok: 1000000000n }
+// }
 ```
 
-### getAllResultMeta()
+## Format Detection
 
-Get result metadata for all methods:
+The system automatically detects formats from field labels:
 
+### Text Formats
+
+| Format       | Detected From                                       |
+| ------------ | --------------------------------------------------- |
+| `timestamp`  | `created_at`, `updated_at`, `timestamp_nanos`, etc. |
+| `email`      | `email`, `mail`                                     |
+| `url`        | `url`, `link`, `website`                            |
+| `phone`      | `phone`, `tel`, `mobile`                            |
+| `uuid`       | `uuid`, `guid`                                      |
+| `btc`        | `btc`, `bitcoin`                                    |
+| `eth`        | `eth`, `ethereum`                                   |
+| `principal`  | `principal`, `canister`                             |
+| `account-id` | `account_identifier`, `ledger_account`              |
+
+### Number Formats
+
+| Format      | Detected From                      |
+| ----------- | ---------------------------------- |
+| `timestamp` | `time`, `date`, `created_at`, etc. |
+| `cycle`     | `cycle`, `cycles`                  |
+| `normal`    | Everything else                    |
+
+## Usage Examples
+
+### Basic Setup
+
+There are two ways to create a MetadataDisplayReactor:
+
+<Tabs>
+  <TabItem label="Factory Function (Recommended)">
 ```typescript
-const allResultMeta = reactor.getAllResultMeta()
+import { ClientManager } from "@ic-reactor/core"
+import { createMetadataReactor } from "@ic-reactor/candid"
+import { QueryClient } from "@tanstack/query-core"
 
-// Access any method's result metadata
-const transferResultMeta = allResultMeta["icrc1_transfer"]
-```
-
----
-
-## Dynamic Method Registration
-
-All methods from `CandidDisplayReactor` are available:
-
-### registerMethod(options)
-
-```typescript
-await reactor.registerMethod({
-  functionName: "custom_method",
-  candid: "(text, nat) -> (variant { Ok : nat; Err : text })",
+// 1. Create client manager
+const clientManager = new ClientManager({
+queryClient: new QueryClient(),
+withProcessEnv: true,
 })
 
-// Metadata is generated and display codecs are initialized
-const meta = reactor.getArgumentMeta("custom_method")
-const resultMeta = reactor.getResultMeta("custom_method")
+await clientManager.initialize()
 
-// Now all Reactor methods work with display types + metadata wrapping
-const result = await reactor.callMethod({
-  functionName: "custom_method",
-  args: ["hello", "100"],
-})
-```
-
-### callDynamicWithMeta(options)
-
-Call a method (registering it if needed) and get both the top-level metadata and the wrapped result in one step.
-
-```typescript
-const { result, meta } = await reactor.callDynamicWithMeta({
-  functionName: "icrc1_fee",
-  candid: "() -> (nat) query",
+// 2. Create and initialize reactor in one step
+const reactor = await createMetadataReactor({
+canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger
+clientManager,
+name: "ICPLedger",
 })
 
-// result = { functionName: "icrc1_fee", results: [...] }
-// meta = { resultFields: [...], returnCount: 1 }
-```
+// 3. Get available methods
+const methods = reactor.getMethodNames()
+console.log(methods) // ["icrc1_balance_of", "icrc1_transfer", ...]
 
-### queryDynamic(options)
-
-Perform a dynamic query call. Returns `ResolvedMethodResult`.
-
+````
+  </TabItem>
+  <TabItem label="Manual Initialization">
 ```typescript
-const result = await reactor.queryDynamic({
-  functionName: "icrc1_balance_of",
-  candid: "(record { owner : principal }) -> (nat) query",
-  args: [{ owner: "aaaaa-aa" }],
-})
-```
-
-### fetchQueryDynamic(options)
-
-Perform a dynamic query call with TanStack Query caching. Returns `ResolvedMethodResult`.
-
-```typescript
-const result = await reactor.fetchQueryDynamic({
-  functionName: "icrc1_balance_of",
-  candid: "(record { owner : principal }) -> (nat) query",
-  args: [{ owner: "aaaaa-aa" }],
-})
-```
-
----
-
-## Examples
-
-### Building a Dynamic Form
-
-```typescript
+import { ClientManager } from "@ic-reactor/core"
 import { MetadataDisplayReactor } from "@ic-reactor/candid"
-import type {
-  RecordArgumentField,
-  NumberArgumentField,
-  OptionalArgumentField,
-} from "@ic-reactor/candid"
+import { QueryClient } from "@tanstack/query-core"
 
-const reactor = new MetadataDisplayReactor({
-  name: "transfer-form",
-  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
-  candid: ICRC1_CANDID,
-  clientManager,
+// 1. Create client manager
+const clientManager = new ClientManager({
+  queryClient: new QueryClient(),
+  withProcessEnv: true,
 })
 
+await clientManager.initialize()
+
+// 2. Create reactor
+const reactor = new MetadataDisplayReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger
+  clientManager,
+  name: "ICPLedger",
+})
+
+// 3. Initialize (fetches Candid from canister)
 await reactor.initialize()
 
-// Get transfer form metadata
-const meta = reactor.getArgumentMeta("icrc1_transfer")
+// 4. Get available methods
+const methods = reactor.getMethodNames()
+console.log(methods) // ["icrc1_balance_of", "icrc1_transfer", ...]
+````
 
-function buildForm() {
-  const transferArg = meta.fields[0] as RecordArgumentField
+  </TabItem>
+</Tabs>
 
-  return transferArg.fields.map((field) => {
-    switch (field.type) {
-      case "number":
-        return {
-          type: "input",
-          inputType: "text",
-          label: field.label,
-          placeholder: `Enter ${(field as NumberArgumentField).candidType}`,
-          defaultValue: "",
-        }
-      case "optional":
-        return {
-          type: "optional-input",
-          label: field.label,
-          innerType: (field as OptionalArgumentField).innerField.type,
-          defaultValue: null,
-        }
-      case "record":
-        return {
-          type: "nested-form",
-          label: field.label,
-          fields: (field as RecordArgumentField).fields,
-        }
-      // ... handle other types
-    }
-  })
-}
-```
-
-### Rendering Results with Metadata
+### Building Dynamic Forms
 
 ```typescript
-const meta = reactor.getResultMeta("icrc1_transfer")
-const result = await reactor.callMethod({
-  functionName: "icrc1_transfer",
-  args: [transferArgs],
-})
+// Get input metadata for a method
+const inputMeta = reactor.getInputMeta("icrc1_transfer")
 
-function renderResult(field: ResultField, value: unknown) {
-  switch (field.type) {
-    case "number":
-      const numField = field as NumberResultField
-      if (numField.numberFormat === "timestamp") {
-        return new Date(Number(value) / 1_000_000).toLocaleString()
-      }
-      return value // Already a string for nat/int
+console.log(inputMeta.functionName) // "icrc1_transfer"
+console.log(inputMeta.functionType) // "update"
+console.log(inputMeta.argCount) // 1
+console.log(inputMeta.defaults) // [{ to: { owner: "", subaccount: null }, ... }]
 
-    case "variant":
-      const variantField = field as VariantResultField
-      if (variantField.isResultType) {
-        // Result type - value is already unwrapped by DisplayReactor
-        return renderSuccess(value)
-      }
-      return renderVariant(value, variantField)
+// Iterate over args to build form
+for (const field of inputMeta.args) {
+  console.log(field.type) // "record"
+  console.log(field.displayLabel) // "Arg 0"
+  console.log(field.component) // "record-container"
 
-    case "record":
-      return renderRecord(value, field as RecordResultField)
-
-    default:
-      return String(value)
+  // For records, access nested fields
+  if (field.type === "record") {
+    for (const childField of field.fields) {
+      console.log(childField.name) // "[0].to", "[0].amount", etc.
+      console.log(childField.displayLabel) // "To", "Amount", etc.
+    }
   }
 }
 ```
 
-### React Integration with TanStack Form
+### With TanStack Form
 
-```tsx
-import { useForm } from "@tanstack/react-form"
-import { MetadataDisplayReactor } from "@ic-reactor/candid"
-import type { RecordArgumentField } from "@ic-reactor/candid"
+```typescript
+import { useForm } from '@tanstack/react-form'
 
-function TransferForm({ reactor }: { reactor: MetadataDisplayReactor }) {
-  const meta = reactor.getArgumentMeta("icrc1_transfer")
-  const transferArg = meta.fields[0] as RecordArgumentField
+// Get metadata
+const inputMeta = reactor.getInputMeta("icrc1_transfer")
 
-  const form = useForm({
-    defaultValues: meta.defaultValues[0],
-    onSubmit: async ({ value }) => {
-      const result = await reactor.callMethod({
-        functionName: "icrc1_transfer" as any,
-        args: [value],
-      })
-      console.log("Transfer result:", result)
-    },
-  })
+// Create form with metadata
+const form = useForm({
+  defaultValues: inputMeta.defaults,
+  validators: {
+    onBlur: inputMeta.schema  // Zod schema
+  },
+  onSubmit: async ({ value }) => {
+    const result = await reactor.callMethod({
+      functionName: "icrc1_transfer",
+      args: value  // Use form values directly
+    })
+    console.log(result)
+  }
+})
 
+// Render fields dynamically
+function DynamicForm() {
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        form.handleSubmit()
-      }}
-    >
-      {transferArg.fields.map((field) => (
-        <DynamicField key={field.label} field={field} form={form} />
+    <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }}>
+      {inputMeta.args.map((field, index) => (
+        <form.Field key={index} name={`[${index}]`}>
+          {(fieldApi) => (
+            <DynamicFieldInput field={field} fieldApi={fieldApi} />
+          )}
+        </form.Field>
       ))}
-      <button type="submit">Transfer</button>
+      <button type="submit">Call Method</button>
     </form>
   )
 }
+```
 
-function DynamicField({ field, form }) {
-  switch (field.type) {
+### Dynamic Field Rendering
+
+```typescript
+import { isFieldType, isCompoundField } from "@ic-reactor/candid"
+
+function DynamicFieldInput({ field, fieldApi }) {
+  // Handle compound types
+  if (isFieldType(field, "record")) {
+    return (
+      <fieldset>
+        <legend>{field.displayLabel}</legend>
+        {field.fields.map((childField, i) => (
+          <fieldApi.Field key={i} name={childField.label}>
+            {(childApi) => (
+              <DynamicFieldInput field={childField} fieldApi={childApi} />
+            )}
+          </fieldApi.Field>
+        ))}
+      </fieldset>
+    )
+  }
+
+  if (isFieldType(field, "variant")) {
+    const selectedKey = field.getSelectedKey(fieldApi.state.value)
+    return (
+      <div>
+        <label>{field.displayLabel}</label>
+        <select
+          value={selectedKey}
+          onChange={(e) => {
+            fieldApi.handleChange(field.getOptionDefault(e.target.value))
+          }}
+        >
+          {field.options.map((opt) => (
+            <option key={opt.label} value={opt.label}>
+              {opt.displayLabel}
+            </option>
+          ))}
+        </select>
+        {/* Render selected option's field */}
+        {field.getSelectedOption(fieldApi.state.value).type !== "null" && (
+          <DynamicFieldInput
+            field={field.getSelectedOption(fieldApi.state.value)}
+            fieldApi={fieldApi}
+          />
+        )}
+      </div>
+    )
+  }
+
+  if (isFieldType(field, "vector")) {
+    const items = fieldApi.state.value || []
+    return (
+      <div>
+        <label>{field.displayLabel}</label>
+        {items.map((_, i) => (
+          <fieldApi.Field key={i} name={`[${i}]`}>
+            {(itemApi) => (
+              <DynamicFieldInput
+                field={field.createItemField(i)}
+                fieldApi={itemApi}
+              />
+            )}
+          </fieldApi.Field>
+        ))}
+        <button
+          type="button"
+          onClick={() => fieldApi.pushValue(field.getItemDefault())}
+        >
+          Add Item
+        </button>
+      </div>
+    )
+  }
+
+  if (isFieldType(field, "optional")) {
+    const isEnabled = field.isEnabled(fieldApi.state.value)
+    return (
+      <div>
+        <label>
+          <input
+            type="checkbox"
+            checked={isEnabled}
+            onChange={(e) => {
+              fieldApi.handleChange(
+                e.target.checked ? field.getInnerDefault() : null
+              )
+            }}
+          />
+          {field.displayLabel}
+        </label>
+        {isEnabled && (
+          <DynamicFieldInput field={field.innerField} fieldApi={fieldApi} />
+        )}
+      </div>
+    )
+  }
+
+  // Primitive types
+  if (isFieldType(field, "text") || isFieldType(field, "principal")) {
+    return (
+      <div>
+        <label>{field.displayLabel}</label>
+        <input
+          {...field.inputProps}
+          value={fieldApi.state.value ?? ""}
+          onChange={(e) => fieldApi.handleChange(e.target.value)}
+        />
+      </div>
+    )
+  }
+
+  if (isFieldType(field, "number")) {
+    return (
+      <div>
+        <label>{field.displayLabel}</label>
+        <input
+          {...field.inputProps}
+          value={fieldApi.state.value ?? ""}
+          onChange={(e) => fieldApi.handleChange(e.target.value)}
+        />
+        {field.format === "timestamp" && (
+          <small>Timestamp (nanoseconds)</small>
+        )}
+      </div>
+    )
+  }
+
+  if (isFieldType(field, "boolean")) {
+    return (
+      <label>
+        <input
+          type="checkbox"
+          checked={fieldApi.state.value ?? false}
+          onChange={(e) => fieldApi.handleChange(e.target.checked)}
+        />
+        {field.displayLabel}
+      </label>
+    )
+  }
+
+  return <span>Unsupported type: {field.type}</span>
+}
+```
+
+### Rendering Results
+
+```typescript
+// Call method and get resolved result
+const result = await reactor.callMethod({
+  functionName: "icrc1_balance_of",
+  args: [{ owner: "aaaaa-aa" }],
+})
+
+// result is already resolved through transformResult
+console.log(result)
+// {
+//   functionType: "query",
+//   functionName: "icrc1_balance_of",
+//   results: [{ type: "number", value: "1000000000", displayType: "string", raw: 1000000000n }],
+//   raw: 1000000000n
+// }
+
+// Or get metadata and resolve manually
+const outputMeta = reactor.getOutputMeta("icrc1_balance_of")
+const rawResult = await actor.icrc1_balance_of({ owner: principal })
+const resolved = outputMeta.resolve(rawResult)
+```
+
+### Dynamic Result Rendering
+
+```typescript
+function ResultDisplay({ resolved }) {
+  if (!resolved) return null
+
+  return (
+    <div>
+      <h3>{resolved.functionName} ({resolved.functionType})</h3>
+      {resolved.results.map((node, i) => (
+        <ResultNode key={i} node={node} />
+      ))}
+    </div>
+  )
+}
+
+function ResultNode({ node }) {
+  // Handle by display type
+  switch (node.displayType) {
+    case "string":
     case "number":
       return (
-        <form.Field name={field.label}>
-          {(fieldApi) => (
-            <input
-              type="text"
-              value={fieldApi.state.value}
-              onChange={(e) => fieldApi.handleChange(e.target.value)}
-              placeholder={field.candidType}
-            />
-          )}
-        </form.Field>
+        <div>
+          <strong>{node.label}:</strong> {node.value}
+        </div>
       )
-    // ... other types
+
+    case "boolean":
+      return (
+        <div>
+          <strong>{node.label}:</strong> {node.value ? "Yes" : "No"}
+        </div>
+      )
+
+    case "null":
+      return (
+        <div>
+          <strong>{node.label}:</strong> <em>null</em>
+        </div>
+      )
+
+    case "object":
+      return (
+        <div>
+          <strong>{node.label}:</strong>
+          <div style={{ marginLeft: 20 }}>
+            {Object.entries(node.fields).map(([key, field]) => (
+              <ResultNode key={key} node={field} />
+            ))}
+          </div>
+        </div>
+      )
+
+    case "array":
+      return (
+        <div>
+          <strong>{node.label}:</strong>
+          <ul>
+            {node.items.map((item, i) => (
+              <li key={i}>
+                <ResultNode node={item} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+
+    case "result":
+    case "variant":
+      return (
+        <div>
+          <strong>{node.label}:</strong> <em>{node.selected}</em>
+          <div style={{ marginLeft: 20 }}>
+            <ResultNode node={node.selectedValue} />
+          </div>
+        </div>
+      )
+
+    case "nullable":
+      if (node.value === null) {
+        return (
+          <div>
+            <strong>{node.label}:</strong> <em>not set</em>
+          </div>
+        )
+      }
+      return <ResultNode node={node.value} />
+
+    case "blob":
+      return (
+        <div>
+          <strong>{node.label}:</strong>
+          <code>
+            {node.length} bytes (hash: {node.hash.slice(0, 16)}...)
+          </code>
+        </div>
+      )
+
+    default:
+      return (
+        <div>
+          <strong>{node.label}:</strong>
+          <pre>{JSON.stringify(node.raw, null, 2)}</pre>
+        </div>
+      )
   }
 }
 ```
 
----
+### Dynamic Method Registration
 
-## When to Use
+You can register methods at runtime with Candid signatures:
 
-| Use Case                             | Recommended Class        |
-| ------------------------------------ | ------------------------ |
-| Dynamic form generation              | `MetadataDisplayReactor` |
-| Dynamic result rendering with types  | `MetadataDisplayReactor` |
-| Dynamic canister, display types only | `CandidDisplayReactor`   |
-| Dynamic canister, raw types          | `CandidReactor`          |
-| Known canister, display types        | `DisplayReactor`         |
-| Known canister, raw types            | `Reactor`                |
+```typescript
+// Register a method not in the original service
+await reactor.registerMethod({
+  functionName: "custom_method",
+  candid: "(record { input: text }) -> (record { output: text }) query",
+})
 
-<Aside type="tip" title="Perfect for Form Builders">
-  Use `MetadataDisplayReactor` when you need to dynamically generate forms and
-  result displays without knowing the canister interface at compile time.
-</Aside>
+// Metadata is automatically regenerated
+const argMeta = reactor.getInputMeta("custom_method")
+const resultMeta = reactor.getOutputMeta("custom_method")
 
----
+// Call the newly registered method
+const result = await reactor.callMethod({
+  functionName: "custom_method",
+  args: [{ input: "hello" }],
+})
+```
 
-## See Also
+### Call Dynamic with Metadata
 
-- [CandidDisplayReactor](/ic-reactor/v3/packages/candid/candiddisplayreactor) — Dynamic Reactor with display transformations (without metadata)
-- [CandidReactor](/ic-reactor/v3/packages/candid/candidreactor) — Dynamic Reactor with raw types
-- [CandidAdapter](/ic-reactor/v3/packages/candid/candidadapter) — Low-level Candid utilities
-- [@ic-reactor/candid Overview](/ic-reactor/v3/packages/candid/) — Package overview
+Combine registration and calling in one step:
+
+```typescript
+const { result, meta } = await reactor.callDynamicWithMeta({
+  functionName: "get_info",
+  candid: "() -> (record { name: text; version: nat }) query",
+  args: [],
+})
+
+// meta contains the result metadata
+// result is already resolved
+```
+
+## Helper Functions
+
+The library provides utility functions for working with fields:
+
+```typescript
+import {
+  isFieldType,
+  isCompoundField,
+  isPrimitiveField,
+  hasChildFields,
+  hasOptions,
+  formatLabel
+} from "@ic-reactor/candid"
+
+// Type guards
+if (isFieldType(field, "record")) {
+  // field is typed as RecordField
+  field.fields.forEach(...)
+}
+
+if (isCompoundField(field)) {
+  // field is record | variant | tuple | optional | vector | recursive
+}
+
+if (isPrimitiveField(field)) {
+  // field is principal | number | text | boolean | null
+}
+
+if (hasChildFields(field)) {
+  // field has .fields array (record, tuple)
+}
+
+if (hasOptions(field)) {
+  // field has .options array (variant)
+}
+
+// Label formatting
+formatLabel("__arg0")        // "Arg 0"
+formatLabel("_0_")           // "Item 0"
+formatLabel("created_at")    // "Created At"
+formatLabel("userAddress")   // "User Address"
+```
+
+## TypeScript Integration
+
+MetadataDisplayReactor is fully typed. When you have a typed actor, the generics flow through:
+
+```typescript
+import type { _SERVICE } from "./declarations/my_canister"
+
+const reactor = new MetadataDisplayReactor<_SERVICE>({
+  canisterId: "...",
+  clientManager,
+  name: "MyCanister"
+})
+
+// Method names are type-checked
+const meta = reactor.getInputMeta("my_method") // TypeScript knows the method names
+
+// Return types are inferred
+const result = await reactor.callMethod({
+  functionName: "my_method",
+  args: [...]
+})
+```
+
+## Complete Example: Generic Canister Explorer
+
+Here's a complete example that creates a UI for any canister:
+
+```typescript
+import { ClientManager } from "@ic-reactor/core"
+import { MetadataDisplayReactor, isFieldType } from "@ic-reactor/candid"
+import { QueryClient } from "@tanstack/query-core"
+
+async function createCanisterExplorer(canisterId: string) {
+  // Setup
+  const clientManager = new ClientManager({
+    queryClient: new QueryClient(),
+    withProcessEnv: true,
+  })
+  await clientManager.initialize()
+
+  const reactor = new MetadataDisplayReactor({
+    canisterId,
+    clientManager,
+    name: "Explorer",
+  })
+
+  await reactor.initialize()
+
+  // Get all methods
+  const methods = reactor.getMethodNames()
+
+  // Build method info
+  const methodInfo = methods.map((name) => {
+    const inputMeta = reactor.getInputMeta(name)
+    const outputMeta = reactor.getOutputMeta(name)
+
+    return {
+      name,
+      type: inputMeta?.functionType,
+      argCount: inputMeta?.argCount ?? 0,
+      returnCount: outputMeta?.returnCount ?? 0,
+      defaultValues: inputMeta?.defaults,
+      schema: inputMeta?.schema,
+    }
+  })
+
+  // Example: Call a query method
+  async function callMethod(methodName: string, args: unknown[]) {
+    const result = await reactor.callMethod({
+      functionName: methodName as any,
+      args: args as any,
+    })
+    return result
+  }
+
+  return {
+    methods: methodInfo,
+    getInputMeta: (name: string) => reactor.getInputMeta(name as any),
+    getOutputMeta: (name: string) => reactor.getOutputMeta(name as any),
+    callMethod,
+  }
+}
+
+// Usage
+const explorer = await createCanisterExplorer("ryjl3-tyaaa-aaaaa-aaaba-cai")
+
+console.log("Available methods:", explorer.methods)
+
+// Get form metadata for icrc1_balance_of
+const balanceInputMeta = explorer.getInputMeta("icrc1_balance_of")
+console.log("Form fields:", balanceInputMeta?.args)
+
+// Call with display types (strings)
+const balance = await explorer.callMethod("icrc1_balance_of", [
+  { owner: "aaaaa-aa" },
+])
+console.log("Balance:", balance)
+```
+
+## Best Practices
+
+<CardGrid>
+  <Card title="Initialize Once" icon="rocket">
+    Call `initialize()` once and reuse the reactor. Metadata generation happens
+    at initialization.
+  </Card>
+  <Card title="Use Type Guards" icon="shield">
+    Use `isFieldType()` and other helpers for type-safe field handling.
+  </Card>
+  <Card title="Leverage Defaults" icon="setting">
+    Use `defaultValues` from metadata to initialize forms properly.
+  </Card>
+  <Card title="Use Zod Schemas" icon="approve-check">
+    The built-in schemas integrate with most form libraries for validation.
+  </Card>
+</CardGrid>
+
+## API Reference
+
+### MetadataDisplayReactor
+
+| Method                         | Description                                    |
+| ------------------------------ | ---------------------------------------------- |
+| `initialize()`                 | Parse Candid and generate metadata             |
+| `getMethodNames()`             | Get list of available method names             |
+| `getInputMeta(name)`           | Get input form metadata for a method           |
+| `getOutputMeta(name)`          | Get output display metadata for a method       |
+| `getAllInputMeta()`            | Get input metadata for all methods             |
+| `getAllOutputMeta()`           | Get output metadata for all methods            |
+| `registerMethod(options)`      | Register a dynamic method                      |
+| `callMethod(options)`          | Call a method with display type transformation |
+| `callDynamicWithMeta(options)` | Register, call, and return metadata            |
+
+### FieldNode Properties
+
+| Property       | Type                 | Description                     |
+| -------------- | -------------------- | ------------------------------- |
+| `type`         | `VisitorDataType`    | Field type identifier           |
+| `label`        | `string`             | Raw Candid label                |
+| `displayLabel` | `string`             | Human-readable label            |
+| `name`         | `string`             | Form path (TanStack compatible) |
+| `component`    | `FieldComponentType` | Suggested component             |
+| `renderHint`   | `RenderHint`         | UI rendering hints              |
+| `defaultValue` | `unknown`            | Initial value                   |
+| `schema`       | `z.ZodTypeAny`       | Validation schema               |
+| `candidType`   | `string`             | Original Candid type            |
+
+### ResultNode Properties
+
+| Property        | Type              | Description              |
+| --------------- | ----------------- | ------------------------ |
+| `type`          | `VisitorDataType` | Node type identifier     |
+| `label`         | `string`          | Field label              |
+| `displayLabel`  | `string`          | Human-readable label     |
+| `candidType`    | `string`          | Original Candid type     |
+| `displayType`   | `DisplayType`     | Display category         |
+| `resolve(data)` | `Function`        | Transform raw to display |
+
+## Related Resources
+
+<LinkCard
+  title="CandidDisplayReactor"
+  description="The base class for display transformations without metadata"
+  href="/candid/display-reactor"
+/>
+
+<LinkCard
+  title="TanStack Form Integration"
+  description="Using ic-reactor with TanStack Form for type-safe forms"
+  href="/guides/tanstack-form"
+/>
+
+<LinkCard
+  title="Display Codec"
+  description="Understanding the display type transformation system"
+  href="/core/display-codec"
+/>
