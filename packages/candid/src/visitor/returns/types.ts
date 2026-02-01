@@ -59,34 +59,112 @@ interface ResultNodeBase<T extends VisitorDataType = VisitorDataType> {
 // For compound types, children are stored directly in their respective fields
 // ════════════════════════════════════════════════════════════════════════════
 
+interface RecordNodeExtras {
+  /** Child fields of the record */
+  fields: Record<string, ResultNode>
+}
+
+interface VariantNodeExtras {
+  /** All variant options as schema */
+  options: Record<string, ResultNode>
+  /** The resolved selected option value */
+  selectedValue: ResultNode
+  /** The selected option key (populated after resolution) */
+  selected?: string
+}
+
+interface TupleNodeExtras {
+  /** Tuple element fields */
+  items: ResultNode[]
+}
+
+interface VectorNodeExtras {
+  /** Vector element fields */
+  items: ResultNode[]
+}
+
+interface OptionalNodeExtras {
+  /** The inner value, or null if not enabled */
+  value: ResultNode | null
+}
+
+interface RecursiveNodeExtras {
+  /** The resolved recursive inner type */
+  inner: ResultNode
+}
+
+interface BlobNodeExtras {
+  /** The blob value as hex/base64 or Uint8Array */
+  value: string | Uint8Array
+  /** Hash of the blob content */
+  hash: string
+  /** Length in bytes */
+  length: number
+}
+
+interface NumberNodeExtras {
+  /** Detected number format */
+  format: NumberFormat
+  /** The numeric value */
+  value: string | number
+}
+
+interface TextNodeExtras {
+  /** Detected text format */
+  format: TextFormat
+  /** The text value */
+  value: string
+}
+
+interface PrincipalNodeExtras {
+  /** Detected text format */
+  format: TextFormat
+  /** The principal value as string */
+  value: string
+}
+
+interface BooleanNodeExtras {
+  /** The boolean value */
+  value: boolean
+}
+
+interface NullNodeExtras {
+  /** The null value */
+  value: null
+}
+
+interface UnknownNodeExtras {
+  /** The unknown value */
+  value: unknown
+}
+
 type NodeTypeExtras<T extends VisitorDataType> = T extends "record"
-  ? { fields: Record<string, ResultNode> }
+  ? RecordNodeExtras
   : T extends "variant"
-    ? {
-        /** All variant options as schema */
-        options: Record<string, ResultNode>
-        /** The resolved selected option value */
-        selectedValue: ResultNode
-        /** The selected option key (populated after resolution) */
-        selected?: string
-      }
-    : T extends "tuple" | "vector"
-      ? { items: ResultNode[] }
-      : T extends "optional"
-        ? { value: ResultNode | null }
-        : T extends "recursive"
-          ? { inner: ResultNode }
-          : T extends "blob"
-            ? { value: string | Uint8Array; hash: string; length: number }
-            : T extends "number"
-              ? { format: NumberFormat; value: string | number }
-              : T extends "text" | "principal"
-                ? { format: TextFormat; value: string }
-                : T extends "boolean"
-                  ? { value: boolean }
-                  : T extends "null"
-                    ? { value: null }
-                    : { value: unknown } // unknown
+    ? VariantNodeExtras
+    : T extends "tuple"
+      ? TupleNodeExtras
+      : T extends "vector"
+        ? VectorNodeExtras
+        : T extends "optional"
+          ? OptionalNodeExtras
+          : T extends "recursive"
+            ? RecursiveNodeExtras
+            : T extends "blob"
+              ? BlobNodeExtras
+              : T extends "number"
+                ? NumberNodeExtras
+                : T extends "text"
+                  ? TextNodeExtras
+                  : T extends "principal"
+                    ? PrincipalNodeExtras
+                    : T extends "boolean"
+                      ? BooleanNodeExtras
+                      : T extends "null"
+                        ? NullNodeExtras
+                        : T extends "unknown"
+                          ? UnknownNodeExtras
+                          : {}
 
 /**
  * A unified result node that contains both schema and resolved value.
