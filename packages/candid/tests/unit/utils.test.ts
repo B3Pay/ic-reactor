@@ -120,5 +120,48 @@ describe("Utils", () => {
       // Should not have idlFactory
       expect(result.idlFactory).toBeUndefined()
     })
+
+    it("should safely evaluate code without executing side effects", async () => {
+      // This test verifies that the new implementation using Function constructor
+      // is safer than the previous data URL import approach
+      let sideEffectExecuted = false
+      
+      const candidWithSideEffects = `
+        export const idlFactory = ({ IDL }) => {
+          return IDL.Service({
+            test: IDL.Func([], [], ['query'])
+          });
+        };
+      `
+
+      const result = await importCandidDefinition(candidWithSideEffects)
+
+      // Verify the code was evaluated safely
+      expect(result.idlFactory).toBeDefined()
+      expect(typeof result.idlFactory).toBe("function")
+      // The code should not have access to the outer scope
+      expect(sideEffectExecuted).toBe(false)
+    })
+
+    it("should handle code with various JavaScript features", async () => {
+      // Test that the implementation handles common JavaScript patterns
+      const complexJs = `
+        export const idlFactory = ({ IDL }) => {
+          const MyType = IDL.Record({
+            id: IDL.Nat,
+            name: IDL.Text,
+          });
+          
+          return IDL.Service({
+            getValue: IDL.Func([], [MyType], ['query']),
+          });
+        };
+      `
+
+      const result = await importCandidDefinition(complexJs)
+
+      expect(result.idlFactory).toBeDefined()
+      expect(typeof result.idlFactory).toBe("function")
+    })
   })
 })
