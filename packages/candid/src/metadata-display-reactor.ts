@@ -166,6 +166,42 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // DEPRECATED ALIASES (for backward compatibility)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * @deprecated Use `getInputMeta` instead
+   */
+  public getArgumentMeta<M extends FunctionName<A>>(
+    methodName: M
+  ): ArgumentsMeta<A, M> | undefined {
+    return this.getInputMeta(methodName)
+  }
+
+  /**
+   * @deprecated Use `getOutputMeta` instead
+   */
+  public getResultMeta<M extends FunctionName<A>>(
+    methodName: M
+  ): MethodMeta<A, M> | undefined {
+    return this.getOutputMeta(methodName)
+  }
+
+  /**
+   * @deprecated Use `getAllInputMeta` instead
+   */
+  public getAllArgumentMeta(): ArgumentsServiceMeta<A> | null {
+    return this.getAllInputMeta()
+  }
+
+  /**
+   * @deprecated Use `getAllOutputMeta` instead
+   */
+  public getAllResultMeta(): ServiceMeta<A> | null {
+    return this.getAllOutputMeta()
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // DYNAMIC METHOD REGISTRATION
   // ══════════════════════════════════════════════════════════════════════════
   /**

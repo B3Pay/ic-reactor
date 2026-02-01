@@ -273,8 +273,8 @@ describe("MetadataDisplayReactor", () => {
       expect(meta).toBeDefined()
       expect(meta.functionType).toBe("query")
       expect(meta.functionName).toBe("icrc1_name")
-      expect(meta.fields).toHaveLength(0)
-      expect(meta.defaultValues).toEqual([])
+      expect(meta.args).toHaveLength(0)
+      expect(meta.defaults).toEqual([])
     })
 
     it("should generate argument metadata for icrc1_balance_of", () => {
@@ -283,10 +283,10 @@ describe("MetadataDisplayReactor", () => {
 
       expect(meta).toBeDefined()
       expect(meta.functionType).toBe("query")
-      expect(meta.fields).toHaveLength(1)
+      expect(meta.args).toHaveLength(1)
 
       // First argument should be Account record
-      const accountField = meta.fields[0]
+      const accountField = meta.args[0]
       if (accountField.type !== "record") {
         throw new Error("Expected record field")
       }
@@ -317,10 +317,10 @@ describe("MetadataDisplayReactor", () => {
 
       expect(meta).toBeDefined()
       expect(meta.functionType).toBe("update")
-      expect(meta.fields).toHaveLength(1)
+      expect(meta.args).toHaveLength(1)
 
       // First argument should be TransferArg record
-      const transferArgField = meta.fields[0]
+      const transferArgField = meta.args[0]
       if (transferArgField.type !== "record") {
         throw new Error("Expected record field")
       }
@@ -376,10 +376,10 @@ describe("MetadataDisplayReactor", () => {
       const meta = reactor.getArgumentMeta("icrc1_transfer")
       if (!meta) throw new Error("Metadata not found")
 
-      expect(meta.defaultValues).toHaveLength(1)
-      expect(meta.defaultValues[0]).toBeDefined()
+      expect(meta.defaults).toHaveLength(1)
+      expect(meta.defaults[0]).toBeDefined()
 
-      const defaultTransferArg = meta.defaultValues[0]
+      const defaultTransferArg = meta.defaults[0]
       expect(defaultTransferArg).toHaveProperty("to")
       expect(defaultTransferArg).toHaveProperty("amount")
       expect(defaultTransferArg).toHaveProperty("fee")
@@ -493,7 +493,7 @@ describe("MetadataDisplayReactor", () => {
       // Validate Ok by resolving
       const okResolved = resultField.resolve({ Ok: BigInt(1) }) as VariantNode
       expect(okResolved.selected).toBe("Ok")
-      const okField = okResolved.selectedOption
+      const okField = okResolved.selectedValue
       expect(okField.type).toBe("number")
       expect(okField.candidType).toBe("nat")
       expect(okField.displayType).toBe("string")
@@ -502,7 +502,7 @@ describe("MetadataDisplayReactor", () => {
       const errResolved = resultField.resolve({
         Err: { InsufficientFunds: { balance: BigInt(0) } },
       }) as VariantNode
-      const errField = errResolved.selectedOption
+      const errField = errResolved.selectedValue
       expect(errField.type).toBe("variant")
       const insuff = (errField as any).resolve({
         InsufficientFunds: { balance: BigInt(0) },
@@ -558,10 +558,10 @@ describe("MetadataDisplayReactor", () => {
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
-      expect(meta.fields).toHaveLength(2)
+      expect(meta.args).toHaveLength(2)
 
       // First arg is nat64 (user ID)
-      const idField = meta.fields[0]
+      const idField = meta.args[0]
       if (idField.type !== "text") {
         throw new Error("Expected text field")
       }
@@ -569,17 +569,19 @@ describe("MetadataDisplayReactor", () => {
       expect(idField.candidType).toBe("nat64")
 
       // Second arg is Status variant
-      const statusField = meta.fields[1]
+      const statusField = meta.args[1]
       if (statusField.type !== "variant") {
         throw new Error("Expected variant field")
       }
       expect(statusField.type).toBe("variant")
-      expect(statusField.fields.some((f) => f.label === "Active")).toBe(true)
-      expect(statusField.fields.some((f) => f.label === "Inactive")).toBe(true)
-      expect(statusField.fields.some((f) => f.label === "Pending")).toBe(true)
+      expect(statusField.options.some((f) => f.label === "Active")).toBe(true)
+      expect(statusField.options.some((f) => f.label === "Inactive")).toBe(true)
+      expect(statusField.options.some((f) => f.label === "Pending")).toBe(true)
 
       // Pending has a nat64 payload
-      const pendingField = statusField.fields.find((f) => f.label === "Pending")
+      const pendingField = statusField.options.find(
+        (f) => f.label === "Pending"
+      )
       expect(pendingField?.type).toBe("text")
     })
 
@@ -740,9 +742,9 @@ describe("MetadataDisplayReactor", () => {
       const argMeta = reactor.getArgumentMeta("complex_method")
       if (!argMeta) throw new Error("Metadata not found")
       expect(argMeta).toBeDefined()
-      expect(argMeta.fields).toHaveLength(1)
+      expect(argMeta.args).toHaveLength(1)
 
-      const argRecord = argMeta.fields[0]
+      const argRecord = argMeta.args[0]
       if (argRecord.type !== "record") {
         throw new Error("Expected record field")
       }
@@ -829,20 +831,20 @@ describe("MetadataDisplayReactor", () => {
       const greetMeta = allArgMeta.greet
 
       expect(greetMeta.functionType).toBe("query")
-      expect(greetMeta.fields).toHaveLength(1)
-      expect(greetMeta.fields[0].type).toBe("text")
+      expect(greetMeta.args).toHaveLength(1)
+      expect(greetMeta.args[0].type).toBe("text")
 
       // Check get_count method (no args)
       const getCountMeta = allArgMeta.get_count
 
       expect(getCountMeta.functionType).toBe("query")
-      expect(getCountMeta.fields).toHaveLength(0)
+      expect(getCountMeta.args).toHaveLength(0)
 
       // Check set_count method
       const setCountMeta = allArgMeta.set_count
       expect(setCountMeta.functionType).toBe("update")
-      expect(setCountMeta.fields).toHaveLength(1)
-      expect(setCountMeta.fields[0].type).toBe("text")
+      expect(setCountMeta.args).toHaveLength(1)
+      expect(setCountMeta.args[0].type).toBe("text")
     })
 
     it("should return all result metadata", () => {
@@ -990,7 +992,7 @@ describe("MetadataDisplayReactor", () => {
         ? ((item1 as any).value[1].value as ResolvedNode)
         : ((item1 as any).items[1] as ResolvedNode)
       expect((variantVal as any).selected).toBe("Text")
-      expect(((variantVal as any).selectedOption as ResolvedNode).value).toBe(
+      expect(((variantVal as any).selectedValue as ResolvedNode).value).toBe(
         "Test Token"
       )
     })
@@ -1038,7 +1040,7 @@ describe("MetadataDisplayReactor E2E", () => {
   it("should have correct metadata for icrc1_name", async () => {
     const argMeta = reactor.getArgumentMeta("icrc1_name")
     expect(argMeta).toBeDefined()
-    expect(argMeta!.fields).toHaveLength(0)
+    expect(argMeta!.args).toHaveLength(0)
     expect(argMeta!.functionType).toBe("query")
 
     const resultMeta = reactor.getResultMeta("icrc1_name")
@@ -1145,7 +1147,7 @@ describe("Complex Result Handling (Mocked)", () => {
     // Check that we have the extracted Ok value structure
     expect((fieldValue as any).selected).toBe("Ok")
     // Check the value inside Ok (nat -> string)
-    expect(((fieldValue as any).selectedOption as ResolvedNode).value).toBe(
+    expect(((fieldValue as any).selectedValue as ResolvedNode).value).toBe(
       "100"
     )
     console.log("✅ Ok result:", fieldValue)
@@ -1179,7 +1181,7 @@ describe("Complex Result Handling (Mocked)", () => {
     expect((fieldValue as any).selected).toBe("Err")
 
     // Check the value inside Err
-    const errInner = (fieldValue as any).selectedOption as ResolvedNode
+    const errInner = (fieldValue as any).selectedValue as ResolvedNode
     console.log(
       "✅ Err result:",
       JSON.stringify(
@@ -1190,7 +1192,7 @@ describe("Complex Result Handling (Mocked)", () => {
     )
 
     expect((errInner as any).selected).toBe("InsufficientFunds")
-    const innerRecord = (errInner as any).selectedOption as RecordNode
+    const innerRecord = (errInner as any).selectedValue as RecordNode
     expect((innerRecord.fields as any).balance.value).toBe("50")
   })
 })

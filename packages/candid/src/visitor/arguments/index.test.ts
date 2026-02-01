@@ -1238,7 +1238,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(burnField.type).toBe("text") // nat is rendered as text for large numbers
     })
 
-    it("getSelectedOption should return the selected option from a value", () => {
+    it("getSelectedKey should return the selected key from a value", () => {
       const variantType = IDL.Variant({ A: IDL.Null, B: IDL.Text, C: IDL.Nat })
       const field = visitor.visitVariant(
         variantType,
@@ -1250,11 +1250,11 @@ describe("ArgumentFieldVisitor", () => {
         "choice"
       )
 
-      expect(field.getSelectedOption({ A: null })).toBe("A")
-      expect(field.getSelectedOption({ B: "hello" })).toBe("B")
-      expect(field.getSelectedOption({ C: "100" })).toBe("C")
+      expect(field.getSelectedKey({ A: null })).toBe("A")
+      expect(field.getSelectedKey({ B: "hello" })).toBe("B")
+      expect(field.getSelectedKey({ C: "100" })).toBe("C")
       // Falls back to default option for unknown values
-      expect(field.getSelectedOption({})).toBe("A")
+      expect(field.getSelectedKey({})).toBe("A")
     })
 
     it("getSelectedField should return the field for the selected option", () => {
