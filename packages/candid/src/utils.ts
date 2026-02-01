@@ -18,19 +18,16 @@ export async function importCandidDefinition(
   try {
     // Create a module exports object
     const exports: Record<string, unknown> = {}
-    
+
     // Transform ES6 export statements to assignments
     // This is safe because we're only transforming the syntax pattern,
     // not evaluating arbitrary code
     const transformedJs = candidJs
       // Replace 'export const name = value' with 'const name = value; exports.name = name'
-      .replace(
-        /export\s+const\s+(\w+)\s*=/g,
-        "const $1 ="
-      )
+      .replace(/export\s+const\s+(\w+)\s*=/g, "const $1 =")
       // Replace 'export function name' with 'function name'
       .replace(/export\s+function\s+(\w+)/g, "function $1")
-    
+
     // Create a safe evaluation context with necessary globals
     // We provide IDL from the trusted @icp-sdk/core/candid package
     const evalFunction = new Function(
@@ -49,7 +46,7 @@ export async function importCandidDefinition(
       return exports;
       `
     )
-    
+
     // Execute the function with the exports object and IDL
     const result = evalFunction(exports, IDL)
 

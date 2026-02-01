@@ -125,7 +125,7 @@ describe("Utils", () => {
       // This test verifies that the Function constructor provides better isolation
       // than the previous data URL import approach. Code evaluated should not have
       // access to the outer scope or global variables beyond what's explicitly provided.
-      
+
       const candidJs = `
         export const idlFactory = ({ IDL }) => {
           // The code should have access to IDL parameter
@@ -144,12 +144,12 @@ describe("Utils", () => {
       // Verify the code was evaluated and has access to IDL
       expect(result.idlFactory).toBeDefined()
       expect(typeof result.idlFactory).toBe("function")
-      
+
       // Verify the idlFactory can be called with IDL
       // This confirms it has the proper closure
       expect(() => {
-        const { IDL } = require('@icp-sdk/core/candid');
-        result.idlFactory({ IDL });
+        const { IDL } = require("@icp-sdk/core/candid")
+        result.idlFactory({ IDL })
       }).not.toThrow()
     })
 
