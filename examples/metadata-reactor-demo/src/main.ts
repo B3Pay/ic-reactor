@@ -78,11 +78,11 @@ function updateUI() {
   formContainer.innerHTML = `
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
       <div style="max-height: 200px; overflow: auto; background: #111; padding: 10px; font-size: 12px;">
-        <strong>Arg Metadata:</strong>
+        <strong>Input Metadata:</strong>
         <pre>${JSON.stringify(argMeta, replacer, 2)}</pre>
       </div>
       <div style="max-height: 200px; overflow: auto; background: #111; padding: 10px; font-size: 12px;">
-        <strong>Result Metadata:</strong>
+        <strong>Output Metadata:</strong>
         <pre>${JSON.stringify(resultMeta, replacer, 2)}</pre>
       </div>
     </div>

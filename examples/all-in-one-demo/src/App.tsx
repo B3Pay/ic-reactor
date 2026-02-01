@@ -56,7 +56,7 @@ function FetchingIndicator({
 
   return (
     <div
-      className={`${sizeClasses} rounded-full transition-all duration-300 flex-shrink-0 ${
+      className={`${sizeClasses} rounded-full transition-all duration-300 shrink-0 ${
         isFetching
           ? "bg-success shadow-[0_0_8px_oklch(0.72_0.19_150)]"
           : "bg-muted-foreground/30"
@@ -95,7 +95,7 @@ function CodeSnippet({ code }: { code: string }) {
       </Button>
 
       {isOpen && (
-        <div className="bg-slate-950 border-t border-border/20 max-h-[500px] overflow-y-auto">
+        <div className="bg-slate-950 border-t border-border/20 max-h-125 overflow-y-auto">
           <SyntaxHighlighter
             language="typescript"
             style={oneDark}

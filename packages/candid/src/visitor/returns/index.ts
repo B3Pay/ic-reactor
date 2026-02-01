@@ -1,12 +1,13 @@
 import { isQuery } from "../helpers"
 import { checkTextFormat, checkNumberFormat } from "../constants"
+import { formatLabel } from "../arguments/helpers"
 import type {
   ResultNode,
   ResolvedNode,
-  NodeType,
+  VisitorDataType,
   MethodMeta,
   ServiceMeta,
-  ResolvedMethodResult,
+  MethodResult,
   NumberFormat,
   TextFormat,
 } from "./types"
@@ -32,7 +33,7 @@ type Codec = { decode: (v: unknown) => unknown }
 /**
  * Creates a primitive node with automatic resolve implementation.
  */
-function primitiveNode<T extends NodeType>(
+function primitiveNode<T extends VisitorDataType>(
   type: T,
   label: string,
   candidType: string,
@@ -43,6 +44,7 @@ function primitiveNode<T extends NodeType>(
   const node: ResultNode<T> = {
     type,
     label,
+    displayLabel: formatLabel(label),
     candidType,
     displayType,
     ...extras,
@@ -116,7 +118,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       returnCount: t.retTypes.length,
       resolve: (
         data: ActorMethodReturnType<A[FunctionName<A>]>
-      ): ResolvedMethodResult<A> => {
+      ): MethodResult<A> => {
         const dataArray = returns.length <= 1 ? [data] : (data as unknown[])
         return {
           functionType,
@@ -145,6 +147,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     const node: ResultNode<"record"> = {
       type: "record",
       label,
+      displayLabel: formatLabel(label),
       candidType: "record",
       displayType: "object",
       fields,
@@ -180,17 +183,19 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     fields_: Array<[string, IDL.Type]>,
     label: string
   ): ResultNode<"variant"> {
-    const selectedOption: Record<string, ResultNode> = {}
+    const options: Record<string, ResultNode> = {}
     for (const [key, type] of fields_) {
-      selectedOption[key] = type.accept(this, key) as ResultNode
+      options[key] = type.accept(this, key) as ResultNode
     }
-    const isResult = "Ok" in selectedOption && "Err" in selectedOption
+    const isResult = "Ok" in options && "Err" in options
     const node: ResultNode<"variant"> = {
       type: "variant",
       label,
+      displayLabel: formatLabel(label),
       candidType: "variant",
       displayType: isResult ? "result" : "variant",
-      selectedOption: {} as ResultNode, // placeholder, populated on resolve
+      options,
+      selectedValue: {} as ResultNode, // placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"variant"> {
         if (data === null || data === undefined) {
           throw new Error(
@@ -201,17 +206,17 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         // Support both raw { Selected: value } and transformed { _type: 'Selected', Selected: value }
         const selected =
           (variantData._type as string) || Object.keys(variantData)[0]
-        const optionNode = selectedOption[selected]
+        const optionNode = options[selected]
 
         if (!optionNode) {
           throw new Error(
-            `Option ${selected} not found in variant ${label}. Available options: ${Object.keys(selectedOption).join(", ")}`
+            `Option ${selected} not found in variant ${label}. Available options: ${Object.keys(options).join(", ")}`
           )
         }
         return {
           ...node,
           selected,
-          selectedOption: optionNode.resolve(variantData[selected]),
+          selectedValue: optionNode.resolve(variantData[selected]),
           raw: data,
         }
       },
@@ -231,6 +236,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     const node: ResultNode<"tuple"> = {
       type: "tuple",
       label,
+      displayLabel: formatLabel(label),
       candidType: "tuple",
       displayType: "array",
       items,
@@ -259,6 +265,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     const node: ResultNode<"optional"> = {
       type: "optional",
       label,
+      displayLabel: formatLabel(label),
       candidType: "opt",
       displayType: "nullable",
       value: null, // null until resolved
@@ -290,6 +297,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       const node: ResultNode<"blob"> = {
         type: "blob",
         label,
+        displayLabel: formatLabel(label),
         candidType: "blob",
         displayType: "string",
         length: 0,
@@ -321,6 +329,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     const node: ResultNode<"vector"> = {
       type: "vector",
       label,
+      displayLabel: formatLabel(label),
       candidType: "vec",
       displayType: "array",
       items: [], // empty schema placeholder, populated on resolve
@@ -357,6 +366,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     const node: ResultNode<"recursive"> = {
       type: "recursive",
       label,
+      displayLabel: formatLabel(label),
       candidType: "rec",
       displayType: "recursive",
       inner: {} as ResultNode, // placeholder, populated on resolve

@@ -15,7 +15,7 @@ import {
 } from "./visitor/arguments"
 import {
   MethodMeta,
-  ResolvedMethodResult,
+  MethodResult,
   ResultFieldVisitor,
   ServiceMeta,
 } from "./visitor/returns"
@@ -33,13 +33,39 @@ import {
  * It extends the base Reactor and adds metadata generation capabilities.
  * Unlike DisplayReactor, it does not use a separate codec for transformation.
  * Instead, it uses the metadata visitor to resolve raw values into display-ready structures.
+ *
+ * ## Usage
+ *
+ * ```typescript
+ * const reactor = new MetadataDisplayReactor({
+ *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+ *   clientManager,
+ *   name: "ICPLedger",
+ * })
+ *
+ * await reactor.initialize()
+ *
+ * // Get form metadata
+ * const argMeta = reactor.getInputMeta("icrc1_transfer")
+ * console.log(argMeta.args)     // Field descriptors
+ * console.log(argMeta.defaults) // Default values
+ *
+ * // Get result metadata
+ * const resultMeta = reactor.getOutputMeta("icrc1_transfer")
+ *
+ * // Call with display types
+ * const result = await reactor.callMethod({
+ *   functionName: "icrc1_transfer",
+ *   args: [{ to: { owner: "aaaaa-aa" }, amount: "1000000" }]
+ * })
+ * ```
  */
 declare module "@ic-reactor/core" {
   interface TransformArgsRegistry<T> {
     metadata: TransformArgsRegistry<T>["display"]
   }
   interface TransformReturnRegistry<T, A = BaseActor> {
-    metadata: ResolvedMethodResult<A>
+    metadata: MethodResult<A>
   }
 }
 
@@ -98,37 +124,44 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   // ══════════════════════════════════════════════════════════════════════════
   // METADATA ACCESS
   // ══════════════════════════════════════════════════════════════════════════
+
   /**
-   * Get argument field metadata for a method.
+   * Get input field metadata for a method.
    * Use this to generate input forms.
+   *
+   * @param methodName The method name to get metadata for
+   * @returns ArgumentsMeta containing args, defaults, and validation schema
    */
-  public getArgumentMeta<M extends FunctionName<A>>(
+  public getInputMeta<M extends FunctionName<A>>(
     methodName: M
   ): ArgumentsMeta<A, M> | undefined {
     return this.argumentMeta?.[methodName]
   }
 
   /**
-   * Get result field metadata for a method.
+   * Get output field metadata for a method.
    * Use this to render results.
+   *
+   * @param methodName The method name to get metadata for
+   * @returns MethodMeta containing return schema and resolve function
    */
-  public getResultMeta<M extends FunctionName<A>>(
+  public getOutputMeta<M extends FunctionName<A>>(
     methodName: M
   ): MethodMeta<A, M> | undefined {
     return this.resultMeta?.[methodName]
   }
 
   /**
-   * Get all argument metadata.
+   * Get all input metadata for all methods.
    */
-  public getAllArgumentMeta(): ArgumentsServiceMeta<A> | null {
+  public getAllInputMeta(): ArgumentsServiceMeta<A> | null {
     return this.argumentMeta
   }
 
   /**
-   * Get all result metadata.
+   * Get all output metadata for all methods.
    */
-  public getAllResultMeta(): ServiceMeta<A> | null {
+  public getAllOutputMeta(): ServiceMeta<A> | null {
     return this.resultMeta
   }
 
@@ -154,11 +187,11 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   protected override transformResult<M extends FunctionName<A>>(
     methodName: M,
     result: ActorMethodReturnType<A[M]>
-  ): ResolvedMethodResult<A> {
+  ): MethodResult<A> {
     // Get metadata and generate resolved result
-    const meta = this.getResultMeta(methodName)
+    const meta = this.getOutputMeta(methodName)
     if (!meta) {
-      throw new Error(`No metadata found for method "${methodName}"`)
+      throw new Error(`No metadata found for method "${String(methodName)}"`)
     }
 
     return meta.resolve(result)
@@ -166,6 +199,9 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
 
   /**
    * Perform a dynamic call and return result with metadata.
+   *
+   * @param options Method registration and call options
+   * @returns Object containing the result and metadata
    */
   public async callDynamicWithMeta<T = unknown>(
     options: DynamicMethodOptions & { args?: unknown[] }
@@ -177,8 +213,39 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
       args: options.args as any,
     })) as T
 
-    const meta = this.getResultMeta(options.functionName as any)!
+    const meta = this.getOutputMeta(options.functionName as any)!
 
     return { result, meta }
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Factory Function
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Create and initialize a MetadataDisplayReactor.
+ * This is a convenience function that creates the reactor and calls initialize().
+ *
+ * @param options Reactor configuration options
+ * @returns Initialized MetadataDisplayReactor
+ *
+ * @example
+ * ```typescript
+ * const reactor = await createMetadataReactor({
+ *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+ *   clientManager,
+ *   name: "ICPLedger",
+ * })
+ *
+ * // Reactor is ready to use
+ * const methods = reactor.getMethodNames()
+ * ```
+ */
+export async function createMetadataReactor<A = BaseActor>(
+  options: CandidDisplayReactorParameters<A>
+): Promise<MetadataDisplayReactor<A>> {
+  const reactor = new MetadataDisplayReactor<A>(options)
+  await reactor.initialize()
+  return reactor
 }

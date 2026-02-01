@@ -347,7 +347,7 @@ describe("ResultFieldVisitor", () => {
       // Validate options by resolving each option
       const resolvedActive = field.resolve({ Active: null })
       expect(resolvedActive.selected).toBe("Active")
-      expect(resolvedActive.selectedOption.type).toBe("null")
+      expect(resolvedActive.selectedValue.type).toBe("null")
       const resolvedInactive = field.resolve({ Inactive: null })
       expect(resolvedInactive.selected).toBe("Inactive")
       const resolvedPending = field.resolve({ Pending: null })
@@ -396,14 +396,14 @@ describe("ResultFieldVisitor", () => {
         Transfer: { from: "aaaaa-aa", to: "bbbbb-bb", amount: BigInt(1) },
       })
       expect(transferResolved.selected).toBe("Transfer")
-      expect(transferResolved.selectedOption.type).toBe("record")
+      expect(transferResolved.selectedValue.type).toBe("record")
       expect(
-        Object.keys((transferResolved.selectedOption as RecordNode).fields)
+        Object.keys((transferResolved.selectedValue as RecordNode).fields)
       ).toHaveLength(3)
 
       const approveResolved = field.resolve({ Approve: BigInt(5) })
       expect(approveResolved.selected).toBe("Approve")
-      expect(approveResolved.selectedOption.type).toBe("number")
+      expect(approveResolved.selectedValue.type).toBe("number")
     })
 
     it("should detect Result variant (Ok/Err)", () => {
@@ -425,13 +425,13 @@ describe("ResultFieldVisitor", () => {
 
       const okResolved = field.resolve({ Ok: BigInt(1) })
       expect(okResolved.selected).toBe("Ok")
-      expect(okResolved.selectedOption.type).toBe("number")
-      expect(okResolved.selectedOption.displayType).toBe("string")
+      expect(okResolved.selectedValue.type).toBe("number")
+      expect(okResolved.selectedValue.displayType).toBe("string")
 
       const errResolved = field.resolve({ Err: "error" })
       expect(errResolved.selected).toBe("Err")
-      expect(errResolved.selectedOption.type).toBe("text")
-      expect(errResolved.selectedOption.displayType).toBe("string")
+      expect(errResolved.selectedValue.type).toBe("text")
+      expect(errResolved.selectedValue.displayType).toBe("string")
     })
 
     it("should detect complex Result variant", () => {
@@ -474,11 +474,11 @@ describe("ResultFieldVisitor", () => {
         Ok: { id: BigInt(1), data: new Uint8Array([1, 2, 3]) },
       })
       expect(okResolved.selected).toBe("Ok")
-      expect(okResolved.selectedOption.type).toBe("record")
+      expect(okResolved.selectedValue.type).toBe("record")
 
       const errResolved = field.resolve({ Err: { NotFound: null } })
       expect(errResolved.selected).toBe("Err")
-      expect(errResolved.selectedOption.type).toBe("variant")
+      expect(errResolved.selectedValue.type).toBe("variant")
     })
 
     it("should not detect non-Result variant with Ok and other options", () => {
@@ -944,18 +944,18 @@ describe("ResultFieldVisitor", () => {
       expect(field.displayType).toBe("result")
 
       const okResolved = field.resolve({ Ok: BigInt(123) })
-      if ((okResolved.selectedOption as ResolvedNode).type !== "number") {
+      if ((okResolved.selectedValue as ResolvedNode).type !== "number") {
         throw new Error("Ok field is not number")
       }
-      expect((okResolved.selectedOption as ResolvedNode).candidType).toBe("nat")
-      expect((okResolved.selectedOption as ResolvedNode).displayType).toBe(
+      expect((okResolved.selectedValue as ResolvedNode).candidType).toBe("nat")
+      expect((okResolved.selectedValue as ResolvedNode).displayType).toBe(
         "string"
       )
 
       const errResolved = field.resolve({
         Err: { InsufficientFunds: { balance: BigInt(0) } },
       })
-      const innerErr = errResolved.selectedOption as ResolvedNode
+      const innerErr = errResolved.selectedValue as ResolvedNode
       expect(innerErr.type).toBe("variant")
       const insufficient = (innerErr as any).resolve({
         InsufficientFunds: { balance: BigInt(0) },
@@ -1292,7 +1292,7 @@ describe("ResultFieldVisitor", () => {
         const resolved = field.resolve({ Ok: "Success" })
         expect(resolved.type).toBe(field.type)
         expect(resolved.selected).toBe("Ok")
-        const data = resolved.selectedOption as ResolvedNode
+        const data = resolved.selectedValue as ResolvedNode
         expect(data.value).toBe("Success")
       })
 
@@ -1313,7 +1313,7 @@ describe("ResultFieldVisitor", () => {
         const resolved = field.resolve({ Err: "Something went wrong" })
 
         expect(resolved.selected).toBe("Err")
-        const data = resolved.selectedOption as ResolvedNode
+        const data = resolved.selectedValue as ResolvedNode
         expect(data.value).toBe("Something went wrong")
       })
 
@@ -1612,7 +1612,7 @@ describe("ResultFieldVisitor", () => {
 
       const okValue = okResult.results[0] as ResolvedNode
       expect((okValue as any).selected).toBe("Ok")
-      expect(((okValue as any).selectedOption as ResolvedNode).value).toBe(
+      expect(((okValue as any).selectedValue as ResolvedNode).value).toBe(
         "12345"
       )
 
@@ -1622,7 +1622,7 @@ describe("ResultFieldVisitor", () => {
       })
       const errValue = errResult.results[0] as ResolvedNode
       expect((errValue as any).selected).toBe("Err")
-      expect(((errValue as any).selectedOption as ResolvedNode).value).toBe(
+      expect(((errValue as any).selectedValue as ResolvedNode).value).toBe(
         "Insufficient funds"
       )
     })
@@ -1727,7 +1727,7 @@ describe("ResultFieldVisitor", () => {
 
       const successValue = successResult.results[0] as ResolvedNode
       expect((successValue as any).selected).toBe("Ok")
-      expect(((successValue as any).selectedOption as ResolvedNode).value).toBe(
+      expect(((successValue as any).selectedValue as ResolvedNode).value).toBe(
         "1000"
       )
 
@@ -1738,7 +1738,7 @@ describe("ResultFieldVisitor", () => {
       const errorValue = errorResult.results[0] as ResolvedNode
       expect((errorValue as any).selected).toBe("Err")
 
-      const val = (errorValue as any).selectedOption as ResolvedNode
+      const val = (errorValue as any).selectedValue as ResolvedNode
       if (typeof val !== "object" || val === null || !("selected" in val)) {
         throw new Error("Expected variant value object")
       }
@@ -1876,7 +1876,7 @@ describe("ResultFieldVisitor", () => {
 
       const variantValue = result.results[0] as ResolvedNode
       expect((variantValue as any).selected).toBe("Ok")
-      const innerVal = (variantValue as any).selectedOption as ResolvedNode
+      const innerVal = (variantValue as any).selectedValue as ResolvedNode
       expect(innerVal.value).toBe("12345")
     })
 
@@ -2042,7 +2042,7 @@ describe("ResultFieldVisitor Reproduction - User reported issue", () => {
     const resolved = field.resolve(transformedData)
 
     expect(resolved.selected).toBe("Quorum")
-    expect(resolved.selectedOption.value).toBe("some text")
+    expect(resolved.selectedValue.value).toBe("some text")
   })
 
   it("should handle already transformed optional data (unwrapped)", () => {
@@ -2101,7 +2101,7 @@ describe("ResultFieldVisitor Reproduction - User reported issue", () => {
       const variantNode = resolved.inner as VariantNode
 
       expect(variantNode.selected).toBe("Quorum")
-      expect(variantNode.selectedOption.type).toBe("record")
+      expect(variantNode.selectedValue.type).toBe("record")
     })
 
     it("should handle deeply nested recursive variant with transformed data", () => {
@@ -2130,7 +2130,7 @@ describe("ResultFieldVisitor Reproduction - User reported issue", () => {
       const variantNode = resolved.inner as VariantNode
       expect(variantNode.selected).toBe("Nested")
 
-      const nestedResolved = variantNode.selectedOption as RecursiveNode
+      const nestedResolved = variantNode.selectedValue as RecursiveNode
       const innerVariant = nestedResolved.inner as VariantNode
       expect(innerVariant.selected).toBe("Quorum")
     })

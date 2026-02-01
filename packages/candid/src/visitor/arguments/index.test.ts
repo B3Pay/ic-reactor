@@ -289,14 +289,14 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(field.type).toBe("variant")
       expect(field.label).toBe("status")
-      expect(field.fields.map((f) => f.label)).toEqual([
+      expect(field.options.map((f) => f.label)).toEqual([
         "Inactive",
         "Active",
         "Pending",
       ])
       expect(field.defaultOption).toBe("Inactive")
-      expect(field.fields).toHaveLength(3)
-      expect(field.fields.some((f) => f.label === "Active")).toBe(true)
+      expect(field.options).toHaveLength(3)
+      expect(field.options.some((f) => f.label === "Active")).toBe(true)
 
       // Test getOptionDefault helper
       expect(field.getOptionDefault("Active")).toEqual({ _type: "Active" })
@@ -338,13 +338,13 @@ describe("ArgumentFieldVisitor", () => {
       )
 
       expect(field.type).toBe("variant")
-      expect(field.fields.map((f) => f.label)).toEqual([
+      expect(field.options.map((f) => f.label)).toEqual([
         "Approve",
         "Burn",
         "Transfer",
       ]) // Sorted order
 
-      const transferField = field.fields.find(
+      const transferField = field.options.find(
         (f) => f.label === "Transfer"
       ) as RecordField
       if (!transferField || transferField.type !== "record") {
@@ -353,7 +353,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(transferField.type).toBe("record")
       expect(transferField.fields).toHaveLength(2)
 
-      const burnField = field.fields.find((f) => f.label === "Burn")
+      const burnField = field.options.find((f) => f.label === "Burn")
       if (!burnField || burnField.type !== "text") {
         throw new Error("Burn field not found or not text")
       }
@@ -375,16 +375,16 @@ describe("ArgumentFieldVisitor", () => {
       )
 
       expect(field.type).toBe("variant")
-      expect(field.fields.some((f) => f.label === "Ok")).toBe(true)
-      expect(field.fields.some((f) => f.label === "Err")).toBe(true)
+      expect(field.options.some((f) => f.label === "Ok")).toBe(true)
+      expect(field.options.some((f) => f.label === "Err")).toBe(true)
 
-      const okField = field.fields.find((f) => f.label === "Ok")
+      const okField = field.options.find((f) => f.label === "Ok")
       if (!okField || okField.type !== "text") {
         throw new Error("Ok field not found or not text")
       }
       expect(okField.type).toBe("text")
 
-      const errField = field.fields.find((f) => f.label === "Err")
+      const errField = field.options.find((f) => f.label === "Err")
       if (!errField || errField.type !== "text") {
         throw new Error("Err field not found or not text")
       }
@@ -571,8 +571,8 @@ describe("ArgumentFieldVisitor", () => {
         throw new Error("Extracted field is not variant")
       }
       expect(extracted.type).toBe("variant")
-      expect(extracted.fields.some((f) => f.label === "Leaf")).toBe(true)
-      expect(extracted.fields.some((f) => f.label === "Node")).toBe(true)
+      expect(extracted.options.some((f) => f.label === "Leaf")).toBe(true)
+      expect(extracted.options.some((f) => f.label === "Node")).toBe(true)
     })
 
     it("should handle recursive linked list", () => {
@@ -606,9 +606,9 @@ describe("ArgumentFieldVisitor", () => {
         throw new Error("Extracted field is not variant")
       }
       expect(extracted.type).toBe("variant")
-      expect(extracted.fields.map((f) => f.label)).toEqual(["Nil", "Cons"])
+      expect(extracted.options.map((f) => f.label)).toEqual(["Nil", "Cons"])
 
-      const consField = extracted.fields.find(
+      const consField = extracted.options.find(
         (f) => f.label === "Cons"
       ) as RecordField
       if (!consField || consField.type !== "record") {
@@ -630,11 +630,11 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(meta.functionType).toBe("query")
       expect(meta.functionName).toBe("lookup")
-      expect(meta.fields).toHaveLength(1)
-      expect(meta.fields[0].type).toBe("text")
-      expect(meta.defaultValues).toEqual([""])
+      expect(meta.args).toHaveLength(1)
+      expect(meta.args[0].type).toBe("text")
+      expect(meta.defaults).toEqual([""])
       expect(meta.argCount).toBe(1)
-      expect(meta.isNoArgs).toBe(false)
+      expect(meta.isEmpty).toBe(false)
     })
 
     it("should handle update function", () => {
@@ -657,10 +657,10 @@ describe("ArgumentFieldVisitor", () => {
 
       expect(meta.functionType).toBe("update")
       expect(meta.functionName).toBe("transfer")
-      expect(meta.fields).toHaveLength(1)
-      expect(meta.fields[0].type).toBe("record")
+      expect(meta.args).toHaveLength(1)
+      expect(meta.args[0].type).toBe("record")
 
-      const recordField = meta.fields[0] as RecordField
+      const recordField = meta.args[0] as RecordField
       if (recordField.type !== "record") {
         throw new Error("Expected record field")
       }
@@ -675,10 +675,10 @@ describe("ArgumentFieldVisitor", () => {
       )
       const meta = visitor.visitFunc(funcType, "authorize")
 
-      expect(meta.fields).toHaveLength(3)
-      expect(meta.fields[0].type).toBe("principal")
-      expect(meta.fields[1].type).toBe("text")
-      expect(meta.fields[2].type).toBe("optional")
+      expect(meta.args).toHaveLength(3)
+      expect(meta.args[0].type).toBe("principal")
+      expect(meta.args[1].type).toBe("text")
+      expect(meta.args[2].type).toBe("optional")
       expect(meta.argCount).toBe(3)
     })
 
@@ -687,10 +687,10 @@ describe("ArgumentFieldVisitor", () => {
       const meta = visitor.visitFunc(funcType, "getBalance")
 
       expect(meta.functionType).toBe("query")
-      expect(meta.fields).toHaveLength(0)
-      expect(meta.defaultValues).toEqual([])
+      expect(meta.args).toHaveLength(0)
+      expect(meta.defaults).toEqual([])
       expect(meta.argCount).toBe(0)
-      expect(meta.isNoArgs).toBe(true)
+      expect(meta.isEmpty).toBe(true)
     })
   })
 
@@ -734,20 +734,20 @@ describe("ArgumentFieldVisitor", () => {
       // Check get_balance
       const getBalanceMeta = serviceMeta["get_balance"]
       expect(getBalanceMeta.functionType).toBe("query")
-      expect(getBalanceMeta.fields).toHaveLength(1)
-      expect(getBalanceMeta.fields[0].type).toBe("principal")
+      expect(getBalanceMeta.args).toHaveLength(1)
+      expect(getBalanceMeta.args[0].type).toBe("principal")
 
       // Check transfer
       const transferMeta = serviceMeta["transfer"]
       expect(transferMeta.functionType).toBe("update")
-      expect(transferMeta.fields).toHaveLength(1)
-      expect(transferMeta.fields[0].type).toBe("record")
+      expect(transferMeta.args).toHaveLength(1)
+      expect(transferMeta.args[0].type).toBe("record")
 
       // Check get_metadata
       const getMetadataMeta = serviceMeta["get_metadata"]
       expect(getMetadataMeta.functionType).toBe("query")
-      expect(getMetadataMeta.fields).toHaveLength(0)
-      expect(getMetadataMeta.isNoArgs).toBe(true)
+      expect(getMetadataMeta.args).toHaveLength(0)
+      expect(getMetadataMeta.isEmpty).toBe(true)
     })
   })
 
@@ -772,7 +772,7 @@ describe("ArgumentFieldVisitor", () => {
       )
       const meta = visitor.visitFunc(funcType, "updateUser")
 
-      const argRecord = meta.fields[0] as RecordField
+      const argRecord = meta.args[0] as RecordField
       if (argRecord.type !== "record") {
         throw new Error("Expected record field")
       }
@@ -803,7 +803,7 @@ describe("ArgumentFieldVisitor", () => {
       const funcType = IDL.Func([IDL.Vec(IDL.Text)], [], [])
       const meta = visitor.visitFunc(funcType, "addTags")
 
-      const vecField = meta.fields[0] as VectorField
+      const vecField = meta.args[0] as VectorField
       if (vecField.type !== "vector") {
         throw new Error("Expected vector field")
       }
@@ -923,16 +923,16 @@ describe("ArgumentFieldVisitor", () => {
       )
 
       expect(field.type).toBe("variant")
-      expect(field.fields.some((f) => f.label === "Motion")).toBe(true)
+      expect(field.options.some((f) => f.label === "Motion")).toBe(true)
       expect(
-        field.fields.some((f) => f.label === "TransferSnsTreasuryFunds")
+        field.options.some((f) => f.label === "TransferSnsTreasuryFunds")
       ).toBe(true)
       expect(
-        field.fields.some((f) => f.label === "UpgradeSnsControlledCanister")
+        field.options.some((f) => f.label === "UpgradeSnsControlledCanister")
       ).toBe(true)
 
       // Check Motion variant
-      const motionField = field.fields.find(
+      const motionField = field.options.find(
         (f) => f.label === "Motion"
       ) as RecordField
       if (!motionField || motionField.type !== "record") {
@@ -942,7 +942,7 @@ describe("ArgumentFieldVisitor", () => {
       expect(motionField.fields).toHaveLength(1)
 
       // Check TransferSnsTreasuryFunds variant
-      const transferField = field.fields.find(
+      const transferField = field.options.find(
         (f) => f.label === "TransferSnsTreasuryFunds"
       ) as RecordField
       if (!transferField || transferField.type !== "record") {
@@ -1011,8 +1011,8 @@ describe("ArgumentFieldVisitor", () => {
       const funcType = IDL.Func([IDL.Text, IDL.Nat], [], [])
       const meta = visitor.visitFunc(funcType, "test")
 
-      expect(meta.fields[0].displayLabel).toBe("Arg 0")
-      expect(meta.fields[1].displayLabel).toBe("Arg 1")
+      expect(meta.args[0].displayLabel).toBe("Arg 0")
+      expect(meta.args[1].displayLabel).toBe("Arg 1")
     })
 
     it("should format tuple index labels correctly", () => {
@@ -1231,10 +1231,10 @@ describe("ArgumentFieldVisitor", () => {
         "action"
       )
 
-      const transferField = field.getField("Transfer")
+      const transferField = field.getOption("Transfer")
       expect(transferField.type).toBe("record")
 
-      const burnField = field.getField("Burn")
+      const burnField = field.getOption("Burn")
       expect(burnField.type).toBe("text") // nat is rendered as text for large numbers
     })
 
@@ -1271,10 +1271,10 @@ describe("ArgumentFieldVisitor", () => {
         "result"
       )
 
-      const okField = field.getSelectedField({ Ok: "100" })
+      const okField = field.getSelectedOption({ Ok: "100" })
       expect(okField.label).toBe("Ok")
 
-      const errField = field.getSelectedField({ Err: "error" })
+      const errField = field.getSelectedOption({ Err: "error" })
       expect(errField.label).toBe("Err")
     })
   })
@@ -1312,7 +1312,7 @@ describe("ArgumentFieldVisitor", () => {
     it("should create item field with correct index in name path", () => {
       const funcType = IDL.Func([IDL.Vec(IDL.Text)], [], [])
       const meta = visitor.visitFunc(funcType, "addItems")
-      const vecField = meta.fields[0] as VectorField
+      const vecField = meta.args[0] as VectorField
 
       const item0 = vecField.createItemField(0)
       expect(item0.name).toBe("[0][0]")
@@ -1328,7 +1328,7 @@ describe("ArgumentFieldVisitor", () => {
         []
       )
       const meta = visitor.visitFunc(funcType, "addItems")
-      const vecField = meta.fields[0] as VectorField
+      const vecField = meta.args[0] as VectorField
 
       const item = vecField.createItemField(3, { label: "Person 3" })
       expect(item.label).toBe("Person 3")
@@ -1338,7 +1338,7 @@ describe("ArgumentFieldVisitor", () => {
     it("should use default label when not provided", () => {
       const funcType = IDL.Func([IDL.Vec(IDL.Text)], [], [])
       const meta = visitor.visitFunc(funcType, "addTags")
-      const vecField = meta.fields[0] as VectorField
+      const vecField = meta.args[0] as VectorField
 
       const item = vecField.createItemField(2)
       expect(item.label).toBe("Item 2")
