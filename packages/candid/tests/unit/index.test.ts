@@ -103,7 +103,6 @@ describe("Package Exports", () => {
         "CandidReactor",
         "CandidDisplayReactor",
         "MetadataDisplayReactor",
-        "createMetadataReactor",
         // Type guard utilities
         "isFieldType",
         "isCompoundField",
