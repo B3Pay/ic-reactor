@@ -230,8 +230,8 @@ describe("MetadataDisplayReactor", () => {
         candid: SIMPLE_SERVICE_CANDID,
       })
 
-      expect(reactor.getAllArgumentMeta()).toBeNull()
-      expect(reactor.getAllResultMeta()).toBeNull()
+      expect(reactor.getAllInputMeta()).toBeNull()
+      expect(reactor.getAllOutputMeta()).toBeNull()
     })
 
     it("should have metadata after initialization", async () => {
@@ -244,8 +244,8 @@ describe("MetadataDisplayReactor", () => {
 
       await reactor.initialize()
 
-      expect(reactor.getAllArgumentMeta()).not.toBeNull()
-      expect(reactor.getAllResultMeta()).not.toBeNull()
+      expect(reactor.getAllInputMeta()).not.toBeNull()
+      expect(reactor.getAllOutputMeta()).not.toBeNull()
     })
   })
 
@@ -267,7 +267,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate argument metadata for no-arg query", () => {
-      const meta = reactor.getArgumentMeta("icrc1_name")
+      const meta = reactor.getInputMeta("icrc1_name")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -278,7 +278,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate argument metadata for icrc1_balance_of", () => {
-      const meta = reactor.getArgumentMeta("icrc1_balance_of")
+      const meta = reactor.getInputMeta("icrc1_balance_of")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -312,7 +312,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate argument metadata for icrc1_transfer", () => {
-      const meta = reactor.getArgumentMeta("icrc1_transfer")
+      const meta = reactor.getInputMeta("icrc1_transfer")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -373,7 +373,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate default values for transfer", () => {
-      const meta = reactor.getArgumentMeta("icrc1_transfer")
+      const meta = reactor.getInputMeta("icrc1_transfer")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta.defaults).toHaveLength(1)
@@ -387,7 +387,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should return undefined for non-existent method", () => {
-      const meta = reactor.getArgumentMeta("non_existent_method")
+      const meta = reactor.getInputMeta("non_existent_method")
       expect(meta).toBeUndefined()
     })
   })
@@ -410,7 +410,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate result metadata for icrc1_name", () => {
-      const meta = reactor.getResultMeta("icrc1_name")
+      const meta = reactor.getOutputMeta("icrc1_name")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -427,7 +427,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate result metadata for icrc1_decimals", () => {
-      const meta = reactor.getResultMeta("icrc1_decimals")
+      const meta = reactor.getOutputMeta("icrc1_decimals")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -443,7 +443,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate result metadata for icrc1_fee", () => {
-      const meta = reactor.getResultMeta("icrc1_fee")
+      const meta = reactor.getOutputMeta("icrc1_fee")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -459,7 +459,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate result metadata for icrc1_balance_of", () => {
-      const meta = reactor.getResultMeta("icrc1_balance_of")
+      const meta = reactor.getOutputMeta("icrc1_balance_of")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -476,7 +476,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate result metadata for icrc1_transfer (Result variant)", () => {
-      const meta = reactor.getResultMeta("icrc1_transfer")
+      const meta = reactor.getOutputMeta("icrc1_transfer")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -515,7 +515,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should generate result metadata for icrc1_metadata", () => {
-      const meta = reactor.getResultMeta("icrc1_metadata")
+      const meta = reactor.getOutputMeta("icrc1_metadata")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -531,7 +531,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should return undefined for non-existent method", () => {
-      const meta = reactor.getResultMeta("non_existent_method")
+      const meta = reactor.getOutputMeta("non_existent_method")
       expect(meta).toBeUndefined()
     })
   })
@@ -554,7 +554,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should handle variant argument (update_status)", () => {
-      const meta = reactor.getArgumentMeta("update_status")
+      const meta = reactor.getInputMeta("update_status")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -586,7 +586,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should handle optional record result (get_user)", () => {
-      const meta = reactor.getResultMeta("get_user")
+      const meta = reactor.getOutputMeta("get_user")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -624,7 +624,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should handle vec result (list_users)", () => {
-      const meta = reactor.getResultMeta("list_users")
+      const meta = reactor.getOutputMeta("list_users")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -652,7 +652,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should handle simple Ok/Err variant without payload (delete_user)", () => {
-      const meta = reactor.getResultMeta("delete_user")
+      const meta = reactor.getOutputMeta("delete_user")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -671,7 +671,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should detect timestamp format in created_at field", () => {
-      const meta = reactor.getResultMeta("get_user")
+      const meta = reactor.getOutputMeta("get_user")
       if (!meta) throw new Error("Metadata not found")
 
       const optionalField = meta.returns[0]
@@ -739,7 +739,7 @@ describe("MetadataDisplayReactor", () => {
       })
 
       // Check argument metadata
-      const argMeta = reactor.getArgumentMeta("complex_method")
+      const argMeta = reactor.getInputMeta("complex_method")
       if (!argMeta) throw new Error("Metadata not found")
       expect(argMeta).toBeDefined()
       expect(argMeta.args).toHaveLength(1)
@@ -758,7 +758,7 @@ describe("MetadataDisplayReactor", () => {
       expect(dataField?.type).toBe("blob")
 
       // Check result metadata
-      const resultMeta = reactor.getResultMeta("complex_method")
+      const resultMeta = reactor.getOutputMeta("complex_method")
       if (!resultMeta) throw new Error("Metadata not found")
       expect(resultMeta).toBeDefined()
       expect(resultMeta.returns).toHaveLength(1)
@@ -820,7 +820,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should return all argument metadata", () => {
-      const allArgMeta = reactor.getAllArgumentMeta()!
+      const allArgMeta = reactor.getAllInputMeta()!
 
       expect(allArgMeta).not.toBeNull()
       expect(allArgMeta).toHaveProperty("greet")
@@ -848,7 +848,7 @@ describe("MetadataDisplayReactor", () => {
     })
 
     it("should return all result metadata", () => {
-      const allResultMeta = reactor.getAllResultMeta()
+      const allResultMeta = reactor.getAllOutputMeta()
 
       expect(allResultMeta).not.toBeNull()
       expect(allResultMeta).toHaveProperty("greet")
@@ -908,7 +908,7 @@ describe("MetadataDisplayReactor", () => {
       })
       await reactor.initialize()
 
-      const meta = reactor.getResultMeta("test_types")
+      const meta = reactor.getOutputMeta("test_types")
       if (!meta) throw new Error("Metadata not found")
 
       expect(meta).toBeDefined()
@@ -944,7 +944,7 @@ describe("MetadataDisplayReactor", () => {
 
     it("should resolve metadata with data using resolve()", () => {
       const methodName = "icrc1_fee"
-      const meta = reactor.getResultMeta(methodName)
+      const meta = reactor.getOutputMeta(methodName)
       if (!meta) throw new Error("Metadata not found")
       const field = meta.returns[0]
       // Use BigInt because we are simulating raw Candid value from Reactor
@@ -957,7 +957,7 @@ describe("MetadataDisplayReactor", () => {
 
     it("should resolve complex metadata result correctly", () => {
       const methodName = "icrc1_metadata"
-      const meta = reactor.getResultMeta(methodName)
+      const meta = reactor.getOutputMeta(methodName)
       if (!meta) throw new Error("Metadata not found")
       const field = meta.returns[0]
       if (field.type !== "vector") {
@@ -1033,17 +1033,17 @@ describe("MetadataDisplayReactor E2E", () => {
     console.log("✅ Mainnet methods loaded:", methodNames.length)
 
     // Verify metadata is generated
-    expect(reactor.getAllArgumentMeta()).not.toBeNull()
-    expect(reactor.getAllResultMeta()).not.toBeNull()
+    expect(reactor.getAllInputMeta()).not.toBeNull()
+    expect(reactor.getAllOutputMeta()).not.toBeNull()
   })
 
   it("should have correct metadata for icrc1_name", async () => {
-    const argMeta = reactor.getArgumentMeta("icrc1_name")
+    const argMeta = reactor.getInputMeta("icrc1_name")
     expect(argMeta).toBeDefined()
     expect(argMeta!.args).toHaveLength(0)
     expect(argMeta!.functionType).toBe("query")
 
-    const resultMeta = reactor.getResultMeta("icrc1_name")
+    const resultMeta = reactor.getOutputMeta("icrc1_name")
     expect(resultMeta).toBeDefined()
     expect(resultMeta!.returns).toHaveLength(1)
     expect(resultMeta!.returns[0].type).toBe("text")
