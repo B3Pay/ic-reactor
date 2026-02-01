@@ -1,5 +1,6 @@
 import { isQuery } from "../helpers"
 import { checkTextFormat, checkNumberFormat } from "../constants"
+import { MetadataError } from "./types"
 import type {
   FieldNode,
   RecordField,
@@ -352,7 +353,11 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     const getOptionDefault = (option: string): Record<string, unknown> => {
       const optField = options.find((f) => f.label === option)
       if (!optField) {
-        throw new Error(`Unknown variant option: ${option}`)
+        throw new MetadataError(
+          `Unknown variant option: "${option}". Available: ${options.map((o) => o.label).join(", ")}`,
+          name,
+          "variant"
+        )
       }
       return optField.type === "null"
         ? { _type: option }
@@ -363,7 +368,11 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     const getOption = (option: string): FieldNode => {
       const optField = options.find((f) => f.label === option)
       if (!optField) {
-        throw new Error(`Unknown variant option: ${option}`)
+        throw new MetadataError(
+          `Unknown variant option: "${option}". Available: ${options.map((o) => o.label).join(", ")}`,
+          name,
+          "variant"
+        )
       }
       return optField
     }

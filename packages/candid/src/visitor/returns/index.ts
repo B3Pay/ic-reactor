@@ -1,6 +1,7 @@
 import { isQuery } from "../helpers"
 import { checkTextFormat, checkNumberFormat } from "../constants"
 import { formatLabel } from "../arguments/helpers"
+import { MetadataError } from "../arguments/types"
 import type {
   ResultNode,
   ResolvedNode,
@@ -56,8 +57,10 @@ function primitiveNode<T extends VisitorDataType>(
           raw: data,
         } as unknown as ResolvedNode<T>
       } catch (e) {
-        throw new Error(
-          `Failed to decode field "${label}" of type ${type} (${candidType}) with data: ${JSON.stringify(data)}. Error: ${e}`
+        throw new MetadataError(
+          `Failed to decode: ${e instanceof Error ? e.message : String(e)}`,
+          label,
+          candidType
         )
       }
     },
@@ -153,7 +156,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       fields,
       resolve(data: unknown): ResolvedNode<"record"> {
         if (data === null || data === undefined) {
-          throw new Error(`Expected record for field ${label}, but got ${data}`)
+          throw new MetadataError(
+            `Expected record, but got ${data === null ? "null" : "undefined"}`,
+            label,
+            "record"
+          )
         }
         const recordData = data as Record<string, unknown>
         const resolvedFields: Record<string, ResolvedNode> = {}
@@ -164,8 +171,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
             recordData[key] !== undefined ? recordData[key] : recordData[index]
 
           if (!field || typeof field.resolve !== "function") {
-            throw new Error(
-              `Field "${key}" in record "${label}" is not a valid ResultNode. Got: ${JSON.stringify(field)}`
+            throw new MetadataError(
+              `Field "${key}" is not a valid ResultNode`,
+              `${label}.${key}`,
+              "record"
             )
           }
 
@@ -198,8 +207,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       selectedValue: {} as ResultNode, // placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"variant"> {
         if (data === null || data === undefined) {
-          throw new Error(
-            `Expected variant for field ${label}, but got ${data}`
+          throw new MetadataError(
+            `Expected variant, but got ${data === null ? "null" : "undefined"}`,
+            label,
+            "variant"
           )
         }
         const variantData = data as Record<string, unknown>
@@ -209,8 +220,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         const optionNode = options[selected]
 
         if (!optionNode) {
-          throw new Error(
-            `Option ${selected} not found in variant ${label}. Available options: ${Object.keys(options).join(", ")}`
+          throw new MetadataError(
+            `Option "${selected}" not found. Available: ${Object.keys(options).join(", ")}`,
+            label,
+            "variant"
           )
         }
         return {
@@ -242,7 +255,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       items,
       resolve(data: unknown): ResolvedNode<"tuple"> {
         if (data === null || data === undefined) {
-          throw new Error(`Expected tuple for field ${label}, but got ${data}`)
+          throw new MetadataError(
+            `Expected tuple, but got ${data === null ? "null" : "undefined"}`,
+            label,
+            "tuple"
+          )
         }
         const tupleData = data as unknown[]
         return {
@@ -335,7 +352,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       items: [], // empty schema placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"vector"> {
         if (data === null || data === undefined) {
-          throw new Error(`Expected vector for field ${label}, but got ${data}`)
+          throw new MetadataError(
+            `Expected vector, but got ${data === null ? "null" : "undefined"}`,
+            label,
+            "vec"
+          )
         }
         const vectorData = data as unknown[]
         return {

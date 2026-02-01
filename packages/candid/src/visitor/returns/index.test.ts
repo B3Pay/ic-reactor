@@ -1269,7 +1269,7 @@ describe("ResultFieldVisitor", () => {
         )
 
         expect(() => field.resolve(null)).toThrow(
-          "Expected record for field user, but got null"
+          "Expected record, but got null"
         )
       })
     })
@@ -1329,7 +1329,7 @@ describe("ResultFieldVisitor", () => {
         )
 
         expect(() => field.resolve(null)).toThrow(
-          "Expected variant for field choice, but got null"
+          "Expected variant, but got null"
         )
       })
     })
@@ -1358,7 +1358,7 @@ describe("ResultFieldVisitor", () => {
         const field = visitor.visitTuple(tupleType, [IDL.Text, IDL.Nat], "pair")
 
         expect(() => field.resolve(null)).toThrow(
-          "Expected tuple for field pair, but got null"
+          "Expected tuple, but got null"
         )
       })
     })
@@ -1416,7 +1416,7 @@ describe("ResultFieldVisitor", () => {
         const field = visitor.visitVec(vecType, IDL.Text, "items")
 
         expect(() => field.resolve(null)).toThrow(
-          "Expected vector for field items, but got null"
+          "Expected vector, but got null"
         )
       })
     })
@@ -2071,7 +2071,7 @@ describe("ResultFieldVisitor Reproduction - User reported issue", () => {
     )
 
     expect(() => field.resolve({ C: null })).toThrow(
-      /Option C not found in variant MyVariant. Available options: A, B/
+      /Option "C" not found. Available: A, B/
     )
   })
 

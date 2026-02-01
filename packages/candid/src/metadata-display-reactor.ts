@@ -12,6 +12,7 @@ import {
   FieldVisitor,
   ArgumentsMeta,
   ArgumentsServiceMeta,
+  MetadataError,
 } from "./visitor/arguments"
 import {
   MethodMeta,
@@ -191,7 +192,11 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
     // Get metadata and generate resolved result
     const meta = this.getOutputMeta(methodName)
     if (!meta) {
-      throw new Error(`No metadata found for method "${String(methodName)}"`)
+      throw new MetadataError(
+        `No output metadata found for method`,
+        String(methodName),
+        "method"
+      )
     }
 
     return meta.resolve(result)

@@ -349,19 +349,6 @@ export interface ArgumentsMeta<
 }
 
 /**
- * Form configuration options compatible with TanStack Form.
- */
-export interface FormOptions {
-  /** Default values for form initialization */
-  defaults: unknown[]
-  /** Validators for form validation */
-  validators: {
-    onChange: z.ZodTypeAny
-    onBlur: z.ZodTypeAny
-  }
-}
-
-/**
  * Service-level metadata mapping method names to their argument metadata.
  */
 export type ArgumentsServiceMeta<A = BaseActor> = {
@@ -379,28 +366,6 @@ export type FieldByType<T extends VisitorDataType> = Extract<
   FieldNode,
   { type: T }
 >
-
-/**
- * Props type for field input components.
- */
-export type FieldInputProps<T extends VisitorDataType = VisitorDataType> = {
-  /** The field descriptor */
-  field: FieldByType<T>
-  /** Current field value */
-  value: unknown
-  /** Change handler */
-  onChange: (value: unknown) => void
-  /** Optional error message */
-  error?: string
-}
-
-/**
- * @deprecated Use FieldInputProps instead
- */
-export type FieldProps<T extends VisitorDataType> = {
-  field: FieldByType<T>
-  renderField?: (child: FieldNode) => React.ReactNode
-}
 
 /** Compound field types that contain other fields */
 export type CompoundField =
