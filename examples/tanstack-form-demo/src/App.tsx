@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import {
   FieldVisitor,
   type ArgumentsMeta,
-  type Field,
+  type FieldNode,
   type RecordField,
   type VariantField,
   type TupleField,
@@ -54,7 +54,7 @@ const meta = visitor.visitFunc(funcType, "updateProfile")
 
 type ComponentMapType = {
   [K in FieldComponentType]: React.FC<{
-    field: Field
+    field: FieldNode
     fieldApi: any
     form: any
   }>
@@ -111,7 +111,7 @@ interface CandidFormProps {
 
 function CandidForm({ meta, onSubmitSuccess }: CandidFormProps) {
   const form = useForm({
-    defaultValues: meta.defaultValues,
+    defaultValues: meta.defaults,
     validators: {
       onChange: meta.schema,
     },
@@ -132,7 +132,7 @@ function CandidForm({ meta, onSubmitSuccess }: CandidFormProps) {
       }}
     >
       <div className="form-fields">
-        {meta.fields.map((field, index) => (
+        {meta.args.map((field, index) => (
           <DynamicField key={field.name || index} field={field} form={form} />
         ))}
       </div>
@@ -183,11 +183,11 @@ function FormActions({ form }: { form: any }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Dynamic Field Component - Uses field.component for routing
+// Dynamic FieldNode Component - Uses field.component for routing
 // ════════════════════════════════════════════════════════════════════════════
 
 interface DynamicFieldProps {
-  field: Field
+  field: FieldNode
   form: any
   parentName?: string
 }
@@ -210,10 +210,10 @@ function DynamicField({ field, form, parentName }: DynamicFieldProps) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Field Label Component - Uses displayLabel
+// FieldNode Label Component - Uses displayLabel
 // ════════════════════════════════════════════════════════════════════════════
 
-function FieldLabel({ field }: { field: Field }) {
+function FieldLabel({ field }: { field: FieldNode }) {
   // Use renderHint to skip labels for null fields
   if (field.component === "null-hidden") return null
 
@@ -227,7 +227,7 @@ function FieldLabel({ field }: { field: Field }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Field Errors Component
+// FieldNode Errors Component
 // ════════════════════════════════════════════════════════════════════════════
 
 function FieldErrors({ fieldApi }: { fieldApi: any }) {
@@ -255,11 +255,11 @@ function formatError(error: unknown): string {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Field Input Component - Uses field.component for routing
+// FieldNode Input Component - Uses field.component for routing
 // ════════════════════════════════════════════════════════════════════════════
 
 interface FieldInputProps {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }
@@ -278,7 +278,7 @@ function RecordInput({
   field,
   form,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -301,15 +301,15 @@ function VariantInput({
   fieldApi,
   form,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
   const variantField = field as VariantField
   const currentValue = fieldApi.state.value ?? variantField.defaultValue
 
-  const currentOption = variantField.getSelectedOption(currentValue)
-  const currentOptionField = variantField.getField(currentOption)
+  const currentOption = variantField.getSelectedKey(currentValue)
+  const currentOptionField = variantField.getSelectedOption(currentValue)
 
   const handleOptionChange = (newOption: string) => {
     const newDefault = variantField.getOptionDefault(newOption)
@@ -323,7 +323,7 @@ function VariantInput({
         value={currentOption}
         onChange={(e) => handleOptionChange(e.target.value)}
       >
-        {variantField.fields.map((optionField) => (
+        {variantField.options.map((optionField) => (
           <option key={optionField.label} value={optionField.label}>
             {optionField.label}
           </option>
@@ -355,7 +355,7 @@ function TupleInput({
   field,
   form,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -378,7 +378,7 @@ function OptionalInput({
   fieldApi,
   form,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -431,7 +431,7 @@ function VectorInput({
   fieldApi,
   form,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -493,7 +493,7 @@ function BlobInput({
   field,
   fieldApi,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -535,7 +535,7 @@ function RecursiveInput({
   field,
   form,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -558,7 +558,7 @@ function PrincipalInput({
   field,
   fieldApi,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -580,7 +580,7 @@ function NumberInput({
   field,
   fieldApi,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -605,7 +605,7 @@ function TextInput({
   field,
   fieldApi,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -640,7 +640,7 @@ function TextInput({
 function BooleanInput({
   fieldApi,
 }: {
-  field: Field
+  field: FieldNode
   fieldApi: any
   form: any
 }) {
@@ -662,7 +662,13 @@ function NullInput() {
   return <span className="null-indicator">null</span>
 }
 
-function UnknownInput({ field }: { field: Field; fieldApi: any; form: any }) {
+function UnknownInput({
+  field,
+}: {
+  field: FieldNode
+  fieldApi: any
+  form: any
+}) {
   return (
     <div className="unknown-container">
       <span className="unknown-warning">

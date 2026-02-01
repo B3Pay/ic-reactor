@@ -465,7 +465,6 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       innerField.schema,
       z.null(),
       z.undefined().transform(() => null),
-      z.literal("").transform(() => null),
     ])
 
     // Helper to get the inner default when enabling the optional

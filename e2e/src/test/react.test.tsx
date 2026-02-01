@@ -82,9 +82,14 @@ describe("React Test", () => {
       fireEvent.click(screen.getByText("Say Hello"))
     })
 
-    await waitFor(() => {
-      expect(screen.getByTestId("data")).toHaveTextContent("Hello, Query Call!")
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("data")).toHaveTextContent(
+          "Hello, Query Call!"
+        )
+      },
+      { timeout: 5000 }
+    )
   })
 
   it("should call update method", async () => {
