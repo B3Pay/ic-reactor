@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import {
   FieldVisitor,
   type ArgumentsMeta,
-  type Field,
+  type FieldNode as Field,
   type RecordField,
   type VariantField,
   type TupleField,
@@ -111,7 +111,7 @@ interface CandidFormProps {
 
 function CandidForm({ meta, onSubmitSuccess }: CandidFormProps) {
   const form = useForm({
-    defaultValues: meta.defaultValues,
+    defaultValues: meta.defaults,
     validators: {
       onChange: meta.schema,
     },
@@ -132,7 +132,7 @@ function CandidForm({ meta, onSubmitSuccess }: CandidFormProps) {
       }}
     >
       <div className="form-fields">
-        {meta.fields.map((field, index) => (
+        {meta.args.map((field, index) => (
           <DynamicField key={field.name || index} field={field} form={form} />
         ))}
       </div>
@@ -308,8 +308,8 @@ function VariantInput({
   const variantField = field as VariantField
   const currentValue = fieldApi.state.value ?? variantField.defaultValue
 
-  const currentOption = variantField.getSelectedOption(currentValue)
-  const currentOptionField = variantField.getField(currentOption)
+  const currentOption = variantField.getSelectedKey(currentValue)
+  const currentOptionField = variantField.getSelectedOption(currentValue)
 
   const handleOptionChange = (newOption: string) => {
     const newDefault = variantField.getOptionDefault(newOption)
@@ -323,7 +323,7 @@ function VariantInput({
         value={currentOption}
         onChange={(e) => handleOptionChange(e.target.value)}
       >
-        {variantField.fields.map((optionField) => (
+        {variantField.options.map((optionField) => (
           <option key={optionField.label} value={optionField.label}>
             {optionField.label}
           </option>
