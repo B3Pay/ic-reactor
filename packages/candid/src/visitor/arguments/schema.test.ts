@@ -182,13 +182,12 @@ describe("FieldVisitor Schema Generation", () => {
         ],
         "person"
       )
-      const schema = field.schema as z.ZodObject<any>
 
       const validData = { name: "John", age: "30" }
-      expect(schema.parse(validData)).toEqual(validData)
+      expect(field.schema.parse(validData)).toEqual(validData)
 
-      expect(() => schema.parse({ name: "John" })).toThrow() // missing age
-      expect(() => schema.parse({ name: 123, age: "30" })).toThrow() // invalid type
+      expect(() => field.schema.parse({ name: "John" })).toThrow() // missing age
+      expect(() => field.schema.parse({ name: 123, age: "30" })).toThrow() // invalid type
     })
   })
 
