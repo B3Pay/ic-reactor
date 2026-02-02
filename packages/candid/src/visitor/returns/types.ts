@@ -24,6 +24,7 @@ export type DisplayType =
   | "object"
   | "array"
   | "variant"
+  | "variant-null"
   | "result"
   | "nullable"
   | "recursive"
