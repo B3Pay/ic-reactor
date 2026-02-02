@@ -52,6 +52,8 @@ interface ResultNodeBase<T extends VisitorDataType = VisitorDataType> {
   raw?: unknown
   /** Value after display transformation (present after resolution) */
   value?: unknown
+  /** Resolve this node with a value, returning a new resolved node */
+  resolve(data: unknown): ResolvedNode<T>
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -176,11 +178,7 @@ type NodeTypeExtras<T extends VisitorDataType> = T extends "record"
  * Primitive types store the display value in `value`.
  */
 export type ResultNode<T extends VisitorDataType = VisitorDataType> =
-  ResultNodeBase<T> &
-    NodeTypeExtras<T> & {
-      /** Resolve this node with a value, returning a new resolved node */
-      resolve(data: unknown): ResolvedNode<T>
-    }
+  T extends any ? ResultNodeBase<T> & NodeTypeExtras<T> : never
 
 /**
  * A resolved node has `raw` populated and children resolved.
@@ -255,14 +253,4 @@ export interface MethodResult<A = BaseActor> {
  */
 export type ServiceMeta<A = BaseActor> = {
   [K in FunctionName<A>]: MethodMeta<A, K>
-}
-
-/**
- * Props type for result display components.
- */
-export type ResultDisplayProps<T extends VisitorDataType = VisitorDataType> = {
-  /** The resolved result node */
-  node: ResolvedNode<T>
-  /** Nesting depth for indentation */
-  depth?: number
 }
