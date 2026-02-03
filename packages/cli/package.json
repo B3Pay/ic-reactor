@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/B3Pay/ic-reactor#readme",
   "dependencies": {
-    "@clack/prompts": "^0.11.0",
+    "@clack/prompts": "^1.0.0",
     "@icp-sdk/bindgen": "^0.2.1",
     "@icp-sdk/core": "^5.0.0",
     "commander": "^14.0.2",

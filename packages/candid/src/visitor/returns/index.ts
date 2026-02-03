@@ -196,13 +196,22 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     for (const [key, type] of fields_) {
       options[key] = type.accept(this, key) as ResultNode
     }
-    const isResult = "Ok" in options && "Err" in options
+    const isResult =
+      ("Ok" in options && "Err" in options) ||
+      ("ok" in options && "err" in options)
+    const isNullVariant =
+      !isResult &&
+      Object.values(options).every((option) => option.type === "null")
     const node: ResultNode<"variant"> = {
       type: "variant",
       label,
       displayLabel: formatLabel(label),
       candidType: "variant",
-      displayType: isResult ? "result" : "variant",
+      displayType: isResult
+        ? "result"
+        : isNullVariant
+          ? "variant-null"
+          : "variant",
       options,
       selectedValue: {} as ResultNode, // placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"variant"> {
