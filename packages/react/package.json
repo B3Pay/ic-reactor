@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/react",
-  "version": "3.0.15-beta.2",
+  "version": "3.0.16-beta.0",
   "description": "IC Reactor React Library",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -66,7 +66,7 @@
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
     "fake-indexeddb": "^6.2.5",
-    "jsdom": "^27.4.0",
+    "jsdom": "^28.0.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "size-limit": "^12.0.0",

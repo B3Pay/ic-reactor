@@ -343,7 +343,7 @@ describe("ResultFieldVisitor", () => {
 
       expect(field.type).toBe("variant")
       expect(field.candidType).toBe("variant")
-      expect(field.displayType).toBe("variant")
+      expect(field.displayType).toBe("variant-null")
       // Validate options by resolving each option
       const resolvedActive = field.resolve({ Active: null })
       expect(resolvedActive.selected).toBe("Active")
@@ -1022,7 +1022,7 @@ describe("ResultFieldVisitor", () => {
         throw new Error("Status field not found or not variant")
       }
       expect(statusField.type).toBe("variant")
-      expect(statusField.displayType).toBe("variant")
+      expect(statusField.displayType).toBe("variant-null")
       // Validate via resolving options
       const statusResolved = statusField.resolve({ running: null })
       expect(statusResolved.selected).toBe("running")
@@ -1140,7 +1140,7 @@ describe("ResultFieldVisitor", () => {
       // Validate via resolve
       const ballotsResolved = ballotsField.resolve([
         [BigInt(1), { vote: 1, voting_power: BigInt(2) }],
-      ]) as TupleNode
+      ])
       expect(ballotsResolved.items).toHaveLength(1)
       const ballotTuple = ballotsResolved.items[0] as TupleNode
       if (ballotTuple.type !== "tuple") {
