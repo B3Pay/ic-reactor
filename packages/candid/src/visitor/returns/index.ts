@@ -360,7 +360,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "array",
       items: [], // empty schema placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"vector"> {
-        if (data === null || data === undefined) {
+        if (data === null || data === undefined || !Array.isArray(data)) {
           throw new MetadataError(
             `Expected vector, but got ${data === null ? "null" : "undefined"}`,
             label,
