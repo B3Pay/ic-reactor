@@ -1,4 +1,5 @@
 import { IDL } from "@icp-sdk/core/candid"
+import { Principal } from "@icp-sdk/core/principal"
 
 export const extractAndSortArgs = <T extends Record<string, unknown>>(
   argsObject: T
@@ -174,8 +175,19 @@ export function isUuid(str: string): boolean {
   )
 }
 
+export function isPrincipalId(str: string): boolean {
+  if (typeof str !== "string") return false
+  try {
+    Principal.fromText(str)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function isCanisterId(str: string): boolean {
   if (typeof str !== "string") return false
+  if (!isPrincipalId(str)) return false
   if (str.length !== 27) return false
   // All canister IDs end with "-cai"
   return str.endsWith("-cai")
