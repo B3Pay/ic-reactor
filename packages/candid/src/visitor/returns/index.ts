@@ -270,6 +270,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
             if (k !== funcFieldKey) resolvedArgFields[k] = v
           }
 
+          // Build display-type default args ready for callMethod
+          const argRecord = Object.fromEntries(
+            Object.entries(resolvedArgFields).map(([k, v]) => [
+              k,
+              v.value ?? v.raw,
+            ])
+          )
+          const defaultArgs = funcType.argTypes.length > 0 ? [argRecord] : []
+
           return {
             ...node,
             canisterId: resolvedFuncField.canisterId,
@@ -277,6 +286,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
             funcField: resolvedFuncField,
             argFields: resolvedArgFields,
             fields: resolvedFields,
+            defaultArgs,
             raw: data,
           }
         },

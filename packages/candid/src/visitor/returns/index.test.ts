@@ -1023,6 +1023,9 @@ describe("ResultFieldVisitor", () => {
         expect(Object.keys(resolved.argFields)).toEqual(["start", "length"])
         expect(resolved.argFields["start"].raw).toBe(BigInt(100))
         expect(resolved.argFields["length"].raw).toBe(BigInt(50))
+
+        // defaultArgs: display-type args ready for callMethod
+        expect(resolved.defaultArgs).toEqual([{ start: "100", length: "50" }])
       })
 
       it("should keep record with multiple func fields as plain record", () => {

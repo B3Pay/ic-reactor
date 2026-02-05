@@ -14,6 +14,7 @@ export const FuncRecordResult: React.FC<{
     funcClass,
     funcFieldKey,
     argFields,
+    defaultArgs,
   } = result
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export const FuncRecordResult: React.FC<{
       "🚀 ~ FuncRecordResult ~ reactor:",
       reactor.callMethod({
         functionName: methodName,
-        args: [],
+        args: defaultArgs ?? [],
       })
     )
   }, [canisterId, methodName])

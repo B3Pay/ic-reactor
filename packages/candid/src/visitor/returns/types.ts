@@ -168,6 +168,16 @@ interface FuncRecordNodeExtras {
   argFields: Record<string, ResultNode>
   /** All fields including the func field (superset of argFields + funcField) */
   fields: Record<string, ResultNode>
+  /**
+   * The display-type argument values extracted from argFields, ready to pass
+   * to `callMethod({ args: defaultArgs })`. Populated after `resolve()`.
+   *
+   * For a func that takes `(record { start: nat; length: nat })`, this would
+   * be `[{ start: "100", length: "50" }]` (display strings for BigInt fields).
+   *
+   * `undefined` before resolve.
+   */
+  defaultArgs?: unknown[]
 }
 
 type NodeTypeExtras<T extends VisitorDataType> = T extends "record"
