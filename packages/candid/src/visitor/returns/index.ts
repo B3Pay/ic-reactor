@@ -189,12 +189,111 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     _t: IDL.RecordClass,
     fields_: Array<[string, IDL.Type]>,
     label: string
-  ): ResultNode<"record"> {
+  ): ResultNode<"record"> | ResultNode<"funcRecord"> {
     const fields: Record<string, ResultNode> = {}
+    // Track func fields for funcRecord detection
+    const funcEntries: Array<{
+      key: string
+      funcType: IDL.FuncClass
+      node: ResultNode<"func">
+    }> = []
+
     for (const [key, type] of fields_) {
-      fields[key] = type.accept(this, key) as ResultNode
+      const fieldNode = type.accept(this, key) as ResultNode
+      fields[key] = fieldNode
+
+      if (type instanceof IDL.FuncClass) {
+        funcEntries.push({
+          key,
+          funcType: type,
+          node: fieldNode as ResultNode<"func">,
+        })
+      }
     }
 
+    // ── funcRecord: exactly one func field + other argument fields ──
+    if (funcEntries.length === 1) {
+      const {
+        key: funcFieldKey,
+        funcType,
+        node: funcFieldNode,
+      } = funcEntries[0]
+      const funcCallType: "query" | "update" = isQuery(funcType)
+        ? "query"
+        : "update"
+
+      // Extract Candid arg/return type schemas from the func signature
+      const funcArgs = funcType.argTypes.map((arg, i) =>
+        arg.accept(this, `__arg${i}`)
+      ) as ResultNode[]
+      const funcReturns = funcType.retTypes.map((ret, i) =>
+        ret.accept(this, `__ret${i}`)
+      ) as ResultNode[]
+
+      const argFields: Record<string, ResultNode> = {}
+      for (const [k, v] of Object.entries(fields)) {
+        if (k !== funcFieldKey) argFields[k] = v
+      }
+
+      const node: ResultNode<"funcRecord"> = {
+        type: "funcRecord",
+        label,
+        displayLabel: formatLabel(label),
+        candidType: "record",
+        displayType: "func-record",
+        canisterId: "",
+        methodName: "",
+        funcType: funcCallType,
+        funcFieldKey,
+        funcField: funcFieldNode,
+        funcArgs,
+        funcReturns,
+        argFields,
+        fields,
+        resolve(data: unknown): ResolvedNode<"funcRecord"> {
+          if (data === null || data === undefined) {
+            throw new MetadataError(
+              `Expected funcRecord, but got ${data === null ? "null" : "undefined"}`,
+              label,
+              "record"
+            )
+          }
+          const recordData = data as Record<string, unknown>
+          const resolvedFields: Record<string, ResolvedNode> = {}
+          let index = 0
+          for (const [key, field] of Object.entries(fields)) {
+            const value =
+              recordData[key] !== undefined
+                ? recordData[key]
+                : recordData[index]
+            resolvedFields[key] = field.resolve(value)
+            index++
+          }
+
+          const resolvedFuncField = resolvedFields[
+            funcFieldKey
+          ] as ResolvedNode<"func">
+
+          const resolvedArgFields: Record<string, ResolvedNode> = {}
+          for (const [k, v] of Object.entries(resolvedFields)) {
+            if (k !== funcFieldKey) resolvedArgFields[k] = v
+          }
+
+          return {
+            ...node,
+            canisterId: resolvedFuncField.canisterId,
+            methodName: resolvedFuncField.methodName,
+            funcField: resolvedFuncField,
+            argFields: resolvedArgFields,
+            fields: resolvedFields,
+            raw: data,
+          }
+        },
+      }
+      return node
+    }
+
+    // ── Regular record ──
     const node: ResultNode<"record"> = {
       type: "record",
       label,

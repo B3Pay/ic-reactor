@@ -30,6 +30,7 @@ export type DisplayType =
   | "recursive"
   | "blob"
   | "func"
+  | "func-record"
   | "unknown"
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -149,35 +150,58 @@ interface FuncNodeExtras {
   methodName: string
 }
 
+interface FuncRecordNodeExtras {
+  /** The canister principal extracted from the func reference */
+  canisterId: string
+  /** The method name extracted from the func reference */
+  methodName: string
+  /** Whether the referenced function is "query" or "update" */
+  funcType: "query" | "update"
+  /** The key of the func field in the record */
+  funcFieldKey: string
+  /** The func field node */
+  funcField: ResultNode<"func">
+  /** Candid argument type schemas for the referenced function */
+  funcArgs: ResultNode[]
+  /** Candid return type schemas for the referenced function */
+  funcReturns: ResultNode[]
+  /** Non-func fields — the default arguments for invoking the callback */
+  argFields: Record<string, ResultNode>
+  /** All fields including the func field (superset of argFields + funcField) */
+  fields: Record<string, ResultNode>
+}
+
 type NodeTypeExtras<T extends VisitorDataType> = T extends "record"
   ? RecordNodeExtras
-  : T extends "variant"
-    ? VariantNodeExtras
-    : T extends "tuple"
-      ? TupleNodeExtras
-      : T extends "vector"
-        ? VectorNodeExtras
-        : T extends "optional"
-          ? OptionalNodeExtras
-          : T extends "recursive"
-            ? RecursiveNodeExtras
-            : T extends "blob"
-              ? BlobNodeExtras
-              : T extends "number"
-                ? NumberNodeExtras
-                : T extends "text"
-                  ? TextNodeExtras
-                  : T extends "principal"
-                    ? PrincipalNodeExtras
-                    : T extends "boolean"
-                      ? BooleanNodeExtras
-                      : T extends "null"
-                        ? NullNodeExtras
-                        : T extends "func"
-                          ? FuncNodeExtras
-                          : T extends "unknown"
-                            ? UnknownNodeExtras
-                            : {}
+  : T extends "funcRecord"
+    ? FuncRecordNodeExtras
+    : T extends "variant"
+      ? VariantNodeExtras
+      : T extends "tuple"
+        ? TupleNodeExtras
+        : T extends "vector"
+          ? VectorNodeExtras
+          : T extends "optional"
+            ? OptionalNodeExtras
+            : T extends "recursive"
+              ? RecursiveNodeExtras
+              : T extends "blob"
+                ? BlobNodeExtras
+                : T extends "number"
+                  ? NumberNodeExtras
+                  : T extends "text"
+                    ? TextNodeExtras
+                    : T extends "principal"
+                      ? PrincipalNodeExtras
+                      : T extends "boolean"
+                        ? BooleanNodeExtras
+                        : T extends "null"
+                          ? NullNodeExtras
+                          : T extends "func"
+                            ? FuncNodeExtras
+                            : T extends "unknown"
+                              ? UnknownNodeExtras
+                              : {}
 
 /**
  * A unified result node that contains both schema and resolved value.
@@ -204,6 +228,7 @@ export type ResolvedNode<T extends VisitorDataType = VisitorDataType> =
 // ════════════════════════════════════════════════════════════════════════════
 
 export type RecordNode = ResultNode<"record">
+export type FuncRecordNode = ResultNode<"funcRecord">
 export type VariantNode = ResultNode<"variant">
 export type TupleNode = ResultNode<"tuple">
 export type OptionalNode = ResultNode<"optional">

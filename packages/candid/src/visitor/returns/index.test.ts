@@ -4,6 +4,7 @@ import type {
   ResultNode,
   ResolvedNode,
   RecordNode,
+  FuncRecordNode,
   VariantNode,
   TupleNode,
   OptionalNode,
@@ -859,8 +860,6 @@ describe("ResultFieldVisitor", () => {
         const archivedTxField = recordField.fields["archived_transactions"]
         expect(archivedTxField.type).toBe("vector")
 
-        // The vector should contain records with a callback func field
-        const vecField = archivedTxField as VectorNode
         // Resolve with actual data that mimics the canister response
         const { Principal } = require("@icp-sdk/core/principal")
         const testPrincipal = Principal.fromText("sa4so-piaaa-aaaar-qacnq-cai")
@@ -888,14 +887,24 @@ describe("ResultFieldVisitor", () => {
         ] as VectorNode
         expect(resolvedArchivedTx.items).toHaveLength(1)
 
-        // Check the callback field in the first archived transaction
-        const firstArchivedTx = resolvedArchivedTx.items[0] as RecordNode
+        // The archived transaction is a funcRecord (record with a single func field)
+        const firstArchivedTx = resolvedArchivedTx.items[0] as FuncRecordNode
+        expect(firstArchivedTx.type).toBe("funcRecord")
+        expect(firstArchivedTx.displayType).toBe("func-record")
+        expect(firstArchivedTx.canisterId).toBe("sa4so-piaaa-aaaar-qacnq-cai")
+        expect(firstArchivedTx.methodName).toBe("get_transactions")
+        expect(firstArchivedTx.funcType).toBe("query")
+        expect(firstArchivedTx.funcFieldKey).toBe("callback")
         expect(firstArchivedTx.fields["callback"]).toBeDefined()
         expect(firstArchivedTx.fields["start"]).toBeDefined()
         expect(firstArchivedTx.fields["length"]).toBeDefined()
+        // argFields should exclude the callback func field
+        expect(firstArchivedTx.argFields["start"]).toBeDefined()
+        expect(firstArchivedTx.argFields["length"]).toBeDefined()
+        expect(firstArchivedTx.argFields["callback"]).toBeUndefined()
       })
 
-      it("should handle standalone func field in record", () => {
+      it("should handle standalone func field in record as funcRecord", () => {
         const callbackFunc = IDL.Func([IDL.Text], [IDL.Bool], ["query"])
         const recordType = IDL.Record({
           name: IDL.Text,
@@ -911,24 +920,143 @@ describe("ResultFieldVisitor", () => {
           "config"
         )
 
-        expect(field.type).toBe("record")
-        expect(field.fields["callback"]).toBeDefined()
-        expect(field.fields["callback"].type).toBe("func")
+        // Should be detected as funcRecord since it has exactly one func field
+        expect(field.type).toBe("funcRecord")
+        expect(field.displayType).toBe("func-record")
+        const funcRecordField = field as FuncRecordNode
+        expect(funcRecordField.funcFieldKey).toBe("callback")
+        expect(funcRecordField.funcType).toBe("query")
+        expect(funcRecordField.fields["callback"]).toBeDefined()
+        expect(funcRecordField.fields["callback"].type).toBe("func")
+        expect(funcRecordField.fields["name"]).toBeDefined()
+        // argFields should only have non-func fields
+        expect(funcRecordField.argFields["name"]).toBeDefined()
+        expect(funcRecordField.argFields["callback"]).toBeUndefined()
 
         // Resolve with mock data
         const { Principal } = require("@icp-sdk/core/principal")
-        const resolved = field.resolve({
+        const resolved = funcRecordField.resolve({
           name: "test",
           callback: [Principal.fromText("aaaaa-aa"), "my_method"],
         })
 
         expect(resolved.fields["name"].value).toBe("test")
+        // funcRecord resolved provides canisterId & methodName at the top level
+        expect(resolved.canisterId).toBe("aaaaa-aa")
+        expect(resolved.methodName).toBe("my_method")
 
         // Verify func field was properly resolved
         const callbackResolved = resolved.fields["callback"] as FuncNode
         expect(callbackResolved.type).toBe("func")
         expect(callbackResolved.canisterId).toBe("aaaaa-aa")
         expect(callbackResolved.methodName).toBe("my_method")
+
+        // argFields in resolved should contain only the non-func resolved fields
+        expect(resolved.argFields["name"]).toBeDefined()
+        expect(resolved.argFields["name"].value).toBe("test")
+        expect(resolved.argFields["callback"]).toBeUndefined()
+      })
+
+      it("should detect ArchivedBlocksRange pattern as funcRecord", () => {
+        // Exact pattern from the Candid:
+        // type ArchivedBlocksRange = record {
+        //   callback : func (GetBlocksArgs) -> (Result_4) query;
+        //   start : nat64;
+        //   length : nat64;
+        // };
+        const GetBlocksArgs = IDL.Record({
+          start: IDL.Nat64,
+          length: IDL.Nat64,
+        })
+        const Result_4 = IDL.Variant({
+          Ok: IDL.Record({ blocks: IDL.Vec(IDL.Nat8) }),
+          Err: IDL.Text,
+        })
+
+        const ArchivedBlocksRange = IDL.Record({
+          callback: IDL.Func([GetBlocksArgs], [Result_4], ["query"]),
+          start: IDL.Nat64,
+          length: IDL.Nat64,
+        })
+
+        const field = visitor.visitRecord(
+          ArchivedBlocksRange,
+          [
+            ["callback", IDL.Func([GetBlocksArgs], [Result_4], ["query"])],
+            ["start", IDL.Nat64],
+            ["length", IDL.Nat64],
+          ],
+          "ArchivedBlocksRange"
+        )
+
+        // Schema-level checks
+        expect(field.type).toBe("funcRecord")
+        expect(field.displayType).toBe("func-record")
+        const fr = field as FuncRecordNode
+        expect(fr.funcFieldKey).toBe("callback")
+        expect(fr.funcType).toBe("query")
+        expect(fr.funcField.type).toBe("func")
+        expect(Object.keys(fr.argFields)).toEqual(["start", "length"])
+
+        // Candid type schemas from the func signature
+        expect(fr.funcArgs).toHaveLength(1) // (GetBlocksArgs)
+        expect(fr.funcArgs[0].type).toBe("record")
+        expect(fr.funcReturns).toHaveLength(1) // (Result_4)
+        expect(fr.funcReturns[0].type).toBe("variant")
+
+        // Resolve with real-ish data
+        const { Principal } = require("@icp-sdk/core/principal")
+        const resolved = fr.resolve({
+          callback: [
+            Principal.fromText("qjdve-lqaaa-aaaaa-aaaeq-cai"),
+            "get_blocks",
+          ],
+          start: BigInt(100),
+          length: BigInt(50),
+        })
+        console.log("🚀 ~ resolved:", resolved)
+
+        // Top-level func info for easy consumption
+        expect(resolved.canisterId).toBe("qjdve-lqaaa-aaaaa-aaaeq-cai")
+        expect(resolved.methodName).toBe("get_blocks")
+        expect(resolved.funcType).toBe("query")
+
+        // argFields provide the default call arguments
+        expect(Object.keys(resolved.argFields)).toEqual(["start", "length"])
+        expect(resolved.argFields["start"].raw).toBe(BigInt(100))
+        expect(resolved.argFields["length"].raw).toBe(BigInt(50))
+      })
+
+      it("should keep record with multiple func fields as plain record", () => {
+        const funcA = IDL.Func([IDL.Nat], [IDL.Nat], ["query"])
+        const funcB = IDL.Func([IDL.Text], [IDL.Text], [])
+
+        const field = visitor.visitRecord(
+          IDL.Record({ a: funcA, b: funcB }),
+          [
+            ["a", funcA],
+            ["b", funcB],
+          ],
+          "multiFuncRecord"
+        )
+
+        // Two func fields → stays as a regular record
+        expect(field.type).toBe("record")
+        expect(field.displayType).toBe("object")
+      })
+
+      it("should keep record with zero func fields as plain record", () => {
+        const field = visitor.visitRecord(
+          IDL.Record({ x: IDL.Nat, y: IDL.Nat }),
+          [
+            ["x", IDL.Nat],
+            ["y", IDL.Nat],
+          ],
+          "point"
+        )
+
+        expect(field.type).toBe("record")
+        expect(field.displayType).toBe("object")
       })
     })
   })
@@ -1834,14 +1962,6 @@ describe("ResultFieldVisitor", () => {
 
       // Test successful transfer
       const successResult = methodMeta.resolve({ Ok: BigInt(1000) })
-      console.log(
-        "🚀 ~ result:",
-        JSON.stringify(
-          successResult,
-          (_, v) => (typeof v === "bigint" ? `${v}n` : v),
-          2
-        )
-      )
 
       const successValue = successResult.results[0] as ResolvedNode
       expect((successValue as any).selected).toBe("Ok")

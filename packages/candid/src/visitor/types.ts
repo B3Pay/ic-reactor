@@ -36,6 +36,7 @@ export type AllNumberTypes =
  */
 export type VisitorDataType =
   | "record"
+  | "funcRecord"
   | "variant"
   | "tuple"
   | "optional"
