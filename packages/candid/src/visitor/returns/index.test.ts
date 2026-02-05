@@ -15,6 +15,7 @@ import type {
   PrincipalNode,
   BooleanNode,
   NullNode,
+  FuncNode,
   MethodMeta,
   ServiceMeta,
 } from "./types"
@@ -748,7 +749,7 @@ describe("ResultFieldVisitor", () => {
   describe("Function Types", () => {
     it("should handle query function with single return", () => {
       const funcType = IDL.Func([IDL.Principal], [IDL.Nat], ["query"])
-      const meta = visitor.visitFunc(funcType, "get_balance")
+      const meta = visitor.visitFuncAsMethod(funcType, "get_balance")
 
       expect(meta.functionType).toBe("query")
       expect(meta.functionName).toBe("get_balance")
@@ -782,7 +783,7 @@ describe("ResultFieldVisitor", () => {
         ],
         []
       )
-      const meta = visitor.visitFunc(funcType, "transfer")
+      const meta = visitor.visitFuncAsMethod(funcType, "transfer")
 
       expect(meta.functionType).toBe("update")
       expect(meta.returnCount).toBe(1)
@@ -797,7 +798,7 @@ describe("ResultFieldVisitor", () => {
 
     it("should handle function with multiple returns", () => {
       const funcType = IDL.Func([], [IDL.Text, IDL.Nat, IDL.Bool], ["query"])
-      const meta = visitor.visitFunc(funcType, "get_info")
+      const meta = visitor.visitFuncAsMethod(funcType, "get_info")
 
       expect(meta.returnCount).toBe(3)
       expect(meta.returns).toHaveLength(3)
@@ -808,10 +809,127 @@ describe("ResultFieldVisitor", () => {
 
     it("should handle function with no returns", () => {
       const funcType = IDL.Func([IDL.Text], [], [])
-      const meta = visitor.visitFunc(funcType, "log")
+      const meta = visitor.visitFuncAsMethod(funcType, "log")
 
       expect(meta.returnCount).toBe(0)
       expect(meta.returns).toHaveLength(0)
+    })
+
+    // Tests for func type as data field (not method definition)
+    describe("Func as Data Field", () => {
+      it("should handle func type in archived_transactions callback", () => {
+        // This mimics the ICRC-1 ledger get_transactions response structure
+        // where archived_transactions contains a callback func reference
+        const GetBlocksRequest = IDL.Record({
+          start: IDL.Nat,
+          length: IDL.Nat,
+        })
+        const TransactionRange = IDL.Record({
+          transactions: IDL.Vec(IDL.Nat), // simplified
+        })
+        const ArchivedRange = IDL.Record({
+          callback: IDL.Func([GetBlocksRequest], [TransactionRange], ["query"]),
+          start: IDL.Nat,
+          length: IDL.Nat,
+        })
+        const GetTransactionsResponse = IDL.Record({
+          first_index: IDL.Nat,
+          log_length: IDL.Nat,
+          transactions: IDL.Vec(IDL.Nat),
+          archived_transactions: IDL.Vec(ArchivedRange),
+        })
+
+        // Create the func return type for get_transactions method
+        const funcType = IDL.Func(
+          [GetBlocksRequest],
+          [GetTransactionsResponse],
+          ["query"]
+        )
+        const meta = visitor.visitFuncAsMethod(funcType, "get_transactions")
+
+        expect(meta.functionType).toBe("query")
+        expect(meta.returnCount).toBe(1)
+
+        // The return should be a record containing archived_transactions
+        const returnField = meta.returns[0]
+        expect(returnField.type).toBe("record")
+
+        // Get the archived_transactions field
+        const recordField = returnField as RecordNode
+        const archivedTxField = recordField.fields["archived_transactions"]
+        expect(archivedTxField.type).toBe("vector")
+
+        // The vector should contain records with a callback func field
+        const vecField = archivedTxField as VectorNode
+        // Resolve with actual data that mimics the canister response
+        const { Principal } = require("@icp-sdk/core/principal")
+        const testPrincipal = Principal.fromText("sa4so-piaaa-aaaar-qacnq-cai")
+
+        const mockResponse = {
+          first_index: BigInt(6000),
+          log_length: BigInt(7936),
+          transactions: [],
+          archived_transactions: [
+            {
+              callback: [testPrincipal, "get_transactions"],
+              start: BigInt(1),
+              length: BigInt(2),
+            },
+          ],
+        }
+
+        // This should NOT throw an error
+        const resolved = meta.resolve(mockResponse)
+        expect(resolved.results).toHaveLength(1)
+
+        const resolvedRecord = resolved.results[0] as RecordNode
+        const resolvedArchivedTx = resolvedRecord.fields[
+          "archived_transactions"
+        ] as VectorNode
+        expect(resolvedArchivedTx.items).toHaveLength(1)
+
+        // Check the callback field in the first archived transaction
+        const firstArchivedTx = resolvedArchivedTx.items[0] as RecordNode
+        expect(firstArchivedTx.fields["callback"]).toBeDefined()
+        expect(firstArchivedTx.fields["start"]).toBeDefined()
+        expect(firstArchivedTx.fields["length"]).toBeDefined()
+      })
+
+      it("should handle standalone func field in record", () => {
+        const callbackFunc = IDL.Func([IDL.Text], [IDL.Bool], ["query"])
+        const recordType = IDL.Record({
+          name: IDL.Text,
+          callback: callbackFunc,
+        })
+
+        const field = visitor.visitRecord(
+          recordType,
+          [
+            ["name", IDL.Text],
+            ["callback", callbackFunc],
+          ],
+          "config"
+        )
+
+        expect(field.type).toBe("record")
+        expect(field.fields["callback"]).toBeDefined()
+        expect(field.fields["callback"].type).toBe("func")
+
+        // Resolve with mock data
+        const { Principal } = require("@icp-sdk/core/principal")
+        const resolved = field.resolve({
+          name: "test",
+          callback: [Principal.fromText("aaaaa-aa"), "my_method"],
+        })
+
+        expect(resolved.fields["name"].value).toBe("test")
+
+        // Verify func field was properly resolved
+        const callbackResolved = resolved.fields["callback"] as FuncNode
+        expect(callbackResolved.type).toBe("func")
+        expect(callbackResolved.canisterId).toBe("aaaaa-aa")
+        expect(callbackResolved.methodName).toBe("my_method")
+      })
     })
   })
 
@@ -888,7 +1006,7 @@ describe("ResultFieldVisitor", () => {
         [IDL.Nat],
         ["query"]
       )
-      const meta = visitor.visitFunc(funcType, "icrc1_balance_of")
+      const meta = visitor.visitFuncAsMethod(funcType, "icrc1_balance_of")
 
       expect(meta.functionType).toBe("query")
       expect(meta.returnCount).toBe(1)

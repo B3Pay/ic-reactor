@@ -29,6 +29,7 @@ export type DisplayType =
   | "nullable"
   | "recursive"
   | "blob"
+  | "func"
   | "unknown"
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -141,6 +142,13 @@ interface UnknownNodeExtras {
   value: unknown
 }
 
+interface FuncNodeExtras {
+  /** The canister principal of the function reference */
+  canisterId: string
+  /** The method name of the function reference */
+  methodName: string
+}
+
 type NodeTypeExtras<T extends VisitorDataType> = T extends "record"
   ? RecordNodeExtras
   : T extends "variant"
@@ -165,9 +173,11 @@ type NodeTypeExtras<T extends VisitorDataType> = T extends "record"
                       ? BooleanNodeExtras
                       : T extends "null"
                         ? NullNodeExtras
-                        : T extends "unknown"
-                          ? UnknownNodeExtras
-                          : {}
+                        : T extends "func"
+                          ? FuncNodeExtras
+                          : T extends "unknown"
+                            ? UnknownNodeExtras
+                            : {}
 
 /**
  * A unified result node that contains both schema and resolved value.
@@ -205,6 +215,7 @@ export type NumberNode = ResultNode<"number">
 export type TextNode = ResultNode<"text">
 export type BooleanNode = ResultNode<"boolean">
 export type NullNode = ResultNode<"null">
+export type FuncNode = ResultNode<"func">
 export type UnknownNode = ResultNode<"unknown">
 
 // ════════════════════════════════════════════════════════════════════════════

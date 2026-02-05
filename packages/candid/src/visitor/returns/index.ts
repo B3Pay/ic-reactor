@@ -100,12 +100,21 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   public visitService(t: IDL.ServiceClass): ServiceMeta<A> {
     const result = {} as ServiceMeta<A>
     for (const [name, func] of t._fields) {
-      result[name as FunctionName<A>] = func.accept(this, name) as MethodMeta<A>
+      // Process each service method using dedicated method handler
+      result[name as FunctionName<A>] = this.visitFuncAsMethod(
+        func,
+        name as FunctionName<A>
+      )
     }
     return result
   }
 
-  public visitFunc(
+  /**
+   * Handle func type when encountered as a service method definition.
+   * Returns MethodMeta with information about the method's inputs/outputs.
+   * This is public so callers can explicitly request method metadata.
+   */
+  public visitFuncAsMethod(
     t: IDL.FuncClass,
     functionName: FunctionName<A>
   ): MethodMeta<A> {
@@ -131,6 +140,45 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         }
       },
     }
+  }
+
+  /**
+   * Handle func type when encountered as a data field (e.g., callback in a record).
+   * Returns ResultNode that can resolve [Principal, string] data to a func reference.
+   */
+  public visitFunc(_t: IDL.FuncClass, label: string): ResultNode<"func"> {
+    const node: ResultNode<"func"> = {
+      type: "func",
+      label,
+      displayLabel: formatLabel(label),
+      candidType: `func`,
+      displayType: "func",
+      canisterId: "", // placeholder, populated on resolve
+      methodName: "", // placeholder, populated on resolve
+      resolve(data: unknown): ResolvedNode<"func"> {
+        // Func values are represented as [Principal, string] tuples
+        if (!Array.isArray(data) || data.length !== 2) {
+          throw new MetadataError(
+            `Expected func reference [Principal, string], but got ${typeof data}`,
+            label,
+            "func"
+          )
+        }
+        const [principal, methodName] = data
+        const canisterId =
+          typeof principal === "string"
+            ? principal
+            : (principal?.toText?.() ?? String(principal))
+
+        return {
+          ...node,
+          canisterId,
+          methodName: String(methodName),
+          raw: data,
+        }
+      },
+    }
+    return node
   }
 
   // ══════════════════════════════════════════════════════════════════════════

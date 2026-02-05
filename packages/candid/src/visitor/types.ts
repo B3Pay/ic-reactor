@@ -47,6 +47,7 @@ export type VisitorDataType =
   | "text"
   | "boolean"
   | "null"
+  | "func"
   | "unknown"
 
 /**
