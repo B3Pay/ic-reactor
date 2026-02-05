@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/candid": "^3.0.16-beta.1",
-    "@ic-reactor/core": "^3.0.16-beta.1",
-    "@ic-reactor/react": "^3.0.16-beta.1",
+    "@ic-reactor/candid": "^3.0.16-beta.2",
+    "@ic-reactor/core": "^3.0.16-beta.2",
+    "@ic-reactor/react": "^3.0.16-beta.2",
     "@microlink/react-json-view": "^1.27.0",
     "@tanstack/react-query": "^5.90",
     "react": "^19.2.3",
