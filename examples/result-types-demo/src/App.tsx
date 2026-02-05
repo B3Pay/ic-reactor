@@ -1,5 +1,7 @@
-import { IDL, Principal, ResultFieldVisitor } from "@ic-reactor/candid"
+import { ResultFieldVisitor } from "@ic-reactor/candid"
 import { ResultRenderer } from "./components/ResultRenderer"
+import { IDL } from "@icp-sdk/core/candid"
+import { Principal } from "@icp-sdk/core/principal"
 
 // Define a test IDL
 const testIDL = ({ IDL }: { IDL: any }) => {
@@ -28,6 +30,7 @@ const testIDL = ({ IDL }: { IDL: any }) => {
     get_user: IDL.Func([], [User], ["query"]),
     get_version: IDL.Func([], [IDL.Nat], ["query"]),
     get_categories: IDL.Func([], [Category], ["query"]),
+    get_callback: IDL.Func([], [IDL.Func([], [IDL.Nat], ["query"])], ["query"]),
   })
 }
 
@@ -75,6 +78,15 @@ function App() {
   const resolved = getUserMeta.resolve(mockUser)
   const resolvedCategories = getCategoriesMeta.resolve(mockCategories)
 
+  // Demo func type
+  const getCallbackMeta = serviceMeta["get_callback"]
+  // A func value is [Principal, methodName]
+  const mockFunc = [
+    Principal.fromText("rrkah-fqaaa-aaaaa-aaaaq-cai"),
+    "get_balance",
+  ]
+  const resolvedFunc = getCallbackMeta.resolve(mockFunc)
+
   return (
     <div
       style={{
@@ -108,6 +120,13 @@ function App() {
       </div>
 
       <div style={{ marginTop: "40px" }}>
+        <h2>Func Type Rendering</h2>
+        {resolvedFunc.results.map((result, i) => (
+          <ResultRenderer key={i} result={result} />
+        ))}
+      </div>
+
+      <div style={{ marginTop: "40px" }}>
         <h2>Underlying Data Structure</h2>
         <p>
           The code below shows the resolved structure (ResultFieldWithValue)
@@ -124,7 +143,11 @@ function App() {
           }}
         >
           {JSON.stringify(
-            { user: resolved, categories: resolvedCategories },
+            {
+              user: resolved,
+              categories: resolvedCategories,
+              func: resolvedFunc,
+            },
             (_, value) =>
               typeof value === "bigint" ? `${value.toString()}n` : value,
             2

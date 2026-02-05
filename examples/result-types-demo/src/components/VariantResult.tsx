@@ -16,7 +16,7 @@ export const VariantResult: React.FC<{
       {result.label} (Variant: {result.label}):
     </strong>
     <div style={{ paddingLeft: "20px" }}>
-      <ResultRenderer result={result.selectedOption} />
+      <ResultRenderer result={result.selectedValue} />
     </div>
   </div>
 )
