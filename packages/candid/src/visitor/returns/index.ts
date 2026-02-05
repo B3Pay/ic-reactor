@@ -151,7 +151,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       type: "func",
       label,
       displayLabel: formatLabel(label),
-      candidType: `func`,
+      candidType: "func",
       displayType: "func",
       canisterId: "", // placeholder, populated on resolve
       methodName: "", // placeholder, populated on resolve
