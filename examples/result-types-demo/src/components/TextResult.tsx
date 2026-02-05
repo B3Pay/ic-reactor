@@ -1,6 +1,6 @@
-import type { ResolvedNode } from "@ic-reactor/candid"
+import type { ResultNode } from "@ic-reactor/candid"
 
-export const TextResult: React.FC<{ result: ResolvedNode<"text"> }> = ({
+export const TextResult: React.FC<{ result: ResultNode<"text"> }> = ({
   result,
 }) => (
   <div

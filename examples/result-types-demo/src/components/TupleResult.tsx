@@ -1,8 +1,8 @@
-import type { ResolvedNode } from "@ic-reactor/candid"
+import type { ResultNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const TupleResult: React.FC<{
-  result: ResolvedNode<"tuple">
+  result: ResultNode<"tuple">
 }> = ({ result }) => (
   <div
     style={{

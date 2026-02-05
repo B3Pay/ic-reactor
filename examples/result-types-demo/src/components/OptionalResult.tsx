@@ -1,8 +1,8 @@
-import type { ResolvedNode } from "@ic-reactor/candid"
+import type { ResultNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const OptionalResult: React.FC<{
-  result: ResolvedNode<"optional">
+  result: ResultNode<"optional">
 }> = ({ result }) => (
   <div style={{ padding: "5px", margin: "5px 0" }}>
     <strong>{result.label}: </strong>

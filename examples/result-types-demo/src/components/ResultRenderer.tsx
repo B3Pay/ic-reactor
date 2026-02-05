@@ -15,29 +15,29 @@ export const ResultRenderer: React.FC<{
 }> = ({ result }) => {
   switch (result.type) {
     case "text":
-      return <TextResult result={result as ResolvedNode<"text">} />
+      return <TextResult result={result} />
     case "number":
-      return <NumberResult result={result as ResolvedNode<"number">} />
+      return <NumberResult result={result} />
     case "boolean":
-      return <BooleanResult result={result as ResolvedNode<"boolean">} />
+      return <BooleanResult result={result} />
     case "record":
-      return <RecordResult result={result as ResolvedNode<"record">} />
+      return <RecordResult result={result} />
     case "variant":
-      return <VariantResult result={result as ResolvedNode<"variant">} />
+      return <VariantResult result={result} />
     case "tuple":
-      return <TupleResult result={result as ResolvedNode<"tuple">} />
+      return <TupleResult result={result} />
     case "vector":
-      return <VectorResult result={result as ResolvedNode<"vector">} />
+      return <VectorResult result={result} />
     case "optional":
-      return <OptionalResult result={result as ResolvedNode<"optional">} />
+      return <OptionalResult result={result} />
     case "blob":
-      return <BlobResult result={result as ResolvedNode<"blob">} />
+      return <BlobResult result={result} />
     case "func":
-      return <FuncResult result={result as ResolvedNode<"func">} />
+      return <FuncResult result={result} />
+    case "recursive":
+      return <ResultRenderer result={result.inner} />
     case "null":
       return <div>Null</div>
-    case "recursive":
-      return <RecursiveResult result={result as ResolvedNode<"recursive">} />
     default:
       return (
         <div style={{ color: "red" }}>

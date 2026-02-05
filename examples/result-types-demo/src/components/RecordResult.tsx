@@ -1,8 +1,8 @@
-import type { ResolvedNode } from "@ic-reactor/candid"
+import type { ResultNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
 
 export const RecordResult: React.FC<{
-  result: ResolvedNode<"record">
+  result: ResultNode<"record">
 }> = ({ result }) => (
   <div
     style={{

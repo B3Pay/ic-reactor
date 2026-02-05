@@ -1,7 +1,7 @@
-import type { ResolvedNode } from "@ic-reactor/candid"
+import type { ResultNode } from "@ic-reactor/candid"
 
 export const BlobResult: React.FC<{
-  result: ResolvedNode<"blob">
+  result: ResultNode<"blob">
 }> = ({ result }) => {
   const isString = typeof result.value === "string"
   return (

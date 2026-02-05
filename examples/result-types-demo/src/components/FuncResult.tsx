@@ -1,11 +1,11 @@
-import type { FuncNode, ResolvedNode } from "@ic-reactor/candid"
+import type { FuncNode, ResultNode } from "@ic-reactor/candid"
 
 export const FuncResult: React.FC<{
-  result: ResolvedNode<"func"> | FuncNode
+  result: ResultNode<"func"> | FuncNode
 }> = ({ result }) => {
   // If it's a resolved node, we have values
-  const canisterId = (result as Partial<ResolvedNode<"func">>).canisterId
-  const methodName = (result as Partial<ResolvedNode<"func">>).methodName
+  const canisterId = result.canisterId
+  const methodName = result.methodName
 
   return (
     <div
