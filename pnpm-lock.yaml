@@ -169,6 +169,9 @@ importers:
       '@icp-sdk/core':
         specifier: 5.0.0
         version: 5.0.0
+      '@tanstack/react-query':
+        specifier: ^5.90.16
+        version: 5.90.20(react@19.2.4)
       react:
         specifier: ^19.2.3
         version: 19.2.4

@@ -16,6 +16,7 @@ export const FuncRecordResult: React.FC<{
     argFields,
     defaultArgs,
   } = result
+  console.log("🚀 ~ FuncRecordResult ~ defaultArgs:", defaultArgs)
 
   useEffect(() => {
     const reactor = new MetadataDisplayReactor({
@@ -27,13 +28,7 @@ export const FuncRecordResult: React.FC<{
       },
       name: canisterId!,
     })
-    console.log(
-      "🚀 ~ FuncRecordResult ~ reactor:",
-      reactor.callMethod({
-        functionName: methodName,
-        args: defaultArgs ?? [],
-      })
-    )
+    console.log("🚀 ~ FuncRecordResult ~ reactor:", reactor)
   }, [canisterId, methodName])
 
   return (
