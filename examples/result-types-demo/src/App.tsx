@@ -26,11 +26,29 @@ const testIDL = ({ IDL }: { IDL: any }) => {
     })
   )
 
+  // Real-world pattern: ICRC ledger archived blocks
+  const GetBlocksArgs = IDL.Record({
+    start: IDL.Nat64,
+    length: IDL.Nat64,
+  })
+  const BlockRange = IDL.Record({
+    blocks: IDL.Vec(IDL.Nat8),
+  })
+  const ArchivedBlocksRange = IDL.Record({
+    callback: IDL.Func([GetBlocksArgs], [BlockRange], ["query"]),
+    start: IDL.Nat64,
+    length: IDL.Nat64,
+  })
+
   return IDL.Service({
     get_user: IDL.Func([], [User], ["query"]),
     get_version: IDL.Func([], [IDL.Nat], ["query"]),
     get_categories: IDL.Func([], [Category], ["query"]),
-    get_callback: IDL.Func([], [IDL.Func([], [IDL.Nat], ["query"])], ["query"]),
+    get_archived_blocks: IDL.Func(
+      [],
+      [IDL.Vec(ArchivedBlocksRange)],
+      ["query"]
+    ),
   })
 }
 
@@ -78,14 +96,22 @@ function App() {
   const resolved = getUserMeta.resolve(mockUser)
   const resolvedCategories = getCategoriesMeta.resolve(mockCategories)
 
-  // Demo func type
-  const getCallbackMeta = serviceMeta["get_callback"]
-  // A func value is [Principal, methodName]
-  const mockFunc = [
-    Principal.fromText("rrkah-fqaaa-aaaaa-aaaaq-cai"),
-    "get_balance",
+  // Demo funcRecord type (ArchivedBlocksRange pattern)
+  const getArchivedBlocksMeta = serviceMeta["get_archived_blocks"]
+  const archiveCanister = Principal.fromText("qjdve-lqaaa-aaaaa-aaaeq-cai")
+  const mockArchivedBlocks = [
+    {
+      callback: [archiveCanister, "get_blocks"],
+      start: BigInt(1000),
+      length: BigInt(500),
+    },
+    {
+      callback: [archiveCanister, "get_blocks"],
+      start: BigInt(0),
+      length: BigInt(1000),
+    },
   ]
-  const resolvedFunc = getCallbackMeta.resolve(mockFunc)
+  const resolvedArchived = getArchivedBlocksMeta.resolve(mockArchivedBlocks)
 
   return (
     <div
@@ -120,8 +146,8 @@ function App() {
       </div>
 
       <div style={{ marginTop: "40px" }}>
-        <h2>Func Type Rendering</h2>
-        {resolvedFunc.results.map((result, i) => (
+        <h2>FuncRecord Rendering (Archived Blocks)</h2>
+        {resolvedArchived.results.map((result, i) => (
           <ResultRenderer key={i} result={result} />
         ))}
       </div>
@@ -146,7 +172,7 @@ function App() {
             {
               user: resolved,
               categories: resolvedCategories,
-              func: resolvedFunc,
+              archivedBlocks: resolvedArchived,
             },
             (_, value) =>
               typeof value === "bigint" ? `${value.toString()}n` : value,

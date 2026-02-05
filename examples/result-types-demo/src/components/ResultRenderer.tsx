@@ -1,6 +1,7 @@
 import type { ResolvedNode, ResultNode } from "@ic-reactor/candid"
 import { BlobResult } from "./BlobResult"
 import { BooleanResult } from "./BooleanResult"
+import { FuncRecordResult } from "./FuncRecordResult"
 import { FuncResult } from "./FuncResult"
 import { NumberResult } from "./NumberResult"
 import { OptionalResult } from "./OptionalResult"
@@ -22,6 +23,8 @@ export const ResultRenderer: React.FC<{
       return <BooleanResult result={result} />
     case "record":
       return <RecordResult result={result} />
+    case "funcRecord":
+      return <FuncRecordResult result={result} />
     case "variant":
       return <VariantResult result={result} />
     case "tuple":

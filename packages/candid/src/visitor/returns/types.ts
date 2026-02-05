@@ -4,6 +4,7 @@ import type {
   FunctionType,
   ActorMethodReturnType,
 } from "@ic-reactor/core"
+import type { IDL } from "@icp-sdk/core/candid"
 import type { VisitorDataType, TextFormat, NumberFormat } from "../types"
 
 export type { VisitorDataType, TextFormat, NumberFormat }
@@ -157,14 +158,12 @@ interface FuncRecordNodeExtras {
   methodName: string
   /** Whether the referenced function is "query" or "update" */
   funcType: "query" | "update"
+  /** The raw IDL.FuncClass for encoding/decoding calls */
+  funcClass: IDL.FuncClass
   /** The key of the func field in the record */
   funcFieldKey: string
   /** The func field node */
   funcField: ResultNode<"func">
-  /** Candid argument type schemas for the referenced function */
-  funcArgs: ResultNode[]
-  /** Candid return type schemas for the referenced function */
-  funcReturns: ResultNode[]
   /** Non-func fields — the default arguments for invoking the callback */
   argFields: Record<string, ResultNode>
   /** All fields including the func field (superset of argFields + funcField) */

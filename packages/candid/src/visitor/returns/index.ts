@@ -222,14 +222,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         ? "query"
         : "update"
 
-      // Extract Candid arg/return type schemas from the func signature
-      const funcArgs = funcType.argTypes.map((arg, i) =>
-        arg.accept(this, `__arg${i}`)
-      ) as ResultNode[]
-      const funcReturns = funcType.retTypes.map((ret, i) =>
-        ret.accept(this, `__ret${i}`)
-      ) as ResultNode[]
-
       const argFields: Record<string, ResultNode> = {}
       for (const [k, v] of Object.entries(fields)) {
         if (k !== funcFieldKey) argFields[k] = v
@@ -244,10 +236,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         canisterId: "",
         methodName: "",
         funcType: funcCallType,
+        funcClass: funcType,
         funcFieldKey,
         funcField: funcFieldNode,
-        funcArgs,
-        funcReturns,
         argFields,
         fields,
         resolve(data: unknown): ResolvedNode<"funcRecord"> {

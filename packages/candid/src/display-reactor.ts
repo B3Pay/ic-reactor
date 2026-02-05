@@ -3,6 +3,7 @@ import type {
   DynamicMethodOptions,
 } from "./types"
 import { CandidAdapter } from "./adapter"
+import type { ResolvedNode } from "./visitor/returns"
 
 import {
   BaseActor,
@@ -13,6 +14,7 @@ import {
   didTypeFromArray,
 } from "@ic-reactor/core"
 import { IDL } from "@icp-sdk/core/candid"
+import { Principal } from "@icp-sdk/core/principal"
 
 // ============================================================================
 // CandidDisplayReactor
@@ -326,5 +328,138 @@ export class CandidDisplayReactor<
       functionName: options.functionName as any,
       args: options.args as any,
     }) as T
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FUNC RECORD CALLS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Call a function referenced in a resolved funcRecord node.
+   *
+   * This enables calling canister callbacks discovered at runtime, such as
+   * `archived_transactions` in ICRC ledger responses. The funcRecord carries
+   * the target canisterId, methodName, and IDL.FuncClass needed for the call.
+   *
+   * Arguments are accepted in **display format** (strings for bigint/Principal)
+   * and results are returned in display format.
+   *
+   * @param funcRecord - A resolved funcRecord node (from a previous canister response)
+   * @param args - Display-type arguments matching the func's Candid signature
+   * @returns The decoded and display-transformed result
+   *
+   * @example
+   * ```typescript
+   * // 1. Call get_transactions on the ledger
+   * const txResult = await reactor.callMethod({
+   *   functionName: "get_transactions",
+   *   args: [{ start: "0", length: "100" }]
+   * })
+   *
+   * // 2. The response contains archived_transactions with funcRecord entries
+   * const archived = txResult.archived_transactions[0] // resolved funcRecord
+   *
+   * // 3. Call the archive canister directly through the funcRecord
+   * const archiveResult = await reactor.callFuncRecord(archived, [
+   *   { start: "0", length: "50" }
+   * ])
+   * ```
+   */
+  public async callFuncRecord<T = unknown>(
+    funcRecord: ResolvedNode<"funcRecord">,
+    args?: unknown[]
+  ): Promise<T> {
+    const { canisterId, methodName, funcClass } = funcRecord
+    if (!canisterId || !methodName) {
+      throw new Error(
+        "funcRecord has no canisterId/methodName — was it resolved from actual data?"
+      )
+    }
+
+    const targetPrincipal = Principal.from(canisterId)
+
+    // Build display codecs for the func's arg/return types
+    const argsIdlType = didTypeFromArray(funcClass.argTypes)
+    const retIdlType = didTypeFromArray(funcClass.retTypes)
+    const argsCodec = didToDisplayCodec(argsIdlType)
+    const resultCodec = didToDisplayCodec(retIdlType)
+
+    // Transform display args → Candid
+    let candidArgs: unknown[]
+    if (!args || args.length === 0) {
+      candidArgs = []
+    } else if (args.length === 1) {
+      try {
+        candidArgs = [argsCodec.asCandid(args[0])]
+      } catch {
+        candidArgs = args
+      }
+    } else {
+      try {
+        candidArgs = argsCodec.asCandid(args) as unknown[]
+      } catch {
+        candidArgs = args
+      }
+    }
+
+    // Encode with Candid
+    const arg = IDL.encode(funcClass.argTypes, candidArgs)
+    const agent = this.clientManager.agent
+
+    const isQuery =
+      funcClass.annotations.includes("query") ||
+      funcClass.annotations.includes("composite_query")
+
+    let rawResponse: Uint8Array
+
+    if (isQuery) {
+      const response = await agent.query(targetPrincipal, {
+        methodName,
+        arg,
+        effectiveCanisterId: targetPrincipal,
+      })
+      if ("reply" in response && response.reply) {
+        rawResponse = response.reply.arg
+      } else {
+        const msg =
+          "reject_message" in response
+            ? (response as any).reject_message
+            : "Query rejected"
+        throw new Error(`Query to ${canisterId}.${methodName} rejected: ${msg}`)
+      }
+    } else {
+      const response = await agent.call(targetPrincipal, {
+        methodName,
+        arg,
+        effectiveCanisterId: targetPrincipal,
+      })
+      // For update calls, poll for the response
+      // Use the agent's built-in polling
+      if ("reply" in (response.response?.body ?? {})) {
+        rawResponse = (response.response.body as any).reply.arg
+      } else {
+        throw new Error(
+          `Update call to ${canisterId}.${methodName} failed — ` +
+            `update calls through funcRecord are not fully supported yet. ` +
+            `Use query callbacks instead.`
+        )
+      }
+    }
+
+    // Decode the Candid response
+    const decoded = IDL.decode(funcClass.retTypes, rawResponse)
+    const result =
+      decoded.length === 0
+        ? undefined
+        : decoded.length === 1
+          ? decoded[0]
+          : decoded
+
+    // Transform Candid → Display
+    try {
+      return resultCodec.asDisplay(result) as T
+    } catch {
+      return result as T
+    }
   }
 }

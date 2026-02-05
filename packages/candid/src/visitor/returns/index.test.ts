@@ -998,11 +998,9 @@ describe("ResultFieldVisitor", () => {
         expect(fr.funcField.type).toBe("func")
         expect(Object.keys(fr.argFields)).toEqual(["start", "length"])
 
-        // Candid type schemas from the func signature
-        expect(fr.funcArgs).toHaveLength(1) // (GetBlocksArgs)
-        expect(fr.funcArgs[0].type).toBe("record")
-        expect(fr.funcReturns).toHaveLength(1) // (Result_4)
-        expect(fr.funcReturns[0].type).toBe("variant")
+        // funcClass carries the raw IDL types for encoding/decoding
+        expect(fr.funcClass.argTypes).toHaveLength(1)
+        expect(fr.funcClass.retTypes).toHaveLength(1)
 
         // Resolve with real-ish data
         const { Principal } = require("@icp-sdk/core/principal")

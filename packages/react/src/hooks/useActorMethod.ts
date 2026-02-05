@@ -176,6 +176,7 @@ export function useActorMethod<
 }: UseActorMethodParameters<A, M, T>): UseActorMethodResult<A, M, T> {
   // Determine if this is a query method by checking the IDL
   const isQuery = useMemo(() => {
+    if (!reactor) throw new Error("Reactor instance is required")
     return reactor.isQueryMethod(functionName)
   }, [reactor, functionName])
 
