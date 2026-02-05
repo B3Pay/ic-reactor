@@ -91,6 +91,7 @@ describe("Package Exports", () => {
         "isUrl",
         "isImage",
         "isUuid",
+        "isPrincipalId",
         "isCanisterId",
         "isBtcAddress",
         "isEthAddress",
