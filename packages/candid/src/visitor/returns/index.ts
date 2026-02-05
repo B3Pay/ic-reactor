@@ -263,9 +263,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "array",
       items,
       resolve(data: unknown): ResolvedNode<"tuple"> {
-        if (data === null || data === undefined) {
+        if (data === null || data === undefined || !Array.isArray(data)) {
           throw new MetadataError(
-            `Expected tuple, but got ${data === null ? "null" : "undefined"}`,
+            `Expected tuple, but got ${typeof data}`,
             label,
             "tuple"
           )
@@ -362,7 +362,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(data: unknown): ResolvedNode<"vector"> {
         if (data === null || data === undefined || !Array.isArray(data)) {
           throw new MetadataError(
-            `Expected vector, but got ${data === null ? "null" : "undefined"}`,
+            `Expected vector, but got ${typeof data}`,
             label,
             "vec"
           )
