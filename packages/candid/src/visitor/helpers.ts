@@ -221,13 +221,3 @@ export function isIsoDate(str: string): boolean {
     str
   )
 }
-
-export function uint8ArrayToHexString(bytes: Uint8Array | number[]): string {
-  if (!bytes) return ""
-  if (Array.isArray(bytes)) {
-    return bytes.map((b) => b.toString(16).padStart(2, "0")).join("")
-  }
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-}

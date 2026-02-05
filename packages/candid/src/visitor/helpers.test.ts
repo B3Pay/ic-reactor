@@ -9,7 +9,6 @@ import {
   isUrl,
   isImage,
   isUuid,
-  uint8ArrayToHexString,
 } from "./helpers"
 
 describe("Helpers", () => {
@@ -270,28 +269,6 @@ describe("Helpers", () => {
     it("should return false for non-string inputs", () => {
       expect(isUuid(123 as any)).toBe(false)
       expect(isUuid(null as any)).toBe(false)
-    })
-  })
-
-  describe("uint8ArrayToHexString", () => {
-    it("should convert Uint8Array to hex string", () => {
-      expect(uint8ArrayToHexString(new Uint8Array([0, 1, 255]))).toBe("0001ff")
-      expect(uint8ArrayToHexString(new Uint8Array([15, 16, 17]))).toBe("0f1011")
-    })
-
-    it("should convert number array to hex string", () => {
-      expect(uint8ArrayToHexString([0, 1, 255])).toBe("0001ff")
-      expect(uint8ArrayToHexString([15, 16, 17])).toBe("0f1011")
-    })
-
-    it("should return empty string for empty input", () => {
-      expect(uint8ArrayToHexString(new Uint8Array())).toBe("")
-      expect(uint8ArrayToHexString([])).toBe("")
-    })
-
-    it("should return empty string for null/undefined", () => {
-      expect(uint8ArrayToHexString(null as any)).toBe("")
-      expect(uint8ArrayToHexString(undefined as any)).toBe("")
     })
   })
 })
