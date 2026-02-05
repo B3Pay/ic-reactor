@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/candid",
-  "version": "3.0.17-beta.0",
+  "version": "3.0.17-beta.1",
   "description": "IC Reactor Candid Adapter - Fetch and parse Candid definitions from Internet Computer canisters",
   "main": "dist/index.js",
   "module": "dist/index.js",
