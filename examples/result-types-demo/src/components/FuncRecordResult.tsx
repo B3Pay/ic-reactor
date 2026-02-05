@@ -1,10 +1,39 @@
-import type { ResultNode } from "@ic-reactor/candid"
+import { MetadataDisplayReactor, type ResultNode } from "@ic-reactor/candid"
 import { ResultRenderer } from "./ResultRenderer"
+import { useEffect } from "react"
+import { ClientManager } from "@ic-reactor/core"
 
 export const FuncRecordResult: React.FC<{
   result: ResultNode<"funcRecord">
 }> = ({ result }) => {
-  const { canisterId, methodName, funcType, funcFieldKey, argFields } = result
+  console.log("🚀 ~ FuncRecordResult ~ result:", result)
+  const {
+    canisterId,
+    methodName,
+    funcType,
+    funcClass,
+    funcFieldKey,
+    argFields,
+  } = result
+
+  useEffect(() => {
+    const reactor = new MetadataDisplayReactor({
+      canisterId: canisterId!,
+      clientManager: new ClientManager({ queryClient: {} as any }),
+      funcClass: {
+        methodName,
+        func: funcClass,
+      },
+      name: canisterId!,
+    })
+    console.log(
+      "🚀 ~ FuncRecordResult ~ reactor:",
+      reactor.callMethod({
+        functionName: methodName,
+        args: [],
+      })
+    )
+  }, [canisterId, methodName])
 
   return (
     <div

@@ -10,6 +10,7 @@ import { TextResult } from "./TextResult"
 import { TupleResult } from "./TupleResult"
 import { VariantResult } from "./VariantResult"
 import { VectorResult } from "./VectorResult"
+import { PrincipalResult } from "./PrincipalResult"
 
 export const ResultRenderer: React.FC<{
   result: ResolvedNode | ResultNode
@@ -17,6 +18,8 @@ export const ResultRenderer: React.FC<{
   switch (result.type) {
     case "text":
       return <TextResult result={result} />
+    case "principal":
+      return <PrincipalResult result={result} />
     case "number":
       return <NumberResult result={result} />
     case "boolean":
