@@ -260,6 +260,7 @@ interface ResultNode {
 | `result`    | Special case for `Ok`/`Err` variants       |
 | `nullable`  | Optional types                             |
 | `blob`      | Binary data with hash                      |
+| `func`      | Function references (canister ID + method) |
 
 ### Resolution Example
 
@@ -287,6 +288,31 @@ const resolved = meta.resolve(rawResult)
 //   }],
 //   raw: { Ok: 1000000000n }
 // }
+```
+
+### Func Reference Resolution
+
+Candid `func` types can appear as data fields in records, commonly seen in callback references like those returned by `get_transactions` on ICRC-1 ledgers:
+
+```typescript
+// Raw canister response with func reference
+const rawResult = {
+  transactions: [...],
+  archived_transactions: [{
+    start: 0n,
+    length: 100n,
+    callback: [Principal.fromText("sa4so-piaaa-aaaar-qacnq-cai"), "get_transactions"]
+  }]
+}
+
+// The callback field is resolved to:
+{
+  type: "func",
+  displayType: "func",
+  canisterId: "sa4so-piaaa-aaaar-qacnq-cai",
+  methodName: "get_transactions",
+  raw: [Principal, "get_transactions"]
+}
 ```
 
 ## Format Detection
@@ -626,6 +652,16 @@ function ResultNode({ node }) {
           <code>
             {node.length} bytes (hash: {node.hash.slice(0, 16)}...)
           </code>
+        </div>
+      )
+
+    case "func":
+      return (
+        <div>
+          <strong>{node.label}:</strong>
+          <span>
+            Callback: {node.canisterId}.{node.methodName}()
+          </span>
         </div>
       )
 

@@ -228,6 +228,7 @@ interface ResultNode {
 | `nullable`  | Optional types                             |
 | `recursive` | Self-referential types                     |
 | `blob`      | Binary data with hash                      |
+| `func`      | Function references (canister ID + method) |
 
 ### Resolution Process
 
@@ -257,6 +258,26 @@ const resolved = meta.resolve(rawResult)
 //   }],
 //   raw: { Ok: 1000000000n }
 // }
+```
+
+### Func Reference Resolution
+
+Candid `func` types can appear as data fields in records, commonly seen in callback references:
+
+```typescript
+// Raw canister response with func reference
+const rawResult = {
+  callback: [Principal.fromText("sa4so-piaaa-aaaar-qacnq-cai"), "get_transactions"]
+}
+
+// The callback field is resolved to:
+{
+  type: "func",
+  displayType: "func",
+  canisterId: "sa4so-piaaa-aaaar-qacnq-cai",
+  methodName: "get_transactions",
+  raw: [Principal, "get_transactions"]
+}
 ```
 
 ## Format Detection
@@ -682,6 +703,14 @@ function ResultNode({ node }) {
           <code>
             {node.length} bytes (hash: {node.hash.slice(0, 16)}...)
           </code>
+        </div>
+      )
+
+    case "func":
+      return (
+        <div>
+          <strong>{node.label}:</strong>
+          <span>Callback: {node.canisterId}.{node.methodName}()</span>
         </div>
       )
 
