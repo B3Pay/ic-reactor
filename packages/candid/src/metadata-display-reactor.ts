@@ -20,7 +20,6 @@ import {
   ResultFieldVisitor,
   ServiceMeta,
 } from "./visitor/returns"
-import type { ResolvedNode, ResultNode } from "./visitor/returns"
 
 // ============================================================================
 // MetadataDisplayReactor
@@ -87,6 +86,11 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
 
   constructor(config: CandidDisplayReactorParameters<A>) {
     super(config)
+
+    // If funcClass was provided, metadata is ready immediately
+    if (config.funcClass || config.idlFactory) {
+      this.generateMetadata()
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -222,58 +226,5 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
     const meta = this.getOutputMeta(options.functionName as any)!
 
     return { result, meta }
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // FUNC RECORD CALLS WITH METADATA
-  // ══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Call a funcRecord callback and resolve the result with metadata.
-   *
-   * This combines `callFuncRecord` (from the base class) with the return-type
-   * visitor metadata, so the result comes back as `ResolvedNode[]` that can be
-   * rendered with the same `ResultRenderer` used for normal method results.
-   *
-   * @param funcRecord - A resolved funcRecord node
-   * @param args - Display-type arguments matching the func's Candid signature
-   * @returns An object with the resolved result nodes and raw data
-   *
-   * @example
-   * ```typescript
-   * const archiveResult = await reactor.callFuncRecordWithMeta(
-   *   resolvedArchived, // funcRecord from archived_transactions
-   *   [{ start: "0", length: "50" }]
-   * )
-   *
-   * // Render results like any other method result
-   * archiveResult.results.forEach(node => renderResultNode(node))
-   * ```
-   */
-  public async callFuncRecordWithMeta(
-    funcRecord: ResolvedNode<"funcRecord">,
-    args?: unknown[]
-  ): Promise<{
-    results: ResolvedNode[]
-    raw: unknown
-  }> {
-    // Call the base method to get the raw (display-transformed) result
-    const rawResult = await this.callFuncRecord(funcRecord, args)
-
-    // Build result metadata from the func's return types using the visitor
-    const resultVisitor = MetadataDisplayReactor.resultVisitor
-    const returnSchemas = funcRecord.funcClass.retTypes.map((ret, i) =>
-      ret.accept(resultVisitor, `__ret${i}`)
-    ) as ResultNode[]
-
-    // Resolve the return schemas with the actual data
-    const dataArray =
-      returnSchemas.length <= 1 ? [rawResult] : (rawResult as unknown[])
-
-    const results = returnSchemas.map((schema, i) =>
-      schema.resolve(dataArray[i])
-    )
-
-    return { results, raw: rawResult }
   }
 }

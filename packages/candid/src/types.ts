@@ -49,6 +49,26 @@ export interface CandidDisplayReactorParameters<A = BaseActor> extends Omit<
   idlFactory?: (IDL: any) => any
   /** The Candid adapter. */
   adapter?: CandidAdapter
+  /**
+   * An IDL.FuncClass to register as a single-method service.
+   * Use this to create a reactor for a funcRecord callback.
+   * When provided, the reactor is ready to use immediately (no `initialize()` needed).
+   *
+   * @example
+   * ```typescript
+   * const archiveReactor = new CandidDisplayReactor({
+   *   canisterId: archived.canisterId,
+   *   clientManager,
+   *   funcClass: { methodName: "get_blocks", func: archiveFuncClass },
+   * })
+   * ```
+   */
+  funcClass?: {
+    /** The method name to register */
+    methodName: string
+    /** The IDL.FuncClass describing the function signature */
+    func: import("@icp-sdk/core/candid").IDL.FuncClass
+  }
 }
 
 /**

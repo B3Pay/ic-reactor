@@ -970,7 +970,7 @@ describe("MetadataDisplayReactor", () => {
         ["icrc1:decimals", { Nat: 8n }],
       ]
 
-      const resolved = field.resolve(mockCandid) as TupleNode
+      const resolved = field.resolve(mockCandid)
       const displayData = resolved.items
 
       // Vec field resolves to Array of values
