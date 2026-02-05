@@ -217,7 +217,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(data: unknown): ResolvedNode<"variant"> {
         if (data === null || data === undefined) {
           throw new MetadataError(
-            `Expected variant, but got ${data === null ? "null" : "undefined"}`,
+            `Expected variant, but got ${data === null ? "null" : "undefined"}, raw: ${data}`,
             label,
             "variant"
           )
@@ -265,7 +265,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(data: unknown): ResolvedNode<"tuple"> {
         if (data === null || data === undefined || !Array.isArray(data)) {
           throw new MetadataError(
-            `Expected tuple, but got ${data === null ? "null" : typeof data}`,
+            `Expected tuple, but got ${data === null ? "null" : typeof data}, raw: ${data}`,
             label,
             "tuple"
           )
@@ -362,7 +362,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       resolve(data: unknown): ResolvedNode<"vector"> {
         if (data === null || data === undefined || !Array.isArray(data)) {
           throw new MetadataError(
-            `Expected vector, but got ${data === null ? "null" : typeof data}`,
+            `Expected vector, but got ${data === null ? "null" : typeof data}, raw: ${data}`,
             label,
             "vec"
           )
