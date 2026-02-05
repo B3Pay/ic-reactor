@@ -10,41 +10,34 @@ import { TupleResult } from "./TupleResult"
 import { VariantResult } from "./VariantResult"
 import { VectorResult } from "./VectorResult"
 
-// Helper type to bypass strict type checking for the demo
-// In a real app, you might want better type guards
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type UnsafeAny = any
-
 export const ResultRenderer: React.FC<{
   result: ResolvedNode | ResultNode
 }> = ({ result }) => {
-  switch (result.displayType) {
-    case "string":
-      return <TextResult result={result as UnsafeAny} />
+  switch (result.type) {
+    case "text":
+      return <TextResult result={result as ResolvedNode<"text">} />
     case "number":
-      return <NumberResult result={result as UnsafeAny} />
+      return <NumberResult result={result as ResolvedNode<"number">} />
     case "boolean":
-      return <BooleanResult result={result as UnsafeAny} />
-    case "object":
-      return <RecordResult result={result as UnsafeAny} />
+      return <BooleanResult result={result as ResolvedNode<"boolean">} />
+    case "record":
+      return <RecordResult result={result as ResolvedNode<"record">} />
     case "variant":
-    case "result":
-      return <VariantResult result={result as UnsafeAny} />
-    case "array":
-      if (result.type === "tuple") {
-        return <TupleResult result={result as UnsafeAny} />
-      }
-      return <VectorResult result={result as UnsafeAny} />
-    case "nullable":
-      return <OptionalResult result={result as UnsafeAny} />
+      return <VariantResult result={result as ResolvedNode<"variant">} />
+    case "tuple":
+      return <TupleResult result={result as ResolvedNode<"tuple">} />
+    case "vector":
+      return <VectorResult result={result as ResolvedNode<"vector">} />
+    case "optional":
+      return <OptionalResult result={result as ResolvedNode<"optional">} />
     case "blob":
-      return <BlobResult result={result as UnsafeAny} />
+      return <BlobResult result={result as ResolvedNode<"blob">} />
     case "func":
-      return <FuncResult result={result as UnsafeAny} />
+      return <FuncResult result={result as ResolvedNode<"func">} />
     case "null":
       return <div>Null</div>
-    // Add other types as needed
-
+    case "recursive":
+      return <RecursiveResult result={result as ResolvedNode<"recursive">} />
     default:
       return (
         <div style={{ color: "red" }}>
