@@ -107,6 +107,37 @@ jobs:
           </html>
           EOF
 
+          # Root 404: redirect missing legacy paths to v3, preserve path
+          cat > final-docs/404.html << 'EOF'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="robots" content="noindex" />
+              <title>Not Found | IC Reactor Docs</title>
+              <script>
+                (function () {
+                  var path = window.location.pathname || "/";
+                  // Normalize to project base
+                  var base = "/ic-reactor";
+                  if (!path.startsWith(base)) {
+                    window.location.replace(base + "/v3/");
+                    return;
+                  }
+                  var rel = path.slice(base.length);
+                  if (rel.startsWith("/v2") || rel.startsWith("/v3")) return;
+                  var target = base + "/v3" + rel;
+                  if (!target.endsWith("/") && path.endsWith("/")) target += "/";
+                  window.location.replace(target);
+                })();
+              </script>
+            </head>
+            <body>
+              <p>Redirecting…</p>
+            </body>
+          </html>
+          EOF
+
       - name: Inject v3 banner into v2 docs
         run: |
           # Banner HTML to inject after <body> tag in all v2 HTML files
