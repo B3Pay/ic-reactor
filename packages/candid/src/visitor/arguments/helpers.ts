@@ -136,8 +136,15 @@ export function formatLabel(label: string): string {
 
   // Convert snake_case or just clean up underscores
   // and capitalize each word
-  return label
-    .replace(/^_+|_+$/g, "") // Remove leading/trailing underscores
+  const trimmed = (() => {
+    let start = 0
+    let end = label.length
+    while (start < end && label[start] === "_") start++
+    while (end > start && label[end - 1] === "_") end--
+    return label.slice(start, end)
+  })()
+
+  return trimmed
     .replace(/_/g, " ") // Replace underscores with spaces
     .replace(/([a-z])([A-Z])/g, "$1 $2") // Add space before capitals (camelCase)
     .split(" ")
