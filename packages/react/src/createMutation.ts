@@ -65,6 +65,9 @@ const createMutationImpl = <
 
   // Hook implementation
   const useMutationHook = (options?: MutationHookOptions<A, M, T>) => {
+    const baseOptions = reactor.getQueryOptions({
+      functionName,
+    })
     // Extract our custom options
     const {
       invalidateQueries: hookInvalidateQueries,
@@ -74,6 +77,7 @@ const createMutationImpl = <
 
     return useMutation(
       {
+        mutationKey: baseOptions.queryKey,
         ...factoryOptions,
         ...restOptions,
         mutationFn: execute,
