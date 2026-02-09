@@ -231,6 +231,7 @@ export function useActorMethod<
     ReactorArgs<A, M, T>
   >(
     {
+      mutationKey: queryKey,
       mutationFn: async (mutationArgs) => {
         const result = await reactor.callMethod({
           functionName,
