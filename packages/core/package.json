@@ -71,7 +71,7 @@
     "@size-limit/preset-small-lib": "^12.0.0",
     "@tanstack/query-core": "^5.90",
     "@tanstack/react-query": "^5.90",
-    "@types/node": "^25.2.0",
+    "@types/node": "^25.2.2",
     "fake-indexeddb": "^6.2.5",
     "size-limit": "^12.0.0",
     "vitest": "^4.0.17"
