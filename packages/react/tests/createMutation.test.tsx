@@ -38,7 +38,7 @@ const createMockReactor = (queryClient: QueryClient) => {
     return null
   })
 
-  return {
+  const reactor = {
     queryClient,
     callMethod,
     generateQueryKey: vi
@@ -47,7 +47,13 @@ const createMockReactor = (queryClient: QueryClient) => {
         "test-canister",
         functionName,
       ]),
+    getQueryOptions: vi.fn().mockImplementation((params) => ({
+      queryKey: ["test-canister", params.functionName],
+      queryFn: () => callMethod(params),
+    })),
   } as unknown as Reactor<TestActor>
+
+  return reactor
 }
 
 describe("createMutation", () => {
