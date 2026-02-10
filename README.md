@@ -41,13 +41,13 @@ IC Reactor provides seamless integration between your applications and Internet 
 
 ```bash
 # For React apps
-pnpm add @ic-reactor/react@beta @icp-sdk/core @tanstack/react-query
+pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 
 # For non-React apps
-pnpm add @ic-reactor/core@beta @icp-sdk/core @tanstack/query-core
+pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 # For dynamic Candid (optional)
-pnpm add @ic-reactor/candid@beta @ic-reactor/parser
+pnpm add @ic-reactor/candid @ic-reactor/parser
 
 # For Internet Identity authentication (optional)
 pnpm add @icp-sdk/auth
