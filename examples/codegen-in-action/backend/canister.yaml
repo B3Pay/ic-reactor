@@ -7,4 +7,3 @@ recipe:
   configuration:
     main: main.mo
     args: --incremental-gc
-    candid: backend.did

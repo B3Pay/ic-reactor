@@ -52,6 +52,7 @@ export const getQuery = createQuery(backendReactor, {
 
 export const incMutation = createMutation(backendReactor, {
   functionName: "inc",
+  invalidateQueries: [getQuery.getQueryKey()],
 })
 
 export { idlFactory }

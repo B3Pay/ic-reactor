@@ -11,16 +11,16 @@
   "generatedHooks": {
     "backend": [
       {
-        "name": "greet",
+        "name": "get",
         "type": "query"
       },
       {
-        "name": "set_greeting",
+        "name": "inc",
         "type": "mutation"
       },
       {
-        "name": "list_messages",
-        "type": "query"
+        "name": "add",
+        "type": "mutation"
       }
     ]
   }

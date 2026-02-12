@@ -4,9 +4,14 @@ import { QueryClientProvider } from "@tanstack/react-query"
 import { queryClient } from "./lib/client"
 
 // Auto-generated reactor hooks (from the Vite plugin)
-import { useBackendQuery, useBackendMethod } from "./canisters-vite/backend"
+import {
+  useBackendMethod,
+  getQuery,
+  incMutation,
+} from "./canisters-vite/backend"
 
 import "./style.css"
+import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 function App() {
   return (
@@ -41,17 +46,14 @@ function CookieSection() {
     ?.split("=")[1]
   const icEnv = icEnvRaw ? decodeURIComponent(icEnvRaw) : "(not set)"
 
-  // Reactor: greet (query) and list_messages (query)
-  const { data: greet } = useBackendQuery({
-    functionName: "get",
-    args: [],
-  })
-  const { data: messages, refetch: refetchMessages } = useBackendQuery({
-    functionName: "list_messages",
-  })
+  // Reactor: counter (get) and update methods (inc, add)
+  const { data: counter, refetch: refetchCounter } = getQuery.useQuery()
 
-  // Manual method call example using useActorMethod-style hook
-  const greetMethod = useBackendMethod({ functionName: "greet" })
+  // Use unified method hook for update calls
+  const addMethod = useBackendMethod({
+    functionName: "add",
+    invalidateQueries: [getQuery.getQueryKey()],
+  })
 
   useEffect(() => {
     const onFocus = () => setCookieString(document.cookie || "(no cookies)")
@@ -68,46 +70,47 @@ function CookieSection() {
           {cookieString}
         </pre>
       </div>
+      {JSON.stringify(
+        getCanisterEnv({
+          cookieName: "ic_env",
+        })
+      )}
       <div style={{ marginBottom: 8 }}>
         <strong>Decoded ic_env:</strong>
         <pre style={{ whiteSpace: "pre-wrap", margin: "8px 0" }}>{icEnv}</pre>
       </div>
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
         <div>
-          <strong>greet (auto query):</strong>
-          <div>{greet ?? "(no response)"}</div>
+          <strong>counter (get):</strong>
+          <div style={{ fontSize: 20, marginTop: 6 }}>
+            {counter ?? "(no response)"}
+          </div>
         </div>
 
         <div>
-          <strong>greet (useBackendMethod.call):</strong>
+          <strong>inc (useBackendMethod.call):</strong>
           <div>
             <button
-              onClick={async () => {
-                const res = await greetMethod.call(["Manual call"])
-                // ensure any cookie changes are reflected
-                setCookieString(document.cookie || "(no cookies)")
-                void res
-              }}
+              onClick={async () => incMutation.execute([])}
               className="btn"
             >
-              Call greet()
+              Increment
             </button>
           </div>
         </div>
 
         <div>
-          <strong>list_messages:</strong>
-          <div style={{ maxWidth: 420 }}>
-            {JSON.stringify(messages ?? [], null, 2)}
-          </div>
+          <strong>add (useBackendMethod.call):</strong>
           <div>
             <button
-              onClick={() => refetchMessages()}
+              onClick={async () => {
+                await addMethod.call(["5"])
+                setCookieString(document.cookie || "(no cookies)")
+              }}
               className="btn"
-              style={{ marginTop: 8 }}
             >
-              Refresh messages
+              Add 5
             </button>
           </div>
         </div>
