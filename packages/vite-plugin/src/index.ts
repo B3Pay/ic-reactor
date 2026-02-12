@@ -43,7 +43,7 @@ const IC_ROOT_KEY_HEX =
 
 export interface IcReactorPluginOptions {
   /** List of canisters to generate hooks for */
-  canisters: (CanisterConfig & { name: string })[]
+  canisters: (CanisterConfig & { name: string; advanced?: boolean })[]
   /** Base output directory (default: ./src/canisters) */
   outDir?: string
   /**
@@ -53,7 +53,8 @@ export interface IcReactorPluginOptions {
   clientManagerPath?: string
   /**
    * Generate advanced per-method hooks with createQuery/createMutation
-   * instead of generic actor hooks (default: false)
+   * instead of generic actor hooks (default: false).
+   * Can be overridden per-canister by setting `advanced` on the individual canister entry.
    */
   advanced?: boolean
   /**
@@ -173,14 +174,15 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
           `[ic-reactor] Declarations generated at ${result.declarationsDir}`
         )
 
-        // Step 2: Read DID content for advanced mode
+        // Step 2: Determine advanced mode (can be set per-canister; falls back to plugin-level)
+        const useAdvanced = canister.advanced ?? options.advanced ?? false
         let didContent: string | undefined
-        if (options.advanced) {
+        if (useAdvanced) {
           try {
             didContent = fs.readFileSync(canister.didFile, "utf-8")
           } catch (e) {
             console.warn(
-              `[ic-reactor] Could not read DID file at ${canister.didFile}, skipping advanced hook generation.`
+              `[ic-reactor] Could not read DID file at ${canister.didFile}, skipping advanced hook generation for ${canister.name}.`
             )
             continue
           }
@@ -192,7 +194,7 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
           canisterConfig: canister,
           globalClientManagerPath: options.clientManagerPath,
           hasDeclarations: true,
-          advanced: options.advanced ?? false,
+          advanced: useAdvanced,
           didContent,
         })
 
