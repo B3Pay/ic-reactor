@@ -260,27 +260,28 @@ icReactorPlugin({
 
 ## Integration with ICP CLI
 
-If you're using [icp-cli](https://github.com/b3pay/icp-cli), configure your `vite.config.ts` to pass canister IDs via the `ic_env` cookie:
+`@ic-reactor/vite-plugin` now supports **zero-config local `icp-cli` canister env injection** during `vite dev`.
+
+When dev server starts, the plugin automatically tries to read:
+
+- `.icp/cache/mappings/local.ids.json`
+
+If present, it sets an `ic_env` cookie with:
+
+- `ic_root_key=<local-root-key>`
+- `PUBLIC_CANISTER_ID:<name>=<canister-id>`
+
+This means `withCanisterEnv: true` works out of the box after `icp deploy`, without custom cookie code in `vite.config.ts`.
 
 ```typescript
 // vite.config.ts
+import { defineConfig } from "vite"
+import react from "@vitejs/plugin-react"
 import { icReactorPlugin } from "@ic-reactor/vite-plugin"
-import fs from "fs"
-import path from "path"
-
-function loadCanisterIds(): Record<string, string> {
-  const idsPath = path.resolve(__dirname, ".icp/cache/mappings/local.ids.json")
-  try {
-    return JSON.parse(fs.readFileSync(idsPath, "utf-8"))
-  } catch {
-    return {}
-  }
-}
-
-const canisterIds = loadCanisterIds()
 
 export default defineConfig({
   plugins: [
+    react(),
     icReactorPlugin({
       canisters: [
         {
@@ -290,15 +291,15 @@ export default defineConfig({
       ],
     }),
   ],
-  server: {
-    headers: {
-      "Set-Cookie": `ic_env=${encodeURIComponent(
-        Object.entries(canisterIds)
-          .map(([name, id]) => `PUBLIC_CANISTER_ID:${name}=${id}`)
-          .join("&")
-      )}; SameSite=Lax;`,
-    },
-  },
+})
+```
+
+If you need to disable this behavior:
+
+```typescript
+icReactorPlugin({
+  canisters: [...],
+  autoInjectIcEnv: false,
 })
 ```
 
