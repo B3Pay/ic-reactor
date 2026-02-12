@@ -6,10 +6,10 @@
 
 import type { MethodInfo, HookType } from "../types.js"
 import {
-  toPascalCase,
   getReactorName,
   getServiceTypeName,
   getHookExportName,
+  getReactHookName,
 } from "../naming.js"
 
 export interface InfiniteQueryHookOptions {
@@ -26,10 +26,10 @@ export function generateInfiniteQueryHook(
 ): string {
   const { canisterName, method, type = "infiniteQuery" } = options
 
-  const pascalMethod = toPascalCase(method.name)
   const reactorName = getReactorName(canisterName)
   const serviceName = getServiceTypeName(canisterName)
   const hookExportName = getHookExportName(method.name, type)
+  const reactHookName = getReactHookName(method.name, type)
 
   return `/**
  * Infinite Query: ${method.name}
@@ -69,6 +69,6 @@ export const ${hookExportName} = createInfiniteQuery(${reactorName}, {
 })
 
 /** React hook for paginated ${method.name} */
-export const use${pascalMethod}InfiniteQuery = ${hookExportName}.useInfiniteQuery
+export const ${reactHookName} = ${hookExportName}.useInfiniteQuery
 `
 }
