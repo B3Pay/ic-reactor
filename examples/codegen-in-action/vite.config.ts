@@ -9,10 +9,10 @@ export default defineConfig({
       outDir: "./src/canisters-vite",
       canisters: [
         {
-          advanced: true,
           name: "backend",
           didFile: "./backend/backend.did",
           clientManagerPath: "../../lib/client",
+          advanced: true,
         },
       ],
     }),
