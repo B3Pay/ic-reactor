@@ -1,0 +1,57 @@
+{
+  "name": "@ic-reactor/codegen",
+  "version": "0.1.0",
+  "description": "Shared code generation utilities for IC Reactor",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch --tsconfig tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "internet-computer",
+    "candid",
+    "ic-reactor",
+    "codegen",
+    "dfinity",
+    "icp"
+  ],
+  "author": "Behrad Deylami",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/B3Pay/ic-reactor.git",
+    "directory": "packages/codegen"
+  },
+  "dependencies": {
+    "change-case": "^5.4.4"
+  },
+  "peerDependencies": {
+    "@icp-sdk/bindgen": "^0.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@icp-sdk/bindgen": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@icp-sdk/bindgen": "^0.2.1",
+    "@types/node": "^25.2.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
