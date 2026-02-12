@@ -9,6 +9,7 @@ import {
   DisplayReactor,
   createActorHooks,
   createQuery,
+  createMutation,
 } from "@ic-reactor/react"
 import { clientManager } from "../../lib/client"
 import { idlFactory, type _SERVICE } from "./declarations/backend.did"
@@ -45,8 +46,12 @@ export {
 
 // Per-method static hooks (no-args methods only)
 
-export const listMessagesQuery = createQuery(backendReactor, {
-  functionName: "list_messages",
+export const getQuery = createQuery(backendReactor, {
+  functionName: "get",
+})
+
+export const incMutation = createMutation(backendReactor, {
+  functionName: "inc",
 })
 
 export { idlFactory }

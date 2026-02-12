@@ -10,9 +10,9 @@ import { IDL } from "@icp-sdk/core/candid"
 
 export const idlFactory = ({ IDL }) => {
   return IDL.Service({
-    greet: IDL.Func([IDL.Text], [IDL.Text], ["query"]),
-    list_messages: IDL.Func([], [IDL.Vec(IDL.Text)], ["query"]),
-    set_greeting: IDL.Func([IDL.Text], [], []),
+    add: IDL.Func([IDL.Nat], [], []),
+    get: IDL.Func([], [IDL.Nat], ["query"]),
+    inc: IDL.Func([], [], []),
   })
 }
 

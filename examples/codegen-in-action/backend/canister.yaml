@@ -1,0 +1,10 @@
+# Canister recipe for the backend canister
+
+name: backend
+
+recipe:
+  type: "@dfinity/motoko"
+  configuration:
+    main: main.mo
+    args: --incremental-gc
+    candid: backend.did

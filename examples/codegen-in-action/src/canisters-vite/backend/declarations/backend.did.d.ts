@@ -11,9 +11,9 @@ import type { IDL } from "@icp-sdk/core/candid"
 import type { Principal } from "@icp-sdk/core/principal"
 
 export interface _SERVICE {
-  greet: ActorMethod<[string], string>
-  list_messages: ActorMethod<[], Array<string>>
-  set_greeting: ActorMethod<[string], undefined>
+  add: ActorMethod<[bigint], undefined>
+  get: ActorMethod<[], bigint>
+  inc: ActorMethod<[], undefined>
 }
 export declare const idlFactory: IDL.InterfaceFactory
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[]
