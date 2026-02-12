@@ -16,16 +16,16 @@ import {
   fileExists,
   findConfigFile,
 } from "../utils/config.js"
-import { parseDIDFile, formatMethodForDisplay } from "../parsers/did.js"
+import { parseDIDFile, formatMethodForDisplay } from "@ic-reactor/codegen"
 import {
   generateReactorFile,
   generateQueryHook,
   generateMutationHook,
   generateInfiniteQueryHook,
 } from "../generators/index.js"
-import { getHookFileName } from "../utils/naming.js"
-import { generateDeclarations } from "../utils/bindgen.js"
-import type { MethodInfo, HookType } from "../types.js"
+import { getHookFileName } from "@ic-reactor/codegen"
+import { generateDeclarations } from "@ic-reactor/codegen"
+import type { MethodInfo, HookType } from "@ic-reactor/codegen"
 
 interface AddOptions {
   canister?: string

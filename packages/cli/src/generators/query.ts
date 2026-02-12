@@ -4,8 +4,9 @@
  * Generates createQuery-based hooks for canister query methods.
  */
 
-import type { MethodInfo, ReactorConfig, HookType } from "../types.js"
-import { getHookExportName, getReactorName } from "../utils/naming.js"
+import type { MethodInfo, HookType } from "@ic-reactor/codegen"
+import { getHookExportName, getReactorName } from "@ic-reactor/codegen"
+import type { ReactorConfig } from "../types.js"
 
 export interface QueryHookOptions {
   canisterName: string

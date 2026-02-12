@@ -4,13 +4,14 @@
  * Generates createInfiniteQuery-based hooks for paginated canister methods.
  */
 
-import type { MethodInfo, ReactorConfig, HookType } from "../types.js"
+import type { MethodInfo, HookType } from "@ic-reactor/codegen"
 import {
   toPascalCase,
   getReactorName,
   getServiceTypeName,
   getHookExportName,
-} from "../utils/naming.js"
+} from "@ic-reactor/codegen"
+import type { ReactorConfig } from "../types.js"
 
 export interface InfiniteQueryHookOptions {
   canisterName: string

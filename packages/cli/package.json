@@ -34,6 +34,7 @@
   "homepage": "https://github.com/B3Pay/ic-reactor#readme",
   "dependencies": {
     "@clack/prompts": "^1.0.0",
+    "@ic-reactor/codegen": "workspace:*",
     "@icp-sdk/bindgen": "^0.2.1",
     "@icp-sdk/core": "^5.0.0",
     "commander": "^14.0.3",

@@ -7,8 +7,8 @@
 import { HttpAgent, Actor } from "@icp-sdk/core/agent"
 import { Principal } from "@icp-sdk/core/principal"
 import { IDL } from "@icp-sdk/core/candid"
-import type { MethodInfo } from "../types.js"
-import { extractMethods } from "../parsers/did.js"
+import type { MethodInfo } from "@ic-reactor/codegen"
+import { extractMethods } from "@ic-reactor/codegen"
 
 // IC mainnet host
 const IC_HOST = "https://icp-api.io"

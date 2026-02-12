@@ -14,15 +14,15 @@ import {
   findConfigFile,
   ensureDir,
 } from "../utils/config.js"
-import { parseDIDFile } from "../parsers/did.js"
+import { parseDIDFile } from "@ic-reactor/codegen"
 import {
   generateReactorFile,
   generateQueryHook,
   generateMutationHook,
 } from "../generators/index.js"
-import { getHookFileName } from "../utils/naming.js"
-import { generateDeclarations } from "../utils/bindgen.js"
-import type { MethodInfo } from "../types.js"
+import { getHookFileName } from "@ic-reactor/codegen"
+import { generateDeclarations } from "@ic-reactor/codegen"
+import type { MethodInfo } from "@ic-reactor/codegen"
 
 interface SyncOptions {
   canister?: string

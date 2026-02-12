@@ -1,25 +1,11 @@
 /**
- * CLI Types
+ * CLI-specific Types
+ *
+ * Shared types (MethodInfo, CanisterConfig, HookType, GeneratorOptions)
+ * are now in @ic-reactor/codegen.
  */
 
-export interface MethodInfo {
-  name: string
-  type: "query" | "mutation"
-  hasArgs: boolean
-  argsDescription?: string
-  returnDescription?: string
-}
-
-export interface CanisterConfig {
-  /** Path to the .did file */
-  didFile: string
-  /** Path to the client manager import */
-  clientManagerPath?: string
-  /** Use DisplayReactor for automatic type transformations */
-  useDisplayReactor?: boolean
-  /** Custom canister ID (optional, uses environment by default) */
-  canisterId?: string
-}
+import type { CanisterConfig, HookType } from "@ic-reactor/codegen"
 
 export interface HookConfig {
   name: string
@@ -38,19 +24,3 @@ export interface ReactorConfig {
   /** Track which hooks have been generated */
   generatedHooks: Record<string, Array<string | HookConfig>>
 }
-
-export interface GeneratorOptions {
-  canisterName: string
-  methodName: string
-  methodType: "query" | "mutation"
-  hasArgs: boolean
-  outDir: string
-  config: ReactorConfig
-}
-
-export type HookType =
-  | "query"
-  | "suspenseQuery"
-  | "infiniteQuery"
-  | "suspenseInfiniteQuery"
-  | "mutation"

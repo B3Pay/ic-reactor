@@ -4,13 +4,14 @@
  * Generates createMutation-based hooks for canister update methods.
  */
 
-import type { MethodInfo, ReactorConfig } from "../types.js"
+import type { MethodInfo } from "@ic-reactor/codegen"
 import {
   toPascalCase,
   getHookExportName,
   getReactHookName,
   getReactorName,
-} from "../utils/naming.js"
+} from "@ic-reactor/codegen"
+import type { ReactorConfig } from "../types.js"
 
 export interface MutationHookOptions {
   canisterName: string

@@ -5,12 +5,13 @@
  */
 
 import path from "node:path"
-import type { ReactorConfig, CanisterConfig } from "../types.js"
+import type { CanisterConfig } from "@ic-reactor/codegen"
 import {
   toPascalCase,
   getReactorName,
   getServiceTypeName,
-} from "../utils/naming.js"
+} from "@ic-reactor/codegen"
+import type { ReactorConfig } from "../types.js"
 
 export interface ReactorGeneratorOptions {
   canisterName: string
