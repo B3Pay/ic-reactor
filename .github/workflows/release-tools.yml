@@ -67,18 +67,14 @@ jobs:
         # pnpm pack converts workspace:^ to real versions, then npm publish for OIDC auth
         working-directory: ${{ matrix.workspace }}
         run: |
-          # Ensure trusted publishing (OIDC) is used instead of any cached token
-          npm config delete //registry.npmjs.org/:_authToken || true
-          rm -f ~/.npmrc .npmrc
-
           # Pack first - this converts workspace:^ to actual versions
           TARBALL=$(pnpm pack | tail -1)
           echo "Publishing tarball: $TARBALL"
-          # Publish via trusted publishing (OIDC) with provenance
-          npm publish "$TARBALL" --access public --tag $TAG --provenance
+          # Publish the tarball (npm for OIDC support)
+          npm publish "$TARBALL" --access public --tag $TAG
 
       - name: Create GitHub Release
-        if: matrix.workspace == 'packages/core'
+        if: matrix.workspace == 'packages/codegen'
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true

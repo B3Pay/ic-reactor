@@ -44,9 +44,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        # If you have private dependencies, supply a read-only token in the secret `NPM_READ_TOKEN`
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
 
       - name: Build packages (excluding parser)
         run: pnpm build:ci
