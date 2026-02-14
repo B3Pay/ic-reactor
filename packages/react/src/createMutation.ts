@@ -56,11 +56,21 @@ const createMutationImpl = <
   const execute = async (
     args: ReactorArgs<A, M, T>
   ): Promise<ReactorReturnOk<A, M, T>> => {
-    return reactor.callMethod({
+    const result = await reactor.callMethod({
       functionName,
       args,
       callConfig,
     })
+
+    if (factoryInvalidateQueries) {
+      await Promise.all(
+        factoryInvalidateQueries.map((queryKey) => {
+          return reactor.queryClient.invalidateQueries({ queryKey })
+        })
+      )
+    }
+
+    return result
   }
 
   // Hook implementation

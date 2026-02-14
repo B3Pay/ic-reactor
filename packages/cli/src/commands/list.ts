@@ -8,7 +8,7 @@ import * as p from "@clack/prompts"
 import path from "node:path"
 import pc from "picocolors"
 import { loadConfig, getProjectRoot, findConfigFile } from "../utils/config.js"
-import { parseDIDFile } from "../parsers/did.js"
+import { parseDIDFile } from "@ic-reactor/codegen"
 
 interface ListOptions {
   canister?: string

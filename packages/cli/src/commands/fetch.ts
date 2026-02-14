@@ -17,26 +17,22 @@ import {
   CONFIG_FILE_NAME,
   DEFAULT_CONFIG,
 } from "../utils/config.js"
-import { formatMethodForDisplay } from "../parsers/did.js"
+import { formatMethodForDisplay } from "@ic-reactor/codegen"
 import {
   generateQueryHook,
   generateMutationHook,
   generateInfiniteQueryHook,
 } from "../generators/index.js"
-import { getHookFileName, toCamelCase } from "../utils/naming.js"
+import { getHookFileName, toCamelCase } from "@ic-reactor/codegen"
 import {
   fetchCandidFromCanister,
   isValidCanisterId,
   shortenCanisterId,
   type NetworkType,
 } from "../utils/network.js"
-import { generateDeclarations } from "../utils/bindgen.js"
-import type {
-  MethodInfo,
-  HookType,
-  ReactorConfig,
-  CanisterConfig,
-} from "../types.js"
+import { generateDeclarations } from "@ic-reactor/codegen"
+import type { MethodInfo, HookType, CanisterConfig } from "@ic-reactor/codegen"
+import type { ReactorConfig } from "../types.js"
 
 interface FetchOptions {
   canisterId?: string

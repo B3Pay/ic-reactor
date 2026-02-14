@@ -139,12 +139,13 @@ console.log(balance) // "1000000" (string, ready for UI display)
 
 ## 🏃 Examples
 
-| Example                                       | Description                                        |
-| --------------------------------------------- | -------------------------------------------------- |
-| [Candid Parser](./examples/candid-parser)     | Dynamic canister calls with runtime Candid parsing |
-| [TanStack Router](./examples/tanstack-router) | Full app with routing and authentication           |
-| [Codec Demo](./examples/codec-demo)           | Type transformation demonstrations                 |
-| [TypeScript Demo](./examples/typescript-demo) | Pure TypeScript usage (no React)                   |
+| Example                                           | Description                                            |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| [Candid Parser](./examples/candid-parser)         | Dynamic canister calls with runtime Candid parsing     |
+| [TanStack Router](./examples/tanstack-router)     | Full app with routing and authentication               |
+| [Codec Demo](./examples/codec-demo)               | Type transformation demonstrations                     |
+| [TypeScript Demo](./examples/typescript-demo)     | Pure TypeScript usage (no React)                       |
+| [Codegen in Action](./examples/codegen-in-action) | Compare shared codegen output from CLI and Vite plugin |
 
 ### Run Documentation Locally
 

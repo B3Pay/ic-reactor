@@ -2,10 +2,11 @@
  * DID file parser
  *
  * Extracts method information from Candid interface definition files.
+ * Based on the CLI's parser implementation (with comment stripping).
  */
 
 import fs from "node:fs"
-import type { MethodInfo } from "../types.js"
+import type { MethodInfo } from "./types.js"
 
 /**
  * Parse a .did file and extract method information

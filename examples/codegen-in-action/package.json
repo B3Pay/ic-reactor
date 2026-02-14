@@ -1,0 +1,30 @@
+{
+  "name": "codegen-in-action",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "codegen:vite": "vite build --mode development",
+    "codegen:cli": "ic-reactor sync --canister backend"
+  },
+  "dependencies": {
+    "@ic-reactor/react": "workspace:*",
+    "@tanstack/react-query": "^5.90.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "@icp-sdk/core": "^5.0.0"
+  },
+  "devDependencies": {
+    "@ic-reactor/cli": "workspace:*",
+    "@ic-reactor/vite-plugin": "workspace:*",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.0.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.11",
+    "@icp-sdk/bindgen": "^0.2.1"
+  }
+}
