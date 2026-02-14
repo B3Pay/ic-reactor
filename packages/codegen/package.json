@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/codegen",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Shared code generation utilities for IC Reactor",
   "type": "module",
   "main": "./dist/index.cjs",
