@@ -1,0 +1,109 @@
+name: Release Tools
+
+on:
+  push:
+    tags:
+      # Trigger on specific package tags or shared "tools" tag
+      - "codegen-v*"
+      - "cli-v*"
+      - "vite-plugin-v*"
+      - "tools-v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Release to npm
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        workspace:
+          - packages/codegen
+          - packages/vite-plugin
+          - packages/cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm to v11 (required for OIDC)
+        run: npm i -g npm@^11.5.1 && npm --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+
+      - name: Build packages
+        run: pnpm build:ci
+
+      - name: Run tests
+        run: pnpm test:ci
+
+      - name: Determine publish config
+        id: config
+        run: |
+          TAG_NAME=${GITHUB_REF##*/}
+          echo "Detected git tag: $TAG_NAME"
+
+          WORKSPACE="${{ matrix.workspace }}"
+          PACKAGE_NAME=$(basename $WORKSPACE)
+
+          SHOULD_PUBLISH=false
+
+          # Logic to match tag to workspace
+          if [[ "$TAG_NAME" == "tools-v"* ]]; then
+            SHOULD_PUBLISH=true
+          elif [[ "$TAG_NAME" == "codegen-v"* && "$PACKAGE_NAME" == "codegen" ]]; then
+            SHOULD_PUBLISH=true
+          elif [[ "$TAG_NAME" == "cli-v"* && "$PACKAGE_NAME" == "cli" ]]; then
+            SHOULD_PUBLISH=true
+          elif [[ "$TAG_NAME" == "vite-plugin-v"* && "$PACKAGE_NAME" == "vite-plugin" ]]; then
+            SHOULD_PUBLISH=true
+          fi
+
+          echo "Workspace: $WORKSPACE (Package: $PACKAGE_NAME)"
+          echo "Should publish? $SHOULD_PUBLISH"
+          echo "SHOULD_PUBLISH=$SHOULD_PUBLISH" >> $GITHUB_ENV
+
+          # Determine npm tag (latest/beta)
+          if [[ "$TAG_NAME" == *-* ]]; then
+            echo "NPM_TAG=beta" >> $GITHUB_ENV
+          else
+            echo "NPM_TAG=latest" >> $GITHUB_ENV
+          fi
+
+      - name: Publish to npm
+        if: env.SHOULD_PUBLISH == 'true'
+        working-directory: ${{ matrix.workspace }}
+        run: |
+          TARBALL=$(pnpm pack | tail -1)
+          echo "Publishing $TARBALL with tag $NPM_TAG"
+          npm publish "$TARBALL" --access public --tag $NPM_TAG
+
+      - name: Create GitHub Release
+        if: env.SHOULD_PUBLISH == 'true' && matrix.workspace == 'packages/cli'
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
