@@ -3,10 +3,6 @@ name: Release Tools
 on:
   push:
     tags:
-      # Trigger on specific package tags or shared "tools" tag
-      - "codegen-v*"
-      - "cli-v*"
-      - "vite-plugin-v*"
       - "tools-v*"
 
 permissions:
@@ -52,72 +48,35 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
 
       - name: Build packages
-        run: pnpm build:ci
+        run: pnpm build:tools
 
       - name: Run tests
-        run: pnpm test:ci
+        run: pnpm test:tools
 
-      - name: Determine publish config
-        id: config
+      - name: Determine publish tag
         run: |
-          TAG_NAME=${GITHUB_REF##*/}
-          echo "Detected git tag: $TAG_NAME"
-
-          WORKSPACE="${{ matrix.workspace }}"
-          PACKAGE_NAME=$(basename $WORKSPACE)
-
-          SHOULD_PUBLISH=false
-          VERSION=""
-
-          # Logic to match tag to workspace and extract version
-          if [[ "$TAG_NAME" == "tools-v"* ]]; then
-            SHOULD_PUBLISH=true
-            VERSION=${TAG_NAME#tools-v}
-          elif [[ "$TAG_NAME" == "codegen-v"* && "$PACKAGE_NAME" == "codegen" ]]; then
-            SHOULD_PUBLISH=true
-            VERSION=${TAG_NAME#codegen-v}
-          elif [[ "$TAG_NAME" == "cli-v"* && "$PACKAGE_NAME" == "cli" ]]; then
-            SHOULD_PUBLISH=true
-            VERSION=${TAG_NAME#cli-v}
-          elif [[ "$TAG_NAME" == "vite-plugin-v"* && "$PACKAGE_NAME" == "vite-plugin" ]]; then
-            SHOULD_PUBLISH=true
-            VERSION=${TAG_NAME#vite-plugin-v}
-          fi
-
-          echo "Workspace: $WORKSPACE (Package: $PACKAGE_NAME)"
-          echo "Should publish? $SHOULD_PUBLISH"
-          echo "Version: $VERSION"
-          echo "SHOULD_PUBLISH=$SHOULD_PUBLISH" >> $GITHUB_ENV
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-          # Determine npm tag (latest/beta)
-          if [[ "$TAG_NAME" == *-* ]]; then
-            echo "NPM_TAG=beta" >> $GITHUB_ENV
+          # Determine publish tag based on the git tag name.
+          # Default to 'latest' for stable tags (e.g., v3.0.0). If tag contains a hyphen (e.g., v3.0.0-beta.1), use 'beta'.
+          REF=${GITHUB_REF##*/}
+          echo "Detected tag: $REF"
+          if [[ "$REF" == *-* ]]; then
+            echo "TAG=beta" >> $GITHUB_ENV
           else
-            echo "NPM_TAG=latest" >> $GITHUB_ENV
+            echo "TAG=latest" >> $GITHUB_ENV
           fi
 
-      - name: Update package.json version
-        if: env.SHOULD_PUBLISH == 'true' && env.VERSION != ''
+      - name: Publish to npm (uses npm CLI for OIDC)
+        # pnpm pack converts workspace:^ to real versions, then npm publish for OIDC auth
         working-directory: ${{ matrix.workspace }}
         run: |
-          CURRENT_VERSION=$(jq -r '.version' package.json)
-          if [ "$CURRENT_VERSION" != "${{ env.VERSION }}" ]; then
-            npm version ${{ env.VERSION }} --no-git-tag-version
-          else
-            echo "Version already set to ${{ env.VERSION }}, skipping update"
-          fi
-
-      - name: Publish to npm
-        if: env.SHOULD_PUBLISH == 'true'
-        working-directory: ${{ matrix.workspace }}
-        run: |
+          # Pack first - this converts workspace:^ to actual versions
           TARBALL=$(pnpm pack | tail -1)
-          echo "Publishing $TARBALL with tag $NPM_TAG"
-          npm publish "$TARBALL" --access public --tag $NPM_TAG
+          echo "Publishing tarball: $TARBALL"
+          # Publish the tarball (npm for OIDC support)
+          npm publish "$TARBALL" --access public --tag $TAG
 
       - name: Create GitHub Release
-        if: env.SHOULD_PUBLISH == 'true' && matrix.workspace == 'packages/cli'
+        if: matrix.workspace == 'packages/core'
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
