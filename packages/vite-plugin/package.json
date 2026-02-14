@@ -32,6 +32,14 @@
   ],
   "author": "Behrad Deylami",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B3Pay/ic-reactor",
+    "directory": "packages/vite-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/B3Pay/ic-reactor/issues"
+  },
   "dependencies": {
     "@ic-reactor/codegen": "workspace:*"
   },
