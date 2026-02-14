@@ -101,7 +101,12 @@ jobs:
         if: env.SHOULD_PUBLISH == 'true' && env.VERSION != ''
         working-directory: ${{ matrix.workspace }}
         run: |
-          npm version ${{ env.VERSION }} --no-git-tag-version
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          if [ "$CURRENT_VERSION" != "${{ env.VERSION }}" ]; then
+            npm version ${{ env.VERSION }} --no-git-tag-version
+          else
+            echo "Version already set to ${{ env.VERSION }}, skipping update"
+          fi
 
       - name: Publish to npm
         if: env.SHOULD_PUBLISH == 'true'
