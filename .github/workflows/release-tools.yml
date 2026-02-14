@@ -44,8 +44,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
 
       - name: Build packages
         run: pnpm build:tools
@@ -69,11 +67,15 @@ jobs:
         # pnpm pack converts workspace:^ to real versions, then npm publish for OIDC auth
         working-directory: ${{ matrix.workspace }}
         run: |
+          # Ensure trusted publishing (OIDC) is used instead of any cached token
+          npm config delete //registry.npmjs.org/:_authToken || true
+          rm -f ~/.npmrc .npmrc
+
           # Pack first - this converts workspace:^ to actual versions
           TARBALL=$(pnpm pack | tail -1)
           echo "Publishing tarball: $TARBALL"
-          # Publish the tarball (npm for OIDC support)
-          npm publish "$TARBALL" --access public --tag $TAG
+          # Publish via trusted publishing (OIDC) with provenance
+          npm publish "$TARBALL" --access public --tag $TAG --provenance
 
       - name: Create GitHub Release
         if: matrix.workspace == 'packages/core'
