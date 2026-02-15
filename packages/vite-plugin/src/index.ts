@@ -37,11 +37,10 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
-
 export interface CanisterConfig {
   name: string
   outDir?: string
-  didFilePath?: string
+  didFile?: string
   clientManagerPath?: string
 }
 
@@ -174,10 +173,10 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
       }
 
       for (const canister of options.canisters) {
-        let didFilePath = canister.didFilePath
+        let didFile = canister.didFile
         const outDir = canister.outDir ?? path.join(baseOutDir, canister.name)
 
-        if (!didFilePath) {
+        if (!didFile) {
           console.log(
             `[ic-reactor] didFile not specified for "${canister.name}". Attempting to download from canister...`
           )
@@ -192,10 +191,10 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
             if (!fs.existsSync(declarationsDir)) {
               fs.mkdirSync(declarationsDir, { recursive: true })
             }
-            didFilePath = path.join(declarationsDir, `${canister.name}.did`)
-            fs.writeFileSync(didFilePath, candidContent)
+            didFile = path.join(declarationsDir, `${canister.name}.did`)
+            fs.writeFileSync(didFile, candidContent)
             console.log(
-              `[ic-reactor] Candid downloaded and saved to ${didFilePath}`
+              `[ic-reactor] Candid downloaded and saved to ${didFile}`
             )
           } catch (error) {
             console.error(
@@ -206,12 +205,12 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
         }
 
         console.log(
-          `[ic-reactor] Generating hooks for ${canister.name} from ${didFilePath}`
+          `[ic-reactor] Generating hooks for ${canister.name} from ${didFile}`
         )
 
         // Step 1: Generate declarations via @ic-reactor/codegen
         const result = await generateDeclarations({
-          didFile: didFilePath,
+          didFile: didFile,
           outDir,
           canisterName: canister.name,
         })
@@ -226,7 +225,7 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
         // Step 2: Generate the reactor file using shared codegen
         const reactorContent = generateReactorFile({
           canisterName: canister.name,
-          didFile: didFilePath,
+          didFile: didFile,
           clientManagerPath:
             canister.clientManagerPath ?? options.clientManagerPath,
         })
@@ -243,8 +242,8 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
       // Watch for .did file changes and regenerate
       if (file.endsWith(".did")) {
         const canister = options.canisters.find((c) => {
-          if (!c.didFilePath) return false
-          return path.resolve(c.didFilePath) === file
+          if (!c.didFile) return false
+          return path.resolve(c.didFile) === file
         })
         if (canister) {
           console.log(

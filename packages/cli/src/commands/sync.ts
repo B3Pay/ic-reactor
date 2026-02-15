@@ -88,8 +88,8 @@ export async function syncCommand(options: SyncOptions) {
         continue
       }
 
-      // Regenerate reactor.ts
-      const reactorPath = path.join(canisterOutDir, "reactor.ts")
+      // Regenerate index.ts
+      const reactorPath = path.join(canisterOutDir, "index.ts")
 
       const reactorContent = generateReactorFile({
         canisterName,

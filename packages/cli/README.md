@@ -44,7 +44,7 @@ npx @ic-reactor/cli sync
 This command will:
 
 1. Regenerate TypeScript declarations for your canisters.
-2. Create a `reactor.ts` file for each canister with fully typed hooks.
+2. Create an `index.ts` file for each canister with fully typed hooks.
 
 ### 4. Use the generated hooks
 

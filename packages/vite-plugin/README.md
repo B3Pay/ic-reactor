@@ -71,7 +71,7 @@ export const clientManager = new ClientManager({ queryClient })
 
 ### 3. Use Generated Hooks
 
-The plugin generates a `reactor.ts` file in your canister folder (default: `./src/canisters/<name>/index.ts`):
+The plugin generates an `index.ts` file in your canister folder (default: `./src/lib/canisters/<name>/index.ts`):
 
 ```tsx
 import { useActorQuery, useActorMutation } from "./canisters/backend"
@@ -108,8 +108,8 @@ function MyComponent() {
 
 ## How It Works
 
-1. **Build Start**: The plugin reads your `.did` files and generates TypeScript declarations.
-2. **Code Generation**: Creates a reactor instance and typed hooks (using `createActorHooks`) for each canister.
+1. **Build Start**: The plugin reads your `.did` files and generates TypeScript declarations (`.js` and `.d.ts`).
+2. **Code Generation**: Creates a reactor instance and typed hooks (using `createActorHooks`) for each canister in `index.ts`.
 3. **Hot Reload**: Watches for `.did` file changes and regenerates everything automatically.
 4. **Local Proxy**: Configures a Vite proxy to redirect `/api` calls to your local replica.
 5. **Environment Detection**: Automatically injects canister IDs from `icp-cli` or `dfx` cache into your session.

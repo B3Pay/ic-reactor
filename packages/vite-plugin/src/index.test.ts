@@ -31,7 +31,7 @@ describe("icReactorPlugin", () => {
     canisters: [
       {
         name: "test_canister",
-        didFilePath: "src/declarations/test.did",
+        didFile: "src/declarations/test.did",
         outDir: "src/declarations/test_canister",
       },
     ],
