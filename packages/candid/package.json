@@ -61,6 +61,7 @@
   "peerDependenciesMeta": {},
   "devDependencies": {
     "@icp-sdk/core": "^5.0.0",
+    "@ic-reactor/parser": "workspace:^",
     "@size-limit/preset-small-lib": "^12.0.0",
     "@types/node": "^25.2.2",
     "size-limit": "^12.0.0",

@@ -7,6 +7,26 @@ import {
 } from "../../src/constants"
 import { IDL } from "@icp-sdk/core/candid"
 
+// Mock parser behavior
+const parserMocks = vi.hoisted(() => ({
+  shouldFail: false,
+}))
+
+vi.mock("@ic-reactor/parser", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@ic-reactor/parser")>()
+  return {
+    ...actual,
+    default: async () => {
+      if (parserMocks.shouldFail) {
+        throw new Error("Failed validation")
+      }
+      if (actual.default) {
+        return actual.default()
+      }
+    },
+  }
+})
+
 // Mock the @icp-sdk/core/agent module
 vi.mock("@icp-sdk/core/agent", async () => {
   const actual = await vi.importActual("@icp-sdk/core/agent")
@@ -28,6 +48,7 @@ describe("CandidAdapter", () => {
   beforeEach(() => {
     // Reset all mocks before each test
     vi.clearAllMocks()
+    parserMocks.shouldFail = false
 
     // Create a mock agent with query method
     mockAgent = {
@@ -151,16 +172,17 @@ describe("CandidAdapter", () => {
       expect(mockDefault).not.toHaveBeenCalled()
     })
 
-    it("should throw error if require fails and no module provided", async () => {
+    it("should load parser if available", async () => {
       const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
-      await expect(adapter.loadParser()).rejects.toThrow(/Error loading parser/)
+      await expect(adapter.loadParser()).resolves.not.toThrow()
+      expect(adapter.hasParser).toBe(true)
     })
 
-    it("should only attempt to load once", async () => {
+    it("should only attempt to load once (idempotent)", async () => {
       const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
-      await expect(adapter.loadParser()).rejects.toThrow()
+      await expect(adapter.loadParser()).resolves.not.toThrow()
       await expect(adapter.loadParser()).resolves.not.toThrow()
     })
   })
