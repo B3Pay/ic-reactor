@@ -115,7 +115,7 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
   return {
     name: "ic-reactor-plugin",
 
-    config(config, { command }) {
+    config(_config, { command }) {
       if (command !== "serve" || !(options.autoInjectIcEnv ?? true)) {
         return {}
       }
