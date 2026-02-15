@@ -52,10 +52,12 @@ export interface IcReactorPluginOptions {
    */
   clientManagerPath?: string
   /**
-   * Automatically set the `ic_env` cookie in Vite dev server from
-   * `.icp/cache/mappings/local.ids.json` (default: true).
+   * Automatically inject the IC environment (canister IDs and root key)
+   * into the browser using an `ic_env` cookie. (default: true)
+   *
+   * This is useful for local development with `icp`.
    */
-  autoInjectIcEnv?: boolean
+  injectEnvironment?: boolean
 }
 
 function getIcEnvironmentInfo(canisterNames: string[]) {
@@ -68,8 +70,7 @@ function getIcEnvironmentInfo(canisterNames: string[]) {
       })
     )
     const rootKey = networkStatus.root_key
-    // TODO: Use networkStatus.api_url when CLI supports it
-    const proxyTarget = "http://127.0.0.1:4943"
+    const proxyTarget = `http://127.0.0.1:${networkStatus.port}`
 
     const canisterIds: Record<string, string> = {}
     for (const name of canisterNames) {
@@ -116,7 +117,7 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
     name: "ic-reactor-plugin",
 
     config(_config, { command }) {
-      if (command !== "serve" || !(options.autoInjectIcEnv ?? true)) {
+      if (command !== "serve" || !(options.injectEnvironment ?? true)) {
         return {}
       }
 

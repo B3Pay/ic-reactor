@@ -58,10 +58,10 @@ export default defineConfig({
 
 ### 2. Create Your ClientManager
 
-The plugin expects you to have a `ClientManager` exported from a file. By default, it looks for `./src/lib/reactor.ts`:
+The plugin expects you to have a `ClientManager` exported from a file. By default, it looks for `./src/lib/clients.ts`:
 
 ```typescript
-// src/lib/reactor.ts
+// src/lib/clients.ts
 import { ClientManager } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
@@ -89,12 +89,12 @@ function MyComponent() {
 
 ### Plugin Options
 
-| Option              | Type               | Description                                          | Default             |
-| :------------------ | :----------------- | :--------------------------------------------------- | :------------------ |
-| `canisters`         | `CanisterConfig[]` | List of canisters to generate hooks for.             | `[]`                |
-| `outDir`            | `string`           | Base output directory for generated files.           | `"./src/canisters"` |
-| `autoInjectIcEnv`   | `boolean`          | Whether to inject canister IDs into `ic_env` cookie. | `true`              |
-| `clientManagerPath` | `string`           | Path to a custom `ClientManager` instance.           | undefined           |
+| Option              | Type               | Description                                          | Default                 |
+| :------------------ | :----------------- | :--------------------------------------------------- | :---------------------- |
+| `canisters`         | `CanisterConfig[]` | List of canisters to generate hooks for.             | `[]`                    |
+| `outDir`            | `string`           | Base output directory for generated files.           | `"./src/lib/canisters"` |
+| `injectEnvironment` | `boolean`          | Whether to inject canister IDs into `ic_env` cookie. | `true`                  |
+| `clientManagerPath` | `string`           | Path to a custom `ClientManager` instance.           | `"../../clients"`       |
 
 ### Canister Config
 
@@ -180,7 +180,7 @@ If you need to disable this behavior:
 ```typescript
 icReactorPlugin({
   canisters: [...],
-  autoInjectIcEnv: false,
+  injectEnvironment: false,
 })
 ```
 

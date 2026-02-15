@@ -104,7 +104,7 @@ describe("icReactorPlugin", () => {
       const config = (plugin as any).config({}, { command: "serve" })
 
       expect(config.server.headers).toBeUndefined()
-      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
+      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:8080")
     })
 
     it("should return empty config for build command", () => {
@@ -129,7 +129,7 @@ describe("icReactorPlugin", () => {
       expect(generateReactorFile).toHaveBeenCalledWith({
         canisterName: "test_canister",
         didFile: "src/declarations/test.did",
-        clientManagerPath: "../../clients",
+        clientManagerPath: undefined,
       })
 
       expect(fs.writeFileSync).toHaveBeenCalledWith(
@@ -178,6 +178,15 @@ describe("icReactorPlugin", () => {
         ),
         outDir: "src/declarations/missing_did",
         canisterName: "missing_did",
+      })
+
+      expect(generateReactorFile).toHaveBeenCalledWith({
+        canisterName: "missing_did",
+        didFile: path.join(
+          "src/declarations/missing_did/candid",
+          "missing_did.did"
+        ),
+        clientManagerPath: undefined,
       })
     })
 
