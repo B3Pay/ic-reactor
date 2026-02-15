@@ -1,21 +1,18 @@
-import React, { useRef } from "react"
 import { useBackendMethod } from "./lib/canisters/backend"
 import "./App.css"
 
 function App() {
-  const nameRef = useRef<HTMLInputElement>(null)
-
   const {
     data: greeting,
     call,
     isLoading,
   } = useBackendMethod({
     functionName: "greet",
+    enabled: false,
   })
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const name = nameRef.current?.value || ""
+  function submit(formData: FormData) {
+    const name = formData.get("name") as string
     call([name])
   }
 
@@ -31,15 +28,15 @@ function App() {
         <p className="subtitle">
           Call the backend canister and get a greeting.
         </p>
-        <form className="form" action="#" onSubmit={handleSubmit}>
+        <form action={submit}>
           <label htmlFor="name">Enter your name</label>
           <div className="controls">
             <input
               id="name"
+              name="name"
               type="text"
               className="input"
               placeholder="Ada Lovelace"
-              ref={nameRef}
             />
             <button type="submit" className="button" disabled={isLoading}>
               {isLoading ? "Greeting..." : "Greet me"}
