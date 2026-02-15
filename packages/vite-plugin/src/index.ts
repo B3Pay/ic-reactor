@@ -161,7 +161,7 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
 
         if (!didFilePath) {
           console.log(
-            `[ic-reactor] didFile not specified for ${canister.name}. Attempting to download from canister...`
+            `[ic-reactor] didFile not specified for "${canister.name}". Attempting to download from canister...`
           )
           try {
             const environment = process.env.ICP_ENVIRONMENT || "local"
