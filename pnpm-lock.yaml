@@ -155,7 +155,7 @@ importers:
         specifier: ^3.6.20
         version: 3.6.20
 
-  examples/codegen-in-action:
+  examples/vite-plugin-demo:
     dependencies:
       '@ic-reactor/react':
         specifier: workspace:*
@@ -164,38 +164,32 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
       '@tanstack/react-query':
-        specifier: ^5.90.5
+        specifier: ^5.0.0
         version: 5.90.20(react@19.2.4)
       react:
-        specifier: ^19.2.0
+        specifier: ^19.2.4
         version: 19.2.4
       react-dom:
-        specifier: ^19.2.0
+        specifier: ^19.2.4
         version: 19.2.4(react@19.2.4)
     devDependencies:
-      '@ic-reactor/cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
       '@ic-reactor/vite-plugin':
         specifier: workspace:*
         version: link:../../packages/vite-plugin
-      '@icp-sdk/bindgen':
-        specifier: ^0.2.1
-        version: 0.2.1
       '@types/react':
-        specifier: ^19.2.2
-        version: 19.2.13
+        specifier: ^19.2.14
+        version: 19.2.14
       '@types/react-dom':
-        specifier: ^19.2.2
-        version: 19.2.3(@types/react@19.2.13)
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
       '@vitejs/plugin-react':
-        specifier: ^5.0.4
+        specifier: ^5.1.4
         version: 5.1.4(vite@7.3.1(@types/node@25.2.3)(yaml@2.8.2))
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
       vite:
-        specifier: ^7.1.11
+        specifier: ^7.3.1
         version: 7.3.1(@types/node@25.2.3)(yaml@2.8.2)
 
   packages/candid:
@@ -2318,6 +2312,9 @@ packages:
 
   '@types/react@19.2.13':
     resolution: {integrity: sha512-KkiJeU6VbYbUOp5ITMIc7kBfqlYkKA5KhEHVrGMmUUMt7NeaZg65ojdPk+FtNrBAOXNVM5QM72jnADjM+XVRAQ==}
+
+  '@types/react@19.2.14':
+    resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
 
   '@types/sax@1.2.7':
     resolution: {integrity: sha512-rO73L89PJxeYM3s3pPPjiPgVVcymqU490g0YO5n5By0k2Erzj6tay/4lr1CHAAU4JyOWd1rpQ8bCf6cZfHU96A==}
@@ -7585,7 +7582,15 @@ snapshots:
     dependencies:
       '@types/react': 19.2.13
 
+  '@types/react-dom@19.2.3(@types/react@19.2.14)':
+    dependencies:
+      '@types/react': 19.2.14
+
   '@types/react@19.2.13':
+    dependencies:
+      csstype: 3.2.3
+
+  '@types/react@19.2.14':
     dependencies:
       csstype: 3.2.3
 
