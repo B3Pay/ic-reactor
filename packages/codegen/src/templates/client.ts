@@ -25,7 +25,7 @@ ${
     ? `import { queryClient } from "${queryClientPath}"`
     : `import { QueryClient } from "@tanstack/react-query"
 
-const queryClient = new QueryClient()
+export const queryClient = new QueryClient()
 `
 }
 
