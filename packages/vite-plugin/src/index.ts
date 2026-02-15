@@ -193,9 +193,6 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
           canisterName: canister.name,
           canisterConfig: canister,
           globalClientManagerPath: options.clientManagerPath,
-          hasDeclarations: true,
-          advanced: useAdvanced,
-          didContent,
         })
 
         const reactorPath = path.join(outDir, "index.ts")
