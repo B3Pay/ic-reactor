@@ -95,21 +95,3 @@ export function declarationsExist(
   const didTsPath = path.join(declarationsDir, `${canisterName}.did.d.ts`)
   return fs.existsSync(didTsPath)
 }
-
-/**
- * Save a Candid source to a file (for use with fetch command)
- */
-export function saveCandidFile(
-  candidSource: string,
-  outDir: string,
-  canisterName: string
-): string {
-  const candidDir = path.join(outDir, "candid")
-  if (!fs.existsSync(candidDir)) {
-    fs.mkdirSync(candidDir, { recursive: true })
-  }
-
-  const candidPath = path.join(candidDir, `${canisterName}.did`)
-  fs.writeFileSync(candidPath, candidSource)
-  return candidPath
-}

@@ -6,8 +6,6 @@
  * Configuration for a single canister
  */
 export interface CanisterConfig {
-  /** Name of the canister (used for variable naming) */
-  name?: string
   /** Path to the .did file */
   didFile: string
   /** Output directory (default: ./src/canisters/<name>) */
@@ -18,8 +16,6 @@ export interface CanisterConfig {
    * Default: "../../lib/client"
    */
   clientManagerPath?: string
-  /** Custom canister ID (optional, uses environment by default) */
-  canisterId?: string
 }
 
 /**
@@ -28,6 +24,5 @@ export interface CanisterConfig {
 export interface ReactorGeneratorOptions {
   canisterName: string
   canisterConfig: CanisterConfig
-  /** Global default clientManagerPath */
   globalClientManagerPath?: string
 }

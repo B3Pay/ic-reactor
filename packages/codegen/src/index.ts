@@ -6,21 +6,13 @@
  */
 
 // Types
-export type {
-  CanisterConfig,
-  ReactorGeneratorOptions,
-  HookType,
-} from "./types.js"
+export type { CanisterConfig, ReactorGeneratorOptions } from "./types.js"
 
 // Naming utilities
 export { toPascalCase, getReactorName, getServiceTypeName } from "./naming.js"
 
 // Bindgen utilities
-export {
-  generateDeclarations,
-  declarationsExist,
-  saveCandidFile,
-} from "./bindgen.js"
+export { generateDeclarations, declarationsExist } from "./bindgen.js"
 export type { BindgenOptions, BindgenResult } from "./bindgen.js"
 
 // Template generators
