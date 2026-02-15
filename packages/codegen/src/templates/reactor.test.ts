@@ -13,7 +13,7 @@ describe("Reactor File Generation", () => {
     hasDeclarations: true,
   }
 
-  describe("Simple Mode", () => {
+  describe("Standard Mode", () => {
     it("generates correctly", () => {
       const result = generateReactorFile(baseOptions)
       expect(result).toMatchSnapshot()
@@ -24,39 +24,6 @@ describe("Reactor File Generation", () => {
       const result = generateReactorFile(options)
       expect(result).toContain(
         'import { clientManager } from "../../lib/client"'
-      )
-    })
-  })
-
-  describe("Advanced Mode", () => {
-    it("generates per-method hooks correctly", () => {
-      const didContent = `service : {
-        get_user: (nat) -> (opt User) query;
-        list_items: () -> (vec Item) query;
-        create_item: (Item) -> (Result);
-        update_status: () -> (Result); // No args mutation
-      }`
-
-      const options: ReactorGeneratorOptions = {
-        ...baseOptions,
-        advanced: true,
-        didContent,
-      }
-
-      const result = generateReactorFile(options)
-      expect(result).toMatchSnapshot()
-      // Should include static query creation for no-arg method
-      expect(result).toContain(
-        "export const listItemsQuery = createQuery(myCanisterReactor, {"
-      )
-      // Should handle mutation
-      expect(result).toContain(
-        "export const updateStatusMutation = createMutation(myCanisterReactor, {"
-      )
-      // Should NOT handle methods with args
-      expect(result).not.toContain("export const getUserQuery = createQuery")
-      expect(result).not.toContain(
-        "export const createItemMutation = createMutation"
       )
     })
   })
