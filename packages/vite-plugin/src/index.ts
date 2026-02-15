@@ -27,7 +27,7 @@
 import type { Plugin } from "vite"
 import fs from "fs"
 import path from "path"
-import { execFileSync } from "child_process"
+import { execSync, execFileSync } from "child_process"
 import {
   generateDeclarations,
   generateReactorFile,
@@ -182,8 +182,9 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
             `[ic-reactor] didFile not specified for "${canister.name}". Attempting to download from canister...`
           )
           try {
-            const environment = process.env.ICP_ENVIRONMENT || "local"
-            const candidContent = execSync(
+            const candidContent = execFileSync(
+              "icp",
+              ["canister", "metadata", canister.name, "candid:service", "-e", environment],
               `icp canister metadata ${canister.name} candid:service -e ${environment}`,
               { encoding: "utf-8" }
             ).trim()
