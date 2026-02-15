@@ -28,8 +28,7 @@ exports[`Client File Generation > generates correctly with default host 1`] = `
 import { ClientManager } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
-const queryClient = new QueryClient()
-
+export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({ queryClient })
 "

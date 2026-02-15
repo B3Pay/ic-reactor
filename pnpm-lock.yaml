@@ -322,6 +322,21 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
     devDependencies:
+      '@ic-reactor/candid':
+        specifier: workspace:*
+        version: link:../candid
+      '@ic-reactor/core':
+        specifier: workspace:*
+        version: link:../core
+      '@tanstack/query-core':
+        specifier: ^5.90.0
+        version: 5.90.20
+      '@types/node':
+        specifier: ^25.2.2
+        version: 25.2.2
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@types/node@25.2.2)(happy-dom@20.5.3)(jsdom@28.0.0(@noble/hashes@2.0.1))(yaml@2.8.2)
       wasm-pack:
         specifier: ^0.14.0
         version: 0.14.0

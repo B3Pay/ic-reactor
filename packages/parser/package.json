@@ -47,9 +47,15 @@
     "build:node": "wasm-pack build --release --target nodejs --out-dir dist/nodejs --out-name index",
     "build:bundler": "wasm-pack build --release --target bundler --out-dir dist/bundler --out-name index",
     "start": "tsc --watch",
+    "test": "vitest run",
     "clean": "rm -rf dist tsconfig.tsbuildinfo && tsc -b"
   },
   "devDependencies": {
+    "@ic-reactor/core": "workspace:*",
+    "@ic-reactor/candid": "workspace:*",
+    "@tanstack/query-core": "^5.90.0",
+    "@types/node": "^25.2.2",
+    "vitest": "^4.0.18",
     "wasm-pack": "^0.14.0"
   },
   "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe",
