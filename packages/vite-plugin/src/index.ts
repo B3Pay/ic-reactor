@@ -27,7 +27,7 @@
 import type { Plugin } from "vite"
 import fs from "fs"
 import path from "path"
-import { execSync, execFileSync } from "child_process"
+import { execFileSync } from "child_process"
 import {
   generateDeclarations,
   generateReactorFile,
