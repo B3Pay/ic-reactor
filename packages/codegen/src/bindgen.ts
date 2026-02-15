@@ -48,6 +48,9 @@ export async function generateDeclarations(
   const didFileName = path.basename(didFile) // e.g., "my_canister.did"
 
   try {
+    // Read content first so we can safely delete the directory if didFile is inside it
+    const didContent = fs.readFileSync(didFile, "utf-8")
+
     // Ensure the output directory exists
     if (!fs.existsSync(outDir)) {
       fs.mkdirSync(outDir, { recursive: true })
@@ -59,17 +62,17 @@ export async function generateDeclarations(
     }
     fs.mkdirSync(declarationsDir, { recursive: true })
 
-    const didContent = fs.readFileSync(didFile, "utf-8")
-
     const jsContent = didToJs(didContent)
     const tsContent = didToTs(didContent)
 
-    // Write .did.js and .did.d.ts
+    // Write .did, .did.js and .did.d.ts
     const jsPath = path.join(declarationsDir, didFileName + ".js")
     const dtsPath = path.join(declarationsDir, didFileName + ".d.ts")
+    const didPath = path.join(declarationsDir, didFileName)
 
     fs.writeFileSync(jsPath, jsContent)
     fs.writeFileSync(dtsPath, tsContent)
+    fs.writeFileSync(didPath, didContent)
 
     return {
       success: true,

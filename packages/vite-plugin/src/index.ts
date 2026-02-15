@@ -170,11 +170,11 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
               { encoding: "utf-8" }
             ).trim()
 
-            const candidDir = path.join(outDir, "candid")
-            if (!fs.existsSync(candidDir)) {
-              fs.mkdirSync(candidDir, { recursive: true })
+            const declarationsDir = path.join(outDir, "declarations")
+            if (!fs.existsSync(declarationsDir)) {
+              fs.mkdirSync(declarationsDir, { recursive: true })
             }
-            didFilePath = path.join(candidDir, `${canister.name}.did`)
+            didFilePath = path.join(declarationsDir, `${canister.name}.did`)
             fs.writeFileSync(didFilePath, candidContent)
             console.log(
               `[ic-reactor] Candid downloaded and saved to ${didFilePath}`

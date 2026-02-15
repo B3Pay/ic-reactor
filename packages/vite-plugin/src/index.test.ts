@@ -74,7 +74,7 @@ describe("icReactorPlugin", () => {
     it("should set up API proxy and headers when icp-cli is available", () => {
       ;(execSync as any).mockImplementation((cmd: string) => {
         if (cmd.includes("network status")) {
-          return JSON.stringify({ root_key: "mock-root-key" })
+          return JSON.stringify({ root_key: "mock-root-key", port: 4943 })
         }
         if (cmd.includes("canister status")) {
           return "mock-canister-id"
@@ -104,7 +104,7 @@ describe("icReactorPlugin", () => {
       const config = (plugin as any).config({}, { command: "serve" })
 
       expect(config.server.headers).toBeUndefined()
-      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:8080")
+      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
     })
 
     it("should return empty config for build command", () => {
@@ -167,13 +167,16 @@ describe("icReactorPlugin", () => {
       )
 
       expect(fs.writeFileSync).toHaveBeenCalledWith(
-        path.join("src/declarations/missing_did/candid", "missing_did.did"),
+        path.join(
+          "src/declarations/missing_did/declarations",
+          "missing_did.did"
+        ),
         "service : { greet: (text) -> (text) query }"
       )
 
       expect(generateDeclarations).toHaveBeenCalledWith({
         didFile: path.join(
-          "src/declarations/missing_did/candid",
+          "src/declarations/missing_did/declarations",
           "missing_did.did"
         ),
         outDir: "src/declarations/missing_did",
@@ -183,7 +186,7 @@ describe("icReactorPlugin", () => {
       expect(generateReactorFile).toHaveBeenCalledWith({
         canisterName: "missing_did",
         didFile: path.join(
-          "src/declarations/missing_did/candid",
+          "src/declarations/missing_did/declarations",
           "missing_did.did"
         ),
         clientManagerPath: undefined,

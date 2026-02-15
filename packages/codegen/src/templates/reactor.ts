@@ -26,7 +26,7 @@ export function generateReactorFile(options: ReactorGeneratorOptions): string {
 
   const didFileName = path.basename(options.didFile)
   const declarationsPath = `./declarations/${didFileName}`
-  const clientManagerPath = options.clientManagerPath ?? "../../client"
+  const clientManagerPath = options.clientManagerPath ?? "../../clients"
 
   const vars: TemplateVars = {
     canisterName: options.canisterName,
