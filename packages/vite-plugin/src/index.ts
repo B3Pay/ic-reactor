@@ -24,18 +24,15 @@
  * ```
  */
 
-import type { Plugin, ViteDevServer } from "vite"
+import type { Plugin } from "vite"
 import fs from "fs"
 import path from "path"
+import { execSync } from "child_process"
 import {
   generateDeclarations,
   generateReactorFile,
   type CanisterConfig,
 } from "@ic-reactor/codegen"
-
-const ICP_LOCAL_IDS_PATH = ".icp/cache/mappings/local.ids.json"
-const IC_ROOT_KEY_HEX =
-  "308182301d060d2b0601040182dc7c0503010201060c2b0601040182dc7c050302010361008b52b4994f94c7ce4be1c1542d7c81dc79fea17d49efe8fa42e8566373581d4b969c4a59e96a0ef51b711fe5027ec01601182519d0a788f4bfe388e593b97cd1d7e44904de79422430bca686ac8c21305b3397b5ba4d7037d17877312fb7ee34"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -61,69 +58,51 @@ export interface IcReactorPluginOptions {
 // Re-export CanisterConfig for convenience
 export type { CanisterConfig }
 
-function loadLocalCanisterIds(rootDir: string): Record<string, string> | null {
-  const idsPath = path.resolve(rootDir, ICP_LOCAL_IDS_PATH)
+function getIcEnvironmentInfo(canisterNames: string[]) {
+  const environment = process.env.ICP_ENVIRONMENT || "local"
 
   try {
-    return JSON.parse(fs.readFileSync(idsPath, "utf-8"))
+    const networkStatus = JSON.parse(
+      execSync(`icp network status -e ${environment} --json`, {
+        encoding: "utf-8",
+      })
+    )
+    const rootKey = networkStatus.root_key
+    // TODO: Use networkStatus.api_url when CLI supports it
+    const proxyTarget = "http://127.0.0.1:4943"
+
+    const canisterIds: Record<string, string> = {}
+    for (const name of canisterNames) {
+      try {
+        const canisterId = execSync(
+          `icp canister status ${name} -e ${environment} -i`,
+          {
+            encoding: "utf-8",
+          }
+        ).trim()
+        canisterIds[name] = canisterId
+      } catch {
+        // Skip if canister not found
+      }
+    }
+
+    return { environment, rootKey, proxyTarget, canisterIds }
   } catch {
     return null
   }
 }
 
-function buildIcEnvCookie(canisterIds: Record<string, string>): string {
-  const envParts = [`ic_root_key=${IC_ROOT_KEY_HEX}`]
+function buildIcEnvCookie(
+  canisterIds: Record<string, string>,
+  rootKey: string
+): string {
+  const envParts = [`ic_root_key=${rootKey}`]
 
   for (const [name, id] of Object.entries(canisterIds)) {
     envParts.push(`PUBLIC_CANISTER_ID:${name}=${id}`)
   }
 
   return encodeURIComponent(envParts.join("&"))
-}
-
-function addOrReplaceSetCookie(
-  existing: string | string[] | number | undefined,
-  cookie: string
-): string[] {
-  const cookieEntries =
-    typeof existing === "string"
-      ? [existing]
-      : Array.isArray(existing)
-        ? existing.filter((value): value is string => typeof value === "string")
-        : []
-
-  const nonIcEnvCookies = cookieEntries.filter(
-    (entry) => !entry.trim().startsWith("ic_env=")
-  )
-
-  return [...nonIcEnvCookies, cookie]
-}
-
-function setupIcEnvMiddleware(server: ViteDevServer): void {
-  const rootDir = server.config.root || process.cwd()
-  const idsPath = path.resolve(rootDir, ICP_LOCAL_IDS_PATH)
-  let hasLoggedHint = false
-
-  server.middlewares.use((req, res, next) => {
-    const canisterIds = loadLocalCanisterIds(rootDir)
-
-    if (!canisterIds) {
-      if (!hasLoggedHint) {
-        server.config.logger.info(
-          `[ic-reactor] icp-cli local IDs not found at ${idsPath}. Run \`icp deploy\` to enable automatic ic_env cookie injection.`
-        )
-        hasLoggedHint = true
-      }
-
-      return next()
-    }
-
-    const cookie = `ic_env=${buildIcEnvCookie(canisterIds)}; Path=/; SameSite=Lax;`
-    const current = res.getHeader("Set-Cookie")
-    res.setHeader("Set-Cookie", addOrReplaceSetCookie(current, cookie))
-
-    next()
-  })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -136,18 +115,37 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
   return {
     name: "ic-reactor-plugin",
 
-    configureServer(server) {
-      if (options.autoInjectIcEnv ?? true) {
-        setupIcEnvMiddleware(server)
+    config(config, { command }) {
+      if (command !== "serve" || !(options.autoInjectIcEnv ?? true)) {
+        return {}
       }
-    },
 
-    config(config) {
+      const canisterNames = options.canisters.map((c) => c.name)
+      const icEnv = getIcEnvironmentInfo(canisterNames)
+
+      if (!icEnv) {
+        return {
+          server: {
+            proxy: {
+              "/api": {
+                target: "http://127.0.0.1:4943",
+                changeOrigin: true,
+              },
+            },
+          },
+        }
+      }
+
+      const cookieValue = buildIcEnvCookie(icEnv.canisterIds, icEnv.rootKey)
+
       return {
         server: {
+          headers: {
+            "Set-Cookie": `ic_env=${cookieValue}; Path=/; SameSite=Lax;`,
+          },
           proxy: {
             "/api": {
-              target: "http://127.0.0.1:4943",
+              target: icEnv.proxyTarget,
               changeOrigin: true,
             },
           },

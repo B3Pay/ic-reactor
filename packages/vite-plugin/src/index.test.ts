@@ -1,13 +1,19 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { icReactorPlugin, type IcReactorPluginOptions } from "./index"
 import fs from "fs"
 import path from "path"
+import { execSync } from "child_process"
 import { generateDeclarations, generateReactorFile } from "@ic-reactor/codegen"
 
 // Mock internal dependencies
 vi.mock("@ic-reactor/codegen", () => ({
   generateDeclarations: vi.fn(),
   generateReactorFile: vi.fn(),
+}))
+
+// Mock child_process
+vi.mock("child_process", () => ({
+  execSync: vi.fn(),
 }))
 
 // Mock fs
@@ -57,98 +63,55 @@ describe("icReactorPlugin", () => {
   it("should return correct plugin structure", () => {
     const plugin = icReactorPlugin(mockOptions)
     expect(plugin.name).toBe("ic-reactor-plugin")
-    expect(plugin.configureServer).toBeDefined()
     expect(plugin.buildStart).toBeDefined()
     expect(plugin.handleHotUpdate).toBeDefined()
     expect((plugin as any).config).toBeDefined()
+    // configureServer is no longer used for middleware
+    expect(plugin.configureServer).toBeUndefined()
   })
 
   describe("config", () => {
-    it("should set up API proxy", () => {
-      const plugin = icReactorPlugin(mockOptions)
-      const config = (plugin as any).config()
-
-      expect(config).toEqual({
-        server: {
-          proxy: {
-            "/api": {
-              target: "http://127.0.0.1:4943",
-              changeOrigin: true,
-            },
-          },
-        },
-      })
-    })
-  })
-
-  describe("configureServer", () => {
-    it("should set up ic_env middleware if autoInjectIcEnv is true (default)", () => {
-      const plugin = icReactorPlugin(mockOptions)
-      ;(plugin.configureServer as any)(mockServer)
-
-      expect(mockServer.middlewares.use).toHaveBeenCalled()
-    })
-
-    it("should NOT set up ic_env middleware if autoInjectIcEnv is false", () => {
-      const plugin = icReactorPlugin({ ...mockOptions, autoInjectIcEnv: false })
-      ;(plugin.configureServer as any)(mockServer)
-
-      expect(mockServer.middlewares.use).not.toHaveBeenCalled()
-    })
-
-    it("middleware should handle missing local.ids.json gracefully", () => {
-      const plugin = icReactorPlugin(mockOptions)
-      ;(plugin.configureServer as any)(mockServer)
-
-      const middleware = mockServer.middlewares.use.mock.calls[0][0]
-      const req = {}
-      const res = {}
-      const next = vi.fn()
-
-      // Mock missing file
-      ;(fs.readFileSync as any).mockImplementation(() => {
-        throw new Error("File not found")
+    it("should set up API proxy and headers when icp-cli is available", () => {
+      ;(execSync as any).mockImplementation((cmd: string) => {
+        if (cmd.includes("network status")) {
+          return JSON.stringify({ root_key: "mock-root-key" })
+        }
+        if (cmd.includes("canister status")) {
+          return "mock-canister-id"
+        }
+        return ""
       })
 
-      middleware(req, res, next)
+      const plugin = icReactorPlugin(mockOptions)
+      const config = (plugin as any).config({}, { command: "serve" })
 
-      expect(mockServer.config.logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("icp-cli local IDs not found")
+      expect(config.server.headers["Set-Cookie"]).toContain("ic_env=")
+      expect(config.server.headers["Set-Cookie"]).toContain(
+        "PUBLIC_CANISTER_ID%3Atest_canister%3Dmock-canister-id"
       )
-      expect(next).toHaveBeenCalled()
+      expect(config.server.headers["Set-Cookie"]).toContain(
+        "ic_root_key%3Dmock-root-key"
+      )
+      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
     })
 
-    it("middleware should set cookie when local.ids.json exists", () => {
+    it("should fallback to default proxy when icp-cli fails", () => {
+      ;(execSync as any).mockImplementation(() => {
+        throw new Error("Command not found")
+      })
+
       const plugin = icReactorPlugin(mockOptions)
-      ;(plugin.configureServer as any)(mockServer)
+      const config = (plugin as any).config({}, { command: "serve" })
 
-      const middleware = mockServer.middlewares.use.mock.calls[0][0]
-      const req = {}
-      const res = {
-        getHeader: vi.fn(),
-        setHeader: vi.fn(),
-      }
-      const next = vi.fn()
+      expect(config.server.headers).toBeUndefined()
+      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
+    })
 
-      // Mock existing file
-      ;(fs.readFileSync as any).mockReturnValue(
-        JSON.stringify({
-          test_canister: "ryjl3-tyaaa-aaaaa-aaaba-cai",
-        })
-      )
+    it("should return empty config for build command", () => {
+      const plugin = icReactorPlugin(mockOptions)
+      const config = (plugin as any).config({}, { command: "build" })
 
-      middleware(req, res, next)
-
-      expect(res.setHeader).toHaveBeenCalledWith(
-        "Set-Cookie",
-        expect.arrayContaining([
-          expect.stringContaining("ic_env="),
-          expect.stringContaining(
-            "PUBLIC_CANISTER_ID%3Atest_canister%3Dryjl3-tyaaa-aaaaa-aaaba-cai"
-          ),
-        ])
-      )
-      expect(next).toHaveBeenCalled()
+      expect(config).toEqual({})
     })
   })
 

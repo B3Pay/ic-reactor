@@ -58,7 +58,7 @@ The plugin automatically configures a proxy for `/api` requests to your local re
 
 ### Automatic `ic_env` Injection
 
-When using `dfx` or `icp-cli`, canister IDs are stored in `.icp/cache/mappings/local.ids.json` (or similar). The plugin reads these IDs and injects them into the `ic_env` cookie, mimicking the behavior of asset canisters. This means `ClientManager` can automatically detect the correct canister IDs.
+The plugin automatically detects your network environment and canister IDs using the `icp-cli`. It injects this information into the `ic_env` cookie, mimicking the behavior of asset canisters. This allows `ClientManager` to automatically resolve the correct canister IDs and network root key without manual configuration.
 
 ### Hot Module Replacement
 
