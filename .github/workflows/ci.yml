@@ -36,7 +36,7 @@ jobs:
         run: pnpm format:check
 
       - name: Build packages (excluding parser)
-        run: pnpm build:ci
+        run: pnpm build
 
       - name: Type check
         run: pnpm exec tsc --noEmit
@@ -63,7 +63,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages (excluding parser)
-        run: pnpm build:ci
+        run: pnpm build
 
       - name: Run tests (excluding parser)
         run: pnpm test:ci
@@ -90,7 +90,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages (excluding parser)
-        run: pnpm build:ci
+        run: pnpm build
 
       - name: Check package sizes
         run: pnpm size

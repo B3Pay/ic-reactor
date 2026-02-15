@@ -30,7 +30,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages (excluding parser)
-        run: pnpm build:ci
+        run: pnpm build
 
       - name: Check bundle size
         run: pnpm size
