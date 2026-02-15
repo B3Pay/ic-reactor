@@ -11,6 +11,7 @@ import { queryClient } from "../query-client"
  */
 export const clientManager = new ClientManager({
   queryClient,
+  withCanisterEnv: true,
 })
 "
 `;
@@ -28,6 +29,7 @@ export const queryClient = new QueryClient()
  */
 export const clientManager = new ClientManager({
   queryClient,
+  withCanisterEnv: true,
 })
 "
 `;
