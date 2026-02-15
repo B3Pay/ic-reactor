@@ -31,7 +31,7 @@ describe("icReactorPlugin", () => {
     canisters: [
       {
         name: "test_canister",
-        didFile: "src/declarations/test.did",
+        didFilePath: "src/declarations/test.did",
         outDir: "src/declarations/test_canister",
       },
     ],
@@ -128,14 +128,57 @@ describe("icReactorPlugin", () => {
 
       expect(generateReactorFile).toHaveBeenCalledWith({
         canisterName: "test_canister",
-        canisterConfig: mockOptions.canisters[0],
-        globalClientManagerPath: undefined,
+        didFile: "src/declarations/test.did",
+        clientManagerPath: "../../clients",
       })
 
       expect(fs.writeFileSync).toHaveBeenCalledWith(
         path.join("src/declarations/test_canister", "index.ts"),
         "export const reactor = {}"
       )
+    })
+
+    it("should download candid if not specified", async () => {
+      const optionsWithMissingDid: IcReactorPluginOptions = {
+        canisters: [
+          {
+            name: "missing_did",
+            outDir: "src/declarations/missing_did",
+          },
+        ],
+        outDir: "src/declarations",
+      }
+
+      ;(execSync as any).mockImplementation((cmd: string) => {
+        if (cmd.includes("metadata")) {
+          return "service : { greet: (text) -> (text) query }"
+        }
+        return ""
+      })
+
+      const plugin = icReactorPlugin(optionsWithMissingDid)
+      await (plugin.buildStart as any)()
+
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "icp canister metadata missing_did candid:service"
+        ),
+        expect.any(Object)
+      )
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        path.join("src/declarations/missing_did/candid", "missing_did.did"),
+        "service : { greet: (text) -> (text) query }"
+      )
+
+      expect(generateDeclarations).toHaveBeenCalledWith({
+        didFile: path.join(
+          "src/declarations/missing_did/candid",
+          "missing_did.did"
+        ),
+        outDir: "src/declarations/missing_did",
+        canisterName: "missing_did",
+      })
     })
 
     it("should handle generation errors", async () => {
