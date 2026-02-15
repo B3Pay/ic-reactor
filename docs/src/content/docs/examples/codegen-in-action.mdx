@@ -1,0 +1,54 @@
+---
+title: "Codegen in Action"
+description: Comparison of shared codegen output from CLI and Vite plugin
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+This example provides a side-by-side comparison of how `@ic-reactor/codegen` is used by both the CLI and the Vite plugin to generate consistent, type-safe hooks.
+
+## Features Demonstrated
+
+- **Shared Core**: Understand how both tools use the same underlying codegen logic.
+- **Consistent Output**: Verify that hooks generated via CLI match those from the Vite plugin.
+- **Flexibility**: See how to use codegen utilities in custom build scripts.
+- **Project Structure**: Best practices for organizing generated declarations.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/codegen-in-action?embed=1&theme=dark&file=packages/vite/vite.config.ts"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/codegen-in-action"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/codegen-in-action?embed=1&theme=dark&file=packages/vite/vite.config.ts&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor Codegen in Action"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Implementation
+
+The example contains two sub-projects: one using the Vite plugin and one using the CLI. Both target the same canister and produce identical hook interfaces, demonstrating the reliability of the shared codegen.
+
+### CLI vs Vite Plugin
+
+| Feature       | Vite Plugin      | CLI                    |
+| ------------- | ---------------- | ---------------------- |
+| Automation    | Fully automatic  | Manual/Scripted        |
+| HMR           | Built-in         | Requires rebuild       |
+| Integration   | Vite projects    | Any frontend / Node.js |
+| Configuration | `vite.config.ts` | `ic-reactor.json`      |

@@ -1,0 +1,76 @@
+---
+title: "Vite Environment Variables"
+description: Automatic canister ID and network injection via environment variables
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+This example showcases how IC Reactor integrates with Vite's environment variable system and the local `icp-cli` environment to automatically manage canister IDs and network configurations.
+
+## Features Demonstrated
+
+- **Automatic Injection**: Canister IDs are automatically detected from the local environment and injected into the frontend.
+- **Environment Variables**: Use `VITE_CANISTER_ID_<NAME>` to override or provide canister IDs manually.
+- **Seamless Local Dev**: Run `icp deploy` and your frontend immediately knows where to find the canisters.
+- **Client Configuration**: Using `withCanisterEnv: true` to enable automatic environment detection.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/vite-environment-variables?embed=1&theme=dark&file=frontend/app/vite.config.ts"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/vite-environment-variables"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/vite-environment-variables?embed=1&theme=dark&file=frontend/app/vite.config.ts&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor Vite Environment Variables Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Implementation
+
+The `ClientManager` is configured to look for canister IDs in the environment:
+
+```typescript
+// src/lib/clients.ts
+import { ClientManager } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+
+export const queryClient = new QueryClient()
+
+export const clientManager = new ClientManager({
+  queryClient,
+  // Enable automatic environment detection
+  withCanisterEnv: true,
+})
+```
+
+The Vite plugin then ensures these variables are available during development by setting an `ic_env` cookie:
+
+```typescript
+// vite.config.ts
+import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+
+export default defineConfig({
+  plugins: [
+    icReactorPlugin({
+      canisters: [{ name: "backend", didFile: "..." }],
+      // Enabled by default
+      injectEnvironment: true,
+    }),
+  ],
+})
+```

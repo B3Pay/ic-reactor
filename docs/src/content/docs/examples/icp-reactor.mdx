@@ -1,0 +1,62 @@
+---
+title: "ICP Reactor Demo"
+description: Complete application showcasing the standard Reactor and authentication
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+This example provides a comprehensive overview of using the standard `Reactor` for complex canister interactions, combined with `Authentication` and `TanStack Query`.
+
+## Features Demonstrated
+
+- **Standard Reactor**: Using direct Candid-to-TypeScript mappings.
+- **Authentication Hooks**: Integration with Internet Identity for secure calls.
+- **Typed Methods**: Fully typed query and mutation calls.
+- **Error Propagation**: Robust handling of canister errors and network issues.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/icp-reactor-demo?embed=1&theme=dark&file=frontend/src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/icp-reactor-demo"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/icp-reactor-demo?embed=1&theme=dark&file=frontend/src/App.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor ICP Reactor Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Implementation
+
+```typescript
+const { login, logout, isAuthenticated } = useAuth()
+const { data, call } = useActorMethod({ functionName: "greet" })
+
+return (
+  <div>
+    {!isAuthenticated ? (
+      <button onClick={() => login()}>Login</button>
+    ) : (
+      <>
+        <button onClick={() => logout()}>Logout</button>
+        <button onClick={() => call(["IC"])}>Greet</button>
+        {data && <p>{data}</p>}
+      </>
+    )}
+  </div>
+)
+```
