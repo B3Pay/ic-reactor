@@ -27,8 +27,8 @@ export interface BindgenResult {
  * Generate TypeScript declarations from a Candid file
  *
  * This creates:
- * - declarations/<canisterName>.did.js - IDL factory
- * - declarations/<canisterName>.did.d.ts - Types
+ * - declarations/<canisterName>.js - IDL factory
+ * - declarations/<canisterName>.d.ts - Types
  */
 export async function generateDeclarations(
   options: BindgenOptions
@@ -65,9 +65,10 @@ export async function generateDeclarations(
     const jsContent = didToJs(didContent)
     const tsContent = didToTs(didContent)
 
-    // Write .did, .did.js and .did.d.ts
-    const jsPath = path.join(declarationsDir, didFileName + ".js")
-    const dtsPath = path.join(declarationsDir, didFileName + ".d.ts")
+    // Write .did, .js and .d.ts
+    const baseName = didFileName.replace(/\.did$/, "")
+    const jsPath = path.join(declarationsDir, baseName + ".js")
+    const dtsPath = path.join(declarationsDir, baseName + ".d.ts")
     const didPath = path.join(declarationsDir, didFileName)
 
     fs.writeFileSync(jsPath, jsContent)
@@ -95,6 +96,6 @@ export function declarationsExist(
   canisterName: string
 ): boolean {
   const declarationsDir = path.join(outDir, "declarations")
-  const didTsPath = path.join(declarationsDir, `${canisterName}.did.d.ts`)
+  const didTsPath = path.join(declarationsDir, `${canisterName}.d.ts`)
   return fs.existsSync(didTsPath)
 }

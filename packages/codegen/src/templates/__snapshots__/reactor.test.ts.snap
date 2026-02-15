@@ -3,7 +3,7 @@
 exports[`Reactor File Generation > Standard Mode > generates correctly 1`] = `
 "import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
 import { clientManager } from "../../client"
-import { idlFactory, type _SERVICE } from "./declarations/my_canister.did"
+import { idlFactory, type _SERVICE } from "./declarations/my_canister"
 
 export type MyCanisterService = _SERVICE
 

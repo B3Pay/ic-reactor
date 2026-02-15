@@ -21,11 +21,12 @@ export function generateReactorFile(options: ReactorGeneratorOptions): string {
   const pascalName = toPascalCase(options.canisterName)
   const reactorName = getReactorName(options.canisterName)
   const serviceName = getServiceTypeName(options.canisterName)
-  // Always use DisplayReactor
+  // Always use DisplayReactor for now
   const reactorType = "DisplayReactor"
 
   const didFileName = path.basename(options.didFile)
-  const declarationsPath = `./declarations/${didFileName}`
+  const baseName = didFileName.replace(/\.did$/, "")
+  const declarationsPath = `./declarations/${baseName}`
   const clientManagerPath = options.clientManagerPath ?? "../../clients"
 
   const vars: TemplateVars = {

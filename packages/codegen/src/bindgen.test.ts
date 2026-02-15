@@ -45,8 +45,8 @@ describe("Bindgen", () => {
 
     // Verify file writes
     const declarationsDir = path.join(mockOutDir, "declarations")
-    const jsPath = path.join(declarationsDir, "test.did.js")
-    const dtsPath = path.join(declarationsDir, "test.did.d.ts")
+    const jsPath = path.join(declarationsDir, "test.js")
+    const dtsPath = path.join(declarationsDir, "test.d.ts")
 
     // Should create directory
     expect(fs.mkdirSync).toHaveBeenCalledWith(mockOutDir, { recursive: true })
