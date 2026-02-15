@@ -6,31 +6,30 @@
  */
 
 import path from "node:path"
-import type { ReactorGeneratorOptions } from "../types.js"
 import { toPascalCase, getReactorName, getServiceTypeName } from "../naming.js"
+
+export type ReactorGeneratorOptions = {
+  canisterName: string
+  didFile: string
+  clientManagerPath?: string
+}
 
 /**
  * Generate the reactor file content
  */
 export function generateReactorFile(options: ReactorGeneratorOptions): string {
-  const { canisterName, canisterConfig, globalClientManagerPath } = options
-
-  const pascalName = toPascalCase(canisterName)
-  const reactorName = getReactorName(canisterName)
-  const serviceName = getServiceTypeName(canisterName)
+  const pascalName = toPascalCase(options.canisterName)
+  const reactorName = getReactorName(options.canisterName)
+  const serviceName = getServiceTypeName(options.canisterName)
   // Always use DisplayReactor
   const reactorType = "DisplayReactor"
 
-  const clientManagerPath =
-    canisterConfig.clientManagerPath ??
-    globalClientManagerPath ??
-    "../../client"
-
-  const didFileName = path.basename(canisterConfig.didFile)
+  const didFileName = path.basename(options.didFile)
   const declarationsPath = `./declarations/${didFileName}`
+  const clientManagerPath = options.clientManagerPath ?? "../../client"
 
   const vars: TemplateVars = {
-    canisterName,
+    canisterName: options.canisterName,
     pascalName,
     reactorName,
     serviceName,

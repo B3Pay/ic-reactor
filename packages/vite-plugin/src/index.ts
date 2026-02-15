@@ -28,19 +28,21 @@ import type { Plugin } from "vite"
 import fs from "fs"
 import path from "path"
 import { execSync } from "child_process"
-import {
-  generateDeclarations,
-  generateReactorFile,
-  type CanisterConfig,
-} from "@ic-reactor/codegen"
+import { generateDeclarations, generateReactorFile } from "@ic-reactor/codegen"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
+export interface CanisterConfig {
+  name: string
+  didFile?: string
+  clientManagerPath?: string
+}
+
 export interface IcReactorPluginOptions {
   /** List of canisters to generate hooks for */
-  canisters: (CanisterConfig & { name: string })[]
+  canisters: CanisterConfig[]
   /** Base output directory (default: ./src/lib/canisters) */
   outDir?: string
   /**
@@ -54,9 +56,6 @@ export interface IcReactorPluginOptions {
    */
   autoInjectIcEnv?: boolean
 }
-
-// Re-export CanisterConfig for convenience
-export type { CanisterConfig }
 
 function getIcEnvironmentInfo(canisterNames: string[]) {
   const environment = process.env.ICP_ENVIRONMENT || "local"
