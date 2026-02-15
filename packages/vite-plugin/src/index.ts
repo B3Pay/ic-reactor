@@ -27,7 +27,7 @@
 import type { Plugin } from "vite"
 import fs from "fs"
 import path from "path"
-import { execSync } from "child_process"
+import { execFileSync } from "child_process"
 import {
   generateDeclarations,
   generateReactorFile,
@@ -68,7 +68,7 @@ function getIcEnvironmentInfo(canisterNames: string[]) {
 
   try {
     const networkStatus = JSON.parse(
-      execSync(`icp network status -e ${environment} --json`, {
+      execFileSync("icp", ["network", "status", "-e", environment, "--json"], {
         encoding: "utf-8",
       })
     )
@@ -78,8 +78,9 @@ function getIcEnvironmentInfo(canisterNames: string[]) {
     const canisterIds: Record<string, string> = {}
     for (const name of canisterNames) {
       try {
-        const canisterId = execSync(
-          `icp canister status ${name} -e ${environment} -i`,
+        const canisterId = execFileSync(
+          "icp",
+          ["canister", "status", name, "-e", environment, "-i"],
           {
             encoding: "utf-8",
           }
