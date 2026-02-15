@@ -6,7 +6,11 @@
  */
 
 // Types
-export type { CanisterConfig, ReactorGeneratorOptions } from "./types.js"
+export type {
+  CanisterConfig,
+  ReactorGeneratorOptions,
+  HookType,
+} from "./types.js"
 
 // Naming utilities
 export { toPascalCase, getReactorName, getServiceTypeName } from "./naming.js"

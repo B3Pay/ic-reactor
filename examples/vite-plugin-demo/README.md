@@ -22,11 +22,11 @@ This example demonstrates how to use the `@ic-reactor/vite-plugin` to automatica
    pnpm dev
    ```
 
-3. Check the generated files in `src/canisters/backend/`.
+3. Check the generated files in `src/lib/canisters/backend/`.
 
 ## Project Structure
 
 - `src/declarations/backend.did`: Your Candid interface.
-- `src/lib/reactor.ts`: Central `ClientManager` configuration.
-- `src/canisters/backend/`: Generated hooks and declarations.
+- `src/lib/clients.ts`: Central `ClientManager` configuration.
+- `src/lib/canisters/backend/`: Generated hooks and declarations.
 - `vite.config.ts`: Plugin configuration.

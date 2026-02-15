@@ -10,7 +10,6 @@ export default defineConfig({
         {
           name: "backend",
           didFile: "./src/declarations/backend.did",
-          clientManagerPath: "../../lib/reactor",
         },
       ],
     }),

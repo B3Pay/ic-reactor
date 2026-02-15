@@ -1,5 +1,5 @@
 import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
-import { clientManager } from "../../lib/reactor"
+import { clientManager } from "../../clients"
 import { idlFactory, type _SERVICE } from "./declarations/backend.did"
 
 export type BackendService = _SERVICE

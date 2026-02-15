@@ -41,11 +41,11 @@ import {
 export interface IcReactorPluginOptions {
   /** List of canisters to generate hooks for */
   canisters: (CanisterConfig & { name: string })[]
-  /** Base output directory (default: ./lib/canisters) */
+  /** Base output directory (default: ./src/lib/canisters) */
   outDir?: string
   /**
    * Path to import ClientManager from (relative to generated file).
-   * Default: "../../client"
+   * Default: "../../clients"
    */
   clientManagerPath?: string
   /**
@@ -110,7 +110,7 @@ function buildIcEnvCookie(
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
-  const baseOutDir = options.outDir ?? "./src/canisters"
+  const baseOutDir = options.outDir ?? "./src/lib/canisters"
 
   return {
     name: "ic-reactor-plugin",
@@ -179,7 +179,7 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
         const reactorContent = generateReactorFile({
           canisterName: canister.name,
           canisterConfig: canister,
-          globalClientManagerPath: options.clientManagerPath,
+          globalClientManagerPath: options.clientManagerPath ?? "../../clients",
         })
 
         const reactorPath = path.join(outDir, "index.ts")

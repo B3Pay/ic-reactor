@@ -1,9 +1,9 @@
-import { useBackendQuery, useBackendMutation } from "./canisters/backend"
+import { useBackendQuery, useBackendMutation } from "./lib/canisters/backend"
 
 function App() {
   const { data: greeting, isPending: greetingPending } = useBackendQuery({
     functionName: "greet",
-    args: ["Vite Plugin"],
+    args: "Vite Plugin",
   })
 
   const { data: count, isPending: countPending } = useBackendQuery({
