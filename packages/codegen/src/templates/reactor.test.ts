@@ -10,7 +10,6 @@ describe("Reactor File Generation", () => {
       outDir: "src/declarations/my_canister",
       clientManagerPath: "../../client",
     },
-    hasDeclarations: true,
   }
 
   describe("Standard Mode", () => {
@@ -23,21 +22,6 @@ describe("Reactor File Generation", () => {
       const options = { ...baseOptions, canisterConfig: { didFile: "foo.did" } }
       const result = generateReactorFile(options)
       expect(result).toContain('import { clientManager } from "../../client"')
-    })
-  })
-
-  describe("Fallback Mode", () => {
-    it("generates correctly without declarations", () => {
-      const options: ReactorGeneratorOptions = {
-        ...baseOptions,
-        hasDeclarations: false,
-      }
-      const result = generateReactorFile(options)
-      expect(result).toMatchSnapshot()
-
-      expect(result).toContain(
-        "type MyCanisterService = Record<string, (...args: unknown[]) => Promise<unknown>>"
-      )
     })
   })
 })

@@ -1,10 +1,10 @@
 /**
  * Bindgen utilities
  *
- * Generates TypeScript declarations from Candid files using @icp-sdk/bindgen.
+ * Generates TypeScript declarations from Candid files using @ic-reactor/parser.
  */
 
-import { generate } from "@icp-sdk/bindgen/core"
+import { didToJs, didToTs } from "@ic-reactor/parser"
 import path from "node:path"
 import fs from "node:fs"
 
@@ -27,7 +27,8 @@ export interface BindgenResult {
  * Generate TypeScript declarations from a Candid file
  *
  * This creates:
- * - declarations/<canisterName>.did.ts - IDL factory and types
+ * - declarations/<canisterName>.did.js - IDL factory
+ * - declarations/<canisterName>.did.d.ts - Types
  */
 export async function generateDeclarations(
   options: BindgenOptions
@@ -44,6 +45,7 @@ export async function generateDeclarations(
   }
 
   const declarationsDir = path.join(outDir, "declarations")
+  const didFileName = path.basename(didFile) // e.g., "my_canister.did"
 
   try {
     // Ensure the output directory exists
@@ -57,17 +59,17 @@ export async function generateDeclarations(
     }
     fs.mkdirSync(declarationsDir, { recursive: true })
 
-    // Note: bindgen appends "declarations" internally, so we pass the parent directory
-    await generate({
-      didFile,
-      outDir, // Pass the parent directory; bindgen appends "declarations"
-      output: {
-        actor: {
-          disabled: true, // We don't need actor creation, we use Reactor
-        },
-        force: true, // Overwrite existing files
-      },
-    })
+    const didContent = fs.readFileSync(didFile, "utf-8")
+
+    const jsContent = didToJs(didContent)
+    const tsContent = didToTs(didContent)
+
+    // Write .did.js and .did.d.ts
+    const jsPath = path.join(declarationsDir, didFileName + ".js")
+    const dtsPath = path.join(declarationsDir, didFileName + ".d.ts")
+
+    fs.writeFileSync(jsPath, jsContent)
+    fs.writeFileSync(dtsPath, tsContent)
 
     return {
       success: true,
@@ -90,7 +92,7 @@ export function declarationsExist(
   canisterName: string
 ): boolean {
   const declarationsDir = path.join(outDir, "declarations")
-  const didTsPath = path.join(declarationsDir, `${canisterName}.did.ts`)
+  const didTsPath = path.join(declarationsDir, `${canisterName}.did.d.ts`)
   return fs.existsSync(didTsPath)
 }
 

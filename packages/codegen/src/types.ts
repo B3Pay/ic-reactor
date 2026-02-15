@@ -30,6 +30,4 @@ export interface ReactorGeneratorOptions {
   canisterConfig: CanisterConfig
   /** Global default clientManagerPath */
   globalClientManagerPath?: string
-  /** Whether declarations have been generated */
-  hasDeclarations?: boolean
 }
