@@ -28,12 +28,54 @@ IC Reactor provides seamless integration between your applications and Internet 
 
 ## 📦 Packages
 
-| Package                                   | Description                                                                      |
-| ----------------------------------------- | -------------------------------------------------------------------------------- |
-| [`@ic-reactor/core`](./packages/core)     | Core library with ClientManager, Reactor, DisplayReactor, and query caching      |
-| [`@ic-reactor/react`](./packages/react)   | React hooks for seamless integration (`useActorQuery`, `useActorMutation`, etc.) |
-| [`@ic-reactor/candid`](./packages/candid) | Dynamic Candid fetching, parsing, and `CandidReactor` / `CandidDisplayReactor`   |
-| [`@ic-reactor/parser`](./packages/parser) | Local WASM-based Candid parser (offline, fast compilation)                       |
+| Package                                             | Description                                                                      |
+| --------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [`@ic-reactor/core`](./packages/core)               | Core library with ClientManager, Reactor, DisplayReactor, and query caching      |
+| [`@ic-reactor/react`](./packages/react)             | React hooks for seamless integration (`useActorQuery`, `useActorMutation`, etc.) |
+| [`@ic-reactor/candid`](./packages/candid)           | Dynamic Candid fetching, parsing, and `CandidReactor` / `CandidDisplayReactor`   |
+| [`@ic-reactor/parser`](./packages/parser)           | Local WASM-based Candid parser (offline, fast compilation)                       |
+| [`@ic-reactor/codegen`](./packages/codegen)         | Shared code generation utilities for IC Reactor                                  |
+| [`@ic-reactor/cli`](./packages/cli)                 | CLI tool to generate shadcn-style React hooks (`npx @ic-reactor/cli`)            |
+| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for zero-config, automatic hook generation                           |
+
+## 🔧 CLI & Tools
+
+### CLI (`@ic-reactor/cli`)
+
+Generate customizable, user-owned hooks directly into your project (shadcn-style).
+
+```bash
+# Initialize configuration
+npx @ic-reactor/cli init
+
+# Fetch Candid from live canister and generate hooks
+npx @ic-reactor/cli fetch -i <canister-id>
+
+# Or generate from local .did file
+npx @ic-reactor/cli add -c backend -m list_todos
+```
+
+### Vite Plugin (`@ic-reactor/vite-plugin`)
+
+Automatic, zero-config code generation for Vite projects. Reacts to `.did` file changes instantly.
+
+```typescript
+// vite.config.ts
+import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+
+export default defineConfig({
+  plugins: [
+    icReactorPlugin({
+      canisters: [
+        {
+          name: "backend",
+          didFile: "./backend.did",
+        },
+      ],
+    }),
+  ],
+})
+```
 
 ## 🚀 Quick Start
 
