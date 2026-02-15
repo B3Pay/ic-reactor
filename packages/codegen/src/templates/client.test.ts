@@ -5,11 +5,16 @@ describe("Client File Generation", () => {
   it("generates correctly with default host", () => {
     const result = generateClientFile()
     expect(result).toMatchSnapshot()
-    expect(result).toContain('host: "https://icp-api.io"')
+    expect(result).toContain(
+      'import { QueryClient } from "@tanstack/react-query'
+    )
   })
 
-  it("generates correctly with custom host", () => {
-    const result = generateClientFile({ host: "http://localhost:4943" })
-    expect(result).toContain('host: "http://localhost:4943"')
+  it("generates correctly with custom query client", () => {
+    const result = generateClientFile({
+      queryClientPath: "../query-client",
+    })
+    expect(result).toMatchSnapshot()
+    expect(result).toContain('import { queryClient } from "../query-client"')
   })
 })

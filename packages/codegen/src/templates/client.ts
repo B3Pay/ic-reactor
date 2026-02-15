@@ -3,13 +3,13 @@
  */
 
 export interface ClientGeneratorOptions {
-  host?: string
+  queryClientPath?: string
 }
 
 export function generateClientFile(
   options: ClientGeneratorOptions = {}
 ): string {
-  const { host = "https://icp-api.io" } = options
+  const { queryClientPath } = options
 
   return `/**
  * Client Manager
@@ -20,9 +20,15 @@ export function generateClientFile(
  */
 
 import { ClientManager } from "@ic-reactor/react"
+${
+  queryClientPath
+    ? `import { queryClient } from "${queryClientPath}"`
+    : `import { QueryClient } from "@tanstack/react-query"
 
-export const clientManager = new ClientManager({
-  host: "${host}",
-})
+const queryClient = new QueryClient()
+`
+}
+
+export const clientManager = new ClientManager({ queryClient })
 `
 }

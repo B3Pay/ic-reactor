@@ -8,8 +8,17 @@
     "dist/nodejs/*",
     "dist/bundler/*"
   ],
-  "main": "dist/web/index.js",
+  "main": "dist/nodejs/index.js",
+  "module": "dist/web/index.js",
   "types": "dist/web/index.d.ts",
+  "exports": {
+    ".": {
+      "node": "./dist/nodejs/index.js",
+      "import": "./dist/web/index.js",
+      "require": "./dist/nodejs/index.js",
+      "default": "./dist/web/index.js"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git@github.com:B3Pay/ic-reactor.git"
