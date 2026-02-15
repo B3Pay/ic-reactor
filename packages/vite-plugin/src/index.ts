@@ -28,7 +28,11 @@ import type { Plugin } from "vite"
 import fs from "fs"
 import path from "path"
 import { execSync } from "child_process"
-import { generateDeclarations, generateReactorFile } from "@ic-reactor/codegen"
+import {
+  generateDeclarations,
+  generateReactorFile,
+  generateClientFile,
+} from "@ic-reactor/codegen"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -155,6 +159,20 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
     },
 
     async buildStart() {
+      // Step 0: Ensure central client manager exists (default: src/lib/clients.ts)
+      const defaultClientPath = path.resolve(
+        process.cwd(),
+        "src/lib/clients.ts"
+      )
+      if (!fs.existsSync(defaultClientPath)) {
+        console.log(
+          `[ic-reactor] Default client manager not found. Creating at ${defaultClientPath}`
+        )
+        const clientContent = generateClientFile()
+        fs.mkdirSync(path.dirname(defaultClientPath), { recursive: true })
+        fs.writeFileSync(defaultClientPath, clientContent)
+      }
+
       for (const canister of options.canisters) {
         let didFilePath = canister.didFilePath
         const outDir = canister.outDir ?? path.join(baseOutDir, canister.name)
