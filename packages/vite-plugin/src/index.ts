@@ -178,14 +178,22 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
         const outDir = canister.outDir ?? path.join(baseOutDir, canister.name)
 
         if (!didFile) {
+          const environment = process.env.ICP_ENVIRONMENT || "local"
+
           console.log(
             `[ic-reactor] didFile not specified for "${canister.name}". Attempting to download from canister...`
           )
           try {
             const candidContent = execFileSync(
               "icp",
-              ["canister", "metadata", canister.name, "candid:service", "-e", environment],
-              `icp canister metadata ${canister.name} candid:service -e ${environment}`,
+              [
+                "canister",
+                "metadata",
+                canister.name,
+                "candid:service",
+                "-e",
+                environment,
+              ],
               { encoding: "utf-8" }
             ).trim()
 
