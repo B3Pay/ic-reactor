@@ -9,10 +9,10 @@ build:
       sha256: b312a16c3179cf8384afa852e468c1333b7439d4c5a39f26df69b12320f629f8
 
     - type: script
-      command: npm ci
+      command: pnpm install
 
     - type: script
-      command: npm run build
+      command: pnpm run build
 
 sync:
   steps:

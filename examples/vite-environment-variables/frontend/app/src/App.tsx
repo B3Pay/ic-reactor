@@ -1,18 +1,22 @@
-import { useState } from "react"
-import { useBackendQuery } from "./lib/canisters/backend"
+import React, { useRef } from "react"
+import { useBackendMethod } from "./lib/canisters/backend"
 import "./App.css"
 
 function App() {
-  const [name, setName] = useState("")
+  const nameRef = useRef<HTMLInputElement>(null)
 
-  const { data: greeting, refetch } = useBackendQuery({
+  const {
+    data: greeting,
+    call,
+    isLoading,
+  } = useBackendMethod({
     functionName: "greet",
-    args: [name],
   })
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    refetch()
+    const name = nameRef.current?.value || ""
+    call([name])
   }
 
   return (
@@ -32,15 +36,13 @@ function App() {
           <div className="controls">
             <input
               id="name"
-              alt="Name"
               type="text"
               className="input"
               placeholder="Ada Lovelace"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              ref={nameRef}
             />
-            <button type="submit" className="button">
-              Greet me
+            <button type="submit" className="button" disabled={isLoading}>
+              {isLoading ? "Greeting..." : "Greet me"}
             </button>
           </div>
         </form>
