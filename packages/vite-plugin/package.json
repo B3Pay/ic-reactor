@@ -19,7 +19,8 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
-    "dev": "tsup src/index.ts --format esm,cjs --dts --watch --tsconfig tsconfig.json"
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch --tsconfig tsconfig.json",
+    "test": "vitest run"
   },
   "keywords": [
     "vite",
@@ -51,6 +52,7 @@
     "@types/node": "^25.2.2",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
   }
 }
