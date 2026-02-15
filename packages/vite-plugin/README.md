@@ -24,15 +24,11 @@ Automatically generate type-safe React hooks for your Internet Computer canister
 ## Installation
 
 ```bash
-# With npm
-npm install -D @ic-reactor/vite-plugin
-
 # With pnpm
 pnpm add -D @ic-reactor/vite-plugin
 
 # Required peer dependencies
-npm install @ic-reactor/react @tanstack/react-query @icp-sdk/core
-npm install -D @icp-sdk/bindgen
+pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
 ```
 
 ## Quick Start
@@ -62,52 +58,30 @@ export default defineConfig({
 
 ### 2. Create Your ClientManager
 
-The plugin expects you to have a `ClientManager` exported from a file. By default, it looks for `./src/lib/client.ts`:
+The plugin expects you to have a `ClientManager` exported from a file. By default, it looks for `./src/lib/reactor.ts`:
 
 ```typescript
-// src/lib/client.ts
+// src/lib/reactor.ts
 import { ClientManager } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient()
-
-export const clientManager = new ClientManager({
-  queryClient,
-  withCanisterEnv: true, // Enable environment-based canister ID resolution
-})
+export const clientManager = new ClientManager({ queryClient })
 ```
 
 ### 3. Use Generated Hooks
 
-The plugin generates hooks in `./src/canisters/<name>/index.ts`:
+The plugin generates a `reactor.ts` file in your canister folder (default: `./src/canisters/<name>/index.ts`):
 
 ```tsx
-// Generated at: ./src/canisters/backend/index.ts
-import {
-  backendReactor,
-  useBackendQuery,
-  useBackendMutation,
-  useBackendSuspenseQuery,
-} from "./canisters/backend"
+import { useActorQuery, useActorMutation } from "./canisters/backend"
 
 function MyComponent() {
-  // Query data
-  const { data, isPending } = useBackendQuery({
+  const { data, isPending } = useActorQuery({
     functionName: "get_message",
   })
 
-  // Mutate data
-  const { mutate } = useBackendMutation({
-    functionName: "set_message",
-    onSuccess: () => console.log("Message updated!"),
-  })
-
-  return (
-    <div>
-      <p>{isPending ? "Loading..." : data}</p>
-      <button onClick={() => mutate(["Hello IC!"])}>Update</button>
-    </div>
-  )
+  return <p>{isPending ? "Loading..." : data}</p>
 }
 ```
 
@@ -115,123 +89,30 @@ function MyComponent() {
 
 ### Plugin Options
 
-```typescript
-interface IcReactorPluginOptions {
-  /** List of canisters to generate hooks for */
-  canisters: CanisterConfig[]
-  /** Base output directory (default: "./src/canisters") */
-  outDir?: string
-  /** Path to import ClientManager from (default: "../../lib/client") */
-  clientManagerPath?: string
-}
+| Option              | Type               | Description                                          | Default             |
+| :------------------ | :----------------- | :--------------------------------------------------- | :------------------ |
+| `canisters`         | `CanisterConfig[]` | List of canisters to generate hooks for.             | `[]`                |
+| `outDir`            | `string`           | Base output directory for generated files.           | `"./src/canisters"` |
+| `autoInjectIcEnv`   | `boolean`          | Whether to inject canister IDs into `ic_env` cookie. | `true`              |
+| `clientManagerPath` | `string`           | Path to a custom `ClientManager` instance.           | undefined           |
 
-interface CanisterConfig {
-  /** Name of the canister (used for variable naming) */
-  name: string
-  /** Path to the .did file */
-  didFile: string
-  /** Output directory (default: ./src/canisters/<name>) */
-  outDir?: string
-  /** Use DisplayReactor for React-friendly types (default: true) */
-  useDisplayReactor?: boolean
-  /** Path to import ClientManager from (relative to generated file) */
-  clientManagerPath?: string
-}
-```
+### Canister Config
 
-### Example: Multiple Canisters
-
-```typescript
-// vite.config.ts
-import { icReactorPlugin } from "@ic-reactor/vite-plugin"
-
-export default defineConfig({
-  plugins: [
-    icReactorPlugin({
-      clientManagerPath: "@/lib/client", // Global default
-      canisters: [
-        {
-          name: "backend",
-          didFile: "./backend/backend.did",
-        },
-        {
-          name: "ledger",
-          didFile: "./ledger/ledger.did",
-          useDisplayReactor: true, // BigInt → string, etc.
-        },
-        {
-          name: "nft",
-          didFile: "./nft/nft.did",
-          outDir: "./src/services/nft", // Custom output
-          clientManagerPath: "@/lib/nft-client", // Custom client
-        },
-      ],
-    }),
-  ],
-})
-```
-
-## Advanced Plugin
-
-For more granular control, use `icReactorAdvancedPlugin` which generates individual hooks per method:
-
-```typescript
-import { icReactorAdvancedPlugin } from "@ic-reactor/vite-plugin"
-
-export default defineConfig({
-  plugins: [
-    icReactorAdvancedPlugin({
-      canisters: [
-        {
-          name: "backend",
-          didFile: "./backend/backend.did",
-        },
-      ],
-    }),
-  ],
-})
-```
-
-This generates method-specific hooks:
-
-```tsx
-import {
-  useGetMessageQuery,
-  useSetMessageMutation,
-  getMessageQuery, // Static query for no-arg methods
-} from "./canisters/backend"
-
-function MyComponent() {
-  // Method-specific hook
-  const { data } = useGetMessageQuery([], { staleTime: 5000 })
-
-  // Static query usage
-  const { data: cached } = getMessageQuery.useQuery()
-
-  const { mutate } = useSetMessageMutation()
-
-  return <div>{data}</div>
-}
-```
-
-## Generated File Structure
-
-```
-src/
-├── canisters/
-│   └── backend/
-│       ├── index.ts          # Reactor + hooks
-│       └── declarations/
-│           └── backend.did.ts  # Type declarations
-├── lib/
-│   └── client.ts             # Your ClientManager (not generated)
-```
+| Option              | Type      | Description                                         | Required |
+| :------------------ | :-------- | :-------------------------------------------------- | :------- |
+| `name`              | `string`  | Name of the canister (used in generated code).      | Yes      |
+| `didFile`           | `string`  | Path to the `.did` file.                            | Yes      |
+| `outDir`            | `string`  | Override output directory for this canister.        | No       |
+| `useDisplayReactor` | `boolean` | Use `DisplayReactor` instead of standard `Reactor`. | `true`   |
+| `clientManagerPath` | `string`  | Override client manager path for this canister.     | No       |
 
 ## How It Works
 
-1. **Build Start**: The plugin reads your `.did` files and uses `@icp-sdk/bindgen` to generate TypeScript declarations
-2. **Code Generation**: Creates a reactor instance and typed hooks for each canister
-3. **Hot Reload**: Watches for `.did` file changes and regenerates hooks automatically
+1. **Build Start**: The plugin reads your `.did` files and generates TypeScript declarations.
+2. **Code Generation**: Creates a reactor instance and typed hooks (using `createActorHooks`) for each canister.
+3. **Hot Reload**: Watches for `.did` file changes and regenerates everything automatically.
+4. **Local Proxy**: Configures a Vite proxy to redirect `/api` calls to your local replica.
+5. **Environment Detection**: Automatically injects canister IDs from `icp-cli` or `dfx` cache into your session.
 
 ## DisplayReactor vs Reactor
 
