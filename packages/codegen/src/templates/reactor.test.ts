@@ -22,9 +22,7 @@ describe("Reactor File Generation", () => {
     it("uses default client path if not provided", () => {
       const options = { ...baseOptions, canisterConfig: { didFile: "foo.did" } }
       const result = generateReactorFile(options)
-      expect(result).toContain(
-        'import { clientManager } from "../../lib/client"'
-      )
+      expect(result).toContain('import { clientManager } from "../../client"')
     })
   })
 

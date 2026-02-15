@@ -21,3 +21,5 @@ export type { BindgenOptions, BindgenResult } from "./bindgen.js"
 
 // Template generators
 export { generateReactorFile } from "./templates/reactor.js"
+export { generateClientFile } from "./templates/client.js"
+export type { ClientGeneratorOptions } from "./templates/client.js"
