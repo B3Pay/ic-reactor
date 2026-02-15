@@ -8,21 +8,9 @@ import * as p from "@clack/prompts"
 import fs from "node:fs"
 import path from "node:path"
 import pc from "picocolors"
-import {
-  loadConfig,
-  getProjectRoot,
-  findConfigFile,
-  ensureDir,
-} from "../utils/config.js"
-import { parseDIDFile } from "@ic-reactor/codegen"
-import {
-  generateReactorFile,
-  generateQueryHook,
-  generateMutationHook,
-} from "../generators/index.js"
-import { getHookFileName } from "@ic-reactor/codegen"
+import { loadConfig, getProjectRoot, findConfigFile } from "../utils/config.js"
+import { generateReactorFile } from "../generators/index.js"
 import { generateDeclarations } from "@ic-reactor/codegen"
-import type { MethodInfo } from "@ic-reactor/codegen"
 
 interface SyncOptions {
   canister?: string
@@ -67,173 +55,52 @@ export async function syncCommand(options: SyncOptions) {
     }
     canistersToSync = [options.canister]
   } else {
-    // Sync all canisters with generated hooks
-    canistersToSync = canisterNames.filter(
-      (name) => (config.generatedHooks[name]?.length ?? 0) > 0
-    )
-
-    if (canistersToSync.length === 0) {
-      p.log.warn("No hooks have been generated yet. Run `add` first.")
-      process.exit(0)
-    }
+    canistersToSync = canisterNames
   }
 
   const spinner = p.spinner()
   spinner.start("Syncing hooks...")
 
   let totalUpdated = 0
-  let totalSkipped = 0
   const errors: string[] = []
 
   for (const canisterName of canistersToSync) {
     const canisterConfig = config.canisters[canisterName]
-    const generatedMethods = config.generatedHooks[canisterName] ?? []
-
-    if (generatedMethods.length === 0) {
-      continue
-    }
-
-    // Parse DID file
-    const didFilePath = path.resolve(projectRoot, canisterConfig.didFile)
-    let methods: MethodInfo[]
-
-    try {
-      methods = parseDIDFile(didFilePath)
-    } catch (error) {
-      errors.push(
-        `${canisterName}: Failed to parse DID file - ${(error as Error).message}`
-      )
-      continue
-    }
-
-    // Normalize hooks to objects
-    const hooks = generatedMethods.map((h) =>
-      typeof h === "string" ? { name: h } : h
-    )
-
-    // Check for removed methods
-    const currentMethodNames = methods.map((m) => m.name)
-    const removedMethods = hooks
-      .filter((h) => !currentMethodNames.includes(h.name))
-      .map((h) => h.name)
-
-    if (removedMethods.length > 0) {
-      p.log.warn(
-        `${canisterName}: Methods removed from DID: ${pc.yellow(removedMethods.join(", "))}`
-      )
-    }
-
-    // Check for new methods
-    const generatedNames = hooks.map((h) => h.name)
-    const newMethods = methods.filter((m) => !generatedNames.includes(m.name))
-
-    if (newMethods.length > 0) {
-      p.log.info(
-        `${canisterName}: New methods available: ${pc.cyan(newMethods.map((m) => m.name).join(", "))}`
-      )
-    }
 
     // Regenerate declarations if missing
     const canisterOutDir = path.join(projectRoot, config.outDir, canisterName)
-    const declarationsDir = path.join(canisterOutDir, "declarations")
+    const didFilePath = path.resolve(projectRoot, canisterConfig.didFile)
 
-    // Check if declarations exist and have files (not just nested empty dir)
-    const declarationsExist =
-      fs.existsSync(declarationsDir) &&
-      fs
-        .readdirSync(declarationsDir)
-        .some((f) => f.endsWith(".ts") || f.endsWith(".js"))
+    spinner.message(`Regenerating declarations for ${canisterName}...`)
 
-    if (!declarationsExist) {
-      spinner.message(`Regenerating declarations for ${canisterName}...`)
+    try {
       const bindgenResult = await generateDeclarations({
         didFile: didFilePath,
         outDir: canisterOutDir,
         canisterName,
       })
 
-      if (bindgenResult.success) {
-        totalUpdated++
-      } else {
+      if (!bindgenResult.success) {
+        errors.push(`${canisterName}: ${bindgenResult.error}`)
         p.log.warn(
           `Could not regenerate declarations for ${canisterName}: ${bindgenResult.error}`
         )
-      }
-    }
-
-    // Regenerate reactor.ts
-    const reactorPath = path.join(canisterOutDir, "reactor.ts")
-
-    const reactorContent = generateReactorFile({
-      canisterName,
-      canisterConfig,
-      config,
-      outDir: canisterOutDir,
-    })
-    fs.writeFileSync(reactorPath, reactorContent)
-    totalUpdated++
-
-    // Regenerate existing hooks
-    const hooksOutDir = path.join(canisterOutDir, "hooks")
-    ensureDir(hooksOutDir)
-
-    for (const hookConfig of hooks) {
-      const methodName = hookConfig.name
-      const method = methods.find((m) => m.name === methodName)
-
-      if (!method) {
-        // Method was removed, skip but warn
-        totalSkipped++
         continue
       }
 
-      // Determine hook type
-      let hookType: string = hookConfig.type || (method.type as string)
+      // Regenerate reactor.ts
+      const reactorPath = path.join(canisterOutDir, "reactor.ts")
 
-      // If no explicit type in config, try to infer from existing files (backward compat)
-      if (!hookConfig.type) {
-        const infiniteQueryFileName = getHookFileName(
-          methodName,
-          "infiniteQuery"
-        )
-        if (fs.existsSync(path.join(hooksOutDir, infiniteQueryFileName))) {
-          hookType = "infiniteQuery"
-        }
-      }
-
-      const fileName = getHookFileName(methodName, hookType)
-      let content: string
-
-      if (hookType.includes("Query")) {
-        content = generateQueryHook({
-          canisterName,
-          method,
-          config,
-          type: hookType as any,
-        })
-      } else {
-        content = generateMutationHook({
-          canisterName,
-          method,
-          config,
-        })
-      }
-
-      const filePath = path.join(hooksOutDir, fileName)
-
-      // Check if file exists and has been customized
-      if (fs.existsSync(filePath)) {
-        const existingContent = fs.readFileSync(filePath, "utf-8")
-
-        // If content is different from what we'd generate, skip (user customized)
-        if (existingContent !== content) {
-          totalSkipped++
-          continue
-        }
-      }
-
-      fs.writeFileSync(filePath, content)
+      const reactorContent = generateReactorFile({
+        canisterName,
+        canisterConfig,
+        config,
+      })
+      fs.writeFileSync(reactorPath, reactorContent)
       totalUpdated++
+    } catch (error) {
+      errors.push(`${canisterName}: ${(error as Error).message}`)
+      p.log.error(`Failed to sync ${canisterName}: ${(error as Error).message}`)
     }
   }
 
@@ -249,11 +116,7 @@ export async function syncCommand(options: SyncOptions) {
   }
 
   console.log()
-  p.note(
-    `Updated: ${pc.green(totalUpdated.toString())} files\n` +
-      `Skipped: ${pc.dim(totalSkipped.toString())} files (preserved customizations)`,
-    "Summary"
-  )
+  p.note(`Updated: ${pc.green(totalUpdated.toString())} canisters`, "Summary")
 
   p.outro(pc.green("✓ Sync complete!"))
 }

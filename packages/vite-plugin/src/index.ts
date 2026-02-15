@@ -43,20 +43,14 @@ const IC_ROOT_KEY_HEX =
 
 export interface IcReactorPluginOptions {
   /** List of canisters to generate hooks for */
-  canisters: (CanisterConfig & { name: string; advanced?: boolean })[]
-  /** Base output directory (default: ./src/canisters) */
+  canisters: (CanisterConfig & { name: string })[]
+  /** Base output directory (default: ./lib/canisters) */
   outDir?: string
   /**
    * Path to import ClientManager from (relative to generated file).
-   * Default: "../../lib/client"
+   * Default: "../../client"
    */
   clientManagerPath?: string
-  /**
-   * Generate advanced per-method hooks with createQuery/createMutation
-   * instead of generic actor hooks (default: false).
-   * Can be overridden per-canister by setting `advanced` on the individual canister entry.
-   */
-  advanced?: boolean
   /**
    * Automatically set the `ic_env` cookie in Vite dev server from
    * `.icp/cache/mappings/local.ids.json` (default: true).
@@ -156,7 +150,7 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
           `[ic-reactor] Generating hooks for ${canister.name} from ${canister.didFile}`
         )
 
-        // Step 1: Generate declarations via @icp-sdk/bindgen
+        // Step 1: Generate declarations via @ic-reactor/codegen
         const result = await generateDeclarations({
           didFile: canister.didFile,
           outDir,
@@ -170,25 +164,7 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
           continue
         }
 
-        console.log(
-          `[ic-reactor] Declarations generated at ${result.declarationsDir}`
-        )
-
-        // Step 2: Determine advanced mode (can be set per-canister; falls back to plugin-level)
-        const useAdvanced = canister.advanced ?? options.advanced ?? false
-        let didContent: string | undefined
-        if (useAdvanced) {
-          try {
-            didContent = fs.readFileSync(canister.didFile, "utf-8")
-          } catch (e) {
-            console.warn(
-              `[ic-reactor] Could not read DID file at ${canister.didFile}, skipping advanced hook generation for ${canister.name}.`
-            )
-            continue
-          }
-        }
-
-        // Step 3: Generate the reactor file using shared codegen
+        // Step 2: Generate the reactor file using shared codegen
         const reactorContent = generateReactorFile({
           canisterName: canister.name,
           canisterConfig: canister,
