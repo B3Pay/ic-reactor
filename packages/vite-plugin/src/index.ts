@@ -142,6 +142,19 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
       }
     },
 
+    config(config) {
+      return {
+        server: {
+          proxy: {
+            "/api": {
+              target: "http://127.0.0.1:4943",
+              changeOrigin: true,
+            },
+          },
+        },
+      }
+    },
+
     async buildStart() {
       for (const canister of options.canisters) {
         const outDir = canister.outDir ?? path.join(baseOutDir, canister.name)
