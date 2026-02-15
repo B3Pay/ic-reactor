@@ -49,7 +49,7 @@ jobs:
         run: pnpm build
 
       - name: Run tests (excluding parser)
-        run: pnpm test:ci
+        run: pnpm test
 
       - name: Determine publish tag
         run: |
