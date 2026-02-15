@@ -2,24 +2,29 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { icReactorPlugin, type IcReactorPluginOptions } from "./index"
 import fs from "fs"
 import path from "path"
-import { execSync } from "child_process"
-import { generateDeclarations, generateReactorFile } from "@ic-reactor/codegen"
+import { execFileSync } from "child_process"
+import {
+  generateDeclarations,
+  generateReactorFile,
+  generateClientFile,
+} from "@ic-reactor/codegen"
 
 // Mock internal dependencies
 vi.mock("@ic-reactor/codegen", () => ({
   generateDeclarations: vi.fn(),
   generateReactorFile: vi.fn(),
+  generateClientFile: vi.fn(),
 }))
 
 // Mock child_process
 vi.mock("child_process", () => ({
-  execSync: vi.fn(),
+  execFileSync: vi.fn(),
 }))
 
 // Mock fs
 vi.mock("fs", () => ({
   default: {
-    existsSync: vi.fn(),
+    existsSync: vi.fn(() => true),
     readFileSync: vi.fn(),
     mkdirSync: vi.fn(),
     writeFileSync: vi.fn(),
@@ -58,6 +63,7 @@ describe("icReactorPlugin", () => {
       declarationsDir: "/mock/declarations",
     })
     ;(generateReactorFile as any).mockReturnValue("export const reactor = {}")
+    ;(generateClientFile as any).mockReturnValue("export const client = {}")
   })
 
   it("should return correct plugin structure", () => {
@@ -72,15 +78,25 @@ describe("icReactorPlugin", () => {
 
   describe("config", () => {
     it("should set up API proxy and headers when icp-cli is available", () => {
-      ;(execSync as any).mockImplementation((cmd: string) => {
-        if (cmd.includes("network status")) {
-          return JSON.stringify({ root_key: "mock-root-key", port: 4943 })
+      ;(execFileSync as any).mockImplementation(
+        (command: string, args: string[], options: any) => {
+          if (
+            command === "icp" &&
+            args.includes("network") &&
+            args.includes("status")
+          ) {
+            return JSON.stringify({ root_key: "mock-root-key", port: 4943 })
+          }
+          if (
+            command === "icp" &&
+            args.includes("canister") &&
+            args.includes("status")
+          ) {
+            return "mock-canister-id"
+          }
+          return ""
         }
-        if (cmd.includes("canister status")) {
-          return "mock-canister-id"
-        }
-        return ""
-      })
+      )
 
       const plugin = icReactorPlugin(mockOptions)
       const config = (plugin as any).config({}, { command: "serve" })
@@ -96,7 +112,7 @@ describe("icReactorPlugin", () => {
     })
 
     it("should fallback to default proxy when icp-cli fails", () => {
-      ;(execSync as any).mockImplementation(() => {
+      ;(execFileSync as any).mockImplementation(() => {
         throw new Error("Command not found")
       })
 
@@ -149,20 +165,26 @@ describe("icReactorPlugin", () => {
         outDir: "src/declarations",
       }
 
-      ;(execSync as any).mockImplementation((cmd: string) => {
-        if (cmd.includes("metadata")) {
-          return "service : { greet: (text) -> (text) query }"
+      ;(execFileSync as any).mockImplementation(
+        (command: string, args: string[]) => {
+          if (command === "icp" && args.includes("metadata")) {
+            return "service : { greet: (text) -> (text) query }"
+          }
+          return ""
         }
-        return ""
-      })
+      )
 
       const plugin = icReactorPlugin(optionsWithMissingDid)
       await (plugin.buildStart as any)()
 
-      expect(execSync).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "icp canister metadata missing_did candid:service"
-        ),
+      expect(execFileSync).toHaveBeenCalledWith(
+        "icp",
+        expect.arrayContaining([
+          "canister",
+          "metadata",
+          "missing_did",
+          "candid:service",
+        ]),
         expect.any(Object)
       )
 
