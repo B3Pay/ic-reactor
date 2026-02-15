@@ -17,8 +17,8 @@
     "sync:examples": "node scripts/sync-example-versions.js",
     "release": "node scripts/release.js",
     "release:tools": "node scripts/release-tools.js",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
+    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
     "format:staged": "pnpm -r --filter './packages/**' exec prettier --write",
     "prepare": "husky"
   },
