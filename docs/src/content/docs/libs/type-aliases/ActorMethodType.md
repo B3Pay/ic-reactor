@@ -7,7 +7,7 @@ prev: true
 
 > **ActorMethodType**\<`A`, `M`\> = `Promise`\<[`ActorMethodReturnType`](ActorMethodReturnType.md)\<`A`\[`M`\]\>\>
 
-Defined in: [types/reactor.ts:44](https://github.com/B3Pay/ic-reactor/blob/1ad0d6bf29dfde414a8adc8f90acf0e842bdda09/packages/core/src/types/reactor.ts#L44)
+Defined in: [types/reactor.ts:44](https://github.com/B3Pay/ic-reactor/blob/4a2ab302b34c2a73abcf0c46325c6598c6e013b4/packages/core/src/types/reactor.ts#L44)
 
 ## Type Parameters
 
@@ -37,7 +37,7 @@ Defined in: [types/reactor.ts:44](https://github.com/B3Pay/ic-reactor/blob/1ad0d
 
 > **withOptions**: (`options?`) => (...`args`) => `Promise`\<[`ActorMethodReturnType`](ActorMethodReturnType.md)\<`A`\[`M`\]\>\>
 
-Defined in: [types/reactor.ts:46](https://github.com/B3Pay/ic-reactor/blob/1ad0d6bf29dfde414a8adc8f90acf0e842bdda09/packages/core/src/types/reactor.ts#L46)
+Defined in: [types/reactor.ts:46](https://github.com/B3Pay/ic-reactor/blob/4a2ab302b34c2a73abcf0c46325c6598c6e013b4/packages/core/src/types/reactor.ts#L46)
 
 #### Parameters
 
