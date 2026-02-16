@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
       - name: Start dfx and run e2e tests

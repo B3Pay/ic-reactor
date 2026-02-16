@@ -35,7 +35,7 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
       - name: Type check
@@ -62,10 +62,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
-      - name: Run tests (excluding parser)
+      - name: Run tests
         run: pnpm test
 
   build:
@@ -89,7 +89,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
       - name: Check package sizes

@@ -45,10 +45,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
-      - name: Run tests (excluding parser)
+      - name: Run tests
         run: pnpm test
 
       - name: Determine publish tag
