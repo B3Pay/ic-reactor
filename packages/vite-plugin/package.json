@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/vite-plugin",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Vite plugin for zero-config IC reactor generation from Candid files",
   "type": "module",
   "main": "./dist/index.cjs",
