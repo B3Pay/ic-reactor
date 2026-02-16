@@ -59,7 +59,11 @@ jobs:
           # Default to 'latest' for stable tags (e.g., v3.0.0). If tag contains a hyphen (e.g., v3.0.0-beta.1), use 'beta'.
           REF=${GITHUB_REF##*/}
           echo "Detected tag: $REF"
-          if [[ "$REF" == *-* ]]; then
+          # Only treat tags with explicit prerelease identifiers as beta
+          # (e.g. v1.2.3-beta.1). A generic hyphen appears in our tag
+          # prefixes like "tools-v1.2.3" so checking for any hyphen
+          # incorrectly marked stable releases as beta.
+          if [[ "$REF" == *-beta* || "$REF" == *-alpha* || "$REF" == *-rc* ]]; then
             echo "TAG=beta" >> $GITHUB_ENV
           else
             echo "TAG=latest" >> $GITHUB_ENV
