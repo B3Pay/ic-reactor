@@ -76,7 +76,7 @@ export class ClientManager {
     port = 4943,
     withLocalEnv,
     withProcessEnv,
-    withCanisterEnv = true,
+    withCanisterEnv,
     agentOptions = {},
     queryClient,
     authClient,
