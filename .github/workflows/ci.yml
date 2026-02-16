@@ -113,7 +113,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: parser-dist
-          path: .
+          path: packages/parser
 
       - name: Build packages (skip parser)
         run: pnpm -r --filter '!@ic-reactor/parser' build
@@ -147,7 +147,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: parser-dist
-          path: .
+          path: packages/parser
 
       - name: Build packages (skip parser)
         run: pnpm -r --filter '!@ic-reactor/parser' build
