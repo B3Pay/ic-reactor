@@ -21,6 +21,7 @@ jobs:
           - packages/codegen
           - packages/vite-plugin
           - packages/cli
+          - packages/parser
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -67,11 +68,20 @@ jobs:
         # pnpm pack converts workspace:^ to real versions, then npm publish for OIDC auth
         working-directory: ${{ matrix.workspace }}
         run: |
-          # Pack first - this converts workspace:^ to actual versions
-          TARBALL=$(pnpm pack | tail -1)
-          echo "Publishing tarball: $TARBALL"
-          # Publish the tarball (npm for OIDC support)
-          npm publish "$TARBALL" --access public --tag $TAG
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          echo "Checking if $PACKAGE_NAME@$PACKAGE_VERSION exists on npm..."
+
+          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" > /dev/null 2>&1; then
+            echo "Version $PACKAGE_VERSION of $PACKAGE_NAME is already published. Skipping."
+          else
+            # Pack first - this converts workspace:^ to actual versions
+            TARBALL=$(pnpm pack | tail -1)
+            echo "Publishing tarball: $TARBALL"
+            # Publish the tarball (npm for OIDC support)
+            npm publish "$TARBALL" --access public --tag $TAG
+          fi
 
       - name: Create GitHub Release
         if: matrix.workspace == 'packages/codegen'
