@@ -46,10 +46,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: pnpm build:tools
+        run: pnpm build
 
       - name: Run tests
-        run: pnpm test:tools
+        run: pnpm test
 
       - name: Determine publish tag
         run: |
