@@ -1,0 +1,30 @@
+name: Docs validation (PR)
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "packages/**"
+      - "packages/**/src/content/**"
+
+jobs:
+  validate-docs:
+    name: MDX lint + docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: MDX lint
+        working-directory: ./docs
+        run: pnpm run lint:mdx
+      - name: Build docs
+        run: pnpm docs:build

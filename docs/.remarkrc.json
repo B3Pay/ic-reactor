@@ -1,0 +1,9 @@
+{
+  "plugins": [
+    "remark-mdx",
+    [
+      "remark-preset-lint-recommended",
+      { "plugins": ["remark-lint-no-duplicate-headings"] }
+    ]
+  ]
+}

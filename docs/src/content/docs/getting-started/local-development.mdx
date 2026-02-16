@@ -131,49 +131,49 @@ This error usually means the agent hasn't fetched the local root key.
 
 Check if your local replica is running and on which port.
 
-1.  Run `dfx info webserver-port` to verify the port.
-2.  If it's not `4943`, update your `ClientManager` config:
+1. Run `dfx info webserver-port` to verify the port.
+2. If it's not `4943`, update your `ClientManager` config:
 
-    ```typescript
-    export const clientManager = new ClientManager({
-      port: 8000, // or your specific port
-      withProcessEnv: true,
-    })
-    ```
+   ```typescript
+   export const clientManager = new ClientManager({
+     port: 8000, // or your specific port
+     withProcessEnv: true,
+   })
+   ```
 
 ### Internet Identity on Localhost
 
 To use Internet Identity locally, you need to deploy a local instance of the II canister.
 
-1.  Pull the dependency in `dfx.json`:
+1. Pull the dependency in `dfx.json`:
 
-    ```json
-    {
-      "canisters": {
-        //...
-        "internet_identity": {
-          "type": "custom",
-          "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
-          "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
-          "specified_id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
-        }
-      }
-    }
-    ```
+   ```json
+   {
+     "canisters": {
+       //...
+       "internet_identity": {
+         "type": "custom",
+         "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
+         "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
+         "specified_id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+       }
+     }
+   }
+   ```
 
-2.  Deploy it:
+2. Deploy it:
 
-    It is recommended to deploy it to the default canister ID:
+   It is recommended to deploy it to the default canister ID:
 
-    ```bash
-    dfx deploy internet_identity --specified-id rdmx6-jaaaa-aaaaa-aaadq-cai
-    ```
+   ```bash
+   dfx deploy internet_identity --specified-id rdmx6-jaaaa-aaaaa-aaadq-cai
+   ```
 
-3.  Login using the local provider URL. `useAuth` handles this automatically if `withProcessEnv` is set correctly!
+3. Login using the local provider URL. `useAuth` handles this automatically if `withProcessEnv` is set correctly!
 
-    ```typescript
-    // Auto-detects based on network
-    // Local: http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943
-    // Mainnet: https://identity.ic0.app
-    const { login } = useAuth()
-    ```
+   ```typescript
+   // Auto-detects based on network
+   // Local: http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943
+   // Mainnet: https://identity.ic0.app
+   const { login } = useAuth()
+   ```

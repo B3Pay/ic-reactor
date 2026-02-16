@@ -377,7 +377,7 @@ await reactor2.initialize()
 
 // Get available methods
 const methods = reactor.getMethodNames()
-console.log(methods) // ["icrc1_balance_of", "icrc1_transfer", ...]
+console.log(methods) // \["icrc1_balance_of", "icrc1_transfer", ...\]
 ```
 
 ### Building Dynamic Forms

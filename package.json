@@ -23,7 +23,11 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,json,md,mdx,css,scss,html}": [
+    "docs/src/content/**/*.mdx": [
+      "prettier --write",
+      "pnpm --filter @ic-reactor/docs exec -- remark --frail"
+    ],
+    "*.{js,jsx,ts,tsx,json,md,css,scss,html}": [
       "prettier --write"
     ]
   },
