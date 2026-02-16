@@ -7,7 +7,7 @@ prev: true
 
 > **Validator**\<`Args`\> = (`args`) => [`ValidationResult`](ValidationResult.md) \| `Promise`\<[`ValidationResult`](ValidationResult.md)\>
 
-Defined in: [types/display-reactor.ts:48](https://github.com/B3Pay/ic-reactor/blob/4a2ab302b34c2a73abcf0c46325c6598c6e013b4/packages/core/src/types/display-reactor.ts#L48)
+Defined in: [types/display-reactor.ts:48](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/types/display-reactor.ts#L48)
 
 A validator function that validates method arguments.
 Receives display types (strings for Principal, bigint, etc.).

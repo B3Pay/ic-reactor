@@ -7,7 +7,7 @@ prev: true
 
 > **getVariantKey**\<`T`\>(`variant`): [`CandidVariantKey`](../type-aliases/CandidVariantKey.md)\<`T`\>
 
-Defined in: [utils/candid.ts:71](https://github.com/B3Pay/ic-reactor/blob/4a2ab302b34c2a73abcf0c46325c6598c6e013b4/packages/core/src/utils/candid.ts#L71)
+Defined in: [utils/candid.ts:71](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/candid.ts#L71)
 
 Extracts the key from a Candid variant type.
 Variants in Candid are represented as objects with a single key-value pair.
