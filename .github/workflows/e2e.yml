@@ -35,6 +35,17 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/parser/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/parser/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: Setup dfx
         uses: dfinity/setup-dfx@main
 
@@ -44,7 +55,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages
+      - name: Build packages (excluding parser)
         run: pnpm build
 
       - name: Start dfx and run e2e tests

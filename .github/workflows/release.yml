@@ -45,10 +45,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/parser/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/parser/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build parser package
+        run: pnpm --filter @ic-reactor/parser build
+
+      - name: Build packages (excluding parser)
         run: pnpm build
 
-      - name: Run tests
+      - name: Run tests (excluding parser)
         run: pnpm test
 
       - name: Determine publish tag

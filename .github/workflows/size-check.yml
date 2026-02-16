@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages
+      - name: Build packages (excluding parser)
         run: pnpm build
 
       - name: Check bundle size

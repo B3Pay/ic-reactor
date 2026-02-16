@@ -35,14 +35,14 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
-      - name: Build packages (skip parser)
-        run: pnpm -r --filter '!@ic-reactor/parser' build
+      - name: Build packages (excluding parser)
+        run: pnpm build
 
       - name: Type check
         run: pnpm exec tsc --noEmit
 
-  parser-build:
-    name: Build @ic-reactor/parser (wasm)
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -62,95 +62,49 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Cache Cargo registry
+      - name: Build packages (excluding parser)
+        run: pnpm build
+
+      - name: Run tests (excluding parser)
+        run: pnpm test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache parser target
-        uses: actions/cache@v4
-        with:
-          path: packages/parser/target
-          key: ${{ runner.os }}-cargo-target-${{ hashFiles('packages/parser/Cargo.lock') }}
+            packages/parser/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/parser/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-target-
+            ${{ runner.os }}-cargo-
 
-      - name: Build @ic-reactor/parser
+      - name: Build parser package
         run: pnpm --filter @ic-reactor/parser build
 
-      - name: Upload parser dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: parser-dist
-          path: packages/parser/dist
-
-  test:
-    name: Test
-    needs: parser-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download parser dist
-        uses: actions/download-artifact@v4
-        with:
-          name: parser-dist
-          path: packages/parser
-
-      - name: Build packages (skip parser)
-        run: pnpm -r --filter '!@ic-reactor/parser' build
-
-      - name: Run tests
-        run: pnpm test
-
-  build:
-    name: Build
-    needs: parser-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download parser dist
-        uses: actions/download-artifact@v4
-        with:
-          name: parser-dist
-          path: packages/parser
-
-      - name: Build packages (skip parser)
-        run: pnpm -r --filter '!@ic-reactor/parser' build
+      - name: Build packages (excluding parser)
+        run: pnpm build
 
       - name: Check package sizes
         run: pnpm size
