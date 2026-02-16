@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [errors/index.ts:40](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L40)
+Defined in: [errors/index.ts:40](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L40)
 
 Error thrown when the canister returns an Err result.
 The `err` property contains the typed error value from the canister.
@@ -31,7 +31,7 @@ The type of the error value from the canister
 
 > **new CanisterError**\<`E`\>(`err`): `CanisterError`\<`E`\>
 
-Defined in: [errors/index.ts:48](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L48)
+Defined in: [errors/index.ts:48](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L48)
 
 #### Parameters
 
@@ -53,7 +53,7 @@ Defined in: [errors/index.ts:48](https://github.com/B3Pay/ic-reactor/blob/ac0498
 
 > `readonly` **err**: `E`
 
-Defined in: [errors/index.ts:42](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L42)
+Defined in: [errors/index.ts:42](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L42)
 
 The raw error value from the canister
 
@@ -63,7 +63,7 @@ The raw error value from the canister
 
 > `readonly` **code**: `string`
 
-Defined in: [errors/index.ts:44](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L44)
+Defined in: [errors/index.ts:44](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L44)
 
 The error code, extracted from the error object or variant key
 
@@ -73,7 +73,7 @@ The error code, extracted from the error object or variant key
 
 > `readonly` **details**: [`NullishType`](../type-aliases/NullishType.md)\<`Map`\<`string`, `string`\>\>
 
-Defined in: [errors/index.ts:46](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L46)
+Defined in: [errors/index.ts:46](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L46)
 
 Optional error details Map
 
@@ -83,7 +83,7 @@ Optional error details Map
 
 > `static` **isApiError**(`error`): `error is ApiError`
 
-Defined in: [errors/index.ts:105](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L105)
+Defined in: [errors/index.ts:105](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L105)
 
 Type guard to check if an error object follows the API error format.
 
@@ -103,7 +103,7 @@ Type guard to check if an error object follows the API error format.
 
 > `static` **create**(`error`, `message?`): `CanisterError`
 
-Defined in: [errors/index.ts:119](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L119)
+Defined in: [errors/index.ts:119](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L119)
 
 Factory method to create a CanisterError from any error.
 If the input is already a CanisterError, it returns it.

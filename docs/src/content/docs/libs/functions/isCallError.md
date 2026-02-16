@@ -7,7 +7,7 @@ prev: true
 
 > **isCallError**(`error`): `error is CallError`
 
-Defined in: [errors/index.ts:165](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L165)
+Defined in: [errors/index.ts:165](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L165)
 
 Type guard to check if an error is a CallError
 

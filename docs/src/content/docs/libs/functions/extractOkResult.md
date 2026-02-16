@@ -7,7 +7,7 @@ prev: true
 
 > **extractOkResult**\<`T`\>(`result`): [`OkResult`](../type-aliases/OkResult.md)\<`T`\>
 
-Defined in: [utils/helper.ts:75](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/utils/helper.ts#L75)
+Defined in: [utils/helper.ts:75](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/utils/helper.ts#L75)
 
 Helper function for extracting the value from a compiled result { Ok: T } or throw a CanisterError if { Err: E }
 Supports both uppercase (Ok/Err - Rust) and lowercase (ok/err - Motoko) conventions.

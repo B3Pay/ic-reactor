@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/display-reactor.ts:63](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/display-reactor.ts#L63)
+Defined in: [types/display-reactor.ts:63](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/display-reactor.ts#L63)
 
 ## Extends
 
@@ -23,7 +23,7 @@ Defined in: [types/display-reactor.ts:63](https://github.com/B3Pay/ic-reactor/bl
 
 > `optional` **validators**: `Partial`\<`{ [M in string]: DisplayValidator<A, M> }`\>
 
-Defined in: [types/display-reactor.ts:70](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/display-reactor.ts#L70)
+Defined in: [types/display-reactor.ts:70](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/display-reactor.ts#L70)
 
 Optional initial validators to register.
 Validators receive display types (strings for Principal, bigint, etc.)
@@ -34,7 +34,7 @@ Validators receive display types (strings for Principal, bigint, etc.)
 
 > **clientManager**: [`ClientManager`](../classes/ClientManager.md)
 
-Defined in: [types/reactor.ts:37](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/reactor.ts#L37)
+Defined in: [types/reactor.ts:37](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/reactor.ts#L37)
 
 #### Inherited from
 
@@ -46,7 +46,7 @@ Defined in: [types/reactor.ts:37](https://github.com/B3Pay/ic-reactor/blob/ac049
 
 > **name**: `string`
 
-Defined in: [types/reactor.ts:38](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/reactor.ts#L38)
+Defined in: [types/reactor.ts:38](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/reactor.ts#L38)
 
 #### Inherited from
 
@@ -58,7 +58,7 @@ Defined in: [types/reactor.ts:38](https://github.com/B3Pay/ic-reactor/blob/ac049
 
 > **idlFactory**: (`IDL`) => `any`
 
-Defined in: [types/reactor.ts:39](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/reactor.ts#L39)
+Defined in: [types/reactor.ts:39](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/reactor.ts#L39)
 
 #### Parameters
 
@@ -80,7 +80,7 @@ Defined in: [types/reactor.ts:39](https://github.com/B3Pay/ic-reactor/blob/ac049
 
 > `optional` **canisterId**: [`CanisterId`](../type-aliases/CanisterId.md)
 
-Defined in: [types/reactor.ts:40](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/reactor.ts#L40)
+Defined in: [types/reactor.ts:40](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/reactor.ts#L40)
 
 #### Inherited from
 
@@ -92,7 +92,7 @@ Defined in: [types/reactor.ts:40](https://github.com/B3Pay/ic-reactor/blob/ac049
 
 > `optional` **pollingOptions**: `PollingOptions`
 
-Defined in: [types/reactor.ts:41](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/reactor.ts#L41)
+Defined in: [types/reactor.ts:41](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/reactor.ts#L41)
 
 #### Inherited from
 

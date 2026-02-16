@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [errors/index.ts:6](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L6)
+Defined in: [errors/index.ts:6](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L6)
 
 Interface representing the generic shape of an API error.
 
@@ -15,7 +15,7 @@ Interface representing the generic shape of an API error.
 
 > **code**: `string`
 
-Defined in: [errors/index.ts:7](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L7)
+Defined in: [errors/index.ts:7](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L7)
 
 ---
 
@@ -23,7 +23,7 @@ Defined in: [errors/index.ts:7](https://github.com/B3Pay/ic-reactor/blob/ac04980
 
 > **message**: [`NullishType`](../type-aliases/NullishType.md)\<`string`\>
 
-Defined in: [errors/index.ts:8](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L8)
+Defined in: [errors/index.ts:8](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L8)
 
 ---
 
@@ -31,4 +31,4 @@ Defined in: [errors/index.ts:8](https://github.com/B3Pay/ic-reactor/blob/ac04980
 
 > **details**: [`NullishType`](../type-aliases/NullishType.md)\<`Map`\<`string`, `string`\>\>
 
-Defined in: [errors/index.ts:9](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/errors/index.ts#L9)
+Defined in: [errors/index.ts:9](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/errors/index.ts#L9)

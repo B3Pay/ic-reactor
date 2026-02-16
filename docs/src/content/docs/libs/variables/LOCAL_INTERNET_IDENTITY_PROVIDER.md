@@ -7,4 +7,4 @@ prev: true
 
 > `const` **LOCAL_INTERNET_IDENTITY_PROVIDER**: `"http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"` = `"http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"`
 
-Defined in: [utils/constants.ts:11](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/utils/constants.ts#L11)
+Defined in: [utils/constants.ts:11](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/utils/constants.ts#L11)

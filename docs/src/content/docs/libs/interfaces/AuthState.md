@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:89](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/client.ts#L89)
+Defined in: [types/client.ts:89](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/client.ts#L89)
 
 Represents the authentication state of an agent.
 
@@ -15,7 +15,7 @@ Represents the authentication state of an agent.
 
 > **identity**: `Identity` \| `null`
 
-Defined in: [types/client.ts:90](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/client.ts#L90)
+Defined in: [types/client.ts:90](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/client.ts#L90)
 
 ---
 
@@ -23,7 +23,7 @@ Defined in: [types/client.ts:90](https://github.com/B3Pay/ic-reactor/blob/ac0498
 
 > **isAuthenticating**: `boolean`
 
-Defined in: [types/client.ts:95](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/client.ts#L95)
+Defined in: [types/client.ts:95](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/client.ts#L95)
 
 Indicates whether the authentication process is ongoing.
 
@@ -33,7 +33,7 @@ Indicates whether the authentication process is ongoing.
 
 > **isAuthenticated**: `boolean`
 
-Defined in: [types/client.ts:100](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/client.ts#L100)
+Defined in: [types/client.ts:100](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/client.ts#L100)
 
 Indicates whether the agent is authenticated.
 
@@ -43,6 +43,6 @@ Indicates whether the agent is authenticated.
 
 > **error**: `Error` \| `undefined`
 
-Defined in: [types/client.ts:105](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/client.ts#L105)
+Defined in: [types/client.ts:105](https://github.com/B3Pay/ic-reactor/blob/cf54e1ad8c3da2b3da74d165a74aa76f952c49e1/packages/core/src/types/client.ts#L105)
 
 Represents any error that occurred during authentication.
