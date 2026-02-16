@@ -7,7 +7,7 @@ prev: true
 
 > **nonNullish**\<`T`\>(`value`): `value is T`
 
-Defined in: [utils/helper.ts:106](https://github.com/B3Pay/ic-reactor/blob/4486d2c7aa6330ac10c9ca4c4627705e94045f59/packages/core/src/utils/helper.ts#L106)
+Defined in: [utils/helper.ts:106](https://github.com/B3Pay/ic-reactor/blob/1ad0d6bf29dfde414a8adc8f90acf0e842bdda09/packages/core/src/utils/helper.ts#L106)
 
 ## Type Parameters
 

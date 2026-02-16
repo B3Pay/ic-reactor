@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:108](https://github.com/B3Pay/ic-reactor/blob/4486d2c7aa6330ac10c9ca4c4627705e94045f59/packages/core/src/types/client.ts#L108)
+Defined in: [types/client.ts:108](https://github.com/B3Pay/ic-reactor/blob/1ad0d6bf29dfde414a8adc8f90acf0e842bdda09/packages/core/src/types/client.ts#L108)
 
 ## Extends
 
@@ -17,4 +17,4 @@ Defined in: [types/client.ts:108](https://github.com/B3Pay/ic-reactor/blob/4486d
 
 > `optional` **agent**: `HttpAgent`
 
-Defined in: [types/client.ts:109](https://github.com/B3Pay/ic-reactor/blob/4486d2c7aa6330ac10c9ca4c4627705e94045f59/packages/core/src/types/client.ts#L109)
+Defined in: [types/client.ts:109](https://github.com/B3Pay/ic-reactor/blob/1ad0d6bf29dfde414a8adc8f90acf0e842bdda09/packages/core/src/types/client.ts#L109)

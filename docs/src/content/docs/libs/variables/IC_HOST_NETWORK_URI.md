@@ -7,4 +7,4 @@ prev: true
 
 > `const` **IC_HOST_NETWORK_URI**: `"https://ic0.app"` = `"https://ic0.app"`
 
-Defined in: [utils/constants.ts:5](https://github.com/B3Pay/ic-reactor/blob/4486d2c7aa6330ac10c9ca4c4627705e94045f59/packages/core/src/utils/constants.ts#L5)
+Defined in: [utils/constants.ts:5](https://github.com/B3Pay/ic-reactor/blob/1ad0d6bf29dfde414a8adc8f90acf0e842bdda09/packages/core/src/utils/constants.ts#L5)

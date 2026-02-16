@@ -7,7 +7,7 @@ prev: true
 
 > **ErrResult**\<`T`\> = `T` _extends_ `object` ? `never` : `T` _extends_ `object` ? `never` : `T` _extends_ `object` ? `E` : `T` _extends_ `object` ? `E` : `never`
 
-Defined in: [types/result.ts:29](https://github.com/B3Pay/ic-reactor/blob/4486d2c7aa6330ac10c9ca4c4627705e94045f59/packages/core/src/types/result.ts#L29)
+Defined in: [types/result.ts:29](https://github.com/B3Pay/ic-reactor/blob/1ad0d6bf29dfde414a8adc8f90acf0e842bdda09/packages/core/src/types/result.ts#L29)
 
 ## Type Parameters
 
