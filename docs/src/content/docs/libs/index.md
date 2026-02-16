@@ -102,6 +102,7 @@ description: Generated API reference documentation
 - [generateKey](functions/generateKey.md)
 - [isInLocalOrDevelopment](functions/isInLocalOrDevelopment.md)
 - [getProcessEnvNetwork](functions/getProcessEnvNetwork.md)
+- [isDev](functions/isDev.md)
 - [getNetworkByHostname](functions/getNetworkByHostname.md)
 - [extractOkResult](functions/extractOkResult.md)
 - [isNullish](functions/isNullish.md)

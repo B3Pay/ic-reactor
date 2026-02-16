@@ -7,6 +7,17 @@ declare namespace StarlightApp {
     "open.t3chat": string
     "open.v0": string
     "view.markdown": string
+    share: string
+    "share.linkedin": string
+    "share.x": string
+    "share.threads": string
+    "share.bluesky": string
+    "share.facebook": string
+    "share.reddit": string
+    "share.hackernews": string
+    "share.email": string
+    "share.whatsapp": string
+    "share.telegram": string
   }
   interface I18n extends PluginUIStringKeys {}
 }

@@ -7,7 +7,7 @@ prev: true
 
 > **fromZodSchema**\<`T`\>(`schema`): [`Validator`](../type-aliases/Validator.md)\<`T`[]\>
 
-Defined in: [utils/zod.ts:28](https://github.com/B3Pay/ic-reactor/blob/54730e94e191e004381d2aa1cc1c772e288b8460/packages/core/src/utils/zod.ts#L28)
+Defined in: [utils/zod.ts:28](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/utils/zod.ts#L28)
 
 Create a validator from a Zod schema.
 This is a utility function to easily integrate Zod schemas as validators.

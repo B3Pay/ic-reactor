@@ -7,7 +7,7 @@ prev: true
 
 > **BaseActor**\<`T`\> = `ActorSubclass`\<`T`\>
 
-Defined in: [types/reactor.ts:18](https://github.com/B3Pay/ic-reactor/blob/54730e94e191e004381d2aa1cc1c772e288b8460/packages/core/src/types/reactor.ts#L18)
+Defined in: [types/reactor.ts:18](https://github.com/B3Pay/ic-reactor/blob/ac04980132e04e7fceed45b0648900e70d777eab/packages/core/src/types/reactor.ts#L18)
 
 ## Type Parameters
 
