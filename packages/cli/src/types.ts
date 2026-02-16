@@ -5,7 +5,7 @@
  * are now in @ic-reactor/codegen.
  */
 
-import type { CanisterConfig, HookType } from "@ic-reactor/codegen"
+export type { CanisterConfig, HookType } from "@ic-reactor/codegen"
 
 export interface HookConfig {
   name: string

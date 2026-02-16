@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "CLI tool to generate shadcn-style React hooks for ICP canisters",
   "main": "dist/index.js",
@@ -41,7 +41,7 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^25.2.2",
+    "@types/node": "^25.2.3",
     "tsup": "^8.3.5",
     "typescript": "~5.9.3"
   },

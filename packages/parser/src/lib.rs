@@ -1,3 +1,4 @@
+use candid_parser::syntax::IDLMergedProg;
 use candid_parser::{check_prog, IDLProg, TypeEnv};
 use wasm_bindgen::prelude::*;
 
@@ -18,11 +19,11 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
     let mut env = TypeEnv::new();
     let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
 
-    let res = candid_parser::bindings::typescript::compile(&env, &actor);
+    let merged = IDLMergedProg::new(ast);
+    let res = candid_parser::bindings::typescript::compile(&env, &actor, &merged);
 
     Ok(res)
 }
-
 
 #[wasm_bindgen(js_name = validateIDL)]
 pub fn validate_idl(prog: String) -> Result<bool, String> {
@@ -44,4 +45,3 @@ pub fn verify_compatability(a: String, b: String) -> Result<bool, String> {
         Err(e) => Err(e.to_string()),
     }
 }
-

@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/vite-plugin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Vite plugin for zero-config IC reactor generation from Candid files",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -19,7 +19,8 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
-    "dev": "tsup src/index.ts --format esm,cjs --dts --watch --tsconfig tsconfig.json"
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch --tsconfig tsconfig.json",
+    "test": "vitest run"
   },
   "keywords": [
     "vite",
@@ -48,9 +49,10 @@
   },
   "devDependencies": {
     "@icp-sdk/bindgen": "^0.2.1",
-    "@types/node": "^25.2.2",
+    "@types/node": "^25.2.3",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
   }
 }

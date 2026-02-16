@@ -70,19 +70,22 @@ console.log(ts)
 // ...
 ```
 
-### Integration with Core
+### Integration with Candid Package
 
-This package is designed to work seamlessly with `@ic-reactor/candid`. When you initialize a `CandidAdapter` or `CandidReactor`, it can automatically use this parser if it's installed/loaded.
+This package is designed to work seamlessly with `@ic-reactor/candid`. When you initialize a `CandidAdapter` or `CandidReactor`, it can automatically use this parser.
 
 ```typescript
-import { createCandidAdapter } from "@ic-reactor/core"
+import { CandidAdapter } from "@ic-reactor/candid"
+import { ClientManager } from "@ic-reactor/core"
 
-const adapter = createCandidAdapter({ agentManager })
+const clientManager = new ClientManager()
+const adapter = new CandidAdapter({ clientManager })
 
-// This internally loads the WASM from @ic-reactor/parser if available
-await adapter.initializeParser()
+// Load the WASM parser
+await adapter.loadParser()
 
-const { idlFactory } = adapter.parseDidToJs("service:{}")
+// Now the adapter uses @ic-reactor/parser for local compilation
+const { idlFactory } = await adapter.getCandidDefinition("canister-id")
 ```
 
 ## See Also

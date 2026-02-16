@@ -54,8 +54,8 @@ export async function initCommand(options: InitOptions) {
     // Interactive mode
     const outDir = await p.text({
       message: "Where should generated hooks be placed?",
-      placeholder: "src/canisters",
-      defaultValue: "src/canisters",
+      placeholder: "src/lib/canisters",
+      defaultValue: "src/lib/canisters",
       validate: (value) => {
         if (!value) return "Output directory is required"
         return undefined
@@ -100,17 +100,17 @@ export async function initCommand(options: InitOptions) {
   ensureDir(fullOutDir)
 
   // Create a sample client manager if it doesn't exist
-  const clientManagerPath = path.join(projectRoot, "src/lib/client.ts")
+  const clientManagerPath = path.join(projectRoot, "src/lib/clients.ts")
   if (!fs.existsSync(clientManagerPath)) {
     const createClient = await p.confirm({
-      message: "Create a sample client manager at src/lib/client.ts?",
+      message: "Create a sample client manager at src/lib/clients.ts?",
       initialValue: true,
     })
 
     if (!p.isCancel(createClient) && createClient) {
       ensureDir(path.dirname(clientManagerPath))
       fs.writeFileSync(clientManagerPath, getClientManagerTemplate())
-      p.log.success(`Created ${pc.green("src/lib/client.ts")}`)
+      p.log.success(`Created ${pc.green("src/lib/clients.ts")}`)
     }
   }
 
@@ -170,8 +170,8 @@ async function promptForCanister(
   const clientManagerPath = await p.text({
     message:
       "Import path to your client manager (relative from generated hooks)",
-    placeholder: "../../lib/client",
-    defaultValue: "../../lib/client",
+    placeholder: "../../clients",
+    defaultValue: "../../clients",
   })
 
   if (p.isCancel(clientManagerPath)) return null

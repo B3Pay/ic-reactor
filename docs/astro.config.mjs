@@ -241,6 +241,14 @@ export default defineConfig({
           label: "Packages",
           items: [
             {
+              label: "Vite Plugin",
+              link: "/packages/vite-plugin",
+            },
+            {
+              label: "CLI",
+              link: "/packages/cli",
+            },
+            {
               label: "@ic-reactor/candid",
               items: [
                 { label: "Overview", link: "/packages/candid/" },

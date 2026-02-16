@@ -6,57 +6,89 @@ editUrl: false
 
 import { Aside, Steps, Tabs, TabItem } from "@astrojs/starlight/components"
 
-This guide explains how to configure IC Reactor for local development against a local Internet Computer (IC) replica.
+## Local Development Workflow
 
-## Prerequisites
+The modern way to handle local development is using `icp-cli` and `@ic-reactor/vite-plugin`. This setup automates environment variables and proxy configuration.
 
-- [DFX SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install/index.mdx) installed
-- A local dfx project running (`dfx start`)
+### 1. Configure Vite Plugin
 
-## Configuration
+If you're using Vite, add the plugin to your `vite.config.ts`. It will automatically proxy `/api` requests to your local replica and inject canister IDs.
 
-The easiest way to switch between local and mainnet environments is using `ClientManager` with the `withProcessEnv` option.
+```typescript
+// vite.config.ts
+import { icReactorPlugin } from "@ic-reactor/vite-plugin"
 
-### 1. Setup ClientManager
+export default defineConfig({
+  plugins: [
+    icReactorPlugin({
+      canisters: [
+        {
+          name: "backend",
+          didFile: "src/declarations/backend.did",
+        },
+      ],
+    }),
+  ],
+})
+```
+
+### 2. Set Up ClientManager
+
+The `ClientManager` can now automatically detect your environment through the `ic_env` cookie set by the Vite plugin or an asset canister.
 
 ```typescript
 // src/reactor/index.ts
 import { ClientManager } from "@ic-reactor/react"
+import { queryClient } from "./queryClient"
 
+export const clientManager = new ClientManager({
+  queryClient,
+  // Automatically detects network and canister IDs from ic_env cookie
+})
+```
+
+### 3. Run Development Cycle
+
+<Steps>
+1. Start the local network:
+   ```bash
+   icp network start -d
+   ```
+
+2. Deploy your backend:
+
+   ```bash
+   icp deploy backend
+   ```
+
+3. Start your dev server:
+   ```bash
+   npm run dev
+   ```
+   </Steps>
+
+## Manual Configuration (Optional)
+
+If you're not using the Vite plugin, you can still configure everything manually.
+
+### 1. Setup ClientManager with withProcessEnv
+
+```typescript
 export const clientManager = new ClientManager({
   // Auto-detects network based on DFX_NETWORK env var
   withProcessEnv: true,
-
-  // Optional: Explicitly define port if different from default (4943)
-  // port: 8000
 })
 ```
 
 ### 2. Configure Environment Variables
 
-For Vite, create or update your `.env` files:
+Create `.env.local` for local development:
 
-<Tabs>
-  <TabItem label=".env.local">
-    Use this for local development:
-    
-    ```bash
-    # .env.local
-    DFX_NETWORK=local
-    # Canister IDs from dfx canister id <name>
-    VITE_BACKEND_CANISTER_ID=bkyz2-fmaaa-aaaaa-qaaaq-cai
-    ```
-  </TabItem>
-  <TabItem label=".env.production">
-    Use this for production build:
-    
-    ```bash
-    # .env.production
-    DFX_NETWORK=ic
-    VITE_BACKEND_CANISTER_ID=<production-canister-id>
-    ```
-  </TabItem>
-</Tabs>
+```bash
+# .env.local
+DFX_NETWORK=local
+VITE_BACKEND_CANISTER_ID=bkyz2-fmaaa-aaaaa-qaaaq-cai
+```
 
 ## Fetching Root Key
 

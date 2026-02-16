@@ -23,7 +23,7 @@
     "build": "tsc",
     "test": "vitest run",
     "size": "size-limit",
-    "analyze": "size-limit --why"
+    "analyze": "size-limit"
   },
   "repository": {
     "type": "git",

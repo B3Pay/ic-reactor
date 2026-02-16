@@ -6,12 +6,12 @@ import fs from "node:fs"
 import path from "node:path"
 import type { ReactorConfig } from "../types.js"
 
-export const CONFIG_FILE_NAME = "reactor.config.json"
+export const CONFIG_FILE_NAME = "ic-reactor.json"
 
 export const DEFAULT_CONFIG: ReactorConfig = {
   $schema:
     "https://raw.githubusercontent.com/B3Pay/ic-reactor/main/packages/cli/schema.json",
-  outDir: "src/canisters",
+  outDir: "src/lib/canisters",
   canisters: {},
   generatedHooks: {},
 }

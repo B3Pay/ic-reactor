@@ -1,10 +1,10 @@
 /**
  * Bindgen utilities
  *
- * Generates TypeScript declarations from Candid files using @icp-sdk/bindgen.
+ * Generates TypeScript declarations from Candid files using @ic-reactor/parser.
  */
 
-import { generate } from "@icp-sdk/bindgen/core"
+import { didToJs, didToTs } from "@ic-reactor/parser"
 import path from "node:path"
 import fs from "node:fs"
 
@@ -27,7 +27,8 @@ export interface BindgenResult {
  * Generate TypeScript declarations from a Candid file
  *
  * This creates:
- * - declarations/<canisterName>.did.ts - IDL factory and types
+ * - declarations/<canisterName>.js - IDL factory
+ * - declarations/<canisterName>.d.ts - Types
  */
 export async function generateDeclarations(
   options: BindgenOptions
@@ -44,8 +45,12 @@ export async function generateDeclarations(
   }
 
   const declarationsDir = path.join(outDir, "declarations")
+  const didFileName = path.basename(didFile) // e.g., "my_canister.did"
 
   try {
+    // Read content first so we can safely delete the directory if didFile is inside it
+    const didContent = fs.readFileSync(didFile, "utf-8")
+
     // Ensure the output directory exists
     if (!fs.existsSync(outDir)) {
       fs.mkdirSync(outDir, { recursive: true })
@@ -57,17 +62,18 @@ export async function generateDeclarations(
     }
     fs.mkdirSync(declarationsDir, { recursive: true })
 
-    // Note: bindgen appends "declarations" internally, so we pass the parent directory
-    await generate({
-      didFile,
-      outDir, // Pass the parent directory; bindgen appends "declarations"
-      output: {
-        actor: {
-          disabled: true, // We don't need actor creation, we use Reactor
-        },
-        force: true, // Overwrite existing files
-      },
-    })
+    const jsContent = didToJs(didContent)
+    const tsContent = didToTs(didContent)
+
+    // Write .did, .js and .d.ts
+    const baseName = didFileName.replace(/\.did$/, "")
+    const jsPath = path.join(declarationsDir, baseName + ".js")
+    const dtsPath = path.join(declarationsDir, baseName + ".d.ts")
+    const didPath = path.join(declarationsDir, didFileName)
+
+    fs.writeFileSync(jsPath, jsContent)
+    fs.writeFileSync(dtsPath, tsContent)
+    fs.writeFileSync(didPath, didContent)
 
     return {
       success: true,
@@ -90,24 +96,6 @@ export function declarationsExist(
   canisterName: string
 ): boolean {
   const declarationsDir = path.join(outDir, "declarations")
-  const didTsPath = path.join(declarationsDir, `${canisterName}.did.ts`)
+  const didTsPath = path.join(declarationsDir, `${canisterName}.d.ts`)
   return fs.existsSync(didTsPath)
-}
-
-/**
- * Save a Candid source to a file (for use with fetch command)
- */
-export function saveCandidFile(
-  candidSource: string,
-  outDir: string,
-  canisterName: string
-): string {
-  const candidDir = path.join(outDir, "candid")
-  if (!fs.existsSync(candidDir)) {
-    fs.mkdirSync(candidDir, { recursive: true })
-  }
-
-  const candidPath = path.join(candidDir, `${canisterName}.did`)
-  fs.writeFileSync(candidPath, candidSource)
-  return candidPath
 }

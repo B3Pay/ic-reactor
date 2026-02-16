@@ -6,11 +6,7 @@
   "description": "The modern, type-safe library for building Internet Computer applications",
   "scripts": {
     "build": "pnpm -r --filter \"./packages/**\" build",
-    "build:ci": "pnpm -r --filter \"./packages/**\" --filter \"!./packages/parser\" build",
-    "build:tools": "pnpm -r --filter \"./packages/**\" --filter \"!./packages/react\" --filter \"!./packages/core\" --filter \"!./packages/candid\" build",
     "test": "pnpm -r --filter \"./packages/**\" test",
-    "test:ci": "pnpm -r --filter \"./packages/**\" --filter \"!./packages/parser\" test",
-    "test:tools": "pnpm -r --filter \"./packages/**\" --filter \"!./packages/react\" --filter \"!./packages/core\" --filter \"!./packages/candid\" test",
     "test-e2e": "cd e2e && sh ./test.sh",
     "docs:build": "cd docs && pnpm build",
     "docs:preview": "cd docs && pnpm preview",
@@ -21,8 +17,8 @@
     "sync:examples": "node scripts/sync-example-versions.js",
     "release": "node scripts/release.js",
     "release:tools": "node scripts/release-tools.js",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
+    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
     "format:staged": "pnpm -r --filter './packages/**' exec prettier --write",
     "prepare": "husky"
   },

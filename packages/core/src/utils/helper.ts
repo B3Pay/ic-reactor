@@ -28,6 +28,25 @@ export const getProcessEnvNetwork = () => {
 }
 
 /**
+ * Detect whether the runtime should be considered *development*.
+ *
+ * Checks in order:
+ * - `import.meta.env?.DEV` (Vite / ESM environments)
+ * - `process.env.NODE_ENV === 'development'` (Node)
+ * - `process.env.DFX_NETWORK === 'local'` (local IC replica)
+ */
+export const isDev = (): boolean => {
+  const importMetaDev =
+    typeof import.meta !== "undefined" && (import.meta as any).env?.DEV
+  const nodeDev =
+    typeof process !== "undefined" &&
+    (process.env.NODE_ENV === "development" ||
+      process.env.DFX_NETWORK === "local")
+
+  return Boolean(importMetaDev || nodeDev)
+}
+
+/**
  * Determines the network type based on the provided hostname.
  *
  * @param hostname - The hostname to evaluate.

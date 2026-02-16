@@ -1,0 +1,63 @@
+---
+title: "Result Types Demo"
+description: Automatic unwrapping of Candid Result (Variant) types
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+In Motoko and Rust, it's common to return a `Result<T, E>` variant. IC Reactor automatically unwraps these variants, providing a standard `Ok` value or throwing a typed `CanisterError` for `Err` values.
+
+## Features Demonstrated
+
+- **Automatic Unwrapping**: Access `data` directly as the `Ok` value.
+- **Error Handling**: `Err` values from the canister are caught and presented as `error`.
+- **Recursive Variants**: Handling nested systems of results and variants.
+- **Type Safety**: Full TypeScript support for both success and error branches.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/result-types-demo?embed=1&theme=dark&file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/result-types-demo"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/result-types-demo?embed=1&theme=dark&file=src/App.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor Result Types Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Implementation
+
+When calling a method that returns a `Result`:
+
+```typescript
+function MyComponent() {
+  const { data, error, isError } = useActorQuery({
+    functionName: "get_user_profile",
+    args: [userId],
+  })
+
+  // data contains the 'Ok' value if successful
+  // error contains the 'Err' value if the canister returned an error
+
+  if (isError) {
+    return <div>Error: {error.message}</div>
+  }
+
+  return <div>Welcome, {data.username}</div>
+}
+```

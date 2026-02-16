@@ -6,7 +6,7 @@ editUrl: false
 
 import { Aside, Steps, Tabs, TabItem } from "@astrojs/starlight/components"
 
-This tutorial walks you through creating your first IC Reactor integration with React. By the end, you'll have a fully functional data-fetching setup with queries and mutations.
+This tutorial walks you through creating your first IC Reactor integration with React. We'll use the **Vite Plugin** to automate declaration generation and hook creation, which is the recommended way to use IC Reactor.
 
 <Steps>
 
@@ -17,79 +17,77 @@ This tutorial walks you through creating your first IC Reactor integration with 
      <TabItem label="pnpm" icon="pnpm">
        ```bash
        pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+       pnpm add -D @ic-reactor/vite-plugin
        ```
      </TabItem>
      <TabItem label="npm" icon="npm">
        ```bash
        npm install @ic-reactor/react @icp-sdk/core @tanstack/react-query
+       npm install -D @ic-reactor/vite-plugin
        ```
      </TabItem>
      <TabItem label="yarn" icon="seti:yarn">
        ```bash
        yarn add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+       yarn add -D @ic-reactor/vite-plugin
        ```
      </TabItem>
      <TabItem label="bun" icon="bun">
        ```bash
        bun add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+       bun add -D @ic-reactor/vite-plugin
        ```
      </TabItem>
    </Tabs>
 
-2. ## Create the Reactor
+2. ## Configure Vite Plugin
 
-   Create a central configuration file for your canister connection:
+   Add the plugin to your `vite.config.ts`. This will automatically generate TypeScript declarations and React hooks whenever you modify your `.did` file.
 
    ```typescript
-   // src/reactor/index.ts
-   import { ClientManager, Reactor } from "@ic-reactor/react"
+   // vite.config.ts
+   import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+
+   export default defineConfig({
+     plugins: [
+       icReactorPlugin({
+         canisters: [
+           {
+             name: "backend",
+             didFile: "src/declarations/backend.did",
+           },
+         ],
+       }),
+     ],
+   })
+   ```
+
+   <Aside type="tip">
+     When you start your dev server, the plugin will create a folder at
+     `src/canisters/backend/` containing `index.ts` (the reactor) and
+     `declarations/`.
+   </Aside>
+
+3. ## Initialize ClientManager
+
+   Create a central `ClientManager`. The generated reactors will use this by default.
+
+   ```typescript
+   // src/lib/reactor.ts
+   import { ClientManager } from "@ic-reactor/react"
    import { QueryClient } from "@tanstack/react-query"
-   import { idlFactory, type _SERVICE } from "../declarations/backend"
 
-   // Create QueryClient with sensible defaults
-   export const queryClient = new QueryClient({
-     defaultOptions: {
-       queries: {
-         staleTime: 1000 * 60, // 1 minute
-         gcTime: 1000 * 60 * 5, // 5 minutes
-       },
-     },
-   })
-
-   // Create ClientManager (handles agent and auth)
-   export const clientManager = new ClientManager({
-     queryClient,
-     withProcessEnv: true, // Auto-detect local vs IC network
-   })
-
-   // Create Reactor for your canister
-   export const backend = new Reactor<_SERVICE>({
-     clientManager,
-     idlFactory,
-     name: "backend",
-     canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
-   })
+   export const queryClient = new QueryClient()
+   export const clientManager = new ClientManager({ queryClient })
    ```
 
-3. ## Create hooks
+4. ## Fetch data with Generated Hooks
 
-   Create reusable hooks from your Reactor:
-
-   ```typescript
-   // src/reactor/hooks.ts
-   import { createActorHooks } from "@ic-reactor/react"
-   import { backend } from "./index"
-
-   export const { useActorQuery, useActorMutation } = createActorHooks(backend)
-   ```
-
-4. ## Fetch data with queries
-
-   Use `useActorQuery` to fetch data from your canister:
+   Import the generated hooks directly from your canister folder. They are fully typed and ready to use!
 
    ```tsx
    // src/components/Greeting.tsx
-   import { useActorQuery } from "../reactor/hooks"
+   import { useActorQuery } from "../canisters/backend"
 
    function Greeting() {
      const { data, isPending, error } = useActorQuery({
@@ -106,27 +104,21 @@ This tutorial walks you through creating your first IC Reactor integration with 
 
 5. ## Update data with mutations
 
-   Use `useActorMutation` to call update methods:
+   Mutations are also generated automatically:
 
    ```tsx
    // src/components/Counter.tsx
-   import { useState } from "react"
-   import { useActorQuery, useActorMutation } from "../reactor/hooks"
-   import { backend } from "../reactor"
+   import { useActorQuery, useActorMutation } from "../canisters/backend"
 
    function Counter() {
-     // Query the current count
-     const { data: count } = useActorQuery({
-       functionName: "getCount",
-     })
+     const { data: count } = useActorQuery({ functionName: "getCount" })
 
-     // Mutation to increment
      const { mutate, isPending } = useActorMutation({
        functionName: "increment",
-       // Invalidate count after mutation
-       invalidateQueries: [
-         backend.generateQueryKey({ functionName: "getCount" }),
-       ],
+       onSuccess: () => {
+         // The generated reactor provides helper to invalidate queries
+         // ... custom invalidation logic here
+       },
      })
 
      return (
@@ -141,6 +133,14 @@ This tutorial walks you through creating your first IC Reactor integration with 
    ```
 
 </Steps>
+
+## Automatic Proxy & Environment
+
+Using the Vite plugin provides several advantages out-of-the-box:
+
+- **Zero-config Proxy**: `/api` requests are automatically proxied to your local replica.
+- **Auto-Canister IDs**: Canister IDs are automatically detected from your `icp-cli` or `dfx` cache.
+- **Identity Support**: Works seamlessly with local Internet Identity setups.
 
 ## Environment Variables
 

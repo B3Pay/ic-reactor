@@ -1,0 +1,10 @@
+{
+  "name": "icp-frontend-environment-variables",
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev": "npm run dev --workspaces"
+  },
+  "workspaces": [
+    "app"
+  ]
+}

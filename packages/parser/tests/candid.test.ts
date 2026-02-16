@@ -1,7 +1,8 @@
-import { describe, it, expect } from "bun:test"
-import { createAgentManager, createCandidAdapter } from "@ic-reactor/core"
+import { ClientManager } from "@ic-reactor/core"
+import { CandidAdapter, importCandidDefinition } from "@ic-reactor/candid"
+import { QueryClient } from "@tanstack/query-core"
 import * as parser from "../dist/nodejs"
-import { importCandidDefinition } from "@ic-reactor/core/src/utils"
+import { describe, it, expect } from "vitest"
 
 const EXPECTED_JS = `export const idlFactory = ({ IDL }) => {
   return IDL.Service({ 'icrc1_name' : IDL.Func([], [IDL.Text], ['query']) });
@@ -34,13 +35,14 @@ describe("Candid Parser", () => {
 
   describe("createReactorStore", () => {
     it("should initialize parser and create candid definition", async () => {
-      const agentManager = createAgentManager()
-      const candidAdapter = createCandidAdapter({ agentManager })
+      const queryClient = new QueryClient()
+      const clientManager = new ClientManager({ queryClient })
+      const candidAdapter = new CandidAdapter({ clientManager })
 
       // This will trigger the mocked fetch for the WASM file
-      await candidAdapter.initializeParser()
+      await candidAdapter.loadParser()
 
-      const candid = candidAdapter.parseDidToJs(
+      const candid = candidAdapter.compileLocal(
         "service:{icrc1_name:()->(text) query;}"
       )
       expect(candid).toEqual(EXPECTED_JS)

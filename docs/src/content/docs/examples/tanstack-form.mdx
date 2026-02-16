@@ -1,0 +1,77 @@
+---
+title: "TanStack Form Demo"
+description: Build type-safe forms with TanStack Form and IC Reactor
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+Learn how to integrate IC Reactor with TanStack Form to create powerful, type-safe forms that interact directly with your Internet Computer canisters.
+
+## Features Demonstrated
+
+- **Type-Safe Forms**: Form fields are typed based on your Candid definitions.
+- **Validation**: Client-side validation before sending data to the canister.
+- **Loading States**: Managing submission states and button feedback.
+- **Error Handling**: Mapping canister errors back to form fields.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/tanstack-form-demo?embed=1&theme=dark&file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/tanstack-form-demo"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/tanstack-form-demo?embed=1&theme=dark&file=src/App.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor TanStack Form Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Implementation
+
+```typescript
+const { mutateAsync } = useActorMutation({ functionName: "update_profile" })
+
+const form = useForm({
+  defaultValues: {
+    username: "",
+    bio: "",
+  },
+  onSubmit: async ({ value }) => {
+    await mutateAsync([value])
+  },
+})
+
+return (
+  <form
+    onSubmit={(e) => {
+      e.preventDefault()
+      form.handleSubmit()
+    }}
+  >
+    <form.Field
+      name="username"
+      children={(field) => (
+        <input
+          value={field.state.value}
+          onChange={(e) => field.handleChange(e.target.value)}
+        />
+      )}
+    />
+    <button type="submit">Update Profile</button>
+  </form>
+)
+```

@@ -46,10 +46,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages (excluding parser)
-        run: pnpm build:ci
+        run: pnpm build
 
       - name: Run tests (excluding parser)
-        run: pnpm test:ci
+        run: pnpm test
 
       - name: Determine publish tag
         run: |

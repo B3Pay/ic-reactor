@@ -40,24 +40,9 @@ IC Reactor provides seamless integration between your applications and Internet 
 
 ## 🔧 CLI & Tools
 
-### CLI (`@ic-reactor/cli`)
-
-Generate customizable, user-owned hooks directly into your project (shadcn-style).
-
-```bash
-# Initialize configuration
-npx @ic-reactor/cli init
-
-# Fetch Candid from live canister and generate hooks
-npx @ic-reactor/cli fetch -i <canister-id>
-
-# Or generate from local .did file
-npx @ic-reactor/cli add -c backend -m list_todos
-```
-
 ### Vite Plugin (`@ic-reactor/vite-plugin`)
 
-Automatic, zero-config code generation for Vite projects. Reacts to `.did` file changes instantly.
+The recommended way for Vite projects. Automatic, zero-config code generation that reacts to `.did` file changes instantly.
 
 ```typescript
 // vite.config.ts
@@ -66,15 +51,22 @@ import { icReactorPlugin } from "@ic-reactor/vite-plugin"
 export default defineConfig({
   plugins: [
     icReactorPlugin({
-      canisters: [
-        {
-          name: "backend",
-          didFile: "./backend.did",
-        },
-      ],
+      canisters: [{ name: "backend", didFile: "./backend.did" }],
     }),
   ],
 })
+```
+
+### CLI (`@ic-reactor/cli`)
+
+Generate declarations and reactors manually for other frameworks or custom setups.
+
+```bash
+# Initialize configuration
+npx @ic-reactor/cli init
+
+# Regenerate declarations and reactors
+npx @ic-reactor/cli sync
 ```
 
 ## 🚀 Quick Start

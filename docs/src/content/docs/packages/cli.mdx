@@ -1,0 +1,104 @@
+---
+title: CLI
+description: Command-line tool for IC Reactor
+editUrl: false
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+The IC Reactor CLI (`@ic-reactor/cli`) helps you generate React hooks and TypeScript declarations from your Candid files. It's useful if you're not using Vite or want more control over the generation process.
+
+## Installation
+
+<Tabs syncKey="pm">
+  <TabItem label="pnpm" icon="pnpm">
+    ```bash pnpm add -D @ic-reactor/cli ```
+  </TabItem>
+  <TabItem label="npm" icon="npm">
+    ```bash npm install -D @ic-reactor/cli ```
+  </TabItem>
+  <TabItem label="yarn" icon="seti:yarn">
+    ```bash yarn add -D @ic-reactor/cli ```
+  </TabItem>
+  <TabItem label="bun" icon="bun">
+    ```bash bun add -D @ic-reactor/cli ```
+  </TabItem>
+</Tabs>
+
+## Commands
+
+### `init`
+
+Initialize the configuration file (`ic-reactor.json`) in your project root.
+
+```bash
+npx ic-reactor init
+```
+
+Options:
+
+- `-y, --yes`: Skip prompts and use defaults.
+- `-o, --out-dir <path>`: Output directory for generated hooks (default: `./src/canisters`).
+
+### `sync`
+
+Regenerates hooks and declarations for all configured canisters. Run this whenever your `.did` files change. It creates an `index.ts` file in each canister directory with fully typed hooks.
+
+```bash
+npx ic-reactor sync
+```
+
+Options:
+
+- `-c, --canister <name>`: Sync only a specific canister.
+
+### `list`
+
+Lists all methods available in a canister's Candid file.
+
+```bash
+npx ic-reactor list -c <canister_name>
+```
+
+Options:
+
+- `-c, --canister <name>`: Canister to list methods from.
+
+## Configuration
+
+The `ic-reactor.json` file controls the CLI behavior.
+
+```json
+{
+  "outDir": "./src/canisters",
+  "canisters": {
+    "backend": {
+      "didFile": "src/declarations/backend.did",
+      "useDisplayReactor": true
+    }
+  }
+}
+```
+
+### Options
+
+| Key                 | Type                             | Description                                |
+| :------------------ | :------------------------------- | :----------------------------------------- |
+| `outDir`            | `string`                         | Base output directory for generated files. |
+| `canisters`         | `Record<string, CanisterConfig>` | Map of canister names to configurations.   |
+| `clientManagerPath` | `string`                         | Path to a custom `ClientManager` instance. |
+| `generatedHooks`    | `Record<string, string[]>`       | (Internal) Tracks generated hooks.         |
+
+### Canister Config
+
+| Key                 | Type      | Description                                  |
+| :------------------ | :-------- | :------------------------------------------- |
+| `didFile`           | `string`  | Path to the `.did` file.                     |
+| `outDir`            | `string`  | Override output directory for this canister. |
+| `useDisplayReactor` | `boolean` | Use `DisplayReactor` instead of `Reactor`.   |
+| `clientManagerPath` | `string`  | Override client manager path.                |
+
+## Examples
+
+- **[Codegen in Action](/ic-reactor/v3/examples/codegen-in-action)**: Comparison between CLI and Vite plugin generated code.
+- **[TypeScript Demo](/ic-reactor/v3/examples/typescript-demo)**: Using the CLI to generate pure TypeScript reactors without React.

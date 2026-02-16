@@ -1,67 +1,46 @@
 /**
  * Reactor file template generator
  *
- * Generates the reactor instance file for a canister.
- * Supports simple mode (generic hooks) and advanced mode (per-method typed hooks).
+ * Generates the reactor instance file for a canister using DisplayReactor.
+ * Standardizes the output to include typed hooks and clean imports.
  */
 
 import path from "node:path"
-import type { ReactorGeneratorOptions } from "../types.js"
-import {
-  toPascalCase,
-  toCamelCase,
-  getReactorName,
-  getServiceTypeName,
-} from "../naming.js"
-import { extractMethods } from "../did.js"
+import { toPascalCase, getReactorName, getServiceTypeName } from "../naming.js"
+
+export type ReactorGeneratorOptions = {
+  canisterName: string
+  didFile: string
+  clientManagerPath?: string
+}
 
 /**
  * Generate the reactor file content
  */
 export function generateReactorFile(options: ReactorGeneratorOptions): string {
-  const {
-    canisterName,
-    canisterConfig,
-    globalClientManagerPath,
-    hasDeclarations = true,
-    advanced = false,
-    didContent,
-  } = options
+  const pascalName = toPascalCase(options.canisterName)
+  const reactorName = getReactorName(options.canisterName)
+  const serviceName = getServiceTypeName(options.canisterName)
+  // Always use DisplayReactor for now
+  const reactorType = "DisplayReactor"
 
-  const pascalName = toPascalCase(canisterName)
-  const reactorName = getReactorName(canisterName)
-  const serviceName = getServiceTypeName(canisterName)
-  const reactorType =
-    canisterConfig.useDisplayReactor !== false ? "DisplayReactor" : "Reactor"
-
-  const clientManagerPath =
-    canisterConfig.clientManagerPath ??
-    globalClientManagerPath ??
-    "../../lib/client"
-
-  const didFileName = path.basename(canisterConfig.didFile)
-  const declarationsPath = `./declarations/${didFileName}`
+  const didFileName = path.basename(options.didFile)
+  const baseName = didFileName.replace(/\.did$/, "")
+  const declarationsPath = `./declarations/${baseName}`
+  const clientManagerPath = options.clientManagerPath ?? "../../clients"
 
   const vars: TemplateVars = {
-    canisterName,
+    canisterName: options.canisterName,
     pascalName,
     reactorName,
     serviceName,
     reactorType,
     clientManagerPath,
     declarationsPath,
-    useDisplayReactor: canisterConfig.useDisplayReactor !== false,
   }
 
-  if (!hasDeclarations) {
-    return generateFallbackReactorFile(vars)
-  }
-
-  if (advanced && didContent) {
-    return generateAdvancedReactorFile(vars, didContent)
-  }
-
-  return generateSimpleReactorFile(vars)
+  // If we have DID content, we can generate method-specific hooks (clean & typed)
+  return generateStandardReactorFile(vars)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -76,36 +55,39 @@ interface TemplateVars {
   reactorType: string
   clientManagerPath: string
   declarationsPath: string
-  useDisplayReactor: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SHARED SECTIONS
+// STANDARD MODE
 // ═══════════════════════════════════════════════════════════════════════════
 
-function reactorInstance(vars: TemplateVars): string {
+function generateStandardReactorFile(vars: TemplateVars): string {
   const {
     pascalName,
     reactorName,
     serviceName,
     reactorType,
+    clientManagerPath,
+    declarationsPath,
     canisterName,
-    useDisplayReactor,
   } = vars
-  return `/**
- * ${pascalName} Reactor — ${useDisplayReactor ? "Display" : "Candid"} mode.
- * ${useDisplayReactor ? "Automatically converts bigint → string, Principal → string, etc." : "Uses raw Candid types."}
+
+  return `import { ${reactorType}, createActorHooks } from "@ic-reactor/react"
+import { clientManager } from "${clientManagerPath}"
+import { idlFactory, type _SERVICE } from "${declarationsPath}"
+
+export type ${serviceName} = _SERVICE
+
+/**
+ * ${pascalName} Display Reactor
  */
 export const ${reactorName} = new ${reactorType}<${serviceName}>({
   clientManager,
   idlFactory,
   name: "${canisterName}",
-})`
-}
+})
 
-function actorHooks(vars: TemplateVars): string {
-  const { pascalName, reactorName } = vars
-  return `const {
+export const {
   useActorQuery: use${pascalName}Query,
   useActorSuspenseQuery: use${pascalName}SuspenseQuery,
   useActorInfiniteQuery: use${pascalName}InfiniteQuery,
@@ -113,178 +95,5 @@ function actorHooks(vars: TemplateVars): string {
   useActorMutation: use${pascalName}Mutation,
   useActorMethod: use${pascalName}Method,
 } = createActorHooks(${reactorName})
-
-export {
-  use${pascalName}Query,
-  use${pascalName}SuspenseQuery,
-  use${pascalName}InfiniteQuery,
-  use${pascalName}SuspenseInfiniteQuery,
-  use${pascalName}Mutation,
-  use${pascalName}Method,
-}`
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SIMPLE MODE
-// ═══════════════════════════════════════════════════════════════════════════
-
-function generateSimpleReactorFile(vars: TemplateVars): string {
-  const {
-    pascalName,
-    reactorType,
-    clientManagerPath,
-    declarationsPath,
-    serviceName,
-  } = vars
-
-  return `/**
- * ${pascalName} Reactor
- *
- * Auto-generated by @ic-reactor/codegen
- */
-
-import { ${reactorType}, createActorHooks } from "@ic-reactor/react"
-import { clientManager } from "${clientManagerPath}"
-import { idlFactory, type _SERVICE } from "${declarationsPath}"
-
-export type ${serviceName} = _SERVICE
-
-${reactorInstance(vars)}
-
-${actorHooks(vars)}
-
-export { idlFactory }
-`
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ADVANCED MODE
-// ═══════════════════════════════════════════════════════════════════════════
-
-function generateAdvancedReactorFile(
-  vars: TemplateVars,
-  didContent: string
-): string {
-  const {
-    pascalName,
-    reactorName,
-    serviceName,
-    reactorType,
-    clientManagerPath,
-    declarationsPath,
-  } = vars
-
-  const methods = extractMethods(didContent)
-
-  // Determine which extra imports we need based on methods
-  const hasQueryWithoutArgs = methods.some(
-    (m) => m.type === "query" && !m.hasArgs
-  )
-  const hasMutationWithoutArgs = methods.some(
-    (m) => m.type === "mutation" && !m.hasArgs
-  )
-
-  const extraImports: string[] = []
-  if (hasQueryWithoutArgs) extraImports.push("createQuery")
-  if (hasMutationWithoutArgs) extraImports.push("createMutation")
-
-  // Generate per-method static hooks (no-args methods only)
-  const perMethodHooks = methods
-    .map(({ name, type, hasArgs }) => {
-      const camelMethod = toCamelCase(name)
-
-      if (type === "query") {
-        if (!hasArgs) {
-          return `
-export const ${camelMethod}Query = createQuery(${reactorName}, {
-  functionName: "${name}",
-})`
-        }
-        return "" // queries with args don't get static instances
-      } else {
-        if (!hasArgs) {
-          return `
-export const ${camelMethod}Mutation = createMutation(${reactorName}, {
-  functionName: "${name}",
-})`
-        }
-        return "" // mutations with args don't get static instances
-      }
-    })
-    .filter(Boolean)
-
-  return `/**
- * ${pascalName} Reactor (Advanced)
- *
- * Auto-generated by @ic-reactor/codegen
- * Includes reactor instance, actor hooks, and per-method static hooks.
- */
-
-import {
-  ${reactorType},
-  createActorHooks,${extraImports.length > 0 ? "\n  " + extraImports.join(",\n  ") + "," : ""}
-} from "@ic-reactor/react"
-import { clientManager } from "${clientManagerPath}"
-import { idlFactory, type _SERVICE } from "${declarationsPath}"
-
-type ${serviceName} = _SERVICE
-
-${reactorInstance(vars)}
-
-${actorHooks(vars)}
-${
-  perMethodHooks.length > 0
-    ? `
-// Per-method static hooks (no-args methods only)
-${perMethodHooks.join("\n")}
-`
-    : ""
-}
-export { idlFactory }
-export type { ${serviceName} }
-`
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FALLBACK (NO DECLARATIONS)
-// ═══════════════════════════════════════════════════════════════════════════
-
-function generateFallbackReactorFile(vars: TemplateVars): string {
-  const {
-    canisterName,
-    pascalName,
-    serviceName,
-    reactorType,
-    clientManagerPath,
-    declarationsPath,
-  } = vars
-
-  return `/**
- * ${pascalName} Reactor
- *
- * Auto-generated by @ic-reactor/codegen
- *
- * ⚠️ Declarations were not generated. Run:
- *   npx @icp-sdk/bindgen --input <path-to-did> --output ./${canisterName}/declarations
- * Then uncomment the import below and remove the fallback type.
- */
-
-import { ${reactorType}, createActorHooks } from "@ic-reactor/react"
-import { clientManager } from "${clientManagerPath}"
-
-// TODO: Uncomment after generating declarations:
-// import { idlFactory, type _SERVICE as ${serviceName} } from "${declarationsPath}"
-
-// Fallback — replace with generated types
-type ${serviceName} = Record<string, (...args: unknown[]) => Promise<unknown>>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const idlFactory = ({ IDL }: { IDL: any }) => IDL.Service({})
-
-${reactorInstance(vars)}
-
-${actorHooks(vars)}
-
-export { idlFactory }
-export type { ${serviceName} }
 `
 }

@@ -1,0 +1,55 @@
+---
+title: "Metadata Reactor Demo"
+description: Dynamic metadata fetching and rendering
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+This example demonstrates how to use the `MetadataReactor` to fetch and display canister metadata, such as Candid files, canister status, and standard-specific metadata (e.g., ICRC-1 metadata).
+
+## Features Demonstrated
+
+- **Metadata Fetching**: Access canister metadata defined in the WASM.
+- **Canister Status**: Check if a canister is running and see its memory usage.
+- **Candid Export**: Dynamically retrieve the Candid interface from a live canister.
+- **Standard Detection**: Automatically detect supported standards like ICRC-1 or DIP-20.
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/metadata-reactor-demo?embed=1&theme=dark&file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/metadata-reactor-demo"
+  />
+</CardGrid>
+
+## Live Preview
+
+<iframe
+  src="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/metadata-reactor-demo?embed=1&theme=dark&file=src/App.tsx&view=preview"
+  style="width: 100%; height: 600px; border: 0; border-radius: 8px; overflow: hidden;"
+  title="IC Reactor Metadata Reactor Demo"
+  allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+  sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+/>
+
+## Implementation
+
+```typescript
+// Fetching Candid metadata
+const { data: candid } = useActorQuery({
+  functionName: "get_candid",
+})
+
+// Fetching ICRC-1 metadata
+const { data: metadata } = useActorQuery({
+  functionName: "icrc1_metadata",
+})
+```
