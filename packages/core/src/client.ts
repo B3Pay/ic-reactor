@@ -15,7 +15,11 @@ import {
   IC_INTERNET_IDENTITY_PROVIDER,
   LOCAL_INTERNET_IDENTITY_PROVIDER,
 } from "./utils/constants"
-import { getNetworkByHostname, getProcessEnvNetwork } from "./utils/helper"
+import {
+  getNetworkByHostname,
+  getProcessEnvNetwork,
+  isDev,
+} from "./utils/helper"
 
 /**
  * ClientManager is a central class for managing the Internet Computer (IC) agent and authentication state.
@@ -109,10 +113,7 @@ export class ClientManager {
           canisterEnv["CANISTER_ID_INTERNET_IDENTITY"]
       }
 
-      const isDev =
-        typeof import.meta !== "undefined" && (import.meta as any).env?.DEV
-
-      if (isDev && typeof window !== "undefined") {
+      if (isDev() && typeof window !== "undefined") {
         agentOptions.host = agentOptions.host ?? window.location.origin
         agentOptions.verifyQuerySignatures =
           agentOptions.verifyQuerySignatures ?? false

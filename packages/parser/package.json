@@ -48,7 +48,9 @@
     "build:bundler": "wasm-pack build --release --target bundler --out-dir dist/bundler --out-name index",
     "start": "tsc --watch",
     "test": "vitest run",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo && tsc -b"
+    "clean": "rm -rf dist tsconfig.tsbuildinfo && tsc -b",
+    "size": "size-limit",
+    "analyze": "size-limit"
   },
   "devDependencies": {
     "@ic-reactor/core": "workspace:*",
@@ -58,7 +60,17 @@
     "vitest": "^4.0.18",
     "wasm-pack": "^0.14.0",
     "@icp-sdk/core": "^5.0.0",
-    "@icp-sdk/auth": "^5.0.0"
+    "@icp-sdk/auth": "^5.0.0",
+    "@size-limit/preset-small-lib": "^12.0.0",
+    "size-limit": "^12.0.0"
   },
+  "size-limit": [
+    {
+      "name": "Parser (web)",
+      "path": "dist/web/index.js",
+      "limit": "200 KB",
+      "gzip": true
+    }
+  ],
   "gitHead": "36e43368cb0fa3bffa9aa40dfd589046c1c3b5fe"
 }

@@ -24,7 +24,7 @@
     "test": "vitest run",
     "version:sync": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); fs.writeFileSync('./src/version.ts', '/**\\n * Library version - automatically synced from package.json.\\n */\\nexport const VERSION = \\\"' + pkg.version + '\\\"\\n');\"",
     "size": "size-limit",
-    "analyze": "size-limit --why"
+    "analyze": "size-limit"
   },
   "repository": {
     "type": "git",

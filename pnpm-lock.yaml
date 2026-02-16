@@ -287,12 +287,18 @@ importers:
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
+      '@size-limit/preset-small-lib':
+        specifier: ^12.0.0
+        version: 12.0.0(size-limit@12.0.0)
       '@tanstack/query-core':
         specifier: ^5.90.20
         version: 5.90.20
       '@types/node':
         specifier: ^25.2.3
         version: 25.2.3
+      size-limit:
+        specifier: ^12.0.0
+        version: 12.0.0
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@25.2.3)(happy-dom@20.5.3)(jsdom@28.0.0(@noble/hashes@2.0.1))(yaml@2.8.2)
