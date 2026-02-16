@@ -7,7 +7,7 @@ prev: true
 
 > **getVariantKeyValue**\<`T`\>(`variant`): [`CandidKeyValue`](../type-aliases/CandidKeyValue.md)\<`T`\>
 
-Defined in: [utils/candid.ts:51](https://github.com/B3Pay/ic-reactor/blob/864a09e5e346dda55e2facac287f38cfb3257636/packages/core/src/utils/candid.ts#L51)
+Defined in: [utils/candid.ts:51](https://github.com/B3Pay/ic-reactor/blob/4486d2c7aa6330ac10c9ca4c4627705e94045f59/packages/core/src/utils/candid.ts#L51)
 
 Extract variant key and value from a variant type
 Works with types like:

@@ -7,7 +7,7 @@ prev: true
 
 > **ReactorReturnOk**\<`A`, `M`, `Transform`\> = [`TransformReturnRegistry`](../interfaces/TransformReturnRegistry.md)\<[`OkResult`](OkResult.md)\<[`ActorMethodReturnType`](ActorMethodReturnType.md)\<`A`\[`M`\]\>\>, `A`\>\[`Transform`\]
 
-Defined in: [types/reactor.ts:127](https://github.com/B3Pay/ic-reactor/blob/864a09e5e346dda55e2facac287f38cfb3257636/packages/core/src/types/reactor.ts#L127)
+Defined in: [types/reactor.ts:127](https://github.com/B3Pay/ic-reactor/blob/4486d2c7aa6330ac10c9ca4c4627705e94045f59/packages/core/src/types/reactor.ts#L127)
 
 Apply return type transformation based on the transform key.
 Looks up the transform in TransformReturnRegistry.
