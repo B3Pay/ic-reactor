@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "tools-v*"
+      - "parser-v*"
 
 permissions:
   contents: write
