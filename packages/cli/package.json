@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/cli",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "CLI tool to generate shadcn-style React hooks for ICP canisters",
   "main": "dist/index.js",
