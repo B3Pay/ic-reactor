@@ -126,6 +126,9 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
       }
 
       const canisterNames = options.canisters.map((c) => c.name)
+      if (!canisterNames.includes("internet_identity")) {
+        canisterNames.push("internet_identity")
+      }
       const icEnv = getIcEnvironmentInfo(canisterNames)
 
       if (!icEnv) {
