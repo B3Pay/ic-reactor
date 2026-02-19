@@ -2,42 +2,35 @@
 /**
  * @ic-reactor/cli
  *
- * CLI tool to generate shadcn-style React hooks for ICP canisters.
- * Gives users full control over generated code - no magic, just scaffolding.
+ * CLI tool to generate type-safe React hooks for ICP canisters.
  */
 
 import { Command } from "commander"
 import { initCommand } from "./commands/init.js"
-import { syncCommand } from "./commands/sync.js"
-import { listCommand } from "./commands/list.js"
+import { generateCommand } from "./commands/generate.js"
 import pc from "picocolors"
+import { version } from "../package.json"
 
 const program = new Command()
 
 program
   .name("ic-reactor")
-  .description(
-    pc.cyan("🔧 Generate shadcn-style React hooks for ICP canisters")
-  )
-  .version("3.0.0")
+  .description(pc.cyan("🔧 Generate type-safe React hooks for ICP canisters"))
+  .version(version)
 
 program
   .command("init")
   .description("Initialize ic-reactor configuration in your project")
   .option("-y, --yes", "Skip prompts and use defaults")
-  .option("-o, --out-dir <path>", "Output directory for generated hooks")
+  .option("-o, --out-dir <path>", "Output directory for generated files")
   .action(initCommand)
 
 program
-  .command("sync")
-  .description("Sync hooks with .did file changes")
-  .option("-c, --canister <name>", "Canister to sync")
-  .action(syncCommand)
-
-program
-  .command("list")
-  .description("List available methods from a canister")
-  .option("-c, --canister <name>", "Canister to list methods from")
-  .action(listCommand)
+  .command("generate")
+  .alias("g")
+  .description("Generate hooks from .did files")
+  .option("-c, --canister <name>", "Generate for a specific canister only")
+  .option("--clean", "Clean output directory before generating")
+  .action(generateCommand)
 
 program.parse()

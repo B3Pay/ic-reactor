@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "IC Reactor CLI Configuration",
-  "description": "Configuration file for @ic-reactor/cli",
+  "title": "IC Reactor Configuration",
+  "description": "Configuration file for @ic-reactor/cli and @ic-reactor/vite-plugin",
   "type": "object",
   "properties": {
     "$schema": {
@@ -10,8 +10,13 @@
     },
     "outDir": {
       "type": "string",
-      "description": "Output directory for generated hooks (relative to project root)",
-      "default": "src/canisters"
+      "description": "Default output directory for generated files (relative to project root)",
+      "default": "src/declarations"
+    },
+    "clientManagerPath": {
+      "type": "string",
+      "description": "Default import path for the client manager (relative from generated files)",
+      "default": "../../clients"
     },
     "canisters": {
       "type": "object",
@@ -19,58 +24,28 @@
       "additionalProperties": {
         "type": "object",
         "properties": {
+          "name": {
+            "type": "string",
+            "description": "Canister name (required)"
+          },
           "didFile": {
             "type": "string",
-            "description": "Path to the .did file (relative to project root)"
+            "description": "Path to the .did file (required)"
+          },
+          "outDir": {
+            "type": "string",
+            "description": "Override output directory for this canister"
           },
           "clientManagerPath": {
             "type": "string",
-            "description": "Import path to the client manager (relative from generated hooks)",
-            "default": "../../lib/client"
-          },
-          "useDisplayReactor": {
-            "type": "boolean",
-            "description": "Use DisplayReactor for automatic type transformations (bigint → string, etc.)",
-            "default": true
+            "description": "Override client manager import path for this canister"
           },
           "canisterId": {
             "type": "string",
-            "description": "Optional fixed canister ID (defaults to environment-based resolution)"
+            "description": "Optional fixed canister ID"
           }
         },
-        "required": ["didFile"]
-      }
-    },
-    "generatedHooks": {
-      "type": "object",
-      "description": "Tracks which methods have generated hooks (managed by CLI)",
-      "additionalProperties": {
-        "items": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "query",
-                    "mutation",
-                    "suspenseQuery",
-                    "infiniteQuery",
-                    "suspenseInfiniteQuery"
-                  ]
-                }
-              },
-              "required": ["name"]
-            }
-          ]
-        }
+        "required": ["name", "didFile"]
       }
     }
   },

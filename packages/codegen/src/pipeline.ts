@@ -1,0 +1,144 @@
+/**
+ * Codegen Pipeline
+ *
+ * Orchestrates all generators for a single canister.
+ * This is the primary entry point used by @ic-reactor/cli and @ic-reactor/vite-plugin.
+ *
+ * Pipeline steps (in order):
+ *  1. Resolve paths (didFile, outDir)
+ *  2. Generate declarations (JS + .d.ts + .did copy)
+ *  3. Generate reactor file (index.ts)
+ */
+
+import fs from "node:fs"
+import path from "node:path"
+import type { CanisterConfig, CodegenConfig, GeneratorResult } from "./types.js"
+import { generateDeclarations } from "./generators/declarations.js"
+import { generateReactorFile } from "./generators/reactor.js"
+
+export interface PipelineOptions {
+  /** Canister name and config */
+  canisterConfig: CanisterConfig
+  /**
+   * Absolute path to the project root.
+   * Relative paths in `CanisterConfig` are resolved from here.
+   */
+  projectRoot: string
+  /**
+   * Global codegen config (for fallback outDir and clientManagerPath).
+   */
+  globalConfig: Pick<CodegenConfig, "outDir" | "clientManagerPath">
+}
+
+export interface PipelineResult {
+  canisterName: string
+  success: boolean
+  /** All files the pipeline attempted to write */
+  files: GeneratorResult[]
+  error?: string
+}
+
+/**
+ * Run the full codegen pipeline for a single canister.
+ *
+ * @returns PipelineResult with per-file details
+ */
+export async function runCanisterPipeline(
+  options: PipelineOptions
+): Promise<PipelineResult> {
+  const { canisterConfig, projectRoot, globalConfig } = options
+  const { name, didFile, clientManagerPath } = canisterConfig
+
+  const files: GeneratorResult[] = []
+
+  // ── Resolve paths ──────────────────────────────────────────────────────────
+
+  const resolvedDidFile = path.isAbsolute(didFile)
+    ? didFile
+    : path.resolve(projectRoot, didFile)
+
+  if (!fs.existsSync(resolvedDidFile)) {
+    return {
+      canisterName: name,
+      success: false,
+      files: [],
+      error: `DID file not found: ${resolvedDidFile}`,
+    }
+  }
+
+  // Per-canister outDir overrides global outDir
+  const canisterOutDir =
+    canisterConfig.outDir != null
+      ? path.isAbsolute(canisterConfig.outDir)
+        ? canisterConfig.outDir
+        : path.resolve(projectRoot, canisterConfig.outDir)
+      : path.resolve(projectRoot, globalConfig.outDir, name)
+
+  // clientManagerPath falls back to global, then a safe default
+  const resolvedClientManagerPath =
+    clientManagerPath ?? globalConfig.clientManagerPath ?? "../../clients"
+
+  // ── Step 1: Declarations ───────────────────────────────────────────────────
+
+  try {
+    const declResult = await generateDeclarations({
+      didFile: resolvedDidFile,
+      outDir: canisterOutDir,
+      canisterName: name,
+    })
+
+    if (!declResult.success) {
+      return {
+        canisterName: name,
+        success: false,
+        files,
+        error: declResult.error,
+      }
+    }
+
+    files.push(...declResult.files)
+  } catch (err) {
+    return {
+      canisterName: name,
+      success: false,
+      files,
+      error: `Declarations step failed: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
+
+  // ── Step 2: Reactor file ───────────────────────────────────────────────────
+
+  const reactorPath = path.join(canisterOutDir, "index.ts")
+
+  try {
+    const reactorContent = generateReactorFile({
+      canisterName: name,
+      didFile: resolvedDidFile,
+      clientManagerPath: resolvedClientManagerPath,
+    })
+
+    fs.mkdirSync(canisterOutDir, { recursive: true })
+    fs.writeFileSync(reactorPath, reactorContent)
+
+    files.push({ success: true, filePath: reactorPath })
+  } catch (err) {
+    files.push({
+      success: false,
+      filePath: reactorPath,
+      error: `Reactor generation failed: ${err instanceof Error ? err.message : String(err)}`,
+    })
+
+    return {
+      canisterName: name,
+      success: false,
+      files,
+      error: `Reactor step failed: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
+
+  return {
+    canisterName: name,
+    success: true,
+    files,
+  }
+}

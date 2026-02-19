@@ -2,19 +2,21 @@
  * @ic-reactor/codegen
  *
  * Shared code generation utilities for IC Reactor.
- * Used by both @ic-reactor/vite-plugin and @ic-reactor/cli.
+ * Used by @ic-reactor/cli and @ic-reactor/vite-plugin.
  */
 
-// Naming utilities
+// Core Types
+export type { CanisterConfig, CodegenConfig, GeneratorResult } from "./types.js"
+
+// Pipeline (Primary Entry Point)
+export { runCanisterPipeline } from "./pipeline.js"
+export type { PipelineOptions, PipelineResult } from "./pipeline.js"
+
+// Utilities
 export { toPascalCase, getReactorName, getServiceTypeName } from "./naming.js"
 
-// Bindgen utilities
-export { generateDeclarations, declarationsExist } from "./bindgen.js"
-export type { BindgenOptions, BindgenResult } from "./bindgen.js"
+export { parseDIDFile, extractMethods } from "./parser.js"
+export type { MethodInfo, MethodType } from "./parser.js"
 
-// Template generators
-export { generateReactorFile } from "./templates/reactor.js"
-export type { ReactorGeneratorOptions } from "./templates/reactor.js"
-
-export { generateClientFile } from "./templates/client.js"
-export type { ClientGeneratorOptions } from "./templates/client.js"
+// Individual Generators (Advanced Usage)
+export * from "./generators/index.js"

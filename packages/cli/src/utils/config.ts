@@ -4,16 +4,15 @@
 
 import fs from "node:fs"
 import path from "node:path"
-import type { ReactorConfig } from "../types.js"
+import type { CodegenConfig } from "../types.js"
 
 export const CONFIG_FILE_NAME = "ic-reactor.json"
 
-export const DEFAULT_CONFIG: ReactorConfig = {
+export const DEFAULT_CONFIG: CodegenConfig = {
   $schema:
     "https://raw.githubusercontent.com/B3Pay/ic-reactor/main/packages/cli/schema.json",
-  outDir: "src/lib/canisters",
+  outDir: "src/declarations",
   canisters: {},
-  generatedHooks: {},
 }
 
 /**
@@ -38,7 +37,7 @@ export function findConfigFile(
 /**
  * Load the reactor config file
  */
-export function loadConfig(configPath?: string): ReactorConfig | null {
+export function loadConfig(configPath?: string): CodegenConfig | null {
   const filePath = configPath ?? findConfigFile()
 
   if (!filePath || !fs.existsSync(filePath)) {
@@ -47,7 +46,7 @@ export function loadConfig(configPath?: string): ReactorConfig | null {
 
   try {
     const content = fs.readFileSync(filePath, "utf-8")
-    return JSON.parse(content) as ReactorConfig
+    return JSON.parse(content) as CodegenConfig
   } catch {
     return null
   }
@@ -57,7 +56,7 @@ export function loadConfig(configPath?: string): ReactorConfig | null {
  * Save the reactor config file
  */
 export function saveConfig(
-  config: ReactorConfig,
+  config: CodegenConfig,
   configPath: string = path.join(process.cwd(), CONFIG_FILE_NAME)
 ): void {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n")
@@ -65,23 +64,12 @@ export function saveConfig(
 
 /**
  * Get the project root directory.
- *
- * Priority:
- * 1. Directory containing reactor.config.json (if found)
- * 2. Current working directory (default for new projects)
- *
- * Note: We intentionally don't traverse up looking for package.json
- * as this can cause issues when running in subdirectories or when
- * parent directories have their own package.json files.
  */
 export function getProjectRoot(): string {
-  // First, check if there's a reactor.config.json in the current directory or parents
   const configPath = findConfigFile()
   if (configPath) {
     return path.dirname(configPath)
   }
-
-  // Default to current working directory for new projects
   return process.cwd()
 }
 
@@ -94,19 +82,8 @@ export function ensureDir(dirPath: string): void {
   }
 }
 
-/**
- * Check if a file exists
- */
-export function fileExists(filePath: string): boolean {
-  return fs.existsSync(filePath)
-}
-
-/**
- * Calculate relative path from one file to another
- */
 export function getRelativePath(from: string, to: string): string {
   const relativePath = path.relative(path.dirname(from), to)
-  // Ensure it starts with ./ or ../
   if (!relativePath.startsWith(".")) {
     return "./" + relativePath
   }

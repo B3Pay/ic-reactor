@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { generateDeclarations } from "./bindgen"
 import fs from "node:fs"
 import path from "node:path"
+import { generateDeclarations } from "./generators"
 
 describe("Bindgen", () => {
   const mockDidFile = "mock/test.did"

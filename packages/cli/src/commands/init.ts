@@ -1,7 +1,7 @@
 /**
- * Init command
+ * Init Command
  *
- * Initializes ic-reactor configuration in the project.
+ * Initializes ic-reactor.json configuration.
  */
 
 import * as p from "@clack/prompts"
@@ -16,7 +16,8 @@ import {
   getProjectRoot,
   ensureDir,
 } from "../utils/config.js"
-import type { ReactorConfig, CanisterConfig } from "../types.js"
+import type { CodegenConfig, CanisterConfig } from "../types.js"
+import { generateClientFile } from "@ic-reactor/codegen"
 
 interface InitOptions {
   yes?: boolean
@@ -42,183 +43,115 @@ export async function initCommand(options: InitOptions) {
   }
 
   const projectRoot = getProjectRoot()
-  let config: ReactorConfig
+  let config: CodegenConfig
 
   if (options.yes) {
-    // Use defaults
     config = { ...DEFAULT_CONFIG }
     if (options.outDir) {
       config.outDir = options.outDir
     }
   } else {
-    // Interactive mode
+    // Interactive Setup
+
+    // Output Directory
     const outDir = await p.text({
-      message: "Where should generated hooks be placed?",
-      placeholder: "src/lib/canisters",
-      defaultValue: "src/lib/canisters",
-      validate: (value) => {
-        if (!value) return "Output directory is required"
-        return undefined
-      },
+      message: "Where should generated files be placed?",
+      placeholder: "src/declarations",
+      defaultValue: "src/declarations",
     })
+    if (p.isCancel(outDir)) process.exit(0)
 
-    if (p.isCancel(outDir)) {
-      p.cancel("Setup cancelled.")
-      process.exit(0)
-    }
-
-    // Ask if they want to add a canister now
-    const addCanister = await p.confirm({
-      message: "Would you like to add a canister now?",
-      initialValue: true,
+    // Client Manager Path
+    const clientManagerPath = await p.text({
+      message: "Relative path for the client manager import?",
+      placeholder: "../../clients",
+      defaultValue: "../../clients",
     })
-
-    if (p.isCancel(addCanister)) {
-      p.cancel("Setup cancelled.")
-      process.exit(0)
-    }
+    if (p.isCancel(clientManagerPath)) process.exit(0)
 
     config = {
       ...DEFAULT_CONFIG,
       outDir: outDir as string,
+      clientManagerPath: clientManagerPath as string,
     }
 
+    // Add initial canister?
+    const addCanister = await p.confirm({
+      message: "Would you like to configure a canister now?",
+      initialValue: true,
+    })
+    if (p.isCancel(addCanister)) process.exit(0)
+
     if (addCanister) {
-      const canisterInfo = await promptForCanister(projectRoot)
-      if (canisterInfo) {
-        config.canisters[canisterInfo.name] = canisterInfo.config
+      const canister = await promptForCanister(projectRoot)
+      if (canister) {
+        config.canisters[canister.name] = canister
       }
     }
   }
 
-  // Save config file
+  // Save config
   const configPath = path.join(projectRoot, CONFIG_FILE_NAME)
   saveConfig(config, configPath)
 
-  // Create output directory
-  const fullOutDir = path.join(projectRoot, config.outDir)
-  ensureDir(fullOutDir)
+  // Ensure directories exist
+  ensureDir(path.join(projectRoot, config.outDir))
 
-  // Create a sample client manager if it doesn't exist
-  const clientManagerPath = path.join(projectRoot, "src/lib/clients.ts")
-  if (!fs.existsSync(clientManagerPath)) {
-    const createClient = await p.confirm({
-      message: "Create a sample client manager at src/lib/clients.ts?",
+  // Create default Client Manager
+  const clientManagerFile = path.join(projectRoot, "src/clients.ts")
+  // Simple heuristic: if clientManagerPath is "../../clients", likely file is src/clients.ts
+  // Users can move it, but this gives a good start.
+
+  if (!fs.existsSync(clientManagerFile)) {
+    const createHelpers = await p.confirm({
+      message: `Create a default client manager at ${pc.green("src/clients.ts")}?`,
       initialValue: true,
     })
 
-    if (!p.isCancel(createClient) && createClient) {
-      ensureDir(path.dirname(clientManagerPath))
-      fs.writeFileSync(clientManagerPath, getClientManagerTemplate())
-      p.log.success(`Created ${pc.green("src/lib/clients.ts")}`)
+    if (createHelpers === true) {
+      ensureDir(path.dirname(clientManagerFile))
+      fs.writeFileSync(clientManagerFile, generateClientFile())
+      p.log.success(`Created ${pc.green("src/clients.ts")}`)
     }
   }
 
   p.log.success(`Created ${pc.green(CONFIG_FILE_NAME)}`)
-  p.log.success(`Created ${pc.green(config.outDir)} directory`)
 
   console.log()
   p.note(
-    `Next steps:
-  
-  1. ${pc.cyan("Add a canister:")}
-     ${pc.dim("npx @ic-reactor/cli add")}
-  
-  2. ${pc.cyan("List available methods:")}
-     ${pc.dim("npx @ic-reactor/cli list -c <canister-name>")}
-  
-  3. ${pc.cyan("Add hooks for specific methods:")}
-     ${pc.dim("npx @ic-reactor/cli add -c <canister> -m <method>")}`,
-    "Getting Started"
+    `To generate hooks, run:\n${pc.cyan("npx ic-reactor generate")}`,
+    "Next Steps"
   )
 
-  p.outro(pc.green("✓ ic-reactor initialized successfully!"))
+  p.outro(pc.green("✓ Setup complete!"))
 }
 
 async function promptForCanister(
   projectRoot: string
-): Promise<{ name: string; config: CanisterConfig } | null> {
+): Promise<CanisterConfig | null> {
   const name = await p.text({
     message: "Canister name",
     placeholder: "backend",
-    validate: (value) => {
-      if (!value) return "Canister name is required"
-      if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(value)) {
-        return "Canister name must start with a letter and contain only letters, numbers, hyphens, and underscores"
-      }
-      return undefined
+    validate: (val) => {
+      if (!val) return "Name is required"
+      if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(val)) return "Invalid name format"
     },
   })
-
   if (p.isCancel(name)) return null
 
   const didFile = await p.text({
     message: "Path to .did file",
-    placeholder: "./backend.did",
-    validate: (value) => {
-      if (!value) return "DID file path is required"
-      const fullPath = path.resolve(projectRoot, value)
-      if (!fs.existsSync(fullPath)) {
-        return `File not found: ${value}`
-      }
-      return undefined
+    placeholder: "./src/backend/backend.did",
+    validate: (val) => {
+      if (!val) return "Path is required"
+      const fullPath = path.resolve(projectRoot, val)
+      if (!fs.existsSync(fullPath)) return `File not found: ${val}`
     },
   })
-
   if (p.isCancel(didFile)) return null
-
-  const clientManagerPath = await p.text({
-    message:
-      "Import path to your client manager (relative from generated hooks)",
-    placeholder: "../../clients",
-    defaultValue: "../../clients",
-  })
-
-  if (p.isCancel(clientManagerPath)) return null
-
-  const useDisplayReactor = await p.confirm({
-    message:
-      "Use DisplayReactor? (auto-converts bigint → string, Principal → string)",
-    initialValue: true,
-  })
-
-  if (p.isCancel(useDisplayReactor)) return null
 
   return {
     name: name as string,
-    config: {
-      didFile: didFile as string,
-      clientManagerPath: clientManagerPath as string,
-      useDisplayReactor: useDisplayReactor as boolean,
-    },
+    didFile: didFile as string,
   }
-}
-
-function getClientManagerTemplate(): string {
-  return `/**
- * IC Client Manager
- *
- * This file configures the IC agent and client manager for your application.
- * Customize the agent options based on your environment.
- */
-
-import { ClientManager } from "@ic-reactor/react"
-
-/**
- * The client manager handles agent lifecycle and authentication.
- *
- * Configuration options:
- * - host: IC network host (defaults to process env or mainnet)
- * - identity: Initial identity (optional, can be set later)
- * - verifyQuerySignatures: Verify query signatures (recommended for production)
- *
- * For local development, the agent will automatically detect local replica.
- */
-export const clientManager = new ClientManager({
-  // Uncomment for explicit host configuration:
-  // host: process.env.DFX_NETWORK === "local"
-  //   ? "http://localhost:4943"
-  //   : "https://icp-api.io",
-})
-`
 }

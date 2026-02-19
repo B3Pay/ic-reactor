@@ -1,26 +1,27 @@
 /**
  * CLI-specific Types
  *
- * Shared types (MethodInfo, CanisterConfig, HookType, GeneratorOptions)
- * are now in @ic-reactor/codegen.
+ * Most types are now imported from @ic-reactor/codegen to ensure consistency.
  */
 
-export type { CanisterConfig, HookType } from "@ic-reactor/codegen"
+import type { CodegenConfig, CanisterConfig } from "@ic-reactor/codegen"
 
-export interface HookConfig {
-  name: string
-  type?: HookType
+// Re-export for convenience
+export type { CodegenConfig, CanisterConfig }
+
+/**
+ * CLI arguments for the `init` command
+ */
+export interface InitOptions {
+  yes?: boolean
+  outDir?: string
+  dryRun?: boolean
 }
 
-export interface ReactorConfig {
-  /** Schema version */
-  $schema?: string
-  /** Output directory for generated files */
-  outDir: string
-  /** Default path to client manager import (can be overridden per canister) */
-  clientManagerPath?: string
-  /** Canister configurations */
-  canisters: Record<string, CanisterConfig>
-  /** Track which hooks have been generated */
-  generatedHooks: Record<string, Array<string | HookConfig>>
+/**
+ * CLI arguments for the `generate` command
+ */
+export interface GenerateOptions {
+  canister?: string
+  clean?: boolean
 }

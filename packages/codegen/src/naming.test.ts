@@ -2,9 +2,6 @@ import { describe, it, expect } from "vitest"
 import {
   toPascalCase,
   toCamelCase,
-  getHookFileName,
-  getHookExportName,
-  getReactHookName,
   getReactorName,
   getServiceTypeName,
 } from "./naming"
@@ -25,25 +22,14 @@ describe("Naming Utilities", () => {
   })
 
   describe("Domain-Specific Naming", () => {
-    it("generates hook file names", () => {
-      expect(getHookFileName("get_user", "query")).toBe("getUserQuery.ts")
-      expect(getHookFileName("update_item", "mutation")).toBe(
-        "updateItemMutation.ts"
-      )
+    it("generates reactor names", () => {
+      expect(getReactorName("backend")).toBe("backendReactor")
+      expect(getReactorName("my-canister")).toBe("myCanisterReactor")
     })
 
-    it("generates hook export names", () => {
-      expect(getHookExportName("get_user", "query")).toBe("getUserQuery")
-      expect(getHookExportName("update_item", "mutation")).toBe(
-        "updateItemMutation"
-      )
-    })
-
-    it("generates React hook names", () => {
-      expect(getReactHookName("get_user", "query")).toBe("useGetUserQuery")
-      expect(getReactHookName("update_item", "mutation")).toBe(
-        "useUpdateItemMutation"
-      )
+    it("generates service type names", () => {
+      expect(getServiceTypeName("backend")).toBe("BackendService")
+      expect(getServiceTypeName("update_item")).toBe("UpdateItemService")
     })
 
     it("generates reactor names", () => {

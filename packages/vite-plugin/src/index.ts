@@ -1,137 +1,82 @@
 /**
- * IC-Reactor Vite Plugin
+ * @ic-reactor/vite-plugin
  *
- * A Vite plugin that generates ic-reactor hooks from Candid .did files.
- * Uses @ic-reactor/codegen for all code generation logic.
- *
- * Usage:
- * ```ts
- * import { icReactorPlugin } from "@ic-reactor/vite-plugin"
- *
- * export default defineConfig({
- *   plugins: [
- *     icReactorPlugin({
- *       canisters: [
- *         {
- *           name: "backend",
- *           didFile: "../backend/backend.did",
- *           clientManagerPath: "../lib/client"
- *         }
- *       ]
- *     })
- *   ]
- * })
- * ```
+ * Vite plugin that:
+ * 1. Generates hooks at build time (using @ic-reactor/codegen pipeline)
+ * 2. Injects `ic_env` cookie for local development (via proxy)
+ * 3. Hot-reloads when .did files change
  */
 
-import type { Plugin } from "vite"
-import fs from "fs"
-import path from "path"
-import { execFileSync } from "child_process"
+import type { Plugin, UserConfig } from "vite"
+import fs from "node:fs"
+import path from "node:path"
 import {
-  generateDeclarations,
-  generateReactorFile,
-  generateClientFile,
+  runCanisterPipeline,
+  type CanisterConfig,
+  type CodegenConfig,
 } from "@ic-reactor/codegen"
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════
-export interface CanisterConfig {
-  name: string
-  outDir?: string
-  didFile?: string
-  clientManagerPath?: string
-}
+import { getIcEnvironmentInfo, buildIcEnvCookie } from "./env.js"
 
 export interface IcReactorPluginOptions {
-  /** List of canisters to generate hooks for */
+  /**
+   * Canister configurations.
+   * `name` is required for each canister.
+   */
   canisters: CanisterConfig[]
-  /** Base output directory (default: ./src/lib/canisters) */
+  /**
+   * Default output directory (relative to project root).
+   * Default: "src/declarations"
+   */
   outDir?: string
   /**
-   * Path to import ClientManager from (relative to generated file).
+   * Default client manager import path.
    * Default: "../../clients"
    */
   clientManagerPath?: string
   /**
-   * Automatically inject the IC environment (canister IDs and root key)
-   * into the browser using an `ic_env` cookie. (default: true)
-   *
-   * This is useful for local development with `icp`.
+   * Automatically inject `ic_env` cookie for local development?
+   * Default: true
    */
   injectEnvironment?: boolean
 }
 
-function getIcEnvironmentInfo(canisterNames: string[]) {
-  const environment = process.env.ICP_ENVIRONMENT || "local"
-
-  try {
-    const networkStatus = JSON.parse(
-      execFileSync("icp", ["network", "status", "-e", environment, "--json"], {
-        encoding: "utf-8",
-      })
-    )
-    const rootKey = networkStatus.root_key
-    const proxyTarget = `http://127.0.0.1:${networkStatus.port}`
-
-    const canisterIds: Record<string, string> = {}
-    for (const name of canisterNames) {
-      try {
-        const canisterId = execFileSync(
-          "icp",
-          ["canister", "status", name, "-e", environment, "-i"],
-          {
-            encoding: "utf-8",
-          }
-        ).trim()
-        canisterIds[name] = canisterId
-      } catch {
-        // Skip if canister not found
-      }
-    }
-
-    return { environment, rootKey, proxyTarget, canisterIds }
-  } catch {
-    return null
-  }
-}
-
-function buildIcEnvCookie(
-  canisterIds: Record<string, string>,
-  rootKey: string
-): string {
-  const envParts = [`ic_root_key=${rootKey}`]
-
-  for (const [name, id] of Object.entries(canisterIds)) {
-    envParts.push(`PUBLIC_CANISTER_ID:${name}=${id}`)
-  }
-
-  return encodeURIComponent(envParts.join("&"))
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// VITE PLUGIN
-// ═══════════════════════════════════════════════════════════════════════════
-
 export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
-  const baseOutDir = options.outDir ?? "./src/lib/canisters"
+  const {
+    canisters,
+    outDir = "src/declarations",
+    clientManagerPath = "../../clients",
+    injectEnvironment = true,
+  } = options
+
+  // Construct a partial CodegenConfig to pass to the pipeline
+  const globalConfig: Pick<CodegenConfig, "outDir" | "clientManagerPath"> = {
+    outDir,
+    clientManagerPath,
+  }
 
   return {
     name: "ic-reactor-plugin",
+    enforce: "pre", // Run before other plugins
 
-    config(_config, { command }) {
-      if (command !== "serve" || !(options.injectEnvironment ?? true)) {
+    config(config, { command }) {
+      if (command !== "serve" || !injectEnvironment) {
         return {}
       }
 
-      const canisterNames = options.canisters.map((c) => c.name)
+      // ── Local Development Proxy & Cookies ────────────────────────────────
+
+      // Always include internet_identity if not present (common need)
+      const canisterNames = canisters
+        .map((c) => c.name)
+        .filter((n): n is string => !!n)
       if (!canisterNames.includes("internet_identity")) {
         canisterNames.push("internet_identity")
       }
+
       const icEnv = getIcEnvironmentInfo(canisterNames)
 
       if (!icEnv) {
+        // Fallback: just proxy /api to default local replica
         return {
           server: {
             proxy: {
@@ -162,107 +107,71 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
     },
 
     async buildStart() {
-      // Step 0: Ensure central client manager exists (default: src/lib/clients.ts)
-      const defaultClientPath = path.resolve(
-        process.cwd(),
-        "src/lib/clients.ts"
+      // ── Code Generation ──────────────────────────────────────────────────
+
+      const projectRoot = process.cwd()
+      console.log(
+        `[ic-reactor] Generating hooks for ${canisters.length} canisters...`
       )
-      if (!fs.existsSync(defaultClientPath)) {
-        console.log(
-          `[ic-reactor] Default client manager not found. Creating at ${defaultClientPath}`
-        )
-        const clientContent = generateClientFile()
-        fs.mkdirSync(path.dirname(defaultClientPath), { recursive: true })
-        fs.writeFileSync(defaultClientPath, clientContent)
-      }
 
-      for (const canister of options.canisters) {
-        let didFile = canister.didFile
-        const outDir = canister.outDir ?? path.join(baseOutDir, canister.name)
+      for (const canisterConfig of canisters) {
+        try {
+          // If .did file is missing, we might want to attempt pulling it?
+          // For now, pipeline fails if missing. The old plugin logic to "download"
+          // is omitted for simplicity unless requested, to keep "codegen" pure.
 
-        if (!didFile) {
-          const environment = process.env.ICP_ENVIRONMENT || "local"
+          const result = await runCanisterPipeline({
+            canisterConfig,
+            projectRoot,
+            globalConfig,
+          })
 
-          console.log(
-            `[ic-reactor] didFile not specified for "${canister.name}". Attempting to download from canister...`
-          )
-          try {
-            const candidContent = execFileSync(
-              "icp",
-              [
-                "canister",
-                "metadata",
-                canister.name,
-                "candid:service",
-                "-e",
-                environment,
-              ],
-              { encoding: "utf-8" }
-            ).trim()
-
-            const declarationsDir = path.join(outDir, "declarations")
-            if (!fs.existsSync(declarationsDir)) {
-              fs.mkdirSync(declarationsDir, { recursive: true })
-            }
-            didFile = path.join(declarationsDir, `${canister.name}.did`)
-            fs.writeFileSync(didFile, candidContent)
-            console.log(
-              `[ic-reactor] Candid downloaded and saved to ${didFile}`
-            )
-          } catch (error) {
+          if (!result.success) {
             console.error(
-              `[ic-reactor] Failed to download candid for ${canister.name}: ${error}`
+              `[ic-reactor] Failed to generate ${canisterConfig.name}: ${result.error}`
             )
-            continue
+          } else {
+            // Optional: log success
+            // console.log(`[ic-reactor] Generated ${canisterConfig.name} hooks`)
           }
-        }
-
-        console.log(
-          `[ic-reactor] Generating hooks for ${canister.name} from ${didFile}`
-        )
-
-        // Step 1: Generate declarations via @ic-reactor/codegen
-        const result = await generateDeclarations({
-          didFile: didFile,
-          outDir,
-          canisterName: canister.name,
-        })
-
-        if (!result.success) {
+        } catch (err) {
           console.error(
-            `[ic-reactor] Failed to generate declarations: ${result.error}`
+            `[ic-reactor] Error generating ${canisterConfig.name}:`,
+            err
           )
-          continue
         }
-
-        // Step 2: Generate the reactor file using shared codegen
-        const reactorContent = generateReactorFile({
-          canisterName: canister.name,
-          didFile: didFile,
-          clientManagerPath:
-            canister.clientManagerPath ?? options.clientManagerPath,
-        })
-
-        const reactorPath = path.join(outDir, "index.ts")
-        fs.mkdirSync(outDir, { recursive: true })
-        fs.writeFileSync(reactorPath, reactorContent)
-
-        console.log(`[ic-reactor] Reactor hooks generated at ${reactorPath}`)
       }
     },
 
     handleHotUpdate({ file, server }) {
-      // Watch for .did file changes and regenerate
+      // ── Hot Reload on .did changes ───────────────────────────────────────
       if (file.endsWith(".did")) {
-        const canister = options.canisters.find((c) => {
-          if (!c.didFile) return false
-          return path.resolve(c.didFile) === file
+        const affectedCanister = canisters.find((c) => {
+          // Check if changed file matches configured didFile
+          // Cast is safe because didFile is required in CanisterConfig
+          const configPath = path.resolve(process.cwd(), c.didFile)
+          return configPath === file
         })
-        if (canister) {
+
+        if (affectedCanister) {
           console.log(
-            `[ic-reactor] Detected change in ${file}, regenerating...`
+            `[ic-reactor] .did file changed: ${affectedCanister.name}. Regenerating...`
           )
-          server.restart()
+
+          // Re-run pipeline for this canister
+          const projectRoot = process.cwd()
+          runCanisterPipeline({
+            canisterConfig: affectedCanister,
+            projectRoot,
+            globalConfig,
+          }).then((result: import("@ic-reactor/codegen").PipelineResult) => {
+            if (result.success) {
+              // Reload page to reflect new types/hooks
+              server.ws.send({ type: "full-reload" })
+            } else {
+              console.error(`[ic-reactor] Regeneration failed: ${result.error}`)
+            }
+          })
         }
       }
     },
