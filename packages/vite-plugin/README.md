@@ -11,15 +11,14 @@
 
 ---
 
-Automatically generate type-safe React hooks for your Internet Computer canisters. This plugin watches your `.did` files and generates ready-to-use hooks with full TypeScript support.
+Automatically generate type-safe React hooks for your Internet Computer canisters. This plugin watches your `.did` files and generates ready-to-use hooks with full TypeScript support using the shared `@ic-reactor/codegen` pipeline.
 
 ## Features
 
 - ⚡ **Zero Config** — Point to your `.did` file and get hooks instantly
-- 🔄 **Hot Reload** — Automatically regenerates hooks when `.did` files change
-- 📦 **TypeScript Declarations** — Full type safety with auto-generated types
-- 🎯 **Display Types** — Optional `DisplayReactor` support for React-friendly types
-- 🔌 **Flexible** — Works with any `ClientManager` configuration
+- 🔄 **Hot Reload** — Automatically regenerates hooks and types when `.did` files change
+- 📦 **TypeScript Declarations** — Full built-in type safety
+- 🌍 **Auto Environment** — Automatically detects local replica and injects `ic_env` cookie
 
 ## Installation
 
@@ -58,26 +57,29 @@ export default defineConfig({
 
 ### 2. Create Your ClientManager
 
-The plugin expects you to have a `ClientManager` exported from a file. By default, it looks for `./src/lib/clients.ts`:
+The plugin looks for a client manager to import. By default, it expects it at `../../clients` relative to the generated files.
 
 ```typescript
-// src/lib/clients.ts
+// src/clients.ts
 import { ClientManager } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient()
-export const clientManager = new ClientManager({ queryClient })
+export const clientManager = new ClientManager({
+  queryClient,
+  withCanisterEnv: true, // Important for cookie injection support
+})
 ```
 
 ### 3. Use Generated Hooks
 
-The plugin generates an `index.ts` file in your canister folder (default: `./src/lib/canisters/<name>/index.ts`):
+The plugin generates headers in `src/declarations/<name>/index.ts` by default.
 
 ```tsx
-import { useActorQuery, useActorMutation } from "./canisters/backend"
+import { useBackendQuery } from "./declarations/backend"
 
 function MyComponent() {
-  const { data, isPending } = useActorQuery({
+  const { data, isPending } = useBackendQuery({
     functionName: "get_message",
   })
 
@@ -89,116 +91,32 @@ function MyComponent() {
 
 ### Plugin Options
 
-| Option              | Type               | Description                                          | Default                 |
-| :------------------ | :----------------- | :--------------------------------------------------- | :---------------------- |
-| `canisters`         | `CanisterConfig[]` | List of canisters to generate hooks for.             | `[]`                    |
-| `outDir`            | `string`           | Base output directory for generated files.           | `"./src/lib/canisters"` |
-| `injectEnvironment` | `boolean`          | Whether to inject canister IDs into `ic_env` cookie. | `true`                  |
-| `clientManagerPath` | `string`           | Path to a custom `ClientManager` instance.           | `"../../clients"`       |
+| Option              | Type               | Description                                         | Default              |
+| :------------------ | :----------------- | :-------------------------------------------------- | :------------------- |
+| `canisters`         | `CanisterConfig[]` | List of canisters to generate hooks for (required). | -                    |
+| `outDir`            | `string`           | Base output directory for generated files.          | `"src/declarations"` |
+| `clientManagerPath` | `string`           | Path to client manager import.                      | `"../../clients"`    |
+| `injectEnvironment` | `boolean`          | Inject `ic_env` cookie for local development.       | `true`               |
 
 ### Canister Config
 
-| Option              | Type      | Description                                         | Required |
-| :------------------ | :-------- | :-------------------------------------------------- | :------- |
-| `name`              | `string`  | Name of the canister (used in generated code).      | Yes      |
-| `didFile`           | `string`  | Path to the `.did` file.                            | Yes      |
-| `outDir`            | `string`  | Override output directory for this canister.        | No       |
-| `useDisplayReactor` | `boolean` | Use `DisplayReactor` instead of standard `Reactor`. | `true`   |
-| `clientManagerPath` | `string`  | Override client manager path for this canister.     | No       |
+| Option              | Type     | Description                                     | Required |
+| :------------------ | :------- | :---------------------------------------------- | :------- |
+| `name`              | `string` | Name of the canister (used for variable names). | Yes      |
+| `didFile`           | `string` | Path to the `.did` file.                        | Yes      |
+| `outDir`            | `string` | Override output directory for this canister.    | No       |
+| `clientManagerPath` | `string` | Override client manager path.                   | No       |
+| `canisterId`        | `string` | Optional fixed canister ID.                     | No       |
 
-## How It Works
+## Local Development (Environment Injection)
 
-1. **Build Start**: The plugin reads your `.did` files and generates TypeScript declarations (`.js` and `.d.ts`).
-2. **Code Generation**: Creates a reactor instance and typed hooks (using `createActorHooks`) for each canister in `index.ts`.
-3. **Hot Reload**: Watches for `.did` file changes and regenerates everything automatically.
-4. **Local Proxy**: Configures a Vite proxy to redirect `/api` calls to your local replica.
-5. **Environment Detection**: Automatically injects canister IDs from `icp-cli` or `dfx` cache into your session.
+When running `vite dev`, the plugin automatically handles local canister environment connection:
 
-## DisplayReactor vs Reactor
+1. Detects your local environment (using `icp` or `dfx` CLI).
+2. Sets an `ic_env` cookie containing the root key and canister IDs.
+3. Sets up a proxy for `/api` to your local replica.
 
-By default, the plugin uses `DisplayReactor` which transforms Candid types into React-friendly formats:
-
-| Candid Type | Reactor      | DisplayReactor |
-| ----------- | ------------ | -------------- |
-| `nat`       | `bigint`     | `string`       |
-| `int`       | `bigint`     | `string`       |
-| `principal` | `Principal`  | `string`       |
-| `vec nat8`  | `Uint8Array` | `string` (hex) |
-
-To use raw Candid types:
-
-```typescript
-icReactorPlugin({
-  canisters: [
-    {
-      name: "backend",
-      didFile: "./backend/backend.did",
-      useDisplayReactor: false, // Use Reactor instead
-    },
-  ],
-})
-```
-
-## Integration with ICP CLI
-
-`@ic-reactor/vite-plugin` now supports **zero-config local `icp-cli` canister env injection** during `vite dev`.
-
-When dev server starts, the plugin automatically tries to read:
-
-- `.icp/cache/mappings/local.ids.json`
-
-If present, it sets an `ic_env` cookie with:
-
-- `ic_root_key=<local-root-key>`
-- `PUBLIC_CANISTER_ID:<name>=<canister-id>`
-
-This means `withCanisterEnv: true` works out of the box after `icp deploy`, without custom cookie code in `vite.config.ts`.
-
-```typescript
-// vite.config.ts
-import { defineConfig } from "vite"
-import react from "@vitejs/plugin-react"
-import { icReactorPlugin } from "@ic-reactor/vite-plugin"
-
-export default defineConfig({
-  plugins: [
-    react(),
-    icReactorPlugin({
-      canisters: [
-        {
-          name: "backend",
-          didFile: "./backend/backend.did",
-        },
-      ],
-    }),
-  ],
-})
-```
-
-If you need to disable this behavior:
-
-```typescript
-icReactorPlugin({
-  canisters: [...],
-  injectEnvironment: false,
-})
-```
-
-## Requirements
-
-- **Vite 5.x, 6.x, or 7.x**
-- **Node.js 18+**
-- **TypeScript 5.0+**
-
-## Related Packages
-
-- [@ic-reactor/react](https://www.npmjs.com/package/@ic-reactor/react) — React hooks for IC
-- [@ic-reactor/core](https://www.npmjs.com/package/@ic-reactor/core) — Core reactor functionality
-- [@icp-sdk/bindgen](https://www.npmjs.com/package/@icp-sdk/bindgen) — Candid binding generator
-
-## Documentation
-
-For comprehensive guides and API reference, visit the [documentation site](https://ic-reactor.b3pay.net/v3).
+This means you **don't** need complex `vite.config.ts` proxy rules or manual `.env` file management for local addresses — it just works.
 
 ## License
 

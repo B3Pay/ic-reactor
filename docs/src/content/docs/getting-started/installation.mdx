@@ -152,6 +152,12 @@ This creates TypeScript declarations in `src/declarations/<canister_name>/` that
 - `index.js` — IDL factory and canister ID
 - `<canister>.did.d.ts` — TypeScript types for your canister interface
 
+<Aside type="note">
+  If you use **@ic-reactor/vite-plugin** or **@ic-reactor/cli**, you don't need
+  `dfx generate`! These tools automatically generate the necessary declarations
+  for you.
+</Aside>
+
 ## Verify Installation
 
 Create a simple test to verify everything is working:

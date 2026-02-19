@@ -66,6 +66,6 @@ inside the `ic_env` cookie, so `withCanisterEnv: true` clients resolve local can
 
 ## Notes
 
-- `reactor.config.json` is prefilled so `codegen:cli` can run without interactive prompts.
+- `ic-reactor.json` is prefilled so `codegen:cli` can run without interactive prompts.
 - Vite output and CLI output are intentionally separated so you can diff them directly.
 - If `.icp/cache/mappings/local.ids.json` is missing, the plugin logs a hint and Vite still starts, but canister ID resolution from cookie will stay empty until `icp deploy` is run.

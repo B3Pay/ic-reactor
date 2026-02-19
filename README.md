@@ -34,9 +34,9 @@ IC Reactor provides seamless integration between your applications and Internet 
 | [`@ic-reactor/react`](./packages/react)             | React hooks for seamless integration (`useActorQuery`, `useActorMutation`, etc.) |
 | [`@ic-reactor/candid`](./packages/candid)           | Dynamic Candid fetching, parsing, and `CandidReactor` / `CandidDisplayReactor`   |
 | [`@ic-reactor/parser`](./packages/parser)           | Local WASM-based Candid parser (offline, fast compilation)                       |
-| [`@ic-reactor/codegen`](./packages/codegen)         | Shared code generation utilities for IC Reactor                                  |
-| [`@ic-reactor/cli`](./packages/cli)                 | CLI tool to generate shadcn-style React hooks (`npx @ic-reactor/cli`)            |
-| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for zero-config, automatic hook generation                           |
+| [`@ic-reactor/codegen`](./packages/codegen)         | Shared code generation pipeline and utilities                                    |
+| [`@ic-reactor/cli`](./packages/cli)                 | CLI tool to generate type-safe React hooks (`npx ic-reactor generate`)           |
+| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for automatic, hot-reloading hook generation                         |
 
 ## 🔧 CLI & Tools
 
@@ -51,7 +51,12 @@ import { icReactorPlugin } from "@ic-reactor/vite-plugin"
 export default defineConfig({
   plugins: [
     icReactorPlugin({
-      canisters: [{ name: "backend", didFile: "./backend.did" }],
+      canisters: [
+        {
+          name: "backend",
+          didFile: "./backend/backend.did",
+        },
+      ],
     }),
   ],
 })
@@ -63,10 +68,10 @@ Generate declarations and reactors manually for other frameworks or custom setup
 
 ```bash
 # Initialize configuration
-npx @ic-reactor/cli init
+npx ic-reactor init
 
-# Regenerate declarations and reactors
-npx @ic-reactor/cli sync
+# Generate declarations and hooks
+npx ic-reactor generate
 ```
 
 ## 🚀 Quick Start

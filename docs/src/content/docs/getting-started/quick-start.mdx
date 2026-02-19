@@ -54,7 +54,7 @@ This tutorial walks you through creating your first IC Reactor integration with 
          canisters: [
            {
              name: "backend",
-             didFile: "src/declarations/backend.did",
+             didFile: "src/backend/backend.did",
            },
          ],
        }),
@@ -64,8 +64,8 @@ This tutorial walks you through creating your first IC Reactor integration with 
 
    <Aside type="tip">
      When you start your dev server, the plugin will create a folder at
-     `src/canisters/backend/` containing `index.ts` (the reactor) and
-     `declarations/`.
+     `src/declarations/backend/` containing `index.ts` (the reactor) and
+     `backend.did.d.ts` (the types).
    </Aside>
 
 3. ## Initialize ClientManager
@@ -73,24 +73,27 @@ This tutorial walks you through creating your first IC Reactor integration with 
    Create a central `ClientManager`. The generated reactors will use this by default.
 
    ```typescript
-   // src/lib/reactor.ts
+   // src/clients.ts
    import { ClientManager } from "@ic-reactor/react"
    import { QueryClient } from "@tanstack/react-query"
 
    export const queryClient = new QueryClient()
-   export const clientManager = new ClientManager({ queryClient })
+   export const clientManager = new ClientManager({
+     queryClient,
+     withCanisterEnv: true, // Enable cookie-based env injection
+   })
    ```
 
 4. ## Fetch data with Generated Hooks
 
-   Import the generated hooks directly from your canister folder. They are fully typed and ready to use!
+   Import the generated hooks directly from your declarations folder. They are fully typed and ready to use!
 
    ```tsx
    // src/components/Greeting.tsx
-   import { useActorQuery } from "../canisters/backend"
+   import { useBackendQuery } from "../declarations/backend"
 
    function Greeting() {
-     const { data, isPending, error } = useActorQuery({
+     const { data, isPending, error } = useBackendQuery({
        functionName: "greet",
        args: ["World"],
      })
@@ -108,12 +111,12 @@ This tutorial walks you through creating your first IC Reactor integration with 
 
    ```tsx
    // src/components/Counter.tsx
-   import { useActorQuery, useActorMutation } from "../canisters/backend"
+   import { useBackendQuery, useBackendMutation } from "../declarations/backend"
 
    function Counter() {
-     const { data: count } = useActorQuery({ functionName: "getCount" })
+     const { data: count } = useBackendQuery({ functionName: "getCount" })
 
-     const { mutate, isPending } = useActorMutation({
+     const { mutate, isPending } = useBackendMutation({
        functionName: "increment",
        onSuccess: () => {
          // The generated reactor provides helper to invalidate queries
@@ -139,25 +142,17 @@ This tutorial walks you through creating your first IC Reactor integration with 
 Using the Vite plugin provides several advantages out-of-the-box:
 
 - **Zero-config Proxy**: `/api` requests are automatically proxied to your local replica.
-- **Auto-Canister IDs**: Canister IDs are automatically detected from your `icp-cli` or `dfx` cache.
+- **Auto-Canister IDs**: Canister IDs are automatically detected from your local network (via `icp` or `dfx`).
 - **Identity Support**: Works seamlessly with local Internet Identity setups.
 
 ## Environment Variables
 
-Set up your canister IDs in your environment file:
+The plugin handles environment variables for you in development. For production, you might still want to set canister IDs in your environment file:
 
 ```bash
 # .env.local (for Vite)
 VITE_BACKEND_CANISTER_ID=rrkah-fqaaa-aaaaa-aaaaq-cai
-
-# Or if using CRA
-REACT_APP_BACKEND_CANISTER_ID=rrkah-fqaaa-aaaaa-aaaaq-cai
 ```
-
-<Aside type="tip">
-  If you have a DFX project, run `dfx generate` to create your canister's
-  TypeScript declarations in `src/declarations/`.
-</Aside>
 
 ## What's Next?
 

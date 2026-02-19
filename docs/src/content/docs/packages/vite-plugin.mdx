@@ -41,8 +41,7 @@ export default defineConfig({
       canisters: [
         {
           name: "backend",
-          didFile: "src/declarations/backend.did", // Path to your .did file
-          outDir: "src/declarations/backend", // Output for generated files
+          didFile: "src/backend/backend.did", // Path to your .did file
         },
       ],
     }),
@@ -58,34 +57,34 @@ The plugin automatically configures a proxy for `/api` requests to your local re
 
 ### Automatic `ic_env` Injection
 
-The plugin automatically detects your network environment and canister IDs using the `icp-cli`. It injects this information into the `ic_env` cookie, mimicking the behavior of asset canisters. This allows `ClientManager` to automatically resolve the correct canister IDs and network root key without manual configuration.
+The plugin automatically detects your network environment and canister IDs using the `icp` or `dfx` CLI. It injects this information into the `ic_env` cookie. This allows `ClientManager` to automatically resolve the correct canister IDs and network root key without manual configuration.
 
 ### Hot Module Replacement
 
 The plugin watches your `.did` files. When you modify a Candid file, it automatically:
 
-1. Regenerates the TypeScript declarations (`.d.ts` and `.js`).
+1. Regenerates the TypeScript declarations (`.d.ts`, `.js` factory).
 2. Regenerates the `index.ts` file with fully typed hooks.
 3. Restarts the Vite server to pick up the changes.
 
 ## Configuration Options
 
-| Option              | Type               | Description                                          | Default                 |
-| :------------------ | :----------------- | :--------------------------------------------------- | :---------------------- |
-| `canisters`         | `CanisterConfig[]` | List of canisters to generate hooks for.             | `[]`                    |
-| `outDir`            | `string`           | Base output directory for generated files.           | `"./src/lib/canisters"` |
-| `injectEnvironment` | `boolean`          | Whether to inject canister IDs into `ic_env` cookie. | `true`                  |
-| `clientManagerPath` | `string`           | Path to a custom `ClientManager` instance.           | `"../../clients"`       |
+| Option              | Type               | Description                                          | Default              |
+| :------------------ | :----------------- | :--------------------------------------------------- | :------------------- |
+| `canisters`         | `CanisterConfig[]` | List of canisters to generate hooks for (required).  | -                    |
+| `outDir`            | `string`           | Base output directory for generated files.           | `"src/declarations"` |
+| `injectEnvironment` | `boolean`          | Whether to inject canister IDs into `ic_env` cookie. | `true`               |
+| `clientManagerPath` | `string`           | Path to a custom `ClientManager` instance.           | `"../../clients"`    |
 
 ### Canister Config
 
-| Option              | Type      | Description                                                                  | Required |
-| :------------------ | :-------- | :--------------------------------------------------------------------------- | :------- |
-| `name`              | `string`  | Name of the canister (used in generated code).                               | Yes      |
-| `didFile`           | `string`  | Path to the `.did` file.                                                     | Yes      |
-| `outDir`            | `string`  | Override output directory for this canister.                                 | No       |
-| `useDisplayReactor` | `boolean` | Use `DisplayReactor` (handles display traits) instead of standard `Reactor`. | `true`   |
-| `clientManagerPath` | `string`  | Override client manager path for this canister.                              | No       |
+| Option              | Type     | Description                                     | Required |
+| :------------------ | :------- | :---------------------------------------------- | :------- |
+| `name`              | `string` | Name of the canister (used in generated code).  | Yes      |
+| `didFile`           | `string` | Path to the `.did` file.                        | Yes      |
+| `outDir`            | `string` | Override output directory for this canister.    | No       |
+| `clientManagerPath` | `string` | Override client manager path for this canister. | No       |
+| `canisterId`        | `string` | Optional fixed canister ID.                     | No       |
 
 ## Examples
 

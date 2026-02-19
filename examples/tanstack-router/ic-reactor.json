@@ -1,0 +1,11 @@
+{
+  "$schema": "../../packages/cli/schema.json",
+  "outDir": "src/canisters",
+  "clientManagerPath": "../../lib/client",
+  "canisters": {
+    "ledger": {
+      "name": "ledger",
+      "didFile": "./icrc1.did"
+    }
+  }
+}

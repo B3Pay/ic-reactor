@@ -38,31 +38,20 @@ npx ic-reactor init
 Options:
 
 - `-y, --yes`: Skip prompts and use defaults.
-- `-o, --out-dir <path>`: Output directory for generated hooks (default: `./src/canisters`).
+- `-o, --out-dir <path>`: Output directory for generated hooks (default: `src/declarations`).
 
-### `sync`
+### `generate`
 
 Regenerates hooks and declarations for all configured canisters. Run this whenever your `.did` files change. It creates an `index.ts` file in each canister directory with fully typed hooks.
 
 ```bash
-npx ic-reactor sync
+npx ic-reactor generate
 ```
 
 Options:
 
-- `-c, --canister <name>`: Sync only a specific canister.
-
-### `list`
-
-Lists all methods available in a canister's Candid file.
-
-```bash
-npx ic-reactor list -c <canister_name>
-```
-
-Options:
-
-- `-c, --canister <name>`: Canister to list methods from.
+- `-c, --canister <name>`: Generate only for a specific canister.
+- `--clean`: Clean output directory before generating.
 
 ## Configuration
 
@@ -70,11 +59,11 @@ The `ic-reactor.json` file controls the CLI behavior.
 
 ```json
 {
-  "outDir": "./src/canisters",
+  "outDir": "src/declarations",
+  "clientManagerPath": "../../clients",
   "canisters": {
     "backend": {
-      "didFile": "src/declarations/backend.did",
-      "useDisplayReactor": true
+      "didFile": "src/backend/backend.did"
     }
   }
 }
@@ -82,21 +71,21 @@ The `ic-reactor.json` file controls the CLI behavior.
 
 ### Options
 
-| Key                 | Type                             | Description                                |
-| :------------------ | :------------------------------- | :----------------------------------------- |
-| `outDir`            | `string`                         | Base output directory for generated files. |
-| `canisters`         | `Record<string, CanisterConfig>` | Map of canister names to configurations.   |
-| `clientManagerPath` | `string`                         | Path to a custom `ClientManager` instance. |
-| `generatedHooks`    | `Record<string, string[]>`       | (Internal) Tracks generated hooks.         |
+| Key                 | Type                             | Description                                           |
+| :------------------ | :------------------------------- | :---------------------------------------------------- |
+| `outDir`            | `string`                         | Base output directory for generated files (required). |
+| `canisters`         | `Record<string, CanisterConfig>` | Map of canister names to configurations (required).   |
+| `clientManagerPath` | `string`                         | Path to a custom `ClientManager` instance (optional). |
 
 ### Canister Config
 
-| Key                 | Type      | Description                                  |
-| :------------------ | :-------- | :------------------------------------------- |
-| `didFile`           | `string`  | Path to the `.did` file.                     |
-| `outDir`            | `string`  | Override output directory for this canister. |
-| `useDisplayReactor` | `boolean` | Use `DisplayReactor` instead of `Reactor`.   |
-| `clientManagerPath` | `string`  | Override client manager path.                |
+| Key                 | Type     | Description                                  |
+| :------------------ | :------- | :------------------------------------------- |
+| `didFile`           | `string` | Path to the `.did` file (required).          |
+| `name`              | `string` | Canister name.                               |
+| `outDir`            | `string` | Override output directory for this canister. |
+| `clientManagerPath` | `string` | Override client manager path.                |
+| `canisterId`        | `string` | Optional fixed canister ID.                  |
 
 ## Examples
 

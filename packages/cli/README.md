@@ -1,8 +1,8 @@
 # @ic-reactor/cli
 
-> 🔧 Command-line tool for generating IC reactor hooks and declarations.
+> 🔧 Command-line tool for generating type-safe React hooks for ICP canisters.
 
-The `@ic-reactor/cli` helps you generate TypeScript declarations and React hooks from your Candid files. It provides a simple way to keep your frontend types and interactions in sync with your backend canisters.
+The `@ic-reactor/cli` helps you generate TypeScript declarations and React hooks from your Candid files. It uses the shared `@ic-reactor/codegen` pipeline to ensure consistency with the Vite plugin.
 
 ## Installation
 
@@ -15,10 +15,10 @@ pnpm add -D @ic-reactor/cli
 ### 1. Initialize your project
 
 ```bash
-npx @ic-reactor/cli init
+npx ic-reactor init
 ```
 
-This creates an `ic-reactor.json` configuration file in your project root.
+This creates an `ic-reactor.json` configuration file in your project root and optionally sets up a default `ClientManager` at `src/clients.ts`.
 
 ### 2. Configure your canisters
 
@@ -26,35 +26,36 @@ Update `ic-reactor.json` with the paths to your Candid files:
 
 ```json
 {
-  "outDir": "./src/canisters",
+  "outDir": "src/declarations",
+  "clientManagerPath": "../../clients",
   "canisters": {
     "backend": {
-      "didFile": "src/declarations/backend.did"
+      "didFile": "src/backend/backend.did"
     }
   }
 }
 ```
 
-### 3. Sync hooks and declarations
+### 3. Generate hooks
 
 ```bash
-npx @ic-reactor/cli sync
+npx ic-reactor generate
 ```
 
 This command will:
 
-1. Regenerate TypeScript declarations for your canisters.
-2. Create an `index.ts` file for each canister with fully typed hooks.
+1. Generate TypeScript declarations (`.d.ts`, `.js`, `.did`) for each canister.
+2. Create an `index.ts` reactor file for each canister with fully typed hooks.
 
 ### 4. Use the generated hooks
 
 Import the hooks directly from the generated output folder:
 
 ```tsx
-import { useActorQuery } from "./canisters/backend"
+import { useBackendQuery } from "./declarations/backend"
 
 function MyComponent() {
-  const { data, isPending } = useActorQuery({
+  const { data, isPending } = useBackendQuery({
     functionName: "get_message",
   })
 
@@ -69,50 +70,52 @@ function MyComponent() {
 Initialize the configuration file (`ic-reactor.json`).
 
 ```bash
-npx @ic-reactor/cli init [options]
+npx ic-reactor init [options]
 
 Options:
   -y, --yes              Skip prompts and use defaults
   -o, --out-dir <path>   Output directory for generated hooks
 ```
 
-### `sync`
+### `generate` (alias: `g`)
 
-Regenerate hooks and declarations based on your configuration and DID files.
+Generate hooks and declarations based on your configuration and DID files.
 
 ```bash
-npx @ic-reactor/cli sync [options]
+npx ic-reactor generate [options]
 
 Options:
-  -c, --canister <name>   Sync only a specific canister
-```
-
-### `list`
-
-List all available methods from a canister's Candid definition.
-
-```bash
-npx @ic-reactor/cli list -c <canister_name>
+  -c, --canister <name>   Generate only for a specific canister
+  --clean                 Clean output directory before generating
 ```
 
 ## Configuration
 
-The `ic-reactor.json` file supports the following options:
+The `ic-reactor.json` file schema:
 
-| Option              | Type                             | Description                                |
-| :------------------ | :------------------------------- | :----------------------------------------- |
-| `outDir`            | `string`                         | Base output directory for generated files. |
-| `canisters`         | `Record<string, CanisterConfig>` | Map of canister names to configurations.   |
-| `clientManagerPath` | `string`                         | Path to a custom `ClientManager` instance. |
+```typescript
+interface CodegenConfig {
+  /** Default output directory (relative to project root) */
+  outDir: string
+  /** Default import path for the client manager */
+  clientManagerPath?: string
+  /** Canister configurations */
+  canisters: Record<string, CanisterConfig>
+}
 
-### Canister Config
-
-| Option              | Type      | Description                                         |
-| :------------------ | :-------- | :-------------------------------------------------- |
-| `didFile`           | `string`  | Path to the `.did` file.                            |
-| `outDir`            | `string`  | Override output directory for this canister.        |
-| `useDisplayReactor` | `boolean` | Use `DisplayReactor` instead of standard `Reactor`. |
-| `clientManagerPath` | `string`  | Override client manager path.                       |
+interface CanisterConfig {
+  /** Canister name (required) */
+  name: string
+  /** Path to the .did file (required) */
+  didFile: string
+  /** Override output directory for this canister */
+  outDir?: string
+  /** Override client manager import path */
+  clientManagerPath?: string
+  /** Optional fixed canister ID */
+  canisterId?: string
+}
+```
 
 ## Requirements
 
