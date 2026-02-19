@@ -68,7 +68,7 @@ Generate declarations and reactors manually for other frameworks or custom setup
 
 ```bash
 # Initialize configuration
-npx ic-reactor init
+npx @ic-reactor/cli init
 
 # Generate declarations and hooks
 npx ic-reactor generate

@@ -18,7 +18,7 @@ export async function generateCommand(options: GenerateOptions) {
   const configPath = findConfigFile()
   if (!configPath) {
     p.log.error(
-      `No ${pc.yellow("ic-reactor.json")} found. Run ${pc.cyan("npx ic-reactor init")} first.`
+      `No ${pc.yellow("ic-reactor.json")} found. Run ${pc.cyan("npx @ic-reactor/cli init")} first.`
     )
     process.exit(1)
   }

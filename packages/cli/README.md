@@ -15,7 +15,7 @@ pnpm add -D @ic-reactor/cli
 ### 1. Initialize your project
 
 ```bash
-npx ic-reactor init
+npx @ic-reactor/cli init
 ```
 
 This creates an `ic-reactor.json` configuration file in your project root and optionally sets up a default `ClientManager` at `src/clients.ts`.
@@ -70,7 +70,7 @@ function MyComponent() {
 Initialize the configuration file (`ic-reactor.json`).
 
 ```bash
-npx ic-reactor init [options]
+npx @ic-reactor/cli init [options]
 
 Options:
   -y, --yes              Skip prompts and use defaults
