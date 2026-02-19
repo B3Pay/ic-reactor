@@ -39,7 +39,7 @@ export interface IcReactorPluginOptions {
   injectEnvironment?: boolean
 }
 
-export function icReactorPlugin(options: IcReactorPluginOptions) {
+export function icReactorPlugin(options: IcReactorPluginOptions): any {
   const {
     canisters,
     outDir = "src/declarations",
