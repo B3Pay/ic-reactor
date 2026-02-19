@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/B3Pay/ic-reactor/main/packages/cli/schema.json",
   "outDir": "src/canisters-cli",
-  "clientManagerPath": "../lib/client",
+  "clientManagerPath": "../../lib/client",
   "canisters": {
     "backend": {
       "name": "backend",

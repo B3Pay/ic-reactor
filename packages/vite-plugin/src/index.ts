@@ -7,8 +7,7 @@
  * 3. Hot-reloads when .did files change
  */
 
-import type { Plugin, UserConfig } from "vite"
-import fs from "node:fs"
+import type { Plugin } from "vite"
 import path from "node:path"
 import {
   runCanisterPipeline,
@@ -40,7 +39,7 @@ export interface IcReactorPluginOptions {
   injectEnvironment?: boolean
 }
 
-export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
+export function icReactorPlugin(options: IcReactorPluginOptions) {
   const {
     canisters,
     outDir = "src/declarations",
@@ -54,7 +53,7 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
     clientManagerPath,
   }
 
-  return {
+  const plugin: Plugin = {
     name: "ic-reactor-plugin",
     enforce: "pre", // Run before other plugins
 
@@ -176,4 +175,6 @@ export function icReactorPlugin(options: IcReactorPluginOptions): Plugin {
       }
     },
   }
+
+  return plugin
 }

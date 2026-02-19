@@ -5,9 +5,9 @@ import { queryClient } from "./lib/client"
 
 // Auto-generated reactor hooks (from the Vite plugin)
 import {
+  useBackendQuery,
+  useBackendMutation,
   useBackendMethod,
-  getQuery,
-  incMutation,
 } from "./canisters-vite/backend"
 
 import "./style.css"
@@ -47,12 +47,19 @@ function CookieSection() {
   const icEnv = icEnvRaw ? decodeURIComponent(icEnvRaw) : "(not set)"
 
   // Reactor: counter (get) and update methods (inc, add)
-  const { data: counter, refetch: refetchCounter } = getQuery.useQuery()
+  const { data: counter, refetch: refetchCounter } = useBackendQuery({
+    functionName: "get",
+  })
+
+  const { mutate: inc } = useBackendMutation({
+    functionName: "inc",
+    onSuccess: () => refetchCounter(),
+  })
 
   // Use unified method hook for update calls
-  const addMethod = useBackendMethod({
+  const { call: add } = useBackendMethod({
     functionName: "add",
-    invalidateQueries: [getQuery.getQueryKey()],
+    onSuccess: () => refetchCounter(),
   })
 
   useEffect(() => {
@@ -84,17 +91,14 @@ function CookieSection() {
         <div>
           <strong>counter (get):</strong>
           <div style={{ fontSize: 20, marginTop: 6 }}>
-            {counter ?? "(no response)"}
+            {counter ? String(counter) : "(no response)"}
           </div>
         </div>
 
         <div>
           <strong>inc (useBackendMethod.call):</strong>
           <div>
-            <button
-              onClick={async () => incMutation.execute([])}
-              className="btn"
-            >
+            <button onClick={() => inc([])} className="btn">
               Increment
             </button>
           </div>
@@ -105,7 +109,7 @@ function CookieSection() {
           <div>
             <button
               onClick={async () => {
-                await addMethod.call(["5"])
+                await add(["5"])
                 setCookieString(document.cookie || "(no cookies)")
               }}
               className="btn"
