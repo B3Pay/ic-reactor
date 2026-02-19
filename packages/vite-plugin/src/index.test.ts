@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { icReactorPlugin, type IcReactorPluginOptions } from "./index"
-import fs from "fs"
 import path from "path"
 import { execFileSync } from "child_process"
 import { runCanisterPipeline } from "@ic-reactor/codegen"
