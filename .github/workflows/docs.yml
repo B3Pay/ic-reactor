@@ -83,6 +83,11 @@ jobs:
           mkdir -p final-docs/v3
           cp -r docs/dist/* final-docs/v3/
 
+          # Preserve CNAME for custom domain
+          if [ -f "CNAME" ]; then
+            cp CNAME final-docs/CNAME
+          fi
+
           # Root redirect to v3
           cat > final-docs/index.html << 'EOF'
           <!doctype html>
