@@ -1,7 +1,7 @@
 # IC Reactor
 
 <div align="center">
-  <img src="docs/src/assets/icon.svg" alt="IC Reactor Logo" width="120" />
+  <img src="docs/src/assets/icon.svg" alt="IC Reactor Logo" width="240" />
   <br><br>
   <strong>The modern, type-safe library for building Internet Computer applications</strong>
   <br><br>
