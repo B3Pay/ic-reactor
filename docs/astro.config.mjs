@@ -3,8 +3,9 @@ import starlight from "@astrojs/starlight"
 import starlightPageActions from "starlight-page-actions"
 
 export default defineConfig({
-  site: "https://b3pay.github.io",
-  base: "/ic-reactor/v3",
+  site: "https://ic-reactor.b3pay.net",
+  base: "/",
+  output: "static",
   integrations: [
     starlight({
       title: "IC Reactor",
@@ -13,7 +14,7 @@ export default defineConfig({
       },
       plugins: [
         starlightPageActions({
-          baseUrl: "https://b3pay.github.io/ic-reactor/v3",
+          baseUrl: "https://ic-reactor.b3pay.net",
           actions: {
             chatgpt: true,
             claude: true,

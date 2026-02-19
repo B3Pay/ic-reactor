@@ -21,49 +21,51 @@ jobs:
   build:
     name: Build Documentation
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "pnpm"
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
-      - name: Build documentation
+      - name: Build documentation (Astro)
         run: pnpm docs:build
 
-      - name: Download existing GitHub Pages content
-        uses: actions/checkout@v6
+      # docs/dist should be Astro static output
+
+      - name: Download existing Pages content
+        uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: existing-pages
         continue-on-error: true
 
-      - name: Merge with existing docs (preserve old, add v3)
+      - name: Merge existing + new docs
         run: |
-          # Create output directory
           mkdir -p final-docs
 
-          # Copy existing pages content (old v2 docs) if exists
+          # Copy existing gh-pages content if exists
           if [ -d "existing-pages" ]; then
             cp -r existing-pages/* final-docs/ 2>/dev/null || true
             rm -rf final-docs/.git
           fi
 
-          # If v2 isn't already namespaced, move existing root docs into /v2
+          # Ensure v2 exists (move legacy root content into /v2 once)
           if [ ! -d "final-docs/v2" ]; then
             mkdir -p final-docs/v2
             shopt -s dotglob
@@ -76,59 +78,41 @@ jobs:
             shopt -u dotglob
           fi
 
-          # Remove old v3 directory if exists and copy new v3 docs
+          # Replace v3 with new Astro build
           rm -rf final-docs/v3
           mkdir -p final-docs/v3
           cp -r docs/dist/* final-docs/v3/
 
-          # Publish `llms.txt` at the site root so it's available at /llms.txt
-          if [ -f docs/dist/llms.txt ]; then
-            cp docs/dist/llms.txt final-docs/llms.txt
-            echo "Copied llms.txt to site root"
-          fi
-
-          # Redirect root docs to v3 by default
+          # Root redirect to v3
           cat > final-docs/index.html << 'EOF'
           <!doctype html>
-          <html lang="en">
+          <html>
             <head>
               <meta charset="utf-8" />
-              <meta http-equiv="refresh" content="0; url=/ic-reactor/v3/" />
-              <meta name="robots" content="noindex" />
+              <meta http-equiv="refresh" content="0; url=/v3/" />
               <title>IC Reactor Docs</title>
-              <link rel="canonical" href="https://b3pay.github.io/ic-reactor/v3/" />
               <script>
-                window.location.replace("/ic-reactor/v3/");
+                window.location.replace("/v3/");
               </script>
             </head>
             <body>
-              <p>Redirecting to v3 docs…</p>
+              <p>Redirecting to v3 documentation…</p>
             </body>
           </html>
           EOF
 
-          # Root 404: redirect missing legacy paths to v3, preserve path
+          # Smart 404: redirect unknown routes to v3 preserving path
           cat > final-docs/404.html << 'EOF'
           <!doctype html>
-          <html lang="en">
+          <html>
             <head>
               <meta charset="utf-8" />
-              <meta name="robots" content="noindex" />
-              <title>Not Found | IC Reactor Docs</title>
+              <title>Not Found</title>
               <script>
                 (function () {
                   var path = window.location.pathname || "/";
-                  // Normalize to project base
-                  var base = "/ic-reactor";
-                  if (!path.startsWith(base)) {
-                    window.location.replace(base + "/v3/");
-                    return;
-                  }
-                  var rel = path.slice(base.length);
-                  if (rel.startsWith("/v2") || rel.startsWith("/v3")) return;
-                  var target = base + "/v3" + rel;
-                  if (!target.endsWith("/") && path.endsWith("/")) target += "/";
-                  window.location.replace(target);
+                  if (path.startsWith("/v2") || path.startsWith("/v3")) return;
+                  window.location.replace("/v3" + path);
                 })();
               </script>
             </head>
@@ -138,32 +122,19 @@ jobs:
           </html>
           EOF
 
-      - name: Inject v3 banner into v2 docs
-        run: |
-          # Banner HTML to inject after <body> tag in all v2 HTML files
-          BANNER='<div id="v3-banner" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#6366f1,#8b5cf6);color:white;padding:12px 20px;text-align:center;font-family:system-ui,-apple-system,sans-serif;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15);"><span style="margin-right:8px;">🚀</span><strong>IC Reactor v3 is here!</strong> Featuring TanStack Query integration, improved type safety, and more. <a href="/ic-reactor/v3/" style="color:white;text-decoration:underline;font-weight:600;margin-left:8px;">View v3 Documentation →</a><button onclick="document.getElementById('\''v3-banner'\'').remove();localStorage.setItem('\''v3-banner-dismissed'\'','\''1'\'')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:white;cursor:pointer;font-size:18px;padding:4px 8px;">×</button></div><script>if(localStorage.getItem('\''v3-banner-dismissed'\''))document.getElementById('\''v3-banner'\'').remove();</script>'
-
-          # Find all HTML files in v2 docs (not in v3 folder) and inject banner
-          find final-docs/v2 -name "*.html" | while read file; do
-            if grep -q "<body" "$file" && ! grep -q "v3-banner" "$file"; then
-              # Inject banner after <body> tag (handles <body> with or without attributes)
-              sed -i 's|<body[^>]*>|&'"$BANNER"'|' "$file"
-              echo "Injected banner into: $file"
-            fi
-          done
-
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
           path: final-docs
 
   deploy:
-    name: Deploy to GitHub Pages
+    name: Deploy
     needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
