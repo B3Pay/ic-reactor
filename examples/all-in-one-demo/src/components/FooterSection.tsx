@@ -72,7 +72,7 @@ export function FooterSection() {
               variant="outline"
               className="border-slate-700 bg-slate-900/50 hover:bg-slate-800 hover:text-white font-medium"
               onClick={() =>
-                window.open("https://b3pay.github.io/ic-reactor/v3/", "_blank")
+                window.open("https://ic-reactor.b3pay.net/v3/", "_blank")
               }
             >
               <BookOpen className="mr-2 h-5 w-5 text-blue-400" />

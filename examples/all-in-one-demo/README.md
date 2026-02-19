@@ -147,5 +147,5 @@ export const reactor = new DisplayReactor<_SERVICE>({
 ## 📚 Learn More
 
 - [ICP CLI Documentation](https://github.com/dfinity/icp-cli)
-- [IC-Reactor Documentation](https://b3pay.github.io/ic-reactor/)
+- [IC-Reactor Documentation](https://ic-reactor.b3pay.net/ic-reactor/)
 - [@icp-sdk/core Documentation](https://js.icp.build)

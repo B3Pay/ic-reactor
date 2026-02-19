@@ -58,17 +58,17 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
 
    // Actor hooks for your canister
    export const {
-     useActorQuery, // [Read more](/ic-reactor/v3/reference/createactorhooks/useactorquery)
-     useActorMutation, // [Read more](/ic-reactor/v3/reference/createactorhooks/useactormutation)
-     useActorSuspenseQuery, // [Read more](/ic-reactor/v3/reference/createactorhooks/useactorsuspensequery)
-     useActorInfiniteQuery, // [Read more](/ic-reactor/v3/reference/createactorhooks/useactorinfinitequery)
+     useActorQuery, // [Read more](/v3/reference/createactorhooks/useactorquery)
+     useActorMutation, // [Read more](/v3/reference/createactorhooks/useactormutation)
+     useActorSuspenseQuery, // [Read more](/v3/reference/createactorhooks/useactorsuspensequery)
+     useActorInfiniteQuery, // [Read more](/v3/reference/createactorhooks/useactorinfinitequery)
    } = createActorHooks(backend)
 
    // Auth hooks for authentication
    export const {
-     useAuth, // [Read more](/ic-reactor/v3/reference/createauthhooks/useauth)
-     useUserPrincipal, // [Read more](/ic-reactor/v3/reference/createauthhooks/useuserprincipal)
-     useAgentState, // [Read more](/ic-reactor/v3/reference/createauthhooks/useagentstate)
+     useAuth, // [Read more](/v3/reference/createauthhooks/useauth)
+     useUserPrincipal, // [Read more](/v3/reference/createauthhooks/useuserprincipal)
+     useAgentState, // [Read more](/v3/reference/createauthhooks/useagentstate)
    } = createAuthHooks(clientManager)
    ```
 
@@ -101,7 +101,7 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
 
 ### useAuth Hook
 
-The [`useAuth`](/ic-reactor/v3/reference/createauthhooks/useauth) hook provides login and logout functionality:
+The [`useAuth`](/v3/reference/createauthhooks/useauth) hook provides login and logout functionality:
 
 ```tsx
 import { useAuth } from "../reactor/hooks"
@@ -123,7 +123,7 @@ function LoginButton() {
 
 ### useAgentState Hook
 
-For accessing the [`useAgentState`](/ic-reactor/v3/reference/createauthhooks/useagentstate) connection state:
+For accessing the [`useAgentState`](/v3/reference/createauthhooks/useagentstate) connection state:
 
 ```tsx
 import { useAgentState } from "../reactor/hooks"
@@ -145,7 +145,7 @@ function ConnectionStatus() {
 
 ### useUserPrincipal Hook
 
-A convenience hook for getting the current user's [`useUserPrincipal`](/ic-reactor/v3/reference/createauthhooks/useuserprincipal):
+A convenience hook for getting the current user's [`useUserPrincipal`](/v3/reference/createauthhooks/useuserprincipal):
 
 ```tsx
 import { useUserPrincipal } from "../reactor/hooks"
@@ -290,18 +290,18 @@ export const authHooks = createAuthHooks(clientManager)
 
 // Export individual hooks for convenience
 export const {
-  useActorQuery: useLedgerQuery, // [Read more](/ic-reactor/v3/reference/createactorhooks/useactorquery)
-  useActorMutation: useLedgerMutation, // [Read more](/ic-reactor/v3/reference/createactorhooks/useactormutation)
+  useActorQuery: useLedgerQuery, // [Read more](/v3/reference/createactorhooks/useactorquery)
+  useActorMutation: useLedgerMutation, // [Read more](/v3/reference/createactorhooks/useactormutation)
 } = ledgerHooks
 
 export const {
-  useActorQuery: useBackendQuery, // [Read more](/ic-reactor/v3/reference/createactorhooks/useactorquery)
-  useActorMutation: useBackendMutation, // [Read more](/ic-reactor/v3/reference/createactorhooks/useactormutation)
+  useActorQuery: useBackendQuery, // [Read more](/v3/reference/createactorhooks/useactorquery)
+  useActorMutation: useBackendMutation, // [Read more](/v3/reference/createactorhooks/useactormutation)
 } = backendHooks
 
 export const {
-  useAuth, // [Read more](/ic-reactor/v3/reference/createauthhooks/useauth)
-  useUserPrincipal, // [Read more](/ic-reactor/v3/reference/createauthhooks/useuserprincipal)
+  useAuth, // [Read more](/v3/reference/createauthhooks/useauth)
+  useUserPrincipal, // [Read more](/v3/reference/createauthhooks/useuserprincipal)
 } = authHooks
 ```
 
@@ -370,7 +370,7 @@ function App() {
 3. **Enable DevTools** — Use React Query DevTools in development
 4. **Handle auth state** — Always check `isAuthenticating` before showing login UI
 5. **Name your actors** — Use the `name` option for better debugging
-6. **Use Suspense boundaries** — Wrap components using [`useActorSuspenseQuery`](/ic-reactor/v3/reference/createactorhooks/useactorsuspensequery) in `<Suspense>`
+6. **Use Suspense boundaries** — Wrap components using [`useActorSuspenseQuery`](/v3/reference/createactorhooks/useactorsuspensequery) in `<Suspense>`
 
 ## Next Steps
 
@@ -378,21 +378,21 @@ function App() {
   <LinkCard
     title="Queries"
     description="Deep dive into data fetching"
-    href="/ic-reactor/v3/framework/queries"
+    href="/v3/framework/queries"
   />
   <LinkCard
     title="Mutations"
     description="Learn about updating data"
-    href="/ic-reactor/v3/framework/mutations"
+    href="/v3/framework/mutations"
   />
   <LinkCard
     title="Query Caching"
     description="Master cache configuration"
-    href="/ic-reactor/v3/framework/query-caching"
+    href="/v3/framework/query-caching"
   />
   <LinkCard
     title="Authentication"
     description="Advanced auth patterns"
-    href="/ic-reactor/v3/guides/authentication"
+    href="/v3/guides/authentication"
   />
 </CardGrid>

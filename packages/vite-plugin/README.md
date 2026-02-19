@@ -198,7 +198,7 @@ icReactorPlugin({
 
 ## Documentation
 
-For comprehensive guides and API reference, visit the [documentation site](https://b3pay.github.io/ic-reactor/v3).
+For comprehensive guides and API reference, visit the [documentation site](https://ic-reactor.b3pay.net/v3).
 
 ## License
 

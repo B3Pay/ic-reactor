@@ -14,7 +14,7 @@ The adapter supports multiple methods for obtaining Candid:
 
 1. **Canister Metadata** — Query the canister's `__get_candid_interface_tmp_hack` method
 2. **didjs Canister** — Use the didjs canister to compile Candid to JavaScript
-3. **Local Parser** — Use the optional [`@ic-reactor/parser`](/ic-reactor/v3/packages/parser) for offline compilation
+3. **Local Parser** — Use the optional [`@ic-reactor/parser`](/v3/packages/parser) for offline compilation
 
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
@@ -298,7 +298,7 @@ console.log("Is query:", func.annotations.includes("query"))
 
 ## See Also
 
-- [CandidReactor](/ic-reactor/v3/packages/candid/candidreactor) — High-level dynamic Reactor
-- [@ic-reactor/candid Overview](/ic-reactor/v3/packages/candid/) — Package overview
-- [@ic-reactor/parser](/ic-reactor/v3/packages/parser) — Local WASM parser reference
-- [Reactor](/ic-reactor/v3/reference/reactor) — Base Reactor class
+- [CandidReactor](/v3/packages/candid/candidreactor) — High-level dynamic Reactor
+- [@ic-reactor/candid Overview](/v3/packages/candid/) — Package overview
+- [@ic-reactor/parser](/v3/packages/parser) — Local WASM parser reference
+- [Reactor](/v3/reference/reactor) — Base Reactor class
