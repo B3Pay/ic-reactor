@@ -24,6 +24,7 @@ interface TestActor {
     | { Err: string }
   >
   simple_method: ActorMethod<[bigint], bigint>
+  tuple_method: ActorMethod<[[number, number]], [number, number]>
 }
 
 // The IDL factory
@@ -49,6 +50,11 @@ const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
       ["query"]
     ),
     simple_method: IDL.Func([IDL.Nat], [IDL.Nat], ["query"]),
+    tuple_method: IDL.Func(
+      [IDL.Tuple(IDL.Nat8, IDL.Nat8)],
+      [IDL.Tuple(IDL.Nat8, IDL.Nat8)],
+      ["query"]
+    ),
   })
 }
 
@@ -126,6 +132,24 @@ describe("DisplayReactor Codec Functionality", () => {
       // Convert Back
       const candidResultBack = resultCodec.asCandid(displayResult)
       expect(candidResultBack).toEqual(candidResult)
+    })
+
+    it("should correctly handle tuples and not treat them as blobs", () => {
+      const codec = reactor.getCodec("tuple_method")
+      expect(codec).not.toBeNull()
+
+      const argsCodec = codec!.args
+
+      const displayArgs = [1, 2] as any
+
+      // Convert Display -> Candid
+      const candidArgs = argsCodec.asCandid(displayArgs)
+
+      expect(candidArgs).toEqual([1, 2])
+
+      // Convert Candid -> Display
+      const displayArgsBack = argsCodec.asDisplay(candidArgs)
+      expect(displayArgsBack).toEqual(displayArgs)
     })
   })
 

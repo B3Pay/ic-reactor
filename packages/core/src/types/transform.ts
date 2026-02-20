@@ -18,6 +18,12 @@ export type UnionToTuple<T, L = Last<T>> = [T] extends [never]
   ? []
   : [...UnionToTuple<Exclude<T, L>>, L]
 
-export type IsBlobType<T> = T extends Uint8Array | number[] ? true : false
+export type IsBlobType<T> = T extends Uint8Array
+  ? true
+  : T extends number[]
+    ? number[] extends T
+      ? true
+      : false
+    : false
 
 export type IsOptionalType<T> = [T] extends [[] | [any]] ? true : false
