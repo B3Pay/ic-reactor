@@ -69,8 +69,8 @@ export type DisplayOf<T> =
         ? VariantUnionOf<T>
         : T extends Array<[string, infer B]>
           ? Record<string, DisplayOf<B>>
-          : T extends (infer U)[]
-            ? DisplayOf<U>[]
+          : T extends any[]
+            ? { [K in keyof T]: DisplayOf<T[K]> }
             : T extends null
               ? null
               : T extends Principal
