@@ -25,4 +25,21 @@ describe("Reactor generator", () => {
     expect(content).toContain("new Reactor<WorkflowEngineService>")
     expect(content).not.toContain("createWorkflowEngineDisplayReactor")
   })
+
+  it("supports candid reactor subclasses", () => {
+    const content = generateReactorFile({
+      canisterName: "ledger",
+      didFile: "mock/ledger.did",
+      reactorClass: "MetadataDisplayReactor",
+    })
+
+    expect(content).toMatchSnapshot("metadata-display-reactor-index")
+    expect(content).toContain(
+      'import { createActorHooks } from "@ic-reactor/react"'
+    )
+    expect(content).toContain(
+      'import { MetadataDisplayReactor } from "@ic-reactor/candid"'
+    )
+    expect(content).toContain("new MetadataDisplayReactor<LedgerService>")
+  })
 })

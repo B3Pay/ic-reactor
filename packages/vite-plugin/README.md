@@ -89,7 +89,7 @@ function MyComponent() {
 
 ### Reactor Mode (per canister)
 
-By default, generated hooks use `DisplayReactor` (backward compatible). Set `mode` on a canister to generate hooks with `Reactor` instead.
+By default, generated hooks use `DisplayReactor` (backward compatible). Set `mode` on a canister to choose the generated reactor class (`Reactor`, `DisplayReactor`, `CandidReactor`, `CandidDisplayReactor`, or `MetadataDisplayReactor`).
 
 ```ts
 icReactor({
@@ -117,14 +117,14 @@ icReactor({
 
 ### Canister Config
 
-| Option              | Type                            | Description                                     | Required |
-| :------------------ | :------------------------------ | :---------------------------------------------- | :------- |
-| `name`              | `string`                        | Name of the canister (used for variable names). | Yes      |
-| `didFile`           | `string`                        | Path to the `.did` file.                        | Yes      |
-| `outDir`            | `string`                        | Override output directory for this canister.    | No       |
-| `clientManagerPath` | `string`                        | Override client manager path.                   | No       |
-| `mode`              | `"Reactor" \| "DisplayReactor"` | Reactor class for generated hooks.              | No       |
-| `canisterId`        | `string`                        | Optional fixed canister ID.                     | No       |
+| Option              | Type                                                                                                     | Description                                     | Required |
+| :------------------ | :------------------------------------------------------------------------------------------------------- | :---------------------------------------------- | :------- |
+| `name`              | `string`                                                                                                 | Name of the canister (used for variable names). | Yes      |
+| `didFile`           | `string`                                                                                                 | Path to the `.did` file.                        | Yes      |
+| `outDir`            | `string`                                                                                                 | Override output directory for this canister.    | No       |
+| `clientManagerPath` | `string`                                                                                                 | Override client manager path.                   | No       |
+| `mode`              | `"Reactor" \| "DisplayReactor" \| "CandidReactor" \| "CandidDisplayReactor" \| "MetadataDisplayReactor"` | Reactor class for generated hooks.              | No       |
+| `canisterId`        | `string`                                                                                                 | Optional fixed canister ID.                     | No       |
 
 ## Local Development (Environment Injection)
 

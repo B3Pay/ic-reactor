@@ -42,7 +42,13 @@
           },
           "mode": {
             "type": "string",
-            "enum": ["Reactor", "DisplayReactor"],
+            "enum": [
+              "Reactor",
+              "DisplayReactor",
+              "CandidReactor",
+              "CandidDisplayReactor",
+              "MetadataDisplayReactor"
+            ],
             "description": "Reactor class used for generated hooks (defaults to DisplayReactor)"
           },
           "canisterId": {

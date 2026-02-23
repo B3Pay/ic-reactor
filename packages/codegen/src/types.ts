@@ -33,7 +33,12 @@ export interface CanisterConfig {
   canisterId?: string
 }
 
-export type ReactorClassName = "Reactor" | "DisplayReactor"
+export type ReactorClassName =
+  | "Reactor"
+  | "DisplayReactor"
+  | "CandidReactor"
+  | "CandidDisplayReactor"
+  | "MetadataDisplayReactor"
 
 /**
  * Top-level codegen / CLI configuration (stored in `ic-reactor.json`).

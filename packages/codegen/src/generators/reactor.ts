@@ -44,6 +44,20 @@ export interface ReactorGeneratorOptions {
   reactorClass?: ReactorClassName
 }
 
+function getReactorClassImportSource(
+  reactorClass: ReactorClassName
+): "@ic-reactor/react" | "@ic-reactor/candid" {
+  switch (reactorClass) {
+    case "Reactor":
+    case "DisplayReactor":
+      return "@ic-reactor/react"
+    case "CandidReactor":
+    case "CandidDisplayReactor":
+    case "MetadataDisplayReactor":
+      return "@ic-reactor/candid"
+  }
+}
+
 /**
  * Generate the content of a canister's `index.ts` file.
  */
@@ -62,8 +76,10 @@ export function generateReactorFile(options: ReactorGeneratorOptions): string {
   // Derive the declarations import path from the .did filename
   const baseName = path.basename(didFile, ".did")
   const declarationsPath = `./declarations/${baseName}`
+  const reactorImportSource = getReactorClassImportSource(reactorClass)
 
-  return `import { ${reactorClass}, createActorHooks } from "@ic-reactor/react"
+  return `import { createActorHooks } from "@ic-reactor/react"
+import { ${reactorClass} } from "${reactorImportSource}"
 import { clientManager } from "${clientManagerPath}"
 import { idlFactory, type _SERVICE } from "${declarationsPath}"
 

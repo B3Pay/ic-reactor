@@ -34,6 +34,9 @@ Set `canisterConfig.mode` to choose the generated reactor class:
 
 - `DisplayReactor` (default)
 - `Reactor`
+- `CandidReactor`
+- `CandidDisplayReactor`
+- `MetadataDisplayReactor`
 
 Codegen writes a single `index.ts`. It overwrites that file only while it is still recognized as a generated file; if you replace it with your own file, regeneration leaves it untouched.
 
