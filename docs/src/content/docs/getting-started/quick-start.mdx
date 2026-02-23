@@ -46,11 +46,11 @@ This tutorial walks you through creating your first IC Reactor integration with 
 
    ```typescript
    // vite.config.ts
-   import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+   import { icReactor } from "@ic-reactor/vite-plugin"
 
    export default defineConfig({
      plugins: [
-       icReactorPlugin({
+       icReactor({
          canisters: [
            {
              name: "backend",

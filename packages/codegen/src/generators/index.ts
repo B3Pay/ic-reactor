@@ -11,7 +11,7 @@ export type {
   DeclarationsGeneratorResult,
 } from "./declarations.js"
 
-export { generateReactorFile } from "./reactor.js"
+export { generateReactorFile, generateReactorWrapperFile } from "./reactor.js"
 export type { ReactorGeneratorOptions } from "./reactor.js"
 
 export { generateClientFile } from "./client.js"

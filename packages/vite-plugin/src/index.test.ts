@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { icReactorPlugin, type IcReactorPluginOptions } from "./index"
+import { icReactor, type IcReactorPluginOptions } from "./index"
 import path from "path"
 import { execFileSync } from "child_process"
 import { runCanisterPipeline } from "@ic-reactor/codegen"
@@ -24,7 +24,7 @@ vi.mock("fs", () => ({
   },
 }))
 
-describe("icReactorPlugin", () => {
+describe("icReactor", () => {
   const mockOptions: IcReactorPluginOptions = {
     canisters: [
       {
@@ -60,7 +60,7 @@ describe("icReactorPlugin", () => {
   })
 
   it("should return correct plugin structure", () => {
-    const plugin = icReactorPlugin(mockOptions)
+    const plugin = icReactor(mockOptions)
     expect(plugin.name).toBe("ic-reactor-plugin")
     expect(plugin.buildStart).toBeDefined()
     expect(plugin.handleHotUpdate).toBeDefined()
@@ -89,7 +89,7 @@ describe("icReactorPlugin", () => {
         }
       )
 
-      const plugin = icReactorPlugin(mockOptions)
+      const plugin = icReactor(mockOptions)
       const config = (plugin as any).config({}, { command: "serve" })
 
       expect(config.server.headers["Set-Cookie"]).toContain("ic_env=")
@@ -107,7 +107,7 @@ describe("icReactorPlugin", () => {
         throw new Error("Command not found")
       })
 
-      const plugin = icReactorPlugin(mockOptions)
+      const plugin = icReactor(mockOptions)
       const config = (plugin as any).config({}, { command: "serve" })
 
       expect(config.server.headers).toBeUndefined()
@@ -115,7 +115,7 @@ describe("icReactorPlugin", () => {
     })
 
     it("should return empty config for build command", () => {
-      const plugin = icReactorPlugin(mockOptions)
+      const plugin = icReactor(mockOptions)
       const config = (plugin as any).config({}, { command: "build" })
 
       expect(config).toEqual({})
@@ -124,7 +124,7 @@ describe("icReactorPlugin", () => {
 
   describe("buildStart", () => {
     it("should generate declarations and reactor file", async () => {
-      const plugin = icReactorPlugin(mockOptions)
+      const plugin = icReactor(mockOptions)
       await (plugin.buildStart as any)()
 
       expect(runCanisterPipeline).toHaveBeenCalledWith({
@@ -147,7 +147,7 @@ describe("icReactorPlugin", () => {
         error: "Failed to generate",
       })
 
-      const plugin = icReactorPlugin(mockOptions)
+      const plugin = icReactor(mockOptions)
       await (plugin.buildStart as any)()
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -156,11 +156,40 @@ describe("icReactorPlugin", () => {
 
       consoleErrorSpy.mockRestore()
     })
+
+    it("should pass reactor mode config to codegen", async () => {
+      const plugin = icReactor({
+        ...mockOptions,
+        reactor: {
+          defaultMode: "display",
+          canisters: {
+            test_canister: "raw",
+          },
+        },
+      })
+
+      await (plugin.buildStart as any)()
+
+      expect(runCanisterPipeline).toHaveBeenCalledWith({
+        canisterConfig: mockOptions.canisters[0],
+        projectRoot: expect.any(String),
+        globalConfig: {
+          outDir: "src/declarations",
+          clientManagerPath: "../../clients",
+          reactor: {
+            defaultMode: "display",
+            canisters: {
+              test_canister: "raw",
+            },
+          },
+        },
+      })
+    })
   })
 
   describe("handleHotUpdate", () => {
     it("should restart server when .did file changes", async () => {
-      const plugin = icReactorPlugin(mockOptions)
+      const plugin = icReactor(mockOptions)
       const ctx = {
         file: "/absolute/path/to/src/declarations/test.did",
         server: mockServer,
@@ -181,7 +210,7 @@ describe("icReactorPlugin", () => {
     })
 
     it("should ignore other files", () => {
-      const plugin = icReactorPlugin(mockOptions)
+      const plugin = icReactor(mockOptions)
       const ctx = {
         file: "/some/other/file.ts",
         server: mockServer,

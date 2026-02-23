@@ -62,11 +62,11 @@ The Vite plugin then ensures these variables are available during development by
 
 ```typescript
 // vite.config.ts
-import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+import { icReactor } from "@ic-reactor/vite-plugin"
 
 export default defineConfig({
   plugins: [
-    icReactorPlugin({
+    icReactor({
       canisters: [{ name: "backend", didFile: "..." }],
       // Enabled by default
       injectEnvironment: true,
