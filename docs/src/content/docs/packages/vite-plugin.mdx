@@ -49,6 +49,30 @@ export default defineConfig({
 })
 ```
 
+### Reactor Mode (raw vs display)
+
+By default, generated hooks use `DisplayReactor` (backward compatible). You can switch the default globally and override specific canisters that need raw Candid shapes.
+
+```typescript
+icReactor({
+  canisters: [
+    { name: "backend", didFile: "./backend/backend.did" },
+    { name: "workflow_engine", didFile: "./workflow/workflow_engine.did" },
+  ],
+  reactor: {
+    defaultMode: "display",
+    canisters: {
+      workflow_engine: "raw",
+    },
+  },
+})
+```
+
+Generated canister folders now contain:
+
+1. `index.generated.ts` (overwritten on regenerate)
+2. `index.ts` (created once if missing, not overwritten)
+
 ## Features
 
 ### Zero-Config Proxy
@@ -64,8 +88,9 @@ The plugin automatically detects your network environment and canister IDs using
 The plugin watches your `.did` files. When you modify a Candid file, it automatically:
 
 1. Regenerates the TypeScript declarations (`.d.ts`, `.js` factory).
-2. Regenerates the `index.ts` file with fully typed hooks.
-3. Restarts the Vite server to pick up the changes.
+2. Regenerates `index.generated.ts` with fully typed hooks and reactor factories.
+3. Preserves your `index.ts` wrapper (or migrates legacy generated `index.ts` to the new wrapper format).
+4. Restarts the Vite server to pick up the changes.
 
 ## Configuration Options
 
@@ -75,6 +100,7 @@ The plugin watches your `.did` files. When you modify a Candid file, it automati
 | `outDir`            | `string`           | Base output directory for generated files.           | `"src/declarations"` |
 | `injectEnvironment` | `boolean`          | Whether to inject canister IDs into `ic_env` cookie. | `true`               |
 | `clientManagerPath` | `string`           | Path to a custom `ClientManager` instance.           | `"../../clients"`    |
+| `reactor`           | `ReactorConfig`    | Default/per-canister raw vs display reactor mode.    | display default      |
 
 ### Canister Config
 
@@ -85,6 +111,13 @@ The plugin watches your `.did` files. When you modify a Candid file, it automati
 | `outDir`            | `string` | Override output directory for this canister.    | No       |
 | `clientManagerPath` | `string` | Override client manager path for this canister. | No       |
 | `canisterId`        | `string` | Optional fixed canister ID.                     | No       |
+
+### Reactor Config
+
+| Option        | Type                                 | Description                              | Required |
+| :------------ | :----------------------------------- | :--------------------------------------- | :------- |
+| `defaultMode` | `"raw" \| "display"`                 | Global default mode for generated hooks. | No       |
+| `canisters`   | `Record<string, "raw" \| "display">` | Per-canister overrides keyed by name.    | No       |
 
 ## Examples
 
