@@ -10,8 +10,7 @@ export type {
   CanisterConfig,
   CodegenConfig,
   GeneratorResult,
-  ReactorMode,
-  ReactorGenerationConfig,
+  ReactorClassName,
 } from "./types.js"
 
 // Pipeline (Primary Entry Point)

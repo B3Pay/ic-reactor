@@ -31,7 +31,7 @@ describe("Codegen pipeline", () => {
     )
   }
 
-  it("applies per-canister reactor mode overrides over the global default", async () => {
+  it("uses per-canister mode to generate Reactor-based hooks", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "workflow_engine.did")
 
@@ -39,35 +39,28 @@ describe("Codegen pipeline", () => {
       canisterConfig: {
         name: "workflow_engine",
         didFile: "workflow_engine.did",
+        mode: "Reactor",
       },
       projectRoot,
       globalConfig: {
         outDir: "src/declarations",
         clientManagerPath: "../../clients",
-        reactor: {
-          defaultMode: "display",
-          canisters: {
-            workflow_engine: "raw",
-          },
-        },
       },
     })
 
     expect(result.success).toBe(true)
 
-    const generatedPath = path.join(
+    const indexPath = path.join(
       projectRoot,
-      "src/declarations/workflow_engine/index.generated.ts"
+      "src/declarations/workflow_engine/index.ts"
     )
-    const generated = fs.readFileSync(generatedPath, "utf-8")
+    const generated = fs.readFileSync(indexPath, "utf-8")
 
     expect(generated).toContain("new Reactor<WorkflowEngineService>")
-    expect(generated).toContain(
-      'export const WorkflowEngineReactorMode = "raw" as const'
-    )
+    expect(generated).not.toContain("new DisplayReactor<WorkflowEngineService>")
   })
 
-  it("does not overwrite the wrapper file on regenerate", async () => {
+  it("does not overwrite user-modified index.ts on regenerate", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "backend.did")
 
@@ -86,26 +79,26 @@ describe("Codegen pipeline", () => {
     const first = await runCanisterPipeline(options)
     expect(first.success).toBe(true)
 
-    const wrapperPath = path.join(
+    const indexPath = path.join(
       projectRoot,
       "src/declarations/backend/index.ts"
     )
     fs.writeFileSync(
-      wrapperPath,
-      `// user wrapper
-export const customBackendWrapper = true
+      indexPath,
+      `// user custom canister file
+export const customBackendIndex = true
 `
     )
 
     const second = await runCanisterPipeline(options)
     expect(second.success).toBe(true)
 
-    const wrapper = fs.readFileSync(wrapperPath, "utf-8")
-    expect(wrapper).toContain("customBackendWrapper = true")
+    const wrapper = fs.readFileSync(indexPath, "utf-8")
+    expect(wrapper).toContain("customBackendIndex = true")
     expect(second.files).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          filePath: wrapperPath,
+          filePath: indexPath,
           skipped: true,
           success: true,
         }),
@@ -113,14 +106,14 @@ export const customBackendWrapper = true
     )
   })
 
-  it("migrates a legacy generated index.ts into a stable wrapper", async () => {
+  it("overwrites legacy generated index.ts during regeneration", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "backend.did")
 
     const canisterOutDir = path.join(projectRoot, "src/declarations/backend")
     fs.mkdirSync(canisterOutDir, { recursive: true })
 
-    // Simulate the pre-wrapper generated index.ts content from older versions.
+    // Simulate a generated index.ts content from older versions.
     fs.writeFileSync(
       path.join(canisterOutDir, "index.ts"),
       `import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
@@ -161,18 +154,10 @@ export const {
 
     expect(result.success).toBe(true)
 
-    const wrapperPath = path.join(canisterOutDir, "index.ts")
-    const wrapper = fs.readFileSync(wrapperPath, "utf-8")
-    expect(wrapper).toContain('export * from "./index.generated"')
-    expect(wrapper).not.toContain("createActorHooks(")
-
-    const generated = fs.readFileSync(
-      path.join(canisterOutDir, "index.generated.ts"),
-      "utf-8"
-    )
-    expect(generated).toContain("createBackendDisplayReactor")
-    expect(generated).toContain(
-      'export const BackendReactorMode = "display" as const'
-    )
+    const indexPath = path.join(canisterOutDir, "index.ts")
+    const generated = fs.readFileSync(indexPath, "utf-8")
+    expect(generated).toContain("new DisplayReactor<BackendService>")
+    expect(generated).toContain("useBackendMutation")
+    expect(generated).not.toContain('export * from "./index.generated"')
   })
 })

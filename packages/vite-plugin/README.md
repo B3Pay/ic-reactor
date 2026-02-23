@@ -87,54 +87,21 @@ function MyComponent() {
 }
 ```
 
-### Reactor Mode (raw vs display)
+### Reactor Mode (per canister)
 
-By default, generated hooks use `DisplayReactor` (backward compatible). You can switch the default globally, and override specific canisters that need raw Candid shapes.
+By default, generated hooks use `DisplayReactor` (backward compatible). Set `mode` on a canister to generate hooks with `Reactor` instead.
 
 ```ts
 icReactor({
   canisters: [
     { name: "backend", didFile: "./backend/backend.did" },
-    { name: "workflow_engine", didFile: "./workflow/workflow_engine.did" },
-  ],
-  reactor: {
-    defaultMode: "display",
-    canisters: {
-      workflow_engine: "raw",
+    {
+      name: "workflow_engine",
+      mode: "Reactor",
+      didFile: "./workflow/workflow_engine.did",
     },
-  },
+  ],
 })
-```
-
-Generated canister folders now contain:
-
-- `index.generated.ts` (overwritten on regenerate)
-- `index.ts` (created once if missing, never overwritten)
-
-The generated implementation exports both factories so apps can opt in explicitly without editing generated files:
-
-```ts
-// display-default canister (generated)
-export function createBackendRawReactor() {
-  /* ... */
-}
-export function createBackendDisplayReactor() {
-  /* ... */
-}
-export const backendReactor = createBackendDisplayReactor()
-export const BackendReactorMode = "display" as const
-```
-
-```ts
-// raw-default canister (generated)
-export function createWorkflowEngineRawReactor() {
-  /* ... */
-}
-export function createWorkflowEngineDisplayReactor() {
-  /* ... */
-}
-export const workflowEngineReactor = createWorkflowEngineRawReactor()
-export const WorkflowEngineReactorMode = "raw" as const
 ```
 
 ## Configuration
@@ -147,24 +114,17 @@ export const WorkflowEngineReactorMode = "raw" as const
 | `outDir`            | `string`           | Base output directory for generated files.          | `"src/declarations"` |
 | `clientManagerPath` | `string`           | Path to client manager import.                      | `"../../clients"`    |
 | `injectEnvironment` | `boolean`          | Inject `ic_env` cookie for local development.       | `true`               |
-| `reactor`           | `ReactorConfig`    | Default/per-canister raw vs display reactor mode.   | display default      |
 
 ### Canister Config
 
-| Option              | Type     | Description                                     | Required |
-| :------------------ | :------- | :---------------------------------------------- | :------- |
-| `name`              | `string` | Name of the canister (used for variable names). | Yes      |
-| `didFile`           | `string` | Path to the `.did` file.                        | Yes      |
-| `outDir`            | `string` | Override output directory for this canister.    | No       |
-| `clientManagerPath` | `string` | Override client manager path.                   | No       |
-| `canisterId`        | `string` | Optional fixed canister ID.                     | No       |
-
-### ReactorConfig
-
-| Option        | Type                                 | Description                              | Required |
-| :------------ | :----------------------------------- | :--------------------------------------- | :------- |
-| `defaultMode` | `"raw" \| "display"`                 | Global default mode for generated hooks. | No       |
-| `canisters`   | `Record<string, "raw" \| "display">` | Per-canister overrides keyed by name.    | No       |
+| Option              | Type                            | Description                                     | Required |
+| :------------------ | :------------------------------ | :---------------------------------------------- | :------- |
+| `name`              | `string`                        | Name of the canister (used for variable names). | Yes      |
+| `didFile`           | `string`                        | Path to the `.did` file.                        | Yes      |
+| `outDir`            | `string`                        | Override output directory for this canister.    | No       |
+| `clientManagerPath` | `string`                        | Override client manager path.                   | No       |
+| `mode`              | `"Reactor" \| "DisplayReactor"` | Reactor class for generated hooks.              | No       |
+| `canisterId`        | `string`                        | Optional fixed canister ID.                     | No       |
 
 ## Local Development (Environment Injection)
 

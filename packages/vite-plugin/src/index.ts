@@ -13,7 +13,6 @@ import {
   runCanisterPipeline,
   type CanisterConfig,
   type CodegenConfig,
-  type ReactorGenerationConfig,
 } from "@ic-reactor/codegen"
 import { getIcEnvironmentInfo, buildIcEnvCookie } from "./env.js"
 
@@ -38,11 +37,6 @@ export interface IcReactorPluginOptions {
    * Default: true
    */
   injectEnvironment?: boolean
-  /**
-   * Reactor generation behavior.
-   * Controls whether generated default hooks use raw (Reactor) or display (DisplayReactor).
-   */
-  reactor?: ReactorGenerationConfig
 }
 
 export function icReactor(options: IcReactorPluginOptions): any {
@@ -51,19 +45,12 @@ export function icReactor(options: IcReactorPluginOptions): any {
     outDir = "src/declarations",
     clientManagerPath = "../../clients",
     injectEnvironment = true,
-    reactor,
   } = options
 
   // Construct a partial CodegenConfig to pass to the pipeline
-  const globalConfig: Pick<
-    CodegenConfig,
-    "outDir" | "clientManagerPath" | "reactor"
-  > = {
+  const globalConfig: Pick<CodegenConfig, "outDir" | "clientManagerPath"> = {
     outDir,
     clientManagerPath,
-  }
-  if (reactor != null) {
-    globalConfig.reactor = reactor
   }
 
   const plugin: Plugin = {
