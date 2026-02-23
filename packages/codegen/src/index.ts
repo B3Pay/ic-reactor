@@ -6,7 +6,13 @@
  */
 
 // Core Types
-export type { CanisterConfig, CodegenConfig, GeneratorResult } from "./types.js"
+export type {
+  CanisterConfig,
+  CodegenConfig,
+  GeneratorResult,
+  ReactorMode,
+  ReactorGenerationConfig,
+} from "./types.js"
 
 // Pipeline (Primary Entry Point)
 export { runCanisterPipeline } from "./pipeline.js"

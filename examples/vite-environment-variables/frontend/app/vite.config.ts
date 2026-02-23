@@ -1,11 +1,11 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
-import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+import { icReactor } from "@ic-reactor/vite-plugin"
 
 export default defineConfig({
   plugins: [
     react(),
-    icReactorPlugin({
+    icReactor({
       canisters: [{ name: "backend" }],
     }),
   ],

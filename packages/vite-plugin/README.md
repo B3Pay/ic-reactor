@@ -38,12 +38,12 @@ pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
 // vite.config.ts
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
-import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+import { icReactor } from "@ic-reactor/vite-plugin"
 
 export default defineConfig({
   plugins: [
     react(),
-    icReactorPlugin({
+    icReactor({
       canisters: [
         {
           name: "backend",
@@ -87,6 +87,56 @@ function MyComponent() {
 }
 ```
 
+### Reactor Mode (raw vs display)
+
+By default, generated hooks use `DisplayReactor` (backward compatible). You can switch the default globally, and override specific canisters that need raw Candid shapes.
+
+```ts
+icReactor({
+  canisters: [
+    { name: "backend", didFile: "./backend/backend.did" },
+    { name: "workflow_engine", didFile: "./workflow/workflow_engine.did" },
+  ],
+  reactor: {
+    defaultMode: "display",
+    canisters: {
+      workflow_engine: "raw",
+    },
+  },
+})
+```
+
+Generated canister folders now contain:
+
+- `index.generated.ts` (overwritten on regenerate)
+- `index.ts` (created once if missing, never overwritten)
+
+The generated implementation exports both factories so apps can opt in explicitly without editing generated files:
+
+```ts
+// display-default canister (generated)
+export function createBackendRawReactor() {
+  /* ... */
+}
+export function createBackendDisplayReactor() {
+  /* ... */
+}
+export const backendReactor = createBackendDisplayReactor()
+export const BackendReactorMode = "display" as const
+```
+
+```ts
+// raw-default canister (generated)
+export function createWorkflowEngineRawReactor() {
+  /* ... */
+}
+export function createWorkflowEngineDisplayReactor() {
+  /* ... */
+}
+export const workflowEngineReactor = createWorkflowEngineRawReactor()
+export const WorkflowEngineReactorMode = "raw" as const
+```
+
 ## Configuration
 
 ### Plugin Options
@@ -97,6 +147,7 @@ function MyComponent() {
 | `outDir`            | `string`           | Base output directory for generated files.          | `"src/declarations"` |
 | `clientManagerPath` | `string`           | Path to client manager import.                      | `"../../clients"`    |
 | `injectEnvironment` | `boolean`          | Inject `ic_env` cookie for local development.       | `true`               |
+| `reactor`           | `ReactorConfig`    | Default/per-canister raw vs display reactor mode.   | display default      |
 
 ### Canister Config
 
@@ -107,6 +158,13 @@ function MyComponent() {
 | `outDir`            | `string` | Override output directory for this canister.    | No       |
 | `clientManagerPath` | `string` | Override client manager path.                   | No       |
 | `canisterId`        | `string` | Optional fixed canister ID.                     | No       |
+
+### ReactorConfig
+
+| Option        | Type                                 | Description                              | Required |
+| :------------ | :----------------------------------- | :--------------------------------------- | :------- |
+| `defaultMode` | `"raw" \| "display"`                 | Global default mode for generated hooks. | No       |
+| `canisters`   | `Record<string, "raw" \| "display">` | Per-canister overrides keyed by name.    | No       |
 
 ## Local Development (Environment Injection)
 

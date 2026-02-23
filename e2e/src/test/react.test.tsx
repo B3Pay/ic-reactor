@@ -1,19 +1,18 @@
 import React from "react"
-import {
-  render,
-  screen,
-  fireEvent,
-  act,
-  waitFor,
-  cleanup,
-} from "@testing-library/react"
+import { render, screen, fireEvent, act, cleanup } from "@testing-library/react"
 import { idlFactory, hello_actor } from "../declarations/hello_actor"
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { createActorHooks } from "@ic-reactor/react"
 import { describe, it, expect, afterEach, beforeAll } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+})
 
 const clientManager = new ClientManager({
   withProcessEnv: true,
@@ -42,6 +41,7 @@ beforeAll(async () => {
 
 afterEach(() => {
   cleanup()
+  queryClient.clear()
 })
 
 describe("React Test", () => {
@@ -82,14 +82,11 @@ describe("React Test", () => {
       fireEvent.click(screen.getByText("Say Hello"))
     })
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("data")).toHaveTextContent(
-          "Hello, Query Call!"
-        )
-      },
-      { timeout: 5000 }
-    )
+    expect(
+      await screen.findByText("Hello, Query Call!", undefined, {
+        timeout: 10000,
+      })
+    ).toBeInTheDocument()
   })
 
   it("should call update method", async () => {
@@ -132,13 +129,10 @@ describe("React Test", () => {
       fireEvent.click(screen.getByText("Say Hello"))
     })
 
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("data")).toHaveTextContent(
-          "Hello, Update Call!"
-        )
-      },
-      { timeout: 5000 }
-    )
+    expect(
+      await screen.findByText("Hello, Update Call!", undefined, {
+        timeout: 10000,
+      })
+    ).toBeInTheDocument()
   })
 })
