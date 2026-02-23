@@ -157,31 +157,28 @@ describe("icReactor", () => {
       consoleErrorSpy.mockRestore()
     })
 
-    it("should pass reactor mode config to codegen", async () => {
+    it("should pass canister mode through to codegen via canister config", async () => {
       const plugin = icReactor({
-        ...mockOptions,
-        reactor: {
-          defaultMode: "display",
-          canisters: {
-            test_canister: "raw",
+        canisters: [
+          {
+            ...mockOptions.canisters[0],
+            mode: "Reactor",
           },
-        },
+        ],
+        outDir: mockOptions.outDir,
       })
 
       await (plugin.buildStart as any)()
 
       expect(runCanisterPipeline).toHaveBeenCalledWith({
-        canisterConfig: mockOptions.canisters[0],
+        canisterConfig: {
+          ...mockOptions.canisters[0],
+          mode: "Reactor",
+        },
         projectRoot: expect.any(String),
         globalConfig: {
           outDir: "src/declarations",
           clientManagerPath: "../../clients",
-          reactor: {
-            defaultMode: "display",
-            canisters: {
-              test_canister: "raw",
-            },
-          },
         },
       })
     })

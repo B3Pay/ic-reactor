@@ -1,42 +1,45 @@
 import { describe, expect, it } from "vitest"
-import { generateReactorFile, generateReactorWrapperFile } from "./generators"
+import { generateReactorFile } from "./generators"
 
 describe("Reactor generator", () => {
-  it("keeps default behavior as display mode", () => {
+  it("keeps default behavior as DisplayReactor", () => {
     const content = generateReactorFile({
       canisterName: "backend",
       didFile: "mock/backend.did",
       clientManagerPath: "../../clients",
     })
 
-    expect(content).toMatchSnapshot("display-mode-index-generated")
+    expect(content).toMatchSnapshot("display-reactor-index")
     expect(content).toContain("new DisplayReactor<BackendService>")
-    expect(content).toContain(
-      'export const BackendReactorMode = "display" as const'
-    )
+    expect(content).not.toContain("export const BackendReactorMode")
   })
 
-  it("supports raw mode generation", () => {
+  it("supports Reactor mode generation", () => {
     const content = generateReactorFile({
       canisterName: "workflow_engine",
       didFile: "mock/workflow_engine.did",
-      reactorMode: "raw",
+      reactorClass: "Reactor",
     })
 
-    expect(content).toMatchSnapshot("raw-mode-index-generated")
+    expect(content).toMatchSnapshot("reactor-index")
     expect(content).toContain("new Reactor<WorkflowEngineService>")
-    expect(content).toContain(
-      'export const WorkflowEngineReactorMode = "raw" as const'
-    )
+    expect(content).not.toContain("createWorkflowEngineDisplayReactor")
   })
 
-  it("generates a stable wrapper file", () => {
-    const content = generateReactorWrapperFile({
-      canisterName: "backend",
-      didFile: "mock/backend.did",
+  it("supports candid reactor subclasses", () => {
+    const content = generateReactorFile({
+      canisterName: "ledger",
+      didFile: "mock/ledger.did",
+      reactorClass: "MetadataDisplayReactor",
     })
 
-    expect(content).toMatchSnapshot("stable-wrapper-index")
-    expect(content).toContain('export * from "./index.generated"')
+    expect(content).toMatchSnapshot("metadata-display-reactor-index")
+    expect(content).toContain(
+      'import { createActorHooks } from "@ic-reactor/react"'
+    )
+    expect(content).toContain(
+      'import { MetadataDisplayReactor } from "@ic-reactor/candid"'
+    )
+    expect(content).toContain("new MetadataDisplayReactor<LedgerService>")
   })
 })

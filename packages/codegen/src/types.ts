@@ -24,24 +24,21 @@ export interface CanisterConfig {
    * Example: "../../clients" → `import { clientManager } from "../../clients"`
    */
   clientManagerPath?: string
+  /**
+   * Reactor class used for generated hooks in this canister.
+   * Defaults to DisplayReactor for backward compatibility.
+   */
+  mode?: ReactorClassName
   /** Optional fixed canister ID */
   canisterId?: string
 }
 
-export type ReactorMode = "raw" | "display"
-
-export interface ReactorGenerationConfig {
-  /**
-   * Default reactor mode used for generated hook exports.
-   * `display` preserves current behavior.
-   */
-  defaultMode?: ReactorMode
-  /**
-   * Optional per-canister overrides keyed by canister name.
-   * Example: { workflow_engine: "raw" }
-   */
-  canisters?: Record<string, ReactorMode>
-}
+export type ReactorClassName =
+  | "Reactor"
+  | "DisplayReactor"
+  | "CandidReactor"
+  | "CandidDisplayReactor"
+  | "MetadataDisplayReactor"
 
 /**
  * Top-level codegen / CLI configuration (stored in `ic-reactor.json`).
@@ -59,8 +56,6 @@ export interface CodegenConfig {
    * Individual canisters can override via `CanisterConfig.clientManagerPath`.
    */
   clientManagerPath?: string
-  /** Optional reactor mode generation settings */
-  reactor?: ReactorGenerationConfig
   /** Canister configurations, keyed by canister name */
   canisters: Record<string, CanisterConfig>
 }

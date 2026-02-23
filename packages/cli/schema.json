@@ -18,27 +18,6 @@
       "description": "Default import path for the client manager (relative from generated files)",
       "default": "../../clients"
     },
-    "reactor": {
-      "type": "object",
-      "description": "Control whether generated default hooks use raw Reactor or DisplayReactor",
-      "properties": {
-        "defaultMode": {
-          "type": "string",
-          "enum": ["raw", "display"],
-          "description": "Global default reactor mode for generated hooks",
-          "default": "display"
-        },
-        "canisters": {
-          "type": "object",
-          "description": "Per-canister reactor mode overrides keyed by canister name",
-          "additionalProperties": {
-            "type": "string",
-            "enum": ["raw", "display"]
-          }
-        }
-      },
-      "additionalProperties": false
-    },
     "canisters": {
       "type": "object",
       "description": "Canister configurations",
@@ -60,6 +39,17 @@
           "clientManagerPath": {
             "type": "string",
             "description": "Override client manager import path for this canister"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "Reactor",
+              "DisplayReactor",
+              "CandidReactor",
+              "CandidDisplayReactor",
+              "MetadataDisplayReactor"
+            ],
+            "description": "Reactor class used for generated hooks (defaults to DisplayReactor)"
           },
           "canisterId": {
             "type": "string",
