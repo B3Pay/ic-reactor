@@ -1,0 +1,4 @@
+interface:
+  display_name: "IC Reactor Hooks"
+  short_description: "Create and use ic-reactor hooks efficiently"
+  default_prompt: "Use $ic-reactor-hooks to create or refactor Reactor hooks and show how to use them inside React components and outside React."

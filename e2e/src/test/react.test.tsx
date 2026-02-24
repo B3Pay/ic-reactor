@@ -43,8 +43,8 @@ beforeAll(async () => {
 })
 
 afterEach(() => {
-  cleanup()
   queryClient.clear()
+  cleanup()
 })
 
 describe("React Test", () => {

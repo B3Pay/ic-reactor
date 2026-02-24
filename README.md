@@ -46,11 +46,11 @@ The recommended way for Vite projects. Automatic, zero-config code generation th
 
 ```typescript
 // vite.config.ts
-import { icReactorPlugin } from "@ic-reactor/vite-plugin"
+import { icReactor } from "@ic-reactor/vite-plugin"
 
 export default defineConfig({
   plugins: [
-    icReactorPlugin({
+    icReactor({
       canisters: [
         {
           name: "backend",
