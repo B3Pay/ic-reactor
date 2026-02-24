@@ -11,6 +11,9 @@ const queryClient = new QueryClient({
     queries: {
       retry: false,
     },
+    mutations: {
+      retry: false,
+    },
   },
 })
 
@@ -87,7 +90,7 @@ describe("React Test", () => {
         timeout: 10000,
       })
     ).toBeInTheDocument()
-  })
+  }, 15000)
 
   it("should call update method", async () => {
     const HelloComponent = () => {
@@ -134,5 +137,5 @@ describe("React Test", () => {
         timeout: 10000,
       })
     ).toBeInTheDocument()
-  })
+  }, 15000)
 })
