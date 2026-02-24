@@ -50,6 +50,9 @@ describe("icReactor", () => {
     ws: {
       send: vi.fn(),
     },
+    watcher: {
+      add: vi.fn(),
+    },
   }
 
   beforeEach(() => {
@@ -185,6 +188,15 @@ describe("icReactor", () => {
   })
 
   describe("handleHotUpdate", () => {
+    it("should register configured .did files with the watcher", () => {
+      const plugin = icReactorPlugin(mockOptions)
+      ;(plugin.configureServer as any)(mockServer)
+
+      expect(mockServer.watcher.add).toHaveBeenCalledWith([
+        expect.stringContaining("src/declarations/test.did"),
+      ])
+    })
+
     it("should restart server when .did file changes", async () => {
       const plugin = icReactor(mockOptions)
       const ctx = {
