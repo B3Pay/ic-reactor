@@ -332,8 +332,6 @@ export interface ArgumentsMeta<
   A = BaseActor,
   Name extends FunctionName<A> = FunctionName<A>,
 > {
-  /** The original Candid type signature for the method's arguments */
-  candidType: string
   /** Whether this is a "query" or "update" call */
   functionType: FunctionType
   /** The method name as defined in the Candid interface */
