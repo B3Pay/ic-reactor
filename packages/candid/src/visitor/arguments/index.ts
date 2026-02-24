@@ -258,6 +258,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
           )
 
     return {
+      candidType: t.name,
       functionType,
       functionName,
       args,
