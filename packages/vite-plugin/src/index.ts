@@ -52,6 +52,11 @@ export function icReactor(options: IcReactorPluginOptions): any {
     outDir,
     clientManagerPath,
   }
+  const projectRoot = process.cwd()
+  const resolveDidPath = (didFile: string) =>
+    path.normalize(
+      path.isAbsolute(didFile) ? didFile : path.resolve(projectRoot, didFile)
+    )
 
   const plugin: Plugin = {
     name: "ic-reactor-plugin",
@@ -105,10 +110,15 @@ export function icReactor(options: IcReactorPluginOptions): any {
       }
     },
 
+    configureServer(server) {
+      // Explicitly watch configured DID files so HMR works even when they are not in the module graph.
+      const didFiles = canisters.map((c) => resolveDidPath(c.didFile))
+      server.watcher.add(didFiles)
+    },
+
     async buildStart() {
       // ── Code Generation ──────────────────────────────────────────────────
 
-      const projectRoot = process.cwd()
       console.log(
         `[ic-reactor] Generating hooks for ${canisters.length} canisters...`
       )
@@ -148,8 +158,8 @@ export function icReactor(options: IcReactorPluginOptions): any {
         const affectedCanister = canisters.find((c) => {
           // Check if changed file matches configured didFile
           // Cast is safe because didFile is required in CanisterConfig
-          const configPath = path.resolve(process.cwd(), c.didFile)
-          return configPath === file
+          const configPath = resolveDidPath(c.didFile)
+          return configPath === path.normalize(file)
         })
 
         if (affectedCanister) {
@@ -158,7 +168,6 @@ export function icReactor(options: IcReactorPluginOptions): any {
           )
 
           // Re-run pipeline for this canister
-          const projectRoot = process.cwd()
           runCanisterPipeline({
             canisterConfig: affectedCanister,
             projectRoot,
