@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { icReactor, type IcReactorPluginOptions } from "./index"
+import * as vitePluginModule from "./index"
+import type { IcReactorPluginOptions } from "./index"
 import path from "path"
 import { execFileSync } from "child_process"
 import { runCanisterPipeline } from "@ic-reactor/codegen"
+
+const createVitePlugin =
+  (vitePluginModule as any).icReactor ??
+  (vitePluginModule as any).icReactorPlugin
 
 // Mock internal dependencies
 vi.mock("@ic-reactor/codegen", () => ({
@@ -63,7 +68,7 @@ describe("icReactor", () => {
   })
 
   it("should return correct plugin structure", () => {
-    const plugin = icReactor(mockOptions)
+    const plugin = createVitePlugin(mockOptions)
     expect(plugin.name).toBe("ic-reactor-plugin")
     expect(plugin.buildStart).toBeDefined()
     expect(plugin.handleHotUpdate).toBeDefined()
@@ -92,7 +97,7 @@ describe("icReactor", () => {
         }
       )
 
-      const plugin = icReactor(mockOptions)
+      const plugin = createVitePlugin(mockOptions)
       const config = (plugin as any).config({}, { command: "serve" })
 
       expect(config.server.headers["Set-Cookie"]).toContain("ic_env=")
@@ -110,7 +115,7 @@ describe("icReactor", () => {
         throw new Error("Command not found")
       })
 
-      const plugin = icReactor(mockOptions)
+      const plugin = createVitePlugin(mockOptions)
       const config = (plugin as any).config({}, { command: "serve" })
 
       expect(config.server.headers).toBeUndefined()
@@ -118,7 +123,7 @@ describe("icReactor", () => {
     })
 
     it("should return empty config for build command", () => {
-      const plugin = icReactor(mockOptions)
+      const plugin = createVitePlugin(mockOptions)
       const config = (plugin as any).config({}, { command: "build" })
 
       expect(config).toEqual({})
@@ -127,7 +132,7 @@ describe("icReactor", () => {
 
   describe("buildStart", () => {
     it("should generate declarations and reactor file", async () => {
-      const plugin = icReactor(mockOptions)
+      const plugin = createVitePlugin(mockOptions)
       await (plugin.buildStart as any)()
 
       expect(runCanisterPipeline).toHaveBeenCalledWith({
@@ -150,7 +155,7 @@ describe("icReactor", () => {
         error: "Failed to generate",
       })
 
-      const plugin = icReactor(mockOptions)
+      const plugin = createVitePlugin(mockOptions)
       await (plugin.buildStart as any)()
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -161,7 +166,7 @@ describe("icReactor", () => {
     })
 
     it("should pass canister mode through to codegen via canister config", async () => {
-      const plugin = icReactor({
+      const plugin = createVitePlugin({
         canisters: [
           {
             ...mockOptions.canisters[0],
@@ -189,7 +194,7 @@ describe("icReactor", () => {
 
   describe("handleHotUpdate", () => {
     it("should register configured .did files with the watcher", () => {
-      const plugin = icReactorPlugin(mockOptions)
+      const plugin = createVitePlugin(mockOptions)
       ;(plugin.configureServer as any)(mockServer)
 
       expect(mockServer.watcher.add).toHaveBeenCalledWith([
@@ -198,7 +203,7 @@ describe("icReactor", () => {
     })
 
     it("should restart server when .did file changes", async () => {
-      const plugin = icReactor(mockOptions)
+      const plugin = createVitePlugin(mockOptions)
       const ctx = {
         file: "/absolute/path/to/src/declarations/test.did",
         server: mockServer,
@@ -219,7 +224,7 @@ describe("icReactor", () => {
     })
 
     it("should ignore other files", () => {
-      const plugin = icReactor(mockOptions)
+      const plugin = createVitePlugin(mockOptions)
       const ctx = {
         file: "/some/other/file.ts",
         server: mockServer,
