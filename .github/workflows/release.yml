@@ -43,7 +43,8 @@ jobs:
         run: npm i -g npm@^11.5.1 && npm --version
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # skip the e2e workspace during install to keep job light
+        run: pnpm install --frozen-lockfile --filter '...!e2e'
 
       - name: Cache Rust dependencies
         uses: actions/cache@v5
@@ -56,14 +57,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Build parser package
-        run: pnpm --filter @ic-reactor/parser build
+      # parser is released separately via the release-tools workflow, so we don't need to
+      # build it here. keeping this step slows down the job.
 
-      - name: Build packages (excluding parser)
-        run: pnpm build
+      # build and test all workspace packages except the e2e project which is only used
+      # for integration testing and isn't relevant for npm releases.
+      - name: Build packages (excluding e2e)
+        run: pnpm --filter '...!e2e' build
 
-      - name: Run tests (excluding parser)
-        run: pnpm test
+      - name: Run tests (excluding e2e)
+        run: pnpm --filter '...!e2e' test
 
       - name: Determine publish tag
         run: |

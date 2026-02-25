@@ -45,13 +45,28 @@ jobs:
         run: npm i -g npm@^11.5.1 && npm --version
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # skip the e2e workspace during install to speed up setup
+        run: pnpm install --frozen-lockfile --filter '...!e2e'
 
+      # Build only the relevant packages. Parser should only be compiled when we're
+      # actually releasing it; other matrix entries can skip it to save time. In all
+      # cases exclude the e2e workspace entirely since neither build nor tests depend on it.
       - name: Build packages
-        run: pnpm build
+        run: |
+          if [[ "${{ matrix.workspace }}" == "packages/parser" ]]; then
+            pnpm build
+          else
+            # build everything except parser and e2e
+            pnpm --filter '...!packages/parser' --filter '...!e2e' build
+          fi
 
       - name: Run tests
-        run: pnpm test
+        run: |
+          if [[ "${{ matrix.workspace }}" == "packages/parser" ]]; then
+            pnpm test
+          else
+            pnpm --filter '...!packages/parser' --filter '...!e2e' test
+          fi
 
       - name: Determine publish tag
         run: |
