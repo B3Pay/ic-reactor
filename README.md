@@ -204,7 +204,7 @@ Inside React:
 ```tsx
 const { data } = getProfile.useQuery()
 const { mutateAsync } = updateProfile.useMutation({
-  onSettled: () => getProfile.invalidate(),
+  onSettled: () => toast.success("Profile updated!"),
 })
 ```
 
@@ -252,7 +252,7 @@ export default defineConfig({
 
 ```bash
 npx @ic-reactor/cli init
-npx ic-reactor generate
+npx @ic-reactor/cli generate
 ```
 
 Generated query/mutation files typically expose both:
