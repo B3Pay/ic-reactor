@@ -5,10 +5,10 @@ IC Reactor is a modern, type-safe library for building Internet Computer applica
 ## AI Agent Context Files (Repository)
 
 - `/llms.txt`: This file (high-level context for LLMs)
-- `/AGENTS.md`: Repo-local agent skill registry
-- `/.codex/skills/ic-reactor-hooks/SKILL.md`: Repo-local Codex skill for Reactor hook workflows
+- External skills repo: `https://github.com/B3Pay/ic-reactor-skills`
+- Skill path: `ic-reactor-hooks` (IC Reactor hooks/factories skill)
 
-If an agent supports skills/agent registries, prefer the `ic-reactor-hooks` skill when the task involves creating, refactoring, or explaining React hooks, query/mutation factories, cache invalidation, or usage inside vs outside React components.
+If an agent supports skills/agent registries, prefer the `ic-reactor-hooks` skill from `B3Pay/ic-reactor-skills` when the task involves creating, refactoring, or explaining React hooks, query/mutation factories, cache invalidation, or usage inside vs outside React components.
 
 ## Core Packages
 
@@ -190,8 +190,8 @@ Generated files typically expose method-specific query/mutation objects with bot
 
 ## High-Value File References (for AI agents)
 
-- `/AGENTS.md`
-- `/.codex/skills/ic-reactor-hooks/SKILL.md`
+- `https://github.com/B3Pay/ic-reactor-skills`
+- `https://github.com/B3Pay/ic-reactor-skills/tree/main/ic-reactor-hooks`
 - `/packages/react/src/createActorHooks.ts`
 - `/packages/react/src/createQuery.ts`
 - `/packages/react/src/createMutation.ts`

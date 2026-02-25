@@ -84,8 +84,8 @@ AI-assisted contributions are welcome, but contributors are responsible for corr
 Repository AI context:
 
 - `llms.txt` — high-level context for LLMs
-- `AGENTS.md` — repo-local agent skill registry
-- `.codex/skills/ic-reactor-hooks/SKILL.md` — Reactor hook workflow skill
+- `B3Pay/ic-reactor-skills` — installable IC Reactor skills mono-repo
+- `B3Pay/ic-reactor-skills/ic-reactor-hooks` — Reactor hook workflow skill
 
 ## Adding a package
 

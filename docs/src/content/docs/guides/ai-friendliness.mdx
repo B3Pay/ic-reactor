@@ -23,11 +23,15 @@ import { Card } from "@astrojs/starlight/components"
   llms.txt](https://raw.githubusercontent.com/B3Pay/ic-reactor/main/llms.txt)
 </Card>
 
-## Agent Skills (Codex / AGENTS.md)
+## Agent Skills (IC Reactor Skills Repo)
 
-This repository also includes a repo-local Codex skill registry at `/AGENTS.md` and a dedicated skill for Reactor hook workflows:
+Installable IC Reactor skills are maintained in the separate skills mono-repo:
 
-- `ic-reactor-hooks` (`/.codex/skills/ic-reactor-hooks/SKILL.md`)
+- [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills)
+
+Current skill:
+
+- `ic-reactor-hooks`
 
 Use this skill when asking an AI agent to generate or refactor IC Reactor integrations, especially when you need:
 
@@ -41,6 +45,12 @@ Use this skill when asking an AI agent to generate or refactor IC Reactor integr
 
 ```text
 Use $ic-reactor-hooks to refactor this canister integration into reusable query and mutation factories, then show usage in a React component and a loader/action.
+```
+
+### Example Install (`skills` CLI)
+
+```bash
+npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
 ```
 
 ## End-to-End Type Safety
@@ -86,6 +96,4 @@ const { useActorQuery, useActorMutation } = createActorHooks(reactor)
 
 If you use **Cursor**, this project includes a `.cursorrules` file that automatically configures the AI to follow the project's specific coding standards and architecture.
 
-If you use **GitHub Copilot**, the repository also includes:
-
-- `/.github/copilot-instructions.md` — repository-specific hook, cache, and codegen patterns for IC Reactor
+If you use **GitHub Copilot**, install the IC Reactor skills from [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) in addition to using the repository docs and examples.

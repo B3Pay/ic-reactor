@@ -351,16 +351,15 @@ This repository is intentionally structured to work well with AI coding assistan
 ### AI context files
 
 - [`./llms.txt`](./llms.txt) — high-level library context for LLMs
-- [`./AGENTS.md`](./AGENTS.md) — repo-local skill registry
-- [`./.github/copilot-instructions.md`](./.github/copilot-instructions.md) — GitHub Copilot guidance
+- [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — installable IC Reactor skills mono-repo
 - [`./.cursorrules`](./.cursorrules) — Cursor-specific behavior guidance
 
-### Repo skill: `ic-reactor-hooks`
+### Installable Skill: `ic-reactor-hooks`
 
-This repo includes a local Codex skill for Reactor hook workflows:
+The canonical installable IC Reactor hooks skill lives in the skills mono-repo:
 
-- skill file: [`./.codex/skills/ic-reactor-hooks/SKILL.md`](./.codex/skills/ic-reactor-hooks/SKILL.md)
-- registry entry: [`./AGENTS.md`](./AGENTS.md)
+- repo: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills)
+- skill path: `ic-reactor-hooks`
 
 Use it when asking an agent to:
 
@@ -373,6 +372,12 @@ Example prompt:
 
 ```text
 Use $ic-reactor-hooks to create a reusable query/mutation factory pair for my canister and show usage both inside a React component and in a route loader.
+```
+
+Example install:
+
+```bash
+npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
 ```
 
 ## Contributing
