@@ -12,7 +12,15 @@ import { Reactor } from "@ic-reactor/core"
 // Define a test actor type with paginated methods
 type TestActor = {
   getPosts: ActorMethod<
-    [{ cursor: number; limit: number }],
+    [
+      {
+        cursor: number
+        limit: number
+        filter?: string
+        q?: string
+        sort?: string
+      },
+    ],
     { posts: string[]; nextCursor: number | null }
   >
   getMessages: ActorMethod<
@@ -24,14 +32,16 @@ type TestActor = {
 // Mock data generator
 const generatePosts = (
   cursor: number,
-  limit: number
+  limit: number,
+  labelPrefix?: string
 ): { posts: string[]; nextCursor: number | null } => {
   if (cursor >= 50) {
     return { posts: [], nextCursor: null }
   }
-  const posts = Array.from(
-    { length: limit },
-    (_, i) => `Post ${cursor + i + 1}`
+  const posts = Array.from({ length: limit }, (_, i) =>
+    labelPrefix
+      ? `${labelPrefix} :: Post ${cursor + i + 1}`
+      : `Post ${cursor + i + 1}`
   )
   const nextCursor = cursor + limit < 50 ? cursor + limit : null
   return { posts, nextCursor }
@@ -43,8 +53,12 @@ const createMockReactor = (queryClient: QueryClient) => {
     .fn()
     .mockImplementation(async ({ functionName, args }) => {
       if (functionName === "getPosts") {
-        const { cursor, limit } = args[0]
-        return generatePosts(cursor, limit)
+        const { cursor, limit, filter, q, sort } = args[0]
+        const labelPrefix =
+          filter !== undefined || q !== undefined || sort !== undefined
+            ? `filter=${filter ?? ""};q=${q ?? ""};sort=${sort ?? ""}`
+            : undefined
+        return generatePosts(cursor, limit, labelPrefix)
       }
       if (functionName === "getMessages") {
         const { userId, page } = args[0]
@@ -69,9 +83,10 @@ const createMockReactor = (queryClient: QueryClient) => {
     callMethod,
     generateQueryKey: vi
       .fn()
-      .mockImplementation(({ functionName }) => [
+      .mockImplementation(({ functionName, queryKey }) => [
         "test-canister",
         functionName,
+        ...(queryKey ?? []),
       ]),
   } as unknown as Reactor<TestActor>
 }
@@ -502,7 +517,7 @@ describe("createSuspenseInfiniteQueryFactory", () => {
     expect(result.current.hasNextPage).toBe(true)
   })
 
-  it("should allow creating queries with different args builders", async () => {
+  it("should create distinct keys for different args builders by default", async () => {
     const getPostsQuery = createSuspenseInfiniteQueryFactory(mockReactor, {
       functionName: "getPosts",
       initialPageParam: 0,
@@ -516,8 +531,10 @@ describe("createSuspenseInfiniteQueryFactory", () => {
     expect(smallPageQuery.fetch).toBeDefined()
     expect(largePageQuery.fetch).toBeDefined()
 
-    // They share the same query key since they're the same method
-    expect(smallPageQuery.getQueryKey()).toEqual(largePageQuery.getQueryKey())
+    // Safer default: key is derived from first-page args from each builder
+    expect(smallPageQuery.getQueryKey()).not.toEqual(
+      largePageQuery.getQueryKey()
+    )
 
     // Fetch with small page query
     const data = await smallPageQuery.fetch()
@@ -539,6 +556,54 @@ describe("createSuspenseInfiniteQueryFactory", () => {
     const data = await postsQuery.fetch()
 
     expect((data as any).postCount).toBe(10)
+  })
+
+  it("should include getKeyArgs output in the auto-generated query key", () => {
+    const makeList = createSuspenseInfiniteQueryFactory(mockReactor, {
+      functionName: "getPosts",
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getKeyArgs: (args) => {
+        const [{ filter, q }] = args
+        return [{ filter, q }]
+      },
+    })
+
+    const allQuery = makeList((cursor) => [
+      { cursor, limit: 5, filter: "all", q: "" },
+    ])
+    const completedQuery = makeList((cursor) => [
+      { cursor, limit: 5, filter: "completed", q: "" },
+    ])
+
+    expect(allQuery.getQueryKey()).not.toEqual(completedQuery.getQueryKey())
+  })
+
+  it("should preserve legacy call signature while using factory-level getKeyArgs", async () => {
+    const makeList = createSuspenseInfiniteQueryFactory(mockReactor, {
+      functionName: "getPosts",
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getKeyArgs: (args) => {
+        const [{ filter, q }] = args
+        return [{ filter, q }]
+      },
+    })
+
+    const query = makeList((cursor) => [
+      { cursor, limit: 5, filter: "active", q: "foo" },
+    ])
+
+    const data = await query.fetch()
+
+    expect(data.pages[0].posts[0]).toContain("q=foo")
+    expect(query.getQueryKey()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          __ic_reactor_factory_key_args: [{ filter: "active", q: "foo" }],
+        }),
+      ])
+    )
   })
 })
 

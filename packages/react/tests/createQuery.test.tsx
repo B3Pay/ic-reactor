@@ -54,37 +54,44 @@ const createMockReactor = (queryClient: QueryClient) => {
     canisterId: "test-canister",
     generateQueryKey: vi
       .fn()
-      .mockImplementation(({ functionName, args }) => [
+      .mockImplementation(({ functionName, args, queryKey }) => [
         "test-canister",
         functionName,
         ...(args ? [JSON.stringify(args)] : []),
+        ...(queryKey ?? []),
       ]),
-    getQueryOptions: vi.fn().mockImplementation(({ functionName, args }) => ({
-      queryKey: [
-        "test-canister",
-        functionName,
-        ...(args ? [JSON.stringify(args)] : []),
-      ],
-      queryFn: async () => callMethod({ functionName, args }),
-    })),
+    getQueryOptions: vi
+      .fn()
+      .mockImplementation(({ functionName, args, queryKey }) => ({
+        queryKey: [
+          "test-canister",
+          functionName,
+          ...(args ? [JSON.stringify(args)] : []),
+          ...(queryKey ?? []),
+        ],
+        queryFn: async () => callMethod({ functionName, args }),
+      })),
     fetchQuery: vi.fn().mockImplementation(async ({ functionName, args }) => {
       return callMethod({ functionName, args })
     }),
-    getQueryData: vi.fn().mockImplementation(({ functionName, args }) => {
-      // For simple testing, we can just return what callMethod would return
-      // or check the queryClient cache directly if desired.
-      // But for getCacheData test, it usually expects something if cached.
-      // Let's rely on queryClient.getQueryData in the real implementation,
-      // but here we are mocking Reactor directly.
-      // The `createActorQuery` now calls `reactor.getQueryData`.
-      // So we need to mock it.
-      const key = [
-        "test-canister",
-        functionName,
-        ...(args ? [JSON.stringify(args)] : []),
-      ]
-      return queryClient.getQueryData(key)
-    }),
+    getQueryData: vi
+      .fn()
+      .mockImplementation(({ functionName, args, queryKey }) => {
+        // For simple testing, we can just return what callMethod would return
+        // or check the queryClient cache directly if desired.
+        // But for getCacheData test, it usually expects something if cached.
+        // Let's rely on queryClient.getQueryData in the real implementation,
+        // but here we are mocking Reactor directly.
+        // The `createActorQuery` now calls `reactor.getQueryData`.
+        // So we need to mock it.
+        const key = [
+          "test-canister",
+          functionName,
+          ...(args ? [JSON.stringify(args)] : []),
+          ...(queryKey ?? []),
+        ]
+        return queryClient.getQueryData(key)
+      }),
   } as unknown as Reactor<TestActor>
 }
 

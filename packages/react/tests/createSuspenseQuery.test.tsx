@@ -57,37 +57,47 @@ const createMockReactor = (queryClient: QueryClient) => {
     canisterId: "test-canister",
     generateQueryKey: vi
       .fn()
-      .mockImplementation(({ functionName, args }) => [
+      .mockImplementation(({ functionName, args, queryKey }) => [
         "test-canister",
         functionName,
         ...(args ? [JSON.stringify(args)] : []),
+        ...(queryKey ?? []),
       ]),
-    getQueryOptions: vi.fn().mockImplementation(({ functionName, args }) => ({
-      queryKey: [
-        "test-canister",
-        functionName,
-        ...(args ? [JSON.stringify(args)] : []),
-      ],
-      queryFn: async () => callMethod({ functionName, args }),
-    })),
-    fetchQuery: vi.fn().mockImplementation(async ({ functionName, args }) => {
-      const key = [
-        "test-canister",
-        functionName,
-        ...(args ? [JSON.stringify(args)] : []),
-      ]
-      const data = await callMethod({ functionName, args })
-      queryClient.setQueryData(key, data)
-      return data
-    }),
-    getQueryData: vi.fn().mockImplementation(({ functionName, args }) => {
-      const key = [
-        "test-canister",
-        functionName,
-        ...(args ? [JSON.stringify(args)] : []),
-      ]
-      return queryClient.getQueryData(key)
-    }),
+    getQueryOptions: vi
+      .fn()
+      .mockImplementation(({ functionName, args, queryKey }) => ({
+        queryKey: [
+          "test-canister",
+          functionName,
+          ...(args ? [JSON.stringify(args)] : []),
+          ...(queryKey ?? []),
+        ],
+        queryFn: async () => callMethod({ functionName, args }),
+      })),
+    fetchQuery: vi
+      .fn()
+      .mockImplementation(async ({ functionName, args, queryKey }) => {
+        const key = [
+          "test-canister",
+          functionName,
+          ...(args ? [JSON.stringify(args)] : []),
+          ...(queryKey ?? []),
+        ]
+        const data = await callMethod({ functionName, args })
+        queryClient.setQueryData(key, data)
+        return data
+      }),
+    getQueryData: vi
+      .fn()
+      .mockImplementation(({ functionName, args, queryKey }) => {
+        const key = [
+          "test-canister",
+          functionName,
+          ...(args ? [JSON.stringify(args)] : []),
+          ...(queryKey ?? []),
+        ]
+        return queryClient.getQueryData(key)
+      }),
   } as unknown as Reactor<TestActor>
 }
 

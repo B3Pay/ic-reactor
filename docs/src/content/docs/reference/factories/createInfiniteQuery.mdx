@@ -34,6 +34,11 @@ const postsQuery = createInfiniteQuery(backend, {
 
 ## Configuration
 
+`createInfiniteQuery` accepts standard TanStack Query infinite-query options at
+the create level (for example `refetchInterval`, `refetchOnMount`,
+`refetchOnWindowFocus`, `retry`, `gcTime`, and `networkMode`) in addition to the
+IC Reactor-specific options below.
+
 | Option                 | Type                  | Description                                  |
 | ---------------------- | --------------------- | -------------------------------------------- |
 | `functionName`         | `string`              | The canister method to call (Required)       |
@@ -385,6 +390,11 @@ For dynamic `getArgs` functions:
 const getPostsQuery = createInfiniteQueryFactory(backend, {
   functionName: "getPosts",
   initialPageParam: 0,
+  // Optional: derive logical identity from first-page args (exclude cursor/page state)
+  getKeyArgs: (args) => {
+    const [request] = args
+    return [{ userId: request.userId, filter: request.filter, q: request.q }]
+  },
   getNextPageParam: (lastPage) => lastPage.nextOffset,
 })
 
@@ -401,6 +411,44 @@ function UserPosts({ userId }: { userId: string }) {
   const { data } = userPostsQuery.useInfiniteQuery()
   // ...
 }
+```
+
+### Factory Cache Identity (Route/Search Params)
+
+By default, `createInfiniteQueryFactory(...)` derives the query key from the
+args returned by `getArgs(initialPageParam)`. This is safer than a static key and
+prevents many cache collisions automatically.
+
+Use `getKeyArgs` in the factory config when your first-page args include
+pagination state (like `offset`, `cursor`, or nested `paginate`) and you want
+the cache identity to include only logical filters/search params.
+
+```typescript
+const todoListInfiniteQuery = createInfiniteQueryFactory(todoReactor, {
+  functionName: "list_todos",
+  initialPageParam: "0",
+  getKeyArgs: (args) => {
+    const [request] = args
+    return [
+      {
+        completed: request.completed,
+        search: request.search,
+        sort_by: request.sort_by,
+      },
+    ]
+  },
+  getNextPageParam: (lastPage) => lastPage.next_offset,
+})
+
+// Query initiation stays unchanged
+const todoListQuery = todoListInfiniteQuery((offset: string) => [
+  {
+    completed: undefined,
+    search: "",
+    sort_by: undefined,
+    paginate: { offset, limit: 20 },
+  },
+])
 ```
 
 ---

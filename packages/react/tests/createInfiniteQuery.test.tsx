@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { renderHook, waitFor } from "@testing-library/react"
+import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
@@ -12,7 +12,15 @@ import { Reactor } from "@ic-reactor/core"
 // Define a test actor type with paginated methods
 type TestActor = {
   getPosts: ActorMethod<
-    [{ cursor: number; limit: number }],
+    [
+      {
+        cursor: number
+        limit: number
+        filter?: string
+        q?: string
+        sort?: string
+      },
+    ],
     { posts: string[]; nextCursor: number | null }
   >
   getMessages: ActorMethod<
@@ -24,14 +32,16 @@ type TestActor = {
 // Mock data generator
 const generatePosts = (
   cursor: number,
-  limit: number
+  limit: number,
+  labelPrefix?: string
 ): { posts: string[]; nextCursor: number | null } => {
   if (cursor >= 50) {
     return { posts: [], nextCursor: null }
   }
-  const posts = Array.from(
-    { length: limit },
-    (_, i) => `Post ${cursor + i + 1}`
+  const posts = Array.from({ length: limit }, (_, i) =>
+    labelPrefix
+      ? `${labelPrefix} :: Post ${cursor + i + 1}`
+      : `Post ${cursor + i + 1}`
   )
   const nextCursor = cursor + limit < 50 ? cursor + limit : null
   return { posts, nextCursor }
@@ -43,8 +53,12 @@ const createMockReactor = (queryClient: QueryClient) => {
     .fn()
     .mockImplementation(async ({ functionName, args }) => {
       if (functionName === "getPosts") {
-        const { cursor, limit } = args[0]
-        return generatePosts(cursor, limit)
+        const { cursor, limit, filter, q, sort } = args[0]
+        const labelPrefix =
+          filter !== undefined || q !== undefined || sort !== undefined
+            ? `filter=${filter ?? ""};q=${q ?? ""};sort=${sort ?? ""}`
+            : undefined
+        return generatePosts(cursor, limit, labelPrefix)
       }
       if (functionName === "getMessages") {
         const { userId, page } = args[0]
@@ -62,9 +76,10 @@ const createMockReactor = (queryClient: QueryClient) => {
     callMethod,
     generateQueryKey: vi
       .fn()
-      .mockImplementation(({ functionName }) => [
+      .mockImplementation(({ functionName, queryKey }) => [
         "test-canister",
         functionName,
+        ...(queryKey ?? []),
       ]),
   } as unknown as Reactor<TestActor>
 }
@@ -256,6 +271,54 @@ describe("createInfiniteQuery", () => {
       // Data should be flattened array of posts
       expect(Array.isArray(result.current.data)).toBe(true)
       expect(result.current.data).toHaveLength(10)
+    })
+
+    it("should apply refetchOnMount from config to hook", async () => {
+      const postsQuery = createInfiniteQuery(mockReactor, {
+        functionName: "getPosts",
+        initialPageParam: 0,
+        getArgs: (cursor) => [{ cursor, limit: 10 }] as const,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        refetchOnMount: "always",
+      })
+
+      renderHook(() => postsQuery.useInfiniteQuery(), { wrapper })
+
+      await waitFor(() => {
+        const queryState = queryClient
+          .getQueryCache()
+          .find({ queryKey: postsQuery.getQueryKey() })
+        expect(queryState?.getObserversCount()).toBeGreaterThan(0)
+      })
+
+      const queryState = queryClient
+        .getQueryCache()
+        .find({ queryKey: postsQuery.getQueryKey() })
+      expect(queryState?.observers[0].options.refetchOnMount).toBe("always")
+    })
+
+    it("should apply refetchInterval from config to hook", async () => {
+      const postsQuery = createInfiniteQuery(mockReactor, {
+        functionName: "getPosts",
+        initialPageParam: 0,
+        getArgs: (cursor) => [{ cursor, limit: 10 }] as const,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        refetchInterval: 12345,
+      })
+
+      renderHook(() => postsQuery.useInfiniteQuery(), { wrapper })
+
+      await waitFor(() => {
+        const queryState = queryClient
+          .getQueryCache()
+          .find({ queryKey: postsQuery.getQueryKey() })
+        expect(queryState?.getObserversCount()).toBeGreaterThan(0)
+      })
+
+      const queryState = queryClient
+        .getQueryCache()
+        .find({ queryKey: postsQuery.getQueryKey() })
+      expect(queryState?.observers[0].options.refetchInterval).toBe(12345)
     })
 
     it("should accept additional query options", async () => {
@@ -483,7 +546,7 @@ describe("createInfiniteQueryFactory", () => {
     expect(result.current.hasNextPage).toBe(true)
   })
 
-  it("should allow creating queries with different args builders", async () => {
+  it("should create distinct keys for different args builders by default", async () => {
     const getPostsQuery = createInfiniteQueryFactory(mockReactor, {
       functionName: "getPosts",
       initialPageParam: 0,
@@ -497,8 +560,10 @@ describe("createInfiniteQueryFactory", () => {
     expect(smallPageQuery.fetch).toBeDefined()
     expect(largePageQuery.fetch).toBeDefined()
 
-    // They share the same query key since they're the same method
-    expect(smallPageQuery.getQueryKey()).toEqual(largePageQuery.getQueryKey())
+    // Safer default: initial args from each builder contribute to key identity
+    expect(smallPageQuery.getQueryKey()).not.toEqual(
+      largePageQuery.getQueryKey()
+    )
 
     // Fetch with small page query
     const data = await smallPageQuery.fetch()
@@ -520,5 +585,153 @@ describe("createInfiniteQueryFactory", () => {
     const data = await postsQuery.fetch()
 
     expect((data as any).postCount).toBe(10)
+  })
+
+  it("should generate different query keys for different params", () => {
+    const makeList = createInfiniteQueryFactory(mockReactor, {
+      functionName: "getPosts",
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getKeyArgs: (args) => {
+        const [{ filter, q, sort }] = args
+        return [{ filter, q, sort }]
+      },
+    })
+
+    const allQuery = makeList((cursor) => [
+      { cursor, limit: 10, filter: "all", q: "" },
+    ])
+    const completedQuery = makeList((cursor) => [
+      { cursor, limit: 10, filter: "completed", q: "" },
+    ])
+
+    expect(allQuery.getQueryKey()).not.toEqual(completedQuery.getQueryKey())
+  })
+
+  it("should generate the same query key for the same params", () => {
+    const makeList = createInfiniteQueryFactory(mockReactor, {
+      functionName: "getPosts",
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getKeyArgs: (args) => {
+        const [{ filter, q, sort }] = args
+        return [{ filter, q, sort }]
+      },
+    })
+
+    const queryA = makeList((cursor) => [
+      { cursor, limit: 10, filter: "active", q: "foo", sort: "newest" },
+    ])
+    const queryB = makeList((cursor) => [
+      { cursor, limit: 10, filter: "active", q: "foo", sort: "newest" },
+    ])
+
+    expect(queryA.getQueryKey()).toEqual(queryB.getQueryKey())
+  })
+
+  it("should keep distinct cache entries when route/search params change", async () => {
+    const makeList = createInfiniteQueryFactory(mockReactor, {
+      functionName: "getPosts",
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getKeyArgs: (args) => {
+        const [{ filter, q, sort }] = args
+        return [{ filter, q, sort }]
+      },
+    })
+
+    const allQuery = makeList((cursor) => [
+      { cursor, limit: 5, filter: "all", q: "" },
+    ])
+    const completedQuery = makeList((cursor) => [
+      { cursor, limit: 5, filter: "completed", q: "" },
+    ])
+
+    const allData = await allQuery.fetch()
+    const completedData = await completedQuery.fetch()
+
+    expect(allData.pages[0].posts[0]).toContain("filter=all;q=;sort=")
+    expect(completedData.pages[0].posts[0]).toContain(
+      "filter=completed;q=;sort="
+    )
+
+    const allQueryRerun = makeList((cursor) => [
+      { cursor, limit: 5, filter: "all", q: "" },
+    ])
+    const callCountBeforeRerun = (
+      mockReactor.callMethod as ReturnType<typeof vi.fn>
+    ).mock.calls.length
+    const rerunData = await allQueryRerun.fetch()
+
+    expect(rerunData.pages[0].posts[0]).toContain("filter=all;q=;sort=")
+    expect(
+      (mockReactor.callMethod as ReturnType<typeof vi.fn>).mock.calls.length
+    ).toBe(callCountBeforeRerun)
+
+    expect(queryClient.getQueryData(allQuery.getQueryKey())).toBeDefined()
+    expect(queryClient.getQueryData(completedQuery.getQueryKey())).toBeDefined()
+  })
+
+  it("should avoid cache collisions for different q params", async () => {
+    const makeList = createInfiniteQueryFactory(mockReactor, {
+      functionName: "getPosts",
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getKeyArgs: (args) => {
+        const [{ filter, q }] = args
+        return [{ filter, q }]
+      },
+    })
+
+    const fooQuery = makeList((cursor) => [
+      { cursor, limit: 5, filter: "active", q: "foo" },
+    ])
+    const barQuery = makeList((cursor) => [
+      { cursor, limit: 5, filter: "active", q: "bar" },
+    ])
+
+    const fooData = await fooQuery.fetch()
+    const barData = await barQuery.fetch()
+
+    expect(fooData.pages[0].posts[0]).toContain("q=foo")
+    expect(barData.pages[0].posts[0]).toContain("q=bar")
+    expect(fooQuery.getQueryKey()).not.toEqual(barQuery.getQueryKey())
+  })
+
+  it("should preserve infinite pagination with factory-level getKeyArgs", async () => {
+    const makeList = createInfiniteQueryFactory(mockReactor, {
+      functionName: "getPosts",
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getKeyArgs: (args) => {
+        const [{ filter, q, sort }] = args
+        return [{ filter, q, sort }]
+      },
+    })
+
+    const postsQuery = makeList((cursor) => [
+      { cursor, limit: 3, filter: "active", q: "foo", sort: "newest" },
+    ])
+
+    const { result } = renderHook(() => postsQuery.useInfiniteQuery(), {
+      wrapper,
+    })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(result.current.data?.pages).toHaveLength(1)
+    expect(result.current.data?.pages[0].posts[0]).toContain("q=foo")
+
+    await act(async () => {
+      await result.current.fetchNextPage()
+    })
+
+    await waitFor(() => {
+      expect(result.current.data?.pages).toHaveLength(2)
+    })
+
+    expect(result.current.data?.pages[1].posts[0]).toContain("q=foo")
   })
 })

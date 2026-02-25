@@ -39,9 +39,45 @@ import {
   UseInfiniteQueryOptions,
   QueryFunctionContext,
   FetchInfiniteQueryOptions,
+  InfiniteQueryObserverOptions,
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
 import { NoInfer } from "./types"
+
+const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
+
+type InfiniteQueryFactoryFn<
+  A,
+  M extends FunctionName<A>,
+  T extends TransformKey,
+  TPageParam,
+  TSelected,
+> = {
+  (
+    getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>
+  ): InfiniteQueryResult<
+    InfiniteQueryPageData<A, M, T>,
+    TPageParam,
+    TSelected,
+    InfiniteQueryError<A, M, T>
+  >
+}
+
+const mergeFactoryQueryKey = (
+  baseQueryKey?: QueryKey,
+  keyArgs?: unknown
+): QueryKey | undefined => {
+  const merged: unknown[] = []
+
+  if (baseQueryKey) {
+    merged.push(...baseQueryKey)
+  }
+  if (keyArgs !== undefined) {
+    merged.push({ [FACTORY_KEY_ARGS_QUERY_KEY]: keyArgs })
+  }
+
+  return merged.length > 0 ? merged : undefined
+}
 
 // ============================================================================
 // Type Definitions
@@ -67,6 +103,9 @@ export type InfiniteQueryError<
 
 /**
  * Configuration for createActorInfiniteQuery.
+ * Extends InfiniteQueryObserverOptions to accept standard TanStack Query
+ * infinite-query options at the create level (e.g. refetchInterval,
+ * refetchOnMount, refetchOnWindowFocus, retry, gcTime, networkMode).
  *
  * @template A - The actor interface type
  * @template M - The method name on the actor
@@ -80,6 +119,15 @@ export interface InfiniteQueryConfig<
   T extends TransformKey = "candid",
   TPageParam = unknown,
   TSelected = InfiniteData<InfiniteQueryPageData<A, M, T>, TPageParam>,
+> extends Omit<
+  InfiniteQueryObserverOptions<
+    InfiniteQueryPageData<A, M, T>,
+    InfiniteQueryError<A, M, T>,
+    TSelected,
+    QueryKey,
+    TPageParam
+  >,
+  "queryKey" | "queryFn"
 > {
   /** The method to call on the canister */
   functionName: M
@@ -105,14 +153,6 @@ export interface InfiniteQueryConfig<
     firstPageParam: TPageParam,
     allPageParams: TPageParam[]
   ) => TPageParam | undefined | null
-  /** Maximum number of pages to keep in cache */
-  maxPages?: number
-  /** How long data stays fresh before becoming stale (default: 5 min) */
-  staleTime?: number
-  /** Transform the raw InfiniteData result before returning */
-  select?: (
-    data: InfiniteData<InfiniteQueryPageData<A, M, T>, TPageParam>
-  ) => TSelected
 }
 
 /**
@@ -124,7 +164,15 @@ export type InfiniteQueryFactoryConfig<
   T extends TransformKey = "candid",
   TPageParam = unknown,
   TSelected = InfiniteData<InfiniteQueryPageData<A, M, T>, TPageParam>,
-> = Omit<InfiniteQueryConfig<A, M, T, TPageParam, TSelected>, "getArgs">
+> = Omit<InfiniteQueryConfig<A, M, T, TPageParam, TSelected>, "getArgs"> & {
+  /**
+   * Optional key-args derivation for factory calls.
+   * Receives the resolved args from `getArgs(initialPageParam)` and should return
+   * a stable serializable representation of the logical query identity
+   * (typically excluding pagination/cursor fields).
+   */
+  getKeyArgs?: (args: ReactorArgs<A, M, T>) => unknown
+}
 
 // ============================================================================
 // Hook Interface
@@ -253,6 +301,7 @@ const createInfiniteQueryImpl = <
     maxPages,
     staleTime = 5 * 60 * 1000,
     select,
+    ...rest
   } = config
 
   // Get query key from actor manager
@@ -337,6 +386,7 @@ const createInfiniteQueryImpl = <
         getPreviousPageParam,
         maxPages,
         staleTime,
+        ...rest,
         ...options,
         select: chainedSelect,
       } as any,
@@ -430,6 +480,10 @@ export function createInfiniteQuery<
  * const getPostsQuery = createActorInfiniteQueryFactory(reactor, {
  *   functionName: "get_posts",
  *   initialPageParam: 0,
+ *   getKeyArgs: (args) => {
+ *     const [{ userId }] = args
+ *     return [{ userId }]
+ *   },
  *   getNextPageParam: (lastPage) => lastPage.nextCursor,
  * })
  *
@@ -447,25 +501,22 @@ export function createInfiniteQueryFactory<
 >(
   reactor: Reactor<A, T>,
   config: InfiniteQueryFactoryConfig<NoInfer<A>, M, T, TPageParam, TSelected>
-): (
-  getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>
-) => InfiniteQueryResult<
-  InfiniteQueryPageData<A, M, T>,
-  TPageParam,
-  TSelected,
-  InfiniteQueryError<A, M, T>
-> {
-  return (
+): InfiniteQueryFactoryFn<A, M, T, TPageParam, TSelected> {
+  const factory: InfiniteQueryFactoryFn<A, M, T, TPageParam, TSelected> = (
     getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>
-  ): InfiniteQueryResult<
-    InfiniteQueryPageData<A, M, T>,
-    TPageParam,
-    TSelected,
-    InfiniteQueryError<A, M, T>
-  > => {
+  ) => {
+    const initialArgs = getArgs(config.initialPageParam)
+    const keyArgs = config.getKeyArgs?.(initialArgs) ?? initialArgs
+    const queryKey = mergeFactoryQueryKey(config.queryKey, keyArgs)
+
     return createInfiniteQueryImpl<A, M, T, TPageParam, TSelected>(reactor, {
-      ...(config as InfiniteQueryFactoryConfig<A, M, T, TPageParam, TSelected>),
+      ...(({ getKeyArgs: _getKeyArgs, ...rest }) => rest)(
+        config as InfiniteQueryFactoryConfig<A, M, T, TPageParam, TSelected>
+      ),
+      queryKey,
       getArgs,
     })
   }
+
+  return factory
 }

@@ -46,6 +46,58 @@ import {
 import { CallConfig } from "@icp-sdk/core/agent"
 import { NoInfer } from "./types"
 
+const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
+
+type SuspenseInfiniteFactoryCallOptions = {
+  queryKey?: QueryKey
+}
+
+type SuspenseInfiniteQueryFactoryFn<
+  A,
+  M extends FunctionName<A>,
+  T extends TransformKey,
+  TPageParam,
+  TSelected,
+> = {
+  (
+    getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>
+  ): SuspenseInfiniteQueryResult<
+    SuspenseInfiniteQueryPageData<A, M, T>,
+    TPageParam,
+    TSelected,
+    SuspenseInfiniteQueryError<A, M, T>
+  >
+  (
+    getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>,
+    options?: SuspenseInfiniteFactoryCallOptions
+  ): SuspenseInfiniteQueryResult<
+    SuspenseInfiniteQueryPageData<A, M, T>,
+    TPageParam,
+    TSelected,
+    SuspenseInfiniteQueryError<A, M, T>
+  >
+}
+
+const mergeFactoryQueryKey = (
+  baseQueryKey?: QueryKey,
+  callQueryKey?: QueryKey,
+  keyArgs?: unknown
+): QueryKey | undefined => {
+  const merged: unknown[] = []
+
+  if (baseQueryKey) {
+    merged.push(...baseQueryKey)
+  }
+  if (callQueryKey) {
+    merged.push(...callQueryKey)
+  }
+  if (keyArgs !== undefined) {
+    merged.push({ [FACTORY_KEY_ARGS_QUERY_KEY]: keyArgs })
+  }
+
+  return merged.length > 0 ? merged : undefined
+}
+
 // ============================================================================
 // Type Definitions
 // ============================================================================
@@ -105,7 +157,7 @@ export interface SuspenseInfiniteQueryConfig<
 }
 
 /**
- * Configuration for createActorSuspenseInfiniteQueryFactory (without initialPageParam, getArgs determined at call time).
+ * Configuration for createActorSuspenseInfiniteQueryFactory (without getArgs; provided at call time).
  */
 export type SuspenseInfiniteQueryFactoryConfig<
   A = BaseActor,
@@ -113,7 +165,18 @@ export type SuspenseInfiniteQueryFactoryConfig<
   T extends TransformKey = "candid",
   TPageParam = unknown,
   TSelected = InfiniteData<SuspenseInfiniteQueryPageData<A, M, T>, TPageParam>,
-> = Omit<SuspenseInfiniteQueryConfig<A, M, T, TPageParam, TSelected>, "getArgs">
+> = Omit<
+  SuspenseInfiniteQueryConfig<A, M, T, TPageParam, TSelected>,
+  "getArgs"
+> & {
+  /**
+   * Optional key-args derivation for factory calls.
+   * Receives the resolved args from `getArgs(initialPageParam)` and should return
+   * a stable serializable representation of the logical query identity
+   * (typically excluding pagination/cursor fields).
+   */
+  getKeyArgs?: (args: ReactorArgs<A, M, T>) => unknown
+}
 
 // ============================================================================
 // Hook Interface
@@ -419,12 +482,22 @@ export function createSuspenseInfiniteQuery<
  * const getPostsQuery = createActorSuspenseInfiniteQueryFactory(reactor, {
  *   functionName: "get_posts",
  *   initialPageParam: 0,
+ *   getKeyArgs: (args) => {
+ *     const [{ userId }] = args
+ *     return [{ userId }]
+ *   },
  *   getNextPageParam: (lastPage) => lastPage.nextCursor,
  * })
  *
  * // Create query with specific args builder
  * const userPostsQuery = getPostsQuery((cursor) => [{ userId, cursor, limit: 10 }])
  * const { data, fetchNextPage } = userPostsQuery.useSuspenseInfiniteQuery()
+ *
+ * // Optional: append a manual query-key suffix in addition to auto key args
+ * const scopedPostsQuery = getPostsQuery(
+ *   (cursor) => [{ userId, cursor, limit: 10 }],
+ *   { queryKey: ["v2"] }
+ * )
  */
 
 export function createSuspenseInfiniteQueryFactory<
@@ -442,37 +515,42 @@ export function createSuspenseInfiniteQueryFactory<
     TPageParam,
     TSelected
   >
-): (
-  getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>,
-  options?: { queryKey?: QueryKey }
-) => SuspenseInfiniteQueryResult<
-  SuspenseInfiniteQueryPageData<A, M, T>,
-  TPageParam,
-  TSelected,
-  SuspenseInfiniteQueryError<A, M, T>
-> {
-  return (
-    getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>,
-    options?: { queryKey?: QueryKey }
-  ): SuspenseInfiniteQueryResult<
-    SuspenseInfiniteQueryPageData<A, M, T>,
+): SuspenseInfiniteQueryFactoryFn<A, M, T, TPageParam, TSelected> {
+  const factory: SuspenseInfiniteQueryFactoryFn<
+    A,
+    M,
+    T,
     TPageParam,
-    TSelected,
-    SuspenseInfiniteQueryError<A, M, T>
-  > => {
+    TSelected
+  > = (
+    getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>,
+    options?: SuspenseInfiniteFactoryCallOptions
+  ) => {
+    const initialArgs = getArgs(config.initialPageParam)
+    const keyArgs = config.getKeyArgs?.(initialArgs) ?? initialArgs
+    const queryKey = mergeFactoryQueryKey(
+      config.queryKey,
+      options?.queryKey,
+      keyArgs
+    )
+
     return createSuspenseInfiniteQueryImpl<A, M, T, TPageParam, TSelected>(
       reactor,
       {
-        ...(config as SuspenseInfiniteQueryFactoryConfig<
-          A,
-          M,
-          T,
-          TPageParam,
-          TSelected
-        >),
-        ...options,
+        ...(({ getKeyArgs: _getKeyArgs, ...rest }) => rest)(
+          config as SuspenseInfiniteQueryFactoryConfig<
+            A,
+            M,
+            T,
+            TPageParam,
+            TSelected
+          >
+        ),
+        queryKey,
         getArgs,
       } as SuspenseInfiniteQueryConfig<A, M, T, TPageParam, TSelected>
     )
   }
+
+  return factory
 }
