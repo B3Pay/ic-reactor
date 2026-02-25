@@ -2,10 +2,21 @@
 
 IC Reactor is a modern, type-safe library for building Internet Computer applications. It provides seamless integration between JavaScript/TypeScript applications and IC canisters with full TypeScript support, intelligent caching (via TanStack Query), and React integration.
 
+## AI Agent Context Files (Repository)
+
+- `/llms.txt`: This file (high-level context for LLMs)
+- `/AGENTS.md`: Repo-local agent skill registry
+- `/.codex/skills/ic-reactor-hooks/SKILL.md`: Repo-local Codex skill for Reactor hook workflows
+
+If an agent supports skills/agent registries, prefer the `ic-reactor-hooks` skill when the task involves creating, refactoring, or explaining React hooks, query/mutation factories, cache invalidation, or usage inside vs outside React components.
+
 ## Core Packages
 
 - `@ic-reactor/core`: Low-level API for managing actors, agents, and query caching.
 - `@ic-reactor/react`: High-level React hooks and context providers for easy integration.
+- `@ic-reactor/candid`: Dynamic Candid parsing and runtime reactors for unknown canisters.
+- `@ic-reactor/cli`: Code generation for declarations + typed hooks/reactors.
+- `@ic-reactor/vite-plugin`: Watch-mode code generation for Vite projects.
 
 ## Key Concepts
 
@@ -69,41 +80,71 @@ function UpdateProfile() {
 }
 ```
 
-### 3. Query Factories (Advanced / Route Loaders)
+### 3. Query and Mutation Factories (Recommended for shared use)
 
-For extracting queries outside of components or creating reusable query factories:
+For reusable operations that must work both inside React and outside React (loaders/actions/services):
 
 ```typescript
-import { createQuery, createQueryFactory } from '@ic-reactor/react';
+import { createQuery, createMutation } from '@ic-reactor/react';
 
-// Single Query Factory
+// Reusable query object
 const profileQuery = createQuery(reactor, {
   functionName: 'getUserProfile',
   args: ['user-id'],
 });
-// Usage: await profileQuery.fetch() OR profileQuery.useQuery()
+// In React: profileQuery.useQuery()
+// Outside React: await profileQuery.fetch()
+// Cache helpers: profileQuery.invalidate(), profileQuery.getQueryKey(), profileQuery.getCacheData()
 
-// Dynamic Query Factory
+// Reusable mutation object
+const updateProfile = createMutation(reactor, {
+  functionName: 'updateUserProfile',
+});
+// In React: updateProfile.useMutation()
+// Outside React: await updateProfile.execute([{ name: 'Alice' }])
+```
+
+### 4. Dynamic Query Factories (argument-at-call-time)
+
+```typescript
+import { createQueryFactory } from '@ic-reactor/react';
+
 const profileQueryFactory = createQueryFactory(reactor, {
   functionName: 'getUserProfile',
 });
-// Usage: profileQueryFactory(['user-id']).useQuery()
+
+// In React
+const { data } = profileQueryFactory(['user-id']).useQuery();
+
+// Outside React (loader/prefetch)
+await profileQueryFactory(['user-id']).fetch();
 ```
 
-### 4. Infinite Queries
+### 5. Infinite Queries
 
 ```typescript
-const { useActorInfiniteQuery } = createActorHooks(reactor);
+import { createInfiniteQuery } from '@ic-reactor/react';
 
-function ActivityLog() {
-  const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
-    functionName: 'getActivities',
-    args: [],
-    paginationType: 'offset', // or 'cursor'
-    // ...
-  });
-}
+const activityQuery = createInfiniteQuery(reactor, {
+  functionName: 'getActivities',
+  initialPageParam: 0,
+  getArgs: (page) => [{ offset: page, limit: 20 }],
+  getNextPageParam: (lastPage, allPages) =>
+    lastPage.length < 20 ? null : allPages.length * 20,
+});
+
+// In React: activityQuery.useInfiniteQuery()
+// Outside React: await activityQuery.fetch()
 ```
+
+### 6. Generated Hooks (Best for many canisters/methods)
+
+Prefer generated hooks for scale and consistency:
+
+- Vite: `@ic-reactor/vite-plugin` (watch + hot regeneration)
+- Non-Vite / CI: `@ic-reactor/cli`
+
+Generated files typically expose method-specific query/mutation objects with both React and imperative methods (e.g., `.useQuery()` + `.fetch()` or `.useMutation()` + `.execute()`).
 
 ## API Reference (Summary)
 
@@ -120,6 +161,7 @@ function ActivityLog() {
   - `useActorInfiniteQuery`: Infinite query hook (pagination).
   - `useActorSuspenseQuery`: Suspense-enabled query hook.
   - `useActorSuspenseInfiniteQuery`: Suspense-enabled infinite query hook.
+  - `useActorMethod`: Unified hook that auto-handles query vs update methods.
 
 #### Standalone Factories
 - `createQuery(reactor, config)`: Creates a reusable query object.
@@ -128,6 +170,8 @@ function ActivityLog() {
 - `createSuspenseInfiniteQuery(reactor, config)`: Creates a reusable suspense infinite query object.
 - `createMutation(reactor, config)`: Creates a reusable mutation object.
 - `createQueryFactory(reactor, config)`: Creates a dynamic query factory function.
+- `createSuspenseQueryFactory(reactor, config)`: Dynamic suspense query factory.
+- `createInfiniteQueryFactory(reactor, config)`: Dynamic infinite query factory (accepts `getArgs` at call time).
 
 #### Authentication Hooks
 - `useAuth`: Login/logout and identity management.
@@ -137,6 +181,23 @@ function ActivityLog() {
 
 ## Best Practices
 1. Use `DisplayReactor` for simpler data handling with AI / UI layers.
-2. Use `createActorHooks` to generate type-safe hooks for your specific canister.
-3. Leverage TanStack Query options (staleTime, cacheTime) passed through `useActorQuery`.
-4. Use `Suspense` versions (`useActorSuspenseQuery`) for a better loading experience.
+2. Use `createActorHooks` for generic component hooks, or method-specific query/mutation factories for reusable operations.
+3. Never call React hooks outside React components/custom hooks. Use `.fetch()` / `.execute()` / `.invalidate()` for imperative usage.
+4. Prefer cache invalidation via `query.getQueryKey()` or `query.invalidate()` to avoid hard-coded key drift.
+5. Leverage TanStack Query options (`staleTime`, refetch policies, select) passed through query hooks/factories.
+6. Use `Suspense` versions (`useActorSuspenseQuery`) when the app already uses Suspense boundaries.
+7. Prefer generated hooks (CLI/Vite plugin) for large canisters or frequent `.did` changes.
+
+## High-Value File References (for AI agents)
+
+- `/AGENTS.md`
+- `/.codex/skills/ic-reactor-hooks/SKILL.md`
+- `/packages/react/src/createActorHooks.ts`
+- `/packages/react/src/createQuery.ts`
+- `/packages/react/src/createMutation.ts`
+- `/packages/react/src/hooks/useActorMethod.ts`
+- `/packages/react/README.md`
+- `/packages/vite-plugin/README.md`
+- `/packages/cli/README.md`
+- `/examples/all-in-one-demo/src/lib/factories.ts`
+- `/examples/tanstack-router/src/canisters/ledger/hooks/`

@@ -70,6 +70,23 @@ The release workflow also auto-selects a publish tag from the git tag name: prer
 
 - We use Prettier for formatting. Run `pnpm format` before opening a PR if you need to format files manually.
 
+## AI-assisted contributions
+
+AI-assisted contributions are welcome, but contributors are responsible for correctness before opening a PR.
+
+- Prefer existing IC Reactor patterns over introducing new abstractions.
+- For React integrations, prefer `createActorHooks(...)` or query/mutation factories (`createQuery`, `createMutation`, etc.) instead of ad hoc wrappers.
+- If code must be used outside React, do not call hooks; use factory imperative methods like `.fetch()`, `.execute()`, `.invalidate()`, and `.getCacheData()`.
+- For larger canisters or repeated boilerplate, prefer generated hooks via `@ic-reactor/cli` or `@ic-reactor/vite-plugin`.
+- Validate generated or AI-written code with tests/examples whenever possible.
+- Update docs/examples when public API usage changes.
+
+Repository AI context:
+
+- `llms.txt` — high-level context for LLMs
+- `AGENTS.md` — repo-local agent skill registry
+- `.codex/skills/ic-reactor-hooks/SKILL.md` — Reactor hook workflow skill
+
 ## Adding a package
 
 To add a new package in the workspace, create a new folder under `packages/` and add it to the workspace if necessary. Follow existing package conventions for `package.json`, `tsconfig`, and build scripts.

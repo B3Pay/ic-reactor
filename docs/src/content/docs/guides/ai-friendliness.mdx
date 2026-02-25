@@ -23,6 +23,26 @@ import { Card } from "@astrojs/starlight/components"
   llms.txt](https://raw.githubusercontent.com/B3Pay/ic-reactor/main/llms.txt)
 </Card>
 
+## Agent Skills (Codex / AGENTS.md)
+
+This repository also includes a repo-local Codex skill registry at `/AGENTS.md` and a dedicated skill for Reactor hook workflows:
+
+- `ic-reactor-hooks` (`/.codex/skills/ic-reactor-hooks/SKILL.md`)
+
+Use this skill when asking an AI agent to generate or refactor IC Reactor integrations, especially when you need:
+
+- `createActorHooks(...)` patterns
+- reusable `createQuery` / `createMutation` factory modules
+- guidance for using the same query or mutation objects inside React and outside React
+- cache invalidation wiring with `getQueryKey()` / `invalidate()`
+- guidance on when to use manual hooks vs generated hooks (CLI / Vite plugin)
+
+### Example Prompt
+
+```text
+Use $ic-reactor-hooks to refactor this canister integration into reusable query and mutation factories, then show usage in a React component and a loader/action.
+```
+
 ## End-to-End Type Safety
 
 Since IC Reactor is built with extreme type safety in mind, AI assistants can easily infer the available methods and argument types for your canisters once you've defined the IDL factory.
@@ -65,3 +85,7 @@ const { useActorQuery, useActorMutation } = createActorHooks(reactor)
 ## Tools and Extensions
 
 If you use **Cursor**, this project includes a `.cursorrules` file that automatically configures the AI to follow the project's specific coding standards and architecture.
+
+If you use **GitHub Copilot**, the repository also includes:
+
+- `/.github/copilot-instructions.md` — repository-specific hook, cache, and codegen patterns for IC Reactor
