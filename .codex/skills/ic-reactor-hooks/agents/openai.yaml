@@ -1,4 +1,10 @@
 interface:
-  display_name: "IC Reactor Hooks"
-  short_description: "Create and use ic-reactor hooks efficiently"
-  default_prompt: "Use $ic-reactor-hooks to create or refactor Reactor hooks and show how to use them inside React components and outside React."
+  display_name: "IC Reactor Hooks (ICP)"
+  short_description: "ICP React hooks, factories, and cache patterns"
+  icon_small: "./assets/ic-reactor-icon.svg"
+  icon_large: "./assets/ic-reactor-icon.svg"
+  brand_color: "#29ABE2"
+  default_prompt: "Use $ic-reactor-hooks to build or refactor IC Reactor hooks, query/mutation factories, and cache invalidation patterns for an Internet Computer React app, and show usage inside React plus outside React (loaders/actions/services)."
+
+policy:
+  allow_implicit_invocation: true

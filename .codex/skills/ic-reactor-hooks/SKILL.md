@@ -1,6 +1,6 @@
 ---
 name: ic-reactor-hooks
-description: Create, refactor, and document Reactor hook integrations for this ic-reactor repository. Use when working with createActorHooks, query or mutation factories, useActorMethod, or generated hooks from the ic-reactor CLI or Vite plugin, especially when implementing or explaining usage inside React components versus imperative code outside React.
+description: Create, refactor, review, and document IC Reactor React hook integrations for Internet Computer (ICP) apps. Use when working with @ic-reactor/react, createActorHooks, createQuery/createMutation factory patterns, useActorMethod, TanStack Query cache invalidation, generated hooks from the ic-reactor CLI or Vite plugin, or when explaining hook usage inside React components versus imperative usage outside React (fetch/execute/invalidate in loaders, actions, services, and tests).
 ---
 
 # IC Reactor Hooks
@@ -8,6 +8,18 @@ description: Create, refactor, and document Reactor hook integrations for this i
 Use this skill to implement or explain hook patterns in this repository with minimal rework and consistent cache behavior.
 
 Read `references/patterns.md` only when you need concrete examples, file pointers, or exact API surface reminders.
+
+## Search / Trigger Phrases
+
+This skill should match requests about:
+
+- IC Reactor hooks
+- `@ic-reactor/react`
+- ICP React hooks / Internet Computer React hooks
+- `createActorHooks`, `useActorQuery`, `useActorMutation`
+- query and mutation factories (`createQuery`, `createMutation`)
+- using IC Reactor outside React (`fetch`, `execute`, cache invalidation)
+- IC Reactor CLI / Vite plugin generated hooks
 
 ## Follow This Workflow
 
