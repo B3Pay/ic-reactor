@@ -1,4 +1,4 @@
-# AGENTS.md instructions for /Users/behraddeylami/Coding/ic-reactor
+# AGENTS.md instructions for @ic-reactor
 
 ## Skills
 
@@ -6,7 +6,7 @@ A skill is a set of local instructions to follow that is stored in a `SKILL.md` 
 
 ### Available skills
 
-- `ic-reactor-hooks`: Create, refactor, and document Reactor hook integrations for this repo, including `createActorHooks`, query/mutation factories, `useActorMethod`, and generated hooks. Use when implementing or explaining hook usage inside React components versus imperative usage outside React. (file: `/Users/behraddeylami/Coding/ic-reactor/.codex/skills/ic-reactor-hooks/SKILL.md`)
+- `ic-reactor-hooks`: Create, refactor, and document Reactor hook integrations for this repo, including `createActorHooks`, query/mutation factories, `useActorMethod`, and generated hooks. Use when implementing or explaining hook usage inside React components versus imperative usage outside React. (file: `.codex/skills/ic-reactor-hooks/SKILL.md`)
 
 ### How to use skills
 
