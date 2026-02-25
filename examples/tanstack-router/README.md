@@ -303,6 +303,38 @@ const peopleRoute = createRoute({
 
 Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
 
+### IC Reactor + Route Search Params (Infinite Queries)
+
+When using `@ic-reactor/react` infinite query factories in loaders, define a
+factory-level `getKeyArgs` that strips pagination state from the generated args.
+That keeps route/search params in the cache identity while excluding `pageParam`.
+
+```tsx
+const makeTodos = createInfiniteQueryFactory(todoReactor, {
+  functionName: "list_todos",
+  initialPageParam: 0,
+  getKeyArgs: (args) => {
+    const [request] = args
+    return [{ filter: request.filter, q: request.q, sort: request.sort }]
+  },
+  getNextPageParam: (lastPage) => lastPage.nextCursor,
+})
+
+loader: async ({ deps: { search } }) => {
+  const query = makeTodos((cursor) => [
+    {
+      cursor,
+      limit: 20,
+      filter: search.filter,
+      q: search.q,
+      sort: search.sort,
+    },
+  ])
+
+  await query.fetch()
+}
+```
+
 ### React-Query
 
 React-Query is an excellent addition or alternative to route loading and integrating it into you application is a breeze.

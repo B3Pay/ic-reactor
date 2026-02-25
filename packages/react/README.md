@@ -210,6 +210,10 @@ const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
 })
 ```
 
+`createInfiniteQuery(...)` and `createInfiniteQueryFactory(...)` support standard
+TanStack Query infinite-query options at the create level, including
+`refetchInterval`, `refetchOnMount`, `refetchOnWindowFocus`, `retry`, and `gcTime`.
+
 ## Mutation Examples
 
 ### Basic Mutation
@@ -257,10 +261,74 @@ export const getBalance = createSuspenseQueryFactory(backend, {
   select: (balance) => `${balance} tokens`,
 })
 
-// In component - pass args at call time
-const { data } = getBalance.useSuspenseQuery({
-  args: [{ owner: userPrincipal, subaccount: [] }],
+// In component - create the query instance with args at call time
+const balanceQuery = getBalance([{ owner: userPrincipal, subaccount: [] }])
+const { data } = balanceQuery.useSuspenseQuery()
+```
+
+### Infinite Query Factory (Route/Search Params Safe)
+
+Use `getKeyArgs` in the factory config to derive a stable logical identity from
+the first-page args, and keep pagination cursors inside `getArgs(pageParam)`.
+This prevents cache collisions when loaders rerun with different search params.
+
+```tsx
+import { createInfiniteQueryFactory } from "@ic-reactor/react"
+
+type TodoSearch = {
+  filter: "all" | "active" | "completed"
+  q: string
+  sort: "newest" | "oldest"
+}
+
+export const makeTodoListQuery = createInfiniteQueryFactory(todoReactor, {
+  functionName: "list_todos",
+  initialPageParam: 0,
+  getKeyArgs: (args) => {
+    const [request] = args
+    return [
+      {
+        filter: request.filter,
+        q: request.q,
+        sort: request.sort,
+      },
+    ]
+  },
+  getNextPageParam: (lastPage) => lastPage.nextCursor,
 })
+
+// TanStack Router loader/search-param flow
+export async function loader({ context, deps }: any) {
+  const search = deps.search as TodoSearch
+
+  const todosQuery = makeTodoListQuery((cursor) => [
+    {
+      cursor,
+      limit: 20,
+      filter: search.filter,
+      q: search.q,
+      sort: search.sort,
+    },
+  ])
+
+  await todosQuery.fetch()
+  return { queryKey: todosQuery.getQueryKey() }
+}
+
+function TodosPage({ search }: { search: TodoSearch }) {
+  const todosQuery = makeTodoListQuery((cursor) => [
+    {
+      cursor,
+      limit: 20,
+      filter: search.filter,
+      q: search.q,
+      sort: search.sort,
+    },
+  ])
+
+  const { data, fetchNextPage, hasNextPage } = todosQuery.useInfiniteQuery()
+  return null
+}
 ```
 
 ## Advanced: Direct Reactor Usage

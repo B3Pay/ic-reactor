@@ -275,6 +275,11 @@ For dynamic args generation:
 const getCategoryProductsQuery = createSuspenseInfiniteQueryFactory(backend, {
   functionName: "getProductsByCategory",
   initialPageParam: 0,
+  // Optional: derive logical identity from first-page args
+  getKeyArgs: (args) => {
+    const [categoryId] = args
+    return [categoryId]
+  },
   getNextPageParam: (lastPage) => lastPage.nextOffset,
 })
 
@@ -285,7 +290,7 @@ function CategoryPage({ categoryId }: { categoryId: string }) {
     { offset, limit: 20 }
   ])
 
-  const { data } = query.useInfiniteQuery()
+  const { data } = query.useSuspenseInfiniteQuery()
 
   return (
     <Suspense fallback={<ProductGridSkeleton />}>
@@ -293,6 +298,40 @@ function CategoryPage({ categoryId }: { categoryId: string }) {
     </Suspense>
   )
 }
+```
+
+### Factory Cache Identity (Route/Search Params)
+
+`createSuspenseInfiniteQueryFactory(...)` derives the query key from
+`getArgs(initialPageParam)` by default. Use `getKeyArgs` in the factory config to
+exclude pagination state and keep only the logical identity (filters/search
+params).
+
+```typescript
+const todoListInfiniteQuery = createSuspenseInfiniteQueryFactory(todoReactor, {
+  functionName: "list_todos",
+  initialPageParam: "0",
+  getKeyArgs: (args) => {
+    const [request] = args
+    return [
+      {
+        completed: request.completed,
+        search: request.search,
+        sort_by: request.sort_by,
+      },
+    ]
+  },
+  getNextPageParam: (lastPage) => lastPage.next_offset,
+})
+
+const todoListQuery = todoListInfiniteQuery((offset: string) => [
+  {
+    completed: undefined,
+    search: "",
+    sort_by: undefined,
+    paginate: { offset, limit: 20 },
+  },
+])
 ```
 
 ---
