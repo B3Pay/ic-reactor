@@ -1,110 +1,17 @@
 import { IDL } from "@icp-sdk/core/candid"
 import type { BaseActor, FunctionName } from "@ic-reactor/core"
-import { isQuery } from "./helpers"
-import { formatLabel } from "./arguments/helpers"
+import { isQuery } from "../helpers"
+import { formatLabel } from "../arguments/helpers"
+import type {
+  FriendlyServiceMeta,
+  FormArgumentsMeta,
+  FormFieldNode,
+  FormFieldType,
+  VariableRefCandidate,
+} from "./types"
+import { cloneField, toFormValue } from "./helpers"
 
-export type FormFieldType =
-  | "record"
-  | "tuple"
-  | "variant"
-  | "optional"
-  | "vector"
-  | "blob"
-  | "principal"
-  | "text"
-  | "number"
-  | "boolean"
-  | "null"
-  | "recursive"
-  | "unknown"
-
-type FieldBase = {
-  type: FormFieldType
-  label: string
-  displayLabel: string
-  name: string
-  candidType: string
-  defaultValue: unknown
-}
-
-export type FormFieldNode =
-  | (FieldBase & { type: "record"; fields: FormFieldNode[] })
-  | (FieldBase & { type: "tuple"; fields: FormFieldNode[] })
-  | (FieldBase & {
-      type: "variant"
-      options: FormFieldNode[]
-      defaultOption: string
-      getOptionDefault: (option: string) => Record<string, unknown>
-      getOption: (option: string) => FormFieldNode
-      getSelectedKey: (value: Record<string, unknown>) => string
-      getSelectedOption: (value: Record<string, unknown>) => FormFieldNode
-    })
-  | (FieldBase & {
-      type: "optional"
-      innerField: FormFieldNode
-      getInnerDefault: () => unknown
-      isEnabled: (value: unknown) => boolean
-    })
-  | (FieldBase & {
-      type: "vector"
-      itemField: FormFieldNode
-      getItemDefault: () => unknown
-      createItemField: (
-        index: number,
-        overrides?: { label?: string }
-      ) => FormFieldNode
-    })
-  | (FieldBase & { type: "blob" })
-  | (FieldBase & { type: "principal" })
-  | (FieldBase & { type: "text" })
-  | (FieldBase & { type: "number" })
-  | (FieldBase & { type: "boolean" })
-  | (FieldBase & { type: "null" })
-  | (FieldBase & {
-      type: "recursive"
-      typeName: string
-      extract: () => FormFieldNode
-    })
-  | (FieldBase & { type: "unknown" })
-
-export type FormArgumentsMeta = {
-  candidType: string
-  functionType: "query" | "update" | "value"
-  functionName: string
-  args: FormFieldNode[]
-  defaults: unknown[]
-  argCount: number
-  isEmpty: boolean
-  schema?: unknown
-}
-
-export type FriendlyServiceMeta<A = BaseActor> = {
-  [K in FunctionName<A>]?: FormArgumentsMeta
-}
-
-export type VariableRefCandidate = {
-  expr: string
-  label: string
-  candidType: string
-  fieldType: FormFieldType
-  sourceNodeId: string
-  sourceRoot?: "arg" | "ret"
-}
-
-function cloneField<T extends FormFieldNode>(field: T): T {
-  return field.type === "vector" ||
-    field.type === "optional" ||
-    field.type === "variant" ||
-    field.type === "record" ||
-    field.type === "tuple" ||
-    field.type === "recursive"
-    ? JSON.parse(
-        JSON.stringify(field, (_k, v) =>
-          typeof v === "function" ? undefined : v
-        )
-      )
-    : ({ ...field } as T)
-}
+export * from "./types"
 
 export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
   string,
@@ -189,9 +96,7 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
     fields: FormFieldNode[],
     decodedArgs: unknown[]
   ): unknown[] {
-    return fields.map((field, index) =>
-      this.toFormValue(field, decodedArgs[index])
-    )
+    return fields.map((field, index) => toFormValue(field, decodedArgs[index]))
   }
 
   public collectVariableRefCandidates(
@@ -552,82 +457,5 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       candidType,
       defaultValue,
     } as Extract<FormFieldNode, { type: T }>
-  }
-
-  private toFormValue(field: FormFieldNode, raw: unknown): unknown {
-    switch (field.type) {
-      case "record": {
-        const obj = (raw ?? {}) as Record<string, unknown>
-        return Object.fromEntries(
-          field.fields.map((child) => [
-            child.label,
-            this.toFormValue(child, obj[child.label]),
-          ])
-        )
-      }
-      case "tuple": {
-        const arr = Array.isArray(raw) ? raw : []
-        return field.fields.map((child, idx) =>
-          this.toFormValue(child, arr[idx])
-        )
-      }
-      case "variant": {
-        const obj = (raw ?? {}) as Record<string, unknown>
-        const keys = Object.keys(obj)
-        const tag =
-          keys.find((k) => field.options.some((o) => o.label === k)) ??
-          field.defaultOption
-        const optionField = field.getOption(tag)
-        if (optionField.type === "null") return { _type: tag }
-        return { _type: tag, [tag]: this.toFormValue(optionField, obj[tag]) }
-      }
-      case "optional": {
-        if (Array.isArray(raw)) {
-          if (raw.length === 0) return null
-          return this.toFormValue(field.innerField, raw[0])
-        }
-        if (raw == null) return null
-        return this.toFormValue(field.innerField, raw)
-      }
-      case "vector": {
-        if (!Array.isArray(raw)) return []
-        return raw.map((v, idx) =>
-          this.toFormValue(field.createItemField(idx), v)
-        )
-      }
-      case "blob": {
-        if (raw instanceof Uint8Array) {
-          return Array.from(raw)
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("")
-        }
-        if (Array.isArray(raw)) {
-          return raw
-            .map((v) => Number(v))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("")
-        }
-        return typeof raw === "string" ? raw : ""
-      }
-      case "principal":
-        return raw &&
-          typeof (raw as { toText?: () => string }).toText === "function"
-          ? (raw as { toText: () => string }).toText()
-          : raw != null
-            ? String(raw)
-            : ""
-      case "text":
-        return raw != null ? String(raw) : ""
-      case "number":
-        return raw == null ? "" : String(raw)
-      case "boolean":
-        return Boolean(raw)
-      case "null":
-        return null
-      case "recursive":
-        return raw
-      case "unknown":
-        return raw ?? null
-    }
   }
 }
