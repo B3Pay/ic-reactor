@@ -7,12 +7,12 @@ import type {
   DynamicMethodOptions,
 } from "./types"
 import {
-  CandidFriendlyFormVisitor,
+  CandidFormVisitor,
   FriendlyServiceMeta,
   FormArgumentsMeta,
   FormFieldNode,
   VariableRefCandidate,
-} from "./visitor/friendly"
+} from "./visitor/candid"
 
 export type ExprHydration =
   | { status: "empty" }
@@ -30,11 +30,9 @@ export type MethodMetadataOptions = {
   skipHydrationIfContains?: string
 }
 
-export class CandidMetadataReactor<
-  A = BaseActor,
-> extends CandidDisplayReactor<A> {
+export class MetadataReactor<A = BaseActor> extends CandidDisplayReactor<A> {
   private methodMeta: FriendlyServiceMeta<A> | null = null
-  private static formVisitor = new CandidFriendlyFormVisitor()
+  private static formVisitor = new CandidFormVisitor()
 
   constructor(config: CandidDisplayReactorParameters<A>) {
     super(config)
@@ -80,7 +78,7 @@ export class CandidMetadataReactor<
     options: MethodMetadataOptions = {}
   ): Promise<CandidFormMetadata> {
     const parsed = await this.parseValueType(valueType)
-    const meta = CandidMetadataReactor.formVisitor.buildValueMeta(parsed.type)
+    const meta = MetadataReactor.formVisitor.buildValueMeta(parsed.type)
     const hydration = this.hydrateValues([parsed.type], options)
     return { meta, hydration }
   }
@@ -91,7 +89,7 @@ export class CandidMetadataReactor<
     const method = this.findMethod(String(methodName))
     if (!method) return []
 
-    const visitor = new CandidFriendlyFormVisitor()
+    const visitor = new CandidFormVisitor()
     const out: VariableRefCandidate[] = []
 
     const argMeta = visitor.buildFunctionMeta(method.func, method.name)
@@ -155,7 +153,7 @@ export class CandidMetadataReactor<
     const service = this.getServiceInterface()
     if (!service) return
     this.methodMeta = service.accept(
-      CandidMetadataReactor.formVisitor,
+      MetadataReactor.formVisitor,
       null as any
     ) as FriendlyServiceMeta<A>
   }
@@ -214,7 +212,7 @@ export class CandidMetadataReactor<
 
     try {
       const decoded = IDL.decode(argTypes, hexToUint8Array(candidArgsHex))
-      const visitor = new CandidFriendlyFormVisitor()
+      const visitor = new CandidFormVisitor()
       const fields: FormFieldNode[] = argTypes
         .map(
           (argType, index) =>

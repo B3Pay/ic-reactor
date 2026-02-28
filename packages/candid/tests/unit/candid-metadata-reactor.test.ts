@@ -2,7 +2,7 @@ import { ClientManager, uint8ArrayToHex } from "@ic-reactor/core"
 import { HttpAgent } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { beforeEach, describe, expect, it } from "vitest"
-import { CandidMetadataReactor } from "../../src/candid-metadata-reactor"
+import { MetadataReactor } from "../../src/metadata-reactor"
 
 function createMockClientManager(): ClientManager {
   const agent = HttpAgent.createSync({ host: "https://ic0.app" })
@@ -33,7 +33,7 @@ describe("CandidMetadataReactor", () => {
   })
 
   it("builds candid-friendly metadata for a method", async () => {
-    const reactor = new CandidMetadataReactor({
+    const reactor = new MetadataReactor({
       name: "simple",
       canisterId: "aaaaa-aa",
       clientManager,
@@ -52,7 +52,7 @@ describe("CandidMetadataReactor", () => {
   })
 
   it("hydrates values from candid argument hex", async () => {
-    const reactor = new CandidMetadataReactor({
+    const reactor = new MetadataReactor({
       name: "simple",
       canisterId: "aaaaa-aa",
       clientManager,
@@ -72,7 +72,7 @@ describe("CandidMetadataReactor", () => {
   })
 
   it("builds variable candidates for method args and returns", async () => {
-    const reactor = new CandidMetadataReactor({
+    const reactor = new MetadataReactor({
       name: "simple",
       canisterId: "aaaaa-aa",
       clientManager,
@@ -88,7 +88,7 @@ describe("CandidMetadataReactor", () => {
   })
 
   it("builds value metadata from a standalone value type", async () => {
-    const reactor = new CandidMetadataReactor({
+    const reactor = new MetadataReactor({
       name: "simple",
       canisterId: "aaaaa-aa",
       clientManager,

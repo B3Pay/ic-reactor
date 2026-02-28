@@ -45,7 +45,7 @@ const FILE_RENDER_HINT: FormRenderHint = {
   inputType: "file",
 }
 
-export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
+export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
   string,
   FormFieldNode | FormArgumentsMeta | FriendlyServiceMeta<A>
 > {
