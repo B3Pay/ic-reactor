@@ -80,8 +80,7 @@ export class CandidDisplayReactor<
     // If funcClass is provided, build an idlFactory from it
     if (config.funcClass && !superConfig.idlFactory) {
       const { methodName, func } = config.funcClass
-      superConfig.idlFactory = ({ IDL: _IDL }) =>
-        _IDL.Service({ [methodName]: func })
+      superConfig.idlFactory = ({ IDL }) => IDL.Service({ [methodName]: func })
     }
 
     if (!superConfig.idlFactory) {

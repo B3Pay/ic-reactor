@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [utils/polling.ts:35](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L35)
+Defined in: [utils/polling.ts:35](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L35)
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: [utils/polling.ts:35](https://github.com/B3Pay/ic-reactor/blob/19301
 
 > `optional` **context**: `string`
 
-Defined in: [utils/polling.ts:45](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L45)
+Defined in: [utils/polling.ts:45](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L45)
 
 Logical operation name used in log messages for identifying the polling context.
 
@@ -29,16 +29,16 @@ Choose descriptive names that help with debugging and monitoring.
 #### Example
 
 ```ts
-;("sign-transaction", "document-upload")
+"sign-transaction", "document-upload"
 ```
 
----
+***
 
 ### logPrefix?
 
 > `optional` **logPrefix**: `string`
 
-Defined in: [utils/polling.ts:56](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L56)
+Defined in: [utils/polling.ts:56](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L56)
 
 Custom prefix prepended to all log messages from this polling strategy.
 
@@ -54,16 +54,16 @@ Useful when running multiple polling operations concurrently.
 #### Example
 
 ```ts
-;("[PaymentPolling]", "[TransactionPolling]", "[SignerPolling]")
+"[PaymentPolling]", "[TransactionPolling]", "[SignerPolling]"
 ```
 
----
+***
 
 ### fastAttempts?
 
 > `optional` **fastAttempts**: `number`
 
-Defined in: [utils/polling.ts:68](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L68)
+Defined in: [utils/polling.ts:68](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L68)
 
 Number of initial rapid polling attempts before transitioning to ramp phase.
 
@@ -83,13 +83,13 @@ Lower values = faster transition to exponential backoff.
 5 (for slower operations), 15 (for very fast operations)
 ```
 
----
+***
 
 ### fastDelayMs?
 
 > `optional` **fastDelayMs**: `number`
 
-Defined in: [utils/polling.ts:80](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L80)
+Defined in: [utils/polling.ts:80](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L80)
 
 Base delay in milliseconds between polls during the fast phase.
 
@@ -106,16 +106,16 @@ Lower values = more aggressive polling, higher network load.
 #### Example
 
 ```ts
-;(50(aggressive), 200(conservative))
+50 (aggressive), 200 (conservative)
 ```
 
----
+***
 
 ### rampUntilMs?
 
 > `optional` **rampUntilMs**: `number`
 
-Defined in: [utils/polling.ts:92](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L92)
+Defined in: [utils/polling.ts:92](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L92)
 
 Duration threshold in milliseconds for the ramp phase.
 
@@ -135,13 +135,13 @@ After this duration, polling enters plateau phase with constant delays.
 10_000 (faster transition), 30_000 (longer ramp for slow ops)
 ```
 
----
+***
 
 ### plateauDelayMs?
 
 > `optional` **plateauDelayMs**: `number`
 
-Defined in: [utils/polling.ts:104](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L104)
+Defined in: [utils/polling.ts:104](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L104)
 
 Steady-state polling delay in milliseconds during plateau phase.
 
@@ -161,17 +161,17 @@ Balance between responsiveness and network/resource efficiency.
 2_000 (more responsive), 10_000 (more efficient)
 ```
 
----
+***
 
 ### jitterRatio?
 
 > `optional` **jitterRatio**: `number`
 
-Defined in: [utils/polling.ts:117](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L117)
+Defined in: [utils/polling.ts:117](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L117)
 
 Randomization ratio (0-1) for adding jitter to prevent thundering herd.
 
-Jitter adds ±(ratio \* delay) randomness to each polling interval.
+Jitter adds ±(ratio * delay) randomness to each polling interval.
 Higher values = more randomization, better distribution across time.
 Lower values = more predictable intervals, less variance.
 Prevents synchronized polling when multiple clients start simultaneously.
@@ -188,13 +188,13 @@ Prevents synchronized polling when multiple clients start simultaneously.
 0.2 (±20%, less jitter), 0.5 (±50%, more jitter)
 ```
 
----
+***
 
 ### maxLogIntervalMs?
 
 > `optional` **maxLogIntervalMs**: `number`
 
-Defined in: [utils/polling.ts:129](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L129)
+Defined in: [utils/polling.ts:129](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L129)
 
 Maximum time in milliseconds between log outputs (heartbeat interval).
 
@@ -214,13 +214,13 @@ Prevents "silent" long-running operations; ensures monitoring visibility.
 10_000 (more frequent heartbeats), 30_000 (less verbose)
 ```
 
----
+***
 
 ### abortSignal?
 
 > `optional` **abortSignal**: `AbortSignal`
 
-Defined in: [utils/polling.ts:148](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L148)
+Defined in: [utils/polling.ts:148](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L148)
 
 External abort signal for graceful cancellation of polling operation.
 
@@ -237,9 +237,9 @@ undefined (no external cancellation)
 #### Example
 
 ```typescript
-const controller = new AbortController()
+const controller = new AbortController();
 const strategy = createPollingStrategy({
-  abortSignal: controller.signal,
-})
+  abortSignal: controller.signal
+});
 // Later: controller.abort();
 ```

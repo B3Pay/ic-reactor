@@ -9,7 +9,7 @@ Lightweight adapter for fetching and parsing Candid definitions from Internet Co
 - **Local Parsing**: Use the optional WASM-based parser for fast, offline Candid compilation
 - **Remote Fallback**: Falls back to the didjs canister for Candid-to-JavaScript compilation
 - **Dynamic Reactor**: Includes `CandidReactor` for dynamic IDL fetching and interaction
-- **Dynamic Forms**: Generate rich form metadata with validation schemas using `FieldVisitor`
+- **Dynamic Forms**: Generate rich form metadata with validation schemas using `MetadataReactor` and `CandidFormVisitor`
 - **Lightweight**: Uses raw `agent.query` calls - no Actor overhead
 - **ClientManager Compatible**: Seamlessly integrates with `@ic-reactor/core`
 
@@ -172,32 +172,59 @@ const cachedBalance = await reactor.fetchQueryDynamic({
 })
 ```
 
-### FieldVisitor (Dynamic Forms)
+### MetadataReactor (Dynamic Forms)
 
-Generate type-safe, enhanced metadata for dynamic forms from Candid definitions.
+Use `MetadataReactor` to build runtime form metadata directly from a canister interface.
 
 ```typescript
-import { FieldVisitor } from "@ic-reactor/candid"
+import { MetadataReactor } from "@ic-reactor/candid"
+import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
 
-const visitor = new FieldVisitor()
+const clientManager = new ClientManager({ queryClient: new QueryClient() })
+await clientManager.initialize()
+
+const reactor = new MetadataReactor({
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+  name: "ledger",
+})
+await reactor.initialize()
+
+const inputMeta = reactor.getInputMeta("icrc1_transfer")
+console.log(inputMeta?.schema) // Zod tuple for full argument validation
+```
+
+### CandidFormVisitor (Low-Level Form Metadata)
+
+Use `CandidFormVisitor` when you already have an `IDL.ServiceClass` and want direct visitor output.
+
+```typescript
+import { CandidFormVisitor } from "@ic-reactor/candid"
+
+const visitor = new CandidFormVisitor()
 const serviceMeta = service.accept(visitor, null)
 
 // Access method metadata
 const methodMeta = serviceMeta["icrc1_transfer"]
 
-// Detected field formats detected automatically
-const amountField = methodMeta.fields[1] // e.g. "amount"
-console.log(amountField.format) // "token"
-console.log(amountField.inputProps)
-// { type: "text", inputMode: "numeric", pattern: "\\d+", ... }
+// Argument metadata
+console.log(methodMeta.schema) // Zod tuple for all args
+console.log(methodMeta.defaults) // Default values for form initialization
+
+// Field-level UI and validation metadata
+const arg0 = methodMeta.args[0]
+console.log(arg0.component) // e.g. "record-container"
+console.log(arg0.renderHint) // { isCompound: true, isPrimitive: false, ... }
+console.log(arg0.schema) // Zod schema for this field
 ```
 
 **Features:**
 
-- **Auto-Format Detection**: Identifies `email`, `url`, `uuid`, `timestamp`, `cycle`, `principal`, etc. based on labels.
-- **Enhanced Schemas**: Generates Zod schemas with specific validation (e.g., `z.string().email()`).
-- **Input Props**: Provides ready-to-use HTML attributes (`type="email"`, `pattern`, `min`, `max`) for primitive fields.
-- **Component Hints**: Suggests UI components (`variant-select`, `vector-list`, `blob-upload`).
+- **Zod Validation**: Includes method-level and field-level schemas (`schema`) for runtime validation.
+- **Component Hints**: Includes `component` values for renderer selection (`variant-select`, `vector-list`, `blob-upload`, etc.).
+- **Render Hints**: Includes `renderHint` for primitive/compound strategy and input type hints.
+- **Form Defaults**: Includes ready-to-use `defaults` for form initialization.
 
 ### Fetch Raw Candid Source
 

@@ -20,7 +20,7 @@ vi.mock("@ic-reactor/parser", async (importOriginal) => {
       if (parserMocks.shouldFail) {
         throw new Error("Failed validation")
       }
-      if (actual.default) {
+      if ("default" in actual && typeof actual.default === "function") {
         return actual.default()
       }
     },

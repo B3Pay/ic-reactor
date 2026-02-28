@@ -5,9 +5,9 @@ next: true
 prev: true
 ---
 
-> **ArgsType**\<`T`\> = `T` _extends_ readonly \[infer U\] ? `U` : `T` _extends_ readonly \[\] ? `null` : `T`
+> **ArgsType**\<`T`\> = `T` *extends* readonly \[infer U\] ? `U` : `T` *extends* readonly \[\] ? `null` : `T`
 
-Defined in: [types/reactor.ts:70](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/types/reactor.ts#L70)
+Defined in: [types/reactor.ts:70](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/types/reactor.ts#L70)
 
 Helper to extract arguments type for codecs (unwraps single argument tuples).
 

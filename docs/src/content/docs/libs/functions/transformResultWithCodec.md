@@ -7,7 +7,7 @@ prev: true
 
 > **transformResultWithCodec**\<`T`\>(`resultCodec`, `result`): `T`
 
-Defined in: [display/helper.ts:67](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/display/helper.ts#L67)
+Defined in: [display/helper.ts:67](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/display/helper.ts#L67)
 
 ## Type Parameters
 

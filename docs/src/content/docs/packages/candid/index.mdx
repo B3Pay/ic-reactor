@@ -38,8 +38,8 @@ Most IC applications know which canisters they'll interact with at build time. B
     Display Reactor with visitor-based metadata for form building and result
     display
   </Card>
-  <Card title="FieldVisitor" icon="list-format">
-    Generate form field metadata from Candid IDL types for dynamic forms
+  <Card title="CandidFormVisitor" icon="list-format">
+    Generate form metadata from Candid IDL with schema, component, and render hints
   </Card>
   <Card title="Local Parsing" icon="seti:config">
     Optional WASM parser for fast, offline Candid compilation
@@ -138,7 +138,7 @@ const definition = await adapter.getCandidDefinition(
 | `CandidReactor`          | Dynamic Reactor with raw Candid types                      |
 | `CandidDisplayReactor`   | Dynamic Reactor with display transformations (UI-friendly) |
 | `MetadataDisplayReactor` | Display Reactor with form & result metadata generation     |
-| `FieldVisitor`           | Generate form field metadata from Candid IDL types         |
+| `CandidFormVisitor`      | Generate form metadata from Candid IDL types               |
 | `CandidAdapter`          | Low-level Candid fetching and parsing utilities            |
 
 **Use `CandidReactor`** when you want raw Candid types (`bigint`, `Principal`) and full Reactor experience.
@@ -182,7 +182,7 @@ const definition = adapter.compileLocal(candidSource)
 - [CandidReactor](/v3/packages/candid/candidreactor) — Full reference for CandidReactor
 - [CandidDisplayReactor](/v3/packages/candid/candiddisplayreactor) — Dynamic Reactor with display transformations
 - [MetadataDisplayReactor](/v3/packages/candid/metadatadisplayreactor) — Display Reactor with form & result metadata
-- [FieldVisitor](/v3/packages/candid/fieldvisitor) — Generate form field metadata from Candid IDL
+- [CandidFormVisitor](/v3/packages/candid/fieldvisitor) — Generate form metadata with schema and UI hints
 - [CandidAdapter](/v3/packages/candid/candidadapter) — Full reference for CandidAdapter
 - [Reactor](/v3/reference/reactor) — Base Reactor class documentation
 - [Error Handling](/v3/guides/error-handling) — Handle canister errors

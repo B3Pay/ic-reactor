@@ -1,5 +1,12 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
 
 # Format staged files and run lint-staged
-pnpm -s exec -- lint-staged
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm -s exec -- lint-staged
+elif command -v corepack >/dev/null 2>&1; then
+  corepack pnpm -s exec -- lint-staged
+else
+  echo "Error: pnpm not found in PATH (and corepack unavailable)." >&2
+  echo "Install pnpm or run commits from a shell where pnpm is available." >&2
+  exit 1
+fi

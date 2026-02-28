@@ -7,7 +7,7 @@ prev: true
 
 > **createVariant**\<`T`\>(`variant`): [`CandidVariant`](../type-aliases/CandidVariant.md)\<`T`\>
 
-Defined in: [utils/candid.ts:22](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/candid.ts#L22)
+Defined in: [utils/candid.ts:22](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/candid.ts#L22)
 
 Creates a Candid variant from a record.
 
@@ -15,7 +15,7 @@ Creates a Candid variant from a record.
 
 ### T
 
-`T` _extends_ `Record`\<`string`, `any`\>
+`T` *extends* `Record`\<`string`, `any`\>
 
 ## Parameters
 

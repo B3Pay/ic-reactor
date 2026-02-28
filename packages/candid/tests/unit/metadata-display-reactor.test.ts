@@ -222,7 +222,7 @@ describe("MetadataDisplayReactor", () => {
       expect(methodNames).toContain("delete_user")
     })
 
-    it("should have empty metadata before initialization", () => {
+    it("should have empty metadata before initialization", async () => {
       const reactor = new MetadataDisplayReactor({
         name: "empty",
         canisterId: "aaaaa-aa",

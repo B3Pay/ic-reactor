@@ -71,6 +71,17 @@ export interface CandidDisplayReactorParameters<A = BaseActor> extends Omit<
   }
 }
 
+export interface MetadataReactorParameters extends CandidReactorParameters {
+  /**
+   * An IDL.FuncClass to register as a single-method service.
+   * Useful for func-record callbacks.
+   */
+  funcClass?: {
+    methodName: string
+    func: import("@icp-sdk/core/candid").IDL.FuncClass
+  }
+}
+
 /**
  * Minimal interface for ClientManager that CandidAdapter depends on.
  * This allows the candid package to work with ClientManager without importing the full core package.

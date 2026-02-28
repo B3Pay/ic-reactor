@@ -1,4 +1,4 @@
-import type { TextFormat, NumberFormat } from "./returns/types"
+import { NumberFormat, TextFormat } from "./types"
 
 const TAMESTAMP_KEYS = [
   "time",
