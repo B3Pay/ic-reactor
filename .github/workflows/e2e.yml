@@ -46,11 +46,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Install icp-cli
-        run: cargo install --locked --git https://github.com/dfinity/icp-cli --tag v0.1.0 icp
+      - name: Install icp-cli and ic-wasm
+        run: npm install -g @icp-sdk/icp-cli @icp-sdk/ic-wasm
 
-      - name: Confirm icp-cli installation
-        run: icp --version
+      - name: Confirm tool installation
+        run: |
+          icp --version
+          ic-wasm --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
