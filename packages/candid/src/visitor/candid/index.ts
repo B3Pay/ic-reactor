@@ -45,6 +45,14 @@ const FILE_RENDER_HINT: FormRenderHint = {
   inputType: "file",
 }
 
+/**
+ * Visitor that generates form-oriented metadata from Candid IDL types.
+ *
+ * Each generated field includes:
+ * - `schema` for validation
+ * - `component` for renderer selection
+ * - `renderHint` for UI behavior hints
+ */
 export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
   string,
   FormFieldNode | FormArgumentsMeta | FriendlyServiceMeta<A>

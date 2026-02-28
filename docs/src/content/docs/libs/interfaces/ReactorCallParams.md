@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/reactor.ts:182](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/types/reactor.ts#L182)
+Defined in: [types/reactor.ts:182](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/types/reactor.ts#L182)
 
 Query parameters with optional call configuration.
 Used by: getQueryOptions, fetchQuery, callMethod
@@ -22,11 +22,11 @@ Used by: getQueryOptions, fetchQuery, callMethod
 
 ### M
 
-`M` _extends_ [`FunctionName`](../type-aliases/FunctionName.md)\<`A`\>
+`M` *extends* [`FunctionName`](../type-aliases/FunctionName.md)\<`A`\>
 
 ### T
 
-`T` _extends_ [`TransformKey`](../type-aliases/TransformKey.md) = `"candid"`
+`T` *extends* [`TransformKey`](../type-aliases/TransformKey.md) = `"candid"`
 
 ## Properties
 
@@ -34,40 +34,40 @@ Used by: getQueryOptions, fetchQuery, callMethod
 
 > **functionName**: `M`
 
-Defined in: [types/reactor.ts:173](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/types/reactor.ts#L173)
+Defined in: [types/reactor.ts:173](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/types/reactor.ts#L173)
 
 #### Inherited from
 
 [`ReactorQueryParams`](ReactorQueryParams.md).[`functionName`](ReactorQueryParams.md#functionname)
 
----
+***
 
 ### args?
 
 > `optional` **args**: [`ReactorArgs`](../type-aliases/ReactorArgs.md)\<`A`, `M`, `T`\>
 
-Defined in: [types/reactor.ts:174](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/types/reactor.ts#L174)
+Defined in: [types/reactor.ts:174](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/types/reactor.ts#L174)
 
 #### Inherited from
 
 [`ReactorQueryParams`](ReactorQueryParams.md).[`args`](ReactorQueryParams.md#args)
 
----
+***
 
 ### queryKey?
 
 > `optional` **queryKey**: readonly `unknown`[]
 
-Defined in: [types/reactor.ts:175](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/types/reactor.ts#L175)
+Defined in: [types/reactor.ts:175](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/types/reactor.ts#L175)
 
 #### Inherited from
 
 [`ReactorQueryParams`](ReactorQueryParams.md).[`queryKey`](ReactorQueryParams.md#querykey)
 
----
+***
 
 ### callConfig?
 
 > `optional` **callConfig**: `CallConfig`
 
-Defined in: [types/reactor.ts:187](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/types/reactor.ts#L187)
+Defined in: [types/reactor.ts:187](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/types/reactor.ts#L187)

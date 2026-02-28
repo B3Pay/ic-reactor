@@ -30,6 +30,15 @@ export type MethodMetadataOptions = {
   skipHydrationIfContains?: string
 }
 
+/**
+ * Runtime form metadata reactor for Candid interfaces.
+ *
+ * Extends {@link CandidDisplayReactor} and adds method input metadata generation
+ * powered by {@link CandidFormVisitor}. Returned field metadata includes:
+ * - `schema` (Zod validation)
+ * - `component` (UI component hint)
+ * - `renderHint` (primitive/compound + input hint)
+ */
 export class MetadataReactor<A = BaseActor> extends CandidDisplayReactor<A> {
   private methodMeta: FriendlyServiceMeta<A> | null = null
   private static formVisitor = new CandidFormVisitor()
@@ -46,12 +55,27 @@ export class MetadataReactor<A = BaseActor> extends CandidDisplayReactor<A> {
     this.generateMetadata()
   }
 
+  private generateMetadata(): void {
+    const service = this.getServiceInterface()
+    if (!service) return
+    this.methodMeta = service.accept(
+      MetadataReactor.formVisitor,
+      null as any
+    ) as FriendlyServiceMeta<A>
+  }
+
+  /**
+   * Get form metadata for a single method.
+   */
   public getInputMeta<M extends FunctionName<A>>(
     methodName: M
   ): FormArgumentsMeta | undefined {
     return this.methodMeta?.[methodName]
   }
 
+  /**
+   * Get form metadata for all service methods.
+   */
   public getAllInputMeta(): FriendlyServiceMeta<A> | null {
     return this.methodMeta
   }
@@ -147,15 +171,6 @@ export class MetadataReactor<A = BaseActor> extends CandidDisplayReactor<A> {
   ): Promise<void> {
     await super.registerMethod(options)
     this.generateMetadata()
-  }
-
-  private generateMetadata(): void {
-    const service = this.getServiceInterface()
-    if (!service) return
-    this.methodMeta = service.accept(
-      MetadataReactor.formVisitor,
-      null as any
-    ) as FriendlyServiceMeta<A>
   }
 
   private findMethod(

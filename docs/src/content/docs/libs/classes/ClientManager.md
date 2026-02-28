@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [client.ts:44](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L44)
+Defined in: [client.ts:44](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L44)
 
 ClientManager is a central class for managing the Internet Computer (IC) agent and authentication state.
 
@@ -15,16 +15,16 @@ and integrates with TanStack Query's QueryClient for state management.
 ## Example
 
 ```typescript
-import { ClientManager } from "@ic-reactor/core"
-import { QueryClient } from "@tanstack/react-query"
+import { ClientManager } from "@ic-reactor/core";
+import { QueryClient } from "@tanstack/react-query";
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 const clientManager = new ClientManager({
   queryClient,
   withLocalEnv: true, // Use local replica
-})
+});
 
-await clientManager.initialize()
+await clientManager.initialize();
 ```
 
 ## Constructors
@@ -33,7 +33,7 @@ await clientManager.initialize()
 
 > **new ClientManager**(`parameters`): `ClientManager`
 
-Defined in: [client.ts:75](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L75)
+Defined in: [client.ts:75](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L75)
 
 Creates a new instance of ClientManager.
 
@@ -55,27 +55,27 @@ Configuration options for the agent and network environment.
 
 > **queryClient**: `QueryClient`
 
-Defined in: [client.ts:55](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L55)
+Defined in: [client.ts:55](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L55)
 
 The TanStack QueryClient used for managing cached canister data and invalidating queries on identity changes.
 
----
+***
 
 ### agentState
 
 > **agentState**: [`AgentState`](../interfaces/AgentState.md)
 
-Defined in: [client.ts:59](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L59)
+Defined in: [client.ts:59](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L59)
 
 Current state of the HttpAgent, including initialization status, network, and error information.
 
----
+***
 
 ### authState
 
 > **authState**: [`AuthState`](../interfaces/AuthState.md)
 
-Defined in: [client.ts:63](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L63)
+Defined in: [client.ts:63](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L63)
 
 Current authentication state, including the active identity, authentication progress, and errors.
 
@@ -87,7 +87,7 @@ Current authentication state, including the active identity, authentication prog
 
 > **get** **agent**(): `HttpAgent`
 
-Defined in: [client.ts:386](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L386)
+Defined in: [client.ts:386](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L386)
 
 The underlying HttpAgent managed by this class.
 
@@ -95,7 +95,7 @@ The underlying HttpAgent managed by this class.
 
 `HttpAgent`
 
----
+***
 
 ### agentHost
 
@@ -103,7 +103,7 @@ The underlying HttpAgent managed by this class.
 
 > **get** **agentHost**(): `URL` \| `undefined`
 
-Defined in: [client.ts:393](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L393)
+Defined in: [client.ts:393](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L393)
 
 The host URL of the current IC agent.
 
@@ -111,7 +111,7 @@ The host URL of the current IC agent.
 
 `URL` \| `undefined`
 
----
+***
 
 ### agentHostName
 
@@ -119,7 +119,7 @@ The host URL of the current IC agent.
 
 > **get** **agentHostName**(): `string`
 
-Defined in: [client.ts:400](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L400)
+Defined in: [client.ts:400](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L400)
 
 The hostname of the current IC agent.
 
@@ -127,7 +127,7 @@ The hostname of the current IC agent.
 
 `string`
 
----
+***
 
 ### isLocal
 
@@ -135,7 +135,7 @@ The hostname of the current IC agent.
 
 > **get** **isLocal**(): `boolean`
 
-Defined in: [client.ts:407](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L407)
+Defined in: [client.ts:407](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L407)
 
 Returns true if the agent is connecting to a local environment.
 
@@ -143,7 +143,7 @@ Returns true if the agent is connecting to a local environment.
 
 `boolean`
 
----
+***
 
 ### network
 
@@ -151,7 +151,7 @@ Returns true if the agent is connecting to a local environment.
 
 > **get** **network**(): `"local"` \| `"remote"` \| `"ic"`
 
-Defined in: [client.ts:414](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L414)
+Defined in: [client.ts:414](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L414)
 
 Returns the current network type ('ic' or 'local').
 
@@ -165,7 +165,7 @@ Returns the current network type ('ic' or 'local').
 
 > **initialize**(): `Promise`\<`ClientManager`\>
 
-Defined in: [client.ts:173](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L173)
+Defined in: [client.ts:173](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L173)
 
 Orchestrates the complete initialization of the ClientManager.
 This method awaits the agent's core initialization (e.g., fetching root keys)
@@ -177,13 +177,13 @@ and triggers the authentication (session restoration) in the background.
 
 A promise that resolves to the ClientManager instance when core initialization is complete.
 
----
+***
 
 ### initializeAgent()
 
 > **initializeAgent**(): `Promise`\<`void`\>
 
-Defined in: [client.ts:185](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L185)
+Defined in: [client.ts:185](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L185)
 
 Specifically initializes the HttpAgent.
 On local networks, this includes fetching the root key for certificate verification.
@@ -194,13 +194,13 @@ On local networks, this includes fetching the root key for certificate verificat
 
 A promise that resolves when the agent is fully initialized.
 
----
+***
 
 ### authenticate()
 
 > **authenticate**(): `Promise`\<`Identity` \| `undefined`\>
 
-Defined in: [client.ts:237](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L237)
+Defined in: [client.ts:237](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L237)
 
 Attempts to initialize the authentication client and restore a previous session.
 
@@ -216,13 +216,13 @@ If the module is missing and no client is provided, it fails gracefully by marki
 
 A promise that resolves to the restored Identity, or undefined if auth fails or is unavailable.
 
----
+***
 
 ### login()
 
 > **login**(`loginOptions?`): `Promise`\<`void`\>
 
-Defined in: [client.ts:304](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L304)
+Defined in: [client.ts:304](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L304)
 
 Triggers the login flow using the Internet Identity provider.
 
@@ -242,13 +242,13 @@ Options for the login flow, including identity provider and callbacks.
 
 An error if the authentication module is not installed.
 
----
+***
 
 ### logout()
 
 > **logout**(): `Promise`\<`void`\>
 
-Defined in: [client.ts:364](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L364)
+Defined in: [client.ts:364](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L364)
 
 Logs out the user and reverts the agent to an anonymous identity.
 
@@ -260,13 +260,13 @@ Logs out the user and reverts the agent to an anonymous identity.
 
 An error if the authentication module is not installed.
 
----
+***
 
 ### getUserPrincipal()
 
 > **getUserPrincipal**(): `Promise`\<`Principal`\>
 
-Defined in: [client.ts:422](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L422)
+Defined in: [client.ts:422](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L422)
 
 Returns the current user's Principal identity.
 
@@ -274,13 +274,13 @@ Returns the current user's Principal identity.
 
 `Promise`\<`Principal`\>
 
----
+***
 
 ### registerCanisterId()
 
 > **registerCanisterId**(`canisterId`, `name?`): `void`
 
-Defined in: [client.ts:430](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L430)
+Defined in: [client.ts:430](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L430)
 
 Registers a canister ID that this agent will interact with.
 This is used for informational purposes and network detection.
@@ -299,13 +299,13 @@ This is used for informational purposes and network detection.
 
 `void`
 
----
+***
 
 ### connectedCanisterIds()
 
 > **connectedCanisterIds**(): `string`[]
 
-Defined in: [client.ts:450](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L450)
+Defined in: [client.ts:450](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L450)
 
 Returns a list of all canister IDs registered with this agent.
 
@@ -313,13 +313,13 @@ Returns a list of all canister IDs registered with this agent.
 
 `string`[]
 
----
+***
 
 ### getSubnetIdFromCanister()
 
 > **getSubnetIdFromCanister**(`canisterId`): `Promise`\<`Principal`\>
 
-Defined in: [client.ts:457](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L457)
+Defined in: [client.ts:457](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L457)
 
 Get the subnet ID for a canister.
 
@@ -333,13 +333,13 @@ Get the subnet ID for a canister.
 
 `Promise`\<`Principal`\>
 
----
+***
 
 ### syncTimeWithSubnet()
 
 > **syncTimeWithSubnet**(`subnetId`): `Promise`\<`void`\>
 
-Defined in: [client.ts:464](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L464)
+Defined in: [client.ts:464](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L464)
 
 Sync time with a specific subnet.
 
@@ -353,13 +353,13 @@ Sync time with a specific subnet.
 
 `Promise`\<`void`\>
 
----
+***
 
 ### subscribe()
 
 > **subscribe**(`callback`): () => `void`
 
-Defined in: [client.ts:484](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L484)
+Defined in: [client.ts:484](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L484)
 
 Subscribes to identity changes (e.g., after login/logout).
 
@@ -381,13 +381,13 @@ An unsubscribe function.
 
 `void`
 
----
+***
 
 ### subscribeAgentState()
 
 > **subscribeAgentState**(`callback`): () => `void`
 
-Defined in: [client.ts:498](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L498)
+Defined in: [client.ts:498](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L498)
 
 Subscribes to changes in the agent's initialization state.
 
@@ -409,13 +409,13 @@ An unsubscribe function.
 
 `void`
 
----
+***
 
 ### subscribeAuthState()
 
 > **subscribeAuthState**(`callback`): () => `void`
 
-Defined in: [client.ts:512](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L512)
+Defined in: [client.ts:512](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L512)
 
 Subscribes to changes in the authentication state.
 
@@ -437,13 +437,13 @@ An unsubscribe function.
 
 `void`
 
----
+***
 
 ### updateAgent()
 
 > **updateAgent**(`identity`): `void`
 
-Defined in: [client.ts:525](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/client.ts#L525)
+Defined in: [client.ts:525](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/client.ts#L525)
 
 Replaces the current agent's identity and invalidates TanStack queries.
 

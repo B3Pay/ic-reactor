@@ -7,12 +7,11 @@ prev: true
 
 > **createPollingStrategy**(`cfg?`): `PollStrategy`
 
-Defined in: [utils/polling.ts:191](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/utils/polling.ts#L191)
+Defined in: [utils/polling.ts:191](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/utils/polling.ts#L191)
 
 Creates an polling strategy for Internet Computer agent update calls.
 
 The strategy implements three phases:
-
 1. **Fast Phase**: Initial rapid polling (default: 10 attempts @ 100ms intervals)
 2. **Ramp Phase**: Exponential backoff growth (default: up to 20s elapsed)
 3. **Plateau Phase**: Steady-state polling (default: 5s intervals)
@@ -38,7 +37,7 @@ Configuration options
 
 ```typescript
 // Basic usage
-const strategy = createPollingStrategy()
+const strategy = createPollingStrategy();
 
 // Custom configuration for long-running operations
 const strategy = createPollingStrategy({
@@ -47,15 +46,15 @@ const strategy = createPollingStrategy({
   fastDelayMs: 200,
   rampUntilMs: 30_000,
   plateauDelayMs: 10_000,
-  jitterRatio: 0.3,
-})
+  jitterRatio: 0.3
+});
 
 // With abort signal
-const controller = new AbortController()
+const controller = new AbortController();
 const strategy = createPollingStrategy({
   context: "transaction-signing",
-  abortSignal: controller.signal,
-})
+  abortSignal: controller.signal
+});
 // Later: controller.abort();
 ```
 

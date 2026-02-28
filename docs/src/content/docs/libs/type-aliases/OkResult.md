@@ -5,13 +5,12 @@ next: true
 prev: true
 ---
 
-> **OkResult**\<`T`\> = `T` _extends_ `object` ? `never` : `T` _extends_ `object` ? `never` : `T` _extends_ `object` ? `U` : `T` _extends_ `object` ? `U` : `T`
+> **OkResult**\<`T`\> = `T` *extends* `object` ? `never` : `T` *extends* `object` ? `never` : `T` *extends* `object` ? `U` : `T` *extends* `object` ? `U` : `T`
 
-Defined in: [types/result.ts:19](https://github.com/B3Pay/ic-reactor/blob/19301fd54c59786a0db96c42a8e480ee185a81be/packages/core/src/types/result.ts#L19)
+Defined in: [types/result.ts:19](https://github.com/B3Pay/ic-reactor/blob/d7917e29daff163fdeec6d2e30eaec8ba1450c86/packages/core/src/types/result.ts#L19)
 
 Extract the Ok value from a Result type.
 Supports both uppercase (Ok/Err - Rust) and lowercase (ok/err - Motoko).
-
 - If T is { Ok: U } or { ok: U }, returns U
 - If T is { Err: E } or { err: E }, returns never (filters it out from unions)
 - If T is { Ok: U } | { Err: E }, returns U (the Err variant is filtered out)

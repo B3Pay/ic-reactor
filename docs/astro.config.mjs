@@ -262,7 +262,7 @@ export default defineConfig({
                   link: "/packages/candid/candidadapter",
                 },
                 {
-                  label: "FieldVisitor",
+                  label: "CandidFormVisitor",
                   link: "/packages/candid/fieldvisitor",
                 },
               ],
