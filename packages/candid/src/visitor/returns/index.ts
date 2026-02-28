@@ -1,16 +1,18 @@
 import { isQuery } from "../helpers"
 import { checkTextFormat, checkNumberFormat } from "../constants"
 import { formatLabel } from "../arguments/helpers"
-import { MetadataError } from "../arguments/types"
+import {
+  MetadataError,
+  NumberFormat,
+  TextFormat,
+  VisitorDataType,
+} from "../arguments/types"
 import type {
   ResultNode,
   ResolvedNode,
-  VisitorDataType,
   MethodMeta,
   ServiceMeta,
   MethodResult,
-  NumberFormat,
-  TextFormat,
 } from "./types"
 
 import { sha256 } from "@noble/hashes/sha2.js"
