@@ -4,21 +4,49 @@ description: Candid-native reactor with runtime input/output metadata generation
 editUrl: false
 ---
 
-import { Aside } from "@astrojs/starlight/components"
+import { Aside, Card, CardGrid, Steps } from "@astrojs/starlight/components"
 
-`MetadataReactor` extends `CandidReactor` and adds runtime metadata generation for:
+`MetadataReactor` is the **candid-native** metadata reactor.
+It extends [`CandidReactor`](/v3/packages/candid/candidreactor) and adds runtime metadata for:
 
-- input forms (`getInputMeta`)
-- output/result rendering (`getOutputMeta`)
-- hydrated form values from candid args hex (`buildForMethod`)
+- argument forms (`getInputMeta`, `getAllInputMeta`)
+- result rendering (`getOutputMeta`, `getAllOutputMeta`)
+- hydrated initial form values from candid args hex (`buildForMethod`)
+- dynamic variable mapping candidates (`buildMethodVariableCandidates`)
 
-Unlike `MetadataDisplayReactor`, this reactor is **candid-native** for arguments.
+Unlike `MetadataDisplayReactor`, this class keeps argument handling candid-native.
 
 ## Import
 
 ```ts
 import { MetadataReactor } from "@ic-reactor/candid"
 ```
+
+## When To Use
+
+Use `MetadataReactor` when you want:
+
+- dynamic forms for unknown canister methods
+- zod schemas + defaults generated from Candid at runtime
+- metadata-driven output rendering
+- candid-first semantics for arguments and method registration
+
+Use [`MetadataDisplayReactor`](/v3/packages/candid/metadatadisplayreactor) if you specifically want display-transform behavior for arguments in your app flow.
+
+<CardGrid>
+  <Card title="Form Schema Generation" icon="list-format">
+    Generate field trees, defaults, component hints, and zod schemas directly from Candid.
+  </Card>
+  <Card title="Output Resolution" icon="document">
+    Resolve canister return values with method-aware output metadata.
+  </Card>
+  <Card title="Hydration from Hex" icon="seti:config">
+    Convert candid-encoded argument hex into UI-friendly form values.
+  </Card>
+  <Card title="Runtime Method Expansion" icon="rocket">
+    Register new methods at runtime and regenerate metadata immediately.
+  </Card>
+</CardGrid>
 
 ## Quick Start
 
@@ -38,39 +66,57 @@ const reactor = new MetadataReactor({
 
 await reactor.initialize()
 
-const input = reactor.getInputMeta("icrc1_transfer")
-const output = reactor.getOutputMeta("icrc1_transfer")
+const method = "icrc1_transfer"
+const inputMeta = reactor.getInputMeta(method)
+const outputMeta = reactor.getOutputMeta(method)
 ```
 
-## Input Metadata
+## Core APIs
 
-Use `getInputMeta(methodName)` to get `FormArgumentsMeta`:
+### Input Metadata
 
-- `args`: field tree
-- `defaults`: default form values
-- `schema`: method-level zod schema
+`getInputMeta(methodName)` returns `FormArgumentsMeta` for a single method.
 
-Each `FormFieldNode` includes:
+- `args`: structured field nodes
+- `defaults`: default form state
+- `schema`: zod tuple for method args
+- `argCount`, `isEmpty`, `functionType`
 
-- `schema`
-- `component`
-- `renderHint`
-- `defaultValue`
-
-## Output Metadata
-
-Use `getOutputMeta(methodName)` to get `MethodMeta`, then resolve canister results via metadata-aware transformations.
+`getAllInputMeta()` returns the method-to-metadata map for the full service.
 
 ```ts
-const result = await reactor.callMethod({
-  functionName: "icrc1_name",
-  args: [],
-})
+const transferInput = reactor.getInputMeta("icrc1_transfer")
+console.log(transferInput?.defaults)
+console.log(transferInput?.schema)
 ```
 
-`MetadataReactor` resolves method output through result metadata and returns `MethodResult`.
+### Output Metadata
 
-## Build Form Metadata with Hydration
+`getOutputMeta(methodName)` returns `MethodMeta`, including a `resolve(...)` function.
+
+`getAllOutputMeta()` returns metadata for all methods.
+
+```ts
+const transferOutput = reactor.getOutputMeta("icrc1_transfer")
+const raw = await reactor.callMethod({
+  functionName: "icrc1_transfer",
+  args: [/* candid args */],
+})
+const resolved = transferOutput?.resolve(raw)
+```
+
+### Hydration from Candid Args Hex
+
+`buildForMethod(methodName, { candidArgsHex })` combines:
+
+- metadata generation
+- hydration decoding for initial form values
+
+Hydration status can be:
+- `empty`
+- `hydrated`
+- `skipped`
+- `error`
 
 ```ts
 const built = await reactor.buildForMethod("icrc1_transfer", {
@@ -78,16 +124,100 @@ const built = await reactor.buildForMethod("icrc1_transfer", {
 })
 
 console.log(built.meta.defaults)
-console.log(built.hydration.status) // "empty" | "hydrated" | "skipped" | "error"
+console.log(built.hydration.status)
 ```
 
-## Variable Reference Candidates
+You can skip hydration if payloads include unsupported placeholders:
 
-Generate variable-reference candidates for argument/result mapping:
+```ts
+const built = await reactor.buildForMethod("icrc1_transfer", {
+  candidArgsHex,
+  skipHydrationIfContains: "{{",
+})
+```
+
+### Build Metadata for a Standalone Value Type
+
+Use `buildForValueType(...)` when you want field/schema metadata for one type expression.
+
+```ts
+const valueMeta = await reactor.buildForValueType(
+  "record { owner : principal; amount : nat }"
+)
+console.log(valueMeta.meta.defaults)
+```
+
+### Variable Reference Candidates
+
+`buildMethodVariableCandidates(methodName)` helps build mapping UIs for workflow tools.
 
 ```ts
 const candidates = reactor.buildMethodVariableCandidates("icrc1_transfer")
+// e.g. "$icrc1_transfer.arg.0.owner", "$icrc1_transfer.ret.Ok"
 ```
+
+## Dynamic Method Workflow
+
+When methods are discovered at runtime, register them and metadata is regenerated automatically.
+
+```ts
+await reactor.registerMethod({
+  functionName: "get_metadata",
+  candid: "() -> (record { name : text; version : nat }) query",
+})
+
+const meta = reactor.getInputMeta("get_metadata")
+```
+
+<Steps>
+  1. Create and initialize `MetadataReactor`.
+  2. Read method metadata with `getInputMeta` / `getOutputMeta`.
+  3. Build UI state from `defaults` + `schema`.
+  4. Optionally hydrate from `candidArgsHex` for replay/edit flows.
+  5. Call the method and resolve output through `MethodMeta.resolve`.
+</Steps>
+
+## Practical Pattern: Dynamic Form + Result Viewer
+
+```ts
+const methodName = "icrc1_transfer"
+const inputMeta = reactor.getInputMeta(methodName)
+if (!inputMeta) throw new Error("Method metadata missing")
+
+// 1) initialize form
+const formDefaults = inputMeta.defaults
+
+// 2) validate before submit
+inputMeta.schema.parse(formDefaults)
+
+// 3) call
+const raw = await reactor.callMethod({
+  functionName: methodName,
+  args: formDefaults,
+})
+
+// 4) resolve for rendering
+const outputMeta = reactor.getOutputMeta(methodName)
+const rendered = outputMeta?.resolve(raw)
+```
+
+## Troubleshooting
+
+### `metadata not found` for a method
+
+- Ensure `await reactor.initialize()` completed.
+- Confirm method exists in `reactor.getMethodNames()`.
+- If method is dynamic, call `registerMethod(...)` first.
+
+### Hydration returns `error`
+
+- Confirm `candidArgsHex` matches the method argument types exactly.
+- Ensure hex is plain hex (no `0x` prefix).
+
+### Hydration returns `skipped`
+
+- You passed `skipHydrationIfContains` and input matched that token.
+- Remove token or skip-option if full decode is expected.
 
 ## Related
 
@@ -96,7 +226,6 @@ const candidates = reactor.buildMethodVariableCandidates("icrc1_transfer")
 - [MetadataDisplayReactor](/v3/packages/candid/metadatadisplayreactor)
 
 <Aside type="tip">
-  Use `MetadataDisplayReactor` when you explicitly want display-type argument
-  transforms. Use `MetadataReactor` when you want candid-native args.
+  `MetadataReactor` is usually the right default for runtime metadata tooling.
+  Reach for `MetadataDisplayReactor` when your app explicitly depends on display-type argument transforms.
 </Aside>
-
