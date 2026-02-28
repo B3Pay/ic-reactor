@@ -46,11 +46,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Setup dfx
-        uses: dfinity/setup-dfx@main
+      - name: Install icp-cli
+        run: cargo install --locked --git https://github.com/dfinity/icp-cli --tag v0.1.0 icp
 
-      - name: Confirm dfx installation
-        run: dfx --version
+      - name: Confirm icp-cli installation
+        run: icp --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -58,23 +58,22 @@ jobs:
       - name: Build packages (excluding parser)
         run: pnpm build
 
-      - name: Start dfx and run e2e tests
+      - name: Start icp network and run e2e tests
         run: |
           cd e2e
-          dfx start --background --clean
-          dfx deploy hello_actor
-          dfx generate hello_actor
+          trap 'icp network stop >/dev/null 2>&1 || true' EXIT
+          icp network start -d
+          icp deploy hello_actor
 
           # Verify deployment
-          dfx canister call hello_actor greet '("World")'
+          icp canister call hello_actor greet '("World")'
 
-          # Set environment variables
-          set -a
-          source .env
-          set +a
+          # Set environment variables used by tests
+          CANISTER_ID_HELLO_ACTOR="$(icp canister status hello_actor -i | tr -d '[:space:]')"
+          export CANISTER_ID_HELLO_ACTOR
+          export CANISTER_ID="$CANISTER_ID_HELLO_ACTOR"
+          export DFX_NETWORK=local
+          export IC_HOST=http://127.0.0.1:8000
 
           # Run tests
           pnpm test
-
-          # Cleanup
-          dfx stop

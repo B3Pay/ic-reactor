@@ -6,9 +6,9 @@ based tests that exercise the core runtime in a local replica.
 ## Running tests
 
 - `pnpm start` or `pnpm test` _(both now identical)_ will:
-  1. start a local dfx network
+  1. start a local `icp` network
   2. deploy the `hello_actor` canister
-  3. source the generated `.env` file
+  3. export the local canister/network environment variables
   4. execute `vitest run` against `src/test`
   5. stop the replica
 
@@ -21,6 +21,6 @@ have deployed and/or sourced the `.env` yourself.
 ## Troubleshooting
 
 - If you ever see an error about `CANISTER_ID_HELLO_ACTOR` not being set,
-  either run `pnpm start`/`test` or deploy the canister with `dfx` and source
-  the resulting `.env` file. The Vitest config will attempt to read the
-  canister id from `.dfx/local/canister_ids.json` as a last resort.
+  either run `pnpm start`/`test` or deploy the canister with `icp` and export
+  `CANISTER_ID_HELLO_ACTOR`, `DFX_NETWORK=local`, and
+  `IC_HOST=http://127.0.0.1:8000`.

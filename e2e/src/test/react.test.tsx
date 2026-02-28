@@ -18,7 +18,7 @@ const queryClient = new QueryClient({
 })
 
 const clientManager = new ClientManager({
-  withCanisterEnv: true,
+  withProcessEnv: true,
   agentOptions: {
     verifyQuerySignatures: false,
   },
@@ -27,6 +27,7 @@ const clientManager = new ClientManager({
 
 const helloActor = new Reactor<_SERVICE>({
   clientManager,
+  canisterId: process.env.CANISTER_ID_HELLO_ACTOR!,
   idlFactory,
   name: "hello_actor",
 })
