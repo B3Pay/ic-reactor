@@ -18,6 +18,10 @@ const queryClient = new QueryClient({
 })
 
 const clientManager = new ClientManager({
+  agentOptions: {
+    verifyQuerySignatures: false,
+    host: "http://127.0.0.1:8000",
+  },
   withCanisterEnv: true,
   queryClient,
 })
@@ -36,6 +40,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 
 beforeAll(async () => {
   await clientManager.initialize()
+  await clientManager.authenticate()
 })
 
 afterEach(() => {

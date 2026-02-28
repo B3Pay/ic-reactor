@@ -8,7 +8,7 @@ based tests that exercise the core runtime in a local replica.
 - `pnpm start` or `pnpm test` _(both now identical)_ will:
   1. start a local `icp` network
   2. deploy the `hello_actor` canister
-  3. export the local canister/network environment variables
+  3. run tests using canister IDs resolved via `ic_env` (vite-plugin path)
   4. execute `vitest run` against `src/test`
   5. stop the replica
 
@@ -21,6 +21,5 @@ have deployed and/or sourced the `.env` yourself.
 ## Troubleshooting
 
 - If you ever see an error about `CANISTER_ID_HELLO_ACTOR` not being set,
-  either run `pnpm start`/`test` or deploy the canister with `icp` and export
-  `CANISTER_ID_HELLO_ACTOR`, `DFX_NETWORK=local`, and
-  `IC_HOST=http://127.0.0.1:8000`.
+  ensure `icp network start` and `icp deploy hello_actor` have completed before
+  running tests. The test setup seeds the `ic_env` cookie from `icp` CLI.

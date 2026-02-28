@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { Reactor, ClientManager } from "@ic-reactor/core"
 import { idlFactory, _SERVICE } from "../index.js"
 import { describe, expect, it, beforeAll } from "vitest"
@@ -7,6 +6,10 @@ import { QueryClient } from "@tanstack/react-query"
 describe("Core Function and Sanity Test", () => {
   const queryClient = new QueryClient()
   const clientManager = new ClientManager({
+    agentOptions: {
+      verifyQuerySignatures: false,
+      host: "http://127.0.0.1:8000",
+    },
     withCanisterEnv: true,
     queryClient,
   })

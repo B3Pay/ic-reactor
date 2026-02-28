@@ -8,6 +8,10 @@ describe("Auth Hooks Test", () => {
   const queryClient = new QueryClient()
 
   const clientManager = new ClientManager({
+    agentOptions: {
+      verifyQuerySignatures: false,
+      host: "http://127.0.0.1:8000",
+    },
     withCanisterEnv: true,
     queryClient,
   })
