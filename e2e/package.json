@@ -5,11 +5,12 @@
   "license": "MIT",
   "scripts": {
     "start": "sh ./test.sh",
-    "test": "sh ./test.sh"
+    "test": "vitest run"
   },
   "dependencies": {
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/react": "workspace:*",
+    "@ic-reactor/vite-plugin": "workspace:*",
     "@icp-sdk/auth": "^5.0.0",
     "@icp-sdk/core": "^5.0.0"
   },

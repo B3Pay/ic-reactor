@@ -8,7 +8,7 @@ describe("Auth Hooks Test", () => {
   const queryClient = new QueryClient()
 
   const clientManager = new ClientManager({
-    withProcessEnv: true,
+    withCanisterEnv: true,
     agentOptions: {
       verifyQuerySignatures: false,
     },

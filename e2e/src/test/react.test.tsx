@@ -1,6 +1,6 @@
 import React from "react"
 import { render, screen, fireEvent, act, cleanup } from "@testing-library/react"
-import { idlFactory, hello_actor } from "../declarations/hello_actor"
+import { idlFactory, _SERVICE } from "../declarations/hello_actor"
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { createActorHooks } from "@ic-reactor/react"
 import { describe, it, expect, afterEach, beforeAll } from "vitest"
@@ -18,16 +18,15 @@ const queryClient = new QueryClient({
 })
 
 const clientManager = new ClientManager({
-  withProcessEnv: true,
+  withCanisterEnv: true,
   agentOptions: {
     verifyQuerySignatures: false,
   },
   queryClient,
 })
 
-const helloActor = new Reactor<typeof hello_actor>({
+const helloActor = new Reactor<_SERVICE>({
   clientManager,
-  canisterId: process.env.CANISTER_ID_HELLO_ACTOR!,
   idlFactory,
   name: "hello_actor",
 })

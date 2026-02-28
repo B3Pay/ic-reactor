@@ -1,9 +1,8 @@
 // @vitest-environment node
 import { Reactor, ClientManager } from "@ic-reactor/core"
-import { idlFactory, hello_actor } from "../declarations/hello_actor/index.js"
+import { idlFactory, _SERVICE } from "../index.js"
 import { describe, expect, it, beforeAll } from "vitest"
 import { QueryClient } from "@tanstack/react-query"
-import { createActor } from "../declarations/hello_actor/index.js"
 
 describe("Core Function and Sanity Test", () => {
   const queryClient = new QueryClient()
@@ -11,16 +10,12 @@ describe("Core Function and Sanity Test", () => {
     agentOptions: {
       verifyQuerySignatures: false,
     },
-    withProcessEnv: true,
+    withCanisterEnv: true,
     queryClient,
   })
 
-  // Use env var directly for reliability
-  const canisterId = process.env.CANISTER_ID_HELLO_ACTOR!
-
-  const helloReactor = new Reactor<typeof hello_actor>({
+  const helloReactor = new Reactor<_SERVICE>({
     clientManager,
-    canisterId,
     idlFactory,
     name: "hello_actor",
   })
@@ -29,19 +24,11 @@ describe("Core Function and Sanity Test", () => {
     await clientManager.initialize()
   })
 
-  it("Sanity check: Raw Agent call should work", async () => {
-    // Create actor manually using the same agent
-    const actor = createActor(canisterId, {
-      agent: clientManager.agent,
-    })
-
-    const res = await actor.greet("World")
-    expect(res).toBe("Hello, World!")
-  })
-
   it("should initialize the actor", () => {
     expect(helloReactor).toBeDefined()
-    expect(helloReactor.canisterId.toString()).toEqual(canisterId)
+    expect(helloReactor.canisterId.toString()).toEqual(
+      "rrkah-fqaaa-aaaaa-aaaaq-cai"
+    )
   })
 
   it("should call the greet function", async () => {

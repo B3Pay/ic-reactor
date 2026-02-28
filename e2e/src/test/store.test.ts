@@ -1,21 +1,20 @@
 import { Reactor, ClientManager } from "@ic-reactor/core"
-import { hello_actor, idlFactory } from "../declarations/hello_actor"
+import { _SERVICE, idlFactory } from "../declarations/hello_actor"
 import { describe, expect, it, beforeAll } from "vitest"
 import { QueryClient } from "@tanstack/react-query"
 
 describe("Store Test", () => {
   const queryClient = new QueryClient()
   const clientManager = new ClientManager({
-    withProcessEnv: true,
+    withCanisterEnv: true,
     agentOptions: {
       verifyQuerySignatures: false,
     },
     queryClient,
   })
 
-  const helloActor = new Reactor<typeof hello_actor>({
+  const helloActor = new Reactor<_SERVICE>({
     clientManager,
-    canisterId: process.env.CANISTER_ID_HELLO_ACTOR!,
     idlFactory,
     name: "hello_actor",
   })

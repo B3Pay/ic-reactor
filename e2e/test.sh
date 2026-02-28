@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-dfx stop
 set -e
-trap 'dfx stop' EXIT
+trap 'icp network stop' EXIT
 
 echo "===========SETUP========="
-dfx start --background --clean
-dfx deploy hello_actor 
-dfx generate hello_actor
+icp network start -d
+icp deploy hello_actor 
 pnpm install
 echo "===========SETUP DONE========="
 
 echo "===========VERIFYING DEPLOYMENT========="
-dfx canister call hello_actor greet '("World")'
+icp canister call hello_actor greet '("World")'
 echo "===========VERIFICATION DONE========="
 
 echo "===========TESTING========="

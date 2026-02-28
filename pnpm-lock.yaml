@@ -75,6 +75,9 @@ importers:
       '@ic-reactor/react':
         specifier: workspace:*
         version: link:../packages/react
+      '@ic-reactor/vite-plugin':
+        specifier: workspace:*
+        version: link:../packages/vite-plugin
       '@icp-sdk/auth':
         specifier: ^5.0.0
         version: 5.0.0(@icp-sdk/core@5.0.0)
