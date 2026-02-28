@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/candid": "^3.0.4",
-    "@ic-reactor/core": "^3.0.4",
-    "@ic-reactor/react": "^3.0.4",
+    "@ic-reactor/candid": "^3.0.5",
+    "@ic-reactor/core": "^3.0.5",
+    "@ic-reactor/react": "^3.0.5",
     "@icp-sdk/core": "5.0.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
