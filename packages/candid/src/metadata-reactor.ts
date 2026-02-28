@@ -60,8 +60,7 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
 
     if (config.funcClass && !superConfig.idlFactory) {
       const { methodName, func } = config.funcClass
-      superConfig.idlFactory = ({ IDL: _IDL }) =>
-        _IDL.Service({ [methodName]: func })
+      superConfig.idlFactory = ({ IDL }) => IDL.Service({ [methodName]: func })
     }
 
     super(superConfig as ReactorParameters)
