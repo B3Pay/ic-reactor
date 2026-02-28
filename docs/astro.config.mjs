@@ -97,6 +97,10 @@ export default defineConfig({
               link: "/packages/candid/candiddisplayreactor",
             },
             {
+              label: "MetadataReactor",
+              link: "/packages/candid/metadatareactor",
+            },
+            {
               label: "MetadataDisplayReactor",
               link: "/packages/candid/metadatadisplayreactor",
             },
@@ -260,6 +264,10 @@ export default defineConfig({
                 {
                   label: "CandidAdapter",
                   link: "/packages/candid/candidadapter",
+                },
+                {
+                  label: "MetadataReactor",
+                  link: "/packages/candid/metadatareactor",
                 },
                 {
                   label: "CandidFormVisitor",

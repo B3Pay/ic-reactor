@@ -1,0 +1,102 @@
+---
+title: MetadataReactor
+description: Candid-native reactor with runtime input/output metadata generation
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`MetadataReactor` extends `CandidReactor` and adds runtime metadata generation for:
+
+- input forms (`getInputMeta`)
+- output/result rendering (`getOutputMeta`)
+- hydrated form values from candid args hex (`buildForMethod`)
+
+Unlike `MetadataDisplayReactor`, this reactor is **candid-native** for arguments.
+
+## Import
+
+```ts
+import { MetadataReactor } from "@ic-reactor/candid"
+```
+
+## Quick Start
+
+```ts
+import { MetadataReactor } from "@ic-reactor/candid"
+import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
+
+const clientManager = new ClientManager({ queryClient: new QueryClient() })
+await clientManager.initialize()
+
+const reactor = new MetadataReactor({
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
+await reactor.initialize()
+
+const input = reactor.getInputMeta("icrc1_transfer")
+const output = reactor.getOutputMeta("icrc1_transfer")
+```
+
+## Input Metadata
+
+Use `getInputMeta(methodName)` to get `FormArgumentsMeta`:
+
+- `args`: field tree
+- `defaults`: default form values
+- `schema`: method-level zod schema
+
+Each `FormFieldNode` includes:
+
+- `schema`
+- `component`
+- `renderHint`
+- `defaultValue`
+
+## Output Metadata
+
+Use `getOutputMeta(methodName)` to get `MethodMeta`, then resolve canister results via metadata-aware transformations.
+
+```ts
+const result = await reactor.callMethod({
+  functionName: "icrc1_name",
+  args: [],
+})
+```
+
+`MetadataReactor` resolves method output through result metadata and returns `MethodResult`.
+
+## Build Form Metadata with Hydration
+
+```ts
+const built = await reactor.buildForMethod("icrc1_transfer", {
+  candidArgsHex: "4449444c00017100",
+})
+
+console.log(built.meta.defaults)
+console.log(built.hydration.status) // "empty" | "hydrated" | "skipped" | "error"
+```
+
+## Variable Reference Candidates
+
+Generate variable-reference candidates for argument/result mapping:
+
+```ts
+const candidates = reactor.buildMethodVariableCandidates("icrc1_transfer")
+```
+
+## Related
+
+- [CandidReactor](/v3/packages/candid/candidreactor)
+- [CandidFormVisitor](/v3/packages/candid/fieldvisitor)
+- [MetadataDisplayReactor](/v3/packages/candid/metadatadisplayreactor)
+
+<Aside type="tip">
+  Use `MetadataDisplayReactor` when you explicitly want display-type argument
+  transforms. Use `MetadataReactor` when you want candid-native args.
+</Aside>
+
