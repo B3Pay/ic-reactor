@@ -33,20 +33,6 @@ function tryLoadFromDfx(): void {
 
 tryLoadFromDfx()
 
-console.log(
-  "VITEST CONFIG: CANISTER_ID_HELLO_ACTOR =",
-  process.env.CANISTER_ID_HELLO_ACTOR
-)
-
-if (!process.env.CANISTER_ID_HELLO_ACTOR) {
-  console.warn(
-    "warning: CANISTER_ID_HELLO_ACTOR is not set; make sure you've run `pnpm --filter e2e run start` or deployed the canister with dfx before running vitest.`"
-  )
-  throw new Error(
-    "CANISTER_ID_HELLO_ACTOR is missing in vitest config! Check .env file loading or deploy your canister."
-  )
-}
-
 export default defineConfig({
   test: {
     environment: "jsdom",
