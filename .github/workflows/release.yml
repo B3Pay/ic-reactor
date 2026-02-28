@@ -43,8 +43,8 @@ jobs:
         run: npm i -g npm@^11.5.1 && npm --version
 
       - name: Install dependencies
-        # skip the e2e workspace during install to keep job light
-        run: pnpm install --frozen-lockfile --filter '...!e2e'
+        # install only publishable packages and their dependency graph
+        run: pnpm install --frozen-lockfile --filter "./packages/**..."
 
       - name: Cache Rust dependencies
         uses: actions/cache@v5
@@ -60,13 +60,12 @@ jobs:
       # parser is released separately via the release-tools workflow, so we don't need to
       # build it here. keeping this step slows down the job.
 
-      # build and test all workspace packages except the e2e project which is only used
-      # for integration testing and isn't relevant for npm releases.
+      # Build and test only publishable package workspaces.
       - name: Build packages (excluding e2e)
-        run: pnpm --filter '...!e2e' build
+        run: pnpm -r --filter "./packages/**" build
 
       - name: Run tests (excluding e2e)
-        run: pnpm --filter '...!e2e' test
+        run: pnpm -r --filter "./packages/**" test
 
       - name: Determine publish tag
         run: |

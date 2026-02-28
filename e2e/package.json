@@ -4,8 +4,8 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "start": "sh ./test.sh",
-    "test": "sh ./test.sh",
+    "start": "bash ./test.sh",
+    "test": "bash ./test.sh",
     "test:vitest": "vitest run"
   },
   "dependencies": {
