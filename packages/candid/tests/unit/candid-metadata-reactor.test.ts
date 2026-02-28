@@ -43,6 +43,7 @@ describe("CandidMetadataReactor", () => {
     await reactor.initialize()
 
     const metadata = await reactor.buildForMethod("greet")
+
     expect(metadata.meta.functionName).toBe("greet")
     expect(metadata.meta.argCount).toBe(2)
     expect(metadata.meta.args[0]?.type).toBe("text")

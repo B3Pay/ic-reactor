@@ -1,5 +1,7 @@
 import { IDL } from "@icp-sdk/core/candid"
+import { Principal } from "@icp-sdk/core/principal"
 import type { BaseActor, FunctionName } from "@ic-reactor/core"
+import * as z from "zod"
 import { isQuery } from "../helpers"
 import { formatLabel } from "../arguments/helpers"
 import type {
@@ -7,17 +9,48 @@ import type {
   FormArgumentsMeta,
   FormFieldNode,
   FormFieldType,
+  FormRenderHint,
   VariableRefCandidate,
 } from "./types"
 import { cloneField, toFormValue } from "./helpers"
 
 export * from "./types"
 
+const COMPOUND_RENDER_HINT: FormRenderHint = {
+  isCompound: true,
+  isPrimitive: false,
+}
+
+const TEXT_RENDER_HINT: FormRenderHint = {
+  isCompound: false,
+  isPrimitive: true,
+  inputType: "text",
+}
+
+const NUMBER_RENDER_HINT: FormRenderHint = {
+  isCompound: false,
+  isPrimitive: true,
+  inputType: "number",
+}
+
+const CHECKBOX_RENDER_HINT: FormRenderHint = {
+  isCompound: false,
+  isPrimitive: true,
+  inputType: "checkbox",
+}
+
+const FILE_RENDER_HINT: FormRenderHint = {
+  isCompound: false,
+  isPrimitive: true,
+  inputType: "file",
+}
+
 export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
   string,
   FormFieldNode | FormArgumentsMeta | FriendlyServiceMeta<A>
 > {
   private recCache = new Map<IDL.RecClass<any>, FormFieldNode>()
+  private recursiveSchemas: Map<string, z.ZodTypeAny> = new Map()
   private nameStack: string[] = []
 
   private withName<T>(name: string, fn: () => T): T {
@@ -52,6 +85,18 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
           argType.accept(this, `__arg${index}`)
         ) as FormFieldNode
     )
+    const argCount = args.length
+    const schema =
+      argCount === 0
+        ? (z.tuple([]) as unknown as z.ZodTuple<
+            [z.ZodTypeAny, ...z.ZodTypeAny[]]
+          >)
+        : z.tuple(
+            args.map((field) => field.schema) as [
+              z.ZodTypeAny,
+              ...z.ZodTypeAny[],
+            ]
+          )
 
     return {
       candidType: t.name,
@@ -59,9 +104,9 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       functionName,
       args,
       defaults: args.map((arg) => arg.defaultValue),
-      argCount: args.length,
-      isEmpty: args.length === 0,
-      schema: undefined,
+      argCount,
+      isEmpty: argCount === 0,
+      schema,
     }
   }
 
@@ -88,7 +133,7 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       defaults: [valueField.defaultValue],
       argCount: 1,
       isEmpty: false,
-      schema: undefined,
+      schema: z.tuple([valueField.schema]),
     }
   }
 
@@ -193,17 +238,23 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
           childType.accept(this, key)
         ) as FormFieldNode
     )
+    const schema = z.object(
+      Object.fromEntries(fields.map((field) => [field.label, field.schema]))
+    )
 
     return {
       type: "record",
       label,
       displayLabel: formatLabel(label),
       name,
+      component: "record-container",
+      renderHint: COMPOUND_RENDER_HINT,
       candidType: t.display?.() ?? t.name ?? "record",
       fields,
       defaultValue: Object.fromEntries(
         fields.map((f) => [f.label, f.defaultValue])
       ),
+      schema,
     }
   }
 
@@ -219,15 +270,29 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
           childType.accept(this, String(index))
         ) as FormFieldNode
     )
+    const schema =
+      fields.length === 0
+        ? (z.tuple([]) as unknown as z.ZodTuple<
+            [z.ZodTypeAny, ...z.ZodTypeAny[]]
+          >)
+        : z.tuple(
+            fields.map((field) => field.schema) as [
+              z.ZodTypeAny,
+              ...z.ZodTypeAny[],
+            ]
+          )
 
     return {
       type: "tuple",
       label,
       displayLabel: formatLabel(label),
       name,
+      component: "tuple-container",
+      renderHint: COMPOUND_RENDER_HINT,
       candidType: "tuple",
       fields,
       defaultValue: fields.map((f) => f.defaultValue),
+      schema,
     }
   }
 
@@ -245,8 +310,17 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
     )
 
     const first =
-      options[0] ?? this.primitive("null", "null", `${name}.null`, "null", null)
+      options[0] ??
+      this.primitive("null", "null", `${name}.null`, "null", null, z.null())
     const defaultOption = first.label
+    const variantSchemas = options.map((option) =>
+      option.type === "null"
+        ? z.object({ _type: z.literal(option.label) })
+        : z.object({
+            _type: z.literal(option.label),
+            [option.label]: option.schema,
+          })
+    )
 
     const getOption = (option: string): FormFieldNode => {
       const found = options.find((o) => o.label === option)
@@ -279,10 +353,18 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       displayLabel: formatLabel(label),
       name,
+      component: "variant-select",
+      renderHint: COMPOUND_RENDER_HINT,
       candidType: t.display?.() ?? t.name ?? "variant",
       options,
       defaultOption,
       defaultValue: getOptionDefault(defaultOption),
+      schema:
+        variantSchemas.length === 0
+          ? z.object({ _type: z.literal(defaultOption) })
+          : z.union(
+              variantSchemas as unknown as [z.ZodTypeAny, ...z.ZodTypeAny[]]
+            ),
       getOptionDefault,
       getOption,
       getSelectedKey,
@@ -303,9 +385,16 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       displayLabel: formatLabel(label),
       name,
+      component: "optional-toggle",
+      renderHint: COMPOUND_RENDER_HINT,
       candidType: `opt ${innerField.candidType}`,
       innerField,
       defaultValue: null,
+      schema: z.union([
+        innerField.schema,
+        z.null(),
+        z.undefined().transform(() => null),
+      ]),
       getInnerDefault: () => innerField.defaultValue,
       isEnabled: (value: unknown) => value !== null && value !== undefined,
     }
@@ -319,7 +408,14 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
     const name = this.currentName()
 
     if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
-      return this.primitive("blob", label, name, "blob", "")
+      return this.primitive(
+        "blob",
+        label,
+        name,
+        "blob",
+        "",
+        z.union([z.string(), z.array(z.number()), z.instanceof(Uint8Array)])
+      )
     }
 
     const itemFieldTemplate = this.withName("[0]", () =>
@@ -337,9 +433,12 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       displayLabel: formatLabel(label),
       name,
+      component: "vector-list",
+      renderHint: COMPOUND_RENDER_HINT,
       candidType: `vec ${ty.display?.() ?? ty.name}`,
       itemField: itemFieldTemplate,
       defaultValue: [],
+      schema: z.array(itemFieldTemplate.schema),
       getItemDefault: () => cloneField(itemFieldTemplate).defaultValue,
       createItemField,
     }
@@ -351,9 +450,18 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): FormFieldNode {
     const name = this.currentName()
+    const typeName = ty.name || "RecursiveType"
+    let schema: z.ZodTypeAny
 
     if (this.recCache.has(t)) {
       return this.recCache.get(t)!
+    }
+
+    if (this.recursiveSchemas.has(typeName)) {
+      schema = this.recursiveSchemas.get(typeName)!
+    } else {
+      schema = z.lazy(() => (ty.accept(this, label) as FormFieldNode).schema)
+      this.recursiveSchemas.set(typeName, schema)
     }
 
     const node: FormFieldNode = {
@@ -361,8 +469,11 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       displayLabel: formatLabel(label),
       name,
+      component: "recursive-lazy",
+      renderHint: COMPOUND_RENDER_HINT,
       candidType: ty.name,
       defaultValue: undefined,
+      schema,
       typeName: ty.name,
       extract: () =>
         this.withName(name, () => ty.accept(this, label)) as FormFieldNode,
@@ -378,28 +489,83 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       this.currentName(),
       "principal",
-      ""
+      "",
+      z.custom<Principal>(
+        (val) => {
+          if (val instanceof Principal) return true
+          if (typeof val === "string") {
+            try {
+              Principal.fromText(val)
+              return true
+            } catch {
+              return false
+            }
+          }
+          return false
+        },
+        { message: "Invalid Principal format" }
+      )
     )
   }
 
   public visitText(_t: IDL.TextClass, label: string): FormFieldNode {
-    return this.primitive("text", label, this.currentName(), "text", "")
+    return this.primitive(
+      "text",
+      label,
+      this.currentName(),
+      "text",
+      "",
+      z.string().min(1, "Required")
+    )
   }
 
   public visitBool(_t: IDL.BoolClass, label: string): FormFieldNode {
-    return this.primitive("boolean", label, this.currentName(), "bool", false)
+    return this.primitive(
+      "boolean",
+      label,
+      this.currentName(),
+      "bool",
+      false,
+      z.boolean()
+    )
   }
 
   public visitNull(_t: IDL.NullClass, label: string): FormFieldNode {
-    return this.primitive("null", label, this.currentName(), "null", null)
+    return this.primitive(
+      "null",
+      label,
+      this.currentName(),
+      "null",
+      null,
+      z.null()
+    )
   }
 
   public visitInt(_t: IDL.IntClass, label: string): FormFieldNode {
-    return this.primitive("number", label, this.currentName(), "int", "")
+    return this.primitive(
+      "number",
+      label,
+      this.currentName(),
+      "int",
+      "",
+      z
+        .string()
+        .min(1, "Required")
+        .refine((val) => !isNaN(Number(val)), {
+          message: "Must be a number",
+        })
+    )
   }
 
   public visitNat(_t: IDL.NatClass, label: string): FormFieldNode {
-    return this.primitive("number", label, this.currentName(), "nat", "")
+    return this.primitive(
+      "number",
+      label,
+      this.currentName(),
+      "nat",
+      "",
+      z.string().regex(/^\d+$/, "Must be a positive number")
+    )
   }
 
   public visitFloat(t: IDL.FloatClass, label: string): FormFieldNode {
@@ -408,7 +574,13 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       this.currentName(),
       `float${t._bits}`,
-      ""
+      "",
+      z
+        .string()
+        .min(1, "Required")
+        .refine((val) => !isNaN(Number(val)), {
+          message: "Must be a number",
+        })
     )
   }
 
@@ -418,7 +590,13 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       this.currentName(),
       `int${t._bits}`,
-      ""
+      "",
+      z
+        .string()
+        .min(1, "Required")
+        .refine((val) => !isNaN(Number(val)), {
+          message: "Must be a number",
+        })
     )
   }
 
@@ -428,7 +606,8 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       this.currentName(),
       `nat${t._bits}`,
-      ""
+      "",
+      z.string().regex(/^\d+$/, "Must be a positive number")
     )
   }
 
@@ -438,7 +617,8 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
       label,
       this.currentName(),
       t.name ?? "unknown",
-      null
+      null,
+      z.any()
     )
   }
 
@@ -447,15 +627,43 @@ export class CandidFriendlyFormVisitor<A = BaseActor> extends IDL.Visitor<
     label: string,
     name: string,
     candidType: string,
-    defaultValue: unknown
+    defaultValue: unknown,
+    schema: z.ZodTypeAny
   ): Extract<FormFieldNode, { type: T }> {
+    const component =
+      type === "blob"
+        ? "blob-upload"
+        : type === "principal"
+          ? "principal-input"
+          : type === "text"
+            ? "text-input"
+            : type === "number"
+              ? "number-input"
+              : type === "boolean"
+                ? "boolean-checkbox"
+                : type === "null"
+                  ? "null-hidden"
+                  : "unknown-fallback"
+
+    const renderHint =
+      type === "blob"
+        ? FILE_RENDER_HINT
+        : type === "number"
+          ? NUMBER_RENDER_HINT
+          : type === "boolean"
+            ? CHECKBOX_RENDER_HINT
+            : TEXT_RENDER_HINT
+
     return {
       type,
       label,
       displayLabel: formatLabel(label),
       name,
+      component,
+      renderHint,
       candidType,
       defaultValue,
+      schema,
     } as Extract<FormFieldNode, { type: T }>
   }
 }

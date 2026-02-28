@@ -1,4 +1,34 @@
 import type { BaseActor, FunctionName } from "@ic-reactor/core"
+import * as z from "zod"
+
+export type FormFieldComponentType =
+  | "record-container"
+  | "tuple-container"
+  | "variant-select"
+  | "optional-toggle"
+  | "vector-list"
+  | "blob-upload"
+  | "principal-input"
+  | "text-input"
+  | "number-input"
+  | "boolean-checkbox"
+  | "null-hidden"
+  | "recursive-lazy"
+  | "unknown-fallback"
+
+export type FormInputType =
+  | "text"
+  | "number"
+  | "checkbox"
+  | "select"
+  | "file"
+  | "textarea"
+
+export interface FormRenderHint {
+  isCompound: boolean
+  isPrimitive: boolean
+  inputType?: FormInputType
+}
 
 export type FormFieldType =
   | "record"
@@ -20,8 +50,11 @@ type FieldBase = {
   label: string
   displayLabel: string
   name: string
+  component: FormFieldComponentType
+  renderHint: FormRenderHint
   candidType: string
   defaultValue: unknown
+  schema: z.ZodTypeAny
 }
 
 export type FormFieldNode =
@@ -72,7 +105,8 @@ export type FormArgumentsMeta = {
   defaults: unknown[]
   argCount: number
   isEmpty: boolean
-  schema?: unknown
+  /** Zod validation schema */
+  schema: z.ZodTypeAny
 }
 
 export type FriendlyServiceMeta<A = BaseActor> = {
