@@ -229,8 +229,7 @@ describe("MetadataDisplayReactor", () => {
         clientManager,
         candid: SIMPLE_SERVICE_CANDID,
       })
-      await reactor.initialize() // Don't await
-      console.log("Greet meta: ", reactor.getInputMeta("greet"))
+
       expect(reactor.getAllInputMeta()).toBeNull()
       expect(reactor.getAllOutputMeta()).toBeNull()
     })
