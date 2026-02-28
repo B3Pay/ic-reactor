@@ -5,7 +5,8 @@
   "license": "MIT",
   "scripts": {
     "start": "sh ./test.sh",
-    "test": "vitest run"
+    "test": "sh ./test.sh",
+    "test:vitest": "vitest run"
   },
   "dependencies": {
     "@ic-reactor/core": "workspace:*",
