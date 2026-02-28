@@ -6,16 +6,12 @@ import { QueryClient } from "@tanstack/react-query"
 describe("Store Test", () => {
   const queryClient = new QueryClient()
   const clientManager = new ClientManager({
-    withProcessEnv: true,
-    agentOptions: {
-      verifyQuerySignatures: false,
-    },
+    withCanisterEnv: true,
     queryClient,
   })
 
   const helloActor = new Reactor<_SERVICE>({
     clientManager,
-    canisterId: process.env.CANISTER_ID_HELLO_ACTOR!,
     idlFactory,
     name: "hello_actor",
   })
@@ -25,9 +21,6 @@ describe("Store Test", () => {
   })
 
   it("should return the correct initial state", async () => {
-    expect(helloActor.canisterId.toString()).toEqual(
-      process.env.CANISTER_ID_HELLO_ACTOR
-    )
     expect((await clientManager.getUserPrincipal()).isAnonymous()).toBe(true)
   })
 

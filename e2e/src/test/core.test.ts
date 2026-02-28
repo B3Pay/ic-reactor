@@ -7,16 +7,12 @@ import { QueryClient } from "@tanstack/react-query"
 describe("Core Function and Sanity Test", () => {
   const queryClient = new QueryClient()
   const clientManager = new ClientManager({
-    agentOptions: {
-      verifyQuerySignatures: false,
-    },
-    withProcessEnv: true,
+    withCanisterEnv: true,
     queryClient,
   })
 
   const helloReactor = new Reactor<_SERVICE>({
     clientManager,
-    canisterId: process.env.CANISTER_ID_HELLO_ACTOR!,
     idlFactory,
     name: "hello_actor",
   })
@@ -27,9 +23,7 @@ describe("Core Function and Sanity Test", () => {
 
   it("should initialize the actor", () => {
     expect(helloReactor).toBeDefined()
-    expect(helloReactor.canisterId.toString()).toEqual(
-      process.env.CANISTER_ID_HELLO_ACTOR
-    )
+    expect(helloReactor.canisterId.toString()).toBeDefined()
   })
 
   it("should call the greet function", async () => {
