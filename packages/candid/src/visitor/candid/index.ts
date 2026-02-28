@@ -559,9 +559,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       z
         .string()
         .min(1, "Required")
-        .refine((val) => !isNaN(Number(val)), {
-          message: "Must be a number",
-        })
+        .regex(/^-?\d+$/, "Must be an integer")
     )
   }
 
@@ -586,8 +584,8 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       z
         .string()
         .min(1, "Required")
-        .refine((val) => !isNaN(Number(val)), {
-          message: "Must be a number",
+        .refine((val) => !isNaN(Number(val)) && isFinite(Number(val)), {
+          message: "Must be a valid number",
         })
     )
   }
@@ -602,9 +600,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       z
         .string()
         .min(1, "Required")
-        .refine((val) => !isNaN(Number(val)), {
-          message: "Must be a number",
-        })
+        .regex(/^-?\d+$/, "Must be an integer")
     )
   }
 

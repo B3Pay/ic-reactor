@@ -234,12 +234,14 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     }
 
     const func = funcField[1] as IDL.FuncClass
-    const firstArg = Array.isArray(func.argTypes) ? func.argTypes[0] : undefined
-    if (!firstArg) {
-      throw new Error("Value type must produce exactly one value field")
+    const argTypes = Array.isArray(func.argTypes) ? func.argTypes : []
+    if (argTypes.length !== 1) {
+      throw new Error(
+        `Value type must produce exactly one type, got ${argTypes.length}`
+      )
     }
 
-    return { type: firstArg }
+    return { type: argTypes[0] }
   }
 
   private hydrateValues(

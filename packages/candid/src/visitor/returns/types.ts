@@ -7,8 +7,6 @@ import type {
 import type { IDL } from "@icp-sdk/core/candid"
 import type { VisitorDataType, TextFormat, NumberFormat } from "../types"
 
-export type { VisitorDataType, TextFormat, NumberFormat }
-
 // ════════════════════════════════════════════════════════════════════════════
 // Core Types & Formats
 // ════════════════════════════════════════════════════════════════════════════
