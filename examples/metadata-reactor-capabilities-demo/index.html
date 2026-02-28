@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MetadataReactor Capabilities Demo</title>
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <h1>MetadataReactor Capabilities</h1>
+        <p>
+          Explore runtime method metadata, form hydration, output resolvers, and
+          variable-reference candidates generated from Candid.
+        </p>
+      </header>
+
+      <section class="panel controls">
+        <label for="method-select">Method</label>
+        <select id="method-select"></select>
+        <button id="refresh-btn" type="button">Refresh Metadata</button>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Input Metadata</h2>
+          <pre id="input-meta"></pre>
+        </article>
+        <article class="panel">
+          <h2>Output Metadata</h2>
+          <pre id="output-meta"></pre>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Hydration (buildForMethod)</h2>
+          <button id="hydrate-btn" type="button">
+            Hydrate Sample Candid Args
+          </button>
+          <pre id="hydration"></pre>
+        </article>
+        <article class="panel">
+          <h2>Variable Candidates</h2>
+          <pre id="candidates"></pre>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Resolved Output (getOutputMeta().resolve)</h2>
+        <button id="resolve-btn" type="button">Resolve Sample Output</button>
+        <pre id="resolved-output"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Service Summary</h2>
+        <pre id="summary"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
