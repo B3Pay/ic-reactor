@@ -5,7 +5,7 @@ import * as z from "zod"
 import { isQuery } from "../helpers"
 import { formatLabel } from "../arguments/helpers"
 import type {
-  FriendlyServiceMeta,
+  FormServiceMeta,
   FormArgumentsMeta,
   FormFieldNode,
   FormFieldType,
@@ -55,7 +55,7 @@ const FILE_RENDER_HINT: FormRenderHint = {
  */
 export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
   string,
-  FormFieldNode | FormArgumentsMeta | FriendlyServiceMeta<A>
+  FormFieldNode | FormArgumentsMeta | FormServiceMeta<A>
 > {
   private recCache = new Map<IDL.RecClass<any>, FormFieldNode>()
   private recursiveSchemas: Map<string, z.ZodTypeAny> = new Map()
@@ -74,8 +74,8 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     return this.nameStack.join("")
   }
 
-  public visitService(t: IDL.ServiceClass): FriendlyServiceMeta<A> {
-    const result = {} as FriendlyServiceMeta<A>
+  public visitService(t: IDL.ServiceClass): FormServiceMeta<A> {
+    const result = {} as FormServiceMeta<A>
     for (const [functionName, func] of t._fields) {
       result[functionName as FunctionName<A>] = func.accept(
         this,

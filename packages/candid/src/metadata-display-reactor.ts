@@ -63,18 +63,18 @@ import {
  */
 declare module "@ic-reactor/core" {
   interface TransformArgsRegistry<T> {
-    metadata: TransformArgsRegistry<T>["display"]
+    metadataDisplay: TransformArgsRegistry<T>["display"]
   }
   interface TransformReturnRegistry<T, A = BaseActor> {
-    metadata: MethodResult<A>
+    metadataDisplay: MethodResult<A>
   }
 }
 
 export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   A,
-  "metadata"
+  "metadataDisplay"
 > {
-  public override readonly transform = "metadata" as const
+  public override readonly transform = "metadataDisplay" as const
 
   // Metadata storage
   private argumentMeta: ArgumentsServiceMeta<A> | null = null

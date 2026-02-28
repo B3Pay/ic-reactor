@@ -227,7 +227,7 @@ export interface FormArgumentsMeta {
 /**
  * Service-level metadata mapping method names to their friendly argument metadata.
  */
-export type FriendlyServiceMeta<A = BaseActor> = {
+export type FormServiceMeta<A = BaseActor> = {
   [K in FunctionName<A>]?: FormArgumentsMeta
 }
 
@@ -273,4 +273,20 @@ export interface VariableRefCandidate {
   fieldType: FormFieldType
   sourceNodeId: string
   sourceRoot?: "arg" | "ret"
+}
+
+export type ExprHydration =
+  | { status: "empty" }
+  | { status: "hydrated"; values: unknown[] }
+  | { status: "skipped"; reason: string }
+  | { status: "error"; message: string }
+
+export type MethodMetadataOptions = {
+  candidArgsHex?: string
+  skipHydrationIfContains?: string
+}
+
+export type CandidFormMetadata = {
+  meta: FormArgumentsMeta
+  hydration: ExprHydration
 }

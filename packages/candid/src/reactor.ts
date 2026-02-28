@@ -1,11 +1,21 @@
-import type { BaseActor, ReactorParameters } from "@ic-reactor/core"
+import type {
+  BaseActor,
+  ReactorParameters,
+  TransformArgsRegistry,
+  TransformKey,
+} from "@ic-reactor/core"
 import type { CandidReactorParameters, DynamicMethodOptions } from "./types"
 
 import { Reactor } from "@ic-reactor/core"
 import { CandidAdapter } from "./adapter"
 import { IDL } from "@icp-sdk/core/candid"
 
-export class CandidReactor<A = BaseActor> extends Reactor<A> {
+export class CandidReactor<
+  A = BaseActor,
+  T extends TransformKey = "candid",
+> extends Reactor<A, T> {
+  public transform: keyof TransformArgsRegistry<unknown> = "candid" as const
+
   public adapter: CandidAdapter
   private candidSource?: string
 

@@ -1,50 +1,71 @@
-import type { BaseActor, FunctionName } from "@ic-reactor/core"
+import type {
+  ActorMethodReturnType,
+  BaseActor,
+  FunctionName,
+  ReactorParameters,
+} from "@ic-reactor/core"
 import { hexToUint8Array } from "@ic-reactor/core"
 import { IDL } from "@icp-sdk/core/candid"
-import { CandidDisplayReactor } from "./display-reactor"
-import type {
-  CandidDisplayReactorParameters,
-  DynamicMethodOptions,
-} from "./types"
+import { CandidReactor } from "./reactor"
+import type { DynamicMethodOptions, MetadataReactorParameters } from "./types"
 import {
   CandidFormVisitor,
-  FriendlyServiceMeta,
+  FormServiceMeta,
   FormArgumentsMeta,
   FormFieldNode,
   VariableRefCandidate,
+  MethodMetadataOptions,
+  CandidFormMetadata,
+  ExprHydration,
 } from "./visitor/candid"
+import { MetadataError } from "./visitor/arguments"
+import {
+  MethodMeta,
+  MethodResult,
+  ResultFieldVisitor,
+  ServiceMeta,
+} from "./visitor/returns"
 
-export type ExprHydration =
-  | { status: "empty" }
-  | { status: "hydrated"; values: unknown[] }
-  | { status: "skipped"; reason: string }
-  | { status: "error"; message: string }
-
-export type CandidFormMetadata = {
-  meta: FormArgumentsMeta
-  hydration: ExprHydration
-}
-
-export type MethodMetadataOptions = {
-  candidArgsHex?: string
-  skipHydrationIfContains?: string
+declare module "@ic-reactor/core" {
+  interface TransformArgsRegistry<T> {
+    metadata: TransformArgsRegistry<T>["candid"]
+  }
+  interface TransformReturnRegistry<T, A = BaseActor> {
+    metadata: MethodResult<A>
+  }
 }
 
 /**
  * Runtime form metadata reactor for Candid interfaces.
  *
- * Extends {@link CandidDisplayReactor} and adds method input metadata generation
+ * Extends {@link CandidReactor} and adds method input/output metadata generation
  * powered by {@link CandidFormVisitor}. Returned field metadata includes:
  * - `schema` (Zod validation)
  * - `component` (UI component hint)
  * - `renderHint` (primitive/compound + input hint)
  */
-export class MetadataReactor<A = BaseActor> extends CandidDisplayReactor<A> {
-  private methodMeta: FriendlyServiceMeta<A> | null = null
-  private static formVisitor = new CandidFormVisitor()
+export class MetadataReactor<A = BaseActor> extends CandidReactor<
+  A,
+  "metadata"
+> {
+  public override readonly transform = "metadata" as const
 
-  constructor(config: CandidDisplayReactorParameters<A>) {
-    super(config)
+  private methodMeta: FormServiceMeta<A> | null = null
+  private resultMeta: ServiceMeta<A> | null = null
+  private static formVisitor = new CandidFormVisitor()
+  private static resultVisitor = new ResultFieldVisitor()
+
+  constructor(config: MetadataReactorParameters) {
+    const superConfig = { ...config }
+
+    if (config.funcClass && !superConfig.idlFactory) {
+      const { methodName, func } = config.funcClass
+      superConfig.idlFactory = ({ IDL: _IDL }) =>
+        _IDL.Service({ [methodName]: func })
+    }
+
+    super(superConfig as ReactorParameters)
+
     if (config.funcClass || config.idlFactory) {
       this.generateMetadata()
     }
@@ -61,7 +82,11 @@ export class MetadataReactor<A = BaseActor> extends CandidDisplayReactor<A> {
     this.methodMeta = service.accept(
       MetadataReactor.formVisitor,
       null as any
-    ) as FriendlyServiceMeta<A>
+    ) as FormServiceMeta<A>
+    this.resultMeta = service.accept(
+      MetadataReactor.resultVisitor,
+      null as any
+    ) as ServiceMeta<A>
   }
 
   /**
@@ -76,8 +101,18 @@ export class MetadataReactor<A = BaseActor> extends CandidDisplayReactor<A> {
   /**
    * Get form metadata for all service methods.
    */
-  public getAllInputMeta(): FriendlyServiceMeta<A> | null {
+  public getAllInputMeta(): FormServiceMeta<A> | null {
     return this.methodMeta
+  }
+
+  public getOutputMeta<M extends FunctionName<A>>(
+    methodName: M
+  ): MethodMeta<A, M> | undefined {
+    return this.resultMeta?.[methodName]
+  }
+
+  public getAllOutputMeta(): ServiceMeta<A> | null {
+    return this.resultMeta
   }
 
   public async buildForMethod<M extends FunctionName<A>>(
@@ -248,5 +283,21 @@ export class MetadataReactor<A = BaseActor> extends CandidDisplayReactor<A> {
         message: error instanceof Error ? error.message : String(error),
       }
     }
+  }
+
+  protected override transformResult<M extends FunctionName<A>>(
+    methodName: M,
+    result: ActorMethodReturnType<A[M]>
+  ): MethodResult<A> {
+    const meta = this.getOutputMeta(methodName)
+    if (!meta) {
+      throw new MetadataError(
+        `No output metadata found for method`,
+        String(methodName),
+        "method"
+      )
+    }
+
+    return meta.resolve(result)
   }
 }
