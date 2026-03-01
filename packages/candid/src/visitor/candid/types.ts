@@ -272,7 +272,6 @@ export interface VariableRefCandidate {
   candidType: string
   fieldType: FormFieldType
   sourceNodeId: string
-  sourceRoot?: "arg" | "ret"
 }
 
 export type ExprHydration =

@@ -148,56 +148,39 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     if (!method) return []
 
     const visitor = new CandidFormVisitor()
-    const out: VariableRefCandidate[] = []
-
-    const argMeta = visitor.buildFunctionMeta(method.func, method.name)
-    for (let argIndex = 0; argIndex < argMeta.args.length; argIndex += 1) {
-      const argField = argMeta.args[argIndex]
-      if (!argField) continue
-      const suffix = argMeta.args.length === 1 ? "" : `.${argIndex}`
-      out.push(
-        ...visitor.collectRefCandidatesFromRoot(
-          method.name,
-          "arg",
-          `$${method.name}.arg${suffix}`,
-          `$${method.name}.arg${suffix}`,
-          argField
-        )
-      )
-    }
-
     const retTypes = Array.isArray(method.func.retTypes)
       ? method.func.retTypes
       : []
+
     if (retTypes.length === 1 && retTypes[0]) {
-      const resultField = visitor.buildFieldForType(retTypes[0], "ret", "$ret")
-      out.push(
-        ...visitor.collectRefCandidatesFromRoot(
-          method.name,
-          "ret",
-          `$${method.name}.ret`,
-          `$${method.name}.ret`,
-          resultField
-        )
+      const resultField = visitor.buildFieldForType(
+        retTypes[0],
+        method.name,
+        `$${method.name}`
       )
-    } else if (retTypes.length > 1) {
-      const resultField = visitor.buildTupleFieldForTypes(
-        retTypes,
-        "ret",
-        "$ret"
-      )
-      out.push(
-        ...visitor.collectRefCandidatesFromRoot(
-          method.name,
-          "ret",
-          `$${method.name}.ret`,
-          `$${method.name}.ret`,
-          resultField
-        )
+      return visitor.collectRefCandidatesFromRoot(
+        method.name,
+        `$${method.name}`,
+        `$${method.name}`,
+        resultField
       )
     }
 
-    return out
+    if (retTypes.length > 1) {
+      const resultField = visitor.buildTupleFieldForTypes(
+        retTypes,
+        method.name,
+        `$${method.name}`
+      )
+      return visitor.collectRefCandidatesFromRoot(
+        method.name,
+        `$${method.name}`,
+        `$${method.name}`,
+        resultField
+      )
+    }
+
+    return []
   }
 
   public override async registerMethod(

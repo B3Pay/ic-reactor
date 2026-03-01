@@ -152,22 +152,8 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     return fields.map((field, index) => toFormValue(field, decodedArgs[index]))
   }
 
-  public collectVariableRefCandidates(
-    sourceNodeId: string,
-    rootField: FormFieldNode
-  ): VariableRefCandidate[] {
-    return this.collectRefCandidatesFromRoot(
-      sourceNodeId,
-      "ret",
-      `$${sourceNodeId}`,
-      `$${sourceNodeId}`,
-      rootField
-    )
-  }
-
   public collectRefCandidatesFromRoot(
     sourceNodeId: string,
-    sourceRoot: "arg" | "ret",
     rootExpr: string,
     rootLabel: string,
     rootField: FormFieldNode
@@ -180,7 +166,6 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
         candidType: field.candidType,
         fieldType: field.type,
         sourceNodeId,
-        sourceRoot,
       })
 
       switch (field.type) {

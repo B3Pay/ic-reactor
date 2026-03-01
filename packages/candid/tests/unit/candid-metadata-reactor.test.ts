@@ -82,9 +82,7 @@ describe("CandidMetadataReactor", () => {
     await reactor.initialize()
 
     const candidates = reactor.buildMethodVariableCandidates("greet")
-    expect(candidates.some((c) => c.expr === "$greet.arg.0")).toBe(true)
-    expect(candidates.some((c) => c.expr === "$greet.arg.1")).toBe(true)
-    expect(candidates.some((c) => c.expr === "$greet.ret")).toBe(true)
+    expect(candidates.some((c) => c.expr === "$greet")).toBe(true)
   })
 
   it("builds value metadata from a standalone value type", async () => {
