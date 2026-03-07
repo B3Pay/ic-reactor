@@ -73,7 +73,7 @@ export class ClientManager {
    * @param parameters - Configuration options for the agent and network environment.
    */
   constructor({
-    port = 4943,
+    port = 8000,
     withLocalEnv,
     withProcessEnv,
     withCanisterEnv,
