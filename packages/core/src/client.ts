@@ -388,6 +388,13 @@ export class ClientManager {
   }
 
   /**
+   * The AuthClient instance used for authentication, if available.
+   */
+  get authClient() {
+    return this.#authClient
+  }
+
+  /**
    * The host URL of the current IC agent.
    */
   get agentHost(): URL | undefined {
