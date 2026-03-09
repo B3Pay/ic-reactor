@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/B3Pay/ic-reactor#readme",
   "dependencies": {
-    "@clack/prompts": "^1.0.1",
+    "@clack/prompts": "^1.1.0",
     "@ic-reactor/codegen": "workspace:*",
     "@icp-sdk/bindgen": "^0.2.2",
     "@icp-sdk/core": "^5.0.0",
@@ -41,7 +41,7 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^25.3.3",
+    "@types/node": "^25.3.5",
     "tsup": "^8.3.5",
     "typescript": "~5.9.3"
   },
