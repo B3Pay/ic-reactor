@@ -3,7 +3,7 @@
 canisters:
   - name: hello_actor
     recipe:
-      type: "@dfinity/rust"
+      type: "@dfinity/rust@v3.2.0"
       configuration:
         package: hello_actor
         candid: src/actor/hello_actor.did
