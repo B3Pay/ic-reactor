@@ -11,17 +11,19 @@ IC Reactor provides **end-to-end type safety** from your Candid definitions all 
 ## How It Works
 
 ```
-Candid IDL → dfx generate → TypeScript Types → IC Reactor → React Hooks
+Candid IDL → generated declarations → IC Reactor → React Hooks
 ```
 
 1. **Candid IDL** — Your canister's interface definition (`.did` file)
-2. **dfx generate** — Creates TypeScript declarations from Candid
+2. **Declaration generator** — `@ic-reactor/vite-plugin`, `@ic-reactor/cli`,
+   `@icp-sdk/bindgen`, or `dfx generate`
 3. **IC Reactor** — Infers types for all hooks and methods
 4. **React Components** — Full autocomplete and type checking
 
 ## Generated Types
 
-When you run `dfx generate`, it creates TypeScript files in `src/declarations/<canister_name>/`:
+When your toolchain generates declarations, it creates TypeScript files similar
+to `src/declarations/<canister_name>/`:
 
 ```typescript
 // src/declarations/backend/backend.did.d.ts
@@ -326,7 +328,7 @@ const { mutate } = useCreateUser() // mutate expects CreateUserInput
 1. **Always use the generated `_SERVICE` type** — Pass it to `Reactor<_SERVICE>`
 2. **Enable strict TypeScript** — Use `strict: true` in tsconfig.json
 3. **Trust the types** — If it compiles, the call is structurally valid
-4. **Run dfx generate after Candid changes** — Keep types in sync
+4. **Regenerate declarations after Candid changes** — Keep types in sync
 5. **Use type narrowing** — Check for `isPending` and `isError` before accessing `data`
 
 ## TypeScript Configuration

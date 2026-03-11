@@ -139,23 +139,26 @@ IC Reactor is written in TypeScript and provides first-class type support. Ensur
   Reactor's type safety.
 </Aside>
 
-## Generate Candid Declarations
+## Generate Declarations
 
-If you have a DFX project, generate TypeScript declarations from your Candid files:
+IC Reactor needs generated canister declarations for end-to-end type safety. You
+can supply them in three ways:
 
-```bash
-dfx generate
-```
+1. **Recommended for Vite**: use [`@ic-reactor/vite-plugin`](/v3/packages/vite-plugin)
+2. **Recommended for non-Vite or CI**: use [`@ic-reactor/cli`](/v3/packages/cli)
+3. **Manual or existing workflow**: keep using your existing generator such as
+   `dfx generate` or `@icp-sdk/bindgen`
 
-This creates TypeScript declarations in `src/declarations/<canister_name>/` that IC Reactor uses for type safety. The generated files include:
+The generated files typically include:
 
-- `index.js` — IDL factory and canister ID
-- `<canister>.did.d.ts` — TypeScript types for your canister interface
+- `index.js` or `<canister>.js` with the `idlFactory`
+- `<canister>.did.d.ts` service types
+- an optional generated `index.ts` reactor entrypoint when you use IC Reactor
+  tooling
 
 <Aside type="note">
-  If you use **@ic-reactor/vite-plugin** or **@ic-reactor/cli**, you don't need
-  `dfx generate`! These tools automatically generate the necessary declarations
-  for you.
+  If you use **@ic-reactor/vite-plugin** or **@ic-reactor/cli**, you do not need
+  a separate `dfx generate` step for the IC Reactor output.
 </Aside>
 
 ## Verify Installation

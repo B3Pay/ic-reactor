@@ -1,80 +1,58 @@
 # @ic-reactor/parser
 
-A high-performance **WASM-based parser** for the DFINITY Candid language, built for the `ic-reactor` ecosystem.
+WASM-based Candid parser used by IC Reactor tooling and dynamic Candid
+workflows. It turns raw Candid source into JavaScript IDL factories or
+TypeScript declaration strings.
 
-This package compiles Candid interface definitions (`.did` files) into JavaScript and TypeScript bindings directly in the browser or Node.js environment, without needing to interact with a remote canister.
-
-## Features
-
-- **Blazing Fast**: Built with Rust and compiled to WebAssembly.
-- **Offline Capable**: Parse Candid strings entirely on the client side.
-- **Zero Dependencies**: Does not rely on the `didjs` canister.
-- **Universal**: Works in the browser and Node.js.
-
-## Installation
+## Install
 
 ```bash
-npm install @ic-reactor/parser
+pnpm add @ic-reactor/parser
 ```
 
-## Usage
+## API
 
-### Converting Candid to JavaScript
+### `didToJs(candid: string): string`
 
-```typescript
-import { didToJs } from "@ic-reactor/parser"
+Returns JavaScript source that exports `idlFactory` and `init`.
+
+### `didToTs(candid: string): string`
+
+Returns TypeScript declaration source for the same Candid interface.
+
+## Example
+
+```ts
+import { didToJs, didToTs } from "@ic-reactor/parser"
 
 const candid = `service : {
   greet : (text) -> (text) query;
 }`
 
-const jsCode = didToJs(candid)
-console.log(jsCode)
+const jsSource = didToJs(candid)
+const tsSource = didToTs(candid)
+
+console.log(jsSource)
+console.log(tsSource)
 ```
 
-**Output:**
+## Where It Is Used
 
-```javascript
-export const idlFactory = ({ IDL }) => {
-  return IDL.Service({ greet: IDL.Func([IDL.Text], [IDL.Text], ["query"]) })
-}
-export const init = ({ IDL }) => {
-  return []
-}
-```
+- `@ic-reactor/candid` can load it for local `CandidAdapter` compilation
+- `@ic-reactor/codegen` uses it to generate declaration files from `.did`
+  sources
 
-### Converting Candid to TypeScript
+If you only need runtime dynamic interaction, install `@ic-reactor/candid` and
+let that package load the parser when needed.
 
-```typescript
-import { didToTs } from "@ic-reactor/parser"
+## Notes
 
-const tsCode = didToTs(candid)
-console.log(tsCode)
-```
+- The package is compiled from Rust to WebAssembly.
+- It returns source strings rather than ready-made JS objects.
+- Browser environments need standard WASM support from the bundler/runtime.
 
-**Output:**
+## See Also
 
-```typescript
-import type { Principal } from "@icp-sdk/core/principal"
-import type { ActorMethod } from "@icp-sdk/core/agent"
-import type { IDL } from "@icp-sdk/core/candid"
-
-export interface _SERVICE {
-  greet: ActorMethod<[string], string>
-}
-export declare const idlFactory: IDL.InterfaceFactory
-export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[]
-```
-
-## Integration with IC-Reactor
-
-This package is used internally by `@ic-reactor/candid` and `@ic-reactor/core` to enable local parsing strategies.
-
-```typescript
-import { createCandidAdapter } from "@ic-reactor/core"
-// The parser is dynamically imported if available
-```
-
-## License
-
-MIT
+- Docs: https://ic-reactor.b3pay.net/v3/packages/parser
+- `@ic-reactor/candid`: ../candid/README.md
+- `@ic-reactor/codegen`: ../codegen/README.md

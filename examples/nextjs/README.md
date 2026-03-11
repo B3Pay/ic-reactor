@@ -1,63 +1,54 @@
-# InternetComputer - Rust + Next.js Template
+# Next.js Example
 
-This is a template for creating a Next.js app with a Rust backend that can be deployed to the Internet Computer.
+This example is a Next.js Pages Router app backed by a Rust canister and a
+manual `dfx` declaration workflow. It shows how to wire `@ic-reactor/react`
+into a traditional Next.js project without the Vite plugin.
 
-![Alt text](public/demo.png)
+## What It Uses
 
-## Getting Started
+- Next.js Pages Router under `src/pages`
+- a Rust backend canister under `backend/`
+- `dfx` for local replica, deployment, and declaration generation
+- `ClientManager` with `withProcessEnv: true`
+- `createActorHooks` over a `Reactor` built from generated declarations
 
-1. Install the [DFINITY Canister SDK](https://sdk.dfinity.org/docs/quickstart/local-quickstart.html)
-2. Install [Node.js](https://nodejs.org/en/download/)
-3. Install [Rust](https://www.rust-lang.org/tools/install)
+## Prerequisites
 
-## Running Locally
+- Node.js
+- Rust
+- `dfx`
+- `cargo install candid-extractor ic-wasm` if you have not installed those
+  helpers yet
 
-Installing dependencies:
+## Run It
 
-1. Run `yarn install:all` or `npm run install:all`
-   it will run the following commands:
+```bash
+cd examples/nextjs
+npm run install:all
+npm run dfx:start
+npm run deploy
+npm run generate
+npm run dev
+```
 
-   Install Node.js dependencies:
+Open http://localhost:3000 when the app is ready.
 
-- Run `yarn install` or `npm install`
+## Key Files
 
-  For extract candid definition from canister WASM:
+- `src/service/client.ts` creates the shared `ClientManager` and auth hooks
+- `src/service/todo.ts` creates the `Reactor` and bound hooks from generated
+  declarations
+- `src/pages/index.tsx` renders the app
+- `src/declarations/todo/` contains the `dfx generate` output used by the app
 
-- Run `yarn candid:install` or `npm run candid:install`
+## Why This Example Exists
 
-  For transforming Wasm canisters running on the Internet Computer:
+Most current IC Reactor examples use Vite plus generated hooks. This one is the
+reference for teams that still have:
 
-- Run `yarn wasm:install` or `npm run wasm:install`
+- an existing Next.js project
+- `dfx`-generated declarations
+- manual build or deployment scripts
 
-Running Local Internet Computer:
-
-2. Run `yarn dfx:start` or `npm run dfx:start`
-
-Deploying to the Local Internet Computer:
-
-3.1 Run `yarn deploy` or `npm run deploy`
-3.2 Run `yarn identity:deploy` or `npm run identity:deploy`
-
-Running Next.js app:
-
-4. Run `yarn dev` or `npm run dev`
-5. Open http://localhost:3000 in your browser
-
-## Deploying to the Internet Computer
-
-1. Run `yarn deploy --network=ic` to deploy the canisters to the Internet Computer
-
-## Notes
-
-- The Rust code is located in the `backend` directory
-- The Next.js code is located in the `src` directory
-- The canister configuration is located in the `dfx.json` file
-
-## Resources
-
-- [DFINITY Canister SDK](https://sdk.dfinity.org/docs/quickstart/local-quickstart.html)
-- [Rust](https://www.rust-lang.org/)
-- [Next.js](https://nextjs.org/)
-- [ic-wasm](https://github.com/dfinity/ic-wasm)
-- [candid-extractor](https://github.com/dfinity/cdk-rs/tree/main/src/candid-extractor)
-- [Reactor](https://github.com/B3Pay/re-actor)
+If you want zero-command regeneration during development, use the Vite examples
+instead.

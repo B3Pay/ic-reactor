@@ -1,94 +1,78 @@
 ---
 title: "@ic-reactor/parser"
-description: WASM-based Candid parser and transformer for the Internet Computer
+description: WASM-based Candid parser used by IC Reactor tooling and dynamic adapters
 editUrl: false
 ---
 
 import { Aside, Card, CardGrid } from "@astrojs/starlight/components"
 
-The `@ic-reactor/parser` package is a high-performance **WASM-based parser** for the DFINITY Candid language. It compiles Candid interface definitions (`.did` files) into JavaScript and TypeScript bindings directly in the browser or Node.js environment.
+`@ic-reactor/parser` is the low-level WASM parser behind local Candid
+compilation in IC Reactor. It converts raw `.did` source into JavaScript IDL
+factories or TypeScript declaration strings.
 
 ## Why This Package?
 
-While `@ic-reactor/candid` handles the fetching and interaction logic, this package provides the raw parsing power.
-
-- **Fast & Local** — No need to call a remote `didjs` canister to compile Candid.
-- **Offline Capable** — Parse Candid strings entirely on the client side.
-- **Type Generation** — Generate TypeScript interfaces on the fly.
+- **Fast and local**: Compile Candid without a remote `didjs` canister.
+- **Tooling friendly**: Used by `@ic-reactor/codegen` to turn `.did` files into
+  generated declarations.
+- **Runtime friendly**: Can be loaded by `@ic-reactor/candid` for local
+  `CandidAdapter` compilation.
 
 <CardGrid>
   <Card title="Candid to JS" icon="seti:javascript">
-    Compiles Candid strings to `idlFactory` and `init` exports for `HttpAgent`.
+    Returns JS source that exports `idlFactory` and `init`.
   </Card>
   <Card title="Candid to TS" icon="seti:typescript">
-    Generates full TypeScript type definitions from Candid.
+    Returns TypeScript declaration source for the same interface.
   </Card>
-  <Card title="WASM Power" icon="rocket">
-    Built with Rust and compiled to WebAssembly for performance.
+  <Card title="WASM Runtime" icon="rocket">
+    Implemented in Rust and compiled to WebAssembly.
   </Card>
 </CardGrid>
 
 ## Installation
 
 ```bash
-npm install @ic-reactor/parser
+pnpm add @ic-reactor/parser
 ```
 
 ## Usage
 
-### Basic Usage
-
-Import the parser and use the synchronous methods `didToJs` or `didToTs`.
-
-<Aside type="caution">
-  This package uses WebAssembly. In some environments (like standard Create
-  React App or older bundlers), you may need specific configuration to load WASM
-  files.
-</Aside>
-
-```typescript
+```ts
 import { didToJs, didToTs } from "@ic-reactor/parser"
 
-const candid = "service:{icrc1_name:()->(text) query;}"
+const candid = `service : {
+  greet : (text) -> (text) query;
+}`
 
-// Convert to JavaScript (idlFactory)
-const js = didToJs(candid)
-console.log(js)
-// Output:
-// export const idlFactory = ({ IDL }) => {
-//   return IDL.Service({ 'icrc1_name' : IDL.Func([], [IDL.Text], ['query']) });
-// };
-// export const init = ({ IDL }) => { return []; };
-
-// Convert to TypeScript definitions
-const ts = didToTs(candid)
-console.log(ts)
-// Output:
-// import type { Principal } from '@icp-sdk/core/principal';
-// ...
-// export interface _SERVICE { 'icrc1_name' : ActorMethod<[], string> }
-// ...
+const jsSource = didToJs(candid)
+const tsSource = didToTs(candid)
 ```
 
-### Integration with Candid Package
+<Aside type="caution">
+  This package returns source strings. If you need a higher-level runtime API,
+  prefer `@ic-reactor/candid` or the codegen packages instead of using the
+  parser directly.
+</Aside>
 
-This package is designed to work seamlessly with `@ic-reactor/candid`. When you initialize a `CandidAdapter` or `CandidReactor`, it can automatically use this parser.
+## Integration with `@ic-reactor/candid`
 
-```typescript
+```ts
 import { CandidAdapter } from "@ic-reactor/candid"
 import { ClientManager } from "@ic-reactor/core"
 
-const clientManager = new ClientManager()
-const adapter = new CandidAdapter({ clientManager })
+const adapter = new CandidAdapter({
+  clientManager: new ClientManager(),
+})
 
-// Load the WASM parser
 await adapter.loadParser()
-
-// Now the adapter uses @ic-reactor/parser for local compilation
-const { idlFactory } = await adapter.getCandidDefinition("canister-id")
+const jsSource = adapter.compileLocal(
+  "service : { greet : () -> (text) query }"
+)
 ```
 
 ## See Also
 
-- [API Reference](/v3/packages/parser/reference) — Detailed function documentation
-- [@ic-reactor/candid](/v3/packages/candid/) — Dynamic fetching and interaction
+- [API Reference](/v3/packages/parser/reference) — Detailed function reference
+- [@ic-reactor/candid](/v3/packages/candid) — Dynamic runtime Candid support
+- [@ic-reactor/codegen](/v3/packages/codegen) — Uses the parser for declaration generation

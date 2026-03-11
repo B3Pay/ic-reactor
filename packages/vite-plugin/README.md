@@ -1,40 +1,19 @@
 # @ic-reactor/vite-plugin
 
-<div align="center">
-  <strong>Zero-config Vite plugin for auto-generating IC reactor hooks from Candid files.</strong>
-  <br><br>
-  
-  [![npm version](https://img.shields.io/npm/v/@ic-reactor/vite-plugin.svg)](https://www.npmjs.com/package/@ic-reactor/vite-plugin)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-</div>
+Vite plugin for IC Reactor code generation. It runs the shared
+`@ic-reactor/codegen` pipeline, watches `.did` files, and can inject the
+`ic_env` cookie used by `ClientManager` during local development.
 
----
-
-Automatically generate type-safe React hooks for your Internet Computer canisters. This plugin watches your `.did` files and generates ready-to-use hooks with full TypeScript support using the shared `@ic-reactor/codegen` pipeline.
-
-## Features
-
-- ⚡ **Zero Config** — Point to your `.did` file and get hooks instantly
-- 🔄 **Hot Reload** — Automatically regenerates hooks and types when `.did` files change
-- 📦 **TypeScript Declarations** — Full built-in type safety
-- 🌍 **Auto Environment** — Automatically detects local replica and injects `ic_env` cookie
-
-## Installation
+## Install
 
 ```bash
-# With pnpm
 pnpm add -D @ic-reactor/vite-plugin
-
-# Required peer dependencies
 pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
 ```
 
 ## Quick Start
 
-### 1. Configure the Plugin
-
-```typescript
+```ts
 // vite.config.ts
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
@@ -44,22 +23,13 @@ export default defineConfig({
   plugins: [
     react(),
     icReactor({
-      canisters: [
-        {
-          name: "backend",
-          didFile: "./backend/backend.did",
-        },
-      ],
+      canisters: [{ name: "backend", didFile: "./backend/backend.did" }],
     }),
   ],
 })
 ```
 
-### 2. Create Your ClientManager
-
-The plugin looks for a client manager to import. By default, it expects it at `../../clients` relative to the generated files.
-
-```typescript
+```ts
 // src/clients.ts
 import { ClientManager } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
@@ -67,75 +37,72 @@ import { QueryClient } from "@tanstack/react-query"
 export const queryClient = new QueryClient()
 export const clientManager = new ClientManager({
   queryClient,
-  withCanisterEnv: true, // Important for cookie injection support
+  withCanisterEnv: true,
 })
 ```
 
-### 3. Use Generated Hooks
+The plugin generates files under `src/declarations/<canister>/` by default.
 
-The plugin generates headers in `src/declarations/<name>/index.ts` by default.
-
-```tsx
-import { useBackendQuery } from "./declarations/backend"
-
-function MyComponent() {
-  const { data, isPending } = useBackendQuery({
-    functionName: "get_message",
-  })
-
-  return <p>{isPending ? "Loading..." : data}</p>
-}
-```
-
-### Reactor Mode (per canister)
-
-By default, generated hooks use `DisplayReactor` (backward compatible). Set `mode` on a canister to choose the generated reactor class (`Reactor`, `DisplayReactor`, `CandidReactor`, `CandidDisplayReactor`, or `MetadataDisplayReactor`).
+## Options
 
 ```ts
 icReactor({
   canisters: [
-    { name: "backend", didFile: "./backend/backend.did" },
     {
-      name: "workflow_engine",
-      mode: "Reactor",
-      didFile: "./workflow/workflow_engine.did",
+      name: "backend",
+      didFile: "./backend/backend.did",
+      mode: "DisplayReactor",
     },
   ],
+  outDir: "src/declarations",
+  clientManagerPath: "../../clients",
+  injectEnvironment: true,
 })
 ```
 
-## Configuration
+### Per-canister options
 
-### Plugin Options
+- `name`
+- `didFile`
+- `outDir`
+- `clientManagerPath`
+- `mode`
+- `canisterId`
 
-| Option              | Type               | Description                                         | Default              |
-| :------------------ | :----------------- | :-------------------------------------------------- | :------------------- |
-| `canisters`         | `CanisterConfig[]` | List of canisters to generate hooks for (required). | -                    |
-| `outDir`            | `string`           | Base output directory for generated files.          | `"src/declarations"` |
-| `clientManagerPath` | `string`           | Path to client manager import.                      | `"../../clients"`    |
-| `injectEnvironment` | `boolean`          | Inject `ic_env` cookie for local development.       | `true`               |
+Supported `mode` values:
 
-### Canister Config
+- `Reactor`
+- `DisplayReactor`
+- `CandidReactor`
+- `CandidDisplayReactor`
+- `MetadataDisplayReactor`
 
-| Option              | Type                                                                                                     | Description                                     | Required |
-| :------------------ | :------------------------------------------------------------------------------------------------------- | :---------------------------------------------- | :------- |
-| `name`              | `string`                                                                                                 | Name of the canister (used for variable names). | Yes      |
-| `didFile`           | `string`                                                                                                 | Path to the `.did` file.                        | Yes      |
-| `outDir`            | `string`                                                                                                 | Override output directory for this canister.    | No       |
-| `clientManagerPath` | `string`                                                                                                 | Override client manager path.                   | No       |
-| `mode`              | `"Reactor" \| "DisplayReactor" \| "CandidReactor" \| "CandidDisplayReactor" \| "MetadataDisplayReactor"` | Reactor class for generated hooks.              | No       |
-| `canisterId`        | `string`                                                                                                 | Optional fixed canister ID.                     | No       |
+## Local Development Behavior
 
-## Local Development (Environment Injection)
+When `injectEnvironment` is enabled during `vite dev`, the plugin:
 
-When running `vite dev`, the plugin automatically handles local canister environment connection:
+1. asks `icp-cli` for the local network status
+2. resolves configured canister IDs
+3. sets the `ic_env` cookie
+4. proxies `/api` to the local replica
 
-1. Detects your local environment (using `icp` or `dfx` CLI).
-2. Sets an `ic_env` cookie containing the root key and canister IDs.
-3. Sets up a proxy for `/api` to your local replica.
+If environment detection fails, the plugin still falls back to proxying `/api`
+to `http://127.0.0.1:4943`, but it will not inject canister metadata.
 
-This means you **don't** need complex `vite.config.ts` proxy rules or manual `.env` file management for local addresses — it just works.
+## File Regeneration
 
-## License
+On startup and on `.did` file changes, the plugin regenerates declarations and
+the per-canister `index.ts` entrypoint. When a watched `.did` file changes, the
+plugin sends a full browser reload so the new declarations are picked up.
 
-MIT © [Behrad Deylami](https://github.com/b3hr4d)
+## When To Use It
+
+- Vite apps with active `.did` iteration
+- teams that want zero extra codegen commands during development
+- projects that want the same output format as the CLI without manual steps
+
+## See Also
+
+- Docs: https://ic-reactor.b3pay.net/v3/packages/vite-plugin
+- `@ic-reactor/codegen`: ../codegen/README.md
+- `@ic-reactor/cli`: ../cli/README.md
