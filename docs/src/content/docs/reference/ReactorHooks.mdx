@@ -17,6 +17,8 @@ import {
   useReactorQuery,
   useReactorMutation,
   useReactorSuspenseQuery,
+  useReactorInfiniteQuery,
+  useReactorSuspenseInfiniteQuery,
   useReactorMethod,
 } from "@ic-reactor/react"
 ```
@@ -42,7 +44,7 @@ Same as `useActorQuery`, but requires a `reactor` property.
 
 ```tsx
 import { useReactorQuery } from "@ic-reactor/react"
-import { backend } from "./actor"
+import { backend } from "./reactor"
 
 function UserProfile({ userId }) {
   const { data } = useReactorQuery({
@@ -61,7 +63,7 @@ Same as `useActorMutation`, but requires a `reactor` property.
 
 ```tsx
 import { useReactorMutation } from "@ic-reactor/react"
-import { backend } from "./actor"
+import { backend } from "./reactor"
 
 function TransferForm() {
   const { mutate } = useReactorMutation({
@@ -76,14 +78,14 @@ function TransferForm() {
 
 ## Available Hooks
 
-| Reactor Hook                      | Equivalent Bound Hook           | Description            |
-| --------------------------------- | ------------------------------- | ---------------------- |
-| `useReactorQuery`                 | `useActorQuery`                 | Fetch data (read-only) |
-| `useReactorMutation`              | `useActorMutation`              | Modify data (updates)  |
-| `useReactorSuspenseQuery`         | `useActorSuspenseQuery`         | Suspense-ready fetch   |
-| `useReactorInfiniteQuery`         | `useActorInfiniteQuery`         | Pagination support     |
-| `useReactorSuspenseInfiniteQuery` | `useActorSuspenseInfiniteQuery` | Suspense + Pagination  |
-| `useReactorMethod`                | `useActorMethod`                | Unified hook           |
+| Reactor Hook                                                                                    | Equivalent Bound Hook           | Description            |
+| ----------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------- |
+| [`useReactorQuery`](/v3/reference/reactorhooks/usereactorquery)                                 | `useActorQuery`                 | Fetch data (read-only) |
+| [`useReactorMutation`](/v3/reference/reactorhooks/usereactormutation)                           | `useActorMutation`              | Modify data (updates)  |
+| [`useReactorSuspenseQuery`](/v3/reference/reactorhooks/usereactorsuspensequery)                 | `useActorSuspenseQuery`         | Suspense-ready fetch   |
+| [`useReactorInfiniteQuery`](/v3/reference/reactorhooks/usereactorinfinitequery)                 | `useActorInfiniteQuery`         | Pagination support     |
+| [`useReactorSuspenseInfiniteQuery`](/v3/reference/reactorhooks/usereactorsuspenseinfinitequery) | `useActorSuspenseInfiniteQuery` | Suspense + Pagination  |
+| [`useReactorMethod`](/v3/reference/reactorhooks/usereactormethod)                               | `useActorMethod`                | Unified hook           |
 
 ## Type Safety
 
@@ -96,6 +98,56 @@ const { data } = useReactorQuery({
   args: ["123"], // ✅ Checked against method signature
 })
 ```
+
+## Type Exports
+
+The hooks export types with two naming conventions:
+
+### `UseReactor*` Types (with reactor parameter)
+
+For direct hook usage where you pass the reactor explicitly:
+
+```typescript
+import type {
+  UseReactorQueryParameters,
+  UseReactorQueryResult,
+  UseReactorMutationParameters,
+  UseReactorMutationResult,
+  UseReactorSuspenseQueryParameters,
+  UseReactorSuspenseQueryResult,
+  UseReactorInfiniteQueryParameters,
+  UseReactorInfiniteQueryResult,
+  UseReactorSuspenseInfiniteQueryParameters,
+  UseReactorSuspenseInfiniteQueryResult,
+  UseReactorMethodParameters,
+  UseReactorMethodResult,
+} from "@ic-reactor/react"
+```
+
+### `UseActor*` Types (without reactor parameter)
+
+For use with `createActorHooks` where the reactor is already bound:
+
+```typescript
+import type {
+  UseActorQueryParameters,
+  UseActorQueryResult,
+  UseActorMutationParameters,
+  UseActorMutationResult,
+  UseActorSuspenseQueryParameters,
+  UseActorSuspenseQueryResult,
+  UseActorInfiniteQueryParameters,
+  UseActorInfiniteQueryResult,
+  UseActorSuspenseInfiniteQueryParameters,
+  UseActorSuspenseInfiniteQueryResult,
+} from "@ic-reactor/react"
+```
+
+<Aside type="note">
+  All parameter types extend TanStack Query's base types. This means you get
+  access to standard options like `gcTime`, `retry`,
+  `refetchOnWindowFocus`, `networkMode`, and `placeholderData`.
+</Aside>
 
 <Aside type="tip">
   These hooks are essentially the "raw" versions of the hooks created by

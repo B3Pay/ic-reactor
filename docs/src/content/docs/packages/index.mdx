@@ -1,0 +1,69 @@
+---
+title: Packages
+description: Overview of the runtime libraries and tooling packages in the IC Reactor monorepo
+editUrl: false
+---
+
+import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+IC Reactor ships as a small set of focused packages. Some are runtime libraries
+you install in applications, while others are tooling packages used during code
+generation and local development.
+
+<Aside type="tip">
+  Most frontend apps start with [@ic-reactor/react](/v3/packages/react). Add
+  [@ic-reactor/candid](/v3/packages/candid) when you need runtime Candid
+  discovery, and reach for the tooling packages when you want generated code.
+</Aside>
+
+## Runtime Packages
+
+<CardGrid>
+  <LinkCard
+    title="@ic-reactor/react"
+    description="React-first package with hook factories, auth hooks, reactor hooks, and query helpers."
+    href="/v3/packages/react"
+  />
+  <LinkCard
+    title="@ic-reactor/core"
+    description="Framework-agnostic runtime primitives such as ClientManager, Reactor, and DisplayReactor."
+    href="/v3/packages/core"
+  />
+  <LinkCard
+    title="@ic-reactor/candid"
+    description="Dynamic Candid fetching, runtime method registration, and metadata-driven form generation."
+    href="/v3/packages/candid"
+  />
+  <LinkCard
+    title="@ic-reactor/parser"
+    description="WASM-based Candid parser used for local compilation and advanced tooling."
+    href="/v3/packages/parser"
+  />
+</CardGrid>
+
+## Tooling Packages
+
+<CardGrid>
+  <LinkCard
+    title="@ic-reactor/cli"
+    description="Command-line generator for declarations and ready-to-use reactor hook files."
+    href="/v3/packages/cli"
+  />
+  <LinkCard
+    title="@ic-reactor/vite-plugin"
+    description="Vite integration for automatic code generation, environment injection, and hot reload."
+    href="/v3/packages/vite-plugin"
+  />
+  <LinkCard
+    title="@ic-reactor/codegen"
+    description="Shared low-level pipeline used internally by the CLI and Vite plugin."
+    href="/v3/packages/codegen"
+  />
+</CardGrid>
+
+## How They Fit Together
+
+- `@ic-reactor/react` depends on `@ic-reactor/core` and re-exports the runtime classes.
+- `@ic-reactor/candid` builds on `@ic-reactor/core` and can optionally use `@ic-reactor/parser` for local Candid compilation.
+- `@ic-reactor/cli` and `@ic-reactor/vite-plugin` both use `@ic-reactor/codegen` under the hood.
+- The tooling packages help you generate declarations and hooks, while the runtime packages execute queries, mutations, auth flows, and dynamic canister calls.

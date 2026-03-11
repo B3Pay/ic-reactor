@@ -79,7 +79,6 @@ export function processQueryCallResponse(
  * @param methodName - The method name being called
  * @param agent - The HTTP agent
  * @param pollingOptions - Options for polling
- * @param blsVerify - Optional BLS verification function
  * @returns The raw reply bytes
  * @throws RejectError if the call was rejected
  * @throws UnknownError if the response format is unexpected

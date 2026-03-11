@@ -1,5 +1,5 @@
 ---
-title: Vite Plugin
+title: "@ic-reactor/vite-plugin"
 description: Zero-config Vite plugin for IC Reactor
 editUrl: false
 ---
@@ -7,6 +7,9 @@ editUrl: false
 import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
 
 The `@ic-reactor/vite-plugin` automates the generation of TypeScript declarations and Reactor hooks from your Candid files. It integrates seamlessly with Vite's development server, providing hot-module replacement (HMR) for your canister interfaces.
+
+It is powered by the shared [`@ic-reactor/codegen`](/v3/packages/codegen)
+package, so the generated output matches the CLI pipeline.
 
 ## Installation
 
@@ -112,3 +115,8 @@ Check out these examples to see the Vite plugin in action:
 - **[Vite Plugin Demo](/v3/examples/vite-plugin)**: Basic usage of the Vite plugin for automatic hook generation.
 - **[Vite Environment Variables](/v3/examples/vite-env)**: Using the plugin to automatically inject canister IDs and root keys.
 - **[Codegen in Action](/v3/examples/codegen-in-action)**: Comparison between Vite plugin and CLI output.
+
+## See Also
+
+- [@ic-reactor/codegen](/v3/packages/codegen) — Shared generator pipeline
+- [@ic-reactor/cli](/v3/packages/cli) — Manual code generation outside Vite

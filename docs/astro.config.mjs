@@ -186,7 +186,36 @@ export default defineConfig({
             },
             {
               label: "Reactor Hooks",
-              link: "/reference/reactorhooks",
+              items: [
+                {
+                  label: "Overview",
+                  link: "/reference/reactorhooks",
+                },
+                {
+                  label: "useReactorQuery",
+                  link: "/reference/reactorhooks/usereactorquery",
+                },
+                {
+                  label: "useReactorMutation",
+                  link: "/reference/reactorhooks/usereactormutation",
+                },
+                {
+                  label: "useReactorMethod",
+                  link: "/reference/reactorhooks/usereactormethod",
+                },
+                {
+                  label: "useReactorSuspenseQuery",
+                  link: "/reference/reactorhooks/usereactorsuspensequery",
+                },
+                {
+                  label: "useReactorInfiniteQuery",
+                  link: "/reference/reactorhooks/usereactorinfinitequery",
+                },
+                {
+                  label: "useReactorSuspenseInfiniteQuery",
+                  link: "/reference/reactorhooks/usereactorsuspenseinfinitequery",
+                },
+              ],
             },
             { label: "Validation", link: "/reference/reactvalidation" },
           ],
@@ -196,10 +225,30 @@ export default defineConfig({
           items: [
             { label: "Overview", link: "/examples" },
             { label: "All-in-One Demo", link: "/examples/all-in-one-demo" },
-            { label: "TanStack Router", link: "/examples/tanstack-router" },
-            { label: "Next.js Integration", link: "/examples/nextjs" },
+            { label: "ICP Reactor Demo", link: "/examples/icp-reactor" },
             { label: "Query Demo", link: "/examples/query-demo" },
             { label: "Infinite Query", link: "/examples/infinite-query" },
+            {
+              label: "Result Types Demo",
+              link: "/examples/result-types-demo",
+            },
+            {
+              label: "Metadata Reactor Demo",
+              link: "/examples/metadata-reactor",
+            },
+            { label: "Candid Parser", link: "/examples/candid-parser" },
+            { label: "Vite Plugin Demo", link: "/examples/vite-plugin" },
+            {
+              label: "Vite Environment Variables",
+              link: "/examples/vite-env",
+            },
+            {
+              label: "Codegen in Action",
+              link: "/examples/codegen-in-action",
+            },
+            { label: "TanStack Router", link: "/examples/tanstack-router" },
+            { label: "TanStack Form Demo", link: "/examples/tanstack-form" },
+            { label: "Next.js Integration", link: "/examples/nextjs" },
             {
               label: "Multiple Canisters",
               link: "/examples/multiple-canister",
@@ -246,43 +295,109 @@ export default defineConfig({
           label: "Packages",
           items: [
             {
-              label: "Vite Plugin",
-              link: "/packages/vite-plugin",
+              label: "Overview",
+              link: "/packages",
             },
             {
-              label: "CLI",
-              link: "/packages/cli",
-            },
-            {
-              label: "@ic-reactor/candid",
+              label: "Runtime",
               items: [
-                { label: "Overview", link: "/packages/candid/" },
                 {
-                  label: "CandidReactor",
-                  link: "/packages/candid/candidreactor",
+                  label: "@ic-reactor/react",
+                  items: [
+                    { label: "Overview", link: "/packages/react" },
+                    { label: "React Setup", link: "/framework/react-setup" },
+                    {
+                      label: "createActorHooks",
+                      link: "/reference/createactorhooks/overview",
+                    },
+                    {
+                      label: "createAuthHooks",
+                      link: "/reference/createauthhooks/overview",
+                    },
+                    {
+                      label: "Reactor Hooks",
+                      link: "/reference/reactorhooks",
+                    },
+                    {
+                      label: "Factory Functions",
+                      link: "/reference/factories/overview",
+                    },
+                  ],
                 },
                 {
-                  label: "CandidAdapter",
-                  link: "/packages/candid/candidadapter",
+                  label: "@ic-reactor/core",
+                  items: [
+                    { label: "Overview", link: "/packages/core" },
+                    { label: "ClientManager", link: "/reference/clientmanager" },
+                    { label: "Reactor", link: "/reference/reactor" },
+                    {
+                      label: "DisplayReactor",
+                      link: "/reference/displayreactor",
+                    },
+                    { label: "Validation", link: "/reference/reactvalidation" },
+                  ],
                 },
                 {
-                  label: "MetadataReactor",
-                  link: "/packages/candid/metadatareactor",
+                  label: "@ic-reactor/candid",
+                  items: [
+                    { label: "Overview", link: "/packages/candid" },
+                    {
+                      label: "CandidReactor",
+                      link: "/packages/candid/candidreactor",
+                    },
+                    {
+                      label: "CandidDisplayReactor",
+                      link: "/packages/candid/candiddisplayreactor",
+                    },
+                    {
+                      label: "MetadataReactor",
+                      link: "/packages/candid/metadatareactor",
+                    },
+                    {
+                      label: "MetadataDisplayReactor",
+                      link: "/packages/candid/metadatadisplayreactor",
+                    },
+                    {
+                      label: "CandidAdapter",
+                      link: "/packages/candid/candidadapter",
+                    },
+                    {
+                      label: "CandidFormVisitor",
+                      link: "/packages/candid/fieldvisitor",
+                    },
+                  ],
                 },
                 {
-                  label: "CandidFormVisitor",
-                  link: "/packages/candid/fieldvisitor",
+                  label: "@ic-reactor/parser",
+                  items: [
+                    { label: "Overview", link: "/packages/parser" },
+                    { label: "API Reference", link: "/packages/parser/reference" },
+                  ],
                 },
               ],
             },
             {
-              label: "@ic-reactor/parser",
+              label: "Tooling",
               items: [
-                { label: "Overview", link: "/packages/parser" },
-                { label: "API Reference", link: "/packages/parser/reference" },
+                {
+                  label: "@ic-reactor/cli",
+                  link: "/packages/cli",
+                },
+                {
+                  label: "@ic-reactor/vite-plugin",
+                  link: "/packages/vite-plugin",
+                },
+                {
+                  label: "@ic-reactor/codegen",
+                  link: "/packages/codegen",
+                },
               ],
             },
           ],
+        },
+        {
+          label: "Project",
+          items: [{ label: "Contributing", link: "/contributing" }],
         },
       ],
       customCss: ["./src/styles/custom.css"],

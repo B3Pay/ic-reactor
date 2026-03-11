@@ -1,0 +1,89 @@
+---
+title: "@ic-reactor/react"
+description: React bindings, hook factories, and query helpers for IC Reactor
+editUrl: false
+---
+
+import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+`@ic-reactor/react` is the recommended package for React applications. It
+re-exports the runtime classes from [`@ic-reactor/core`](/v3/packages/core) and
+adds hook factories, auth hooks, direct reactor hooks, and reusable query
+factories designed around TanStack Query.
+
+## Why Use This Package
+
+- You want idiomatic React hooks for queries, mutations, suspense, and auth.
+- You want `ClientManager`, `Reactor`, and `DisplayReactor` from one package.
+- You want to keep your app code focused on components instead of manual query wiring.
+
+## Installation
+
+```bash
+pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
+
+# Optional: Internet Identity support
+pnpm add @icp-sdk/auth
+```
+
+## What's Included
+
+<CardGrid>
+  <LinkCard
+    title="React Setup"
+    description="Complete app wiring with QueryClientProvider, ClientManager, and a Reactor instance."
+    href="/v3/framework/react-setup"
+  />
+  <LinkCard
+    title="createActorHooks"
+    description="Generate typed canister hooks from a bound reactor instance."
+    href="/v3/reference/createactorhooks/overview"
+  />
+  <LinkCard
+    title="createAuthHooks"
+    description="React hooks for login, logout, agent state, and user principal access."
+    href="/v3/reference/createauthhooks/overview"
+  />
+  <LinkCard
+    title="Reactor Hooks"
+    description="Direct hooks that accept a reactor instance explicitly."
+    href="/v3/reference/reactorhooks"
+  />
+  <LinkCard
+    title="Factory Functions"
+    description="Reusable query and mutation factories for shared data access patterns."
+    href="/v3/reference/factories/overview"
+  />
+</CardGrid>
+
+<Aside type="tip">
+  If you do not need React-specific hooks, install
+  [@ic-reactor/core](/v3/packages/core) instead and use the runtime classes
+  directly.
+</Aside>
+
+## Quick Start
+
+```tsx
+import { ClientManager, Reactor, createActorHooks } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const queryClient = new QueryClient()
+const clientManager = new ClientManager({ queryClient, withCanisterEnv: true })
+
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  name: "backend",
+})
+
+export const { useActorQuery, useActorMutation } = createActorHooks(backend)
+```
+
+## See Also
+
+- [Queries](/v3/framework/queries) — Standard query patterns
+- [Mutations](/v3/framework/mutations) — Update and invalidation patterns
+- [Query Caching](/v3/framework/query-caching) — Cache behavior and invalidation
+- [@ic-reactor/core](/v3/packages/core) — Runtime layer re-exported by this package
