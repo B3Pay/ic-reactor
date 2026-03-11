@@ -1,65 +1,49 @@
 # @ic-reactor/cli
 
-> 🔧 Command-line tool for generating type-safe React hooks for ICP canisters.
+Command-line code generation for IC Reactor. It uses the shared
+`@ic-reactor/codegen` pipeline to generate declarations and typed reactor entry
+files from your `.did` files.
 
-The `@ic-reactor/cli` helps you generate TypeScript declarations and React hooks from your Candid files. It uses the shared `@ic-reactor/codegen` pipeline to ensure consistency with the Vite plugin.
-
-## Installation
+## Install
 
 ```bash
 pnpm add -D @ic-reactor/cli
 ```
 
+After installation, the local executable is `ic-reactor`.
+
 ## Quick Start
 
-### 1. Initialize your project
-
 ```bash
-npx @ic-reactor/cli init
+pnpm exec ic-reactor init
+pnpm exec ic-reactor generate
 ```
 
-This creates an `ic-reactor.json` configuration file in your project root and optionally sets up a default `ClientManager` at `src/clients.ts`.
+If you prefer one-off usage without installing first:
 
-### 2. Configure your canisters
+```bash
+pnpm dlx @ic-reactor/cli init
+pnpm dlx @ic-reactor/cli generate
+```
 
-Update `ic-reactor.json` with the paths to your Candid files:
+## What `init` Creates
+
+- an `ic-reactor.json` config file
+- an optional `src/clients.ts` helper with a shared `ClientManager`
+
+## Example Config
 
 ```json
 {
+  "$schema": "./node_modules/@ic-reactor/cli/schema.json",
   "outDir": "src/declarations",
   "clientManagerPath": "../../clients",
   "canisters": {
     "backend": {
-      "didFile": "src/backend/backend.did"
+      "name": "backend",
+      "didFile": "./backend/backend.did"
     }
   }
-}
-```
-
-### 3. Generate hooks
-
-```bash
-npx ic-reactor generate
-```
-
-This command will:
-
-1. Generate TypeScript declarations (`.d.ts`, `.js`, `.did`) for each canister.
-2. Create an `index.ts` reactor file for each canister with fully typed hooks.
-
-### 4. Use the generated hooks
-
-Import the hooks directly from the generated output folder:
-
-```tsx
-import { useBackendQuery } from "./declarations/backend"
-
-function MyComponent() {
-  const { data, isPending } = useBackendQuery({
-    functionName: "get_message",
-  })
-
-  return <p>{isPending ? "Loading..." : data}</p>
 }
 ```
 
@@ -67,62 +51,55 @@ function MyComponent() {
 
 ### `init`
 
-Initialize the configuration file (`ic-reactor.json`).
-
 ```bash
-npx @ic-reactor/cli init [options]
+pnpm exec ic-reactor init [options]
 
 Options:
   -y, --yes              Skip prompts and use defaults
-  -o, --out-dir <path>   Output directory for generated hooks
+  -o, --out-dir <path>   Output directory for generated files
 ```
 
-### `generate` (alias: `g`)
-
-Generate hooks and declarations based on your configuration and DID files.
+### `generate` / `g`
 
 ```bash
-npx ic-reactor generate [options]
+pnpm exec ic-reactor generate [options]
 
 Options:
-  -c, --canister <name>   Generate only for a specific canister
-  --clean                 Clean output directory before generating
+  -c, --canister <name>  Generate only one configured canister
+  --clean                Clean the output directory before generation
 ```
 
-## Configuration
+## Generated Output
 
-The `ic-reactor.json` file schema:
+For each canister, the CLI generates:
 
-```typescript
-interface CodegenConfig {
-  /** Default output directory (relative to project root) */
-  outDir: string
-  /** Default import path for the client manager */
-  clientManagerPath?: string
-  /** Canister configurations */
-  canisters: Record<string, CanisterConfig>
-}
+- `<canister>.did` copy
+- `<canister>.did.d.ts` TypeScript service types
+- `<canister>.js` IDL factory module
+- `index.ts` reactor and typed hook entrypoint
 
-interface CanisterConfig {
-  /** Canister name (required) */
-  name: string
-  /** Path to the .did file (required) */
-  didFile: string
-  /** Override output directory for this canister */
-  outDir?: string
-  /** Override client manager import path */
-  clientManagerPath?: string
-  /** Optional fixed canister ID */
-  canisterId?: string
-}
-```
+The generated `index.ts` is only overwritten while it still contains the
+generator marker. If you replace it with a custom module, later runs leave it
+alone.
+
+## When To Use The CLI
+
+- non-Vite apps
+- CI or explicit build pipelines
+- projects that want manual control over when generation runs
+
+Use `@ic-reactor/vite-plugin` instead when you want watch-mode regeneration
+inside a Vite app.
 
 ## Requirements
 
 - Node.js 18+
-- @ic-reactor/react 3.x
-- TypeScript 5.0+
+- TypeScript 5+
+- `@ic-reactor/react` in the consuming app if you plan to use generated React
+  hooks
 
-## License
+## See Also
 
-MIT
+- Docs: https://ic-reactor.b3pay.net/v3/packages/cli
+- `@ic-reactor/codegen`: ../codegen/README.md
+- `@ic-reactor/vite-plugin`: ../vite-plugin/README.md

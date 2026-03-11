@@ -1,21 +1,18 @@
 ---
 title: "Query Demo"
-description: Queries, suspense, and real-time data fetching from mainnet ICP ledgers
+description: Reusable suspense queries and mutations against mainnet ICP ledgers
 editUrl: false
 ---
 
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
 
-A comprehensive example showing queries, suspense, and real-time data fetching from mainnet ICP ledgers.
+This example demonstrates the current factory APIs in `@ic-reactor/react`
+against live ledger canisters:
 
-## Features Demonstrated
-
-- `createActorSuspenseQuery` for static queries
-- `createActorSuspenseQueryFactory` for dynamic queries with args
-- `DisplayReactor` for automatic type transformations
-- Multi-token support (ICP, ckBTC, ckETH)
-- Internet Identity authentication
-- Balance formatting and display
+- `createSuspenseQuery` for static method wrappers
+- `createSuspenseQueryFactory` for runtime arguments
+- `createMutation` for updates and invalidation
+- `DisplayReactor` for UI-friendly string values
 
 ## Links
 
@@ -44,27 +41,23 @@ A comprehensive example showing queries, suspense, and real-time data fetching f
 
 ## Key Code
 
-```typescript
-// Setup with DisplayReactor for human-readable display values
-export const icpReactor = new DisplayReactor<Ledger>({
-  clientManager,
-  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger mainnet
-  idlFactory: ledgerIdlFactory,
-})
-
-// Static query - no args needed
-export const icpNameQuery = createActorSuspenseQuery(icpReactor, {
+```ts
+export const icpNameQuery = createSuspenseQuery(icpReactor, {
   functionName: "icrc1_name",
 })
 
-// Factory for dynamic queries with args
-export const getIcpBalance = createActorSuspenseQueryFactory(icpReactor, {
+export const getIcpBalance = createSuspenseQueryFactory(icpReactor, {
   functionName: "icrc1_balance_of",
   select: (balance) => formatBalance(balance, "ICP"),
+})
+
+export const icpTransferMutation = createMutation(icpReactor, {
+  functionName: "icrc1_transfer",
 })
 ```
 
 <Aside type="tip">
-  This example connects to mainnet canisters (ICP, ckBTC, ckETH ledgers), so it
-  works without a local replica. Perfect for testing in StackBlitz!
+  The example points at mainnet ICP ecosystem ledgers, so it is a good reference
+  for reusable query and mutation composition without depending on a local
+  replica.
 </Aside>

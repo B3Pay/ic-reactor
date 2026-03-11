@@ -132,8 +132,9 @@ This error usually means the agent hasn't fetched the local root key.
 
 Check if your local replica is running and on which port.
 
-1. Run `dfx info webserver-port` to verify the port.
-2. If it's not `4943`, update your `ClientManager` config:
+1. If you use `icp-cli`, run `icp network status -e local --json` and check the returned port.
+2. If you use a manual `dfx` workflow, run `dfx info webserver-port`.
+3. If the replica is not on `4943`, update your `ClientManager` config:
 
    ```typescript
    export const clientManager = new ClientManager({
@@ -142,9 +143,10 @@ Check if your local replica is running and on which port.
    })
    ```
 
-### Internet Identity on Localhost
+### Internet Identity on Localhost (manual `dfx` workflow)
 
-To use Internet Identity locally, you need to deploy a local instance of the II canister.
+If you are using a manual `dfx` project, deploy a local instance of the
+Internet Identity canister.
 
 1. Pull the dependency in `dfx.json`:
 
@@ -170,7 +172,8 @@ To use Internet Identity locally, you need to deploy a local instance of the II 
    dfx deploy internet_identity --specified-id rdmx6-jaaaa-aaaaa-aaadq-cai
    ```
 
-3. Login using the local provider URL. `useAuth` handles this automatically if `withProcessEnv` is set correctly!
+3. Login using the local provider URL. `useAuth` handles this automatically if
+   `withProcessEnv` is set correctly.
 
    ```typescript
    // Auto-detects based on network

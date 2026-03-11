@@ -1,38 +1,27 @@
 ---
 title: "@ic-reactor/vite-plugin"
-description: Zero-config Vite plugin for IC Reactor
+description: Zero-config Vite plugin for IC Reactor code generation
 editUrl: false
 ---
 
-import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+import { Aside } from "@astrojs/starlight/components"
 
-The `@ic-reactor/vite-plugin` automates the generation of TypeScript declarations and Reactor hooks from your Candid files. It integrates seamlessly with Vite's development server, providing hot-module replacement (HMR) for your canister interfaces.
-
-It is powered by the shared [`@ic-reactor/codegen`](/v3/packages/codegen)
-package, so the generated output matches the CLI pipeline.
+`@ic-reactor/vite-plugin` runs the shared
+[`@ic-reactor/codegen`](/v3/packages/codegen) pipeline inside Vite. It
+generates declarations and typed reactor entrypoints from `.did` files, watches
+for changes, and can inject the `ic_env` cookie used by
+[`ClientManager`](/v3/reference/clientmanager).
 
 ## Installation
 
-<Tabs syncKey="pm">
-  <TabItem label="pnpm" icon="pnpm">
-    ```bash pnpm add -D @ic-reactor/vite-plugin ```
-  </TabItem>
-  <TabItem label="npm" icon="npm">
-    ```bash npm install -D @ic-reactor/vite-plugin ```
-  </TabItem>
-  <TabItem label="yarn" icon="seti:yarn">
-    ```bash yarn add -D @ic-reactor/vite-plugin ```
-  </TabItem>
-  <TabItem label="bun" icon="bun">
-    ```bash bun add -D @ic-reactor/vite-plugin ```
-  </TabItem>
-</Tabs>
+```bash
+pnpm add -D @ic-reactor/vite-plugin
+pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
+```
 
 ## Usage
 
-Add the plugin to your `vite.config.ts`:
-
-```typescript
+```ts
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import { icReactor } from "@ic-reactor/vite-plugin"
@@ -41,82 +30,75 @@ export default defineConfig({
   plugins: [
     react(),
     icReactor({
-      canisters: [
-        {
-          name: "backend",
-          didFile: "src/backend/backend.did", // Path to your .did file
-        },
-      ],
+      canisters: [{ name: "backend", didFile: "./backend/backend.did" }],
     }),
   ],
 })
 ```
 
-### Reactor Mode (per canister)
+By default, generated files go to `src/declarations/<canister>/`, and the
+plugin imports `clientManager` from `../../clients`.
 
-By default, generated hooks use `DisplayReactor` (backward compatible). Set `mode` on a canister to choose the generated reactor class (`Reactor`, `DisplayReactor`, `CandidReactor`, `CandidDisplayReactor`, or `MetadataDisplayReactor`).
+## Reactor Mode
 
-```typescript
+Set `mode` per canister to choose the generated reactor class:
+
+```ts
 icReactor({
   canisters: [
     { name: "backend", didFile: "./backend/backend.did" },
     {
       name: "workflow_engine",
-      mode: "Reactor",
       didFile: "./workflow/workflow_engine.did",
+      mode: "Reactor",
     },
   ],
 })
 ```
 
-## Features
+Supported modes:
 
-### Zero-Config Proxy
+- `Reactor`
+- `DisplayReactor`
+- `CandidReactor`
+- `CandidDisplayReactor`
+- `MetadataDisplayReactor`
 
-The plugin automatically configures a proxy for `/api` requests to your local replica (defaulting to `http://127.0.0.1:4943`). This ensures your frontend can communicate with backend canisters during development without CORS issues.
+## Local Development
 
-### Automatic `ic_env` Injection
+When `injectEnvironment` is enabled during `vite dev`, the plugin tries to read
+local network details from `icp-cli`, then:
 
-The plugin automatically detects your network environment and canister IDs using the `icp` or `dfx` CLI. It injects this information into the `ic_env` cookie. This allows `ClientManager` to automatically resolve the correct canister IDs and network root key without manual configuration.
+1. resolves configured canister IDs
+2. sets the `ic_env` cookie
+3. proxies `/api` to the local replica
 
-### Hot Module Replacement
+If `icp-cli` environment detection is unavailable, the plugin still falls back
+to proxying `/api` to `http://127.0.0.1:4943`, but it skips cookie injection.
 
-The plugin watches your `.did` files. When you modify a Candid file, it automatically:
+## `.did` File Changes
 
-1. Regenerates the TypeScript declarations (`.d.ts`, `.js` factory).
-2. Regenerates `index.ts` with fully typed hooks when the file is still managed by codegen.
-3. Preserves your `index.ts` if you overwrite/customize it manually.
-4. Restarts the Vite server to pick up the changes.
+When a watched `.did` file changes, the plugin:
 
-## Configuration Options
+1. regenerates declarations
+2. regenerates the managed `index.ts` entrypoint when it still contains the
+   codegen marker
+3. preserves manually replaced `index.ts` files
+4. triggers a full browser reload
 
-| Option              | Type               | Description                                          | Default              |
-| :------------------ | :----------------- | :--------------------------------------------------- | :------------------- |
-| `canisters`         | `CanisterConfig[]` | List of canisters to generate hooks for (required).  | -                    |
-| `outDir`            | `string`           | Base output directory for generated files.           | `"src/declarations"` |
-| `injectEnvironment` | `boolean`          | Whether to inject canister IDs into `ic_env` cookie. | `true`               |
-| `clientManagerPath` | `string`           | Path to a custom `ClientManager` instance.           | `"../../clients"`    |
-
-### Canister Config
-
-| Option              | Type                                                                                                     | Description                                     | Required |
-| :------------------ | :------------------------------------------------------------------------------------------------------- | :---------------------------------------------- | :------- |
-| `name`              | `string`                                                                                                 | Name of the canister (used in generated code).  | Yes      |
-| `didFile`           | `string`                                                                                                 | Path to the `.did` file.                        | Yes      |
-| `outDir`            | `string`                                                                                                 | Override output directory for this canister.    | No       |
-| `clientManagerPath` | `string`                                                                                                 | Override client manager path for this canister. | No       |
-| `mode`              | `"Reactor" \| "DisplayReactor" \| "CandidReactor" \| "CandidDisplayReactor" \| "MetadataDisplayReactor"` | Reactor class for generated hooks.              | No       |
-| `canisterId`        | `string`                                                                                                 | Optional fixed canister ID.                     | No       |
+<Aside type="tip">
+  Use the Vite plugin when you want the fastest `.did` edit loop. Use the
+  [CLI](/v3/packages/cli) when you want explicit generation in non-Vite or CI
+  workflows.
+</Aside>
 
 ## Examples
 
-Check out these examples to see the Vite plugin in action:
-
-- **[Vite Plugin Demo](/v3/examples/vite-plugin)**: Basic usage of the Vite plugin for automatic hook generation.
-- **[Vite Environment Variables](/v3/examples/vite-env)**: Using the plugin to automatically inject canister IDs and root keys.
-- **[Codegen in Action](/v3/examples/codegen-in-action)**: Comparison between Vite plugin and CLI output.
+- [Vite Plugin Demo](/v3/examples/vite-plugin)
+- [Vite Environment Variables](/v3/examples/vite-env)
+- [Codegen in Action](/v3/examples/codegen-in-action)
 
 ## See Also
 
-- [@ic-reactor/codegen](/v3/packages/codegen) — Shared generator pipeline
-- [@ic-reactor/cli](/v3/packages/cli) — Manual code generation outside Vite
+- [@ic-reactor/codegen](/v3/packages/codegen)
+- [@ic-reactor/cli](/v3/packages/cli)
