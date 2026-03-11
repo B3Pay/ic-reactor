@@ -1,0 +1,92 @@
+---
+title: "@ic-reactor/core"
+description: Framework-agnostic runtime primitives for IC Reactor applications
+editUrl: false
+---
+
+import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+`@ic-reactor/core` is the framework-agnostic foundation of IC Reactor. It gives
+you the runtime building blocks for agent management, authentication,
+TanStack Query integration, and typed canister interaction without depending on
+React.
+
+<Aside type="tip">
+  React applications usually install [@ic-reactor/react](/v3/packages/react),
+  which re-exports this package and adds hook factories. Reach for
+  `@ic-reactor/core` directly when you are building outside React or want the
+  lower-level primitives.
+</Aside>
+
+## When to Use This Package
+
+- You need `ClientManager`, `Reactor`, or `DisplayReactor` in non-React code.
+- You want to use IC Reactor in loaders, services, scripts, or framework adapters.
+- You are building your own abstractions on top of IC Reactor's runtime layer.
+
+## Installation
+
+```bash
+pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+
+# Optional: Internet Identity support
+pnpm add @icp-sdk/auth
+```
+
+## What's Included
+
+<CardGrid>
+  <LinkCard
+    title="ClientManager"
+    description="Shared agent, authentication, and query-client orchestration."
+    href="/v3/reference/clientmanager"
+  />
+  <LinkCard
+    title="Reactor"
+    description="Type-safe canister access with cache-friendly query and mutation helpers."
+    href="/v3/reference/reactor"
+  />
+  <LinkCard
+    title="DisplayReactor"
+    description="UI-friendly transformations for bigint, Principal, variants, and optional fields."
+    href="/v3/reference/displayreactor"
+  />
+  <LinkCard
+    title="Validation"
+    description="Validation helpers for turning canister and input issues into typed UI state."
+    href="/v3/reference/reactvalidation"
+  />
+</CardGrid>
+
+## Quick Start
+
+```typescript
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const queryClient = new QueryClient()
+const clientManager = new ClientManager({
+  queryClient,
+  withProcessEnv: true,
+})
+
+await clientManager.initialize()
+
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  name: "backend",
+})
+
+const greeting = await backend.fetchQuery({
+  functionName: "greet",
+  args: ["World"],
+})
+```
+
+## See Also
+
+- [@ic-reactor/react](/v3/packages/react) — React bindings built on top of this package
+- [React Setup](/v3/framework/react-setup) — End-to-end React integration guide
+- [@ic-reactor/candid](/v3/packages/candid) — Dynamic runtime Candid support
