@@ -24,4 +24,5 @@ export interface InitOptions {
 export interface GenerateOptions {
   canister?: string
   clean?: boolean
+  bindgenOnly?: boolean
 }

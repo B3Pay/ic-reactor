@@ -56,6 +56,7 @@ Options:
 
 - `-c, --canister <name>`: Generate only for a specific canister.
 - `--clean`: Clean output directory before generating.
+- `--bindgen-only`: Generate only `.did`, `.did.d.ts`, and `.js` declarations.
 
 For each canister, the CLI writes:
 
@@ -68,6 +69,10 @@ For each canister, the CLI writes:
 The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
 once, then preserves it unless the file is still the default wrapper or an
 older generated scaffold that can be migrated automatically.
+
+Use `--bindgen-only` when you only want the generated declaration files. In
+that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
+leaves any existing reactor files untouched.
 
 ## Configuration
 
