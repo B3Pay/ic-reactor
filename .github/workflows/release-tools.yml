@@ -48,22 +48,12 @@ jobs:
         # install only package workspaces and their dependency graph
         run: pnpm install --frozen-lockfile --filter "./packages/**..."
 
-      # Build only package workspaces. For non-parser releases, skip parser tests/build.
+      # Build the selected package and its dependency graph.
       - name: Build packages
-        run: |
-          if [[ "${{ matrix.workspace }}" == "packages/parser" ]]; then
-            pnpm -r --filter "./packages/**" build
-          else
-            pnpm -r --filter "./packages/**" --filter "!./packages/parser" build
-          fi
+        run: pnpm -r --filter "{./${{ matrix.workspace }}}..." build
 
       - name: Run tests
-        run: |
-          if [[ "${{ matrix.workspace }}" == "packages/parser" ]]; then
-            pnpm -r --filter "./packages/**" test
-          else
-            pnpm -r --filter "./packages/**" --filter "!./packages/parser" test
-          fi
+        run: pnpm -r --filter "{./${{ matrix.workspace }}}" test
 
       - name: Determine publish tag
         run: |
