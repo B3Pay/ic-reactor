@@ -67,6 +67,7 @@ pnpm exec ic-reactor generate [options]
 Options:
   -c, --canister <name>  Generate only one configured canister
   --clean                Clean the output directory before generation
+  --bindgen-only         Generate only .did, .did.d.ts, and .js declarations
 ```
 
 ## Generated Output
@@ -82,6 +83,10 @@ For each canister, the CLI generates:
 The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
 once, then preserves it unless the file is still the default wrapper or an
 older generated scaffold that can be migrated automatically.
+
+Use `--bindgen-only` when you only want the generated declaration files. In
+that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
+leaves any existing reactor files untouched.
 
 ## When To Use The CLI
 

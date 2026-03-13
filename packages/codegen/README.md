@@ -25,6 +25,7 @@ await runCanisterPipeline({
     outDir: "src/declarations",
     clientManagerPath: "../../clients",
   },
+  generateReactor: true,
 })
 ```
 
@@ -39,6 +40,9 @@ Set `canisterConfig.mode` to choose the generated reactor class:
 - `MetadataDisplayReactor`
 
 Codegen now writes two files per canister: a managed `index.generated.ts` implementation that is regenerated on every run, and an `index.ts` entry wrapper. The wrapper is created once, then preserved unless it still matches the default generated wrapper or an older generated scaffold that can be migrated automatically.
+
+Set `generateReactor: false` if you only want the bindgen/declaration output and
+need to skip `index.generated.ts` and `index.ts`.
 
 ## Generators
 

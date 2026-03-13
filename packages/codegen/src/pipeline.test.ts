@@ -95,6 +95,102 @@ describe("Codegen pipeline", () => {
     expect(generated).toContain('name: "workflow"')
   })
 
+  it("can generate declarations without creating reactor files", async () => {
+    const projectRoot = createTempProject()
+    writeDid(projectRoot, "backend.did")
+
+    const result = await runCanisterPipeline({
+      canisterConfig: {
+        name: "backend",
+        didFile: "backend.did",
+      },
+      projectRoot,
+      globalConfig: {
+        outDir: "src/declarations",
+        clientManagerPath: "../../clients",
+      },
+      generateReactor: false,
+    })
+
+    expect(result.success).toBe(true)
+    expect(
+      fs.existsSync(
+        path.join(
+          projectRoot,
+          "src/declarations/backend/declarations/backend.js"
+        )
+      )
+    ).toBe(true)
+    expect(
+      fs.existsSync(
+        path.join(
+          projectRoot,
+          "src/declarations/backend/declarations/backend.d.ts"
+        )
+      )
+    ).toBe(true)
+    expect(
+      fs.existsSync(
+        path.join(
+          projectRoot,
+          "src/declarations/backend/declarations/backend.did"
+        )
+      )
+    ).toBe(true)
+    expect(
+      fs.existsSync(
+        path.join(projectRoot, "src/declarations/backend/index.generated.ts")
+      )
+    ).toBe(false)
+    expect(
+      fs.existsSync(path.join(projectRoot, "src/declarations/backend/index.ts"))
+    ).toBe(false)
+    expect(
+      result.files.some((file) => file.filePath.endsWith("index.generated.ts"))
+    ).toBe(false)
+    expect(
+      result.files.some((file) => file.filePath.endsWith("index.ts"))
+    ).toBe(false)
+  })
+
+  it("leaves existing reactor files untouched when reactor generation is disabled", async () => {
+    const projectRoot = createTempProject()
+    writeDid(projectRoot, "backend.did")
+
+    const canisterOutDir = path.join(projectRoot, "src/declarations/backend")
+    fs.mkdirSync(canisterOutDir, { recursive: true })
+
+    const existingGenerated = "// existing generated reactor"
+    const existingEntry = "// existing entry wrapper"
+
+    fs.writeFileSync(
+      path.join(canisterOutDir, "index.generated.ts"),
+      existingGenerated
+    )
+    fs.writeFileSync(path.join(canisterOutDir, "index.ts"), existingEntry)
+
+    const result = await runCanisterPipeline({
+      canisterConfig: {
+        name: "backend",
+        didFile: "backend.did",
+      },
+      projectRoot,
+      globalConfig: {
+        outDir: "src/declarations",
+        clientManagerPath: "../../clients",
+      },
+      generateReactor: false,
+    })
+
+    expect(result.success).toBe(true)
+    expect(
+      fs.readFileSync(path.join(canisterOutDir, "index.generated.ts"), "utf-8")
+    ).toBe(existingGenerated)
+    expect(
+      fs.readFileSync(path.join(canisterOutDir, "index.ts"), "utf-8")
+    ).toBe(existingEntry)
+  })
+
   it("does not overwrite user-modified index.ts on regenerate", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "backend.did")
