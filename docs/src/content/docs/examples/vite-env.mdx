@@ -11,7 +11,7 @@ This example showcases how IC Reactor integrates with Vite's environment variabl
 ## Features Demonstrated
 
 - **Automatic Injection**: Canister IDs are automatically detected from the local environment and injected into the frontend.
-- **Environment Variables**: Use `VITE_CANISTER_ID_<NAME>` to override or provide canister IDs manually.
+- **Fixed Overrides**: Use `canisterId` in the Vite plugin config when you want a specific canister ID to override the auto-detected development value.
 - **Seamless Local Dev**: Run `icp deploy` and your frontend immediately knows where to find the canisters.
 - **Client Configuration**: Using `withCanisterEnv: true` to enable automatic environment detection.
 
@@ -67,7 +67,14 @@ import { icReactor } from "@ic-reactor/vite-plugin"
 export default defineConfig({
   plugins: [
     icReactor({
-      canisters: [{ name: "backend", didFile: "..." }],
+      canisters: [
+        {
+          name: "backend",
+          didFile: "...",
+          // Optional fixed override for this canister in dev and generated output
+          canisterId: "yq4ns-hyaaa-aaaap-akbna-cai",
+        },
+      ],
       // Enabled by default
       injectEnvironment: true,
     }),
