@@ -38,14 +38,15 @@ Set `canisterConfig.mode` to choose the generated reactor class:
 - `CandidDisplayReactor`
 - `MetadataDisplayReactor`
 
-Codegen writes a single `index.ts`. It overwrites that file only while it is still recognized as a generated file; if you replace it with your own file, regeneration leaves it untouched.
+Codegen now writes two files per canister: a managed `index.generated.ts` implementation that is regenerated on every run, and an `index.ts` entry wrapper. The wrapper is created once, then preserved unless it still matches the default generated wrapper or an older generated scaffold that can be migrated automatically.
 
 ## Generators
 
 You can also use individual generators if you need more granular control:
 
 - **`generateDeclarations`**: Generates `.js` (factory), `.d.ts` (types), and `.did` copy.
-- **`generateReactorFile`**: Generates the `index.ts` file using either `DisplayReactor` or `Reactor`.
+- **`generateReactorFile`**: Generates the managed `index.generated.ts` implementation using either `DisplayReactor` or `Reactor`.
+- **`generateReactorEntryFile`**: Generates the stable `index.ts` wrapper that re-exports from `index.generated.ts`.
 - **`generateClientFile`**: Generates a `ClientManager` boilerplate file.
 
 ## Utilities

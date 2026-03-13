@@ -65,7 +65,9 @@ export default defineConfig({
 })
 ```
 
-By default, the plugin generates hooks in `src/lib/canisters/backend/index.ts`, which you can then import as:
+By default, the plugin generates `src/lib/canisters/backend/index.generated.ts`
+plus a stable `src/lib/canisters/backend/index.ts` wrapper, which you can then
+import as:
 
 ```tsx
 import { useActorQuery } from "./lib/canisters/backend"

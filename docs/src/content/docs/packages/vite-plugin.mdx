@@ -39,6 +39,11 @@ export default defineConfig({
 By default, generated files go to `src/declarations/<canister>/`, and the
 plugin imports `clientManager` from `../../clients`.
 
+For each canister, generation produces:
+
+- `index.generated.ts`: managed implementation regenerated on every run
+- `index.ts`: stable entry wrapper that re-exports from `index.generated.ts`
+
 ## Reactor Mode
 
 Set `mode` per canister to choose the generated reactor class:
@@ -76,14 +81,17 @@ local network details from `icp-cli`, then:
 If `icp-cli` environment detection is unavailable, the plugin still falls back
 to proxying `/api` to `http://127.0.0.1:4943`, but it skips cookie injection.
 
+If you provide `canisterId` in the plugin config, that fixed ID overrides the
+auto-detected development value for that canister.
+
 ## `.did` File Changes
 
 When a watched `.did` file changes, the plugin:
 
 1. regenerates declarations
-2. regenerates the managed `index.ts` entrypoint when it still contains the
-   codegen marker
-3. preserves manually replaced `index.ts` files
+2. regenerates `index.generated.ts`
+3. preserves custom `index.ts` files, while updating the default wrapper or
+   migrating older generated entrypoints to the wrapper model
 4. triggers a full browser reload
 
 <Aside type="tip">

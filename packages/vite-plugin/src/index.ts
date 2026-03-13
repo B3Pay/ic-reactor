@@ -57,6 +57,11 @@ export function icReactor(options: IcReactorPluginOptions): any {
     path.normalize(
       path.isAbsolute(didFile) ? didFile : path.resolve(projectRoot, didFile)
     )
+  const configuredCanisterIds = Object.fromEntries(
+    canisters
+      .filter((canister) => !!canister.canisterId)
+      .map((canister) => [canister.name, canister.canisterId as string])
+  )
 
   const plugin: Plugin = {
     name: "ic-reactor-plugin",
@@ -93,7 +98,13 @@ export function icReactor(options: IcReactorPluginOptions): any {
         }
       }
 
-      const cookieValue = buildIcEnvCookie(icEnv.canisterIds, icEnv.rootKey)
+      const cookieValue = buildIcEnvCookie(
+        {
+          ...icEnv.canisterIds,
+          ...configuredCanisterIds,
+        },
+        icEnv.rootKey
+      )
 
       return {
         server: {

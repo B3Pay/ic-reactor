@@ -53,6 +53,12 @@ await runCanisterPipeline({
 - Parser helpers like `parseDIDFile` and `extractMethods`.
 - Lower-level generators when you need declarations, reactor files, or client files separately.
 
+For each canister, the pipeline writes:
+
+- `index.generated.ts`: managed implementation, always regenerated
+- `index.ts`: stable entry wrapper, preserved unless it still matches the
+  default wrapper or an older generated scaffold that can be migrated
+
 ## Reactor Modes
 
 Generated output can target any of these reactor classes:

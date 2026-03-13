@@ -45,7 +45,8 @@ Options:
 
 ### `generate`
 
-Regenerates hooks and declarations for all configured canisters. Run this whenever your `.did` files change. It creates an `index.ts` file in each canister directory with fully typed hooks.
+Regenerates hooks and declarations for all configured canisters. Run this
+whenever your `.did` files change.
 
 ```bash
 npx ic-reactor generate
@@ -55,6 +56,18 @@ Options:
 
 - `-c, --canister <name>`: Generate only for a specific canister.
 - `--clean`: Clean output directory before generating.
+
+For each canister, the CLI writes:
+
+- `<canister>.did` copy
+- `<canister>.did.d.ts` TypeScript service types
+- `<canister>.js` IDL factory module
+- `index.generated.ts` managed reactor and typed hook implementation
+- `index.ts` user-facing entrypoint
+
+The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
+once, then preserves it unless the file is still the default wrapper or an
+older generated scaffold that can be migrated automatically.
 
 ## Configuration
 

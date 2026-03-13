@@ -92,8 +92,11 @@ to `http://127.0.0.1:4943`, but it will not inject canister metadata.
 ## File Regeneration
 
 On startup and on `.did` file changes, the plugin regenerates declarations and
-the per-canister `index.ts` entrypoint. When a watched `.did` file changes, the
-plugin sends a full browser reload so the new declarations are picked up.
+the managed `index.generated.ts` implementation. The user-facing `index.ts`
+entry is created once, then preserved unless it still matches the default
+wrapper or a legacy generated scaffold that can be migrated automatically.
+When a watched `.did` file changes, the plugin sends a full browser reload so
+the new declarations are picked up.
 
 ## When To Use It
 

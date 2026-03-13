@@ -110,6 +110,46 @@ describe("icReactor", () => {
       expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
     })
 
+    it("should prefer configured canisterId over CLI-discovered env values", () => {
+      ;(execFileSync as any).mockImplementation(
+        (command: string, args: string[], options: any) => {
+          if (
+            command === "icp" &&
+            args.includes("network") &&
+            args.includes("status")
+          ) {
+            return JSON.stringify({ root_key: "mock-root-key", port: 4943 })
+          }
+          if (
+            command === "icp" &&
+            args.includes("canister") &&
+            args.includes("status")
+          ) {
+            return "local-cli-canister-id"
+          }
+          return ""
+        }
+      )
+
+      const plugin = createVitePlugin({
+        ...mockOptions,
+        canisters: [
+          {
+            ...mockOptions.canisters[0],
+            canisterId: "yq4ns-hyaaa-aaaap-akbna-cai",
+          },
+        ],
+      })
+      const config = (plugin as any).config({}, { command: "serve" })
+
+      expect(config.server.headers["Set-Cookie"]).toContain(
+        "PUBLIC_CANISTER_ID%3Atest_canister%3Dyq4ns-hyaaa-aaaap-akbna-cai"
+      )
+      expect(config.server.headers["Set-Cookie"]).not.toContain(
+        "PUBLIC_CANISTER_ID%3Atest_canister%3Dlocal-cli-canister-id"
+      )
+    })
+
     it("should fallback to default proxy when icp-cli fails", () => {
       ;(execFileSync as any).mockImplementation(() => {
         throw new Error("Command not found")
