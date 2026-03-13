@@ -76,11 +76,12 @@ For each canister, the CLI generates:
 - `<canister>.did` copy
 - `<canister>.did.d.ts` TypeScript service types
 - `<canister>.js` IDL factory module
-- `index.ts` reactor and typed hook entrypoint
+- `index.generated.ts` managed reactor and typed hook implementation
+- `index.ts` user-facing entrypoint
 
-The generated `index.ts` is only overwritten while it still contains the
-generator marker. If you replace it with a custom module, later runs leave it
-alone.
+The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
+once, then preserves it unless the file is still the default wrapper or an
+older generated scaffold that can be migrated automatically.
 
 ## When To Use The CLI
 

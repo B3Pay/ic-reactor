@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { generateReactorFile } from "./generators"
+import { generateReactorEntryFile, generateReactorFile } from "./generators"
 
 describe("Reactor generator", () => {
   it("keeps default behavior as DisplayReactor", () => {
@@ -41,5 +41,23 @@ describe("Reactor generator", () => {
       'import { MetadataDisplayReactor } from "@ic-reactor/candid"'
     )
     expect(content).toContain("new MetadataDisplayReactor<LedgerService>")
+  })
+
+  it("writes a fixed canisterId when configured", () => {
+    const content = generateReactorFile({
+      canisterName: "workflow",
+      didFile: "mock/workflow.did",
+      canisterId: "yq4ns-hyaaa-aaaap-akbna-cai",
+    })
+
+    expect(content).toContain('canisterId: "yq4ns-hyaaa-aaaap-akbna-cai"')
+    expect(content).toContain('name: "workflow"')
+  })
+
+  it("generates a stable entry wrapper", () => {
+    const content = generateReactorEntryFile()
+
+    expect(content).toContain('export * from "./index.generated"')
+    expect(content).toContain("safe to customize")
   })
 })
