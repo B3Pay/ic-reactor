@@ -28,9 +28,13 @@ program
 program
   .command("generate")
   .alias("g")
-  .description("Generate hooks from .did files")
+  .description("Generate canister declarations and hooks from .did files")
   .option("-c, --canister <name>", "Generate for a specific canister only")
   .option("--clean", "Clean output directory before generating")
+  .option(
+    "--bindgen-only",
+    "Generate only .did, .did.d.ts, and .js declarations"
+  )
   .action(generateCommand)
 
 program.parse()

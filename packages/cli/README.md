@@ -68,6 +68,7 @@ pnpm exec ic-reactor generate [options]
 Options:
   -c, --canister <name>  Generate only one configured canister
   --clean                Clean the output directory before generation
+  --bindgen-only         Generate only .did, .did.d.ts, and .js declarations
 ```
 
 ## Generated Output
@@ -88,6 +89,9 @@ Set `target` to choose the generated runtime:
 
 - `react` (default): generates the reactor plus bound React hooks
 - `core`: generates only the typed reactor exports with no React dependency
+  Use `--bindgen-only` when you only want the generated declaration files. In
+  that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
+  leaves any existing reactor files untouched.
 
 You can define `target` globally or per canister in `ic-reactor.json`.
 

@@ -7,8 +7,8 @@
  * Pipeline steps (in order):
  *  1. Resolve paths (didFile, outDir)
  *  2. Generate declarations (JS + .d.ts + .did copy)
- *  3. Generate reactor implementation (`index.generated.ts`)
- *  4. Create or migrate the user entry (`index.ts`)
+ *  3. Optionally generate reactor implementation (`index.generated.ts`)
+ *  4. Optionally create or migrate the user entry (`index.ts`)
  */
 
 import fs from "node:fs"
@@ -38,6 +38,11 @@ export interface PipelineOptions {
    * Global codegen config (for fallback outDir and clientManagerPath).
    */
   globalConfig: Pick<CodegenConfig, "outDir" | "clientManagerPath" | "target">
+  /**
+   * Whether the managed reactor files should be generated.
+   * Defaults to true.
+   */
+  generateReactor?: boolean
 }
 
 function resolveReactorClass(canisterConfig: CanisterConfig): ReactorClassName {
@@ -87,7 +92,12 @@ export interface PipelineResult {
 export async function runCanisterPipeline(
   options: PipelineOptions
 ): Promise<PipelineResult> {
-  const { canisterConfig, projectRoot, globalConfig } = options
+  const {
+    canisterConfig,
+    projectRoot,
+    globalConfig,
+    generateReactor = true,
+  } = options
   const { name, didFile, clientManagerPath } = canisterConfig
 
   const files: GeneratorResult[] = []
@@ -144,6 +154,14 @@ export async function runCanisterPipeline(
       success: false,
       files,
       error: `Declarations step failed: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
+
+  if (!generateReactor) {
+    return {
+      canisterName: name,
+      success: true,
+      files,
     }
   }
 

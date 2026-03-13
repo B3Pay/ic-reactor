@@ -12,7 +12,9 @@ import type { GenerateOptions } from "../types.js"
 
 export async function generateCommand(options: GenerateOptions) {
   console.log()
-  p.intro(pc.cyan("🔄 Generate Hooks"))
+  const generationLabel = options.bindgenOnly ? "Bindgen" : "Hooks"
+  const generationSummary = options.bindgenOnly ? "bindgen files" : "hooks"
+  p.intro(pc.cyan(`🔄 Generate ${generationLabel}`))
 
   // Load config
   const configPath = findConfigFile()
@@ -54,7 +56,7 @@ export async function generateCommand(options: GenerateOptions) {
 
   const spinner = p.spinner()
   spinner.start(
-    `Generating hooks for ${canistersToProcess.length} canisters...`
+    `Generating ${generationSummary} for ${canistersToProcess.length} canisters...`
   )
 
   let successCount = 0
@@ -72,6 +74,7 @@ export async function generateCommand(options: GenerateOptions) {
         canisterConfig,
         projectRoot,
         globalConfig: config,
+        generateReactor: !options.bindgenOnly,
       })
 
       if (result.success) {
@@ -88,7 +91,7 @@ export async function generateCommand(options: GenerateOptions) {
     }
   }
 
-  spinner.stop("Generation complete")
+  spinner.stop(`${generationLabel} generation complete`)
 
   if (errorMessages.length > 0) {
     console.log()
@@ -106,9 +109,9 @@ export async function generateCommand(options: GenerateOptions) {
   )
 
   if (errorCount > 0) {
-    p.outro(pc.red("✖ Generation failed with errors."))
+    p.outro(pc.red(`✖ ${generationLabel} generation failed with errors.`))
     process.exit(1)
   } else {
-    p.outro(pc.green("✓ All hooks generated successfully!"))
+    p.outro(pc.green(`✓ All ${generationSummary} generated successfully!`))
   }
 }

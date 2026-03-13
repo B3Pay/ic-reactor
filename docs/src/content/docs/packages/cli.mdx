@@ -56,6 +56,7 @@ Options:
 
 - `-c, --canister <name>`: Generate only for a specific canister.
 - `--clean`: Clean output directory before generating.
+- `--bindgen-only`: Generate only `.did`, `.did.d.ts`, and `.js` declarations.
 
 For each canister, the CLI writes:
 
@@ -73,6 +74,9 @@ Set `target` to choose the generated runtime:
 
 - `react` (default): generates the reactor plus bound React hooks
 - `core`: generates only the typed reactor exports with no React dependency
+Use `--bindgen-only` when you only want the generated declaration files. In
+that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
+leaves any existing reactor files untouched.
 
 ## Configuration
 
