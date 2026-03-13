@@ -43,6 +43,9 @@ export const clientManager = new ClientManager({
 
 The plugin generates files under `src/declarations/<canister>/` by default.
 
+If you want non-React output, set `target: "core"` and install the matching
+runtime package instead of `@ic-reactor/react`.
+
 ## Options
 
 ```ts
@@ -56,6 +59,7 @@ icReactor({
   ],
   outDir: "src/declarations",
   clientManagerPath: "../../clients",
+  target: "react",
   injectEnvironment: true,
 })
 ```
@@ -66,6 +70,7 @@ icReactor({
 - `didFile`
 - `outDir`
 - `clientManagerPath`
+- `target`
 - `mode`
 - `canisterId`
 
@@ -76,6 +81,11 @@ Supported `mode` values:
 - `CandidReactor`
 - `CandidDisplayReactor`
 - `MetadataDisplayReactor`
+
+Supported `target` values:
+
+- `react` (default): generates the reactor plus bound React hooks
+- `core`: generates only the typed reactor exports with no React dependency
 
 ## Local Development Behavior
 

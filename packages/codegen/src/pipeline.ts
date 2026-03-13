@@ -16,6 +16,7 @@ import path from "node:path"
 import type {
   CanisterConfig,
   CodegenConfig,
+  CodegenTarget,
   GeneratorResult,
   ReactorClassName,
 } from "./types.js"
@@ -36,7 +37,7 @@ export interface PipelineOptions {
   /**
    * Global codegen config (for fallback outDir and clientManagerPath).
    */
-  globalConfig: Pick<CodegenConfig, "outDir" | "clientManagerPath">
+  globalConfig: Pick<CodegenConfig, "outDir" | "clientManagerPath" | "target">
   /**
    * Whether the managed reactor files should be generated.
    * Defaults to true.
@@ -46,6 +47,13 @@ export interface PipelineOptions {
 
 function resolveReactorClass(canisterConfig: CanisterConfig): ReactorClassName {
   return canisterConfig.mode ?? "DisplayReactor"
+}
+
+function resolveRuntimeTarget(
+  canisterConfig: CanisterConfig,
+  globalConfig: Pick<CodegenConfig, "outDir" | "clientManagerPath" | "target">
+): CodegenTarget {
+  return canisterConfig.target ?? globalConfig.target ?? "react"
 }
 
 function normalizeFileContent(content: string): string {
@@ -162,6 +170,7 @@ export async function runCanisterPipeline(
   const reactorPath = path.join(canisterOutDir, "index.generated.ts")
   const entryPath = path.join(canisterOutDir, "index.ts")
   const reactorClass = resolveReactorClass(canisterConfig)
+  const runtimeTarget = resolveRuntimeTarget(canisterConfig, globalConfig)
 
   try {
     const reactorContent = generateReactorFile({
@@ -169,6 +178,7 @@ export async function runCanisterPipeline(
       didFile: resolvedDidFile,
       clientManagerPath: resolvedClientManagerPath,
       canisterId: canisterConfig.canisterId,
+      runtimeTarget,
       reactorClass,
     })
     const entryContent = generateReactorEntryFile()

@@ -9,6 +9,7 @@
 export type {
   CanisterConfig,
   CodegenConfig,
+  CodegenTarget,
   GeneratorResult,
   ReactorClassName,
 } from "./types.js"

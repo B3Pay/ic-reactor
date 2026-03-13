@@ -2,7 +2,7 @@
 
 Command-line code generation for IC Reactor. It uses the shared
 `@ic-reactor/codegen` pipeline to generate declarations and typed reactor entry
-files from your `.did` files.
+files from your `.did` files, with optional React hook exports.
 
 ## Install
 
@@ -38,6 +38,7 @@ pnpm dlx @ic-reactor/cli generate
   "$schema": "./node_modules/@ic-reactor/cli/schema.json",
   "outDir": "src/declarations",
   "clientManagerPath": "../../clients",
+  "target": "react",
   "canisters": {
     "backend": {
       "name": "backend",
@@ -77,16 +78,22 @@ For each canister, the CLI generates:
 - `<canister>.did` copy
 - `<canister>.did.d.ts` TypeScript service types
 - `<canister>.js` IDL factory module
-- `index.generated.ts` managed reactor and typed hook implementation
+- `index.generated.ts` managed reactor implementation, with optional typed hook exports
 - `index.ts` user-facing entrypoint
 
 The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
 once, then preserves it unless the file is still the default wrapper or an
 older generated scaffold that can be migrated automatically.
 
-Use `--bindgen-only` when you only want the generated declaration files. In
-that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
-leaves any existing reactor files untouched.
+Set `target` to choose the generated runtime:
+
+- `react` (default): generates the reactor plus bound React hooks
+- `core`: generates only the typed reactor exports with no React dependency
+  Use `--bindgen-only` when you only want the generated declaration files. In
+  that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
+  leaves any existing reactor files untouched.
+
+You can define `target` globally or per canister in `ic-reactor.json`.
 
 ## When To Use The CLI
 
@@ -101,8 +108,11 @@ inside a Vite app.
 
 - Node.js 18+
 - TypeScript 5+
-- `@ic-reactor/react` in the consuming app if you plan to use generated React
-  hooks
+- `@ic-reactor/react` in the consuming app if you use `target: "react"`
+- `@ic-reactor/core` in the consuming app if you use `target: "core"` with
+  `Reactor` or `DisplayReactor`
+- `@ic-reactor/candid` in the consuming app if you use `target: "core"` with a
+  candid reactor class
 
 ## See Also
 

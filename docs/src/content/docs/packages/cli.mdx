@@ -6,7 +6,7 @@ editUrl: false
 
 import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
 
-The IC Reactor CLI (`@ic-reactor/cli`) helps you generate React hooks and TypeScript declarations from your Candid files. It's useful if you're not using Vite or want more control over the generation process.
+The IC Reactor CLI (`@ic-reactor/cli`) helps you generate typed reactor files, optional React hooks, and TypeScript declarations from your Candid files. It's useful if you're not using Vite or want more control over the generation process.
 
 It uses the shared [`@ic-reactor/codegen`](/v3/packages/codegen) pipeline, so
 its output stays aligned with the Vite plugin.
@@ -63,13 +63,17 @@ For each canister, the CLI writes:
 - `<canister>.did` copy
 - `<canister>.did.d.ts` TypeScript service types
 - `<canister>.js` IDL factory module
-- `index.generated.ts` managed reactor and typed hook implementation
+- `index.generated.ts` managed reactor implementation, with optional typed hook exports
 - `index.ts` user-facing entrypoint
 
 The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
 once, then preserves it unless the file is still the default wrapper or an
 older generated scaffold that can be migrated automatically.
 
+Set `target` to choose the generated runtime:
+
+- `react` (default): generates the reactor plus bound React hooks
+- `core`: generates only the typed reactor exports with no React dependency
 Use `--bindgen-only` when you only want the generated declaration files. In
 that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
 leaves any existing reactor files untouched.
@@ -82,6 +86,7 @@ The `ic-reactor.json` file controls the CLI behavior.
 {
   "outDir": "src/declarations",
   "clientManagerPath": "../../clients",
+  "target": "react",
   "canisters": {
     "backend": {
       "didFile": "src/backend/backend.did"
@@ -97,6 +102,7 @@ The `ic-reactor.json` file controls the CLI behavior.
 | `outDir`            | `string`                         | Base output directory for generated files (required). |
 | `canisters`         | `Record<string, CanisterConfig>` | Map of canister names to configurations (required).   |
 | `clientManagerPath` | `string`                         | Path to a custom `ClientManager` instance (optional). |
+| `target`            | `"react" \| "core"`             | Default generated runtime target (optional).          |
 
 ### Canister Config
 
@@ -106,6 +112,7 @@ The `ic-reactor.json` file controls the CLI behavior.
 | `name`              | `string` | Canister name.                               |
 | `outDir`            | `string` | Override output directory for this canister. |
 | `clientManagerPath` | `string` | Override client manager path.                |
+| `target`            | `string` | Override generated runtime target.           |
 | `canisterId`        | `string` | Optional fixed canister ID.                  |
 
 ## Examples

@@ -18,6 +18,12 @@
       "description": "Default import path for the client manager (relative from generated files)",
       "default": "../../clients"
     },
+    "target": {
+      "type": "string",
+      "enum": ["react", "core"],
+      "description": "Default generated runtime target (react emits hooks, core emits only reactor exports)",
+      "default": "react"
+    },
     "canisters": {
       "type": "object",
       "description": "Canister configurations",
@@ -50,6 +56,11 @@
               "MetadataDisplayReactor"
             ],
             "description": "Reactor class used for generated hooks (defaults to DisplayReactor)"
+          },
+          "target": {
+            "type": "string",
+            "enum": ["react", "core"],
+            "description": "Generated runtime target for this canister (react emits hooks, core emits only reactor exports)"
           },
           "canisterId": {
             "type": "string",

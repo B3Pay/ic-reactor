@@ -13,6 +13,7 @@ import {
   runCanisterPipeline,
   type CanisterConfig,
   type CodegenConfig,
+  type CodegenTarget,
 } from "@ic-reactor/codegen"
 import { getIcEnvironmentInfo, buildIcEnvCookie } from "./env.js"
 
@@ -33,6 +34,11 @@ export interface IcReactorPluginOptions {
    */
   clientManagerPath?: string
   /**
+   * Default generated runtime target.
+   * Default: "react"
+   */
+  target?: CodegenTarget
+  /**
    * Automatically inject `ic_env` cookie for local development?
    * Default: true
    */
@@ -44,13 +50,18 @@ export function icReactor(options: IcReactorPluginOptions): any {
     canisters,
     outDir = "src/declarations",
     clientManagerPath = "../../clients",
+    target = "react",
     injectEnvironment = true,
   } = options
 
   // Construct a partial CodegenConfig to pass to the pipeline
-  const globalConfig: Pick<CodegenConfig, "outDir" | "clientManagerPath"> = {
+  const globalConfig: Pick<
+    CodegenConfig,
+    "outDir" | "clientManagerPath" | "target"
+  > = {
     outDir,
     clientManagerPath,
+    target,
   }
   const projectRoot = process.cwd()
   const resolveDidPath = (didFile: string) =>
@@ -131,7 +142,7 @@ export function icReactor(options: IcReactorPluginOptions): any {
       // ── Code Generation ──────────────────────────────────────────────────
 
       console.log(
-        `[ic-reactor] Generating hooks for ${canisters.length} canisters...`
+        `[ic-reactor] Generating canister bindings for ${canisters.length} canisters...`
       )
 
       for (const canisterConfig of canisters) {

@@ -1,8 +1,8 @@
 /**
  * Reactor File Generator
  *
- * Generates the managed `index.generated.ts` implementation for a canister
- * plus the full set of typed hooks via `createActorHooks`.
+ * Generates the managed `index.generated.ts` implementation for a canister.
+ * React targets also emit the full set of typed hooks via `createActorHooks`.
  *
  * Generated output example (for canister "backend"):
  *
@@ -22,7 +22,7 @@
 
 import path from "node:path"
 import { toPascalCase, getReactorName, getServiceTypeName } from "../naming.js"
-import type { ReactorClassName } from "../types.js"
+import type { CodegenTarget, ReactorClassName } from "../types.js"
 
 export interface ReactorGeneratorOptions {
   /** Canister name (e.g. "backend") */
@@ -39,6 +39,8 @@ export interface ReactorGeneratorOptions {
   clientManagerPath?: string
   /** Optional fixed canister ID for the generated reactor */
   canisterId?: string
+  /** Generated runtime target */
+  runtimeTarget?: CodegenTarget
   /**
    * Which reactor class should back the generated hooks.
    * Default: "DisplayReactor" (backward compatible)
@@ -47,12 +49,13 @@ export interface ReactorGeneratorOptions {
 }
 
 function getReactorClassImportSource(
-  reactorClass: ReactorClassName
-): "@ic-reactor/react" | "@ic-reactor/candid" {
+  reactorClass: ReactorClassName,
+  runtimeTarget: CodegenTarget
+): "@ic-reactor/react" | "@ic-reactor/core" | "@ic-reactor/candid" {
   switch (reactorClass) {
     case "Reactor":
     case "DisplayReactor":
-      return "@ic-reactor/react"
+      return runtimeTarget === "core" ? "@ic-reactor/core" : "@ic-reactor/react"
     case "CandidReactor":
     case "CandidDisplayReactor":
     case "MetadataDisplayReactor":
@@ -69,6 +72,7 @@ export function generateReactorFile(options: ReactorGeneratorOptions): string {
     didFile,
     clientManagerPath = "../../clients",
     canisterId,
+    runtimeTarget = "react",
     reactorClass = "DisplayReactor",
   } = options
 
@@ -79,13 +83,29 @@ export function generateReactorFile(options: ReactorGeneratorOptions): string {
   // Derive the declarations import path from the .did filename
   const baseName = path.basename(didFile, ".did")
   const declarationsPath = `./declarations/${baseName}`
-  const reactorImportSource = getReactorClassImportSource(reactorClass)
+  const reactorImportSource = getReactorClassImportSource(
+    reactorClass,
+    runtimeTarget
+  )
   const canisterIdLine = canisterId
     ? `  canisterId: ${JSON.stringify(canisterId)},\n`
     : ""
+  const hookExports =
+    runtimeTarget === "react"
+      ? `
 
-  return `import { createActorHooks } from "@ic-reactor/react"
-import { ${reactorClass} } from "${reactorImportSource}"
+export const {
+  useActorQuery: use${pascalName}Query,
+  useActorSuspenseQuery: use${pascalName}SuspenseQuery,
+  useActorInfiniteQuery: use${pascalName}InfiniteQuery,
+  useActorSuspenseInfiniteQuery: use${pascalName}SuspenseInfiniteQuery,
+  useActorMutation: use${pascalName}Mutation,
+  useActorMethod: use${pascalName}Method,
+} = createActorHooks(${reactorName})
+`
+      : ""
+
+  return `${runtimeTarget === "react" ? 'import { createActorHooks } from "@ic-reactor/react"\n' : ""}import { ${reactorClass} } from "${reactorImportSource}"
 import { clientManager } from "${clientManagerPath}"
 import { idlFactory, type _SERVICE } from "${declarationsPath}"
 
@@ -101,17 +121,7 @@ export const ${reactorName} = new ${reactorClass}<${serviceName}>({
   clientManager,
   idlFactory,
 ${canisterIdLine}  name: "${canisterName}",
-})
-
-export const {
-  useActorQuery: use${pascalName}Query,
-  useActorSuspenseQuery: use${pascalName}SuspenseQuery,
-  useActorInfiniteQuery: use${pascalName}InfiniteQuery,
-  useActorSuspenseInfiniteQuery: use${pascalName}SuspenseInfiniteQuery,
-  useActorMutation: use${pascalName}Mutation,
-  useActorMethod: use${pascalName}Method,
-} = createActorHooks(${reactorName})
-`
+})${hookExports || "\n"}`
 }
 
 /**
@@ -122,7 +132,7 @@ export function generateReactorEntryFile(): string {
  * Canister entrypoint.
  *
  * Created once by @ic-reactor/codegen and safe to customize.
- * Keep the re-export below if you want generated hooks and types to stay in sync.
+ * Keep the re-export below if you want generated exports and types to stay in sync.
  */
 export * from "./index.generated"
 `

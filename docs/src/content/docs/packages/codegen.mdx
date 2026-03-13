@@ -42,6 +42,7 @@ await runCanisterPipeline({
   globalConfig: {
     outDir: "src/declarations",
     clientManagerPath: "../../clients",
+    target: "react",
   },
 })
 ```
@@ -68,6 +69,11 @@ Generated output can target any of these reactor classes:
 - `CandidReactor`
 - `CandidDisplayReactor`
 - `MetadataDisplayReactor`
+
+## Runtime Target
+
+- `react` (default): generates the reactor plus bound React hooks
+- `core`: generates only the typed reactor exports with no React dependency
 
 ## See Also
 
