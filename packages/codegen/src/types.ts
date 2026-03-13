@@ -29,6 +29,11 @@ export interface CanisterConfig {
    * Defaults to DisplayReactor for backward compatibility.
    */
   mode?: ReactorClassName
+  /**
+   * Generated runtime target.
+   * `react` emits bound React hooks, `core` emits only the typed reactor exports.
+   */
+  target?: CodegenTarget
   /** Optional fixed canister ID */
   canisterId?: string
 }
@@ -39,6 +44,8 @@ export type ReactorClassName =
   | "CandidReactor"
   | "CandidDisplayReactor"
   | "MetadataDisplayReactor"
+
+export type CodegenTarget = "react" | "core"
 
 /**
  * Top-level codegen / CLI configuration (stored in `ic-reactor.json`).
@@ -56,6 +63,11 @@ export interface CodegenConfig {
    * Individual canisters can override via `CanisterConfig.clientManagerPath`.
    */
   clientManagerPath?: string
+  /**
+   * Default generated runtime target.
+   * Individual canisters can override via `CanisterConfig.target`.
+   */
+  target?: CodegenTarget
   /** Canister configurations, keyed by canister name */
   canisters: Record<string, CanisterConfig>
 }

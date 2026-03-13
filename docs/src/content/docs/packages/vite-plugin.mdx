@@ -8,8 +8,9 @@ import { Aside } from "@astrojs/starlight/components"
 
 `@ic-reactor/vite-plugin` runs the shared
 [`@ic-reactor/codegen`](/v3/packages/codegen) pipeline inside Vite. It
-generates declarations and typed reactor entrypoints from `.did` files, watches
-for changes, and can inject the `ic_env` cookie used by
+generates declarations and typed reactor entrypoints, with optional React
+hooks, from `.did` files, watches for changes, and can inject the `ic_env`
+cookie used by
 [`ClientManager`](/v3/reference/clientmanager).
 
 ## Installation
@@ -18,6 +19,9 @@ for changes, and can inject the `ic_env` cookie used by
 pnpm add -D @ic-reactor/vite-plugin
 pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
 ```
+
+For non-React output, set `target: "core"` and install the matching runtime
+package instead of `@ic-reactor/react`.
 
 ## Usage
 
@@ -68,6 +72,11 @@ Supported modes:
 - `CandidReactor`
 - `CandidDisplayReactor`
 - `MetadataDisplayReactor`
+
+Set `target` to control whether generated files include React hooks:
+
+- `react` (default): generates the reactor plus bound React hooks
+- `core`: generates only the typed reactor exports with no React dependency
 
 ## Local Development
 

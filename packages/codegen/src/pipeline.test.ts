@@ -95,6 +95,40 @@ describe("Codegen pipeline", () => {
     expect(generated).toContain('name: "workflow"')
   })
 
+  it("supports a core target without generating React hooks", async () => {
+    const projectRoot = createTempProject()
+    writeDid(projectRoot, "backend.did")
+
+    const result = await runCanisterPipeline({
+      canisterConfig: {
+        name: "backend",
+        didFile: "backend.did",
+      },
+      projectRoot,
+      globalConfig: {
+        outDir: "src/declarations",
+        clientManagerPath: "../../clients",
+        target: "core",
+      },
+    })
+
+    expect(result.success).toBe(true)
+
+    const indexPath = path.join(
+      projectRoot,
+      "src/declarations/backend/index.generated.ts"
+    )
+    const generated = fs.readFileSync(indexPath, "utf-8")
+
+    expect(generated).toContain(
+      'import { DisplayReactor } from "@ic-reactor/core"'
+    )
+    expect(generated).not.toContain(
+      'import { createActorHooks } from "@ic-reactor/react"'
+    )
+    expect(generated).not.toContain("useBackendQuery")
+  })
+
   it("does not overwrite user-modified index.ts on regenerate", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "backend.did")

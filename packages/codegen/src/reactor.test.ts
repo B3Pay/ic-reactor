@@ -43,6 +43,24 @@ describe("Reactor generator", () => {
     expect(content).toContain("new MetadataDisplayReactor<LedgerService>")
   })
 
+  it("supports core target generation without React hooks", () => {
+    const content = generateReactorFile({
+      canisterName: "backend",
+      didFile: "mock/backend.did",
+      runtimeTarget: "core",
+      reactorClass: "DisplayReactor",
+    })
+
+    expect(content).toMatchSnapshot("core-display-reactor-index")
+    expect(content).toContain(
+      'import { DisplayReactor } from "@ic-reactor/core"'
+    )
+    expect(content).not.toContain(
+      'import { createActorHooks } from "@ic-reactor/react"'
+    )
+    expect(content).not.toContain("useBackendQuery")
+  })
+
   it("writes a fixed canisterId when configured", () => {
     const content = generateReactorFile({
       canisterName: "workflow",

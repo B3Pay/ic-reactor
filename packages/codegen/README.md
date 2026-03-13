@@ -24,6 +24,7 @@ await runCanisterPipeline({
   globalConfig: {
     outDir: "src/declarations",
     clientManagerPath: "../../clients",
+    target: "react",
   },
 })
 ```
@@ -37,6 +38,11 @@ Set `canisterConfig.mode` to choose the generated reactor class:
 - `CandidReactor`
 - `CandidDisplayReactor`
 - `MetadataDisplayReactor`
+
+Set `target` to control whether generated files include React hooks:
+
+- `react` (default): generates the reactor plus bound `createActorHooks` exports
+- `core`: generates only the typed reactor exports with no `@ic-reactor/react` dependency
 
 Codegen now writes two files per canister: a managed `index.generated.ts` implementation that is regenerated on every run, and an `index.ts` entry wrapper. The wrapper is created once, then preserved unless it still matches the default generated wrapper or an older generated scaffold that can be migrated automatically.
 

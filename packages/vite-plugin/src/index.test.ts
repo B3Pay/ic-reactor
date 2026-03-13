@@ -181,6 +181,7 @@ describe("icReactor", () => {
         globalConfig: {
           outDir: "src/declarations",
           clientManagerPath: "../../clients",
+          target: "react",
         },
       })
     })
@@ -227,6 +228,26 @@ describe("icReactor", () => {
         globalConfig: {
           outDir: "src/declarations",
           clientManagerPath: "../../clients",
+          target: "react",
+        },
+      })
+    })
+
+    it("should pass the configured runtime target to codegen", async () => {
+      const plugin = createVitePlugin({
+        ...mockOptions,
+        target: "core",
+      })
+
+      await (plugin.buildStart as any)()
+
+      expect(runCanisterPipeline).toHaveBeenCalledWith({
+        canisterConfig: mockOptions.canisters[0],
+        projectRoot: expect.any(String),
+        globalConfig: {
+          outDir: "src/declarations",
+          clientManagerPath: "../../clients",
+          target: "core",
         },
       })
     })
