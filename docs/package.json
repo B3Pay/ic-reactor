@@ -11,7 +11,7 @@
     "lint:mdx": "remark 'src/content/docs/**/*.mdx' -q --frail"
   },
   "devDependencies": {
-    "@astrojs/starlight": "^0.37.7",
+    "@astrojs/starlight": "^0.38.1",
     "astro": "^5.18.0",
     "serve": "^14.2.6",
     "typedoc": "^0.28.17",
