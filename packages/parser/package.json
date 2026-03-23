@@ -57,11 +57,11 @@
   "devDependencies": {
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/candid": "workspace:*",
-    "@tanstack/query-core": "^5.90.20",
+    "@tanstack/query-core": "^5.95.0",
     "@types/node": "^25.5.0",
     "vitest": "^4.1.0",
     "wasm-pack": "^0.14.0",
-    "@icp-sdk/core": "^5.0.0",
+    "@icp-sdk/core": "^5.1.0",
     "@icp-sdk/auth": "^5.0.0",
     "@size-limit/preset-small-lib": "^12.0.1",
     "size-limit": "^12.0.1"
