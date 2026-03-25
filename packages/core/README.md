@@ -221,18 +221,22 @@ const result = await reactor.callMethod({
 const data = await reactor.fetchQuery({
   functionName: "get_data",
   args: [],
+  callConfig: { canisterId: otherCanisterId }, // optional per-call cache partition
 })
 
 // Get cached data (synchronous, no network)
 const cached = reactor.getQueryData({
   functionName: "get_data",
   args: [],
-})
+}, { canisterId: otherCanisterId })
 
 // Invalidate cached queries
 reactor.invalidateQueries() // all queries for this canister
 reactor.invalidateQueries({ functionName: "get_data" }) // specific method
 reactor.invalidateQueries({ functionName: "get_user", args: ["user-1"] }) // specific args
+reactor.invalidateQueries({ functionName: "get_data" }, {
+  canisterId: otherCanisterId,
+}) // specific overridden canister
 
 // Get query options for TanStack Query
 const options = reactor.getQueryOptions({ functionName: "get_data" })
@@ -401,12 +405,23 @@ const result2 = extractOkResult({ ok: "success" }) // "success"
 ### Query Key Generation
 
 ```typescript
-const queryKey = reactor.generateQueryKey({
-  functionName: "get_user",
-  args: ["user-123"],
-})
+const queryKey = reactor.generateQueryKey(
+  {
+    functionName: "get_user",
+    args: ["user-123"],
+  },
+  {
+    canisterId: otherCanisterId,
+    effectiveCanisterId: managementCanisterId, // optional
+  }
+)
 // ["canister-id", "get_user", "serialized-args"]
 ```
+
+If you pass `callConfig` to `fetchQuery`, `getQueryOptions`, or the React query
+hooks/factories, use the same `callConfig` when generating or looking up query
+keys. The cache key is partitioned by the resolved target canister and, when
+present, `effectiveCanisterId`.
 
 ## TypeScript Types
 
