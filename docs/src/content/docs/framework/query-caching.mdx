@@ -61,9 +61,16 @@ import { backend } from "./reactor"
 const queryKey = backend.generateQueryKey({
   functionName: "getUser",
   args: ["user-123"],
+}, {
+  canisterId: otherCanisterId,
+  effectiveCanisterId: managementCanisterId,
 })
-// ['rrkah-fqaaa...', 'getUser', 'user-123']
+// ['rrkah-fqaaa...', 'getUser', { effectiveCanisterId: 'aaaaa-aa' }, 'user-123']
 ```
+
+If a query uses `callConfig`, pass the same `callConfig` when generating,
+reading, or invalidating that cache key. Cache entries are partitioned by the
+resolved target canister and optional `effectiveCanisterId`.
 
 ## Stale Time
 
@@ -199,6 +206,12 @@ backend.invalidateQueries()
 ```typescript
 // Invalidate all getUser queries (any args)
 backend.invalidateQueries({ functionName: "getUser" })
+
+// Invalidate getUser queries for a specific overridden target canister
+backend.invalidateQueries(
+  { functionName: "getUser" },
+  { canisterId: otherCanisterId }
+)
 ```
 
 ### Invalidate Specific Query
@@ -208,6 +221,8 @@ backend.invalidateQueries({ functionName: "getUser" })
 backend.invalidateQueries({
   functionName: "getUser",
   args: ["user-123"],
+}, {
+  canisterId: otherCanisterId,
 })
 ```
 

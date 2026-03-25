@@ -106,8 +106,15 @@ export const useActorInfiniteQuery = <
 >): UseActorInfiniteQueryResult<A, M, T, TPageParam> => {
   // Memoize queryKey to prevent unnecessary re-calculations
   const baseQueryKey = useMemo(
-    () => queryKey ?? reactor.generateQueryKey({ functionName }),
-    [queryKey, reactor, functionName]
+    () =>
+      queryKey ??
+      reactor.generateQueryKey(
+        {
+          functionName,
+        },
+        callConfig
+      ),
+    [queryKey, reactor, functionName, callConfig]
   )
 
   // Memoize queryFn to prevent recreation on every render

@@ -197,9 +197,23 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   // ══════════════════════════════════════════════════════════════════════
 
   public generateQueryKey<M extends FunctionName<A>>(
-    params: ReactorQueryParams<A, M, T>
+    params: ReactorQueryParams<A, M, T>,
+    callConfig?: CallConfig
   ): QueryKey {
-    const queryKeys: any[] = [this.canisterId.toString(), params.functionName]
+    const resolvedCanisterId = callConfig?.canisterId
+      ? Principal.from(callConfig.canisterId).toString()
+      : this.canisterId.toString()
+    const queryKeys: any[] = [resolvedCanisterId, params.functionName]
+
+    if (callConfig?.effectiveCanisterId) {
+      const effectiveCanisterId = Principal.from(
+        callConfig.effectiveCanisterId
+      ).toString()
+
+      if (effectiveCanisterId !== resolvedCanisterId) {
+        queryKeys.push({ effectiveCanisterId })
+      }
+    }
 
     if (params.args) {
       const argKey = generateKey(params.args)
@@ -211,7 +225,6 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
 
     return queryKeys
   }
-
   // ══════════════════════════════════════════════════════════════════════
   // QUERY OPTIONS
   // ══════════════════════════════════════════════════════════════════════
@@ -220,7 +233,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     params: ReactorCallParams<A, M, T>
   ): FetchQueryOptions<ReactorReturnOk<A, M, T>> {
     return {
-      queryKey: this.generateQueryKey(params),
+      queryKey: this.generateQueryKey(params, params.callConfig),
       queryFn: () => this.callMethod(params),
     }
   }
@@ -244,14 +257,18 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * ```
    */
   public invalidateQueries<M extends FunctionName<A>>(
-    params?: Partial<ReactorQueryParams<A, M, T>>
+    params?: Partial<ReactorQueryParams<A, M, T>>,
+    callConfig?: CallConfig
   ) {
     const queryKey = params
-      ? this.generateQueryKey({
-          functionName: params.functionName as M,
-          args: params.args,
-          queryKey: params.queryKey,
-        })
+      ? this.generateQueryKey(
+          {
+            functionName: params.functionName as M,
+            args: params.args,
+            queryKey: params.queryKey,
+          },
+          callConfig
+        )
       : [this.canisterId.toString()]
 
     this.queryClient.invalidateQueries({
@@ -367,9 +384,10 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * Get the current data from the cache without fetching.
    */
   public getQueryData<M extends FunctionName<A>>(
-    params: ReactorQueryParams<A, M, T>
+    params: ReactorQueryParams<A, M, T>,
+    callConfig?: CallConfig
   ): ReactorReturnOk<A, M, T> | undefined {
-    const queryKey = this.generateQueryKey(params)
+    const queryKey = this.generateQueryKey(params, callConfig)
     return this.queryClient.getQueryData<ReactorReturnOk<A, M, T>>(queryKey)
   }
 
@@ -381,17 +399,19 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     arg: Uint8Array,
     callConfig?: CallConfig
   ): Promise<Uint8Array> {
-    const agent = this.clientManager.agent
-    const effectiveCanisterId =
-      callConfig?.effectiveCanisterId ?? this.canisterId
+    const agent = callConfig?.agent ?? this.clientManager.agent
+    const canisterId = callConfig?.canisterId
+      ? Principal.from(callConfig.canisterId)
+      : this.canisterId
+    const effectiveCanisterId = callConfig?.effectiveCanisterId ?? canisterId
 
-    const response = await agent.query(this.canisterId, {
+    const response = await agent.query(canisterId, {
       methodName,
       arg,
       effectiveCanisterId,
     })
 
-    return processQueryCallResponse(response, this.canisterId, methodName)
+    return processQueryCallResponse(response, canisterId, methodName)
   }
 
   /**
@@ -402,21 +422,26 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     arg: Uint8Array,
     callConfig?: CallConfig
   ): Promise<Uint8Array> {
-    const agent = this.clientManager.agent
+    const agent = callConfig?.agent ?? this.clientManager.agent
+    const canisterId = callConfig?.canisterId
+      ? Principal.from(callConfig.canisterId)
+      : this.canisterId
+    const effectiveCanisterId = callConfig?.effectiveCanisterId ?? canisterId
+    const pollingOptions = callConfig?.pollingOptions ?? this.pollingOptions
 
-    const response = await agent.call(this.canisterId, {
+    const response = await agent.call(canisterId, {
       methodName,
       arg,
-      effectiveCanisterId: callConfig?.effectiveCanisterId,
+      effectiveCanisterId,
       nonce: callConfig?.nonce,
     })
 
     return await processUpdateCallResponse(
       response,
-      this.canisterId,
+      canisterId,
       methodName,
       agent,
-      this.pollingOptions
+      pollingOptions
     )
   }
 

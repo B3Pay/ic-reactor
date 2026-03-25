@@ -172,8 +172,11 @@ Generate a TanStack Query cache key for a method call:
 const queryKey = backend.generateQueryKey({
   functionName: "getUser",
   args: ["user-123"],
+}, {
+  canisterId: otherCanisterId,
+  effectiveCanisterId: managementCanisterId,
 })
-// Returns: [canisterId, "getUser", "user-123"]
+// Returns: [canisterId, "getUser", { effectiveCanisterId: "..." }, "user-123"]
 ```
 
 Use this for:
@@ -181,6 +184,10 @@ Use this for:
 - `invalidateQueries` in mutations
 - Manual cache operations
 - Query invalidation
+
+If a query uses `callConfig`, pass the same `callConfig` here so the generated
+key matches the cache entry used by `fetchQuery`, `getQueryOptions`, and the
+React query wrappers.
 
 ---
 
@@ -192,6 +199,7 @@ Get TanStack Query options for a method call:
 const queryOptions = backend.getQueryOptions({
   functionName: "getUser",
   args: ["user-123"],
+  callConfig: { canisterId: otherCanisterId },
 })
 
 // Use in loaders
@@ -218,6 +226,12 @@ Invalidate all cached queries for this canister:
 // After a successful mutation, invalidate all queries for this canister
 await backend.callMethod({ functionName: "updateProfile", args: [newProfile] })
 backend.invalidateQueries()
+
+// Invalidate a cached query that used a per-call canister override
+backend.invalidateQueries(
+  { functionName: "getUser", args: ["user-123"] },
+  { canisterId: otherCanisterId }
+)
 ```
 
 This will mark all queries as stale and trigger a refetch for any active queries.
@@ -425,6 +439,7 @@ Fetch data from the canister and cache it using React Query:
 const result = await backend.fetchQuery({
   functionName: "getUser",
   args: ["user-123"],
+  callConfig: { canisterId: otherCanisterId },
 })
 ```
 
@@ -440,7 +455,7 @@ Get the current data from the cache without fetching:
 const user = backend.getQueryData({
   functionName: "getUser",
   args: ["user-123"],
-})
+}, { canisterId: otherCanisterId })
 
 if (user) {
   console.log("User in cache:", user.name)

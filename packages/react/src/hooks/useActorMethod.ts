@@ -185,11 +185,14 @@ export function useActorMethod<
   // Generate query key
   const queryKey = useMemo(() => {
     if (customQueryKey) return customQueryKey
-    return reactor.generateQueryKey({
-      functionName,
-      args,
-    })
-  }, [reactor, functionName, args, customQueryKey])
+    return reactor.generateQueryKey(
+      {
+        functionName,
+        args,
+      },
+      callConfig
+    )
+  }, [reactor, functionName, args, callConfig, customQueryKey])
 
   // ============================================================================
   // Query Implementation
