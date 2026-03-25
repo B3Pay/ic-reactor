@@ -8,10 +8,12 @@ export type CandidVariantToIntersection<U> = (
   ? I
   : never
 
-export type CandidVariantKey<T> = T extends any ? keyof T : never
+export type CandidVariantKey<T> = T extends any
+  ? Exclude<keyof T, "_type">
+  : never
 
 export type CandidVariantValue<T, K extends CandidVariantKey<T>> =
-  T extends Record<K, infer U> ? U : never
+  T extends Record<K, infer U> ? U : T extends { _type: K } ? null : never
 
 export type CandidVariant<T> =
   IsCandidVariant<T> extends true
