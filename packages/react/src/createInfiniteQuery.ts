@@ -306,10 +306,13 @@ const createInfiniteQueryImpl = <
 
   // Get query key from actor manager
   const getQueryKey = (): QueryKey => {
-    return reactor.generateQueryKey({
-      functionName,
-      queryKey: customQueryKey,
-    })
+    return reactor.generateQueryKey(
+      {
+        functionName,
+        queryKey: customQueryKey,
+      },
+      callConfig
+    )
   }
 
   // Query function - accepts QueryFunctionContext

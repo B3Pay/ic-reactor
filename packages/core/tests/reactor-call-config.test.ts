@@ -105,6 +105,70 @@ describe("Reactor callConfig overrides", () => {
     )
   })
 
+  it("partitions cached query keys by callConfig.canisterId", async () => {
+    defaultAgent.query.mockResolvedValue(createMockQueryResponse("default-ok"))
+    overrideAgent.query.mockResolvedValue(
+      createMockQueryResponse("override-ok")
+    )
+
+    await reactor.fetchQuery({
+      functionName: "readName",
+    })
+
+    await reactor.fetchQuery({
+      functionName: "readName",
+      callConfig: {
+        canisterId: overrideCanisterId,
+        agent: overrideAgent,
+      },
+    })
+
+    expect(
+      reactor.getQueryData({
+        functionName: "readName",
+      })
+    ).toBe("default-ok")
+
+    expect(
+      reactor.getQueryData(
+        {
+          functionName: "readName",
+        },
+        {
+          canisterId: overrideCanisterId,
+        }
+      )
+    ).toBe("override-ok")
+
+    expect(
+      reactor.generateQueryKey(
+        {
+          functionName: "readName",
+        },
+        {
+          canisterId: overrideCanisterId,
+        }
+      )
+    ).toEqual([overrideCanisterId, "readName"])
+  })
+
+  it("includes effectiveCanisterId in the query key when provided", () => {
+    expect(
+      reactor.generateQueryKey(
+        {
+          functionName: "readName",
+        },
+        {
+          effectiveCanisterId: Principal.fromText(overrideCanisterId),
+        }
+      )
+    ).toEqual([
+      defaultCanisterId,
+      "readName",
+      { effectiveCanisterId: overrideCanisterId },
+    ])
+  })
+
   it("uses callConfig canisterId, agent, and pollingOptions for update calls", async () => {
     overrideAgent.call.mockResolvedValue({
       requestId: new Uint8Array([1, 2, 3]),
