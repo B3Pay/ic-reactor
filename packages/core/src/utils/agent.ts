@@ -1,6 +1,6 @@
 import type {
+  Agent,
   ApiQueryResponse,
-  HttpAgent,
   HttpDetailsResponse,
   PollingOptions,
   SubmitResponse,
@@ -87,7 +87,7 @@ export async function processUpdateCallResponse(
   result: SubmitResponse,
   canisterId: Principal,
   methodName: string,
-  agent: HttpAgent,
+  agent: Agent,
   pollingOptions: PollingOptions
 ): Promise<Uint8Array> {
   let reply: Uint8Array | undefined

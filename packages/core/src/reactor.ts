@@ -381,17 +381,19 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     arg: Uint8Array,
     callConfig?: CallConfig
   ): Promise<Uint8Array> {
-    const agent = this.clientManager.agent
-    const effectiveCanisterId =
-      callConfig?.effectiveCanisterId ?? this.canisterId
+    const agent = callConfig?.agent ?? this.clientManager.agent
+    const canisterId = callConfig?.canisterId
+      ? Principal.from(callConfig.canisterId)
+      : this.canisterId
+    const effectiveCanisterId = callConfig?.effectiveCanisterId ?? canisterId
 
-    const response = await agent.query(this.canisterId, {
+    const response = await agent.query(canisterId, {
       methodName,
       arg,
       effectiveCanisterId,
     })
 
-    return processQueryCallResponse(response, this.canisterId, methodName)
+    return processQueryCallResponse(response, canisterId, methodName)
   }
 
   /**
@@ -402,21 +404,26 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     arg: Uint8Array,
     callConfig?: CallConfig
   ): Promise<Uint8Array> {
-    const agent = this.clientManager.agent
+    const agent = callConfig?.agent ?? this.clientManager.agent
+    const canisterId = callConfig?.canisterId
+      ? Principal.from(callConfig.canisterId)
+      : this.canisterId
+    const effectiveCanisterId = callConfig?.effectiveCanisterId ?? canisterId
+    const pollingOptions = callConfig?.pollingOptions ?? this.pollingOptions
 
-    const response = await agent.call(this.canisterId, {
+    const response = await agent.call(canisterId, {
       methodName,
       arg,
-      effectiveCanisterId: callConfig?.effectiveCanisterId,
+      effectiveCanisterId,
       nonce: callConfig?.nonce,
     })
 
     return await processUpdateCallResponse(
       response,
-      this.canisterId,
+      canisterId,
       methodName,
       agent,
-      this.pollingOptions
+      pollingOptions
     )
   }
 
