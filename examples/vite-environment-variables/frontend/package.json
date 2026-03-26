@@ -8,6 +8,8 @@
     "app"
   ],
   "overrides": {
-    "rollup": "4.59.0"
+    "rollup": "4.59.0",
+    "picomatch": "4.0.4",
+    "yaml": "2.8.3"
   }
 }
