@@ -13,15 +13,15 @@
     "@ic-reactor/react": "workspace:*",
     "@ic-reactor/vite-plugin": "workspace:*",
     "@icp-sdk/auth": "^5.0.0",
-    "@icp-sdk/core": "^5.0.0"
+    "@icp-sdk/core": "^5.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.0",
+    "@babel/preset-env": "^7.29.2",
     "@babel/preset-react": "^7.28.5",
     "@babel/preset-typescript": "^7.28.5",
     "@happy-dom/global-registrator": "^20.8.4",
-    "@tanstack/react-query": "^5.90",
+    "@tanstack/react-query": "^5.95",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -35,7 +35,7 @@
     "happy-dom": "^20.8.4",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
-    "jsdom": "^29.0.0",
+    "jsdom": "^29.0.1",
     "node-fetch": "3.3.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
