@@ -51,7 +51,15 @@ Agents working in the `ic-reactor` repository discover this skill through:
 - `.github/copilot-instructions.md` (GitHub Copilot)
 - `.cursorrules` (Cursor)
 
-### Install from GitHub
+### External Install (for other ICP projects)
+
+This skill is also published in the standalone skills repo [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) for use outside this repository:
+
+```bash
+npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
+```
+
+Or install directly from this repo:
 
 ```text
 Install the skill from github.com/B3Pay/ic-reactor path skill-packages/ic-reactor-hooks

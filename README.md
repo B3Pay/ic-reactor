@@ -350,16 +350,23 @@ This repository is intentionally structured to work well with AI coding assistan
 
 ### AI context files
 
-- [`./llms.txt`](./llms.txt) — high-level library context for LLMs
-- [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — installable IC Reactor skills mono-repo
-- [`./.cursorrules`](./.cursorrules) — Cursor-specific behavior guidance
+| File | Purpose |
+|------|---------|
+| [`llms.txt`](./llms.txt) | High-level library context for LLMs |
+| [`CLAUDE.md`](./CLAUDE.md) | Claude / Anthropic project context |
+| [`AGENTS.md`](./AGENTS.md) | OpenAI Codex agent instructions |
+| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions |
+| [`.cursorrules`](./.cursorrules) | Cursor IDE rules |
+| [`skill-packages/`](./skill-packages/) | Local skill packages (multi-agent compatible) |
 
-### Installable Skill: `ic-reactor-hooks`
+### Skill: `ic-reactor-hooks`
 
-The canonical installable IC Reactor hooks skill lives in the skills mono-repo:
+The `ic-reactor-hooks` skill is available in two places:
 
-- repo: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills)
-- skill path: `ic-reactor-hooks`
+- **In-repo**: [`skill-packages/ic-reactor-hooks/`](./skill-packages/ic-reactor-hooks/) — used by agents working directly in this repository
+- **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
+
+Both locations contain the same skill content with multi-agent metadata (OpenAI, Claude, Copilot).
 
 Use it when asking an agent to:
 
@@ -374,7 +381,7 @@ Example prompt:
 Use $ic-reactor-hooks to create a reusable query/mutation factory pair for my canister and show usage both inside a React component and in a route loader.
 ```
 
-Example install:
+Example install (for external projects):
 
 ```bash
 npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
