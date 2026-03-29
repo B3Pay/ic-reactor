@@ -16,3 +16,6 @@ export type { ReactorGeneratorOptions } from "./reactor.js"
 
 export { generateClientFile } from "./client.js"
 export type { ClientGeneratorOptions } from "./client.js"
+
+export { transformToDisplayDts } from "./display-declarations.js"
+export type { DisplayDeclarationsOptions } from "./display-declarations.js"

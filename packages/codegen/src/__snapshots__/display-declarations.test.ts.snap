@@ -1,0 +1,76 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Display Declarations Transform > produces a full snapshot for ICRC1 > icrc1-display-declarations 1`] = `
+"// Display types: string is represented as string
+import type { ActorMethod } from '@icp-sdk/core/agent';
+import type { IDL } from '@icp-sdk/core/candid';
+
+export interface Account {
+  'owner' : string,
+  'subaccount' : Subaccount | undefined,
+}
+export type BlockIndex = string;
+export type Duration = string;
+export interface InitArgs {
+  'token_symbol' : string,
+  'transfer_fee' : string,
+  'metadata' : Array<[string, Value]>,
+  'minting_account' : Account,
+  'initial_balances' : Array<[Account, string]>,
+  'archive_options' : {
+    'num_blocks_to_archive' : string,
+    'trigger_threshold' : string,
+    'max_message_size_bytes' : string | undefined,
+    'cycles_for_archive_creation' : string | undefined,
+    'node_max_memory_size_bytes' : string | undefined,
+    'controller_id' : string,
+  },
+  'token_name' : string,
+}
+export type LedgerArg = { '_type' : 'Upgrade', 'Upgrade' : UpgradeArgs | undefined } |
+  { '_type' : 'Init', 'Init' : InitArgs };
+export type Subaccount = string | Uint8Array;
+export type Timestamp = string;
+export type Tokens = string;
+export interface TransferArg {
+  'to' : Account,
+  'fee' : Tokens | undefined,
+  'memo' : (string | Uint8Array) | undefined,
+  'from_subaccount' : Subaccount | undefined,
+  'created_at_time' : Timestamp | undefined,
+  'amount' : Tokens,
+}
+export type TransferError = {
+    'GenericError' : { 'message' : string, 'error_code' : string }
+  } |
+  { 'TemporarilyUnavailable' : null } |
+  { 'BadBurn' : { 'min_burn_amount' : Tokens } } |
+  { 'Duplicate' : { 'duplicate_of' : BlockIndex } } |
+  { 'BadFee' : { 'expected_fee' : Tokens } } |
+  { 'CreatedInFuture' : { 'ledger_time' : string } } |
+  { 'TooOld' : null } |
+  { 'InsufficientFunds' : { 'balance' : Tokens } };
+export type TransferResult = { '_type' : 'Ok', 'Ok' : BlockIndex } |
+  { '_type' : 'Err', 'Err' : TransferError };
+export type Value = { '_type' : 'Int', 'Int' : string } |
+  { '_type' : 'Nat', 'Nat' : string } |
+  { '_type' : 'Blob', 'Blob' : string | Uint8Array } |
+  { '_type' : 'Text', 'Text' : string };
+export interface _SERVICE {
+  'icrc1_balance_of' : ActorMethod<[Account], Tokens>,
+  'icrc1_decimals' : ActorMethod<[], number>,
+  'icrc1_fee' : ActorMethod<[], Tokens>,
+  'icrc1_metadata' : ActorMethod<[], Array<[string, Value]>>,
+  'icrc1_minting_account' : ActorMethod<[], Account | undefined>,
+  'icrc1_name' : ActorMethod<[], string>,
+  'icrc1_supported_standards' : ActorMethod<
+    [],
+    Array<{ 'url' : string, 'name' : string }>
+  >,
+  'icrc1_symbol' : ActorMethod<[], string>,
+  'icrc1_total_supply' : ActorMethod<[], Tokens>,
+  'icrc1_transfer' : ActorMethod<[TransferArg], TransferResult>,
+}
+export declare const idlFactory: IDL.InterfaceFactory;
+export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];"
+`;

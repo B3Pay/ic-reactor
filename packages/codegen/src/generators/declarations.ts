@@ -14,6 +14,7 @@ import { didToJs, didToTs } from "@ic-reactor/parser"
 import path from "node:path"
 import fs from "node:fs"
 import type { GeneratorResult } from "../types.js"
+import { transformToDisplayDts } from "./display-declarations.js"
 
 export interface DeclarationsGeneratorOptions {
   /** Absolute path to the .did file */
@@ -22,6 +23,12 @@ export interface DeclarationsGeneratorOptions {
   outDir: string
   /** Canister name (used only for error messages) */
   canisterName: string
+  /**
+   * Also generate a display-format `.display.d.ts` alongside the standard `.d.ts`.
+   * Display types replace bigint→string, Principal→string, opt→nullable, etc.
+   * Defaults to true.
+   */
+  displayMode?: boolean
 }
 
 export interface DeclarationsGeneratorResult {
@@ -80,14 +87,30 @@ export async function generateDeclarations(
     fs.writeFileSync(dtsPath, tsContent)
     fs.writeFileSync(didCopyPath, didContent)
 
+    const files: GeneratorResult[] = [
+      { success: true, filePath: jsPath },
+      { success: true, filePath: dtsPath },
+      { success: true, filePath: didCopyPath },
+    ]
+
+    // Generate display-format declarations if requested
+    const shouldGenerateDisplay = options.displayMode ?? true
+    if (shouldGenerateDisplay) {
+      const displayDtsContent = transformToDisplayDts({
+        standardDts: tsContent,
+      })
+      const displayDtsPath = path.join(
+        declarationsDir,
+        `${baseName}.display.d.ts`
+      )
+      fs.writeFileSync(displayDtsPath, displayDtsContent)
+      files.push({ success: true, filePath: displayDtsPath })
+    }
+
     return {
       success: true,
       declarationsDir,
-      files: [
-        { success: true, filePath: jsPath },
-        { success: true, filePath: dtsPath },
-        { success: true, filePath: didCopyPath },
-      ],
+      files,
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

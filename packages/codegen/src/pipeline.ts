@@ -131,11 +131,19 @@ export async function runCanisterPipeline(
 
   // ── Step 1: Declarations ───────────────────────────────────────────────────
 
+  // Determine if display declarations should be generated
+  const reactorClass = resolveReactorClass(canisterConfig)
+  const isDisplayBased =
+    reactorClass === "DisplayReactor" ||
+    reactorClass === "CandidDisplayReactor" ||
+    reactorClass === "MetadataDisplayReactor"
+
   try {
     const declResult = await generateDeclarations({
       didFile: resolvedDidFile,
       outDir: canisterOutDir,
       canisterName: name,
+      displayMode: isDisplayBased,
     })
 
     if (!declResult.success) {
@@ -169,7 +177,6 @@ export async function runCanisterPipeline(
 
   const reactorPath = path.join(canisterOutDir, "index.generated.ts")
   const entryPath = path.join(canisterOutDir, "index.ts")
-  const reactorClass = resolveReactorClass(canisterConfig)
   const runtimeTarget = resolveRuntimeTarget(canisterConfig, globalConfig)
 
   try {

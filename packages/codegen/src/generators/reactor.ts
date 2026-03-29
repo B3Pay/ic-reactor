@@ -64,6 +64,17 @@ function getReactorClassImportSource(
 }
 
 /**
+ * Check if a reactor class uses display type transformations.
+ */
+function isDisplayMode(reactorClass: ReactorClassName): boolean {
+  return (
+    reactorClass === "DisplayReactor" ||
+    reactorClass === "CandidDisplayReactor" ||
+    reactorClass === "MetadataDisplayReactor"
+  )
+}
+
+/**
  * Generate the content of a canister's managed implementation file.
  */
 export function generateReactorFile(options: ReactorGeneratorOptions): string {
@@ -82,7 +93,12 @@ export function generateReactorFile(options: ReactorGeneratorOptions): string {
 
   // Derive the declarations import path from the .did filename
   const baseName = path.basename(didFile, ".did")
-  const declarationsPath = `./declarations/${baseName}`
+  const useDisplay = isDisplayMode(reactorClass)
+  const declarationsPath = useDisplay
+    ? `./declarations/${baseName}.display`
+    : `./declarations/${baseName}`
+  // IDL factory always comes from the standard declarations (has the runtime JS)
+  const idlFactoryPath = `./declarations/${baseName}`
   const reactorImportSource = getReactorClassImportSource(
     reactorClass,
     runtimeTarget
@@ -105,9 +121,16 @@ export const {
 `
       : ""
 
+  // When importing from display declarations, also import the IDL factory
+  // from the standard declarations (display file is types-only)
+  const serviceImport = useDisplay
+    ? `import { type _SERVICE } from "${declarationsPath}"
+import { idlFactory } from "${idlFactoryPath}"`
+    : `import { idlFactory, type _SERVICE } from "${declarationsPath}"`
+
   return `${runtimeTarget === "react" ? 'import { createActorHooks } from "@ic-reactor/react"\n' : ""}import { ${reactorClass} } from "${reactorImportSource}"
 import { clientManager } from "${clientManagerPath}"
-import { idlFactory, type _SERVICE } from "${declarationsPath}"
+${serviceImport}
 
 export type ${serviceName} = _SERVICE
 

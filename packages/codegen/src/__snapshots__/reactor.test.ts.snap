@@ -4,7 +4,8 @@ exports[`Reactor generator > keeps default behavior as DisplayReactor > display-
 "import { createActorHooks } from "@ic-reactor/react"
 import { DisplayReactor } from "@ic-reactor/react"
 import { clientManager } from "../../clients"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+import { type _SERVICE } from "./declarations/backend.display"
+import { idlFactory } from "./declarations/backend"
 
 export type BackendService = _SERVICE
 
@@ -66,7 +67,8 @@ exports[`Reactor generator > supports candid reactor subclasses > metadata-displ
 "import { createActorHooks } from "@ic-reactor/react"
 import { MetadataDisplayReactor } from "@ic-reactor/candid"
 import { clientManager } from "../../clients"
-import { idlFactory, type _SERVICE } from "./declarations/ledger"
+import { type _SERVICE } from "./declarations/ledger.display"
+import { idlFactory } from "./declarations/ledger"
 
 export type LedgerService = _SERVICE
 
@@ -96,7 +98,8 @@ export const {
 exports[`Reactor generator > supports core target generation without React hooks > core-display-reactor-index 1`] = `
 "import { DisplayReactor } from "@ic-reactor/core"
 import { clientManager } from "../../clients"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+import { type _SERVICE } from "./declarations/backend.display"
+import { idlFactory } from "./declarations/backend"
 
 export type BackendService = _SERVICE
 
