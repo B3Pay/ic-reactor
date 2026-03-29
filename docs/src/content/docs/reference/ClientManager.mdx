@@ -179,9 +179,10 @@ await clientManager.login({
 ```
 
 <Aside type="note">
-  The `identityProvider` is auto-detected based on network if not provided: -
-  **mainnet**: `https://identity.ic0.app` - **local**:
-  `http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943`
+  The `identityProvider` is auto-detected based on network if not provided:
+
+  - **mainnet**: `https://identity.ic0.app`
+  - **local**: `http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943`
 </Aside>
 
 ---
@@ -496,8 +497,7 @@ npm install @icp-sdk/auth
 
 <Aside type="caution">
   Always call `initialize()` before making canister calls while using the local
-  development setup. The React auth hooks (`useInitialize`) do this
-  automatically.
+  development setup. The React auth hooks (`useAuth`) do this automatically.
 </Aside>
 
 ## External Authentication

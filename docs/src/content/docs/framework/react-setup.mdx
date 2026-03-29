@@ -25,8 +25,8 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
 
    ```typescript
    // src/reactor/index.ts
-   import { ClientManager, Reactor } from "@ic-reactor/core"
-   import { QueryClient } from "@tanstack/query-core"
+   import { ClientManager, Reactor } from "@ic-reactor/react"
+   import { QueryClient } from "@tanstack/react-query"
    import { idlFactory, type _SERVICE } from "../declarations/backend"
 
    export const queryClient = new QueryClient()
@@ -59,17 +59,17 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
 
    // Actor hooks for your canister
    export const {
-     useActorQuery, // [Read more](/v3/reference/createactorhooks/useactorquery)
-     useActorMutation, // [Read more](/v3/reference/createactorhooks/useactormutation)
-     useActorSuspenseQuery, // [Read more](/v3/reference/createactorhooks/useactorsuspensequery)
-     useActorInfiniteQuery, // [Read more](/v3/reference/createactorhooks/useactorinfinitequery)
+     useActorQuery,
+     useActorMutation,
+     useActorSuspenseQuery,
+     useActorInfiniteQuery,
    } = createActorHooks(backend)
 
    // Auth hooks for authentication
    export const {
-     useAuth, // [Read more](/v3/reference/createauthhooks/useauth)
-     useUserPrincipal, // [Read more](/v3/reference/createauthhooks/useuserprincipal)
-     useAgentState, // [Read more](/v3/reference/createauthhooks/useagentstate)
+     useAuth,
+     useUserPrincipal,
+     useAgentState,
    } = createAuthHooks(clientManager)
    ```
 
@@ -146,7 +146,7 @@ function ConnectionStatus() {
 
 ### useUserPrincipal Hook
 
-A convenience hook for getting the current user's [`useUserPrincipal`](/v3/reference/createauthhooks/useuserprincipal):
+A convenience hook for getting the current user's principal. See [`useUserPrincipal`](/v3/reference/createauthhooks/useuserprincipal) reference:
 
 ```tsx
 import { useUserPrincipal } from "../reactor/hooks"
@@ -249,8 +249,8 @@ Working with multiple canisters:
 
 ```typescript
 // src/reactor/index.ts
-import { ClientManager, Reactor } from "@ic-reactor/core"
-import { QueryClient } from "@tanstack/query-core"
+import { ClientManager, Reactor } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
 import {
   idlFactory as ledgerIdl,
   type _SERVICE as Ledger,
@@ -291,19 +291,16 @@ export const authHooks = createAuthHooks(clientManager)
 
 // Export individual hooks for convenience
 export const {
-  useActorQuery: useLedgerQuery, // [Read more](/v3/reference/createactorhooks/useactorquery)
-  useActorMutation: useLedgerMutation, // [Read more](/v3/reference/createactorhooks/useactormutation)
+  useActorQuery: useLedgerQuery,
+  useActorMutation: useLedgerMutation,
 } = ledgerHooks
 
 export const {
-  useActorQuery: useBackendQuery, // [Read more](/v3/reference/createactorhooks/useactorquery)
-  useActorMutation: useBackendMutation, // [Read more](/v3/reference/createactorhooks/useactormutation)
+  useActorQuery: useBackendQuery,
+  useActorMutation: useBackendMutation,
 } = backendHooks
 
-export const {
-  useAuth, // [Read more](/v3/reference/createauthhooks/useauth)
-  useUserPrincipal, // [Read more](/v3/reference/createauthhooks/useuserprincipal)
-} = authHooks
+export const { useAuth, useUserPrincipal } = authHooks
 ```
 
 ## Auto Transformations
@@ -311,7 +308,7 @@ export const {
 For easier handling of Candid types, use `DisplayReactor`:
 
 ```typescript
-import { ClientManager, DisplayReactor } from "@ic-reactor/core"
+import { DisplayReactor } from "@ic-reactor/react"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
 const backend = new DisplayReactor<_SERVICE>({
