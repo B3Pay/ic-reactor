@@ -134,13 +134,13 @@ mutate([{ title: "New Post" }], {
 The most common pattern after a mutation is to invalidate related queries. Use the `invalidateQueries` option:
 
 ```tsx
-import { backendActor } from "../reactor"
+import { backend } from "../reactor"
 
 const { mutate } = useActorMutation({
   functionName: "createPost",
   invalidateQueries: [
     // Invalidate the posts list after creating
-    backendActor.generateQueryKey({ functionName: "getPosts" }),
+    backend.generateQueryKey({ functionName: "getPosts" }),
   ],
 })
 ```
@@ -149,7 +149,7 @@ Or use `onSuccess` with the query client for more control:
 
 ```tsx
 import { useQueryClient } from "@tanstack/react-query"
-import { backendActor } from "../reactor"
+import { backend } from "../reactor"
 
 function CreatePost() {
   const queryClient = useQueryClient()
@@ -158,10 +158,10 @@ function CreatePost() {
     functionName: "createPost",
     onSuccess: () => {
       // Invalidate
-      backendActor.invalidateQueries({ functionName: "getPosts" })
+      backend.invalidateQueries({ functionName: "getPosts" })
       // or
       queryClient.invalidateQueries({
-        queryKey: backendActor.generateQueryKey({ functionName: "getPosts" }),
+        queryKey: backend.generateQueryKey({ functionName: "getPosts" }),
       })
     },
   })
@@ -275,7 +275,7 @@ You can perform optimistic updates using standard TanStack Query patterns:
 
 ```tsx
 import { useQueryClient } from "@tanstack/react-query"
-import { backendActor } from "../reactor"
+import { backend } from "../reactor"
 
 function LikeButton({ postId }: { postId: string }) {
   const queryClient = useQueryClient()
@@ -284,7 +284,7 @@ function LikeButton({ postId }: { postId: string }) {
     functionName: "likePost",
     onMutate: async (args) => {
       const [postId] = args
-      const queryKey = backendActor.generateQueryKey({
+      const queryKey = backend.generateQueryKey({
         functionName: "getPost",
         args: [postId],
       })
@@ -328,13 +328,13 @@ For reusable mutation configurations, use `createMutation`:
 
 ```tsx
 import { createMutation } from "@ic-reactor/react"
-import { backendActor } from "../reactor"
+import { backend } from "../reactor"
 
 // Define mutation once
-const createPostMutation = createMutation(backendActor, {
+const createPostMutation = createMutation(backend, {
   functionName: "createPost",
   invalidateQueries: [
-    backendActor.generateQueryKey({ functionName: "getPosts" }),
+    backend.generateQueryKey({ functionName: "getPosts" }),
   ],
 })
 

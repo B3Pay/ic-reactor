@@ -44,11 +44,13 @@ const clientManager = new ClientManager({ queryClient, withProcessEnv: true })
 const backend = new Reactor<BackendService>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId,
 })
 const ledger = new Reactor<LedgerService>({
   clientManager,
   idlFactory: ledgerIdl,
+  name: "ledger",
   canisterId: ledgerId,
 })
 
@@ -177,9 +179,10 @@ await clientManager.login({
 ```
 
 <Aside type="note">
-  The `identityProvider` is auto-detected based on network if not provided: -
-  **mainnet**: `https://identity.ic0.app` - **local**:
-  `http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943`
+  The `identityProvider` is auto-detected based on network if not provided:
+
+  - **mainnet**: `https://identity.ic0.app`
+  - **local**: `http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943`
 </Aside>
 
 ---
@@ -311,6 +314,7 @@ export const clientManager = new ClientManager({
 export const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
 })
 ```
@@ -493,8 +497,7 @@ npm install @icp-sdk/auth
 
 <Aside type="caution">
   Always call `initialize()` before making canister calls while using the local
-  development setup. The React auth hooks (`useInitialize`) do this
-  automatically.
+  development setup. The React auth hooks (`useAuth`) do this automatically.
 </Aside>
 
 ## External Authentication

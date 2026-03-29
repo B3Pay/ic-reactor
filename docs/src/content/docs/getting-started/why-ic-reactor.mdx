@@ -202,34 +202,32 @@ One of IC Reactor's most elegant features:
 // Your Candid method returns: variant { Ok: nat; Err: text }
 
 const { mutate } = useActorMutation({
-functionName: "transfer",
-onSuccess: (balance) => {
-// balance is typed as `bigint` - Err case throws automatically!
-console.log(`New balance: ${balance}`);
-},
-onCanisterError: (error) => {
-// error.err is typed as `string`
-console.error(`Transfer failed: ${error.err}`);
-},
-});
-
-````
+  functionName: "transfer",
+  onSuccess: (balance) => {
+    // balance is typed as `bigint` - Err case throws automatically!
+    console.log(`New balance: ${balance}`)
+  },
+  onCanisterError: (error) => {
+    // error.err is typed as `string`
+    console.error(`Transfer failed: ${error.err}`)
+  },
+})
+```
   </TabItem>
   <TabItem label="Without IC Reactor">
 ```typescript
 // Manual approach - tedious and error-prone
-const result = await actor.transfer({ to: recipient, amount });
+const result = await actor.transfer({ to: recipient, amount })
 
 if ("Ok" in result) {
-  console.log(`New balance: ${result.Ok}`);
+  console.log(`New balance: ${result.Ok}`)
 } else if ("Err" in result) {
-  console.error(`Transfer failed: ${result.Err}`);
+  console.error(`Transfer failed: ${result.Err}`)
 } else {
   // What if it's lowercase? What if the shape changes?
-  throw new Error("Unexpected result shape");
+  throw new Error("Unexpected result shape")
 }
-````
-
+```
   </TabItem>
 </Tabs>
 
