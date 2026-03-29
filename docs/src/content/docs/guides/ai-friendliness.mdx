@@ -23,15 +23,12 @@ import { Card } from "@astrojs/starlight/components"
   llms.txt](https://raw.githubusercontent.com/B3Pay/ic-reactor/main/llms.txt)
 </Card>
 
-## Agent Skills (IC Reactor Skills Repo)
+## Agent Skills
 
-Installable IC Reactor skills are maintained in the separate skills mono-repo:
+The `ic-reactor-hooks` skill is available in two places:
 
-- [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills)
-
-Current skill:
-
-- `ic-reactor-hooks`
+- **In-repo**: [`skill-packages/ic-reactor-hooks/`](https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor-hooks) — used by agents working directly in this repository
+- **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
 
 Use this skill when asking an AI agent to generate or refactor IC Reactor integrations, especially when you need:
 
@@ -97,4 +94,8 @@ const { useActorQuery, useActorMutation } = createActorHooks(reactor)
 
 If you use **Cursor**, this project includes a `.cursorrules` file that automatically configures the AI to follow the project's specific coding standards and architecture.
 
-If you use **GitHub Copilot**, install the IC Reactor skills from [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) in addition to using the repository docs and examples.
+If you use **GitHub Copilot**, the repository includes `.github/copilot-instructions.md` and skill metadata at `skill-packages/ic-reactor-hooks/agents/copilot.yaml`. You can also install the external skills from [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills).
+
+If you use **Claude**, the repository includes a `CLAUDE.md` project context file and skill metadata at `skill-packages/ic-reactor-hooks/agents/claude.yaml`.
+
+If you use **OpenAI Codex**, the repository includes `AGENTS.md` and skill metadata at `skill-packages/ic-reactor-hooks/agents/openai.yaml`.

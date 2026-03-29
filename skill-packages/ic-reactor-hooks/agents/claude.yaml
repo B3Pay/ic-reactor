@@ -1,0 +1,34 @@
+# Claude / Anthropic agent metadata for ic-reactor-hooks skill.
+# Used by tools that discover skill packages for Claude-based agents.
+
+interface:
+  display_name: "IC Reactor Hooks (ICP)"
+  short_description: "ICP React hooks, factories, and cache patterns for Internet Computer apps"
+  brand_color: "#29ABE2"
+  icon: "../assets/ic-reactor-icon.svg"
+  default_prompt: >-
+    Use ic-reactor-hooks to build or refactor IC Reactor hooks,
+    query/mutation factories, and cache invalidation patterns for an
+    Internet Computer React app. Show usage inside React components
+    and outside React (loaders, actions, services, tests).
+
+trigger:
+  keywords:
+    - ic-reactor
+    - "@ic-reactor/react"
+    - createActorHooks
+    - useActorQuery
+    - useActorMutation
+    - createQuery
+    - createMutation
+    - ICP React hooks
+    - Internet Computer hooks
+    - canister hooks
+  allow_implicit: true
+
+instructions:
+  # Claude agents should read the SKILL.md in the parent directory for the
+  # full workflow and pattern selection guide. Load references/patterns.md
+  # only when concrete code examples or return-type details are needed.
+  entry_point: "../SKILL.md"
+  reference: "../references/patterns.md"
