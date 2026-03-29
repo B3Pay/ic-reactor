@@ -3,18 +3,38 @@ title: Contributing
 description: Development workflow, formatting, and test expectations for IC Reactor contributions
 ---
 
-import { Card } from "@astrojs/starlight/components"
+import { Aside, Steps } from "@astrojs/starlight/components"
 
-Thanks for your interest in contributing to IC Reactor! This page provides a quick overview of how to get started.
+Thanks for your interest in contributing to IC Reactor! This guide covers the development workflow, coding standards, and how to submit your changes.
 
-### Setup
+## Quickstart
 
-```bash
-pnpm install
-pnpm build
-```
+<Steps>
 
-### Formatting
+1. Fork the repository and clone it:
+
+   ```bash
+   git clone https://github.com/<your-username>/ic-reactor.git
+   cd ic-reactor
+   git remote add upstream https://github.com/B3Pay/ic-reactor.git
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+3. Build and test:
+
+   ```bash
+   pnpm build
+   pnpm test
+   ```
+
+</Steps>
+
+## Formatting
 
 We use Prettier for formatting. Format locally with:
 
@@ -22,14 +42,45 @@ We use Prettier for formatting. Format locally with:
 pnpm format
 ```
 
-Husky + lint-staged will format staged files automatically on commit.
-
-### Tests & CI
-
-Run unit tests:
+You can check formatting without modifying files:
 
 ```bash
+pnpm format:check
+```
+
+Husky + lint-staged will format staged files automatically on commit.
+
+## Running Tests
+
+```bash
+# Unit tests
 pnpm test
+
+# End-to-end tests
+pnpm test-e2e
 ```
 
 If you are adding a feature, include tests and documentation where applicable.
+
+## Commits and Pull Requests
+
+- Use clear, descriptive commit messages.
+- Prefer small, focused PRs.
+- Include tests where applicable.
+- Add or update documentation for public API changes.
+
+## AI-Assisted Contributions
+
+AI-assisted contributions are welcome, but contributors are responsible for correctness before opening a PR.
+
+- Prefer existing IC Reactor patterns over introducing new abstractions.
+- For React integrations, prefer `createActorHooks(...)` or query/mutation factories (`createQuery`, `createMutation`, etc.).
+- Validate generated or AI-written code with tests and examples whenever possible.
+- Update docs and examples when public API usage changes.
+
+<Aside type="tip">
+  See the repository
+  [`CONTRIBUTING.md`](https://github.com/B3Pay/ic-reactor/blob/main/CONTRIBUTING.md)
+  for the full contributing guide, including publishing, pre-commit hooks, and
+  adding new packages.
+</Aside>

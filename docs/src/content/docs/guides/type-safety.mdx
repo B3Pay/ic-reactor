@@ -66,6 +66,7 @@ import { idlFactory, type _SERVICE } from "./declarations/backend"
 const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
 })
 ```
@@ -200,6 +201,7 @@ import { createActorHooks } from "@ic-reactor/react"
 const reactor = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: "...",
 })
 
@@ -333,19 +335,21 @@ const { mutate } = useCreateUser() // mutate expects CreateUserInput
 
 ## TypeScript Configuration
 
-Ensure your `tsconfig.json` is properly configured:
+IC Reactor requires `strict: true` at a minimum. The following additional options are recommended for the best type-safety experience, but are not required:
 
 ```json
 {
   "compilerOptions": {
     "strict": true,
+    "moduleResolution": "bundler",
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+
+    // Recommended for stricter type checking (optional)
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "bundler",
-    "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"]
+    "noFallthroughCasesInSwitch": true
   }
 }
 ```

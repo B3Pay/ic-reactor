@@ -44,11 +44,13 @@ const clientManager = new ClientManager({ queryClient, withProcessEnv: true })
 const backend = new Reactor<BackendService>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId,
 })
 const ledger = new Reactor<LedgerService>({
   clientManager,
   idlFactory: ledgerIdl,
+  name: "ledger",
   canisterId: ledgerId,
 })
 
@@ -311,6 +313,7 @@ export const clientManager = new ClientManager({
 export const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
 })
 ```

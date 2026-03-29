@@ -104,7 +104,11 @@ function UserProfile({ userId }: { userId: string }) {
 
 ### Error Boundaries
 
-Use React Error Boundaries for unexpected errors:
+Use React Error Boundaries for unexpected errors. The [`react-error-boundary`](https://www.npmjs.com/package/react-error-boundary) package provides a convenient `ErrorBoundary` component:
+
+```bash
+pnpm add react-error-boundary
+```
 
 ```tsx
 import { ErrorBoundary } from "react-error-boundary"

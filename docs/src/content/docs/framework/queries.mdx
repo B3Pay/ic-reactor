@@ -287,10 +287,10 @@ For reusable query configurations, use `createQuery`:
 
 ```tsx
 import { createQuery } from "@ic-reactor/react"
-import { backendActor } from "../reactor"
+import { backend } from "../reactor"
 
 // Define query once
-const userQuery = createQuery(backendActor, {
+const userQuery = createQuery(backend, {
   functionName: "getUser",
   args: ["user-123"],
   staleTime: 5 * 60 * 1000,
@@ -315,7 +315,10 @@ await userQuery.invalidate()
 For dynamic arguments, use `createQueryFactory`:
 
 ```tsx
-const getUserQuery = createQueryFactory(backendActor, {
+import { createQueryFactory } from "@ic-reactor/react"
+import { backend } from "../reactor"
+
+const getUserQuery = createQueryFactory(backend, {
   functionName: "getUser",
 })
 

@@ -39,6 +39,7 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
    export const backend = new Reactor<_SERVICE>({
      clientManager,
      idlFactory,
+     name: "backend",
      canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
    })
    ```
@@ -316,6 +317,7 @@ import { idlFactory, type _SERVICE } from "../declarations/backend"
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: "...",
 })
 
