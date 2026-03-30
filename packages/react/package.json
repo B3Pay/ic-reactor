@@ -57,7 +57,7 @@
   },
   "devDependencies": {
     "@icp-sdk/auth": "^5.0.0",
-    "@icp-sdk/core": "^5.1.0",
+    "@icp-sdk/core": "^5.2.0",
     "@size-limit/preset-small-lib": "^12.0.1",
     "@tanstack/react-query": "^5.95",
     "@testing-library/dom": "^10.4.1",
@@ -70,7 +70,7 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "size-limit": "^12.0.1",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.2"
   },
   "size-limit": [
     {
