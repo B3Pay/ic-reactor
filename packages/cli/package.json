@@ -35,14 +35,14 @@
   "dependencies": {
     "@clack/prompts": "^1.1.0",
     "@ic-reactor/codegen": "workspace:*",
-    "@icp-sdk/bindgen": "^0.2.3",
-    "@icp-sdk/core": "^5.1.0",
+    "@icp-sdk/bindgen": "^0.3.0",
+    "@icp-sdk/core": "^5.2.0",
     "commander": "^14.0.3",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "tsup": "^8.3.5",
+    "tsup": "^8.5.1",
     "typescript": "~5.9.3"
   },
   "engines": {

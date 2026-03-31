@@ -51,21 +51,21 @@
   "dependencies": {
     "@ic-reactor/core": "workspace:^",
     "@noble/hashes": "^2.0.1",
-    "zod": "^4.3.5"
+    "zod": "^4.3.6"
   },
   "peerDependencies": {
-    "zod": "^4.3.5",
+    "@icp-sdk/core": "^5.2.0",
     "@noble/hashes": "^2.0.0",
-    "@icp-sdk/core": "^5.1.0"
+    "zod": "^4.3.5"
   },
   "peerDependenciesMeta": {},
   "devDependencies": {
-    "@icp-sdk/core": "^5.1.0",
     "@ic-reactor/parser": "workspace:^",
+    "@icp-sdk/core": "^5.2.0",
     "@size-limit/preset-small-lib": "^12.0.1",
     "@types/node": "^25.5.0",
     "size-limit": "^12.0.1",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.2"
   },
   "size-limit": [
     {
