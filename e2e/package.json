@@ -13,22 +13,22 @@
     "@ic-reactor/react": "workspace:*",
     "@ic-reactor/vite-plugin": "workspace:*",
     "@icp-sdk/auth": "^5.0.0",
-    "@icp-sdk/core": "^5.1.0"
+    "@icp-sdk/core": "^5.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.2",
     "@babel/preset-react": "^7.28.5",
     "@babel/preset-typescript": "^7.28.5",
-    "@happy-dom/global-registrator": "^20.8.4",
-    "@tanstack/react-query": "^5.95",
+    "@happy-dom/global-registrator": "^20.8.9",
+    "@tanstack/react-query": "^5.96",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^30.0.0",
     "@types/node-fetch": "3.0.2",
     "@types/react": "^19.2.14",
-    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/coverage-v8": "^4.1.2",
     "babel-jest": "^30.3.0",
     "dotenv": "^17.3.1",
     "fake-indexeddb": "^6.2.5",
@@ -42,7 +42,7 @@
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.0",
+    "vitest": "^4.1.2",
     "whatwg-fetch": "^3.6.20"
   }
 }
