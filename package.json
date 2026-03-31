@@ -50,19 +50,19 @@
   },
   "pnpm": {
     "overrides": {
-      "@dfinity/agent": "npm:@icp-sdk/core/agent@^5.0.0",
-      "@dfinity/candid": "npm:@icp-sdk/core/candid@^5.0.0",
-      "@dfinity/principal": "npm:@icp-sdk/core/principal@^5.0.0",
-      "@dfinity/identity": "npm:@icp-sdk/core/identity@^5.0.0",
+      "@dfinity/agent": "npm:@icp-sdk/core/agent@^5.2.0",
+      "@dfinity/candid": "npm:@icp-sdk/core/candid@^5.2.0",
+      "@dfinity/principal": "npm:@icp-sdk/core/principal@^5.2.0",
+      "@dfinity/identity": "npm:@icp-sdk/core/identity@^5.2.0",
       "axios": "0.30.3",
       "devalue": "5.6.4",
       "h3": "1.15.9",
       "picomatch": "4.0.4",
-      "minimatch": "10.2.4",
-      "rollup": "4.59.0",
+      "minimatch": "10.2.5",
+      "rollup": "4.60.1",
       "smol-toml": "1.6.1",
       "svgo": "4.0.1",
-      "tar": "7.5.11",
+      "tar": "7.5.13",
       "yaml": "2.8.3"
     },
     "ignoredBuiltDependencies": [
