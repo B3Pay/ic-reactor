@@ -32,7 +32,7 @@ export function generateClientFile(
 
 export const queryClient = new QueryClient()`
 
-  return `import { ClientManager } from "@ic-reactor/react"
+  return `import { ClientManager } from "@ic-reactor/core"
 ${queryClientImport}
 
 /**

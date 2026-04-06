@@ -1,7 +1,7 @@
 /**
  * Environment Injection Utilities
  *
- * Handles detecting the local IC environment (via `dfx` or `icp` CLI)
+ * Handles detecting the local IC environment via the `icp` CLI
  * and building the `ic_env` cookie for the browser.
  */
 
@@ -15,15 +15,12 @@ export interface IcEnvironment {
 }
 
 /**
- * Detect the IC environment using the `icp` or `dfx` CLI.
+ * Detect the IC environment using the `icp` CLI.
  */
 export function getIcEnvironmentInfo(
   canisterNames: string[]
 ): IcEnvironment | null {
   const environment = process.env.ICP_ENVIRONMENT || "local"
-
-  // We try `icp` first, but could fallback to `dfx` logic if needed.
-  // For now, assuming `icp` CLI is available based on previous code.
 
   try {
     const networkStatus = JSON.parse(

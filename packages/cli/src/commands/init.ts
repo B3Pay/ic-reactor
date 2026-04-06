@@ -98,20 +98,19 @@ export async function initCommand(options: InitOptions) {
   ensureDir(path.join(projectRoot, config.outDir))
 
   // Create default Client Manager
-  const clientManagerFile = path.join(projectRoot, "src/clients.ts")
-  // Simple heuristic: if clientManagerPath is "../../clients", likely file is src/clients.ts
-  // Users can move it, but this gives a good start.
+  const clientManagerFile = resolveClientManagerFilePath(projectRoot, config)
 
   if (!fs.existsSync(clientManagerFile)) {
+    const displayedPath = path.relative(projectRoot, clientManagerFile)
     const createHelpers = await p.confirm({
-      message: `Create a default client manager at ${pc.green("src/clients.ts")}?`,
+      message: `Create a default client manager at ${pc.green(displayedPath)}?`,
       initialValue: true,
     })
 
     if (createHelpers === true) {
       ensureDir(path.dirname(clientManagerFile))
       fs.writeFileSync(clientManagerFile, generateClientFile())
-      p.log.success(`Created ${pc.green("src/clients.ts")}`)
+      p.log.success(`Created ${pc.green(displayedPath)}`)
     }
   }
 
@@ -124,6 +123,22 @@ export async function initCommand(options: InitOptions) {
   )
 
   p.outro(pc.green("✓ Setup complete!"))
+}
+
+function resolveClientManagerFilePath(
+  projectRoot: string,
+  config: CodegenConfig
+): string {
+  const canisterName = Object.keys(config.canisters)[0]
+  if (!canisterName) {
+    return path.join(projectRoot, "src", "clients.ts")
+  }
+
+  const clientManagerPath = config.clientManagerPath ?? "../../clients"
+  const generatedEntryDir = path.join(projectRoot, config.outDir, canisterName)
+  const resolvedPath = path.resolve(generatedEntryDir, clientManagerPath)
+
+  return path.extname(resolvedPath) ? resolvedPath : `${resolvedPath}.ts`
 }
 
 async function promptForCanister(

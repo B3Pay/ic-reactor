@@ -25,7 +25,18 @@ export async function generateCommand(options: GenerateOptions) {
     process.exit(1)
   }
 
-  const config = loadConfig(configPath)
+  let config: Awaited<ReturnType<typeof loadConfig>>
+  try {
+    config = loadConfig(configPath)
+  } catch (error) {
+    p.log.error(
+      error instanceof Error
+        ? error.message
+        : `Failed to load config from ${pc.yellow(configPath)}`
+    )
+    process.exit(1)
+  }
+
   if (!config) {
     p.log.error(`Failed to load config from ${pc.yellow(configPath)}`)
     process.exit(1)

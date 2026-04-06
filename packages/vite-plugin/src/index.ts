@@ -78,7 +78,7 @@ export function icReactor(options: IcReactorPluginOptions): any {
     name: "ic-reactor-plugin",
     enforce: "pre", // Run before other plugins
 
-    config(config, { command }) {
+    config(_config, { command }) {
       if (command !== "serve" || !injectEnvironment) {
         return {}
       }
@@ -145,33 +145,32 @@ export function icReactor(options: IcReactorPluginOptions): any {
         `[ic-reactor] Generating canister bindings for ${canisters.length} canisters...`
       )
 
-      for (const canisterConfig of canisters) {
-        try {
-          // If .did file is missing, we might want to attempt pulling it?
-          // For now, pipeline fails if missing. The old plugin logic to "download"
-          // is omitted for simplicity unless requested, to keep "codegen" pure.
+      await Promise.allSettled(
+        canisters.map(async (canisterConfig) => {
+          try {
+            // If .did file is missing, we might want to attempt pulling it?
+            // For now, pipeline fails if missing. The old plugin logic to "download"
+            // is omitted for simplicity unless requested, to keep "codegen" pure.
 
-          const result = await runCanisterPipeline({
-            canisterConfig,
-            projectRoot,
-            globalConfig,
-          })
+            const result = await runCanisterPipeline({
+              canisterConfig,
+              projectRoot,
+              globalConfig,
+            })
 
-          if (!result.success) {
+            if (!result.success) {
+              console.error(
+                `[ic-reactor] Failed to generate ${canisterConfig.name}: ${result.error}`
+              )
+            }
+          } catch (err) {
             console.error(
-              `[ic-reactor] Failed to generate ${canisterConfig.name}: ${result.error}`
+              `[ic-reactor] Error generating ${canisterConfig.name}:`,
+              err
             )
-          } else {
-            // Optional: log success
-            // console.log(`[ic-reactor] Generated ${canisterConfig.name} hooks`)
           }
-        } catch (err) {
-          console.error(
-            `[ic-reactor] Error generating ${canisterConfig.name}:`,
-            err
-          )
-        }
-      }
+        })
+      )
     },
 
     handleHotUpdate({ file, server }) {

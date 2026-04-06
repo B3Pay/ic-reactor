@@ -20,7 +20,8 @@ IC Reactor is a monorepo of libraries for building Internet Computer (ICP) apps 
 - TanStack Query-powered caching and refetching
 - React hook factories (`useActorQuery`, `useActorMutation`, etc.)
 - display-friendly transforms (`DisplayReactor`)
-- optional code generation (CLI + Vite plugin)
+- optional code generation (CLI + Vite plugin) with tooling-generated helpers
+  that now resolve `ClientManager` from `@ic-reactor/core`
 
 ## Why IC Reactor
 
@@ -350,14 +351,14 @@ This repository is intentionally structured to work well with AI coding assistan
 
 ### AI context files
 
-| File | Purpose |
-|------|---------|
-| [`llms.txt`](./llms.txt) | High-level library context for LLMs |
-| [`CLAUDE.md`](./CLAUDE.md) | Claude / Anthropic project context |
-| [`AGENTS.md`](./AGENTS.md) | OpenAI Codex agent instructions |
-| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions |
-| [`.cursorrules`](./.cursorrules) | Cursor IDE rules |
-| [`skill-packages/`](./skill-packages/) | Local skill packages (multi-agent compatible) |
+| File                                                                   | Purpose                                       |
+| ---------------------------------------------------------------------- | --------------------------------------------- |
+| [`llms.txt`](./llms.txt)                                               | High-level library context for LLMs           |
+| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context            |
+| [`AGENTS.md`](./AGENTS.md)                                             | OpenAI Codex agent instructions               |
+| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                   |
+| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                              |
+| [`skill-packages/`](./skill-packages/)                                 | Local skill packages (multi-agent compatible) |
 
 ### Skill: `ic-reactor-hooks`
 

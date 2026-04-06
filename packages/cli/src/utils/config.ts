@@ -15,6 +15,16 @@ export const DEFAULT_CONFIG: CodegenConfig = {
   canisters: {},
 }
 
+export interface LoadConfigSuccess {
+  config: CodegenConfig
+  path: string
+}
+
+export interface LoadConfigError {
+  path: string
+  error: string
+}
+
 /**
  * Find the config file in the current directory or parent directories
  */
@@ -47,8 +57,9 @@ export function loadConfig(configPath?: string): CodegenConfig | null {
   try {
     const content = fs.readFileSync(filePath, "utf-8")
     return JSON.parse(content) as CodegenConfig
-  } catch {
-    return null
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`Failed to load config from ${filePath}: ${message}`)
   }
 }
 
