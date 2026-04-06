@@ -29,7 +29,7 @@ pnpm dlx @ic-reactor/cli generate
 ## What `init` Creates
 
 - an `ic-reactor.json` config file
-- an optional `src/clients.ts` helper with a shared `ClientManager`
+- an optional shared `ClientManager` helper resolved from `clientManagerPath`
 
 ## Example Config
 
@@ -71,6 +71,9 @@ Options:
   --bindgen-only         Generate only .did, .did.d.ts, and .js declarations
 ```
 
+Malformed `ic-reactor.json` files now fail with a parse error instead of being
+silently ignored.
+
 ## Generated Output
 
 For each canister, the CLI generates:
@@ -84,6 +87,10 @@ For each canister, the CLI generates:
 The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
 once, then preserves it unless the file is still the default wrapper or an
 older generated scaffold that can be migrated automatically.
+
+When `init` creates the shared client helper, it resolves `clientManagerPath`
+relative to the generated canister entry directory. If no canister is
+configured yet, the fallback remains `src/clients.ts`.
 
 Set `target` to choose the generated runtime:
 

@@ -31,7 +31,7 @@ export default defineConfig({
 
 ```ts
 // src/clients.ts
-import { ClientManager } from "@ic-reactor/react"
+import { ClientManager } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient()
@@ -91,7 +91,7 @@ Supported `target` values:
 
 When `injectEnvironment` is enabled during `vite dev`, the plugin:
 
-1. asks `icp-cli` for the local network status
+1. asks `icp` for the local network status
 2. resolves configured canister IDs
 3. sets the `ic_env` cookie
 4. proxies `/api` to the local replica

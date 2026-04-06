@@ -57,7 +57,8 @@ You can also use individual generators if you need more granular control:
 - **`generateDeclarations`**: Generates `.js` (factory), `.d.ts` (types), and `.did` copy.
 - **`generateReactorFile`**: Generates the managed `index.generated.ts` implementation using either `DisplayReactor` or `Reactor`.
 - **`generateReactorEntryFile`**: Generates the stable `index.ts` wrapper that re-exports from `index.generated.ts`.
-- **`generateClientFile`**: Generates a `ClientManager` boilerplate file.
+- **`generateClientFile`**: Generates a `ClientManager` boilerplate file that
+  imports `ClientManager` from `@ic-reactor/react`.
 
 ## Utilities
 

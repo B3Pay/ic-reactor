@@ -78,7 +78,7 @@ describe("icReactor", () => {
   describe("config", () => {
     it("should set up API proxy and headers when icp-cli is available", () => {
       ;(execFileSync as any).mockImplementation(
-        (command: string, args: string[], options: any) => {
+        (command: string, args: string[], _options: any) => {
           if (
             command === "icp" &&
             args.includes("network") &&
@@ -112,7 +112,7 @@ describe("icReactor", () => {
 
     it("should prefer configured canisterId over CLI-discovered env values", () => {
       ;(execFileSync as any).mockImplementation(
-        (command: string, args: string[], options: any) => {
+        (command: string, args: string[], _options: any) => {
           if (
             command === "icp" &&
             args.includes("network") &&
