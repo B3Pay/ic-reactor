@@ -20,8 +20,7 @@ IC Reactor is a monorepo of libraries for building Internet Computer (ICP) apps 
 - TanStack Query-powered caching and refetching
 - React hook factories (`useActorQuery`, `useActorMutation`, etc.)
 - display-friendly transforms (`DisplayReactor`)
-- optional code generation (CLI + Vite plugin) with tooling-generated helpers
-  that now resolve `ClientManager` from `@ic-reactor/core`
+- optional code generation (CLI + Vite plugin)
 
 ## Why IC Reactor
 
