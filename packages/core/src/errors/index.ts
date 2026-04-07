@@ -82,11 +82,12 @@ export class CanisterError<E = unknown> extends Error {
       message ??
       (typeof err === "object" && err !== null
         ? (() => {
-            const serialized = JSON.stringify(
-              err,
-              (_, v) => (typeof v === "bigint" ? v.toString() : v),
-              2
-            )
+            const serialized =
+              JSON.stringify(
+                err,
+                (_, v) => (typeof v === "bigint" ? v.toString() : v),
+                2
+              ) ?? String(err)
             return serialized.length > MAX_ERR_MESSAGE_LENGTH
               ? serialized.slice(0, MAX_ERR_MESSAGE_LENGTH) + "… [truncated]"
               : serialized
