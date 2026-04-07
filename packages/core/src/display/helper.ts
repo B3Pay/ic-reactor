@@ -52,7 +52,10 @@ export function transformArgsWithCodec<T extends unknown[]>(
     } catch (err) {
       // Log the failure so it is visible during development; return as-is as
       // a best-effort fallback so callers can still surface IDL encode errors.
-      console.error("[ic-reactor] transformArgsWithCodec failed (single arg):", err)
+      console.error(
+        "[ic-reactor] transformArgsWithCodec failed (single arg):",
+        err
+      )
       return args as T
     }
   }
@@ -61,7 +64,10 @@ export function transformArgsWithCodec<T extends unknown[]>(
   try {
     return argsCodec.asCandid(args) as T
   } catch (err) {
-    console.error("[ic-reactor] transformArgsWithCodec failed (tuple args):", err)
+    console.error(
+      "[ic-reactor] transformArgsWithCodec failed (tuple args):",
+      err
+    )
     return args as T
   }
 }
