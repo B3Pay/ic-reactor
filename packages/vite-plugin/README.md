@@ -92,9 +92,16 @@ Supported `target` values:
 When `injectEnvironment` is enabled during `vite dev`, the plugin:
 
 1. asks `icp` for the local network status
-2. resolves configured canister IDs
+2. resolves canister IDs — `internet_identity` is added automatically if not
+   already in your canister list
 3. sets the `ic_env` cookie
 4. proxies `/api` to the local replica
+
+If a canister has a `canisterId` set in the plugin config, that value overrides
+the auto-detected ID for that canister.
+
+Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
+(defaults to `"local"`).
 
 If environment detection fails, the plugin still falls back to proxying `/api`
 to `http://127.0.0.1:4943`, but it will not inject canister metadata.

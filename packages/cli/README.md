@@ -96,9 +96,10 @@ Set `target` to choose the generated runtime:
 
 - `react` (default): generates the reactor plus bound React hooks
 - `core`: generates only the typed reactor exports with no React dependency
-  Use `--bindgen-only` when you only want the generated declaration files. In
-  that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
-  leaves any existing reactor files untouched.
+
+Use `--bindgen-only` when you only want the generated declaration files. In
+that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
+leaves any existing reactor files untouched.
 
 You can define `target` globally or per canister in `ic-reactor.json`.
 
