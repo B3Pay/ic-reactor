@@ -115,15 +115,28 @@ export class ClientManager {
 
       if (isDev() && typeof window !== "undefined") {
         agentOptions.host = agentOptions.host ?? window.location.origin
-        agentOptions.verifyQuerySignatures =
-          agentOptions.verifyQuerySignatures ?? false
+        if (agentOptions.verifyQuerySignatures == null) {
+          agentOptions.verifyQuerySignatures = false
+          console.warn(
+            "[ic-reactor] Query signature verification is DISABLED in development. " +
+              "Never use withCanisterEnv in production without explicitly setting verifyQuerySignatures: true."
+          )
+        }
       } else {
         agentOptions.verifyQuerySignatures =
           agentOptions.verifyQuerySignatures ?? true
       }
 
+      // Root key must NOT be sourced from the ic_env cookie: cookies are
+      // user-controllable and accepting a root key from them would allow an
+      // attacker to bypass all IC certificate verification.
+      // If a custom root key is required (e.g. local replica), pass it via
+      // agentOptions.rootKey in your application code instead.
       if (canisterEnv?.IC_ROOT_KEY) {
-        agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
+        console.error(
+          "[ic-reactor] IC_ROOT_KEY in the ic_env cookie is ignored for security reasons. " +
+            "Pass agentOptions.rootKey explicitly if you need a custom root key."
+        )
       }
     }
 
@@ -192,7 +205,7 @@ export class ClientManager {
 
     this.initPromise = (async () => {
       this.updateAgentState({ isInitializing: true })
-      if (typeof window !== "undefined") {
+      if (isDev() && typeof window !== "undefined") {
         console.info(
           `%cic-reactor:%c Initializing agent for ${this.network} network`,
           "color: #3b82f6; font-weight: bold",
@@ -247,7 +260,7 @@ export class ClientManager {
     }
 
     this.authPromise = (async () => {
-      if (typeof window !== "undefined") {
+      if (isDev() && typeof window !== "undefined") {
         console.info(
           `%cic-reactor:%c Authenticating...`,
           "color: #3b82f6; font-weight: bold",
@@ -435,7 +448,7 @@ export class ClientManager {
    * This is used for informational purposes and network detection.
    */
   public registerCanisterId(canisterId: string, name?: string): void {
-    if (typeof window !== "undefined") {
+    if (isDev() && typeof window !== "undefined") {
       const actorName = name || canisterId
       console.info(
         `%cic-reactor:%c Adding actor ${actorName}`,
@@ -530,7 +543,7 @@ export class ClientManager {
    * @param identity - The new identity to use.
    */
   public updateAgent(identity: Identity) {
-    if (typeof window !== "undefined") {
+    if (isDev() && typeof window !== "undefined") {
       console.info(
         `%cic-reactor:%c Updating agent identity`,
         "color: #3b82f6; font-weight: bold",
@@ -571,7 +584,7 @@ export class ClientManager {
   }
 
   private updateAuthState(newState: Partial<AuthState>) {
-    console.debug("Updating Auth State:", newState)
+    if (isDev()) console.debug("[ic-reactor] Updating Auth State:", newState)
     this.authState = { ...this.authState, ...newState }
     this.notifyAuthStateSubscribers(this.authState)
   }

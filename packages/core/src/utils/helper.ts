@@ -119,11 +119,17 @@ export const uint8ArrayToHex = (bytes: Uint8Array | number[]): string => {
  * Converts a hex string to Uint8Array (accepts with or without 0x prefix)
  */
 export const hexToUint8Array = (hex: string): Uint8Array<ArrayBuffer> => {
-  // Normalize: remove 0x prefix if present and filter invalid chars
-  const normalized = hex
-    .replace(/^0x/i, "")
-    .replace(/[^0-9a-f]/gi, "")
-    .toLowerCase()
+  // Strip optional 0x prefix
+  const stripped = hex.replace(/^0x/i, "")
+
+  // Reject any character that is not a valid hex digit
+  if (/[^0-9a-f]/i.test(stripped)) {
+    throw new TypeError(
+      `[ic-reactor] hexToUint8Array: invalid hex string "${hex}" — only 0-9 and a-f characters are allowed (optional 0x prefix accepted)`
+    )
+  }
+
+  const normalized = stripped.toLowerCase()
 
   // Handle odd-length hex strings by padding with leading zero
   const paddedHex = normalized.length % 2 ? `0${normalized}` : normalized
