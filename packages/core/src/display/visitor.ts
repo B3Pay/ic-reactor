@@ -118,7 +118,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
       encode: (val) => {
         if (typeof val === "string") return Principal.fromText(val)
         if (val instanceof Principal) return val
-        return Principal.fromText(String(val))
+        throw new TypeError(
+          `[ic-reactor] Cannot encode value as Principal: expected a string or Principal instance, got ${typeof val}`
+        )
       },
     })
   }

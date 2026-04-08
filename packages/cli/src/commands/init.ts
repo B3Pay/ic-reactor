@@ -102,12 +102,19 @@ export async function initCommand(options: InitOptions) {
 
   if (!fs.existsSync(clientManagerFile)) {
     const displayedPath = path.relative(projectRoot, clientManagerFile)
-    const createHelpers = await p.confirm({
-      message: `Create a default client manager at ${pc.green(displayedPath)}?`,
-      initialValue: true,
-    })
 
-    if (createHelpers === true) {
+    let createHelpers: boolean
+    if (options.yes) {
+      createHelpers = true
+    } else {
+      const answer = await p.confirm({
+        message: `Create a default client manager at ${pc.green(displayedPath)}?`,
+        initialValue: true,
+      })
+      createHelpers = answer === true
+    }
+
+    if (createHelpers) {
       ensureDir(path.dirname(clientManagerFile))
       fs.writeFileSync(clientManagerFile, generateClientFile())
       p.log.success(`Created ${pc.green(displayedPath)}`)

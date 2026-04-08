@@ -72,10 +72,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       canisterId = env?.[key]
 
       if (!canisterId) {
-        console.warn(
-          `[ic-reactor] ${this.name} canister ID not found in ic_env cookie`
+        throw new Error(
+          `[ic-reactor] canisterId is required for "${this.name}" but was not provided ` +
+            `and could not be resolved from the ic_env cookie (key: "${key}"). ` +
+            `Pass canisterId explicitly in the reactor configuration.`
         )
-        canisterId = "aaaaa-aa" // Fallback
       }
     }
 
