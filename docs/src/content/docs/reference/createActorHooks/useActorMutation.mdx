@@ -56,16 +56,17 @@ function CreatePost() {
 
 ### Optional Options
 
-| Option              | Type                 | Default | Description                         |
-| ------------------- | -------------------- | ------- | ----------------------------------- |
-| `callConfig`        | `CallConfig`         | -       | IC agent call configuration         |
-| `invalidateQueries` | `QueryKey[]`         | -       | Query keys to invalidate on success |
-| `retry`             | `number \| boolean`  | `0`     | Number of retry attempts            |
-| `retryDelay`        | `number \| function` | -       | Delay between retries               |
-| `onMutate`          | `function`           | -       | Called before mutation              |
-| `onSuccess`         | `function`           | -       | Called on successful mutation       |
-| `onError`           | `function`           | -       | Called on mutation error            |
-| `onSettled`         | `function`           | -       | Called after success or error       |
+| Option              | Type                 | Default | Description                                                     |
+| ------------------- | -------------------- | ------- | --------------------------------------------------------------- |
+| `callConfig`        | `CallConfig`         | -       | IC agent call configuration                                     |
+| `invalidateQueries` | `QueryKey[]`         | -       | Query keys to invalidate on success                             |
+| `onCanisterError`   | `function`           | -       | Called only for `Result { Err }` variants (canister logic errors) |
+| `retry`             | `number \| boolean`  | `0`     | Number of retry attempts                                        |
+| `retryDelay`        | `number \| function` | -       | Delay between retries                                           |
+| `onMutate`          | `function`           | -       | Called before mutation                                          |
+| `onSuccess`         | `function`           | -       | Called on successful mutation                                   |
+| `onError`           | `function`           | -       | Called on ALL errors (canister, network, agent)                 |
+| `onSettled`         | `function`           | -       | Called after success or error                                   |
 
 ### Callback Signatures
 
@@ -263,28 +264,42 @@ function LikeButton({ postId }: { postId: string }) {
 }
 ```
 
-### Error Handling
+### Canister Error Handling
+
+Use `onCanisterError` to handle `Result { Err }` variants separately from network
+or agent errors. This is cleaner than checking `error instanceof CanisterError`
+inside `onError`:
 
 ```tsx
-import { CanisterError } from "@ic-reactor/core"
-
 const { mutate } = useActorMutation({
   functionName: "transfer",
-  onError: (error) => {
-    if (error instanceof CanisterError) {
-      // Handle specific canister errors
-      if ("InsufficientFunds" in error.err) {
-        toast.error("Not enough balance")
-      } else if ("InvalidRecipient" in error.err) {
-        toast.error("Invalid recipient address")
-      } else {
-        toast.error("Transaction failed: " + error.code)
-      }
+  // Only fires for canister Result { Err } variants
+  onCanisterError: (error) => {
+    if ("InsufficientFunds" in error.err) {
+      toast.error("Not enough balance")
+    } else if ("InvalidRecipient" in error.err) {
+      toast.error("Invalid recipient address")
     } else {
-      toast.error("Network error: " + error.message)
+      toast.error("Transaction failed: " + error.code)
     }
   },
+  // Fires for ALL errors: canister Err, network failures, agent errors
+  onError: (error) => {
+    console.error("Unexpected error", error)
+  },
 })
+```
+
+`onCanisterError` also receives the mutation variables as its second argument:
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  onCanisterError: (error, [recipient, amount]) => {
+    console.error(`Transfer of ${amount} to ${recipient} failed: ${error.code}`)
+  },
+})
+```
 ```
 
 ### Per-Mutation Callbacks

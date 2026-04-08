@@ -134,7 +134,40 @@ function App() {
 
 ## Handling Mutation Errors
 
+### Using onCanisterError (Recommended)
+
+`onCanisterError` fires **only** for `Result { Err }` variants from the canister.
+This keeps canister business-logic errors separate from network and agent failures:
+
+```tsx
+function TransferForm() {
+  const { mutate, isPending } = useActorMutation({
+    functionName: "transfer",
+    // Only fires for canister Result { Err } variants
+    onCanisterError: (error) => {
+      if ("InsufficientFunds" in error.err) {
+        const { balance, required } = error.err.InsufficientFunds
+        toast.error(`Insufficient funds. Have: ${balance}, Need: ${required}`)
+      } else if ("InvalidRecipient" in error.err) {
+        toast.error("Invalid recipient address")
+      } else {
+        toast.error("Transaction failed: " + error.code)
+      }
+    },
+    // Fires for ALL errors — use for logging/monitoring
+    onError: (error) => {
+      console.error("Transfer error", error)
+    },
+  })
+
+  // ...
+}
+```
+
 ### Using onError Callback
+
+`onError` fires for every error type. Use it when you want a single handler or
+when you need to distinguish manually:
 
 ```tsx
 import { CanisterError } from "@ic-reactor/core"
@@ -375,12 +408,13 @@ const { mutate } = useActorMutation({
 
 ## Best Practices
 
-1. **Distinguish error types** — Handle `CanisterError` and `CallError` differently
-2. **Don't retry business errors** — If the canister says "insufficient funds", retrying won't help
-3. **Show actionable messages** — Tell users how to fix the issue
-4. **Provide recovery options** — Retry buttons, form reset, etc.
-5. **Log appropriately** — Send business errors to analytics, network errors to monitoring
-6. **Use type guards** — Create helper functions for typed error checking
+1. **Use `onCanisterError` for mutations** — Separates canister `Result { Err }` variants from network/agent errors without manual `instanceof` checks
+2. **Distinguish error types** — Handle `CanisterError` and `CallError` differently
+3. **Don't retry business errors** — If the canister says "insufficient funds", retrying won't help
+4. **Show actionable messages** — Tell users how to fix the issue
+5. **Provide recovery options** — Retry buttons, form reset, etc.
+6. **Log appropriately** — Send business errors to analytics, network errors to monitoring
+7. **Use type guards** — Create helper functions for typed error checking
 
 ```typescript
 // Helper for checking specific error variants

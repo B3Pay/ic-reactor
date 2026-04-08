@@ -41,13 +41,15 @@ const userProfileQuery = createQuery(backend, {
 
 The factory returns an object with these utilities:
 
-| Property       | Type                           | Description                            |
-| -------------- | ------------------------------ | -------------------------------------- |
-| `fetch`        | `() => Promise<T>`             | Fetch data (cache-first, for loaders)  |
-| `useQuery`     | `(options?) => UseQueryResult` | React hook for components              |
-| `invalidate`   | `() => Promise<void>`          | Invalidate cache (refetches if active) |
-| `getQueryKey`  | `() => QueryKey`               | Get the TanStack Query key             |
-| `getCacheData` | `(select?) => T`               | Read from cache without fetching       |
+| Property       | Type                                     | Description                              |
+| -------------- | ---------------------------------------- | ---------------------------------------- |
+| `fetch`        | `() => Promise<T>`                       | Cache-first fetch — use in route loaders |
+| `prefetch`     | `() => Promise<void>`                    | Fire-and-forget cache warm-up            |
+| `useQuery`     | `(options?) => UseQueryResult`           | React hook for components                |
+| `invalidate`   | `() => Promise<void>`                    | Invalidate cache (refetches if active)   |
+| `getQueryKey`  | `() => QueryKey`                         | Get the TanStack Query key               |
+| `getCacheData` | `(select?) => T`                         | Read from cache without fetching         |
+| `setData`      | `(updater) => T \| undefined`            | Write raw data into cache                |
 
 ---
 
@@ -259,20 +261,23 @@ const cachedName = userQuery.getCacheData((user) => user.name)
 // Force invalidation (refetches if query is active)
 await userQuery.invalidate()
 
-// Get query key for manual operations
-const queryKey = userQuery.getQueryKey()
-queryClient.setQueryData(queryKey, updatedUser)
+// Write directly into cache (optimistic updates)
+userQuery.setData(updatedUser)
+
+// Or use an updater function
+userQuery.setData((old) => ({ ...old, name: "Alice" }))
 ```
 
 ### Prefetching on Hover
 
-Prefetch data when user hovers over a link:
+Prefetch data when the user hovers over a link. Use `prefetch()` (fire-and-forget)
+rather than `fetch()` here — you don't need to `await` a result, just warm the cache:
 
 ```typescript
 function UserLink({ userId }: { userId: string }) {
-  const handleMouseEnter = async () => {
-    // Prefetch on hover
-    await getUserQuery([userId]).fetch()
+  const handleMouseEnter = () => {
+    // Fire-and-forget cache warm-up
+    getUserQuery([userId]).prefetch()
   }
 
   return (
