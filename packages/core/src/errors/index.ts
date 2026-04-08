@@ -77,14 +77,21 @@ export class CanisterError<E = unknown> extends Error {
     }
 
     const finalCode = code ?? "UNKNOWN_ERROR"
+    const MAX_ERR_MESSAGE_LENGTH = 2048
     const finalMessage =
       message ??
       (typeof err === "object" && err !== null
-        ? JSON.stringify(
-            err,
-            (_, v) => (typeof v === "bigint" ? v.toString() : v),
-            2
-          )
+        ? (() => {
+            const serialized =
+              JSON.stringify(
+                err,
+                (_, v) => (typeof v === "bigint" ? v.toString() : v),
+                2
+              ) ?? String(err)
+            return serialized.length > MAX_ERR_MESSAGE_LENGTH
+              ? serialized.slice(0, MAX_ERR_MESSAGE_LENGTH) + "… [truncated]"
+              : serialized
+          })()
         : String(err))
 
     super(isApiShape ? finalMessage : `Canister Error: ${finalMessage}`)

@@ -49,8 +49,13 @@ export function transformArgsWithCodec<T extends unknown[]>(
   if (args.length === 1) {
     try {
       return [argsCodec.asCandid(args[0])] as T
-    } catch {
-      // Fallback: return as-is if transformation fails
+    } catch (err) {
+      // Log the failure so it is visible during development; return as-is as
+      // a best-effort fallback so callers can still surface IDL encode errors.
+      console.error(
+        "[ic-reactor] transformArgsWithCodec failed (single arg):",
+        err
+      )
       return args as T
     }
   }
@@ -58,8 +63,11 @@ export function transformArgsWithCodec<T extends unknown[]>(
   // Multiple arguments - transform as tuple
   try {
     return argsCodec.asCandid(args) as T
-  } catch {
-    // Fallback: return as-is if transformation fails
+  } catch (err) {
+    console.error(
+      "[ic-reactor] transformArgsWithCodec failed (tuple args):",
+      err
+    )
     return args as T
   }
 }
@@ -75,8 +83,8 @@ export function transformResultWithCodec<T>(
 
   try {
     return resultCodec.asDisplay(result) as T
-  } catch {
-    // Fallback: return as-is if transformation fails
+  } catch (err) {
+    console.error("[ic-reactor] transformResultWithCodec failed:", err)
     return result as T
   }
 }
