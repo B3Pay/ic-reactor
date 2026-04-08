@@ -13,7 +13,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "paths": {
       "@dfinity/*": [
         "./node_modules/@icp-sdk/core/lib/esm/*/dist/index.d.ts",
