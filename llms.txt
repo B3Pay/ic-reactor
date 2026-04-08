@@ -97,15 +97,18 @@ const profileQuery = createQuery(reactor, {
   functionName: 'getUserProfile',
   args: ['user-id'],
 });
-// In React: profileQuery.useQuery()
-// Outside React: await profileQuery.fetch()
-// Cache helpers: profileQuery.invalidate(), profileQuery.getQueryKey(), profileQuery.getCacheData()
+// In React:        profileQuery.useQuery()
+// Cache-first:     await profileQuery.fetch()
+// Fire-and-forget: profileQuery.prefetch()           // warm cache before render
+// Optimistic:      profileQuery.setData({ name: 'Alice' }) // write to cache
+// Helpers:         profileQuery.invalidate(), profileQuery.getQueryKey(), profileQuery.getCacheData()
 
 // Reusable mutation object
 const updateProfile = createMutation(reactor, {
   functionName: 'updateUserProfile',
+  onCanisterError: (err) => console.error('Canister Err:', err.code),
 });
-// In React: updateProfile.useMutation()
+// In React:      updateProfile.useMutation()
 // Outside React: await updateProfile.execute([{ name: 'Alice' }])
 ```
 
@@ -162,21 +165,34 @@ Generated files typically expose method-specific query/mutation objects with bot
 #### Core Factories
 - `createActorHooks(reactor)`: Generates a typed hook suite for a canister:
   - `useActorQuery`: Standard query hook.
-  - `useActorMutation`: Mutation hook.
+  - `useActorMutation`: Mutation hook. Supports `invalidateQueries` and `onCanisterError`.
   - `useActorInfiniteQuery`: Infinite query hook (pagination).
   - `useActorSuspenseQuery`: Suspense-enabled query hook.
   - `useActorSuspenseInfiniteQuery`: Suspense-enabled infinite query hook.
   - `useActorMethod`: Unified hook that auto-handles query vs update methods.
 
 #### Standalone Factories
-- `createQuery(reactor, config)`: Creates a reusable query object.
-- `createSuspenseQuery(reactor, config)`: Creates a reusable suspense query object.
-- `createInfiniteQuery(reactor, config)`: Creates a reusable infinite query object.
-- `createSuspenseInfiniteQuery(reactor, config)`: Creates a reusable suspense infinite query object.
-- `createMutation(reactor, config)`: Creates a reusable mutation object.
-- `createQueryFactory(reactor, config)`: Creates a dynamic query factory function.
-- `createSuspenseQueryFactory(reactor, config)`: Dynamic suspense query factory.
-- `createInfiniteQueryFactory(reactor, config)`: Dynamic infinite query factory (accepts `getArgs` at call time).
+Each factory returns an object with both a React hook and imperative helpers.
+
+- `createQuery(reactor, config)`: Returns `{ useQuery, fetch, prefetch, invalidate, getQueryKey, getCacheData, setData }`.
+- `createSuspenseQuery(reactor, config)`: Returns `{ useSuspenseQuery, fetch, prefetch, invalidate, getQueryKey, getCacheData, setData }`.
+- `createInfiniteQuery(reactor, config)`: Returns `{ useInfiniteQuery, fetch, invalidate, getQueryKey, getCacheData }`.
+- `createSuspenseInfiniteQuery(reactor, config)`: Returns `{ useSuspenseInfiniteQuery, fetch, invalidate, getQueryKey, getCacheData }`.
+- `createMutation(reactor, config)`: Returns `{ useMutation, execute }`. Supports `onCanisterError` for `Result { Err }` variants.
+- `createQueryFactory(reactor, config)`: `(args) => QueryResult` — creates query instances with args supplied at call time.
+- `createSuspenseQueryFactory(reactor, config)`: `(args) => SuspenseQueryResult` — suspense variant of `createQueryFactory`.
+- `createInfiniteQueryFactory(reactor, config)`: `(getArgs) => InfiniteQueryResult` — accepts `getArgs` at call time for dynamic pagination.
+- `createSuspenseInfiniteQueryFactory(reactor, config)`: `(getArgs, options?) => SuspenseInfiniteQueryResult` — suspense variant with optional per-call `queryKey`.
+
+#### Query Result Methods (shared across all query factories)
+| Method | Use |
+|--------|-----|
+| `fetch()` | Cache-first fetch. Use in route loaders. |
+| `prefetch()` | Fire-and-forget warm-up. Use on hover or before navigation. |
+| `invalidate()` | Invalidate cache (triggers refetch if mounted). |
+| `getQueryKey()` | TanStack Query key for this query. |
+| `getCacheData(select?)` | Read from cache without fetching. |
+| `setData(updater)` | Write raw data into cache. Accepts value or `(prev) => next`. Use for optimistic updates. |
 
 #### Authentication Hooks
 - `useAuth`: Login/logout and identity management.
@@ -187,11 +203,12 @@ Generated files typically expose method-specific query/mutation objects with bot
 ## Best Practices
 1. Use `DisplayReactor` for simpler data handling with AI / UI layers.
 2. Use `createActorHooks` for generic component hooks, or method-specific query/mutation factories for reusable operations.
-3. Never call React hooks outside React components/custom hooks. Use `.fetch()` / `.execute()` / `.invalidate()` for imperative usage.
+3. Never call React hooks outside React components/custom hooks. Use `.fetch()` / `.prefetch()` / `.execute()` / `.invalidate()` / `.setData()` for imperative usage.
 4. Prefer cache invalidation via `query.getQueryKey()` or `query.invalidate()` to avoid hard-coded key drift.
 5. Leverage TanStack Query options (`staleTime`, refetch policies, select) passed through query hooks/factories.
 6. Use `Suspense` versions (`useActorSuspenseQuery`) when the app already uses Suspense boundaries.
-7. Prefer generated hooks (CLI/Vite plugin) for large canisters or frequent `.did` changes.
+7. Use `onCanisterError` to handle typed `Result { Err }` responses separately from network/agent errors.
+8. Prefer generated hooks (CLI/Vite plugin) for large canisters or frequent `.did` changes.
 
 ## High-Value File References (for AI agents)
 

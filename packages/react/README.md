@@ -81,8 +81,8 @@ export function App() {
 
 - `createActorHooks(reactor)` for per-canister hooks like `useActorQuery` and
   `useActorMutation`
-- `createAuthHooks(clientManager)` for `useAuth`, `useAuthState`,
-  `useAgentState`, and `useUserPrincipal`
+- `createAuthHooks(clientManager)` for `useAuth`, `useAgentState`, and
+  `useUserPrincipal`
 - direct reactor hooks like `useReactorQuery` when you want to pass the reactor
   instance at call time
 - factory helpers like `createQuery`, `createSuspenseQuery`,
@@ -93,8 +93,8 @@ export function App() {
 
 - Use `createActorHooks` for the simplest component-first integration.
 - Use query and mutation factories when you also need loader, action, service,
-  or test usage through `.fetch()`, `.execute()`, `.invalidate()`, or
-  `.getCacheData()`.
+  or test usage through `.fetch()`, `.prefetch()`, `.execute()`, `.invalidate()`,
+  `.getCacheData()`, or `.setData()`.
 - Use `DisplayReactor` when you want UI-friendly values such as strings instead
   of `bigint` or `Principal`.
 - Use generated hooks from `@ic-reactor/vite-plugin` or `@ic-reactor/cli` when
@@ -112,15 +112,69 @@ export const getProfile = createSuspenseQueryFactory(backend, {
 
 export const updateProfile = createMutation(backend, {
   functionName: "update_profile",
+  onCanisterError: (err) => console.error("Canister Err variant:", err.code),
 })
 ```
 
 ```tsx
 const profileQuery = getProfile(["alice"])
+
+// React component
 const { data } = profileQuery.useSuspenseQuery()
 
+// Prefetch before navigating (fire-and-forget)
+profileQuery.prefetch()
+
+// Optimistic update
+profileQuery.setData({ id: "alice", name: "Alice" })
+
+// Mutation with cache invalidation
 const mutation = updateProfile.useMutation({
   invalidateQueries: [profileQuery.getQueryKey()],
+})
+```
+
+## Query Result Methods
+
+Every object returned by `createQuery`, `createSuspenseQuery`, and their
+factory variants exposes:
+
+| Method                              | Description                                                                                     |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `fetch()`                           | Cache-first fetch — returns data, populates cache. Use in route loaders.                        |
+| `prefetch()`                        | Fire-and-forget cache warm-up. Use on hover or before navigation.                               |
+| `invalidate()`                      | Invalidates the cache entry (triggers refetch if query is mounted).                             |
+| `getQueryKey()`                     | Returns the TanStack Query key for this query.                                                  |
+| `getCacheData(select?)`             | Read directly from cache without fetching. Returns `undefined` if not cached.                   |
+| `setData(updater)`                  | Write raw data into the cache. Accepts a value or updater function. Use for optimistic updates. |
+| `useQuery()` / `useSuspenseQuery()` | React hook for the query.                                                                       |
+
+## Canister Error Handling
+
+Canister methods can return `Result { Err: E }` variants. These are surfaced
+as `CanisterError` and can be handled separately from network or agent errors
+via `onCanisterError`. This callback is supported on both `createMutation` and
+the direct `useActorMutation` hook:
+
+```tsx
+// Via createActorHooks
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  onCanisterError: (err, vars) => {
+    // err.code — the Err variant key (e.g. "InsufficientFunds")
+    // err.err  — the typed Err value
+    console.error(`Transfer failed: ${err.code}`, vars)
+  },
+  onError: (err) => {
+    // Fires for ALL errors: canister Err variants, network failures, etc.
+    console.error("Unexpected error", err)
+  },
+})
+
+// Via createMutation factory
+const transferMutation = createMutation(backend, {
+  functionName: "transfer",
+  onCanisterError: (err) => toast.error(`${err.code}`),
 })
 ```
 
