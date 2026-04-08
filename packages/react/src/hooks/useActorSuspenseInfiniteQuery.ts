@@ -107,16 +107,11 @@ export const useActorSuspenseInfiniteQuery = <
   T,
   TPageParam
 >): UseActorSuspenseInfiniteQueryResult<A, M, T, TPageParam> => {
-  // Memoize queryKey to prevent unnecessary re-calculations
+  // Always pass queryKey through generateQueryKey so it is merged with the
+  // reactor/function identity. Using the custom key verbatim would cause cache
+  // collisions if two different actors or methods share the same key string.
   const baseQueryKey = useMemo(
-    () =>
-      queryKey ??
-      reactor.generateQueryKey(
-        {
-          functionName,
-        },
-        callConfig
-      ),
+    () => reactor.generateQueryKey({ functionName, queryKey }, callConfig),
     [queryKey, reactor, functionName, callConfig]
   )
 

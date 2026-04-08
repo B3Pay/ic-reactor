@@ -12,6 +12,11 @@ import {
   FunctionName,
   TransformKey,
   ReactorReturnErr,
+  isCanisterError,
+  CanisterError,
+  ErrResult,
+  ActorMethodReturnType,
+  TransformReturnRegistry,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
 
@@ -31,6 +36,17 @@ export interface UseActorMutationParameters<
   functionName: M
   callConfig?: CallConfig
   invalidateQueries?: QueryKey[]
+  /**
+   * Callback for canister-level business logic errors.
+   * Called when the canister returns a Result { Err: E } variant.
+   * Separate from `onError`, which fires for all errors including network failures.
+   */
+  onCanisterError?: (
+    error: CanisterError<
+      TransformReturnRegistry<ErrResult<ActorMethodReturnType<A[M]>>>[T]
+    >,
+    variables: ReactorArgs<A, M, T>
+  ) => void
 }
 
 export type UseActorMutationConfig<
@@ -57,6 +73,7 @@ export type UseActorMutationResult<
  *   reactor,
  *   functionName: "transfer",
  *   onSuccess: () => console.log("Success!"),
+ *   onCanisterError: (err) => console.error("Canister Err:", err.code),
  * })
  */
 export const useActorMutation = <
@@ -68,22 +85,17 @@ export const useActorMutation = <
   functionName,
   invalidateQueries,
   onSuccess,
+  onError,
+  onCanisterError,
   callConfig,
   ...options
 }: UseActorMutationParameters<A, M, T>): UseActorMutationResult<A, M, T> => {
-  // Memoize mutationFn to avoid creating new function on every render
   const mutationFn = useCallback(
-    async (args: ReactorArgs<A, M, T>) => {
-      return reactor.callMethod({
-        functionName,
-        callConfig,
-        args,
-      })
-    },
+    async (args: ReactorArgs<A, M, T>) =>
+      reactor.callMethod({ functionName, callConfig, args }),
     [reactor, functionName, callConfig]
   )
 
-  // Memoize onSuccess handler
   const handleSuccess = useCallback(
     async (
       ...params: Parameters<
@@ -103,21 +115,35 @@ export const useActorMutation = <
           )
         )
       }
-      if (onSuccess) {
-        await onSuccess(...params)
-      }
+      await onSuccess?.(...params)
     },
     [reactor, invalidateQueries, onSuccess]
   )
 
-  // Memoize mutation options
+  const handleError = useCallback(
+    (
+      error: ReactorReturnErr<A, M, T>,
+      variables: ReactorArgs<A, M, T>,
+      context: unknown,
+      mutation: unknown
+    ) => {
+      if (isCanisterError(error)) {
+        onCanisterError?.(error as any, variables)
+      }
+      onError?.(error, variables, context as any, mutation as any)
+    },
+    [onCanisterError, onError]
+  )
+
   const mutationOptions = useMemo(
     () => ({
       ...options,
       mutationFn,
       onSuccess: handleSuccess,
+      onError: handleError,
     }),
-    [options, mutationFn, handleSuccess]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mutationFn, handleSuccess, handleError]
   )
 
   return useMutation(mutationOptions, reactor.queryClient)
