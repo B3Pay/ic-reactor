@@ -35,6 +35,7 @@ import type {
   SuspenseQueryFactoryConfig,
   NoInfer,
 } from "./types"
+import { buildChainedSelect } from "./utils"
 
 // ============================================================================
 // Internal Implementation
@@ -65,39 +66,35 @@ const createSuspenseQueryImpl = <
     ...rest
   } = config
 
-  const params = {
-    functionName,
-    args,
-    queryKey: customQueryKey,
-  }
+  const params = { functionName, args, queryKey: customQueryKey }
 
-  // Get query key from actor manager
-  const getQueryKey = () => {
-    return reactor.generateQueryKey(params)
-  }
+  const getQueryKey = () => reactor.generateQueryKey(params)
 
-  // Fetch function for loaders (cache-first)
+  const applySelect = (raw: TData): TSelected =>
+    select ? select(raw) : (raw as unknown as TSelected)
+
+  /** Cache-first fetch for use in loaders / route preloading. */
   const fetch = async (): Promise<TSelected> => {
     const result = await reactor.fetchQuery(params)
-    return select ? select(result) : (result as TSelected)
+    return applySelect(result)
   }
 
-  // Implementation
+  /** Fire-and-forget prefetch — warms the cache without blocking. */
+  const prefetch = (): Promise<void> => {
+    const baseOptions = reactor.getQueryOptions(params)
+    return reactor.queryClient.prefetchQuery({
+      queryKey: baseOptions.queryKey,
+      queryFn: baseOptions.queryFn,
+      staleTime,
+    })
+  }
+
   const useSuspenseQueryHook: UseSuspenseQueryWithSelect<
     TData,
     TSelected,
     TError
   > = (options: any): any => {
     const baseOptions = reactor.getQueryOptions(params)
-
-    // Chain the selects: raw -> config.select -> options.select
-    const chainedSelect = (rawData: TData) => {
-      const firstPass = config.select ? config.select(rawData) : rawData
-      if (options?.select) {
-        return options.select(firstPass)
-      }
-      return firstPass
-    }
     return useSuspenseQuery(
       {
         queryKey: baseOptions.queryKey,
@@ -105,50 +102,48 @@ const createSuspenseQueryImpl = <
         ...rest,
         ...options,
         queryFn: baseOptions.queryFn,
-        select: chainedSelect,
+        select: buildChainedSelect(select, options?.select),
       },
       reactor.queryClient
     )
   }
 
-  // Invalidate function
   const invalidate = async (): Promise<void> => {
-    const queryKey = getQueryKey()
-    await reactor.queryClient.invalidateQueries({ queryKey })
+    await reactor.queryClient.invalidateQueries({ queryKey: getQueryKey() })
   }
 
-  // Get data from cache without fetching
-  const getCacheData: any = (selectFn?: (data: TData) => any) => {
-    const cachedRawData = reactor.getQueryData(params)
+  const getCacheData: SuspenseQueryResult<
+    TData,
+    TSelected,
+    TError
+  >["getCacheData"] = (selectFn?: (data: TSelected) => unknown): any => {
+    const raw = reactor.getQueryData(params)
+    if (raw === undefined) return undefined
+    const selected = applySelect(raw)
+    return selectFn ? selectFn(selected) : selected
+  }
 
-    if (cachedRawData === undefined) {
-      return undefined
-    }
-
-    // Apply config.select to raw cache data
-    const selectedData = (
-      config.select ? config.select(cachedRawData) : cachedRawData
-    ) as TData
-
-    // Apply optional select parameter
-    if (selectFn) {
-      return selectFn(selectedData)
-    }
-
-    return selectedData
+  const setData: SuspenseQueryResult<TData, TSelected, TError>["setData"] = (
+    updater
+  ) => {
+    return reactor.queryClient.setQueryData(getQueryKey(), updater as any) as
+      | TData
+      | undefined
   }
 
   return {
     fetch,
+    prefetch,
     useSuspenseQuery: useSuspenseQueryHook,
     invalidate,
     getQueryKey,
     getCacheData,
+    setData,
   }
 }
 
 // ============================================================================
-// Factory Function
+// Public Factory Function
 // ============================================================================
 
 export function createSuspenseQuery<
@@ -186,30 +181,21 @@ export function createSuspenseQueryFactory<
     SuspenseQueryResult<QueryFnData<A, M, T>, TSelected, QueryError<A, M, T>>
   >()
 
-  return (
-    args: ReactorArgs<A, M, T>
-  ): SuspenseQueryResult<
-    QueryFnData<A, M, T>,
-    TSelected,
-    QueryError<A, M, T>
-  > => {
+  return (args: ReactorArgs<A, M, T>) => {
     const key = reactor.generateQueryKey({
       functionName: config.functionName as M,
       args,
     })
     const cacheKey = JSON.stringify(key)
 
-    if (cache.has(cacheKey)) {
-      return cache.get(cacheKey)!
-    }
+    const existing = cache.get(cacheKey)
+    if (existing) return existing
 
     const result = createSuspenseQueryImpl<A, M, T, TSelected>(reactor, {
       ...(config as SuspenseQueryFactoryConfig<A, M, T, TSelected>),
       args,
     })
-
     cache.set(cacheKey, result)
-
     return result
   }
 }

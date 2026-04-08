@@ -231,6 +231,18 @@ export interface BaseQueryResult<
   /** Fetch data in loader (uses ensureQueryData for cache-first) */
   fetch: () => Promise<TSelected>
 
+  /**
+   * Eagerly prefetch data into the cache without blocking.
+   * Useful for preloading data before navigating to a route.
+   *
+   * Unlike `fetch()`, this returns a void promise so it can be fire-and-forget.
+   *
+   * @example
+   * // In a route hover handler
+   * button.addEventListener("mouseenter", () => userQuery.prefetch())
+   */
+  prefetch: () => Promise<void>
+
   /** Invalidate the cache (refetches if query is active) */
   invalidate: () => Promise<void>
 
@@ -256,6 +268,26 @@ export interface BaseQueryResult<
     (): TSelected | undefined
     <TFinal>(select: (data: TSelected) => TFinal): TFinal | undefined
   }
+
+  /**
+   * Write raw data directly into the cache (useful for optimistic updates).
+   * Accepts a new value or an updater function that receives the current cached raw data.
+   *
+   * Note: The value is stored as raw (pre-select) data.  Any active `select`
+   * transformations are automatically re-applied by React Query on the next render.
+   *
+   * @example
+   * // Optimistic update before a mutation
+   * userQuery.setData({ id: "1", name: "Alice" })
+   *
+   * // Functional update
+   * counterQuery.setData((prev) => (prev ?? 0) + 1)
+   */
+  setData: (
+    updater:
+      | TQueryFnData
+      | ((old: TQueryFnData | undefined) => TQueryFnData | undefined)
+  ) => TQueryFnData | undefined
 }
 
 /**

@@ -251,5 +251,85 @@ describe("createMutation", () => {
         queryKey: ["test-canister", "getUser"],
       })
     })
+
+    it("should NOT double-invalidate when using useMutation (regression)", async () => {
+      // When factory-level invalidateQueries is set, the previous implementation
+      // would call invalidateQueries twice: once inside execute() (which was used
+      // as mutationFn) and once inside onSuccess. This test ensures it fires
+      // exactly once per unique query key.
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+
+      const updateUser = createMutation(mockReactor, {
+        functionName: "updateUser",
+        invalidateQueries: [["test-canister", "getUser"]],
+      })
+
+      const { result } = renderHook(() => updateUser.useMutation(), { wrapper })
+
+      await act(async () => {
+        result.current.mutate([{ name: "John", age: 30 }])
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      // Should have been called exactly once (not twice)
+      expect(invalidateSpy).toHaveBeenCalledTimes(1)
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["test-canister", "getUser"],
+      })
+    })
+
+    it("should invalidate both factory and hook-level queries", async () => {
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+
+      const updateUser = createMutation(mockReactor, {
+        functionName: "updateUser",
+        invalidateQueries: [["test-canister", "getUser"]],
+      })
+
+      const { result } = renderHook(
+        () =>
+          updateUser.useMutation({
+            invalidateQueries: [["test-canister", "listUsers"]],
+          }),
+        { wrapper }
+      )
+
+      await act(async () => {
+        result.current.mutate([{ name: "John", age: 30 }])
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(invalidateSpy).toHaveBeenCalledTimes(2)
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["test-canister", "getUser"],
+      })
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["test-canister", "listUsers"],
+      })
+    })
+  })
+
+  describe("execute (direct, non-React)", () => {
+    it("execute() invalidates factory queries directly", async () => {
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+
+      const updateUser = createMutation(mockReactor, {
+        functionName: "updateUser",
+        invalidateQueries: [["test-canister", "getUser"]],
+      })
+
+      await updateUser.execute([{ name: "John", age: 30 }])
+
+      expect(invalidateSpy).toHaveBeenCalledTimes(1)
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["test-canister", "getUser"],
+      })
+    })
   })
 })
