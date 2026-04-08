@@ -43,8 +43,7 @@ import {
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
 import { NoInfer } from "./types"
-
-const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
+import { mergeFactoryQueryKey } from "./utils"
 
 type InfiniteQueryFactoryFn<
   A,
@@ -61,22 +60,6 @@ type InfiniteQueryFactoryFn<
     TSelected,
     InfiniteQueryError<A, M, T>
   >
-}
-
-const mergeFactoryQueryKey = (
-  baseQueryKey?: QueryKey,
-  keyArgs?: unknown
-): QueryKey | undefined => {
-  const merged: unknown[] = []
-
-  if (baseQueryKey) {
-    merged.push(...baseQueryKey)
-  }
-  if (keyArgs !== undefined) {
-    merged.push({ [FACTORY_KEY_ARGS_QUERY_KEY]: keyArgs })
-  }
-
-  return merged.length > 0 ? merged : undefined
 }
 
 // ============================================================================
@@ -510,7 +493,7 @@ export function createInfiniteQueryFactory<
   ) => {
     const initialArgs = getArgs(config.initialPageParam)
     const keyArgs = config.getKeyArgs?.(initialArgs) ?? initialArgs
-    const queryKey = mergeFactoryQueryKey(config.queryKey, keyArgs)
+    const queryKey = mergeFactoryQueryKey(config.queryKey, undefined, keyArgs)
 
     return createInfiniteQueryImpl<A, M, T, TPageParam, TSelected>(reactor, {
       ...(({ getKeyArgs: _getKeyArgs, ...rest }) => rest)(

@@ -51,13 +51,15 @@ const userQuery = createSuspenseQuery(backend, {
 
 ## Return Value
 
-| Property           | Type                                   | Description              |
-| ------------------ | -------------------------------------- | ------------------------ |
-| `fetch`            | `() => Promise<T>`                     | Fetch data (for loaders) |
-| `useSuspenseQuery` | `(options?) => UseSuspenseQueryResult` | Suspense hook            |
-| `refetch`          | `() => Promise<void>`                  | Invalidate and refetch   |
-| `getQueryKey`      | `() => QueryKey`                       | Get the query key        |
-| `getCacheData`     | `(select?) => T`                       | Read from cache          |
+| Property           | Type                                   | Description                              |
+| ------------------ | -------------------------------------- | ---------------------------------------- |
+| `fetch`            | `() => Promise<T>`                     | Cache-first fetch — use in route loaders |
+| `prefetch`         | `() => Promise<void>`                  | Fire-and-forget cache warm-up            |
+| `useSuspenseQuery` | `(options?) => UseSuspenseQueryResult` | Suspense hook                            |
+| `invalidate`       | `() => Promise<void>`                  | Invalidate cache (refetches if active)   |
+| `getQueryKey`      | `() => QueryKey`                       | Get the query key                        |
+| `getCacheData`     | `(select?) => T`                       | Read from cache without fetching         |
+| `setData`          | `(updater) => T \| undefined`          | Write raw data into cache                |
 
 ---
 
@@ -210,7 +212,8 @@ function UserDashboardPage() {
 
 ### Prefetching on Route Transition
 
-Prefetch data during route transitions:
+Prefetch data during route transitions. Use `prefetch()` (fire-and-forget) so you
+don't need to `await` before navigating:
 
 ```typescript
 import { Link, useNavigate } from "@tanstack/react-router"
@@ -218,10 +221,9 @@ import { Link, useNavigate } from "@tanstack/react-router"
 function UserCard({ userId }: { userId: string }) {
   const navigate = useNavigate()
 
-  const handleClick = async () => {
-    // Start prefetch
-    getUserQuery([userId]).fetch()
-    // Navigate immediately - data loads in background
+  const handleClick = () => {
+    // Fire-and-forget: warm cache, then navigate immediately
+    getUserQuery([userId]).prefetch()
     navigate({ to: `/users/${userId}` })
   }
 
@@ -266,8 +268,8 @@ const getUserQuery = createSuspenseQueryFactory(backend, {
 })
 
 function UserProfile({ userId }: { userId: string }) {
-  // data is ALWAYS defined
-  const { data: user } = getUserQuery([userId]).useQuery()
+  // data is ALWAYS defined — Suspense handles loading
+  const { data: user } = getUserQuery([userId]).useSuspenseQuery()
 
   return <h1>{user.name}</h1>
 }

@@ -31,6 +31,22 @@ import type {
 } from "./types"
 
 // ============================================================================
+// Internal helpers
+// ============================================================================
+
+/** Invalidate a list of query keys in parallel, filtering out undefineds. */
+async function invalidateAll(
+  queryClient: Reactor<any, any>["queryClient"],
+  keys: (import("@tanstack/react-query").QueryKey | undefined)[]
+): Promise<void> {
+  await Promise.all(
+    keys.map((queryKey) =>
+      queryKey ? queryClient.invalidateQueries({ queryKey }) : Promise.resolve()
+    )
+  )
+}
+
+// ============================================================================
 // Internal Implementation
 // ============================================================================
 
@@ -52,113 +68,80 @@ const createMutationImpl = <
     ...factoryOptions
   } = config
 
-  // Direct execution function
+  /**
+   * Raw call without any invalidation logic.
+   * Used as mutationFn so that onSuccess handles all post-mutation work
+   * and there is no double-invalidation.
+   */
+  const callFn = (
+    args: ReactorArgs<A, M, T>
+  ): Promise<ReactorReturnOk<A, M, T>> =>
+    reactor.callMethod({ functionName, args, callConfig })
+
+  /**
+   * Imperative execution for non-React usage.
+   * Calls the canister method and invalidates factory-level queries.
+   * Use this in route loaders, scripts, or server-side code.
+   */
   const execute = async (
     args: ReactorArgs<A, M, T>
   ): Promise<ReactorReturnOk<A, M, T>> => {
-    const result = await reactor.callMethod({
-      functionName,
-      args,
-      callConfig,
-    })
-
+    const result = await callFn(args)
     if (factoryInvalidateQueries) {
-      await Promise.all(
-        factoryInvalidateQueries.map((queryKey) => {
-          return reactor.queryClient.invalidateQueries({ queryKey })
-        })
-      )
+      await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
     }
-
     return result
   }
 
   // Hook implementation
   const useMutationHook = (options?: MutationHookOptions<A, M, T>) => {
-    const baseOptions = reactor.getQueryOptions({
-      functionName,
-    })
-    // Extract our custom options
+    const baseOptions = reactor.getQueryOptions({ functionName })
     const {
       invalidateQueries: hookInvalidateQueries,
       onCanisterError: hookOnCanisterError,
       ...restOptions
-    } = options || {}
+    } = options ?? {}
 
     return useMutation(
       {
         mutationKey: baseOptions.queryKey,
         ...factoryOptions,
         ...restOptions,
-        mutationFn: execute,
+        // Use callFn (not execute) to avoid double-invalidation:
+        // factoryInvalidateQueries are handled in onSuccess below.
+        mutationFn: callFn,
         onSuccess: async (...args) => {
-          // 1. Handle factory-level invalidateQueries
+          // 1. Factory-level invalidation
           if (factoryInvalidateQueries) {
-            await Promise.all(
-              factoryInvalidateQueries.map((queryKey) => {
-                return reactor.queryClient.invalidateQueries({ queryKey })
-              })
-            )
+            await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
           }
-
-          // 2. Handle hook-level invalidateQueries
+          // 2. Hook-level invalidation
           if (hookInvalidateQueries) {
-            await Promise.all(
-              hookInvalidateQueries.map((queryKey) => {
-                if (queryKey) {
-                  return reactor.queryClient.invalidateQueries({ queryKey })
-                }
-                return Promise.resolve()
-              })
-            )
+            await invalidateAll(reactor.queryClient, hookInvalidateQueries)
           }
-
-          // 3. Call factory onSuccess
-          if (factoryOnSuccess) {
-            await factoryOnSuccess(...args)
-          }
-
-          // 4. Call hook-local onSuccess
-          if (restOptions?.onSuccess) {
-            await restOptions.onSuccess(...args)
-          }
+          // 3. Factory onSuccess
+          await factoryOnSuccess?.(...args)
+          // 4. Hook onSuccess
+          await restOptions.onSuccess?.(...args)
         },
         onError: (error, variables, context, mutation) => {
-          // Check if this is a CanisterError (from Result { Err: E })
           if (isCanisterError(error)) {
-            // 1. Call factory-level onCanisterError
-            if (factoryOnCanisterError) {
-              factoryOnCanisterError(error, variables)
-            }
-            // 2. Call hook-level onCanisterError
-            if (hookOnCanisterError) {
-              hookOnCanisterError(error, variables)
-            }
+            factoryOnCanisterError?.(error, variables)
+            hookOnCanisterError?.(error, variables)
           }
-
-          // 3. Call factory-level onError (for all errors)
-          if (factoryOnError) {
-            factoryOnError(error, variables, context, mutation)
-          }
-
-          // 4. Call hook-level onError (for all errors)
-          if (restOptions?.onError) {
-            restOptions.onError(error, variables, context, mutation)
-          }
+          factoryOnError?.(error, variables, context, mutation)
+          restOptions.onError?.(error, variables, context, mutation)
         },
       },
       reactor.queryClient
     )
   }
 
-  return {
-    useMutation: useMutationHook,
-    execute,
-  }
+  return { useMutation: useMutationHook, execute }
 }
 
 // ============================================================================
-// Factory Function
+// Public Factory Function
 // ============================================================================
 
 export function createMutation<

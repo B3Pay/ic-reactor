@@ -417,3 +417,99 @@ describe("chained select - CRITICAL TESTS", () => {
     })
   })
 })
+
+// ============================================================================
+// prefetch
+// ============================================================================
+
+describe("createQuery - prefetch", () => {
+  let queryClient: QueryClient
+  let mockReactor: ReturnType<typeof createMockReactor>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    mockReactor = createMockReactor(queryClient)
+  })
+
+  it("prefetch() warms the cache without throwing", async () => {
+    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+    await expect(userQuery.prefetch()).resolves.toBeUndefined()
+  })
+
+  it("prefetch() populates the cache so subsequent useQuery reads are instant", async () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+
+    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+
+    // Prefetch outside component
+    await userQuery.prefetch()
+
+    // Now mount the hook — data should already be in cache
+    const { result } = renderHook(() => userQuery.useQuery(), { wrapper })
+
+    // isLoading is false immediately because cache is populated
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.data).toEqual(mockUser)
+  })
+})
+
+// ============================================================================
+// setData
+// ============================================================================
+
+describe("createQuery - setData", () => {
+  let queryClient: QueryClient
+  let mockReactor: ReturnType<typeof createMockReactor>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    mockReactor = createMockReactor(queryClient)
+  })
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+
+  it("setData() writes raw data into the cache", () => {
+    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+    const optimistic: User = { name: "Bob", age: 25n }
+
+    userQuery.setData(optimistic)
+
+    const cached = userQuery.getCacheData()
+    expect(cached).toEqual(optimistic)
+  })
+
+  it("setData() with updater function receives previous value", () => {
+    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+    const initial: User = { name: "Alice", age: 30n }
+
+    userQuery.setData(initial)
+    userQuery.setData((prev) => ({ ...prev!, name: "Charlie" }))
+
+    const cached = userQuery.getCacheData()
+    expect(cached).toEqual({ name: "Charlie", age: 30n })
+  })
+
+  it("setData() triggers a re-render with the new data", async () => {
+    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+
+    const { result } = renderHook(() => userQuery.useQuery(), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual(mockUser)
+
+    const updated: User = { name: "Dave", age: 99n }
+    userQuery.setData(updated)
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(updated)
+    })
+  })
+})

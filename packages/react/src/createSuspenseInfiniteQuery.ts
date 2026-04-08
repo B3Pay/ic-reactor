@@ -45,8 +45,7 @@ import {
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
 import { NoInfer } from "./types"
-
-const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
+import { mergeFactoryQueryKey } from "./utils"
 
 type SuspenseInfiniteFactoryCallOptions = {
   queryKey?: QueryKey
@@ -76,26 +75,6 @@ type SuspenseInfiniteQueryFactoryFn<
     TSelected,
     SuspenseInfiniteQueryError<A, M, T>
   >
-}
-
-const mergeFactoryQueryKey = (
-  baseQueryKey?: QueryKey,
-  callQueryKey?: QueryKey,
-  keyArgs?: unknown
-): QueryKey | undefined => {
-  const merged: unknown[] = []
-
-  if (baseQueryKey) {
-    merged.push(...baseQueryKey)
-  }
-  if (callQueryKey) {
-    merged.push(...callQueryKey)
-  }
-  if (keyArgs !== undefined) {
-    merged.push({ [FACTORY_KEY_ARGS_QUERY_KEY]: keyArgs })
-  }
-
-  return merged.length > 0 ? merged : undefined
 }
 
 // ============================================================================

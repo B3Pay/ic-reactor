@@ -33,18 +33,17 @@ import {
   UseMutationResult,
   InfiniteData,
 } from "@tanstack/react-query"
-import { createQuery } from "./createQuery"
-import { createSuspenseQuery } from "./createSuspenseQuery"
-import { createInfiniteQuery, InfiniteQueryConfig } from "./createInfiniteQuery"
-import {
-  createSuspenseInfiniteQuery,
-  SuspenseInfiniteQueryConfig,
-} from "./createSuspenseInfiniteQuery"
-import { createMutation } from "./createMutation"
+import { useActorQuery } from "./hooks/useActorQuery"
+import { useActorSuspenseQuery } from "./hooks/useActorSuspenseQuery"
+import { useActorInfiniteQuery } from "./hooks/useActorInfiniteQuery"
+import { useActorSuspenseInfiniteQuery } from "./hooks/useActorSuspenseInfiniteQuery"
+import { useActorMutation } from "./hooks/useActorMutation"
 import {
   useActorMethod,
   UseActorMethodParameters,
 } from "./hooks/useActorMethod"
+import { InfiniteQueryConfig } from "./createInfiniteQuery"
+import { SuspenseInfiniteQueryConfig } from "./createSuspenseInfiniteQuery"
 import { QueryConfig, SuspenseQueryConfig, MutationConfig } from "./types"
 
 export type ActorHooks<A, T extends TransformKey> = {
@@ -108,33 +107,35 @@ export function createActorHooks<A, T extends TransformKey>(
   reactor: Reactor<A, T>
 ): ActorHooks<A, T> {
   return {
-    useActorQuery: ((config: any) => {
-      const { select, ...options } = config
-      return createQuery(reactor, config).useQuery(options)
-    }) as ActorHooks<A, T>["useActorQuery"],
+    useActorQuery: ((config: any) =>
+      useActorQuery({ ...config, reactor })) as ActorHooks<
+      A,
+      T
+    >["useActorQuery"],
 
-    useActorSuspenseQuery: ((config: any) => {
-      const { select, ...options } = config
-      return createSuspenseQuery(reactor, config).useSuspenseQuery(options)
-    }) as ActorHooks<A, T>["useActorSuspenseQuery"],
+    useActorSuspenseQuery: ((config: any) =>
+      useActorSuspenseQuery({ ...config, reactor })) as ActorHooks<
+      A,
+      T
+    >["useActorSuspenseQuery"],
 
-    useActorInfiniteQuery: ((config) => {
-      const { select, ...options } = config
-      return createInfiniteQuery(reactor, config).useInfiniteQuery(options)
-    }) as ActorHooks<A, T>["useActorInfiniteQuery"],
+    useActorInfiniteQuery: ((config: any) =>
+      useActorInfiniteQuery({ ...config, reactor })) as ActorHooks<
+      A,
+      T
+    >["useActorInfiniteQuery"],
 
-    useActorSuspenseInfiniteQuery: ((config) => {
-      const { select, ...options } = config
-      return createSuspenseInfiniteQuery(
-        reactor,
-        config
-      ).useSuspenseInfiniteQuery(options)
-    }) as ActorHooks<A, T>["useActorSuspenseInfiniteQuery"],
+    useActorSuspenseInfiniteQuery: ((config: any) =>
+      useActorSuspenseInfiniteQuery({ ...config, reactor })) as ActorHooks<
+      A,
+      T
+    >["useActorSuspenseInfiniteQuery"],
 
-    useActorMutation: ((config) => {
-      const { onSuccess, invalidateQueries, ...options } = config
-      return createMutation(reactor, config).useMutation(options)
-    }) as ActorHooks<A, T>["useActorMutation"],
+    useActorMutation: ((config: any) =>
+      useActorMutation({ ...config, reactor })) as ActorHooks<
+      A,
+      T
+    >["useActorMutation"],
 
     useActorMethod: (config) =>
       useActorMethod({ ...config, reactor } as UseActorMethodParameters<
