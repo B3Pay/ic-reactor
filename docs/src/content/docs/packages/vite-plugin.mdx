@@ -48,6 +48,28 @@ For each canister, generation produces:
 - `index.generated.ts`: managed implementation regenerated on every run
 - `index.ts`: stable entry wrapper that re-exports from `index.generated.ts`
 
+## Plugin Options
+
+| Option                | Type             | Default              | Description                                                 |
+| :-------------------- | :--------------- | :------------------- | :---------------------------------------------------------- |
+| `canisters`           | `CanisterConfig[]` | —                  | Canister configurations (required).                         |
+| `outDir`              | `string`         | `"src/declarations"` | Base output directory for generated files.                  |
+| `clientManagerPath`   | `string`         | `"../../clients"`    | Default client manager import path (relative from generated files). |
+| `target`              | `"react" \| "core"` | `"react"`         | Default generated runtime target.                           |
+| `injectEnvironment`   | `boolean`        | `true`               | Inject `ic_env` cookie and proxy during `vite dev`.         |
+
+### Per-canister options
+
+| Option              | Type     | Description                                                                                                       |
+| :------------------ | :------- | :---------------------------------------------------------------------------------------------------------------- |
+| `name`              | `string` | Canister name (required).                                                                                         |
+| `didFile`           | `string` | Path to the `.did` file (required).                                                                               |
+| `mode`              | `string` | Reactor class: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`. |
+| `outDir`            | `string` | Override output directory for this canister.                                                                      |
+| `clientManagerPath` | `string` | Override client manager path for this canister.                                                                   |
+| `target`            | `string` | Override runtime target for this canister.                                                                        |
+| `canisterId`        | `string` | Fixed canister ID (overrides auto-detected value during local dev).                                               |
+
 ## Reactor Mode
 
 Set `mode` per canister to choose the generated reactor class:
@@ -81,17 +103,21 @@ Set `target` to control whether generated files include React hooks:
 ## Local Development
 
 When `injectEnvironment` is enabled during `vite dev`, the plugin tries to read
-local network details from `icp-cli`, then:
+local network details from the `icp` CLI, then:
 
-1. resolves configured canister IDs
+1. resolves canister IDs (including `internet_identity`, which is added
+   automatically if not already in your canister list)
 2. sets the `ic_env` cookie
 3. proxies `/api` to the local replica
 
-If `icp-cli` environment detection is unavailable, the plugin still falls back
+If `icp` CLI environment detection is unavailable, the plugin still falls back
 to proxying `/api` to `http://127.0.0.1:4943`, but it skips cookie injection.
 
 If you provide `canisterId` in the plugin config, that fixed ID overrides the
 auto-detected development value for that canister.
+
+Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
+(defaults to `"local"`).
 
 ## `.did` File Changes
 
