@@ -54,7 +54,7 @@
       "@dfinity/candid": "npm:@icp-sdk/core/candid@^5.2.0",
       "@dfinity/principal": "npm:@icp-sdk/core/principal@^5.2.0",
       "@dfinity/identity": "npm:@icp-sdk/core/identity@^5.2.0",
-      "axios": "0.30.3",
+      "axios": "1.13.5",
       "devalue": "5.6.4",
       "h3": "1.15.9",
       "picomatch": "4.0.4",
