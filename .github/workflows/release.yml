@@ -27,17 +27,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10.30.3
-
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
 
       - name: Upgrade npm to v11 (required for OIDC)
         run: npm i -g npm@^11.5.1 && npm --version

@@ -13,14 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10.30.3
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22"
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: MDX lint
