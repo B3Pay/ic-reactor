@@ -9,6 +9,7 @@ import type { CandidReactorParameters, DynamicMethodOptions } from "./types"
 import { Reactor } from "@ic-reactor/core"
 import { CandidAdapter } from "./adapter"
 import { IDL } from "@icp-sdk/core/candid"
+import { normalizeCandidInterface } from "./utils"
 
 export class CandidReactor<
   A = BaseActor,
@@ -95,7 +96,7 @@ export class CandidReactor<
     // Parse the Candid signature
     const serviceSource = candid.includes("service :")
       ? candid
-      : `service : { ${functionName} : ${candid}; }`
+      : normalizeCandidInterface(candid, functionName)
 
     const { idlFactory } = await this.adapter.parseCandidSource(serviceSource)
     const parsedService = idlFactory({ IDL })
