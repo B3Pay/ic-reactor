@@ -45,13 +45,13 @@ describe("normalizeCandidInterface", () => {
   })
 
   it("should handle multiline method signatures correctly", () => {
-    const input = `type Proposal = record { id: nat64 };\n(\n  Proposal\n) -> (\n  variant {\n    Ok: nat;\n    Err: text;\n  }\n) query`;
-    const result = normalizeCandidInterface(input);
+    const input = `type Proposal = record { id: nat64 };\n(\n  Proposal\n) -> (\n  variant {\n    Ok: nat;\n    Err: text;\n  }\n) query`
+    const result = normalizeCandidInterface(input)
 
-    expect(result).toContain("type Proposal = record { id: nat64 };");
+    expect(result).toContain("type Proposal = record { id: nat64 };")
     expect(result).toContain(
       `service : { "dynamic_method": (\n  Proposal\n) -> (\n  variant {\n    Ok: nat;\n    Err: text;\n  }\n) query; }`
-    );
+    )
   })
 
   it("should throw an error when didToJs compiler is fed hallucinatory syntax", () => {
