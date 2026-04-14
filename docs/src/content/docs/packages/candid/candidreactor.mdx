@@ -92,10 +92,19 @@ new CandidReactor(config: CandidReactorParameters)
       clientManager,
     })
     
-    // Register methods one at a time
+    // Register methods one at a time (supports shorthand and complex types)
     await reactor.registerMethod({
       functionName: "icrc1_balance_of",
       candid: "(record { owner : principal }) -> (nat) query",
+    })
+    
+    await reactor.registerMethod({
+      functionName: "complex_method",
+      candid: `
+        type Proposal = record { id: nat64; payload: rec_1 };
+        type rec_1 = record { data: text; next: opt rec_1 };
+        (Proposal) -> (opt rec_1) query
+      `,
     })
     ```
   </TabItem>
@@ -117,12 +126,23 @@ If `candid` was provided in the constructor, it parses that. Otherwise, fetches 
 
 ### registerMethod(options)
 
-Register a single method by its Candid signature.
+Register a single method by its Candid signature. Supports everything from standard shorthand to complete complex schemas containing `type` definitions natively.
 
 ```typescript
+// Standard registration
 await reactor.registerMethod({
   functionName: "icrc1_balance_of",
   candid: "(record { owner : principal }) -> (nat) query",
+})
+
+// Advanced hybrid parsing
+await reactor.registerMethod({
+  functionName: "complex_recursive_method",
+  candid: `
+    type Proposal = record { id: nat64; payload: rec_1 };
+    type rec_1 = record { data: text; next: opt rec_1 };
+    (Proposal) -> (opt rec_1) query
+  `,
 })
 ```
 
@@ -197,13 +217,15 @@ const balance = await reactor.queryDynamic<bigint>({
 
 ### callDynamic(options)
 
-Perform a dynamic update call.
+Perform a dynamic update call. Fully supports complex pre-defined types and recursion definitions seamlessly.
 
 ```typescript
 const result = await reactor.callDynamic({
   functionName: "transfer",
-  candid:
-    "(record { to : principal; amount : nat }) -> (variant { Ok : nat; Err : text })",
+  candid: `
+    type TransferArgs = record { to : principal; amount : nat };
+    (TransferArgs) -> (variant { Ok : nat; Err : text })
+  `,
   args: [{ to: recipient, amount: 100n }],
 })
 ```

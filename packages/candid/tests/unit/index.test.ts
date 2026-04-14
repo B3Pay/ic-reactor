@@ -57,6 +57,7 @@ describe("Package Exports", () => {
       "DEFAULT_LOCAL_DIDJS_ID",
       // Utils
       "importCandidDefinition",
+      "normalizeCandidInterface",
     ]
 
     expectedExports.forEach((exportName) => {
@@ -101,6 +102,7 @@ describe("Package Exports", () => {
         "DEFAULT_IC_DIDJS_ID",
         "DEFAULT_LOCAL_DIDJS_ID",
         "importCandidDefinition",
+        "normalizeCandidInterface",
         "CandidReactor",
         "CandidDisplayReactor",
         "MetadataDisplayReactor",

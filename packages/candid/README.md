@@ -113,7 +113,7 @@ const balance = await reactor.fetchQuery({
 
 #### Registering Methods Dynamically
 
-You can also register individual methods on-the-fly:
+You can also register individual methods on-the-fly, even if they contain complex type definitions natively output by AI models (such as recursive variants or records):
 
 ```typescript
 // Start with just a canister ID
@@ -123,13 +123,23 @@ const reactor = new CandidReactor({
   name: "my-canister",
 })
 
-// Register a method by its Candid signature
+// Register a method by its standard Candid shorthand
 await reactor.registerMethod({
   functionName: "icrc1_balance_of",
   candid: "(record { owner : principal }) -> (nat) query",
 })
 
-// Now all standard Reactor methods work with this method!
+// Advanced: Register perfectly parsed hybrid Candid (type definitions + shorthand)
+await reactor.registerMethod({
+  functionName: "complex_recursive_method",
+  candid: `
+    type Proposal = record { id: nat64; payload: rec_1 };
+    type rec_1 = record { data: text; next: opt rec_1 };
+    (Proposal) -> (opt rec_1) query
+  `,
+})
+
+// Now all standard Reactor methods work with these dynamically added signatures!
 const balance = await reactor.callMethod({
   functionName: "icrc1_balance_of",
   args: [{ owner }],
@@ -156,12 +166,14 @@ const symbol = await reactor.queryDynamic({
   candid: "() -> (text) query",
 })
 
-// callDynamic - for update calls
+// callDynamic - fully supports complex pre-defined types and recursion limits
 const result = await reactor.callDynamic({
-  functionName: "transfer",
-  candid:
-    "(record { to : principal; amount : nat }) -> (variant { Ok : nat; Err : text })",
-  args: [{ to: recipient, amount: 100n }],
+  functionName: "submit_process",
+  candid: `
+    type ProcessBlock = record { title: text; body: text };
+    (ProcessBlock) -> (variant { Ok: nat; Err: text })
+  `,
+  args: [{ title: "Update", body: "New logic" }],
 })
 
 // fetchQueryDynamic - with TanStack Query caching

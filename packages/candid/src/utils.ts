@@ -58,3 +58,91 @@ export async function importCandidDefinition(
     throw new Error(`Failed to import Candid definition: ${error}`)
   }
 }
+
+/**
+ * Normalizes a raw Candid interface string by extracting the dynamic method signature
+ * and wrapping it inside a proper service block, accommodating preceding type definitions.
+ *
+ * @param rawInput - The raw string (e.g., shorthand candid or string with type definitions followed by shorthand).
+ * @param functionName - The function name to use when wrapping the signature.
+ * @returns A valid `.did` format string with a service block containing the functionName.
+ */
+export function normalizeCandidInterface(
+  rawInput: string,
+  functionName: string = "dynamic_method"
+): string {
+  if (!rawInput || typeof rawInput !== "string") {
+    return rawInput
+  }
+
+  const trimmed = rawInput.trim()
+
+  // Match all type declarations to find the last one
+  const typeMatches = [...trimmed.matchAll(/^type\s+[a-zA-Z0-9_]+\s*=/gm)]
+
+  // If there is no type keyword, wrap the whole string in a mock service
+  if (typeMatches.length === 0) {
+    let methodSignature = trimmed
+    if (methodSignature.endsWith(";")) {
+      methodSignature = methodSignature.slice(0, -1)
+    }
+    return `service : { "${functionName}": ${methodSignature}; }`
+  }
+
+  const lastTypeMatch = typeMatches[typeMatches.length - 1]
+  const startIndex = lastTypeMatch.index!
+
+  let braceDepth = 0
+  let parenDepth = 0
+  let inString = false
+  let signatureStartIndex = -1
+
+  for (let i = startIndex; i < trimmed.length; i++) {
+    const char = trimmed[i]
+    if (char === '"' && i > 0 && trimmed[i - 1] !== "\\") {
+      inString = !inString
+      continue
+    }
+    if (inString) continue
+
+    if (char === "{") braceDepth++
+    else if (char === "}") braceDepth--
+    else if (char === "(") parenDepth++
+    else if (char === ")") parenDepth--
+    else if (char === ";" && braceDepth === 0 && parenDepth === 0) {
+      // End of the last type declaration
+      signatureStartIndex = i + 1
+      break
+    }
+  }
+
+  // If we couldn't properly find the end of the type, fallback to assuming it's the last line (old behavior)
+  if (signatureStartIndex === -1) {
+    const lines = trimmed.split(/\r?\n/)
+    const typeLines: string[] = []
+    let methodSignature = ""
+
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const lineTrimmed = lines[i].trim()
+      if (lineTrimmed !== "") {
+        methodSignature = lineTrimmed
+        if (methodSignature.endsWith(";")) {
+          methodSignature = methodSignature.slice(0, -1)
+        }
+        typeLines.push(...lines.slice(0, i))
+        break
+      }
+    }
+
+    const typeDefinitions = typeLines.join("\n")
+    return `${typeDefinitions}\nservice : { "${functionName}": ${methodSignature}; }`
+  }
+
+  const typeDefinitions = trimmed.slice(0, signatureStartIndex).trim()
+  let methodSignature = trimmed.slice(signatureStartIndex).trim()
+  if (methodSignature.endsWith(";")) {
+    methodSignature = methodSignature.slice(0, -1)
+  }
+
+  return `${typeDefinitions}\nservice : { "${functionName}": ${methodSignature}; }`
+}
