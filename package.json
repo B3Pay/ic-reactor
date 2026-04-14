@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "description": "The modern, type-safe library for building Internet Computer applications",
+  "packageManager": "pnpm@10.30.3",
   "scripts": {
     "build": "pnpm -r --filter \"./packages/**\" build",
     "test": "pnpm -r --filter \"./packages/**\" test",
