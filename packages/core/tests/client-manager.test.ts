@@ -1,18 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
-import { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "../src/client"
-
-function mockIdentity(principalText: string) {
-  const principal = Principal.fromText(principalText)
-  return {
-    getPrincipal: () => principal,
-  }
-}
-
-const anonymousIdentity = {
-  getPrincipal: () => Principal.anonymous(),
-}
 
 describe("ClientManager", () => {
   let queryClient: QueryClient
@@ -70,13 +58,13 @@ describe("ClientManager", () => {
     let originalWindow: typeof globalThis.window
 
     beforeEach(() => {
-      originalWindow = globalThis.window
+      originalWindow = global.window
       vi.clearAllMocks()
     })
 
     afterEach(() => {
       // Restore window
-      ;(globalThis as any).window = originalWindow
+      ;(global as any).window = originalWindow
       vi.restoreAllMocks()
     })
 
@@ -108,7 +96,7 @@ describe("ClientManager", () => {
 
     it("should not override withProcessEnv when withCanisterEnv is false", () => {
       // Mock process.env
-      const originalProcess = (globalThis as any).process
+      const originalProcess = globalThis.process
       ;(globalThis as any).process = {
         env: {
           DFX_NETWORK: "ic",
@@ -133,7 +121,7 @@ describe("ClientManager", () => {
     it("should accept withCanisterEnv parameter without throwing", () => {
       // When not in browser (typeof window === 'undefined'),
       // safeGetCanisterEnv is not called, so this should work
-      delete (globalThis as any).window
+      delete (global as any).window
 
       expect(() => {
         new ClientManager({
@@ -177,178 +165,6 @@ describe("ClientManager", () => {
         isAuthenticated: false,
         error: undefined,
       })
-    })
-
-    it("supports v6 constructor/signIn auth clients", async () => {
-      const identity = mockIdentity("aaaaa-aa")
-      let currentIdentity: any = anonymousIdentity
-      const authClient = {
-        getIdentity: vi.fn(() => currentIdentity),
-        isAuthenticated: vi.fn(
-          () => !currentIdentity.getPrincipal().isAnonymous()
-        ),
-        signIn: vi.fn(async () => {
-          currentIdentity = identity
-          return identity
-        }),
-        logout: vi.fn(async () => {
-          currentIdentity = anonymousIdentity
-        }),
-        requestAttributes: vi.fn(),
-      }
-      const clientManager = new ClientManager({
-        queryClient,
-        authClient: authClient as any,
-      })
-
-      await clientManager.login()
-
-      expect(authClient.signIn).toHaveBeenCalledTimes(1)
-      expect(clientManager.authState.isAuthenticated).toBe(true)
-      expect(clientManager.authState.identity?.getPrincipal().toText()).toBe(
-        "aaaaa-aa"
-      )
-    })
-
-    it("logs out with v6 auth clients", async () => {
-      const identity = mockIdentity("aaaaa-aa")
-      let currentIdentity: any = identity
-      const authClient = {
-        getIdentity: vi.fn(() => currentIdentity),
-        isAuthenticated: vi.fn(
-          () => !currentIdentity.getPrincipal().isAnonymous()
-        ),
-        signIn: vi.fn(async () => {
-          currentIdentity = identity
-          return identity
-        }),
-        logout: vi.fn(async () => {
-          currentIdentity = anonymousIdentity
-        }),
-      }
-      const clientManager = new ClientManager({
-        queryClient,
-        authClient: authClient as any,
-      })
-
-      await clientManager.logout()
-
-      expect(authClient.logout).toHaveBeenCalledTimes(1)
-      expect(clientManager.authState.isAuthenticated).toBe(false)
-      expect(
-        clientManager.authState.identity?.getPrincipal().isAnonymous()
-      ).toBe(true)
-    })
-
-    it("requests identity attributes and updates auth state after sign-in", async () => {
-      const identity = mockIdentity("aaaaa-aa")
-      let currentIdentity: any = anonymousIdentity
-      const data = new Uint8Array([68, 73, 68, 76])
-      const signature = new Uint8Array([1, 2, 3])
-      const authClient = {
-        getIdentity: vi.fn(() => currentIdentity),
-        isAuthenticated: vi.fn(
-          () => !currentIdentity.getPrincipal().isAnonymous()
-        ),
-        signIn: vi.fn(async () => {
-          currentIdentity = identity
-          return identity
-        }),
-        logout: vi.fn(),
-        requestAttributes: vi.fn(async () => ({ data, signature })),
-      }
-      const clientManager = new ClientManager({
-        queryClient,
-        authClient: authClient as any,
-      })
-
-      const result = await clientManager.requestIdentityAttributes({
-        keys: ["openid:https://issuer.example.com:email"],
-        nonce: new Uint8Array([9, 9]),
-      })
-
-      expect(authClient.signIn).toHaveBeenCalledTimes(1)
-      expect(authClient.requestAttributes).toHaveBeenCalledWith({
-        keys: ["openid:https://issuer.example.com:email"],
-        nonce: new Uint8Array([9, 9]),
-      })
-      expect(result.principal).toBe("aaaaa-aa")
-      expect(result.signedAttributes.data).toEqual(data)
-      expect(clientManager.authState.isAuthenticated).toBe(true)
-    })
-
-    it("requests OpenID identity attributes for arbitrary providers", async () => {
-      const identity = mockIdentity("aaaaa-aa")
-      let currentIdentity: any = anonymousIdentity
-      const data = new Uint8Array([68, 73, 68, 76])
-      const signature = new Uint8Array([1, 2, 3])
-      const authClient = {
-        getIdentity: vi.fn(() => currentIdentity),
-        isAuthenticated: vi.fn(
-          () => !currentIdentity.getPrincipal().isAnonymous()
-        ),
-        signIn: vi.fn(async () => {
-          currentIdentity = identity
-          return identity
-        }),
-        logout: vi.fn(),
-        requestAttributes: vi.fn(async () => ({ data, signature })),
-      }
-      const clientManager = new ClientManager({
-        queryClient,
-        authClient: authClient as any,
-      })
-
-      const result = await clientManager.requestOpenIdIdentityAttributes({
-        openIdProvider: "https://issuer.example.com",
-        keys: ["email"],
-        nonce: new Uint8Array([9, 9]),
-      })
-
-      expect(authClient.requestAttributes).toHaveBeenCalledWith({
-        keys: ["openid:https://issuer.example.com:email"],
-        nonce: new Uint8Array([9, 9]),
-      })
-      expect(result.requestedKeys).toEqual([
-        "openid:https://issuer.example.com:email",
-      ])
-    })
-
-    it("accepts documented OpenID provider aliases", async () => {
-      const identity = mockIdentity("aaaaa-aa")
-      let currentIdentity: any = anonymousIdentity
-      const data = new Uint8Array([68, 73, 68, 76])
-      const signature = new Uint8Array([1, 2, 3])
-      const authClient = {
-        getIdentity: vi.fn(() => currentIdentity),
-        isAuthenticated: vi.fn(
-          () => !currentIdentity.getPrincipal().isAnonymous()
-        ),
-        signIn: vi.fn(async () => {
-          currentIdentity = identity
-          return identity
-        }),
-        logout: vi.fn(),
-        requestAttributes: vi.fn(async () => ({ data, signature })),
-      }
-      const clientManager = new ClientManager({
-        queryClient,
-        authClient: authClient as any,
-      })
-
-      const result = await clientManager.requestOpenIdIdentityAttributes({
-        openIdProvider: "microsoft",
-        keys: ["email"],
-        nonce: new Uint8Array([9, 9]),
-      })
-
-      expect(authClient.requestAttributes).toHaveBeenCalledWith({
-        keys: ["openid:https://login.microsoftonline.com/{tid}/v2.0:email"],
-        nonce: new Uint8Array([9, 9]),
-      })
-      expect(result.requestedKeys).toEqual([
-        "openid:https://login.microsoftonline.com/{tid}/v2.0:email",
-      ])
     })
   })
 

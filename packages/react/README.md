@@ -81,8 +81,8 @@ export function App() {
 
 - `createActorHooks(reactor)` for per-canister hooks like `useActorQuery` and
   `useActorMutation`
-- `createAuthHooks(clientManager)` for `useAuth`, `useAgentState`,
-  `useUserPrincipal`, and identity attribute hooks
+- `createAuthHooks(clientManager)` for `useAuth`, `useAgentState`, and
+  `useUserPrincipal`
 - direct reactor hooks like `useReactorQuery` when you want to pass the reactor
   instance at call time
 - factory helpers like `createQuery`, `createSuspenseQuery`,
@@ -133,65 +133,6 @@ const mutation = updateProfile.useMutation({
   invalidateQueries: [profileQuery.getQueryKey()],
 })
 ```
-
-## Identity Attributes / OpenID email and profile values
-
-`createAuthHooks(clientManager)` exposes `useIdentityAttributes()` for signed
-identity attributes from `@icp-sdk/auth` v6. Existing `useAuth()`, `login()`,
-`logout()`, and `useUserPrincipal()` consumers keep the same IC Reactor API, but
-the configured auth client must support the v6 constructor/sign-in API.
-
-```tsx
-import { createAuthHooks } from "@ic-reactor/react"
-import { clientManager } from "./reactor"
-
-const { useIdentityAttributes } = createAuthHooks(clientManager)
-
-function RegisterWithOpenIdProvider() {
-  const {
-    requestOpenIdAttributes,
-    attributes,
-    isRequestingAttributes,
-    attributeError,
-  } = useIdentityAttributes()
-
-  async function handleProviderLogin() {
-    const nonce = await backend.registerBegin()
-
-    const result = await requestOpenIdAttributes({
-      nonce,
-      openIdProvider: "microsoft",
-      keys: ["email", "name"],
-      identityProvider: "https://beta.id.ai/authorize",
-      windowOpenerFeatures: popupCenter(),
-    })
-
-    console.log(result.decodedAttributes.email)
-    console.log(result.decodedAttributes.name)
-
-    await backend.registerFinish({
-      data: result.signedAttributes.data,
-      signature: result.signedAttributes.signature,
-    })
-  }
-
-  return (
-    <button disabled={isRequestingAttributes} onClick={handleProviderLogin}>
-      {attributes?.decodedAttributes.email ??
-        attributeError?.message ??
-        "Continue with provider"}
-    </button>
-  )
-}
-```
-
-Use a documented auth provider alias (`"google"`, `"apple"`, or `"microsoft"`)
-or the provider issuer URL your app expects for `openIdProvider`.
-
-Frontend decoded `email` and `name` values are for display only. Production flows
-must send `signedAttributes.data` and `signedAttributes.signature` to the backend
-or canister and verify the signature, nonce, origin, timestamp, and requested keys
-before trusting or storing the attributes.
 
 ## Query Result Methods
 
