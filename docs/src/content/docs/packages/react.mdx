@@ -81,9 +81,50 @@ const backend = new Reactor<_SERVICE>({
 export const { useActorQuery, useActorMutation } = createActorHooks(backend)
 ```
 
+## Identity Attributes
+
+`createAuthHooks(clientManager)` also returns `useIdentityAttributes()` for
+signed OpenID email and profile attributes:
+
+```tsx
+const { useIdentityAttributes } = createAuthHooks(clientManager)
+
+function ContinueWithProvider() {
+  const { requestOpenIdAttributes, isRequestingAttributes } =
+    useIdentityAttributes()
+
+  async function handleClick() {
+    const nonce = await backend.registerBegin()
+
+    const result = await requestOpenIdAttributes({
+      nonce,
+      openIdProvider: "microsoft",
+      keys: ["email", "name"],
+      identityProvider: "https://beta.id.ai/authorize",
+    })
+
+    await backend.registerFinish({
+      data: result.signedAttributes.data,
+      signature: result.signedAttributes.signature,
+    })
+  }
+
+  return (
+    <button disabled={isRequestingAttributes} onClick={handleClick}>
+      Continue with provider
+    </button>
+  )
+}
+```
+
+Provider aliases (`"google"`, `"apple"`, and `"microsoft"`) and full issuer URLs
+are supported. Always verify the signed payload server-side or in your canister
+before trusting decoded values.
+
 ## See Also
 
 - [Queries](/v3/framework/queries) — Standard query patterns
 - [Mutations](/v3/framework/mutations) — Update and invalidation patterns
+- [Authentication](/v3/guides/authentication) — Internet Identity and identity attributes
 - [Query Caching](/v3/framework/query-caching) — Cache behavior and invalidation
 - [@ic-reactor/core](/v3/packages/core) — Runtime layer re-exported by this package

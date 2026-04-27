@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [errors/index.ts:16](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/errors/index.ts#L16)
+Defined in: [errors/index.ts:16](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L16)
 
 Error thrown when there's an issue calling the canister.
 This includes network errors, agent errors, canister not found, etc.
@@ -20,7 +20,7 @@ This includes network errors, agent errors, canister not found, etc.
 
 > **new CallError**(`message`, `cause?`): `CallError`
 
-Defined in: [errors/index.ts:19](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/errors/index.ts#L19)
+Defined in: [errors/index.ts:19](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L19)
 
 #### Parameters
 
@@ -44,6 +44,6 @@ Defined in: [errors/index.ts:19](https://github.com/B3Pay/ic-reactor/blob/e0f346
 
 ### cause?
 
-> `readonly` `optional` **cause**: `unknown`
+> `readonly` `optional` **cause?**: `unknown`
 
-Defined in: [errors/index.ts:17](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/errors/index.ts#L17)
+Defined in: [errors/index.ts:17](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L17)

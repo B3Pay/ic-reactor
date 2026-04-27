@@ -85,8 +85,39 @@ const greeting = await backend.fetchQuery({
 })
 ```
 
+## Identity Attributes
+
+`ClientManager` exposes provider-neutral helpers for signed OpenID identity
+attributes from `@icp-sdk/auth` v6:
+
+```typescript
+import {
+  IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+  identityAttributeKeys,
+} from "@ic-reactor/core"
+
+const nonce = await backend.registerBegin()
+
+const result = await clientManager.requestOpenIdIdentityAttributes({
+  nonce,
+  openIdProvider: "microsoft",
+  keys: ["email", "name"],
+  identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+})
+
+await backend.registerFinish({
+  data: result.signedAttributes.data,
+  signature: result.signedAttributes.signature,
+})
+```
+
+Use `openIdProvider: "google"`, `"apple"`, `"microsoft"`, or a provider issuer
+URL. For lower-level requests, build scoped keys with `identityAttributeKeys()`
+and pass them to `clientManager.requestIdentityAttributes()`.
+
 ## See Also
 
 - [@ic-reactor/react](/v3/packages/react) — React bindings built on top of this package
+- [Authentication](/v3/guides/authentication) — Internet Identity and identity attributes
 - [React Setup](/v3/framework/react-setup) — End-to-end React integration guide
 - [@ic-reactor/candid](/v3/packages/candid) — Dynamic runtime Candid support

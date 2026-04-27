@@ -7,19 +7,20 @@ prev: true
 
 > **getVariantValue**\<`T`, `K`\>(`variant`): [`CandidVariantValue`](../type-aliases/CandidVariantValue.md)\<`T`, `K`\>
 
-Defined in: [utils/candid.ts:88](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/utils/candid.ts#L88)
+Defined in: [utils/candid.ts:120](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/utils/candid.ts#L120)
 
 Extracts the value from a Candid variant type.
+Supports both raw Candid variants and display variants.
 
 ## Type Parameters
 
 ### T
 
-`T` *extends* `Record`\<`string`, `any`\>
+`T` _extends_ `Record`\<`string`, `any`\>
 
 ### K
 
-`K` *extends* `string` = [`CandidVariantKey`](../type-aliases/CandidVariantKey.md)\<`T`\>
+`K` _extends_ `string` = [`CandidVariantKey`](../type-aliases/CandidVariantKey.md)\<`T`\>
 
 ## Parameters
 

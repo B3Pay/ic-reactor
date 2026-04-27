@@ -5,9 +5,9 @@ next: true
 prev: true
 ---
 
-> **CandidVariantValue**\<`T`, `K`\> = `T` *extends* `Record`\<`K`, infer U\> ? `U` : `never`
+> **CandidVariantValue**\<`T`, `K`\> = `T` _extends_ `Record`\<`K`, infer U\> ? `U` : `T` _extends_ `object` ? `null` : `never`
 
-Defined in: [types/variant.ts:13](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/variant.ts#L13)
+Defined in: [types/variant.ts:15](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/variant.ts#L15)
 
 ## Type Parameters
 
@@ -17,4 +17,4 @@ Defined in: [types/variant.ts:13](https://github.com/B3Pay/ic-reactor/blob/e0f34
 
 ### K
 
-`K` *extends* [`CandidVariantKey`](CandidVariantKey.md)\<`T`\>
+`K` _extends_ [`CandidVariantKey`](CandidVariantKey.md)\<`T`\>

@@ -7,7 +7,7 @@ prev: true
 
 > **formatHexDisplay**(`hex`): `` `0x${string}` ``
 
-Defined in: [utils/helper.ts:139](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/utils/helper.ts#L139)
+Defined in: [utils/helper.ts:145](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/utils/helper.ts#L145)
 
 Formats hex string with 0x prefix for display purposes
 
