@@ -5,9 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:14](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/client.ts#L14)
-
-Parameters for configuring a ClientManager instance.
+Defined in: [types/client.ts:94](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L94)
 
 ## Properties
 
@@ -15,57 +13,57 @@ Parameters for configuring a ClientManager instance.
 
 > **queryClient**: `QueryClient`
 
-Defined in: [types/client.ts:18](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/client.ts#L18)
+Defined in: [types/client.ts:98](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L98)
 
 The TanStack QueryClient used for caching and state management.
 
-***
+---
 
 ### agentOptions?
 
-> `optional` **agentOptions**: `HttpAgentOptions`
+> `optional` **agentOptions?**: `HttpAgentOptions`
 
-Defined in: [types/client.ts:22](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/client.ts#L22)
+Defined in: [types/client.ts:102](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L102)
 
 Optional configuration for the underlying HttpAgent.
 
-***
+---
 
 ### port?
 
-> `optional` **port**: `number`
+> `optional` **port?**: `number`
 
-Defined in: [types/client.ts:26](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/client.ts#L26)
+Defined in: [types/client.ts:106](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L106)
 
 The port used for the local IC replica (default is 4943).
 
-***
+---
 
 ### withLocalEnv?
 
-> `optional` **withLocalEnv**: `boolean`
+> `optional` **withLocalEnv?**: `boolean`
 
-Defined in: [types/client.ts:30](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/client.ts#L30)
+Defined in: [types/client.ts:110](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L110)
 
 If true, configures the agent for a local environment.
 
-***
+---
 
 ### withProcessEnv?
 
-> `optional` **withProcessEnv**: `boolean`
+> `optional` **withProcessEnv?**: `boolean`
 
-Defined in: [types/client.ts:34](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/client.ts#L34)
+Defined in: [types/client.ts:114](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L114)
 
 If true, auto-configures the agent based on process.env settings.
 
-***
+---
 
 ### authClient?
 
-> `optional` **authClient**: `AuthClient`
+> `optional` **authClient?**: [`AuthClientLike`](AuthClientLike.md)
 
-Defined in: [types/client.ts:42](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/client.ts#L42)
+Defined in: [types/client.ts:122](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L122)
 
 Optional pre-initialized AuthClient instance.
 If provided, the manager will use this instance instead of dynamically importing
@@ -73,13 +71,13 @@ and creating a new one from `@icp-sdk/auth`.
 This is useful for environments where dynamic imports are not supported or
 when you want to share an AuthClient instance across multiple managers.
 
-***
+---
 
 ### withCanisterEnv?
 
-> `optional` **withCanisterEnv**: `boolean`
+> `optional` **withCanisterEnv?**: `boolean`
 
-Defined in: [types/client.ts:53](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/client.ts#L53)
+Defined in: [types/client.ts:133](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L133)
 
 **`Experimental`**
 

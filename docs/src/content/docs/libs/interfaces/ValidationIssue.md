@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [errors/index.ts:176](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/errors/index.ts#L176)
+Defined in: [errors/index.ts:183](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L183)
 
 Represents a single validation issue
 
@@ -15,26 +15,26 @@ Represents a single validation issue
 
 > **path**: (`string` \| `number`)[]
 
-Defined in: [errors/index.ts:178](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/errors/index.ts#L178)
+Defined in: [errors/index.ts:185](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L185)
 
 Path to the invalid field (e.g., ["to", "amount"])
 
-***
+---
 
 ### message
 
 > **message**: `string`
 
-Defined in: [errors/index.ts:180](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/errors/index.ts#L180)
+Defined in: [errors/index.ts:187](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L187)
 
 Human-readable error message
 
-***
+---
 
 ### code?
 
-> `optional` **code**: `string`
+> `optional` **code?**: `string`
 
-Defined in: [errors/index.ts:182](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/errors/index.ts#L182)
+Defined in: [errors/index.ts:189](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L189)
 
 Validation code (e.g., "required", "min_length")

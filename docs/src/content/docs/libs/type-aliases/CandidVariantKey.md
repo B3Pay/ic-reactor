@@ -5,9 +5,9 @@ next: true
 prev: true
 ---
 
-> **CandidVariantKey**\<`T`\> = `T` *extends* `any` ? keyof `T` : `never`
+> **CandidVariantKey**\<`T`\> = `T` _extends_ `any` ? `Exclude`\<keyof `T`, `"_type"`\> : `never`
 
-Defined in: [types/variant.ts:11](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/variant.ts#L11)
+Defined in: [types/variant.ts:11](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/variant.ts#L11)
 
 ## Type Parameters
 

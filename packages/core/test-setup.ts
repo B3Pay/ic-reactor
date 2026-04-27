@@ -1,5 +1,7 @@
+/// <reference types="node" />
+
 import "fake-indexeddb/auto"
 import { TextEncoder, TextDecoder } from "util"
 
-global.TextEncoder = TextEncoder
-global.TextDecoder = TextDecoder as any
+globalThis.TextEncoder = TextEncoder
+globalThis.TextDecoder = TextDecoder as any

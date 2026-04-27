@@ -5,6 +5,6 @@ next: true
 prev: true
 ---
 
-> `const` **LOCAL\_INTERNET\_IDENTITY\_PROVIDER**: `"http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"` = `"http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"`
+> `const` **LOCAL_INTERNET_IDENTITY_PROVIDER**: `"http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"` = `"http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"`
 
-Defined in: [utils/constants.ts:11](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/utils/constants.ts#L11)
+Defined in: [utils/constants.ts:11](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/utils/constants.ts#L11)

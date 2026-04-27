@@ -17,8 +17,12 @@ Authentication hooks are created by passing your `ClientManager` instance to `cr
 import { createAuthHooks } from "@ic-reactor/react"
 import { clientManager } from "./index"
 
-export const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(clientManager)
+export const {
+  useAuth,
+  useUserPrincipal,
+  useAgentState,
+  useIdentityAttributes,
+} = createAuthHooks(clientManager)
 ```
 
 <Aside type="note">
@@ -82,12 +86,68 @@ login({
 
 The `ClientManager` automatically selects the correct Internet Identity provider based on your network:
 
-| Network      | Identity Provider                                          |
-| ------------ | ---------------------------------------------------------- |
-| IC (mainnet) | `https://identity.ic0.app`                                 |
-| Local        | `http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943`       |
+| Network      | Identity Provider                                   |
+| ------------ | --------------------------------------------------- |
+| IC (mainnet) | `https://identity.ic0.app`                          |
+| Local        | `http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943` |
 
 You can override this by passing `identityProvider` to the login options.
+
+## Identity Attributes
+
+IC Reactor can request signed identity attributes from `@icp-sdk/auth` v6 for
+OpenID email and profile flows. Use `useIdentityAttributes()` when a React
+component needs to request attributes and send the signed payload to a backend or
+canister for verification.
+
+```tsx
+import { useIdentityAttributes } from "../reactor/hooks"
+
+function RegisterWithOpenIdProvider() {
+  const {
+    requestOpenIdAttributes,
+    attributes,
+    isRequestingAttributes,
+    attributeError,
+  } = useIdentityAttributes()
+
+  async function handleRegister() {
+    const nonce = await backend.registerBegin()
+
+    const result = await requestOpenIdAttributes({
+      nonce,
+      openIdProvider: "microsoft",
+      keys: ["email", "name"],
+      identityProvider: "https://beta.id.ai/authorize",
+    })
+
+    await backend.registerFinish({
+      data: result.signedAttributes.data,
+      signature: result.signedAttributes.signature,
+    })
+  }
+
+  return (
+    <button disabled={isRequestingAttributes} onClick={handleRegister}>
+      {attributes?.decodedAttributes.email ??
+        attributeError?.message ??
+        "Continue with provider"}
+    </button>
+  )
+}
+```
+
+Pass a documented auth provider alias (`"google"`, `"apple"`, or
+`"microsoft"`) or an issuer URL such as `"https://issuer.example.com"` for
+custom OpenID providers. For non-React code, use
+`clientManager.requestOpenIdIdentityAttributes()` directly.
+
+<Aside type="caution">
+  The decoded attribute values are only a frontend display convenience. Your
+  backend or canister must verify `signedAttributes.data`,
+  `signedAttributes.signature`, the nonce, origin, timestamp, and requested keys
+  before trusting or storing an email or profile value.
+</Aside>
 
 ## useUserPrincipal
 

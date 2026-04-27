@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { ClientManager } from "@ic-reactor/core"
+import { ClientManager, IdentityAttributeResult } from "@ic-reactor/core"
 import { createAuthHooks } from "../src/createAuthHooks"
 
 // ============================================================================
@@ -47,7 +47,7 @@ describe("createAuthHooks - useAgentState", () => {
     const { useAgentState } = createAuthHooks(clientManager)
 
     // Spy on the subscription to simulate a state change
-    const listeners: Array<() => void> = []
+    const listeners: Array<(state: any) => void> = []
     vi.spyOn(clientManager, "subscribeAgentState").mockImplementation((cb) => {
       listeners.push(cb)
       return () => {
@@ -62,7 +62,7 @@ describe("createAuthHooks - useAgentState", () => {
 
     // Trigger a fake state-change notification
     act(() => {
-      listeners.forEach((l) => l())
+      listeners.forEach((listener) => listener(clientManager.agentState))
     })
 
     // The hook should still return a defined state object
@@ -128,7 +128,7 @@ describe("createAuthHooks - useAuth", () => {
     queryClient = new QueryClient()
     clientManager = makeClientManager(queryClient)
     // Prevent real network calls
-    vi.spyOn(clientManager, "initialize").mockResolvedValue(undefined)
+    vi.spyOn(clientManager, "initialize").mockResolvedValue(clientManager)
   })
 
   it("returns the expected shape", async () => {
@@ -239,5 +239,157 @@ describe("createAuthHooks - useAuth", () => {
     await waitFor(() => expect(result.current).toBeDefined())
 
     expect(result.current.error).toBe(authError)
+  })
+})
+
+// ============================================================================
+// createAuthHooks - useIdentityAttributes
+// ============================================================================
+
+describe("createAuthHooks - useIdentityAttributes", () => {
+  let queryClient: QueryClient
+  let clientManager: ClientManager
+
+  beforeEach(() => {
+    queryClient = new QueryClient()
+    clientManager = makeClientManager(queryClient)
+    vi.spyOn(clientManager, "initialize").mockResolvedValue(clientManager)
+  })
+
+  it("tracks loading and success state", async () => {
+    const attributes = {
+      principal: "aaaaa-aa",
+      requestedKeys: ["openid:https://issuer.example.com:email"],
+      signedAttributes: {
+        data: new Uint8Array([1]),
+        signature: new Uint8Array([2]),
+      },
+      decodedAttributes: { email: "alice@example.com" },
+      completedAt: new Date().toISOString(),
+    }
+    ;(clientManager as any).requestOpenIdIdentityAttributes = vi
+      .fn()
+      .mockResolvedValue(attributes)
+
+    const { useIdentityAttributes } = createAuthHooks(clientManager)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    let promise!: Promise<IdentityAttributeResult>
+    act(() => {
+      promise = result.current.requestOpenIdAttributes({
+        openIdProvider: "https://issuer.example.com",
+        keys: ["email"],
+        nonce: new Uint8Array([1, 2, 3]),
+      })
+    })
+
+    expect(result.current.isRequestingAttributes).toBe(true)
+    await act(async () => {
+      await promise
+    })
+
+    expect(result.current.isRequestingAttributes).toBe(false)
+    expect(result.current.attributes).toBe(attributes)
+    expect(result.current.attributeError).toBeNull()
+  })
+
+  it("requests attributes for arbitrary OpenID providers", async () => {
+    const attributes = {
+      principal: "aaaaa-aa",
+      requestedKeys: ["openid:https://issuer.example.com:email"],
+      signedAttributes: {
+        data: new Uint8Array([1]),
+        signature: new Uint8Array([2]),
+      },
+      decodedAttributes: { email: "alice@example.com" },
+      completedAt: new Date().toISOString(),
+    }
+    ;(clientManager as any).requestOpenIdIdentityAttributes = vi
+      .fn()
+      .mockResolvedValue(attributes)
+
+    const { useIdentityAttributes } = createAuthHooks(clientManager)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.requestOpenIdAttributes({
+        openIdProvider: "https://issuer.example.com",
+        keys: ["email"],
+        nonce: new Uint8Array([1]),
+      })
+    })
+
+    expect(
+      (clientManager as any).requestOpenIdIdentityAttributes
+    ).toHaveBeenCalledWith({
+      openIdProvider: "https://issuer.example.com",
+      keys: ["email"],
+      nonce: new Uint8Array([1]),
+    })
+    expect(result.current.attributes).toBe(attributes)
+  })
+
+  it("tracks error state", async () => {
+    const error = new Error("attribute request failed")
+    ;(clientManager as any).requestIdentityAttributes = vi
+      .fn()
+      .mockRejectedValue(error)
+
+    const { useIdentityAttributes } = createAuthHooks(clientManager)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    await act(async () => {
+      await expect(
+        result.current.requestAttributes({
+          keys: ["openid:https://issuer.example.com:email"],
+          nonce: new Uint8Array([1]),
+        })
+      ).rejects.toBe(error)
+    })
+
+    expect(result.current.isRequestingAttributes).toBe(false)
+    expect(result.current.attributeError).toBe(error)
+  })
+
+  it("clears attributes and errors", async () => {
+    const attributes = {
+      principal: "aaaaa-aa",
+      requestedKeys: ["openid:https://issuer.example.com:email"],
+      signedAttributes: {
+        data: new Uint8Array([1]),
+        signature: new Uint8Array([2]),
+      },
+      decodedAttributes: { email: "alice@example.com" },
+      completedAt: new Date().toISOString(),
+    }
+    ;(clientManager as any).requestOpenIdIdentityAttributes = vi
+      .fn()
+      .mockResolvedValue(attributes)
+
+    const { useIdentityAttributes } = createAuthHooks(clientManager)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.requestOpenIdAttributes({
+        openIdProvider: "https://issuer.example.com",
+        keys: ["email"],
+        nonce: new Uint8Array([1]),
+      })
+    })
+
+    act(() => {
+      result.current.clearAttributes()
+    })
+
+    expect(result.current.attributes).toBeNull()
+    expect(result.current.attributeError).toBeNull()
   })
 })

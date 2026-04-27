@@ -5,9 +5,9 @@ next: true
 prev: true
 ---
 
-> **IsOptionalType**\<`T`\> = \[`T`\] *extends* \[\[\] \| \[`any`\]\] ? `true` : `false`
+> **IsOptionalType**\<`T`\> = \[`T`\] _extends_ \[\[\] \| \[`any`\]\] ? `true` : `false`
 
-Defined in: [types/transform.ts:29](https://github.com/B3Pay/ic-reactor/blob/e0f3465befa2e08ee6f1f6ff7d4b00fcc6d1ff89/packages/core/src/types/transform.ts#L29)
+Defined in: [types/transform.ts:29](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/transform.ts#L29)
 
 ## Type Parameters
 
