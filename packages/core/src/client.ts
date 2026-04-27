@@ -322,6 +322,8 @@ export class ClientManager {
    * @throws An error if the authentication module is not installed.
    */
   public login = async (loginOptions?: ClientManagerSignInOptions) => {
+    let didCompleteSignIn = false
+
     try {
       // Ensure agent is initialized before login
       if (!this.agentState.isInitialized) {
@@ -357,22 +359,31 @@ export class ClientManager {
       const identity = await this.#authClient.signIn(
         getSignInOptions(loginOptions)
       )
-      await (
-        loginOptions?.onSuccess as (() => void | Promise<void>) | undefined
-      )?.()
-
       this.updateAgent(identity)
       this.updateAuthState({
         identity,
         isAuthenticated: true,
         isAuthenticating: false,
       })
+      didCompleteSignIn = true
+
+      try {
+        await (
+          loginOptions?.onSuccess as (() => void | Promise<void>) | undefined
+        )?.()
+      } catch (callbackError) {
+        this.updateAuthState({ error: callbackError as Error })
+        await loginOptions?.onError?.((callbackError as Error).message)
+        throw callbackError
+      }
     } catch (error) {
-      await loginOptions?.onError?.((error as Error).message)
-      this.updateAuthState({
-        error: error as Error,
-        isAuthenticating: false,
-      })
+      if (!didCompleteSignIn) {
+        await loginOptions?.onError?.((error as Error).message)
+        this.updateAuthState({
+          error: error as Error,
+          isAuthenticating: false,
+        })
+      }
       throw error
     }
   }
@@ -766,8 +777,18 @@ function getAuthClientOptions(
   return {
     identityProvider: options.identityProvider,
     windowOpenerFeatures: options.windowOpenerFeatures,
-    openIdProvider: options.openIdProvider,
+    openIdProvider: getAuthClientOpenIdProvider(options.openIdProvider),
   }
+}
+
+function getAuthClientOpenIdProvider(
+  openIdProvider?: ClientManagerAuthClientOptions["openIdProvider"]
+): ClientManagerAuthClientOptions["openIdProvider"] | undefined {
+  return openIdProvider === "google" ||
+    openIdProvider === "apple" ||
+    openIdProvider === "microsoft"
+    ? openIdProvider
+    : undefined
 }
 
 function hasAuthClientOptions(

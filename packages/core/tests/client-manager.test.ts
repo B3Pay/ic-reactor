@@ -210,6 +210,77 @@ describe("ClientManager", () => {
       )
     })
 
+    it("updates auth state before invoking login onSuccess", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      let currentIdentity: any = anonymousIdentity
+      const authClient = {
+        getIdentity: vi.fn(() => currentIdentity),
+        isAuthenticated: vi.fn(
+          () => !currentIdentity.getPrincipal().isAnonymous()
+        ),
+        signIn: vi.fn(async () => {
+          currentIdentity = identity
+          return identity
+        }),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(),
+      }
+      const clientManager = new ClientManager({
+        queryClient,
+        authClient: authClient as any,
+      })
+      const onSuccess = vi.fn(() => {
+        expect(clientManager.authState.isAuthenticated).toBe(true)
+        expect(clientManager.authState.identity?.getPrincipal().toText()).toBe(
+          "aaaaa-aa"
+        )
+      })
+
+      await clientManager.login({ onSuccess })
+
+      expect(onSuccess).toHaveBeenCalledTimes(1)
+      expect(clientManager.authState.isAuthenticated).toBe(true)
+    })
+
+    it("keeps authenticated state when login onSuccess throws", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      let currentIdentity: any = anonymousIdentity
+      const error = new Error("callback failed")
+      const authClient = {
+        getIdentity: vi.fn(() => currentIdentity),
+        isAuthenticated: vi.fn(
+          () => !currentIdentity.getPrincipal().isAnonymous()
+        ),
+        signIn: vi.fn(async () => {
+          currentIdentity = identity
+          return identity
+        }),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(),
+      }
+      const clientManager = new ClientManager({
+        queryClient,
+        authClient: authClient as any,
+      })
+      const onError = vi.fn()
+
+      await expect(
+        clientManager.login({
+          onSuccess: () => {
+            throw error
+          },
+          onError,
+        })
+      ).rejects.toBe(error)
+
+      expect(onError).toHaveBeenCalledWith("callback failed")
+      expect(clientManager.authState.isAuthenticated).toBe(true)
+      expect(clientManager.authState.identity?.getPrincipal().toText()).toBe(
+        "aaaaa-aa"
+      )
+      expect(clientManager.authState.error).toBe(error)
+    })
+
     it("logs out with v6 auth clients", async () => {
       const identity = mockIdentity("aaaaa-aa")
       let currentIdentity: any = identity
@@ -312,6 +383,40 @@ describe("ClientManager", () => {
       expect(result.requestedKeys).toEqual([
         "openid:https://issuer.example.com:email",
       ])
+    })
+
+    it("does not pass custom issuer URLs as AuthClient provider aliases", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      const data = new Uint8Array([68, 73, 68, 76])
+      const signature = new Uint8Array([1, 2, 3])
+      const authClient = {
+        getIdentity: vi.fn(() => identity),
+        isAuthenticated: vi.fn(() => true),
+        signIn: vi.fn(async () => identity),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(async () => ({ data, signature })),
+      }
+      const AuthClient = vi.fn(function () {
+        return authClient
+      })
+      vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+      const clientManager = new ClientManager({ queryClient })
+
+      await clientManager.requestOpenIdIdentityAttributes({
+        openIdProvider: "https://issuer.example.com",
+        keys: ["email"],
+        nonce: new Uint8Array([9, 9]),
+      })
+
+      expect(AuthClient).toHaveBeenCalledWith({
+        identityProvider: "https://beta.id.ai/authorize",
+        windowOpenerFeatures: undefined,
+        openIdProvider: undefined,
+      })
+      expect(authClient.requestAttributes).toHaveBeenCalledWith({
+        keys: ["openid:https://issuer.example.com:email"],
+        nonce: new Uint8Array([9, 9]),
+      })
     })
 
     it("accepts documented OpenID provider aliases", async () => {
