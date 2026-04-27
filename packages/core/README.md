@@ -158,6 +158,66 @@ await clientManager.logout()
 const identity = await clientManager.authenticate()
 ```
 
+### Identity Attributes / OpenID email and profile values
+
+`ClientManager` uses the `@icp-sdk/auth` v6 `signIn()` / `requestAttributes()`
+API. Apps can request signed identity attributes directly, without adding a
+local compatibility shim.
+
+```typescript
+import {
+  IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+  identityAttributeKeys,
+} from "@ic-reactor/core"
+
+const nonce = await backend.registerBegin()
+
+const result = await clientManager.requestOpenIdIdentityAttributes({
+  nonce,
+  openIdProvider: "microsoft",
+  keys: ["email", "name"],
+  identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+  windowOpenerFeatures: popupCenter(),
+})
+
+console.log(result.decodedAttributes.email)
+console.log(result.decodedAttributes.name)
+
+await backend.registerFinish({
+  data: result.signedAttributes.data,
+  signature: result.signedAttributes.signature,
+})
+```
+
+Pass a documented auth provider alias (`"google"`, `"apple"`, or `"microsoft"`)
+or the OpenID provider issuer URL your app expects:
+
+```typescript
+const result = await clientManager.requestOpenIdIdentityAttributes({
+  nonce,
+  openIdProvider: "https://issuer.example.com",
+  keys: ["sub", "email"],
+})
+```
+
+For lower-level control, pass scoped keys yourself:
+
+```typescript
+const result = await clientManager.requestIdentityAttributes({
+  nonce,
+  keys: identityAttributeKeys({
+    openIdProvider: "https://issuer.example.com",
+    keys: ["sub", "email"],
+  }),
+  identityProvider: "https://beta.id.ai/authorize",
+})
+```
+
+The frontend `decodedAttributes` values are a display convenience for UX only.
+Production code must verify `signedAttributes.data`, `signedAttributes.signature`,
+the backend-issued nonce, origin, timestamp, and expected keys in the canister or
+backend before trusting or storing an email or name.
+
 ### State Subscriptions
 
 ```typescript
