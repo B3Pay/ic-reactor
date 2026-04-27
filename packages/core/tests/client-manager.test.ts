@@ -166,6 +166,86 @@ describe("ClientManager", () => {
         error: undefined,
       })
     })
+
+    it("hydrates auth state from an async auth client identity", async () => {
+      const mockIdentity = {
+        getPrincipal: () => ({
+          isAnonymous: () => false,
+          toText: () => "aaaaa-aa",
+        }),
+      }
+      const authClient = {
+        getIdentity: vi.fn().mockResolvedValue(mockIdentity),
+        logout: vi.fn().mockResolvedValue(undefined),
+      }
+
+      const clientManager = new ClientManager({
+        queryClient,
+        authClient: authClient as any,
+      })
+
+      await Promise.resolve()
+
+      expect(clientManager.authState.identity).toBe(mockIdentity)
+      expect(clientManager.authState.isAuthenticated).toBe(true)
+    })
+
+    it("uses signIn when auth client exposes the latest API", async () => {
+      const mockIdentity = {
+        getPrincipal: () => ({
+          isAnonymous: () => false,
+          toText: () => "aaaaa-aa",
+        }),
+      }
+      const authClient = {
+        getIdentity: vi.fn().mockResolvedValue(mockIdentity),
+        signIn: vi.fn().mockResolvedValue(mockIdentity),
+        logout: vi.fn().mockResolvedValue(undefined),
+      }
+
+      const clientManager = new ClientManager({
+        queryClient,
+        authClient: authClient as any,
+      })
+
+      vi.spyOn(clientManager, "initializeAgent").mockResolvedValue(undefined)
+
+      await clientManager.login({
+        maxTimeToLive: 1n,
+      })
+
+      expect(authClient.signIn).toHaveBeenCalledWith({
+        maxTimeToLive: 1n,
+        targets: undefined,
+      })
+      expect(clientManager.authState.identity).toBe(mockIdentity)
+      expect(clientManager.authState.isAuthenticated).toBe(true)
+    })
+
+    it("forwards logout options to the auth client", async () => {
+      const anonymousIdentity = {
+        getPrincipal: () => ({
+          isAnonymous: () => true,
+          toText: () => "2vxsx-fae",
+        }),
+      }
+      const authClient = {
+        getIdentity: vi.fn().mockResolvedValue(anonymousIdentity),
+        logout: vi.fn().mockResolvedValue(undefined),
+      }
+
+      const clientManager = new ClientManager({
+        queryClient,
+        authClient: authClient as any,
+      })
+
+      await clientManager.logout({ returnTo: "/signed-out" })
+
+      expect(authClient.logout).toHaveBeenCalledWith({
+        returnTo: "/signed-out",
+      })
+      expect(clientManager.authState.isAuthenticated).toBe(false)
+    })
   })
 
   describe("Canister registration", () => {

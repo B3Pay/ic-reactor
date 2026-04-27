@@ -272,8 +272,8 @@ importers:
         version: 4.3.6
     devDependencies:
       '@icp-sdk/auth':
-        specifier: ^5.0.0
-        version: 5.0.0(@icp-sdk/core@5.2.1)
+        specifier: ^6.2.2
+        version: 6.2.2(@icp-sdk/core@5.2.1)
       '@icp-sdk/core':
         specifier: ^5.2.1
         version: 5.2.1
@@ -339,8 +339,8 @@ importers:
         version: link:../core
     devDependencies:
       '@icp-sdk/auth':
-        specifier: ^5.0.0
-        version: 5.0.0(@icp-sdk/core@5.2.1)
+        specifier: ^6.2.2
+        version: 6.2.2(@icp-sdk/core@5.2.1)
       '@icp-sdk/core':
         specifier: ^5.2.1
         version: 5.2.1
@@ -1551,12 +1551,22 @@ packages:
     peerDependencies:
       '@icp-sdk/core': ^5
 
+  '@icp-sdk/auth@6.2.2':
+    resolution: {integrity: sha512-bIFVvOWHS9F57XOZTk3mDjFj1Wnh9DsCft8K4EnUE8LrtntmSahk+n3SR/epfuLCp83sPBwVQRq/UfUS0QABKg==}
+    peerDependencies:
+      '@icp-sdk/core': ^5
+
   '@icp-sdk/bindgen@0.3.0':
     resolution: {integrity: sha512-yRG0EnzhmmsErGSrSGG2HGQIhf2u4FYs8DjLNd06B3WJ735Tx3sxyDxmWKHTqLKrniQSvAFErRKqJWwwpYdfVQ==}
     hasBin: true
 
   '@icp-sdk/core@5.2.1':
     resolution: {integrity: sha512-FImRjnayCarov7vfr52QU3BO8tPAprbyl4O+0KWz4v7h8ZbKq15fhtdb53M6+ltUsCbWkP/lEgrQ4t1WhIAHjQ==}
+
+  '@icp-sdk/signer@5.3.1':
+    resolution: {integrity: sha512-2IJOdAnAit6SLZU3FTfPK0he4kCR+mr3IunDk62PgZCQKzvJ2DyV8FPBIceDpMSOXJLuXEMwd9E4Hdc53n0nrw==}
+    peerDependencies:
+      '@icp-sdk/core': ^5
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -7076,6 +7086,12 @@ snapshots:
       '@icp-sdk/core': 5.2.1
       idb: 7.1.1
 
+  '@icp-sdk/auth@6.2.2(@icp-sdk/core@5.2.1)':
+    dependencies:
+      '@icp-sdk/core': 5.2.1
+      '@icp-sdk/signer': 5.3.1(@icp-sdk/core@5.2.1)
+      idb: 7.1.1
+
   '@icp-sdk/bindgen@0.3.0':
     dependencies:
       commander: 14.0.3
@@ -7088,6 +7104,10 @@ snapshots:
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       asn1js: 3.0.7
+
+  '@icp-sdk/signer@5.3.1(@icp-sdk/core@5.2.1)':
+    dependencies:
+      '@icp-sdk/core': 5.2.1
 
   '@img/colour@1.1.0':
     optional: true

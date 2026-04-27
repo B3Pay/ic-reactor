@@ -1,6 +1,33 @@
 import type { HttpAgent, HttpAgentOptions, Identity } from "@icp-sdk/core/agent"
-import type { AuthClient } from "@icp-sdk/auth/client"
+import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryClient } from "@tanstack/query-core"
+
+export interface AuthClientCreateOptions {
+  identityProvider?: string | URL
+  derivationOrigin?: string | URL
+  windowOpenerFeatures?: string
+  openIdProvider?: string
+}
+
+export interface AuthClientLoginOptions extends AuthClientCreateOptions {
+  maxTimeToLive?: bigint
+  targets?: Principal[]
+  onSuccess?: () => void | Promise<void>
+  onError?: (error: string) => void
+  allowPinAuthentication?: boolean
+  customValues?: Record<string, unknown>
+}
+
+export interface AuthClientLike {
+  getIdentity(): Identity | Promise<Identity>
+  isAuthenticated?: () => boolean | Promise<boolean>
+  login?: (options?: AuthClientLoginOptions) => Promise<void>
+  signIn?: (options?: {
+    maxTimeToLive?: bigint
+    targets?: Principal[]
+  }) => Promise<Identity>
+  logout(options?: { returnTo?: string }): Promise<void>
+}
 
 /**
  * Parameters for configuring a ClientManager instance.
@@ -39,7 +66,7 @@ export interface ClientManagerParameters {
    * This is useful for environments where dynamic imports are not supported or
    * when you want to share an AuthClient instance across multiple managers.
    */
-  authClient?: AuthClient
+  authClient?: AuthClientLike
   /**
    * **EXPERIMENTAL** - If true, uses the canister environment from `@icp-sdk/core/agent/canister-env`
    * to automatically configure the agent host and root key based on the `ic_env` cookie.

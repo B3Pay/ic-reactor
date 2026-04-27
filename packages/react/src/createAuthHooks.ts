@@ -1,8 +1,12 @@
 import { useSyncExternalStore, useEffect, useRef, useMemo } from "react"
-import { ClientManager, AgentState, AuthState } from "@ic-reactor/core"
+import {
+  ClientManager,
+  AgentState,
+  AuthState,
+  AuthClientLoginOptions,
+} from "@ic-reactor/core"
 import { Principal } from "@icp-sdk/core/principal"
 import { Identity } from "@icp-sdk/core/agent"
-import { AuthClientLoginOptions } from "@icp-sdk/auth/client"
 
 export interface UseAuthReturn {
   authenticate: () => Promise<Identity | undefined>

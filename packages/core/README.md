@@ -134,7 +134,7 @@ interface ClientManagerParameters {
   withProcessEnv?: boolean // Read DFX_NETWORK from env
   withCanisterEnv?: boolean // Read canister IDs from environment
   agentOptions?: HttpAgentOptions // Custom agent options
-  authClient?: AuthClient // Pre-configured auth client
+  authClient?: AuthClientLike // Pre-configured auth client
 }
 ```
 
@@ -147,6 +147,7 @@ await clientManager.initialize()
 // Trigger login flow (opens Internet Identity)
 await clientManager.login({
   identityProvider: "https://identity.ic0.app", // optional, auto-detected
+  maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // optional
   onSuccess: () => console.log("Logged in!"),
   onError: (error) => console.error(error),
 })

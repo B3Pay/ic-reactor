@@ -1,6 +1,8 @@
 import type { Identity } from "@icp-sdk/core/agent"
-import type { AuthClient, AuthClientLoginOptions } from "@icp-sdk/auth/client"
 import type {
+  AuthClientCreateOptions,
+  AuthClientLike,
+  AuthClientLoginOptions,
   ClientManagerParameters,
   AgentState,
   AuthState,
@@ -43,11 +45,12 @@ import {
  */
 export class ClientManager {
   #agent: HttpAgent
-  #authClient?: AuthClient
+  #authClient?: AuthClientLike
   #identitySubscribers: Array<(identity: Identity) => void> = []
   #agentStateSubscribers: Array<(state: AgentState) => void> = []
   #authStateSubscribers: Array<(state: AuthState) => void> = []
   #targetCanisterIds: Set<string> = new Set()
+  #usesExternalAuthClient = false
 
   /**
    * The TanStack QueryClient used for managing cached canister data and invalidating queries on identity changes.
@@ -164,15 +167,9 @@ export class ClientManager {
     })
 
     if (authClient) {
+      this.#usesExternalAuthClient = true
       this.#authClient = authClient
-      const identity = this.#authClient.getIdentity()
-      this.updateAgent(identity)
-      this.authState = {
-        identity,
-        isAuthenticated: !identity.getPrincipal().isAnonymous(),
-        isAuthenticating: false,
-        error: undefined,
-      }
+      void this.hydrateAuthStateFromClient(authClient)
     }
   }
 
@@ -274,27 +271,16 @@ export class ClientManager {
       this.updateAuthState({ isAuthenticating: true })
       try {
         if (!this.#authClient) {
-          const authModule = await import("@icp-sdk/auth/client").catch(() => {
-            this.authModuleMissing = true
-            return null
-          })
-
-          if (!authModule) {
-            this.authModuleMissing = true
-            this.updateAuthState({ isAuthenticating: false })
-            return undefined
-          }
-
-          const { AuthClient } = authModule
-          this.#authClient = await AuthClient.create()
+          this.#authClient = await this.createAuthClient()
         }
-        const identity = this.#authClient.getIdentity()
-        this.updateAgent(identity)
-        this.updateAuthState({
-          identity,
-          isAuthenticated: !identity.getPrincipal().isAnonymous(),
-          isAuthenticating: false,
-        })
+
+        if (!this.#authClient) {
+          this.updateAuthState({ isAuthenticating: false })
+          return undefined
+        }
+
+        const identity = await this.resolveIdentity(this.#authClient)
+        this.applyIdentity(identity, { isAuthenticating: false })
         return identity
       } catch (error) {
         this.updateAuthState({ error: error as Error, isAuthenticating: false })
@@ -321,9 +307,7 @@ export class ClientManager {
         await this.initializeAgent()
       }
 
-      if (!this.#authClient) {
-        await this.authenticate()
-      }
+      this.#authClient = await this.prepareAuthClientForLogin(loginOptions)
 
       if (!this.#authClient) {
         throw new Error(
@@ -333,31 +317,38 @@ export class ClientManager {
 
       this.updateAuthState({ isAuthenticating: true, error: undefined })
 
-      // Auto-detect identity provider based on network if not provided
+      if (this.supportsSignIn(this.#authClient)) {
+        const identity = await this.#authClient.signIn(
+          this.getSignInOptions(loginOptions)
+        )
+
+        this.applyIdentity(identity, { isAuthenticating: false })
+        await loginOptions?.onSuccess?.()
+        return
+      }
+
+      if (!this.#authClient.login) {
+        throw new Error("Unsupported auth client: missing login/signIn method.")
+      }
+
       const identityProvider =
         loginOptions?.identityProvider || this.getDefaultIdentityProvider()
 
       await this.#authClient.login({
         ...loginOptions,
         identityProvider,
-        onSuccess: () => {
-          const identity = this.#authClient!.getIdentity()
-          if (identity) {
-            this.updateAgent(identity)
-            this.updateAuthState({
-              identity,
-              isAuthenticated: true,
-              isAuthenticating: false,
-            })
-          }
-          ;(loginOptions?.onSuccess as any)?.()
+        onSuccess: async () => {
+          const identity = await this.resolveIdentity(this.#authClient!)
+          this.applyIdentity(identity, { isAuthenticating: false })
+          await loginOptions?.onSuccess?.()
         },
         onError: (error) => {
+          const message = this.getErrorMessage(error)
           this.updateAuthState({
-            error: new Error(error),
+            error: new Error(message),
             isAuthenticating: false,
           })
-          loginOptions?.onError?.(error)
+          loginOptions?.onError?.(message)
         },
       })
     } catch (error) {
@@ -365,6 +356,7 @@ export class ClientManager {
         error: error as Error,
         isAuthenticating: false,
       })
+      loginOptions?.onError?.(this.getErrorMessage(error))
       throw error
     }
   }
@@ -374,23 +366,16 @@ export class ClientManager {
    *
    * @throws An error if the authentication module is not installed.
    */
-  public logout = async () => {
+  public logout = async (options?: { returnTo?: string }) => {
     if (!this.#authClient) {
       throw new Error(
         "Authentication module is missing or failed to initialize. To use logout, please install the auth package: npm install @icp-sdk/auth"
       )
     }
     this.updateAuthState({ isAuthenticating: true, error: undefined })
-    await this.#authClient.logout()
-    const identity = this.#authClient.getIdentity()
-    if (identity) {
-      this.updateAgent(identity)
-      this.updateAuthState({
-        identity,
-        isAuthenticated: false,
-        isAuthenticating: false,
-      })
-    }
+    await this.#authClient.logout(options)
+    const identity = await this.resolveIdentity(this.#authClient)
+    this.applyIdentity(identity, { isAuthenticating: false })
   }
 
   /**
@@ -587,5 +572,108 @@ export class ClientManager {
     if (isDev()) console.debug("[ic-reactor] Updating Auth State:", newState)
     this.authState = { ...this.authState, ...newState }
     this.notifyAuthStateSubscribers(this.authState)
+  }
+
+  private async createAuthClient(
+    createOptions?: AuthClientCreateOptions
+  ): Promise<AuthClientLike | undefined> {
+    const authModule = await import("@icp-sdk/auth/client").catch(() => {
+      this.authModuleMissing = true
+      return null
+    })
+
+    if (!authModule) {
+      this.authModuleMissing = true
+      return undefined
+    }
+
+    const AuthClient = authModule.AuthClient as unknown as {
+      new (options?: AuthClientCreateOptions): AuthClientLike
+      create?: (options?: AuthClientCreateOptions) => Promise<AuthClientLike>
+    }
+
+    if (typeof AuthClient.create === "function") {
+      return AuthClient.create(createOptions)
+    }
+
+    return new AuthClient(createOptions)
+  }
+
+  private async prepareAuthClientForLogin(
+    loginOptions?: AuthClientLoginOptions
+  ): Promise<AuthClientLike | undefined> {
+    const createOptions = this.getCreateOptionsForLogin(loginOptions)
+
+    if (!this.#authClient) {
+      return this.createAuthClient(createOptions)
+    }
+
+    if (
+      !this.#usesExternalAuthClient &&
+      this.supportsSignIn(this.#authClient)
+    ) {
+      return this.createAuthClient(createOptions)
+    }
+
+    return this.#authClient
+  }
+
+  private async hydrateAuthStateFromClient(authClient: AuthClientLike) {
+    try {
+      const identity = await this.resolveIdentity(authClient)
+      this.applyIdentity(identity)
+    } catch (error) {
+      this.updateAuthState({ error: error as Error })
+    }
+  }
+
+  private applyIdentity(identity: Identity, authState?: Partial<AuthState>) {
+    this.updateAgent(identity)
+    this.updateAuthState({
+      identity,
+      isAuthenticated: !identity.getPrincipal().isAnonymous(),
+      isAuthenticating: false,
+      error: undefined,
+      ...authState,
+    })
+  }
+
+  private resolveIdentity(authClient: AuthClientLike): Promise<Identity> {
+    return Promise.resolve(authClient.getIdentity())
+  }
+
+  private supportsSignIn(
+    authClient: AuthClientLike
+  ): authClient is AuthClientLike & {
+    signIn: NonNullable<AuthClientLike["signIn"]>
+  } {
+    return typeof authClient.signIn === "function"
+  }
+
+  private getCreateOptionsForLogin(
+    loginOptions?: AuthClientLoginOptions
+  ): AuthClientCreateOptions {
+    return {
+      identityProvider:
+        loginOptions?.identityProvider || this.getDefaultIdentityProvider(),
+      derivationOrigin: loginOptions?.derivationOrigin,
+      windowOpenerFeatures: loginOptions?.windowOpenerFeatures,
+      openIdProvider: loginOptions?.openIdProvider,
+    }
+  }
+
+  private getSignInOptions(loginOptions?: AuthClientLoginOptions) {
+    return {
+      maxTimeToLive: loginOptions?.maxTimeToLive,
+      targets: loginOptions?.targets,
+    }
+  }
+
+  private getErrorMessage(error: unknown) {
+    if (error instanceof Error) {
+      return error.message
+    }
+
+    return String(error)
   }
 }
