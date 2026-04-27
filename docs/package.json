@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@astrojs/starlight": "^0.38.2",
-    "astro": "^6.1.6",
+    "astro": "^6.1.9",
     "serve": "^14.2.6",
     "typedoc": "^0.28.18",
     "typedoc-plugin-frontmatter": "^1.3.1",
