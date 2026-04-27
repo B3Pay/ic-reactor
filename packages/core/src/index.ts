@@ -1,6 +1,7 @@
 export * from "./reactor"
 export * from "./client"
 export * from "./utils"
+export * from "./identity-attributes"
 export * from "./display"
 export * from "./display-reactor"
 export * from "./types"
