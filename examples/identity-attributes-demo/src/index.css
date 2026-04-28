@@ -54,7 +54,6 @@ select {
 
 .hero-panel {
   display: grid;
-  grid-template-columns: 1fr minmax(280px, 420px);
   gap: 24px;
   align-items: end;
   min-height: 330px;
@@ -99,7 +98,6 @@ dt {
 }
 
 h1 {
-  max-width: 720px;
   margin: 10px 0 18px;
   color: var(--ink);
   font-family: Georgia, "Times New Roman", serif;
@@ -109,7 +107,6 @@ h1 {
 }
 
 .lede {
-  max-width: 660px;
   margin: 0;
   color: #3d342d;
   font-size: 1.12rem;
@@ -260,6 +257,15 @@ dl {
   margin: 10px 0 0;
 }
 
+.principal-binding {
+  margin-bottom: 18px;
+}
+
+.payload-label {
+  display: block;
+  margin-top: 10px;
+}
+
 dd {
   margin: 5px 0 0;
   overflow-wrap: anywhere;
@@ -285,15 +291,13 @@ dd {
 }
 
 @media (max-width: 840px) {
-  .shell {
-    width: min(100% - 20px, 720px);
-    padding: 10px 0;
+  .workspace {
+    grid-template-columns: 1fr;
   }
 
-  .hero-panel,
-  .workspace,
-  .result-grid {
-    grid-template-columns: 1fr;
+  .shell {
+    width: 100%;
+    padding: 10px 0;
   }
 
   .hero-panel {

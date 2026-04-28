@@ -36,7 +36,7 @@ function compactBytes(bytes?: Uint8Array): string {
 }
 
 function App() {
-  const { login, logout, isAuthenticated, isAuthenticating, error } = useAuth()
+  const { error } = useAuth()
   const principal = useUserPrincipal()
   const {
     requestOpenIdAttributes,
@@ -67,8 +67,13 @@ function App() {
     () => identityAttributeKeys({ openIdProvider, keys }),
     [openIdProvider, keys]
   )
+  const authPrincipalText = principal?.toText()
+  const attributesPrincipalText = attributes?.principal
+  const principalsMatch =
+    Boolean(authPrincipalText && attributesPrincipalText) &&
+    authPrincipalText === attributesPrincipalText
 
-  async function requestAttributes() {
+  async function signInWithAttributes() {
     const nonce = createNonce()
     setNonceHex(bytesToHex(nonce))
 
@@ -89,29 +94,10 @@ function App() {
           <p className="eyebrow">IC Reactor v3.4</p>
           <h1>Internet Identity attributes</h1>
           <p className="lede">
-            Request signed OpenID profile values through the new
-            `useIdentityAttributes()` flow, then pass the signed payload to a
-            backend or canister for verification.
+            Sign in with an OpenID provider and request signed profile
+            attributes in one flow, then pass the signed payload to a backend or
+            canister for verification.
           </p>
-        </div>
-
-        <div className="auth-strip">
-          <div>
-            <span className="label">Principal</span>
-            <strong>{principal?.toText() ?? "Anonymous"}</strong>
-          </div>
-          <button
-            className="button secondary"
-            type="button"
-            onClick={() => (isAuthenticated ? logout() : login())}
-            disabled={isAuthenticating}
-          >
-            {isAuthenticated
-              ? "Logout"
-              : isAuthenticating
-                ? "Opening"
-                : "Login"}
-          </button>
         </div>
       </section>
 
@@ -177,12 +163,12 @@ function App() {
           <button
             className="button primary"
             type="button"
-            onClick={requestAttributes}
+            onClick={signInWithAttributes}
             disabled={isRequestingAttributes || keys.length === 0}
           >
             {isRequestingAttributes
-              ? "Requesting attributes"
-              : "Request signed attributes"}
+              ? "Signing in and requesting"
+              : "Sign in and request attributes"}
           </button>
 
           {(error || attributeError) && (
@@ -206,7 +192,25 @@ function App() {
               </pre>
             </article>
             <article>
-              <span className="label">Backend verification payload</span>
+              <span className="label">Principal binding</span>
+              <dl className="principal-binding">
+                <div>
+                  <dt>Authenticated principal</dt>
+                  <dd>{authPrincipalText ?? "Anonymous"}</dd>
+                </div>
+                <div>
+                  <dt>Attributes principal</dt>
+                  <dd>{attributesPrincipalText ?? "Waiting for request"}</dd>
+                </div>
+                <div>
+                  <dt>Match</dt>
+                  <dd>{principalsMatch ? "Yes" : "Pending"}</dd>
+                </div>
+              </dl>
+
+              <span className="label payload-label">
+                Backend verification payload
+              </span>
               <dl>
                 <div>
                   <dt>Data</dt>
