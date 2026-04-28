@@ -1,0 +1,389 @@
+:root {
+  color: #17130f;
+  background: #f4f0e7;
+  font-family:
+    "Avenir Next", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --ink: #17130f;
+  --muted: #6e6257;
+  --paper: #fffaf0;
+  --line: #d9cdbd;
+  --accent: #126b68;
+  --accent-strong: #0d5451;
+  --signal: #c64624;
+  --slate: #20343d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgba(23, 19, 15, 0.04) 1px, transparent 1px) 0 0 /
+      46px 46px,
+    linear-gradient(rgba(23, 19, 15, 0.035) 1px, transparent 1px) 0 0 / 46px
+      46px,
+    #f4f0e7;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0;
+}
+
+.hero-panel,
+.helper-panel,
+.request-panel,
+.result-panel {
+  border: 1px solid var(--line);
+  background: rgba(255, 250, 240, 0.88);
+  box-shadow: 0 18px 50px rgba(32, 52, 61, 0.12);
+}
+
+.hero-panel {
+  display: grid;
+  gap: 24px;
+  align-items: end;
+  min-height: 330px;
+  padding: 34px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 15% 20%,
+      rgba(18, 107, 104, 0.18),
+      transparent 27%
+    ),
+    linear-gradient(
+      135deg,
+      transparent 0 55%,
+      rgba(198, 70, 36, 0.16) 55% 56%,
+      transparent 56%
+    );
+  pointer-events: none;
+}
+
+.hero-copy,
+.auth-strip {
+  position: relative;
+}
+
+.eyebrow,
+.label,
+.status,
+dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 10px 0 18px;
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  line-height: 0.9;
+  letter-spacing: 0;
+}
+
+.lede {
+  margin: 0;
+  color: #3d342d;
+  font-size: 1.12rem;
+  line-height: 1.7;
+}
+
+.auth-strip {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid rgba(23, 19, 15, 0.16);
+  background: rgba(255, 250, 240, 0.72);
+}
+
+.auth-strip strong {
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.helper-panel {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 26px;
+}
+
+.helper-panel h2 {
+  margin: 8px 0 10px;
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.helper-copy {
+  max-width: 840px;
+  margin: 0;
+  color: #3d342d;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.helper-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.helper-step {
+  border: 1px solid #d8cbbb;
+  background: rgba(255, 253, 247, 0.7);
+  padding: 14px;
+}
+
+.helper-step h3 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.helper-step p {
+  margin: 0;
+  color: #4d433a;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.request-panel,
+.result-panel {
+  padding: 22px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.field span {
+  color: #3f352d;
+  font-weight: 700;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #cbbcab;
+  border-radius: 0;
+  background: #fffdf7;
+  color: var(--ink);
+  padding: 0 12px;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(18, 107, 104, 0.16);
+}
+
+.button {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  padding: 0 16px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.primary {
+  width: 100%;
+  background: var(--accent);
+  color: #fffaf0;
+}
+
+.primary:hover:not(:disabled),
+.secondary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.secondary {
+  width: 100%;
+  background: var(--slate);
+  color: #fffaf0;
+}
+
+.ghost {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--ink);
+}
+
+.scoped-keys {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.returning-user {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.returning-user p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.logout-all {
+  width: 100%;
+}
+
+code,
+pre {
+  border: 1px solid #d8cbbb;
+  background: #fffdf7;
+  color: #263238;
+  font-family: "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+}
+
+code {
+  display: block;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) 1fr;
+  gap: 14px;
+}
+
+article {
+  min-width: 0;
+}
+
+pre {
+  min-height: 210px;
+  margin: 10px 0 0;
+  padding: 14px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.helper-code {
+  min-height: 0;
+  margin: 0;
+}
+
+dl {
+  display: grid;
+  gap: 12px;
+  margin: 10px 0 0;
+}
+
+.principal-binding {
+  margin-bottom: 18px;
+}
+
+.payload-label {
+  display: block;
+  margin-top: 10px;
+}
+
+dd {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+  color: #2c251f;
+}
+
+.verification-note {
+  margin-top: 18px;
+  border-left: 4px solid var(--signal);
+  padding: 14px 16px;
+  background: rgba(198, 70, 36, 0.08);
+}
+
+.verification-note p,
+.error {
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
+.error {
+  color: #9d2f1b;
+  font-weight: 700;
+}
+
+@media (max-width: 840px) {
+  .workspace,
+  .helper-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shell {
+    width: 100%;
+    padding: 10px 0;
+  }
+
+  .hero-panel {
+    min-height: 0;
+    padding: 22px;
+  }
+
+  h1 {
+    font-size: clamp(2.75rem, 16vw, 4.4rem);
+  }
+}
