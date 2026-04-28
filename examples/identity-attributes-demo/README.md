@@ -29,3 +29,41 @@ registration or profile-linking flow must send `signedAttributes.data`,
 `signedAttributes.signature`, and the backend-issued nonce to a backend or
 canister, then verify the signature, nonce, origin, timestamp, principal, and
 requested keys before trusting the attribute values.
+
+## Production nonce flow
+
+Do not generate the production nonce in the browser. The backend or canister
+that will verify and store user information should create it.
+
+1. Call a backend `registerBegin` / `profileLinkBegin` endpoint.
+2. Backend creates a fresh 32-byte nonce, stores a hash of it with expected
+   keys, action, origin, principal scope if known, and a short expiry.
+3. Frontend passes that nonce to `requestOpenIdAttributes()`.
+4. Frontend sends `signedAttributes.data`, `signedAttributes.signature`,
+   `requestedKeys`, and `principal` to `registerFinish`.
+5. Backend verifies the signed attributes, checks the nonce is unused and
+   unexpired, confirms origin/timestamp/principal/requested keys, stores only
+   required profile fields, then marks the nonce consumed.
+
+```tsx
+const { requestOpenIdAttributes } = useIdentityAttributes()
+
+async function registerWithAttributes() {
+  const { nonce } = await api.registerBegin({
+    expectedKeys: ["email", "name"],
+  })
+
+  const result = await requestOpenIdAttributes({
+    nonce,
+    openIdProvider: "google",
+    keys: ["email", "name"],
+    identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+  })
+
+  await api.registerFinish({
+    principal: result.principal,
+    requestedKeys: result.requestedKeys,
+    signedAttributes: result.signedAttributes,
+  })
+}
+```

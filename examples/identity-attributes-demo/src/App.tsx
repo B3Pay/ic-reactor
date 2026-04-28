@@ -7,6 +7,7 @@ import {
 import { useAuth, useIdentityAttributes, useUserPrincipal } from "./reactor"
 
 type ProviderPreset = "google" | "apple" | "microsoft" | "custom"
+type OpenIdProviderAlias = Exclude<ProviderPreset, "custom">
 
 const providerOptions: Array<{ value: ProviderPreset; label: string }> = [
   { value: "google", label: "Google" },
@@ -16,6 +17,12 @@ const providerOptions: Array<{ value: ProviderPreset; label: string }> = [
 ]
 
 const defaultCustomIssuer = "https://issuer.example.com"
+
+function isProviderAlias(
+  provider: ProviderPreset
+): provider is OpenIdProviderAlias {
+  return provider !== "custom"
+}
 
 function createNonce(): Uint8Array {
   const nonce = new Uint8Array(32)
@@ -35,8 +42,46 @@ function compactBytes(bytes?: Uint8Array): string {
   return `${hex.slice(0, 32)}...${hex.slice(-16)} (${bytes.length} bytes)`
 }
 
+const productionSteps = [
+  {
+    title: "1. Backend creates nonce",
+    body: "Start registration on your backend or canister and return a fresh 32-byte nonce. Store its hash, principal scope, action, expected keys, and short expiry.",
+  },
+  {
+    title: "2. Frontend requests attributes",
+    body: "Pass that backend-issued nonce to useIdentityAttributes(). Never create the production nonce in browser state.",
+  },
+  {
+    title: "3. Backend verifies payload",
+    body: "Submit signedAttributes.data and signature back to the backend. Verify signature, nonce, origin, timestamp, principal, and requested keys.",
+  },
+  {
+    title: "4. Store minimal profile data",
+    body: "After verification, store only the user fields you need, linked to the verified principal. Mark the nonce as consumed.",
+  },
+]
+
+const productionSnippet = `async function registerWithAttributes() {
+  const { nonce } = await api.registerBegin({
+    expectedKeys: ["email", "name"],
+  })
+
+  const result = await requestOpenIdAttributes({
+    nonce,
+    openIdProvider: "google",
+    keys: ["email", "name"],
+    identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+  })
+
+  await api.registerFinish({
+    principal: result.principal,
+    requestedKeys: result.requestedKeys,
+    signedAttributes: result.signedAttributes,
+  })
+}`
+
 function App() {
-  const { error } = useAuth()
+  const { login, logout, isAuthenticating, error } = useAuth()
   const principal = useUserPrincipal()
   const {
     requestOpenIdAttributes,
@@ -72,8 +117,13 @@ function App() {
   const principalsMatch =
     Boolean(authPrincipalText && attributesPrincipalText) &&
     authPrincipalText === attributesPrincipalText
+  const simulatedProfileStatus = authPrincipalText
+    ? `Look up profile by principal: ${authPrincipalText}`
+    : "No principal yet. Returning users sign in first, then your backend loads their profile by principal."
 
   async function signInWithAttributes() {
+    // Demo-only fallback. In production, fetch this from a backend/canister
+    // before calling requestOpenIdAttributes, then verify and consume it there.
     const nonce = createNonce()
     setNonceHex(bytesToHex(nonce))
 
@@ -82,9 +132,22 @@ function App() {
       openIdProvider,
       keys,
       identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
-      windowOpenerFeatures:
-        "toolbar=0,location=0,menubar=0,width=525,height=705",
     })
+  }
+
+  async function signInReturningUser() {
+    await login({
+      identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+      openIdProvider: isProviderAlias(providerPreset)
+        ? providerPreset
+        : undefined,
+    })
+  }
+
+  async function logoutAll() {
+    clearAttributes()
+    setNonceHex("")
+    await logout()
   }
 
   return (
@@ -99,6 +162,29 @@ function App() {
             canister for verification.
           </p>
         </div>
+      </section>
+
+      <section className="helper-panel">
+        <div>
+          <p className="eyebrow">Production helper</p>
+          <h2>Nonce and storage flow</h2>
+          <p className="helper-copy">
+            This demo generates a browser nonce so the flow is easy to try. In a
+            real app, the nonce must come from the same backend or canister that
+            will verify and store user information.
+          </p>
+        </div>
+
+        <div className="helper-grid">
+          {productionSteps.map((step) => (
+            <article className="helper-step" key={step.title}>
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+            </article>
+          ))}
+        </div>
+
+        <pre className="helper-code">{productionSnippet}</pre>
       </section>
 
       <section className="workspace">
@@ -164,12 +250,37 @@ function App() {
             className="button primary"
             type="button"
             onClick={signInWithAttributes}
-            disabled={isRequestingAttributes || keys.length === 0}
+            disabled={
+              isRequestingAttributes || isAuthenticating || keys.length === 0
+            }
           >
             {isRequestingAttributes
               ? "Signing in and requesting"
               : "Sign in and request attributes"}
           </button>
+
+          <div className="returning-user">
+            <button
+              className="button secondary"
+              type="button"
+              onClick={signInReturningUser}
+              disabled={isRequestingAttributes || isAuthenticating}
+            >
+              {isAuthenticating
+                ? "Signing in"
+                : "Sign in returning user with same provider"}
+            </button>
+            <p>{simulatedProfileStatus}</p>
+
+            <button
+              className="button ghost logout-all"
+              type="button"
+              onClick={logoutAll}
+              disabled={isRequestingAttributes || isAuthenticating}
+            >
+              Logout all
+            </button>
+          </div>
 
           {(error || attributeError) && (
             <p className="error">{attributeError?.message ?? error?.message}</p>
