@@ -29,8 +29,8 @@ import {
 import {
   decodeIdentityAttributeValues,
   IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+  identityAttributeKeys,
   normalizeSignedIdentityAttributes,
-  resolveIdentityAttributeKeys,
 } from "./identity-attributes"
 
 type AuthClientConstructor = {
@@ -80,6 +80,10 @@ export class ClientManager {
 
   private initPromise?: Promise<void>
   private authPromise?: Promise<Identity | undefined>
+  private authClientConstructor?: AuthClientConstructor
+  private authClientConstructorPromise?: Promise<
+    AuthClientConstructor | undefined
+  >
   private authStateRevision = 0
   private authClientWasProvided = false
   private port: number
@@ -187,6 +191,10 @@ export class ClientManager {
       this.syncAuthStateFromClient(this.authStateRevision).catch((error) => {
         this.updateAuthState({ error: error as Error, isAuthenticating: false })
       })
+    } else if (typeof window !== "undefined") {
+      this.loadAuthClientConstructor().catch(() => {
+        // Optional auth support is reported when an auth method is used.
+      })
     }
   }
 
@@ -201,6 +209,25 @@ export class ClientManager {
     await this.initializeAgent()
     this.authenticate()
     return this
+  }
+
+  /**
+   * Preloads and creates an AuthClient before a user gesture is needed.
+   *
+   * Browser signer transports must open their channel directly from a click
+   * handler. Apps that pass dynamic auth options, such as OpenID provider
+   * aliases, can call this from hover/focus/effect code so the later click path
+   * can call signIn/requestAttributes without first awaiting a dynamic import.
+   */
+  public async prepareAuthClient(options?: ClientManagerAuthClientOptions) {
+    if (
+      this.#authClient &&
+      (!this.shouldRecreateAuthClient(options) || this.authClientWasProvided)
+    ) {
+      return this.#authClient
+    }
+
+    return this.initializeAuthClient(options)
   }
 
   /**
@@ -325,11 +352,6 @@ export class ClientManager {
     let didCompleteSignIn = false
 
     try {
-      // Ensure agent is initialized before login
-      if (!this.agentState.isInitialized) {
-        await this.initializeAgent()
-      }
-
       const identityProvider =
         loginOptions?.identityProvider || this.getDefaultIdentityProvider()
       const authClientOptions = getAuthClientOptions({
@@ -337,10 +359,7 @@ export class ClientManager {
         identityProvider,
       })
 
-      if (
-        !this.#authClient ||
-        this.shouldRecreateAuthClient(authClientOptions)
-      ) {
+      if (!this.ensurePreparedAuthClient(authClientOptions)) {
         await this.initializeAuthClient(authClientOptions)
       }
 
@@ -356,9 +375,14 @@ export class ClientManager {
 
       this.updateAuthState({ isAuthenticating: true, error: undefined })
 
-      const identity = await this.#authClient.signIn(
+      const identity = await this.signInOrRecoverAuthenticatedIdentity(
         getSignInOptions(loginOptions)
       )
+
+      if (!this.agentState.isInitialized) {
+        await this.initializeAgent()
+      }
+
       this.updateAgent(identity)
       this.updateAuthState({
         identity,
@@ -420,17 +444,13 @@ export class ClientManager {
     maxTimeToLive,
     targets,
   }: RequestIdentityAttributesParameters): Promise<IdentityAttributeResult> => {
-    if (!this.agentState.isInitialized) {
-      await this.initializeAgent()
-    }
-
     const authClientOptions = getAuthClientOptions({
       identityProvider,
       windowOpenerFeatures,
       openIdProvider,
     })
 
-    if (!this.#authClient || this.shouldRecreateAuthClient(authClientOptions)) {
+    if (!this.ensurePreparedAuthClient(authClientOptions)) {
       await this.initializeAuthClient(authClientOptions)
     }
 
@@ -447,16 +467,16 @@ export class ClientManager {
     this.updateAuthState({ isAuthenticating: true, error: undefined })
 
     try {
-      const requestPromise = this.#authClient.requestAttributes({
-        keys,
-        nonce,
-      })
       const identityPromise = signIn
-        ? this.#authClient.signIn({
+        ? this.signInOrRecoverAuthenticatedIdentity({
             maxTimeToLive,
             targets,
           })
         : Promise.resolve(this.#authClient.getIdentity())
+      const requestPromise = this.#authClient.requestAttributes({
+        keys,
+        nonce,
+      })
 
       const [signedAttributes, identity] = await Promise.all([
         requestPromise,
@@ -465,6 +485,9 @@ export class ClientManager {
 
       const finalIdentity = identity ?? (await this.#authClient.getIdentity())
       const isAuthenticated = await this.#authClient.isAuthenticated()
+      if (!this.agentState.isInitialized) {
+        await this.initializeAgent()
+      }
       this.updateAgent(finalIdentity)
       this.updateAuthState({
         identity: finalIdentity,
@@ -502,7 +525,7 @@ export class ClientManager {
     targets,
   }: RequestOpenIdIdentityAttributesParameters): Promise<IdentityAttributeResult> => {
     return this.requestIdentityAttributes({
-      keys: await resolveIdentityAttributeKeys({ openIdProvider, keys }),
+      keys: identityAttributeKeys({ openIdProvider, keys }),
       nonce,
       identityProvider,
       openIdProvider,
@@ -530,32 +553,106 @@ export class ClientManager {
   private async initializeAuthClient(
     options?: ClientManagerAuthClientOptions
   ): Promise<AuthClientLike | undefined> {
-    const authModule = await import("@icp-sdk/auth/client").catch(() => {
-      this.authModuleMissing = true
-      return null
-    })
+    const AuthClient = await this.loadAuthClientConstructor()
 
-    if (!authModule) {
-      this.authModuleMissing = true
+    if (!AuthClient) {
       return undefined
     }
 
-    this.#authClient = this.createAuthClient(authModule, options)
+    this.#authClient = this.createAuthClient(AuthClient, options)
     return this.#authClient
   }
 
-  private createAuthClient(
-    authModule: unknown,
-    options?: ClientManagerAuthClientOptions
-  ): AuthClientLike {
-    const AuthClient = (authModule as { AuthClient?: AuthClientConstructor })
-      .AuthClient
-
-    if (!AuthClient) {
-      throw new Error("@icp-sdk/auth/client did not export AuthClient")
+  private async signInOrRecoverAuthenticatedIdentity(
+    options?: AuthClientSignInOptions
+  ): Promise<Identity> {
+    if (!this.#authClient) {
+      throw new Error(
+        "Authentication module is missing or failed to initialize. To use login, please install the auth package: npm install @icp-sdk/auth"
+      )
     }
 
+    try {
+      return await this.#authClient.signIn(options)
+    } catch (error) {
+      const identity = await Promise.resolve(
+        this.#authClient.getIdentity()
+      ).catch(() => null)
+      const isAuthenticated = await Promise.resolve(
+        this.#authClient.isAuthenticated()
+      ).catch(() => false)
+
+      if (identity && isAuthenticated) {
+        return identity
+      }
+
+      throw error
+    }
+  }
+
+  private async loadAuthClientConstructor(): Promise<
+    AuthClientConstructor | undefined
+  > {
+    if (this.authClientConstructor) {
+      return this.authClientConstructor
+    }
+
+    if (!this.authClientConstructorPromise) {
+      this.authClientConstructorPromise = import("@icp-sdk/auth/client")
+        .then((authModule) => {
+          const AuthClient = (
+            authModule as { AuthClient?: AuthClientConstructor }
+          ).AuthClient
+
+          if (!AuthClient) {
+            throw new Error("@icp-sdk/auth/client did not export AuthClient")
+          }
+
+          this.authClientConstructor = AuthClient
+          return AuthClient
+        })
+        .catch((error) => {
+          this.authModuleMissing = true
+          this.authClientConstructorPromise = undefined
+          if (
+            error instanceof Error &&
+            error.message.includes("did not export AuthClient")
+          ) {
+            throw error
+          }
+          return undefined
+        })
+    }
+
+    return this.authClientConstructorPromise
+  }
+
+  private createAuthClient(
+    AuthClient: AuthClientConstructor,
+    options?: ClientManagerAuthClientOptions
+  ): AuthClientLike {
     return new AuthClient(options)
+  }
+
+  private ensurePreparedAuthClient(
+    options?: ClientManagerAuthClientOptions
+  ): AuthClientLike | undefined {
+    if (
+      this.#authClient &&
+      (!this.shouldRecreateAuthClient(options) || this.authClientWasProvided)
+    ) {
+      return this.#authClient
+    }
+
+    if (!this.authClientConstructor || this.authClientWasProvided) {
+      return undefined
+    }
+
+    this.#authClient = this.createAuthClient(
+      this.authClientConstructor,
+      options
+    )
+    return this.#authClient
   }
 
   private shouldRecreateAuthClient(

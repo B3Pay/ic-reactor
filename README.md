@@ -296,16 +296,17 @@ console.log(balance)
 
 ## Examples
 
-| Example                                             | Description                                                         |
-| --------------------------------------------------- | ------------------------------------------------------------------- |
-| [`all-in-one-demo`](./examples/all-in-one-demo)     | End-to-end demo with queries, mutations, suspense, infinite queries |
-| [`tanstack-router`](./examples/tanstack-router)     | Router loaders/actions + generated hooks                            |
-| [`query-demo`](./examples/query-demo)               | Query and mutation factory patterns                                 |
-| [`multiple-canister`](./examples/multiple-canister) | Shared auth across multiple canisters                               |
-| [`ckbtc-wallet`](./examples/ckbtc-wallet)           | More advanced canister integrations                                 |
-| [`codegen-in-action`](./examples/codegen-in-action) | CLI vs Vite plugin codegen comparison                               |
-| [`typescript-demo`](./examples/typescript-demo)     | Core usage without React                                            |
-| [`candid-parser`](./examples/candid-parser)         | Dynamic Candid parsing                                              |
+| Example                                                           | Description                                                         |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| [`all-in-one-demo`](./examples/all-in-one-demo)                   | End-to-end demo with queries, mutations, suspense, infinite queries |
+| [`tanstack-router`](./examples/tanstack-router)                   | Router loaders/actions + generated hooks                            |
+| [`query-demo`](./examples/query-demo)                             | Query and mutation factory patterns                                 |
+| [`identity-attributes-demo`](./examples/identity-attributes-demo) | Internet Identity OpenID attribute requests                         |
+| [`multiple-canister`](./examples/multiple-canister)               | Shared auth across multiple canisters                               |
+| [`ckbtc-wallet`](./examples/ckbtc-wallet)                         | More advanced canister integrations                                 |
+| [`codegen-in-action`](./examples/codegen-in-action)               | CLI vs Vite plugin codegen comparison                               |
+| [`typescript-demo`](./examples/typescript-demo)                   | Core usage without React                                            |
+| [`candid-parser`](./examples/candid-parser)                       | Dynamic Candid parsing                                              |
 
 ## Documentation
 

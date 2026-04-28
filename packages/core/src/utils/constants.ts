@@ -6,7 +6,7 @@ export const IC_HOST_NETWORK_URI = "https://ic0.app"
 
 export const LOCAL_HOST_NETWORK_URI = "http://127.0.0.1:4943"
 
-export const IC_INTERNET_IDENTITY_PROVIDER = "https://id.ai"
+export const IC_INTERNET_IDENTITY_PROVIDER = "https://id.ai/authorize"
 
 export const LOCAL_INTERNET_IDENTITY_PROVIDER =
   "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943"

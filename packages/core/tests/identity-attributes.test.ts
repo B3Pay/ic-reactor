@@ -59,4 +59,19 @@ describe("identity attributes", () => {
       email: "alice@example.com",
     })
   })
+
+  it("stops fallback text extraction before the next scoped key", () => {
+    const requestedKeys = identityAttributeKeys({
+      openIdProvider: "microsoft",
+      keys: ["email", "name"],
+    })
+    const textPayload = new TextEncoder().encode(
+      `${requestedKeys[0]}\u0010b3hr4d@live.com8${requestedKeys[1]}\u000ebehrad deylami`
+    )
+
+    expect(decodeIdentityAttributeValues(textPayload, requestedKeys)).toEqual({
+      email: "b3hr4d@live.com",
+      name: "behrad deylami",
+    })
+  })
 })

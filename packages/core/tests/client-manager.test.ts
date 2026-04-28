@@ -210,6 +210,87 @@ describe("ClientManager", () => {
       )
     })
 
+    it("opens sign-in before awaiting agent initialization", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      const events: string[] = []
+      const authClient = {
+        getIdentity: vi.fn(() => identity),
+        isAuthenticated: vi.fn(() => true),
+        signIn: vi.fn(async () => {
+          events.push("signIn")
+          return identity
+        }),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(),
+      }
+      const clientManager = new ClientManager({
+        queryClient,
+        authClient: authClient as any,
+      })
+      vi.spyOn(clientManager, "initializeAgent").mockImplementation(
+        async () => {
+          events.push("initializeAgent")
+        }
+      )
+
+      await clientManager.login()
+
+      expect(events).toEqual(["signIn", "initializeAgent"])
+    })
+
+    it("recovers login when signIn times out after identity is authenticated", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      const timeout = new Error(
+        "Communication channel could not be established within a reasonable time"
+      )
+      const authClient = {
+        getIdentity: vi.fn(() => identity),
+        isAuthenticated: vi.fn(() => true),
+        signIn: vi.fn(async () => {
+          throw timeout
+        }),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(),
+      }
+      const clientManager = new ClientManager({
+        queryClient,
+        authClient: authClient as any,
+      })
+      vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+
+      await clientManager.login()
+
+      expect(clientManager.authState.isAuthenticated).toBe(true)
+      expect(clientManager.authState.identity?.getPrincipal().toText()).toBe(
+        "aaaaa-aa"
+      )
+    })
+
+    it("uses the authorize endpoint for default mainnet login", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      const authClient = {
+        getIdentity: vi.fn(() => identity),
+        isAuthenticated: vi.fn(() => true),
+        signIn: vi.fn(async () => identity),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(),
+      }
+      const AuthClient = vi.fn(function () {
+        return authClient
+      })
+      vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+      const clientManager = new ClientManager({ queryClient })
+      vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+
+      await clientManager.login()
+
+      expect(AuthClient).toHaveBeenCalledWith({
+        identityProvider: "https://id.ai/authorize",
+        windowOpenerFeatures: undefined,
+        openIdProvider: undefined,
+      })
+    })
+
     it("updates auth state before invoking login onSuccess", async () => {
       const identity = mockIdentity("aaaaa-aa")
       let currentIdentity: any = anonymousIdentity
@@ -345,6 +426,73 @@ describe("ClientManager", () => {
       })
       expect(result.principal).toBe("aaaaa-aa")
       expect(result.signedAttributes.data).toEqual(data)
+      expect(clientManager.authState.isAuthenticated).toBe(true)
+    })
+
+    it("starts attribute sign-in and request before awaiting agent initialization", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      const events: string[] = []
+      const data = new Uint8Array([68, 73, 68, 76])
+      const signature = new Uint8Array([1, 2, 3])
+      const authClient = {
+        getIdentity: vi.fn(() => identity),
+        isAuthenticated: vi.fn(() => true),
+        signIn: vi.fn(async () => {
+          events.push("signIn")
+          return identity
+        }),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(async () => {
+          events.push("requestAttributes")
+          return { data, signature }
+        }),
+      }
+      const clientManager = new ClientManager({
+        queryClient,
+        authClient: authClient as any,
+      })
+      vi.spyOn(clientManager, "initializeAgent").mockImplementation(
+        async () => {
+          events.push("initializeAgent")
+        }
+      )
+
+      await clientManager.requestIdentityAttributes({
+        keys: ["openid:https://issuer.example.com:email"],
+        nonce: new Uint8Array([9, 9]),
+      })
+
+      expect(events).toEqual(["signIn", "requestAttributes", "initializeAgent"])
+    })
+
+    it("recovers attribute requests when signIn times out after identity is authenticated", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      const timeout = new Error(
+        "Communication channel could not be established within a reasonable time"
+      )
+      const data = new Uint8Array([68, 73, 68, 76])
+      const signature = new Uint8Array([1, 2, 3])
+      const authClient = {
+        getIdentity: vi.fn(() => identity),
+        isAuthenticated: vi.fn(() => true),
+        signIn: vi.fn(async () => {
+          throw timeout
+        }),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(async () => ({ data, signature })),
+      }
+      const clientManager = new ClientManager({
+        queryClient,
+        authClient: authClient as any,
+      })
+      vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+
+      const result = await clientManager.requestIdentityAttributes({
+        keys: ["openid:https://issuer.example.com:email"],
+        nonce: new Uint8Array([9, 9]),
+      })
+
+      expect(result.principal).toBe("aaaaa-aa")
       expect(clientManager.authState.isAuthenticated).toBe(true)
     })
 

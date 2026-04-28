@@ -187,12 +187,16 @@ function extractPrintableAttributeValues(
 
     const tail = text.slice(start + requestedKey.length)
     const printableRuns = tail.match(/[\x20-\x7E]{2,512}/g) ?? []
-    const value = printableRuns.find(
-      (candidate) =>
-        isPrintableTextValue(candidate) &&
-        candidate !== requestedKey &&
-        !candidate.startsWith("openid:")
-    )
+    const value = printableRuns
+      .map((candidate) =>
+        cleanPrintableAttributeValue(candidate, requestedKeys)
+      )
+      .find(
+        (candidate) =>
+          isPrintableTextValue(candidate) &&
+          candidate !== requestedKey &&
+          !candidate.startsWith("openid:")
+      )
 
     if (value) {
       values[identityAttributeDisplayKey(requestedKey)] = value.trim()
@@ -200,6 +204,38 @@ function extractPrintableAttributeValues(
   }
 
   return values
+}
+
+function cleanPrintableAttributeValue(
+  value: string,
+  requestedKeys: string[]
+): string {
+  let cleaned = value
+
+  for (const requestedKey of requestedKeys) {
+    const nextKeyIndex = cleaned.indexOf(requestedKey)
+    if (nextKeyIndex > 0) {
+      cleaned = cleaned.slice(
+        0,
+        trimCandidTextLengthPrefix(cleaned, nextKeyIndex)
+      )
+    }
+  }
+
+  const nextOpenIdKeyMatch = /\d*openid:/.exec(cleaned)
+  if (nextOpenIdKeyMatch?.index && nextOpenIdKeyMatch.index > 0) {
+    cleaned = cleaned.slice(0, nextOpenIdKeyMatch.index)
+  }
+
+  return cleaned.trim()
+}
+
+function trimCandidTextLengthPrefix(value: string, index: number): number {
+  let trimmedIndex = index
+  while (trimmedIndex > 0 && /\d/.test(value[trimmedIndex - 1])) {
+    trimmedIndex -= 1
+  }
+  return trimmedIndex
 }
 
 function identityAttributeDisplayKey(key: string): string {
