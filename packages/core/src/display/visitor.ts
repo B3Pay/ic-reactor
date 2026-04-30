@@ -9,6 +9,46 @@ import {
   isNullish,
 } from "../utils"
 
+function createFixedNumberCodec(bits: number, signed: boolean): z.ZodTypeAny {
+  const min = signed ? -(2 ** (bits - 1)) : 0
+  const max = signed ? 2 ** (bits - 1) - 1 : 2 ** bits - 1
+  const integerPattern = signed ? /^-?\d+$/ : /^\d+$/
+  const typeName = `${signed ? "int" : "nat"}${bits}`
+
+  const parseDisplayNumber = (val: string | number): number => {
+    const num = typeof val === "string" ? Number(val) : val
+
+    if (typeof val === "string" && !integerPattern.test(val)) {
+      throw new TypeError(
+        `[ic-reactor] Invalid ${typeName} display value: expected an integer string, got "${val}"`
+      )
+    }
+
+    if (!Number.isInteger(num)) {
+      throw new TypeError(
+        `[ic-reactor] Invalid ${typeName} display value: expected an integer, got ${String(val)}`
+      )
+    }
+
+    if (num < min || num > max) {
+      throw new RangeError(
+        `[ic-reactor] Invalid ${typeName} display value: expected ${min}..${max}, got ${String(val)}`
+      )
+    }
+
+    return num
+  }
+
+  return z.codec(
+    z.number().int().min(min).max(max), // Candid format
+    z.union([z.number(), z.string()]), // Display format
+    {
+      decode: (val) => val,
+      encode: parseDisplayNumber,
+    }
+  )
+}
+
 export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   private _recCache = new Map<IDL.RecClass, z.ZodTypeAny>()
 
@@ -74,8 +114,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     const bits = t._bits
 
     if (bits <= 32) {
-      // 32-bit integers stay as numbers
-      return z.number()
+      // 32-bit integers stay as numbers for display, but form inputs may
+      // submit numeric strings that must be converted before IDL.encode.
+      return createFixedNumberCodec(bits, true)
     } else {
       // 64-bit integers: bigint ↔ string
       return z.codec(
@@ -93,7 +134,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     const bits = t._bits
 
     if (bits <= 32) {
-      return z.number()
+      return createFixedNumberCodec(bits, false)
     } else {
       return z.codec(
         z.bigint(), // Candid format

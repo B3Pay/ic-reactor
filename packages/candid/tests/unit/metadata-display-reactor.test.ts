@@ -999,6 +999,33 @@ describe("MetadataDisplayReactor", () => {
   })
 })
 
+describe("MetadataDisplayReactor display argument encoding", () => {
+  it("should encode form-style opt nat32 strings before IDL encoding", async () => {
+    const reactor = new MetadataDisplayReactor({
+      name: "metadata-display-nat32-test",
+      canisterId: "aaaaa-aa",
+      clientManager: createMockClientManager(),
+      candid: `
+        service : {
+          set_confirmations : (record { min_confirmations : opt nat32 }) -> ();
+        }
+      `,
+    })
+
+    await reactor.initialize()
+
+    const methodName = "set_confirmations"
+    const transformedArgs = (reactor as any).transformArgs(methodName, [
+      { min_confirmations: "1" },
+    ])
+
+    expect(transformedArgs).toEqual([{ min_confirmations: [1] }])
+
+    const func = (reactor as any).getFuncClass(methodName) as IDL.FuncClass
+    expect(() => IDL.encode(func.argTypes, transformedArgs)).not.toThrow()
+  })
+})
+
 describe("MetadataDisplayReactor E2E", () => {
   let reactor: MetadataDisplayReactor<TestActor>
   let clientManager: ClientManager
