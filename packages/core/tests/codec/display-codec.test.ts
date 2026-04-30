@@ -69,6 +69,49 @@ describe("Zod Codec - didToDisplayCodec", () => {
       expect(codec.asCandid(42)).toBe(42)
     })
 
+    it("should convert IDL.Nat32 display strings to numbers", () => {
+      const codec = didToDisplayCodec(IDL.Nat32)
+
+      expect(codec.asDisplay(1)).toBe(1)
+      expect(codec.asCandid("1" as any)).toBe(1)
+    })
+
+    it("should convert optional IDL.Nat32 display strings to optional numbers", () => {
+      const codec = didToDisplayCodec(IDL.Opt(IDL.Nat32))
+
+      expect(codec.asCandid("1" as any)).toEqual([1])
+    })
+
+    it("should convert record opt IDL.Nat32 display strings to optional numbers", () => {
+      const codec = didToDisplayCodec(
+        IDL.Record({
+          min_confirmations: IDL.Opt(IDL.Nat32),
+        })
+      )
+
+      expect(codec.asCandid({ min_confirmations: "1" } as any)).toEqual({
+        min_confirmations: [1],
+      })
+    })
+
+    it("should reject invalid IDL.Nat32 display strings", () => {
+      const codec = didToDisplayCodec(IDL.Nat32)
+
+      expect(() => codec.asCandid("-1" as any)).toThrow()
+      expect(() => codec.asCandid("1.5" as any)).toThrow()
+      expect(() => codec.asCandid("abc" as any)).toThrow()
+      expect(() => codec.asCandid("4294967296" as any)).toThrow()
+    })
+
+    it("should accept valid IDL.Int32 display strings and reject invalid values", () => {
+      const codec = didToDisplayCodec(IDL.Int32)
+
+      expect(codec.asCandid("-1" as any)).toBe(-1)
+      expect(() => codec.asCandid("1.5" as any)).toThrow()
+      expect(() => codec.asCandid("2147483648" as any)).toThrow()
+      expect(() => codec.asCandid("-2147483649" as any)).toThrow()
+    })
+
     it("should handle IDL.Float64", () => {
       const codec = didToDisplayCodec(IDL.Float64)
 
