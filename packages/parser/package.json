@@ -57,9 +57,9 @@
   "devDependencies": {
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/candid": "workspace:*",
-    "@tanstack/query-core": "^5.100.9",
-    "@types/node": "^25.6.0",
-    "vitest": "^4.1.5",
+    "@tanstack/query-core": "^5.100.10",
+    "@types/node": "^25.6.2",
+    "vitest": "^4.1.6",
     "wasm-pack": "^0.14.0",
     "@icp-sdk/core": "^5.4.0",
     "@icp-sdk/auth": "^5.0.0",
