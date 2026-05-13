@@ -28,7 +28,6 @@ import {
 } from "./utils/helper"
 import {
   decodeIdentityAttributeValues,
-  IDENTITY_ATTRIBUTES_BETA_PROVIDER,
   identityAttributeKeys,
   normalizeSignedIdentityAttributes,
 } from "./identity-attributes"
@@ -437,7 +436,7 @@ export class ClientManager {
   public requestIdentityAttributes = async ({
     keys,
     nonce,
-    identityProvider = IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+    identityProvider,
     openIdProvider,
     windowOpenerFeatures,
     signIn = true,
@@ -445,7 +444,7 @@ export class ClientManager {
     targets,
   }: RequestIdentityAttributesParameters): Promise<IdentityAttributeResult> => {
     const authClientOptions = getAuthClientOptions({
-      identityProvider,
+      identityProvider: identityProvider ?? this.getDefaultIdentityProvider(),
       windowOpenerFeatures,
       openIdProvider,
     })
@@ -518,7 +517,7 @@ export class ClientManager {
     nonce,
     openIdProvider,
     keys,
-    identityProvider = IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+    identityProvider,
     windowOpenerFeatures,
     signIn,
     maxTimeToLive,

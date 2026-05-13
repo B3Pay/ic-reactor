@@ -165,10 +165,7 @@ API. Apps can request signed identity attributes directly, without adding a
 local compatibility shim.
 
 ```typescript
-import {
-  IDENTITY_ATTRIBUTES_BETA_PROVIDER,
-  identityAttributeKeys,
-} from "@ic-reactor/core"
+import { identityAttributeKeys } from "@ic-reactor/core"
 
 const nonce = await backend.registerBegin()
 
@@ -176,7 +173,6 @@ const result = await clientManager.requestOpenIdIdentityAttributes({
   nonce,
   openIdProvider: "microsoft",
   keys: ["email", "name"],
-  identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
   windowOpenerFeatures: popupCenter(),
 })
 
@@ -209,7 +205,6 @@ const result = await clientManager.requestIdentityAttributes({
     openIdProvider: "https://issuer.example.com",
     keys: ["sub", "email"],
   }),
-  identityProvider: "https://beta.id.ai/authorize",
 })
 ```
 

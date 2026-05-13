@@ -619,7 +619,7 @@ describe("ClientManager", () => {
       })
 
       expect(AuthClient).toHaveBeenCalledWith({
-        identityProvider: "https://beta.id.ai/authorize",
+        identityProvider: "https://id.ai/authorize",
         windowOpenerFeatures: undefined,
         openIdProvider: undefined,
       })

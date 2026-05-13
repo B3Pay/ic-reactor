@@ -162,7 +162,6 @@ function RegisterWithOpenIdProvider() {
       nonce,
       openIdProvider: "microsoft",
       keys: ["email", "name"],
-      identityProvider: "https://beta.id.ai/authorize",
       windowOpenerFeatures: popupCenter(),
     })
 
