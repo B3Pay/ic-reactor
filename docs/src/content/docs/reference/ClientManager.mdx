@@ -391,7 +391,7 @@ const clientManager = new ClientManager({
 ```typescript
 import { AuthClient } from "@icp-sdk/auth/client"
 
-const authClient = await AuthClient.create()
+const authClient = new AuthClient()
 
 const clientManager = new ClientManager({
   queryClient,

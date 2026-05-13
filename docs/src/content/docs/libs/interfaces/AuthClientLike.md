@@ -51,9 +51,9 @@ Defined in: [types/client.ts:87](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 ---
 
-### logout()
+### signOut()
 
-> **logout**(`options?`): `Promise`\<`void`\>
+> **signOut**(`options?`): `Promise`\<`void`\>
 
 Defined in: [types/client.ts:88](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L88)
 

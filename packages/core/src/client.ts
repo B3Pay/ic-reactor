@@ -424,7 +424,7 @@ export class ClientManager {
       )
     }
     this.updateAuthState({ isAuthenticating: true, error: undefined })
-    await this.#authClient.logout(options)
+    await this.#authClient.signOut(options)
     const identity = await this.#authClient.getIdentity()
     this.updateAgent(identity)
     this.updateAuthState({
@@ -460,7 +460,7 @@ export class ClientManager {
 
     if (!this.#authClient) {
       throw new Error(
-        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth v6 or provide a compatible authClient."
+        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth v7 or provide a compatible authClient."
       )
     }
 

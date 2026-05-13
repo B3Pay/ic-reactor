@@ -160,7 +160,7 @@ const identity = await clientManager.authenticate()
 
 ### Identity Attributes / OpenID email and profile values
 
-`ClientManager` uses the `@icp-sdk/auth` v6 `signIn()` / `requestAttributes()`
+`ClientManager` uses the `@icp-sdk/auth` v7 `signIn()` / `requestAttributes()`
 API. Apps can request signed identity attributes directly, without adding a
 local compatibility shim.
 
