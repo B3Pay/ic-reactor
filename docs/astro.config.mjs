@@ -267,27 +267,27 @@ export default defineConfig({
             {
               label: "Classes",
               collapsed: true,
-              autogenerate: { directory: "libs/classes" },
+              items: [{ autogenerate: { directory: "libs/classes" } }],
             },
             {
               label: "Functions",
               collapsed: true,
-              autogenerate: { directory: "libs/functions" },
+              items: [{ autogenerate: { directory: "libs/functions" } }],
             },
             {
               label: "Interfaces",
               collapsed: true,
-              autogenerate: { directory: "libs/interfaces" },
+              items: [{ autogenerate: { directory: "libs/interfaces" } }],
             },
             {
               label: "Type Aliases",
               collapsed: true,
-              autogenerate: { directory: "libs/type-aliases" },
+              items: [{ autogenerate: { directory: "libs/type-aliases" } }],
             },
             {
               label: "Variables",
               collapsed: true,
-              autogenerate: { directory: "libs/variables" },
+              items: [{ autogenerate: { directory: "libs/variables" } }],
             },
           ],
         },
@@ -328,7 +328,10 @@ export default defineConfig({
                   label: "@ic-reactor/core",
                   items: [
                     { label: "Overview", link: "/packages/core" },
-                    { label: "ClientManager", link: "/reference/clientmanager" },
+                    {
+                      label: "ClientManager",
+                      link: "/reference/clientmanager",
+                    },
                     { label: "Reactor", link: "/reference/reactor" },
                     {
                       label: "DisplayReactor",
@@ -371,7 +374,10 @@ export default defineConfig({
                   label: "@ic-reactor/parser",
                   items: [
                     { label: "Overview", link: "/packages/parser" },
-                    { label: "API Reference", link: "/packages/parser/reference" },
+                    {
+                      label: "API Reference",
+                      link: "/packages/parser/reference",
+                    },
                   ],
                 },
               ],
