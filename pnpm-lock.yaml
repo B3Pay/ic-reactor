@@ -329,8 +329,8 @@ importers:
         specifier: ^4.1.5
         version: 4.1.5(@types/node@25.6.0)(@vitest/coverage-v8@4.1.5)(happy-dom@20.9.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.2(@types/node@25.6.0)(yaml@2.8.3))
       wasm-pack:
-        specifier: ^0.14.0
-        version: 0.14.0
+        specifier: 0.13.1
+        version: 0.13.1
 
   packages/react:
     dependencies:
@@ -5851,8 +5851,8 @@ packages:
   walker@1.0.8:
     resolution: {integrity: sha512-ts/8E8l5b7kY0vlWLewOkDXMmPdLcVV4GmOQLyxuSswIJsweeFZtAsMF7k1Nszz+TYBQrlYRmzOnr398y1JemQ==}
 
-  wasm-pack@0.14.0:
-    resolution: {integrity: sha512-7uKj+483b6ETTnuWHK3zKNB3Ca3M159tPZ5shyXxI4j7i9Lk82rL2ck/L6E9O5VMWk9JgowdtTBOSfWmGBRFtw==}
+  wasm-pack@0.13.1:
+    resolution: {integrity: sha512-P9exD4YkjpDbw68xUhF3MDm/CC/3eTmmthyG5bHJ56kalxOTewOunxTke4SyF8MTXV6jUtNjXggPgrGmMtczGg==}
     hasBin: true
 
   web-namespaces@2.0.1:
@@ -12561,7 +12561,7 @@ snapshots:
     dependencies:
       makeerror: 1.0.12
 
-  wasm-pack@0.14.0:
+  wasm-pack@0.13.1:
     dependencies:
       binary-install: 1.1.2
     transitivePeerDependencies:

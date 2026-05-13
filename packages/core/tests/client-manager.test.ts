@@ -291,6 +291,68 @@ describe("ClientManager", () => {
       })
     })
 
+    it("uses the authorize endpoint for default local login", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      const authClient = {
+        getIdentity: vi.fn(() => identity),
+        isAuthenticated: vi.fn(() => true),
+        signIn: vi.fn(async () => identity),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(),
+      }
+      const AuthClient = vi.fn(function () {
+        return authClient
+      })
+      vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+      const clientManager = new ClientManager({
+        queryClient,
+        withLocalEnv: true,
+      })
+      vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+
+      await clientManager.login()
+
+      expect(AuthClient).toHaveBeenCalledWith({
+        identityProvider:
+          "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize",
+        windowOpenerFeatures: undefined,
+        openIdProvider: undefined,
+      })
+    })
+
+    it("uses the authorize endpoint for canister-env local login", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      const authClient = {
+        getIdentity: vi.fn(() => identity),
+        isAuthenticated: vi.fn(() => true),
+        signIn: vi.fn(async () => identity),
+        logout: vi.fn(),
+        requestAttributes: vi.fn(),
+      }
+      const AuthClient = vi.fn(function () {
+        return authClient
+      })
+      vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+      const clientManager = new ClientManager({
+        queryClient,
+        withLocalEnv: true,
+        port: 8000,
+      })
+      ;(
+        clientManager as unknown as { internetIdentityId?: string }
+      ).internetIdentityId = "abcde-fghij-klmno-pqrst-cai"
+      vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+
+      await clientManager.login()
+
+      expect(AuthClient).toHaveBeenCalledWith({
+        identityProvider:
+          "http://abcde-fghij-klmno-pqrst-cai.localhost:8000/authorize",
+        windowOpenerFeatures: undefined,
+        openIdProvider: undefined,
+      })
+    })
+
     it("updates auth state before invoking login onSuccess", async () => {
       const identity = mockIdentity("aaaaa-aa")
       let currentIdentity: any = anonymousIdentity
