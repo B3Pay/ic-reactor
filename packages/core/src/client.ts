@@ -761,7 +761,7 @@ export class ClientManager {
   private getDefaultIdentityProvider(): string {
     if (this.isLocal) {
       if (this.internetIdentityId) {
-        return `http://${this.internetIdentityId}.localhost:${this.port}`
+        return `http://${this.internetIdentityId}.localhost:${this.port}/authorize`
       }
       return LOCAL_INTERNET_IDENTITY_PROVIDER
     } else {

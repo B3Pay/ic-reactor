@@ -60,7 +60,7 @@
     "@tanstack/query-core": "^5.100.10",
     "@types/node": "^25.6.2",
     "vitest": "^4.1.6",
-    "wasm-pack": "^0.14.0",
+    "wasm-pack": "0.13.1",
     "@icp-sdk/core": "^5.4.0",
     "@icp-sdk/auth": "^5.0.0",
     "@size-limit/preset-small-lib": "^12.1.0",
