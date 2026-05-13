@@ -57,7 +57,6 @@ async function registerWithAttributes() {
     nonce,
     openIdProvider: "google",
     keys: ["email", "name"],
-    identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
   })
 
   await api.registerFinish({

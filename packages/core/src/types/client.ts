@@ -85,7 +85,7 @@ export interface AuthClientLike {
   getIdentity(): Promise<Identity> | Identity
   isAuthenticated(): Promise<boolean> | boolean
   signIn(options?: AuthClientSignInOptions): Promise<Identity>
-  logout(options?: { returnTo?: string }): Promise<void>
+  signOut(options?: { returnTo?: string }): Promise<void>
   requestAttributes(
     params: IdentityAttributeRequest
   ): Promise<SignedIdentityAttributes>

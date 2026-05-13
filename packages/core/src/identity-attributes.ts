@@ -5,8 +5,15 @@ import type {
   IdentityAttributeValues,
   SignedIdentityAttributes,
 } from "./types/client"
+import { IC_INTERNET_IDENTITY_PROVIDER } from "./utils/constants"
 
-export const IDENTITY_ATTRIBUTES_BETA_PROVIDER = "https://beta.id.ai/authorize"
+export const IDENTITY_ATTRIBUTES_PROVIDER = IC_INTERNET_IDENTITY_PROVIDER
+
+/**
+ * @deprecated Use the default ClientManager identity provider or
+ * `IDENTITY_ATTRIBUTES_PROVIDER` instead.
+ */
+export const IDENTITY_ATTRIBUTES_BETA_PROVIDER = IDENTITY_ATTRIBUTES_PROVIDER
 
 const OPEN_ID_PROVIDER_URLS = {
   apple: "https://appleid.apple.com",

@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react"
 import {
-  IDENTITY_ATTRIBUTES_BETA_PROVIDER,
   identityAttributeKeys,
   type IdentityAttributeOpenIdProvider,
 } from "@ic-reactor/core"
@@ -70,7 +69,6 @@ const productionSnippet = `async function registerWithAttributes() {
     nonce,
     openIdProvider: "google",
     keys: ["email", "name"],
-    identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
   })
 
   await api.registerFinish({
@@ -131,13 +129,11 @@ function App() {
       nonce,
       openIdProvider,
       keys,
-      identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
     })
   }
 
   async function signInReturningUser() {
     await login({
-      identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
       openIdProvider: isProviderAlias(providerPreset)
         ? providerPreset
         : undefined,

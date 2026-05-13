@@ -137,9 +137,9 @@ const mutation = updateProfile.useMutation({
 ## Identity Attributes / OpenID email and profile values
 
 `createAuthHooks(clientManager)` exposes `useIdentityAttributes()` for signed
-identity attributes from `@icp-sdk/auth` v6. Existing `useAuth()`, `login()`,
+identity attributes from `@icp-sdk/auth` v7. Existing `useAuth()`, `login()`,
 `logout()`, and `useUserPrincipal()` consumers keep the same IC Reactor API, but
-the configured auth client must support the v6 constructor/sign-in API.
+the configured auth client must support the v7 constructor/sign-in/sign-out API.
 
 ```tsx
 import { createAuthHooks } from "@ic-reactor/react"
@@ -162,7 +162,6 @@ function RegisterWithOpenIdProvider() {
       nonce,
       openIdProvider: "microsoft",
       keys: ["email", "name"],
-      identityProvider: "https://beta.id.ai/authorize",
       windowOpenerFeatures: popupCenter(),
     })
 

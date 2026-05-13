@@ -88,11 +88,10 @@ const greeting = await backend.fetchQuery({
 ## Identity Attributes
 
 `ClientManager` exposes provider-neutral helpers for signed OpenID identity
-attributes from `@icp-sdk/auth` v6:
+attributes from `@icp-sdk/auth` v7:
 
 ```typescript
 import {
-  IDENTITY_ATTRIBUTES_BETA_PROVIDER,
   identityAttributeKeys,
 } from "@ic-reactor/core"
 
@@ -102,7 +101,6 @@ const result = await clientManager.requestOpenIdIdentityAttributes({
   nonce,
   openIdProvider: "microsoft",
   keys: ["email", "name"],
-  identityProvider: IDENTITY_ATTRIBUTES_BETA_PROVIDER,
 })
 
 await backend.registerFinish({

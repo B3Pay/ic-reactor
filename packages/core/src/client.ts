@@ -28,7 +28,6 @@ import {
 } from "./utils/helper"
 import {
   decodeIdentityAttributeValues,
-  IDENTITY_ATTRIBUTES_BETA_PROVIDER,
   identityAttributeKeys,
   normalizeSignedIdentityAttributes,
 } from "./identity-attributes"
@@ -424,7 +423,7 @@ export class ClientManager {
       )
     }
     this.updateAuthState({ isAuthenticating: true, error: undefined })
-    await this.#authClient.logout(options)
+    await this.#authClient.signOut(options)
     const identity = await this.#authClient.getIdentity()
     this.updateAgent(identity)
     this.updateAuthState({
@@ -437,7 +436,7 @@ export class ClientManager {
   public requestIdentityAttributes = async ({
     keys,
     nonce,
-    identityProvider = IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+    identityProvider,
     openIdProvider,
     windowOpenerFeatures,
     signIn = true,
@@ -445,7 +444,7 @@ export class ClientManager {
     targets,
   }: RequestIdentityAttributesParameters): Promise<IdentityAttributeResult> => {
     const authClientOptions = getAuthClientOptions({
-      identityProvider,
+      identityProvider: identityProvider ?? this.getDefaultIdentityProvider(),
       windowOpenerFeatures,
       openIdProvider,
     })
@@ -460,7 +459,7 @@ export class ClientManager {
 
     if (!this.#authClient) {
       throw new Error(
-        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth v6 or provide a compatible authClient."
+        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth v7 or provide a compatible authClient."
       )
     }
 
@@ -518,7 +517,7 @@ export class ClientManager {
     nonce,
     openIdProvider,
     keys,
-    identityProvider = IDENTITY_ATTRIBUTES_BETA_PROVIDER,
+    identityProvider,
     windowOpenerFeatures,
     signIn,
     maxTimeToLive,

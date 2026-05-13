@@ -95,7 +95,7 @@ You can override this by passing `identityProvider` to the login options.
 
 ## Identity Attributes
 
-IC Reactor can request signed identity attributes from `@icp-sdk/auth` v6 for
+IC Reactor can request signed identity attributes from `@icp-sdk/auth` v7 for
 OpenID email and profile flows. Use `useIdentityAttributes()` when a React
 component needs to request attributes and send the signed payload to a backend or
 canister for verification.
@@ -118,7 +118,6 @@ function RegisterWithOpenIdProvider() {
       nonce,
       openIdProvider: "microsoft",
       keys: ["email", "name"],
-      identityProvider: "https://beta.id.ai/authorize",
     })
 
     await backend.registerFinish({

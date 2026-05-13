@@ -90,8 +90,8 @@ importers:
         specifier: workspace:*
         version: link:../packages/vite-plugin
       '@icp-sdk/auth':
-        specifier: ^5.0.0
-        version: 5.0.0(@icp-sdk/core@5.4.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -272,8 +272,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@icp-sdk/auth':
-        specifier: ^6.0.0
-        version: 6.2.2(@icp-sdk/core@5.4.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -308,8 +308,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@icp-sdk/auth':
-        specifier: ^5.0.0
-        version: 5.0.0(@icp-sdk/core@5.4.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -339,8 +339,8 @@ importers:
         version: link:../core
     devDependencies:
       '@icp-sdk/auth':
-        specifier: ^6.0.0
-        version: 6.2.2(@icp-sdk/core@5.4.0)
+        specifier: ^7.0.0
+        version: 7.0.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -1713,13 +1713,8 @@ packages:
     resolution: {integrity: sha512-lBW6/m5BIFl3pMuWPNN0lIOYw9LMCmPfix53ExS3FBi4E+NELEljQ3xH6aAV9IYiQRfn9YIIgzzMrD0vIcD7tw==}
     engines: {node: '>=20.0.0'}
 
-  '@icp-sdk/auth@5.0.0':
-    resolution: {integrity: sha512-TaPfdaELT7s0vTIFOmCnlCmhPdL7kABA7+2Q0YNAUWIa/FFiwq6ffGPLvr0U0+2zFLaLQ4l7UCB2zf7vo6PFPQ==}
-    peerDependencies:
-      '@icp-sdk/core': ^5
-
-  '@icp-sdk/auth@6.2.2':
-    resolution: {integrity: sha512-bIFVvOWHS9F57XOZTk3mDjFj1Wnh9DsCft8K4EnUE8LrtntmSahk+n3SR/epfuLCp83sPBwVQRq/UfUS0QABKg==}
+  '@icp-sdk/auth@7.0.0':
+    resolution: {integrity: sha512-FkNzd/ayptPByWebY0GWnDZB27EXfzxiIxjUdDZ7bl1V55s5ghHQ/4lwnUAjrvT8dwdi7xZwIoYEDMvlkHCTSw==}
     peerDependencies:
       '@icp-sdk/core': ^5
 
@@ -7368,12 +7363,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@icp-sdk/auth@5.0.0(@icp-sdk/core@5.4.0)':
-    dependencies:
-      '@icp-sdk/core': 5.4.0
-      idb: 7.1.1
-
-  '@icp-sdk/auth@6.2.2(@icp-sdk/core@5.4.0)':
+  '@icp-sdk/auth@7.0.0(@icp-sdk/core@5.4.0)':
     dependencies:
       '@icp-sdk/core': 5.4.0
       '@icp-sdk/signer': 5.3.1(@icp-sdk/core@5.4.0)

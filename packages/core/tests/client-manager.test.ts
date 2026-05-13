@@ -179,7 +179,7 @@ describe("ClientManager", () => {
       })
     })
 
-    it("supports v6 constructor/signIn auth clients", async () => {
+    it("supports v7 constructor/signIn auth clients", async () => {
       const identity = mockIdentity("aaaaa-aa")
       let currentIdentity: any = anonymousIdentity
       const authClient = {
@@ -191,7 +191,7 @@ describe("ClientManager", () => {
           currentIdentity = identity
           return identity
         }),
-        logout: vi.fn(async () => {
+        signOut: vi.fn(async () => {
           currentIdentity = anonymousIdentity
         }),
         requestAttributes: vi.fn(),
@@ -220,7 +220,7 @@ describe("ClientManager", () => {
           events.push("signIn")
           return identity
         }),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(),
       }
       const clientManager = new ClientManager({
@@ -249,7 +249,7 @@ describe("ClientManager", () => {
         signIn: vi.fn(async () => {
           throw timeout
         }),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(),
       }
       const clientManager = new ClientManager({
@@ -272,7 +272,7 @@ describe("ClientManager", () => {
         getIdentity: vi.fn(() => identity),
         isAuthenticated: vi.fn(() => true),
         signIn: vi.fn(async () => identity),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(),
       }
       const AuthClient = vi.fn(function () {
@@ -297,7 +297,7 @@ describe("ClientManager", () => {
         getIdentity: vi.fn(() => identity),
         isAuthenticated: vi.fn(() => true),
         signIn: vi.fn(async () => identity),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(),
       }
       const AuthClient = vi.fn(function () {
@@ -326,7 +326,7 @@ describe("ClientManager", () => {
         getIdentity: vi.fn(() => identity),
         isAuthenticated: vi.fn(() => true),
         signIn: vi.fn(async () => identity),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(),
       }
       const AuthClient = vi.fn(function () {
@@ -365,7 +365,7 @@ describe("ClientManager", () => {
           currentIdentity = identity
           return identity
         }),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(),
       }
       const clientManager = new ClientManager({
@@ -398,7 +398,7 @@ describe("ClientManager", () => {
           currentIdentity = identity
           return identity
         }),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(),
       }
       const clientManager = new ClientManager({
@@ -424,7 +424,7 @@ describe("ClientManager", () => {
       expect(clientManager.authState.error).toBe(error)
     })
 
-    it("logs out with v6 auth clients", async () => {
+    it("logs out with v7 auth clients", async () => {
       const identity = mockIdentity("aaaaa-aa")
       let currentIdentity: any = identity
       const authClient = {
@@ -436,7 +436,7 @@ describe("ClientManager", () => {
           currentIdentity = identity
           return identity
         }),
-        logout: vi.fn(async () => {
+        signOut: vi.fn(async () => {
           currentIdentity = anonymousIdentity
         }),
       }
@@ -447,7 +447,7 @@ describe("ClientManager", () => {
 
       await clientManager.logout()
 
-      expect(authClient.logout).toHaveBeenCalledTimes(1)
+      expect(authClient.signOut).toHaveBeenCalledTimes(1)
       expect(clientManager.authState.isAuthenticated).toBe(false)
       expect(
         clientManager.authState.identity?.getPrincipal().isAnonymous()
@@ -468,7 +468,7 @@ describe("ClientManager", () => {
           currentIdentity = identity
           return identity
         }),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(async () => ({ data, signature })),
       }
       const clientManager = new ClientManager({
@@ -503,7 +503,7 @@ describe("ClientManager", () => {
           events.push("signIn")
           return identity
         }),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(async () => {
           events.push("requestAttributes")
           return { data, signature }
@@ -540,7 +540,7 @@ describe("ClientManager", () => {
         signIn: vi.fn(async () => {
           throw timeout
         }),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(async () => ({ data, signature })),
       }
       const clientManager = new ClientManager({
@@ -572,7 +572,7 @@ describe("ClientManager", () => {
           currentIdentity = identity
           return identity
         }),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(async () => ({ data, signature })),
       }
       const clientManager = new ClientManager({
@@ -603,7 +603,7 @@ describe("ClientManager", () => {
         getIdentity: vi.fn(() => identity),
         isAuthenticated: vi.fn(() => true),
         signIn: vi.fn(async () => identity),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(async () => ({ data, signature })),
       }
       const AuthClient = vi.fn(function () {
@@ -619,7 +619,7 @@ describe("ClientManager", () => {
       })
 
       expect(AuthClient).toHaveBeenCalledWith({
-        identityProvider: "https://beta.id.ai/authorize",
+        identityProvider: "https://id.ai/authorize",
         windowOpenerFeatures: undefined,
         openIdProvider: undefined,
       })
@@ -643,7 +643,7 @@ describe("ClientManager", () => {
           currentIdentity = identity
           return identity
         }),
-        logout: vi.fn(),
+        signOut: vi.fn(),
         requestAttributes: vi.fn(async () => ({ data, signature })),
       }
       const clientManager = new ClientManager({

@@ -51,7 +51,7 @@
     "@ic-reactor/core": "workspace:^"
   },
   "peerDependencies": {
-    "@icp-sdk/auth": "^6.0.0",
+    "@icp-sdk/auth": "^7.0.0",
     "@tanstack/react-query": "^5.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
@@ -62,7 +62,7 @@
     }
   },
   "devDependencies": {
-    "@icp-sdk/auth": "^6.0.0",
+    "@icp-sdk/auth": "^7.0.0",
     "@icp-sdk/core": "^5.4.0",
     "@size-limit/preset-small-lib": "^12.1.0",
     "@tanstack/react-query": "^5.100.10",
