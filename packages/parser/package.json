@@ -62,7 +62,7 @@
     "vitest": "^4.1.6",
     "wasm-pack": "0.13.1",
     "@icp-sdk/core": "^5.4.0",
-    "@icp-sdk/auth": "^5.0.0",
+    "@icp-sdk/auth": "^7.0.0",
     "@size-limit/preset-small-lib": "^12.1.0",
     "size-limit": "^12.1.0"
   },
