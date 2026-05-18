@@ -63,7 +63,7 @@
     "@ic-reactor/parser": "workspace:^",
     "@icp-sdk/core": "^5.4.0",
     "@size-limit/preset-small-lib": "^12.1.0",
-    "@types/node": "^25.6.2",
+    "@types/node": "^25.9.0",
     "size-limit": "^12.1.0",
     "vitest": "^4.1.6"
   },
