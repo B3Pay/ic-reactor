@@ -19,7 +19,7 @@ import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import {
   IC_HOST_NETWORK_URI,
   IC_INTERNET_IDENTITY_PROVIDER,
-  LOCAL_INTERNET_IDENTITY_PROVIDER,
+  localInternetIdentityProvider,
 } from "./utils/constants"
 import {
   getNetworkByHostname,
@@ -166,10 +166,12 @@ export class ClientManager {
       if (processNetwork === "ic") {
         agentOptions.host = IC_HOST_NETWORK_URI
       } else if (processNetwork === "local") {
-        agentOptions.host =
-          typeof process !== "undefined" && process.env.IC_HOST
-            ? process.env.IC_HOST
-            : `http://127.0.0.1:${port}`
+        // Honor either `IC_HOST` (legacy dfx) or `ICP_HOST` (icp-cli).
+        const envHost =
+          typeof process !== "undefined"
+            ? process.env.ICP_HOST || process.env.IC_HOST
+            : undefined
+        agentOptions.host = envHost ? envHost : `http://127.0.0.1:${port}`
       }
     } else if (withLocalEnv) {
       agentOptions.host = `http://127.0.0.1:${port}`
@@ -759,10 +761,11 @@ export class ClientManager {
 
   private getDefaultIdentityProvider(): string {
     if (this.isLocal) {
-      if (this.internetIdentityId) {
-        return `http://${this.internetIdentityId}.localhost:${this.port}/authorize`
-      }
-      return LOCAL_INTERNET_IDENTITY_PROVIDER
+      // When a custom II canister ID is known (e.g. injected via the
+      // canister-env cookie) use it; otherwise fall back to the well-known
+      // local II principal. Either way the URL must reflect the configured
+      // replica port, which differs between dfx (4943) and icp-cli (8000).
+      return localInternetIdentityProvider(this.port, this.internetIdentityId)
     } else {
       return IC_INTERNET_IDENTITY_PROVIDER
     }
