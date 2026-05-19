@@ -127,6 +127,43 @@ describe("ClientManager", () => {
       ;(globalThis as any).process = originalProcess
     })
 
+    it("honors ICP_NETWORK=local from withProcessEnv (icp-cli)", () => {
+      const originalProcess = (globalThis as any).process
+      ;(globalThis as any).process = {
+        env: {
+          ICP_NETWORK: "local",
+        },
+      }
+
+      const clientManager = new ClientManager({
+        queryClient,
+        withProcessEnv: true,
+        port: 8000,
+      })
+
+      expect(clientManager.agentHost?.toString()).toBe("http://127.0.0.1:8000/")
+      expect(clientManager.isLocal).toBe(true)
+      ;(globalThis as any).process = originalProcess
+    })
+
+    it("honors ICP_NETWORK=ic from withProcessEnv (icp-cli mainnet)", () => {
+      const originalProcess = (globalThis as any).process
+      ;(globalThis as any).process = {
+        env: {
+          ICP_NETWORK: "ic",
+        },
+      }
+
+      const clientManager = new ClientManager({
+        queryClient,
+        withProcessEnv: true,
+      })
+
+      expect(clientManager.agentHost?.toString()).toBe("https://ic0.app/")
+      expect(clientManager.isLocal).toBe(false)
+      ;(globalThis as any).process = originalProcess
+    })
+
     // Note: Testing withCanisterEnv: true requires mocking the dynamic import
     // of @icp-sdk/core/agent/canister-env which is complex in Node.js test environment.
     // The actual browser behavior is tested via integration/e2e tests.
@@ -315,6 +352,36 @@ describe("ClientManager", () => {
       expect(AuthClient).toHaveBeenCalledWith({
         identityProvider:
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize",
+        windowOpenerFeatures: undefined,
+        openIdProvider: undefined,
+      })
+    })
+
+    it("uses the configured port for default local login (icp-cli)", async () => {
+      const identity = mockIdentity("aaaaa-aa")
+      const authClient = {
+        getIdentity: vi.fn(() => identity),
+        isAuthenticated: vi.fn(() => true),
+        signIn: vi.fn(async () => identity),
+        signOut: vi.fn(),
+        requestAttributes: vi.fn(),
+      }
+      const AuthClient = vi.fn(function () {
+        return authClient
+      })
+      vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+      const clientManager = new ClientManager({
+        queryClient,
+        withLocalEnv: true,
+        port: 8000,
+      })
+      vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+
+      await clientManager.login()
+
+      expect(AuthClient).toHaveBeenCalledWith({
+        identityProvider:
+          "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:8000/authorize",
         windowOpenerFeatures: undefined,
         openIdProvider: undefined,
       })
