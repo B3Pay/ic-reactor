@@ -11,20 +11,28 @@ export const generateKey = (args: any[]) => {
 /**
  * Checks if the current environment is local or development.
  *
+ * Honors both legacy `DFX_NETWORK` (dfx) and `ICP_NETWORK` (icp-cli).
+ *
  * @returns `true` if running in a local or development environment, otherwise `false`.
  */
 export const isInLocalOrDevelopment = () => {
-  return typeof process !== "undefined" && process.env.DFX_NETWORK === "local"
+  if (typeof process === "undefined") return false
+  return (
+    process.env.DFX_NETWORK === "local" || process.env.ICP_NETWORK === "local"
+  )
 }
 
 /**
  * Retrieves the network from the process environment variables.
  *
+ * Honors both legacy `DFX_NETWORK` (dfx) and `ICP_NETWORK` (icp-cli),
+ * with `ICP_NETWORK` taking precedence when both are set.
+ *
  * @returns The network name, defaulting to "ic" if not specified.
  */
 export const getProcessEnvNetwork = () => {
   if (typeof process === "undefined") return "ic"
-  else return process.env.DFX_NETWORK ?? "ic"
+  return process.env.ICP_NETWORK ?? process.env.DFX_NETWORK ?? "ic"
 }
 
 /**
@@ -33,7 +41,8 @@ export const getProcessEnvNetwork = () => {
  * Checks in order:
  * - `import.meta.env?.DEV` (Vite / ESM environments)
  * - `process.env.NODE_ENV === 'development'` (Node)
- * - `process.env.DFX_NETWORK === 'local'` (local IC replica)
+ * - `process.env.DFX_NETWORK === 'local'` (dfx local replica)
+ * - `process.env.ICP_NETWORK === 'local'` (icp-cli local network)
  */
 export const isDev = (): boolean => {
   const importMetaDev =
@@ -41,7 +50,8 @@ export const isDev = (): boolean => {
   const nodeDev =
     typeof process !== "undefined" &&
     (process.env.NODE_ENV === "development" ||
-      process.env.DFX_NETWORK === "local")
+      process.env.DFX_NETWORK === "local" ||
+      process.env.ICP_NETWORK === "local")
 
   return Boolean(importMetaDev || nodeDev)
 }
