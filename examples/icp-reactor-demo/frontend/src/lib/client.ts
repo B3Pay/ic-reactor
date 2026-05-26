@@ -11,7 +11,9 @@
  */
 
 import { QueryClient } from "@tanstack/react-query"
-import { ClientManager, createAuthHooks } from "@ic-reactor/react"
+import { ClientManager } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/auth"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY CLIENT
@@ -51,6 +53,10 @@ export const clientManager = new ClientManager({
   queryClient,
   withCanisterEnv: true,
 })
+export const authentication = new AuthenticationManager({
+  clientManager,
+  withCanisterEnv: true,
+})
 
 // Initialize on load
 clientManager.initialize().catch(console.error)
@@ -64,4 +70,4 @@ clientManager.initialize().catch(console.error)
  * Use these in your components to handle login/logout.
  */
 export const { useAuth, useAgentState, useUserPrincipal } =
-  createAuthHooks(clientManager)
+  createAuthHooks(authentication)

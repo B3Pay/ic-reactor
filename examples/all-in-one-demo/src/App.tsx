@@ -188,7 +188,8 @@ export const clientManager = new ClientManager({
   withProcessEnv: true,  // 🪄 Reads DFX env vars automatically
 });
 
-export const { useAuth, useAgentState } = createAuthHooks(clientManager);
+export const authentication = new AuthenticationManager({ clientManager });
+export const { useAuth, useAgentState } = createAuthHooks(authentication);
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Component usage — feels like magic ✨

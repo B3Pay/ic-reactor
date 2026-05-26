@@ -1,4 +1,5 @@
 import { Reactor, ClientManager } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import { Principal } from "@icp-sdk/core/principal"
 import { QueryClient } from "@tanstack/query-core"
 import { ledgerIdlFactory } from "./declarations/ledger"
@@ -13,6 +14,7 @@ const clientManager = new ClientManager({
   withProcessEnv: true,
   queryClient,
 })
+const authentication = new AuthenticationManager({ clientManager })
 
 const ledgerReactor = new Reactor<Ledger>({
   clientManager,
@@ -213,16 +215,16 @@ transferBtn.addEventListener("click", async () => {
 })
 
 loginBtn.addEventListener("click", () => {
-  if (clientManager.authState.isAuthenticated) {
-    clientManager.logout()
+  if (authentication.authState.isAuthenticated) {
+    authentication.logout()
   } else {
-    clientManager.login()
+    authentication.login()
   }
 })
 
 // Initial load
 clientManager.initialize().then(() => {
-  clientManager.subscribeAuthState((state) => {
+  authentication.subscribeAuthState((state) => {
     updateToken(activeCanisterId)
     const principal = state.identity?.getPrincipal()
     if (state.isAuthenticating) {

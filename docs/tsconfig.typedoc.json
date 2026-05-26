@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "jsx": "react-jsx",
+    "types": ["node"],
+    "paths": {
+      "@ic-reactor/core": ["packages/core/src/index.ts"],
+      "@ic-reactor/auth": ["packages/auth/src/index.ts"]
+    }
+  },
+  "include": [
+    "./typedoc-entry.ts",
+    "../packages/core/src/**/*",
+    "../packages/auth/src/**/*"
+  ]
+}

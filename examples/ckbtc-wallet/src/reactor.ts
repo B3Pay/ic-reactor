@@ -5,12 +5,13 @@
  * ckBTC Ledger and Minter canisters using the v3 API.
  */
 import { ClientManager, DisplayReactor } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import {
   createActorHooks,
-  createAuthHooks,
   createMutation,
   createQueryFactory,
 } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 import { QueryClient } from "@tanstack/react-query"
 import {
   idlFactory as ckbtcIdlFactory,
@@ -37,6 +38,7 @@ export const clientManager = new ClientManager({
   withProcessEnv: true,
   queryClient,
 })
+export const authentication = new AuthenticationManager({ clientManager })
 
 // ============================================================================
 // 2. Initialize Reactors
@@ -63,7 +65,7 @@ export const ckbtcMinter = new DisplayReactor<CkbtcMinter>({
 // ============================================================================
 
 export const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(clientManager)
+  createAuthHooks(authentication)
 
 // ============================================================================
 // 4. Actor Hooks

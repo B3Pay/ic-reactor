@@ -9,7 +9,6 @@ export * from "./hooks"
 export * from "./validation"
 
 // React-specific exports
-export * from "./createAuthHooks"
 export * from "./createActorHooks"
 
 export * from "./createQuery"

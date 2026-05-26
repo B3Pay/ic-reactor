@@ -2,8 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { ClientManager, IdentityAttributeResult } from "@ic-reactor/core"
+import { ClientManager } from "@ic-reactor/core"
+import {
+  AuthenticationManager,
+  IdentityAttributeResult,
+  IdentityAttributesManager,
+} from "@ic-reactor/auth"
 import { createAuthHooks } from "../src/createAuthHooks"
+import { createIdentityAttributeHooks } from "../src/createIdentityAttributeHooks"
 
 // ============================================================================
 // Helpers
@@ -19,6 +25,10 @@ function makeClientManager(queryClient: QueryClient) {
   return new ClientManager({ queryClient })
 }
 
+function makeAuthentication(clientManager: ClientManager) {
+  return new AuthenticationManager({ clientManager })
+}
+
 // ============================================================================
 // createAuthHooks - useAgentState
 // ============================================================================
@@ -26,14 +36,16 @@ function makeClientManager(queryClient: QueryClient) {
 describe("createAuthHooks - useAgentState", () => {
   let queryClient: QueryClient
   let clientManager: ClientManager
+  let authentication: AuthenticationManager
 
   beforeEach(() => {
     queryClient = new QueryClient()
     clientManager = makeClientManager(queryClient)
+    authentication = makeAuthentication(clientManager)
   })
 
   it("returns the initial agent state", () => {
-    const { useAgentState } = createAuthHooks(clientManager)
+    const { useAgentState } = createAuthHooks(authentication)
     const { result } = renderHook(() => useAgentState(), {
       wrapper: wrapper(queryClient),
     })
@@ -44,7 +56,7 @@ describe("createAuthHooks - useAgentState", () => {
   })
 
   it("reflects agent state changes via subscribeAgentState", async () => {
-    const { useAgentState } = createAuthHooks(clientManager)
+    const { useAgentState } = createAuthHooks(authentication)
 
     // Spy on the subscription to simulate a state change
     const listeners: Array<(state: any) => void> = []
@@ -77,14 +89,16 @@ describe("createAuthHooks - useAgentState", () => {
 describe("createAuthHooks - useUserPrincipal", () => {
   let queryClient: QueryClient
   let clientManager: ClientManager
+  let authentication: AuthenticationManager
 
   beforeEach(() => {
     queryClient = new QueryClient()
     clientManager = makeClientManager(queryClient)
+    authentication = makeAuthentication(clientManager)
   })
 
   it("returns null when not authenticated", () => {
-    const { useUserPrincipal } = createAuthHooks(clientManager)
+    const { useUserPrincipal } = createAuthHooks(authentication)
     const { result } = renderHook(() => useUserPrincipal(), {
       wrapper: wrapper(queryClient),
     })
@@ -99,14 +113,14 @@ describe("createAuthHooks - useUserPrincipal", () => {
       getPrincipal: () => mockPrincipal,
     }
 
-    vi.spyOn(clientManager, "authState", "get").mockReturnValue({
+    vi.spyOn(authentication, "authState", "get").mockReturnValue({
       isAuthenticated: true,
       isAuthenticating: false,
       identity: mockIdentity as any,
       error: undefined,
     })
 
-    const { useUserPrincipal } = createAuthHooks(clientManager)
+    const { useUserPrincipal } = createAuthHooks(authentication)
     const { result } = renderHook(() => useUserPrincipal(), {
       wrapper: wrapper(queryClient),
     })
@@ -123,16 +137,19 @@ describe("createAuthHooks - useUserPrincipal", () => {
 describe("createAuthHooks - useAuth", () => {
   let queryClient: QueryClient
   let clientManager: ClientManager
+  let authentication: AuthenticationManager
 
   beforeEach(() => {
     queryClient = new QueryClient()
     clientManager = makeClientManager(queryClient)
+    authentication = makeAuthentication(clientManager)
     // Prevent real network calls
     vi.spyOn(clientManager, "initialize").mockResolvedValue(clientManager)
+    vi.spyOn(authentication, "authenticate").mockResolvedValue(undefined)
   })
 
   it("returns the expected shape", async () => {
-    const { useAuth } = createAuthHooks(clientManager)
+    const { useAuth } = createAuthHooks(authentication)
     const { result } = renderHook(() => useAuth(), {
       wrapper: wrapper(queryClient),
     })
@@ -149,7 +166,7 @@ describe("createAuthHooks - useAuth", () => {
   })
 
   it("auto-initializes session on mount", async () => {
-    const { useAuth } = createAuthHooks(clientManager)
+    const { useAuth } = createAuthHooks(authentication)
 
     renderHook(() => useAuth(), { wrapper: wrapper(queryClient) })
 
@@ -159,7 +176,7 @@ describe("createAuthHooks - useAuth", () => {
   })
 
   it("does not call initialize more than once across re-renders", async () => {
-    const { useAuth } = createAuthHooks(clientManager)
+    const { useAuth } = createAuthHooks(authentication)
     const { rerender } = renderHook(() => useAuth(), {
       wrapper: wrapper(queryClient),
     })
@@ -173,7 +190,7 @@ describe("createAuthHooks - useAuth", () => {
   })
 
   it("reflects unauthenticated state by default", async () => {
-    const { useAuth } = createAuthHooks(clientManager)
+    const { useAuth } = createAuthHooks(authentication)
     const { result } = renderHook(() => useAuth(), {
       wrapper: wrapper(queryClient),
     })
@@ -185,31 +202,30 @@ describe("createAuthHooks - useAuth", () => {
     expect(result.current.identity).toBeNull()
   })
 
-  it("exposes login and logout from clientManager", async () => {
-    const { useAuth } = createAuthHooks(clientManager)
+  it("exposes login and logout from authentication manager", async () => {
+    const { useAuth } = createAuthHooks(authentication)
     const { result } = renderHook(() => useAuth(), {
       wrapper: wrapper(queryClient),
     })
 
     await waitFor(() => expect(result.current).toBeDefined())
 
-    // login / logout should be the same references as on clientManager
-    expect(result.current.login).toBe(clientManager.login)
-    expect(result.current.logout).toBe(clientManager.logout)
+    expect(result.current.login).toBe(authentication.login)
+    expect(result.current.logout).toBe(authentication.logout)
   })
 
   it("returns principal derived from authenticated identity", async () => {
     const mockPrincipal = { toText: () => "aaaaa-aa", _isPrincipal: true }
     const mockIdentity = { getPrincipal: () => mockPrincipal }
 
-    vi.spyOn(clientManager, "authState", "get").mockReturnValue({
+    vi.spyOn(authentication, "authState", "get").mockReturnValue({
       isAuthenticated: true,
       isAuthenticating: false,
       identity: mockIdentity as any,
       error: undefined,
     })
 
-    const { useAuth } = createAuthHooks(clientManager)
+    const { useAuth } = createAuthHooks(authentication)
     const { result } = renderHook(() => useAuth(), {
       wrapper: wrapper(queryClient),
     })
@@ -224,14 +240,14 @@ describe("createAuthHooks - useAuth", () => {
   it("exposes error from auth state", async () => {
     const authError = new Error("Auth failed")
 
-    vi.spyOn(clientManager, "authState", "get").mockReturnValue({
+    vi.spyOn(authentication, "authState", "get").mockReturnValue({
       isAuthenticated: false,
       isAuthenticating: false,
       identity: null,
       error: authError,
     })
 
-    const { useAuth } = createAuthHooks(clientManager)
+    const { useAuth } = createAuthHooks(authentication)
     const { result } = renderHook(() => useAuth(), {
       wrapper: wrapper(queryClient),
     })
@@ -243,16 +259,20 @@ describe("createAuthHooks - useAuth", () => {
 })
 
 // ============================================================================
-// createAuthHooks - useIdentityAttributes
+// createIdentityAttributeHooks - useIdentityAttributes
 // ============================================================================
 
-describe("createAuthHooks - useIdentityAttributes", () => {
+describe("createIdentityAttributeHooks - useIdentityAttributes", () => {
   let queryClient: QueryClient
   let clientManager: ClientManager
+  let identityAttributes: IdentityAttributesManager
 
   beforeEach(() => {
     queryClient = new QueryClient()
     clientManager = makeClientManager(queryClient)
+    identityAttributes = new IdentityAttributesManager(
+      makeAuthentication(clientManager)
+    )
     vi.spyOn(clientManager, "initialize").mockResolvedValue(clientManager)
   })
 
@@ -267,11 +287,12 @@ describe("createAuthHooks - useIdentityAttributes", () => {
       decodedAttributes: { email: "alice@example.com" },
       completedAt: new Date().toISOString(),
     }
-    ;(clientManager as any).requestOpenIdIdentityAttributes = vi
-      .fn()
-      .mockResolvedValue(attributes)
+    vi.spyOn(identityAttributes, "requestOpenId").mockImplementation(
+      vi.fn().mockResolvedValue(attributes)
+    )
 
-    const { useIdentityAttributes } = createAuthHooks(clientManager)
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
     const { result } = renderHook(() => useIdentityAttributes(), {
       wrapper: wrapper(queryClient),
     })
@@ -306,11 +327,12 @@ describe("createAuthHooks - useIdentityAttributes", () => {
       decodedAttributes: { email: "alice@example.com" },
       completedAt: new Date().toISOString(),
     }
-    ;(clientManager as any).requestOpenIdIdentityAttributes = vi
-      .fn()
-      .mockResolvedValue(attributes)
+    vi.spyOn(identityAttributes, "requestOpenId").mockImplementation(
+      vi.fn().mockResolvedValue(attributes)
+    )
 
-    const { useIdentityAttributes } = createAuthHooks(clientManager)
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
     const { result } = renderHook(() => useIdentityAttributes(), {
       wrapper: wrapper(queryClient),
     })
@@ -323,9 +345,7 @@ describe("createAuthHooks - useIdentityAttributes", () => {
       })
     })
 
-    expect(
-      (clientManager as any).requestOpenIdIdentityAttributes
-    ).toHaveBeenCalledWith({
+    expect(identityAttributes.requestOpenId).toHaveBeenCalledWith({
       openIdProvider: "https://issuer.example.com",
       keys: ["email"],
       nonce: new Uint8Array([1]),
@@ -335,11 +355,12 @@ describe("createAuthHooks - useIdentityAttributes", () => {
 
   it("tracks error state", async () => {
     const error = new Error("attribute request failed")
-    ;(clientManager as any).requestIdentityAttributes = vi
-      .fn()
-      .mockRejectedValue(error)
+    vi.spyOn(identityAttributes, "request").mockImplementation(
+      vi.fn().mockRejectedValue(error)
+    )
 
-    const { useIdentityAttributes } = createAuthHooks(clientManager)
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
     const { result } = renderHook(() => useIdentityAttributes(), {
       wrapper: wrapper(queryClient),
     })
@@ -368,11 +389,12 @@ describe("createAuthHooks - useIdentityAttributes", () => {
       decodedAttributes: { email: "alice@example.com" },
       completedAt: new Date().toISOString(),
     }
-    ;(clientManager as any).requestOpenIdIdentityAttributes = vi
-      .fn()
-      .mockResolvedValue(attributes)
+    vi.spyOn(identityAttributes, "requestOpenId").mockImplementation(
+      vi.fn().mockResolvedValue(attributes)
+    )
 
-    const { useIdentityAttributes } = createAuthHooks(clientManager)
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
     const { result } = renderHook(() => useIdentityAttributes(), {
       wrapper: wrapper(queryClient),
     })

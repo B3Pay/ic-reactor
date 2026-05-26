@@ -29,6 +29,8 @@
     "generate": "dfx generate"
   },
   "dependencies": {
+    "@ic-reactor/auth": "^3.6.0",
+    "@ic-reactor/auth-react": "^3.6.0",
     "@ic-reactor/core": "^3.6.0",
     "@ic-reactor/react": "^3.6.0",
     "@icp-sdk/auth": "^5.0.0",

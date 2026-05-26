@@ -38,6 +38,8 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 | --------------------------------------------------- | ------------------------------------------------------------------------------ |
 | [`@ic-reactor/core`](./packages/core)               | Core runtime (`ClientManager`, `Reactor`, `DisplayReactor`, cache integration) |
 | [`@ic-reactor/react`](./packages/react)             | React hooks + query/mutation factories                                         |
+| [`@ic-reactor/auth`](./packages/auth)               | Internet Identity authentication and identity attributes                       |
+| [`@ic-reactor/auth-react`](./packages/auth-react)   | React hooks for the auth package                                               |
 | [`@ic-reactor/candid`](./packages/candid)           | Dynamic Candid parsing and runtime reactors                                    |
 | [`@ic-reactor/parser`](./packages/parser)           | Local Candid parser (WASM-based)                                               |
 | [`@ic-reactor/codegen`](./packages/codegen)         | Shared codegen pipeline used by CLI and Vite plugin                            |
@@ -61,8 +63,8 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 ### Optional packages
 
 ```bash
-# Internet Identity auth helpers
-pnpm add @icp-sdk/auth
+# Internet Identity auth helpers for React
+pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth
 
 # Dynamic Candid support (explorers/dev tools)
 pnpm add @ic-reactor/candid @ic-reactor/parser
@@ -75,6 +77,7 @@ pnpm add @ic-reactor/candid @ic-reactor/parser
 ```ts
 // src/reactor.ts
 import { ClientManager, Reactor } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import { QueryClient } from "@tanstack/react-query"
 import { idlFactory, type _SERVICE } from "./declarations/my_canister"
 
@@ -84,6 +87,7 @@ export const clientManager = new ClientManager({
   queryClient,
   // withCanisterEnv: true, // optional: useful in local/dev setups
 })
+export const authentication = new AuthenticationManager({ clientManager })
 
 export const backendReactor = new Reactor<_SERVICE>({
   clientManager,
@@ -97,8 +101,9 @@ export const backendReactor = new Reactor<_SERVICE>({
 
 ```ts
 // src/hooks.ts
-import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
-import { backendReactor, clientManager } from "./reactor"
+import { createActorHooks } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
+import { backendReactor, authentication } from "./reactor"
 
 export const {
   useActorQuery,
@@ -107,7 +112,7 @@ export const {
   useActorInfiniteQuery,
 } = createActorHooks(backendReactor)
 
-export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
+export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
 ```
 
 ### 3. Use in React components

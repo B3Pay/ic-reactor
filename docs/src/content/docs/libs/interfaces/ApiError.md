@@ -1,11 +1,10 @@
 ---
-title: ApiError
 editUrl: false
 next: true
 prev: true
 ---
 
-Defined in: [errors/index.ts:6](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L6)
+Defined in: [core/src/errors/index.ts:6](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/errors/index.ts#L6)
 
 Interface representing the generic shape of an API error.
 
@@ -15,7 +14,7 @@ Interface representing the generic shape of an API error.
 
 > **code**: `string`
 
-Defined in: [errors/index.ts:7](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L7)
+Defined in: [core/src/errors/index.ts:7](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/errors/index.ts#L7)
 
 ---
 
@@ -23,7 +22,7 @@ Defined in: [errors/index.ts:7](https://github.com/B3Pay/ic-reactor/blob/0479ee2
 
 > **message**: [`NullishType`](../type-aliases/NullishType.md)\<`string`\>
 
-Defined in: [errors/index.ts:8](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L8)
+Defined in: [core/src/errors/index.ts:8](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/errors/index.ts#L8)
 
 ---
 
@@ -31,4 +30,4 @@ Defined in: [errors/index.ts:8](https://github.com/B3Pay/ic-reactor/blob/0479ee2
 
 > **details**: [`NullishType`](../type-aliases/NullishType.md)\<`Map`\<`string`, `string`\>\>
 
-Defined in: [errors/index.ts:9](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/errors/index.ts#L9)
+Defined in: [core/src/errors/index.ts:9](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/errors/index.ts#L9)

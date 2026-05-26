@@ -13,12 +13,13 @@
  * - Manual loading state handling with isLoading/isPending
  */
 import { ClientManager, DisplayReactor } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import {
   createSuspenseQuery,
   createSuspenseQueryFactory,
   createMutation,
-  createAuthHooks,
 } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 import { QueryClient } from "@tanstack/react-query"
 import { ledgerIdlFactory, type Ledger } from "./declarations/ledger"
 
@@ -38,6 +39,7 @@ export const clientManager = new ClientManager({
   withProcessEnv: true,
   queryClient,
 })
+export const authentication = new AuthenticationManager({ clientManager })
 
 // ============================================================================
 // 2. Initialize Reactors Directly (using DisplayReactor for transformations)
@@ -200,7 +202,7 @@ export const getCkEthBalance = createSuspenseQueryFactory(ckETHReactor, {
  * useAuth() automatically initializes the session on first use,
  * restoring any previous session from IndexedDB.
  */
-export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
+export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
 
 // ============================================================================
 // 8. createMutation - Transfer Functions

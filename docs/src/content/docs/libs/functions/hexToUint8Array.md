@@ -1,5 +1,4 @@
 ---
-title: hexToUint8Array
 editUrl: false
 next: true
 prev: true
@@ -7,7 +6,7 @@ prev: true
 
 > **hexToUint8Array**(`hex`): `Uint8Array`\<`ArrayBuffer`\>
 
-Defined in: [utils/helper.ts:121](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/utils/helper.ts#L121)
+Defined in: [core/src/utils/helper.ts:131](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/utils/helper.ts#L131)
 
 Converts a hex string to Uint8Array (accepts with or without 0x prefix)
 

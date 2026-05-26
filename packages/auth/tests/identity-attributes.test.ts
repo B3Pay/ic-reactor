@@ -5,7 +5,7 @@ import {
   identityAttributeKeys,
 } from "../src/identity-attributes"
 
-describe("identity attributes", () => {
+describe("Internet Identity attributes", () => {
   it("builds scoped identity attribute keys for OpenID providers", () => {
     expect(
       identityAttributeKeys({

@@ -1,7 +1,7 @@
 # @ic-reactor/react
 
 React bindings for IC Reactor. This package re-exports everything from
-`@ic-reactor/core` and adds hook factories, auth hooks, direct reactor hooks,
+`@ic-reactor/core` and adds hook factories, direct reactor hooks,
 and reusable query or mutation factories built around TanStack Query.
 
 ## Install
@@ -9,8 +9,8 @@ and reusable query or mutation factories built around TanStack Query.
 ```bash
 pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 
-# Optional: Internet Identity login helpers
-pnpm add @icp-sdk/auth
+# Optional: Internet Identity login helpers and hooks
+pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth
 ```
 
 ## Quick Start
@@ -81,8 +81,6 @@ export function App() {
 
 - `createActorHooks(reactor)` for per-canister hooks like `useActorQuery` and
   `useActorMutation`
-- `createAuthHooks(clientManager)` for `useAuth`, `useAgentState`,
-  `useUserPrincipal`, and identity attribute hooks
 - direct reactor hooks like `useReactorQuery` when you want to pass the reactor
   instance at call time
 - factory helpers like `createQuery`, `createSuspenseQuery`,
@@ -136,16 +134,22 @@ const mutation = updateProfile.useMutation({
 
 ## Identity Attributes / OpenID email and profile values
 
-`createAuthHooks(clientManager)` exposes `useIdentityAttributes()` for signed
-identity attributes from `@icp-sdk/auth` v7. Existing `useAuth()`, `login()`,
-`logout()`, and `useUserPrincipal()` consumers keep the same IC Reactor API, but
-the configured auth client must support the v7 constructor/sign-in/sign-out API.
+Identity attribute hooks are optional and use a dedicated
+`IdentityAttributesManager` from `@ic-reactor/auth` and React bindings from
+`@ic-reactor/auth-react`.
 
 ```tsx
-import { createAuthHooks } from "@ic-reactor/react"
+import {
+  AuthenticationManager,
+  IdentityAttributesManager,
+} from "@ic-reactor/auth"
+import { createIdentityAttributeHooks } from "@ic-reactor/auth-react"
 import { clientManager } from "./reactor"
 
-const { useIdentityAttributes } = createAuthHooks(clientManager)
+const authentication = new AuthenticationManager({ clientManager })
+const identityAttributes = new IdentityAttributesManager(authentication)
+const { useIdentityAttributes } =
+  createIdentityAttributeHooks(identityAttributes)
 
 function RegisterWithOpenIdProvider() {
   const {
@@ -252,5 +256,7 @@ single package:
 
 - Docs: https://ic-reactor.b3pay.net/v3/packages/react
 - `@ic-reactor/core`: ../core/README.md
+- `@ic-reactor/auth`: ../auth/README.md
+- `@ic-reactor/auth-react`: ../auth-react/README.md
 - `@ic-reactor/vite-plugin`: ../vite-plugin/README.md
 - `@ic-reactor/cli`: ../cli/README.md

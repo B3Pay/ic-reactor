@@ -1,11 +1,10 @@
 ---
-title: RequestIdentityAttributesParameters
 editUrl: false
 next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:62](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L62)
+Defined in: auth/src/types.ts:52
 
 ## Properties
 
@@ -13,7 +12,7 @@ Defined in: [types/client.ts:62](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **keys**: `string`[]
 
-Defined in: [types/client.ts:63](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L63)
+Defined in: auth/src/types.ts:53
 
 ---
 
@@ -21,7 +20,7 @@ Defined in: [types/client.ts:63](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **nonce**: `Uint8Array`
 
-Defined in: [types/client.ts:64](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L64)
+Defined in: auth/src/types.ts:54
 
 ---
 
@@ -29,7 +28,7 @@ Defined in: [types/client.ts:64](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **identityProvider?**: `string` \| `URL`
 
-Defined in: [types/client.ts:65](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L65)
+Defined in: auth/src/types.ts:55
 
 ---
 
@@ -37,7 +36,7 @@ Defined in: [types/client.ts:65](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **openIdProvider?**: [`IdentityAttributeOpenIdProvider`](../type-aliases/IdentityAttributeOpenIdProvider.md)
 
-Defined in: [types/client.ts:66](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L66)
+Defined in: auth/src/types.ts:56
 
 ---
 
@@ -45,7 +44,7 @@ Defined in: [types/client.ts:66](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **windowOpenerFeatures?**: `string`
 
-Defined in: [types/client.ts:67](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L67)
+Defined in: auth/src/types.ts:57
 
 ---
 
@@ -53,7 +52,7 @@ Defined in: [types/client.ts:67](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **signIn?**: `boolean`
 
-Defined in: [types/client.ts:68](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L68)
+Defined in: auth/src/types.ts:58
 
 ---
 
@@ -61,7 +60,7 @@ Defined in: [types/client.ts:68](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **maxTimeToLive?**: `bigint`
 
-Defined in: [types/client.ts:69](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L69)
+Defined in: auth/src/types.ts:59
 
 ---
 
@@ -69,4 +68,4 @@ Defined in: [types/client.ts:69](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **targets?**: `Principal`[]
 
-Defined in: [types/client.ts:70](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L70)
+Defined in: auth/src/types.ts:60

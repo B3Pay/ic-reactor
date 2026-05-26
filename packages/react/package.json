@@ -20,7 +20,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist tsconfig.tsbuildinfo && tsc",
     "test": "vitest run",
     "size": "size-limit",
     "analyze": "size-limit"
@@ -51,18 +51,11 @@
     "@ic-reactor/core": "workspace:^"
   },
   "peerDependencies": {
-    "@icp-sdk/auth": "^7.0.0",
     "@tanstack/react-query": "^5.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
   },
-  "peerDependenciesMeta": {
-    "@icp-sdk/auth": {
-      "optional": true
-    }
-  },
   "devDependencies": {
-    "@icp-sdk/auth": "^7.0.0",
     "@icp-sdk/core": "^5.4.0",
     "@size-limit/preset-small-lib": "^12.1.0",
     "@tanstack/react-query": "^5.100.10",

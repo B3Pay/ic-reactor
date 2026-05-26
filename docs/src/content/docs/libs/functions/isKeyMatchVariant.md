@@ -1,5 +1,4 @@
 ---
-title: isKeyMatchVariant
 editUrl: false
 next: true
 prev: true
@@ -7,7 +6,7 @@ prev: true
 
 > **isKeyMatchVariant**\<`T`, `K`\>(`variant`, `key`): `variant is T & Record<K, unknown>`
 
-Defined in: [utils/candid.ts:140](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/utils/candid.ts#L140)
+Defined in: [core/src/utils/candid.ts:140](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/utils/candid.ts#L140)
 
 ## Type Parameters
 

@@ -5,7 +5,7 @@ feature.
 
 It demonstrates:
 
-- `createAuthHooks(clientManager).useIdentityAttributes()`
+- `createIdentityAttributeHooks(identityAttributes).useIdentityAttributes()`
 - OpenID provider aliases such as `google`, `apple`, and `microsoft`
 - Custom OpenID issuer URLs
 - `identityAttributeKeys()` scoped key generation

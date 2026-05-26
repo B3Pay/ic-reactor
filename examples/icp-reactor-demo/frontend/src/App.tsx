@@ -107,7 +107,8 @@ function ZeroConfigBanner() {
       <pre className="code-preview">
         {`// src/lib/client.ts (YOU OWN THIS)
 export const clientManager = new ClientManager({ ... })
-export const { useAuth } = createAuthHooks(clientManager)
+export const authentication = new AuthenticationManager({ clientManager })
+export const { useAuth } = createAuthHooks(authentication)
 
 // src/canisters/backend/index.ts (AUTO-GENERATED)
 import { clientManager } from "../../lib/client"

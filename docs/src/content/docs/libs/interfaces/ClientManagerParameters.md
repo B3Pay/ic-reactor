@@ -1,11 +1,12 @@
 ---
-title: ClientManagerParameters
 editUrl: false
 next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:94](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L94)
+Defined in: [core/src/types/client.ts:13](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/client.ts#L13)
+
+Parameters for configuring a ClientManager instance.
 
 ## Properties
 
@@ -13,7 +14,7 @@ Defined in: [types/client.ts:94](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **queryClient**: `QueryClient`
 
-Defined in: [types/client.ts:98](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L98)
+Defined in: [core/src/types/client.ts:17](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/client.ts#L17)
 
 The TanStack QueryClient used for caching and state management.
 
@@ -23,7 +24,7 @@ The TanStack QueryClient used for caching and state management.
 
 > `optional` **agentOptions?**: `HttpAgentOptions`
 
-Defined in: [types/client.ts:102](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L102)
+Defined in: [core/src/types/client.ts:21](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/client.ts#L21)
 
 Optional configuration for the underlying HttpAgent.
 
@@ -33,7 +34,7 @@ Optional configuration for the underlying HttpAgent.
 
 > `optional` **port?**: `number`
 
-Defined in: [types/client.ts:106](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L106)
+Defined in: [core/src/types/client.ts:25](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/client.ts#L25)
 
 The port used for the local IC replica (default is 4943).
 
@@ -43,7 +44,7 @@ The port used for the local IC replica (default is 4943).
 
 > `optional` **withLocalEnv?**: `boolean`
 
-Defined in: [types/client.ts:110](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L110)
+Defined in: [core/src/types/client.ts:29](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/client.ts#L29)
 
 If true, configures the agent for a local environment.
 
@@ -53,23 +54,9 @@ If true, configures the agent for a local environment.
 
 > `optional` **withProcessEnv?**: `boolean`
 
-Defined in: [types/client.ts:114](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L114)
+Defined in: [core/src/types/client.ts:33](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/client.ts#L33)
 
 If true, auto-configures the agent based on process.env settings.
-
----
-
-### authClient?
-
-> `optional` **authClient?**: [`AuthClientLike`](AuthClientLike.md)
-
-Defined in: [types/client.ts:122](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L122)
-
-Optional pre-initialized AuthClient instance.
-If provided, the manager will use this instance instead of dynamically importing
-and creating a new one from `@icp-sdk/auth`.
-This is useful for environments where dynamic imports are not supported or
-when you want to share an AuthClient instance across multiple managers.
 
 ---
 
@@ -77,7 +64,7 @@ when you want to share an AuthClient instance across multiple managers.
 
 > `optional` **withCanisterEnv?**: `boolean`
 
-Defined in: [types/client.ts:133](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L133)
+Defined in: [core/src/types/client.ts:44](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/client.ts#L44)
 
 **`Experimental`**
 

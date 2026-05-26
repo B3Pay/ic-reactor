@@ -7,9 +7,8 @@ editUrl: false
 import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components"
 
 `@ic-reactor/core` is the framework-agnostic foundation of IC Reactor. It gives
-you the runtime building blocks for agent management, authentication,
-TanStack Query integration, and typed canister interaction without depending on
-React.
+you the runtime building blocks for agent management, TanStack Query
+integration, and typed canister interaction without depending on React.
 
 <Aside type="tip">
   React applications usually install [@ic-reactor/react](/v3/packages/react),
@@ -29,8 +28,8 @@ React.
 ```bash
 pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
-# Optional: Internet Identity support
-pnpm add @icp-sdk/auth
+# Optional companion package for Internet Identity support
+pnpm add @ic-reactor/auth @icp-sdk/auth
 ```
 
 ## What's Included
@@ -87,17 +86,23 @@ const greeting = await backend.fetchQuery({
 
 ## Identity Attributes
 
-`ClientManager` exposes provider-neutral helpers for signed OpenID identity
-attributes from `@icp-sdk/auth` v7:
+`@ic-reactor/auth` provides `IdentityAttributesManager`, exposing helpers for signed OpenID
+identity attributes from `@icp-sdk/auth` v7 without adding the optional
+workflow to `ClientManager`:
 
 ```typescript
 import {
+  AuthenticationManager,
+  IdentityAttributesManager,
   identityAttributeKeys,
-} from "@ic-reactor/core"
+} from "@ic-reactor/auth"
+
+const authentication = new AuthenticationManager({ clientManager })
+const identityAttributes = new IdentityAttributesManager(authentication)
 
 const nonce = await backend.registerBegin()
 
-const result = await clientManager.requestOpenIdIdentityAttributes({
+const result = await identityAttributes.requestOpenId({
   nonce,
   openIdProvider: "microsoft",
   keys: ["email", "name"],
@@ -111,7 +116,7 @@ await backend.registerFinish({
 
 Use `openIdProvider: "google"`, `"apple"`, `"microsoft"`, or a provider issuer
 URL. For lower-level requests, build scoped keys with `identityAttributeKeys()`
-and pass them to `clientManager.requestIdentityAttributes()`.
+and pass them to `identityAttributes.request()`.
 
 ## See Also
 

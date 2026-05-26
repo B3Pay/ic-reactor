@@ -1,8 +1,7 @@
 import { ClientManager, Reactor } from "@ic-reactor/core"
-import {
-  createSuspenseInfiniteQueryFactory,
-  createAuthHooks,
-} from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/auth"
+import { createSuspenseInfiniteQueryFactory } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 import { QueryClient } from "@tanstack/react-query"
 import { canisterId, idlFactory } from "../src/declarations/backend"
 import { _SERVICE } from "./declarations/backend/backend.did"
@@ -26,6 +25,7 @@ export const clientManager = new ClientManager({
   port: 4943,
   queryClient,
 })
+export const authentication = new AuthenticationManager({ clientManager })
 
 // 3. Setup Reactor (interacts with specific canister)
 export const reactor = new Reactor<_SERVICE>({
@@ -36,7 +36,7 @@ export const reactor = new Reactor<_SERVICE>({
 })
 
 // 4. Create auth hooks (useAuth auto-initializes the agent and fetches root key)
-export const { useAuth, useAgentState } = createAuthHooks(clientManager)
+export const { useAuth, useAgentState } = createAuthHooks(authentication)
 
 // 5. Create the Suspense Infinite Query Factory
 // This allows us to create specific queries for each category dynamically

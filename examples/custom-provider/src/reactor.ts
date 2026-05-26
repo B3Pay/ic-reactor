@@ -5,7 +5,8 @@
  * an ICRC1 token viewer with dynamic canister ID support using the v3 API.
  */
 import { ClientManager } from "@ic-reactor/core"
-import { createAuthHooks } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/auth"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 import { QueryClient } from "@tanstack/react-query"
 
 // ============================================================================
@@ -24,10 +25,11 @@ export const clientManager = new ClientManager({
   withProcessEnv: true,
   queryClient,
 })
+export const authentication = new AuthenticationManager({ clientManager })
 
 // ============================================================================
 // 2. Auth Hooks
 // ============================================================================
 
 export const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(clientManager)
+  createAuthHooks(authentication)

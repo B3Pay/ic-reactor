@@ -54,7 +54,9 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
 
    ```typescript
    // src/reactor/hooks.ts
-   import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+   import { createActorHooks } from "@ic-reactor/react"
+   import { AuthenticationManager } from "@ic-reactor/auth"
+   import { createAuthHooks } from "@ic-reactor/auth-react"
    import { backend, clientManager } from "./index"
 
    // Actor hooks for your canister
@@ -66,11 +68,9 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
    } = createActorHooks(backend)
 
    // Auth hooks for authentication
-   export const {
-     useAuth,
-     useUserPrincipal,
-     useAgentState,
-   } = createAuthHooks(clientManager)
+   export const authentication = new AuthenticationManager({ clientManager })
+   export const { useAuth, useUserPrincipal, useAgentState } =
+     createAuthHooks(authentication)
    ```
 
 3. ### Setup Provider (Optional)
@@ -282,12 +282,15 @@ export const backend = new Reactor<Backend>({
 
 ```typescript
 // src/reactor/hooks.ts
-import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import { createActorHooks } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/auth"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 import { ledger, backend, clientManager } from "./index"
 
 export const ledgerHooks = createActorHooks(ledger)
 export const backendHooks = createActorHooks(backend)
-export const authHooks = createAuthHooks(clientManager)
+export const authentication = new AuthenticationManager({ clientManager })
+export const authHooks = createAuthHooks(authentication)
 
 // Export individual hooks for convenience
 export const {
