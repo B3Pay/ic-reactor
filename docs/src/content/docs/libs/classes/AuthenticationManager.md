@@ -4,12 +4,17 @@ next: true
 prev: true
 ---
 
-Defined in: auth/src/authentication-manager.ts:36
+Defined in: auth/src/authentication-manager.ts:40
 
-Owns AuthClient lifecycle and authentication-specific flows.
+Manages Internet Identity sign-in, session restoration, and authentication
+state for a [ClientManager](ClientManager.md).
 
-ClientManager remains responsible for agent and query state; authentication
-is opt-in by constructing this manager around a ClientManager instance.
+## Example
+
+```ts
+const authentication = new AuthenticationManager({ clientManager })
+const identity = await authentication.authenticate()
+```
 
 ## Constructors
 
@@ -17,7 +22,7 @@ is opt-in by constructing this manager around a ClientManager instance.
 
 > **new AuthenticationManager**(`__namedParameters`): `AuthenticationManager`
 
-Defined in: auth/src/authentication-manager.ts:58
+Defined in: auth/src/authentication-manager.ts:62
 
 #### Parameters
 
@@ -35,7 +40,7 @@ Defined in: auth/src/authentication-manager.ts:58
 
 > `readonly` **clientManager**: [`ClientManager`](ClientManager.md)
 
-Defined in: auth/src/authentication-manager.ts:50
+Defined in: auth/src/authentication-manager.ts:54
 
 ---
 
@@ -43,7 +48,7 @@ Defined in: auth/src/authentication-manager.ts:50
 
 > **authState**: [`AuthState`](../interfaces/AuthState.md)
 
-Defined in: auth/src/authentication-manager.ts:51
+Defined in: auth/src/authentication-manager.ts:55
 
 ## Methods
 
@@ -51,7 +56,7 @@ Defined in: auth/src/authentication-manager.ts:51
 
 > **subscribeAuthState**(`callback`): () => `void`
 
-Defined in: auth/src/authentication-manager.ts:97
+Defined in: auth/src/authentication-manager.ts:101
 
 #### Parameters
 
@@ -69,7 +74,7 @@ Defined in: auth/src/authentication-manager.ts:97
 
 > **prepareClient**(`options?`): `Promise`\<[`AuthClientLike`](../interfaces/AuthClientLike.md) \| `undefined`\>
 
-Defined in: auth/src/authentication-manager.ts:109
+Defined in: auth/src/authentication-manager.ts:113
 
 Preloads and creates an AuthClient before a user gesture is needed.
 
@@ -89,7 +94,7 @@ Preloads and creates an AuthClient before a user gesture is needed.
 
 > **authenticate**(): `Promise`\<`Identity` \| `undefined`\>
 
-Defined in: auth/src/authentication-manager.ts:120
+Defined in: auth/src/authentication-manager.ts:124
 
 #### Returns
 
@@ -101,7 +106,7 @@ Defined in: auth/src/authentication-manager.ts:120
 
 > **login**(`loginOptions?`): `Promise`\<`void`\>
 
-Defined in: auth/src/authentication-manager.ts:173
+Defined in: auth/src/authentication-manager.ts:177
 
 #### Parameters
 
@@ -119,7 +124,7 @@ Defined in: auth/src/authentication-manager.ts:173
 
 > **logout**(`options?`): `Promise`\<`void`\>
 
-Defined in: auth/src/authentication-manager.ts:234
+Defined in: auth/src/authentication-manager.ts:238
 
 #### Parameters
 

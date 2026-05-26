@@ -4,13 +4,17 @@ next: true
 prev: true
 ---
 
-Defined in: auth/src/identity-attributes-manager.ts:22
+Defined in: auth/src/identity-attributes-manager.ts:25
 
-Requests signed identity attributes through an AuthenticationManager.
+Requests and decodes signed identity attributes for an authenticated
+Internet Identity session.
 
-This optional feature is separated from normal sign-in/session management
-so applications that only need authentication do not carry its workflow in
-their primary manager.
+## Example
+
+```ts
+const attributes = new IdentityAttributesManager(authentication)
+const result = await attributes.request({ keys: ["name"] })
+```
 
 ## Constructors
 
@@ -18,7 +22,7 @@ their primary manager.
 
 > **new IdentityAttributesManager**(`authentication`): `IdentityAttributesManager`
 
-Defined in: auth/src/identity-attributes-manager.ts:23
+Defined in: auth/src/identity-attributes-manager.ts:26
 
 #### Parameters
 
@@ -36,7 +40,7 @@ Defined in: auth/src/identity-attributes-manager.ts:23
 
 > `readonly` **authentication**: [`AuthenticationManager`](AuthenticationManager.md)
 
-Defined in: auth/src/identity-attributes-manager.ts:23
+Defined in: auth/src/identity-attributes-manager.ts:26
 
 ## Methods
 
@@ -44,7 +48,7 @@ Defined in: auth/src/identity-attributes-manager.ts:23
 
 > **request**(`__namedParameters`): `Promise`\<[`IdentityAttributeResult`](../interfaces/IdentityAttributeResult.md)\>
 
-Defined in: auth/src/identity-attributes-manager.ts:25
+Defined in: auth/src/identity-attributes-manager.ts:28
 
 #### Parameters
 
@@ -62,7 +66,7 @@ Defined in: auth/src/identity-attributes-manager.ts:25
 
 > **requestOpenId**(`__namedParameters`): `Promise`\<[`IdentityAttributeResult`](../interfaces/IdentityAttributeResult.md)\>
 
-Defined in: auth/src/identity-attributes-manager.ts:88
+Defined in: auth/src/identity-attributes-manager.ts:91
 
 #### Parameters
 

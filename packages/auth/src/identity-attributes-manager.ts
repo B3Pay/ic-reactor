@@ -13,11 +13,14 @@ import {
 } from "./identity-attributes"
 
 /**
- * Requests signed identity attributes through an AuthenticationManager.
+ * Requests and decodes signed identity attributes for an authenticated
+ * Internet Identity session.
  *
- * This optional feature is separated from normal sign-in/session management
- * so applications that only need authentication do not carry its workflow in
- * their primary manager.
+ * @example
+ * ```ts
+ * const attributes = new IdentityAttributesManager(authentication)
+ * const result = await attributes.request({ keys: ["name"] })
+ * ```
  */
 export class IdentityAttributesManager {
   constructor(public readonly authentication: AuthenticationManager) {}

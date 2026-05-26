@@ -28,10 +28,14 @@ export interface AuthenticationManagerParameters {
 }
 
 /**
- * Owns AuthClient lifecycle and authentication-specific flows.
+ * Manages Internet Identity sign-in, session restoration, and authentication
+ * state for a {@link ClientManager}.
  *
- * ClientManager remains responsible for agent and query state; authentication
- * is opt-in by constructing this manager around a ClientManager instance.
+ * @example
+ * ```ts
+ * const authentication = new AuthenticationManager({ clientManager })
+ * const identity = await authentication.authenticate()
+ * ```
  */
 export class AuthenticationManager {
   private authClient?: AuthClientLike
