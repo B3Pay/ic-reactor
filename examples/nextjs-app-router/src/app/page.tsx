@@ -1,13 +1,13 @@
 import React from "react"
 import { ICReactorProvider } from "./providers"
-import { TodoReactorProvider } from "./todo-provider"
+import { LedgerReactorProvider } from "./ledger-provider"
 import AuthSection from "./AuthSection"
-import TodoList from "./TodoList"
+import TokenExplorer from "./TokenExplorer"
 
 export default function Home() {
   return (
     <ICReactorProvider>
-      <TodoReactorProvider>
+      <LedgerReactorProvider>
         <main className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-xl mx-auto text-center mb-8">
             <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">
@@ -19,7 +19,7 @@ export default function Home() {
           </div>
 
           <AuthSection />
-          <TodoList />
+          <TokenExplorer />
 
           <div className="max-w-xl mx-auto mt-8 text-center text-xs text-gray-400">
             <p>
@@ -28,7 +28,7 @@ export default function Home() {
             </p>
           </div>
         </main>
-      </TodoReactorProvider>
+      </LedgerReactorProvider>
     </ICReactorProvider>
   )
 }

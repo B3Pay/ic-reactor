@@ -36,12 +36,7 @@ export default function AuthSection() {
           </button>
         ) : (
           <button
-            onClick={() =>
-              login({
-                identityProvider:
-                  "http://127.0.0.1:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai",
-              })
-            }
+            onClick={() => login()}
             disabled={isAuthenticating}
             className="flex items-center gap-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
           >

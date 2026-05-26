@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState, ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ClientManager } from "@ic-reactor/react"
 import { AuthenticationManager } from "@ic-reactor/auth"
-import { createAuthHooks } from "@ic-reactor/auth-react"
 
 // Ensure queryClient is initialized stably on the client
 let clientQueryClient: QueryClient | null = null
@@ -49,9 +48,6 @@ export function ICReactorProvider({ children }: { children: ReactNode }) {
     const clientManager = new ClientManager({
       queryClient,
       withProcessEnv: true,
-      agentOptions: {
-        verifyQuerySignatures: false,
-      },
     })
     const authentication = new AuthenticationManager({ clientManager })
     return { clientManager, authentication }
