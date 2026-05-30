@@ -1,5 +1,3 @@
-import { IDL } from "@dfinity/candid"
-
 export const idlFactory = ({ IDL }) => {
   const Todo = IDL.Record({
     id: IDL.Nat,
