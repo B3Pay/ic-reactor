@@ -13,6 +13,11 @@ import { DEFAULT_IC_DIDJS_ID, DEFAULT_LOCAL_DIDJS_ID } from "./constants"
 import { importCandidDefinition } from "./utils"
 import { CanisterId } from "@ic-reactor/core"
 
+const importOptionalParser = new Function(
+  "specifier",
+  "return import(specifier)"
+) as (specifier: string) => Promise<ReactorParser & { default?: unknown }>
+
 /**
  * CandidAdapter provides functionality to fetch and parse Candid definitions
  * from Internet Computer canisters.
@@ -91,6 +96,17 @@ export class CandidAdapter {
     return this.parserModule !== undefined
   }
 
+  private async importParserModule(): Promise<ReactorParser> {
+    const parserModule = await importOptionalParser("@ic-reactor/parser")
+    const maybeInitializer = parserModule.default
+
+    if (typeof maybeInitializer === "function") {
+      await (maybeInitializer as () => Promise<void>)()
+    }
+
+    return parserModule
+  }
+
   /**
    * Loads the local parser module for converting Candid to JavaScript.
    * If no module is provided, attempts to dynamically load @ic-reactor/parser.
@@ -122,10 +138,7 @@ export class CandidAdapter {
     this.parserLoadAttempted = true
 
     try {
-      this.parserModule = require("@ic-reactor/parser")
-      if (this.parserModule?.default) {
-        await this.parserModule.default()
-      }
+      this.parserModule = await this.importParserModule()
     } catch (error) {
       throw new Error(`Error loading parser: ${error}`)
     }
@@ -143,10 +156,7 @@ export class CandidAdapter {
     this.parserLoadAttempted = true
 
     try {
-      this.parserModule = require("@ic-reactor/parser")
-      if (this.parserModule?.default) {
-        await this.parserModule.default()
-      }
+      this.parserModule = await this.importParserModule()
     } catch {
       // Silently fail - parser is optional
       this.parserModule = undefined
