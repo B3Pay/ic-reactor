@@ -10,6 +10,7 @@ export * from "./validation"
 
 // React-specific exports
 export * from "./createActorHooks"
+export * from "./defineReactor"
 
 export * from "./createQuery"
 export * from "./createSuspenseQuery"

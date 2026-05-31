@@ -20,7 +20,12 @@ import type {
   ReactorArgs,
   TransformKey,
 } from "@ic-reactor/core"
-import { QueryKey, useQuery } from "@tanstack/react-query"
+import {
+  QueryKey,
+  useQuery,
+  type UseQueryOptions,
+  type Updater,
+} from "@tanstack/react-query"
 import type {
   QueryFnData,
   QueryError,
@@ -37,16 +42,20 @@ import { buildChainedSelect } from "./utils"
 // ============================================================================
 
 const createQueryImpl = <
-  A,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = QueryFnData<A, M, T>,
+  Service,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = QueryFnData<Service, Method, Transform>,
 >(
-  reactor: Reactor<A, T>,
-  config: QueryConfig<A, M, T, TSelected>
-): QueryResult<QueryFnData<A, M, T>, TSelected, QueryError<A, M, T>> => {
-  type TData = QueryFnData<A, M, T>
-  type TError = QueryError<A, M, T>
+  reactor: Reactor<Service, Transform>,
+  config: QueryConfig<Service, Method, Transform, Selected>
+): QueryResult<
+  QueryFnData<Service, Method, Transform>,
+  Selected,
+  QueryError<Service, Method, Transform>
+> => {
+  type TData = QueryFnData<Service, Method, Transform>
+  type TError = QueryError<Service, Method, Transform>
 
   const {
     functionName,
@@ -62,11 +71,11 @@ const createQueryImpl = <
   const getQueryKey = (): QueryKey => reactor.generateQueryKey(params)
 
   // Apply config.select to raw data (shared by fetch, getCacheData, and the hook)
-  const applySelect = (raw: TData): TSelected =>
-    select ? select(raw) : (raw as unknown as TSelected)
+  const applySelect = (raw: TData): Selected =>
+    select ? select(raw) : (raw as unknown as Selected)
 
   /** Cache-first fetch for use in loaders / route preloading. */
-  const fetch = async (): Promise<TSelected> => {
+  const fetch = async (): Promise<Selected> => {
     const result = await reactor.fetchQuery(params)
     return applySelect(result)
   }
@@ -81,9 +90,15 @@ const createQueryImpl = <
     })
   }
 
-  const useQueryHook: UseQueryWithSelect<TData, TSelected, TError> = (
-    options: any
-  ): any => {
+  // The hook publicly exposes the overloaded UseQueryWithSelect signature.
+  // Internally it takes a single broad options object, so we type the
+  // implementation explicitly and cast once to the public overloaded type.
+  type UseQueryHookOptions = Omit<
+    UseQueryOptions<TData, TError, unknown>,
+    "queryKey" | "queryFn"
+  > & { select?: (data: Selected) => unknown }
+
+  const useQueryHook = ((options?: UseQueryHookOptions) => {
     const baseOptions = reactor.getQueryOptions(params)
     return useQuery(
       {
@@ -96,27 +111,28 @@ const createQueryImpl = <
       },
       reactor.queryClient
     )
-  }
+  }) as UseQueryWithSelect<TData, Selected, TError>
 
   const invalidate = async (): Promise<void> => {
     await reactor.queryClient.invalidateQueries({ queryKey: getQueryKey() })
   }
 
-  const getCacheData: QueryResult<TData, TSelected, TError>["getCacheData"] = (
-    selectFn?: (data: TSelected) => unknown
-  ): any => {
+  const getCacheData = ((
+    selectFn?: (data: Selected) => unknown
+  ): Selected | unknown => {
     const raw = reactor.getQueryData(params)
     if (raw === undefined) return undefined
     const selected = applySelect(raw)
     return selectFn ? selectFn(selected) : selected
-  }
+  }) as QueryResult<TData, Selected, TError>["getCacheData"]
 
-  const setData: QueryResult<TData, TSelected, TError>["setData"] = (
+  const setData: QueryResult<TData, Selected, TError>["setData"] = (
     updater
   ) => {
-    return reactor.queryClient.setQueryData(getQueryKey(), updater as any) as
-      | TData
-      | undefined
+    return reactor.queryClient.setQueryData(
+      getQueryKey(),
+      updater as Updater<TData | undefined, TData | undefined>
+    ) as TData | undefined
   }
 
   return {
@@ -135,15 +151,22 @@ const createQueryImpl = <
 // ============================================================================
 
 export function createQuery<
-  A,
-  T extends TransformKey,
-  M extends FunctionName<A> = FunctionName<A>,
-  TSelected = QueryFnData<A, M, T>,
+  Service,
+  Transform extends TransformKey,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Selected = QueryFnData<Service, Method, Transform>,
 >(
-  reactor: Reactor<A, T>,
-  config: QueryConfig<NoInfer<A>, M, T, TSelected>
-): QueryResult<QueryFnData<A, M, T>, TSelected, QueryError<A, M, T>> {
-  return createQueryImpl(reactor, config as QueryConfig<A, M, T, TSelected>)
+  reactor: Reactor<Service, Transform>,
+  config: QueryConfig<NoInfer<Service>, Method, Transform, Selected>
+): QueryResult<
+  QueryFnData<Service, Method, Transform>,
+  Selected,
+  QueryError<Service, Method, Transform>
+> {
+  return createQueryImpl(
+    reactor,
+    config as QueryConfig<Service, Method, Transform, Selected>
+  )
 }
 
 // ============================================================================
@@ -151,24 +174,32 @@ export function createQuery<
 // ============================================================================
 
 export function createQueryFactory<
-  A,
-  T extends TransformKey,
-  M extends FunctionName<A> = FunctionName<A>,
-  TSelected = QueryFnData<A, M, T>,
+  Service,
+  Transform extends TransformKey,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Selected = QueryFnData<Service, Method, Transform>,
 >(
-  reactor: Reactor<A, T>,
-  config: QueryFactoryConfig<NoInfer<A>, M, T, TSelected>
+  reactor: Reactor<Service, Transform>,
+  config: QueryFactoryConfig<NoInfer<Service>, Method, Transform, Selected>
 ): (
-  args: ReactorArgs<A, M, T>
-) => QueryResult<QueryFnData<A, M, T>, TSelected, QueryError<A, M, T>> {
+  args: ReactorArgs<Service, Method, Transform>
+) => QueryResult<
+  QueryFnData<Service, Method, Transform>,
+  Selected,
+  QueryError<Service, Method, Transform>
+> {
   const cache = new Map<
     string,
-    QueryResult<QueryFnData<A, M, T>, TSelected, QueryError<A, M, T>>
+    QueryResult<
+      QueryFnData<Service, Method, Transform>,
+      Selected,
+      QueryError<Service, Method, Transform>
+    >
   >()
 
-  return (args: ReactorArgs<A, M, T>) => {
+  return (args: ReactorArgs<Service, Method, Transform>) => {
     const key = reactor.generateQueryKey({
-      functionName: config.functionName as M,
+      functionName: config.functionName as Method,
       args,
     })
     const cacheKey = JSON.stringify(key)
@@ -176,10 +207,13 @@ export function createQueryFactory<
     const existing = cache.get(cacheKey)
     if (existing) return existing
 
-    const result = createQueryImpl<A, M, T, TSelected>(reactor, {
-      ...config,
-      args,
-    })
+    const result = createQueryImpl<Service, Method, Transform, Selected>(
+      reactor,
+      {
+        ...config,
+        args,
+      }
+    )
     cache.set(cacheKey, result)
     return result
   }

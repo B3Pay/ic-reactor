@@ -52,28 +52,28 @@ type SuspenseInfiniteFactoryCallOptions = {
 }
 
 type SuspenseInfiniteQueryFactoryFn<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey,
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey,
   TPageParam,
-  TSelected,
+  Selected,
 > = {
   (
-    getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>
+    getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
   ): SuspenseInfiniteQueryResult<
-    SuspenseInfiniteQueryPageData<A, M, T>,
+    SuspenseInfiniteQueryPageData<Service, Method, Transform>,
     TPageParam,
-    TSelected,
-    SuspenseInfiniteQueryError<A, M, T>
+    Selected,
+    SuspenseInfiniteQueryError<Service, Method, Transform>
   >
   (
-    getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>,
+    getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>,
     options?: SuspenseInfiniteFactoryCallOptions
   ): SuspenseInfiniteQueryResult<
-    SuspenseInfiniteQueryPageData<A, M, T>,
+    SuspenseInfiniteQueryPageData<Service, Method, Transform>,
     TPageParam,
-    TSelected,
-    SuspenseInfiniteQueryError<A, M, T>
+    Selected,
+    SuspenseInfiniteQueryError<Service, Method, Transform>
   >
 }
 
@@ -83,17 +83,17 @@ type SuspenseInfiniteQueryFactoryFn<
 
 /** The raw page data type returned by the query function */
 export type SuspenseInfiniteQueryPageData<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-> = ReactorReturnOk<A, M, T>
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+> = ReactorReturnOk<Service, Method, Transform>
 
 /** The error type for infinite queries */
 export type SuspenseInfiniteQueryError<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-> = ReactorReturnErr<A, M, T>
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+> = ReactorReturnErr<Service, Method, Transform>
 
 // ============================================================================
 // Configuration Types
@@ -103,49 +103,55 @@ export type SuspenseInfiniteQueryError<
  * Configuration for createActorSuspenseInfiniteQuery.
  * Extends InfiniteQueryObserverOptions to accept all React Query options at the create level.
  *
- * @template A - The actor interface type
- * @template M - The method name on the actor
- * @template T - The transformation key (identity, display, etc.)
+ * @template Service - The actor interface type
+ * @template Method - The method name on the actor
+ * @template Transform - The transformation key (identity, display, etc.)
  * @template TPageParam - The type of the page parameter
- * @template TSelected - The type returned after select transformation
+ * @template Selected - The type returned after select transformation
  */
 export interface SuspenseInfiniteQueryConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
   TPageParam = unknown,
-  TSelected = InfiniteData<SuspenseInfiniteQueryPageData<A, M, T>, TPageParam>,
+  Selected = InfiniteData<
+    SuspenseInfiniteQueryPageData<Service, Method, Transform>,
+    TPageParam
+  >,
 > extends Omit<
   InfiniteQueryObserverOptions<
-    SuspenseInfiniteQueryPageData<A, M, T>,
-    SuspenseInfiniteQueryError<A, M, T>,
-    TSelected,
+    SuspenseInfiniteQueryPageData<Service, Method, Transform>,
+    SuspenseInfiniteQueryError<Service, Method, Transform>,
+    Selected,
     QueryKey,
     TPageParam
   >,
   "queryKey" | "queryFn"
 > {
   /** The method to call on the canister */
-  functionName: M
+  functionName: Method
   /** Call configuration for the actor method */
   callConfig?: CallConfig
   /** Custom query key (optional, auto-generated if not provided) */
   queryKey?: QueryKey
   /** Function to get args from page parameter */
-  getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>
+  getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
 }
 
 /**
  * Configuration for createActorSuspenseInfiniteQueryFactory (without getArgs; provided at call time).
  */
 export type SuspenseInfiniteQueryFactoryConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
   TPageParam = unknown,
-  TSelected = InfiniteData<SuspenseInfiniteQueryPageData<A, M, T>, TPageParam>,
+  Selected = InfiniteData<
+    SuspenseInfiniteQueryPageData<Service, Method, Transform>,
+    TPageParam
+  >,
 > = Omit<
-  SuspenseInfiniteQueryConfig<A, M, T, TPageParam, TSelected>,
+  SuspenseInfiniteQueryConfig<Service, Method, Transform, TPageParam, Selected>,
   "getArgs"
 > & {
   /**
@@ -154,7 +160,7 @@ export type SuspenseInfiniteQueryFactoryConfig<
    * a stable serializable representation of the logical query identity
    * (typically excluding pagination/cursor fields).
    */
-  getKeyArgs?: (args: ReactorArgs<A, M, T>) => unknown
+  getKeyArgs?: (args: ReactorArgs<Service, Method, Transform>) => unknown
 }
 
 // ============================================================================
@@ -167,16 +173,16 @@ export type SuspenseInfiniteQueryFactoryConfig<
 export interface UseSuspenseInfiniteQueryWithSelect<
   TPageData,
   TPageParam,
-  TSelected = InfiniteData<TPageData, TPageParam>,
+  Selected = InfiniteData<TPageData, TPageParam>,
   TError = Error,
 > {
-  // Overload 1: Without select - returns TSelected
+  // Overload 1: Without select - returns Selected
   (
     options?: Omit<
       UseSuspenseInfiniteQueryOptions<
         TPageData,
         TError,
-        TSelected,
+        Selected,
         QueryKey,
         TPageParam
       >,
@@ -187,10 +193,10 @@ export interface UseSuspenseInfiniteQueryWithSelect<
       | "getNextPageParam"
       | "getPreviousPageParam"
     >
-  ): UseSuspenseInfiniteQueryResult<TSelected, TError>
+  ): UseSuspenseInfiniteQueryResult<Selected, TError>
 
   // Overload 2: With select - chains on top and returns TFinal
-  <TFinal = TSelected>(
+  <TFinal = Selected>(
     options: Omit<
       UseSuspenseInfiniteQueryOptions<
         TPageData,
@@ -206,7 +212,7 @@ export interface UseSuspenseInfiniteQueryWithSelect<
       | "getNextPageParam"
       | "getPreviousPageParam"
     > & {
-      select: (data: TSelected) => TFinal
+      select: (data: Selected) => TFinal
     }
   ): UseSuspenseInfiniteQueryResult<TFinal, TError>
 }
@@ -220,23 +226,23 @@ export interface UseSuspenseInfiniteQueryWithSelect<
  *
  * @template TPageData - The raw page data type
  * @template TPageParam - The page parameter type
- * @template TSelected - The type after select transformation
+ * @template Selected - The type after select transformation
  * @template TError - The error type
  */
 export interface SuspenseInfiniteQueryResult<
   TPageData,
   TPageParam,
-  TSelected = InfiniteData<TPageData, TPageParam>,
+  Selected = InfiniteData<TPageData, TPageParam>,
   TError = Error,
 > {
   /** Fetch first page in loader (uses ensureInfiniteQueryData for cache-first) */
-  fetch: () => Promise<TSelected>
+  fetch: () => Promise<Selected>
 
   /** React hook for components - supports pagination */
   useSuspenseInfiniteQuery: UseSuspenseInfiniteQueryWithSelect<
     TPageData,
     TPageParam,
-    TSelected,
+    Selected,
     TError
   >
 
@@ -251,8 +257,8 @@ export interface SuspenseInfiniteQueryResult<
    * Returns undefined if data is not in cache.
    */
   getCacheData: {
-    (): TSelected | undefined
-    <TFinal>(select: (data: TSelected) => TFinal): TFinal | undefined
+    (): Selected | undefined
+    <TFinal>(select: (data: Selected) => TFinal): TFinal | undefined
   }
 }
 
@@ -261,22 +267,31 @@ export interface SuspenseInfiniteQueryResult<
 // ============================================================================
 
 const createSuspenseInfiniteQueryImpl = <
-  A,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
   TPageParam = unknown,
-  TSelected = InfiniteData<SuspenseInfiniteQueryPageData<A, M, T>, TPageParam>,
+  Selected = InfiniteData<
+    SuspenseInfiniteQueryPageData<Service, Method, Transform>,
+    TPageParam
+  >,
 >(
-  reactor: Reactor<A, T>,
-  config: SuspenseInfiniteQueryConfig<A, M, T, TPageParam, TSelected>
+  reactor: Reactor<Service, Transform>,
+  config: SuspenseInfiniteQueryConfig<
+    Service,
+    Method,
+    Transform,
+    TPageParam,
+    Selected
+  >
 ): SuspenseInfiniteQueryResult<
-  SuspenseInfiniteQueryPageData<A, M, T>,
+  SuspenseInfiniteQueryPageData<Service, Method, Transform>,
   TPageParam,
-  TSelected,
-  SuspenseInfiniteQueryError<A, M, T>
+  Selected,
+  SuspenseInfiniteQueryError<Service, Method, Transform>
 > => {
-  type TPageData = SuspenseInfiniteQueryPageData<A, M, T>
-  type TError = SuspenseInfiniteQueryError<A, M, T>
+  type TPageData = SuspenseInfiniteQueryPageData<Service, Method, Transform>
+  type TError = SuspenseInfiniteQueryError<Service, Method, Transform>
   type TInfiniteData = InfiniteData<TPageData, TPageParam>
 
   const {
@@ -335,21 +350,21 @@ const createSuspenseInfiniteQueryImpl = <
   })
 
   // Fetch function for loaders (cache-first, fetches first page)
-  const fetch = async (): Promise<TSelected> => {
+  const fetch = async (): Promise<Selected> => {
     // Use ensureInfiniteQueryData to get cached data or fetch if stale
     const result = await reactor.queryClient.ensureInfiniteQueryData(
       getInfiniteQueryOptions()
     )
 
     // Result is already InfiniteData format
-    return select ? select(result) : (result as unknown as TSelected)
+    return select ? select(result) : (result as unknown as Selected)
   }
 
   // Implementation
   const useSuspenseInfiniteQueryHook: UseSuspenseInfiniteQueryWithSelect<
     TPageData,
     TPageParam,
-    TSelected,
+    Selected,
     TError
   > = (options: any): any => {
     // Chain the selects: raw -> config.select -> options.select
@@ -385,7 +400,7 @@ const createSuspenseInfiniteQueryImpl = <
   }
 
   // Get data from cache without fetching
-  const getCacheData = (selectFn?: (data: TSelected) => any) => {
+  const getCacheData = (selectFn?: (data: Selected) => any) => {
     const queryKey = getQueryKey()
     const cachedRawData = reactor.queryClient.getQueryData(
       queryKey
@@ -398,7 +413,7 @@ const createSuspenseInfiniteQueryImpl = <
     // Apply config.select to raw cache data
     const selectedData = (
       select ? select(cachedRawData) : cachedRawData
-    ) as TSelected
+    ) as Selected
 
     // Apply optional select parameter
     if (selectFn) {
@@ -422,23 +437,38 @@ const createSuspenseInfiniteQueryImpl = <
 // ============================================================================
 
 export function createSuspenseInfiniteQuery<
-  A,
-  T extends TransformKey,
-  M extends FunctionName<A> = FunctionName<A>,
+  Service,
+  Transform extends TransformKey,
+  Method extends FunctionName<Service> = FunctionName<Service>,
   TPageParam = unknown,
-  TSelected = InfiniteData<SuspenseInfiniteQueryPageData<A, M, T>, TPageParam>,
+  Selected = InfiniteData<
+    SuspenseInfiniteQueryPageData<Service, Method, Transform>,
+    TPageParam
+  >,
 >(
-  reactor: Reactor<A, T>,
-  config: SuspenseInfiniteQueryConfig<NoInfer<A>, M, T, TPageParam, TSelected>
+  reactor: Reactor<Service, Transform>,
+  config: SuspenseInfiniteQueryConfig<
+    NoInfer<Service>,
+    Method,
+    Transform,
+    TPageParam,
+    Selected
+  >
 ): SuspenseInfiniteQueryResult<
-  SuspenseInfiniteQueryPageData<A, M, T>,
+  SuspenseInfiniteQueryPageData<Service, Method, Transform>,
   TPageParam,
-  TSelected,
-  SuspenseInfiniteQueryError<A, M, T>
+  Selected,
+  SuspenseInfiniteQueryError<Service, Method, Transform>
 > {
   return createSuspenseInfiniteQueryImpl(
     reactor,
-    config as SuspenseInfiniteQueryConfig<A, M, T, TPageParam, TSelected>
+    config as SuspenseInfiniteQueryConfig<
+      Service,
+      Method,
+      Transform,
+      TPageParam,
+      Selected
+    >
   )
 }
 
@@ -450,11 +480,11 @@ export function createSuspenseInfiniteQuery<
  * Create a suspense infinite query factory that accepts getArgs at call time.
  * Useful when pagination logic varies by context.
  *
- * @template A - The actor interface type
- * @template M - The method name on the actor
- * @template T - The transformation key (identity, display, etc.)
+ * @template Service - The actor interface type
+ * @template Method - The method name on the actor
+ * @template Transform - The transformation key (identity, display, etc.)
  * @template TPageParam - The page parameter type
- * @template TSelected - The type returned after select transformation
+ * @template Selected - The type returned after select transformation
  *
  * @param reactor - The Reactor instance
  * @param config - Suspense infinite query configuration (without getArgs)
@@ -483,29 +513,38 @@ export function createSuspenseInfiniteQuery<
  */
 
 export function createSuspenseInfiniteQueryFactory<
-  A,
-  T extends TransformKey,
-  M extends FunctionName<A> = FunctionName<A>,
+  Service,
+  Transform extends TransformKey,
+  Method extends FunctionName<Service> = FunctionName<Service>,
   TPageParam = unknown,
-  TSelected = InfiniteData<SuspenseInfiniteQueryPageData<A, M, T>, TPageParam>,
+  Selected = InfiniteData<
+    SuspenseInfiniteQueryPageData<Service, Method, Transform>,
+    TPageParam
+  >,
 >(
-  reactor: Reactor<A, T>,
+  reactor: Reactor<Service, Transform>,
   config: SuspenseInfiniteQueryFactoryConfig<
-    NoInfer<A>,
-    M,
-    T,
+    NoInfer<Service>,
+    Method,
+    Transform,
     TPageParam,
-    TSelected
+    Selected
   >
-): SuspenseInfiniteQueryFactoryFn<A, M, T, TPageParam, TSelected> {
+): SuspenseInfiniteQueryFactoryFn<
+  Service,
+  Method,
+  Transform,
+  TPageParam,
+  Selected
+> {
   const factory: SuspenseInfiniteQueryFactoryFn<
-    A,
-    M,
-    T,
+    Service,
+    Method,
+    Transform,
     TPageParam,
-    TSelected
+    Selected
   > = (
-    getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>,
+    getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>,
     options?: SuspenseInfiniteFactoryCallOptions
   ) => {
     const initialArgs = getArgs(config.initialPageParam)
@@ -516,22 +555,31 @@ export function createSuspenseInfiniteQueryFactory<
       keyArgs
     )
 
-    return createSuspenseInfiniteQueryImpl<A, M, T, TPageParam, TSelected>(
-      reactor,
-      {
-        ...(({ getKeyArgs: _getKeyArgs, ...rest }) => rest)(
-          config as SuspenseInfiniteQueryFactoryConfig<
-            A,
-            M,
-            T,
-            TPageParam,
-            TSelected
-          >
-        ),
-        queryKey,
-        getArgs,
-      } as SuspenseInfiniteQueryConfig<A, M, T, TPageParam, TSelected>
-    )
+    return createSuspenseInfiniteQueryImpl<
+      Service,
+      Method,
+      Transform,
+      TPageParam,
+      Selected
+    >(reactor, {
+      ...(({ getKeyArgs: _getKeyArgs, ...rest }) => rest)(
+        config as SuspenseInfiniteQueryFactoryConfig<
+          Service,
+          Method,
+          Transform,
+          TPageParam,
+          Selected
+        >
+      ),
+      queryKey,
+      getArgs,
+    } as SuspenseInfiniteQueryConfig<
+      Service,
+      Method,
+      Transform,
+      TPageParam,
+      Selected
+    >)
   }
 
   return factory

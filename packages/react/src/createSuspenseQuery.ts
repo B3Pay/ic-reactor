@@ -42,20 +42,20 @@ import { buildChainedSelect } from "./utils"
 // ============================================================================
 
 const createSuspenseQueryImpl = <
-  A,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = QueryFnData<A, M, T>,
+  Service,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = QueryFnData<Service, Method, Transform>,
 >(
-  reactor: Reactor<A, T>,
-  config: SuspenseQueryConfig<A, M, T, TSelected>
+  reactor: Reactor<Service, Transform>,
+  config: SuspenseQueryConfig<Service, Method, Transform, Selected>
 ): SuspenseQueryResult<
-  QueryFnData<A, M, T>,
-  TSelected,
-  QueryError<A, M, T>
+  QueryFnData<Service, Method, Transform>,
+  Selected,
+  QueryError<Service, Method, Transform>
 > => {
-  type TData = QueryFnData<A, M, T>
-  type TError = QueryError<A, M, T>
+  type TData = QueryFnData<Service, Method, Transform>
+  type TError = QueryError<Service, Method, Transform>
 
   const {
     functionName,
@@ -70,11 +70,11 @@ const createSuspenseQueryImpl = <
 
   const getQueryKey = () => reactor.generateQueryKey(params)
 
-  const applySelect = (raw: TData): TSelected =>
-    select ? select(raw) : (raw as unknown as TSelected)
+  const applySelect = (raw: TData): Selected =>
+    select ? select(raw) : (raw as unknown as Selected)
 
   /** Cache-first fetch for use in loaders / route preloading. */
-  const fetch = async (): Promise<TSelected> => {
+  const fetch = async (): Promise<Selected> => {
     const result = await reactor.fetchQuery(params)
     return applySelect(result)
   }
@@ -91,7 +91,7 @@ const createSuspenseQueryImpl = <
 
   const useSuspenseQueryHook: UseSuspenseQueryWithSelect<
     TData,
-    TSelected,
+    Selected,
     TError
   > = (options: any): any => {
     const baseOptions = reactor.getQueryOptions(params)
@@ -114,16 +114,16 @@ const createSuspenseQueryImpl = <
 
   const getCacheData: SuspenseQueryResult<
     TData,
-    TSelected,
+    Selected,
     TError
-  >["getCacheData"] = (selectFn?: (data: TSelected) => unknown): any => {
+  >["getCacheData"] = (selectFn?: (data: Selected) => unknown): any => {
     const raw = reactor.getQueryData(params)
     if (raw === undefined) return undefined
     const selected = applySelect(raw)
     return selectFn ? selectFn(selected) : selected
   }
 
-  const setData: SuspenseQueryResult<TData, TSelected, TError>["setData"] = (
+  const setData: SuspenseQueryResult<TData, Selected, TError>["setData"] = (
     updater
   ) => {
     return reactor.queryClient.setQueryData(getQueryKey(), updater as any) as
@@ -147,17 +147,21 @@ const createSuspenseQueryImpl = <
 // ============================================================================
 
 export function createSuspenseQuery<
-  A,
-  T extends TransformKey,
-  M extends FunctionName<A> = FunctionName<A>,
-  TSelected = QueryFnData<A, M, T>,
+  Service,
+  Transform extends TransformKey,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Selected = QueryFnData<Service, Method, Transform>,
 >(
-  reactor: Reactor<A, T>,
-  config: SuspenseQueryConfig<NoInfer<A>, M, T, TSelected>
-): SuspenseQueryResult<QueryFnData<A, M, T>, TSelected, QueryError<A, M, T>> {
+  reactor: Reactor<Service, Transform>,
+  config: SuspenseQueryConfig<NoInfer<Service>, Method, Transform, Selected>
+): SuspenseQueryResult<
+  QueryFnData<Service, Method, Transform>,
+  Selected,
+  QueryError<Service, Method, Transform>
+> {
   return createSuspenseQueryImpl(
     reactor,
-    config as SuspenseQueryConfig<A, M, T, TSelected>
+    config as SuspenseQueryConfig<Service, Method, Transform, Selected>
   )
 }
 
@@ -166,24 +170,37 @@ export function createSuspenseQuery<
 // ============================================================================
 
 export function createSuspenseQueryFactory<
-  A,
-  T extends TransformKey,
-  M extends FunctionName<A> = FunctionName<A>,
-  TSelected = QueryFnData<A, M, T>,
+  Service,
+  Transform extends TransformKey,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Selected = QueryFnData<Service, Method, Transform>,
 >(
-  reactor: Reactor<A, T>,
-  config: SuspenseQueryFactoryConfig<NoInfer<A>, M, T, TSelected>
+  reactor: Reactor<Service, Transform>,
+  config: SuspenseQueryFactoryConfig<
+    NoInfer<Service>,
+    Method,
+    Transform,
+    Selected
+  >
 ): (
-  args: ReactorArgs<A, M, T>
-) => SuspenseQueryResult<QueryFnData<A, M, T>, TSelected, QueryError<A, M, T>> {
+  args: ReactorArgs<Service, Method, Transform>
+) => SuspenseQueryResult<
+  QueryFnData<Service, Method, Transform>,
+  Selected,
+  QueryError<Service, Method, Transform>
+> {
   const cache = new Map<
     string,
-    SuspenseQueryResult<QueryFnData<A, M, T>, TSelected, QueryError<A, M, T>>
+    SuspenseQueryResult<
+      QueryFnData<Service, Method, Transform>,
+      Selected,
+      QueryError<Service, Method, Transform>
+    >
   >()
 
-  return (args: ReactorArgs<A, M, T>) => {
+  return (args: ReactorArgs<Service, Method, Transform>) => {
     const key = reactor.generateQueryKey({
-      functionName: config.functionName as M,
+      functionName: config.functionName as Method,
       args,
     })
     const cacheKey = JSON.stringify(key)
@@ -191,8 +208,18 @@ export function createSuspenseQueryFactory<
     const existing = cache.get(cacheKey)
     if (existing) return existing
 
-    const result = createSuspenseQueryImpl<A, M, T, TSelected>(reactor, {
-      ...(config as SuspenseQueryFactoryConfig<A, M, T, TSelected>),
+    const result = createSuspenseQueryImpl<
+      Service,
+      Method,
+      Transform,
+      Selected
+    >(reactor, {
+      ...(config as SuspenseQueryFactoryConfig<
+        Service,
+        Method,
+        Transform,
+        Selected
+      >),
       args,
     })
     cache.set(cacheKey, result)

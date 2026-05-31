@@ -15,6 +15,47 @@ pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth
 
 ## Quick Start
 
+The fastest way to get started is `defineReactor`, which collapses the
+`QueryClient` → `ClientManager` → `Reactor` → `createActorHooks` setup into a
+single call. Pass `display: true` for UI-friendly values (string principals and
+bigints) instead of choosing between `Reactor` and `DisplayReactor` by hand.
+
+```tsx
+// src/reactor.ts
+import { defineReactor } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+export const {
+  reactor: backend,
+  queryClient,
+  clientManager,
+  useActorQuery,
+  useActorMutation,
+  useActorSuspenseQuery,
+  useActorMethod,
+} = defineReactor<_SERVICE>({
+  name: "backend",
+  idlFactory,
+  withCanisterEnv: true,
+  display: true, // ⇒ DisplayReactor (string principals/bigints)
+})
+```
+
+Share a single agent/`ClientManager` across canisters by passing the
+`clientManager` (or `queryClient`) from one `defineReactor` call into the next:
+
+```tsx
+const ledger = defineReactor<_LEDGER>({ name: "ledger", idlFactory: ledgerIdl })
+const index = defineReactor<_INDEX>({
+  name: "index",
+  idlFactory: indexIdl,
+  clientManager: ledger.clientManager,
+})
+```
+
+<details>
+<summary>Manual setup (equivalent to <code>defineReactor</code>)</summary>
+
 ```tsx
 // src/reactor.ts
 import { ClientManager, Reactor, createActorHooks } from "@ic-reactor/react"
@@ -41,6 +82,8 @@ export const {
   useActorMethod,
 } = createActorHooks(backend)
 ```
+
+</details>
 
 ```tsx
 // src/App.tsx
@@ -79,6 +122,8 @@ export function App() {
 
 ## Main APIs
 
+- `defineReactor(params)` for one-call setup that returns the reactor, shared
+  `queryClient`/`clientManager`, and all bound hooks
 - `createActorHooks(reactor)` for per-canister hooks like `useActorQuery` and
   `useActorMutation`
 - direct reactor hooks like `useReactorQuery` when you want to pass the reactor
@@ -89,7 +134,11 @@ export function App() {
 
 ## Choosing the Right Pattern
 
-- Use `createActorHooks` for the simplest component-first integration.
+- Use `defineReactor` for the fastest setup; it wires the `QueryClient`,
+  `ClientManager`, reactor, and hooks in one call (set `display: true` for
+  UI-friendly values).
+- Use `createActorHooks` when you already manage the reactor instance yourself
+  and just want the bound hooks.
 - Use query and mutation factories when you also need loader, action, service,
   or test usage through `.fetch()`, `.prefetch()`, `.execute()`, `.invalidate()`,
   `.getCacheData()`, or `.setData()`.

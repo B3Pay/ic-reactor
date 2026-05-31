@@ -33,6 +33,37 @@ If an agent supports skills/agent registries, prefer the `ic-reactor-hooks` skil
 
 ## Common Code Patterns
 
+### 0. One-Call Setup (`defineReactor`)
+
+Fastest path: creates the `QueryClient`, `ClientManager`, reactor, and bound
+hooks in a single call. Use `display: true` for UI-friendly values (string
+principals/bigints) instead of choosing `Reactor` vs `DisplayReactor` manually.
+
+```typescript
+import { defineReactor } from '@ic-reactor/react';
+import { idlFactory, type _SERVICE } from './declarations/my_canister';
+
+export const {
+  reactor,
+  queryClient,
+  clientManager,
+  useActorQuery,
+  useActorMutation,
+} = defineReactor<_SERVICE>({
+  name: 'my_canister',
+  idlFactory,
+  canisterId: 'rrkah-fqaaa-aaaaa-aaaaq-cai',
+  display: true,
+});
+
+// Share one agent across canisters:
+const index = defineReactor<_INDEX>({
+  name: 'index',
+  idlFactory: indexIdl,
+  clientManager, // reuse the ClientManager from above
+});
+```
+
 ### 1. Initialization (Core)
 
 ```typescript
@@ -163,6 +194,7 @@ Generated files typically expose method-specific query/mutation objects with bot
 
 ### @ic-reactor/react
 #### Core Factories
+- `defineReactor(params)`: One-call setup. Returns `{ reactor, queryClient, clientManager, ...hooks }`. Pass `display: true` for a `DisplayReactor`, or reuse an existing `clientManager`/`queryClient` to share an agent across canisters.
 - `createActorHooks(reactor)`: Generates a typed hook suite for a canister:
   - `useActorQuery`: Standard query hook.
   - `useActorMutation`: Mutation hook. Supports `invalidateQueries` and `onCanisterError`.
@@ -201,14 +233,15 @@ Each factory returns an object with both a React hook and imperative helpers.
 - `createAuthHooks(clientManager)`: Creates a scoped set of authentication hooks (rarely needed, use top-level exports).
 
 ## Best Practices
-1. Use `DisplayReactor` for simpler data handling with AI / UI layers.
-2. Use `createActorHooks` for generic component hooks, or method-specific query/mutation factories for reusable operations.
-3. Never call React hooks outside React components/custom hooks. Use `.fetch()` / `.prefetch()` / `.execute()` / `.invalidate()` / `.setData()` for imperative usage.
-4. Prefer cache invalidation via `query.getQueryKey()` or `query.invalidate()` to avoid hard-coded key drift.
-5. Leverage TanStack Query options (`staleTime`, refetch policies, select) passed through query hooks/factories.
-6. Use `Suspense` versions (`useActorSuspenseQuery`) when the app already uses Suspense boundaries.
-7. Use `onCanisterError` to handle typed `Result { Err }` responses separately from network/agent errors.
-8. Prefer generated hooks (CLI/Vite plugin) for large canisters or frequent `.did` changes.
+1. Use `defineReactor` for the fastest setup; set `display: true` for UI-friendly values, or reuse a shared `clientManager` across canisters.
+2. Use `DisplayReactor` for simpler data handling with AI / UI layers.
+3. Use `createActorHooks` for generic component hooks, or method-specific query/mutation factories for reusable operations.
+4. Never call React hooks outside React components/custom hooks. Use `.fetch()` / `.prefetch()` / `.execute()` / `.invalidate()` / `.setData()` for imperative usage.
+5. Prefer cache invalidation via `query.getQueryKey()` or `query.invalidate()` to avoid hard-coded key drift.
+6. Leverage TanStack Query options (`staleTime`, refetch policies, select) passed through query hooks/factories.
+7. Use `Suspense` versions (`useActorSuspenseQuery`) when the app already uses Suspense boundaries.
+8. Use `onCanisterError` to handle typed `Result { Err }` responses separately from network/agent errors.
+9. Prefer generated hooks (CLI/Vite plugin) for large canisters or frequent `.did` changes.
 
 ## High-Value File References (for AI agents)
 
