@@ -1,6 +1,8 @@
-import { ClientManager, Reactor } from "@ic-reactor/core"
 import { AuthenticationManager } from "@ic-reactor/auth"
-import { createSuspenseInfiniteQueryFactory } from "@ic-reactor/react"
+import {
+  defineReactor,
+  createSuspenseInfiniteQueryFactory,
+} from "@ic-reactor/react"
 import { createAuthHooks } from "@ic-reactor/auth-react"
 import { QueryClient } from "@tanstack/react-query"
 import { canisterId, idlFactory } from "../src/declarations/backend"
@@ -19,21 +21,18 @@ declare global {
 // This code is for all users
 window.__TANSTACK_QUERY_CLIENT__ = queryClient
 
-// 2. Setup ClientManager (connects to IC or local replica)
-export const clientManager = new ClientManager({
+// 2. One-call setup: defineReactor wires the ClientManager + Reactor + hooks
+export const { reactor, clientManager } = defineReactor<_SERVICE>({
+  name: "backend",
+  canisterId,
+  idlFactory,
   withLocalEnv: true,
   port: 4943,
   queryClient,
 })
-export const authentication = new AuthenticationManager({ clientManager })
 
-// 3. Setup Reactor (interacts with specific canister)
-export const reactor = new Reactor<_SERVICE>({
-  name: "backend",
-  clientManager,
-  canisterId,
-  idlFactory,
-})
+// 3. Auth (uses the ClientManager created by defineReactor)
+export const authentication = new AuthenticationManager({ clientManager })
 
 // 4. Create auth hooks (useAuth auto-initializes the agent and fetches root key)
 export const { useAuth, useAgentState } = createAuthHooks(authentication)

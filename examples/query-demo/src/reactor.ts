@@ -12,9 +12,9 @@
  * - The `enabled` option for conditional fetching
  * - Manual loading state handling with isLoading/isPending
  */
-import { ClientManager, DisplayReactor } from "@ic-reactor/core"
 import { AuthenticationManager } from "@ic-reactor/auth"
 import {
+  defineReactor,
   createSuspenseQuery,
   createSuspenseQueryFactory,
   createMutation,
@@ -24,7 +24,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { ledgerIdlFactory, type Ledger } from "./declarations/ledger"
 
 // ============================================================================
-// 1. Setup QueryClient and AgentManager
+// 1. Setup QueryClient
 // ============================================================================
 
 export const queryClient = new QueryClient({
@@ -35,39 +35,43 @@ export const queryClient = new QueryClient({
   },
 })
 
-export const clientManager = new ClientManager({
-  withProcessEnv: true,
-  queryClient,
-})
-export const authentication = new AuthenticationManager({ clientManager })
-
 // ============================================================================
-// 2. Initialize Reactors Directly (using DisplayReactor for transformations)
+// 2. Initialize Reactors with defineReactor (display: true ⇒ DisplayReactor)
 // ============================================================================
 
-// ICP Ledger with DisplayReactor for human-readable display values
-export const icpReactor = new DisplayReactor<Ledger>({
-  clientManager,
+// ICP Ledger — this first call creates the shared ClientManager
+export const { reactor: icpReactor, clientManager } = defineReactor<Ledger>({
   name: "icp",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   idlFactory: ledgerIdlFactory,
+  display: true,
+  withProcessEnv: true,
+  queryClient,
 })
 
-// ckBTC Ledger
-export const ckBTCReactor = new DisplayReactor<Ledger>({
-  clientManager,
+// ckBTC Ledger — reuses the same ClientManager (shared agent)
+export const { reactor: ckBTCReactor } = defineReactor<Ledger>({
   name: "ckbtc",
   canisterId: "mxzaz-hqaaa-aaaar-qaada-cai",
   idlFactory: ledgerIdlFactory,
+  display: true,
+  clientManager,
 })
 
-// ckETH Ledger
-export const ckETHReactor = new DisplayReactor<Ledger>({
-  clientManager,
+// ckETH Ledger — reuses the same ClientManager (shared agent)
+export const { reactor: ckETHReactor } = defineReactor<Ledger>({
   name: "cketh",
   canisterId: "ss2fx-dyaaa-aaaar-qacoq-cai",
   idlFactory: ledgerIdlFactory,
+  display: true,
+  clientManager,
 })
+
+// ============================================================================
+// 3. Auth (uses the ClientManager created by defineReactor)
+// ============================================================================
+
+export const authentication = new AuthenticationManager({ clientManager })
 
 // ============================================================================
 // 4. createSuspenseQuery - Static Queries (no args needed)

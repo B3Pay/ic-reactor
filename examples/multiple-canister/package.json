@@ -8,8 +8,8 @@
     "@ic-reactor/auth-react": "^3.6.0",
     "@ic-reactor/core": "^3.6.0",
     "@ic-reactor/react": "^3.6.0",
-    "@icp-sdk/auth": "^5.0.0",
-    "@icp-sdk/core": "^5.0.0",
+    "@icp-sdk/auth": "^7.1.0",
+    "@icp-sdk/core": "^5.4.0",
     "@tanstack/react-query": "^5.90.16",
     "@types/node": "25.0.3",
     "react": "^19.2.3",
@@ -41,6 +41,7 @@
     ]
   },
   "devDependencies": {
+    "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "vite": "^7.3.2"

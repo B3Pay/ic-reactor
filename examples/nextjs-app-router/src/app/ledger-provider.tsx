@@ -1,7 +1,7 @@
 "use client"
 
 import React, { ReactNode, useState, createContext, useContext } from "react"
-import { Reactor, createActorHooks } from "@ic-reactor/react"
+import { defineReactor } from "@ic-reactor/react"
 import { useICAuth } from "./providers"
 import { idlFactory, canisterId } from "../declarations/ledger"
 import type { _SERVICE } from "../declarations/ledger"
@@ -17,23 +17,22 @@ export function LedgerReactorProvider({ children }: { children: ReactNode }) {
   const { clientManager } = useICAuth()
   const [activeCanisterId, setActiveCanisterId] = useState(canisterId)
 
-  // Instantiate the ledger reactor dynamically on the client
-  const [reactor] = useState(() => {
-    return new Reactor<_SERVICE>({
+  // One-call setup: defineReactor builds the reactor + bound hooks once, reusing
+  // the shared ClientManager from the auth provider.
+  const [{ reactor, ...hooks }] = useState(() =>
+    defineReactor<_SERVICE>({
       name: "ledger",
       clientManager,
       canisterId: activeCanisterId,
       idlFactory,
     })
-  })
+  )
 
   // Change the canister ID of the reactor when user selects a different token
   const setCanisterId = (newId: string) => {
     reactor.setCanisterId(newId)
     setActiveCanisterId(newId)
   }
-
-  const hooks = createActorHooks(reactor)
 
   return (
     <LedgerReactorContext.Provider

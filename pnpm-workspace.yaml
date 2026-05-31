@@ -1,8 +1,12 @@
+nodeVersion: "22.22.2"
+# Link local packages/* into workspace examples when their semver range matches
+# (e.g. "@ic-reactor/react": "^3.6.0" resolves to packages/react). Without this,
+# pnpm v10 defaults to false and tries to fetch the (possibly unpublished)
+# packages from the npm registry. StackBlitz/CodeSandbox run a plain install
+# outside this workspace, so they still use the pinned npm versions.
+linkWorkspacePackages: true
 packages:
   - "packages/*"
   - "e2e"
   - "docs"
-  - "examples/nextjs-app-router"
-# Note: examples/* intentionally excluded from workspace
-# Examples use real npm versions for StackBlitz/CodeSandbox compatibility
-# Run `pnpm sync:examples` after releases to update example versions
+  - "examples/*"
