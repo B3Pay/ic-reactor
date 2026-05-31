@@ -47,7 +47,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
 
       - name: Format check
         run: pnpm format:check
@@ -140,7 +140,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
 
       - name: Build packages (excluding parser)
         run: pnpm build
@@ -184,7 +184,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
 
       - name: Cache Rust dependencies
         uses: actions/cache@v5
