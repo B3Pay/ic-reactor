@@ -52,7 +52,7 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
       - name: Type check
@@ -88,12 +88,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       # Examples import the @ic-reactor/* packages through the workspace symlinks,
       # so they must be built before type-checking the examples.
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
       - name: Type check examples
