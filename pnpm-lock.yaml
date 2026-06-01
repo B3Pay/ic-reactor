@@ -245,8 +245,8 @@ importers:
         version: 3.6.0
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.7.2
-        version: 0.7.2(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.8.3))
+        specifier: ^0.11.1
+        version: link:../../packages/vite-plugin
       '@icp-sdk/bindgen':
         specifier: ^0.2.2
         version: 0.2.3
@@ -674,16 +674,16 @@ importers:
   examples/nextjs-app-router:
     dependencies:
       '@ic-reactor/auth':
-        specifier: workspace:^
+        specifier: ^3.6.0
         version: link:../../packages/auth
       '@ic-reactor/auth-react':
-        specifier: workspace:^
+        specifier: ^3.6.0
         version: link:../../packages/auth-react
       '@ic-reactor/core':
-        specifier: workspace:^
+        specifier: ^3.6.0
         version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: workspace:^
+        specifier: ^3.6.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -2703,17 +2703,6 @@ packages:
   '@happy-dom/global-registrator@20.9.0':
     resolution: {integrity: sha512-lBW6/m5BIFl3pMuWPNN0lIOYw9LMCmPfix53ExS3FBi4E+NELEljQ3xH6aAV9IYiQRfn9YIIgzzMrD0vIcD7tw==}
     engines: {node: '>=20.0.0'}
-
-  '@ic-reactor/codegen@0.7.2':
-    resolution: {integrity: sha512-pflhnQNXbIJu9ymq5EfUQDLChIQnnoe63PyCuHgwwz4mAFBdMdzB1UPkYhUyVAKJqIDf21tmIGGNxJb6syCjwQ==}
-
-  '@ic-reactor/parser@0.4.6':
-    resolution: {integrity: sha512-ZhGJaNh9str/zLflTTfngytru7utNML6wXkGlmcupJk88L+BJXay9ZQ2jnkXJRFvtNKa+0cLoHeMUtDfjDI7IQ==}
-
-  '@ic-reactor/vite-plugin@0.7.2':
-    resolution: {integrity: sha512-F7bKIpbh+RXM7DYF5gcWbwNP3TKr2+Fbqc8S3CdA1OVEGwymOPljLaxZfxkj3Q1W3+Y/dKqmXR6k7S/jaMMuRw==}
-    peerDependencies:
-      vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
 
   '@icp-sdk/auth@6.2.2':
     resolution: {integrity: sha512-bIFVvOWHS9F57XOZTk3mDjFj1Wnh9DsCft8K4EnUE8LrtntmSahk+n3SR/epfuLCp83sPBwVQRq/UfUS0QABKg==}
@@ -9814,18 +9803,6 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
-
-  '@ic-reactor/codegen@0.7.2':
-    dependencies:
-      '@ic-reactor/parser': 0.4.6
-      change-case: 5.4.4
-
-  '@ic-reactor/parser@0.4.6': {}
-
-  '@ic-reactor/vite-plugin@0.7.2(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.8.3))':
-    dependencies:
-      '@ic-reactor/codegen': 0.7.2
-      vite: 7.3.3(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.8.3)
 
   '@icp-sdk/auth@6.2.2(@icp-sdk/core@5.4.0)':
     dependencies:

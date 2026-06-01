@@ -3,35 +3,24 @@
  * Sync IC Reactor package versions in all examples.
  *
  * Usage:
- *   node scripts/sync-example-versions.js           # Uses version from root package.json
+ *   node scripts/sync-example-versions.js           # Uses versions from local package.json files
  *   node scripts/sync-example-versions.js 3.0.0    # Uses specified version
  *   node scripts/sync-example-versions.js workspace # Sets to workspace:*
  *
  * This script updates all @ic-reactor/* dependencies in examples
- * to match the current published version, ensuring StackBlitz compatibility.
+ * to match the current local package versions, ensuring StackBlitz compatibility.
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync } from "fs"
-import { join, dirname } from "path"
+import { join, dirname, relative } from "path"
 import { fileURLToPath } from "url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
 const examplesDir = join(rootDir, "examples")
 
-// Get version from CLI arg or root package.json
+// Get version from CLI arg or local package.json files
 const cliVersion = process.argv[2]
-const rootPkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf-8"))
-
-let targetVersion
-if (cliVersion === "workspace") {
-  targetVersion = "workspace:*"
-} else {
-  const v = cliVersion || rootPkg.version
-  targetVersion = v.startsWith("^") ? v : `^${v}`
-}
-
-console.log(`\n📦 Syncing @ic-reactor/* to version: ${targetVersion}\n`)
 
 // IC Reactor packages to update
 const packages = [
@@ -40,31 +29,72 @@ const packages = [
   "@ic-reactor/auth",
   "@ic-reactor/auth-react",
   "@ic-reactor/candid",
+  "@ic-reactor/cli",
+  "@ic-reactor/codegen",
+  "@ic-reactor/parser",
+  "@ic-reactor/vite-plugin",
 ]
 
-// Get all example directories
-const examples = readdirSync(examplesDir).filter((name) => {
-  const path = join(examplesDir, name)
-  try {
-    return (
-      statSync(path).isDirectory() &&
-      statSync(join(path, "package.json")).isFile()
-    )
-  } catch (e) {
-    return false
+const packageVersions = new Map(
+  readdirSync(join(rootDir, "packages"))
+    .map((name) => join(rootDir, "packages", name, "package.json"))
+    .filter((path) => {
+      try {
+        return statSync(path).isFile()
+      } catch (e) {
+        return false
+      }
+    })
+    .map((path) => JSON.parse(readFileSync(path, "utf-8")))
+    .filter((pkg) => packages.includes(pkg.name))
+    .map((pkg) => [pkg.name, pkg.version])
+)
+
+const targetVersionFor = (pkgName) => {
+  if (cliVersion === "workspace") return "workspace:*"
+
+  const v = cliVersion || packageVersions.get(pkgName)
+  if (!v) throw new Error(`Missing local package version for ${pkgName}`)
+
+  return v.startsWith("^") ? v : `^${v}`
+}
+
+console.log(`\n📦 Syncing @ic-reactor/* example dependencies\n`)
+
+function findExamplePackageJsonFiles(dir) {
+  const ignored = new Set(["node_modules", "dist", ".next", "out"])
+  const packageJsonFiles = []
+
+  for (const entry of readdirSync(dir)) {
+    if (ignored.has(entry)) continue
+
+    const entryPath = join(dir, entry)
+    const stats = statSync(entryPath)
+
+    if (stats.isDirectory()) {
+      packageJsonFiles.push(...findExamplePackageJsonFiles(entryPath))
+    } else if (entry === "package.json") {
+      packageJsonFiles.push(entryPath)
+    }
   }
-})
+
+  return packageJsonFiles
+}
+
+const packageJsonFiles = findExamplePackageJsonFiles(examplesDir)
 
 let updatedCount = 0
 
-for (const example of examples) {
-  const pkgPath = join(examplesDir, example, "package.json")
+for (const pkgPath of packageJsonFiles) {
+  const example = dirname(relative(examplesDir, pkgPath))
 
   try {
     const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"))
     let modified = false
 
     for (const pkgName of packages) {
+      const targetVersion = targetVersionFor(pkgName)
+
       // Check dependencies
       if (pkg.dependencies?.[pkgName]) {
         if (pkg.dependencies[pkgName] !== targetVersion) {
