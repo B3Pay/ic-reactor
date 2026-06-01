@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     icReactor({
-      canisters: [{ name: "backend" }],
+      canisters: [{ name: "backend", didFile: "backend.did" }],
     }),
   ],
 })

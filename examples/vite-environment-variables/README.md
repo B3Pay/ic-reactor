@@ -7,7 +7,7 @@ This example demonstrates how frontends discover backend canisters and verify re
 This project consists of two canisters:
 
 - [backend](./backend/): a pre-built Hello World canister with its [Candid interface](./backend/dist/hello_world.did)
-- [frontend](./frontend/): a [Vite](https://vite.dev/) React app deployed to an asset canister
+- [frontend](./frontend/): frontend canister config and a [Vite](https://vite.dev/) React app
 
 ## How It Works
 
@@ -21,17 +21,17 @@ Both are provided via a cookie named `ic_env`. The [`@icp-sdk/core/agent/caniste
 - `PUBLIC_CANISTER_ID:backend` — the backend canister ID (string)
 - `IC_ROOT_KEY` — the network's root key (Uint8Array, converted from hex internally)
 
-See [`App.tsx`](./frontend/app/src/App.tsx) for the implementation.
+See [`App.tsx`](./frontend/src/App.tsx) for the implementation.
 
 ### Who Sets the Cookie?
 
 **Asset canister (production):** When you deploy with `icp deploy`, the CLI sets `PUBLIC_CANISTER_ID:*` variables on all canisters. The asset canister then serves the `ic_env` cookie containing these variables plus the network's root key.
 
-**Dev server (development):** The Vite dev server mimics this behavior by setting the same cookie. See [`vite.config.ts`](./frontend/app/vite.config.ts) for how it fetches the canister ID, root key, and API URL from the CLI.
+**Dev server (development):** The Vite dev server mimics this behavior by setting the same cookie. See [`vite.config.ts`](./frontend/vite.config.ts) for how it fetches the canister ID, root key, and API URL from the CLI.
 
 ### Bindings Generation
 
-The [`@icp-sdk/bindgen`](https://npmjs.com/package/@icp-sdk/bindgen) Vite plugin generates TypeScript bindings from the Candid interface at build time. Output is saved to [`frontend/app/src/backend/api/`](./frontend/app/src/backend/api/).
+The [`@icp-sdk/bindgen`](https://npmjs.com/package/@icp-sdk/bindgen) Vite plugin generates TypeScript bindings from the Candid interface at build time.
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ icp deploy backend
 Install dependencies and start the dev server:
 
 ```bash
-cd frontend/app
+cd frontend
 npm install
 npm run dev
 ```
@@ -92,7 +92,7 @@ ICP_ENVIRONMENT=staging npm run dev
 ICP_ENVIRONMENT=ic npm run dev
 ```
 
-The [`vite.config.ts`](./frontend/app/vite.config.ts) uses `icp network status` to fetch the correct root key and API URL for the target environment.
+The [`vite.config.ts`](./frontend/vite.config.ts) uses `icp network status` to fetch the correct root key and API URL for the target environment.
 
 ## Learn More
 

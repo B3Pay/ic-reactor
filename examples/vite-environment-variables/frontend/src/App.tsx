@@ -1,19 +1,32 @@
 import { useBackendMethod } from "./lib/canisters/backend"
+import { useState } from "react"
 import "./App.css"
 
 function App() {
-  const {
-    data: greeting,
-    call,
-    isLoading,
-  } = useBackendMethod({
+  const { data, call, isLoading } = useBackendMethod({
     functionName: "greet",
     enabled: false,
   })
+  const [greeting, setGreeting] = useState("")
+  const [error, setError] = useState("")
 
-  function submit(formData: FormData) {
-    const name = formData.get("name") as string
-    call([name])
+  async function submit(event: React.SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+    const name = String(formData.get("name") ?? "").trim()
+    if (!name) {
+      setGreeting("")
+      setError("Please enter a name.")
+      return
+    }
+    try {
+      setError("")
+      const result = await call([name])
+      setGreeting(String(result ?? ""))
+    } catch (err) {
+      setGreeting("")
+      setError(err instanceof Error ? err.message : "Call failed")
+    }
   }
 
   return (
@@ -28,7 +41,7 @@ function App() {
         <p className="subtitle">
           Call the backend canister and get a greeting.
         </p>
-        <form action={submit}>
+        <form onSubmit={submit}>
           <label htmlFor="name">Enter your name</label>
           <div className="controls">
             <input
@@ -44,7 +57,7 @@ function App() {
           </div>
         </form>
         <section id="greeting" className="greeting" aria-live="polite">
-          {greeting}
+          {error || data}
         </section>
       </section>
     </main>
