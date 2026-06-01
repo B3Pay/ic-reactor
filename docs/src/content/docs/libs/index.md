@@ -8,6 +8,8 @@ description: Generated API reference documentation
 
 ## Classes
 
+- [AuthClientLoader](classes/AuthClientLoader.md)
+- [AuthStateStore](classes/AuthStateStore.md)
 - [AuthenticationManager](classes/AuthenticationManager.md)
 - [IdentityAttributesManager](classes/IdentityAttributesManager.md)
 - [ClientManager](classes/ClientManager.md)
@@ -50,6 +52,7 @@ description: Generated API reference documentation
 
 ## Type Aliases
 
+- [AuthClientConstructor](type-aliases/AuthClientConstructor.md)
 - [IdentityAttributeOpenIdProvider](type-aliases/IdentityAttributeOpenIdProvider.md)
 - [BlobType](type-aliases/BlobType.md)
 - [NullishType](type-aliases/NullishType.md)

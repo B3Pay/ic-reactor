@@ -1,10 +1,11 @@
 ---
+title: RequestOpenIdIdentityAttributesParameters
 editUrl: false
 next: true
 prev: true
 ---
 
-Defined in: auth/src/types.ts:63
+Defined in: [auth/src/types.ts:63](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L63)
 
 ## Properties
 
@@ -12,7 +13,7 @@ Defined in: auth/src/types.ts:63
 
 > **nonce**: `Uint8Array`
 
-Defined in: auth/src/types.ts:64
+Defined in: [auth/src/types.ts:64](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L64)
 
 ---
 
@@ -20,7 +21,7 @@ Defined in: auth/src/types.ts:64
 
 > **openIdProvider**: [`IdentityAttributeOpenIdProvider`](../type-aliases/IdentityAttributeOpenIdProvider.md)
 
-Defined in: auth/src/types.ts:65
+Defined in: [auth/src/types.ts:65](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L65)
 
 ---
 
@@ -28,7 +29,7 @@ Defined in: auth/src/types.ts:65
 
 > **keys**: `string`[]
 
-Defined in: auth/src/types.ts:66
+Defined in: [auth/src/types.ts:66](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L66)
 
 ---
 
@@ -36,7 +37,7 @@ Defined in: auth/src/types.ts:66
 
 > `optional` **identityProvider?**: `string` \| `URL`
 
-Defined in: auth/src/types.ts:67
+Defined in: [auth/src/types.ts:67](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L67)
 
 ---
 
@@ -44,7 +45,7 @@ Defined in: auth/src/types.ts:67
 
 > `optional` **windowOpenerFeatures?**: `string`
 
-Defined in: auth/src/types.ts:68
+Defined in: [auth/src/types.ts:68](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L68)
 
 ---
 
@@ -52,7 +53,7 @@ Defined in: auth/src/types.ts:68
 
 > `optional` **signIn?**: `boolean`
 
-Defined in: auth/src/types.ts:69
+Defined in: [auth/src/types.ts:69](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L69)
 
 ---
 
@@ -60,7 +61,7 @@ Defined in: auth/src/types.ts:69
 
 > `optional` **maxTimeToLive?**: `bigint`
 
-Defined in: auth/src/types.ts:70
+Defined in: [auth/src/types.ts:70](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L70)
 
 ---
 
@@ -68,4 +69,4 @@ Defined in: auth/src/types.ts:70
 
 > `optional` **targets?**: `Principal`[]
 
-Defined in: auth/src/types.ts:71
+Defined in: [auth/src/types.ts:71](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L71)

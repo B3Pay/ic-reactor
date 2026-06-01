@@ -1,10 +1,11 @@
 ---
+title: IdentityAttributeResult
 editUrl: false
 next: true
 prev: true
 ---
 
-Defined in: auth/src/types.ts:21
+Defined in: [auth/src/types.ts:21](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L21)
 
 ## Properties
 
@@ -12,7 +13,7 @@ Defined in: auth/src/types.ts:21
 
 > **principal**: `string`
 
-Defined in: auth/src/types.ts:22
+Defined in: [auth/src/types.ts:22](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L22)
 
 ---
 
@@ -20,7 +21,7 @@ Defined in: auth/src/types.ts:22
 
 > **requestedKeys**: `string`[]
 
-Defined in: auth/src/types.ts:23
+Defined in: [auth/src/types.ts:23](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L23)
 
 ---
 
@@ -28,7 +29,7 @@ Defined in: auth/src/types.ts:23
 
 > **signedAttributes**: [`SignedIdentityAttributes`](SignedIdentityAttributes.md)
 
-Defined in: auth/src/types.ts:24
+Defined in: [auth/src/types.ts:24](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L24)
 
 ---
 
@@ -36,7 +37,7 @@ Defined in: auth/src/types.ts:24
 
 > **decodedAttributes**: [`IdentityAttributeValues`](IdentityAttributeValues.md)
 
-Defined in: auth/src/types.ts:25
+Defined in: [auth/src/types.ts:25](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L25)
 
 ---
 
@@ -44,4 +45,4 @@ Defined in: auth/src/types.ts:25
 
 > **completedAt**: `string`
 
-Defined in: auth/src/types.ts:26
+Defined in: [auth/src/types.ts:26](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L26)

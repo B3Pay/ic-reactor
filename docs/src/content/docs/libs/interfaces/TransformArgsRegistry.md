@@ -1,10 +1,11 @@
 ---
+title: TransformArgsRegistry
 editUrl: false
 next: true
 prev: true
 ---
 
-Defined in: [core/src/types/reactor.ts:76](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/reactor.ts#L76)
+Defined in: [core/src/types/reactor.ts:76](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/core/src/types/reactor.ts#L76)
 
 ## Type Parameters
 
@@ -18,7 +19,7 @@ Defined in: [core/src/types/reactor.ts:76](https://github.com/B3Pay/ic-reactor/b
 
 > **candid**: `T`
 
-Defined in: [core/src/types/reactor.ts:77](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/reactor.ts#L77)
+Defined in: [core/src/types/reactor.ts:77](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/core/src/types/reactor.ts#L77)
 
 ---
 
@@ -26,4 +27,4 @@ Defined in: [core/src/types/reactor.ts:77](https://github.com/B3Pay/ic-reactor/b
 
 > **display**: [`AsDisplayArgs`](../type-aliases/AsDisplayArgs.md)\<`T`\>
 
-Defined in: [core/src/types/reactor.ts:78](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/types/reactor.ts#L78)
+Defined in: [core/src/types/reactor.ts:78](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/core/src/types/reactor.ts#L78)

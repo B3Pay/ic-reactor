@@ -1,4 +1,5 @@
 ---
+title: DisplayOf
 editUrl: false
 next: true
 prev: true
@@ -6,7 +7,7 @@ prev: true
 
 > **DisplayOf**\<`T`\> = [`IsOptionalType`](IsOptionalType.md)\<`T`\> _extends_ `true` ? `AsOptional`\<`T`\> : [`IsBlobType`](IsBlobType.md)\<`T`\> _extends_ `true` ? [`BlobType`](BlobType.md) : [`IsCandidVariant`](IsCandidVariant.md)\<`T`\> _extends_ `true` ? `VariantUnionOf`\<`T`\> : `T` _extends_ \[`string`, infer B\][] ? `Record`\<`string`, `DisplayOf`\<`B`\>\> : `T` _extends_ `any`[] ? `{ [K in keyof T]: DisplayOf<T[K]> }` : `T` _extends_ `null` ? `null` : `T` _extends_ `Principal` ? `string` : `T` _extends_ `object` ? `AsObject`\<`T`\> : [`DisplayCommonType`](DisplayCommonType.md)\<`T`\>
 
-Defined in: [core/src/display/types.ts:63](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/display/types.ts#L63)
+Defined in: [core/src/display/types.ts:63](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/core/src/display/types.ts#L63)
 
 ## Type Parameters
 

@@ -1,10 +1,11 @@
 ---
+title: AuthClientLike
 editUrl: false
 next: true
 prev: true
 ---
 
-Defined in: auth/src/types.ts:74
+Defined in: [auth/src/types.ts:74](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L74)
 
 ## Methods
 
@@ -12,7 +13,7 @@ Defined in: auth/src/types.ts:74
 
 > **getIdentity**(): `Identity` \| `Promise`\<`Identity`\>
 
-Defined in: auth/src/types.ts:75
+Defined in: [auth/src/types.ts:75](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L75)
 
 #### Returns
 
@@ -24,7 +25,7 @@ Defined in: auth/src/types.ts:75
 
 > **isAuthenticated**(): `boolean` \| `Promise`\<`boolean`\>
 
-Defined in: auth/src/types.ts:76
+Defined in: [auth/src/types.ts:76](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L76)
 
 #### Returns
 
@@ -36,7 +37,7 @@ Defined in: auth/src/types.ts:76
 
 > **signIn**(`options?`): `Promise`\<`Identity`\>
 
-Defined in: auth/src/types.ts:77
+Defined in: [auth/src/types.ts:77](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L77)
 
 #### Parameters
 
@@ -54,7 +55,7 @@ Defined in: auth/src/types.ts:77
 
 > **signOut**(`options?`): `Promise`\<`void`\>
 
-Defined in: auth/src/types.ts:78
+Defined in: [auth/src/types.ts:78](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L78)
 
 #### Parameters
 
@@ -74,7 +75,7 @@ Defined in: auth/src/types.ts:78
 
 > **requestAttributes**(`params`): `Promise`\<[`SignedIdentityAttributes`](SignedIdentityAttributes.md)\>
 
-Defined in: auth/src/types.ts:79
+Defined in: [auth/src/types.ts:79](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L79)
 
 #### Parameters
 

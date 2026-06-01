@@ -1,10 +1,11 @@
 ---
+title: IdentityAttributeValues
 editUrl: false
 next: true
 prev: true
 ---
 
-Defined in: auth/src/types.ts:14
+Defined in: [auth/src/types.ts:14](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L14)
 
 ## Indexable
 
@@ -16,7 +17,7 @@ Defined in: auth/src/types.ts:14
 
 > `optional` **email?**: `string`
 
-Defined in: auth/src/types.ts:15
+Defined in: [auth/src/types.ts:15](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L15)
 
 ---
 
@@ -24,7 +25,7 @@ Defined in: auth/src/types.ts:15
 
 > `optional` **name?**: `string`
 
-Defined in: auth/src/types.ts:16
+Defined in: [auth/src/types.ts:16](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L16)
 
 ---
 
@@ -32,4 +33,4 @@ Defined in: auth/src/types.ts:16
 
 > `optional` **verified_email?**: `string`
 
-Defined in: auth/src/types.ts:17
+Defined in: [auth/src/types.ts:17](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L17)

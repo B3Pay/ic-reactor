@@ -1,4 +1,5 @@
 ---
+title: getVariantValueByKey
 editUrl: false
 next: true
 prev: true
@@ -6,7 +7,7 @@ prev: true
 
 > **getVariantValueByKey**\<`T`, `K`\>(`variant`, `key`): [`CandidVariantValue`](../type-aliases/CandidVariantValue.md)\<`T`, `K`\>
 
-Defined in: [core/src/utils/candid.ts:127](https://github.com/B3Pay/ic-reactor/blob/c30ea0ec26d4e0252f1f93b6c3cd13fbc42ece15/packages/core/src/utils/candid.ts#L127)
+Defined in: [core/src/utils/candid.ts:127](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/core/src/utils/candid.ts#L127)
 
 ## Type Parameters
 
