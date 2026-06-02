@@ -51,7 +51,7 @@
     "@ic-reactor/core": "workspace:^"
   },
   "peerDependencies": {
-    "@icp-sdk/auth": "^7.0.0",
+    "@icp-sdk/auth": "^7.1.0",
     "@tanstack/react-query": "^5.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
@@ -62,21 +62,21 @@
     }
   },
   "devDependencies": {
-    "@icp-sdk/auth": "^7.0.0",
+    "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^5.4.0",
     "@size-limit/preset-small-lib": "^12.1.0",
-    "@tanstack/react-query": "^5.100.10",
+    "@tanstack/react-query": "^5.100.14",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "size-limit": "^12.1.0",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.8"
   },
   "size-limit": [
     {
