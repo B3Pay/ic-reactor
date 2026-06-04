@@ -31,8 +31,16 @@ export function getIcEnvironmentInfo(
     )
 
     const rootKey = networkStatus.root_key
-    // Default to localhost:4943 if port strictly needed, but `icp` gives us the port
-    const proxyTarget = `http://127.0.0.1:${networkStatus.port}`
+    const proxyTarget =
+      networkStatus.api_url ||
+      networkStatus.gateway_url ||
+      (networkStatus.port
+        ? `http://127.0.0.1:${networkStatus.port}`
+        : undefined)
+
+    if (!proxyTarget) {
+      return null
+    }
 
     const canisterIds: Record<string, string> = {}
 
