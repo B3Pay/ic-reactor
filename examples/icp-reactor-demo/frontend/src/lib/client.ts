@@ -51,11 +51,9 @@ export const queryClient = new QueryClient({
  */
 export const clientManager = new ClientManager({
   queryClient,
-  withCanisterEnv: true,
 })
 export const authentication = new AuthenticationManager({
   clientManager,
-  withCanisterEnv: true,
 })
 
 // Initialize on load

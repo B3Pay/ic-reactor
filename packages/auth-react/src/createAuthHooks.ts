@@ -97,7 +97,11 @@ export const createAuthHooks = (
     useEffect(() => {
       if (!initializedRef.current) {
         initializedRef.current = true
-        clientManager.initialize().then(() => authentication.authenticate())
+        authentication
+          .prepareClient()
+          .catch(() => undefined)
+          .then(() => clientManager.initialize())
+          .then(() => authentication.authenticate())
       }
     }, [])
 

@@ -121,13 +121,12 @@ Unlike the traditional `dfx` approach that uses `.env` files, ICP CLI uses a coo
 1. **During deployment**: ICP CLI saves canister IDs to `.icp/cache/mappings/local.ids.json`
 2. **During development**: Vite sets an `ic_env` cookie with canister IDs and root key
 3. **In production**: The asset canister automatically sets the `ic_env` cookie
-4. **In the app**: `@ic-reactor/react` reads the cookie via `withCanisterEnv: true`
+4. **In the app**: `@ic-reactor/react` reads the cookie automatically
 
 ```typescript
 // src/lib/config.ts
 export const clientManager = new ClientManager({
   queryClient,
-  withCanisterEnv: true, // Reads from ic_env cookie
 })
 
 export const reactor = new DisplayReactor<_SERVICE>({

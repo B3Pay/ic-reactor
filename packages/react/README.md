@@ -36,7 +36,6 @@ export const {
 } = defineReactor<_SERVICE>({
   name: "backend",
   idlFactory,
-  withCanisterEnv: true,
   display: true, // ⇒ DisplayReactor (string principals/bigints)
 })
 ```
@@ -66,7 +65,6 @@ export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({
   queryClient,
-  withCanisterEnv: true,
 })
 
 export const backend = new Reactor<_SERVICE>({

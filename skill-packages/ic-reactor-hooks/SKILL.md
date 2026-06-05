@@ -92,7 +92,6 @@ export const {
 } = defineReactor<_SERVICE>({
   name: "backend",
   idlFactory,
-  withCanisterEnv: true,
   display: true,
 })
 ```

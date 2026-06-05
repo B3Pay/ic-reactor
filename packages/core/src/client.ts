@@ -71,19 +71,21 @@ export class ClientManager {
       isLocalhost: false,
     }
 
-    // EXPERIMENTAL: Use canister environment from ic_env cookie when enabled
-    // ⚠️ This may cause issues with update calls on localhost development
-    if (withCanisterEnv) {
-      const canisterEnv =
-        typeof window !== "undefined" ? safeGetCanisterEnv() : undefined
+    const canisterEnv =
+      withCanisterEnv !== false && typeof window !== "undefined"
+        ? safeGetCanisterEnv()
+        : undefined
+    const shouldUseCanisterEnv =
+      withCanisterEnv === true || Boolean(canisterEnv)
 
+    if (shouldUseCanisterEnv) {
       if (isDev() && typeof window !== "undefined") {
         agentOptions.host = agentOptions.host ?? window.location.origin
         if (agentOptions.verifyQuerySignatures == null) {
           agentOptions.verifyQuerySignatures = false
           console.warn(
             "[ic-reactor] Query signature verification is DISABLED in development. " +
-              "Never use withCanisterEnv in production without explicitly setting verifyQuerySignatures: true."
+              "Never use automatic ic_env detection in production without explicitly setting verifyQuerySignatures: true."
           )
         }
       } else {
@@ -118,8 +120,8 @@ export class ClientManager {
       }
     } else if (withLocalEnv) {
       agentOptions.host = `http://127.0.0.1:${port}`
-    } else if (!withCanisterEnv) {
-      // Only set default host if withCanisterEnv hasn't already configured it
+    } else if (!shouldUseCanisterEnv) {
+      // Only set default host if ic_env has not already configured it.
       agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI
     }
 

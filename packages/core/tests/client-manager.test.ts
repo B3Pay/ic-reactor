@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
 import { ClientManager } from "../src/client"
+import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
+
+vi.mock("@icp-sdk/core/agent/canister-env", () => ({
+  safeGetCanisterEnv: vi.fn(),
+}))
 
 describe("ClientManager", () => {
   let queryClient: QueryClient
@@ -8,6 +13,7 @@ describe("ClientManager", () => {
   beforeEach(() => {
     queryClient = new QueryClient()
     vi.clearAllMocks()
+    ;(safeGetCanisterEnv as any).mockReturnValue(undefined)
   })
 
   describe("network configuration", () => {
@@ -103,6 +109,38 @@ describe("ClientManager", () => {
       expect(
         () => new ClientManager({ queryClient, withCanisterEnv: true })
       ).not.toThrow()
+    })
+
+    it("automatically uses ic_env in the browser when present", () => {
+      vi.stubGlobal("window", {
+        location: { origin: "http://127.0.0.1:3000" },
+      })
+      ;(safeGetCanisterEnv as any).mockReturnValue({
+        "PUBLIC_CANISTER_ID:backend": "aaaaa-aa",
+      })
+      vi.spyOn(console, "warn").mockImplementation(() => undefined)
+
+      const manager = new ClientManager({ queryClient })
+
+      expect(manager.agentHost?.toString()).toBe("http://127.0.0.1:3000/")
+      expect(manager.isLocal).toBe(true)
+    })
+
+    it("opts out of automatic ic_env detection when disabled", () => {
+      vi.stubGlobal("window", {
+        location: { origin: "http://127.0.0.1:3000" },
+      })
+      ;(safeGetCanisterEnv as any).mockReturnValue({
+        "PUBLIC_CANISTER_ID:backend": "aaaaa-aa",
+      })
+
+      const manager = new ClientManager({
+        queryClient,
+        withCanisterEnv: false,
+      })
+
+      expect(manager.agentHost?.toString()).toBe("https://ic0.app/")
+      expect(manager.isLocal).toBe(false)
     })
   })
 

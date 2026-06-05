@@ -13,12 +13,10 @@ describe("Auth Hooks Test", () => {
       verifyQuerySignatures: false,
       host: "http://127.0.0.1:8000",
     },
-    withCanisterEnv: true,
     queryClient,
   })
   const authentication = new AuthenticationManager({
     clientManager,
-    withCanisterEnv: true,
   })
 
   const { useAuth, useAgentState } = createAuthHooks(authentication)

@@ -19,5 +19,4 @@ window.__TANSTACK_QUERY_CLIENT__ = queryClient
  */
 export const clientManager = new ClientManager({
   queryClient,
-  withCanisterEnv: true,
 })

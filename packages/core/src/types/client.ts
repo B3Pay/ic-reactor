@@ -32,14 +32,13 @@ export interface ClientManagerParameters {
    */
   withProcessEnv?: boolean
   /**
-   * **EXPERIMENTAL** - If true, uses the canister environment from `@icp-sdk/core/agent/canister-env`
-   * to automatically configure the agent host and root key based on the `ic_env` cookie.
+   * If true, uses the canister environment from `@icp-sdk/core/agent/canister-env`
+   * to configure the agent from the `ic_env` cookie.
    *
-   * ⚠️ This feature is experimental and may cause issues with update calls on localhost development.
-   * Use with caution and only when you need automatic environment detection from the IC SDK.
+   * `ic_env` is read automatically in the browser when present. Pass `false`
+   * to opt out of automatic ICP CLI environment detection.
    *
-   * @experimental
-   * @default false
+   * @deprecated Automatic detection is enabled by default when `ic_env` exists.
    */
   withCanisterEnv?: boolean
 }

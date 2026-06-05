@@ -11,6 +11,7 @@ import { ClientManager, isDev } from "@ic-reactor/core"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import {
   IC_INTERNET_IDENTITY_PROVIDER,
+  INTERNET_IDENTITY_PROVIDER_ENV_KEY,
   localInternetIdentityProvider,
 } from "./constants"
 import { AuthStateStore } from "./auth-state-store"
@@ -22,6 +23,10 @@ export interface AuthenticationManagerParameters {
   identityProvider?: string | URL
   internetIdentityId?: string
   port?: number
+  /**
+   * @deprecated `ic_env` is read automatically in the browser. Pass `false` to
+   * opt out of automatic ICP CLI environment detection.
+   */
   withCanisterEnv?: boolean
 }
 
@@ -60,12 +65,15 @@ export class AuthenticationManager {
     withCanisterEnv,
   }: AuthenticationManagerParameters) {
     this.clientManager = clientManager
-    this.identityProvider = identityProvider
     this.port = port
     const canisterEnv =
-      withCanisterEnv && typeof window !== "undefined"
-        ? safeGetCanisterEnv()
+      withCanisterEnv !== false && typeof window !== "undefined"
+        ? getAuthenticationCanisterEnv()
         : undefined
+    this.identityProvider =
+      identityProvider ||
+      canisterEnv?.[INTERNET_IDENTITY_PROVIDER_ENV_KEY] ||
+      canisterEnv?.["PUBLIC_INTERNET_IDENTITY_PROVIDER"]
     this.internetIdentityId =
       internetIdentityId ||
       canisterEnv?.["internet_identity"] ||
@@ -100,14 +108,20 @@ export class AuthenticationManager {
    * Preloads and creates an AuthClient before a user gesture is needed.
    */
   public async prepareClient(options?: AuthenticationClientOptions) {
+    const clientOptions = getAuthClientOptions({
+      ...options,
+      identityProvider:
+        options?.identityProvider ?? this.getDefaultIdentityProvider(),
+    })
+
     if (
       this.authClient &&
-      (!this.shouldRecreateClient(options) || this.authClientWasProvided)
+      (!this.shouldRecreateClient(clientOptions) || this.authClientWasProvided)
     ) {
       return this.authClient
     }
 
-    return this.initializeClient(options)
+    return this.initializeClient(clientOptions)
   }
 
   public authenticate = async (): Promise<Identity | undefined> => {
@@ -136,7 +150,11 @@ export class AuthenticationManager {
       this.updateState({ isAuthenticating: true })
       try {
         if (!this.authClient) {
-          const authClient = await this.initializeClient()
+          const authClient = await this.initializeClient(
+            getAuthClientOptions({
+              identityProvider: this.getDefaultIdentityProvider(),
+            })
+          )
           if (!authClient) {
             this.updateState({ isAuthenticating: false })
             return undefined
@@ -405,6 +423,38 @@ function hasAuthClientOptions(options?: AuthenticationClientOptions): boolean {
     options?.windowOpenerFeatures ||
     options?.openIdProvider
   )
+}
+
+function getAuthenticationCanisterEnv(): Record<string, string> | undefined {
+  const canisterEnv = safeGetCanisterEnv<Record<string, string>>()
+  if (canisterEnv) {
+    return canisterEnv as unknown as Record<string, string>
+  }
+
+  if (typeof document === "undefined") {
+    return undefined
+  }
+
+  const cookie = document.cookie
+    .split(";")
+    .find((part) => part.trim().startsWith("ic_env="))
+  const encodedValue = cookie?.split("=").slice(1).join("=")?.trim()
+  if (!encodedValue) {
+    return undefined
+  }
+
+  const env = Object.fromEntries(
+    decodeURIComponent(encodedValue)
+      .split("&")
+      .map((entry) => {
+        const separatorIndex = entry.indexOf("=")
+        return separatorIndex === -1
+          ? [entry, ""]
+          : [entry.slice(0, separatorIndex), entry.slice(separatorIndex + 1)]
+      })
+  )
+
+  return Object.keys(env).length ? env : undefined
 }
 
 function getSignInOptions(

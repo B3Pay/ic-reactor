@@ -85,7 +85,6 @@ export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({
   queryClient,
-  // withCanisterEnv: true, // optional: useful in local/dev setups
 })
 export const authentication = new AuthenticationManager({ clientManager })
 
