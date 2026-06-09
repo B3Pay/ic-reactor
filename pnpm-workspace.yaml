@@ -10,3 +10,4 @@ packages:
   - "e2e"
   - "docs"
   - "examples/*"
+  - "examples/*/*"
