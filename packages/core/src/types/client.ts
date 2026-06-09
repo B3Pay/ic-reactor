@@ -21,6 +21,8 @@ export interface ClientManagerParameters {
   agentOptions?: HttpAgentOptions
   /**
    * The port used for the local IC replica (default is 4943).
+   *
+   * @deprecated Use agentOptions.host to specify a host directly or rely on process environment auto-detection (which is enabled by default).
    */
   port?: number
   /**
