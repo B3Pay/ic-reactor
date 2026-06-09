@@ -11,7 +11,6 @@ const queryClient = new QueryClient()
 window.__TANSTACK_QUERY_CLIENT__ = queryClient
 
 const clientManager = new ClientManager({
-  withProcessEnv: true,
   queryClient,
 })
 const authentication = new AuthenticationManager({ clientManager })

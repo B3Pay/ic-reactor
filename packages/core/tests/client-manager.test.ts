@@ -25,17 +25,6 @@ describe("ClientManager", () => {
       expect(manager.isLocal).toBe(false)
     })
 
-    it("initializes with a configured local host", () => {
-      const manager = new ClientManager({
-        queryClient,
-        withLocalEnv: true,
-        port: 8000,
-      })
-
-      expect(manager.agentHost?.toString()).toBe("http://127.0.0.1:8000/")
-      expect(manager.agentState.isLocalhost).toBe(true)
-    })
-
     it("uses a custom host from agent options", () => {
       const manager = new ClientManager({
         queryClient,
@@ -64,11 +53,9 @@ describe("ClientManager", () => {
 
       const manager = new ClientManager({
         queryClient,
-        withProcessEnv: true,
-        port: 8000,
       })
 
-      expect(manager.agentHost?.toString()).toBe("http://127.0.0.1:8000/")
+      expect(manager.agentHost?.toString()).toBe("http://127.0.0.1:4943/")
       expect(manager.isLocal).toBe(true)
     })
 
@@ -77,7 +64,7 @@ describe("ClientManager", () => {
         env: { ICP_NETWORK: "local", ICP_HOST: "http://127.0.0.1:8123" },
       }
 
-      const manager = new ClientManager({ queryClient, withProcessEnv: true })
+      const manager = new ClientManager({ queryClient })
 
       expect(manager.agentHost?.toString()).toBe("http://127.0.0.1:8123/")
     })
@@ -85,13 +72,13 @@ describe("ClientManager", () => {
     it("honors ICP_NETWORK=ic", () => {
       ;(globalThis as any).process = { env: { ICP_NETWORK: "ic" } }
 
-      const manager = new ClientManager({ queryClient, withProcessEnv: true })
+      const manager = new ClientManager({ queryClient })
 
       expect(manager.agentHost?.toString()).toBe("https://ic0.app/")
     })
   })
 
-  describe("withCanisterEnv", () => {
+  describe("canisterEnv auto-detection", () => {
     let originalWindow: typeof globalThis.window
 
     beforeEach(() => {
@@ -103,14 +90,6 @@ describe("ClientManager", () => {
       vi.restoreAllMocks()
     })
 
-    it("can be enabled outside the browser", () => {
-      delete (globalThis as any).window
-
-      expect(
-        () => new ClientManager({ queryClient, withCanisterEnv: true })
-      ).not.toThrow()
-    })
-
     it("automatically uses ic_env in the browser when present", () => {
       vi.stubGlobal("window", {
         location: { origin: "http://127.0.0.1:3000" },
@@ -118,29 +97,11 @@ describe("ClientManager", () => {
       ;(safeGetCanisterEnv as any).mockReturnValue({
         "PUBLIC_CANISTER_ID:backend": "aaaaa-aa",
       })
-      vi.spyOn(console, "warn").mockImplementation(() => undefined)
 
       const manager = new ClientManager({ queryClient })
 
       expect(manager.agentHost?.toString()).toBe("http://127.0.0.1:3000/")
       expect(manager.isLocal).toBe(true)
-    })
-
-    it("opts out of automatic ic_env detection when disabled", () => {
-      vi.stubGlobal("window", {
-        location: { origin: "http://127.0.0.1:3000" },
-      })
-      ;(safeGetCanisterEnv as any).mockReturnValue({
-        "PUBLIC_CANISTER_ID:backend": "aaaaa-aa",
-      })
-
-      const manager = new ClientManager({
-        queryClient,
-        withCanisterEnv: false,
-      })
-
-      expect(manager.agentHost?.toString()).toBe("https://ic0.app/")
-      expect(manager.isLocal).toBe(false)
     })
   })
 

@@ -4,7 +4,6 @@ import { QueryClient } from "@tanstack/query-core"
 
 const clientManager = new ClientManager({
   queryClient: new QueryClient(),
-  withProcessEnv: true,
 })
 
 let reactor: MetadataDisplayReactor

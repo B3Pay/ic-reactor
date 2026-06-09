@@ -45,7 +45,6 @@ export const { reactor: icpReactor, clientManager } = defineReactor<Ledger>({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   idlFactory: ledgerIdlFactory,
   display: true,
-  withProcessEnv: true,
   queryClient,
 })
 

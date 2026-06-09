@@ -7,7 +7,7 @@ import "./styles.css"
 
 const clientManager = new ClientManager({
   queryClient: new QueryClient(),
-  withLocalEnv: true,
+  agentOptions: { host: "http://127.0.0.1:4943" },
 })
 
 const idlFactory = ({

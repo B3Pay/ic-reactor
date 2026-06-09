@@ -5,5 +5,4 @@ export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({
   queryClient,
-  port: 8000,
 })

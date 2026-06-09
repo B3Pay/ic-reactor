@@ -47,7 +47,6 @@ export function ICReactorProvider({ children }: { children: ReactNode }) {
   const [authContext] = useState(() => {
     const clientManager = new ClientManager({
       queryClient,
-      withProcessEnv: true,
     })
     const authentication = new AuthenticationManager({ clientManager })
     return { clientManager, authentication }

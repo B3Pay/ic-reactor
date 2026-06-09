@@ -7,7 +7,6 @@ export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: true,
   agentOptions: {
     verifyQuerySignatures: false
   }

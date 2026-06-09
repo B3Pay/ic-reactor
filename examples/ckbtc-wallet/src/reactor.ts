@@ -35,13 +35,10 @@ export const queryClient = new QueryClient({
 })
 
 export const clientManager = new ClientManager({
-  withProcessEnv: true,
-  withCanisterEnv: false,
   queryClient,
 })
 export const authentication = new AuthenticationManager({
   clientManager,
-  withCanisterEnv: false,
 })
 
 // ============================================================================

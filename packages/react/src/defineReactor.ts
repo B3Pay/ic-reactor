@@ -103,10 +103,6 @@ export function defineReactor<Service = BaseActor>(
     queryClient: providedQueryClient,
     display,
     agentOptions,
-    port,
-    withLocalEnv,
-    withProcessEnv,
-    withCanisterEnv,
     name,
     idlFactory,
     canisterId,
@@ -123,10 +119,6 @@ export function defineReactor<Service = BaseActor>(
     new ClientManager({
       queryClient,
       agentOptions,
-      port,
-      withLocalEnv,
-      withProcessEnv,
-      withCanisterEnv,
     })
 
   const reactorConfig = {

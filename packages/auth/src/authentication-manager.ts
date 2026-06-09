@@ -22,12 +22,6 @@ export interface AuthenticationManagerParameters {
   authClient?: AuthClientLike
   identityProvider?: string | URL
   internetIdentityId?: string
-  port?: number
-  /**
-   * @deprecated `ic_env` is read automatically in the browser. Pass `false` to
-   * opt out of automatic ICP CLI environment detection.
-   */
-  withCanisterEnv?: boolean
 }
 
 /**
@@ -48,7 +42,6 @@ export class AuthenticationManager {
   private readonly loader = new AuthClientLoader()
   private readonly identityProvider?: string | URL
   private readonly internetIdentityId?: string
-  private readonly port?: number
   public readonly clientManager: ClientManager
 
   /** The current authentication state. */
@@ -61,15 +54,10 @@ export class AuthenticationManager {
     authClient,
     identityProvider,
     internetIdentityId,
-    port,
-    withCanisterEnv,
   }: AuthenticationManagerParameters) {
     this.clientManager = clientManager
-    this.port = port
     const canisterEnv =
-      withCanisterEnv !== false && typeof window !== "undefined"
-        ? getAuthenticationCanisterEnv()
-        : undefined
+      typeof window !== "undefined" ? getAuthenticationCanisterEnv() : undefined
     this.identityProvider =
       identityProvider ||
       canisterEnv?.[INTERNET_IDENTITY_PROVIDER_ENV_KEY] ||
@@ -382,7 +370,7 @@ export class AuthenticationManager {
     }
     return this.clientManager.isLocal
       ? localInternetIdentityProvider(
-          this.port || Number(this.clientManager.agentHost?.port) || 4943,
+          Number(this.clientManager.agentHost?.port) || 4943,
           this.internetIdentityId
         )
       : IC_INTERNET_IDENTITY_PROVIDER

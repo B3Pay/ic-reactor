@@ -52,7 +52,6 @@ export const {
   name: "ICP Ledger",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   idlFactory: icrc2IdlFactory,
-  withProcessEnv: true,
   queryClient,
 })
 

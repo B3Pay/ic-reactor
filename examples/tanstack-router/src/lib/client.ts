@@ -15,7 +15,6 @@ export const queryClient = new QueryClient({
 window.__TANSTACK_QUERY_CLIENT__ = queryClient
 
 export const clientManager = new ClientManager({
-  withProcessEnv: true,
   queryClient,
 })
 export const authentication = new AuthenticationManager({

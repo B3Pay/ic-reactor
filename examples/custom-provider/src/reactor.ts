@@ -22,7 +22,6 @@ export const queryClient = new QueryClient({
 })
 
 export const clientManager = new ClientManager({
-  withProcessEnv: true,
   queryClient,
 })
 export const authentication = new AuthenticationManager({ clientManager })

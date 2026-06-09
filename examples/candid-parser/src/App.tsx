@@ -6,7 +6,6 @@ import { CandidDisplayReactor } from "@ic-reactor/candid"
 
 // Initialize basic client manager
 const clientManager = new ClientManager({
-  withCanisterEnv: false,
   queryClient: new QueryClient(),
 })
 
