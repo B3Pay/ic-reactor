@@ -6,15 +6,15 @@ export interface Post {
   id: bigint
   title: string
   content: string
-  category: string
+  views: bigint
   author: string
+  likes: bigint
+  timestamp: string
+  replies: bigint
+  reposts: bigint
+  category: string
   handle: string
   avatar: string
-  timestamp: string
-  likes: bigint
-  reposts: bigint
-  replies: bigint
-  views: bigint
 }
 export interface PostsResponse {
   next_cursor: [] | [bigint]

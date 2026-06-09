@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from "react"
 import { getPostsQuery } from "./store"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
-import type { Post } from "./declarations/backend/backend.did"
+import type { Post } from "./declarations/backend/declarations/backend"
 
 function fmt(n: bigint) {
   const num = Number(n)

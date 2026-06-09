@@ -3,6 +3,14 @@ type Post = record {
     title: text;
     content: text;
     category: text;
+    author: text;
+    handle: text;
+    avatar: text;
+    timestamp: text;
+    likes: nat;
+    reposts: nat;
+    replies: nat;
+    views: nat;
 };
 
 type PostsResponse = record {

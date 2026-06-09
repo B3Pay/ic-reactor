@@ -878,6 +878,9 @@ importers:
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
+      '@ic-reactor/vite-plugin':
+        specifier: 0.11.1
+        version: link:../../packages/vite-plugin
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
