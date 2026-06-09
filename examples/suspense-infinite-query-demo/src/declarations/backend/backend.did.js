@@ -4,6 +4,14 @@ export const idlFactory = ({ IDL }) => {
     title: IDL.Text,
     content: IDL.Text,
     category: IDL.Text,
+    author: IDL.Text,
+    handle: IDL.Text,
+    avatar: IDL.Text,
+    timestamp: IDL.Text,
+    likes: IDL.Nat,
+    reposts: IDL.Nat,
+    replies: IDL.Nat,
+    views: IDL.Nat,
   })
   const PostsResponse = IDL.Record({
     next_cursor: IDL.Opt(IDL.Nat),

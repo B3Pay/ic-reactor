@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build && tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "dfx deploy"
   },
   "dependencies": {
     "@ic-reactor/auth": "^3.6.0",

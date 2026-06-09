@@ -26,8 +26,7 @@ export const { reactor, clientManager } = defineReactor<_SERVICE>({
   name: "backend",
   canisterId,
   idlFactory,
-  withLocalEnv: true,
-  port: 4943,
+  withProcessEnv: true,
   queryClient,
 })
 

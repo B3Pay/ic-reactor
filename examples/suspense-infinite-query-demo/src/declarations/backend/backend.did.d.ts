@@ -7,6 +7,14 @@ export interface Post {
   title: string
   content: string
   category: string
+  author: string
+  handle: string
+  avatar: string
+  timestamp: string
+  likes: bigint
+  reposts: bigint
+  replies: bigint
+  views: bigint
 }
 export interface PostsResponse {
   next_cursor: [] | [bigint]
