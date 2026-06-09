@@ -5,7 +5,7 @@ import { ClientManager } from "@ic-reactor/core"
 import { AuthenticationManager, IdentityAttributesManager } from "../src"
 
 function makeManagers() {
-  const identity = { getPrincipal: () => Principal.fromText("aaaaa-aa") }
+  const identity = { getPrincipal: () => Principal.fromText("aaaaa-aa") } as any
   const authClient = {
     getIdentity: vi.fn(() => identity),
     isAuthenticated: vi.fn(() => true),
@@ -15,7 +15,7 @@ function makeManagers() {
       data: new Uint8Array([68, 73, 68, 76]),
       signature: new Uint8Array([1, 2, 3]),
     })),
-  }
+  } as any
   const clientManager = new ClientManager({ queryClient: new QueryClient() })
   vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
   const authentication = new AuthenticationManager({

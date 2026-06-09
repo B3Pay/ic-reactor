@@ -106,20 +106,24 @@ export class ClientManager {
       }
     }
 
-    if (withProcessEnv) {
+    const shouldUseProcessEnv =
+      withProcessEnv === true || (withProcessEnv !== false && !withLocalEnv)
+
+    if (shouldUseProcessEnv) {
       const processNetwork = getProcessEnvNetwork()
       if (processNetwork === "ic") {
-        agentOptions.host = IC_HOST_NETWORK_URI
+        agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI
       } else if (processNetwork === "local") {
         // Honor either `IC_HOST` (legacy dfx) or `ICP_HOST` (icp-cli).
         const envHost =
           typeof process !== "undefined"
             ? process.env.ICP_HOST || process.env.IC_HOST
             : undefined
-        agentOptions.host = envHost ? envHost : `http://127.0.0.1:${port}`
+        agentOptions.host =
+          agentOptions.host ?? (envHost ? envHost : `http://127.0.0.1:${port}`)
       }
     } else if (withLocalEnv) {
-      agentOptions.host = `http://127.0.0.1:${port}`
+      agentOptions.host = agentOptions.host ?? `http://127.0.0.1:${port}`
     } else if (!shouldUseCanisterEnv) {
       // Only set default host if ic_env has not already configured it.
       agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI

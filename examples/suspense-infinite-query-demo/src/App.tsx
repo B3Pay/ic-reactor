@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from "react"
-import { getPostsQuery, useAuth, useAgentState } from "./store"
+import { getPostsQuery } from "./store"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import type { Post } from "./declarations/backend/backend.did"
 
@@ -209,26 +209,7 @@ const TABS = [
 ]
 
 export default function App() {
-  useAuth()
-  const { isInitialized, isInitializing, error } = useAgentState()
   const [activeTab, setActiveTab] = useState("All")
-
-  if (!isInitialized) {
-    return (
-      <div className="app">
-        <header className="app-header">
-          <span className="app-logo">◎ IC Feed</span>
-        </header>
-        <div className="status-msg">
-          {isInitializing
-            ? "Connecting to Internet Computer…"
-            : error
-              ? `⚠ ${error.message}`
-              : "Starting…"}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="app">

@@ -11,7 +11,7 @@ vi.mock("@icp-sdk/core/agent/canister-env", () => ({
 
 function identity(text: string) {
   const principal = Principal.fromText(text)
-  return { getPrincipal: () => principal }
+  return { getPrincipal: () => principal } as any
 }
 
 function createAuthClient() {
@@ -28,7 +28,7 @@ function createAuthClient() {
       currentIdentity = identity("2vxsx-fae")
     }),
     requestAttributes: vi.fn(),
-  }
+  } as any
 }
 
 describe("AuthenticationManager", () => {
@@ -252,7 +252,7 @@ describe("AuthenticationManager", () => {
   })
 
   it("automatically uses an Internet Identity provider from canister env", async () => {
-    vi.stubGlobal("window", {})
+    vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:8000" } })
     ;(safeGetCanisterEnv as any).mockReturnValue({
       INTERNET_IDENTITY_PROVIDER: "http://id.ai.localhost:8000/authorize",
     })
@@ -281,7 +281,7 @@ describe("AuthenticationManager", () => {
   })
 
   it("uses an Internet Identity provider from a provider-only ic_env cookie", async () => {
-    vi.stubGlobal("window", {})
+    vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:8000" } })
     vi.stubGlobal("document", {
       cookie:
         "ic_env=INTERNET_IDENTITY_PROVIDER%3Dhttp%3A%2F%2Fid.ai.localhost%3A8000%2Fauthorize",
@@ -312,7 +312,7 @@ describe("AuthenticationManager", () => {
   })
 
   it("opts out of automatic canister env detection when disabled", async () => {
-    vi.stubGlobal("window", {})
+    vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:8000" } })
     ;(safeGetCanisterEnv as any).mockReturnValue({
       INTERNET_IDENTITY_PROVIDER: "http://id.ai.localhost:8000/authorize",
     })

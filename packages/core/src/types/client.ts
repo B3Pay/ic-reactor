@@ -8,7 +8,7 @@ import type { QueryClient } from "@tanstack/query-core"
  * @property {number} [port] - The port used for the local IC replica (default is 4943).
  * @property {HttpAgentOptions} [agentOptions] - Optional configuration for the underlying HttpAgent.
  * @property {boolean} [withLocalEnv] - If true, configures the agent for a local environment.
- * @property {boolean} [withProcessEnv] - If true, auto-configures the agent based on process.env settings.
+ * @property {boolean} [withProcessEnv] - If not false, auto-configures the agent based on process.env settings (defaults to true).
  */
 export interface ClientManagerParameters {
   /**
@@ -25,10 +25,14 @@ export interface ClientManagerParameters {
   port?: number
   /**
    * If true, configures the agent for a local environment.
+   *
+   * @deprecated Use agentOptions.host to specify a host directly or rely on process environment auto-detection (which is enabled by default).
    */
   withLocalEnv?: boolean
   /**
-   * If true, auto-configures the agent based on process.env settings.
+   * If not false, auto-configures the agent based on process.env settings (defaults to true).
+   *
+   * @deprecated Process environment auto-detection is enabled by default. This parameter will be removed in future releases.
    */
   withProcessEnv?: boolean
   /**
