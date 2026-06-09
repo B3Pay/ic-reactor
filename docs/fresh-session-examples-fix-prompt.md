@@ -32,6 +32,7 @@ Already updated examples:
 - `examples/tanstack-router`
 - `examples/candid-parser`
 - `examples/ckbtc-wallet`
+- `examples/icp-reactor-demo`
 
 Relevant memory file:
 
