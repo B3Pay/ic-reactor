@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ClientManager } from "@ic-reactor/core"
 import ReactJson from "@microlink/react-json-view"
 import { QueryClient } from "@tanstack/react-query"
@@ -6,6 +6,7 @@ import { CandidDisplayReactor } from "@ic-reactor/candid"
 
 // Initialize basic client manager
 const clientManager = new ClientManager({
+  withCanisterEnv: false,
   queryClient: new QueryClient(),
 })
 
@@ -23,32 +24,65 @@ function App() {
   const [candid, setCandid] = useState(DEFAULT_CANDID)
   const [functionName, setFunctionName] = useState(DEFAULT_FUNC)
   const [argsInput, setArgsInput] = useState(DEFAULT_ARGS)
-  const [callType, setCallType] = useState<
-    "query" | "call" | "composite_query"
-  >("query")
 
-  const [result, setResult] = useState<unknown>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [methods, setMethods] = useState<string[] | null>(null)
 
-  const handleCall = async () => {
-    setLoading(true)
-    setError(null)
-    setResult(null)
+  const [{ result, error, loading }, setState] = useState<{
+    result: unknown
+    error: string | null
+    loading: boolean
+  }>({
+    result: null,
+    error: null,
+    loading: false,
+  })
 
-    try {
-      // Create reactor instance with display transformations
-      // CandidDisplayReactor automatically converts:
-      // - bigint → string
-      // - Principal → string
-      // - [T] | [] → T | null
-      const reactor = new CandidDisplayReactor({
+  const reactor = useMemo(
+    () =>
+      new CandidDisplayReactor({
         name: "Candid Display Reactor",
         canisterId,
+        candid,
         clientManager,
+      }),
+    [canisterId, candid]
+  )
+
+  const latestFunctionName = useRef(functionName)
+  latestFunctionName.current = functionName
+
+  useEffect(() => {
+    let active = true
+    setMethods(null)
+
+    reactor
+      .initialize()
+      .then(() => {
+        if (!active) return
+        const names = reactor.getMethodNames()
+        setMethods(names)
+
+        const currentName =
+          names.find((n) => n === latestFunctionName.current) || names[0]
+        setFunctionName(currentName || "")
+      })
+      .catch((err) => {
+        console.error(err)
+        if (active) {
+          setMethods([])
+          setFunctionName("")
+        }
       })
 
-      // Parse arguments (already in display format - strings for Principal/bigint)
+    return () => {
+      active = false
+    }
+  }, [reactor])
+
+  const handleCall = async () => {
+    setState({ result: null, error: null, loading: true })
+
+    try {
       let args = []
       try {
         args = JSON.parse(argsInput)
@@ -59,38 +93,28 @@ function App() {
 
       console.log("Calling with:", { functionName, args, candid })
 
-      let res
-      if (callType === "query" || callType === "composite_query") {
-        // Use queryDynamic for one-shot query with display transformations
-        res = await reactor.queryDynamic({
-          functionName,
-          candid,
-          args,
-        })
-      } else {
-        // Use callDynamic for one-shot update with display transformations
-        res = await reactor.callDynamic({
-          functionName,
-          candid,
-          args,
-        })
-      }
+      const isQuery = reactor.isQueryMethod(functionName)
+      const res = await (isQuery
+        ? reactor.queryDynamic({ functionName, candid, args })
+        : reactor.callDynamic({ functionName, candid, args }))
 
-      // No need for BigInt serialization - CandidDisplayReactor already converts to strings!
-      // Wrap primitive values in an object for ReactJson
-      // ReactJson requires a valid object, not primitives
-      if (res === null || typeof res !== "object" || Array.isArray(res)) {
-        setResult({ value: res })
-      } else {
-        setResult(res)
-      }
+      const formattedResult =
+        res === null || typeof res !== "object" || Array.isArray(res)
+          ? { value: res }
+          : res
+
+      setState({ result: formattedResult, error: null, loading: false })
     } catch (err) {
       console.error(err)
-      setError((err as Error).message || "Unknown error")
-    } finally {
-      setLoading(false)
+      setState({
+        result: null,
+        error: (err as Error).message || "Unknown error",
+        loading: false,
+      })
     }
   }
+
+  const isQueryMethod = reactor.isQueryMethod(functionName)
 
   return (
     <div className="app-wrapper">
@@ -168,35 +192,29 @@ function App() {
           </div>
 
           <div className="card-section">
-            <div className="row">
-              <div className="input-group flex-1">
-                <label>
-                  <span className="label-icon">⚡</span>
-                  Function Name
-                </label>
-                <input
-                  value={functionName}
-                  onChange={(e) => setFunctionName(e.target.value)}
-                  placeholder="method_name"
-                />
-              </div>
-
-              <div className="input-group type-select">
-                <label>
-                  <span className="label-icon">🔄</span>
-                  Type
-                </label>
-                <select
-                  value={callType}
-                  onChange={(e) =>
-                    setCallType(e.target.value as "query" | "call")
-                  }
-                  className="select-input"
-                >
-                  <option value="query">Query (Read)</option>
-                  <option value="call">Call (Update)</option>
-                </select>
-              </div>
+            <div className="input-group">
+              <label>
+                <span className="label-icon">⚡</span>
+                Function Name
+              </label>
+              <select
+                value={functionName}
+                onChange={(e) => setFunctionName(e.target.value)}
+                className="select-input method-select"
+                disabled={!methods || methods.length === 0}
+              >
+                {!methods ? (
+                  <option value="">Loading methods...</option>
+                ) : methods.length > 0 ? (
+                  methods.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No methods found</option>
+                )}
+              </select>
             </div>
           </div>
 
@@ -223,8 +241,8 @@ function App() {
 
           <button
             onClick={handleCall}
-            disabled={loading}
-            className={`execute-button ${loading ? "loading" : ""} ${callType === "call" ? "update-mode" : ""}`}
+            disabled={loading || !functionName || !methods}
+            className={`execute-button ${loading ? "loading" : ""} ${isQueryMethod ? "" : "update-mode"}`}
           >
             {loading ? (
               <>
@@ -234,9 +252,9 @@ function App() {
             ) : (
               <>
                 <span className="button-icon">
-                  {callType === "query" ? "🔍" : "✍️"}
+                  {isQueryMethod ? "🔍" : "✍️"}
                 </span>
-                Execute {callType === "query" ? "Query" : "Update"}
+                Execute {isQueryMethod ? "Query" : "Update"}
               </>
             )}
           </button>

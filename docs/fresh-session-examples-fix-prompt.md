@@ -30,6 +30,8 @@ Already updated examples:
 
 - `examples/all-in-one-demo`
 - `examples/tanstack-router`
+- `examples/candid-parser`
+- `examples/ckbtc-wallet`
 
 Relevant memory file:
 
@@ -48,6 +50,7 @@ Workflow I want:
    - use package-level `AuthenticationManager({ clientManager })` defaults where possible;
    - add `@ic-reactor/vite-plugin` / `icReactor(...)` only where it is the right local-environment source;
    - for Vite examples that do not need canister codegen but need env/local II, use `icReactor({ canisters: [] })`;
+   - for examples that do not require local environment support or local Internet Identity (e.g., pure mainnet/dynamic tools like `candid-parser`), do not add or import `@ic-reactor/vite-plugin` at all;
    - prefer ICP CLI built-in II over a manual `internet_identity` canister;
    - update docs/readmes if they still teach `withCanisterEnv: true` as required;
    - keep generated files isolated and call out generated churn clearly.
