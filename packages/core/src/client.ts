@@ -10,6 +10,7 @@ import {
   getNetworkByHostname,
   getProcessEnvNetwork,
   isDev,
+  isMainnetHost,
 } from "./utils/helper"
 
 /**
@@ -71,6 +72,8 @@ export class ClientManager {
       isLocalhost: false,
     }
 
+    const customHost = agentOptions.host
+
     const canisterEnv =
       withCanisterEnv !== false && typeof window !== "undefined"
         ? safeGetCanisterEnv()
@@ -80,7 +83,7 @@ export class ClientManager {
 
     if (shouldUseCanisterEnv) {
       if (isDev() && typeof window !== "undefined") {
-        agentOptions.host = agentOptions.host ?? window.location.origin
+        agentOptions.host = customHost ?? window.location.origin
         if (agentOptions.verifyQuerySignatures == null) {
           agentOptions.verifyQuerySignatures = false
           console.warn(
@@ -92,41 +95,48 @@ export class ClientManager {
         agentOptions.verifyQuerySignatures =
           agentOptions.verifyQuerySignatures ?? true
       }
+    }
 
-      // Root key must NOT be sourced from the ic_env cookie: cookies are
-      // user-controllable and accepting a root key from them would allow an
-      // attacker to bypass all IC certificate verification.
-      // If a custom root key is required (e.g. local replica), pass it via
-      // agentOptions.rootKey in your application code instead.
-      if (canisterEnv?.IC_ROOT_KEY) {
-        console.error(
-          "[ic-reactor] IC_ROOT_KEY in the ic_env cookie is ignored for security reasons. " +
-            "Pass agentOptions.rootKey explicitly if you need a custom root key."
-        )
+    if (!customHost) {
+      const shouldUseProcessEnv =
+        withProcessEnv === true || (withProcessEnv !== false && !withLocalEnv)
+
+      if (shouldUseProcessEnv) {
+        const processNetwork = getProcessEnvNetwork()
+        if (processNetwork === "ic") {
+          if (!shouldUseCanisterEnv) {
+            agentOptions.host = IC_HOST_NETWORK_URI
+          }
+        } else if (processNetwork === "local") {
+          // Honor either `IC_HOST` (legacy dfx) or `ICP_HOST` (icp-cli).
+          const envHost =
+            typeof process !== "undefined"
+              ? process.env.ICP_HOST || process.env.IC_HOST
+              : undefined
+          const replicaHost = envHost ? envHost : `http://127.0.0.1:${port}`
+
+          if (
+            typeof window !== "undefined" &&
+            window.location.port !== String(port)
+          ) {
+            agentOptions.host = replicaHost
+          } else {
+            agentOptions.host = agentOptions.host ?? replicaHost
+          }
+        }
+      } else if (withLocalEnv) {
+        agentOptions.host = `http://127.0.0.1:${port}`
+      } else if (!shouldUseCanisterEnv) {
+        // Only set default host if ic_env has not already configured it.
+        agentOptions.host = IC_HOST_NETWORK_URI
       }
     }
 
-    const shouldUseProcessEnv =
-      withProcessEnv === true || (withProcessEnv !== false && !withLocalEnv)
-
-    if (shouldUseProcessEnv) {
-      const processNetwork = getProcessEnvNetwork()
-      if (processNetwork === "ic") {
-        agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI
-      } else if (processNetwork === "local") {
-        // Honor either `IC_HOST` (legacy dfx) or `ICP_HOST` (icp-cli).
-        const envHost =
-          typeof process !== "undefined"
-            ? process.env.ICP_HOST || process.env.IC_HOST
-            : undefined
-        agentOptions.host =
-          agentOptions.host ?? (envHost ? envHost : `http://127.0.0.1:${port}`)
-      }
-    } else if (withLocalEnv) {
-      agentOptions.host = agentOptions.host ?? `http://127.0.0.1:${port}`
-    } else if (!shouldUseCanisterEnv) {
-      // Only set default host if ic_env has not already configured it.
-      agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI
+    // For security reasons, the root key from the ic_env cookie is only accepted
+    // on non-mainnet environments (e.g. local replicas or custom testnets).
+    // On the mainnet ("ic"), we must use the pinned root key inside the agent.
+    if (!isMainnetHost(agentOptions.host) && canisterEnv?.IC_ROOT_KEY) {
+      agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
     }
 
     this.#agent = HttpAgent.createSync(agentOptions)
