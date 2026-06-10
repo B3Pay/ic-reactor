@@ -1365,9 +1365,6 @@ importers:
       '@tanstack/query-core':
         specifier: ^5.100.10
         version: 5.101.0
-      '@tanstack/react-query':
-        specifier: ^5.100.10
-        version: 5.101.0(react@19.2.7)
       '@types/node':
         specifier: ^25.6.2
         version: 25.9.2

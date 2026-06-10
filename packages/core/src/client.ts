@@ -1,7 +1,7 @@
 import type { Identity } from "@icp-sdk/core/agent"
 import type { ClientManagerParameters, AgentState } from "./types/client"
 import type { Principal } from "@icp-sdk/core/principal"
-import type { QueryClient } from "@tanstack/react-query"
+import type { QueryClient } from "@tanstack/query-core"
 
 import { HttpAgent } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
@@ -22,7 +22,7 @@ import {
  * @example
  * ```typescript
  * import { ClientManager } from "@ic-reactor/core";
- * import { QueryClient } from "@tanstack/react-query";
+ * import { QueryClient } from "@tanstack/query-core";
  *
  * const queryClient = new QueryClient();
  * const clientManager = new ClientManager({
