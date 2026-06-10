@@ -4,10 +4,14 @@ This directory contains AI agent skill packages for the IC Reactor project. Skil
 
 ## Available Skills
 
-| Skill                                           | Description                                                                |
-| ----------------------------------------------- | -------------------------------------------------------------------------- |
-| [`ic-reactor-hooks`](./ic-reactor-hooks/)       | React hooks, query/mutation factories, and cache patterns                  |
-| [`ic-reactor-packages`](./ic-reactor-packages/) | Monorepo package ownership, generated artifacts, and verification workflow |
+| Skill                                           | Description                                                                                            |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [`ic-reactor-hooks`](./ic-reactor-hooks/)       | React hooks, query/mutation factories, generated hooks, cache patterns, and inside/outside React usage |
+| [`ic-reactor-packages`](./ic-reactor-packages/) | Monorepo package ownership, generated artifacts, documentation consistency, and verification workflow  |
+
+Use root `llms.txt` for compact repository routing and `llms-full.txt` when an
+agent needs a longer prompt-ready IC Reactor API guide. Skills should stay
+focused on workflow and link to `references/` for concrete examples.
 
 ## Agent Compatibility
 

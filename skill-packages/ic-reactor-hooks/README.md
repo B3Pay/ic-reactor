@@ -4,6 +4,7 @@ AI agent skill for building and refactoring `@ic-reactor/react` integrations in 
 
 ## What This Skill Covers
 
+- `defineReactor(...)` — one-call reactor, client manager, query client, and hook setup
 - `createActorHooks(...)` — typed hook suite for a canister
 - `createQuery` / `createMutation` factory patterns — reusable inside and outside React
 - `useActorMethod` — unified query/update hook
@@ -58,6 +59,9 @@ Install directly from this repo:
 ```text
 Install the skill from github.com/B3Pay/ic-reactor path skill-packages/ic-reactor-hooks
 ```
+
+Use `/llms-full.txt` alongside this skill when the assistant needs a broader
+package map, install commands, auth guidance, or verification matrix.
 
 ### Example Prompt
 

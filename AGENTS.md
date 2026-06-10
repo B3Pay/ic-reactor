@@ -36,6 +36,11 @@ Use this map before editing so you can start in the package that owns the behavi
 
 Generated outputs under `dist`, `.dfx`, `.icp`, `.mops`, `target`, `.next`, `.astro`, and `*.tsbuildinfo` are normally build artifacts. Do not hand-edit generated hook files; change the generator, wrapper, or source `.did` instead.
 
+## AI context files
+
+- `llms.txt`: compact package/task routing manifest
+- `llms-full.txt`: longer AI-friendly API and task guide
+
 ### How to use skills
 
 - Discovery: Skill bodies live on disk at `skill-packages/<skill-name>/SKILL.md`. Agent-specific metadata is in `skill-packages/<skill-name>/agents/`.

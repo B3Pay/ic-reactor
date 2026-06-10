@@ -1,20 +1,25 @@
 ---
 title: AI Friendliness
-description: How to use IC Reactor with AI assistants and LLMs
+description: How to use IC Reactor with AI assistants and LLM coding agents
 ---
 
 IC Reactor is designed to be highly compatible with AI coding assistants (like ChatGPT, Claude, and GitHub Copilot) and LLMs. This guide explains how to get the best results when using AI to build with IC Reactor.
 
-## context.txt
+## AI Context Files
 
-We provide a structured overview of the library at `/llms.txt` (located at the root of the repository). You can feed this file to any LLM to give it immediate context about:
+The repository keeps AI-facing context in a small number of canonical files:
 
-- Core concepts (Reactor, ClientManager)
-- Key packages and their roles
-- Common code patterns for initialization and React hooks
-- Best practices for type safety and transformations
+| File                               | Best for                                                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `/llms.txt`                        | Compact package ownership, task routing, generated-file boundaries, and verification commands                       |
+| `/llms-full.txt`                   | Longer copy-paste guide with setup patterns, inside/outside React guidance, auth, codegen, and dynamic Candid notes |
+| `/AGENTS.md`                       | OpenAI Codex instructions for this repository                                                                       |
+| `/CLAUDE.md`                       | Claude project context                                                                                              |
+| `/.github/copilot-instructions.md` | GitHub Copilot repository instructions                                                                              |
+| `/.cursorrules`                    | Cursor repository rules                                                                                             |
+| `/skill-packages/`                 | Reusable multi-agent skill packages                                                                                 |
 
-You can download the context file to provide to your AI assistant:
+Use `/llms.txt` for quick retrieval and `/llms-full.txt` when an assistant needs a self-contained prompt payload.
 
 import { Card } from "@astrojs/starlight/components"
 
@@ -23,9 +28,29 @@ import { Card } from "@astrojs/starlight/components"
   llms.txt](https://raw.githubusercontent.com/B3Pay/ic-reactor/main/llms.txt)
 </Card>
 
+<Card title="Full AI Guide" icon="document">
+  [Download
+  llms-full.txt](https://raw.githubusercontent.com/B3Pay/ic-reactor/main/llms-full.txt)
+</Card>
+
+## What To Give An Agent
+
+| Task                                       | Include                                                                                |
+| ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Build a React canister integration         | `/llms-full.txt` and the generated `idlFactory` or Candid service                      |
+| Refactor hooks or cache invalidation       | `/skill-packages/ic-reactor-hooks/SKILL.md`                                            |
+| Change package exports or generated output | `/skill-packages/ic-reactor-packages/SKILL.md`                                         |
+| Add auth or identity attributes            | `packages/auth/README.md`, `packages/auth-react/README.md`, and the relevant app setup |
+| Configure generation                       | `packages/cli/README.md` or `packages/vite-plugin/README.md`                           |
+
 ## Agent Skills
 
-The `ic-reactor-hooks` skill is available in two places:
+The in-repo skills are:
+
+- `ic-reactor-hooks`: React hook factories, generated hooks, query/mutation factories, cache invalidation, and inside-vs-outside React usage
+- `ic-reactor-packages`: package ownership, dependency boundaries, generated files, exports, and verification workflow
+
+The hook skill is also available externally:
 
 - **In-repo**: [`skill-packages/ic-reactor-hooks/`](https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor-hooks) — used by agents working directly in this repository
 - **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
@@ -50,45 +75,49 @@ Use $ic-reactor-hooks to refactor this canister integration into reusable query 
 npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
 ```
 
-## End-to-End Type Safety
+## Prompting Checklist
 
-Since IC Reactor is built with extreme type safety in mind, AI assistants can easily infer the available methods and argument types for your canisters once you've defined the IDL factory.
+When asking an AI assistant to write IC Reactor code, include:
 
-### Tip: Provide the IDL Factory
+- the target package or app path
+- the Candid service or generated `idlFactory` and `_SERVICE` type
+- whether the code runs inside React, outside React, or both
+- whether UI-friendly display values (`DisplayReactor` / `display: true`) are desired
+- whether the project should use generated hooks, manual hooks, or reusable factories
+- the verification command you expect the agent to run
 
-When asking an AI to write code for a specific canister, always provide the generated IDL factory (e.g., `my_canister.did.js`) or the Candid interface. The AI can then write perfectly typed `useActorQuery` or `useActorMutation` hooks.
+## Inside React vs Outside React
 
-## Display Types (Auto Transformations)
+This is the most important distinction for generated or AI-written integrations:
 
-To make AI-generated code cleaner and less error-prone, you can use `DisplayReactor`. This allows the AI to write code using standard JavaScript types (like `string` for BigInt or Principals) instead of specialized classes, which is what most LLMs are naturally trained on.
-
-```typescript
-import { DisplayReactor } from "@ic-reactor/core"
-import { createActorHooks } from "@ic-reactor/react"
-
-const reactor = new DisplayReactor({
-  clientManager,
-  idlFactory,
-  name: "backend",
-  canisterId: "...",
-})
-
-const { useActorQuery, useActorMutation } = createActorHooks(reactor)
-```
+- React hooks (`useActorQuery`, `.useQuery()`, `.useMutation()`, etc.) belong only in React components or custom hooks.
+- Route loaders, actions, services, scripts, and tests should use imperative APIs such as `.fetch()`, `.prefetch()`, `.execute()`, `.invalidate()`, `.getCacheData()`, or direct reactor methods.
 
 ## Prompting Examples
 
 ### Setup
 
-"Help me set up an IC Reactor actor for a canister with ID `rrkah-fqaaa-aaaaa-aaaaq-cai` and an IDL factory imported from `./declarations/my_canister`."
+```text
+Use llms-full.txt and set up a display reactor for canister backend using the IDL factory from ./declarations/backend. Show a React component and the verification command.
+```
 
-### Data Fetching
+### Shared Factories
 
-"Show me how to use `useActorQuery` to fetch a user's balance from a Ledger canister using IC Reactor hooks."
+```text
+Use $ic-reactor-hooks to refactor this canister integration into reusable query and mutation factories. Show usage inside a React component and in a route loader/action.
+```
 
-### Mutations
+### Package Changes
 
-"Write a React component that uses `useActorMutation` to transfer tokens between two accounts."
+```text
+Use $ic-reactor-packages to review this codegen change. Identify the package owner, generated-file boundaries, affected docs, and focused tests.
+```
+
+## Generated Files
+
+Agents should not edit generated declarations or generated hook files by hand. If generated output is wrong, update the source `.did`, wrapper module, or generator under `packages/codegen/src/`, then regenerate intentionally.
+
+For repository work, generated/transient paths include `dist/`, `.dfx/`, `.icp/`, `.mops/`, `target/`, `.next/`, `.astro/`, `*.tsbuildinfo`, generated canister declarations, and generated hook files.
 
 ## Tools and Extensions
 

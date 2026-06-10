@@ -10,6 +10,7 @@ public package boundaries, generated artifacts, and verification workflow.
 - Root `tsconfig.json` project references and CI-aligned type checks
 - Generated file boundaries for codegen, CLI, Vite plugin, parser, and examples
 - Focused verification commands for package-level changes
+- Cross-doc consistency for README files, docs pages, agent files, and `llms.txt`
 
 ## Skill Structure
 
@@ -33,3 +34,10 @@ ic-reactor-packages/
 Use $ic-reactor-packages to review this package-level change and tell me which
 packages need tests, builds, docs, or export updates.
 ```
+
+## Companion References
+
+- Root `llms.txt` for compact package/task routing
+- Root `llms-full.txt` for a prompt-ready AI guide
+- `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, and `.cursorrules`
+  for agent-specific discovery

@@ -22,7 +22,9 @@ trigger:
     - defineReactor
     - createQuery
     - createMutation
+    - createQueryFactory
     - createSuspenseQuery
+    - createInfiniteQuery
     - useActorMethod
     - ICP React hooks
     - Internet Computer hooks

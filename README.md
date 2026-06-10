@@ -318,7 +318,11 @@ console.log(balance)
 - Package docs:
   - [`@ic-reactor/react`](./packages/react/README.md)
   - [`@ic-reactor/core`](./packages/core/README.md)
+  - [`@ic-reactor/auth`](./packages/auth/README.md)
+  - [`@ic-reactor/auth-react`](./packages/auth-react/README.md)
   - [`@ic-reactor/candid`](./packages/candid/README.md)
+  - [`@ic-reactor/parser`](./packages/parser/README.md)
+  - [`@ic-reactor/codegen`](./packages/codegen/README.md)
   - [`@ic-reactor/cli`](./packages/cli/README.md)
   - [`@ic-reactor/vite-plugin`](./packages/vite-plugin/README.md)
 
@@ -355,18 +359,24 @@ This repository is intentionally structured to work well with AI coding assistan
 
 ### AI context files
 
-| File                                                                   | Purpose                                       |
-| ---------------------------------------------------------------------- | --------------------------------------------- |
-| [`llms.txt`](./llms.txt)                                               | High-level library context for LLMs           |
-| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context            |
-| [`AGENTS.md`](./AGENTS.md)                                             | OpenAI Codex agent instructions               |
-| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                   |
-| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                              |
-| [`skill-packages/`](./skill-packages/)                                 | Local skill packages (multi-agent compatible) |
+| File                                                                   | Purpose                                                       |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| [`llms.txt`](./llms.txt)                                               | Compact package/task routing manifest for LLMs                |
+| [`llms-full.txt`](./llms-full.txt)                                     | Longer copy-paste guide with setup patterns and API choices   |
+| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context                            |
+| [`AGENTS.md`](./AGENTS.md)                                             | OpenAI Codex agent instructions                               |
+| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                                   |
+| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                                              |
+| [`skill-packages/`](./skill-packages/)                                 | Local skill packages for hooks and package-boundary reasoning |
 
-### Skill: `ic-reactor-hooks`
+### Skills
 
-The `ic-reactor-hooks` skill is available in two places:
+This repo includes two local skills:
+
+- [`ic-reactor-hooks`](./skill-packages/ic-reactor-hooks/) for React hook factories, generated hooks, cache invalidation, and inside-vs-outside React usage.
+- [`ic-reactor-packages`](./skill-packages/ic-reactor-packages/) for package ownership, generated-file boundaries, exports, and verification workflow.
+
+The `ic-reactor-hooks` skill is also available externally:
 
 - **In-repo**: [`skill-packages/ic-reactor-hooks/`](./skill-packages/ic-reactor-hooks/) — used by agents working directly in this repository
 - **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
@@ -379,6 +389,13 @@ Use it when asking an agent to:
 - build reusable `createQuery` / `createMutation` modules
 - explain inside-React vs outside-React usage (`fetch`, `execute`, `invalidate`)
 - choose between manual hooks and generated hooks (CLI / Vite plugin)
+
+Use `ic-reactor-packages` when asking an agent to:
+
+- decide which package owns a behavior
+- update exports, package metadata, or docs consistently
+- avoid editing generated output by hand
+- choose focused verification commands for a package-level change
 
 Example prompt:
 

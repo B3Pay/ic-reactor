@@ -71,6 +71,8 @@ Follow these repository-specific patterns when suggesting code:
 - `examples/all-in-one-demo/src/lib/factories.ts`
 - `examples/tanstack-router/src/canisters/ledger/hooks/`
 - `AGENTS.md`
+- `llms.txt`
+- `llms-full.txt`
 - `skill-packages/ic-reactor-hooks/SKILL.md`
 - `skill-packages/ic-reactor-packages/SKILL.md`
 

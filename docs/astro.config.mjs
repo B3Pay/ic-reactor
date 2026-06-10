@@ -341,6 +341,33 @@ export default defineConfig({
                   ],
                 },
                 {
+                  label: "@ic-reactor/auth",
+                  items: [
+                    { label: "Guide", link: "/guides/authentication" },
+                    {
+                      label: "ClientManager Auth",
+                      link: "/reference/clientmanager",
+                    },
+                  ],
+                },
+                {
+                  label: "@ic-reactor/auth-react",
+                  items: [
+                    {
+                      label: "createAuthHooks",
+                      link: "/reference/createauthhooks/overview",
+                    },
+                    {
+                      label: "useAuth",
+                      link: "/reference/createauthhooks/useauth",
+                    },
+                    {
+                      label: "useAgentState",
+                      link: "/reference/createauthhooks/useagentstate",
+                    },
+                  ],
+                },
+                {
                   label: "@ic-reactor/candid",
                   items: [
                     { label: "Overview", link: "/packages/candid" },

@@ -100,7 +100,8 @@ pnpm format     # Format code with Prettier
 
 ## Key File References
 
-- `llms.txt` — Comprehensive AI-friendly API guide
+- `llms.txt` — Compact AI routing manifest
+- `llms-full.txt` — Longer AI-friendly API and task guide
 - `skill-packages/ic-reactor-hooks/SKILL.md` — Hook patterns skill
 - `skill-packages/ic-reactor-packages/SKILL.md` — Package ownership and verification skill
 - `packages/react/src/` — React package source
