@@ -42,7 +42,10 @@ Already updated examples:
 - `examples/multiple-canister`
 - `examples/nextjs-app-router`
 - `examples/nextjs`
+- `examples/query-demo`
+- `examples/result-types-demo`
 - `examples/suspense-infinite-query-demo`
+- `examples/tanstack-form-demo`
 
 Workflow I want:
 
