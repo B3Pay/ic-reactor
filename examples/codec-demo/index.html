@@ -437,7 +437,7 @@ import { QueryClient } from "@tanstack/query-core"
 import { idlFactory, type Ledger } from "./declarations/ledger"
 
 const queryClient = new QueryClient()
-const clientManager = new ClientManager({ queryClient, withProcessEnv: true })
+const clientManager = new ClientManager({ queryClient })
 
 // Raw Reactor - returns Candid types (bigint, Principal, etc.)
 const rawReactor = new Reactor&lt;Ledger&gt;({
