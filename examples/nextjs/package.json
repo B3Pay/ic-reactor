@@ -36,7 +36,7 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@tanstack/react-query": "^5.90.16",
     "next": "^16.2.6",
-    "postcss": "^8.5.12",
+    "postcss": "^8.5.13",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "tailwindcss": "^4.1.18"
