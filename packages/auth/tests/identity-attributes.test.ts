@@ -74,4 +74,19 @@ describe("Internet Identity attributes", () => {
       name: "behrad deylami",
     })
   })
+
+  it("trims repeated numeric length prefixes before the next scoped key", () => {
+    const requestedKeys = identityAttributeKeys({
+      openIdProvider: "https://issuer.example.com",
+      keys: ["email", "name"],
+    })
+    const textPayload = new TextEncoder().encode(
+      `${requestedKeys[0]}\u0011alice@example.com${"0".repeat(128)}${requestedKeys[1]}\u0005Alice`
+    )
+
+    expect(decodeIdentityAttributeValues(textPayload, requestedKeys)).toEqual({
+      email: "alice@example.com",
+      name: "Alice",
+    })
+  })
 })

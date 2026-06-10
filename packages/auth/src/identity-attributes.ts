@@ -229,9 +229,12 @@ function cleanPrintableAttributeValue(
     }
   }
 
-  const nextOpenIdKeyMatch = /\d*openid:/.exec(cleaned)
-  if (nextOpenIdKeyMatch?.index && nextOpenIdKeyMatch.index > 0) {
-    cleaned = cleaned.slice(0, nextOpenIdKeyMatch.index)
+  const nextOpenIdKeyIndex = cleaned.indexOf("openid:")
+  if (nextOpenIdKeyIndex > 0) {
+    cleaned = cleaned.slice(
+      0,
+      trimCandidTextLengthPrefix(cleaned, nextOpenIdKeyIndex)
+    )
   }
 
   return cleaned.trim()
@@ -239,10 +242,14 @@ function cleanPrintableAttributeValue(
 
 function trimCandidTextLengthPrefix(value: string, index: number): number {
   let trimmedIndex = index
-  while (trimmedIndex > 0 && /\d/.test(value[trimmedIndex - 1])) {
+  while (trimmedIndex > 0 && isAsciiDigit(value.charCodeAt(trimmedIndex - 1))) {
     trimmedIndex -= 1
   }
   return trimmedIndex
+}
+
+function isAsciiDigit(charCode: number): boolean {
+  return charCode >= 48 && charCode <= 57
 }
 
 function identityAttributeDisplayKey(key: string): string {
