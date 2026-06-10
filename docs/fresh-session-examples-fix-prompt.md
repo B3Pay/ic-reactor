@@ -33,12 +33,7 @@ Already updated examples:
 - `examples/candid-parser`
 - `examples/ckbtc-wallet`
 - `examples/icp-reactor-demo`
-
-Relevant memory file:
-
-- `docs/local-examples-session-memory.md`
-
-Please read that file first, then continue with the remaining examples.
+- `examples/suspense-infinite-query-demo`
 
 Workflow I want:
 
