@@ -10,9 +10,29 @@ This file provides context for Claude-based AI agents working in the IC Reactor 
 
 - `@ic-reactor/core` — Low-level API for managing actors, agents, and query caching
 - `@ic-reactor/react` — High-level React hooks and context providers
+- `@ic-reactor/auth` — Internet Identity auth state and identity attributes
+- `@ic-reactor/auth-react` — React hooks for `@ic-reactor/auth`
 - `@ic-reactor/candid` — Dynamic Candid parsing and runtime reactors
+- `@ic-reactor/parser` — Rust/WASM Candid parser used by candid and codegen flows
+- `@ic-reactor/codegen` — Shared declaration/reactor/client generation pipeline
 - `@ic-reactor/cli` — Code generation for declarations + typed hooks/reactors
 - `@ic-reactor/vite-plugin` — Watch-mode code generation for Vite projects
+
+## Package Ownership Map
+
+Start in the package that owns the behavior:
+
+| Package                   | Primary files                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`        | `packages/core/src/`, `packages/core/tests/`                                                      |
+| `@ic-reactor/react`       | `packages/react/src/`, `packages/react/tests/`, `skill-packages/ic-reactor-hooks/SKILL.md`        |
+| `@ic-reactor/auth`        | `packages/auth/src/`, `packages/auth/tests/`                                                      |
+| `@ic-reactor/auth-react`  | `packages/auth-react/src/`, `packages/auth-react/tests/`                                          |
+| `@ic-reactor/candid`      | `packages/candid/src/`, `packages/candid/METADATA_REACTOR_GUIDE.md`                               |
+| `@ic-reactor/parser`      | `packages/parser/src/`, `packages/parser/tests/`                                                  |
+| `@ic-reactor/codegen`     | `packages/codegen/src/`, `packages/codegen/src/*.test.ts`                                         |
+| `@ic-reactor/cli`         | `packages/cli/src/`, `packages/cli/schema.json`                                                   |
+| `@ic-reactor/vite-plugin` | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/` |
 
 ## Skills
 
@@ -72,6 +92,8 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
 pnpm install    # Install dependencies
 pnpm build      # Build all packages
 pnpm test       # Run all tests
+pnpm exec tsc --noEmit # Root type check used by CI
+pnpm typecheck:examples # Type-check example apps
 pnpm format     # Format code with Prettier
 ```
 

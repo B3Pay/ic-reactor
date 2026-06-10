@@ -8,6 +8,33 @@ A skill is a set of local instructions to follow that is stored in a `SKILL.md` 
 
 - `ic-reactor-hooks`: Create, refactor, and document Reactor hook integrations for this repo, including `createActorHooks`, query/mutation factories, `useActorMethod`, and generated hooks. Use when implementing or explaining hook usage inside React components versus imperative usage outside React. (file: `skill-packages/ic-reactor-hooks/SKILL.md`)
 
+## Package map
+
+Use this map before editing so you can start in the package that owns the behavior:
+
+| Package                   | Owns                                                                                              | Look here first                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, query-cache integration | `packages/core/src/`, `packages/core/tests/`                                                      |
+| `@ic-reactor/react`       | React hook factories, reusable query/mutation objects, `defineReactor`, `useActorMethod`          | `packages/react/src/`, `packages/react/tests/`, `skill-packages/ic-reactor-hooks/SKILL.md`        |
+| `@ic-reactor/auth`        | Internet Identity auth state, auth client loading, identity attributes                            | `packages/auth/src/`, `packages/auth/tests/`                                                      |
+| `@ic-reactor/auth-react`  | React hooks over `@ic-reactor/auth` managers                                                      | `packages/auth-react/src/`, `packages/auth-react/tests/`                                          |
+| `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                     | `packages/candid/src/`, `packages/candid/METADATA_REACTOR_GUIDE.md`                               |
+| `@ic-reactor/parser`      | Rust/WASM Candid parser package                                                                   | `packages/parser/src/`, `packages/parser/tests/`                                                  |
+| `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline                                             | `packages/codegen/src/`, `packages/codegen/src/*.test.ts`                                         |
+| `@ic-reactor/cli`         | `ic-reactor` command-line interface and config schema                                             | `packages/cli/src/`, `packages/cli/schema.json`                                                   |
+| `@ic-reactor/vite-plugin` | Vite integration, `.did` watching, environment-cookie injection                                   | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/` |
+
+## Verification commands
+
+- Package builds: `pnpm build`
+- Package tests: `pnpm test`
+- Root type check used by CI: `pnpm exec tsc --noEmit`
+- Example type checks: `pnpm typecheck:examples`
+- Docs build: `pnpm docs:build`
+- Dependency audit: `corepack pnpm audit --audit-level moderate`
+
+Generated outputs under `dist`, `.dfx`, `.icp`, `.mops`, `target`, `.next`, `.astro`, and `*.tsbuildinfo` are normally build artifacts. Do not hand-edit generated hook files; change the generator, wrapper, or source `.did` instead.
+
 ### How to use skills
 
 - Discovery: Skill bodies live on disk at `skill-packages/<skill-name>/SKILL.md`. Agent-specific metadata is in `skill-packages/<skill-name>/agents/`.
@@ -27,9 +54,9 @@ A skill is a set of local instructions to follow that is stored in a `SKILL.md` 
 
 These skills are designed to work across multiple AI agent platforms. Each skill includes agent-specific metadata in `agents/`:
 
-| Agent Platform     | Metadata File         | Project Discovery File              |
-| ------------------ | --------------------- | ----------------------------------- |
-| OpenAI Codex       | `agents/openai.yaml`  | `AGENTS.md` (this file)             |
-| Claude / Anthropic | `agents/claude.yaml`  | `CLAUDE.md`                         |
-| GitHub Copilot     | `agents/copilot.yaml` | `.github/copilot-instructions.md`   |
-| Cursor             | —                     | `.cursorrules`                      |
+| Agent Platform     | Metadata File         | Project Discovery File            |
+| ------------------ | --------------------- | --------------------------------- |
+| OpenAI Codex       | `agents/openai.yaml`  | `AGENTS.md` (this file)           |
+| Claude / Anthropic | `agents/claude.yaml`  | `CLAUDE.md`                       |
+| GitHub Copilot     | `agents/copilot.yaml` | `.github/copilot-instructions.md` |
+| Cursor             | —                     | `.cursorrules`                    |
