@@ -1,35 +1,35 @@
 # IC Reactor Core + TypeScript Demo
 
-This project demonstrates how to use `@ic-reactor/core` with TypeScript in a vanilla Vite project.
+This example shows how to use `@ic-reactor/core` and `@ic-reactor/auth` from a
+vanilla TypeScript/Vite app, without React.
 
-## Features
+The app talks to mainnet ICRC token canisters, starting with the ICP ledger, and
+lets you switch to other known ck token canisters or enter a custom token
+canister ID.
 
-- **Store Initialization**: Shows how to create a reactor store with `createReactorStore`.
-- **Actor Management**: configuring actors (Ledger in this case) with `canisterId` and `idlFactory`.
-- **Authentication**: Implementing Internet Identity login/logout using `AgentManager`.
-- **Query Calls**: Calling canister methods (e.g., `name`, `symbol`, `decimals`) using the actor instance.
-- **Type Safety**: Using TypeScript for actor interfaces.
+## What it demonstrates
 
-## Setup
+- Creating a shared `ClientManager` and `QueryClient`
+- Creating a `Reactor` directly with a Candid IDL factory
+- Using `AuthenticationManager({ clientManager })` for Internet Identity login
+- Calling query/update methods outside React components
+- Switching a reactor between token canister IDs with `setCanisterId`
 
-1. Install dependencies:
+Because this demo targets mainnet ledgers, it sets the agent host to
+`https://ic0.app`. It does not use the Vite plugin, a local `ic_env` cookie, or a
+local Internet Identity provider.
 
-   ```bash
-   pnpm install
-   ```
+## Run locally
 
-2. Start the development server:
+```bash
+pnpm install
+pnpm run dev
+```
 
-   ```bash
-   pnpm dev
-   ```
+Then open the Vite URL printed in the terminal.
 
-3. Build for production:
-   ```bash
-   pnpm build
-   ```
+## Build
 
-## Key Files
-
-- `src/main.ts`: Main entry point containing the core logic.
-- `src/declarations/ledger.ts`: Type definitions and IDL for the Ledger canister.
+```bash
+pnpm run build
+```

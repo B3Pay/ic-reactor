@@ -35,17 +35,25 @@ Already updated examples:
 - `examples/codec-demo`
 - `examples/codegen-in-action`
 - `examples/custom-provider`
+- `examples/dynamic-actor`
 - `examples/icp-reactor-demo`
 - `examples/identity-attributes-demo`
+- `examples/javascript`
 - `examples/metadata-reactor-capabilities-demo`
 - `examples/metadata-reactor-demo`
 - `examples/multiple-canister`
+- `examples/multiple-provider`
 - `examples/nextjs-app-router`
 - `examples/nextjs`
 - `examples/query-demo`
+- `examples/react-provider`
 - `examples/result-types-demo`
 - `examples/suspense-infinite-query-demo`
 - `examples/tanstack-form-demo`
+- `examples/typescript`
+- `examples/typescript-demo`
+- `examples/vite-environment-variables`
+- `examples/vite-plugin-demo`
 
 Workflow I want:
 

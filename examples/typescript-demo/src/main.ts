@@ -11,6 +11,7 @@ const queryClient = new QueryClient()
 window.__TANSTACK_QUERY_CLIENT__ = queryClient
 
 const clientManager = new ClientManager({
+  agentOptions: { host: "https://ic0.app" },
   queryClient,
 })
 const authentication = new AuthenticationManager({ clientManager })
