@@ -4,9 +4,10 @@ This directory contains AI agent skill packages for the IC Reactor project. Skil
 
 ## Available Skills
 
-| Skill                                      | Description                                                   |
-| ------------------------------------------ | ------------------------------------------------------------- |
-| [`ic-reactor-hooks`](./ic-reactor-hooks/)  | React hooks, query/mutation factories, and cache patterns     |
+| Skill                                           | Description                                                                |
+| ----------------------------------------------- | -------------------------------------------------------------------------- |
+| [`ic-reactor-hooks`](./ic-reactor-hooks/)       | React hooks, query/mutation factories, and cache patterns                  |
+| [`ic-reactor-packages`](./ic-reactor-packages/) | Monorepo package ownership, generated artifacts, and verification workflow |
 
 ## Agent Compatibility
 
@@ -19,12 +20,12 @@ Each skill includes metadata for multiple AI agent platforms:
 
 ## How Skills Are Discovered
 
-| Agent               | Discovery File                      | Skill Path Reference                            |
-| ------------------- | ----------------------------------- | ----------------------------------------------- |
-| OpenAI Codex        | `AGENTS.md`                         | `skill-packages/ic-reactor-hooks/SKILL.md`      |
-| Claude / Anthropic  | `CLAUDE.md`                         | `skill-packages/ic-reactor-hooks/SKILL.md`      |
-| GitHub Copilot      | `.github/copilot-instructions.md`   | `skill-packages/ic-reactor-hooks/SKILL.md`      |
-| Cursor              | `.cursorrules`                      | `skill-packages/ic-reactor-hooks/SKILL.md`      |
+| Agent              | Discovery File                    | Skill Path Reference                   |
+| ------------------ | --------------------------------- | -------------------------------------- |
+| OpenAI Codex       | `AGENTS.md`                       | `skill-packages/<skill-name>/SKILL.md` |
+| Claude / Anthropic | `CLAUDE.md`                       | `skill-packages/<skill-name>/SKILL.md` |
+| GitHub Copilot     | `.github/copilot-instructions.md` | `skill-packages/<skill-name>/SKILL.md` |
+| Cursor             | `.cursorrules`                    | `skill-packages/<skill-name>/SKILL.md` |
 
 ## Adding a New Skill
 

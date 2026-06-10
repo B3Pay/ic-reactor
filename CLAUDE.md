@@ -41,6 +41,7 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
 ### Available Skills
 
 - **`ic-reactor-hooks`**: Create, refactor, and document Reactor hook integrations, including `createActorHooks`, query/mutation factories, `useActorMethod`, and generated hooks. Use when implementing or explaining hook usage inside React components versus imperative usage outside React. (file: `skill-packages/ic-reactor-hooks/SKILL.md`)
+- **`ic-reactor-packages`**: Inspect, modify, review, or document package ownership, exports, tsconfig/project references, generated artifacts, dependency boundaries, and verification workflows across the IC Reactor monorepo. Use when deciding which package owns behavior or when work spans package metadata/build/test/release readiness. (file: `skill-packages/ic-reactor-packages/SKILL.md`)
 
 ### How to Use Skills
 
@@ -101,6 +102,7 @@ pnpm format     # Format code with Prettier
 
 - `llms.txt` — Comprehensive AI-friendly API guide
 - `skill-packages/ic-reactor-hooks/SKILL.md` — Hook patterns skill
+- `skill-packages/ic-reactor-packages/SKILL.md` — Package ownership and verification skill
 - `packages/react/src/` — React package source
 - `packages/react/README.md` — React package docs
 - `examples/all-in-one-demo/src/lib/factories.ts` — Factory pattern examples

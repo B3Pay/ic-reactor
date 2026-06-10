@@ -8,6 +8,8 @@ Follow these repository-specific patterns when suggesting code:
 - Prefer small, explicit changes over large custom abstractions.
 - Keep TypeScript types accurate and inferable.
 - Do not hand-edit generated files unless the user explicitly asks.
+- For package ownership, exports, generated artifacts, or verification workflow questions, use `skill-packages/ic-reactor-packages/SKILL.md`.
+- For React hook/factory implementation questions, use `skill-packages/ic-reactor-hooks/SKILL.md`.
 
 ## Package Ownership
 
@@ -70,6 +72,7 @@ Follow these repository-specific patterns when suggesting code:
 - `examples/tanstack-router/src/canisters/ledger/hooks/`
 - `AGENTS.md`
 - `skill-packages/ic-reactor-hooks/SKILL.md`
+- `skill-packages/ic-reactor-packages/SKILL.md`
 
 ## Verification
 

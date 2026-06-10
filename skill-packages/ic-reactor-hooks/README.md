@@ -31,12 +31,12 @@ ic-reactor-hooks/
 
 This skill package includes metadata for multiple AI agent platforms:
 
-| Agent Platform     | Config File            | Discovery Method                            |
-| ------------------ | ---------------------- | ------------------------------------------- |
-| OpenAI Codex       | `agents/openai.yaml`   | `AGENTS.md` + `.codex/` path conventions    |
-| Claude / Anthropic | `agents/claude.yaml`   | `CLAUDE.md` + skill-packages discovery      |
-| GitHub Copilot     | `agents/copilot.yaml`  | `.github/copilot-instructions.md` reference |
-| Cursor             | —                      | `.cursorrules` references `SKILL.md`        |
+| Agent Platform     | Config File           | Discovery Method                            |
+| ------------------ | --------------------- | ------------------------------------------- |
+| OpenAI Codex       | `agents/openai.yaml`  | `AGENTS.md` + `.codex/` path conventions    |
+| Claude / Anthropic | `agents/claude.yaml`  | `CLAUDE.md` + skill-packages discovery      |
+| GitHub Copilot     | `agents/copilot.yaml` | `.github/copilot-instructions.md` reference |
+| Cursor             | —                     | `.cursorrules` references `SKILL.md`        |
 
 All agents share the same `SKILL.md` instructions and `references/patterns.md` examples.
 
@@ -53,13 +53,7 @@ Agents working in the `ic-reactor` repository discover this skill through:
 
 ### External Install (for other ICP projects)
 
-This skill is also published in the standalone skills repo [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) for use outside this repository:
-
-```bash
-npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
-```
-
-Or install directly from this repo:
+Install directly from this repo:
 
 ```text
 Install the skill from github.com/B3Pay/ic-reactor path skill-packages/ic-reactor-hooks

@@ -43,6 +43,8 @@ const { mutate } = useActorMutation({
 ## Documentation
 - Refer to `llms.txt` in the root directory for a comprehensive API overview and high-level concepts.
 - Refer to `/docs` for detailed guides and examples.
+- Refer to `skill-packages/ic-reactor-packages/SKILL.md` for package ownership, exports, generated artifacts, and verification workflows.
+- Refer to `skill-packages/ic-reactor-hooks/SKILL.md` for React hook, query/mutation factory, and cache invalidation patterns.
 
 ## Tech Stack
 - TypeScript

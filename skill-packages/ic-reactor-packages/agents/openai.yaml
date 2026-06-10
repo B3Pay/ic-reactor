@@ -1,0 +1,10 @@
+interface:
+  display_name: "IC Reactor Packages"
+  short_description: "IC Reactor monorepo package map and verification workflow"
+  icon_small: "./assets/ic-reactor-icon.svg"
+  icon_large: "./assets/ic-reactor-icon.svg"
+  brand_color: "#29ABE2"
+  default_prompt: "Use $ic-reactor-packages to inspect or modify the IC Reactor monorepo package architecture, pick the correct package owner, avoid generated-file traps, and run the right verification commands."
+
+policy:
+  allow_implicit_invocation: true

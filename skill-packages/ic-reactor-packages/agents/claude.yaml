@@ -1,0 +1,31 @@
+# Claude / Anthropic agent metadata for ic-reactor-packages skill.
+
+interface:
+  display_name: "IC Reactor Packages"
+  short_description: "IC Reactor monorepo package map and verification workflow"
+  brand_color: "#29ABE2"
+  default_prompt: >-
+    Use ic-reactor-packages to inspect or modify the IC Reactor monorepo
+    package architecture, choose the correct package owner, avoid generated-file
+    traps, and run the right verification commands.
+
+trigger:
+  keywords:
+    - ic-reactor package
+    - "@ic-reactor/core"
+    - "@ic-reactor/react"
+    - "@ic-reactor/auth"
+    - "@ic-reactor/auth-react"
+    - "@ic-reactor/candid"
+    - "@ic-reactor/parser"
+    - "@ic-reactor/codegen"
+    - "@ic-reactor/cli"
+    - "@ic-reactor/vite-plugin"
+    - package exports
+    - monorepo
+    - generated files
+  allow_implicit: true
+
+instructions:
+  entry_point: "../SKILL.md"
+  reference: "../references/package-map.md"
