@@ -6,12 +6,17 @@ function App() {
     args: ["Vite Plugin"],
   })
 
-  const { data: count, isPending: countPending } = useBackendQuery({
+  const {
+    data: count,
+    isPending: countPending,
+    refetch: refetchCount,
+  } = useBackendQuery({
     functionName: "getCount",
   })
 
   const { mutate: increment, isPending: incrementing } = useBackendMutation({
     functionName: "increment",
+    onSuccess: () => refetchCount(),
   })
 
   return (
