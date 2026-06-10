@@ -11,6 +11,10 @@ It talks to the live ICP, ckBTC, and ckETH ledgers through `DisplayReactor`
 instances, so the example focuses on reusable query and mutation composition
 instead of local canister setup.
 
+Because the demo targets mainnet ledger canisters, the shared agent is
+explicitly configured with `https://ic0.app`. It does not use local `ic_env`
+injection or a local Internet Identity canister.
+
 ## Run It
 
 ```bash

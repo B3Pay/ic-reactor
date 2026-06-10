@@ -1,33 +1,28 @@
-# Next.js App Router (Hydration-Safe Pattern)
+# Next.js App Router Demo
 
-This project provides a clean template demonstrating how to use `@ic-reactor` features and **TanStack Query** correctly inside **Next.js 14 App Router** dapps.
+This example demonstrates a hydration-safe IC Reactor setup in a Next.js 14 App
+Router application.
 
-## The App Router Challenge on the Internet Computer
+It keeps browser-only IC Reactor state inside client providers, then shares one
+`ClientManager` between authentication and a dynamic ledger reactor. The token
+explorer queries live mainnet ICRC ledgers such as ICP, ckBTC, ckETH, ckUSDT,
+and ckUSDC.
 
-When using Web3 frameworks on RSC-enabled frameworks like Next.js App Router, directly creating client/actor instances in global scope or inside server pages triggers major **Hydration Mismatches** and crashes on mount. This template isolates the state initialization cleanly inside client trees so your application compiles and runs seamlessly on both Server and Client environments.
+Because the demo targets mainnet canisters, the shared agent is explicitly
+configured with `https://ic0.app`. It does not use local `ic_env` injection or a
+manual local Internet Identity canister.
 
-## Local Development
-
-### 1. Prerequisite: Local Replica
-
-Start your local Internet Computer replica and deploy the todo canister:
-
-```bash
-# In another terminal or separate window:
-dfx start --background --clean
-dfx deploy
-```
-
-_(Alternatively, run `dfx deps deploy internet_identity` if configuring local login)_
-
-### 2. Run the Next.js App
-
-Install the packages and run the dev server of this example:
+## Run
 
 ```bash
-cd examples/nextjs-app-router
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) inside your web browser.
+Open [http://localhost:3000](http://localhost:3000).
+
+## Build
+
+```bash
+pnpm run build
+```

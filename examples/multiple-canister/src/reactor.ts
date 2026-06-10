@@ -53,6 +53,7 @@ export const {
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   idlFactory: icrc2IdlFactory,
   queryClient,
+  agentOptions: { host: "https://ic0.app" },
 })
 
 // ICDV Token — reuses the same ClientManager (shared agent)

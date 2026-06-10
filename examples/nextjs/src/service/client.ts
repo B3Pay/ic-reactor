@@ -8,7 +8,7 @@ export const queryClient = new QueryClient()
 export const clientManager = new ClientManager({
   queryClient,
   agentOptions: {
-    verifyQuerySignatures: false
+    host: process.env.NEXT_PUBLIC_IC_HOST || "http://127.0.0.1:4943"
   }
 })
 export const authentication = new AuthenticationManager({ clientManager })

@@ -13,7 +13,7 @@
     "dfinity"
   ],
   "scripts": {
-    "install:all": "(yarn -v && yarn || npm install) && npm run ic-wasm:install && npm run candid:install",
+    "install:all": "pnpm install && pnpm ic-wasm:install && pnpm candid:install",
     "candid:install": "cargo install candid-extractor",
     "ic-wasm:install": "cargo install ic-wasm",
     "build": "next build --webpack",
@@ -23,7 +23,6 @@
     "dfx:start": "dfx start --background --clean",
     "dfx:stop": "dfx stop",
     "dfx:pull": "dfx deps pull",
-    "dfx:identity": "dfx deps deploy internet_identity",
     "dfx:build": "dfx build",
     "deploy": "dfx deploy",
     "generate": "dfx generate"

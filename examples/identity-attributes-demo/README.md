@@ -15,12 +15,35 @@ It demonstrates:
 
 ```bash
 cd examples/identity-attributes-demo
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 The example uses `@icp-sdk/auth` v6 because identity attribute requests depend
 on the v6 `signIn()` / `requestAttributes()` API.
+
+The app uses package-level auth defaults:
+
+- `ClientManager({ queryClient })` auto-detects browser `ic_env` when present.
+- `AuthenticationManager({ clientManager })` reads the Internet Identity
+  provider from `ic_env` for local ICP CLI development.
+- `@ic-reactor/vite-plugin` runs in env-only mode with
+  `icReactor({ canisters: [] })`, so no per-example `identityProvider` or
+  `withCanisterEnv: true` setting is required.
+
+For local Internet Identity with ICP CLI, start the local network first:
+
+```bash
+icp network start
+```
+
+The plugin injects:
+
+```text
+INTERNET_IDENTITY_PROVIDER=http://id.ai.localhost:8000/authorize
+```
+
+into the `ic_env` cookie during local development.
 
 ## Production boundary
 

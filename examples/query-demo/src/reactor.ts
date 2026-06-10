@@ -46,6 +46,7 @@ export const { reactor: icpReactor, clientManager } = defineReactor<Ledger>({
   idlFactory: ledgerIdlFactory,
   display: true,
   queryClient,
+  agentOptions: { host: "https://ic0.app" },
 })
 
 // ckBTC Ledger — reuses the same ClientManager (shared agent)

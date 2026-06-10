@@ -4,6 +4,7 @@ import { QueryClient } from "@tanstack/query-core"
 
 const clientManager = new ClientManager({
   queryClient: new QueryClient(),
+  agentOptions: { host: "https://ic0.app" },
 })
 
 let reactor: MetadataDisplayReactor

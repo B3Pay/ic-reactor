@@ -47,6 +47,7 @@ export function ICReactorProvider({ children }: { children: ReactNode }) {
   const [authContext] = useState(() => {
     const clientManager = new ClientManager({
       queryClient,
+      agentOptions: { host: "https://ic0.app" },
     })
     const authentication = new AuthenticationManager({ clientManager })
     return { clientManager, authentication }

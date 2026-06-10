@@ -32,7 +32,16 @@ Already updated examples:
 - `examples/tanstack-router`
 - `examples/candid-parser`
 - `examples/ckbtc-wallet`
+- `examples/codec-demo`
+- `examples/codegen-in-action`
+- `examples/custom-provider`
 - `examples/icp-reactor-demo`
+- `examples/identity-attributes-demo`
+- `examples/metadata-reactor-capabilities-demo`
+- `examples/metadata-reactor-demo`
+- `examples/multiple-canister`
+- `examples/nextjs-app-router`
+- `examples/nextjs`
 - `examples/suspense-infinite-query-demo`
 
 Workflow I want:
@@ -84,5 +93,5 @@ Current known dirty-worktree context from the previous session:
 - `examples/tanstack-router/src/routeTree.gen.ts` has generated churn.
 - Do not revert unrelated changes unless I explicitly ask.
 
-Please start by reading `docs/local-examples-session-memory.md`, then inspect `examples/`, create a short plan/checklist, and begin with the next not-yet-fixed example.
+Please inspect `examples/`, create a short plan/checklist, and begin with the next not-yet-fixed example.
 ```
