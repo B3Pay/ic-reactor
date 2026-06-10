@@ -16,7 +16,7 @@
     "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^5.4.0",
     "@tanstack/react-query": "^5.90.16",
-    "next": "^14.2.3",
+    "next": "^15.5.16",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "lucide-react": "^0.379.0"
