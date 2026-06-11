@@ -16,19 +16,19 @@
     "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^5.4.0",
     "@tanstack/react-query": "^5.90.16",
-    "next": "^15.5.16",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "lucide-react": "^0.379.0"
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "lucide-react": "^1.17.0"
   },
   "devDependencies": {
-    "@types/node": "^20.12.7",
-    "@types/react": "^18.3.1",
-    "@types/react-dom": "^18.3.0",
-    "typescript": "^5.4.5",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3",
     "postcss": "^8.5.15",
     "autoprefixer": "^10.4.19",
-    "tailwindcss": "^3.4.3"
+    "tailwindcss": "^4.3.0"
   },
   "packageManager": "pnpm@10.30.3"
 }

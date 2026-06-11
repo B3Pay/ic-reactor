@@ -46,11 +46,11 @@
     "@ic-reactor/core": "workspace:^"
   },
   "peerDependencies": {
-    "@icp-sdk/auth": "^7.0.0",
+    "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^5.4.0"
   },
   "devDependencies": {
-    "@icp-sdk/auth": "^7.0.0",
+    "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^5.4.0",
     "@size-limit/preset-small-lib": "^12.1.0",
     "@tanstack/query-core": "^5.100.10",

@@ -45,7 +45,7 @@
     "url": "https://github.com/B3Pay/ic-reactor.git"
   },
   "devDependencies": {
-    "@types/node": "^25.9.2",
+    "@types/node": "^25.9.3",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
     "prettier": "^3.8.3",
