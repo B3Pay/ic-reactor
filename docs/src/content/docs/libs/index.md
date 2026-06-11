@@ -92,6 +92,7 @@ description: Generated API reference documentation
 ## Variables
 
 - [IC_INTERNET_IDENTITY_PROVIDER](variables/IC_INTERNET_IDENTITY_PROVIDER.md)
+- [INTERNET_IDENTITY_PROVIDER_ENV_KEY](variables/INTERNET_IDENTITY_PROVIDER_ENV_KEY.md)
 - [LOCAL_INTERNET_IDENTITY_CANISTER_ID](variables/LOCAL_INTERNET_IDENTITY_CANISTER_ID.md)
 - [LOCAL_INTERNET_IDENTITY_PROVIDER](variables/LOCAL_INTERNET_IDENTITY_PROVIDER.md)
 - [IDENTITY_ATTRIBUTES_PROVIDER](variables/IDENTITY_ATTRIBUTES_PROVIDER.md)
@@ -131,6 +132,7 @@ description: Generated API reference documentation
 - [isInLocalOrDevelopment](functions/isInLocalOrDevelopment.md)
 - [getProcessEnvNetwork](functions/getProcessEnvNetwork.md)
 - [isDev](functions/isDev.md)
+- [isMainnetHost](functions/isMainnetHost.md)
 - [getNetworkByHostname](functions/getNetworkByHostname.md)
 - [extractOkResult](functions/extractOkResult.md)
 - [isNullish](functions/isNullish.md)

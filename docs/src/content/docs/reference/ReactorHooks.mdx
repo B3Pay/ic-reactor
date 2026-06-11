@@ -80,12 +80,12 @@ function TransferForm() {
 
 | Reactor Hook                                                                                    | Equivalent Bound Hook           | Description            |
 | ----------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------- |
-| [`useReactorQuery`](/v3/reference/reactorhooks/usereactorquery)                                 | `useActorQuery`                 | Fetch data (read-only) |
-| [`useReactorMutation`](/v3/reference/reactorhooks/usereactormutation)                           | `useActorMutation`              | Modify data (updates)  |
-| [`useReactorSuspenseQuery`](/v3/reference/reactorhooks/usereactorsuspensequery)                 | `useActorSuspenseQuery`         | Suspense-ready fetch   |
-| [`useReactorInfiniteQuery`](/v3/reference/reactorhooks/usereactorinfinitequery)                 | `useActorInfiniteQuery`         | Pagination support     |
-| [`useReactorSuspenseInfiniteQuery`](/v3/reference/reactorhooks/usereactorsuspenseinfinitequery) | `useActorSuspenseInfiniteQuery` | Suspense + Pagination  |
-| [`useReactorMethod`](/v3/reference/reactorhooks/usereactormethod)                               | `useActorMethod`                | Unified hook           |
+| [`useReactorQuery`](/v4/reference/reactorhooks/usereactorquery)                                 | `useActorQuery`                 | Fetch data (read-only) |
+| [`useReactorMutation`](/v4/reference/reactorhooks/usereactormutation)                           | `useActorMutation`              | Modify data (updates)  |
+| [`useReactorSuspenseQuery`](/v4/reference/reactorhooks/usereactorsuspensequery)                 | `useActorSuspenseQuery`         | Suspense-ready fetch   |
+| [`useReactorInfiniteQuery`](/v4/reference/reactorhooks/usereactorinfinitequery)                 | `useActorInfiniteQuery`         | Pagination support     |
+| [`useReactorSuspenseInfiniteQuery`](/v4/reference/reactorhooks/usereactorsuspenseinfinitequery) | `useActorSuspenseInfiniteQuery` | Suspense + Pagination  |
+| [`useReactorMethod`](/v4/reference/reactorhooks/usereactormethod)                               | `useActorMethod`                | Unified hook           |
 
 ## Type Safety
 
@@ -145,8 +145,8 @@ import type {
 
 <Aside type="note">
   All parameter types extend TanStack Query's base types. This means you get
-  access to standard options like `gcTime`, `retry`,
-  `refetchOnWindowFocus`, `networkMode`, and `placeholderData`.
+  access to standard options like `gcTime`, `retry`, `refetchOnWindowFocus`,
+  `networkMode`, and `placeholderData`.
 </Aside>
 
 <Aside type="tip">

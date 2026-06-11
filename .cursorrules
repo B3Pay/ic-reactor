@@ -1,22 +1,34 @@
 # IC Reactor - AI Rules & Coding Standards
 
 ## Project Context
-You are working on **IC Reactor v3**, a type-safe TypeScript library for building Internet Computer (IC) applications.
-It leverages **TanStack Query** (React Query) for state management and caching.
+
+You are working on **IC Reactor v4**, a type-safe TypeScript library for building Internet Computer (IC) applications.
+It leverages **TanStack Query** for state management and caching, and the repo uses `@icp-sdk/*` packages for IC agent/auth/candid primitives.
+This branch is the next major release line; package manifests may still show pre-release versions until release automation performs the final version bump.
+
+## Package Surface
+
+- Runtime lane (`3.6.0`): `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/auth`, `@ic-reactor/auth-react`, `@ic-reactor/candid`.
+- Codegen lane (`0.11.1`): `@ic-reactor/codegen`, `@ic-reactor/cli`, `@ic-reactor/vite-plugin`.
+- Parser lane (`0.4.6`): `@ic-reactor/parser`.
 
 ## Core Principles
+
 - **Type Safety**: usage of `Candid` types is mandatory. Avoid `any` or loose typing.
 - **DisplayReactor**: Prefer `DisplayReactor` over standard `Reactor` for UI components to handle BigInt serialization automatically.
-- **Factory Pattern**: Use `createActorHooks`, `createQuery`, and `createMutation` factories instead of manual hook implementations.
+- **Setup Pattern**: Prefer `defineReactor` for new React setup when one-call bootstrap is enough.
+- **Factory Pattern**: Use `createActorHooks`, `createQuery`, `createSuspenseQuery`, `createInfiniteQuery`, `createSuspenseInfiniteQuery`, and `createMutation` factories instead of manual hook implementations.
 
 ## Preferred Patterns
 
 ### 1. Data Fetching (Queries)
+
 - Use `useActorQuery` from `createActorHooks` for component-level data fetching.
-- Use `createQuery` for defining reusable query objects outside components.
+- Use `createQuery`, `createSuspenseQuery`, or their factory variants for reusable query objects outside components.
 - Always handle `isLoading` and `error` states.
 
 ### 2. Data Mutations
+
 - Use `useActorMutation` for state-changing calls.
 - **CRITICAL**: Use the `onCanisterError` callback for handling logic errors returned by the canister (e.g., `Result.Err`).
 - Use `onSuccess` for successful `Result.Ok` unwrapped values.
@@ -24,31 +36,36 @@ It leverages **TanStack Query** (React Query) for state management and caching.
 ```typescript
 // ✅ Good Pattern
 const { mutate } = useActorMutation({
-  functionName: 'updateProfile',
-  onSuccess: (data) => console.log('Success:', data),
-  onCanisterError: (error) => console.error('Logic Error:', error), 
-});
+  functionName: "updateProfile",
+  onSuccess: (data) => console.log("Success:", data),
+  onCanisterError: (error) => console.error("Logic Error:", error),
+})
 ```
 
 ### 3. Authentication
+
 - Use `useAuth` for simple login/logout actions.
 - Use `useAgentState` to check if the agent is initialized or to get network details.
 - Avoid deprecated hooks like `useAuthState`.
 
 ## Naming Conventions
+
 - **Factories**: `createActorHooks`, `createQuery`, `createMutation`.
 - **Hooks**: `useActorQuery`, `useActorMutation`, `useActorInfiniteQuery`.
 - **Callbacks**: `onCanisterError` (not calling it just `onError` when referring to canister logic errors).
 
 ## Documentation
+
 - Refer to `llms.txt` in the root directory for compact package/task routing.
 - Refer to `llms-full.txt` for a longer API overview and task-oriented AI guide.
+- Refer to `README.md` for the current package map, install paths, and examples.
 - Refer to `/docs` for detailed guides and examples.
 - Refer to `skill-packages/ic-reactor-packages/SKILL.md` for package ownership, exports, generated artifacts, and verification workflows.
 - Refer to `skill-packages/ic-reactor-hooks/SKILL.md` for React hook, query/mutation factory, and cache invalidation patterns.
 
 ## Tech Stack
+
 - TypeScript
 - React
 - TanStack Query v5
-- Internet Computer (DFINITY) Agent & Candid
+- Internet Computer `@icp-sdk/core`, `@icp-sdk/auth`, Agent, and Candid

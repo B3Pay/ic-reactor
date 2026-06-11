@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/types.ts:74](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L74)
+Defined in: [auth/src/types.ts:74](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L74)
 
 ## Methods
 
@@ -13,7 +13,7 @@ Defined in: [auth/src/types.ts:74](https://github.com/B3Pay/ic-reactor/blob/bd27
 
 > **getIdentity**(): `Identity` \| `Promise`\<`Identity`\>
 
-Defined in: [auth/src/types.ts:75](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L75)
+Defined in: [auth/src/types.ts:75](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L75)
 
 #### Returns
 
@@ -25,7 +25,7 @@ Defined in: [auth/src/types.ts:75](https://github.com/B3Pay/ic-reactor/blob/bd27
 
 > **isAuthenticated**(): `boolean` \| `Promise`\<`boolean`\>
 
-Defined in: [auth/src/types.ts:76](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L76)
+Defined in: [auth/src/types.ts:76](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L76)
 
 #### Returns
 
@@ -37,7 +37,7 @@ Defined in: [auth/src/types.ts:76](https://github.com/B3Pay/ic-reactor/blob/bd27
 
 > **signIn**(`options?`): `Promise`\<`Identity`\>
 
-Defined in: [auth/src/types.ts:77](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L77)
+Defined in: [auth/src/types.ts:77](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L77)
 
 #### Parameters
 
@@ -55,7 +55,7 @@ Defined in: [auth/src/types.ts:77](https://github.com/B3Pay/ic-reactor/blob/bd27
 
 > **signOut**(`options?`): `Promise`\<`void`\>
 
-Defined in: [auth/src/types.ts:78](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L78)
+Defined in: [auth/src/types.ts:78](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L78)
 
 #### Parameters
 
@@ -75,7 +75,7 @@ Defined in: [auth/src/types.ts:78](https://github.com/B3Pay/ic-reactor/blob/bd27
 
 > **requestAttributes**(`params`): `Promise`\<[`SignedIdentityAttributes`](SignedIdentityAttributes.md)\>
 
-Defined in: [auth/src/types.ts:79](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L79)
+Defined in: [auth/src/types.ts:79](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L79)
 
 #### Parameters
 

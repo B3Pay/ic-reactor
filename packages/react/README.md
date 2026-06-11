@@ -301,7 +301,7 @@ single package:
 
 ## See Also
 
-- Docs: https://ic-reactor.b3pay.net/v3/packages/react
+- Docs: https://ic-reactor.b3pay.net/v4/packages/react
 - `@ic-reactor/core`: ../core/README.md
 - `@ic-reactor/auth`: ../auth/README.md
 - `@ic-reactor/auth-react`: ../auth-react/README.md

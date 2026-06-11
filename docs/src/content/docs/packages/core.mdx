@@ -11,7 +11,7 @@ you the runtime building blocks for agent management, TanStack Query
 integration, and typed canister interaction without depending on React.
 
 <Aside type="tip">
-  React applications usually install [@ic-reactor/react](/v3/packages/react),
+  React applications usually install [@ic-reactor/react](/v4/packages/react),
   which re-exports this package and adds hook factories. Reach for
   `@ic-reactor/core` directly when you are building outside React or want the
   lower-level primitives.
@@ -38,22 +38,22 @@ pnpm add @ic-reactor/auth @icp-sdk/auth
   <LinkCard
     title="ClientManager"
     description="Shared agent, authentication, and query-client orchestration."
-    href="/v3/reference/clientmanager"
+    href="/v4/reference/clientmanager"
   />
   <LinkCard
     title="Reactor"
     description="Type-safe canister access with cache-friendly query and mutation helpers."
-    href="/v3/reference/reactor"
+    href="/v4/reference/reactor"
   />
   <LinkCard
     title="DisplayReactor"
     description="UI-friendly transformations for bigint, Principal, variants, and optional fields."
-    href="/v3/reference/displayreactor"
+    href="/v4/reference/displayreactor"
   />
   <LinkCard
     title="Validation"
     description="Validation helpers for turning canister and input issues into typed UI state."
-    href="/v3/reference/reactvalidation"
+    href="/v4/reference/reactvalidation"
   />
 </CardGrid>
 
@@ -120,7 +120,7 @@ and pass them to `identityAttributes.request()`.
 
 ## See Also
 
-- [@ic-reactor/react](/v3/packages/react) — React bindings built on top of this package
-- [Authentication](/v3/guides/authentication) — Internet Identity and identity attributes
-- [React Setup](/v3/framework/react-setup) — End-to-end React integration guide
-- [@ic-reactor/candid](/v3/packages/candid) — Dynamic runtime Candid support
+- [@ic-reactor/react](/v4/packages/react) — React bindings built on top of this package
+- [Authentication](/v4/guides/authentication) — Internet Identity and identity attributes
+- [React Setup](/v4/framework/react-setup) — End-to-end React integration guide
+- [@ic-reactor/candid](/v4/packages/candid) — Dynamic runtime Candid support

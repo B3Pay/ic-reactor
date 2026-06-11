@@ -4,19 +4,22 @@ This file provides context for Claude-based AI agents working in the IC Reactor 
 
 ## Project Overview
 
-**IC Reactor v3** is a type-safe TypeScript library for building Internet Computer (ICP) applications. It leverages TanStack Query (React Query) for state management and caching, with full Candid type support.
+**IC Reactor v4** is a type-safe TypeScript monorepo for building Internet Computer (ICP) applications. It uses TanStack Query for caching/refetching, `@icp-sdk/*` packages for IC agent/auth/candid primitives, and generated or hand-written Candid service types for end-to-end TypeScript safety.
+
+This branch is the next major release line. Package manifests may still show
+pre-release versions until release automation performs the final version bump.
 
 ### Core Packages
 
-- `@ic-reactor/core` — Low-level API for managing actors, agents, and query caching
-- `@ic-reactor/react` — High-level React hooks and context providers
-- `@ic-reactor/auth` — Internet Identity auth state and identity attributes
-- `@ic-reactor/auth-react` — React hooks for `@ic-reactor/auth`
-- `@ic-reactor/candid` — Dynamic Candid parsing and runtime reactors
-- `@ic-reactor/parser` — Rust/WASM Candid parser used by candid and codegen flows
-- `@ic-reactor/codegen` — Shared declaration/reactor/client generation pipeline
-- `@ic-reactor/cli` — Code generation for declarations + typed hooks/reactors
-- `@ic-reactor/vite-plugin` — Watch-mode code generation for Vite projects
+- `@ic-reactor/core` (`packages/core`, `3.6.0`) — Core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration
+- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, `defineReactor`, actor hooks, query/mutation factories
+- `@ic-reactor/auth` (`packages/auth`, `3.6.0`) — Internet Identity authentication and signed identity attributes
+- `@ic-reactor/auth-react` (`packages/auth-react`, `3.6.0`) — React auth and identity-attribute hooks
+- `@ic-reactor/candid` (`packages/candid`, `3.6.0`) — Dynamic Candid adapter/reactors and metadata reactors
+- `@ic-reactor/parser` (`packages/parser`, `0.4.6`) — Rust/WASM Candid parser
+- `@ic-reactor/codegen` (`packages/codegen`, `0.11.1`) — Shared generation pipeline used by CLI and Vite plugin
+- `@ic-reactor/cli` (`packages/cli`, `0.11.1`) — `ic-reactor` CLI for explicit declaration/reactor generation
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `0.11.1`) — Vite plugin for watch-mode generation and local `ic_env` injection
 
 ## Package Ownership Map
 
@@ -55,14 +58,17 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
 - **Type Safety**: Use Candid types. Avoid `any` or loose typing.
 - **DisplayReactor**: Prefer `DisplayReactor` for UI components (handles BigInt/Principal serialization).
 - **Reactor**: Use standard `Reactor` when raw Candid types are required.
-- **Factory Pattern**: Use `createActorHooks`, `createQuery`, and `createMutation` factories instead of manual hook implementations.
+- **Setup Pattern**: Prefer `defineReactor` for new React setup; use manual `ClientManager` + reactor setup when construction order needs finer control.
+- **Factory Pattern**: Use `createActorHooks`, `createQuery`, `createSuspenseQuery`, `createInfiniteQuery`, `createSuspenseInfiniteQuery`, and `createMutation` factories instead of manual hook implementations.
 
 ## React Hook Patterns
 
-- For component-level canister calls, prefer `createActorHooks(reactor)`.
+- For the fastest canister bootstrap, prefer `defineReactor(...)`.
+- For component-level canister calls with an existing reactor, prefer `createActorHooks(reactor)`.
 - For reusable operations shared across components and non-React code, prefer:
   - `createQuery` / `createSuspenseQuery`
-  - `createInfiniteQuery`
+  - `createQueryFactory` / `createSuspenseQueryFactory` when args are supplied later
+  - `createInfiniteQuery` / `createSuspenseInfiniteQuery`
   - `createMutation`
 - Define reusable query/mutation objects at module scope (not inside components).
 - Use `useActorMethod` only when a unified query/update hook is specifically helpful.
@@ -96,15 +102,21 @@ pnpm test       # Run all tests
 pnpm exec tsc --noEmit # Root type check used by CI
 pnpm typecheck:examples # Type-check example apps
 pnpm format     # Format code with Prettier
+pnpm docs:build # Build docs site
 ```
 
 ## Key File References
 
 - `llms.txt` — Compact AI routing manifest
 - `llms-full.txt` — Longer AI-friendly API and task guide
+- `README.md` — Root package overview, install paths, examples, and AI context index
 - `skill-packages/ic-reactor-hooks/SKILL.md` — Hook patterns skill
 - `skill-packages/ic-reactor-packages/SKILL.md` — Package ownership and verification skill
 - `packages/react/src/` — React package source
 - `packages/react/README.md` — React package docs
+- `packages/core/README.md` — Core runtime docs
+- `packages/auth/README.md` and `packages/auth-react/README.md` — Auth docs
+- `packages/candid/README.md` — Dynamic Candid and metadata reactor docs
+- `packages/cli/README.md`, `packages/codegen/README.md`, and `packages/vite-plugin/README.md` — Codegen docs
 - `examples/all-in-one-demo/src/lib/factories.ts` — Factory pattern examples
 - `examples/tanstack-router/src/canisters/ledger/hooks/` — Generated hooks examples

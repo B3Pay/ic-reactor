@@ -4,9 +4,10 @@ AI agent skill for building and refactoring `@ic-reactor/react` integrations in 
 
 ## What This Skill Covers
 
-- `defineReactor(...)` — one-call reactor, client manager, query client, and hook setup
+- `defineReactor(...)` — one-call `QueryClient` + `ClientManager` + reactor + hooks setup
 - `createActorHooks(...)` — typed hook suite for a canister
 - `createQuery` / `createMutation` factory patterns — reusable inside and outside React
+- `createQueryFactory` / `createSuspenseQueryFactory` — cached operation factories for dynamic args
 - `useActorMethod` — unified query/update hook
 - TanStack Query cache invalidation patterns
 - Generated hooks from `@ic-reactor/cli` and `@ic-reactor/vite-plugin`
@@ -54,7 +55,13 @@ Agents working in the `ic-reactor` repository discover this skill through:
 
 ### External Install (for other ICP projects)
 
-Install directly from this repo:
+The in-repo skill is the source of truth for this repository. A standalone skills repo, [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills), can be used for external ICP projects:
+
+```bash
+npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
+```
+
+Or install directly from this repo:
 
 ```text
 Install the skill from github.com/B3Pay/ic-reactor path skill-packages/ic-reactor-hooks

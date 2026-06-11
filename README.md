@@ -14,7 +14,7 @@
 
 ---
 
-IC Reactor is a monorepo of libraries for building Internet Computer (ICP) apps with:
+IC Reactor v4 is a monorepo of libraries for building Internet Computer (ICP) apps with:
 
 - end-to-end TypeScript types
 - TanStack Query-powered caching and refetching
@@ -40,11 +40,17 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 | [`@ic-reactor/react`](./packages/react)             | React hooks + query/mutation factories                                         |
 | [`@ic-reactor/auth`](./packages/auth)               | Internet Identity authentication and identity attributes                       |
 | [`@ic-reactor/auth-react`](./packages/auth-react)   | React hooks for the auth package                                               |
-| [`@ic-reactor/candid`](./packages/candid)           | Dynamic Candid parsing and runtime reactors                                    |
+| [`@ic-reactor/candid`](./packages/candid)           | Dynamic Candid adapter, reactors, display reactors, and metadata reactors      |
 | [`@ic-reactor/parser`](./packages/parser)           | Local Candid parser (WASM-based)                                               |
 | [`@ic-reactor/codegen`](./packages/codegen)         | Shared codegen pipeline used by CLI and Vite plugin                            |
 | [`@ic-reactor/cli`](./packages/cli)                 | Generate declarations + typed hooks/reactors                                   |
 | [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for watch-mode hook generation                                     |
+
+Release posture:
+
+- This branch is the next major release line and should be presented as **IC Reactor v4**.
+- Package manifests still show the pre-release versions until release automation performs the final version bump.
+- Current manifest lanes are runtime `3.6.0`, code generation tooling `0.11.1`, and parser `0.4.6`.
 
 ## Install
 
@@ -63,8 +69,8 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 ### Optional packages
 
 ```bash
-# Internet Identity auth helpers for React
-pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth
+# Internet Identity auth helpers for React apps
+pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth @icp-sdk/core
 
 # Dynamic Candid support (explorers/dev tools)
 pnpm add @ic-reactor/candid @ic-reactor/parser
@@ -72,46 +78,45 @@ pnpm add @ic-reactor/candid @ic-reactor/parser
 
 ## Quick Start (React)
 
-### 1. Create a shared client manager and reactor
+### 1. Define a reactor and bound hooks
+
+For most React apps, `defineReactor` is the smallest setup path. It creates the
+`QueryClient`, `ClientManager`, reactor, and bound hooks in one call.
 
 ```ts
 // src/reactor.ts
-import { ClientManager, Reactor } from "@ic-reactor/react"
+import { defineReactor } from "@ic-reactor/react"
 import { AuthenticationManager } from "@ic-reactor/auth"
-import { QueryClient } from "@tanstack/react-query"
 import { idlFactory, type _SERVICE } from "./declarations/my_canister"
 
-export const queryClient = new QueryClient()
-
-export const clientManager = new ClientManager({
-  queryClient,
-})
-export const authentication = new AuthenticationManager({ clientManager })
-
-export const backendReactor = new Reactor<_SERVICE>({
-  clientManager,
-  idlFactory,
-  name: "backend",
-  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
-})
-```
-
-### 2. Create hooks
-
-```ts
-// src/hooks.ts
-import { createActorHooks } from "@ic-reactor/react"
-import { createAuthHooks } from "@ic-reactor/auth-react"
-import { backendReactor, authentication } from "./reactor"
-
 export const {
+  reactor: backendReactor,
+  queryClient,
+  clientManager,
   useActorQuery,
   useActorMutation,
   useActorSuspenseQuery,
   useActorInfiniteQuery,
-} = createActorHooks(backendReactor)
+  useActorMethod,
+} = defineReactor<_SERVICE>({
+  name: "backend",
+  idlFactory,
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  display: true,
+})
 
-export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
+export const authentication = new AuthenticationManager({ clientManager })
+```
+
+### 2. Create auth hooks
+
+```ts
+// src/hooks.ts
+import { createAuthHooks } from "@ic-reactor/auth-react"
+import { authentication } from "./reactor"
+
+export const { useAuth, useUserPrincipal, useAgentState } =
+  createAuthHooks(authentication)
 ```
 
 ### 3. Use in React components
@@ -119,8 +124,8 @@ export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
 ```tsx
 // src/App.tsx
 import { QueryClientProvider } from "@tanstack/react-query"
-import { queryClient } from "./reactor"
-import { useActorQuery, useActorMutation, useAuth } from "./hooks"
+import { queryClient, useActorQuery, useActorMutation } from "./reactor"
+import { useAuth } from "./hooks"
 
 function Greeting() {
   const { data, isPending, error } = useActorQuery({
@@ -300,17 +305,29 @@ console.log(balance)
 
 ## Examples
 
-| Example                                                           | Description                                                         |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------- |
-| [`all-in-one-demo`](./examples/all-in-one-demo)                   | End-to-end demo with queries, mutations, suspense, infinite queries |
-| [`tanstack-router`](./examples/tanstack-router)                   | Router loaders/actions + generated hooks                            |
-| [`query-demo`](./examples/query-demo)                             | Query and mutation factory patterns                                 |
-| [`identity-attributes-demo`](./examples/identity-attributes-demo) | Internet Identity OpenID attribute requests                         |
-| [`multiple-canister`](./examples/multiple-canister)               | Shared auth across multiple canisters                               |
-| [`ckbtc-wallet`](./examples/ckbtc-wallet)                         | More advanced canister integrations                                 |
-| [`codegen-in-action`](./examples/codegen-in-action)               | CLI vs Vite plugin codegen comparison                               |
-| [`typescript-demo`](./examples/typescript-demo)                   | Core usage without React                                            |
-| [`candid-parser`](./examples/candid-parser)                       | Dynamic Candid parsing                                              |
+| Example                                                                               | Description                                                         |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| [`all-in-one-demo`](./examples/all-in-one-demo)                                       | End-to-end demo with queries, mutations, suspense, infinite queries |
+| [`candid-parser`](./examples/candid-parser)                                           | Dynamic Candid parsing                                              |
+| [`ckbtc-wallet`](./examples/ckbtc-wallet)                                             | More advanced canister integrations                                 |
+| [`codec-demo`](./examples/codec-demo)                                                 | Display codec transforms                                            |
+| [`codegen-in-action`](./examples/codegen-in-action)                                   | CLI vs Vite plugin codegen comparison                               |
+| [`custom-provider`](./examples/custom-provider)                                       | Custom authentication provider                                      |
+| [`icp-reactor-demo`](./examples/icp-reactor-demo)                                     | ICP SDK canister-env integration                                    |
+| [`identity-attributes-demo`](./examples/identity-attributes-demo)                     | Internet Identity OpenID attribute requests                         |
+| [`metadata-reactor-capabilities-demo`](./examples/metadata-reactor-capabilities-demo) | Metadata reactor capabilities                                       |
+| [`metadata-reactor-demo`](./examples/metadata-reactor-demo)                           | Metadata reactor usage                                              |
+| [`multiple-canister`](./examples/multiple-canister)                                   | Shared auth across multiple canisters                               |
+| [`nextjs`](./examples/nextjs)                                                         | Next.js integration                                                 |
+| [`nextjs-app-router`](./examples/nextjs-app-router)                                   | Next.js App Router integration                                      |
+| [`query-demo`](./examples/query-demo)                                                 | Query and mutation factory patterns                                 |
+| [`result-types-demo`](./examples/result-types-demo)                                   | Typed `Ok`/`Err` result handling                                    |
+| [`suspense-infinite-query-demo`](./examples/suspense-infinite-query-demo)             | Suspense and infinite query patterns                                |
+| [`tanstack-form-demo`](./examples/tanstack-form-demo)                                 | TanStack Form integration                                           |
+| [`tanstack-router`](./examples/tanstack-router)                                       | Router loaders/actions + generated hooks                            |
+| [`typescript-demo`](./examples/typescript-demo)                                       | Core usage without React                                            |
+| [`vite-environment-variables`](./examples/vite-environment-variables)                 | Vite canister environment variables                                 |
+| [`vite-plugin-demo`](./examples/vite-plugin-demo)                                     | Vite plugin code generation                                         |
 
 ## Documentation
 
@@ -381,7 +398,7 @@ The `ic-reactor-hooks` skill is also available externally:
 - **In-repo**: [`skill-packages/ic-reactor-hooks/`](./skill-packages/ic-reactor-hooks/) — used by agents working directly in this repository
 - **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
 
-Both locations contain the same skill content with multi-agent metadata (OpenAI, Claude, Copilot).
+The in-repo skill is the source of truth for this repository and includes multi-agent metadata for OpenAI Codex, Claude, and GitHub Copilot.
 
 Use it when asking an agent to:
 

@@ -8,7 +8,7 @@ import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
 
 The IC Reactor CLI (`@ic-reactor/cli`) helps you generate typed reactor files, optional React hooks, and TypeScript declarations from your Candid files. It's useful if you're not using Vite or want more control over the generation process.
 
-It uses the shared [`@ic-reactor/codegen`](/v3/packages/codegen) pipeline, so
+It uses the shared [`@ic-reactor/codegen`](/v4/packages/codegen) pipeline, so
 its output stays aligned with the Vite plugin.
 
 ## Installation
@@ -105,26 +105,26 @@ The `ic-reactor.json` file controls the CLI behavior.
 | `outDir`            | `string`                         | Base output directory for generated files (required). |
 | `canisters`         | `Record<string, CanisterConfig>` | Map of canister names to configurations (required).   |
 | `clientManagerPath` | `string`                         | Path to a custom `ClientManager` instance (optional). |
-| `target`            | `"react" \| "core"`             | Default generated runtime target (optional).          |
+| `target`            | `"react" \| "core"`              | Default generated runtime target (optional).          |
 
 ### Canister Config
 
-| Key                 | Type     | Description                                                                                                                                          |
-| :------------------ | :------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`              | `string` | Canister name (required). Must match the key in `canisters`.                                                                                         |
-| `didFile`           | `string` | Path to the `.did` file (required).                                                                                                                  |
-| `mode`              | `string` | Reactor class to generate: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`.                 |
-| `outDir`            | `string` | Override output directory for this canister.                                                                                                         |
-| `clientManagerPath` | `string` | Override client manager path.                                                                                                                        |
-| `target`            | `string` | Override generated runtime target.                                                                                                                   |
-| `canisterId`        | `string` | Optional fixed canister ID.                                                                                                                          |
+| Key                 | Type     | Description                                                                                                                          |
+| :------------------ | :------- | :----------------------------------------------------------------------------------------------------------------------------------- |
+| `name`              | `string` | Canister name (required). Must match the key in `canisters`.                                                                         |
+| `didFile`           | `string` | Path to the `.did` file (required).                                                                                                  |
+| `mode`              | `string` | Reactor class to generate: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`. |
+| `outDir`            | `string` | Override output directory for this canister.                                                                                         |
+| `clientManagerPath` | `string` | Override client manager path.                                                                                                        |
+| `target`            | `string` | Override generated runtime target.                                                                                                   |
+| `canisterId`        | `string` | Optional fixed canister ID.                                                                                                          |
 
 ## Examples
 
-- **[Codegen in Action](/v3/examples/codegen-in-action)**: Comparison between CLI and Vite plugin generated code.
-- **[TypeScript Demo](/v3/examples/typescript-demo)**: Using the CLI to generate pure TypeScript reactors without React.
+- **[Codegen in Action](/v4/examples/codegen-in-action)**: Comparison between CLI and Vite plugin generated code.
+- **[TypeScript Demo](/v4/examples/typescript-demo)**: Using the CLI to generate pure TypeScript reactors without React.
 
 ## See Also
 
-- [@ic-reactor/codegen](/v3/packages/codegen) — Shared generation pipeline
-- [@ic-reactor/vite-plugin](/v3/packages/vite-plugin) — Automatic generation during Vite development
+- [@ic-reactor/codegen](/v4/packages/codegen) — Shared generation pipeline
+- [@ic-reactor/vite-plugin](/v4/packages/vite-plugin) — Automatic generation during Vite development

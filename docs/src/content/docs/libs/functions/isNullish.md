@@ -7,7 +7,7 @@ prev: true
 
 > **isNullish**(`value`): value is null \| undefined
 
-Defined in: [core/src/utils/helper.ts:113](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/core/src/utils/helper.ts#L113)
+Defined in: [core/src/utils/helper.ts:148](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/core/src/utils/helper.ts#L148)
 
 ## Parameters
 

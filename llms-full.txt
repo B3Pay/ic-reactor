@@ -6,10 +6,13 @@ compact manifest and package routing table.
 
 ## What IC Reactor Is
 
-IC Reactor is a TypeScript/React monorepo for Internet Computer apps. It wraps
+IC Reactor v4 is a TypeScript/React monorepo for Internet Computer apps. It wraps
 typed canister calls with TanStack Query caching, reusable query/mutation
 objects, React hooks, optional Internet Identity auth helpers, runtime Candid
 parsing, and code generation from `.did` files.
+
+This branch is the next major release line. Package manifests may still show
+pre-release versions until release automation performs the final version bump.
 
 ## Package Boundaries
 

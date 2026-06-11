@@ -102,7 +102,7 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
 
 ### useAuth Hook
 
-The [`useAuth`](/v3/reference/createauthhooks/useauth) hook provides login and logout functionality:
+The [`useAuth`](/v4/reference/createauthhooks/useauth) hook provides login and logout functionality:
 
 ```tsx
 import { useAuth } from "../reactor/hooks"
@@ -124,7 +124,7 @@ function LoginButton() {
 
 ### useAgentState Hook
 
-For accessing the [`useAgentState`](/v3/reference/createauthhooks/useagentstate) connection state:
+For accessing the [`useAgentState`](/v4/reference/createauthhooks/useagentstate) connection state:
 
 ```tsx
 import { useAgentState } from "../reactor/hooks"
@@ -146,7 +146,7 @@ function ConnectionStatus() {
 
 ### useUserPrincipal Hook
 
-A convenience hook for getting the current user's principal. See [`useUserPrincipal`](/v3/reference/createauthhooks/useuserprincipal) reference:
+A convenience hook for getting the current user's principal. See [`useUserPrincipal`](/v4/reference/createauthhooks/useuserprincipal) reference:
 
 ```tsx
 import { useUserPrincipal } from "../reactor/hooks"
@@ -372,7 +372,7 @@ function App() {
 3. **Enable DevTools** — Use React Query DevTools in development
 4. **Handle auth state** — Always check `isAuthenticating` before showing login UI
 5. **Name your actors** — Use the `name` option for better debugging
-6. **Use Suspense boundaries** — Wrap components using [`useActorSuspenseQuery`](/v3/reference/createactorhooks/useactorsuspensequery) in `<Suspense>`
+6. **Use Suspense boundaries** — Wrap components using [`useActorSuspenseQuery`](/v4/reference/createactorhooks/useactorsuspensequery) in `<Suspense>`
 
 ## Next Steps
 
@@ -380,21 +380,21 @@ function App() {
   <LinkCard
     title="Queries"
     description="Deep dive into data fetching"
-    href="/v3/framework/queries"
+    href="/v4/framework/queries"
   />
   <LinkCard
     title="Mutations"
     description="Learn about updating data"
-    href="/v3/framework/mutations"
+    href="/v4/framework/mutations"
   />
   <LinkCard
     title="Query Caching"
     description="Master cache configuration"
-    href="/v3/framework/query-caching"
+    href="/v4/framework/query-caching"
   />
   <LinkCard
     title="Authentication"
     description="Advanced auth patterns"
-    href="/v3/guides/authentication"
+    href="/v4/guides/authentication"
   />
 </CardGrid>

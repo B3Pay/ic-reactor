@@ -1,6 +1,14 @@
 # Skill Packages
 
-This directory contains AI agent skill packages for the IC Reactor project. Skills provide structured instructions that help AI coding agents generate correct, idiomatic IC Reactor code.
+This directory contains AI agent skill packages for the IC Reactor v4 project. Skills provide structured instructions that help AI coding agents generate correct, idiomatic IC Reactor code.
+
+## Repository Package Surface
+
+- This branch is the next major release line and should be described as IC Reactor v4.
+- Runtime packages: `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/auth`, `@ic-reactor/auth-react`, and `@ic-reactor/candid` (`3.6.0`).
+- Code generation packages: `@ic-reactor/codegen`, `@ic-reactor/cli`, and `@ic-reactor/vite-plugin` (`0.11.1`).
+- Parser package: `@ic-reactor/parser` (`0.4.6`).
+- Shared AI package summary: [`../llms.txt`](../llms.txt).
 
 ## Available Skills
 

@@ -124,6 +124,6 @@ inside a Vite app.
 
 ## See Also
 
-- Docs: https://ic-reactor.b3pay.net/v3/packages/cli
+- Docs: https://ic-reactor.b3pay.net/v4/packages/cli
 - `@ic-reactor/codegen`: ../codegen/README.md
 - `@ic-reactor/vite-plugin`: ../vite-plugin/README.md

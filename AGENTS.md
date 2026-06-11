@@ -1,5 +1,33 @@
 # AGENTS.md instructions for @ic-reactor
 
+## Project snapshot
+
+IC Reactor v4 is a TypeScript monorepo for Internet Computer apps.
+
+This branch is the next major release line. Refer to the product/docs as
+**IC Reactor v4**. Package manifests may still show pre-release versions until
+release automation performs the final version bump.
+
+### Packages
+
+- `@ic-reactor/core` (`packages/core`, `3.6.0`) — core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration.
+- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, `defineReactor`, actor hooks, query/mutation factories.
+- `@ic-reactor/auth` (`packages/auth`, `3.6.0`) — Internet Identity authentication and signed identity attributes.
+- `@ic-reactor/auth-react` (`packages/auth-react`, `3.6.0`) — React auth and identity-attribute hooks.
+- `@ic-reactor/candid` (`packages/candid`, `3.6.0`) — dynamic Candid adapter/reactors and metadata reactors.
+- `@ic-reactor/parser` (`packages/parser`, `0.4.6`) — Rust/WASM Candid parser.
+- `@ic-reactor/codegen` (`packages/codegen`, `0.11.1`) — shared generation pipeline used by CLI and Vite plugin.
+- `@ic-reactor/cli` (`packages/cli`, `0.11.1`) — `ic-reactor` CLI for explicit declaration/reactor generation.
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `0.11.1`) — Vite plugin for watch-mode generation and local `ic_env` injection.
+
+### Package alignment rules
+
+- Do not describe this branch as IC Reactor v3.
+- Keep package-specific docs aligned with current manifests until the release bump.
+- Treat runtime `3.6.0`, codegen tooling `0.11.1`, and parser `0.4.6` as pre-release manifest versions for this v4 line.
+- Prefer `@icp-sdk/*` package names in docs and examples.
+- Use `defineReactor` for the fastest React setup; use manual `ClientManager` + reactor setup when finer construction control is needed.
+
 ## Skills
 
 A skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Skills live in the `skill-packages/` directory. Below is the list of skills that can be used in this repository.

@@ -7,6 +7,6 @@ prev: true
 
 > `const` **LOCAL_INTERNET_IDENTITY_PROVIDER**: `string`
 
-Defined in: [auth/src/constants.ts:19](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/constants.ts#L19)
+Defined in: [auth/src/constants.ts:24](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/constants.ts#L24)
 
 Legacy default URL for local Internet Identity, using port `4943`.

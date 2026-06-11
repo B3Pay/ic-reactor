@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/identity-attributes-manager.ts:25](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/identity-attributes-manager.ts#L25)
+Defined in: [auth/src/identity-attributes-manager.ts:25](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/identity-attributes-manager.ts#L25)
 
 Requests and decodes signed identity attributes for an authenticated
 Internet Identity session.
@@ -23,7 +23,7 @@ const result = await attributes.request({ keys: ["name"] })
 
 > **new IdentityAttributesManager**(`authentication`): `IdentityAttributesManager`
 
-Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/identity-attributes-manager.ts#L26)
+Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/identity-attributes-manager.ts#L26)
 
 #### Parameters
 
@@ -41,7 +41,7 @@ Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pa
 
 > `readonly` **authentication**: [`AuthenticationManager`](AuthenticationManager.md)
 
-Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/identity-attributes-manager.ts#L26)
+Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/identity-attributes-manager.ts#L26)
 
 ## Methods
 
@@ -49,7 +49,7 @@ Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pa
 
 > **request**(`__namedParameters`): `Promise`\<[`IdentityAttributeResult`](../interfaces/IdentityAttributeResult.md)\>
 
-Defined in: [auth/src/identity-attributes-manager.ts:28](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/identity-attributes-manager.ts#L28)
+Defined in: [auth/src/identity-attributes-manager.ts:28](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/identity-attributes-manager.ts#L28)
 
 #### Parameters
 
@@ -67,7 +67,7 @@ Defined in: [auth/src/identity-attributes-manager.ts:28](https://github.com/B3Pa
 
 > **requestOpenId**(`__namedParameters`): `Promise`\<[`IdentityAttributeResult`](../interfaces/IdentityAttributeResult.md)\>
 
-Defined in: [auth/src/identity-attributes-manager.ts:91](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/identity-attributes-manager.ts#L91)
+Defined in: [auth/src/identity-attributes-manager.ts:91](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/identity-attributes-manager.ts#L91)
 
 #### Parameters
 

@@ -7,7 +7,7 @@ editUrl: false
 import { Aside, Card, CardGrid, Steps } from "@astrojs/starlight/components"
 
 `MetadataReactor` is the **candid-native** metadata reactor.
-It extends [`CandidReactor`](/v3/packages/candid/candidreactor) and adds runtime metadata for:
+It extends [`CandidReactor`](/v4/packages/candid/candidreactor) and adds runtime metadata for:
 
 - argument forms (`getInputMeta`, `getAllInputMeta`)
 - result rendering (`getOutputMeta`, `getAllOutputMeta`)
@@ -31,11 +31,12 @@ Use `MetadataReactor` when you want:
 - metadata-driven output rendering
 - candid-first semantics for arguments and method registration
 
-Use [`MetadataDisplayReactor`](/v3/packages/candid/metadatadisplayreactor) if you specifically want display-transform behavior for arguments in your app flow.
+Use [`MetadataDisplayReactor`](/v4/packages/candid/metadatadisplayreactor) if you specifically want display-transform behavior for arguments in your app flow.
 
 <CardGrid>
   <Card title="Form Schema Generation" icon="list-format">
-    Generate field trees, defaults, component hints, and zod schemas directly from Candid.
+    Generate field trees, defaults, component hints, and zod schemas directly
+    from Candid.
   </Card>
   <Card title="Output Resolution" icon="document">
     Resolve canister return values with method-aware output metadata.
@@ -100,7 +101,9 @@ console.log(transferInput?.schema)
 const transferOutput = reactor.getOutputMeta("icrc1_transfer")
 const raw = await reactor.callMethod({
   functionName: "icrc1_transfer",
-  args: [/* candid args */],
+  args: [
+    /* candid args */
+  ],
 })
 const resolved = transferOutput?.resolve(raw)
 ```
@@ -113,6 +116,7 @@ const resolved = transferOutput?.resolve(raw)
 - hydration decoding for initial form values
 
 Hydration status can be:
+
 - `empty`
 - `hydrated`
 - `skipped`
@@ -170,11 +174,10 @@ const meta = reactor.getInputMeta("get_metadata")
 ```
 
 <Steps>
-  1. Create and initialize `MetadataReactor`.
-  2. Read method metadata with `getInputMeta` / `getOutputMeta`.
-  3. Build UI state from `defaults` + `schema`.
-  4. Optionally hydrate from `candidArgsHex` for replay/edit flows.
-  5. Call the method and resolve output through `MethodMeta.resolve`.
+  1. Create and initialize `MetadataReactor`. 2. Read method metadata with
+  `getInputMeta` / `getOutputMeta`. 3. Build UI state from `defaults` +
+  `schema`. 4. Optionally hydrate from `candidArgsHex` for replay/edit flows. 5.
+  Call the method and resolve output through `MethodMeta.resolve`.
 </Steps>
 
 ## Practical Pattern: Dynamic Form + Result Viewer
@@ -221,11 +224,12 @@ const rendered = outputMeta?.resolve(raw)
 
 ## Related
 
-- [CandidReactor](/v3/packages/candid/candidreactor)
-- [CandidFormVisitor](/v3/packages/candid/fieldvisitor)
-- [MetadataDisplayReactor](/v3/packages/candid/metadatadisplayreactor)
+- [CandidReactor](/v4/packages/candid/candidreactor)
+- [CandidFormVisitor](/v4/packages/candid/fieldvisitor)
+- [MetadataDisplayReactor](/v4/packages/candid/metadatadisplayreactor)
 
 <Aside type="tip">
   `MetadataReactor` is usually the right default for runtime metadata tooling.
-  Reach for `MetadataDisplayReactor` when your app explicitly depends on display-type argument transforms.
+  Reach for `MetadataDisplayReactor` when your app explicitly depends on
+  display-type argument transforms.
 </Aside>

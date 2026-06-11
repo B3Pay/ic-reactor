@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/types.ts:14](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L14)
+Defined in: [auth/src/types.ts:14](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L14)
 
 ## Indexable
 
@@ -17,7 +17,7 @@ Defined in: [auth/src/types.ts:14](https://github.com/B3Pay/ic-reactor/blob/bd27
 
 > `optional` **email?**: `string`
 
-Defined in: [auth/src/types.ts:15](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L15)
+Defined in: [auth/src/types.ts:15](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L15)
 
 ---
 
@@ -25,7 +25,7 @@ Defined in: [auth/src/types.ts:15](https://github.com/B3Pay/ic-reactor/blob/bd27
 
 > `optional` **name?**: `string`
 
-Defined in: [auth/src/types.ts:16](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L16)
+Defined in: [auth/src/types.ts:16](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L16)
 
 ---
 
@@ -33,4 +33,4 @@ Defined in: [auth/src/types.ts:16](https://github.com/B3Pay/ic-reactor/blob/bd27
 
 > `optional` **verified_email?**: `string`
 
-Defined in: [auth/src/types.ts:17](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L17)
+Defined in: [auth/src/types.ts:17](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/types.ts#L17)

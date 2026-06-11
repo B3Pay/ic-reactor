@@ -5,12 +5,16 @@ longer task-oriented guide, read `llms-full.txt`.
 
 ## Project
 
-IC Reactor is a TypeScript monorepo for building Internet Computer apps with
+IC Reactor v4 is a TypeScript monorepo for building Internet Computer apps with
 typed canister calls, TanStack Query caching, React hooks, optional
 authentication helpers, runtime Candid parsing, and code generation.
 
 Repository: `https://github.com/B3Pay/ic-reactor`
-Docs: `https://ic-reactor.b3pay.net/v3/`
+Docs: `https://ic-reactor.b3pay.net/v4/`
+
+Release posture: this branch is the next major release line. Package manifests
+may still show pre-release versions until release automation performs the final
+version bump.
 
 ## Canonical AI Entrypoints
 

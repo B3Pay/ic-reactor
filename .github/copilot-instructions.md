@@ -2,6 +2,15 @@
 
 Follow these repository-specific patterns when suggesting code:
 
+## Project Snapshot
+
+- This branch is the next major release line and should be described as IC Reactor v4.
+- Package manifests may still show pre-release versions until release automation performs the final version bump.
+- Runtime packages are `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/auth`, `@ic-reactor/auth-react`, and `@ic-reactor/candid` at `3.6.0`.
+- Code generation packages are `@ic-reactor/codegen`, `@ic-reactor/cli`, and `@ic-reactor/vite-plugin` at `0.11.1`.
+- The WASM parser package is `@ic-reactor/parser` at `0.4.6`.
+- Prefer `@icp-sdk/*` dependencies in examples and docs.
+
 ## Core Principles
 
 - Preserve existing IC Reactor and TanStack Query patterns.
@@ -25,11 +34,15 @@ Follow these repository-specific patterns when suggesting code:
 
 ## React Hook Patterns (Important)
 
-- For component-level canister calls, prefer `createActorHooks(reactor)`.
+- For new React canister setup, prefer `defineReactor(...)` when one-call setup is enough.
+- For component-level canister calls with an existing reactor, prefer `createActorHooks(reactor)`.
 - For reusable operations shared across components and non-React code, prefer:
   - `createQuery`
   - `createSuspenseQuery`
+  - `createQueryFactory`
+  - `createSuspenseQueryFactory`
   - `createInfiniteQuery`
+  - `createSuspenseInfiniteQuery`
   - `createMutation`
 - Define reusable query/mutation objects at module scope (not inside components).
 - Use `useActorMethod` only when a unified query/update hook is specifically helpful.
@@ -64,10 +77,17 @@ Follow these repository-specific patterns when suggesting code:
 
 ## Where to look for examples
 
+- `llms.txt`
+- `README.md`
 - `packages/react/src/`
 - `packages/react/README.md`
+- `packages/core/README.md`
 - `packages/auth/README.md`
 - `packages/auth-react/README.md`
+- `packages/candid/README.md`
+- `packages/codegen/README.md`
+- `packages/cli/README.md`
+- `packages/vite-plugin/README.md`
 - `examples/all-in-one-demo/src/lib/factories.ts`
 - `examples/tanstack-router/src/canisters/ledger/hooks/`
 - `AGENTS.md`

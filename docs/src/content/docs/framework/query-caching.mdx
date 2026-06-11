@@ -58,13 +58,16 @@ Use `generateQueryKey` to get the cache key for any query:
 ```typescript
 import { backend } from "./reactor"
 
-const queryKey = backend.generateQueryKey({
-  functionName: "getUser",
-  args: ["user-123"],
-}, {
-  canisterId: otherCanisterId,
-  effectiveCanisterId: managementCanisterId,
-})
+const queryKey = backend.generateQueryKey(
+  {
+    functionName: "getUser",
+    args: ["user-123"],
+  },
+  {
+    canisterId: otherCanisterId,
+    effectiveCanisterId: managementCanisterId,
+  }
+)
 // ['rrkah-fqaaa...', 'getUser', { effectiveCanisterId: 'aaaaa-aa' }, 'user-123']
 ```
 
@@ -218,12 +221,15 @@ backend.invalidateQueries(
 
 ```typescript
 // Invalidate getUser query for specific user
-backend.invalidateQueries({
-  functionName: "getUser",
-  args: ["user-123"],
-}, {
-  canisterId: otherCanisterId,
-})
+backend.invalidateQueries(
+  {
+    functionName: "getUser",
+    args: ["user-123"],
+  },
+  {
+    canisterId: otherCanisterId,
+  }
+)
 ```
 
 ### Invalidate by Custom Query Key
@@ -476,5 +482,5 @@ The DevTools show:
 ## Further Reading
 
 - [TanStack Query Documentation](https://tanstack.com/query/latest) — Complete TanStack Query docs
-- [Queries](/v3/framework/queries) — IC Reactor query patterns
-- [Mutations](/v3/framework/mutations) — IC Reactor mutation patterns
+- [Queries](/v4/framework/queries) — IC Reactor query patterns
+- [Mutations](/v4/framework/mutations) — IC Reactor mutation patterns

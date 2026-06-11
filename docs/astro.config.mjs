@@ -4,7 +4,7 @@ import starlightPageActions from "starlight-page-actions"
 
 export default defineConfig({
   site: "https://ic-reactor.b3pay.net",
-  base: "/v3/",
+  base: "/v4/",
   output: "static",
   integrations: [
     starlight({

@@ -122,6 +122,6 @@ the new declarations are picked up.
 
 ## See Also
 
-- Docs: https://ic-reactor.b3pay.net/v3/packages/vite-plugin
+- Docs: https://ic-reactor.b3pay.net/v4/packages/vite-plugin
 - `@ic-reactor/codegen`: ../codegen/README.md
 - `@ic-reactor/cli`: ../cli/README.md
