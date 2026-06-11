@@ -7,7 +7,7 @@ prev: true
 
 > **createPollingStrategy**(`cfg?`): `PollStrategy`
 
-Defined in: [core/src/utils/polling.ts:191](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/utils/polling.ts#L191)
+Defined in: [core/src/utils/polling.ts:191](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/core/src/utils/polling.ts#L191)
 
 Creates an polling strategy for Internet Computer agent update calls.
 

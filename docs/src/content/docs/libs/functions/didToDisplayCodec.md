@@ -7,7 +7,7 @@ prev: true
 
 > **didToDisplayCodec**\<`TCandid`, `TDisplay`\>(`didType`): [`ActorDisplayCodec`](../interfaces/ActorDisplayCodec.md)\<`TCandid`, `TDisplay`\>
 
-Defined in: [core/src/display/helper.ts:5](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/display/helper.ts#L5)
+Defined in: [core/src/display/helper.ts:5](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/core/src/display/helper.ts#L5)
 
 ## Type Parameters
 

@@ -7,7 +7,7 @@ prev: true
 
 > **processUpdateCallResponse**(`result`, `canisterId`, `methodName`, `agent`, `pollingOptions`): `Promise`\<`Uint8Array`\<`ArrayBufferLike`\>\>
 
-Defined in: [core/src/utils/agent.ts:86](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/utils/agent.ts#L86)
+Defined in: [core/src/utils/agent.ts:86](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/core/src/utils/agent.ts#L86)
 
 Process an update call response following the exact logic from @icp-sdk/core/agent Actor.
 

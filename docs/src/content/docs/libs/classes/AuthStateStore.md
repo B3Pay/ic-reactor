@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/auth-state-store.ts:19](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/auth-state-store.ts#L19)
+Defined in: [auth/src/auth-state-store.ts:19](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/auth/src/auth-state-store.ts#L19)
 
 Holds authentication state and notifies subscribers on change.
 
@@ -37,7 +37,7 @@ store.update({ isAuthenticating: true })
 
 > **state**: [`AuthState`](../interfaces/AuthState.md)
 
-Defined in: [auth/src/auth-state-store.ts:23](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/auth-state-store.ts#L23)
+Defined in: [auth/src/auth-state-store.ts:23](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/auth/src/auth-state-store.ts#L23)
 
 ## Accessors
 
@@ -47,7 +47,7 @@ Defined in: [auth/src/auth-state-store.ts:23](https://github.com/B3Pay/ic-reacto
 
 > **get** **currentRevision**(): `number`
 
-Defined in: [auth/src/auth-state-store.ts:31](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/auth-state-store.ts#L31)
+Defined in: [auth/src/auth-state-store.ts:31](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/auth/src/auth-state-store.ts#L31)
 
 The current revision. Increments on every [update](#update).
 
@@ -61,7 +61,7 @@ The current revision. Increments on every [update](#update).
 
 > **subscribe**(`callback`): () => `void`
 
-Defined in: [auth/src/auth-state-store.ts:39](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/auth-state-store.ts#L39)
+Defined in: [auth/src/auth-state-store.ts:39](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/auth/src/auth-state-store.ts#L39)
 
 Subscribe to state changes.
 
@@ -83,7 +83,7 @@ An unsubscribe function.
 
 > **update**(`newState`): `void`
 
-Defined in: [auth/src/auth-state-store.ts:49](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/auth-state-store.ts#L49)
+Defined in: [auth/src/auth-state-store.ts:49](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/auth/src/auth-state-store.ts#L49)
 
 Merge a partial state, bump the revision, and notify subscribers.
 

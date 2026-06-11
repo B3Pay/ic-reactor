@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [core/src/display/types.ts:87](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/display/types.ts#L87)
+Defined in: [core/src/display/types.ts:87](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/core/src/display/types.ts#L87)
 
 ## Type Parameters
 
@@ -23,7 +23,7 @@ Defined in: [core/src/display/types.ts:87](https://github.com/B3Pay/ic-reactor/b
 
 > **codec**: [`DisplayCodec`](../type-aliases/DisplayCodec.md)\<`TC`, `TD`\>
 
-Defined in: [core/src/display/types.ts:88](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/display/types.ts#L88)
+Defined in: [core/src/display/types.ts:88](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/core/src/display/types.ts#L88)
 
 ---
 
@@ -31,7 +31,7 @@ Defined in: [core/src/display/types.ts:88](https://github.com/B3Pay/ic-reactor/b
 
 > **asDisplay**: (`val`) => `TD`
 
-Defined in: [core/src/display/types.ts:89](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/display/types.ts#L89)
+Defined in: [core/src/display/types.ts:89](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/core/src/display/types.ts#L89)
 
 #### Parameters
 
@@ -49,7 +49,7 @@ Defined in: [core/src/display/types.ts:89](https://github.com/B3Pay/ic-reactor/b
 
 > **asCandid**: (`val`) => `TC`
 
-Defined in: [core/src/display/types.ts:90](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/display/types.ts#L90)
+Defined in: [core/src/display/types.ts:90](https://github.com/B3Pay/ic-reactor/blob/fbfc4241a329c09ad8cb45d17b14b82f0049faf0/packages/core/src/display/types.ts#L90)
 
 #### Parameters
 
