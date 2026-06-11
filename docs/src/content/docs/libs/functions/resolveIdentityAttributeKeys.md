@@ -7,7 +7,7 @@ prev: true
 
 > **resolveIdentityAttributeKeys**(`__namedParameters`): `Promise`\<`string`[]\>
 
-Defined in: [auth/src/identity-attributes.ts:45](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/identity-attributes.ts#L45)
+Defined in: [auth/src/identity-attributes.ts:45](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/identity-attributes.ts#L45)
 
 ## Parameters
 

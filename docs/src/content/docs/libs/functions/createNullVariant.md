@@ -7,7 +7,7 @@ prev: true
 
 > **createNullVariant**\<`T`\>(`str`): `Record`\<`T`, `null`\>
 
-Defined in: [core/src/utils/candid.ts:55](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/core/src/utils/candid.ts#L55)
+Defined in: [core/src/utils/candid.ts:55](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/utils/candid.ts#L55)
 
 Creates a Candid variant from a string value.
 

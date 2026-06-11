@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/auth-client-loader.ts:21](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/auth-client-loader.ts#L21)
+Defined in: [auth/src/auth-client-loader.ts:21](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/auth-client-loader.ts#L21)
 
 Lazily loads the optional `@icp-sdk/auth` client constructor via dynamic
 import and remembers whether the module is unavailable.
@@ -39,7 +39,7 @@ const client = AuthClient ? new AuthClient() : undefined
 
 > **get** **isModuleMissing**(): `boolean`
 
-Defined in: [auth/src/auth-client-loader.ts:27](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/auth-client-loader.ts#L27)
+Defined in: [auth/src/auth-client-loader.ts:27](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/auth-client-loader.ts#L27)
 
 True once a load attempt has failed because the module is unavailable.
 
@@ -55,7 +55,7 @@ True once a load attempt has failed because the module is unavailable.
 
 > **get** **cachedConstructor**(): [`AuthClientConstructor`](../type-aliases/AuthClientConstructor.md) \| `undefined`
 
-Defined in: [auth/src/auth-client-loader.ts:32](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/auth-client-loader.ts#L32)
+Defined in: [auth/src/auth-client-loader.ts:32](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/auth-client-loader.ts#L32)
 
 The already-resolved constructor, if [load](#load) has completed.
 
@@ -69,7 +69,7 @@ The already-resolved constructor, if [load](#load) has completed.
 
 > **load**(): `Promise`\<[`AuthClientConstructor`](../type-aliases/AuthClientConstructor.md) \| `undefined`\>
 
-Defined in: [auth/src/auth-client-loader.ts:42](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/auth-client-loader.ts#L42)
+Defined in: [auth/src/auth-client-loader.ts:42](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/auth-client-loader.ts#L42)
 
 Dynamically import and cache the `AuthClient` constructor.
 

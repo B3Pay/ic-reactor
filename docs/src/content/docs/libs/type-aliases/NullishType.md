@@ -7,7 +7,7 @@ prev: true
 
 > **NullishType**\<`T`\> = `T` \| `null` \| `undefined`
 
-Defined in: [core/src/display/types.ts:51](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/core/src/display/types.ts#L51)
+Defined in: [core/src/display/types.ts:51](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/display/types.ts#L51)
 
 ## Type Parameters
 

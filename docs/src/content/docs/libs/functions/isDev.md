@@ -7,7 +7,7 @@ prev: true
 
 > **isDev**(): `boolean`
 
-Defined in: [core/src/utils/helper.ts:53](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/core/src/utils/helper.ts#L53)
+Defined in: [core/src/utils/helper.ts:53](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/utils/helper.ts#L53)
 
 Detect whether the runtime should be considered _development_.
 

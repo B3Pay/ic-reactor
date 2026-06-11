@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/authentication-manager.ts:37](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/authentication-manager.ts#L37)
+Defined in: [auth/src/authentication-manager.ts:37](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/authentication-manager.ts#L37)
 
 Manages Internet Identity sign-in, session restoration, and authentication
 state for a [ClientManager](ClientManager.md).
@@ -23,7 +23,7 @@ const identity = await authentication.authenticate()
 
 > **new AuthenticationManager**(`__namedParameters`): `AuthenticationManager`
 
-Defined in: [auth/src/authentication-manager.ts:52](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/authentication-manager.ts#L52)
+Defined in: [auth/src/authentication-manager.ts:52](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/authentication-manager.ts#L52)
 
 #### Parameters
 
@@ -41,7 +41,7 @@ Defined in: [auth/src/authentication-manager.ts:52](https://github.com/B3Pay/ic-
 
 > `readonly` **clientManager**: [`ClientManager`](ClientManager.md)
 
-Defined in: [auth/src/authentication-manager.ts:45](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/authentication-manager.ts#L45)
+Defined in: [auth/src/authentication-manager.ts:45](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/authentication-manager.ts#L45)
 
 ## Accessors
 
@@ -51,7 +51,7 @@ Defined in: [auth/src/authentication-manager.ts:45](https://github.com/B3Pay/ic-
 
 > **get** **authState**(): [`AuthState`](../interfaces/AuthState.md)
 
-Defined in: [auth/src/authentication-manager.ts:48](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/authentication-manager.ts#L48)
+Defined in: [auth/src/authentication-manager.ts:48](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/authentication-manager.ts#L48)
 
 The current authentication state.
 
@@ -65,7 +65,7 @@ The current authentication state.
 
 > **subscribeAuthState**(`callback`): () => `void`
 
-Defined in: [auth/src/authentication-manager.ts:91](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/authentication-manager.ts#L91)
+Defined in: [auth/src/authentication-manager.ts:91](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/authentication-manager.ts#L91)
 
 #### Parameters
 
@@ -83,7 +83,7 @@ Defined in: [auth/src/authentication-manager.ts:91](https://github.com/B3Pay/ic-
 
 > **prepareClient**(`options?`): `Promise`\<[`AuthClientLike`](../interfaces/AuthClientLike.md) \| `undefined`\>
 
-Defined in: [auth/src/authentication-manager.ts:98](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/authentication-manager.ts#L98)
+Defined in: [auth/src/authentication-manager.ts:98](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/authentication-manager.ts#L98)
 
 Preloads and creates an AuthClient before a user gesture is needed.
 
@@ -103,7 +103,7 @@ Preloads and creates an AuthClient before a user gesture is needed.
 
 > **authenticate**(): `Promise`\<`Identity` \| `undefined`\>
 
-Defined in: [auth/src/authentication-manager.ts:115](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/authentication-manager.ts#L115)
+Defined in: [auth/src/authentication-manager.ts:115](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/authentication-manager.ts#L115)
 
 #### Returns
 
@@ -115,7 +115,7 @@ Defined in: [auth/src/authentication-manager.ts:115](https://github.com/B3Pay/ic
 
 > **login**(`loginOptions?`): `Promise`\<`void`\>
 
-Defined in: [auth/src/authentication-manager.ts:172](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/authentication-manager.ts#L172)
+Defined in: [auth/src/authentication-manager.ts:172](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/authentication-manager.ts#L172)
 
 #### Parameters
 
@@ -133,7 +133,7 @@ Defined in: [auth/src/authentication-manager.ts:172](https://github.com/B3Pay/ic
 
 > **logout**(`options?`): `Promise`\<`void`\>
 
-Defined in: [auth/src/authentication-manager.ts:233](https://github.com/B3Pay/ic-reactor/blob/f2661cd553b5412c8701b0ccea86db799d335543/packages/auth/src/authentication-manager.ts#L233)
+Defined in: [auth/src/authentication-manager.ts:233](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/authentication-manager.ts#L233)
 
 #### Parameters
 
