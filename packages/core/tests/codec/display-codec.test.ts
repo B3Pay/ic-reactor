@@ -3,7 +3,7 @@ import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { didToDisplayCodec } from "../../src/display"
 
-describe("Zod Codec - didToDisplayCodec", () => {
+describe("Display Codec - didToDisplayCodec", () => {
   describe("Primitive Types", () => {
     it("should handle IDL.Text", () => {
       const codec = didToDisplayCodec(IDL.Text)
@@ -69,38 +69,71 @@ describe("Zod Codec - didToDisplayCodec", () => {
       expect(codec.asCandid(42)).toBe(42)
     })
 
-    it("should convert IDL.Nat32 display strings to numbers", () => {
+    it("should convert IDL.Nat32 form string inputs to numbers", () => {
       const codec = didToDisplayCodec(IDL.Nat32)
+      const formValue: unknown = "1"
 
       expect(codec.asDisplay(1)).toBe(1)
-      expect(codec.asCandid("1" as any)).toBe(1)
+      expect(
+        codec.asCandid(formValue as Parameters<typeof codec.asCandid>[0])
+      ).toBe(1)
     })
 
-    it("should convert optional IDL.Nat32 display strings to optional numbers", () => {
+    it("should convert optional IDL.Nat32 form string inputs to optional numbers", () => {
       const codec = didToDisplayCodec(IDL.Opt(IDL.Nat32))
+      const formValue: unknown = "1"
 
-      expect(codec.asCandid("1" as any)).toEqual([1])
+      expect(
+        codec.asCandid(formValue as Parameters<typeof codec.asCandid>[0])
+      ).toEqual([1])
     })
 
-    it("should convert record opt IDL.Nat32 display strings to optional numbers", () => {
+    it("should reject invalid optional IDL.Nat32 form string inputs", () => {
+      const codec = didToDisplayCodec(IDL.Opt(IDL.Nat32))
+      const invalidValues: unknown[] = ["abc", "-1", "1.5", "4294967296"]
+
+      invalidValues.forEach((value) => {
+        expect(() =>
+          codec.asCandid(value as Parameters<typeof codec.asCandid>[0])
+        ).toThrow()
+      })
+    })
+
+    it("should convert record opt IDL.Nat32 form string inputs to optional numbers", () => {
       const codec = didToDisplayCodec(
         IDL.Record({
           min_confirmations: IDL.Opt(IDL.Nat32),
         })
       )
+      const formValue: unknown = { min_confirmations: "1" }
 
-      expect(codec.asCandid({ min_confirmations: "1" } as any)).toEqual({
-        min_confirmations: [1],
-      })
+      expect(
+        codec.asCandid(formValue as Parameters<typeof codec.asCandid>[0])
+      ).toEqual({ min_confirmations: [1] })
     })
 
-    it("should reject invalid IDL.Nat32 display strings", () => {
-      const codec = didToDisplayCodec(IDL.Nat32)
+    it("should reject invalid record opt IDL.Nat32 form string inputs", () => {
+      const codec = didToDisplayCodec(
+        IDL.Record({
+          min_confirmations: IDL.Opt(IDL.Nat32),
+        })
+      )
+      const invalidValue: unknown = { min_confirmations: "invalid" }
 
-      expect(() => codec.asCandid("-1" as any)).toThrow()
-      expect(() => codec.asCandid("1.5" as any)).toThrow()
-      expect(() => codec.asCandid("abc" as any)).toThrow()
-      expect(() => codec.asCandid("4294967296" as any)).toThrow()
+      expect(() =>
+        codec.asCandid(invalidValue as Parameters<typeof codec.asCandid>[0])
+      ).toThrow()
+    })
+
+    it("should reject invalid IDL.Nat32 form string inputs", () => {
+      const codec = didToDisplayCodec(IDL.Nat32)
+      const invalidValues: unknown[] = ["-1", "1.5", "abc", "4294967296"]
+
+      invalidValues.forEach((value) => {
+        expect(() =>
+          codec.asCandid(value as Parameters<typeof codec.asCandid>[0])
+        ).toThrow()
+      })
     })
 
     it("should accept valid IDL.Int32 display strings and reject invalid values", () => {
@@ -140,6 +173,17 @@ describe("Zod Codec - didToDisplayCodec", () => {
 
       const decoded = codec.asDisplay(principalText as any)
       expect(decoded).toBe(principalText)
+    })
+
+    it("should reject invalid Principal display decode values", () => {
+      const codec = didToDisplayCodec<Principal>(IDL.Principal)
+      const invalidValues: unknown[] = [123, true, null, undefined, {}]
+
+      invalidValues.forEach((value) => {
+        expect(() =>
+          codec.asDisplay(value as Parameters<typeof codec.asDisplay>[0])
+        ).toThrow("Cannot decode value as Principal display text")
+      })
     })
 
     it("should handle Principal instance in encode", () => {

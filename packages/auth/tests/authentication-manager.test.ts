@@ -9,6 +9,14 @@ vi.mock("@icp-sdk/core/agent/canister-env", () => ({
   safeGetCanisterEnv: vi.fn(),
 }))
 
+const authClientMocks = vi.hoisted(() => ({
+  factory: vi.fn(),
+}))
+
+vi.mock("@icp-sdk/auth/client", () => ({
+  AuthClient: authClientMocks.factory,
+}))
+
 function identity(text: string) {
   const principal = Principal.fromText(text)
   return { getPrincipal: () => principal } as any
@@ -31,10 +39,18 @@ function createAuthClient() {
   } as any
 }
 
+function mockAuthClientModule(authClient: Record<string, unknown>) {
+  authClientMocks.factory.mockImplementation(function () {
+    return authClient as any
+  })
+  return authClientMocks.factory
+}
+
 describe("AuthenticationManager", () => {
   let clientManager: ClientManager
 
   beforeEach(() => {
+    authClientMocks.factory.mockReset()
     vi.clearAllMocks()
     ;(safeGetCanisterEnv as any).mockReturnValue(undefined)
     clientManager = new ClientManager({ queryClient: new QueryClient() })
@@ -175,10 +191,7 @@ describe("AuthenticationManager", () => {
 
   it("uses configured local II port for default sign-in", async () => {
     const authClient = createAuthClient()
-    const AuthClient = vi.fn(function () {
-      return authClient
-    })
-    vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+    const AuthClient = mockAuthClientModule(authClient)
     const localClientManager = new ClientManager({
       queryClient: new QueryClient(),
       agentOptions: { host: "http://127.0.0.1:8000" },
@@ -190,6 +203,7 @@ describe("AuthenticationManager", () => {
 
     await authentication.login()
 
+    expect(AuthClient).toHaveBeenCalledTimes(1)
     expect(AuthClient).toHaveBeenCalledWith({
       identityProvider:
         "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:8000/authorize",
@@ -200,10 +214,7 @@ describe("AuthenticationManager", () => {
 
   it("prepares the auth client with the default local II provider", async () => {
     const authClient = createAuthClient()
-    const AuthClient = vi.fn(function () {
-      return authClient
-    })
-    vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+    const AuthClient = mockAuthClientModule(authClient)
     const localClientManager = new ClientManager({
       queryClient: new QueryClient(),
       agentOptions: { host: "http://127.0.0.1:8000" },
@@ -214,6 +225,7 @@ describe("AuthenticationManager", () => {
 
     await authentication.prepareClient()
 
+    expect(AuthClient).toHaveBeenCalledTimes(1)
     expect(AuthClient).toHaveBeenCalledWith({
       identityProvider:
         "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:8000/authorize",
@@ -224,10 +236,7 @@ describe("AuthenticationManager", () => {
 
   it("uses an explicitly configured local II canister id", async () => {
     const authClient = createAuthClient()
-    const AuthClient = vi.fn(function () {
-      return authClient
-    })
-    vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+    const AuthClient = mockAuthClientModule(authClient)
     const localClientManager = new ClientManager({
       queryClient: new QueryClient(),
       agentOptions: { host: "http://127.0.0.1:8000" },
@@ -240,6 +249,7 @@ describe("AuthenticationManager", () => {
 
     await authentication.login()
 
+    expect(AuthClient).toHaveBeenCalledTimes(1)
     expect(AuthClient).toHaveBeenCalledWith({
       identityProvider:
         "http://abcde-fghij-klmno-pqrst-cai.localhost:8000/authorize",
@@ -254,10 +264,7 @@ describe("AuthenticationManager", () => {
       INTERNET_IDENTITY_PROVIDER: "http://id.ai.localhost:8000/authorize",
     })
     const authClient = createAuthClient()
-    const AuthClient = vi.fn(function () {
-      return authClient
-    })
-    vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+    const AuthClient = mockAuthClientModule(authClient)
     const localClientManager = new ClientManager({
       queryClient: new QueryClient(),
       agentOptions: { host: "http://127.0.0.1:8000" },
@@ -269,6 +276,7 @@ describe("AuthenticationManager", () => {
 
     await authentication.login()
 
+    expect(AuthClient).toHaveBeenCalledTimes(1)
     expect(AuthClient).toHaveBeenCalledWith({
       identityProvider: "http://id.ai.localhost:8000/authorize",
       windowOpenerFeatures: undefined,
@@ -284,10 +292,7 @@ describe("AuthenticationManager", () => {
     })
     ;(safeGetCanisterEnv as any).mockReturnValue(undefined)
     const authClient = createAuthClient()
-    const AuthClient = vi.fn(function () {
-      return authClient
-    })
-    vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+    const AuthClient = mockAuthClientModule(authClient)
     const localClientManager = new ClientManager({
       queryClient: new QueryClient(),
       agentOptions: { host: "http://127.0.0.1:8000" },
@@ -299,6 +304,7 @@ describe("AuthenticationManager", () => {
 
     await authentication.login()
 
+    expect(AuthClient).toHaveBeenCalledTimes(1)
     expect(AuthClient).toHaveBeenCalledWith({
       identityProvider: "http://id.ai.localhost:8000/authorize",
       windowOpenerFeatures: undefined,

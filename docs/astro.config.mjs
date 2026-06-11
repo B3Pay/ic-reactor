@@ -2,8 +2,10 @@ import { defineConfig } from "astro/config"
 import starlight from "@astrojs/starlight"
 import starlightPageActions from "starlight-page-actions"
 
+const SITE_URL = "https://ic-reactor.b3pay.net"
+
 export default defineConfig({
-  site: "https://ic-reactor.b3pay.net",
+  site: SITE_URL,
   base: "/v4/",
   output: "static",
   integrations: [
@@ -14,7 +16,7 @@ export default defineConfig({
       },
       plugins: [
         starlightPageActions({
-          baseUrl: "https://ic-reactor.b3pay.net",
+          baseUrl: SITE_URL,
           actions: {
             chatgpt: true,
             claude: true,
