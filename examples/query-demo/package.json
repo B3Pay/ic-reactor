@@ -16,15 +16,15 @@
     "@icp-sdk/core": "^5.4.0",
     "@tanstack/react-query": "^5.90",
     "@tanstack/react-query-devtools": "^5.91.2",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "@types/react": "^19.2.7",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.2"
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
   },
   "overrides": {
     "picomatch": "4.0.4",

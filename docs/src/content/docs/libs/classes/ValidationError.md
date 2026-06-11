@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [core/src/errors/index.ts:214](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/errors/index.ts#L214)
+Defined in: [core/src/errors/index.ts:214](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/errors/index.ts#L214)
 
 Error thrown when argument validation fails before calling the canister.
 Contains detailed information about which fields failed validation.
@@ -39,7 +39,7 @@ try {
 
 > **new ValidationError**(`methodName`, `issues`): `ValidationError`
 
-Defined in: [core/src/errors/index.ts:220](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/errors/index.ts#L220)
+Defined in: [core/src/errors/index.ts:220](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/errors/index.ts#L220)
 
 #### Parameters
 
@@ -65,7 +65,7 @@ Defined in: [core/src/errors/index.ts:220](https://github.com/B3Pay/ic-reactor/b
 
 > `readonly` **issues**: [`ValidationIssue`](../interfaces/ValidationIssue.md)[]
 
-Defined in: [core/src/errors/index.ts:216](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/errors/index.ts#L216)
+Defined in: [core/src/errors/index.ts:216](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/errors/index.ts#L216)
 
 Array of validation issues
 
@@ -75,7 +75,7 @@ Array of validation issues
 
 > `readonly` **methodName**: `string`
 
-Defined in: [core/src/errors/index.ts:218](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/errors/index.ts#L218)
+Defined in: [core/src/errors/index.ts:218](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/errors/index.ts#L218)
 
 The method name that failed validation
 
@@ -85,7 +85,7 @@ The method name that failed validation
 
 > **getIssuesForPath**(`path`): [`ValidationIssue`](../interfaces/ValidationIssue.md)[]
 
-Defined in: [core/src/errors/index.ts:236](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/errors/index.ts#L236)
+Defined in: [core/src/errors/index.ts:236](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/errors/index.ts#L236)
 
 Get issues for a specific field path
 
@@ -105,7 +105,7 @@ Get issues for a specific field path
 
 > **hasErrorForPath**(`path`): `boolean`
 
-Defined in: [core/src/errors/index.ts:243](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/errors/index.ts#L243)
+Defined in: [core/src/errors/index.ts:243](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/errors/index.ts#L243)
 
 Check if a specific field has errors
 

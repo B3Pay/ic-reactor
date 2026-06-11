@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/types.ts:21](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/types.ts#L21)
+Defined in: [auth/src/types.ts:21](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L21)
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: [auth/src/types.ts:21](https://github.com/B3Pay/ic-reactor/blob/dd15
 
 > **principal**: `string`
 
-Defined in: [auth/src/types.ts:22](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/types.ts#L22)
+Defined in: [auth/src/types.ts:22](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L22)
 
 ---
 
@@ -21,7 +21,7 @@ Defined in: [auth/src/types.ts:22](https://github.com/B3Pay/ic-reactor/blob/dd15
 
 > **requestedKeys**: `string`[]
 
-Defined in: [auth/src/types.ts:23](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/types.ts#L23)
+Defined in: [auth/src/types.ts:23](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L23)
 
 ---
 
@@ -29,7 +29,7 @@ Defined in: [auth/src/types.ts:23](https://github.com/B3Pay/ic-reactor/blob/dd15
 
 > **signedAttributes**: [`SignedIdentityAttributes`](SignedIdentityAttributes.md)
 
-Defined in: [auth/src/types.ts:24](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/types.ts#L24)
+Defined in: [auth/src/types.ts:24](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L24)
 
 ---
 
@@ -37,7 +37,7 @@ Defined in: [auth/src/types.ts:24](https://github.com/B3Pay/ic-reactor/blob/dd15
 
 > **decodedAttributes**: [`IdentityAttributeValues`](IdentityAttributeValues.md)
 
-Defined in: [auth/src/types.ts:25](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/types.ts#L25)
+Defined in: [auth/src/types.ts:25](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L25)
 
 ---
 
@@ -45,4 +45,4 @@ Defined in: [auth/src/types.ts:25](https://github.com/B3Pay/ic-reactor/blob/dd15
 
 > **completedAt**: `string`
 
-Defined in: [auth/src/types.ts:26](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/types.ts#L26)
+Defined in: [auth/src/types.ts:26](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L26)
