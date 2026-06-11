@@ -29,6 +29,15 @@ function makeAuthentication(clientManager: ClientManager) {
   return new AuthenticationManager({ clientManager })
 }
 
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+}
+
 // ============================================================================
 // createAuthHooks - useAgentState
 // ============================================================================
@@ -39,7 +48,7 @@ describe("createAuthHooks - useAgentState", () => {
   let authentication: AuthenticationManager
 
   beforeEach(() => {
-    queryClient = new QueryClient()
+    queryClient = makeQueryClient()
     clientManager = makeClientManager(queryClient)
     authentication = makeAuthentication(clientManager)
   })
@@ -92,7 +101,7 @@ describe("createAuthHooks - useUserPrincipal", () => {
   let authentication: AuthenticationManager
 
   beforeEach(() => {
-    queryClient = new QueryClient()
+    queryClient = makeQueryClient()
     clientManager = makeClientManager(queryClient)
     authentication = makeAuthentication(clientManager)
   })
@@ -140,10 +149,11 @@ describe("createAuthHooks - useAuth", () => {
   let authentication: AuthenticationManager
 
   beforeEach(() => {
-    queryClient = new QueryClient()
+    queryClient = makeQueryClient()
     clientManager = makeClientManager(queryClient)
     authentication = makeAuthentication(clientManager)
     // Prevent real network calls
+    vi.spyOn(authentication, "prepareClient").mockResolvedValue(undefined)
     vi.spyOn(clientManager, "initialize").mockResolvedValue(clientManager)
     vi.spyOn(authentication, "authenticate").mockResolvedValue(undefined)
   })
@@ -268,7 +278,7 @@ describe("createIdentityAttributeHooks - useIdentityAttributes", () => {
   let identityAttributes: IdentityAttributesManager
 
   beforeEach(() => {
-    queryClient = new QueryClient()
+    queryClient = makeQueryClient()
     clientManager = makeClientManager(queryClient)
     identityAttributes = new IdentityAttributesManager(
       makeAuthentication(clientManager)

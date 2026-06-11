@@ -1,8 +1,23 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
 import { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "@ic-reactor/core"
 import { AuthenticationManager, IdentityAttributesManager } from "../src"
+
+const authClientMocks = vi.hoisted(() => ({
+  factory: vi.fn(),
+}))
+
+vi.mock("@icp-sdk/auth/client", () => ({
+  AuthClient: authClientMocks.factory,
+}))
+
+function mockAuthClientModule(authClient: Record<string, unknown>) {
+  authClientMocks.factory.mockImplementation(function () {
+    return authClient as any
+  })
+  return authClientMocks.factory
+}
 
 function makeManagers() {
   const identity = { getPrincipal: () => Principal.fromText("aaaaa-aa") } as any
@@ -30,6 +45,10 @@ function makeManagers() {
 }
 
 describe("IdentityAttributesManager", () => {
+  beforeEach(() => {
+    authClientMocks.factory.mockReset()
+  })
+
   it("requests scoped attributes and updates authentication state", async () => {
     const { authClient, authentication, identityAttributes } = makeManagers()
 
@@ -97,10 +116,7 @@ describe("IdentityAttributesManager", () => {
         signature: new Uint8Array(),
       })),
     }
-    const AuthClient = vi.fn(function () {
-      return authClient
-    })
-    vi.doMock("@icp-sdk/auth/client", () => ({ AuthClient }))
+    const AuthClient = mockAuthClientModule(authClient)
     const clientManager = new ClientManager({ queryClient: new QueryClient() })
     vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
     const identityAttributes = new IdentityAttributesManager(
@@ -113,6 +129,7 @@ describe("IdentityAttributesManager", () => {
       nonce: new Uint8Array([9]),
     })
 
+    expect(AuthClient).toHaveBeenCalledTimes(1)
     expect(AuthClient).toHaveBeenCalledWith({
       identityProvider: "https://id.ai/authorize",
       windowOpenerFeatures: undefined,
