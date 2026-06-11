@@ -17,7 +17,7 @@
     "@ic-reactor/core": "^3.6.0",
     "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^5.4.0",
-    "@tanstack/devtools-vite": "^0.4.0",
+    "@tanstack/devtools-vite": "^0.7.0",
     "@tanstack/query-core": "^5.90"
   },
   "overrides": {
