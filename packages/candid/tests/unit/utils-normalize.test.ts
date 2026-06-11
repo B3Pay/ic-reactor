@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import { normalizeCandidInterface } from "../../src/utils"
 
 describe("normalizeCandidInterface", () => {
@@ -54,22 +54,11 @@ describe("normalizeCandidInterface", () => {
     )
   })
 
-  it("should throw an error when didToJs compiler is fed hallucinatory syntax", () => {
-    const invalidInput = `type Broken = record { invalid_primitive };\n(Broken) -> (Broken)`
-    const result = normalizeCandidInterface(invalidInput)
-
-    const mockParser = {
-      didToJs: vi.fn().mockImplementation((source) => {
-        if (source.includes("invalid_primitive")) {
-          throw new Error("Syntax error in candid file")
-        }
-        return "export const idlFactory = () => {};"
-      }),
-      validateIDL: vi.fn(),
-    }
+  it("should throw an error for malformed candid shorthand", () => {
+    const invalidInput = "(text, nat64 -> (bool) query"
 
     expect(() => {
-      mockParser.didToJs(result)
-    }).toThrow("Syntax error in candid file")
+      normalizeCandidInterface(invalidInput)
+    }).toThrow("Malformed candid interface")
   })
 })
