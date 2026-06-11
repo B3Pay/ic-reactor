@@ -41,8 +41,11 @@ const { mutate } = useActorMutation({
 - **Callbacks**: `onCanisterError` (not calling it just `onError` when referring to canister logic errors).
 
 ## Documentation
-- Refer to `llms.txt` in the root directory for a comprehensive API overview and high-level concepts.
+- Refer to `llms.txt` in the root directory for compact package/task routing.
+- Refer to `llms-full.txt` for a longer API overview and task-oriented AI guide.
 - Refer to `/docs` for detailed guides and examples.
+- Refer to `skill-packages/ic-reactor-packages/SKILL.md` for package ownership, exports, generated artifacts, and verification workflows.
+- Refer to `skill-packages/ic-reactor-hooks/SKILL.md` for React hook, query/mutation factory, and cache invalidation patterns.
 
 ## Tech Stack
 - TypeScript

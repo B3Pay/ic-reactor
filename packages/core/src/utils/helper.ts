@@ -8,6 +8,14 @@ export const generateKey = (args: any[]) => {
   )
 }
 
+const getEnv = () => {
+  try {
+    return process.env
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Checks if the current environment is local or development.
  *
@@ -16,10 +24,8 @@ export const generateKey = (args: any[]) => {
  * @returns `true` if running in a local or development environment, otherwise `false`.
  */
 export const isInLocalOrDevelopment = () => {
-  if (typeof process === "undefined") return false
-  return (
-    process.env.DFX_NETWORK === "local" || process.env.ICP_NETWORK === "local"
-  )
+  const env = getEnv()
+  return env?.DFX_NETWORK === "local" || env?.ICP_NETWORK === "local"
 }
 
 /**
@@ -31,8 +37,8 @@ export const isInLocalOrDevelopment = () => {
  * @returns The network name, defaulting to "ic" if not specified.
  */
 export const getProcessEnvNetwork = () => {
-  if (typeof process === "undefined") return "ic"
-  return process.env.ICP_NETWORK ?? process.env.DFX_NETWORK ?? "ic"
+  const env = getEnv()
+  return env?.ICP_NETWORK ?? env?.DFX_NETWORK ?? "ic"
 }
 
 /**
@@ -47,13 +53,42 @@ export const getProcessEnvNetwork = () => {
 export const isDev = (): boolean => {
   const importMetaDev =
     typeof import.meta !== "undefined" && (import.meta as any).env?.DEV
+  const env = getEnv()
   const nodeDev =
-    typeof process !== "undefined" &&
-    (process.env.NODE_ENV === "development" ||
-      process.env.DFX_NETWORK === "local" ||
-      process.env.ICP_NETWORK === "local")
+    env?.NODE_ENV === "development" ||
+    env?.DFX_NETWORK === "local" ||
+    env?.ICP_NETWORK === "local"
 
   return Boolean(importMetaDev || nodeDev)
+}
+
+/**
+ * Checks if a given host URL is a mainnet Internet Computer boundary node host.
+ *
+ * @param host - The host URL to evaluate.
+ * @returns `true` if the host is a mainnet host, default to true if host is undefined, otherwise `false`.
+ */
+export const isMainnetHost = (host?: string): boolean => {
+  if (!host) return true
+
+  try {
+    const url = new URL(
+      host.startsWith("http")
+        ? host
+        : `${typeof window !== "undefined" ? window.location.protocol : "https:"}//${host}`
+    )
+    const hostname = url.hostname
+    return (
+      hostname === "ic0.app" ||
+      hostname.endsWith(".ic0.app") ||
+      hostname === "icp0.io" ||
+      hostname.endsWith(".icp0.io") ||
+      hostname === "icp-api.io" ||
+      hostname.endsWith(".icp-api.io")
+    )
+  } catch {
+    return false
+  }
 }
 
 /**

@@ -7,7 +7,7 @@ prev: true
 
 > **decodeIdentityAttributeValues**(`data`, `requestedKeys`): [`IdentityAttributeValues`](../interfaces/IdentityAttributeValues.md)
 
-Defined in: [identity-attributes.ts:48](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/identity-attributes.ts#L48)
+Defined in: [auth/src/identity-attributes.ts:55](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/identity-attributes.ts#L55)
 
 ## Parameters
 

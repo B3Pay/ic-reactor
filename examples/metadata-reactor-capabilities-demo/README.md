@@ -14,8 +14,8 @@ A focused demo that showcases what `MetadataReactor` can do without requiring a 
 
 ```bash
 cd examples/metadata-reactor-capabilities-demo
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 The example defines a local service with query/update methods and complex records/variants,

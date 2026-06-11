@@ -9,6 +9,8 @@
     "test:vitest": "vitest run"
   },
   "dependencies": {
+    "@ic-reactor/auth": "workspace:*",
+    "@ic-reactor/auth-react": "workspace:*",
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/react": "workspace:*",
     "@ic-reactor/vite-plugin": "workspace:*",

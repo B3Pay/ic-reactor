@@ -4,9 +4,14 @@ This directory contains AI agent skill packages for the IC Reactor project. Skil
 
 ## Available Skills
 
-| Skill                                      | Description                                                   |
-| ------------------------------------------ | ------------------------------------------------------------- |
-| [`ic-reactor-hooks`](./ic-reactor-hooks/)  | React hooks, query/mutation factories, and cache patterns     |
+| Skill                                           | Description                                                                                            |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [`ic-reactor-hooks`](./ic-reactor-hooks/)       | React hooks, query/mutation factories, generated hooks, cache patterns, and inside/outside React usage |
+| [`ic-reactor-packages`](./ic-reactor-packages/) | Monorepo package ownership, generated artifacts, documentation consistency, and verification workflow  |
+
+Use root `llms.txt` for compact repository routing and `llms-full.txt` when an
+agent needs a longer prompt-ready IC Reactor API guide. Skills should stay
+focused on workflow and link to `references/` for concrete examples.
 
 ## Agent Compatibility
 
@@ -19,12 +24,12 @@ Each skill includes metadata for multiple AI agent platforms:
 
 ## How Skills Are Discovered
 
-| Agent               | Discovery File                      | Skill Path Reference                            |
-| ------------------- | ----------------------------------- | ----------------------------------------------- |
-| OpenAI Codex        | `AGENTS.md`                         | `skill-packages/ic-reactor-hooks/SKILL.md`      |
-| Claude / Anthropic  | `CLAUDE.md`                         | `skill-packages/ic-reactor-hooks/SKILL.md`      |
-| GitHub Copilot      | `.github/copilot-instructions.md`   | `skill-packages/ic-reactor-hooks/SKILL.md`      |
-| Cursor              | `.cursorrules`                      | `skill-packages/ic-reactor-hooks/SKILL.md`      |
+| Agent              | Discovery File                    | Skill Path Reference                   |
+| ------------------ | --------------------------------- | -------------------------------------- |
+| OpenAI Codex       | `AGENTS.md`                       | `skill-packages/<skill-name>/SKILL.md` |
+| Claude / Anthropic | `CLAUDE.md`                       | `skill-packages/<skill-name>/SKILL.md` |
+| GitHub Copilot     | `.github/copilot-instructions.md` | `skill-packages/<skill-name>/SKILL.md` |
+| Cursor             | `.cursorrules`                    | `skill-packages/<skill-name>/SKILL.md` |
 
 ## Adding a New Skill
 

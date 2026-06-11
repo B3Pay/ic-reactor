@@ -5,12 +5,16 @@
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build && tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "dfx deploy"
   },
   "dependencies": {
+    "@ic-reactor/auth": "^3.6.0",
+    "@ic-reactor/auth-react": "^3.6.0",
     "@ic-reactor/core": "^3.6.0",
     "@ic-reactor/react": "^3.6.0",
-    "@icp-sdk/core": "^5.0.0",
+    "@ic-reactor/vite-plugin": "0.11.1",
+    "@icp-sdk/core": "^5.4.0",
     "@tanstack/react-query": "^5.90",
     "@tanstack/react-query-devtools": "^5.91",
     "react": "^19.2.3",
@@ -27,5 +31,6 @@
   "overrides": {
     "picomatch": "4.0.4",
     "yaml": "2.8.3"
-  }
+  },
+  "packageManager": "pnpm@10.30.3"
 }

@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:62](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L62)
+Defined in: [auth/src/types.ts:52](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L52)
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: [types/client.ts:62](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **keys**: `string`[]
 
-Defined in: [types/client.ts:63](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L63)
+Defined in: [auth/src/types.ts:53](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L53)
 
 ---
 
@@ -21,7 +21,7 @@ Defined in: [types/client.ts:63](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **nonce**: `Uint8Array`
 
-Defined in: [types/client.ts:64](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L64)
+Defined in: [auth/src/types.ts:54](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L54)
 
 ---
 
@@ -29,7 +29,7 @@ Defined in: [types/client.ts:64](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **identityProvider?**: `string` \| `URL`
 
-Defined in: [types/client.ts:65](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L65)
+Defined in: [auth/src/types.ts:55](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L55)
 
 ---
 
@@ -37,7 +37,7 @@ Defined in: [types/client.ts:65](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **openIdProvider?**: [`IdentityAttributeOpenIdProvider`](../type-aliases/IdentityAttributeOpenIdProvider.md)
 
-Defined in: [types/client.ts:66](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L66)
+Defined in: [auth/src/types.ts:56](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L56)
 
 ---
 
@@ -45,7 +45,7 @@ Defined in: [types/client.ts:66](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **windowOpenerFeatures?**: `string`
 
-Defined in: [types/client.ts:67](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L67)
+Defined in: [auth/src/types.ts:57](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L57)
 
 ---
 
@@ -53,7 +53,7 @@ Defined in: [types/client.ts:67](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **signIn?**: `boolean`
 
-Defined in: [types/client.ts:68](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L68)
+Defined in: [auth/src/types.ts:58](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L58)
 
 ---
 
@@ -61,7 +61,7 @@ Defined in: [types/client.ts:68](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **maxTimeToLive?**: `bigint`
 
-Defined in: [types/client.ts:69](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L69)
+Defined in: [auth/src/types.ts:59](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L59)
 
 ---
 
@@ -69,4 +69,4 @@ Defined in: [types/client.ts:69](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > `optional` **targets?**: `Principal`[]
 
-Defined in: [types/client.ts:70](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L70)
+Defined in: [auth/src/types.ts:60](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L60)

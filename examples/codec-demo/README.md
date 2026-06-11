@@ -13,7 +13,7 @@ import { ClientManager, Reactor, DisplayReactor } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/query-core"
 
 const queryClient = new QueryClient()
-const clientManager = new ClientManager({ queryClient, withProcessEnv: true })
+const clientManager = new ClientManager({ queryClient })
 
 // Raw Reactor - returns Candid types
 const rawReactor = new Reactor<Ledger>({
@@ -148,7 +148,6 @@ const queryClient = new QueryClient()
 
 const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: true, // Auto-detect local vs IC network
 })
 
 const ledger = new DisplayReactor<Ledger>({

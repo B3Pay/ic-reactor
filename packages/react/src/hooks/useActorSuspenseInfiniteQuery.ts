@@ -21,27 +21,30 @@ import { CallConfig } from "@icp-sdk/core/agent"
  * Extends react-query's UseSuspenseInfiniteQueryOptions with custom reactor params.
  */
 export interface UseActorSuspenseInfiniteQueryParameters<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
   TPageParam = unknown,
-  TSelected = InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>,
+  Selected = InfiniteData<
+    ReactorReturnOk<Service, Method, Transform>,
+    TPageParam
+  >,
 > extends Omit<
   UseSuspenseInfiniteQueryOptions<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    TSelected,
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    Selected,
     QueryKey,
     TPageParam
   >,
   "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"
 > {
   /** The reactor instance to use for method calls */
-  reactor: Reactor<A, T>
+  reactor: Reactor<Service, Transform>
   /** The method name to call on the canister */
-  functionName: M
+  functionName: Method
   /** Function to get args from page parameter */
-  getArgs: (pageParam: TPageParam) => ReactorArgs<A, M, T>
+  getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
   /** Agent call configuration (effectiveCanisterId, etc.) */
   callConfig?: CallConfig
   /** Custom query key (auto-generated if not provided) */
@@ -50,31 +53,36 @@ export interface UseActorSuspenseInfiniteQueryParameters<
   initialPageParam: TPageParam
   /** Function to determine next page parameter */
   getNextPageParam: (
-    lastPage: ReactorReturnOk<A, M, T>,
-    allPages: ReactorReturnOk<A, M, T>[],
+    lastPage: ReactorReturnOk<Service, Method, Transform>,
+    allPages: ReactorReturnOk<Service, Method, Transform>[],
     lastPageParam: TPageParam,
     allPageParams: TPageParam[]
   ) => TPageParam | undefined | null
 }
 
 export type UseActorSuspenseInfiniteQueryConfig<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
   TPageParam = unknown,
 > = Omit<
-  UseActorSuspenseInfiniteQueryParameters<A, M, T, TPageParam>,
+  UseActorSuspenseInfiniteQueryParameters<
+    Service,
+    Method,
+    Transform,
+    TPageParam
+  >,
   "reactor"
 >
 
 export type UseActorSuspenseInfiniteQueryResult<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
   TPageParam = unknown,
 > = UseSuspenseInfiniteQueryResult<
-  InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>,
-  ReactorReturnErr<A, M, T>
+  InfiniteData<ReactorReturnOk<Service, Method, Transform>, TPageParam>,
+  ReactorReturnErr<Service, Method, Transform>
 >
 
 /**
@@ -90,9 +98,9 @@ export type UseActorSuspenseInfiniteQueryResult<
  * })
  */
 export const useActorSuspenseInfiniteQuery = <
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
   TPageParam = unknown,
 >({
   reactor,
@@ -102,11 +110,16 @@ export const useActorSuspenseInfiniteQuery = <
   queryKey,
   ...options
 }: UseActorSuspenseInfiniteQueryParameters<
-  A,
-  M,
-  T,
+  Service,
+  Method,
+  Transform,
   TPageParam
->): UseActorSuspenseInfiniteQueryResult<A, M, T, TPageParam> => {
+>): UseActorSuspenseInfiniteQueryResult<
+  Service,
+  Method,
+  Transform,
+  TPageParam
+> => {
   // Always pass queryKey through generateQueryKey so it is merged with the
   // reactor/function identity. Using the custom key verbatim would cause cache
   // collisions if two different actors or methods share the same key string.
@@ -135,5 +148,10 @@ export const useActorSuspenseInfiniteQuery = <
       ...options,
     } as any,
     reactor.queryClient
-  ) as UseActorSuspenseInfiniteQueryResult<A, M, T, TPageParam>
+  ) as UseActorSuspenseInfiniteQueryResult<
+    Service,
+    Method,
+    Transform,
+    TPageParam
+  >
 }

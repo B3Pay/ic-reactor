@@ -2,6 +2,7 @@ import React from "react"
 import { render, screen, fireEvent, act, cleanup } from "@testing-library/react"
 import { idlFactory, _SERVICE } from "../declarations/hello_actor"
 import { ClientManager, Reactor } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import { createActorHooks } from "@ic-reactor/react"
 import { describe, it, expect, afterEach, beforeAll } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -22,8 +23,10 @@ const clientManager = new ClientManager({
     verifyQuerySignatures: false,
     host: "http://127.0.0.1:8000",
   },
-  withCanisterEnv: true,
   queryClient,
+})
+const authentication = new AuthenticationManager({
+  clientManager,
 })
 
 const helloActor = new Reactor<_SERVICE>({
@@ -40,7 +43,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 
 beforeAll(async () => {
   await clientManager.initialize()
-  await clientManager.authenticate()
+  await authentication.authenticate()
 })
 
 afterEach(() => {

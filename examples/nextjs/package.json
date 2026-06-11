@@ -13,26 +13,27 @@
     "dfinity"
   ],
   "scripts": {
-    "install:all": "(yarn -v && yarn || npm install) && npm run ic-wasm:install && npm run candid:install",
+    "install:all": "pnpm install && pnpm ic-wasm:install && pnpm candid:install",
     "candid:install": "cargo install candid-extractor",
     "ic-wasm:install": "cargo install ic-wasm",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "export": "next build",
-    "dev": "next dev",
+    "export": "next build --webpack",
+    "dev": "next dev --webpack",
     "dfx:start": "dfx start --background --clean",
     "dfx:stop": "dfx stop",
     "dfx:pull": "dfx deps pull",
-    "dfx:identity": "dfx deps deploy internet_identity",
     "dfx:build": "dfx build",
     "deploy": "dfx deploy",
     "generate": "dfx generate"
   },
   "dependencies": {
+    "@ic-reactor/auth": "^3.6.0",
+    "@ic-reactor/auth-react": "^3.6.0",
     "@ic-reactor/core": "^3.6.0",
     "@ic-reactor/react": "^3.6.0",
-    "@icp-sdk/auth": "^5.0.0",
-    "@icp-sdk/core": "^5.0.0",
+    "@icp-sdk/auth": "^7.1.0",
+    "@icp-sdk/core": "^5.4.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@tanstack/react-query": "^5.90.16",
     "next": "^16.2.6",
@@ -48,5 +49,6 @@
     "@types/react-dom": "19.2.3",
     "dotenv": "17.2.3",
     "typescript": "5.9.3"
-  }
+  },
+  "packageManager": "pnpm@10.30.3"
 }

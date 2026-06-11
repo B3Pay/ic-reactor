@@ -6,29 +6,29 @@ editUrl: false
 
 import { Aside } from "@astrojs/starlight/components"
 
-`createAuthHooks` is a factory function that creates React hooks for managing Internet Identity authentication. The hooks are bound to a specific `ClientManager` instance.
+`createAuthHooks` creates React hooks bound to an `AuthenticationManager`.
 
 ## Import
 
 ```typescript
-import { createAuthHooks } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 ```
 
 ## Usage
 
 ```typescript
-import { createAuthHooks } from "@ic-reactor/react"
-import { clientManager } from "./reactor"
+import { createAuthHooks } from "@ic-reactor/auth-react"
+import { authentication } from "./reactor"
 
 const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(clientManager)
+  createAuthHooks(authentication)
 ```
 
 ## Parameters
 
-| Parameter       | Type            | Description                           |
-| --------------- | --------------- | ------------------------------------- |
-| `clientManager` | `ClientManager` | The ClientManager instance to bind to |
+| Parameter        | Type                    | Description                       |
+| ---------------- | ----------------------- | --------------------------------- |
+| `authentication` | `AuthenticationManager` | Authentication manager to bind to |
 
 ## Return Value
 
@@ -45,6 +45,7 @@ const { useAuth, useUserPrincipal, useAgentState } =
 ```typescript
 // src/reactor/index.ts
 import { ClientManager } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import { QueryClient } from "@tanstack/query-core"
 
 export const queryClient = new QueryClient()
@@ -53,15 +54,16 @@ export const clientManager = new ClientManager({
   queryClient,
   withProcessEnv: true,
 })
+export const authentication = new AuthenticationManager({ clientManager })
 ```
 
 ```typescript
 // src/reactor/hooks.ts
-import { createAuthHooks } from "@ic-reactor/react"
-import { clientManager } from "./index"
+import { createAuthHooks } from "@ic-reactor/auth-react"
+import { authentication } from "./index"
 
 export const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(clientManager)
+  createAuthHooks(authentication)
 ```
 
 ```tsx

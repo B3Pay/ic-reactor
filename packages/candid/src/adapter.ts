@@ -122,9 +122,11 @@ export class CandidAdapter {
     this.parserLoadAttempted = true
 
     try {
-      this.parserModule = require("@ic-reactor/parser")
-      if (this.parserModule?.default) {
-        await this.parserModule.default()
+      this.parserModule = (await import(
+        "@ic-reactor/parser" as any
+      )) as unknown as ReactorParser
+      if (typeof this.parserModule?.default === "function") {
+        await (this.parserModule.default as () => Promise<void>)()
       }
     } catch (error) {
       throw new Error(`Error loading parser: ${error}`)
@@ -143,9 +145,11 @@ export class CandidAdapter {
     this.parserLoadAttempted = true
 
     try {
-      this.parserModule = require("@ic-reactor/parser")
-      if (this.parserModule?.default) {
-        await this.parserModule.default()
+      this.parserModule = (await import(
+        "@ic-reactor/parser" as any
+      )) as unknown as ReactorParser
+      if (typeof this.parserModule?.default === "function") {
+        await (this.parserModule.default as () => Promise<void>)()
       }
     } catch {
       // Silently fail - parser is optional

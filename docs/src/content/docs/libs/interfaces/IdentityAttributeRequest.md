@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:19](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L19)
+Defined in: [auth/src/types.ts:9](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L9)
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: [types/client.ts:19](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **keys**: `string`[]
 
-Defined in: [types/client.ts:20](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L20)
+Defined in: [auth/src/types.ts:10](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L10)
 
 ---
 
@@ -21,4 +21,4 @@ Defined in: [types/client.ts:20](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **nonce**: `Uint8Array`
 
-Defined in: [types/client.ts:21](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L21)
+Defined in: [auth/src/types.ts:11](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L11)

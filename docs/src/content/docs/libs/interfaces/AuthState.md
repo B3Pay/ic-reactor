@@ -5,9 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:169](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L169)
-
-Represents the authentication state of an agent.
+Defined in: [auth/src/types.ts:84](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L84)
 
 ## Properties
 
@@ -15,7 +13,7 @@ Represents the authentication state of an agent.
 
 > **identity**: `Identity` \| `null`
 
-Defined in: [types/client.ts:170](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L170)
+Defined in: [auth/src/types.ts:85](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L85)
 
 ---
 
@@ -23,9 +21,7 @@ Defined in: [types/client.ts:170](https://github.com/B3Pay/ic-reactor/blob/0479e
 
 > **isAuthenticating**: `boolean`
 
-Defined in: [types/client.ts:175](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L175)
-
-Indicates whether the authentication process is ongoing.
+Defined in: [auth/src/types.ts:86](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L86)
 
 ---
 
@@ -33,9 +29,7 @@ Indicates whether the authentication process is ongoing.
 
 > **isAuthenticated**: `boolean`
 
-Defined in: [types/client.ts:180](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L180)
-
-Indicates whether the agent is authenticated.
+Defined in: [auth/src/types.ts:87](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L87)
 
 ---
 
@@ -43,6 +37,4 @@ Indicates whether the agent is authenticated.
 
 > **error**: `Error` \| `undefined`
 
-Defined in: [types/client.ts:185](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L185)
-
-Represents any error that occurred during authentication.
+Defined in: [auth/src/types.ts:88](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L88)

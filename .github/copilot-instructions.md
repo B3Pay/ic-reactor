@@ -8,6 +8,20 @@ Follow these repository-specific patterns when suggesting code:
 - Prefer small, explicit changes over large custom abstractions.
 - Keep TypeScript types accurate and inferable.
 - Do not hand-edit generated files unless the user explicitly asks.
+- For package ownership, exports, generated artifacts, or verification workflow questions, use `skill-packages/ic-reactor-packages/SKILL.md`.
+- For React hook/factory implementation questions, use `skill-packages/ic-reactor-hooks/SKILL.md`.
+
+## Package Ownership
+
+- `packages/core` owns framework-agnostic runtime behavior: `ClientManager`, `Reactor`, `DisplayReactor`, and query-cache integration.
+- `packages/react` owns React hooks, query/mutation factories, `defineReactor`, and `useActorMethod`.
+- `packages/auth` owns Internet Identity auth state, auth client loading, and identity attributes.
+- `packages/auth-react` owns React hooks over the auth managers.
+- `packages/candid` owns runtime Candid fetching/parsing adapters and dynamic reactors.
+- `packages/parser` owns the Rust/WASM Candid parser.
+- `packages/codegen` owns declaration, reactor, client, and hook generation.
+- `packages/cli` owns the `ic-reactor` executable and config schema.
+- `packages/vite-plugin` owns Vite integration, `.did` watching, and environment-cookie injection.
 
 ## React Hook Patterns (Important)
 
@@ -52,7 +66,19 @@ Follow these repository-specific patterns when suggesting code:
 
 - `packages/react/src/`
 - `packages/react/README.md`
+- `packages/auth/README.md`
+- `packages/auth-react/README.md`
 - `examples/all-in-one-demo/src/lib/factories.ts`
 - `examples/tanstack-router/src/canisters/ledger/hooks/`
 - `AGENTS.md`
+- `llms.txt`
+- `llms-full.txt`
 - `skill-packages/ic-reactor-hooks/SKILL.md`
+- `skill-packages/ic-reactor-packages/SKILL.md`
+
+## Verification
+
+- Package builds: `pnpm build`
+- Package tests: `pnpm test`
+- Root type check used by CI: `pnpm exec tsc --noEmit`
+- Example type checks: `pnpm typecheck:examples`

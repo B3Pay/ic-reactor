@@ -15,11 +15,12 @@
   "dependencies": {
     "@ic-reactor/candid": "^3.6.0",
     "@ic-reactor/core": "^3.6.0",
-    "@icp-sdk/core": "^5.0.0",
+    "@icp-sdk/core": "^5.4.0",
     "@tanstack/query-core": "^5.0.0"
   },
   "overrides": {
     "picomatch": "4.0.4",
     "yaml": "2.8.3"
-  }
+  },
+  "packageManager": "pnpm@10.30.3"
 }

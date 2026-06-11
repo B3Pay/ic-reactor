@@ -29,6 +29,7 @@ export const ledgerReactor = new DisplayReactor<LedgerService>({
   clientManager,
   idlFactory,
   name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

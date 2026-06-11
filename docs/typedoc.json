@@ -1,10 +1,7 @@
 {
   "$schema": "https://typedoc-plugin-markdown.org/schema.json",
-  "entryPoints": [
-    "../packages/core/src/index.ts",
-    "../packages/react/src/index.ts"
-  ],
-  "tsconfig": "../packages/core/tsconfig.json",
+  "entryPoints": ["./typedoc-entry.ts"],
+  "tsconfig": "./tsconfig.typedoc.json",
   "readme": "none",
   "out": "src/content/docs/libs",
   "plugin": ["typedoc-plugin-markdown", "typedoc-plugin-frontmatter"],

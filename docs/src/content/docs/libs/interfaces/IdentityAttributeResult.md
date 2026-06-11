@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:31](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L31)
+Defined in: [auth/src/types.ts:21](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L21)
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: [types/client.ts:31](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **principal**: `string`
 
-Defined in: [types/client.ts:32](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L32)
+Defined in: [auth/src/types.ts:22](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L22)
 
 ---
 
@@ -21,7 +21,7 @@ Defined in: [types/client.ts:32](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **requestedKeys**: `string`[]
 
-Defined in: [types/client.ts:33](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L33)
+Defined in: [auth/src/types.ts:23](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L23)
 
 ---
 
@@ -29,7 +29,7 @@ Defined in: [types/client.ts:33](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **signedAttributes**: [`SignedIdentityAttributes`](SignedIdentityAttributes.md)
 
-Defined in: [types/client.ts:34](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L34)
+Defined in: [auth/src/types.ts:24](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L24)
 
 ---
 
@@ -37,7 +37,7 @@ Defined in: [types/client.ts:34](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **decodedAttributes**: [`IdentityAttributeValues`](IdentityAttributeValues.md)
 
-Defined in: [types/client.ts:35](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L35)
+Defined in: [auth/src/types.ts:25](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L25)
 
 ---
 
@@ -45,4 +45,4 @@ Defined in: [types/client.ts:35](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **completedAt**: `string`
 
-Defined in: [types/client.ts:36](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L36)
+Defined in: [auth/src/types.ts:26](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/auth/src/types.ts#L26)

@@ -16,8 +16,10 @@
     "prepublish:check": "pnpm run build && pnpm run test && pnpm run size",
     "pack:check": "pnpm -r --filter \"./packages/**\" exec npm pack --dry-run",
     "sync:examples": "node scripts/sync-example-versions.js",
+    "typecheck:examples": "node scripts/typecheck-examples.js",
     "release": "node scripts/release.js",
     "release:tools": "node scripts/release-tools.js",
+    "clean": "node scripts/clean-node-modules.js",
     "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
     "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
     "format:staged": "pnpm -r --filter './packages/**' exec prettier --write",
@@ -43,11 +45,11 @@
     "url": "https://github.com/B3Pay/ic-reactor.git"
   },
   "devDependencies": {
-    "@types/node": "^25.6.2",
+    "@types/node": "^25.9.2",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.4",
+    "lint-staged": "^17.0.7",
     "prettier": "^3.8.3",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "pnpm": {
     "overrides": {
@@ -56,16 +58,20 @@
       "@dfinity/principal": "npm:@icp-sdk/core/principal@^5.2.0",
       "@dfinity/identity": "npm:@icp-sdk/core/identity@^5.2.0",
       "axios": "1.16.0",
-      "devalue": "5.6.4",
+      "brace-expansion": "5.0.6",
+      "devalue": "5.8.1",
+      "fast-uri": "3.1.2",
       "h3": "1.15.9",
       "picomatch": "4.0.4",
+      "postcss": "8.5.12",
       "minimatch": "10.2.5",
       "rollup": "4.60.1",
       "smol-toml": "1.6.1",
       "svgo": "4.0.1",
       "tar": "7.5.13",
       "yaml": "2.8.3",
-      "follow-redirects": "1.16.0"
+      "follow-redirects": "1.16.0",
+      "ws": "8.20.1"
     },
     "ignoredBuiltDependencies": [
       "wasm-pack"

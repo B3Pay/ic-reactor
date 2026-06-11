@@ -132,8 +132,9 @@ export const backend = new Reactor<_SERVICE>({
 
 ```typescript
 // src/reactor/hooks.ts
-import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
-import { backend, clientManager } from "./index"
+import { createActorHooks } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
+import { authentication, backend } from "./index"
 
 // Create hooks for the backend canister
 export const {
@@ -148,7 +149,7 @@ export const {
 
 // Create auth hooks
 export const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(clientManager)
+  createAuthHooks(authentication)
 ```
 
 ### Multiple Canisters
@@ -182,8 +183,10 @@ You can define everything in one place:
 
 ```typescript
 // src/reactor/hooks.ts
-import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import { createActorHooks } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 import { ClientManager, Reactor } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import { QueryClient } from "@tanstack/query-core"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
@@ -193,6 +196,7 @@ const clientManager = new ClientManager({
   queryClient,
   withProcessEnv: true,
 })
+const authentication = new AuthenticationManager({ clientManager })
 
 const backend = new Reactor<_SERVICE>({
   clientManager,
@@ -204,7 +208,7 @@ const backend = new Reactor<_SERVICE>({
 // Returns hooks
 export const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
-export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
+export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
 
 // Export for use elsewhere
 export { queryClient, clientManager, backend }

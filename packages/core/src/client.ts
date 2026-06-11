@@ -1,56 +1,33 @@
 import type { Identity } from "@icp-sdk/core/agent"
-import type {
-  ClientManagerParameters,
-  AgentState,
-  AuthState,
-  AuthClientSignInOptions,
-  AuthClientLike,
-  ClientManagerAuthClientOptions,
-  ClientManagerSignInOptions,
-  IdentityAttributeResult,
-  RequestIdentityAttributesParameters,
-  RequestOpenIdIdentityAttributesParameters,
-} from "./types/client"
+import type { ClientManagerParameters, AgentState } from "./types/client"
 import type { Principal } from "@icp-sdk/core/principal"
-import type { QueryClient } from "@tanstack/react-query"
+import type { QueryClient } from "@tanstack/query-core"
 
 import { HttpAgent } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
-import {
-  IC_HOST_NETWORK_URI,
-  IC_INTERNET_IDENTITY_PROVIDER,
-  localInternetIdentityProvider,
-} from "./utils/constants"
+import { IC_HOST_NETWORK_URI } from "./utils/constants"
 import {
   getNetworkByHostname,
   getProcessEnvNetwork,
   isDev,
+  isMainnetHost,
 } from "./utils/helper"
-import {
-  decodeIdentityAttributeValues,
-  identityAttributeKeys,
-  normalizeSignedIdentityAttributes,
-} from "./identity-attributes"
-
-type AuthClientConstructor = {
-  new (options?: ClientManagerAuthClientOptions): AuthClientLike
-}
 
 /**
- * ClientManager is a central class for managing the Internet Computer (IC) agent and authentication state.
+ * ClientManager is a central class for managing the Internet Computer (IC) agent.
  *
- * It initializes the agent (connecting to local or mainnet), handles authentication via AuthClient,
- * and integrates with TanStack Query's QueryClient for state management.
+ * It initializes the agent (connecting to local or mainnet) and integrates
+ * with TanStack Query's QueryClient for state management.
  *
  * @example
  * ```typescript
  * import { ClientManager } from "@ic-reactor/core";
- * import { QueryClient } from "@tanstack/react-query";
+ * import { QueryClient } from "@tanstack/query-core";
  *
  * const queryClient = new QueryClient();
  * const clientManager = new ClientManager({
  *   queryClient,
- *   withLocalEnv: true, // Use local replica
+ *   agentOptions: { host: "http://127.0.0.1:4943" },
  * });
  *
  * await clientManager.initialize();
@@ -58,10 +35,8 @@ type AuthClientConstructor = {
  */
 export class ClientManager {
   #agent: HttpAgent
-  #authClient?: AuthClientLike
   #identitySubscribers: Array<(identity: Identity) => void> = []
   #agentStateSubscribers: Array<(state: AgentState) => void> = []
-  #authStateSubscribers: Array<(state: AuthState) => void> = []
   #targetCanisterIds: Set<string> = new Set()
 
   /**
@@ -72,36 +47,14 @@ export class ClientManager {
    * Current state of the HttpAgent, including initialization status, network, and error information.
    */
   public agentState: AgentState
-  /**
-   * Current authentication state, including the active identity, authentication progress, and errors.
-   */
-  public authState: AuthState
-
   private initPromise?: Promise<void>
-  private authPromise?: Promise<Identity | undefined>
-  private authClientConstructor?: AuthClientConstructor
-  private authClientConstructorPromise?: Promise<
-    AuthClientConstructor | undefined
-  >
-  private authStateRevision = 0
-  private authClientWasProvided = false
-  private port: number
-  private internetIdentityId?: string
 
   /**
    * Creates a new instance of ClientManager.
    *
    * @param parameters - Configuration options for the agent and network environment.
    */
-  constructor({
-    port = 4943,
-    withLocalEnv,
-    withProcessEnv,
-    withCanisterEnv,
-    agentOptions = {},
-    queryClient,
-    authClient,
-  }: ClientManagerParameters) {
+  constructor({ agentOptions = {}, queryClient }: ClientManagerParameters) {
     this.queryClient = queryClient
 
     this.agentState = {
@@ -112,72 +65,37 @@ export class ClientManager {
       isLocalhost: false,
     }
 
-    this.authState = {
-      identity: null,
-      isAuthenticating: false,
-      isAuthenticated: false,
-      error: undefined,
+    const canisterEnv =
+      typeof window !== "undefined" ? safeGetCanisterEnv() : undefined
+
+    if (isDev() && typeof window !== "undefined") {
+      agentOptions.host = agentOptions.host ?? window.location.origin
+      if (agentOptions.verifyQuerySignatures == null) {
+        agentOptions.verifyQuerySignatures = false
+      }
+    } else {
+      agentOptions.verifyQuerySignatures =
+        agentOptions.verifyQuerySignatures ?? true
     }
 
-    this.port = port
-
-    // EXPERIMENTAL: Use canister environment from ic_env cookie when enabled
-    // ⚠️ This may cause issues with update calls on localhost development
-    if (withCanisterEnv) {
-      const canisterEnv =
-        typeof window !== "undefined" ? safeGetCanisterEnv() : undefined
-
-      if (canisterEnv) {
-        this.internetIdentityId =
-          canisterEnv["internet_identity"] ||
-          canisterEnv["PUBLIC_CANISTER_ID:internet_identity"] ||
-          canisterEnv["CANISTER_ID_INTERNET_IDENTITY"]
-      }
-
-      if (isDev() && typeof window !== "undefined") {
-        agentOptions.host = agentOptions.host ?? window.location.origin
-        if (agentOptions.verifyQuerySignatures == null) {
-          agentOptions.verifyQuerySignatures = false
-          console.warn(
-            "[ic-reactor] Query signature verification is DISABLED in development. " +
-              "Never use withCanisterEnv in production without explicitly setting verifyQuerySignatures: true."
-          )
-        }
-      } else {
-        agentOptions.verifyQuerySignatures =
-          agentOptions.verifyQuerySignatures ?? true
-      }
-
-      // Root key must NOT be sourced from the ic_env cookie: cookies are
-      // user-controllable and accepting a root key from them would allow an
-      // attacker to bypass all IC certificate verification.
-      // If a custom root key is required (e.g. local replica), pass it via
-      // agentOptions.rootKey in your application code instead.
-      if (canisterEnv?.IC_ROOT_KEY) {
-        console.error(
-          "[ic-reactor] IC_ROOT_KEY in the ic_env cookie is ignored for security reasons. " +
-            "Pass agentOptions.rootKey explicitly if you need a custom root key."
-        )
-      }
-    }
-
-    if (withProcessEnv) {
+    if (!agentOptions.host) {
       const processNetwork = getProcessEnvNetwork()
-      if (processNetwork === "ic") {
-        agentOptions.host = IC_HOST_NETWORK_URI
-      } else if (processNetwork === "local") {
-        // Honor either `IC_HOST` (legacy dfx) or `ICP_HOST` (icp-cli).
+      if (processNetwork === "local") {
         const envHost =
           typeof process !== "undefined"
             ? process.env.ICP_HOST || process.env.IC_HOST
             : undefined
-        agentOptions.host = envHost ? envHost : `http://127.0.0.1:${port}`
+        agentOptions.host = envHost ?? "http://127.0.0.1:4943"
+      } else {
+        agentOptions.host = IC_HOST_NETWORK_URI
       }
-    } else if (withLocalEnv) {
-      agentOptions.host = `http://127.0.0.1:${port}`
-    } else if (!withCanisterEnv) {
-      // Only set default host if withCanisterEnv hasn't already configured it
-      agentOptions.host = agentOptions.host ?? IC_HOST_NETWORK_URI
+    }
+
+    // For security reasons, the root key from the ic_env cookie is only accepted
+    // on non-mainnet environments (e.g. local replicas or custom testnets).
+    // On the mainnet ("ic"), we must use the pinned root key inside the agent.
+    if (!isMainnetHost(agentOptions.host) && canisterEnv?.IC_ROOT_KEY) {
+      agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
     }
 
     this.#agent = HttpAgent.createSync(agentOptions)
@@ -185,50 +103,18 @@ export class ClientManager {
       isLocalhost: this.isLocal,
       network: this.network,
     })
-
-    if (authClient) {
-      this.authClientWasProvided = true
-      this.#authClient = authClient
-      this.syncAuthStateFromClient(this.authStateRevision).catch((error) => {
-        this.updateAuthState({ error: error as Error, isAuthenticating: false })
-      })
-    } else if (typeof window !== "undefined") {
-      this.loadAuthClientConstructor().catch(() => {
-        // Optional auth support is reported when an auth method is used.
-      })
-    }
   }
 
   /**
    * Orchestrates the complete initialization of the ClientManager.
    * This method awaits the agent's core initialization (e.g., fetching root keys)
-   * and triggers the authentication (session restoration) in the background.
+   * Authentication session restoration is handled by AuthenticationManager.
    *
    * @returns A promise that resolves to the ClientManager instance when core initialization is complete.
    */
   public async initialize() {
     await this.initializeAgent()
-    this.authenticate()
     return this
-  }
-
-  /**
-   * Preloads and creates an AuthClient before a user gesture is needed.
-   *
-   * Browser signer transports must open their channel directly from a click
-   * handler. Apps that pass dynamic auth options, such as OpenID provider
-   * aliases, can call this from hover/focus/effect code so the later click path
-   * can call signIn/requestAttributes without first awaiting a dynamic import.
-   */
-  public async prepareAuthClient(options?: ClientManagerAuthClientOptions) {
-    if (
-      this.#authClient &&
-      (!this.shouldRecreateAuthClient(options) || this.authClientWasProvided)
-    ) {
-      return this.#authClient
-    }
-
-    return this.initializeAuthClient(options)
   }
 
   /**
@@ -276,409 +162,11 @@ export class ClientManager {
     return this.initPromise
   }
 
-  private authModuleMissing = false
-
-  /**
-   * Attempts to initialize the authentication client and restore a previous session.
-   *
-   * If an `AuthClient` is already initialized (passed in constructor or previously created),
-   * it uses that instance. Otherwise, it dynamically imports the `@icp-sdk/auth` module
-   * and creates a new AuthClient.
-   *
-   * If the module is missing and no client is provided, it fails gracefully by marking authentication as unavailable.
-   *
-   * @returns A promise that resolves to the restored Identity, or undefined if auth fails or is unavailable.
-   */
-  public authenticate = async (): Promise<Identity | undefined> => {
-    if (this.authState.isAuthenticated) {
-      return this.authState.identity || undefined
-    }
-    if (this.authPromise) {
-      return this.authPromise
-    }
-
-    if (this.authModuleMissing) {
-      return undefined
-    }
-
-    this.authPromise = (async () => {
-      if (isDev() && typeof window !== "undefined") {
-        console.info(
-          `%cic-reactor:%c Authenticating...`,
-          "color: #3b82f6; font-weight: bold",
-          "color: inherit",
-          {
-            network: this.network,
-            authClient: this.#authClient ? "Shared Instance" : "Dynamic Import",
-          }
-        )
-      }
-      this.updateAuthState({ isAuthenticating: true })
-      try {
-        if (!this.#authClient) {
-          const authClient = await this.initializeAuthClient()
-          if (!authClient) {
-            this.updateAuthState({ isAuthenticating: false })
-            return undefined
-          }
-        }
-        const identity = await this.#authClient!.getIdentity()
-        const isAuthenticated = await this.#authClient!.isAuthenticated()
-        this.updateAgent(identity)
-        this.updateAuthState({
-          identity,
-          isAuthenticated,
-          isAuthenticating: false,
-        })
-        return identity
-      } catch (error) {
-        this.updateAuthState({ error: error as Error, isAuthenticating: false })
-        console.error("Authentication failed:", error)
-        throw error
-      } finally {
-        this.authPromise = undefined
-      }
-    })()
-
-    return this.authPromise
-  }
-
-  /**
-   * Triggers the login flow using the Internet Identity provider.
-   *
-   * @param loginOptions - Options for the login flow, including identity provider and callbacks.
-   * @throws An error if the authentication module is not installed.
-   */
-  public login = async (loginOptions?: ClientManagerSignInOptions) => {
-    let didCompleteSignIn = false
-
-    try {
-      const identityProvider =
-        loginOptions?.identityProvider || this.getDefaultIdentityProvider()
-      const authClientOptions = getAuthClientOptions({
-        ...loginOptions,
-        identityProvider,
-      })
-
-      if (!this.ensurePreparedAuthClient(authClientOptions)) {
-        await this.initializeAuthClient(authClientOptions)
-      }
-
-      if (!this.#authClient) {
-        await this.authenticate()
-      }
-
-      if (!this.#authClient) {
-        throw new Error(
-          "Authentication module is missing or failed to initialize. To use login, please install the auth package: npm install @icp-sdk/auth"
-        )
-      }
-
-      this.updateAuthState({ isAuthenticating: true, error: undefined })
-
-      const identity = await this.signInOrRecoverAuthenticatedIdentity(
-        getSignInOptions(loginOptions)
-      )
-
-      if (!this.agentState.isInitialized) {
-        await this.initializeAgent()
-      }
-
-      this.updateAgent(identity)
-      this.updateAuthState({
-        identity,
-        isAuthenticated: true,
-        isAuthenticating: false,
-      })
-      didCompleteSignIn = true
-
-      try {
-        await (
-          loginOptions?.onSuccess as (() => void | Promise<void>) | undefined
-        )?.()
-      } catch (callbackError) {
-        this.updateAuthState({ error: callbackError as Error })
-        await loginOptions?.onError?.((callbackError as Error).message)
-        throw callbackError
-      }
-    } catch (error) {
-      if (!didCompleteSignIn) {
-        await loginOptions?.onError?.((error as Error).message)
-        this.updateAuthState({
-          error: error as Error,
-          isAuthenticating: false,
-        })
-      }
-      throw error
-    }
-  }
-
-  /**
-   * Logs out the user and reverts the agent to an anonymous identity.
-   *
-   * @throws An error if the authentication module is not installed.
-   */
-  public logout = async (options?: { returnTo?: string }) => {
-    if (!this.#authClient) {
-      throw new Error(
-        "Authentication module is missing or failed to initialize. To use logout, please install the auth package: npm install @icp-sdk/auth"
-      )
-    }
-    this.updateAuthState({ isAuthenticating: true, error: undefined })
-    await this.#authClient.signOut(options)
-    const identity = await this.#authClient.getIdentity()
-    this.updateAgent(identity)
-    this.updateAuthState({
-      identity,
-      isAuthenticated: false,
-      isAuthenticating: false,
-    })
-  }
-
-  public requestIdentityAttributes = async ({
-    keys,
-    nonce,
-    identityProvider,
-    openIdProvider,
-    windowOpenerFeatures,
-    signIn = true,
-    maxTimeToLive,
-    targets,
-  }: RequestIdentityAttributesParameters): Promise<IdentityAttributeResult> => {
-    const authClientOptions = getAuthClientOptions({
-      identityProvider: identityProvider ?? this.getDefaultIdentityProvider(),
-      windowOpenerFeatures,
-      openIdProvider,
-    })
-
-    if (!this.ensurePreparedAuthClient(authClientOptions)) {
-      await this.initializeAuthClient(authClientOptions)
-    }
-
-    if (!this.#authClient) {
-      await this.authenticate()
-    }
-
-    if (!this.#authClient) {
-      throw new Error(
-        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth v7 or provide a compatible authClient."
-      )
-    }
-
-    this.updateAuthState({ isAuthenticating: true, error: undefined })
-
-    try {
-      const identityPromise = signIn
-        ? this.signInOrRecoverAuthenticatedIdentity({
-            maxTimeToLive,
-            targets,
-          })
-        : Promise.resolve(this.#authClient.getIdentity())
-      const requestPromise = this.#authClient.requestAttributes({
-        keys,
-        nonce,
-      })
-
-      const [signedAttributes, identity] = await Promise.all([
-        requestPromise,
-        identityPromise,
-      ])
-
-      const finalIdentity = identity ?? (await this.#authClient.getIdentity())
-      const isAuthenticated = await this.#authClient.isAuthenticated()
-      if (!this.agentState.isInitialized) {
-        await this.initializeAgent()
-      }
-      this.updateAgent(finalIdentity)
-      this.updateAuthState({
-        identity: finalIdentity,
-        isAuthenticated,
-        isAuthenticating: false,
-      })
-
-      const normalizedSignedAttributes =
-        normalizeSignedIdentityAttributes(signedAttributes)
-
-      return {
-        principal: finalIdentity.getPrincipal().toText(),
-        requestedKeys: keys,
-        signedAttributes: normalizedSignedAttributes,
-        decodedAttributes: decodeIdentityAttributeValues(
-          normalizedSignedAttributes.data,
-          keys
-        ),
-        completedAt: new Date().toISOString(),
-      }
-    } catch (error) {
-      this.updateAuthState({ error: error as Error, isAuthenticating: false })
-      throw error
-    }
-  }
-
-  public requestOpenIdIdentityAttributes = async ({
-    nonce,
-    openIdProvider,
-    keys,
-    identityProvider,
-    windowOpenerFeatures,
-    signIn,
-    maxTimeToLive,
-    targets,
-  }: RequestOpenIdIdentityAttributesParameters): Promise<IdentityAttributeResult> => {
-    return this.requestIdentityAttributes({
-      keys: identityAttributeKeys({ openIdProvider, keys }),
-      nonce,
-      identityProvider,
-      openIdProvider,
-      windowOpenerFeatures,
-      signIn,
-      maxTimeToLive,
-      targets,
-    })
-  }
-
   /**
    * The underlying HttpAgent managed by this class.
    */
   get agent() {
     return this.#agent
-  }
-
-  /**
-   * The AuthClient instance used for authentication, if available.
-   */
-  get authClient() {
-    return this.#authClient
-  }
-
-  private async initializeAuthClient(
-    options?: ClientManagerAuthClientOptions
-  ): Promise<AuthClientLike | undefined> {
-    const AuthClient = await this.loadAuthClientConstructor()
-
-    if (!AuthClient) {
-      return undefined
-    }
-
-    this.#authClient = this.createAuthClient(AuthClient, options)
-    return this.#authClient
-  }
-
-  private async signInOrRecoverAuthenticatedIdentity(
-    options?: AuthClientSignInOptions
-  ): Promise<Identity> {
-    if (!this.#authClient) {
-      throw new Error(
-        "Authentication module is missing or failed to initialize. To use login, please install the auth package: npm install @icp-sdk/auth"
-      )
-    }
-
-    try {
-      return await this.#authClient.signIn(options)
-    } catch (error) {
-      const identity = await Promise.resolve(
-        this.#authClient.getIdentity()
-      ).catch(() => null)
-      const isAuthenticated = await Promise.resolve(
-        this.#authClient.isAuthenticated()
-      ).catch(() => false)
-
-      if (identity && isAuthenticated) {
-        return identity
-      }
-
-      throw error
-    }
-  }
-
-  private async loadAuthClientConstructor(): Promise<
-    AuthClientConstructor | undefined
-  > {
-    if (this.authClientConstructor) {
-      return this.authClientConstructor
-    }
-
-    if (!this.authClientConstructorPromise) {
-      this.authClientConstructorPromise = import("@icp-sdk/auth/client")
-        .then((authModule) => {
-          const AuthClient = (
-            authModule as { AuthClient?: AuthClientConstructor }
-          ).AuthClient
-
-          if (!AuthClient) {
-            throw new Error("@icp-sdk/auth/client did not export AuthClient")
-          }
-
-          this.authClientConstructor = AuthClient
-          return AuthClient
-        })
-        .catch((error) => {
-          this.authModuleMissing = true
-          this.authClientConstructorPromise = undefined
-          if (
-            error instanceof Error &&
-            error.message.includes("did not export AuthClient")
-          ) {
-            throw error
-          }
-          return undefined
-        })
-    }
-
-    return this.authClientConstructorPromise
-  }
-
-  private createAuthClient(
-    AuthClient: AuthClientConstructor,
-    options?: ClientManagerAuthClientOptions
-  ): AuthClientLike {
-    return new AuthClient(options)
-  }
-
-  private ensurePreparedAuthClient(
-    options?: ClientManagerAuthClientOptions
-  ): AuthClientLike | undefined {
-    if (
-      this.#authClient &&
-      (!this.shouldRecreateAuthClient(options) || this.authClientWasProvided)
-    ) {
-      return this.#authClient
-    }
-
-    if (!this.authClientConstructor || this.authClientWasProvided) {
-      return undefined
-    }
-
-    this.#authClient = this.createAuthClient(
-      this.authClientConstructor,
-      options
-    )
-    return this.#authClient
-  }
-
-  private shouldRecreateAuthClient(
-    options?: ClientManagerAuthClientOptions
-  ): boolean {
-    return !this.authClientWasProvided && hasAuthClientOptions(options)
-  }
-
-  private async syncAuthStateFromClient(revision = this.authStateRevision) {
-    if (!this.#authClient) {
-      return
-    }
-
-    const identity = await this.#authClient.getIdentity()
-    const isAuthenticated = await this.#authClient.isAuthenticated()
-    if (revision !== this.authStateRevision) {
-      return
-    }
-    this.updateAgent(identity)
-    this.updateAuthState({
-      identity,
-      isAuthenticated,
-      isAuthenticating: false,
-      error: undefined,
-    })
   }
 
   /**
@@ -759,18 +247,6 @@ export class ClientManager {
     return this.#agent.syncTimeWithSubnet(subnetId)
   }
 
-  private getDefaultIdentityProvider(): string {
-    if (this.isLocal) {
-      // When a custom II canister ID is known (e.g. injected via the
-      // canister-env cookie) use it; otherwise fall back to the well-known
-      // local II principal. Either way the URL must reflect the configured
-      // replica port, which differs between dfx (4943) and icp-cli (8000).
-      return localInternetIdentityProvider(this.port, this.internetIdentityId)
-    } else {
-      return IC_INTERNET_IDENTITY_PROVIDER
-    }
-  }
-
   /**
    * Subscribes to identity changes (e.g., after login/logout).
    * @param callback - Function called with the new identity.
@@ -794,20 +270,6 @@ export class ClientManager {
     this.#agentStateSubscribers.push(callback)
     return () => {
       this.#agentStateSubscribers = this.#agentStateSubscribers.filter(
-        (sub) => sub !== callback
-      )
-    }
-  }
-
-  /**
-   * Subscribes to changes in the authentication state.
-   * @param callback - Function called with the updated authentication state.
-   * @returns An unsubscribe function.
-   */
-  public subscribeAuthState(callback: (state: AuthState) => void) {
-    this.#authStateSubscribers.push(callback)
-    return () => {
-      this.#authStateSubscribers = this.#authStateSubscribers.filter(
         (sub) => sub !== callback
       )
     }
@@ -849,66 +311,8 @@ export class ClientManager {
     this.#agentStateSubscribers.forEach((sub) => sub(state))
   }
 
-  private notifyAuthStateSubscribers(state: AuthState) {
-    this.#authStateSubscribers.forEach((sub) => sub(state))
-  }
-
   private updateAgentState(newState: Partial<AgentState>) {
     this.agentState = { ...this.agentState, ...newState }
     this.notifyAgentStateSubscribers(this.agentState)
-  }
-
-  private updateAuthState(newState: Partial<AuthState>) {
-    if (isDev()) console.debug("[ic-reactor] Updating Auth State:", newState)
-    this.authStateRevision += 1
-    this.authState = { ...this.authState, ...newState }
-    this.notifyAuthStateSubscribers(this.authState)
-  }
-}
-
-function getAuthClientOptions(
-  options?: ClientManagerAuthClientOptions
-): ClientManagerAuthClientOptions | undefined {
-  if (!options) {
-    return undefined
-  }
-
-  return {
-    identityProvider: options.identityProvider,
-    windowOpenerFeatures: options.windowOpenerFeatures,
-    openIdProvider: getAuthClientOpenIdProvider(options.openIdProvider),
-  }
-}
-
-function getAuthClientOpenIdProvider(
-  openIdProvider?: ClientManagerAuthClientOptions["openIdProvider"]
-): ClientManagerAuthClientOptions["openIdProvider"] | undefined {
-  return openIdProvider === "google" ||
-    openIdProvider === "apple" ||
-    openIdProvider === "microsoft"
-    ? openIdProvider
-    : undefined
-}
-
-function hasAuthClientOptions(
-  options?: ClientManagerAuthClientOptions
-): boolean {
-  return Boolean(
-    options?.identityProvider ||
-    options?.windowOpenerFeatures ||
-    options?.openIdProvider
-  )
-}
-
-function getSignInOptions(
-  options?: ClientManagerSignInOptions
-): AuthClientSignInOptions | undefined {
-  if (!options) {
-    return undefined
-  }
-
-  return {
-    maxTimeToLive: options.maxTimeToLive,
-    targets: options.targets,
   }
 }

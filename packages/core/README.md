@@ -21,8 +21,8 @@ Framework-agnostic core library for building type-safe Internet Computer applica
 - ⚡ **TanStack Query Integration** — Automatic caching, background refetching, optimistic updates
 - 🔄 **Auto Transformations** — `DisplayReactor` converts BigInt to string, Principal to text
 - 📦 **Result Unwrapping** — Automatic `Ok`/`Err` handling from Candid Result types
-- 🔐 **Internet Identity** — Built-in authentication with session restoration
-- 🏗️ **Multi-Canister Support** — Shared authentication across canisters
+- 🔐 **Composable Auth** — Integrates with the optional `@ic-reactor/auth` package
+- 🏗️ **Multi-Canister Support** — Shared agent identity across canisters
 
 ## Installation
 
@@ -31,7 +31,7 @@ Framework-agnostic core library for building type-safe Internet Computer applica
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 # Optional: For Internet Identity authentication
-npm install @icp-sdk/auth
+npm install @ic-reactor/auth @icp-sdk/auth
 ```
 
 ## Core Concepts
@@ -41,7 +41,7 @@ npm install @icp-sdk/auth
 ```
 ┌─────────────────┐    ┌──────────────┐    ┌─────────────────────┐
 │  ClientManager  │───▶│   Reactor    │───▶│  TanStack Query     │
-│  (Agent + Auth) │    │  (Canister)  │    │  (Caching Layer)    │
+│    (Agent)      │    │  (Canister)  │    │  (Caching Layer)    │
 └─────────────────┘    └──────────────┘    └─────────────────────┘
          │                    │
          │              ┌─────▼─────┐
@@ -51,8 +51,8 @@ npm install @icp-sdk/auth
          │              (Type Transforms)
          ▼
 ┌─────────────────┐
-│ Internet        │
-│ Identity        │
+│ Authentication  │
+│ Manager         │
 └─────────────────┘
 ```
 
@@ -60,7 +60,7 @@ npm install @icp-sdk/auth
 
 ### 1. Create ClientManager
 
-The `ClientManager` handles the IC agent, authentication, and query client:
+The `ClientManager` handles the IC agent and query client:
 
 ```typescript
 import { ClientManager } from "@ic-reactor/core"
@@ -77,7 +77,7 @@ const clientManager = new ClientManager({
   withProcessEnv: true, // Reads DFX_NETWORK from environment
 })
 
-// Initialize agent and restore session
+// Initialize the agent
 await clientManager.initialize()
 ```
 
@@ -134,42 +134,48 @@ interface ClientManagerParameters {
   withProcessEnv?: boolean // Read DFX_NETWORK from env
   withCanisterEnv?: boolean // Read canister IDs from environment
   agentOptions?: HttpAgentOptions // Custom agent options
-  authClient?: AuthClient // Pre-configured auth client
 }
 ```
 
-### Authentication Methods
+### AuthenticationManager
 
 ```typescript
-// Initialize agent and restore previous session
-await clientManager.initialize()
+import { AuthenticationManager } from "@ic-reactor/auth"
+
+const authentication = new AuthenticationManager({
+  clientManager,
+})
 
 // Trigger login flow (opens Internet Identity)
-await clientManager.login({
+await authentication.login({
   identityProvider: "https://identity.ic0.app", // optional, auto-detected
   onSuccess: () => console.log("Logged in!"),
   onError: (error) => console.error(error),
 })
 
 // Logout and revert to anonymous identity
-await clientManager.logout()
+await authentication.logout()
 
 // Manually authenticate (restore session)
-const identity = await clientManager.authenticate()
+const identity = await authentication.authenticate()
 ```
 
 ### Identity Attributes / OpenID email and profile values
 
-`ClientManager` uses the `@icp-sdk/auth` v7 `signIn()` / `requestAttributes()`
-API. Apps can request signed identity attributes directly, without adding a
-local compatibility shim.
+`IdentityAttributesManager` isolates optional signed identity-attribute flows
+from ordinary authentication.
 
 ```typescript
-import { identityAttributeKeys } from "@ic-reactor/core"
+import {
+  IdentityAttributesManager,
+  identityAttributeKeys,
+} from "@ic-reactor/auth"
+
+const identityAttributes = new IdentityAttributesManager(authentication)
 
 const nonce = await backend.registerBegin()
 
-const result = await clientManager.requestOpenIdIdentityAttributes({
+const result = await identityAttributes.requestOpenId({
   nonce,
   openIdProvider: "microsoft",
   keys: ["email", "name"],
@@ -189,7 +195,7 @@ Pass a documented auth provider alias (`"google"`, `"apple"`, or `"microsoft"`)
 or the OpenID provider issuer URL your app expects:
 
 ```typescript
-const result = await clientManager.requestOpenIdIdentityAttributes({
+const result = await identityAttributes.requestOpenId({
   nonce,
   openIdProvider: "https://issuer.example.com",
   keys: ["sub", "email"],
@@ -199,7 +205,7 @@ const result = await clientManager.requestOpenIdIdentityAttributes({
 For lower-level control, pass scoped keys yourself:
 
 ```typescript
-const result = await clientManager.requestIdentityAttributes({
+const result = await identityAttributes.request({
   nonce,
   keys: identityAttributeKeys({
     openIdProvider: "https://issuer.example.com",
@@ -222,7 +228,7 @@ const unsubAgent = clientManager.subscribeAgentState((state) => {
 })
 
 // Subscribe to auth state changes
-const unsubAuth = clientManager.subscribeAuthState((state) => {
+const unsubAuth = authentication.subscribeAuthState((state) => {
   console.log("Auth state:", state.isAuthenticated, state.identity)
 })
 
@@ -242,7 +248,7 @@ unsubIdentity()
 ```typescript
 clientManager.agent // HttpAgent instance
 clientManager.agentState // { isInitialized, isInitializing, error, network, isLocalhost }
-clientManager.authState // { identity, isAuthenticated, isAuthenticating, error }
+authentication.authState // { identity, isAuthenticated, isAuthenticating, error }
 clientManager.queryClient // TanStack QueryClient
 clientManager.network // "ic" | "local"
 clientManager.isLocal // boolean
@@ -496,7 +502,8 @@ import type {
 ### State Types
 
 ```typescript
-import type { AgentState, AuthState } from "@ic-reactor/core"
+import type { AgentState } from "@ic-reactor/core"
+import type { AuthState } from "@ic-reactor/auth"
 
 interface AgentState {
   isInitialized: boolean
@@ -539,7 +546,7 @@ const nft = new Reactor<NFT>({
 })
 
 // Login once, all canisters use the same identity
-await clientManager.login()
+await authentication.login()
 ```
 
 ### Custom Polling Options

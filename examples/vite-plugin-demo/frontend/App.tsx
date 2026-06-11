@@ -3,15 +3,20 @@ import { useBackendQuery, useBackendMutation } from "./lib/canisters/backend"
 function App() {
   const { data: greeting, isPending: greetingPending } = useBackendQuery({
     functionName: "greet",
-    args: "Vite Plugin",
+    args: ["Vite Plugin"],
   })
 
-  const { data: count, isPending: countPending } = useBackendQuery({
+  const {
+    data: count,
+    isPending: countPending,
+    refetch: refetchCount,
+  } = useBackendQuery({
     functionName: "getCount",
   })
 
   const { mutate: increment, isPending: incrementing } = useBackendMutation({
     functionName: "increment",
+    onSuccess: () => refetchCount(),
   })
 
   return (

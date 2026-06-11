@@ -1,0 +1,95 @@
+name: Sync Example Versions
+
+# After a successful Release (tag push that published the packages to npm), bump
+# the pinned @ic-reactor/* versions in every example so a standalone
+# StackBlitz/CodeSandbox install resolves the just-released version. Inside this
+# workspace the examples keep linking to the local packages/* regardless.
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  # Allow manually re-syncing (e.g. after a hotfix) from the Actions tab.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to sync examples to (defaults to root package.json version)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    name: Sync & open PR
+    runs-on: ubuntu-latest
+    # Only run when the triggering Release workflow succeeded (workflow_dispatch
+    # has no workflow_run payload, so the conclusion check passes through).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Check out main so the PR branches from the default branch rather than
+          # the tag that triggered the release.
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Resolve target version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="$(node -p "require('./package.json').version")"
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Syncing examples to $VERSION"
+
+      - name: Sync example versions
+        run: pnpm sync:examples "${{ steps.version.outputs.value }}"
+
+      - name: Install to refresh lockfile
+        run: pnpm install --lockfile-only
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore(examples): sync @ic-reactor/* to v${{ steps.version.outputs.value }}"
+          branch: chore/sync-examples-v${{ steps.version.outputs.value }}
+          delete-branch: true
+          title: "chore(examples): sync @ic-reactor/* to v${{ steps.version.outputs.value }}"
+          body: |
+            Automated sync of the pinned `@ic-reactor/*` versions in `examples/*`
+            to **v${{ steps.version.outputs.value }}** after the latest release.
+
+            This keeps standalone StackBlitz/CodeSandbox installs (which resolve
+            from npm outside the workspace) on the just-published version. Inside
+            the workspace the examples still link to the local `packages/*`.
+          labels: |
+            examples
+            automated

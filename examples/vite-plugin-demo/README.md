@@ -1,32 +1,47 @@
 # Vite Plugin Demo
 
-This example demonstrates how to use the `@ic-reactor/vite-plugin` to automatically generate React hooks for your Internet Computer canisters.
+This example demonstrates `@ic-reactor/vite-plugin` in a React/Vite app.
 
-## Features
+The plugin generates typed React hooks from `frontend/declarations/backend.did`
+and provides the local `ic_env` cookie used by `ClientManager` during Vite
+development.
 
-- **Auto-generated Hooks**: Typed hooks are generated from `backend.did`.
-- **Zero-config Proxy**: communication with local replica is handled automatically.
-- **Environment Aware**: Automatic detection of canister IDs and root keys via `icp-cli`.
+## What it demonstrates
 
-## Setup
+- Generating canister declarations and hooks during dev/build
+- Sharing a central `ClientManager` and `QueryClient`
+- Calling generated query and mutation hooks from React components
+- Using package-level local environment detection instead of manual
+  `withCanisterEnv` configuration
 
-1. Install dependencies:
+## Run Locally
 
-   ```bash
-   pnpm install
-   ```
+Start the local ICP CLI network and deploy the backend canister:
 
-2. Generate hooks (happens automatically on dev/build):
+```bash
+icp network start
+icp deploy backend
+```
 
-   ```bash
-   pnpm dev
-   ```
+Install dependencies and run Vite:
 
-3. Check the generated files in `src/lib/canisters/backend/`.
+```bash
+pnpm install
+pnpm run dev
+```
+
+Open the Vite URL printed in the terminal. The plugin reads the local canister
+environment and serves it to the browser as `ic_env`.
+
+## Build
+
+```bash
+pnpm run build
+```
 
 ## Project Structure
 
-- `src/declarations/backend.did`: Your Candid interface.
-- `src/lib/clients.ts`: Central `ClientManager` configuration.
-- `src/lib/canisters/backend/`: Generated hooks and declarations.
-- `vite.config.ts`: Plugin configuration.
+- `frontend/declarations/backend.did`: source Candid interface
+- `frontend/lib/clients.ts`: shared `ClientManager` and `QueryClient`
+- `frontend/lib/canisters/backend/`: generated declarations and hooks
+- `vite.config.ts`: Vite plugin configuration

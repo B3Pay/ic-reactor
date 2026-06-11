@@ -1030,7 +1030,7 @@ describe("MetadataDisplayReactor E2E", () => {
   let reactor: MetadataDisplayReactor<TestActor>
   let clientManager: ClientManager
 
-  beforeAll(() => {
+  beforeAll(async () => {
     const agent = HttpAgent.createSync({ host: "https://ic0.app" })
     clientManager = {
       agent,
@@ -1049,11 +1049,10 @@ describe("MetadataDisplayReactor E2E", () => {
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
       clientManager,
     })
-  })
-
-  it("should initialize from mainnet and generate metadata", async () => {
     await reactor.initialize()
+  }, 30_000)
 
+  it("should initialize from mainnet and generate metadata", () => {
     // Verify methods are loaded
     const methodNames = reactor.getMethodNames()
     expect(methodNames.length).toBeGreaterThan(0)
@@ -1081,7 +1080,7 @@ describe("MetadataDisplayReactor E2E", () => {
       functionName: "icrc1_name",
     })
     expect(result.results[0].value).toBe("Internet Computer")
-  })
+  }, 30_000)
 
   it("should call method with metadata using callDynamicWithMeta", async () => {
     await reactor.registerMethod({
@@ -1102,7 +1101,7 @@ describe("MetadataDisplayReactor E2E", () => {
       "✅ callDynamicWithMeta result:",
       (result as any).results[0].value
     )
-  })
+  }, 30_000)
 
   it("should return balance as string (display transformation)", async () => {
     const fee = await reactor.callDynamic({
@@ -1117,7 +1116,7 @@ describe("MetadataDisplayReactor E2E", () => {
     // Fee should be transformed to string (display format)
     expect(typeof (fee as any).results[0].value).toBe("string")
     console.log("✅ icrc1_fee (string):", (fee as any).results[0].value)
-  })
+  }, 30_000)
 })
 
 describe("Complex Result Handling (Mocked)", () => {

@@ -38,6 +38,8 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 | --------------------------------------------------- | ------------------------------------------------------------------------------ |
 | [`@ic-reactor/core`](./packages/core)               | Core runtime (`ClientManager`, `Reactor`, `DisplayReactor`, cache integration) |
 | [`@ic-reactor/react`](./packages/react)             | React hooks + query/mutation factories                                         |
+| [`@ic-reactor/auth`](./packages/auth)               | Internet Identity authentication and identity attributes                       |
+| [`@ic-reactor/auth-react`](./packages/auth-react)   | React hooks for the auth package                                               |
 | [`@ic-reactor/candid`](./packages/candid)           | Dynamic Candid parsing and runtime reactors                                    |
 | [`@ic-reactor/parser`](./packages/parser)           | Local Candid parser (WASM-based)                                               |
 | [`@ic-reactor/codegen`](./packages/codegen)         | Shared codegen pipeline used by CLI and Vite plugin                            |
@@ -61,8 +63,8 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 ### Optional packages
 
 ```bash
-# Internet Identity auth helpers
-pnpm add @icp-sdk/auth
+# Internet Identity auth helpers for React
+pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth
 
 # Dynamic Candid support (explorers/dev tools)
 pnpm add @ic-reactor/candid @ic-reactor/parser
@@ -75,6 +77,7 @@ pnpm add @ic-reactor/candid @ic-reactor/parser
 ```ts
 // src/reactor.ts
 import { ClientManager, Reactor } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import { QueryClient } from "@tanstack/react-query"
 import { idlFactory, type _SERVICE } from "./declarations/my_canister"
 
@@ -82,8 +85,8 @@ export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({
   queryClient,
-  // withCanisterEnv: true, // optional: useful in local/dev setups
 })
+export const authentication = new AuthenticationManager({ clientManager })
 
 export const backendReactor = new Reactor<_SERVICE>({
   clientManager,
@@ -97,8 +100,9 @@ export const backendReactor = new Reactor<_SERVICE>({
 
 ```ts
 // src/hooks.ts
-import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
-import { backendReactor, clientManager } from "./reactor"
+import { createActorHooks } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
+import { backendReactor, authentication } from "./reactor"
 
 export const {
   useActorQuery,
@@ -107,7 +111,7 @@ export const {
   useActorInfiniteQuery,
 } = createActorHooks(backendReactor)
 
-export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
+export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
 ```
 
 ### 3. Use in React components
@@ -314,7 +318,11 @@ console.log(balance)
 - Package docs:
   - [`@ic-reactor/react`](./packages/react/README.md)
   - [`@ic-reactor/core`](./packages/core/README.md)
+  - [`@ic-reactor/auth`](./packages/auth/README.md)
+  - [`@ic-reactor/auth-react`](./packages/auth-react/README.md)
   - [`@ic-reactor/candid`](./packages/candid/README.md)
+  - [`@ic-reactor/parser`](./packages/parser/README.md)
+  - [`@ic-reactor/codegen`](./packages/codegen/README.md)
   - [`@ic-reactor/cli`](./packages/cli/README.md)
   - [`@ic-reactor/vite-plugin`](./packages/vite-plugin/README.md)
 
@@ -351,18 +359,24 @@ This repository is intentionally structured to work well with AI coding assistan
 
 ### AI context files
 
-| File                                                                   | Purpose                                       |
-| ---------------------------------------------------------------------- | --------------------------------------------- |
-| [`llms.txt`](./llms.txt)                                               | High-level library context for LLMs           |
-| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context            |
-| [`AGENTS.md`](./AGENTS.md)                                             | OpenAI Codex agent instructions               |
-| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                   |
-| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                              |
-| [`skill-packages/`](./skill-packages/)                                 | Local skill packages (multi-agent compatible) |
+| File                                                                   | Purpose                                                       |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| [`llms.txt`](./llms.txt)                                               | Compact package/task routing manifest for LLMs                |
+| [`llms-full.txt`](./llms-full.txt)                                     | Longer copy-paste guide with setup patterns and API choices   |
+| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context                            |
+| [`AGENTS.md`](./AGENTS.md)                                             | OpenAI Codex agent instructions                               |
+| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                                   |
+| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                                              |
+| [`skill-packages/`](./skill-packages/)                                 | Local skill packages for hooks and package-boundary reasoning |
 
-### Skill: `ic-reactor-hooks`
+### Skills
 
-The `ic-reactor-hooks` skill is available in two places:
+This repo includes two local skills:
+
+- [`ic-reactor-hooks`](./skill-packages/ic-reactor-hooks/) for React hook factories, generated hooks, cache invalidation, and inside-vs-outside React usage.
+- [`ic-reactor-packages`](./skill-packages/ic-reactor-packages/) for package ownership, generated-file boundaries, exports, and verification workflow.
+
+The `ic-reactor-hooks` skill is also available externally:
 
 - **In-repo**: [`skill-packages/ic-reactor-hooks/`](./skill-packages/ic-reactor-hooks/) — used by agents working directly in this repository
 - **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
@@ -375,6 +389,13 @@ Use it when asking an agent to:
 - build reusable `createQuery` / `createMutation` modules
 - explain inside-React vs outside-React usage (`fetch`, `execute`, `invalidate`)
 - choose between manual hooks and generated hooks (CLI / Vite plugin)
+
+Use `ic-reactor-packages` when asking an agent to:
+
+- decide which package owns a behavior
+- update exports, package metadata, or docs consistently
+- avoid editing generated output by hand
+- choose focused verification commands for a package-level change
 
 Example prompt:
 

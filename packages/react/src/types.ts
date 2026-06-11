@@ -39,17 +39,17 @@ export type NoInfer<T> = [T][T extends any ? 0 : never]
 
 /** The raw data type returned by the query function (before select) */
 export type QueryFnData<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-> = ReactorReturnOk<A, M, T>
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+> = ReactorReturnOk<Service, Method, Transform>
 
 /** The error type for queries */
 export type QueryError<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-> = ReactorReturnErr<A, M, T>
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+> = ReactorReturnErr<Service, Method, Transform>
 
 // ============================================================================
 // Base Query Configuration
@@ -58,36 +58,36 @@ export type QueryError<
 /**
  * Base configuration for query wrappers (shared between regular and suspense).
  *
- * @template A - The actor interface type
- * @template M - The method name on the actor
- * @template T - The transformation key (identity, display, etc.)
- * @template TSelected - The type returned after select transformation
+ * @template Service - The actor interface type
+ * @template Method - The method name on the actor
+ * @template Transform - The transformation key (identity, display, etc.)
+ * @template Selected - The type returned after select transformation
  */
 export interface BaseQueryConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = QueryFnData<A, M, T>,
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = QueryFnData<Service, Method, Transform>,
 > extends Omit<
   QueryObserverOptions<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    TSelected,
-    ReactorReturnOk<A, M, T>,
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    Selected,
+    ReactorReturnOk<Service, Method, Transform>,
     QueryKey
   >,
   "queryFn" | "queryKey"
 > {
   /** The method to call on the canister */
-  functionName: M
+  functionName: Method
   /** Arguments to pass to the method (if any) */
-  args?: ReactorArgs<A, M, T>
+  args?: ReactorArgs<Service, Method, Transform>
   /** The query key to use for this query */
   queryKey?: QueryKey
   /** How long data stays fresh before refetching (default: 5 min) */
   staleTime?: number
   /** Transform the raw result before returning */
-  select?: (data: QueryFnData<A, M, T>) => TSelected
+  select?: (data: QueryFnData<Service, Method, Transform>) => Selected
 }
 
 /**
@@ -95,22 +95,22 @@ export interface BaseQueryConfig<
  * Alias for BaseQueryConfig for clarity.
  */
 export type QueryConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = QueryFnData<A, M, T>,
-> = BaseQueryConfig<A, M, T, TSelected>
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = QueryFnData<Service, Method, Transform>,
+> = BaseQueryConfig<Service, Method, Transform, Selected>
 
 /**
  * Configuration for createSuspenseQuery (useSuspenseQuery).
  * Alias for BaseQueryConfig for clarity.
  */
 export type SuspenseQueryConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = QueryFnData<A, M, T>,
-> = BaseQueryConfig<A, M, T, TSelected>
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = QueryFnData<Service, Method, Transform>,
+> = BaseQueryConfig<Service, Method, Transform, Selected>
 
 // ============================================================================
 // Factory Configuration (without args)
@@ -120,21 +120,21 @@ export type SuspenseQueryConfig<
  * Configuration for createQueryFactory (args are provided at call time).
  */
 export type QueryFactoryConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = QueryFnData<A, M, T>,
-> = Omit<QueryConfig<A, M, T, TSelected>, "args">
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = QueryFnData<Service, Method, Transform>,
+> = Omit<QueryConfig<Service, Method, Transform, Selected>, "args">
 
 /**
  * Configuration for createSuspenseQueryFactory (args are provided at call time).
  */
 export type SuspenseQueryFactoryConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = QueryFnData<A, M, T>,
-> = Omit<SuspenseQueryConfig<A, M, T, TSelected>, "args">
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = QueryFnData<Service, Method, Transform>,
+> = Omit<SuspenseQueryConfig<Service, Method, Transform, Selected>, "args">
 
 // ============================================================================
 // Hook Interfaces with Chained Select Support
@@ -340,19 +340,19 @@ export interface SuspenseQueryResult<
  * Configuration for createMutation and useActorMutation.
  */
 export interface MutationConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 > extends Omit<
   UseMutationOptions<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    ReactorArgs<A, M, T>
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    ReactorArgs<Service, Method, Transform>
   >,
   "mutationFn"
 > {
   /** The method to call on the canister */
-  functionName: M
+  functionName: Method
   /** Call configuration for the actor method */
   callConfig?: CallConfig
   /** Queries to invalidate upon successful mutation */
@@ -381,7 +381,7 @@ export interface MutationConfig<
    */
   onCanisterError?: (
     error: CanisterError<unknown>,
-    variables: ReactorArgs<A, M, T>
+    variables: ReactorArgs<Service, Method, Transform>
   ) => void
 }
 
@@ -389,24 +389,24 @@ export interface MutationConfig<
  * Configuration for createMutationFactory.
  */
 export type MutationFactoryConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-> = Omit<MutationConfig<A, M, T>, "onSuccess">
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+> = Omit<MutationConfig<Service, Method, Transform>, "onSuccess">
 
 /**
  * Options for useMutation hook.
  * Extends React Query's UseMutationOptions with invalidateQueries support.
  */
 export interface MutationHookOptions<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 > extends Omit<
   UseMutationOptions<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    ReactorArgs<A, M, T>
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    ReactorArgs<Service, Method, Transform>
   >,
   "mutationFn"
 > {
@@ -430,9 +430,11 @@ export interface MutationHookOptions<
    */
   onCanisterError?: (
     error: CanisterError<
-      TransformReturnRegistry<ErrResult<ActorMethodReturnType<A[M]>>>[T]
+      TransformReturnRegistry<
+        ErrResult<ActorMethodReturnType<Service[Method]>>
+      >[Transform]
     >,
-    variables: ReactorArgs<A, M, T>
+    variables: ReactorArgs<Service, Method, Transform>
   ) => void
 }
 
@@ -440,9 +442,9 @@ export interface MutationHookOptions<
  * Result from createMutation.
  */
 export interface MutationResult<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 > {
   /**
    * React hook for the mutation.
@@ -455,13 +457,15 @@ export interface MutationResult<
    * })
    */
   useMutation: (
-    options?: MutationHookOptions<A, M, T>
+    options?: MutationHookOptions<Service, Method, Transform>
   ) => UseMutationResult<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    ReactorArgs<A, M, T>
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    ReactorArgs<Service, Method, Transform>
   >
 
   /** Execute the update call directly (outside of React) */
-  execute: (args: ReactorArgs<A, M, T>) => Promise<ReactorReturnOk<A, M, T>>
+  execute: (
+    args: ReactorArgs<Service, Method, Transform>
+  ) => Promise<ReactorReturnOk<Service, Method, Transform>>
 }

@@ -28,27 +28,27 @@ import { CallConfig } from "@icp-sdk/core/agent"
  * Mutation-specific options (like invalidateQueries) only apply to mutation methods.
  */
 export interface UseActorMethodParameters<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 > extends Omit<
   QueryObserverOptions<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnOk<A, M, T>,
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnOk<Service, Method, Transform>,
     QueryKey
   >,
   "queryKey" | "queryFn"
 > {
   /** The reactor instance to use for method calls */
-  reactor: Reactor<A, T>
+  reactor: Reactor<Service, Transform>
 
   /** The method name to call on the canister */
-  functionName: M
+  functionName: Method
 
   /** Arguments to pass to the method (optional for parameterless methods) */
-  args?: ReactorArgs<A, M, T>
+  args?: ReactorArgs<Service, Method, Transform>
 
   /** Agent call configuration (effectiveCanisterId, etc.) */
   callConfig?: CallConfig
@@ -60,13 +60,13 @@ export interface UseActorMethodParameters<
    * Callback when the method call succeeds.
    * Works for both query and mutation methods.
    */
-  onSuccess?: (data: ReactorReturnOk<A, M, T>) => void
+  onSuccess?: (data: ReactorReturnOk<Service, Method, Transform>) => void
 
   /**
    * Callback when the method call fails.
    * Works for both query and mutation methods.
    */
-  onError?: (error: ReactorReturnErr<A, M, T>) => void
+  onError?: (error: ReactorReturnErr<Service, Method, Transform>) => void
 
   /**
    * Query keys to invalidate after a successful mutation.
@@ -80,22 +80,22 @@ export interface UseActorMethodParameters<
  * For use with createActorHooks.
  */
 export type UseActorMethodConfig<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
-> = Omit<UseActorMethodParameters<A, M, T>, "reactor">
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+> = Omit<UseActorMethodParameters<Service, Method, Transform>, "reactor">
 
 /**
  * Result type for useActorMethod hook.
  * Provides a unified interface for both query and mutation methods.
  */
 export interface UseActorMethodResult<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 > {
   /** The returned data from the method call */
-  data: ReactorReturnOk<A, M, T> | undefined
+  data: ReactorReturnOk<Service, Method, Transform> | undefined
 
   /** Whether the method is currently executing */
   isLoading: boolean
@@ -110,7 +110,7 @@ export interface UseActorMethodResult<
   isSuccess: boolean
 
   /** The error if one occurred */
-  error: ReactorReturnErr<A, M, T> | null
+  error: ReactorReturnErr<Service, Method, Transform> | null
 
   /** Whether this is a query method (true) or mutation method (false) */
   isQuery: boolean
@@ -124,8 +124,8 @@ export interface UseActorMethodResult<
    * For mutations: executes the mutation with the provided args
    */
   call: (
-    args?: ReactorArgs<A, M, T>
-  ) => Promise<ReactorReturnOk<A, M, T> | undefined>
+    args?: ReactorArgs<Service, Method, Transform>
+  ) => Promise<ReactorReturnOk<Service, Method, Transform> | undefined>
 
   /**
    * Reset the state (clear data and error).
@@ -137,20 +137,22 @@ export interface UseActorMethodResult<
   /**
    * For queries only: Refetch the query
    */
-  refetch: () => Promise<ReactorReturnOk<A, M, T> | undefined>
+  refetch: () => Promise<
+    ReactorReturnOk<Service, Method, Transform> | undefined
+  >
 
   // Expose underlying results for advanced use cases
   /** The raw query result (only available for query methods) */
   queryResult?: UseQueryResult<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>
   >
 
   /** The raw mutation result (only available for mutation methods) */
   mutationResult?: UseMutationResult<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    ReactorArgs<A, M, T>
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    ReactorArgs<Service, Method, Transform>
   >
 }
 
@@ -159,9 +161,9 @@ export interface UseActorMethodResult<
  * both query and mutation methods based on the Candid interface.
  */
 export function useActorMethod<
-  A = BaseActor,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 >({
   reactor,
   functionName,
@@ -173,7 +175,11 @@ export function useActorMethod<
   onError,
   invalidateQueries,
   ...queryOptions
-}: UseActorMethodParameters<A, M, T>): UseActorMethodResult<A, M, T> {
+}: UseActorMethodParameters<Service, Method, Transform>): UseActorMethodResult<
+  Service,
+  Method,
+  Transform
+> {
   // Determine if this is a query method by checking the IDL
   const isQuery = useMemo(() => {
     if (!reactor) throw new Error("Reactor instance is required")
@@ -199,8 +205,8 @@ export function useActorMethod<
   // ============================================================================
 
   const queryResult = useQuery<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>
   >(
     {
       queryKey,
@@ -214,7 +220,7 @@ export function useActorMethod<
           onSuccess?.(result)
           return result
         } catch (error) {
-          onError?.(error as ReactorReturnErr<A, M, T>)
+          onError?.(error as ReactorReturnErr<Service, Method, Transform>)
           throw error
         }
       },
@@ -229,9 +235,9 @@ export function useActorMethod<
   // ============================================================================
 
   const mutationResult = useMutation<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    ReactorArgs<A, M, T>
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    ReactorArgs<Service, Method, Transform>
   >(
     {
       mutationKey: queryKey,
@@ -265,8 +271,8 @@ export function useActorMethod<
 
   const call = useCallback(
     async (
-      callArgs?: ReactorArgs<A, M, T>
-    ): Promise<ReactorReturnOk<A, M, T> | undefined> => {
+      callArgs?: ReactorArgs<Service, Method, Transform>
+    ): Promise<ReactorReturnOk<Service, Method, Transform> | undefined> => {
       if (isQuery) {
         // For queries, refetch with new args if provided
         if (callArgs !== undefined) {
@@ -284,7 +290,7 @@ export function useActorMethod<
             onSuccess?.(result)
             return result
           } catch (error) {
-            onError?.(error as ReactorReturnErr<A, M, T>)
+            onError?.(error as ReactorReturnErr<Service, Method, Transform>)
             return undefined
           }
         }
@@ -294,7 +300,7 @@ export function useActorMethod<
       } else {
         // For mutations, execute with provided args
         return mutationResult
-          .mutateAsync(callArgs as ReactorArgs<A, M, T>)
+          .mutateAsync(callArgs as ReactorArgs<Service, Method, Transform>)
           .catch(() => undefined)
       }
     },
@@ -353,7 +359,7 @@ export function useActorMethod<
       reset,
       refetch,
       queryResult,
-    } as UseActorMethodResult<A, M, T>
+    } as UseActorMethodResult<Service, Method, Transform>
   } else {
     return {
       data: mutationResult.data,
@@ -368,7 +374,7 @@ export function useActorMethod<
       reset,
       refetch,
       mutationResult,
-    } as UseActorMethodResult<A, M, T>
+    } as UseActorMethodResult<Service, Method, Transform>
   }
 }
 
@@ -381,20 +387,23 @@ export function useActorMethod<
  * ```
  */
 export function createActorMethodHooks<
-  A = BaseActor,
-  T extends TransformKey = "candid",
->(reactor: Reactor<A, T>) {
+  Service = BaseActor,
+  Transform extends TransformKey = "candid",
+>(reactor: Reactor<Service, Transform>) {
   return {
     /**
      * Hook for calling methods on the bound reactor.
      */
-    useMethod: <M extends FunctionName<A>>(
-      config: Omit<UseActorMethodParameters<A, M, T>, "reactor">
+    useMethod: <Method extends FunctionName<Service>>(
+      config: Omit<
+        UseActorMethodParameters<Service, Method, Transform>,
+        "reactor"
+      >
     ) =>
       useActorMethod({ ...config, reactor } as UseActorMethodParameters<
-        A,
-        M,
-        T
+        Service,
+        Method,
+        Transform
       >),
   }
 }

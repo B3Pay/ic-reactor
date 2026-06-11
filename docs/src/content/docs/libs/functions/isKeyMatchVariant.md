@@ -7,7 +7,7 @@ prev: true
 
 > **isKeyMatchVariant**\<`T`, `K`\>(`variant`, `key`): `variant is T & Record<K, unknown>`
 
-Defined in: [utils/candid.ts:140](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/utils/candid.ts#L140)
+Defined in: [core/src/utils/candid.ts:140](https://github.com/B3Pay/ic-reactor/blob/bd27de26eba8528344acc954f6dcf2ef41cd24f1/packages/core/src/utils/candid.ts#L140)
 
 ## Type Parameters
 

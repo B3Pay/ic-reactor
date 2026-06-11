@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import React from "react"
-import { createActorHooks, createAuthHooks } from "../src"
+import { createActorHooks } from "../src"
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ActorMethod } from "@icp-sdk/core/agent"
@@ -30,7 +30,6 @@ type TestActor = {
 describe("hooks", () => {
   const queryClient = new QueryClient()
   const clientManager = new ClientManager({ queryClient })
-
   const reactor = new Reactor<TestActor>({
     name: "test",
     clientManager,
@@ -44,8 +43,6 @@ describe("hooks", () => {
 
   // getHooks logic
   const { useActorQuery, useActorMutation } = createActorHooks(reactor)
-  const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
-
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -53,16 +50,6 @@ describe("hooks", () => {
   it("should initialize hooks", () => {
     expect(useActorQuery).toBeDefined()
     expect(useActorMutation).toBeDefined()
-    expect(useAuth).toBeDefined()
-    expect(useUserPrincipal).toBeDefined()
-  })
-
-  it("should provide auth hook functionality", async () => {
-    const { result } = renderHook(() => useAuth(), { wrapper })
-
-    expect(result.current.login).toBeDefined()
-    expect(result.current.logout).toBeDefined()
-    expect(result.current.authenticate).toBeDefined()
   })
 
   it("should provide actor specific hooks", () => {
