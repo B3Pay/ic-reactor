@@ -7,7 +7,7 @@ prev: true
 
 > `const` **IDENTITY_ATTRIBUTES_BETA_PROVIDER**: `"https://id.ai/authorize"` = `IDENTITY_ATTRIBUTES_PROVIDER`
 
-Defined in: [auth/src/identity-attributes.ts:16](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/auth/src/identity-attributes.ts#L16)
+Defined in: [auth/src/identity-attributes.ts:16](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/identity-attributes.ts#L16)
 
 ## Deprecated
 

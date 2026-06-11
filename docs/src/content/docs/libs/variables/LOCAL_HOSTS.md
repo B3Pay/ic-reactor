@@ -7,4 +7,4 @@ prev: true
 
 > `const` **LOCAL_HOSTS**: `string`[]
 
-Defined in: [core/src/utils/constants.ts:3](https://github.com/B3Pay/ic-reactor/blob/dd1564327ead262e28427c903394d431f5640b11/packages/core/src/utils/constants.ts#L3)
+Defined in: [core/src/utils/constants.ts:3](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/utils/constants.ts#L3)
