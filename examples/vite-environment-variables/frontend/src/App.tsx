@@ -7,7 +7,6 @@ function App() {
     functionName: "greet",
     enabled: false,
   })
-  const [greeting, setGreeting] = useState("")
   const [error, setError] = useState("")
 
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
@@ -15,16 +14,13 @@ function App() {
     const formData = new FormData(event.currentTarget)
     const name = String(formData.get("name") ?? "").trim()
     if (!name) {
-      setGreeting("")
       setError("Please enter a name.")
       return
     }
     try {
       setError("")
-      const result = await call([name])
-      setGreeting(String(result ?? ""))
+      await call([name])
     } catch (err) {
-      setGreeting("")
       setError(err instanceof Error ? err.message : "Call failed")
     }
   }
