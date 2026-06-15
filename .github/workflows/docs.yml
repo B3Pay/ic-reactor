@@ -83,42 +83,98 @@ jobs:
             shopt -s dotglob
             for item in final-docs/*; do
               case "$(basename "$item")" in
-                v2|v3|llms.txt) continue;;
+                v2|v3|v4|llms.txt) continue;;
               esac
               mv "$item" final-docs/v2/
             done
             shopt -u dotglob
           fi
 
-          # Replace v3 with new Astro build
-          rm -rf final-docs/v3
-          mkdir -p final-docs/v3
-          cp -r docs/dist/* final-docs/v3/
+          # Replace v4 with new Astro build while preserving v2 and v3
+          rm -rf final-docs/v4
+          mkdir -p final-docs/v4
+          cp -r docs/dist/* final-docs/v4/
+
+          # Normalize the version selector in preserved static versions too.
+          # This lets existing /v2 and /v3 pages link to the new /v4 docs.
+          node << 'NODE'
+          const fs = require("node:fs")
+          const path = require("node:path")
+
+          const selectorHtml = `<select id="version-select" onchange="handleVersionChange(event)" aria-label="Select version">
+                  <option value="v4">v4</option>
+                  <option value="v3">v3</option>
+                  <option value="v2">v2</option>
+                </select>`
+
+          const patchScript = `<script id="ic-reactor-version-selector-patch">
+                (function () {
+                  var select = document.getElementById("version-select");
+                  if (!select) return;
+                  var match = window.location.pathname.match(/^\\/(v2|v3|v4)(\\/|$)/);
+                  var currentVersion = match ? match[1] : "v4";
+                  select.value = currentVersion;
+                  select.addEventListener("change", function (event) {
+                    var version = event.target.value;
+                    var path = window.location.pathname || "/";
+                    var nextPath = /^\\/v[234](\\/|$)/.test(path)
+                      ? path.replace(/^\\/v[234](?=\\/|$)/, "/" + version)
+                      : "/" + version + "/";
+                    window.location.href = nextPath + window.location.search + window.location.hash;
+                  });
+                })();
+              </script>`
+
+          function walk(dir) {
+            if (!fs.existsSync(dir)) return []
+            return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+              const fullPath = path.join(dir, entry.name)
+              if (entry.isDirectory()) return walk(fullPath)
+              return entry.isFile() && entry.name.endsWith(".html") ? [fullPath] : []
+            })
+          }
+
+          for (const file of walk("final-docs")) {
+            let html = fs.readFileSync(file, "utf8")
+            if (!html.includes('id="version-select"')) continue
+
+            html = html.replace(
+              /<select id="version-select"[\s\S]*?<\/select>/,
+              selectorHtml
+            )
+
+            if (!html.includes("ic-reactor-version-selector-patch")) {
+              html = html.replace("</body>", `${patchScript}\n            </body>`)
+            }
+
+            fs.writeFileSync(file, html)
+          }
+          NODE
 
           # Preserve CNAME for custom domain
           if [ -f "CNAME" ]; then
             cp CNAME final-docs/CNAME
           fi
 
-          # Root redirect to v3
+          # Root redirect to latest docs
           cat > final-docs/index.html << 'EOF'
           <!doctype html>
           <html>
             <head>
               <meta charset="utf-8" />
-              <meta http-equiv="refresh" content="0; url=/v3/" />
+              <meta http-equiv="refresh" content="0; url=/v4/" />
               <title>IC Reactor Docs</title>
               <script>
-                window.location.replace("/v3/");
+                window.location.replace("/v4/");
               </script>
             </head>
             <body>
-              <p>Redirecting to v3 documentation…</p>
+              <p>Redirecting to v4 documentation…</p>
             </body>
           </html>
           EOF
 
-          # Smart 404: redirect unknown routes to v3 preserving path
+          # Smart 404: redirect unknown routes to latest docs preserving path
           cat > final-docs/404.html << 'EOF'
           <!doctype html>
           <html>
@@ -128,8 +184,8 @@ jobs:
               <script>
                 (function () {
                   var path = window.location.pathname || "/";
-                  if (path.startsWith("/v2") || path.startsWith("/v3")) return;
-                  window.location.replace("/v3" + path);
+                  if (path.startsWith("/v2") || path.startsWith("/v3") || path.startsWith("/v4")) return;
+                  window.location.replace("/v4" + path);
                 })();
               </script>
             </head>

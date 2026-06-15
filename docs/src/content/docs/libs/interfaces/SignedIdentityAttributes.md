@@ -5,9 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/client.ts:14](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L14)
-
-Parameters for configuring a ClientManager instance.
+Defined in: [auth/src/types.ts:4](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L4)
 
 ## Properties
 
@@ -15,7 +13,7 @@ Parameters for configuring a ClientManager instance.
 
 > **data**: `Uint8Array`
 
-Defined in: [types/client.ts:15](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L15)
+Defined in: [auth/src/types.ts:5](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L5)
 
 ---
 
@@ -23,4 +21,4 @@ Defined in: [types/client.ts:15](https://github.com/B3Pay/ic-reactor/blob/0479ee
 
 > **signature**: `Uint8Array`
 
-Defined in: [types/client.ts:16](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L16)
+Defined in: [auth/src/types.ts:6](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L6)

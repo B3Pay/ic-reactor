@@ -20,6 +20,8 @@ jobs:
         workspace:
           - packages/core
           - packages/react
+          - packages/auth
+          - packages/auth-react
           - packages/candid
     steps:
       - name: Checkout

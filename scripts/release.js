@@ -44,6 +44,8 @@ console.log(`\n🚀 Starting release process for v${version}...\n`)
 updatePackageJson("package.json", version)
 updatePackageJson("packages/core/package.json", version)
 updatePackageJson("packages/react/package.json", version)
+updatePackageJson("packages/auth/package.json", version)
+updatePackageJson("packages/auth-react/package.json", version)
 updatePackageJson("packages/candid/package.json", version)
 
 // 2. Update library lockfile while examples still point to workspace
@@ -85,12 +87,16 @@ const dryRun = process.argv.includes("--dry-run")
 if (shouldPublish || dryRun) {
   console.log(`\n📤 Publishing to npm${dryRun ? " (DRY RUN)" : ""}...`)
   try {
-    // Only publish @ic-reactor/core and @ic-reactor/react (not parser, docs, e2e, etc.)
+    // Publish runtime libraries together; parser, docs, e2e, and tooling use separate workflows.
     const publishArgs = [
       "--filter",
       "@ic-reactor/core",
       "--filter",
       "@ic-reactor/react",
+      "--filter",
+      "@ic-reactor/auth",
+      "--filter",
+      "@ic-reactor/auth-react",
       "--filter",
       "@ic-reactor/candid",
       "publish",

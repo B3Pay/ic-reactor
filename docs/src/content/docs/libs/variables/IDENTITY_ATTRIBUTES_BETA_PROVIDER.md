@@ -5,6 +5,11 @@ next: true
 prev: true
 ---
 
-> `const` **IDENTITY_ATTRIBUTES_BETA_PROVIDER**: `"https://id.ai/authorize"` = `"https://id.ai/authorize"`
+> `const` **IDENTITY_ATTRIBUTES_BETA_PROVIDER**: `"https://id.ai/authorize"` = `IDENTITY_ATTRIBUTES_PROVIDER`
 
-Defined in: [identity-attributes.ts:9](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/identity-attributes.ts#L9)
+Defined in: [auth/src/identity-attributes.ts:16](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/identity-attributes.ts#L16)
+
+## Deprecated
+
+Use the default ClientManager identity provider or
+`IDENTITY_ATTRIBUTES_PROVIDER` instead.

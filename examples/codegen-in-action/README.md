@@ -62,7 +62,7 @@ npm run codegen:cli
 - `ic_root_key=<local-root-key>`
 - `PUBLIC_CANISTER_ID:<name>=<canister-id>`
 
-inside the `ic_env` cookie, so `withCanisterEnv: true` clients resolve local canister IDs automatically with zero extra Vite cookie configuration.
+inside the `ic_env` cookie, so clients resolve local canister IDs automatically with zero extra Vite cookie configuration.
 
 ## Notes
 

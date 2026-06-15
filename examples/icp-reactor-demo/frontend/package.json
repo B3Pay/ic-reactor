@@ -10,24 +10,27 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/react": "^3.0.3-beta.2",
-    "@icp-sdk/core": "^5.0.0",
+    "@ic-reactor/auth": "^3.6.0",
+    "@ic-reactor/auth-react": "^3.6.0",
+    "@ic-reactor/react": "^3.6.0",
+    "@icp-sdk/core": "^5.4.0",
     "@tanstack/react-query": "^5.90",
     "@tanstack/react-query-devtools": "^5.91.0",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "@ic-reactor/vite-plugin": "^0.1.0",
-    "@icp-sdk/bindgen": "^0.2.1",
-    "@types/react": "^19.2.7",
+    "@ic-reactor/vite-plugin": "^0.11.1",
+    "@icp-sdk/bindgen": "^0.4.0",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.2",
-    "typescript": "~5.9.3",
-    "vite": "^7.3.2"
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
   },
   "overrides": {
     "picomatch": "4.0.4",
     "yaml": "2.8.3"
-  }
+  },
+  "packageManager": "pnpm@10.30.3"
 }

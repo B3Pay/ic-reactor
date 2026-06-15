@@ -1,6 +1,8 @@
 {
   "files": [],
   "references": [
+    { "path": "./packages/auth" },
+    { "path": "./packages/auth-react" },
     { "path": "./packages/core" },
     { "path": "./packages/react" },
     { "path": "./packages/candid" },

@@ -7,4 +7,4 @@ prev: true
 
 > **IdentityAttributeOpenIdProvider** = `IdentityAttributeOpenIdProviderAlias` \| `string` & `object`
 
-Defined in: [types/client.ts:41](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/client.ts#L41)
+Defined in: [auth/src/types.ts:31](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L31)

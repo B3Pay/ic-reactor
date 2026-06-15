@@ -1,4 +1,0 @@
-service : {
-  get_count : () -> (nat) query;
-  increment : () -> ();
-}

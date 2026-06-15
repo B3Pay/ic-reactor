@@ -155,17 +155,17 @@ This code snippet illustrates the **3 core concepts** of IC Reactor:
   <LinkCard
     title="Queries"
     description="Fetch data from canisters with automatic caching and background updates"
-    href="/v3/framework/queries"
+    href="/v4/framework/queries"
   />
   <LinkCard
     title="Mutations"
     description="Update canister state and automatically sync with your UI"
-    href="/v3/framework/mutations"
+    href="/v4/framework/mutations"
   />
   <LinkCard
     title="Query Invalidation"
     description="Control when and how cached data is refreshed"
-    href="/v3/framework/query-caching"
+    href="/v4/framework/query-caching"
   />
 </CardGrid>
 
@@ -175,33 +175,38 @@ This code snippet illustrates the **3 core concepts** of IC Reactor:
   <LinkCard
     title="Installation"
     description="Get IC Reactor set up in your project"
-    href="/v3/getting-started/installation"
+    href="/v4/getting-started/installation"
   />
   <LinkCard
     title="Quick Start"
     description="Build your first IC Reactor integration"
-    href="/v3/getting-started/quick-start"
+    href="/v4/getting-started/quick-start"
   />
   <LinkCard
     title="React Setup"
     description="Complete React configuration with authentication"
-    href="/v3/framework/react-setup"
+    href="/v4/framework/react-setup"
   />
   <LinkCard
     title="Type Safety"
     description="Understand the end-to-end type system"
-    href="/v3/guides/type-safety"
+    href="/v4/guides/type-safety"
   />
 </CardGrid>
 
 ## Packages
 
-| Package              | Description                                           | NPM                                                                                                         |
-| -------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `@ic-reactor/core`   | Core library with ClientManager, Reactor, and caching | [![npm](https://img.shields.io/npm/v/@ic-reactor/core)](https://www.npmjs.com/package/@ic-reactor/core)     |
-| `@ic-reactor/react`  | React hooks for seamless integration                  | [![npm](https://img.shields.io/npm/v/@ic-reactor/react)](https://www.npmjs.com/package/@ic-reactor/react)   |
-| `@ic-reactor/candid` | Dynamic Candid fetching and parsing                   | [![npm](https://img.shields.io/npm/v/@ic-reactor/candid)](https://www.npmjs.com/package/@ic-reactor/candid) |
-| `@ic-reactor/parser` | WASM Candid parser for local compilation              | [![npm](https://img.shields.io/npm/v/@ic-reactor/parser)](https://www.npmjs.com/package/@ic-reactor/parser) |
+| Package                   | Description                                           | NPM                                                                                                                   |
+| ------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`        | Core library with ClientManager, Reactor, and caching | [![npm](https://img.shields.io/npm/v/@ic-reactor/core)](https://www.npmjs.com/package/@ic-reactor/core)               |
+| `@ic-reactor/react`       | React hooks, factories, and React setup helpers       | [![npm](https://img.shields.io/npm/v/@ic-reactor/react)](https://www.npmjs.com/package/@ic-reactor/react)             |
+| `@ic-reactor/auth`        | Non-React Internet Identity auth and attributes       | [![npm](https://img.shields.io/npm/v/@ic-reactor/auth)](https://www.npmjs.com/package/@ic-reactor/auth)               |
+| `@ic-reactor/auth-react`  | React hooks for auth managers                         | [![npm](https://img.shields.io/npm/v/@ic-reactor/auth-react)](https://www.npmjs.com/package/@ic-reactor/auth-react)   |
+| `@ic-reactor/candid`      | Dynamic Candid fetching and parsing                   | [![npm](https://img.shields.io/npm/v/@ic-reactor/candid)](https://www.npmjs.com/package/@ic-reactor/candid)           |
+| `@ic-reactor/parser`      | WASM Candid parser for local compilation              | [![npm](https://img.shields.io/npm/v/@ic-reactor/parser)](https://www.npmjs.com/package/@ic-reactor/parser)           |
+| `@ic-reactor/codegen`     | Shared generator pipeline for CLI and Vite plugin     | [![npm](https://img.shields.io/npm/v/@ic-reactor/codegen)](https://www.npmjs.com/package/@ic-reactor/codegen)         |
+| `@ic-reactor/cli`         | Command-line declaration and hook generation          | [![npm](https://img.shields.io/npm/v/@ic-reactor/cli)](https://www.npmjs.com/package/@ic-reactor/cli)                 |
+| `@ic-reactor/vite-plugin` | Vite watch-mode generation and local env injection    | [![npm](https://img.shields.io/npm/v/@ic-reactor/vite-plugin)](https://www.npmjs.com/package/@ic-reactor/vite-plugin) |
 
 <Aside type="note">
   Looking for **v2 documentation**? The legacy docs are available at

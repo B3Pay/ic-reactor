@@ -19,10 +19,16 @@ trigger:
     - createActorHooks
     - useActorQuery
     - useActorMutation
+    - defineReactor
     - createQuery
     - createMutation
+    - createQueryFactory
+    - createSuspenseQuery
+    - createInfiniteQuery
+    - useActorMethod
     - ICP React hooks
     - Internet Computer hooks
+    - generated hooks
   allow_implicit: true
 
 instructions:

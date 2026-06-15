@@ -8,6 +8,15 @@ struct Post {
     title: String,
     content: String,
     category: String,
+    // Social metadata — stored in the canister, not fabricated on the frontend
+    author: String,
+    handle: String,
+    avatar: String,
+    timestamp: String,
+    likes: Nat,
+    reposts: Nat,
+    replies: Nat,
+    views: Nat,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -16,24 +25,72 @@ struct PostsResponse {
     next_cursor: Option<Nat>,
 }
 
-// Simulate a database
 thread_local! {
-    static POSTS: RefCell<Vec<Post>> = RefCell::new(generate_dummy_posts(100));
+    static POSTS: RefCell<Vec<Post>> = RefCell::new(seed_posts(100));
 }
 
-fn generate_dummy_posts(count: u64) -> Vec<Post> {
-    let categories = vec!["Tech", "Lifestyle", "Education"];
+fn seed_posts(count: u64) -> Vec<Post> {
+    let authors = [
+        ("Alice Chen",    "alice_chen",   "🦊"),
+        ("Bob Dev",       "bob_dev",      "🐻"),
+        ("Tech Guru",     "tech_guru",    "🦁"),
+        ("Life Hacker",   "life_hacker",  "🐯"),
+        ("Edu Fan",       "edu_fan",      "🦄"),
+        ("Rustacean",     "rustacean",    "🐸"),
+        ("IC Builder",    "ic_builder",   "🦋"),
+        ("Web3 Nerd",     "web3_nerd",    "🦅"),
+        ("Crypto Cat",    "crypto_cat",   "🐺"),
+        ("dApp Wizard",   "dapp_wiz",     "🦝"),
+    ];
+    let timestamps = ["1m", "4m", "12m", "28m", "1h", "2h", "5h", "11h", "1d", "2d"];
+    let categories = ["Tech", "Lifestyle", "Education"];
+
     (1..=count)
         .map(|i| {
-            let category = categories[(i % 3) as usize];
+            let cat = categories[((i - 1) % 3) as usize];
+            let (name, handle, avatar) = authors[(i % 10) as usize];
+            let ts = timestamps[(i % 10) as usize];
+
+            let (title, content) = match cat {
+                "Tech" => (
+                    format!("Building on the Internet Computer — post #{i}"),
+                    format!(
+                        "Just shipped a new feature using Rust and Candid on the IC. \
+                        The on-chain computation model is unlike anything I've worked with before. \
+                        No servers, no cloud bills — it just runs. 🚀 #{cat} #ICP #Rust"
+                    ),
+                ),
+                "Lifestyle" => (
+                    format!("Day {i} of the remote-work experiment"),
+                    format!(
+                        "Working from a café in Lisbon today. \
+                        Strong espresso, fast WiFi, and a deadline that refuses to respect time zones. \
+                        This is the dream, right? ☕ #RemoteWork #{cat} #DigitalNomad"
+                    ),
+                ),
+                _ => (
+                    format!("Learning tip #{i}: compound understanding"),
+                    format!(
+                        "The best way to learn a complex topic is to build something with it. \
+                        Started a small side project to understand consensus algorithms — \
+                        three days in and the textbook finally makes sense. 📖 #{cat} #LearningInPublic"
+                    ),
+                ),
+            };
+
             Post {
                 id: Nat::from(i),
-                title: format!("{} Post #{}", category, i),
-                content: format!(
-                    "This is a {} post number {}. It comes directly from the Rust canister!",
-                    category, i
-                ),
-                category: category.to_string(),
+                title,
+                content,
+                category: cat.to_string(),
+                author: name.to_string(),
+                handle: handle.to_string(),
+                avatar: avatar.to_string(),
+                timestamp: ts.to_string(),
+                likes: Nat::from((i * 37) % 8000),
+                reposts: Nat::from((i * 13) % 1500),
+                replies: Nat::from((i * 7) % 400),
+                views: Nat::from(((i * 131) % 50 + 1) * 1000),
             }
         })
         .collect()
@@ -44,38 +101,23 @@ fn get_posts(category: Option<String>, cursor: Nat, limit: Nat) -> PostsResponse
     POSTS.with(|posts| {
         let posts = posts.borrow();
 
-        // Filter by category if provided
-        let filtered_posts: Vec<&Post> = if let Some(cat) = category {
+        let filtered: Vec<&Post> = if let Some(cat) = category {
             posts.iter().filter(|p| p.category == cat).collect()
         } else {
             posts.iter().collect()
         };
 
-        let start_index: usize = cursor.0.try_into().unwrap_or(0);
-        let limit_usize: usize = limit.0.try_into().unwrap_or(0);
+        let start: usize = cursor.0.try_into().unwrap_or(0);
+        let lim: usize = limit.0.try_into().unwrap_or(10);
 
-        if start_index >= filtered_posts.len() {
-            return PostsResponse {
-                posts: Vec::new(),
-                next_cursor: None,
-            };
+        if start >= filtered.len() {
+            return PostsResponse { posts: vec![], next_cursor: None };
         }
 
-        let end_index = std::cmp::min(start_index + limit_usize, filtered_posts.len());
-        let page_posts = filtered_posts[start_index..end_index]
-            .iter()
-            .map(|&p| p.clone())
-            .collect();
+        let end = (start + lim).min(filtered.len());
+        let page_posts = filtered[start..end].iter().map(|&p| p.clone()).collect();
+        let next_cursor = if end < filtered.len() { Some(Nat::from(end)) } else { None };
 
-        let next_cursor = if end_index < filtered_posts.len() {
-            Some(Nat::from(end_index))
-        } else {
-            None
-        };
-
-        PostsResponse {
-            posts: page_posts,
-            next_cursor,
-        }
+        PostsResponse { posts: page_posts, next_cursor }
     })
 }

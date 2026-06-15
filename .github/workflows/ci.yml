@@ -47,16 +47,62 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
 
       - name: Format check
         run: pnpm format:check
 
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
       - name: Type check
         run: pnpm exec tsc --noEmit
+
+  typecheck-examples:
+    name: Type Check Examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Examples import the @ic-reactor/* packages through the workspace symlinks,
+      # so they must be built before type-checking the examples.
+      - name: Build packages
+        run: pnpm build
+
+      - name: Type check examples
+        run: pnpm typecheck:examples
 
   test:
     name: Test
@@ -94,7 +140,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
 
       - name: Build packages (excluding parser)
         run: pnpm build
@@ -138,7 +184,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
 
       - name: Cache Rust dependencies
         uses: actions/cache@v5

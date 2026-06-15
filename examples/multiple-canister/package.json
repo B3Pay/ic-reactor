@@ -4,16 +4,18 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@ic-reactor/auth": "^3.6.0",
+    "@ic-reactor/auth-react": "^3.6.0",
     "@ic-reactor/core": "^3.6.0",
     "@ic-reactor/react": "^3.6.0",
-    "@icp-sdk/auth": "^5.0.0",
-    "@icp-sdk/core": "^5.0.0",
+    "@icp-sdk/auth": "^7.1.0",
+    "@icp-sdk/core": "^5.4.0",
     "@tanstack/react-query": "^5.90.16",
-    "@types/node": "25.0.3",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
+    "@types/node": "25.9.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "react-hook-form": "^7.49.2",
-    "typescript": "^5.9"
+    "typescript": "^6.0"
   },
   "scripts": {
     "dev": "vite --port 3000",
@@ -39,12 +41,14 @@
     ]
   },
   "devDependencies": {
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.2",
-    "vite": "^7.3.2"
+    "@vitejs/plugin-react": "^6.0.2",
+    "vite": "^8.0.16"
   },
   "overrides": {
     "picomatch": "4.0.4",
     "yaml": "2.8.3"
-  }
+  },
+  "packageManager": "pnpm@10.30.3"
 }

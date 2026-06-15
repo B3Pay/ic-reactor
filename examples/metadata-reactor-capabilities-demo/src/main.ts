@@ -7,7 +7,6 @@ import "./styles.css"
 
 const clientManager = new ClientManager({
   queryClient: new QueryClient(),
-  withLocalEnv: true,
 })
 
 const idlFactory = ({

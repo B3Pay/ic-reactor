@@ -77,6 +77,8 @@ export function normalizeCandidInterface(
 
   const trimmed = rawInput.trim()
 
+  assertBalancedCandidInterface(trimmed)
+
   // Match all type declarations to find the last one
   const typeMatches = [...trimmed.matchAll(/^type\s+[a-zA-Z0-9_]+\s*=/gm)]
 
@@ -145,4 +147,41 @@ export function normalizeCandidInterface(
   }
 
   return `${typeDefinitions}\nservice : { "${functionName}": ${methodSignature}; }`
+}
+
+function assertBalancedCandidInterface(source: string) {
+  const pairs: Record<string, string> = {
+    "(": ")",
+    "{": "}",
+    "[": "]",
+  }
+  const stack: string[] = []
+  let inString = false
+
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i]
+
+    if (char === '"' && source[i - 1] !== "\\") {
+      inString = !inString
+      continue
+    }
+
+    if (inString) continue
+
+    if (char in pairs) {
+      stack.push(char)
+      continue
+    }
+
+    if (Object.values(pairs).includes(char)) {
+      const last = stack.pop()
+      if (!last || pairs[last] !== char) {
+        throw new Error("Malformed candid interface: unbalanced delimiters")
+      }
+    }
+  }
+
+  if (inString || stack.length > 0) {
+    throw new Error("Malformed candid interface: unbalanced delimiters")
+  }
 }

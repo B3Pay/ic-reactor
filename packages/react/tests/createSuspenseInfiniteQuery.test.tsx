@@ -600,7 +600,11 @@ describe("createSuspenseInfiniteQueryFactory", () => {
     expect(query.getQueryKey()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          __ic_reactor_factory_key_args: [{ filter: "active", q: "foo" }],
+          // keyArgs are serialized through generateKey (BigInt-safe stringify)
+          // so the value is a JSON string, not a raw array.
+          __ic_reactor_factory_key_args: JSON.stringify([
+            { filter: "active", q: "foo" },
+          ]),
         }),
       ])
     )

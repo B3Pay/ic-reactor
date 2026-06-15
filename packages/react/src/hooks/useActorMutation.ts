@@ -21,19 +21,19 @@ import {
 import { CallConfig } from "@icp-sdk/core/agent"
 
 export interface UseActorMutationParameters<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 > extends Omit<
   UseMutationOptions<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    ReactorArgs<A, M, T>
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    ReactorArgs<Service, Method, Transform>
   >,
   "mutationFn"
 > {
-  reactor: Reactor<A, T>
-  functionName: M
+  reactor: Reactor<Service, Transform>
+  functionName: Method
   callConfig?: CallConfig
   invalidateQueries?: QueryKey[]
   /**
@@ -43,26 +43,28 @@ export interface UseActorMutationParameters<
    */
   onCanisterError?: (
     error: CanisterError<
-      TransformReturnRegistry<ErrResult<ActorMethodReturnType<A[M]>>>[T]
+      TransformReturnRegistry<
+        ErrResult<ActorMethodReturnType<Service[Method]>>
+      >[Transform]
     >,
-    variables: ReactorArgs<A, M, T>
+    variables: ReactorArgs<Service, Method, Transform>
   ) => void
 }
 
 export type UseActorMutationConfig<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
-> = Omit<UseActorMutationParameters<A, M, T>, "reactor">
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+> = Omit<UseActorMutationParameters<Service, Method, Transform>, "reactor">
 
 export type UseActorMutationResult<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 > = UseMutationResult<
-  ReactorReturnOk<A, M, T>,
-  ReactorReturnErr<A, M, T>,
-  ReactorArgs<A, M, T>
+  ReactorReturnOk<Service, Method, Transform>,
+  ReactorReturnErr<Service, Method, Transform>,
+  ReactorArgs<Service, Method, Transform>
 >
 
 /**
@@ -77,9 +79,9 @@ export type UseActorMutationResult<
  * })
  */
 export const useActorMutation = <
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 >({
   reactor,
   functionName,
@@ -89,9 +91,13 @@ export const useActorMutation = <
   onCanisterError,
   callConfig,
   ...options
-}: UseActorMutationParameters<A, M, T>): UseActorMutationResult<A, M, T> => {
+}: UseActorMutationParameters<
+  Service,
+  Method,
+  Transform
+>): UseActorMutationResult<Service, Method, Transform> => {
   const mutationFn = useCallback(
-    async (args: ReactorArgs<A, M, T>) =>
+    async (args: ReactorArgs<Service, Method, Transform>) =>
       reactor.callMethod({ functionName, callConfig, args }),
     [reactor, functionName, callConfig]
   )
@@ -101,9 +107,9 @@ export const useActorMutation = <
       ...params: Parameters<
         NonNullable<
           UseMutationOptions<
-            ReactorReturnOk<A, M, T>,
-            ReactorReturnErr<A, M, T>,
-            ReactorArgs<A, M, T>
+            ReactorReturnOk<Service, Method, Transform>,
+            ReactorReturnErr<Service, Method, Transform>,
+            ReactorArgs<Service, Method, Transform>
           >["onSuccess"]
         >
       >
@@ -122,8 +128,8 @@ export const useActorMutation = <
 
   const handleError = useCallback(
     (
-      error: ReactorReturnErr<A, M, T>,
-      variables: ReactorArgs<A, M, T>,
+      error: ReactorReturnErr<Service, Method, Transform>,
+      variables: ReactorArgs<Service, Method, Transform>,
       context: unknown,
       mutation: unknown
     ) => {

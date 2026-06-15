@@ -96,9 +96,24 @@ export function icReactor(options: IcReactorPluginOptions): any {
       const icEnv = getIcEnvironmentInfo(canisterNames)
 
       if (!icEnv) {
-        // Fallback: just proxy /api to default local replica
+        const envOnlyCookie =
+          canisters.length === 0
+            ? buildIcEnvCookie(
+                {},
+                undefined,
+                "http://id.ai.localhost:8000/authorize"
+              )
+            : undefined
+
+        // Fallback: proxy /api to default local replica. In env-only mode,
+        // still provide the standard ICP CLI built-in local II URL.
         return {
           server: {
+            headers: envOnlyCookie
+              ? {
+                  "Set-Cookie": `ic_env=${envOnlyCookie}; Path=/; SameSite=Lax;`,
+                }
+              : undefined,
             proxy: {
               "/api": {
                 target: "http://127.0.0.1:4943",
@@ -114,7 +129,8 @@ export function icReactor(options: IcReactorPluginOptions): any {
           ...icEnv.canisterIds,
           ...configuredCanisterIds,
         },
-        icEnv.rootKey
+        icEnv.rootKey,
+        icEnv.internetIdentityProvider
       )
 
       return {

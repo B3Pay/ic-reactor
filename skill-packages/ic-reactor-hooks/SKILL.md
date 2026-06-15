@@ -24,6 +24,7 @@ This skill should match requests about:
 - `@ic-reactor/react`
 - ICP React hooks / Internet Computer React hooks
 - `createActorHooks`, `useActorQuery`, `useActorMutation`
+- one-call setup with `defineReactor`
 - query and mutation factories (`createQuery`, `createMutation`)
 - using IC Reactor outside React (`fetch`, `execute`, cache invalidation)
 - IC Reactor CLI / Vite plugin generated hooks
@@ -34,6 +35,7 @@ This skill should match requests about:
 2. Prefer generated hooks for canister-heavy app code.
 3. Reuse singleton `QueryClient`, `ClientManager`, and reactor instances.
 4. Choose the smallest abstraction that fits:
+   - `defineReactor(...)` for one-call setup (reactor + hooks + shared infra)
    - `createActorHooks(...)` for generic hook access
    - `createQuery` / `createMutation` factories for reusable operations
    - `useActorMethod` for unified imperative component calls
@@ -45,6 +47,7 @@ This skill should match requests about:
 
 | Need                                           | Preferred API                                           | Use Location                     |
 | ---------------------------------------------- | ------------------------------------------------------- | -------------------------------- |
+| One-call setup (reactor + hooks + infra)       | `defineReactor(params)`                                 | App scaffolding/shared modules   |
 | Fastest setup across many methods              | `createActorHooks(reactor)`                             | React components/custom hooks    |
 | Reusable query with loader support             | `createQuery` / `createSuspenseQuery`                   | Inside React and outside React   |
 | Reusable mutation with imperative execution    | `createMutation`                                        | Inside React and outside React   |
@@ -67,6 +70,36 @@ This skill should match requests about:
 - Do not hand-edit generated hook files; wrap or compose around them.
 
 ## Implement Patterns Efficiently
+
+### 0. One-Call Setup (`defineReactor`)
+
+Use `defineReactor` when you want the fastest path: it creates the `QueryClient`,
+`ClientManager`, reactor, and bound hooks in a single call and returns them
+together. Set `display: true` for UI-friendly values instead of choosing between
+`Reactor` and `DisplayReactor` manually.
+
+```ts
+import { defineReactor } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+export const {
+  reactor: backend,
+  queryClient,
+  clientManager,
+  useActorQuery,
+  useActorMutation,
+  useActorMethod,
+} = defineReactor<_SERVICE>({
+  name: "backend",
+  idlFactory,
+  display: true,
+})
+```
+
+Share one agent across canisters by passing the returned `clientManager` (or
+`queryClient`) into the next `defineReactor` call. Drop down to manual
+`ClientManager` + `Reactor` + `createActorHooks` only when you need finer control
+over construction order.
 
 ### 1. Generic Actor Hooks (component-first)
 

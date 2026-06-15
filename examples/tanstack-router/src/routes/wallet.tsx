@@ -9,6 +9,7 @@ export const Route = createFileRoute("/wallet")({
 
 function WalletLayout() {
   const { isAuthenticated, login, logout } = useAuth()
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-slate-900 p-4 font-sans text-slate-100">
       <div className="flex flex-col items-center w-full space-y-6">
@@ -35,15 +36,7 @@ function WalletLayout() {
               Logout
             </Button>
           ) : (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() =>
-                login({
-                  identityProvider: "https://id.ai/#authorize",
-                })
-              }
-            >
+            <Button variant="primary" size="sm" onClick={() => login()}>
               Login to II
             </Button>
           )}

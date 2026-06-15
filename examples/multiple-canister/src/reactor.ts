@@ -3,15 +3,19 @@
  *
  * This file demonstrates how to set up multiple reactors for interacting with
  * both ICP Ledger and ICDV canisters using the v3 API.
+ *
+ * It uses `defineReactor` for one-call setup: the first call creates the shared
+ * QueryClient + ClientManager, and the second reuses that same ClientManager so
+ * both canisters share a single agent.
  */
-import { ClientManager, Reactor } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import {
-  createActorHooks,
-  createAuthHooks,
+  defineReactor,
   createQuery,
   createMutation,
   createQueryFactory,
 } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 import { QueryClient } from "@tanstack/react-query"
 import {
   idlFactory as icrc2IdlFactory,
@@ -23,7 +27,7 @@ import {
 } from "./declarations/icdv"
 
 // ============================================================================
-// 1. Setup QueryClient and ClientManager
+// 1. Setup QueryClient
 // ============================================================================
 
 export const queryClient = new QueryClient({
@@ -34,54 +38,47 @@ export const queryClient = new QueryClient({
   },
 })
 
-export const clientManager = new ClientManager({
-  withProcessEnv: true,
-  queryClient,
-})
-
 // ============================================================================
-// 2. Initialize Reactors
+// 2. Initialize Reactors (defineReactor wires QueryClient + ClientManager)
 // ============================================================================
 
-// ICP Ledger (ICRC2)
-export const icpLedger = new Reactor<ICRC2>({
-  name: "ICP Ledger",
+// ICP Ledger (ICRC2) — this first call creates the shared ClientManager
+export const {
+  reactor: icpLedger,
   clientManager,
+  useActorQuery: useICPQuery,
+  useActorMutation: useICPMutation,
+} = defineReactor<ICRC2>({
+  name: "ICP Ledger",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   idlFactory: icrc2IdlFactory,
+  queryClient,
+  agentOptions: { host: "https://ic0.app" },
 })
 
-// ICDV Token
-export const icdvToken = new Reactor<ICDV>({
+// ICDV Token — reuses the same ClientManager (shared agent)
+export const {
+  reactor: icdvToken,
+  useActorQuery: useICDVQuery,
+  useActorMutation: useICDVMutation,
+} = defineReactor<ICDV>({
   name: "ICDV Token",
-  clientManager,
   canisterId: "agtsn-xyaaa-aaaag-ak3kq-cai",
   idlFactory: icdvIdlFactory,
+  clientManager,
 })
 
 // ============================================================================
 // 3. Auth Hooks
 // ============================================================================
 
+export const authentication = new AuthenticationManager({ clientManager })
+
 export const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(clientManager)
+  createAuthHooks(authentication)
 
 // ============================================================================
-// 4. Actor Hooks
-// ============================================================================
-
-// ICP Ledger hooks
-export const { useActorQuery: useICPQuery, useActorMutation: useICPMutation } =
-  createActorHooks(icpLedger)
-
-// ICDV Token hooks
-export const {
-  useActorQuery: useICDVQuery,
-  useActorMutation: useICDVMutation,
-} = createActorHooks(icdvToken)
-
-// ============================================================================
-// 5. Specific Query and Mutation Factories
+// 4. Specific Query and Mutation Factories
 // ============================================================================
 
 // ICP Queries

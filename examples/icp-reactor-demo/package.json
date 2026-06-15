@@ -22,5 +22,6 @@
     "motoko",
     "react"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "packageManager": "pnpm@10.30.3"
 }

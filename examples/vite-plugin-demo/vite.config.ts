@@ -6,10 +6,12 @@ export default defineConfig({
   plugins: [
     react(),
     icReactor({
+      outDir: "./frontend/lib/canisters",
       canisters: [
         {
           name: "backend",
-          didFile: "./src/declarations/backend.did",
+          didFile: "./frontend/declarations/backend.did",
+          clientManagerPath: "../../clients",
         },
       ],
     }),

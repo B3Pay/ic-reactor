@@ -1,5 +1,12 @@
 import { ClientManager } from "@ic-reactor/core"
-import { createAuthHooks } from "@ic-reactor/react"
+import {
+  AuthenticationManager,
+  IdentityAttributesManager,
+} from "@ic-reactor/auth"
+import {
+  createAuthHooks,
+  createIdentityAttributeHooks,
+} from "@ic-reactor/auth-react"
 import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient({
@@ -11,9 +18,12 @@ export const queryClient = new QueryClient({
 })
 
 export const clientManager = new ClientManager({
-  withProcessEnv: true,
   queryClient,
 })
 
-export const { useAuth, useIdentityAttributes, useUserPrincipal } =
-  createAuthHooks(clientManager)
+export const authentication = new AuthenticationManager({ clientManager })
+export const identityAttributes = new IdentityAttributesManager(authentication)
+
+export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
+export const { useIdentityAttributes } =
+  createIdentityAttributeHooks(identityAttributes)

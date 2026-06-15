@@ -1,5 +1,33 @@
 # AGENTS.md instructions for @ic-reactor
 
+## Project snapshot
+
+IC Reactor v4 is a TypeScript monorepo for Internet Computer apps.
+
+This branch is the next major release line. Refer to the product/docs as
+**IC Reactor v4**. Package manifests may still show pre-release versions until
+release automation performs the final version bump.
+
+### Packages
+
+- `@ic-reactor/core` (`packages/core`, `3.6.0`) — core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration.
+- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, `defineReactor`, actor hooks, query/mutation factories.
+- `@ic-reactor/auth` (`packages/auth`, `3.6.0`) — Internet Identity authentication and signed identity attributes.
+- `@ic-reactor/auth-react` (`packages/auth-react`, `3.6.0`) — React auth and identity-attribute hooks.
+- `@ic-reactor/candid` (`packages/candid`, `3.6.0`) — dynamic Candid adapter/reactors and metadata reactors.
+- `@ic-reactor/parser` (`packages/parser`, `0.4.6`) — Rust/WASM Candid parser.
+- `@ic-reactor/codegen` (`packages/codegen`, `0.11.1`) — shared generation pipeline used by CLI and Vite plugin.
+- `@ic-reactor/cli` (`packages/cli`, `0.11.1`) — `ic-reactor` CLI for explicit declaration/reactor generation.
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `0.11.1`) — Vite plugin for watch-mode generation and local `ic_env` injection.
+
+### Package alignment rules
+
+- Do not describe this branch as IC Reactor v3.
+- Keep package-specific docs aligned with current manifests until the release bump.
+- Treat runtime `3.6.0`, codegen tooling `0.11.1`, and parser `0.4.6` as pre-release manifest versions for this v4 line.
+- Prefer `@icp-sdk/*` package names in docs and examples.
+- Use `defineReactor` for the fastest React setup; use manual `ClientManager` + reactor setup when finer construction control is needed.
+
 ## Skills
 
 A skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Skills live in the `skill-packages/` directory. Below is the list of skills that can be used in this repository.
@@ -7,6 +35,39 @@ A skill is a set of local instructions to follow that is stored in a `SKILL.md` 
 ### Available skills
 
 - `ic-reactor-hooks`: Create, refactor, and document Reactor hook integrations for this repo, including `createActorHooks`, query/mutation factories, `useActorMethod`, and generated hooks. Use when implementing or explaining hook usage inside React components versus imperative usage outside React. (file: `skill-packages/ic-reactor-hooks/SKILL.md`)
+- `ic-reactor-packages`: Inspect, modify, review, or document the IC Reactor monorepo package architecture, package ownership, exports, tsconfig/project references, generated artifacts, dependency boundaries, and package verification workflows. Use when deciding which package owns a behavior or when work spans package metadata/build/test/release readiness. (file: `skill-packages/ic-reactor-packages/SKILL.md`)
+
+## Package map
+
+Use this map before editing so you can start in the package that owns the behavior:
+
+| Package                   | Owns                                                                                              | Look here first                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, query-cache integration | `packages/core/src/`, `packages/core/tests/`                                                      |
+| `@ic-reactor/react`       | React hook factories, reusable query/mutation objects, `defineReactor`, `useActorMethod`          | `packages/react/src/`, `packages/react/tests/`, `skill-packages/ic-reactor-hooks/SKILL.md`        |
+| `@ic-reactor/auth`        | Internet Identity auth state, auth client loading, identity attributes                            | `packages/auth/src/`, `packages/auth/tests/`                                                      |
+| `@ic-reactor/auth-react`  | React hooks over `@ic-reactor/auth` managers                                                      | `packages/auth-react/src/`, `packages/auth-react/tests/`                                          |
+| `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                     | `packages/candid/src/`, `packages/candid/METADATA_REACTOR_GUIDE.md`                               |
+| `@ic-reactor/parser`      | Rust/WASM Candid parser package                                                                   | `packages/parser/src/`, `packages/parser/tests/`                                                  |
+| `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline                                             | `packages/codegen/src/`, `packages/codegen/src/*.test.ts`                                         |
+| `@ic-reactor/cli`         | `ic-reactor` command-line interface and config schema                                             | `packages/cli/src/`, `packages/cli/schema.json`                                                   |
+| `@ic-reactor/vite-plugin` | Vite integration, `.did` watching, environment-cookie injection                                   | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/` |
+
+## Verification commands
+
+- Package builds: `pnpm build`
+- Package tests: `pnpm test`
+- Root type check used by CI: `pnpm exec tsc --noEmit`
+- Example type checks: `pnpm typecheck:examples`
+- Docs build: `pnpm docs:build`
+- Dependency audit: `corepack pnpm audit --audit-level moderate`
+
+Generated outputs under `dist`, `.dfx`, `.icp`, `.mops`, `target`, `.next`, `.astro`, and `*.tsbuildinfo` are normally build artifacts. Do not hand-edit generated hook files; change the generator, wrapper, or source `.did` instead.
+
+## AI context files
+
+- `llms.txt`: compact package/task routing manifest
+- `llms-full.txt`: longer AI-friendly API and task guide
 
 ### How to use skills
 
@@ -27,9 +88,9 @@ A skill is a set of local instructions to follow that is stored in a `SKILL.md` 
 
 These skills are designed to work across multiple AI agent platforms. Each skill includes agent-specific metadata in `agents/`:
 
-| Agent Platform     | Metadata File         | Project Discovery File              |
-| ------------------ | --------------------- | ----------------------------------- |
-| OpenAI Codex       | `agents/openai.yaml`  | `AGENTS.md` (this file)             |
-| Claude / Anthropic | `agents/claude.yaml`  | `CLAUDE.md`                         |
-| GitHub Copilot     | `agents/copilot.yaml` | `.github/copilot-instructions.md`   |
-| Cursor             | —                     | `.cursorrules`                      |
+| Agent Platform     | Metadata File         | Project Discovery File            |
+| ------------------ | --------------------- | --------------------------------- |
+| OpenAI Codex       | `agents/openai.yaml`  | `AGENTS.md` (this file)           |
+| Claude / Anthropic | `agents/claude.yaml`  | `CLAUDE.md`                       |
+| GitHub Copilot     | `agents/copilot.yaml` | `.github/copilot-instructions.md` |
+| Cursor             | —                     | `.cursorrules`                    |

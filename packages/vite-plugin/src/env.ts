@@ -12,6 +12,7 @@ export interface IcEnvironment {
   rootKey: string
   proxyTarget: string
   canisterIds: Record<string, string>
+  internetIdentityProvider?: string
 }
 
 /**
@@ -31,8 +32,16 @@ export function getIcEnvironmentInfo(
     )
 
     const rootKey = networkStatus.root_key
-    // Default to localhost:4943 if port strictly needed, but `icp` gives us the port
-    const proxyTarget = `http://127.0.0.1:${networkStatus.port}`
+    const proxyTarget =
+      networkStatus.api_url ||
+      networkStatus.gateway_url ||
+      (networkStatus.port
+        ? `http://127.0.0.1:${networkStatus.port}`
+        : undefined)
+
+    if (!proxyTarget) {
+      return null
+    }
 
     const canisterIds: Record<string, string> = {}
 
@@ -52,7 +61,20 @@ export function getIcEnvironmentInfo(
       }
     }
 
-    return { environment, rootKey, proxyTarget, canisterIds }
+    const internetIdentityProvider =
+      !canisterIds.internet_identity &&
+      isLocalhostGateway(proxyTarget) &&
+      environment !== "ic"
+        ? localInternetIdentityProvider(proxyTarget)
+        : undefined
+
+    return {
+      environment,
+      rootKey,
+      proxyTarget,
+      canisterIds,
+      internetIdentityProvider,
+    }
   } catch (error) {
     // CLI not found or failed
     return null
@@ -65,13 +87,33 @@ export function getIcEnvironmentInfo(
  */
 export function buildIcEnvCookie(
   canisterIds: Record<string, string>,
-  rootKey: string
+  rootKey?: string,
+  internetIdentityProvider?: string
 ): string {
-  const parts = [`ic_root_key=${rootKey}`]
+  const parts = rootKey ? [`ic_root_key=${rootKey}`] : []
 
   for (const [name, id] of Object.entries(canisterIds)) {
     parts.push(`PUBLIC_CANISTER_ID:${name}=${id}`)
   }
 
+  if (internetIdentityProvider) {
+    parts.push(`INTERNET_IDENTITY_PROVIDER=${internetIdentityProvider}`)
+  }
+
   return encodeURIComponent(parts.join("&"))
+}
+
+function isLocalhostGateway(proxyTarget: string): boolean {
+  try {
+    const { hostname } = new URL(proxyTarget)
+    return hostname === "localhost" || hostname === "127.0.0.1"
+  } catch {
+    return false
+  }
+}
+
+function localInternetIdentityProvider(proxyTarget: string): string {
+  const { protocol, port } = new URL(proxyTarget)
+  const portSuffix = port ? `:${port}` : ""
+  return `${protocol}//id.ai.localhost${portSuffix}/authorize`
 }

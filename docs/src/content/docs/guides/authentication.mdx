@@ -10,25 +10,24 @@ IC Reactor provides seamless integration with Internet Identity for authenticati
 
 ## Setup
 
-Authentication hooks are created by passing your `ClientManager` instance to `createAuthHooks`:
+Authentication hooks are created from an `AuthenticationManager`, which wraps
+the shared `ClientManager` without adding authentication APIs to it:
 
 ```typescript
 // src/reactor/hooks.ts
-import { createAuthHooks } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/auth"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 import { clientManager } from "./index"
 
-export const {
-  useAuth,
-  useUserPrincipal,
-  useAgentState,
-  useIdentityAttributes,
-} = createAuthHooks(clientManager)
+export const authentication = new AuthenticationManager({ clientManager })
+export const { useAuth, useUserPrincipal, useAgentState } =
+  createAuthHooks(authentication)
 ```
 
 <Aside type="note">
-  These hooks are bound to the specific `ClientManager` instance you created.
-  All actors using the same client manager will share the same authentication
-  state.
+  These hooks are bound to the specific `AuthenticationManager` instance you
+  created. All actors using the same client manager will share the same
+  authentication state.
 </Aside>
 
 ## useAuth
@@ -101,6 +100,14 @@ component needs to request attributes and send the signed payload to a backend o
 canister for verification.
 
 ```tsx
+import { IdentityAttributesManager } from "@ic-reactor/auth"
+import { createIdentityAttributeHooks } from "@ic-reactor/auth-react"
+import { authentication } from "../reactor/hooks"
+
+const identityAttributes = new IdentityAttributesManager(authentication)
+export const { useIdentityAttributes } =
+  createIdentityAttributeHooks(identityAttributes)
+
 import { useIdentityAttributes } from "../reactor/hooks"
 
 function RegisterWithOpenIdProvider() {
@@ -139,7 +146,7 @@ function RegisterWithOpenIdProvider() {
 Pass a documented auth provider alias (`"google"`, `"apple"`, or
 `"microsoft"`) or an issuer URL such as `"https://issuer.example.com"` for
 custom OpenID providers. For non-React code, use
-`clientManager.requestOpenIdIdentityAttributes()` directly.
+`identityAttributes.requestOpenId()` directly.
 
 <Aside type="caution">
   The decoded attribute values are only a frontend display convenience. Your
@@ -251,8 +258,8 @@ If your app doesn't need authentication, you can skip the `@icp-sdk/auth` packag
 
 ## Further Reading
 
-- [useAuth](/v3/reference/createauthhooks/useauth) — Main auth hook reference
-- [useAgentState](/v3/reference/createauthhooks/useagentstate) — Agent state reference
-- [React Setup](/v3/framework/react-setup) — Complete React configuration
-- [Error Handling](/v3/guides/error-handling) — Handle auth and query errors
-- [Query Caching](/v3/framework/query-caching) — Understand query invalidation
+- [useAuth](/v4/reference/createauthhooks/useauth) — Main auth hook reference
+- [useAgentState](/v4/reference/createauthhooks/useagentstate) — Agent state reference
+- [React Setup](/v4/framework/react-setup) — Complete React configuration
+- [Error Handling](/v4/guides/error-handling) — Handle auth and query errors
+- [Query Caching](/v4/framework/query-caching) — Understand query invalidation

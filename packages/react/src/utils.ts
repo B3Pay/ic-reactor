@@ -3,6 +3,7 @@
  */
 
 import type { QueryKey } from "@tanstack/react-query"
+import { generateKey } from "@ic-reactor/core"
 
 /**
  * Internal query-key segment used to distinguish per-call factory args
@@ -26,8 +27,15 @@ export function mergeFactoryQueryKey(
 
   if (baseQueryKey) merged.push(...baseQueryKey)
   if (callQueryKey) merged.push(...callQueryKey)
-  if (keyArgs !== undefined)
-    merged.push({ [FACTORY_KEY_ARGS_QUERY_KEY]: keyArgs })
+  if (keyArgs !== undefined) {
+    // Serialize keyArgs through generateKey so BigInt values (and other
+    // non-JSON-serializable Candid types such as Principal) are safely
+    // converted to strings before React Query hashes the key.
+    const safeKeyArgs = generateKey(
+      Array.isArray(keyArgs) ? keyArgs : [keyArgs]
+    )
+    merged.push({ [FACTORY_KEY_ARGS_QUERY_KEY]: safeKeyArgs })
+  }
 
   return merged.length > 0 ? merged : undefined
 }

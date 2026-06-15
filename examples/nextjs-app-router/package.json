@@ -1,0 +1,34 @@
+{
+  "name": "nextjs-app-router-demo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@ic-reactor/auth": "^3.6.0",
+    "@ic-reactor/auth-react": "^3.6.0",
+    "@ic-reactor/core": "^3.6.0",
+    "@ic-reactor/react": "^3.6.0",
+    "@icp-sdk/auth": "^7.1.0",
+    "@icp-sdk/core": "^5.4.0",
+    "@tanstack/react-query": "^5.90.16",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "lucide-react": "^1.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3",
+    "postcss": "^8.5.15",
+    "autoprefixer": "^10.4.19",
+    "tailwindcss": "^4.3.0"
+  },
+  "packageManager": "pnpm@10.30.3"
+}

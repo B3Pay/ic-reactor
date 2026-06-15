@@ -53,6 +53,6 @@ let that package load the parser when needed.
 
 ## See Also
 
-- Docs: https://ic-reactor.b3pay.net/v3/packages/parser
+- Docs: https://ic-reactor.b3pay.net/v4/packages/parser
 - `@ic-reactor/candid`: ../candid/README.md
 - `@ic-reactor/codegen`: ../codegen/README.md

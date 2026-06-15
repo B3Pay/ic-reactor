@@ -1,5 +1,5 @@
-import { version } from "../package.json"
+import pkg from "../package.json"
 /**
  * Library version - automatically synced from package.json.
  */
-export const VERSION = version
+export const VERSION = pkg.version

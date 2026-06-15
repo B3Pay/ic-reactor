@@ -7,6 +7,15 @@ This package contains the core machinery for generating TypeScript declarations,
 - **`@ic-reactor/cli`**: For manual/CLI-based generation
 - **`@ic-reactor/vite-plugin`**: For automatic build-time generation
 
+## Install
+
+Most apps should install `@ic-reactor/cli` or `@ic-reactor/vite-plugin` instead
+of using this package directly.
+
+```bash
+pnpm add -D @ic-reactor/codegen
+```
+
 ## API
 
 The main entry point is the `runCanisterPipeline` function, which orchestrates the generation process.

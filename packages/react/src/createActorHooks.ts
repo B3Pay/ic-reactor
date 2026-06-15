@@ -46,102 +46,127 @@ import { InfiniteQueryConfig } from "./createInfiniteQuery"
 import { SuspenseInfiniteQueryConfig } from "./createSuspenseInfiniteQuery"
 import { QueryConfig, SuspenseQueryConfig, MutationConfig } from "./types"
 
-export type ActorHooks<A, T extends TransformKey> = {
+export type ActorHooks<Service, Transform extends TransformKey> = {
   useActorQuery: {
-    <M extends FunctionName<A>>(
-      config: QueryConfig<A, M, T, ReactorReturnOk<A, M, T>>
-    ): UseQueryResult<ReactorReturnOk<A, M, T>, ReactorReturnErr<A, M, T>>
-    <M extends FunctionName<A>, TData>(
-      config: QueryConfig<A, M, T, TData>
-    ): UseQueryResult<TData, ReactorReturnErr<A, M, T>>
+    <Method extends FunctionName<Service>>(
+      config: QueryConfig<
+        Service,
+        Method,
+        Transform,
+        ReactorReturnOk<Service, Method, Transform>
+      >
+    ): UseQueryResult<
+      ReactorReturnOk<Service, Method, Transform>,
+      ReactorReturnErr<Service, Method, Transform>
+    >
+    <Method extends FunctionName<Service>, TData>(
+      config: QueryConfig<Service, Method, Transform, TData>
+    ): UseQueryResult<TData, ReactorReturnErr<Service, Method, Transform>>
   }
 
   useActorSuspenseQuery: {
-    <M extends FunctionName<A>>(
-      config: SuspenseQueryConfig<A, M, T, ReactorReturnOk<A, M, T>>
+    <Method extends FunctionName<Service>>(
+      config: SuspenseQueryConfig<
+        Service,
+        Method,
+        Transform,
+        ReactorReturnOk<Service, Method, Transform>
+      >
     ): UseSuspenseQueryResult<
-      ReactorReturnOk<A, M, T>,
-      ReactorReturnErr<A, M, T>
+      ReactorReturnOk<Service, Method, Transform>,
+      ReactorReturnErr<Service, Method, Transform>
     >
-    <M extends FunctionName<A>, TData>(
-      config: SuspenseQueryConfig<A, M, T, TData>
-    ): UseSuspenseQueryResult<TData, ReactorReturnErr<A, M, T>>
+    <Method extends FunctionName<Service>, TData>(
+      config: SuspenseQueryConfig<Service, Method, Transform, TData>
+    ): UseSuspenseQueryResult<
+      TData,
+      ReactorReturnErr<Service, Method, Transform>
+    >
   }
 
-  useActorInfiniteQuery: <M extends FunctionName<A>, TPageParam = unknown>(
-    config: InfiniteQueryConfig<A, M, T, TPageParam>
+  useActorInfiniteQuery: <
+    Method extends FunctionName<Service>,
+    TPageParam = unknown,
+  >(
+    config: InfiniteQueryConfig<Service, Method, Transform, TPageParam>
   ) => UseInfiniteQueryResult<
-    InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>,
-    ReactorReturnErr<A, M, T>
+    InfiniteData<ReactorReturnOk<Service, Method, Transform>, TPageParam>,
+    ReactorReturnErr<Service, Method, Transform>
   >
 
   useActorSuspenseInfiniteQuery: <
-    M extends FunctionName<A>,
+    Method extends FunctionName<Service>,
     TPageParam = unknown,
   >(
-    config: SuspenseInfiniteQueryConfig<A, M, T, TPageParam>
+    config: SuspenseInfiniteQueryConfig<Service, Method, Transform, TPageParam>
   ) => UseSuspenseInfiniteQueryResult<
-    InfiniteData<ReactorReturnOk<A, M, T>, TPageParam>,
-    ReactorReturnErr<A, M, T>
+    InfiniteData<ReactorReturnOk<Service, Method, Transform>, TPageParam>,
+    ReactorReturnErr<Service, Method, Transform>
   >
 
-  useActorMutation: <M extends FunctionName<A>>(
-    config: MutationConfig<A, M, T>
-  ) => UseMutationResult<ReactorReturnOk<A, M, T>, ReactorReturnErr<A, M, T>>
+  useActorMutation: <Method extends FunctionName<Service>>(
+    config: MutationConfig<Service, Method, Transform>
+  ) => UseMutationResult<
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>
+  >
 
-  useActorMethod: <M extends FunctionName<A>>(
-    config: Omit<UseActorMethodParameters<A, M, T>, "reactor">
-  ) => ReturnType<typeof useActorMethod<A, M, T>>
+  useActorMethod: <Method extends FunctionName<Service>>(
+    config: Omit<
+      UseActorMethodParameters<Service, Method, Transform>,
+      "reactor"
+    >
+  ) => ReturnType<typeof useActorMethod<Service, Method, Transform>>
 }
 
-export function createActorHooks<A>(
-  reactor: DisplayReactor<A>
-): ActorHooks<A, "display">
+export function createActorHooks<Service>(
+  reactor: DisplayReactor<Service>
+): ActorHooks<Service, "display">
 
 export function createActorHooks<
-  A = BaseActor,
-  T extends TransformKey = "candid",
->(reactor: Reactor<A, T>): ActorHooks<A, T>
+  Service = BaseActor,
+  Transform extends TransformKey = "candid",
+>(reactor: Reactor<Service, Transform>): ActorHooks<Service, Transform>
 
-export function createActorHooks<A, T extends TransformKey>(
-  reactor: Reactor<A, T>
-): ActorHooks<A, T> {
+export function createActorHooks<Service, Transform extends TransformKey>(
+  reactor: Reactor<Service, Transform>
+): ActorHooks<Service, Transform> {
   return {
     useActorQuery: ((config: any) =>
       useActorQuery({ ...config, reactor })) as ActorHooks<
-      A,
-      T
+      Service,
+      Transform
     >["useActorQuery"],
 
     useActorSuspenseQuery: ((config: any) =>
       useActorSuspenseQuery({ ...config, reactor })) as ActorHooks<
-      A,
-      T
+      Service,
+      Transform
     >["useActorSuspenseQuery"],
 
     useActorInfiniteQuery: ((config: any) =>
       useActorInfiniteQuery({ ...config, reactor })) as ActorHooks<
-      A,
-      T
+      Service,
+      Transform
     >["useActorInfiniteQuery"],
 
     useActorSuspenseInfiniteQuery: ((config: any) =>
       useActorSuspenseInfiniteQuery({ ...config, reactor })) as ActorHooks<
-      A,
-      T
+      Service,
+      Transform
     >["useActorSuspenseInfiniteQuery"],
 
     useActorMutation: ((config: any) =>
       useActorMutation({ ...config, reactor })) as ActorHooks<
-      A,
-      T
+      Service,
+      Transform
     >["useActorMutation"],
 
     useActorMethod: (config) =>
       useActorMethod({ ...config, reactor } as UseActorMethodParameters<
-        A,
+        Service,
         any,
-        T
+        Transform
       >),
   }
 }

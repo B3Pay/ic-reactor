@@ -150,6 +150,42 @@ describe("icReactor", () => {
       )
     })
 
+    it("should inject built-in local Internet Identity provider when no project II canister is found", () => {
+      ;(execFileSync as any).mockImplementation(
+        (command: string, args: string[], _options: any) => {
+          if (
+            command === "icp" &&
+            args.includes("network") &&
+            args.includes("status")
+          ) {
+            return JSON.stringify({
+              root_key: "mock-root-key",
+              api_url: "http://localhost:8000/",
+            })
+          }
+          if (
+            command === "icp" &&
+            args.includes("canister") &&
+            args.includes("status")
+          ) {
+            if (args.includes("internet_identity")) {
+              throw new Error("system canister is not a project canister")
+            }
+            return "mock-canister-id"
+          }
+          return ""
+        }
+      )
+
+      const plugin = createVitePlugin(mockOptions)
+      const config = (plugin as any).config({}, { command: "serve" })
+
+      expect(config.server.headers["Set-Cookie"]).toContain(
+        "INTERNET_IDENTITY_PROVIDER%3Dhttp%3A%2F%2Fid.ai.localhost%3A8000%2Fauthorize"
+      )
+      expect(config.server.proxy["/api"].target).toBe("http://localhost:8000/")
+    })
+
     it("should fallback to default proxy when icp-cli fails", () => {
       ;(execFileSync as any).mockImplementation(() => {
         throw new Error("Command not found")
@@ -159,6 +195,20 @@ describe("icReactor", () => {
       const config = (plugin as any).config({}, { command: "serve" })
 
       expect(config.server.headers).toBeUndefined()
+      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
+    })
+
+    it("should inject default local II provider in env-only mode when icp-cli project detection fails", () => {
+      ;(execFileSync as any).mockImplementation(() => {
+        throw new Error("project manifest not found")
+      })
+
+      const plugin = createVitePlugin({ canisters: [] })
+      const config = (plugin as any).config({}, { command: "serve" })
+
+      expect(config.server.headers["Set-Cookie"]).toContain(
+        "INTERNET_IDENTITY_PROVIDER%3Dhttp%3A%2F%2Fid.ai.localhost%3A8000%2Fauthorize"
+      )
       expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
     })
 

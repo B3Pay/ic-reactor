@@ -4,8 +4,10 @@ AI agent skill for building and refactoring `@ic-reactor/react` integrations in 
 
 ## What This Skill Covers
 
+- `defineReactor(...)` — one-call `QueryClient` + `ClientManager` + reactor + hooks setup
 - `createActorHooks(...)` — typed hook suite for a canister
 - `createQuery` / `createMutation` factory patterns — reusable inside and outside React
+- `createQueryFactory` / `createSuspenseQueryFactory` — cached operation factories for dynamic args
 - `useActorMethod` — unified query/update hook
 - TanStack Query cache invalidation patterns
 - Generated hooks from `@ic-reactor/cli` and `@ic-reactor/vite-plugin`
@@ -31,12 +33,12 @@ ic-reactor-hooks/
 
 This skill package includes metadata for multiple AI agent platforms:
 
-| Agent Platform     | Config File            | Discovery Method                            |
-| ------------------ | ---------------------- | ------------------------------------------- |
-| OpenAI Codex       | `agents/openai.yaml`   | `AGENTS.md` + `.codex/` path conventions    |
-| Claude / Anthropic | `agents/claude.yaml`   | `CLAUDE.md` + skill-packages discovery      |
-| GitHub Copilot     | `agents/copilot.yaml`  | `.github/copilot-instructions.md` reference |
-| Cursor             | —                      | `.cursorrules` references `SKILL.md`        |
+| Agent Platform     | Config File           | Discovery Method                            |
+| ------------------ | --------------------- | ------------------------------------------- |
+| OpenAI Codex       | `agents/openai.yaml`  | `AGENTS.md` + `.codex/` path conventions    |
+| Claude / Anthropic | `agents/claude.yaml`  | `CLAUDE.md` + skill-packages discovery      |
+| GitHub Copilot     | `agents/copilot.yaml` | `.github/copilot-instructions.md` reference |
+| Cursor             | —                     | `.cursorrules` references `SKILL.md`        |
 
 All agents share the same `SKILL.md` instructions and `references/patterns.md` examples.
 
@@ -53,7 +55,7 @@ Agents working in the `ic-reactor` repository discover this skill through:
 
 ### External Install (for other ICP projects)
 
-This skill is also published in the standalone skills repo [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) for use outside this repository:
+The in-repo skill is the source of truth for this repository. A standalone skills repo, [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills), can be used for external ICP projects:
 
 ```bash
 npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
@@ -64,6 +66,9 @@ Or install directly from this repo:
 ```text
 Install the skill from github.com/B3Pay/ic-reactor path skill-packages/ic-reactor-hooks
 ```
+
+Use `/llms-full.txt` alongside this skill when the assistant needs a broader
+package map, install commands, auth guidance, or verification matrix.
 
 ### Example Prompt
 

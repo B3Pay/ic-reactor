@@ -92,7 +92,7 @@ If you use Vite, this plugin automates code generation and provides zero-config 
 pnpm add -D @ic-reactor/vite-plugin
 ```
 
-[Read more about Vite Plugin](/v3/packages/vite-plugin)
+[Read more about Vite Plugin](/v4/packages/vite-plugin)
 
 ### CLI
 
@@ -102,18 +102,22 @@ For other frameworks or manual control, use the CLI to generate hooks and declar
 pnpm add -D @ic-reactor/cli
 ```
 
-[Read more about CLI](/v3/packages/cli)
+[Read more about CLI](/v4/packages/cli)
 
 ## Package Overview
 
-| Package                 | Purpose                                 | For React | For Non-React |
-| ----------------------- | --------------------------------------- | --------- | ------------- |
-| `@ic-reactor/react`     | React hooks + re-exports core           | ✅        | ❌            |
-| `@ic-reactor/core`      | Core: Reactor, ClientManager, utilities | included  | ✅            |
-| `@icp-sdk/core`         | IC SDK for agents and Candid            | ✅        | ✅            |
-| `@tanstack/react-query` | TanStack Query for React                | ✅        | ❌            |
-| `@tanstack/query-core`  | TanStack Query core (caching engine)    | included  | ✅            |
-| `@icp-sdk/auth`         | Internet Identity authentication        | Optional  | Optional      |
+| Package                  | Purpose                                 | For React | For Non-React |
+| ------------------------ | --------------------------------------- | --------- | ------------- |
+| `@ic-reactor/react`      | React hooks + re-exports core           | ✅        | ❌            |
+| `@ic-reactor/core`       | Core: Reactor, ClientManager, utilities | included  | ✅            |
+| `@ic-reactor/auth`       | Non-React Internet Identity helpers     | Optional  | Optional      |
+| `@ic-reactor/auth-react` | React hooks for auth managers           | Optional  | ❌            |
+| `@ic-reactor/candid`     | Runtime Candid fetching/parsing         | Optional  | Optional      |
+| `@ic-reactor/parser`     | WASM `.did` parser outputs              | Optional  | Optional      |
+| `@icp-sdk/core`          | IC SDK for agents and Candid            | ✅        | ✅            |
+| `@tanstack/react-query`  | TanStack Query for React                | ✅        | ❌            |
+| `@tanstack/query-core`   | TanStack Query core (caching engine)    | included  | ✅            |
+| `@icp-sdk/auth`          | Internet Identity authentication        | Optional  | Optional      |
 
 **✅ Required** • **included** means it comes with the parent package • **Optional** for specific features
 
@@ -144,8 +148,8 @@ IC Reactor is written in TypeScript and provides first-class type support. Ensur
 IC Reactor needs generated canister declarations for end-to-end type safety. You
 can supply them in three ways:
 
-1. **Recommended for Vite**: use [`@ic-reactor/vite-plugin`](/v3/packages/vite-plugin)
-2. **Recommended for non-Vite or CI**: use [`@ic-reactor/cli`](/v3/packages/cli)
+1. **Recommended for Vite**: use [`@ic-reactor/vite-plugin`](/v4/packages/vite-plugin)
+2. **Recommended for non-Vite or CI**: use [`@ic-reactor/cli`](/v4/packages/cli)
 3. **Manual or existing workflow**: keep using your existing generator such as
    `dfx generate` or `@icp-sdk/bindgen`
 
@@ -223,4 +227,4 @@ module.exports = nextConfig
 
 ## Next Steps
 
-Now that you have IC Reactor installed, continue to the [Quick Start](/v3/getting-started/quick-start) guide to build your first integration!
+Now that you have IC Reactor installed, continue to the [Quick Start](/v4/getting-started/quick-start) guide to build your first integration!

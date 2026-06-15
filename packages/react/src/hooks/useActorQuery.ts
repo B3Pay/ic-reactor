@@ -16,40 +16,43 @@ import {
 import { CallConfig } from "@icp-sdk/core/agent"
 
 export interface UseActorQueryParameters<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = ReactorReturnOk<A, M, T>,
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = ReactorReturnOk<Service, Method, Transform>,
 > extends Omit<
   QueryObserverOptions<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    TSelected,
-    ReactorReturnOk<A, M, T>,
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    Selected,
+    ReactorReturnOk<Service, Method, Transform>,
     QueryKey
   >,
   "queryKey" | "queryFn"
 > {
-  reactor: Reactor<A, T>
-  functionName: M
-  args?: ReactorArgs<A, M, T>
+  reactor: Reactor<Service, Transform>
+  functionName: Method
+  args?: ReactorArgs<Service, Method, Transform>
   callConfig?: CallConfig
   queryKey?: QueryKey
 }
 
 export type UseActorQueryConfig<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = ReactorReturnOk<A, M, T>,
-> = Omit<UseActorQueryParameters<A, M, T, TSelected>, "reactor">
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = ReactorReturnOk<Service, Method, Transform>,
+> = Omit<
+  UseActorQueryParameters<Service, Method, Transform, Selected>,
+  "reactor"
+>
 
 export type UseActorQueryResult<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = ReactorReturnOk<A, M, T>,
-> = UseQueryResult<TSelected, ReactorReturnErr<A, M, T>>
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = ReactorReturnOk<Service, Method, Transform>,
+> = UseQueryResult<Selected, ReactorReturnErr<Service, Method, Transform>>
 
 /**
  * Hook for executing query calls on a canister.
@@ -70,10 +73,10 @@ export type UseActorQueryResult<
  * })
  */
 export const useActorQuery = <
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = ReactorReturnOk<A, M, T>,
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = ReactorReturnOk<Service, Method, Transform>,
 >({
   reactor,
   functionName,
@@ -81,16 +84,16 @@ export const useActorQuery = <
   callConfig,
   queryKey: defaultQueryKey,
   ...options
-}: UseActorQueryParameters<A, M, T, TSelected>): UseActorQueryResult<
-  A,
-  M,
-  T,
-  TSelected
-> => {
+}: UseActorQueryParameters<
+  Service,
+  Method,
+  Transform,
+  Selected
+>): UseActorQueryResult<Service, Method, Transform, Selected> => {
   // Memoize query options to prevent unnecessary re-computations
   const { queryKey, queryFn } = useMemo(
     () =>
-      reactor.getQueryOptions<M>({
+      reactor.getQueryOptions<Method>({
         callConfig,
         functionName,
         args,

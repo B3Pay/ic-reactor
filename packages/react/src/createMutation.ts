@@ -51,13 +51,13 @@ async function invalidateAll(
 // ============================================================================
 
 const createMutationImpl = <
-  A,
-  M extends FunctionName<A> = FunctionName<A>,
-  T extends TransformKey = "candid",
+  Service,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
 >(
-  reactor: Reactor<A, T>,
-  config: MutationConfig<A, M, T>
-): MutationResult<A, M, T> => {
+  reactor: Reactor<Service, Transform>,
+  config: MutationConfig<Service, Method, Transform>
+): MutationResult<Service, Method, Transform> => {
   const {
     functionName,
     callConfig,
@@ -74,8 +74,8 @@ const createMutationImpl = <
    * and there is no double-invalidation.
    */
   const callFn = (
-    args: ReactorArgs<A, M, T>
-  ): Promise<ReactorReturnOk<A, M, T>> =>
+    args: ReactorArgs<Service, Method, Transform>
+  ): Promise<ReactorReturnOk<Service, Method, Transform>> =>
     reactor.callMethod({ functionName, args, callConfig })
 
   /**
@@ -84,8 +84,8 @@ const createMutationImpl = <
    * Use this in route loaders, scripts, or server-side code.
    */
   const execute = async (
-    args: ReactorArgs<A, M, T>
-  ): Promise<ReactorReturnOk<A, M, T>> => {
+    args: ReactorArgs<Service, Method, Transform>
+  ): Promise<ReactorReturnOk<Service, Method, Transform>> => {
     const result = await callFn(args)
     if (factoryInvalidateQueries) {
       await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
@@ -94,7 +94,9 @@ const createMutationImpl = <
   }
 
   // Hook implementation
-  const useMutationHook = (options?: MutationHookOptions<A, M, T>) => {
+  const useMutationHook = (
+    options?: MutationHookOptions<Service, Method, Transform>
+  ) => {
     const baseOptions = reactor.getQueryOptions({ functionName })
     const {
       invalidateQueries: hookInvalidateQueries,
@@ -145,12 +147,15 @@ const createMutationImpl = <
 // ============================================================================
 
 export function createMutation<
-  A,
-  T extends TransformKey,
-  M extends FunctionName<A> = FunctionName<A>,
+  Service,
+  Transform extends TransformKey,
+  Method extends FunctionName<Service> = FunctionName<Service>,
 >(
-  reactor: Reactor<A, T>,
-  config: MutationConfig<NoInfer<A>, M, T>
-): MutationResult<A, M, T> {
-  return createMutationImpl(reactor, config as MutationConfig<A, M, T>)
+  reactor: Reactor<Service, Transform>,
+  config: MutationConfig<NoInfer<Service>, Method, Transform>
+): MutationResult<Service, Method, Transform> {
+  return createMutationImpl(
+    reactor,
+    config as MutationConfig<Service, Method, Transform>
+  )
 }

@@ -4,7 +4,7 @@ import { QueryClient } from "@tanstack/query-core"
 
 const clientManager = new ClientManager({
   queryClient: new QueryClient(),
-  withProcessEnv: true,
+  agentOptions: { host: "https://ic0.app" },
 })
 
 let reactor: MetadataDisplayReactor
@@ -69,8 +69,8 @@ methodSelect.addEventListener("change", updateUI)
 
 function updateUI() {
   const methodName = methodSelect.value
-  const argMeta = reactor.getArgumentMeta(methodName)
-  const resultMeta = reactor.getResultMeta(methodName)
+  const argMeta = reactor.getInputMeta(methodName)
+  const resultMeta = reactor.getOutputMeta(methodName)
 
   if (!argMeta || !resultMeta) return
 

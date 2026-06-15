@@ -6,29 +6,29 @@ editUrl: false
 
 import { Aside } from "@astrojs/starlight/components"
 
-`createAuthHooks` is a factory function that creates React hooks for managing Internet Identity authentication. The hooks are bound to a specific `ClientManager` instance.
+`createAuthHooks` creates React hooks bound to an `AuthenticationManager`.
 
 ## Import
 
 ```typescript
-import { createAuthHooks } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/auth-react"
 ```
 
 ## Usage
 
 ```typescript
-import { createAuthHooks } from "@ic-reactor/react"
-import { clientManager } from "./reactor"
+import { createAuthHooks } from "@ic-reactor/auth-react"
+import { authentication } from "./reactor"
 
 const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(clientManager)
+  createAuthHooks(authentication)
 ```
 
 ## Parameters
 
-| Parameter       | Type            | Description                           |
-| --------------- | --------------- | ------------------------------------- |
-| `clientManager` | `ClientManager` | The ClientManager instance to bind to |
+| Parameter        | Type                    | Description                       |
+| ---------------- | ----------------------- | --------------------------------- |
+| `authentication` | `AuthenticationManager` | Authentication manager to bind to |
 
 ## Return Value
 
@@ -36,15 +36,16 @@ const { useAuth, useUserPrincipal, useAgentState } =
 
 | Property                                                             | Type | Description                          |
 | -------------------------------------------------------------------- | ---- | ------------------------------------ |
-| [`useAuth`](/v3/reference/createauthhooks/useauth)                   | Hook | Main hook for auth actions and state |
-| [`useUserPrincipal`](/v3/reference/createauthhooks/useuserprincipal) | Hook | Current user's Principal             |
-| [`useAgentState`](/v3/reference/createauthhooks/useagentstate)       | Hook | Agent initialization state           |
+| [`useAuth`](/v4/reference/createauthhooks/useauth)                   | Hook | Main hook for auth actions and state |
+| [`useUserPrincipal`](/v4/reference/createauthhooks/useuserprincipal) | Hook | Current user's Principal             |
+| [`useAgentState`](/v4/reference/createauthhooks/useagentstate)       | Hook | Agent initialization state           |
 
 ## Complete Example
 
 ```typescript
 // src/reactor/index.ts
 import { ClientManager } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/auth"
 import { QueryClient } from "@tanstack/query-core"
 
 export const queryClient = new QueryClient()
@@ -53,15 +54,16 @@ export const clientManager = new ClientManager({
   queryClient,
   withProcessEnv: true,
 })
+export const authentication = new AuthenticationManager({ clientManager })
 ```
 
 ```typescript
 // src/reactor/hooks.ts
-import { createAuthHooks } from "@ic-reactor/react"
-import { clientManager } from "./index"
+import { createAuthHooks } from "@ic-reactor/auth-react"
+import { authentication } from "./index"
 
 export const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(clientManager)
+  createAuthHooks(authentication)
 ```
 
 ```tsx
@@ -98,7 +100,7 @@ function App() {
 
 ## See Also
 
-- [Authentication Guide](/v3/guides/authentication) — In-depth auth patterns
-- [useAuth](/v3/reference/createauthhooks/useauth) — Main auth hook reference
-- [createActorHooks](/v3/reference/createactorhooks/overview) — Creating actor hooks
-- [React Setup](/v3/framework/react-setup) — Complete React configuration
+- [Authentication Guide](/v4/guides/authentication) — In-depth auth patterns
+- [useAuth](/v4/reference/createauthhooks/useauth) — Main auth hook reference
+- [createActorHooks](/v4/reference/createactorhooks/overview) — Creating actor hooks
+- [React Setup](/v4/framework/react-setup) — Complete React configuration

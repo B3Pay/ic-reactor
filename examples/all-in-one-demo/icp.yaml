@@ -6,4 +6,10 @@
 
 canisters:
   - backend
-  - internet_identity
+
+networks:
+  - name: local
+    mode: managed
+    ii: true
+    gateway:
+      port: 8000

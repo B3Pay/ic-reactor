@@ -169,13 +169,16 @@ const result = await backend.callMethod({
 Generate a TanStack Query cache key for a method call:
 
 ```typescript
-const queryKey = backend.generateQueryKey({
-  functionName: "getUser",
-  args: ["user-123"],
-}, {
-  canisterId: otherCanisterId,
-  effectiveCanisterId: managementCanisterId,
-})
+const queryKey = backend.generateQueryKey(
+  {
+    functionName: "getUser",
+    args: ["user-123"],
+  },
+  {
+    canisterId: otherCanisterId,
+    effectiveCanisterId: managementCanisterId,
+  }
+)
 // Returns: [canisterId, "getUser", { effectiveCanisterId: "..." }, "user-123"]
 ```
 
@@ -452,10 +455,13 @@ This method ensures the data is in the cache (fetching it if necessary) and retu
 Get the current data from the cache without fetching:
 
 ```typescript
-const user = backend.getQueryData({
-  functionName: "getUser",
-  args: ["user-123"],
-}, { canisterId: otherCanisterId })
+const user = backend.getQueryData(
+  {
+    functionName: "getUser",
+    args: ["user-123"],
+  },
+  { canisterId: otherCanisterId }
+)
 
 if (user) {
   console.log("User in cache:", user.name)
@@ -529,7 +535,7 @@ This eliminates the need to manually check for `Ok`/`Err` variants in your code.
 
 <Aside type="tip">
   Learn how to handle canister errors effectively in the [Error
-  Handling](/v3/guides/error-handling) guide.
+  Handling](/v4/guides/error-handling) guide.
 </Aside>
 
 ## Notes
@@ -541,7 +547,7 @@ This eliminates the need to manually check for `Ok`/`Err` variants in your code.
 
 <Aside type="note">
   For automatic type transformations (BigInt → string, Principal → text, etc.),
-  use [DisplayReactor](/v3/reference/displayreactor) instead.
+  use [DisplayReactor](/v4/reference/displayreactor) instead.
 </Aside>
 
 ## Validation
@@ -574,12 +580,12 @@ reactor.registerValidator("transfer", ([input]) => {
 })
 ```
 
-See [DisplayReactor](/v3/reference/displayreactor#validation) for full validation documentation.
+See [DisplayReactor](/v4/reference/displayreactor#validation) for full validation documentation.
 
 ## See Also
 
-- [DisplayReactor](/v3/reference/displayreactor) — Type transformations and validation
-- [ClientManager](/v3/reference/clientmanager) — Agent and auth management
-- [createActorHooks](/v3/reference/createactorhooks/overview) — Create React hooks
-- [Error Handling](/v3/guides/error-handling) — Handle canister errors
-- [Type Safety](/v3/guides/type-safety) — Type system details
+- [DisplayReactor](/v4/reference/displayreactor) — Type transformations and validation
+- [ClientManager](/v4/reference/clientmanager) — Agent and auth management
+- [createActorHooks](/v4/reference/createactorhooks/overview) — Create React hooks
+- [Error Handling](/v4/guides/error-handling) — Handle canister errors
+- [Type Safety](/v4/guides/type-safety) — Type system details

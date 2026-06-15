@@ -120,9 +120,10 @@ export interface CandidDefinition {
  */
 export interface ReactorParser {
   /**
-   * Default function to initialize the WASM module.
+   * Optional default export. Web/bundler targets expose an initializer function,
+   * while the node target may expose a different shape.
    */
-  default?: () => Promise<void>
+  default?: unknown
   /**
    * Converts Candid (DID) source to JavaScript code.
    * @param candidSource - The Candid source code.

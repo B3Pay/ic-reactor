@@ -17,40 +17,46 @@ import {
 import { CallConfig } from "@icp-sdk/core/agent"
 
 export interface UseActorSuspenseQueryParameters<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = ReactorReturnOk<A, M, T>,
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = ReactorReturnOk<Service, Method, Transform>,
 > extends Omit<
   QueryObserverOptions<
-    ReactorReturnOk<A, M, T>,
-    ReactorReturnErr<A, M, T>,
-    TSelected,
-    ReactorReturnOk<A, M, T>,
+    ReactorReturnOk<Service, Method, Transform>,
+    ReactorReturnErr<Service, Method, Transform>,
+    Selected,
+    ReactorReturnOk<Service, Method, Transform>,
     QueryKey
   >,
   "queryKey" | "queryFn"
 > {
-  reactor: Reactor<A, T>
-  functionName: M
-  args?: ReactorArgs<A, M, T>
+  reactor: Reactor<Service, Transform>
+  functionName: Method
+  args?: ReactorArgs<Service, Method, Transform>
   callConfig?: CallConfig
   queryKey?: QueryKey
 }
 
 export type UseActorSuspenseQueryConfig<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = ReactorReturnOk<A, M, T>,
-> = Omit<UseActorSuspenseQueryParameters<A, M, T, TSelected>, "reactor">
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = ReactorReturnOk<Service, Method, Transform>,
+> = Omit<
+  UseActorSuspenseQueryParameters<Service, Method, Transform, Selected>,
+  "reactor"
+>
 
 export type UseActorSuspenseQueryResult<
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = ReactorReturnOk<A, M, T>,
-> = UseSuspenseQueryResult<TSelected, ReactorReturnErr<A, M, T>>
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = ReactorReturnOk<Service, Method, Transform>,
+> = UseSuspenseQueryResult<
+  Selected,
+  ReactorReturnErr<Service, Method, Transform>
+>
 
 /**
  * Hook for executing suspense-enabled query calls on a canister.
@@ -71,10 +77,10 @@ export type UseActorSuspenseQueryResult<
  * })
  */
 export const useActorSuspenseQuery = <
-  A,
-  M extends FunctionName<A>,
-  T extends TransformKey = "candid",
-  TSelected = ReactorReturnOk<A, M, T>,
+  Service,
+  Method extends FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = ReactorReturnOk<Service, Method, Transform>,
 >({
   reactor,
   functionName,
@@ -83,15 +89,15 @@ export const useActorSuspenseQuery = <
   queryKey: defaultQueryKey,
   ...options
 }: UseActorSuspenseQueryParameters<
-  A,
-  M,
-  T,
-  TSelected
->): UseActorSuspenseQueryResult<A, M, T, TSelected> => {
+  Service,
+  Method,
+  Transform,
+  Selected
+>): UseActorSuspenseQueryResult<Service, Method, Transform, Selected> => {
   // Memoize query options to prevent unnecessary re-computations
   const { queryKey, queryFn } = useMemo(
     () =>
-      reactor.getQueryOptions<M>({
+      reactor.getQueryOptions<Method>({
         callConfig,
         functionName,
         args,
@@ -103,7 +109,10 @@ export const useActorSuspenseQuery = <
   return useSuspenseQuery(
     {
       // Suspense queries don't support skipToken, so cast the queryFn
-      queryFn: queryFn as QueryFunction<ReactorReturnOk<A, M, T>, QueryKey>,
+      queryFn: queryFn as QueryFunction<
+        ReactorReturnOk<Service, Method, Transform>,
+        QueryKey
+      >,
       ...options,
       queryKey,
     },

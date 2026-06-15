@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [types/reactor.ts:36](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/reactor.ts#L36)
+Defined in: [core/src/types/reactor.ts:36](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/reactor.ts#L36)
 
 ## Extended by
 
@@ -17,7 +17,7 @@ Defined in: [types/reactor.ts:36](https://github.com/B3Pay/ic-reactor/blob/0479e
 
 > **clientManager**: [`ClientManager`](../classes/ClientManager.md)
 
-Defined in: [types/reactor.ts:37](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/reactor.ts#L37)
+Defined in: [core/src/types/reactor.ts:37](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/reactor.ts#L37)
 
 ---
 
@@ -25,7 +25,7 @@ Defined in: [types/reactor.ts:37](https://github.com/B3Pay/ic-reactor/blob/0479e
 
 > **name**: `string`
 
-Defined in: [types/reactor.ts:38](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/reactor.ts#L38)
+Defined in: [core/src/types/reactor.ts:38](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/reactor.ts#L38)
 
 ---
 
@@ -33,7 +33,7 @@ Defined in: [types/reactor.ts:38](https://github.com/B3Pay/ic-reactor/blob/0479e
 
 > **idlFactory**: (`IDL`) => `any`
 
-Defined in: [types/reactor.ts:39](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/reactor.ts#L39)
+Defined in: [core/src/types/reactor.ts:39](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/reactor.ts#L39)
 
 #### Parameters
 
@@ -51,7 +51,7 @@ Defined in: [types/reactor.ts:39](https://github.com/B3Pay/ic-reactor/blob/0479e
 
 > `optional` **canisterId?**: [`CanisterId`](../type-aliases/CanisterId.md)
 
-Defined in: [types/reactor.ts:40](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/reactor.ts#L40)
+Defined in: [core/src/types/reactor.ts:40](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/reactor.ts#L40)
 
 ---
 
@@ -59,4 +59,4 @@ Defined in: [types/reactor.ts:40](https://github.com/B3Pay/ic-reactor/blob/0479e
 
 > `optional` **pollingOptions?**: `PollingOptions`
 
-Defined in: [types/reactor.ts:41](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/types/reactor.ts#L41)
+Defined in: [core/src/types/reactor.ts:41](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/reactor.ts#L41)

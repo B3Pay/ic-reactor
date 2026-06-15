@@ -5,6 +5,8 @@ next: true
 prev: true
 ---
 
-> `const` **LOCAL_INTERNET_IDENTITY_PROVIDER**: `"http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize"` = `"http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize"`
+> `const` **LOCAL_INTERNET_IDENTITY_PROVIDER**: `string`
 
-Defined in: [utils/constants.ts:11](https://github.com/B3Pay/ic-reactor/blob/0479ee2d6b5b870cd63ac54f273d8bc9820ed7bc/packages/core/src/utils/constants.ts#L11)
+Defined in: [auth/src/constants.ts:24](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/constants.ts#L24)
+
+Legacy default URL for local Internet Identity, using port `4943`.

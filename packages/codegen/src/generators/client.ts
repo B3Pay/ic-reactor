@@ -43,7 +43,6 @@ ${queryClientImport}
  */
 export const clientManager = new ClientManager({
   queryClient,
-  withCanisterEnv: true,
 })
 `
 }

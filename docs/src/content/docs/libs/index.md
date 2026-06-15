@@ -8,6 +8,10 @@ description: Generated API reference documentation
 
 ## Classes
 
+- [AuthClientLoader](classes/AuthClientLoader.md)
+- [AuthStateStore](classes/AuthStateStore.md)
+- [AuthenticationManager](classes/AuthenticationManager.md)
+- [IdentityAttributesManager](classes/IdentityAttributesManager.md)
 - [ClientManager](classes/ClientManager.md)
 - [DisplayReactor](classes/DisplayReactor.md)
 - [DisplayCodecVisitor](classes/DisplayCodecVisitor.md)
@@ -18,22 +22,23 @@ description: Generated API reference documentation
 
 ## Interfaces
 
-- [ActorDisplayCodec](interfaces/ActorDisplayCodec.md)
-- [ApiError](interfaces/ApiError.md)
-- [ValidationIssue](interfaces/ValidationIssue.md)
+- [AuthenticationManagerParameters](interfaces/AuthenticationManagerParameters.md)
 - [SignedIdentityAttributes](interfaces/SignedIdentityAttributes.md)
 - [IdentityAttributeRequest](interfaces/IdentityAttributeRequest.md)
 - [IdentityAttributeValues](interfaces/IdentityAttributeValues.md)
 - [IdentityAttributeResult](interfaces/IdentityAttributeResult.md)
-- [ClientManagerAuthClientOptions](interfaces/ClientManagerAuthClientOptions.md)
+- [AuthenticationClientOptions](interfaces/AuthenticationClientOptions.md)
 - [AuthClientSignInOptions](interfaces/AuthClientSignInOptions.md)
-- [ClientManagerSignInOptions](interfaces/ClientManagerSignInOptions.md)
+- [AuthenticationSignInOptions](interfaces/AuthenticationSignInOptions.md)
 - [RequestIdentityAttributesParameters](interfaces/RequestIdentityAttributesParameters.md)
 - [RequestOpenIdIdentityAttributesParameters](interfaces/RequestOpenIdIdentityAttributesParameters.md)
 - [AuthClientLike](interfaces/AuthClientLike.md)
+- [AuthState](interfaces/AuthState.md)
+- [ActorDisplayCodec](interfaces/ActorDisplayCodec.md)
+- [ApiError](interfaces/ApiError.md)
+- [ValidationIssue](interfaces/ValidationIssue.md)
 - [ClientManagerParameters](interfaces/ClientManagerParameters.md)
 - [AgentState](interfaces/AgentState.md)
-- [AuthState](interfaces/AuthState.md)
 - [UpdateAgentParameters](interfaces/UpdateAgentParameters.md)
 - [DisplayReactorParameters](interfaces/DisplayReactorParameters.md)
 - [DefaultActorType](interfaces/DefaultActorType.md)
@@ -47,12 +52,13 @@ description: Generated API reference documentation
 
 ## Type Aliases
 
+- [AuthClientConstructor](type-aliases/AuthClientConstructor.md)
+- [IdentityAttributeOpenIdProvider](type-aliases/IdentityAttributeOpenIdProvider.md)
 - [BlobType](type-aliases/BlobType.md)
 - [NullishType](type-aliases/NullishType.md)
 - [DisplayCommonType](type-aliases/DisplayCommonType.md)
 - [DisplayOf](type-aliases/DisplayOf.md)
 - [DisplayCodec](type-aliases/DisplayCodec.md)
-- [IdentityAttributeOpenIdProvider](type-aliases/IdentityAttributeOpenIdProvider.md)
 - [ValidationResult](type-aliases/ValidationResult.md)
 - [Validator](type-aliases/Validator.md)
 - [DisplayValidator](type-aliases/DisplayValidator.md)
@@ -85,17 +91,26 @@ description: Generated API reference documentation
 
 ## Variables
 
-- [IDENTITY_ATTRIBUTES_BETA_PROVIDER](variables/IDENTITY_ATTRIBUTES_BETA_PROVIDER.md)
+- [IC_INTERNET_IDENTITY_PROVIDER](variables/IC_INTERNET_IDENTITY_PROVIDER.md)
+- [INTERNET_IDENTITY_PROVIDER_ENV_KEY](variables/INTERNET_IDENTITY_PROVIDER_ENV_KEY.md)
+- [LOCAL_INTERNET_IDENTITY_CANISTER_ID](variables/LOCAL_INTERNET_IDENTITY_CANISTER_ID.md)
+- [LOCAL_INTERNET_IDENTITY_PROVIDER](variables/LOCAL_INTERNET_IDENTITY_PROVIDER.md)
+- [IDENTITY_ATTRIBUTES_PROVIDER](variables/IDENTITY_ATTRIBUTES_PROVIDER.md)
+- [~~IDENTITY_ATTRIBUTES_BETA_PROVIDER~~](variables/IDENTITY_ATTRIBUTES_BETA_PROVIDER.md)
 - [REMOTE_HOSTS](variables/REMOTE_HOSTS.md)
 - [LOCAL_HOSTS](variables/LOCAL_HOSTS.md)
 - [IC_HOST_NETWORK_URI](variables/IC_HOST_NETWORK_URI.md)
 - [LOCAL_HOST_NETWORK_URI](variables/LOCAL_HOST_NETWORK_URI.md)
-- [IC_INTERNET_IDENTITY_PROVIDER](variables/IC_INTERNET_IDENTITY_PROVIDER.md)
-- [LOCAL_INTERNET_IDENTITY_PROVIDER](variables/LOCAL_INTERNET_IDENTITY_PROVIDER.md)
 - [VERSION](variables/VERSION.md)
 
 ## Functions
 
+- [localInternetIdentityProvider](functions/localInternetIdentityProvider.md)
+- [identityAttributeKeys](functions/identityAttributeKeys.md)
+- [normalizeOpenIdProvider](functions/normalizeOpenIdProvider.md)
+- [resolveIdentityAttributeKeys](functions/resolveIdentityAttributeKeys.md)
+- [decodeIdentityAttributeValues](functions/decodeIdentityAttributeValues.md)
+- [normalizeSignedIdentityAttributes](functions/normalizeSignedIdentityAttributes.md)
 - [didToDisplayCodec](functions/didToDisplayCodec.md)
 - [didToDisplayCodecs](functions/didToDisplayCodecs.md)
 - [transformArgsWithCodec](functions/transformArgsWithCodec.md)
@@ -104,11 +119,6 @@ description: Generated API reference documentation
 - [isCanisterError](functions/isCanisterError.md)
 - [isCallError](functions/isCallError.md)
 - [isValidationError](functions/isValidationError.md)
-- [identityAttributeKeys](functions/identityAttributeKeys.md)
-- [normalizeOpenIdProvider](functions/normalizeOpenIdProvider.md)
-- [resolveIdentityAttributeKeys](functions/resolveIdentityAttributeKeys.md)
-- [decodeIdentityAttributeValues](functions/decodeIdentityAttributeValues.md)
-- [normalizeSignedIdentityAttributes](functions/normalizeSignedIdentityAttributes.md)
 - [processQueryCallResponse](functions/processQueryCallResponse.md)
 - [processUpdateCallResponse](functions/processUpdateCallResponse.md)
 - [createNullVariant](functions/createNullVariant.md)
@@ -122,6 +132,7 @@ description: Generated API reference documentation
 - [isInLocalOrDevelopment](functions/isInLocalOrDevelopment.md)
 - [getProcessEnvNetwork](functions/getProcessEnvNetwork.md)
 - [isDev](functions/isDev.md)
+- [isMainnetHost](functions/isMainnetHost.md)
 - [getNetworkByHostname](functions/getNetworkByHostname.md)
 - [extractOkResult](functions/extractOkResult.md)
 - [isNullish](functions/isNullish.md)
