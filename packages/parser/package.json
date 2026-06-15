@@ -62,7 +62,7 @@
     "@ic-reactor/candid": "workspace:*",
     "@tanstack/query-core": "^5.100.10",
     "@types/node": "^25.9.3",
-    "vitest": "^4.1.6",
+    "vitest": "^4.1.9",
     "wasm-pack": "0.15.0",
     "@icp-sdk/core": "^5.4.0",
     "@icp-sdk/auth": "^7.1.0",
