@@ -364,7 +364,8 @@ When using the `@icp-sdk` toolchain (e.g., `icp-cli`), the development server in
 
 - Agent host from `window.location.origin` in dev mode
 - Query signature verification (disabled in dev mode for performance)
-- Root key from the cookie for local replica certificate verification
+
+Cookie-provided root keys are ignored for security because browser cookies are user-controllable. If you need a custom local replica root key, pass it explicitly with `agentOptions.rootKey`.
 
 ```typescript
 // ⚠️ EXPERIMENTAL - May cause issues with update calls on localhost

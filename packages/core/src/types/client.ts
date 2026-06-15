@@ -122,7 +122,9 @@ export interface ClientManagerParameters {
   authClient?: AuthClientLike
   /**
    * **EXPERIMENTAL** - If true, uses the canister environment from `@icp-sdk/core/agent/canister-env`
-   * to automatically configure the agent host and root key based on the `ic_env` cookie.
+   * to automatically configure development agent settings from the `ic_env` cookie.
+   * Cookie-provided root keys are ignored for security; pass `agentOptions.rootKey`
+   * explicitly if you need a custom local replica root key.
    *
    * ⚠️ This feature is experimental and may cause issues with update calls on localhost development.
    * Use with caution and only when you need automatic environment detection from the IC SDK.
