@@ -84,12 +84,6 @@ importers:
 
   e2e:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: workspace:*
-        version: link:../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: workspace:*
-        version: link:../packages/auth-react
       '@ic-reactor/core':
         specifier: workspace:*
         version: link:../packages/core
@@ -193,15 +187,6 @@ importers:
 
   examples/all-in-one-demo:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -287,9 +272,6 @@ importers:
       '@ic-reactor/candid':
         specifier: ^3.6.0
         version: link:../../packages/candid
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -324,15 +306,6 @@ importers:
 
   examples/ckbtc-wallet:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -429,18 +402,12 @@ importers:
 
   examples/custom-provider:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
+      '@icp-sdk/auth':
+        specifier: ^7.1.0
+        version: 7.1.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -473,19 +440,20 @@ importers:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)
 
-  examples/icp-reactor-demo: {}
+  examples/icp-reactor-demo:
+    dependencies:
+      '@icp-sdk/auth':
+        specifier: ^7.1.0
+        version: 7.1.0(@icp-sdk/core@5.4.0)
 
   examples/icp-reactor-demo/frontend:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../../packages/auth-react
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../../packages/react
+      '@icp-sdk/auth':
+        specifier: ^7.1.0
+        version: 7.1.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -526,15 +494,6 @@ importers:
 
   examples/identity-attributes-demo:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -619,15 +578,6 @@ importers:
 
   examples/multiple-canister:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -671,15 +621,6 @@ importers:
 
   examples/nextjs:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -732,15 +673,6 @@ importers:
 
   examples/nextjs-app-router:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -790,15 +722,6 @@ importers:
 
   examples/query-demo:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -842,9 +765,6 @@ importers:
       '@ic-reactor/candid':
         specifier: ^3.6.0
         version: link:../../packages/candid
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -876,15 +796,6 @@ importers:
 
   examples/suspense-infinite-query-demo:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -968,15 +879,6 @@ importers:
 
   examples/tanstack-router:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -1071,12 +973,9 @@ importers:
 
   examples/typescript-demo:
     dependencies:
-      '@ic-reactor/auth':
+      '@ic-reactor/react':
         specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
+        version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
         version: 7.1.0(@icp-sdk/core@5.4.0)
@@ -1185,86 +1084,6 @@ importers:
       vite:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)
-
-  packages/auth:
-    dependencies:
-      '@ic-reactor/core':
-        specifier: workspace:^
-        version: link:../core
-    devDependencies:
-      '@icp-sdk/auth':
-        specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
-      '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
-      '@size-limit/preset-small-lib':
-        specifier: ^12.1.0
-        version: 12.1.0(size-limit@12.1.0(jiti@2.7.0))
-      '@tanstack/query-core':
-        specifier: ^5.100.10
-        version: 5.101.0
-      size-limit:
-        specifier: ^12.1.0
-        version: 12.1.0(jiti@2.7.0)
-      vitest:
-        specifier: ^4.1.6
-        version: 4.1.8(@types/node@25.9.3)(@vitest/coverage-v8@4.1.8)(happy-dom@20.10.2)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
-
-  packages/auth-react:
-    dependencies:
-      '@ic-reactor/auth':
-        specifier: workspace:^
-        version: link:../auth
-      '@ic-reactor/core':
-        specifier: workspace:^
-        version: link:../core
-    devDependencies:
-      '@icp-sdk/auth':
-        specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
-      '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
-      '@size-limit/preset-small-lib':
-        specifier: ^12.1.0
-        version: 12.1.0(size-limit@12.1.0(jiti@2.7.0))
-      '@tanstack/react-query':
-        specifier: ^5.100.10
-        version: 5.101.0(react@19.2.7)
-      '@testing-library/dom':
-        specifier: ^10.4.1
-        version: 10.4.1
-      '@testing-library/jest-dom':
-        specifier: ^6.9.1
-        version: 6.9.1
-      '@testing-library/react':
-        specifier: ^16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@types/react':
-        specifier: ^19.2.17
-        version: 19.2.17
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.17)
-      fake-indexeddb:
-        specifier: ^6.2.5
-        version: 6.2.5
-      jsdom:
-        specifier: ^29.1.1
-        version: 29.1.1(@noble/hashes@2.2.0)
-      react:
-        specifier: ^19.2.7
-        version: 19.2.7
-      react-dom:
-        specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
-      size-limit:
-        specifier: ^12.1.0
-        version: 12.1.0(jiti@2.7.0)
-      vitest:
-        specifier: ^4.1.6
-        version: 4.1.8(@types/node@25.9.3)(@vitest/coverage-v8@4.1.8)(happy-dom@20.10.2)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
 
   packages/candid:
     dependencies:
@@ -1417,6 +1236,9 @@ importers:
         specifier: workspace:^
         version: link:../core
     devDependencies:
+      '@icp-sdk/auth':
+        specifier: ^7.1.0
+        version: 7.1.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -1457,8 +1279,8 @@ importers:
         specifier: ^12.1.0
         version: 12.1.0(jiti@2.7.0)
       vitest:
-        specifier: ^4.1.6
-        version: 4.1.8(@types/node@25.9.3)(@vitest/coverage-v8@4.1.8)(happy-dom@20.10.2)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@25.9.3)(happy-dom@20.10.2)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
 
   packages/vite-plugin:
     dependencies:
@@ -4484,8 +4306,22 @@ packages:
   '@vitest/expect@4.1.8':
     resolution: {integrity: sha512-h3nDO677RDLEGlBxyQ5CW8RlMThSKSRLUePLOx09gNIWRL40edgA1GCZSZgf1W55MFAG6/Sw14KeaAnqv0NKdQ==}
 
+  '@vitest/expect@4.1.9':
+    resolution: {integrity: sha512-vl/rYsUKcBr3SnQn166+XR5ZQcgMx3DQhFWdfli/cWpLnLUmbxZvyrJZotLFUryib+LtArYMSTJ5RbQ57ZqrlA==}
+
   '@vitest/mocker@4.1.8':
     resolution: {integrity: sha512-LEiN/xe4OSIbKe9HQIp5OC24agGD9J5CnmMgsLohVVoOPWL9a2sBoR6VBx43jQZb7Kr1l4RCuyCJzcAa0+dojw==}
+    peerDependencies:
+      msw: ^2.4.9
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      msw:
+        optional: true
+      vite:
+        optional: true
+
+  '@vitest/mocker@4.1.9':
+    resolution: {integrity: sha512-EVkXzBjrPGM+cK8/ANWgBrkUCfJfb38/EfTSO8h7pWvKkyPkpWxvR7BkD2MyItMF62C97zAEoqdpUixwR/e+Rw==}
     peerDependencies:
       msw: ^2.4.9
       vite: ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -4498,17 +4334,32 @@ packages:
   '@vitest/pretty-format@4.1.8':
     resolution: {integrity: sha512-9GasEBxpZ1VYIpqHf/0+YGg121uSNwCKOJqIrTwWP/TB7DmFCiaBpNl3aPZzoLWfWkuqhbH8vJIVobZkvdo2cA==}
 
+  '@vitest/pretty-format@4.1.9':
+    resolution: {integrity: sha512-s0iufns3iIFitdgm+YR7g1whCAaGtXz459VS9/PqyKDEEFgYIhsHOQmXgIgDuYCt7DeQmiZT0Qe2OA2p4ZPu5A==}
+
   '@vitest/runner@4.1.8':
     resolution: {integrity: sha512-EmVxeBAfMJvycdjd6Hm+RbFBbA9fKvo0Kx37hNpBYoYeavH3RNsBXWDooR1mgD52dCrxIIuP7UotpfiwOikvcg==}
+
+  '@vitest/runner@4.1.9':
+    resolution: {integrity: sha512-KXLMDtc7oe70+3mJfGrPUWPesswH+3sTxAMAMl8DG7I8IUQT4XW718dY5ID3vPUcmlu27CcKfY4P3h3I29SLJg==}
 
   '@vitest/snapshot@4.1.8':
     resolution: {integrity: sha512-acfZboRmAIf05DEKcBQy33VXojFJjtUdLyo7oOmV9kebb2xdU01UknNiPuPZoJZQyO7DF0gZdTGTpeAzET9QPQ==}
 
+  '@vitest/snapshot@4.1.9':
+    resolution: {integrity: sha512-Jc7RKGNBo8Z28WYIm0Niej4xdSPByRf6mU58VpHQkd6Zh05rlnA+twjbK5HyeIGHxrzsc3mJgS43uM0CZKzaIA==}
+
   '@vitest/spy@4.1.8':
     resolution: {integrity: sha512-6EevtBp6OZOPF7bmz36HrGMeP3txgVSrgebWxHOafDXGkhIzfXK14f8KF6MuFfgXXUeHxmpD3BQxkV00/3s5mA==}
 
+  '@vitest/spy@4.1.9':
+    resolution: {integrity: sha512-fHpsS6mIi+PiEW+vcRVOMkX1oSaPKne3VOclSFICPcGOmfKgXPU5iAah+wcNcj2xPrCCmfq99IDGf+EojhhvhA==}
+
   '@vitest/utils@4.1.8':
     resolution: {integrity: sha512-uOJamYALNhfJ6iolExyQM40yIQwDqYnkKtQ5VCiSe17E33H0aQ/u+1GlRuz4LZBk6Mm3sg90G9hEbmEt37C1Zg==}
+
+  '@vitest/utils@4.1.9':
+    resolution: {integrity: sha512-A51o8ymO5PpqlWNnBP9ZHPXDIpuMtTLlGSjN7la4US+LJzoUMyhwjA5QXlm39JexgwHKW4Xjs8Z2d3dLCXOeuA==}
 
   '@zeit/schemas@2.36.0':
     resolution: {integrity: sha512-7kjMwcChYEzMKjeex9ZFXkt1AyNov9R5HZtjBKVsmVpw7pa7ZtlCGvCBC2vnnXctaYN+aRI61HjIqeetZW5ROg==}
@@ -8078,6 +7929,47 @@ packages:
       jsdom:
         optional: true
 
+  vitest@4.1.9:
+    resolution: {integrity: sha512-nE3/LEyc0z87uHYLZebqCUOaJr2hdtuPp7BQ4BosVFnfltxgAvMG08NyrSGlPpOUWvR27c5flSmYFTNr78L9GQ==}
+    engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
+    hasBin: true
+    peerDependencies:
+      '@edge-runtime/vm': '*'
+      '@opentelemetry/api': ^1.9.0
+      '@types/node': ^20.0.0 || ^22.0.0 || >=24.0.0
+      '@vitest/browser-playwright': 4.1.9
+      '@vitest/browser-preview': 4.1.9
+      '@vitest/browser-webdriverio': 4.1.9
+      '@vitest/coverage-istanbul': 4.1.9
+      '@vitest/coverage-v8': 4.1.9
+      '@vitest/ui': 4.1.9
+      happy-dom: '*'
+      jsdom: '*'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      '@edge-runtime/vm':
+        optional: true
+      '@opentelemetry/api':
+        optional: true
+      '@types/node':
+        optional: true
+      '@vitest/browser-playwright':
+        optional: true
+      '@vitest/browser-preview':
+        optional: true
+      '@vitest/browser-webdriverio':
+        optional: true
+      '@vitest/coverage-istanbul':
+        optional: true
+      '@vitest/coverage-v8':
+        optional: true
+      '@vitest/ui':
+        optional: true
+      happy-dom:
+        optional: true
+      jsdom:
+        optional: true
+
   w3c-xmlserializer@5.0.0:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
@@ -11244,9 +11136,26 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
+  '@vitest/expect@4.1.9':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      '@types/chai': 5.2.3
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      chai: 6.2.2
+      tinyrainbow: 3.1.0
+
   '@vitest/mocker@4.1.8(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))':
     dependencies:
       '@vitest/spy': 4.1.8
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)
+
+  '@vitest/mocker@4.1.9(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))':
+    dependencies:
+      '@vitest/spy': 4.1.9
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
@@ -11256,9 +11165,18 @@ snapshots:
     dependencies:
       tinyrainbow: 3.1.0
 
+  '@vitest/pretty-format@4.1.9':
+    dependencies:
+      tinyrainbow: 3.1.0
+
   '@vitest/runner@4.1.8':
     dependencies:
       '@vitest/utils': 4.1.8
+      pathe: 2.0.3
+
+  '@vitest/runner@4.1.9':
+    dependencies:
+      '@vitest/utils': 4.1.9
       pathe: 2.0.3
 
   '@vitest/snapshot@4.1.8':
@@ -11268,11 +11186,26 @@ snapshots:
       magic-string: 0.30.21
       pathe: 2.0.3
 
+  '@vitest/snapshot@4.1.9':
+    dependencies:
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/utils': 4.1.9
+      magic-string: 0.30.21
+      pathe: 2.0.3
+
   '@vitest/spy@4.1.8': {}
+
+  '@vitest/spy@4.1.9': {}
 
   '@vitest/utils@4.1.8':
     dependencies:
       '@vitest/pretty-format': 4.1.8
+      convert-source-map: 2.0.0
+      tinyrainbow: 3.1.0
+
+  '@vitest/utils@4.1.9':
+    dependencies:
+      '@vitest/pretty-format': 4.1.9
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
 
@@ -15740,6 +15673,35 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.9.3
       '@vitest/coverage-v8': 4.1.8(vitest@4.1.8)
+      happy-dom: 20.10.2
+      jsdom: 29.1.1(@noble/hashes@2.2.0)
+    transitivePeerDependencies:
+      - msw
+
+  vitest@4.1.9(@types/node@25.9.3)(happy-dom@20.10.2)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)):
+    dependencies:
+      '@vitest/expect': 4.1.9
+      '@vitest/mocker': 4.1.9(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+      '@vitest/pretty-format': 4.1.9
+      '@vitest/runner': 4.1.9
+      '@vitest/snapshot': 4.1.9
+      '@vitest/spy': 4.1.9
+      '@vitest/utils': 4.1.9
+      es-module-lexer: 2.1.0
+      expect-type: 1.3.0
+      magic-string: 0.30.21
+      obug: 2.1.2
+      pathe: 2.0.3
+      picomatch: 4.0.4
+      std-env: 4.1.0
+      tinybench: 2.9.0
+      tinyexec: 1.2.4
+      tinyglobby: 0.2.17
+      tinyrainbow: 3.1.0
+      vite: 8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 25.9.3
       happy-dom: 20.10.2
       jsdom: 29.1.1(@noble/hashes@2.2.0)
     transitivePeerDependencies:

@@ -12,9 +12,7 @@ pre-release versions until release automation performs the final version bump.
 ### Core Packages
 
 - `@ic-reactor/core` (`packages/core`, `3.6.0`) — Core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration
-- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, `defineReactor`, actor hooks, query/mutation factories
-- `@ic-reactor/auth` (`packages/auth`, `3.6.0`) — Internet Identity authentication and signed identity attributes
-- `@ic-reactor/auth-react` (`packages/auth-react`, `3.6.0`) — React auth and identity-attribute hooks
+- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, `defineReactor`, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks
 - `@ic-reactor/candid` (`packages/candid`, `3.6.0`) — Dynamic Candid adapter/reactors and metadata reactors
 - `@ic-reactor/parser` (`packages/parser`, `0.4.6`) — Rust/WASM Candid parser
 - `@ic-reactor/codegen` (`packages/codegen`, `0.11.1`) — Shared generation pipeline used by CLI and Vite plugin
@@ -29,8 +27,6 @@ Start in the package that owns the behavior:
 | ------------------------- | ------------------------------------------------------------------------------------------------- |
 | `@ic-reactor/core`        | `packages/core/src/`, `packages/core/tests/`                                                      |
 | `@ic-reactor/react`       | `packages/react/src/`, `packages/react/tests/`, `skill-packages/ic-reactor-hooks/SKILL.md`        |
-| `@ic-reactor/auth`        | `packages/auth/src/`, `packages/auth/tests/`                                                      |
-| `@ic-reactor/auth-react`  | `packages/auth-react/src/`, `packages/auth-react/tests/`                                          |
 | `@ic-reactor/candid`      | `packages/candid/src/`, `packages/candid/METADATA_REACTOR_GUIDE.md`                               |
 | `@ic-reactor/parser`      | `packages/parser/src/`, `packages/parser/tests/`                                                  |
 | `@ic-reactor/codegen`     | `packages/codegen/src/`, `packages/codegen/src/*.test.ts`                                         |
@@ -115,7 +111,6 @@ pnpm docs:build # Build docs site
 - `packages/react/src/` — React package source
 - `packages/react/README.md` — React package docs
 - `packages/core/README.md` — Core runtime docs
-- `packages/auth/README.md` and `packages/auth-react/README.md` — Auth docs
 - `packages/candid/README.md` — Dynamic Candid and metadata reactor docs
 - `packages/cli/README.md`, `packages/codegen/README.md`, and `packages/vite-plugin/README.md` — Codegen docs
 - `examples/all-in-one-demo/src/lib/factories.ts` — Factory pattern examples

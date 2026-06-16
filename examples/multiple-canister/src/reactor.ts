@@ -8,14 +8,14 @@
  * QueryClient + ClientManager, and the second reuses that same ClientManager so
  * both canisters share a single agent.
  */
-import { AuthenticationManager } from "@ic-reactor/auth"
+import { AuthenticationManager } from "@ic-reactor/react"
 import {
   defineReactor,
   createQuery,
   createMutation,
   createQueryFactory,
 } from "@ic-reactor/react"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 import {
   idlFactory as icrc2IdlFactory,

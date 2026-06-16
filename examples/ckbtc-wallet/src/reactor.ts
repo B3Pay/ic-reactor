@@ -4,14 +4,14 @@
  * This file demonstrates how to set up reactors for interacting with
  * ckBTC Ledger and Minter canisters using the v3 API.
  */
-import { ClientManager, DisplayReactor } from "@ic-reactor/core"
-import { AuthenticationManager } from "@ic-reactor/auth"
+import { ClientManager, DisplayReactor } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/react"
 import {
   createActorHooks,
   createMutation,
   createQueryFactory,
 } from "@ic-reactor/react"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 import {
   idlFactory as ckbtcIdlFactory,

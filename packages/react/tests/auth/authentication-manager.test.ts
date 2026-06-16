@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { QueryClient } from "@tanstack/query-core"
+import { QueryClient } from "@tanstack/react-query"
 import { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "@ic-reactor/core"
-import { AuthenticationManager } from "../src"
+import { AuthenticationManager } from "../../src/auth"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 vi.mock("@icp-sdk/core/agent/canister-env", () => ({

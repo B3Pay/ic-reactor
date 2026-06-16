@@ -1,5 +1,5 @@
-import { AuthenticationManager } from "@ic-reactor/auth"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { AuthenticationManager } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { clientManager } from "./client"
 
 export const authentication = new AuthenticationManager({

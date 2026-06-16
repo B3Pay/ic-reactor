@@ -26,8 +26,6 @@ const cliVersion = process.argv[2]
 const packages = [
   "@ic-reactor/core",
   "@ic-reactor/react",
-  "@ic-reactor/auth",
-  "@ic-reactor/auth-react",
   "@ic-reactor/candid",
   "@ic-reactor/cli",
   "@ic-reactor/codegen",

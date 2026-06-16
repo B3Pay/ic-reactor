@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
-import { createAuthHooks } from "@ic-reactor/auth-react"
-import { AuthenticationManager } from "@ic-reactor/auth"
+import { createAuthHooks } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/react"
 import { ClientManager } from "@ic-reactor/core"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ClientManager } from "@ic-reactor/core"
+import { ClientManager } from "@ic-reactor/react"
 import ReactJson from "@microlink/react-json-view"
 import { QueryClient } from "@tanstack/react-query"
 import { CandidDisplayReactor } from "@ic-reactor/candid"

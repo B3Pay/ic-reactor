@@ -18,4 +18,6 @@ export * from "./createInfiniteQuery"
 export * from "./createSuspenseInfiniteQuery"
 export * from "./createMutation"
 
+export * from "./auth"
+
 export * from "./types"

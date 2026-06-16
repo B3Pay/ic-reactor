@@ -1,6 +1,6 @@
 import { ClientManager } from "@ic-reactor/react"
-import { AuthenticationManager } from "@ic-reactor/auth"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { AuthenticationManager } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient()

@@ -24,7 +24,7 @@ Important context from the previous session:
   into `ic_env` for local ICP CLI built-in II.
 - Env-only Vite plugin usage is supported with:
   `icReactor({ canisters: [] })`
-- `auth-react` now calls `authentication.prepareClient()` during mount so the auth client is prepared before a user click.
+- React auth hooks now call `authentication.prepareClient()` during mount so the auth client is prepared before a user click.
 
 Already updated examples:
 
@@ -88,12 +88,12 @@ Browser/auth caveat:
 Commands/checks that passed previously:
 
 - `pnpm --filter @ic-reactor/core test -- client-manager.test.ts`
-- `pnpm --filter @ic-reactor/auth test -- authentication-manager.test.ts`
-- `pnpm --filter @ic-reactor/auth-react test -- createAuthHooks.test.tsx`
+- `pnpm --filter @ic-reactor/react test -- authentication-manager.test.ts`
+- `pnpm --filter @ic-reactor/react test -- createAuthHooks.test.tsx`
 - `pnpm --filter @ic-reactor/vite-plugin test -- index.test.ts`
 - `pnpm --filter @ic-reactor/core build`
-- `pnpm --filter @ic-reactor/auth build`
-- `pnpm --filter @ic-reactor/auth-react build`
+- `pnpm --filter @ic-reactor/react build`
+- `pnpm --filter @ic-reactor/react build`
 - `pnpm --filter @ic-reactor/codegen build`
 - `pnpm run build` in `examples/tanstack-router`
 

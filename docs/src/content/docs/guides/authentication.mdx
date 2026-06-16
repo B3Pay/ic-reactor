@@ -15,8 +15,8 @@ the shared `ClientManager` without adding authentication APIs to it:
 
 ```typescript
 // src/reactor/hooks.ts
-import { AuthenticationManager } from "@ic-reactor/auth"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { AuthenticationManager } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { clientManager } from "./index"
 
 export const authentication = new AuthenticationManager({ clientManager })
@@ -100,8 +100,8 @@ component needs to request attributes and send the signed payload to a backend o
 canister for verification.
 
 ```tsx
-import { IdentityAttributesManager } from "@ic-reactor/auth"
-import { createIdentityAttributeHooks } from "@ic-reactor/auth-react"
+import { IdentityAttributesManager } from "@ic-reactor/react"
+import { createIdentityAttributeHooks } from "@ic-reactor/react"
 import { authentication } from "../reactor/hooks"
 
 const identityAttributes = new IdentityAttributesManager(authentication)

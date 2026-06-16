@@ -21,7 +21,7 @@ Framework-agnostic core library for building type-safe Internet Computer applica
 - ⚡ **TanStack Query Integration** — Automatic caching, background refetching, optimistic updates
 - 🔄 **Auto Transformations** — `DisplayReactor` converts BigInt to string, Principal to text
 - 📦 **Result Unwrapping** — Automatic `Ok`/`Err` handling from Candid Result types
-- 🔐 **Composable Auth** — Integrates with the optional `@ic-reactor/auth` package
+- 🔐 **Composable Auth** — Integrates with the optional `@ic-reactor/react` package
 - 🏗️ **Multi-Canister Support** — Shared agent identity across canisters
 
 ## Installation
@@ -31,7 +31,7 @@ Framework-agnostic core library for building type-safe Internet Computer applica
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 # Optional: For Internet Identity authentication
-npm install @ic-reactor/auth @icp-sdk/auth
+npm install @ic-reactor/react @icp-sdk/auth
 ```
 
 ## Core Concepts
@@ -140,7 +140,7 @@ interface ClientManagerParameters {
 ### AuthenticationManager
 
 ```typescript
-import { AuthenticationManager } from "@ic-reactor/auth"
+import { AuthenticationManager } from "@ic-reactor/react"
 
 const authentication = new AuthenticationManager({
   clientManager,
@@ -169,7 +169,7 @@ from ordinary authentication.
 import {
   IdentityAttributesManager,
   identityAttributeKeys,
-} from "@ic-reactor/auth"
+} from "@ic-reactor/react"
 
 const identityAttributes = new IdentityAttributesManager(authentication)
 
@@ -503,7 +503,7 @@ import type {
 
 ```typescript
 import type { AgentState } from "@ic-reactor/core"
-import type { AuthState } from "@ic-reactor/auth"
+import type { AuthState } from "@ic-reactor/react"
 
 interface AgentState {
   isInitialized: boolean

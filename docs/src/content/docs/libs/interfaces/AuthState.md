@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/types.ts:84](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L84)
+Defined in: react/src/auth/types.ts:84
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: [auth/src/types.ts:84](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **identity**: `Identity` \| `null`
 
-Defined in: [auth/src/types.ts:85](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L85)
+Defined in: react/src/auth/types.ts:85
 
 ---
 
@@ -21,7 +21,7 @@ Defined in: [auth/src/types.ts:85](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **isAuthenticating**: `boolean`
 
-Defined in: [auth/src/types.ts:86](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L86)
+Defined in: react/src/auth/types.ts:86
 
 ---
 
@@ -29,7 +29,7 @@ Defined in: [auth/src/types.ts:86](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **isAuthenticated**: `boolean`
 
-Defined in: [auth/src/types.ts:87](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L87)
+Defined in: react/src/auth/types.ts:87
 
 ---
 
@@ -37,4 +37,4 @@ Defined in: [auth/src/types.ts:87](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **error**: `Error` \| `undefined`
 
-Defined in: [auth/src/types.ts:88](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L88)
+Defined in: react/src/auth/types.ts:88

@@ -42,8 +42,8 @@ Most users will want the React package, which includes everything you need:
 </Tabs>
 
 <Aside type="tip">
-  `@ic-reactor/react` re-exports everything from `@ic-reactor/core`, so you only
-  need one import for everything!
+  `@ic-reactor/react` depends on and re-exports `@ic-reactor/core`, so React
+  apps install and import only `@ic-reactor/react` for IC Reactor runtime APIs.
 </Aside>
 
 ### Non-React Projects (Node.js, Svelte, Vue, etc.)
@@ -108,10 +108,8 @@ pnpm add -D @ic-reactor/cli
 
 | Package                  | Purpose                                 | For React | For Non-React |
 | ------------------------ | --------------------------------------- | --------- | ------------- |
-| `@ic-reactor/react`      | React hooks + re-exports core           | ✅        | ❌            |
+| `@ic-reactor/react`      | React hooks + included core runtime     | ✅        | ❌            |
 | `@ic-reactor/core`       | Core: Reactor, ClientManager, utilities | included  | ✅            |
-| `@ic-reactor/auth`       | Non-React Internet Identity helpers     | Optional  | Optional      |
-| `@ic-reactor/auth-react` | React hooks for auth managers           | Optional  | ❌            |
 | `@ic-reactor/candid`     | Runtime Candid fetching/parsing         | Optional  | Optional      |
 | `@ic-reactor/parser`     | WASM `.did` parser outputs              | Optional  | Optional      |
 | `@icp-sdk/core`          | IC SDK for agents and Candid            | ✅        | ✅            |

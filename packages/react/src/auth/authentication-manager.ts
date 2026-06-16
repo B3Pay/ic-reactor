@@ -14,14 +14,16 @@ import {
   INTERNET_IDENTITY_PROVIDER_ENV_KEY,
   localInternetIdentityProvider,
 } from "./constants"
-import { AuthStateStore } from "./auth-state-store"
-import { AuthClientLoader } from "./auth-client-loader"
 
 export interface AuthenticationManagerParameters {
   clientManager: ClientManager
   authClient?: AuthClientLike
   identityProvider?: string | URL
   internetIdentityId?: string
+}
+
+type AuthClientConstructor = {
+  new (options?: AuthenticationClientOptions): AuthClientLike
 }
 
 /**
@@ -38,15 +40,26 @@ export class AuthenticationManager {
   private authClient?: AuthClientLike
   private authPromise?: Promise<Identity | undefined>
   private authClientWasProvided = false
-  private readonly stateStore = new AuthStateStore()
-  private readonly loader = new AuthClientLoader()
+  private authStateRevision = 0
+  private authStateSubscribers: Array<(state: AuthState) => void> = []
+  private authClientConstructor?: AuthClientConstructor
+  private authClientConstructorPromise?: Promise<
+    AuthClientConstructor | undefined
+  >
+  private authModuleMissing = false
+  private authStateValue: AuthState = {
+    identity: null,
+    isAuthenticating: false,
+    isAuthenticated: false,
+    error: undefined,
+  }
   private readonly identityProvider?: string | URL
   private readonly internetIdentityId?: string
   public readonly clientManager: ClientManager
 
   /** The current authentication state. */
   public get authState(): AuthState {
-    return this.stateStore.state
+    return this.authStateValue
   }
 
   constructor({
@@ -71,13 +84,11 @@ export class AuthenticationManager {
     if (authClient) {
       this.authClientWasProvided = true
       this.authClient = authClient
-      this.syncStateFromClient(this.stateStore.currentRevision).catch(
-        (error) => {
-          this.updateState({ error: error as Error, isAuthenticating: false })
-        }
-      )
+      this.syncStateFromClient(this.authStateRevision).catch((error) => {
+        this.updateState({ error: error as Error, isAuthenticating: false })
+      })
     } else if (typeof window !== "undefined") {
-      this.loader.load().catch(() => {
+      this.loadAuthClientConstructor().catch(() => {
         // Optional auth support is reported when an auth method is used.
       })
     }
@@ -89,7 +100,12 @@ export class AuthenticationManager {
   }
 
   public subscribeAuthState(callback: (state: AuthState) => void) {
-    return this.stateStore.subscribe(callback)
+    this.authStateSubscribers.push(callback)
+    return () => {
+      this.authStateSubscribers = this.authStateSubscribers.filter(
+        (subscriber) => subscriber !== callback
+      )
+    }
   }
 
   /**
@@ -119,7 +135,7 @@ export class AuthenticationManager {
     if (this.authPromise) {
       return this.authPromise
     }
-    if (this.loader.isModuleMissing) {
+    if (this.authModuleMissing) {
       return undefined
     }
 
@@ -250,7 +266,7 @@ export class AuthenticationManager {
   private async initializeClient(
     options?: AuthenticationClientOptions
   ): Promise<AuthClientLike | undefined> {
-    const AuthClient = await this.loader.load()
+    const AuthClient = await this.loadAuthClientConstructor()
 
     if (!AuthClient) {
       return undefined
@@ -298,7 +314,7 @@ export class AuthenticationManager {
       return this.authClient
     }
 
-    const AuthClient = this.loader.cachedConstructor
+    const AuthClient = this.authClientConstructor
     if (!AuthClient || this.authClientWasProvided) {
       return undefined
     }
@@ -311,16 +327,14 @@ export class AuthenticationManager {
     return !this.authClientWasProvided && hasAuthClientOptions(options)
   }
 
-  private async syncStateFromClient(
-    revision = this.stateStore.currentRevision
-  ) {
+  private async syncStateFromClient(revision = this.authStateRevision) {
     if (!this.authClient) {
       return
     }
 
     const identity = await this.authClient.getIdentity()
     const isAuthenticated = await this.authClient.isAuthenticated()
-    if (revision !== this.stateStore.currentRevision) {
+    if (revision !== this.authStateRevision) {
       return
     }
     this.clientManager.updateAgent(identity)
@@ -377,7 +391,47 @@ export class AuthenticationManager {
   }
 
   private updateState(newState: Partial<AuthState>) {
-    this.stateStore.update(newState)
+    if (isDev()) console.debug("[ic-reactor] Updating Auth State:", newState)
+    this.authStateRevision += 1
+    this.authStateValue = { ...this.authStateValue, ...newState }
+    this.authStateSubscribers.forEach((subscriber) =>
+      subscriber(this.authStateValue)
+    )
+  }
+
+  private async loadAuthClientConstructor() {
+    if (this.authClientConstructor) {
+      return this.authClientConstructor
+    }
+
+    if (!this.authClientConstructorPromise) {
+      this.authClientConstructorPromise = import("@icp-sdk/auth/client")
+        .then((authModule) => {
+          const AuthClient = (
+            authModule as { AuthClient?: AuthClientConstructor }
+          ).AuthClient
+
+          if (!AuthClient) {
+            throw new Error("@icp-sdk/auth/client did not export AuthClient")
+          }
+
+          this.authClientConstructor = AuthClient
+          return AuthClient
+        })
+        .catch((error) => {
+          this.authModuleMissing = true
+          this.authClientConstructorPromise = undefined
+          if (
+            error instanceof Error &&
+            error.message.includes("did not export AuthClient")
+          ) {
+            throw error
+          }
+          return undefined
+        })
+    }
+
+    return this.authClientConstructorPromise
   }
 }
 

@@ -11,9 +11,7 @@ release automation performs the final version bump.
 ### Packages
 
 - `@ic-reactor/core` (`packages/core`, `3.6.0`) — core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration.
-- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, `defineReactor`, actor hooks, query/mutation factories.
-- `@ic-reactor/auth` (`packages/auth`, `3.6.0`) — Internet Identity authentication and signed identity attributes.
-- `@ic-reactor/auth-react` (`packages/auth-react`, `3.6.0`) — React auth and identity-attribute hooks.
+- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, `defineReactor`, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks.
 - `@ic-reactor/candid` (`packages/candid`, `3.6.0`) — dynamic Candid adapter/reactors and metadata reactors.
 - `@ic-reactor/parser` (`packages/parser`, `0.4.6`) — Rust/WASM Candid parser.
 - `@ic-reactor/codegen` (`packages/codegen`, `0.11.1`) — shared generation pipeline used by CLI and Vite plugin.
@@ -41,17 +39,15 @@ A skill is a set of local instructions to follow that is stored in a `SKILL.md` 
 
 Use this map before editing so you can start in the package that owns the behavior:
 
-| Package                   | Owns                                                                                              | Look here first                                                                                   |
-| ------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, query-cache integration | `packages/core/src/`, `packages/core/tests/`                                                      |
-| `@ic-reactor/react`       | React hook factories, reusable query/mutation objects, `defineReactor`, `useActorMethod`          | `packages/react/src/`, `packages/react/tests/`, `skill-packages/ic-reactor-hooks/SKILL.md`        |
-| `@ic-reactor/auth`        | Internet Identity auth state, auth client loading, identity attributes                            | `packages/auth/src/`, `packages/auth/tests/`                                                      |
-| `@ic-reactor/auth-react`  | React hooks over `@ic-reactor/auth` managers                                                      | `packages/auth-react/src/`, `packages/auth-react/tests/`                                          |
-| `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                     | `packages/candid/src/`, `packages/candid/METADATA_REACTOR_GUIDE.md`                               |
-| `@ic-reactor/parser`      | Rust/WASM Candid parser package                                                                   | `packages/parser/src/`, `packages/parser/tests/`                                                  |
-| `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline                                             | `packages/codegen/src/`, `packages/codegen/src/*.test.ts`                                         |
-| `@ic-reactor/cli`         | `ic-reactor` command-line interface and config schema                                             | `packages/cli/src/`, `packages/cli/schema.json`                                                   |
-| `@ic-reactor/vite-plugin` | Vite integration, `.did` watching, environment-cookie injection                                   | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/` |
+| Package                   | Owns                                                                                                                    | Look here first                                                                                   |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, query-cache integration                       | `packages/core/src/`, `packages/core/tests/`                                                      |
+| `@ic-reactor/react`       | React hook factories, reusable query/mutation objects, `defineReactor`, `useActorMethod`, auth managers, and auth hooks | `packages/react/src/`, `packages/react/tests/`, `skill-packages/ic-reactor-hooks/SKILL.md`        |
+| `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                                           | `packages/candid/src/`, `packages/candid/METADATA_REACTOR_GUIDE.md`                               |
+| `@ic-reactor/parser`      | Rust/WASM Candid parser package                                                                                         | `packages/parser/src/`, `packages/parser/tests/`                                                  |
+| `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline                                                                   | `packages/codegen/src/`, `packages/codegen/src/*.test.ts`                                         |
+| `@ic-reactor/cli`         | `ic-reactor` command-line interface and config schema                                                                   | `packages/cli/src/`, `packages/cli/schema.json`                                                   |
+| `@ic-reactor/vite-plugin` | Vite integration, `.did` watching, environment-cookie injection                                                         | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/` |
 
 ## Verification commands
 

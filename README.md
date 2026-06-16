@@ -34,17 +34,15 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 
 ## Package Overview
 
-| Package                                             | Purpose                                                                        |
-| --------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [`@ic-reactor/core`](./packages/core)               | Core runtime (`ClientManager`, `Reactor`, `DisplayReactor`, cache integration) |
-| [`@ic-reactor/react`](./packages/react)             | React hooks + query/mutation factories                                         |
-| [`@ic-reactor/auth`](./packages/auth)               | Internet Identity authentication and identity attributes                       |
-| [`@ic-reactor/auth-react`](./packages/auth-react)   | React hooks for the auth package                                               |
-| [`@ic-reactor/candid`](./packages/candid)           | Dynamic Candid adapter, reactors, display reactors, and metadata reactors      |
-| [`@ic-reactor/parser`](./packages/parser)           | Local Candid parser (WASM-based)                                               |
-| [`@ic-reactor/codegen`](./packages/codegen)         | Shared codegen pipeline used by CLI and Vite plugin                            |
-| [`@ic-reactor/cli`](./packages/cli)                 | Generate declarations + typed hooks/reactors                                   |
-| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for watch-mode hook generation                                     |
+| Package                                             | Purpose                                                                            |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [`@ic-reactor/core`](./packages/core)               | Core runtime (`ClientManager`, `Reactor`, `DisplayReactor`, cache integration)     |
+| [`@ic-reactor/react`](./packages/react)             | React hooks, query/mutation factories, Internet Identity auth, identity attributes |
+| [`@ic-reactor/candid`](./packages/candid)           | Dynamic Candid adapter, reactors, display reactors, and metadata reactors          |
+| [`@ic-reactor/parser`](./packages/parser)           | Local Candid parser (WASM-based)                                                   |
+| [`@ic-reactor/codegen`](./packages/codegen)         | Shared codegen pipeline used by CLI and Vite plugin                                |
+| [`@ic-reactor/cli`](./packages/cli)                 | Generate declarations + typed hooks/reactors                                       |
+| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for watch-mode hook generation                                         |
 
 Release posture:
 
@@ -70,7 +68,7 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 ```bash
 # Internet Identity auth helpers for React apps
-pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth @icp-sdk/core
+pnpm add @ic-reactor/react @icp-sdk/auth @icp-sdk/core
 
 # Dynamic Candid support (explorers/dev tools)
 pnpm add @ic-reactor/candid @ic-reactor/parser
@@ -85,8 +83,7 @@ For most React apps, `defineReactor` is the smallest setup path. It creates the
 
 ```ts
 // src/reactor.ts
-import { defineReactor } from "@ic-reactor/react"
-import { AuthenticationManager } from "@ic-reactor/auth"
+import { defineReactor, AuthenticationManager } from "@ic-reactor/react"
 import { idlFactory, type _SERVICE } from "./declarations/my_canister"
 
 export const {
@@ -112,7 +109,7 @@ export const authentication = new AuthenticationManager({ clientManager })
 
 ```ts
 // src/hooks.ts
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { authentication } from "./reactor"
 
 export const { useAuth, useUserPrincipal, useAgentState } =
@@ -335,8 +332,6 @@ console.log(balance)
 - Package docs:
   - [`@ic-reactor/react`](./packages/react/README.md)
   - [`@ic-reactor/core`](./packages/core/README.md)
-  - [`@ic-reactor/auth`](./packages/auth/README.md)
-  - [`@ic-reactor/auth-react`](./packages/auth-react/README.md)
   - [`@ic-reactor/candid`](./packages/candid/README.md)
   - [`@ic-reactor/parser`](./packages/parser/README.md)
   - [`@ic-reactor/codegen`](./packages/codegen/README.md)

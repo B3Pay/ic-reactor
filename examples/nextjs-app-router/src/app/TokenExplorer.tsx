@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import { useLedgerReactor } from "./ledger-provider"
 import { Principal } from "@icp-sdk/core/principal"
 import { useICAuth } from "./providers"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { createAuthHooks } from "@ic-reactor/react"
 
 const POPULAR_TOKENS = [
   {

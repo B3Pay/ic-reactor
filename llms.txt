@@ -34,9 +34,7 @@ version bump.
 | Package                   | Owns                                                                                                               | Start here                                                                                    |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
 | `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, `@tanstack/query-core` cache integration | `packages/core/src/`, `packages/core/README.md`                                               |
-| `@ic-reactor/react`       | React hook factories, query/mutation factories, `defineReactor`, `useActorMethod`                                  | `packages/react/src/`, `packages/react/README.md`, `skill-packages/ic-reactor-hooks/SKILL.md` |
-| `@ic-reactor/auth`        | Non-React Internet Identity auth state, auth client loading, identity attributes                                   | `packages/auth/src/`, `packages/auth/README.md`                                               |
-| `@ic-reactor/auth-react`  | React hooks over `@ic-reactor/auth` managers                                                                       | `packages/auth-react/src/`, `packages/auth-react/README.md`                                   |
+| `@ic-reactor/react`       | React hook factories, query/mutation factories, `defineReactor`, `useActorMethod`, Internet Identity auth, and identity-attribute hooks | `packages/react/src/`, `packages/react/README.md`, `skill-packages/ic-reactor-hooks/SKILL.md` |
 | `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                                      | `packages/candid/src/`, `packages/candid/README.md`                                           |
 | `@ic-reactor/parser`      | Rust/WASM Candid parser and published web/node/bundler outputs                                                     | `packages/parser/src/`, `packages/parser/README.md`                                           |
 | `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline used by CLI and Vite plugin                                  | `packages/codegen/src/`, `packages/codegen/README.md`                                         |
@@ -50,7 +48,7 @@ version bump.
 | Build a React canister integration        | `packages/react/README.md`, `docs/src/content/docs/framework/react-setup.mdx`                                      |
 | Choose inside-React vs outside-React APIs | `skill-packages/ic-reactor-hooks/SKILL.md`, `llms-full.txt`                                                        |
 | Add reusable query/mutation factories     | `docs/src/content/docs/reference/factories/overview.mdx`, `skill-packages/ic-reactor-hooks/references/patterns.md` |
-| Add auth/login or identity attributes     | `packages/auth/README.md`, `packages/auth-react/README.md`, `docs/src/content/docs/guides/authentication.mdx`      |
+| Add auth/login or identity attributes     | `packages/react/src/auth/`, `packages/react/README.md`, `docs/src/content/docs/guides/authentication.mdx`          |
 | Change generated hook output              | `packages/codegen/src/`, then verify CLI/Vite consumers                                                            |
 | Configure Vite generation                 | `packages/vite-plugin/README.md`, `docs/src/content/docs/packages/vite-plugin.mdx`                                 |
 | Configure CLI generation                  | `packages/cli/README.md`, `docs/src/content/docs/packages/cli.mdx`                                                 |
@@ -75,7 +73,7 @@ declarations, and generated hook files. For codegen behavior, edit
 | Skill/frontmatter/metadata | YAML/frontmatter parse check plus `pnpm format:check`                                            |
 | React hooks/factories      | `pnpm --filter @ic-reactor/react test`                                                           |
 | Runtime core               | `pnpm --filter @ic-reactor/core test`                                                            |
-| Auth packages              | `pnpm --filter @ic-reactor/auth test`, `pnpm --filter @ic-reactor/auth-react test` as applicable |
+| React auth                 | `pnpm --filter @ic-reactor/react test`                                                           |
 | Codegen/CLI/Vite output    | `pnpm --filter @ic-reactor/codegen test` plus affected CLI/Vite checks                           |
 | Broad package change       | `pnpm exec tsc --noEmit`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`                          |
 | Examples                   | `pnpm typecheck:examples`                                                                        |

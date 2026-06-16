@@ -5,8 +5,8 @@ description: >-
   architecture. Use when work spans package ownership, package.json exports,
   tsconfig/project references, build/test scripts, generated artifacts,
   dependency boundaries, release readiness, or deciding where an AI agent should
-  start for @ic-reactor/core, @ic-reactor/react, @ic-reactor/auth,
-  @ic-reactor/auth-react, @ic-reactor/candid, @ic-reactor/parser,
+  start for @ic-reactor/core, @ic-reactor/react, @ic-reactor/react,
+  @ic-reactor/react, @ic-reactor/candid, @ic-reactor/parser,
   @ic-reactor/codegen, @ic-reactor/cli, or @ic-reactor/vite-plugin.
 ---
 
@@ -27,9 +27,7 @@ entry points, verification commands, or known failure modes.
    peer dependencies, and README.
 3. Follow dependency direction:
    - `core` must stay framework-agnostic.
-   - `react` can depend on `core`, React, and TanStack React Query.
-   - `auth` can depend on `core` but not React.
-   - `auth-react` can depend on `auth`, `core`, and React.
+   - `react` can depend on `core`, React, TanStack React Query, and auth client peers.
    - `codegen` owns generated source templates used by CLI and Vite plugin.
    - `cli` and `vite-plugin` should use `codegen` rather than duplicating
      generation logic.
@@ -45,8 +43,8 @@ entry points, verification commands, or known failure modes.
 | --------------------------------------------------------- | --------------------------------------- |
 | Agent/query runtime, canister calls, display transforms   | `packages/core`                         |
 | React hooks, factories, `defineReactor`, `useActorMethod` | `packages/react` and `ic-reactor-hooks` |
-| Internet Identity login, auth state, identity attributes  | `packages/auth`                         |
-| React auth hooks                                          | `packages/auth-react`                   |
+| Internet Identity login, auth state, identity attributes  | `packages/react/src/auth`               |
+| React auth hooks                                          | `packages/react/src/auth`               |
 | Dynamic Candid fetch/parse, metadata reactors             | `packages/candid`                       |
 | Rust/WASM Candid parsing                                  | `packages/parser`                       |
 | Declaration/reactor/client generation                     | `packages/codegen`                      |
@@ -68,7 +66,7 @@ Use CI-aligned commands:
 For focused work, prefer filters such as:
 
 ```bash
-pnpm --filter @ic-reactor/auth test
+pnpm --filter @ic-reactor/react test
 pnpm --filter @ic-reactor/react test
 pnpm --filter @ic-reactor/codegen test
 pnpm --filter @ic-reactor/vite-plugin test
@@ -112,7 +110,7 @@ When changing a package's exports or types, confirm:
 
 - Starting in an example when the bug belongs in a package generator.
 - Fixing generated output instead of the generator.
-- Adding React imports to `core` or `auth`.
+- Adding React imports to `core`.
 - Adding duplicated codegen behavior in `cli` or `vite-plugin`.
 - Running `tsc -b` without checking whether all referenced packages are listed
   in the root `tsconfig.json`.

@@ -10,7 +10,7 @@ and reusable query or mutation factories built around TanStack Query.
 pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 
 # Optional: Internet Identity login helpers and hooks
-pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth
+pnpm add @ic-reactor/react @icp-sdk/auth
 ```
 
 ## Quick Start
@@ -181,16 +181,15 @@ const mutation = updateProfile.useMutation({
 
 ## Identity Attributes / OpenID email and profile values
 
-Identity attribute hooks are optional and use a dedicated
-`IdentityAttributesManager` from `@ic-reactor/auth` and React bindings from
-`@ic-reactor/auth-react`.
+Identity attribute hooks are optional and use `IdentityAttributesManager` and
+React bindings exported from `@ic-reactor/react`.
 
 ```tsx
 import {
   AuthenticationManager,
   IdentityAttributesManager,
-} from "@ic-reactor/auth"
-import { createIdentityAttributeHooks } from "@ic-reactor/auth-react"
+  createIdentityAttributeHooks,
+} from "@ic-reactor/react"
 import { clientManager } from "./reactor"
 
 const authentication = new AuthenticationManager({ clientManager })
@@ -303,7 +302,5 @@ single package:
 
 - Docs: https://ic-reactor.b3pay.net/v4/packages/react
 - `@ic-reactor/core`: ../core/README.md
-- `@ic-reactor/auth`: ../auth/README.md
-- `@ic-reactor/auth-react`: ../auth-react/README.md
 - `@ic-reactor/vite-plugin`: ../vite-plugin/README.md
 - `@ic-reactor/cli`: ../cli/README.md

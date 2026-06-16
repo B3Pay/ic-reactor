@@ -30,16 +30,6 @@ generation and local development.
     href="/v4/packages/core"
   />
   <LinkCard
-    title="@ic-reactor/auth"
-    description="Non-React Internet Identity auth state, auth client loading, and identity attributes."
-    href="/v4/guides/authentication"
-  />
-  <LinkCard
-    title="@ic-reactor/auth-react"
-    description="React hooks that wrap the auth and identity attribute managers."
-    href="/v4/reference/createauthhooks/overview"
-  />
-  <LinkCard
     title="@ic-reactor/candid"
     description="Dynamic Candid fetching, runtime method registration, and metadata-driven form generation."
     href="/v4/packages/candid"
@@ -73,8 +63,7 @@ generation and local development.
 
 ## How They Fit Together
 
-- `@ic-reactor/react` depends on `@ic-reactor/core` and re-exports the runtime classes.
-- `@ic-reactor/auth` stays usable outside React; `@ic-reactor/auth-react` is the React hook layer over it.
+- `@ic-reactor/react` depends on `@ic-reactor/core`, re-exports the runtime classes, and owns the React auth helpers.
 - `@ic-reactor/candid` builds on `@ic-reactor/core` and can optionally use `@ic-reactor/parser` for local Candid compilation.
 - `@ic-reactor/cli` and `@ic-reactor/vite-plugin` both use `@ic-reactor/codegen` under the hood.
 - The tooling packages help you generate declarations and hooks, while the runtime packages execute queries, mutations, auth flows, and dynamic canister calls.

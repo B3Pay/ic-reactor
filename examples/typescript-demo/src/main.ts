@@ -1,5 +1,5 @@
-import { Reactor, ClientManager } from "@ic-reactor/core"
-import { AuthenticationManager } from "@ic-reactor/auth"
+import { Reactor, ClientManager } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/react"
 import { Principal } from "@icp-sdk/core/principal"
 import { QueryClient } from "@tanstack/query-core"
 import { ledgerIdlFactory } from "./declarations/ledger"
