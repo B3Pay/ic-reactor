@@ -17,6 +17,9 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+env:
+  V3_DOCS_REF: baa1ad6898c700bdf53ae5d5a9d5a2332efd9aa6
+
 jobs:
   build:
     name: Build Documentation
@@ -25,6 +28,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Checkout v3 documentation source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.V3_DOCS_REF }}
+          path: v3-docs-source
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -58,6 +67,14 @@ jobs:
       - name: Build documentation (Astro)
         run: pnpm docs:build
 
+      - name: Install v3 dependencies
+        working-directory: v3-docs-source
+        run: pnpm install --frozen-lockfile
+
+      - name: Build v3 documentation (Astro)
+        working-directory: v3-docs-source
+        run: pnpm docs:build
+
       # docs/dist should be Astro static output
 
       - name: Download existing Pages content
@@ -77,18 +94,23 @@ jobs:
             rm -rf final-docs/.git
           fi
 
-          # Ensure v2 exists (move legacy root content into /v2 once)
+          # Ensure v2 exists by moving the legacy TypeDoc root into /v2 once.
           if [ ! -d "final-docs/v2" ]; then
             mkdir -p final-docs/v2
             shopt -s dotglob
             for item in final-docs/*; do
               case "$(basename "$item")" in
-                v2|v3|v4|llms.txt) continue;;
+                v2|v3|v4|llms.txt|CNAME|.nojekyll) continue;;
               esac
               mv "$item" final-docs/v2/
             done
             shopt -u dotglob
           fi
+
+          # Replace v3 with the pinned pre-v4 Astro build.
+          rm -rf final-docs/v3
+          mkdir -p final-docs/v3
+          cp -r v3-docs-source/docs/dist/* final-docs/v3/
 
           # Replace v4 with new Astro build while preserving v2 and v3
           rm -rf final-docs/v4
@@ -174,7 +196,9 @@ jobs:
           </html>
           EOF
 
-          # Smart 404: redirect unknown routes to latest docs preserving path
+          # Smart 404: redirect unknown routes to latest docs preserving path.
+          # For versioned misses, fall back to a real root instead of leaving the
+          # placeholder page visible forever.
           cat > final-docs/404.html << 'EOF'
           <!doctype html>
           <html>
@@ -184,13 +208,24 @@ jobs:
               <script>
                 (function () {
                   var path = window.location.pathname || "/";
-                  if (path.startsWith("/v2") || path.startsWith("/v3") || path.startsWith("/v4")) return;
+                  if (path.startsWith("/v2")) {
+                    window.location.replace("/v2/");
+                    return;
+                  }
+                  if (path.startsWith("/v3")) {
+                    window.location.replace("/v3/");
+                    return;
+                  }
+                  if (path.startsWith("/v4")) {
+                    window.location.replace("/v4/");
+                    return;
+                  }
                   window.location.replace("/v4" + path);
                 })();
               </script>
             </head>
             <body>
-              <p>Redirecting…</p>
+              <p>Redirecting...</p>
             </body>
           </html>
           EOF
