@@ -34,13 +34,13 @@
     "@ic-reactor/react": "^3.6.0",
     "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^5.4.0",
-    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/postcss": "^4.3.1",
     "@tanstack/react-query": "^5.90.16",
     "next": "^16.2.9",
     "postcss": "^8.5.15",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "tailwindcss": "^4.3.0"
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
     "@tanstack/react-query-devtools": "^5.91.2",
