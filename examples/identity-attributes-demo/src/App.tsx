@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import {
   identityAttributeKeys,
   type IdentityAttributeOpenIdProvider,
-} from "@ic-reactor/auth"
+} from "@ic-reactor/react"
 import { useAuth, useIdentityAttributes, useUserPrincipal } from "./reactor"
 
 type ProviderPreset = "google" | "apple" | "microsoft" | "custom"

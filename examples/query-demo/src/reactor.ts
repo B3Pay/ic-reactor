@@ -12,14 +12,14 @@
  * - The `enabled` option for conditional fetching
  * - Manual loading state handling with isLoading/isPending
  */
-import { AuthenticationManager } from "@ic-reactor/auth"
+import { AuthenticationManager } from "@ic-reactor/react"
 import {
   defineReactor,
   createSuspenseQuery,
   createSuspenseQueryFactory,
   createMutation,
 } from "@ic-reactor/react"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 import { ledgerIdlFactory, type Ledger } from "./declarations/ledger"
 

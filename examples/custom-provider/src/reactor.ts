@@ -4,9 +4,9 @@
  * This file demonstrates how to set up a ClientManager and auth hooks for
  * an ICRC1 token viewer with dynamic canister ID support using the v3 API.
  */
-import { ClientManager } from "@ic-reactor/core"
-import { AuthenticationManager } from "@ic-reactor/auth"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { ClientManager } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
 // ============================================================================

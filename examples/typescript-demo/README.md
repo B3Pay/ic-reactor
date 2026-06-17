@@ -1,7 +1,8 @@
-# IC Reactor Core + TypeScript Demo
+# IC Reactor TypeScript Demo
 
-This example shows how to use `@ic-reactor/core` and `@ic-reactor/auth` from a
-vanilla TypeScript/Vite app, without React.
+This example shows how to use the runtime APIs re-exported by
+`@ic-reactor/react` from a vanilla TypeScript/Vite app, without React
+components.
 
 The app talks to mainnet ICRC token canisters, starting with the ICP ledger, and
 lets you switch to other known ck token canisters or enter a custom token

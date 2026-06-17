@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/types.ts:41](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L41)
+Defined in: react/src/auth/types.ts:41
 
 ## Extended by
 
@@ -17,7 +17,7 @@ Defined in: [auth/src/types.ts:41](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **maxTimeToLive?**: `bigint`
 
-Defined in: [auth/src/types.ts:42](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L42)
+Defined in: react/src/auth/types.ts:42
 
 ---
 
@@ -25,4 +25,4 @@ Defined in: [auth/src/types.ts:42](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **targets?**: `Principal`[]
 
-Defined in: [auth/src/types.ts:43](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L43)
+Defined in: react/src/auth/types.ts:43

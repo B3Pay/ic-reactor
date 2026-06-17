@@ -24,6 +24,10 @@ export {
   createActorMethodHooks,
 } from "./useActorMethod.js"
 
+// createAuthHooks
+export { createAuthHooks } from "./createAuthHooks.js"
+export type { CreateAuthHooksReturn, UseAuthReturn } from "./createAuthHooks.js"
+
 // ============================================================================
 // Types - UseReactor* (with reactor parameter)
 // ============================================================================

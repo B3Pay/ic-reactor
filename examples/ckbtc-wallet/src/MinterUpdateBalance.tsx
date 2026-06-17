@@ -1,4 +1,4 @@
-import { generateKey } from "@ic-reactor/core"
+import { generateKey } from "@ic-reactor/react"
 import { updateBalanceMutation } from "./reactor"
 
 interface MinterUpdateBalanceProps {

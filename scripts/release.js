@@ -44,8 +44,6 @@ console.log(`\n🚀 Starting release process for v${version}...\n`)
 updatePackageJson("package.json", version)
 updatePackageJson("packages/core/package.json", version)
 updatePackageJson("packages/react/package.json", version)
-updatePackageJson("packages/auth/package.json", version)
-updatePackageJson("packages/auth-react/package.json", version)
 updatePackageJson("packages/candid/package.json", version)
 
 // 2. Update library lockfile while examples still point to workspace
@@ -93,10 +91,6 @@ if (shouldPublish || dryRun) {
       "@ic-reactor/core",
       "--filter",
       "@ic-reactor/react",
-      "--filter",
-      "@ic-reactor/auth",
-      "--filter",
-      "@ic-reactor/auth-react",
       "--filter",
       "@ic-reactor/candid",
       "publish",

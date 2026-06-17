@@ -11,13 +11,13 @@ import { Aside } from "@astrojs/starlight/components"
 ## Import
 
 ```typescript
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { createAuthHooks } from "@ic-reactor/react"
 ```
 
 ## Usage
 
 ```typescript
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { authentication } from "./reactor"
 
 const { useAuth, useUserPrincipal, useAgentState } =
@@ -44,8 +44,8 @@ const { useAuth, useUserPrincipal, useAgentState } =
 
 ```typescript
 // src/reactor/index.ts
-import { ClientManager } from "@ic-reactor/core"
-import { AuthenticationManager } from "@ic-reactor/auth"
+import { ClientManager } from "@ic-reactor/react"
+import { AuthenticationManager } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/query-core"
 
 export const queryClient = new QueryClient()
@@ -59,7 +59,7 @@ export const authentication = new AuthenticationManager({ clientManager })
 
 ```typescript
 // src/reactor/hooks.ts
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { authentication } from "./index"
 
 export const { useAuth, useUserPrincipal, useAgentState } =

@@ -29,7 +29,7 @@ integration, and typed canister interaction without depending on React.
 pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 # Optional companion package for Internet Identity support
-pnpm add @ic-reactor/auth @icp-sdk/auth
+pnpm add @ic-reactor/react @icp-sdk/auth
 ```
 
 ## What's Included
@@ -86,7 +86,7 @@ const greeting = await backend.fetchQuery({
 
 ## Identity Attributes
 
-`@ic-reactor/auth` provides `IdentityAttributesManager`, exposing helpers for signed OpenID
+`@ic-reactor/react` provides `IdentityAttributesManager`, exposing helpers for signed OpenID
 identity attributes from `@icp-sdk/auth` v7 without adding the optional
 workflow to `ClientManager`:
 
@@ -95,7 +95,7 @@ import {
   AuthenticationManager,
   IdentityAttributesManager,
   identityAttributeKeys,
-} from "@ic-reactor/auth"
+} from "@ic-reactor/react"
 
 const authentication = new AuthenticationManager({ clientManager })
 const identityAttributes = new IdentityAttributesManager(authentication)

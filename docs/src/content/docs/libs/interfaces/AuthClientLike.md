@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/types.ts:74](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L74)
+Defined in: react/src/auth/types.ts:74
 
 ## Methods
 
@@ -13,7 +13,7 @@ Defined in: [auth/src/types.ts:74](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **getIdentity**(): `Identity` \| `Promise`\<`Identity`\>
 
-Defined in: [auth/src/types.ts:75](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L75)
+Defined in: react/src/auth/types.ts:75
 
 #### Returns
 
@@ -25,7 +25,7 @@ Defined in: [auth/src/types.ts:75](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **isAuthenticated**(): `boolean` \| `Promise`\<`boolean`\>
 
-Defined in: [auth/src/types.ts:76](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L76)
+Defined in: react/src/auth/types.ts:76
 
 #### Returns
 
@@ -37,7 +37,7 @@ Defined in: [auth/src/types.ts:76](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **signIn**(`options?`): `Promise`\<`Identity`\>
 
-Defined in: [auth/src/types.ts:77](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L77)
+Defined in: react/src/auth/types.ts:77
 
 #### Parameters
 
@@ -55,7 +55,7 @@ Defined in: [auth/src/types.ts:77](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **signOut**(`options?`): `Promise`\<`void`\>
 
-Defined in: [auth/src/types.ts:78](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L78)
+Defined in: react/src/auth/types.ts:78
 
 #### Parameters
 
@@ -75,7 +75,7 @@ Defined in: [auth/src/types.ts:78](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **requestAttributes**(`params`): `Promise`\<[`SignedIdentityAttributes`](SignedIdentityAttributes.md)\>
 
-Defined in: [auth/src/types.ts:79](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L79)
+Defined in: react/src/auth/types.ts:79
 
 #### Parameters
 

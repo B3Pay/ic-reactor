@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/types.ts:63](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L63)
+Defined in: react/src/auth/types.ts:63
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: [auth/src/types.ts:63](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **nonce**: `Uint8Array`
 
-Defined in: [auth/src/types.ts:64](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L64)
+Defined in: react/src/auth/types.ts:64
 
 ---
 
@@ -21,7 +21,7 @@ Defined in: [auth/src/types.ts:64](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **openIdProvider**: [`IdentityAttributeOpenIdProvider`](../type-aliases/IdentityAttributeOpenIdProvider.md)
 
-Defined in: [auth/src/types.ts:65](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L65)
+Defined in: react/src/auth/types.ts:65
 
 ---
 
@@ -29,7 +29,7 @@ Defined in: [auth/src/types.ts:65](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **keys**: `string`[]
 
-Defined in: [auth/src/types.ts:66](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L66)
+Defined in: react/src/auth/types.ts:66
 
 ---
 
@@ -37,7 +37,7 @@ Defined in: [auth/src/types.ts:66](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **identityProvider?**: `string` \| `URL`
 
-Defined in: [auth/src/types.ts:67](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L67)
+Defined in: react/src/auth/types.ts:67
 
 ---
 
@@ -45,7 +45,7 @@ Defined in: [auth/src/types.ts:67](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **windowOpenerFeatures?**: `string`
 
-Defined in: [auth/src/types.ts:68](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L68)
+Defined in: react/src/auth/types.ts:68
 
 ---
 
@@ -53,7 +53,7 @@ Defined in: [auth/src/types.ts:68](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **signIn?**: `boolean`
 
-Defined in: [auth/src/types.ts:69](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L69)
+Defined in: react/src/auth/types.ts:69
 
 ---
 
@@ -61,7 +61,7 @@ Defined in: [auth/src/types.ts:69](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **maxTimeToLive?**: `bigint`
 
-Defined in: [auth/src/types.ts:70](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L70)
+Defined in: react/src/auth/types.ts:70
 
 ---
 
@@ -69,4 +69,4 @@ Defined in: [auth/src/types.ts:70](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **targets?**: `Principal`[]
 
-Defined in: [auth/src/types.ts:71](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L71)
+Defined in: react/src/auth/types.ts:71

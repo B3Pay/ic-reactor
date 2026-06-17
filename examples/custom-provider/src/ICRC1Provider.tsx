@@ -12,7 +12,7 @@ import {
   useMemo,
   useState,
 } from "react"
-import { Reactor } from "@ic-reactor/core"
+import { Reactor } from "@ic-reactor/react"
 import { createActorHooks, ActorHooks } from "@ic-reactor/react"
 import { idlFactory, type ICRC1 } from "./declarations/icrc1"
 import { clientManager } from "./reactor"

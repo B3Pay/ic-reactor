@@ -7,9 +7,9 @@ import {
   AuthenticationManager,
   IdentityAttributeResult,
   IdentityAttributesManager,
-} from "@ic-reactor/auth"
-import { createAuthHooks } from "../src/createAuthHooks"
-import { createIdentityAttributeHooks } from "../src/createIdentityAttributeHooks"
+} from "../../src/auth"
+import { createAuthHooks } from "../../src/hooks/createAuthHooks"
+import { createIdentityAttributeHooks } from "../../src/auth/createIdentityAttributeHooks"
 
 // ============================================================================
 // Helpers

@@ -7,7 +7,7 @@ prev: true
 
 > **localInternetIdentityProvider**(`port`, `canisterId?`): `string`
 
-Defined in: [auth/src/constants.ts:16](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/constants.ts#L16)
+Defined in: react/src/auth/constants.ts:16
 
 Builds the local Internet Identity provider URL for the given replica port.
 

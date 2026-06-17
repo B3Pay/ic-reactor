@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ClientManager } from "@ic-reactor/react"
-import { AuthenticationManager } from "@ic-reactor/auth"
+import { AuthenticationManager } from "@ic-reactor/react"
 
 // Ensure queryClient is initialized stably on the client
 let clientQueryClient: QueryClient | null = null

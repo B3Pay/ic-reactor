@@ -55,8 +55,8 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
    ```typescript
    // src/reactor/hooks.ts
    import { createActorHooks } from "@ic-reactor/react"
-   import { AuthenticationManager } from "@ic-reactor/auth"
-   import { createAuthHooks } from "@ic-reactor/auth-react"
+   import { AuthenticationManager } from "@ic-reactor/react"
+   import { createAuthHooks } from "@ic-reactor/react"
    import { backend, clientManager } from "./index"
 
    // Actor hooks for your canister
@@ -283,8 +283,8 @@ export const backend = new Reactor<Backend>({
 ```typescript
 // src/reactor/hooks.ts
 import { createActorHooks } from "@ic-reactor/react"
-import { AuthenticationManager } from "@ic-reactor/auth"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { AuthenticationManager } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/react"
 import { ledger, backend, clientManager } from "./index"
 
 export const ledgerHooks = createActorHooks(ledger)

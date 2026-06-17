@@ -7,7 +7,7 @@ prev: true
 
 > **DisplayValidator**\<`A`, `M`\> = [`Validator`](Validator.md)\<[`ReactorArgs`](ReactorArgs.md)\<`A`, `M`, `"display"`\>\>
 
-Defined in: [core/src/types/display-reactor.ts:55](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/display-reactor.ts#L55)
+Defined in: [core/src/types/display-reactor.ts:55](https://github.com/B3Pay/ic-reactor/blob/43338f9341f1c13fd8c765762d4f814c0239a271/packages/core/src/types/display-reactor.ts#L55)
 
 Validator that receives display types for a specific method.
 

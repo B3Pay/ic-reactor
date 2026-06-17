@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/identity-attributes-manager.ts:25](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/identity-attributes-manager.ts#L25)
+Defined in: react/src/auth/identity-attributes-manager.ts:25
 
 Requests and decodes signed identity attributes for an authenticated
 Internet Identity session.
@@ -23,7 +23,7 @@ const result = await attributes.request({ keys: ["name"] })
 
 > **new IdentityAttributesManager**(`authentication`): `IdentityAttributesManager`
 
-Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/identity-attributes-manager.ts#L26)
+Defined in: react/src/auth/identity-attributes-manager.ts:26
 
 #### Parameters
 
@@ -41,7 +41,7 @@ Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pa
 
 > `readonly` **authentication**: [`AuthenticationManager`](AuthenticationManager.md)
 
-Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/identity-attributes-manager.ts#L26)
+Defined in: react/src/auth/identity-attributes-manager.ts:26
 
 ## Methods
 
@@ -49,7 +49,7 @@ Defined in: [auth/src/identity-attributes-manager.ts:26](https://github.com/B3Pa
 
 > **request**(`__namedParameters`): `Promise`\<[`IdentityAttributeResult`](../interfaces/IdentityAttributeResult.md)\>
 
-Defined in: [auth/src/identity-attributes-manager.ts:28](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/identity-attributes-manager.ts#L28)
+Defined in: react/src/auth/identity-attributes-manager.ts:28
 
 #### Parameters
 
@@ -67,7 +67,7 @@ Defined in: [auth/src/identity-attributes-manager.ts:28](https://github.com/B3Pa
 
 > **requestOpenId**(`__namedParameters`): `Promise`\<[`IdentityAttributeResult`](../interfaces/IdentityAttributeResult.md)\>
 
-Defined in: [auth/src/identity-attributes-manager.ts:91](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/identity-attributes-manager.ts#L91)
+Defined in: react/src/auth/identity-attributes-manager.ts:91
 
 #### Parameters
 

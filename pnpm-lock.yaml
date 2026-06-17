@@ -84,12 +84,6 @@ importers:
 
   e2e:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: workspace:*
-        version: link:../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: workspace:*
-        version: link:../packages/auth-react
       '@ic-reactor/core':
         specifier: workspace:*
         version: link:../packages/core
@@ -120,7 +114,7 @@ importers:
         version: 7.29.7(@babel/core@7.29.7)
       '@happy-dom/global-registrator':
         specifier: ^20.10.3
-        version: 20.10.3
+        version: 20.10.5
       '@tanstack/react-query':
         specifier: ^5.100.10
         version: 5.101.0(react@19.2.7)
@@ -156,7 +150,7 @@ importers:
         version: 6.2.5
       happy-dom:
         specifier: ^20.10.3
-        version: 20.10.3
+        version: 20.10.5
       jest:
         specifier: ^30.4.2
         version: 30.4.2(@types/node@25.9.3)(ts-node@10.9.2(@types/node@25.9.3)(typescript@6.0.3))
@@ -186,22 +180,13 @@ importers:
         version: 6.0.3
       vitest:
         specifier: ^4.1.9
-        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.5)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
       whatwg-fetch:
         specifier: ^3.6.20
         version: 3.6.20
 
   examples/all-in-one-demo:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -234,7 +219,7 @@ importers:
         version: 2.1.1
       lucide-react:
         specifier: ^1.18.0
-        version: 1.18.0(react@19.2.7)
+        version: 1.20.0(react@19.2.7)
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -287,9 +272,6 @@ importers:
       '@ic-reactor/candid':
         specifier: ^3.6.0
         version: link:../../packages/candid
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -324,15 +306,6 @@ importers:
 
   examples/ckbtc-wallet:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -429,18 +402,12 @@ importers:
 
   examples/custom-provider:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
+      '@icp-sdk/auth':
+        specifier: ^7.1.0
+        version: 7.1.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -473,19 +440,20 @@ importers:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)
 
-  examples/icp-reactor-demo: {}
+  examples/icp-reactor-demo:
+    dependencies:
+      '@icp-sdk/auth':
+        specifier: ^7.1.0
+        version: 7.1.0(@icp-sdk/core@5.4.0)
 
   examples/icp-reactor-demo/frontend:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../../packages/auth-react
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../../packages/react
+      '@icp-sdk/auth':
+        specifier: ^7.1.0
+        version: 7.1.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -526,15 +494,6 @@ importers:
 
   examples/identity-attributes-demo:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -619,15 +578,6 @@ importers:
 
   examples/multiple-canister:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -671,15 +621,6 @@ importers:
 
   examples/nextjs:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -732,15 +673,6 @@ importers:
 
   examples/nextjs-app-router:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -755,7 +687,7 @@ importers:
         version: 5.101.0(react@19.2.7)
       lucide-react:
         specifier: ^1.18.0
-        version: 1.18.0(react@19.2.7)
+        version: 1.20.0(react@19.2.7)
       next:
         specifier: ^16.2.9
         version: 16.2.9(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -790,15 +722,6 @@ importers:
 
   examples/query-demo:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -842,9 +765,6 @@ importers:
       '@ic-reactor/candid':
         specifier: ^3.6.0
         version: link:../../packages/candid
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -876,15 +796,6 @@ importers:
 
   examples/suspense-infinite-query-demo:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -968,15 +879,6 @@ importers:
 
   examples/tanstack-router:
     dependencies:
-      '@ic-reactor/auth':
-        specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/auth-react':
-        specifier: ^3.6.0
-        version: link:../../packages/auth-react
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
       '@ic-reactor/react':
         specifier: ^3.6.0
         version: link:../../packages/react
@@ -1012,7 +914,7 @@ importers:
         version: 2.1.1
       lucide-react:
         specifier: ^1.18.0
-        version: 1.18.0(react@19.2.7)
+        version: 1.20.0(react@19.2.7)
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -1071,12 +973,9 @@ importers:
 
   examples/typescript-demo:
     dependencies:
-      '@ic-reactor/auth':
+      '@ic-reactor/react':
         specifier: ^3.6.0
-        version: link:../../packages/auth
-      '@ic-reactor/core':
-        specifier: ^3.6.0
-        version: link:../../packages/core
+        version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
         version: 7.1.0(@icp-sdk/core@5.4.0)
@@ -1186,86 +1085,6 @@ importers:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)
 
-  packages/auth:
-    dependencies:
-      '@ic-reactor/core':
-        specifier: workspace:^
-        version: link:../core
-    devDependencies:
-      '@icp-sdk/auth':
-        specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
-      '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
-      '@size-limit/preset-small-lib':
-        specifier: ^12.1.0
-        version: 12.1.0(size-limit@12.1.0(jiti@2.7.0))
-      '@tanstack/query-core':
-        specifier: ^5.100.10
-        version: 5.101.0
-      size-limit:
-        specifier: ^12.1.0
-        version: 12.1.0(jiti@2.7.0)
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
-
-  packages/auth-react:
-    dependencies:
-      '@ic-reactor/auth':
-        specifier: workspace:^
-        version: link:../auth
-      '@ic-reactor/core':
-        specifier: workspace:^
-        version: link:../core
-    devDependencies:
-      '@icp-sdk/auth':
-        specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
-      '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
-      '@size-limit/preset-small-lib':
-        specifier: ^12.1.0
-        version: 12.1.0(size-limit@12.1.0(jiti@2.7.0))
-      '@tanstack/react-query':
-        specifier: ^5.100.10
-        version: 5.101.0(react@19.2.7)
-      '@testing-library/dom':
-        specifier: ^10.4.1
-        version: 10.4.1
-      '@testing-library/jest-dom':
-        specifier: ^6.9.1
-        version: 6.9.1
-      '@testing-library/react':
-        specifier: ^16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@types/react':
-        specifier: ^19.2.17
-        version: 19.2.17
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.17)
-      fake-indexeddb:
-        specifier: ^6.2.5
-        version: 6.2.5
-      jsdom:
-        specifier: ^29.1.1
-        version: 29.1.1(@noble/hashes@2.2.0)
-      react:
-        specifier: ^19.2.7
-        version: 19.2.7
-      react-dom:
-        specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
-      size-limit:
-        specifier: ^12.1.0
-        version: 12.1.0(jiti@2.7.0)
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
-
   packages/candid:
     dependencies:
       '@ic-reactor/core':
@@ -1295,7 +1114,7 @@ importers:
         version: 12.1.0(jiti@2.7.0)
       vitest:
         specifier: ^4.1.9
-        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.5)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
 
   packages/cli:
     dependencies:
@@ -1348,7 +1167,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: ^4.1.9
-        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.5)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
 
   packages/core:
     dependencies:
@@ -1376,7 +1195,7 @@ importers:
         version: 12.1.0(jiti@2.7.0)
       vitest:
         specifier: ^4.1.9
-        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.5)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
 
   packages/parser:
     devDependencies:
@@ -1406,7 +1225,7 @@ importers:
         version: 12.1.0(jiti@2.7.0)
       vitest:
         specifier: ^4.1.9
-        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.5)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
       wasm-pack:
         specifier: 0.15.0
         version: 0.15.0
@@ -1417,6 +1236,9 @@ importers:
         specifier: workspace:^
         version: link:../core
     devDependencies:
+      '@icp-sdk/auth':
+        specifier: ^7.1.0
+        version: 7.1.0(@icp-sdk/core@5.4.0)
       '@icp-sdk/core':
         specifier: ^5.4.0
         version: 5.4.0
@@ -1458,7 +1280,7 @@ importers:
         version: 12.1.0(jiti@2.7.0)
       vitest:
         specifier: ^4.1.9
-        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.5)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
 
   packages/vite-plugin:
     dependencies:
@@ -1483,7 +1305,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: ^4.1.9
-        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+        version: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.5)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
 
 packages:
 
@@ -2655,8 +2477,8 @@ packages:
   '@gerrit0/mini-shiki@3.23.0':
     resolution: {integrity: sha512-bEMORlG0cqdjVyCEuU0cDQbORWX+kYCeo0kV1lbxF5bt4r7SID2l9bqsxJEM0zndaxpOUT7riCyIVEuqq/Ynxg==}
 
-  '@happy-dom/global-registrator@20.10.3':
-    resolution: {integrity: sha512-rw10ox5gAdKT5UScrrhLRE8y9t2xzvRx2lUNwbXlPogJixYGciElqywuLlcmX+Rgcif0sF2wWUwqUEob1BKZTA==}
+  '@happy-dom/global-registrator@20.10.5':
+    resolution: {integrity: sha512-U64VYxPsoO4RxNHzzp7N+sMHmXaY+GDzcc272mTfZFt0LKuuf7hoNCxna4+T472p+GRKUOtYlLLnVlxCWAcobw==}
     engines: {node: '>=20.0.0'}
 
   '@humanfs/core@0.19.2':
@@ -4531,11 +4353,6 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  acorn@8.17.0:
-    resolution: {integrity: sha512-xRQbDb9BnwDafYNn6Vwl839DYVjqXYb1XVGtWAZ1kcDc6iwAL4hg3B1dZlRiuENFeO2H53gFG3in621AdERVAg==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
@@ -4621,8 +4438,8 @@ packages:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
 
-  ast-v8-to-istanbul@1.0.4:
-    resolution: {integrity: sha512-0bC0/4bTSrnwdhU3IsZDwEdojvuPrSg59OYZfKsLRtJZ0u8VBx9DebfqqG8bRdCC0I7vjgxmPi41P0lpkhJHtA==}
+  ast-v8-to-istanbul@1.0.3:
+    resolution: {integrity: sha512-jCMQ6ZylLPudp0CDfBmQBZUsrh1/8psbmu9ibeVWKuHWD0YrH9YABwlKu5kVEFoT0GCQQW9Z/SxfuEbbkGQCRg==}
 
   astring@1.9.0:
     resolution: {integrity: sha512-LElXdjswlqjWrPpJFg1Fx4wpkOCxj1TDHlSV4PlaRxHGWko024xICaa97ZkMfs6DRKlCguiAI+rbXv5GWwXIkg==}
@@ -5509,8 +5326,8 @@ packages:
     engines: {node: '>=0.4.7'}
     hasBin: true
 
-  happy-dom@20.10.3:
-    resolution: {integrity: sha512-Hjdiy8RziuCcn5z04QI/rlsNuQoG8P0xxjgvsSMpi89cvIXIOcucQtiHS1yHSShxoBcSCeYqAskINmTiy/mlfw==}
+  happy-dom@20.10.5:
+    resolution: {integrity: sha512-0aA6BQoMnpcRE/c1E8ZyF2jXnET7MJskereWOXher4CJuYjrI5esN0Az/1NPMD4KeWUbampBGw2MGqabMPFIbg==}
     engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
@@ -6198,8 +6015,8 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
-  lucide-react@1.18.0:
-    resolution: {integrity: sha512-LZDb7H/0YfM+RJncD0hDQRCAu+vSGODqpe35TuVI8EuXaRjkczbsx7p8dY4J87F/MUSj6bpYqeI8nw8qXaAdmA==}
+  lucide-react@1.20.0:
+    resolution: {integrity: sha512-jhXLeC/7m0/tjL1nzMdKk6x256zWA6AtbhTVreHOiKPoeX2d6MK4FbyIQPpVq0E6iPWBisyy1TW+pEge/uMEuQ==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -6592,10 +6409,6 @@ packages:
 
   obug@2.1.2:
     resolution: {integrity: sha512-AWGB9WFcRXOQs48Z/udjI5ZcZMHXwX8XPByNpOydgcGsDLIzjGizhoMWJyKAWze7AVW/2W1i+/gPX4YtKe5cyg==}
-    engines: {node: '>=12.20.0'}
-
-  obug@2.1.3:
-    resolution: {integrity: sha512-9miFgM2OFba7hB+pRgvtV84pYTBaoTHohvmIgiRt6dRIzbwEOIaNaP+dIlGs2fNFoB0SeISs0Jz5WFVRid6Xyg==}
     engines: {node: '>=12.20.0'}
 
   ofetch@1.5.1:
@@ -9546,10 +9359,10 @@ snapshots:
       '@shikijs/types': 3.23.0
       '@shikijs/vscode-textmate': 10.0.2
 
-  '@happy-dom/global-registrator@20.10.3':
+  '@happy-dom/global-registrator@20.10.5':
     dependencies:
       '@types/node': 25.9.3
-      happy-dom: 20.10.3
+      happy-dom: 20.10.5
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -9932,7 +9745,7 @@ snapshots:
       '@types/estree-jsx': 1.0.5
       '@types/hast': 3.0.4
       '@types/mdx': 2.0.14
-      acorn: 8.17.0
+      acorn: 8.16.0
       collapse-white-space: 2.1.0
       devlop: 1.1.0
       estree-util-is-identifier-name: 3.0.0
@@ -9941,7 +9754,7 @@ snapshots:
       hast-util-to-jsx-runtime: 2.3.6
       markdown-extensions: 2.0.0
       recma-build-jsx: 1.0.0
-      recma-jsx: 1.0.1(acorn@8.17.0)
+      recma-jsx: 1.0.1(acorn@8.16.0)
       recma-stringify: 1.0.0
       rehype-recma: 1.0.0
       remark-mdx: 3.1.1
@@ -11234,15 +11047,15 @@ snapshots:
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.1.9
-      ast-v8-to-istanbul: 1.0.4
+      ast-v8-to-istanbul: 1.0.3
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-report: 3.0.1
       istanbul-reports: 3.2.0
       magicast: 0.5.3
-      obug: 2.1.3
+      obug: 2.1.2
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+      vitest: 4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.5)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
 
   '@vitest/expect@4.1.9':
     dependencies:
@@ -11293,17 +11106,11 @@ snapshots:
     dependencies:
       acorn: 8.16.0
 
-  acorn-jsx@5.3.2(acorn@8.17.0):
-    dependencies:
-      acorn: 8.17.0
-
   acorn-walk@8.3.5:
     dependencies:
       acorn: 8.16.0
 
   acorn@8.16.0: {}
-
-  acorn@8.17.0: {}
 
   agent-base@7.1.4: {}
 
@@ -11382,7 +11189,7 @@ snapshots:
 
   assertion-error@2.0.1: {}
 
-  ast-v8-to-istanbul@1.0.4:
+  ast-v8-to-istanbul@1.0.3:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       estree-walker: 3.0.3
@@ -12015,7 +11822,7 @@ snapshots:
   esast-util-from-js@2.0.1:
     dependencies:
       '@types/estree-jsx': 1.0.5
-      acorn: 8.17.0
+      acorn: 8.16.0
       esast-util-from-estree: 2.0.0
       vfile-message: 4.0.3
 
@@ -12150,8 +11957,8 @@ snapshots:
 
   espree@11.2.0:
     dependencies:
-      acorn: 8.17.0
-      acorn-jsx: 5.3.2(acorn@8.17.0)
+      acorn: 8.16.0
+      acorn-jsx: 5.3.2(acorn@8.16.0)
       eslint-visitor-keys: 5.0.1
 
   esprima@4.0.1: {}
@@ -12408,7 +12215,7 @@ snapshots:
     optionalDependencies:
       uglify-js: 3.19.3
 
-  happy-dom@20.10.3:
+  happy-dom@20.10.5:
     dependencies:
       '@types/node': 25.9.3
       '@types/whatwg-mimetype': 3.0.2
@@ -13370,7 +13177,7 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lucide-react@1.18.0(react@19.2.7):
+  lucide-react@1.20.0(react@19.2.7):
     dependencies:
       react: 19.2.7
 
@@ -13911,7 +13718,7 @@ snapshots:
 
   mlly@1.8.2:
     dependencies:
-      acorn: 8.17.0
+      acorn: 8.16.0
       pathe: 2.0.3
       pkg-types: 1.3.1
       ufo: 1.6.4
@@ -14035,8 +13842,6 @@ snapshots:
   object-assign@4.1.1: {}
 
   obug@2.1.2: {}
-
-  obug@2.1.3: {}
 
   ofetch@1.5.1:
     dependencies:
@@ -14380,10 +14185,10 @@ snapshots:
       estree-util-build-jsx: 3.0.1
       vfile: 6.0.3
 
-  recma-jsx@1.0.1(acorn@8.17.0):
+  recma-jsx@1.0.1(acorn@8.16.0):
     dependencies:
-      acorn: 8.17.0
-      acorn-jsx: 5.3.2(acorn@8.17.0)
+      acorn: 8.16.0
+      acorn-jsx: 5.3.2(acorn@8.16.0)
       estree-util-to-js: 2.0.0
       recma-parse: 1.0.0
       recma-stringify: 1.0.0
@@ -15732,7 +15537,7 @@ snapshots:
     optionalDependencies:
       vite: 7.3.5(@types/node@25.9.3)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.8.3)
 
-  vitest@4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)):
+  vitest@4.1.9(@types/node@25.9.3)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.5)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.9
       '@vitest/mocker': 4.1.9(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
@@ -15744,7 +15549,7 @@ snapshots:
       es-module-lexer: 2.1.0
       expect-type: 1.3.0
       magic-string: 0.30.21
-      obug: 2.1.3
+      obug: 2.1.2
       pathe: 2.0.3
       picomatch: 4.0.4
       std-env: 4.1.0
@@ -15757,7 +15562,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.9.3
       '@vitest/coverage-v8': 4.1.9(vitest@4.1.9)
-      happy-dom: 20.10.3
+      happy-dom: 20.10.5
       jsdom: 29.1.1(@noble/hashes@2.2.0)
     transitivePeerDependencies:
       - msw

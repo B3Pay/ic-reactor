@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { QueryClient } from "@tanstack/query-core"
+import { QueryClient } from "@tanstack/react-query"
 import { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "@ic-reactor/core"
-import { AuthenticationManager, IdentityAttributesManager } from "../src"
+import {
+  AuthenticationManager,
+  IdentityAttributesManager,
+} from "../../src/auth"
 
 const authClientMocks = vi.hoisted(() => ({
   factory: vi.fn(),
@@ -120,7 +123,10 @@ describe("IdentityAttributesManager", () => {
     const clientManager = new ClientManager({ queryClient: new QueryClient() })
     vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
     const identityAttributes = new IdentityAttributesManager(
-      new AuthenticationManager({ clientManager })
+      new AuthenticationManager({
+        clientManager,
+        identityProvider: "https://id.ai/authorize",
+      })
     )
 
     await identityAttributes.requestOpenId({

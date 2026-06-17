@@ -14,8 +14,6 @@ trigger:
     - ic-reactor package
     - "@ic-reactor/core"
     - "@ic-reactor/react"
-    - "@ic-reactor/auth"
-    - "@ic-reactor/auth-react"
     - "@ic-reactor/candid"
     - "@ic-reactor/parser"
     - "@ic-reactor/codegen"

@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [core/src/types/client.ts:10](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/client.ts#L10)
+Defined in: [core/src/types/client.ts:10](https://github.com/B3Pay/ic-reactor/blob/43338f9341f1c13fd8c765762d4f814c0239a271/packages/core/src/types/client.ts#L10)
 
 Parameters for configuring a ClientManager instance.
 
@@ -15,7 +15,7 @@ Parameters for configuring a ClientManager instance.
 
 > **queryClient**: `QueryClient`
 
-Defined in: [core/src/types/client.ts:14](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/client.ts#L14)
+Defined in: [core/src/types/client.ts:14](https://github.com/B3Pay/ic-reactor/blob/43338f9341f1c13fd8c765762d4f814c0239a271/packages/core/src/types/client.ts#L14)
 
 The TanStack QueryClient used for caching and state management.
 
@@ -25,6 +25,6 @@ The TanStack QueryClient used for caching and state management.
 
 > `optional` **agentOptions?**: `HttpAgentOptions`
 
-Defined in: [core/src/types/client.ts:18](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/types/client.ts#L18)
+Defined in: [core/src/types/client.ts:18](https://github.com/B3Pay/ic-reactor/blob/43338f9341f1c13fd8c765762d4f814c0239a271/packages/core/src/types/client.ts#L18)
 
 Optional configuration for the underlying HttpAgent.

@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useICAuth } from "./providers"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { createAuthHooks } from "@ic-reactor/react"
 
 export default function AuthSection() {
   const { authentication } = useICAuth()

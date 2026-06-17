@@ -19,9 +19,7 @@ pre-release versions until release automation performs the final version bump.
 | Package                   | Responsibility                                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `@ic-reactor/core`        | Framework-agnostic runtime with `ClientManager`, `Reactor`, `DisplayReactor`, and `@tanstack/query-core` integration. No React imports. |
-| `@ic-reactor/react`       | React hooks, `defineReactor`, `createActorHooks`, direct reactor hooks, and query/mutation factories.                                   |
-| `@ic-reactor/auth`        | Non-React Internet Identity auth state, auth client loading, and signed identity attributes.                                            |
-| `@ic-reactor/auth-react`  | React hooks wrapping `@ic-reactor/auth` managers.                                                                                       |
+| `@ic-reactor/react`       | React hooks, `defineReactor`, `createActorHooks`, query/mutation factories, Internet Identity auth, and identity-attribute hooks.       |
 | `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters, `CandidReactor`, display variants, and metadata reactors.                                     |
 | `@ic-reactor/parser`      | Rust/WASM Candid parser that publishes web, nodejs, and bundler outputs.                                                                |
 | `@ic-reactor/codegen`     | Shared generator pipeline for declarations, reactor files, stable wrappers, and client helpers.                                         |
@@ -45,7 +43,7 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 Auth helpers:
 
 ```bash
-pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth
+pnpm add @ic-reactor/react @icp-sdk/auth
 ```
 
 Dynamic Candid:
@@ -177,15 +175,13 @@ Prefer `query.getQueryKey()` or `query.invalidate()` over hard-coded cache keys.
 
 ## Auth
 
-`@ic-reactor/auth` is non-React and owns `AuthenticationManager`,
-`AuthClientLoader`, `AuthStateStore`, `IdentityAttributesManager`, and auth
-constants/types.
-
-`@ic-reactor/auth-react` owns React hooks over those managers.
+`@ic-reactor/react` owns `AuthenticationManager`,
+`IdentityAttributesManager`, auth constants/types, and React hooks over those
+managers.
 
 ```ts
-import { AuthenticationManager } from "@ic-reactor/auth"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { AuthenticationManager } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/react"
 
 export const authentication = new AuthenticationManager({ clientManager })
 export const { useAuth, useAgentState, useUserPrincipal } =
@@ -236,7 +232,7 @@ verify the affected CLI/Vite consumer.
 | Docs only             | `pnpm format:check`, `pnpm docs:build`                                             |
 | React hooks/factories | `pnpm --filter @ic-reactor/react test`                                             |
 | Core runtime          | `pnpm --filter @ic-reactor/core test`                                              |
-| Auth runtime/hooks    | `pnpm --filter @ic-reactor/auth test`, `pnpm --filter @ic-reactor/auth-react test` |
+| React auth            | `pnpm --filter @ic-reactor/react test`                                             |
 | Parser/candid         | `pnpm --filter @ic-reactor/parser build`, `pnpm --filter @ic-reactor/candid test`  |
 | Codegen               | `pnpm --filter @ic-reactor/codegen test` plus affected CLI/Vite checks             |
 | Broad package change  | `pnpm exec tsc --noEmit`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`            |

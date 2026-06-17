@@ -23,5 +23,8 @@
     "react"
   ],
   "license": "MIT",
-  "packageManager": "pnpm@10.30.3"
+  "packageManager": "pnpm@10.30.3",
+  "dependencies": {
+    "@icp-sdk/auth": "^7.1.0"
+  }
 }

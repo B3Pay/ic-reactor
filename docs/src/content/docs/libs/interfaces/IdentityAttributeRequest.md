@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/types.ts:9](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L9)
+Defined in: react/src/auth/types.ts:9
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: [auth/src/types.ts:9](https://github.com/B3Pay/ic-reactor/blob/f3269
 
 > **keys**: `string`[]
 
-Defined in: [auth/src/types.ts:10](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L10)
+Defined in: react/src/auth/types.ts:10
 
 ---
 
@@ -21,4 +21,4 @@ Defined in: [auth/src/types.ts:10](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > **nonce**: `Uint8Array`
 
-Defined in: [auth/src/types.ts:11](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L11)
+Defined in: react/src/auth/types.ts:11

@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [auth/src/types.ts:46](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L46)
+Defined in: react/src/auth/types.ts:46
 
 ## Extends
 
@@ -17,7 +17,7 @@ Defined in: [auth/src/types.ts:46](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **identityProvider?**: `string` \| `URL`
 
-Defined in: [auth/src/types.ts:36](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L36)
+Defined in: react/src/auth/types.ts:36
 
 #### Inherited from
 
@@ -29,7 +29,7 @@ Defined in: [auth/src/types.ts:36](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **windowOpenerFeatures?**: `string`
 
-Defined in: [auth/src/types.ts:37](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L37)
+Defined in: react/src/auth/types.ts:37
 
 #### Inherited from
 
@@ -41,7 +41,7 @@ Defined in: [auth/src/types.ts:37](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **openIdProvider?**: [`IdentityAttributeOpenIdProvider`](../type-aliases/IdentityAttributeOpenIdProvider.md)
 
-Defined in: [auth/src/types.ts:38](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L38)
+Defined in: react/src/auth/types.ts:38
 
 #### Inherited from
 
@@ -53,7 +53,7 @@ Defined in: [auth/src/types.ts:38](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **maxTimeToLive?**: `bigint`
 
-Defined in: [auth/src/types.ts:42](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L42)
+Defined in: react/src/auth/types.ts:42
 
 #### Inherited from
 
@@ -65,7 +65,7 @@ Defined in: [auth/src/types.ts:42](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **targets?**: `Principal`[]
 
-Defined in: [auth/src/types.ts:43](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L43)
+Defined in: react/src/auth/types.ts:43
 
 #### Inherited from
 
@@ -77,7 +77,7 @@ Defined in: [auth/src/types.ts:43](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **onSuccess?**: () => `void` \| `Promise`\<`void`\>
 
-Defined in: [auth/src/types.ts:48](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L48)
+Defined in: react/src/auth/types.ts:48
 
 #### Returns
 
@@ -89,7 +89,7 @@ Defined in: [auth/src/types.ts:48](https://github.com/B3Pay/ic-reactor/blob/f326
 
 > `optional` **onError?**: (`error?`) => `void` \| `Promise`\<`void`\>
 
-Defined in: [auth/src/types.ts:49](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/auth/src/types.ts#L49)
+Defined in: react/src/auth/types.ts:49
 
 #### Parameters
 

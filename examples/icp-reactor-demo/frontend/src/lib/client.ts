@@ -12,8 +12,8 @@
 
 import { QueryClient } from "@tanstack/react-query"
 import { ClientManager } from "@ic-reactor/react"
-import { AuthenticationManager } from "@ic-reactor/auth"
-import { createAuthHooks } from "@ic-reactor/auth-react"
+import { AuthenticationManager } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/react"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY CLIENT

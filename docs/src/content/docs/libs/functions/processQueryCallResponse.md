@@ -7,7 +7,7 @@ prev: true
 
 > **processQueryCallResponse**(`response`, `canisterId`, `methodName`): `Uint8Array`
 
-Defined in: [core/src/utils/agent.ts:38](https://github.com/B3Pay/ic-reactor/blob/f326971626a10001cc3bcf63e489ae66bc32d07c/packages/core/src/utils/agent.ts#L38)
+Defined in: [core/src/utils/agent.ts:38](https://github.com/B3Pay/ic-reactor/blob/43338f9341f1c13fd8c765762d4f814c0239a271/packages/core/src/utils/agent.ts#L38)
 
 Process a query call response following the exact logic from @icp-sdk/core/agent Actor.
 

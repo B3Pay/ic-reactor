@@ -23,7 +23,7 @@ factories designed around TanStack Query.
 pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
 
 # Optional: Internet Identity support and React auth hooks
-pnpm add @ic-reactor/auth @ic-reactor/auth-react @icp-sdk/auth
+pnpm add @ic-reactor/react @icp-sdk/auth
 ```
 
 ## What's Included
@@ -85,8 +85,8 @@ email and profile attributes:
 import {
   AuthenticationManager,
   IdentityAttributesManager,
-} from "@ic-reactor/auth"
-import { createIdentityAttributeHooks } from "@ic-reactor/auth-react"
+} from "@ic-reactor/react"
+import { createIdentityAttributeHooks } from "@ic-reactor/react"
 
 const authentication = new AuthenticationManager({ clientManager })
 const identityAttributes = new IdentityAttributesManager(authentication)

@@ -308,6 +308,7 @@ export default defineConfig({
                   items: [
                     { label: "Overview", link: "/packages/react" },
                     { label: "React Setup", link: "/framework/react-setup" },
+                    { label: "Authentication", link: "/guides/authentication" },
                     {
                       label: "createActorHooks",
                       link: "/reference/createactorhooks/overview",
@@ -340,33 +341,6 @@ export default defineConfig({
                       link: "/reference/displayreactor",
                     },
                     { label: "Validation", link: "/reference/reactvalidation" },
-                  ],
-                },
-                {
-                  label: "@ic-reactor/auth",
-                  items: [
-                    { label: "Guide", link: "/guides/authentication" },
-                    {
-                      label: "ClientManager Auth",
-                      link: "/reference/clientmanager",
-                    },
-                  ],
-                },
-                {
-                  label: "@ic-reactor/auth-react",
-                  items: [
-                    {
-                      label: "createAuthHooks",
-                      link: "/reference/createauthhooks/overview",
-                    },
-                    {
-                      label: "useAuth",
-                      link: "/reference/createauthhooks/useauth",
-                    },
-                    {
-                      label: "useAgentState",
-                      link: "/reference/createauthhooks/useagentstate",
-                    },
                   ],
                 },
                 {

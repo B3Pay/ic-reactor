@@ -1,12 +1,12 @@
-import { ClientManager } from "@ic-reactor/core"
+import { ClientManager } from "@ic-reactor/react"
 import {
   AuthenticationManager,
   IdentityAttributesManager,
-} from "@ic-reactor/auth"
+} from "@ic-reactor/react"
 import {
   createAuthHooks,
   createIdentityAttributeHooks,
-} from "@ic-reactor/auth-react"
+} from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient({

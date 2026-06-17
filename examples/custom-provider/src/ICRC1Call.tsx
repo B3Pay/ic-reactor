@@ -3,7 +3,7 @@
  *
  * A styled component that displays the result of calling an ICRC1 method.
  */
-import { ReactorArgs } from "@ic-reactor/core"
+import { ReactorArgs } from "@ic-reactor/react"
 import { useICRC1Context } from "./ICRC1Provider"
 import type { ICRC1 } from "./declarations/icrc1"
 
