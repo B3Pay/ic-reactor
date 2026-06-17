@@ -26,6 +26,8 @@ type AuthClientConstructor = {
   new (options?: AuthenticationClientOptions): AuthClientLike
 }
 
+const AUTH_CLIENT_MODULE = "@icp-sdk/auth/client"
+
 /**
  * Manages Internet Identity sign-in, session restoration, and authentication
  * state for a {@link ClientManager}.
@@ -405,7 +407,11 @@ export class AuthenticationManager {
     }
 
     if (!this.authClientConstructorPromise) {
-      this.authClientConstructorPromise = import("@icp-sdk/auth/client")
+      // Keep the optional auth peer out of non-auth bundles. Vite/Rollup/esbuild
+      // can otherwise try to resolve this package even when auth APIs are unused.
+      this.authClientConstructorPromise = import(
+        /* @vite-ignore */ AUTH_CLIENT_MODULE
+      )
         .then((authModule) => {
           const AuthClient = (
             authModule as { AuthClient?: AuthClientConstructor }
