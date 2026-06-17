@@ -10,7 +10,7 @@ and reusable query or mutation factories built around TanStack Query.
 pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 
 # Optional: Internet Identity login helpers and hooks
-pnpm add @ic-reactor/react @icp-sdk/auth
+pnpm add @icp-sdk/auth
 ```
 
 ## Quick Start
