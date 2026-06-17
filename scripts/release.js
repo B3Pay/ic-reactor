@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
-import { execSync } from "child_process"
+import { execFileSync } from "child_process"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
@@ -15,6 +15,15 @@ if (!version) {
     "Please provide a version: node scripts/release.js 3.0.0-beta.3"
   )
   process.exit(1)
+}
+
+if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
+  console.error(`Invalid version: ${version}`)
+  process.exit(1)
+}
+
+function run(command, args, options = {}) {
+  execFileSync(command, args, { stdio: "inherit", cwd: rootDir, ...options })
 }
 
 function updatePackageJson(filePath, newVersion) {
@@ -42,7 +51,7 @@ updatePackageJson("packages/candid/package.json", version)
 // 2. Update library lockfile while examples still point to workspace
 console.log("\n🔗 Updating lockfile (pnpm install)...")
 try {
-  execSync("pnpm install --no-frozen-lockfile", { stdio: "inherit" })
+  run("pnpm", ["install", "--no-frozen-lockfile"])
 } catch (error) {
   console.error("❌ pnpm install failed.")
   process.exit(1)
@@ -51,9 +60,7 @@ try {
 // 3. Sync examples to literal version for the Git Commit (StackBlitz support)
 try {
   console.log("\n📦 Syncing examples to literal version for StackBlitz...")
-  execSync(`node scripts/sync-example-versions.js ${version}`, {
-    stdio: "inherit",
-  })
+  run("node", ["scripts/sync-example-versions.js", version])
 } catch (error) {
   console.error("❌ Failed to sync example versions")
 }
@@ -61,14 +68,14 @@ try {
 // 4. Git Commit and Tag
 console.log("\n📂 Creating release commit and tag...")
 try {
-  execSync("git add .", { stdio: "inherit" })
-  execSync(`git commit -m "chore: release v${version}"`, { stdio: "inherit" })
+  run("git", ["add", "."])
+  run("git", ["commit", "-m", `chore: release v${version}`])
 
   try {
-    execSync(`git tag -d v${version}`, { stdio: "ignore" })
+    run("git", ["tag", "-d", `v${version}`], { stdio: "ignore" })
   } catch (e) {}
 
-  execSync(`git tag v${version}`, { stdio: "inherit" })
+  run("git", ["tag", `v${version}`])
 } catch (error) {
   console.error("❌ Git operations failed.")
 }
@@ -81,9 +88,25 @@ if (shouldPublish || dryRun) {
   console.log(`\n📤 Publishing to npm${dryRun ? " (DRY RUN)" : ""}...`)
   try {
     // Publish runtime libraries together; parser, docs, e2e, and tooling use separate workflows.
-    const publishCmd = `pnpm --filter "@ic-reactor/core" --filter "@ic-reactor/react" --filter "@ic-reactor/auth" --filter "@ic-reactor/auth-react" --filter "@ic-reactor/candid" publish --no-git-checks --access public${dryRun ? " --dry-run" : ""}`
-    console.log(`Running: ${publishCmd}\n`)
-    execSync(publishCmd, { stdio: "inherit", cwd: rootDir })
+    const publishArgs = [
+      "--filter",
+      "@ic-reactor/core",
+      "--filter",
+      "@ic-reactor/react",
+      "--filter",
+      "@ic-reactor/auth",
+      "--filter",
+      "@ic-reactor/auth-react",
+      "--filter",
+      "@ic-reactor/candid",
+      "publish",
+      "--no-git-checks",
+      "--access",
+      "public",
+    ]
+    if (dryRun) publishArgs.push("--dry-run")
+    console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)
+    run("pnpm", publishArgs)
     console.log("\n✅ Published successfully!")
   } catch (error) {
     console.error("\n❌ Publish failed:", error.message)

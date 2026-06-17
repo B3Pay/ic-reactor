@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
-import { execSync } from "child_process"
+import { execFileSync } from "child_process"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
@@ -15,6 +15,15 @@ const dryRun = process.argv.includes("--dry-run")
 if (!version || version.startsWith("--")) {
   console.error("Please provide a version: node scripts/release-tools.js 0.1.0")
   process.exit(1)
+}
+
+if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
+  console.error(`Invalid version: ${version}`)
+  process.exit(1)
+}
+
+function run(command, args, options = {}) {
+  execFileSync(command, args, { stdio: "inherit", cwd: rootDir, ...options })
 }
 
 function updatePackageJson(filePath, newVersion) {
@@ -45,10 +54,7 @@ packages.forEach((pkg) => updatePackageJson(pkg, version))
 console.log("\n🔗 Updating lockfile (pnpm install)...")
 try {
   // We need to update the lockfile because versions changed
-  execSync("pnpm install --no-frozen-lockfile", {
-    stdio: "inherit",
-    cwd: rootDir,
-  })
+  run("pnpm", ["install", "--no-frozen-lockfile"])
 } catch (error) {
   console.error("❌ pnpm install failed.")
   process.exit(1)
@@ -59,18 +65,15 @@ console.log("\n📂 Creating release commit and tag...")
 const tagName = `tools-v${version}`
 
 try {
-  execSync("git add .", { stdio: "inherit", cwd: rootDir })
-  execSync(`git commit -m "chore: release tools v${version}"`, {
-    stdio: "inherit",
-    cwd: rootDir,
-  })
+  run("git", ["add", "."])
+  run("git", ["commit", "-m", `chore: release tools v${version}`])
 
   // Tagging
   try {
-    execSync(`git tag -d ${tagName}`, { stdio: "ignore", cwd: rootDir })
+    run("git", ["tag", "-d", tagName], { stdio: "ignore" })
   } catch (e) {}
 
-  execSync(`git tag ${tagName}`, { stdio: "inherit", cwd: rootDir })
+  run("git", ["tag", tagName])
   console.log(`✅ Tagged ${tagName}`)
 } catch (error) {
   console.error("❌ Git operations failed:", error.message)
@@ -81,17 +84,20 @@ try {
 if (shouldPublish || dryRun) {
   console.log(`\n📤 Publishing tools to npm${dryRun ? " (DRY RUN)" : ""}...`)
   try {
-    const filterArgs = packages
-      .map((p) => `--filter "./${dirname(p)}"`)
-      .join(" ")
+    const filterArgs = packages.flatMap((p) => ["--filter", `./${dirname(p)}`])
 
     // --no-git-checks because we just committed/tagged but haven't pushed yet
-    const publishCmd = `pnpm ${filterArgs} publish --no-git-checks --access public${
-      dryRun ? " --dry-run" : ""
-    }`
+    const publishArgs = [
+      ...filterArgs,
+      "publish",
+      "--no-git-checks",
+      "--access",
+      "public",
+    ]
+    if (dryRun) publishArgs.push("--dry-run")
 
-    console.log(`Running: ${publishCmd}\n`)
-    execSync(publishCmd, { stdio: "inherit", cwd: rootDir })
+    console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)
+    run("pnpm", publishArgs)
     console.log("\n✅ Tools published successfully!")
   } catch (error) {
     console.error("\n❌ Publish failed:", error.message)
