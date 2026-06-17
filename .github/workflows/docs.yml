@@ -147,18 +147,38 @@ jobs:
                 })();
               </script>`
 
+          const linkRewrites = [
+            ["https://ic-reactor.b3pay.net/ic-reactor/", "/v2/"],
+            ["ic-reactor.b3pay.net/ic-reactor", "ic-reactor.b3pay.net/v2"],
+            ["https://b3pay.github.io/ic-reactor/modules/core.html", "/v4/packages/core/"],
+            ["https://b3pay.github.io/ic-reactor/modules/parser.html", "/v4/packages/parser/"],
+            ["https://b3pay.github.io/ic-reactor/modules/react.html", "/v4/packages/react/"],
+            ["https://b3pay.github.io/ic-reactor/modules/visitor.html", "/v4/packages/candid/"],
+            ["https://b3pay.github.io/ic-reactor/", "/v4/"],
+          ]
+
           function walk(dir) {
             if (!fs.existsSync(dir)) return []
             return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
               const fullPath = path.join(dir, entry.name)
               if (entry.isDirectory()) return walk(fullPath)
-              return entry.isFile() && entry.name.endsWith(".html") ? [fullPath] : []
+              return entry.isFile() && /\.(html|md|mdx)$/.test(entry.name)
+                ? [fullPath]
+                : []
             })
           }
 
           for (const file of walk("final-docs")) {
             let html = fs.readFileSync(file, "utf8")
-            if (!html.includes('id="version-select"')) continue
+
+            for (const [from, to] of linkRewrites) {
+              html = html.split(from).join(to)
+            }
+
+            if (!html.includes('id="version-select"')) {
+              fs.writeFileSync(file, html)
+              continue
+            }
 
             html = html.replace(
               /<select id="version-select"[\s\S]*?<\/select>/,
