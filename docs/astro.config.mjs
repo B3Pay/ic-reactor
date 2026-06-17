@@ -229,6 +229,10 @@ export default defineConfig({
             { label: "All-in-One Demo", link: "/examples/all-in-one-demo" },
             { label: "ICP Reactor Demo", link: "/examples/icp-reactor" },
             { label: "Query Demo", link: "/examples/query-demo" },
+            {
+              label: "Identity Attributes",
+              link: "/examples/identity-attributes",
+            },
             { label: "Infinite Query", link: "/examples/infinite-query" },
             {
               label: "Result Types Demo",
@@ -237,6 +241,10 @@ export default defineConfig({
             {
               label: "Metadata Reactor Demo",
               link: "/examples/metadata-reactor",
+            },
+            {
+              label: "Metadata Capabilities",
+              link: "/examples/metadata-reactor-capabilities",
             },
             { label: "Candid Parser", link: "/examples/candid-parser" },
             { label: "Vite Plugin Demo", link: "/examples/vite-plugin" },
@@ -250,6 +258,10 @@ export default defineConfig({
             },
             { label: "TanStack Router", link: "/examples/tanstack-router" },
             { label: "TanStack Form Demo", link: "/examples/tanstack-form" },
+            {
+              label: "Next.js App Router",
+              link: "/examples/nextjs-app-router",
+            },
             { label: "Next.js Integration", link: "/examples/nextjs" },
             {
               label: "Multiple Canisters",

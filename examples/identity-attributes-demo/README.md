@@ -1,6 +1,6 @@
 # Identity Attributes Demo
 
-A focused React example for the IC Reactor v3.4 Internet Identity attributes
+A focused React example for the IC Reactor v4 Internet Identity attributes
 feature.
 
 It demonstrates:
@@ -19,8 +19,8 @@ pnpm install
 pnpm dev
 ```
 
-The example uses `@icp-sdk/auth` v6 because identity attribute requests depend
-on the v6 `signIn()` / `requestAttributes()` API.
+The example uses `@icp-sdk/auth` v7 because identity attribute requests depend
+on the current `signIn()` / `requestAttributes()` API.
 
 The app uses package-level auth defaults:
 
