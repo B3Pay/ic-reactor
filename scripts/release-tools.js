@@ -26,6 +26,22 @@ function run(command, args, options = {}) {
   execFileSync(command, args, { stdio: "inherit", cwd: rootDir, ...options })
 }
 
+function updateLlmsVersion(packageName, newVersion) {
+  try {
+    const llmsPath = join(rootDir, "llms.txt")
+    let llmsText = readFileSync(llmsPath, "utf-8")
+    const escapedPackage = packageName.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
+    const regex = new RegExp(`(- \`${escapedPackage}\`: \`)[^\`]+(\`)`)
+    llmsText = llmsText.replace(regex, `$1${newVersion}$2`)
+    writeFileSync(llmsPath, llmsText, "utf-8")
+    console.log(`✅ Updated ${packageName} in llms.txt to ${newVersion}`)
+  } catch (err) {
+    console.error(
+      `❌ Failed to update llms.txt for ${packageName}: ${err.message}`
+    )
+  }
+}
+
 function updatePackageJson(filePath, newVersion) {
   try {
     const fullPath = join(rootDir, filePath)
@@ -33,6 +49,9 @@ function updatePackageJson(filePath, newVersion) {
     pkg.version = newVersion
     writeFileSync(fullPath, JSON.stringify(pkg, null, 2) + "\n")
     console.log(`✅ Updated ${filePath} to ${newVersion}`)
+    if (pkg.name && pkg.name.startsWith("@ic-reactor/")) {
+      updateLlmsVersion(pkg.name, newVersion)
+    }
   } catch (err) {
     console.error(`❌ Failed to update ${filePath}: ${err.message}`)
     process.exit(1)
