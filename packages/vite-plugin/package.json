@@ -15,7 +15,9 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "README.md",
+    "llms.txt"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
@@ -29,7 +31,9 @@
     "candid",
     "ic-reactor",
     "dfinity",
-    "icp"
+    "icp",
+    "llms",
+    "ai-friendly"
   ],
   "author": "Behrad Deylami",
   "license": "MIT",
@@ -41,6 +45,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
+  "homepage": "https://ic-reactor.b3pay.net/v4/packages/vite-plugin",
   "dependencies": {
     "@ic-reactor/codegen": "workspace:*"
   },

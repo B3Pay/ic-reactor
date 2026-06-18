@@ -15,7 +15,9 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "README.md",
+    "llms.txt"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
@@ -39,6 +41,7 @@
     "url": "git+https://github.com/B3Pay/ic-reactor.git",
     "directory": "packages/codegen"
   },
+  "homepage": "https://ic-reactor.b3pay.net/v4/packages/codegen",
   "dependencies": {
     "change-case": "^5.4.4",
     "@ic-reactor/parser": "workspace:*"

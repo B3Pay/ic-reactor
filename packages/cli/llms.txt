@@ -1,0 +1,39 @@
+# @ic-reactor/cli — AI Quick Guide
+
+CLI for explicit, repeatable IC Reactor code generation from `.did` files.
+
+## Install and Run
+
+```bash
+pnpm add -D @ic-reactor/cli
+pnpm exec ic-reactor init
+pnpm exec ic-reactor generate
+```
+
+## Configuration
+
+- Primary config file: `ic-reactor.json`
+- JSON Schema: `./node_modules/@ic-reactor/cli/schema.json`
+- Key fields: `outDir`, `clientManagerPath`, `target`, `canisters`
+
+## Target Modes
+
+- `react`: reactor + typed hook exports
+- `core`: typed reactor exports only (no React dependency)
+
+## Generated Files
+
+- Managed: `index.generated.ts` (overwritten every generation)
+- Stable wrapper: `index.ts` (safe to customize)
+
+Do not hand-edit `index.generated.ts`.
+
+## CLI vs Vite Plugin
+
+- Use CLI for CI/non-Vite/manual generation pipelines
+- Use `@ic-reactor/vite-plugin` for watch-mode generation in Vite apps
+
+## Full References
+
+- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
+- CLI docs: https://ic-reactor.b3pay.net/v4/packages/cli

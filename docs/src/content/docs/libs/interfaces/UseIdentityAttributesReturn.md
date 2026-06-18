@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: react/src/auth/createIdentityAttributeHooks.ts:9
+Defined in: [react/src/auth/createIdentityAttributeHooks.ts:9](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/createIdentityAttributeHooks.ts#L9)
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: react/src/auth/createIdentityAttributeHooks.ts:9
 
 > **requestAttributes**: (`params`) => `Promise`\<[`IdentityAttributeResult`](IdentityAttributeResult.md)\>
 
-Defined in: react/src/auth/createIdentityAttributeHooks.ts:10
+Defined in: [react/src/auth/createIdentityAttributeHooks.ts:10](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/createIdentityAttributeHooks.ts#L10)
 
 #### Parameters
 
@@ -31,7 +31,7 @@ Defined in: react/src/auth/createIdentityAttributeHooks.ts:10
 
 > **requestOpenIdAttributes**: (`params`) => `Promise`\<[`IdentityAttributeResult`](IdentityAttributeResult.md)\>
 
-Defined in: react/src/auth/createIdentityAttributeHooks.ts:13
+Defined in: [react/src/auth/createIdentityAttributeHooks.ts:13](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/createIdentityAttributeHooks.ts#L13)
 
 #### Parameters
 
@@ -49,7 +49,7 @@ Defined in: react/src/auth/createIdentityAttributeHooks.ts:13
 
 > **attributes**: [`IdentityAttributeResult`](IdentityAttributeResult.md) \| `null`
 
-Defined in: react/src/auth/createIdentityAttributeHooks.ts:16
+Defined in: [react/src/auth/createIdentityAttributeHooks.ts:16](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/createIdentityAttributeHooks.ts#L16)
 
 ---
 
@@ -57,7 +57,7 @@ Defined in: react/src/auth/createIdentityAttributeHooks.ts:16
 
 > **isRequestingAttributes**: `boolean`
 
-Defined in: react/src/auth/createIdentityAttributeHooks.ts:17
+Defined in: [react/src/auth/createIdentityAttributeHooks.ts:17](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/createIdentityAttributeHooks.ts#L17)
 
 ---
 
@@ -65,7 +65,7 @@ Defined in: react/src/auth/createIdentityAttributeHooks.ts:17
 
 > **attributeError**: `Error` \| `null`
 
-Defined in: react/src/auth/createIdentityAttributeHooks.ts:18
+Defined in: [react/src/auth/createIdentityAttributeHooks.ts:18](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/createIdentityAttributeHooks.ts#L18)
 
 ---
 
@@ -73,7 +73,7 @@ Defined in: react/src/auth/createIdentityAttributeHooks.ts:18
 
 > **clearAttributes**: () => `void`
 
-Defined in: react/src/auth/createIdentityAttributeHooks.ts:19
+Defined in: [react/src/auth/createIdentityAttributeHooks.ts:19](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/createIdentityAttributeHooks.ts#L19)
 
 #### Returns
 

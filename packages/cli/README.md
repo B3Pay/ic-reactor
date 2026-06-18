@@ -4,6 +4,18 @@ Command-line code generation for IC Reactor. It uses the shared
 `@ic-reactor/codegen` pipeline to generate declarations and typed reactor entry
 files from your `.did` files, with optional React hook exports.
 
+## AI Assistants
+
+- Package AI quick guide: [`./llms.txt`](./llms.txt)
+- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Project AI guide: https://ic-reactor.b3pay.net/v4/guides/ai-friendliness/
+
+Install the shared hook skill in consumer repos:
+
+```bash
+npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
+```
+
 ## Install
 
 ```bash

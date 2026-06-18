@@ -25,12 +25,12 @@ import { Card } from "@astrojs/starlight/components"
 
 <Card title="AI Context File" icon="document">
   [Download
-  llms.txt](https://raw.githubusercontent.com/B3Pay/ic-reactor/main/llms.txt)
+  llms.txt](https://ic-reactor.b3pay.net/llms.txt)
 </Card>
 
 <Card title="Full AI Guide" icon="document">
   [Download
-  llms-full.txt](https://raw.githubusercontent.com/B3Pay/ic-reactor/main/llms-full.txt)
+  llms-full.txt](https://ic-reactor.b3pay.net/llms-full.txt)
 </Card>
 
 ## What To Give An Agent
@@ -54,6 +54,9 @@ The hook skill is also available externally:
 
 - **In-repo**: [`skill-packages/ic-reactor-hooks/`](https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor-hooks) — used by agents working directly in this repository
 - **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
+
+The in-repo skill remains the source of truth. Keep the external skill synced
+when preparing releases so consumer projects get the same guidance.
 
 Use this skill when asking an AI agent to generate or refactor IC Reactor integrations, especially when you need:
 

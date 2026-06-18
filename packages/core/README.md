@@ -15,6 +15,18 @@ Framework-agnostic core library for building type-safe Internet Computer applica
 
 > **Note**: For React applications, use [`@ic-reactor/react`](../react) instead, which re-exports everything from this package plus React-specific hooks.
 
+## AI Assistants
+
+- Package AI quick guide: [`./llms.txt`](./llms.txt)
+- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Project AI guide: https://ic-reactor.b3pay.net/v4/guides/ai-friendliness/
+
+Install the shared hook skill in consumer repos:
+
+```bash
+npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
+```
+
 ## Features
 
 - 🔒 **End-to-End Type Safety** — From Candid to your application

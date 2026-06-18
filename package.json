@@ -17,6 +17,7 @@
     "pack:check": "pnpm -r --filter \"./packages/**\" exec npm pack --dry-run",
     "sync:examples": "node scripts/sync-example-versions.js",
     "typecheck:examples": "node scripts/typecheck-examples.js",
+    "check:ai-context": "node scripts/check-ai-context.js",
     "release": "node scripts/release.js",
     "release:tools": "node scripts/release-tools.js",
     "clean": "node scripts/clean-node-modules.js",

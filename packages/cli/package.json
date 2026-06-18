@@ -19,7 +19,10 @@
     "dfinity",
     "react",
     "cli",
-    "codegen"
+    "codegen",
+    "ic-reactor",
+    "llms",
+    "ai-friendly"
   ],
   "author": "Behrad Deylami",
   "license": "MIT",
@@ -31,7 +34,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://github.com/B3Pay/ic-reactor#readme",
+  "homepage": "https://ic-reactor.b3pay.net/v4/packages/cli",
   "dependencies": {
     "@clack/prompts": "^1.3.0",
     "@ic-reactor/codegen": "workspace:*",
@@ -51,7 +54,9 @@
   "files": [
     "dist",
     "src",
-    "schema.json"
+    "schema.json",
+    "README.md",
+    "llms.txt"
   ],
   "publishConfig": {
     "access": "public"

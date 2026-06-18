@@ -1,0 +1,90 @@
+# IC Reactor LLM Manifest
+
+Purpose: compact routing context for AI agents and retrieval systems. For a
+longer task-oriented guide, read `llms-full.txt`.
+
+## Project
+
+IC Reactor v4 is a TypeScript monorepo for building Internet Computer apps with
+typed canister calls, TanStack Query caching, React hooks, optional
+authentication helpers, runtime Candid parsing, and code generation.
+
+Repository: `https://github.com/B3Pay/ic-reactor`
+Docs: `https://ic-reactor.b3pay.net/v4/`
+
+Release posture: this branch is the next major release line. Package manifests
+may still show pre-release versions until release automation performs the final
+version bump.
+
+## Canonical AI Entrypoints
+
+| File                                          | Use                                                        |
+| --------------------------------------------- | ---------------------------------------------------------- |
+| `llms.txt`                                    | Compact package/task routing manifest                      |
+| `llms-full.txt`                               | Copy-paste LLM guide with patterns, APIs, and verification |
+| `AGENTS.md`                                   | OpenAI Codex repository instructions                       |
+| `CLAUDE.md`                                   | Claude repository instructions                             |
+| `.github/copilot-instructions.md`             | GitHub Copilot repository instructions                     |
+| `.cursorrules`                                | Cursor repository rules                                    |
+| `skill-packages/ic-reactor-hooks/SKILL.md`    | React hook/factory/generation guidance                     |
+| `skill-packages/ic-reactor-packages/SKILL.md` | Package ownership, generated files, verification           |
+
+## Package Ownership
+
+| Package                   | Owns                                                                                                               | Start here                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, `@tanstack/query-core` cache integration | `packages/core/src/`, `packages/core/README.md`                                               |
+| `@ic-reactor/react`       | React hook factories, query/mutation factories, `defineReactor`, `useActorMethod`, Internet Identity auth, and identity-attribute hooks | `packages/react/src/`, `packages/react/README.md`, `skill-packages/ic-reactor-hooks/SKILL.md` |
+| `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                                      | `packages/candid/src/`, `packages/candid/README.md`                                           |
+| `@ic-reactor/parser`      | Rust/WASM Candid parser and published web/node/bundler outputs                                                     | `packages/parser/src/`, `packages/parser/README.md`                                           |
+| `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline used by CLI and Vite plugin                                  | `packages/codegen/src/`, `packages/codegen/README.md`                                         |
+| `@ic-reactor/cli`         | `ic-reactor` executable and config schema                                                                          | `packages/cli/src/`, `packages/cli/schema.json`                                               |
+| `@ic-reactor/vite-plugin` | Vite `.did` watching, generation, local environment-cookie injection                                               | `packages/vite-plugin/src/`, `packages/vite-plugin/README.md`                                 |
+
+## Task Routing
+
+| Task                                      | Preferred reference                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Build a React canister integration        | `packages/react/README.md`, `docs/src/content/docs/framework/react-setup.mdx`                                      |
+| Choose inside-React vs outside-React APIs | `skill-packages/ic-reactor-hooks/SKILL.md`, `llms-full.txt`                                                        |
+| Add reusable query/mutation factories     | `docs/src/content/docs/reference/factories/overview.mdx`, `skill-packages/ic-reactor-hooks/references/patterns.md` |
+| Add auth/login or identity attributes     | `packages/react/src/auth/`, `packages/react/README.md`, `docs/src/content/docs/guides/authentication.mdx`          |
+| Change generated hook output              | `packages/codegen/src/`, then verify CLI/Vite consumers                                                            |
+| Configure Vite generation                 | `packages/vite-plugin/README.md`, `docs/src/content/docs/packages/vite-plugin.mdx`                                 |
+| Configure CLI generation                  | `packages/cli/README.md`, `docs/src/content/docs/packages/cli.mdx`                                                 |
+| Work with unknown/runtime Candid          | `packages/candid/README.md`, `docs/src/content/docs/packages/candid/index.mdx`                                     |
+| Parse `.did` locally                      | `packages/parser/README.md`, `docs/src/content/docs/packages/parser/index.mdx`                                     |
+
+## Generated Boundaries
+
+Do not hand-edit generated artifacts unless the source of truth is generated
+docs or publish output and the change is intentional.
+
+Generated or transient paths include `dist/`, `.dfx/`, `.icp/`, `.mops/`,
+`target/`, `.next/`, `.astro/`, `*.tsbuildinfo`, generated canister
+declarations, and generated hook files. For codegen behavior, edit
+`packages/codegen/src/` instead of generated output.
+
+## Verification By Change Type
+
+| Change                     | Minimum verification                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------ |
+| Docs only                  | `pnpm format:check`, `pnpm docs:build`                                                           |
+| Skill/frontmatter/metadata | YAML/frontmatter parse check plus `pnpm format:check`                                            |
+| React hooks/factories      | `pnpm --filter @ic-reactor/react test`                                                           |
+| Runtime core               | `pnpm --filter @ic-reactor/core test`                                                            |
+| React auth                 | `pnpm --filter @ic-reactor/react test`                                                           |
+| Codegen/CLI/Vite output    | `pnpm --filter @ic-reactor/codegen test` plus affected CLI/Vite checks                           |
+| Broad package change       | `pnpm exec tsc --noEmit`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`                          |
+| Examples                   | `pnpm typecheck:examples`                                                                        |
+
+## Inside React vs Outside React
+
+React hooks (`useActorQuery`, `.useQuery()`, `.useMutation()`,
+`.useSuspenseQuery()`, `.useInfiniteQuery()`) belong only in React components or
+custom hooks.
+
+Outside React, use imperative APIs: query `.fetch()`, `.prefetch()`,
+`.invalidate()`, `.getCacheData()`, mutation `.execute(args)`, or direct reactor
+methods such as `.fetchQuery()`, `.getQueryData()`, `.invalidateQueries()`, and
+`.callMethod()`.

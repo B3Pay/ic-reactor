@@ -17,7 +17,8 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "llms.txt"
   ],
   "scripts": {
     "build": "rm -rf dist tsconfig.tsbuildinfo && tsc -b",
@@ -34,7 +35,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://ic-reactor.b3pay.net/v3/packages/candid/",
+  "homepage": "https://ic-reactor.b3pay.net/v4/packages/candid",
   "keywords": [
     "internet-computer",
     "icp",
@@ -44,7 +45,10 @@
     "blockchain",
     "canister",
     "actor",
-    "reactor"
+    "reactor",
+    "ic-reactor",
+    "llms",
+    "ai-friendly"
   ],
   "author": "Behrad Deylami",
   "license": "MIT",

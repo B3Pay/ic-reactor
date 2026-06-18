@@ -3,6 +3,8 @@
  *
  * Creates unified mutation hooks for any canister method.
  * Works with any Reactor instance.
+ * Use this when one mutation should support both React hooks and imperative
+ * execution outside React.
  *
  * @example
  * const transferMutation = createMutation(reactor, {
@@ -12,6 +14,15 @@
  *
  * // In component
  * const { mutate, isPending } = transferMutation.useMutation()
+ *
+ * @example
+ * const transferMutation = createMutation(reactor, {
+ *   functionName: "transfer",
+ *   onCanisterError: (err) => console.error(err.code),
+ * })
+ *
+ * // Outside React (loader/service/script)
+ * await transferMutation.execute([{ to: "aaaaa-aa", amount: "1000" }])
  */
 
 import { useMutation } from "@tanstack/react-query"

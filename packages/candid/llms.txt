@@ -1,0 +1,39 @@
+# @ic-reactor/candid — AI Quick Guide
+
+Use this package for runtime Candid fetching/parsing, dynamic canister
+interaction, and metadata-driven form generation.
+
+## Install
+
+```bash
+pnpm add @ic-reactor/candid @icp-sdk/core
+pnpm add @ic-reactor/parser # optional local parser
+```
+
+## When To Use
+
+- Unknown canister interfaces at runtime
+- Explorer or tooling workflows
+- Dynamic forms from Candid metadata
+
+## Main APIs
+
+- `CandidAdapter` for fetching/parsing Candid definitions
+- `CandidReactor` for dynamic reactor behavior
+- `MetadataReactor` + `CandidFormVisitor` for form metadata
+
+## Parser Strategy
+
+- Prefer local parser (`@ic-reactor/parser`) for speed and offline usage
+- Fallback uses remote didjs compilation when parser is unavailable
+
+## Best Practices
+
+- Keep custom app logic in stable wrapper files, not generated files
+- For frequent `.did` changes, pair with `@ic-reactor/cli` or
+  `@ic-reactor/vite-plugin`
+
+## Full References
+
+- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Candid docs: https://ic-reactor.b3pay.net/v4/packages/candid

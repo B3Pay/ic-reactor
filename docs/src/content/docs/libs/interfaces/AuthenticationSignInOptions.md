@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: react/src/auth/types.ts:46
+Defined in: [react/src/auth/types.ts:46](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L46)
 
 ## Extends
 
@@ -17,7 +17,7 @@ Defined in: react/src/auth/types.ts:46
 
 > `optional` **identityProvider?**: `string` \| `URL`
 
-Defined in: react/src/auth/types.ts:36
+Defined in: [react/src/auth/types.ts:36](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L36)
 
 #### Inherited from
 
@@ -29,7 +29,7 @@ Defined in: react/src/auth/types.ts:36
 
 > `optional` **windowOpenerFeatures?**: `string`
 
-Defined in: react/src/auth/types.ts:37
+Defined in: [react/src/auth/types.ts:37](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L37)
 
 #### Inherited from
 
@@ -41,7 +41,7 @@ Defined in: react/src/auth/types.ts:37
 
 > `optional` **openIdProvider?**: [`IdentityAttributeOpenIdProvider`](../type-aliases/IdentityAttributeOpenIdProvider.md)
 
-Defined in: react/src/auth/types.ts:38
+Defined in: [react/src/auth/types.ts:38](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L38)
 
 #### Inherited from
 
@@ -53,7 +53,7 @@ Defined in: react/src/auth/types.ts:38
 
 > `optional` **maxTimeToLive?**: `bigint`
 
-Defined in: react/src/auth/types.ts:42
+Defined in: [react/src/auth/types.ts:42](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L42)
 
 #### Inherited from
 
@@ -65,7 +65,7 @@ Defined in: react/src/auth/types.ts:42
 
 > `optional` **targets?**: `Principal`[]
 
-Defined in: react/src/auth/types.ts:43
+Defined in: [react/src/auth/types.ts:43](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L43)
 
 #### Inherited from
 
@@ -77,7 +77,7 @@ Defined in: react/src/auth/types.ts:43
 
 > `optional` **onSuccess?**: () => `void` \| `Promise`\<`void`\>
 
-Defined in: react/src/auth/types.ts:48
+Defined in: [react/src/auth/types.ts:48](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L48)
 
 #### Returns
 
@@ -89,7 +89,7 @@ Defined in: react/src/auth/types.ts:48
 
 > `optional` **onError?**: (`error?`) => `void` \| `Promise`\<`void`\>
 
-Defined in: react/src/auth/types.ts:49
+Defined in: [react/src/auth/types.ts:49](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L49)
 
 #### Parameters
 

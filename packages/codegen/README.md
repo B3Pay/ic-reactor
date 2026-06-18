@@ -7,6 +7,17 @@ This package contains the core machinery for generating TypeScript declarations,
 - **`@ic-reactor/cli`**: For manual/CLI-based generation
 - **`@ic-reactor/vite-plugin`**: For automatic build-time generation
 
+## AI Assistants
+
+- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Project AI guide: https://ic-reactor.b3pay.net/v4/guides/ai-friendliness/
+
+Install the shared hook skill in consumer repos:
+
+```bash
+npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
+```
+
 ## Install
 
 Most apps should install `@ic-reactor/cli` or `@ic-reactor/vite-plugin` instead

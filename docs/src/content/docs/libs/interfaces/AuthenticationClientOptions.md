@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: react/src/auth/types.ts:35
+Defined in: [react/src/auth/types.ts:35](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L35)
 
 ## Extended by
 
@@ -17,7 +17,7 @@ Defined in: react/src/auth/types.ts:35
 
 > `optional` **identityProvider?**: `string` \| `URL`
 
-Defined in: react/src/auth/types.ts:36
+Defined in: [react/src/auth/types.ts:36](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L36)
 
 ---
 
@@ -25,7 +25,7 @@ Defined in: react/src/auth/types.ts:36
 
 > `optional` **windowOpenerFeatures?**: `string`
 
-Defined in: react/src/auth/types.ts:37
+Defined in: [react/src/auth/types.ts:37](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L37)
 
 ---
 
@@ -33,4 +33,4 @@ Defined in: react/src/auth/types.ts:37
 
 > `optional` **openIdProvider?**: [`IdentityAttributeOpenIdProvider`](../type-aliases/IdentityAttributeOpenIdProvider.md)
 
-Defined in: react/src/auth/types.ts:38
+Defined in: [react/src/auth/types.ts:38](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L38)

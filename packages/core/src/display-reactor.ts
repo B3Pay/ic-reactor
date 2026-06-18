@@ -44,6 +44,9 @@ import {
  * Validators receive **display types** (strings), making them perfect for
  * form validation.
  *
+ * Use `DisplayReactor` for UI/forms where principals and numeric values should
+ * be string-friendly. Use `Reactor` when you need raw Candid types directly.
+ *
  * @typeParam A - The actor service type
  *
  * @example
