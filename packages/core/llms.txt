@@ -1,0 +1,43 @@
+# @ic-reactor/core — AI Quick Guide
+
+Framework-agnostic runtime for IC apps. Use this when you are not writing
+React hooks directly.
+
+## Install
+
+```bash
+pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+```
+
+## Core Building Blocks
+
+- `ClientManager` for shared agent + QueryClient state
+- `Reactor` for raw Candid values
+- `DisplayReactor` for UI-friendly transformed values
+
+## Preferred Usage
+
+- Reuse one `ClientManager` across multiple canisters
+- Use `fetchQuery` / `getQueryData` / `invalidateQueries` for cache-aware calls
+- Use `callMethod` for imperative update/query calls
+
+## DisplayReactor Guidance
+
+- Choose `DisplayReactor` when users type/read principals and numbers in forms
+- Validation can run on display values before calls
+
+## Error Types
+
+- `CanisterError`: canister `Result.Err`
+- `CallError`: transport/agent failures
+- `ValidationError`: display-validator failures
+
+## Generated Files
+
+If generated declarations are wrong, change source `.did` or codegen templates.
+Do not hand-edit generated output.
+
+## Full References
+
+- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Core docs: https://ic-reactor.b3pay.net/v4/packages/core

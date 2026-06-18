@@ -100,7 +100,7 @@ jobs:
             shopt -s dotglob
             for item in final-docs/*; do
               case "$(basename "$item")" in
-                v2|v3|v4|llms.txt|CNAME|.nojekyll) continue;;
+                v2|v3|v4|llms.txt|llms-full.txt|CNAME|.nojekyll) continue;;
               esac
               mv "$item" final-docs/v2/
             done
@@ -116,6 +116,10 @@ jobs:
           rm -rf final-docs/v4
           mkdir -p final-docs/v4
           cp -r docs/dist/* final-docs/v4/
+
+          # Keep canonical llms files available at the site root.
+          cp llms.txt final-docs/llms.txt
+          cp llms-full.txt final-docs/llms-full.txt
 
           # Normalize the version selector in preserved static versions too.
           # This lets existing /v2 and /v3 pages link to the new /v4 docs.

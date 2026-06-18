@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [core/src/types/reactor.ts:95](https://github.com/B3Pay/ic-reactor/blob/43338f9341f1c13fd8c765762d4f814c0239a271/packages/core/src/types/reactor.ts#L95)
+Defined in: [core/src/types/reactor.ts:95](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/core/src/types/reactor.ts#L95)
 
 Registry for return type transformations.
 Users can augment this interface to add custom transforms:
@@ -36,7 +36,7 @@ declare module "@ic-reactor/core" {
 
 > **candid**: `T`
 
-Defined in: [core/src/types/reactor.ts:96](https://github.com/B3Pay/ic-reactor/blob/43338f9341f1c13fd8c765762d4f814c0239a271/packages/core/src/types/reactor.ts#L96)
+Defined in: [core/src/types/reactor.ts:96](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/core/src/types/reactor.ts#L96)
 
 ---
 
@@ -44,4 +44,4 @@ Defined in: [core/src/types/reactor.ts:96](https://github.com/B3Pay/ic-reactor/b
 
 > **display**: [`DisplayOf`](../type-aliases/DisplayOf.md)\<`T`\>
 
-Defined in: [core/src/types/reactor.ts:97](https://github.com/B3Pay/ic-reactor/blob/43338f9341f1c13fd8c765762d4f814c0239a271/packages/core/src/types/reactor.ts#L97)
+Defined in: [core/src/types/reactor.ts:97](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/core/src/types/reactor.ts#L97)

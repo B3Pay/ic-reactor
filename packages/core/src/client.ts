@@ -18,6 +18,7 @@ import {
  *
  * It initializes the agent (connecting to local or mainnet) and integrates
  * with TanStack Query's QueryClient for state management.
+ * Use this as a singleton shared by all reactors in an app.
  *
  * @example
  * ```typescript
@@ -31,6 +32,13 @@ import {
  * });
  *
  * await clientManager.initialize();
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Reuse the same ClientManager across multiple canisters
+ * const backend = new Reactor<BackendService>({ clientManager, idlFactory: backendIdl, name: "backend" })
+ * const ledger = new Reactor<LedgerService>({ clientManager, idlFactory: ledgerIdl, name: "ledger" })
  * ```
  */
 export class ClientManager {

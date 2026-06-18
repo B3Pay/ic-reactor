@@ -3,6 +3,8 @@
  *
  * Creates unified fetch/hook/invalidate functions for any canister method.
  * Works with any Reactor instance.
+ * Use this when the same read operation must work both inside React components
+ * and outside React (loaders, actions, services, tests).
  *
  * @example
  * const userQuery = createQuery(todoManager, {
@@ -12,6 +14,14 @@
  *
  * // In component
  * const { data: user } = userQuery.useQuery()
+ *
+ * @example
+ * const userQuery = createQuery(todoManager, { functionName: "get_user", args: ["alice"] })
+ *
+ * // Outside React (loader/service/script)
+ * await userQuery.fetch()
+ * const cached = userQuery.getCacheData()
+ * await userQuery.invalidate()
  */
 
 import type {

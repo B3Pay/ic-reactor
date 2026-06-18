@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: react/src/auth/authentication-manager.ts:18
+Defined in: [react/src/auth/authentication-manager.ts:18](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/authentication-manager.ts#L18)
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: react/src/auth/authentication-manager.ts:18
 
 > **clientManager**: [`ClientManager`](../classes/ClientManager.md)
 
-Defined in: react/src/auth/authentication-manager.ts:19
+Defined in: [react/src/auth/authentication-manager.ts:19](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/authentication-manager.ts#L19)
 
 ---
 
@@ -21,7 +21,7 @@ Defined in: react/src/auth/authentication-manager.ts:19
 
 > `optional` **authClient?**: [`AuthClientLike`](AuthClientLike.md)
 
-Defined in: react/src/auth/authentication-manager.ts:20
+Defined in: [react/src/auth/authentication-manager.ts:20](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/authentication-manager.ts#L20)
 
 ---
 
@@ -29,7 +29,7 @@ Defined in: react/src/auth/authentication-manager.ts:20
 
 > `optional` **identityProvider?**: `string` \| `URL`
 
-Defined in: react/src/auth/authentication-manager.ts:21
+Defined in: [react/src/auth/authentication-manager.ts:21](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/authentication-manager.ts#L21)
 
 ---
 
@@ -37,4 +37,4 @@ Defined in: react/src/auth/authentication-manager.ts:21
 
 > `optional` **internetIdentityId?**: `string`
 
-Defined in: react/src/auth/authentication-manager.ts:22
+Defined in: [react/src/auth/authentication-manager.ts:22](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/authentication-manager.ts#L22)

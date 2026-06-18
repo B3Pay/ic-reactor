@@ -1,0 +1,41 @@
+# @ic-reactor/vite-plugin — AI Quick Guide
+
+Vite integration for automatic IC Reactor generation from `.did` files.
+
+## Install
+
+```bash
+pnpm add -D @ic-reactor/vite-plugin
+pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
+```
+
+## Minimal Setup
+
+```ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+
+icReactor({
+  canisters: [{ name: "backend", didFile: "./backend/backend.did" }],
+})
+```
+
+## Behavior
+
+- Runs codegen on startup and `.did` changes
+- Regenerates declarations + `index.generated.ts`
+- Preserves user-facing `index.ts` wrapper after initial creation
+
+## Key Options
+
+- `canisters`, `outDir`, `clientManagerPath`, `target`, `mode`, `canisterId`
+- `injectEnvironment` for local `ic_env` cookie + `/api` proxy behavior
+
+## Best Practices
+
+- Keep custom code in stable wrapper/factory modules
+- Do not hand-edit generated `index.generated.ts`
+
+## Full References
+
+- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Vite plugin docs: https://ic-reactor.b3pay.net/v4/packages/vite-plugin

@@ -52,6 +52,9 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      - name: AI context check
+        run: pnpm check:ai-context
+
       - name: Build packages
         run: pnpm build
 

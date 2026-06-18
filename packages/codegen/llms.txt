@@ -1,0 +1,28 @@
+# @ic-reactor/codegen — AI Quick Guide
+
+Shared generation pipeline used by `@ic-reactor/cli` and
+`@ic-reactor/vite-plugin`.
+
+## Install
+
+Most apps should install CLI or Vite plugin instead of this package directly.
+
+```bash
+pnpm add -D @ic-reactor/codegen
+```
+
+## Main Use Case
+
+Use `runCanisterPipeline(...)` when you need programmatic generation in custom
+tooling/automation.
+
+## Generated File Model
+
+- `index.generated.ts` is managed output
+- `index.ts` is a stable wrapper
+- app-specific logic should live in wrappers or adjacent modules
+
+## Full References
+
+- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Codegen docs: https://ic-reactor.b3pay.net/v4/packages/codegen
