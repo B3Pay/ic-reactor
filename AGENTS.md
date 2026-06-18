@@ -17,6 +17,7 @@ release automation performs the final version bump.
 - `@ic-reactor/codegen` (`packages/codegen`, `0.11.1`) — shared generation pipeline used by CLI and Vite plugin.
 - `@ic-reactor/cli` (`packages/cli`, `0.11.1`) — `ic-reactor` CLI for explicit declaration/reactor generation.
 - `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `0.11.1`) — Vite plugin for watch-mode generation and local `ic_env` injection.
+- `@ic-reactor/start` (`packages/start`, `0.0.0`) — React/TanStack app starter for fully on-chain ICP frontends. Composes `@ic-reactor/vite-plugin` + TanStack Router + `icp-cli`. V0 is CSR/static only.
 
 ### Package alignment rules
 
@@ -39,15 +40,16 @@ A skill is a set of local instructions to follow that is stored in a `SKILL.md` 
 
 Use this map before editing so you can start in the package that owns the behavior:
 
-| Package                   | Owns                                                                                                                    | Look here first                                                                                   |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, query-cache integration                       | `packages/core/src/`, `packages/core/tests/`                                                      |
-| `@ic-reactor/react`       | React hook factories, reusable query/mutation objects, `defineReactor`, `useActorMethod`, auth managers, and auth hooks | `packages/react/src/`, `packages/react/tests/`, `skill-packages/ic-reactor-hooks/SKILL.md`        |
-| `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                                           | `packages/candid/src/`, `packages/candid/METADATA_REACTOR_GUIDE.md`                               |
-| `@ic-reactor/parser`      | Rust/WASM Candid parser package                                                                                         | `packages/parser/src/`, `packages/parser/tests/`                                                  |
-| `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline                                                                   | `packages/codegen/src/`, `packages/codegen/src/*.test.ts`                                         |
-| `@ic-reactor/cli`         | `ic-reactor` command-line interface and config schema                                                                   | `packages/cli/src/`, `packages/cli/schema.json`                                                   |
-| `@ic-reactor/vite-plugin` | Vite integration, `.did` watching, environment-cookie injection                                                         | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/` |
+| Package                   | Owns                                                                                                                     | Look here first                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, query-cache integration                        | `packages/core/src/`, `packages/core/tests/`                                                      |
+| `@ic-reactor/react`       | React hook factories, reusable query/mutation objects, `defineReactor`, `useActorMethod`, auth managers, and auth hooks  | `packages/react/src/`, `packages/react/tests/`, `skill-packages/ic-reactor-hooks/SKILL.md`        |
+| `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                                            | `packages/candid/src/`, `packages/candid/METADATA_REACTOR_GUIDE.md`                               |
+| `@ic-reactor/parser`      | Rust/WASM Candid parser package                                                                                          | `packages/parser/src/`, `packages/parser/tests/`                                                  |
+| `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline                                                                    | `packages/codegen/src/`, `packages/codegen/src/*.test.ts`                                         |
+| `@ic-reactor/cli`         | `ic-reactor` command-line interface and config schema                                                                    | `packages/cli/src/`, `packages/cli/schema.json`                                                   |
+| `@ic-reactor/vite-plugin` | Vite integration, `.did` watching, environment-cookie injection                                                          | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/` |
+| `@ic-reactor/start`       | React/TanStack ICP app starter: `icReactorStart` Vite preset, `defineIcReactorStartConfig`, and the `createApp` scaffold | `packages/start/src/`, `packages/start/src/scaffold/`                                             |
 
 ## Verification commands
 

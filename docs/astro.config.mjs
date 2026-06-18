@@ -401,6 +401,10 @@ export default defineConfig({
               label: "Tooling",
               items: [
                 {
+                  label: "@ic-reactor/start",
+                  link: "/packages/start",
+                },
+                {
                   label: "@ic-reactor/cli",
                   link: "/packages/cli",
                 },

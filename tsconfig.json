@@ -6,6 +6,7 @@
     { "path": "./packages/candid" },
     { "path": "./packages/codegen" },
     { "path": "./packages/cli" },
-    { "path": "./packages/vite-plugin" }
+    { "path": "./packages/vite-plugin" },
+    { "path": "./packages/start" }
   ]
 }

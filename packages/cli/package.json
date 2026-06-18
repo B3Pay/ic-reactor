@@ -38,6 +38,7 @@
   "dependencies": {
     "@clack/prompts": "^1.3.0",
     "@ic-reactor/codegen": "workspace:*",
+    "@ic-reactor/start": "workspace:*",
     "@icp-sdk/bindgen": "^0.4.0",
     "@icp-sdk/core": "^5.4.0",
     "commander": "^15.0.0",

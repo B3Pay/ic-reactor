@@ -30,6 +30,10 @@ Codegen lane:
 - `@ic-reactor/cli`: `0.11.1`
 - `@ic-reactor/vite-plugin`: `0.11.1`
 
+Starter lane:
+
+- `@ic-reactor/start`: `0.0.0` (V0, CSR/static)
+
 Parser lane:
 
 - `@ic-reactor/parser`: `0.4.6`
@@ -58,6 +62,7 @@ Parser lane:
 | `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline used by CLI and Vite plugin                                  | `packages/codegen/src/`, `packages/codegen/README.md`                                         |
 | `@ic-reactor/cli`         | `ic-reactor` executable and config schema                                                                          | `packages/cli/src/`, `packages/cli/schema.json`                                               |
 | `@ic-reactor/vite-plugin` | Vite `.did` watching, generation, local environment-cookie injection                                               | `packages/vite-plugin/src/`, `packages/vite-plugin/README.md`                                 |
+| `@ic-reactor/start`       | React/TanStack ICP app starter: `icReactorStart` Vite preset, `defineIcReactorStartConfig`, `createApp` scaffold   | `packages/start/src/`, `packages/start/README.md`                                             |
 
 ## Task Routing
 
@@ -69,6 +74,7 @@ Parser lane:
 | Add auth/login or identity attributes     | `packages/react/src/auth/`, `packages/react/README.md`, `docs/src/content/docs/guides/authentication.mdx`          |
 | Change generated hook output              | `packages/codegen/src/`, then verify CLI/Vite consumers                                                            |
 | Configure Vite generation                 | `packages/vite-plugin/README.md`, `docs/src/content/docs/packages/vite-plugin.mdx`                                 |
+| Scaffold a new ICP React app              | `packages/start/README.md`, `docs/plans/ic-reactor-start-v0.md`                                                    |
 | Configure CLI generation                  | `packages/cli/README.md`, `docs/src/content/docs/packages/cli.mdx`                                                 |
 | Work with unknown/runtime Candid          | `packages/candid/README.md`, `docs/src/content/docs/packages/candid/index.mdx`                                     |
 | Parse `.did` locally                      | `packages/parser/README.md`, `docs/src/content/docs/packages/parser/index.mdx`                                     |

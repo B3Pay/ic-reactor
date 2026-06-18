@@ -8,6 +8,7 @@
 import { Command } from "commander"
 import { initCommand } from "./commands/init.js"
 import { generateCommand } from "./commands/generate.js"
+import { createStartCommand } from "./commands/create.js"
 import pc from "picocolors"
 import { version } from "../package.json"
 
@@ -36,5 +37,25 @@ program
     "Generate only .did, .did.d.ts, and .js declarations"
   )
   .action(generateCommand)
+
+// `create start` — alias for `pnpm create ic-reactor-start`. Scaffolds a V0
+// fully on-chain ICP React app (CSR/static). See @ic-reactor/start.
+const create = program
+  .command("create")
+  .description("Scaffold a new project from an IC Reactor template")
+
+create
+  .command("start <app-name> [target-dir]")
+  .description(
+    "Scaffold a fully on-chain ICP React app (React + TanStack Router + IC Reactor + icp-cli)"
+  )
+  .option("--force", "Write into a non-empty target directory")
+  .action(
+    (
+      appName: string,
+      targetDir: string | undefined,
+      opts: { force?: boolean }
+    ) => createStartCommand(appName, targetDir, opts)
+  )
 
 program.parse()

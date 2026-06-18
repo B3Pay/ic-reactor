@@ -1,0 +1,85 @@
+{
+  "name": "@ic-reactor/start",
+  "version": "0.0.0",
+  "description": "React/TanStack app starter for fully on-chain Internet Computer frontends. Composes IC Reactor, TanStack Router, and icp-cli into one Vite preset.",
+  "type": "module",
+  "bin": {
+    "create-ic-reactor-start": "./dist/bin/create-app.js"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./plugin/vite": {
+      "types": "./dist/plugin/vite.d.ts",
+      "import": "./dist/plugin/vite.js"
+    },
+    "./scaffold": {
+      "types": "./dist/scaffold/index.d.ts",
+      "import": "./dist/scaffold/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "internet-computer",
+    "icp",
+    "dfinity",
+    "react",
+    "tanstack",
+    "tanstack-router",
+    "vite",
+    "starter",
+    "scaffold",
+    "canister",
+    "ic-reactor",
+    "llms",
+    "ai-friendly"
+  ],
+  "author": "Behrad Deylami",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B3Pay/ic-reactor",
+    "directory": "packages/start"
+  },
+  "bugs": {
+    "url": "https://github.com/B3Pay/ic-reactor/issues"
+  },
+  "homepage": "https://ic-reactor.b3pay.net/v4/packages/start",
+  "dependencies": {
+    "@ic-reactor/codegen": "workspace:*",
+    "@ic-reactor/vite-plugin": "workspace:*"
+  },
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/router-plugin": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ic-reactor/codegen": "workspace:*",
+    "@ic-reactor/vite-plugin": "workspace:*",
+    "@tanstack/router-plugin": "^1.145",
+    "@types/node": "^25.9.3",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.9"
+  }
+}
