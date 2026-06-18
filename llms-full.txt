@@ -188,6 +188,23 @@ export const { useAuth, useAgentState, useUserPrincipal } =
   createAuthHooks(authentication)
 ```
 
+## Error Handling (Important)
+
+IC Reactor distinguishes canister business errors from transport/runtime errors.
+
+| Error kind | Typical source | Preferred handling |
+| ---------- | -------------- | ------------------ |
+| `CanisterError` | `Result.Err` returned by canister methods | `onCanisterError` (for hooks/factories), or `isCanisterError(...)` in try/catch |
+| `CallError` | network/agent issues (timeouts, unreachable canister, etc.) | `onError` or `isCallError(...)` |
+| `ValidationError` | `DisplayReactor` argument validators | `isValidationError(...)` and show field errors |
+
+When using mutations, prefer:
+
+- `onCanisterError` for logic errors from canister `Err` variants
+- `onError` for broad fallback handling across all error types
+
+Do not use only `onError` when business logic needs distinct UX messaging.
+
 ## Code Generation
 
 Use generated hooks when canisters are large, `.did` files change often, or
@@ -203,12 +220,60 @@ Generated canister directories usually contain declaration files, a managed
 `index.generated.ts`, and a stable `index.ts` wrapper. Put custom app logic in
 wrapper modules or factory files, not generated files.
 
+### Codegen Consumer Flow
+
+1. Configure `ic-reactor.json` (CLI) or `icReactor(...)` (Vite plugin).
+2. Generate canister files.
+3. Treat `index.generated.ts` as managed output.
+4. Keep app-specific logic in `index.ts` or adjacent factory modules.
+5. Re-run generation after `.did` changes.
+
+Use CLI for explicit CI/manual generation; use Vite plugin for watch-mode local
+development.
+
 ## Dynamic Candid
 
 Use `@ic-reactor/candid` for explorers, dev tools, unknown canisters, metadata
 forms, or Candid strings discovered at runtime. Use `@ic-reactor/parser` when
 local `.did` parsing is needed; it publishes WASM outputs for browser, Node.js,
 and bundler environments.
+
+### Parser Import Paths
+
+`@ic-reactor/parser` publishes dedicated exports for:
+
+- web/browser usage
+- `nodejs`
+- bundler contexts
+
+Select the environment-appropriate entrypoint to avoid runtime loader mismatch.
+
+### Common Candid Patterns
+
+Agents should account for these patterns in generated TypeScript:
+
+- `Result` variants (`Ok`/`Err` and `ok`/`err`) should be unwrapped through IC Reactor helpers
+- numeric Candid values (`nat`, `int`, etc.) are usually `bigint` in raw mode and strings in display mode
+- `principal` values are `Principal` in raw mode and strings in display mode
+- `opt T` often appears as tuples/options in raw actor shapes; UI flows should normalize these carefully
+- large nested variants/records are common in ledger/governance canisters and benefit from reusable query/mutation factories
+
+## Anti-Patterns to Avoid
+
+- Calling React hooks in loaders/actions/services/tests
+- Hard-coding query keys when `query.getQueryKey()` or `query.invalidate()` is available
+- Editing `index.generated.ts` files directly
+- Choosing raw `Reactor` for UI/form flows when display values were intended
+- Duplicating codegen logic in app code instead of using CLI/Vite plugin configuration
+
+## Example Routing by App Framework
+
+| App stack | Recommended path |
+| --------- | ---------------- |
+| Vite + React | `@ic-reactor/vite-plugin` + generated declarations/hooks |
+| Next.js (pages/app router) | CLI generation + reusable query/mutation factories in shared modules |
+| TanStack Router | query/mutation factories with `.fetch()` for loaders and `.useQuery()` for components |
+| Plain TS/node scripts | `@ic-reactor/core` + imperative APIs (`callMethod`, `fetchQuery`, `invalidateQueries`) |
 
 ## Generated File Boundaries
 

@@ -69,6 +69,8 @@ export type UseActorMutationResult<
 
 /**
  * Hook for executing mutation calls on a canister.
+ * Use this for component-level mutation flows.
+ * For non-React usage, prefer `createMutation(...).execute(args)`.
  *
  * @example
  * const { mutate, isPending } = useActorMutation({
@@ -77,6 +79,15 @@ export type UseActorMutationResult<
  *   onSuccess: () => console.log("Success!"),
  *   onCanisterError: (err) => console.error("Canister Err:", err.code),
  * })
+ *
+ * @example
+ * const transferMutation = createMutation(reactor, {
+ *   functionName: "transfer",
+ *   onCanisterError: (err) => console.error(err.code),
+ * })
+ *
+ * // Non-React execution path
+ * await transferMutation.execute([{ to: "aaaaa-aa", amount: "100" }])
  */
 export const useActorMutation = <
   Service,

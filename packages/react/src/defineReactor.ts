@@ -4,6 +4,9 @@
  * Collapses the four manual steps (QueryClient → ClientManager → Reactor →
  * createActorHooks) into a single call, and turns the Reactor / DisplayReactor
  * choice into a `display` flag.
+ * Use this when one-call bootstrap is enough. If you need reusable
+ * method-specific operations outside React, compose with query/mutation
+ * factories after setup.
  *
  * @example
  * ```typescript

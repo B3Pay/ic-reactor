@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: react/src/hooks/createAuthHooks.ts:8
+Defined in: [react/src/hooks/createAuthHooks.ts:8](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/hooks/createAuthHooks.ts#L8)
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: react/src/hooks/createAuthHooks.ts:8
 
 > **authenticate**: () => `Promise`\<`Identity` \| `undefined`\>
 
-Defined in: react/src/hooks/createAuthHooks.ts:9
+Defined in: [react/src/hooks/createAuthHooks.ts:9](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/hooks/createAuthHooks.ts#L9)
 
 #### Returns
 
@@ -25,7 +25,7 @@ Defined in: react/src/hooks/createAuthHooks.ts:9
 
 > **login**: (`options?`) => `Promise`\<`void`\>
 
-Defined in: react/src/hooks/createAuthHooks.ts:10
+Defined in: [react/src/hooks/createAuthHooks.ts:10](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/hooks/createAuthHooks.ts#L10)
 
 #### Parameters
 
@@ -43,7 +43,7 @@ Defined in: react/src/hooks/createAuthHooks.ts:10
 
 > **logout**: (`options?`) => `Promise`\<`void`\>
 
-Defined in: react/src/hooks/createAuthHooks.ts:11
+Defined in: [react/src/hooks/createAuthHooks.ts:11](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/hooks/createAuthHooks.ts#L11)
 
 #### Parameters
 
@@ -63,7 +63,7 @@ Defined in: react/src/hooks/createAuthHooks.ts:11
 
 > **isAuthenticated**: `boolean`
 
-Defined in: react/src/hooks/createAuthHooks.ts:12
+Defined in: [react/src/hooks/createAuthHooks.ts:12](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/hooks/createAuthHooks.ts#L12)
 
 ---
 
@@ -71,7 +71,7 @@ Defined in: react/src/hooks/createAuthHooks.ts:12
 
 > **isAuthenticating**: `boolean`
 
-Defined in: react/src/hooks/createAuthHooks.ts:13
+Defined in: [react/src/hooks/createAuthHooks.ts:13](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/hooks/createAuthHooks.ts#L13)
 
 ---
 
@@ -79,7 +79,7 @@ Defined in: react/src/hooks/createAuthHooks.ts:13
 
 > **principal**: `Principal` \| `null`
 
-Defined in: react/src/hooks/createAuthHooks.ts:14
+Defined in: [react/src/hooks/createAuthHooks.ts:14](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/hooks/createAuthHooks.ts#L14)
 
 ---
 
@@ -87,7 +87,7 @@ Defined in: react/src/hooks/createAuthHooks.ts:14
 
 > **identity**: `Identity` \| `null`
 
-Defined in: react/src/hooks/createAuthHooks.ts:15
+Defined in: [react/src/hooks/createAuthHooks.ts:15](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/hooks/createAuthHooks.ts#L15)
 
 ---
 
@@ -95,4 +95,4 @@ Defined in: react/src/hooks/createAuthHooks.ts:15
 
 > **error**: `Error` \| `undefined`
 
-Defined in: react/src/hooks/createAuthHooks.ts:16
+Defined in: [react/src/hooks/createAuthHooks.ts:16](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/hooks/createAuthHooks.ts#L16)

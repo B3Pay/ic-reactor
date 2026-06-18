@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: react/src/auth/types.ts:4
+Defined in: [react/src/auth/types.ts:4](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L4)
 
 ## Properties
 
@@ -13,7 +13,7 @@ Defined in: react/src/auth/types.ts:4
 
 > **data**: `Uint8Array`
 
-Defined in: react/src/auth/types.ts:5
+Defined in: [react/src/auth/types.ts:5](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L5)
 
 ---
 
@@ -21,4 +21,4 @@ Defined in: react/src/auth/types.ts:5
 
 > **signature**: `Uint8Array`
 
-Defined in: react/src/auth/types.ts:6
+Defined in: [react/src/auth/types.ts:6](https://github.com/B3Pay/ic-reactor/blob/48543b681c4ca8e8beeffe45135260b8c3c245d5/packages/react/src/auth/types.ts#L6)

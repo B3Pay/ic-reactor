@@ -1,0 +1,48 @@
+# @ic-reactor/react — AI Quick Guide
+
+Use this file when your app installs `@ic-reactor/react` and you need fast,
+accurate integration guidance.
+
+## Install
+
+```bash
+pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add @icp-sdk/auth # optional auth helpers
+```
+
+## Start Here
+
+- Fastest setup: `defineReactor(...)`
+- Existing reactor instance: `createActorHooks(reactor)`
+- Reusable shared operations: `createQuery(...)`, `createMutation(...)`
+
+## Inside React vs Outside React (critical)
+
+- Inside React components/custom hooks: `useActorQuery`, `useActorMutation`,
+  `useActorMethod`, `.useQuery()`, `.useMutation()`
+- Outside React (loaders/actions/services/tests): `.fetch()`, `.prefetch()`,
+  `.invalidate()`, `.getCacheData()`, `.execute(args)`
+
+Never call React hooks in loaders, actions, route modules, scripts, or tests.
+
+## Display vs Raw Values
+
+- Prefer `display: true` in `defineReactor(...)` (or `DisplayReactor`) for
+  UI/form code.
+- Use raw `Reactor` when you intentionally need native `bigint`/`Principal`.
+
+## Mutation Error Handling
+
+For canister `Result.Err` variants, use `onCanisterError`. Keep `onError` for
+network/agent and unexpected errors.
+
+## Generated Files
+
+Do not hand-edit generated `index.generated.ts` files. Put app-specific code in
+`index.ts` wrappers or separate factory modules.
+
+## Full References
+
+- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
+- React package docs: https://ic-reactor.b3pay.net/v4/packages/react
+- Skill install: `npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks`
