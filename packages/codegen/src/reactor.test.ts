@@ -75,7 +75,7 @@ describe("Reactor generator", () => {
   it("generates a stable entry wrapper", () => {
     const content = generateReactorEntryFile()
 
-    expect(content).toContain('export * from "./index.generated"')
+    expect(content).toContain('export * from "./generated"')
     expect(content).toContain("safe to customize")
   })
 })
