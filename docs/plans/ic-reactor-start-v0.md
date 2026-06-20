@@ -2,12 +2,14 @@
 
 ## Summary
 
-Build `@ic-reactor/start` V0 as a client-rendered, fully on-chain ICP React
-starter that composes the current IC Reactor packages with TanStack Router and
-`icp-cli`.
+Build `@ic-reactor/start` V0 as a client-rendered, fully on-chain ICP
+full-stack starter that composes the current IC Reactor packages with TanStack
+Router and `icp-cli` v1.
 
 V0 should not attempt SSR, TanStack Start server functions, or colocated backend
-functions. It should deliver the fastest credible path to:
+functions. It should include both frontend and backend support from the
+beginning, while keeping the backend as a real ICP canister. It should deliver
+the fastest credible path to:
 
 ```bash
 pnpm create ic-reactor-start my-app
@@ -17,25 +19,30 @@ icp deploy
 pnpm dev
 ```
 
-The generated app deploys static assets to an ICP asset canister, resolves
-canister IDs through `icp-cli` and the `ic_env` cookie, generates typed canister
-hooks from `.did` files, and gives AI tools a predictable project shape.
+The generated app deploys a frontend asset canister and at least one backend
+canister through `icp-cli`, resolves canister IDs through `icp-cli` and the
+`ic_env` cookie, generates typed canister hooks from `.did` files, and gives AI
+tools a predictable project shape.
 
 ## Core Decisions From Planning
 
 - Product name: `@ic-reactor/start`.
 - V0 rendering model: CSR/static only.
-- V0 deploy target: ICP asset canister.
+- V0 deploy target: ICP asset canister plus one real backend canister.
 - Do not fork TanStack Start for V0; compose TanStack Router, IC Reactor, and
   `icp-cli`.
+- Require `icp-cli` v1 as the stable baseline. The V1 CLI announcement states
+  the config format and interface have reached a stable point, with build
+  toolchains, asset sync, and local network launching decoupled from the CLI.
 - `@ic-reactor/vite-plugin` remains the owner of canister env injection and
   codegen integration.
 - `@ic-reactor/codegen` remains the only canister binding generation pipeline.
 - `icp-cli` is the source of truth for local network state, canister IDs,
   deploys, and asset sync.
 - Do not introduce `.env` canister ID workflows.
-- Backend code remains real ICP canisters; `@ic-reactor/start` may scaffold and
-  manage them, but should not hide canister boundaries in V0.
+- Backend support is part of V0. Backend code remains real ICP canisters;
+  `@ic-reactor/start` scaffolds and wires them, but does not hide canister
+  boundaries.
 - Fully on-chain SEO should be framed as on-chain SEO rendering, not generic
   Node SSR.
 
@@ -79,7 +86,7 @@ IC Reactor, `@icp-sdk/core`, `@icp-sdk/auth`, and `icp-cli` project config.
 
 ### Generated Project Layout
 
-Default generated layout:
+Default generated full-stack layout:
 
 ```text
 my-app/
@@ -114,6 +121,9 @@ The scaffold should generate:
 - `backend/canister.yaml` that defaults to Motoko for V0 starter simplicity.
 - `ic-reactor.json` that configures the `backend` canister with
   `backend/backend.did`.
+- Scripts that update the backend `.did` when the backend interface changes.
+- A visible reminder that `.did` changes are source-controlled API changes and
+  should be reviewed before commit.
 
 Use `icp-cli` commands as the workflow:
 
@@ -123,6 +133,25 @@ icp deploy
 icp sync
 icp deploy -e ic
 ```
+
+V0 should rely on `icp-cli` v1 project configuration and recipes/templates where
+possible, instead of maintaining a parallel deploy model.
+
+### Backend Support
+
+V0 should ship with a working backend from the first scaffold.
+
+The default backend should:
+
+- Be a simple Motoko canister with one query and one update method.
+- Produce a checked-in `backend.did` file.
+- Include a script for regenerating the DID after backend interface changes.
+- Be included in `icp.yaml` and deployed by `icp deploy`.
+- Be consumed from the frontend through generated IC Reactor hooks.
+
+The V0 starter may also include a `--backend rust` option if it can be
+implemented without expanding the schedule significantly. If not, Rust support
+belongs in V0.1.
 
 ### Vite Preset
 
@@ -166,14 +195,17 @@ The default app should:
 - Use generated backend hooks from the generated canister wrapper.
 - Work locally after `icp deploy` with no `.env` file.
 - Build to static assets deployable through the asset canister.
+- Demonstrate the complete frontend-to-backend flow in the first screen.
 
 ## V0 Documentation
 
 Add docs for:
 
 - Creating an ICP React app.
+- Creating and editing the included backend canister.
 - Local dev with `icp-cli`.
 - How `ic_env` and runtime canister ID resolution work.
+- How and when to regenerate/check in the backend `.did`.
 - Deploying locally.
 - Deploying to mainnet with `icp deploy -e ic`.
 - Why V0 is CSR/static.
@@ -183,9 +215,11 @@ Important wording:
 
 - Do not call V0 a TanStack Start clone.
 - Position it as the React/TanStack app starter for fully on-chain ICP
-  frontends.
+  full-stack apps.
 - Say SSR/server functions are future work.
 - Say on-chain SEO rendering is the ICP-native long-term path.
+- Say backend support is real ICP canister support, not Node-style server
+  functions.
 
 ## Test Plan
 
@@ -196,11 +230,13 @@ Important wording:
 - Config helpers normalize object-based canister config to the existing
   `CanisterConfig[]` shape.
 - Template rendering rejects invalid app names.
+- Backend template renders a valid Motoko canister and matching DID path.
 
 ### Scaffold Tests
 
 - Creating an app writes expected `icp.yaml`, `canister.yaml`,
-  `ic-reactor.json`, `vite.config.ts`, and React source files.
+  `ic-reactor.json`, `vite.config.ts`, backend source, DID file, and React
+  source files.
 - Generated package scripts match the supported flow.
 - Re-running create into a non-empty directory fails clearly unless a force flag
   is provided.
@@ -212,6 +248,7 @@ Important wording:
 - Run `pnpm build`.
 - Run `pnpm exec tsc --noEmit`.
 - Run IC Reactor generation against the scaffolded `.did`.
+- Run `icp project show` against the scaffolded project.
 
 ### Manual Acceptance
 
@@ -228,6 +265,8 @@ Important wording:
 ### V0.1: Polished CSR Starter
 
 - Add template variants: `minimal`, `auth`, and `dashboard`.
+- Add Rust backend template if it is not included in V0.
+- Add `ic-reactor add canister <name>`.
 - Add `ic-reactor start doctor`.
 - Improve diagnostics for missing `icp-cli`, stopped local network, undeployed
   canisters, missing `.did` files, and stale generated files.
@@ -242,12 +281,11 @@ Important wording:
 - Add a route convention for public SEO metadata.
 - Separate public prerenderable data from authenticated client-only data.
 
-### V0.3: Backend Scaffolding Helpers
+### V0.3: Backend Expansion Helpers
 
 Add commands:
 
 ```bash
-ic-reactor add canister posts
 ic-reactor add method posts create_post
 ```
 
