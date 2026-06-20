@@ -212,8 +212,10 @@ ${canisterIdLine}  name: "${canisterName}",
 /**
  * Generate the user-facing `index.ts` wrapper content.
  *
- * Kept for backward compatibility. New pipeline code uses
- * `generateEntryFile` (from `./declarations.js`), which re-exports `./generated`.
+ * Kept for backward compatibility with `generateReactorFile`, which still
+ * emits the standalone `index.generated.ts` shape. New pipeline code uses
+ * `generateEntryFile` (from `./declarations.js`), which re-exports
+ * `./generated`.
  */
 export function generateReactorEntryFile(): string {
   return `/**
@@ -227,10 +229,10 @@ export function generateReactorEntryFile(): string {
  * - add app-specific hooks and cache invalidation wiring
  * - compose generated APIs into route loaders/actions
  *
- * Do not edit \`generated.ts\`; it is regenerated on each codegen run.
+ * Do not edit \`index.generated.ts\`; it is regenerated on each codegen run.
  * AI guide: https://ic-reactor.b3pay.net/llms-full.txt
  * Skill install: npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
  */
-export * from "./generated"
+export * from "./index.generated"
 `
 }
