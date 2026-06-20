@@ -440,6 +440,54 @@ importers:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)
 
+  examples/ic-reactor-start: {}
+
+  examples/ic-reactor-start/frontend:
+    dependencies:
+      '@ic-reactor/react':
+        specifier: ^3.6.0
+        version: link:../../../packages/react
+      '@icp-sdk/auth':
+        specifier: ^7.1.0
+        version: 7.1.0(@icp-sdk/core@5.4.0)
+      '@icp-sdk/core':
+        specifier: ^5.4.0
+        version: 5.4.0
+      '@tanstack/react-query':
+        specifier: ^5.100.10
+        version: 5.101.0(react@19.2.7)
+      '@tanstack/react-router':
+        specifier: ^1.144.5
+        version: 1.170.15(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.2.7
+        version: 19.2.7(react@19.2.7)
+    devDependencies:
+      '@ic-reactor/start':
+        specifier: workspace:*
+        version: link:../../../packages/start
+      '@tanstack/router-plugin':
+        specifier: ^1.145.0
+        version: 1.168.18(@tanstack/react-router@1.170.15(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.2
+        version: 6.0.2(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3))
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.8.3)
+
   examples/icp-reactor-demo:
     dependencies:
       '@icp-sdk/auth':
