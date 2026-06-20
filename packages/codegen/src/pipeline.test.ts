@@ -50,11 +50,11 @@ describe("Codegen pipeline", () => {
 
     expect(result.success).toBe(true)
 
-    const indexPath = path.join(
+    const generatedPath = path.join(
       projectRoot,
-      "src/declarations/workflow_engine/index.generated.ts"
+      "src/declarations/workflow_engine/generated.ts"
     )
-    const generated = fs.readFileSync(indexPath, "utf-8")
+    const generated = fs.readFileSync(generatedPath, "utf-8")
 
     expect(generated).toContain("new Reactor<WorkflowEngineService>")
     expect(generated).not.toContain("new DisplayReactor<WorkflowEngineService>")
@@ -63,7 +63,7 @@ describe("Codegen pipeline", () => {
         path.join(projectRoot, "src/declarations/workflow_engine/index.ts"),
         "utf-8"
       )
-    ).toContain('export * from "./index.generated"')
+    ).toContain('export * from "./generated"')
   })
 
   it("writes a configured canisterId into the generated reactor", async () => {
@@ -85,17 +85,17 @@ describe("Codegen pipeline", () => {
 
     expect(result.success).toBe(true)
 
-    const indexPath = path.join(
+    const generatedPath = path.join(
       projectRoot,
-      "src/declarations/workflow/index.generated.ts"
+      "src/declarations/workflow/generated.ts"
     )
-    const generated = fs.readFileSync(indexPath, "utf-8")
+    const generated = fs.readFileSync(generatedPath, "utf-8")
 
     expect(generated).toContain('canisterId: "yq4ns-hyaaa-aaaap-akbna-cai"')
     expect(generated).toContain('name: "workflow"')
   })
 
-  it("can generate declarations without creating reactor files", async () => {
+  it("can generate a bindings-only file without creating reactor files", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "backend.did")
 
@@ -113,6 +113,20 @@ describe("Codegen pipeline", () => {
     })
 
     expect(result.success).toBe(true)
+
+    // Only generated.ts is written
+    expect(
+      fs.existsSync(
+        path.join(projectRoot, "src/declarations/backend/generated.ts")
+      )
+    ).toBe(true)
+
+    // No parallel .js/.d.ts/.did files, no declarations/ subdir
+    expect(
+      fs.existsSync(
+        path.join(projectRoot, "src/declarations/backend/declarations")
+      )
+    ).toBe(false)
     expect(
       fs.existsSync(
         path.join(
@@ -120,7 +134,7 @@ describe("Codegen pipeline", () => {
           "src/declarations/backend/declarations/backend.js"
         )
       )
-    ).toBe(true)
+    ).toBe(false)
     expect(
       fs.existsSync(
         path.join(
@@ -128,7 +142,7 @@ describe("Codegen pipeline", () => {
           "src/declarations/backend/declarations/backend.d.ts"
         )
       )
-    ).toBe(true)
+    ).toBe(false)
     expect(
       fs.existsSync(
         path.join(
@@ -136,7 +150,9 @@ describe("Codegen pipeline", () => {
           "src/declarations/backend/declarations/backend.did"
         )
       )
-    ).toBe(true)
+    ).toBe(false)
+
+    // No reactor or entry wrappers
     expect(
       fs.existsSync(
         path.join(projectRoot, "src/declarations/backend/index.generated.ts")
@@ -151,6 +167,18 @@ describe("Codegen pipeline", () => {
     expect(
       result.files.some((file) => file.filePath.endsWith("index.ts"))
     ).toBe(false)
+    expect(
+      result.files.some((file) => file.filePath.endsWith("generated.ts"))
+    ).toBe(true)
+
+    // generated.ts is bindings-only — no reactor/hooks
+    const generated = fs.readFileSync(
+      path.join(projectRoot, "src/declarations/backend/generated.ts"),
+      "utf-8"
+    )
+    expect(generated).toContain("idlFactory")
+    expect(generated).not.toContain("DisplayReactor")
+    expect(generated).not.toContain("createActorHooks")
   })
 
   it("leaves existing reactor files untouched when reactor generation is disabled", async () => {
@@ -210,11 +238,11 @@ describe("Codegen pipeline", () => {
 
     expect(result.success).toBe(true)
 
-    const indexPath = path.join(
+    const generatedPath = path.join(
       projectRoot,
-      "src/declarations/backend/index.generated.ts"
+      "src/declarations/backend/generated.ts"
     )
-    const generated = fs.readFileSync(indexPath, "utf-8")
+    const generated = fs.readFileSync(generatedPath, "utf-8")
 
     expect(generated).toContain(
       'import { DisplayReactor } from "@ic-reactor/core"'
@@ -267,7 +295,7 @@ export const customBackendIndex = true
     const wrapper = fs.readFileSync(indexPath, "utf-8")
     expect(wrapper).toContain("customBackendIndex = true")
     const generatedImpl = fs.readFileSync(
-      path.join(projectRoot, "src/declarations/backend/index.generated.ts"),
+      path.join(projectRoot, "src/declarations/backend/generated.ts"),
       "utf-8"
     )
     expect(generatedImpl).toContain('canisterId: "yq4ns-hyaaa-aaaap-akbna-cai"')
@@ -276,6 +304,50 @@ export const customBackendIndex = true
         expect.objectContaining({
           filePath: indexPath,
           skipped: true,
+          success: true,
+        }),
+      ])
+    )
+  })
+
+  it("migrates only the legacy re-export in customized wrappers", async () => {
+    const projectRoot = createTempProject()
+    writeDid(projectRoot, "backend.did")
+
+    const canisterOutDir = path.join(projectRoot, "src/declarations/backend")
+    fs.mkdirSync(canisterOutDir, { recursive: true })
+
+    const customWrapper = `// user custom canister file
+export * from "./index.generated"
+
+export const customBackendFactory = true
+`
+
+    const indexPath = path.join(canisterOutDir, "index.ts")
+    fs.writeFileSync(indexPath, customWrapper)
+
+    const result = await runCanisterPipeline({
+      canisterConfig: {
+        name: "backend",
+        didFile: "backend.did",
+      },
+      projectRoot,
+      globalConfig: {
+        outDir: "src/declarations",
+        clientManagerPath: "../../clients",
+      },
+    })
+
+    expect(result.success).toBe(true)
+
+    const entry = fs.readFileSync(indexPath, "utf-8")
+    expect(entry).toContain('export * from "./generated"')
+    expect(entry).not.toContain('export * from "./index.generated"')
+    expect(entry).toContain("customBackendFactory = true")
+    expect(result.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filePath: indexPath,
           success: true,
         }),
       ])
@@ -332,17 +404,17 @@ export const {
     const indexPath = path.join(canisterOutDir, "index.ts")
     const entry = fs.readFileSync(indexPath, "utf-8")
     const generated = fs.readFileSync(
-      path.join(canisterOutDir, "index.generated.ts"),
+      path.join(canisterOutDir, "generated.ts"),
       "utf-8"
     )
-    expect(entry).toContain('export * from "./index.generated"')
+    expect(entry).toContain('export * from "./generated"')
     expect(entry).not.toBe(existingGeneratedIndex)
     expect(generated).toContain("new DisplayReactor<BackendService>")
     expect(generated).toContain("useBackendMutation")
     expect(result.files).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          filePath: path.join(canisterOutDir, "index.generated.ts"),
+          filePath: path.join(canisterOutDir, "generated.ts"),
           success: true,
         }),
         expect.objectContaining({
