@@ -6,7 +6,7 @@ describe("Typed bindings generator", () => {
     greet: (text) -> (text) query;
 }`
 
-  it("merges TS types with the real idlFactory/init implementation", () => {
+  it("merges TS types with the real idlFactory implementation", () => {
     const result = buildTypedBindings({ didContent: validDidContent })
 
     expect(result.success).toBe(true)
@@ -14,6 +14,9 @@ describe("Typed bindings generator", () => {
     // TS type block is preserved (verbatim from didToTs minus the `declare const` lines)
     expect(result.content).toContain(
       "import type { IDL } from '@icp-sdk/core/candid'"
+    )
+    expect(result.content).not.toContain(
+      "import type { Principal } from '@icp-sdk/core/principal'"
     )
     expect(result.content).toContain(
       "export interface _SERVICE { 'greet' : ActorMethod<[string], string> }"
@@ -27,9 +30,8 @@ describe("Typed bindings generator", () => {
     expect(result.content).toContain(
       "export const idlFactory: IDL.InterfaceFactory = ({ IDL }) =>"
     )
-    expect(result.content).toContain(
-      "export const init: (args: { IDL: typeof IDL }) => IDL.Type[] = ({ IDL }) => { return []; };"
-    )
+    expect(result.content).not.toContain("export const init")
+    expect(result.content).not.toMatch(/\binit\b/)
 
     // The factory body references the actual IDL.Service call
     expect(result.content).toContain(
