@@ -1,0 +1,128 @@
+/**
+ * Candid Codec — Public API
+ *
+ * The `c` namespace is the primary entry point for the codec layer.
+ *
+ * @example
+ * ```ts
+ * import { c } from "@ic-reactor/candid"
+ *
+ * const Account = c.record({
+ *   owner: c.principal(),
+ *   subaccount: c.opt(c.blob()),
+ * })
+ *
+ * type Account = c.infer<typeof Account>
+ * ```
+ */
+
+// Re-export classes and types for advanced consumers
+export { CandidCodec } from "./codec"
+export { CandidPrimitiveCodec } from "./primitives"
+export {
+  CandidOptCodec,
+  CandidVecCodec,
+  CandidRecordCodec,
+  CandidVariantCodec,
+  CandidTupleCodec,
+} from "./composites"
+export { CandidMethodCodec, CandidServiceCodec } from "./service"
+export type {
+  CandidMetadata,
+  CandidMethodManifest,
+  CandidFieldManifest,
+  CandidServiceManifest,
+} from "./types"
+
+// ─────────────────────────────────────────────────────────────────────────────
+// `c` Namespace
+// ─────────────────────────────────────────────────────────────────────────────
+
+import {
+  text,
+  bool,
+  nat,
+  nat8,
+  nat16,
+  nat32,
+  nat64,
+  int,
+  int8,
+  int16,
+  int32,
+  int64,
+  float32,
+  float64,
+  principal,
+  null_,
+  reserved,
+  empty,
+  blob,
+} from "./primitives"
+
+import { opt, vec, record, variant, tuple } from "./composites"
+import { query, update, oneway, service } from "./service"
+import type { Infer, ServiceOf } from "./service"
+
+/**
+ * The `c` namespace — Zod-inspired Candid codec builder.
+ *
+ * Usage mirrors the plan's target API:
+ * ```ts
+ * const Account = c.record({ owner: c.principal(), ... })
+ * type Account = c.infer<typeof Account>
+ * ```
+ *
+ * The namespace merges a const object (runtime factories) with a TypeScript
+ * namespace (type-level utilities like `c.infer` and `c.ServiceOf`).
+ */
+export const c = {
+  // Primitives
+  text,
+  bool,
+  nat,
+  nat8,
+  nat16,
+  nat32,
+  nat64,
+  int,
+  int8,
+  int16,
+  int32,
+  int64,
+  float32,
+  float64,
+  principal,
+  null: null_,
+  reserved,
+  empty,
+  blob,
+
+  // Composites
+  opt,
+  vec,
+  record,
+  variant,
+  tuple,
+
+  // Service / Method
+  query,
+  update,
+  oneway,
+  service,
+} as const
+
+/**
+ * Merged namespace providing type-level utilities:
+ *
+ * - `c.infer<typeof SomeCodec>` → infer the TS type from a codec
+ * - `c.ServiceOf<typeof SomeService>` → infer the actor interface
+ */
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace c {
+  /** Infer the TypeScript type represented by a codec. */
+  export type infer<T> = Infer<T>
+
+  /** Infer the actor-like interface from a service codec. */
+  export type ServiceOf<T> = import("./service").ServiceOf<T>
+}
