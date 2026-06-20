@@ -1,0 +1,29 @@
+{
+  "name": "ic-reactor-start-example-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ic-reactor/react": "^3.6.0",
+    "@icp-sdk/auth": "^7.1.0",
+    "@icp-sdk/core": "^5.4.0",
+    "@tanstack/react-query": "^5.100.10",
+    "@tanstack/react-router": "^1.144.5",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@ic-reactor/start": "workspace:*",
+    "@tanstack/router-plugin": "^1.145.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  },
+  "packageManager": "pnpm@10.30.3"
+}

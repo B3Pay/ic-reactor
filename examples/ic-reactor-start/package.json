@@ -1,0 +1,11 @@
+{
+  "name": "ic-reactor-start-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --dir frontend dev",
+    "build": "pnpm --dir frontend build",
+    "preview": "pnpm --dir frontend preview"
+  },
+  "packageManager": "pnpm@10.30.3"
+}
