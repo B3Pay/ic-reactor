@@ -310,6 +310,50 @@ export const customBackendIndex = true
     )
   })
 
+  it("migrates only the legacy re-export in customized wrappers", async () => {
+    const projectRoot = createTempProject()
+    writeDid(projectRoot, "backend.did")
+
+    const canisterOutDir = path.join(projectRoot, "src/declarations/backend")
+    fs.mkdirSync(canisterOutDir, { recursive: true })
+
+    const customWrapper = `// user custom canister file
+export * from "./index.generated"
+
+export const customBackendFactory = true
+`
+
+    const indexPath = path.join(canisterOutDir, "index.ts")
+    fs.writeFileSync(indexPath, customWrapper)
+
+    const result = await runCanisterPipeline({
+      canisterConfig: {
+        name: "backend",
+        didFile: "backend.did",
+      },
+      projectRoot,
+      globalConfig: {
+        outDir: "src/declarations",
+        clientManagerPath: "../../clients",
+      },
+    })
+
+    expect(result.success).toBe(true)
+
+    const entry = fs.readFileSync(indexPath, "utf-8")
+    expect(entry).toContain('export * from "./generated"')
+    expect(entry).not.toContain('export * from "./index.generated"')
+    expect(entry).toContain("customBackendFactory = true")
+    expect(result.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filePath: indexPath,
+          success: true,
+        }),
+      ])
+    )
+  })
+
   it("migrates a legacy generated index.ts to the managed wrapper", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "backend.did")
