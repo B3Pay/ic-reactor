@@ -6,16 +6,12 @@ import type {
 } from "@ic-reactor/parser"
 import {
   BUILT_IN_FORMAT_HELPERS,
-  BUILT_IN_JSDOC_FORMAT_TYPES,
   type CustomJSDocFormatTypes,
-  type JSDocFormatDefinition,
   normalizeValidationMetadata,
 } from "./metadata"
 
-export {
-  BUILT_IN_JSDOC_FORMAT_TYPES,
-  BUILT_IN_FORMAT_HELPERS,
-} from "./metadata"
+export { BUILT_IN_JSDOC_FORMAT_TYPES } from "./metadata"
+export { BUILT_IN_FORMAT_HELPERS } from "./metadata"
 
 export type { CustomJSDocFormatTypes, JSDocFormatDefinition } from "./metadata"
 
