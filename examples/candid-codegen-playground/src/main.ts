@@ -6,14 +6,34 @@
  */
 
 import "./styles.css"
-import { generateCodecDeclarations } from "@ic-reactor/codegen/renderer"
+import {
+  BUILT_IN_JSDOC_FORMAT_TYPES,
+  generateCodecDeclarations,
+} from "@ic-reactor/codegen/renderer"
+import type { GenerateCodecDeclarationsOptions } from "@ic-reactor/codegen/renderer"
 import { SAMPLES } from "./samples"
 import init, { parseDid } from "@ic-reactor/parser"
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
-let candidInput = SAMPLES.icrc1.did
-let selectedSampleKey = "icrc1"
+const CUSTOM_JSDOC_FORMAT_TYPES: NonNullable<
+  GenerateCodecDeclarationsOptions["customJSDocFormatTypes"]
+> = {
+  username: {
+    regex: "^[a-z0-9_]+$",
+    errorMessage: "Use lowercase letters, numbers, and underscores",
+  },
+}
+
+function getCodegenOptions(): GenerateCodecDeclarationsOptions {
+  return {
+    serviceExportName: "service",
+    customJSDocFormatTypes: CUSTOM_JSDOC_FORMAT_TYPES,
+  }
+}
+
+let candidInput = SAMPLES.metadata.did
+let selectedSampleKey = "metadata"
 let outputCode = ""
 let errorMessage = ""
 let parserReady = false
@@ -40,7 +60,7 @@ function regenerate(): void {
 
   try {
     const schemaAst = parseDid(candidInput)
-    outputCode = generateCodecDeclarations(schemaAst, "service")
+    outputCode = generateCodecDeclarations(schemaAst, getCodegenOptions())
     errorMessage = ""
   } catch (err) {
     outputCode = ""
@@ -101,6 +121,12 @@ function render(): void {
         `<option value="${key}" ${key === selectedSampleKey ? "selected" : ""}>${label}</option>`
     )
     .join("")
+  const customFormatOptions = Object.keys({
+    ...BUILT_IN_JSDOC_FORMAT_TYPES,
+    ...CUSTOM_JSDOC_FORMAT_TYPES,
+  })
+    .map((format) => `<span class="format-chip">@format ${format}</span>`)
+    .join("")
 
   app.innerHTML = `
     <header class="header">
@@ -133,6 +159,16 @@ function render(): void {
         <span id="copy-icon">📋</span>
         <span id="copy-label">Copy output</span>
       </button>
+    </div>
+
+    <div class="metadata-strip">
+      <div class="metadata-copy">
+        <span class="metadata-title">Metadata tags</span>
+        <span class="metadata-text">Doc comments and validation tags are preserved as Cod descriptions and metadata.</span>
+      </div>
+      <div class="format-list" aria-label="Active JSDoc format types">
+        ${customFormatOptions}
+      </div>
     </div>
 
     <div class="editor-container">

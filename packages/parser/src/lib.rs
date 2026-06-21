@@ -1,6 +1,9 @@
-use candid_parser::syntax::IDLMergedProg;
-use candid_parser::{check_prog, IDLProg, TypeEnv};
+use candid_parser::syntax::{
+    Binding, Dec, IDLActorType, IDLMergedProg, IDLProg, IDLType, TypeField,
+};
+use candid_parser::{check_prog, TypeEnv};
 use serde::Serialize;
+use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(js_name = didToJs)]
@@ -53,16 +56,63 @@ struct CandidSchema {
     service: Option<CandidServiceDeclaration>,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CandidMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    docs: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    validation: Option<CandidValidationMetadata>,
+}
+
+#[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CandidValidationMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    minimum: Option<CandidValidationBound>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    maximum: Option<CandidValidationBound>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    min_length: Option<CandidValidationBound>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_length: Option<CandidValidationBound>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pattern: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    format: Option<CandidValidationFormat>,
+}
+
+#[derive(Clone, Serialize)]
+struct CandidValidationBound {
+    value: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CandidValidationFormat {
+    r#type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
+}
+
 #[derive(Serialize)]
 struct CandidTypeDeclaration {
     name: String,
     #[serde(rename = "type")]
     ty: CandidType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<CandidMetadata>,
 }
 
 #[derive(Serialize)]
 struct CandidServiceDeclaration {
     methods: Vec<CandidMethodDeclaration>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<CandidMetadata>,
 }
 
 #[derive(Serialize)]
@@ -71,6 +121,8 @@ struct CandidMethodDeclaration {
     mode: &'static str,
     args: Vec<CandidType>,
     returns: Vec<CandidType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<CandidMetadata>,
 }
 
 #[derive(Serialize)]
@@ -78,6 +130,8 @@ struct CandidField {
     name: String,
     #[serde(rename = "type")]
     ty: CandidType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<CandidMetadata>,
 }
 
 #[derive(Serialize)]
@@ -138,7 +192,123 @@ fn label_to_string(label: &candid_parser::candid::types::Label) -> String {
     }
 }
 
-fn type_to_schema(ty: &candid_parser::candid::types::Type) -> CandidType {
+fn metadata_from_docs(docs: &[String]) -> Option<CandidMetadata> {
+    if docs.is_empty() {
+        return None;
+    }
+
+    let normalized_docs: Vec<String> = docs.iter().map(|line| normalize_doc_line(line)).collect();
+    let description_lines: Vec<String> = normalized_docs
+        .iter()
+        .map(|line| line.as_str())
+        .filter(|line| !line.is_empty() && !line.starts_with('@'))
+        .map(str::to_string)
+        .collect();
+    let description = if description_lines.is_empty() {
+        None
+    } else {
+        Some(description_lines.join("\n"))
+    };
+    let validation = validation_from_docs(&normalized_docs);
+
+    Some(CandidMetadata {
+        description,
+        docs: normalized_docs,
+        validation,
+    })
+}
+
+fn normalize_doc_line(line: &str) -> String {
+    line.trim()
+        .strip_prefix('/')
+        .map(str::trim)
+        .unwrap_or_else(|| line.trim())
+        .to_string()
+}
+
+fn validation_from_docs(docs: &[String]) -> Option<CandidValidationMetadata> {
+    let mut validation = CandidValidationMetadata::default();
+
+    for doc in docs {
+        let line = doc.trim();
+        if let Some(rest) = line.strip_prefix("@minimum ") {
+            validation.minimum = parse_bound(rest);
+        } else if let Some(rest) = line.strip_prefix("@maximum ") {
+            validation.maximum = parse_bound(rest);
+        } else if let Some(rest) = line.strip_prefix("@minLength ") {
+            validation.min_length = parse_bound(rest);
+        } else if let Some(rest) = line.strip_prefix("@maxLength ") {
+            validation.max_length = parse_bound(rest);
+        } else if let Some(rest) = line.strip_prefix("@pattern ") {
+            let pattern = rest.trim();
+            if !pattern.is_empty() {
+                validation.pattern = Some(pattern.to_string());
+            }
+        } else if let Some(rest) = line.strip_prefix("@format ") {
+            validation.format = parse_format(rest);
+        }
+    }
+
+    if validation.minimum.is_some()
+        || validation.maximum.is_some()
+        || validation.min_length.is_some()
+        || validation.max_length.is_some()
+        || validation.pattern.is_some()
+        || validation.format.is_some()
+    {
+        Some(validation)
+    } else {
+        None
+    }
+}
+
+fn parse_bound(raw: &str) -> Option<CandidValidationBound> {
+    let mut parts = raw.trim().splitn(2, char::is_whitespace);
+    let value = parts.next()?.trim();
+    if value.is_empty() {
+        return None;
+    }
+    let message = parts
+        .next()
+        .map(str::trim)
+        .filter(|message| !message.is_empty())
+        .map(str::to_string);
+
+    Some(CandidValidationBound {
+        value: value.to_string(),
+        message,
+    })
+}
+
+fn parse_format(raw: &str) -> Option<CandidValidationFormat> {
+    let mut parts = raw.trim().splitn(2, char::is_whitespace);
+    let format_type = parts.next()?.trim();
+    if format_type.is_empty() {
+        return None;
+    }
+    let message = parts
+        .next()
+        .map(str::trim)
+        .filter(|message| !message.is_empty())
+        .map(str::to_string);
+
+    Some(CandidValidationFormat {
+        r#type: format_type.to_string(),
+        message,
+    })
+}
+
+fn syntax_field_for<'a>(
+    fields: Option<&'a [TypeField]>,
+    label: &candid_parser::candid::types::Label,
+) -> Option<&'a TypeField> {
+    fields?.iter().find(|field| field.label == *label)
+}
+
+fn type_to_schema(
+    ty: &candid_parser::candid::types::Type,
+    syntax_ty: Option<&IDLType>,
+) -> CandidType {
     use candid_parser::candid::types::TypeInner;
 
     match ty.as_ref() {
@@ -162,18 +332,34 @@ fn type_to_schema(ty: &candid_parser::candid::types::Type) -> CandidType {
         TypeInner::Principal => CandidType::Principal,
         TypeInner::Var(name) => CandidType::Reference { name: name.clone() },
         TypeInner::Opt(inner) => CandidType::Opt {
-            ty: Box::new(type_to_schema(inner)),
+            ty: Box::new(type_to_schema(
+                inner,
+                match syntax_ty {
+                    Some(IDLType::OptT(inner)) => Some(inner),
+                    _ => None,
+                },
+            )),
         },
         TypeInner::Vec(inner) => {
             if let TypeInner::Nat8 = inner.as_ref() {
                 CandidType::Blob
             } else {
                 CandidType::Vec {
-                    ty: Box::new(type_to_schema(inner)),
+                    ty: Box::new(type_to_schema(
+                        inner,
+                        match syntax_ty {
+                            Some(IDLType::VecT(inner)) => Some(inner),
+                            _ => None,
+                        },
+                    )),
                 }
             }
         }
         TypeInner::Record(fields) => {
+            let syntax_fields = match syntax_ty {
+                Some(IDLType::RecordT(fields)) => Some(fields.as_slice()),
+                _ => None,
+            };
             let is_tuple = fields.iter().enumerate().all(|(idx, field)| {
                 matches!(
                     *field.id,
@@ -187,7 +373,10 @@ fn type_to_schema(ty: &candid_parser::candid::types::Type) -> CandidType {
                 CandidType::Tuple {
                     types: fields
                         .iter()
-                        .map(|field| type_to_schema(&field.ty))
+                        .map(|field| {
+                            let syntax_field = syntax_field_for(syntax_fields, &field.id);
+                            type_to_schema(&field.ty, syntax_field.map(|field| &field.typ))
+                        })
                         .collect(),
                 }
             } else {
@@ -196,21 +385,37 @@ fn type_to_schema(ty: &candid_parser::candid::types::Type) -> CandidType {
                         .iter()
                         .map(|field| CandidField {
                             name: label_to_string(&field.id),
-                            ty: type_to_schema(&field.ty),
+                            ty: {
+                                let syntax_field = syntax_field_for(syntax_fields, &field.id);
+                                type_to_schema(&field.ty, syntax_field.map(|field| &field.typ))
+                            },
+                            metadata: syntax_field_for(syntax_fields, &field.id)
+                                .and_then(|field| metadata_from_docs(&field.docs)),
                         })
                         .collect(),
                 }
             }
         }
-        TypeInner::Variant(fields) => CandidType::Variant {
-            fields: fields
-                .iter()
-                .map(|field| CandidField {
-                    name: label_to_string(&field.id),
-                    ty: type_to_schema(&field.ty),
-                })
-                .collect(),
-        },
+        TypeInner::Variant(fields) => {
+            let syntax_fields = match syntax_ty {
+                Some(IDLType::VariantT(fields)) => Some(fields.as_slice()),
+                _ => None,
+            };
+            CandidType::Variant {
+                fields: fields
+                    .iter()
+                    .map(|field| {
+                        let syntax_field = syntax_field_for(syntax_fields, &field.id);
+                        CandidField {
+                            name: label_to_string(&field.id),
+                            ty: type_to_schema(&field.ty, syntax_field.map(|field| &field.typ)),
+                            metadata: syntax_field
+                                .and_then(|field| metadata_from_docs(&field.docs)),
+                        }
+                    })
+                    .collect(),
+            }
+        }
         TypeInner::Func(_) => CandidType::Func,
         TypeInner::Service(_) => CandidType::Service,
         TypeInner::Class(_, _) => CandidType::Class,
@@ -220,18 +425,58 @@ fn type_to_schema(ty: &candid_parser::candid::types::Type) -> CandidType {
     }
 }
 
+fn type_bindings_by_name(ast: &IDLProg) -> HashMap<String, &Binding> {
+    ast.decs
+        .iter()
+        .filter_map(|dec| match dec {
+            Dec::TypD(binding) => Some((binding.id.clone(), binding)),
+            Dec::ImportType(_) | Dec::ImportServ(_) => None,
+        })
+        .collect()
+}
+
+fn service_method_bindings_from_actor<'a>(
+    actor: Option<&'a IDLActorType>,
+    type_bindings: &HashMap<String, &'a Binding>,
+) -> Vec<&'a Binding> {
+    fn service_methods_from_type<'a>(
+        ty: &'a IDLType,
+        type_bindings: &HashMap<String, &'a Binding>,
+    ) -> Vec<&'a Binding> {
+        match ty {
+            IDLType::ServT(methods) => methods.iter().collect(),
+            IDLType::ClassT(_, inner) => service_methods_from_type(inner, type_bindings),
+            IDLType::VarT(name) => type_bindings
+                .get(name)
+                .map(|binding| service_methods_from_type(&binding.typ, type_bindings))
+                .unwrap_or_default(),
+            _ => Vec::new(),
+        }
+    }
+
+    actor
+        .map(|actor| service_methods_from_type(&actor.typ, type_bindings))
+        .unwrap_or_default()
+}
+
 #[wasm_bindgen(js_name = parseDid)]
 pub fn parse_did(prog: String) -> Result<JsValue, String> {
     let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
     let mut env = TypeEnv::new();
     let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    let type_bindings = type_bindings_by_name(&ast);
+    let method_bindings = service_method_bindings_from_actor(ast.actor.as_ref(), &type_bindings);
 
     let types = env
         .0
         .into_iter()
-        .map(|(name, ty)| CandidTypeDeclaration {
-            name,
-            ty: type_to_schema(&ty),
+        .map(|(name, ty)| {
+            let binding = type_bindings.get(&name).copied();
+            CandidTypeDeclaration {
+                name,
+                ty: type_to_schema(&ty, binding.map(|binding| &binding.typ)),
+                metadata: binding.and_then(|binding| metadata_from_docs(&binding.docs)),
+            }
         })
         .collect();
 
@@ -246,6 +491,10 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
                 .iter()
                 .filter_map(|(name, ty)| {
                     if let candid_parser::candid::types::TypeInner::Func(func) = ty.as_ref() {
+                        let binding = method_bindings
+                            .iter()
+                            .find(|binding| binding.id == *name)
+                            .copied();
                         let mode = if func
                             .modes
                             .contains(&candid_parser::candid::types::FuncMode::Oneway)
@@ -263,8 +512,17 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
                         Some(CandidMethodDeclaration {
                             name: name.clone(),
                             mode,
-                            args: func.args.iter().map(type_to_schema).collect(),
-                            returns: func.rets.iter().map(type_to_schema).collect(),
+                            args: func
+                                .args
+                                .iter()
+                                .map(|arg| type_to_schema(arg, None))
+                                .collect(),
+                            returns: func
+                                .rets
+                                .iter()
+                                .map(|ret| type_to_schema(ret, None))
+                                .collect(),
+                            metadata: binding.and_then(|binding| metadata_from_docs(&binding.docs)),
                         })
                     } else {
                         None
@@ -272,7 +530,13 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
                 })
                 .collect();
 
-            Some(CandidServiceDeclaration { methods })
+            Some(CandidServiceDeclaration {
+                methods,
+                metadata: ast
+                    .actor
+                    .as_ref()
+                    .and_then(|actor| metadata_from_docs(&actor.docs)),
+            })
         } else {
             None
         }

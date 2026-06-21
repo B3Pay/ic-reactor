@@ -8,7 +8,7 @@ import { Aside, Card, CardGrid } from "@astrojs/starlight/components"
 
 `@ic-reactor/parser` is the low-level WASM parser behind local Candid
 compilation in IC Reactor. It converts raw `.did` source into JavaScript IDL
-factories or TypeScript declaration strings.
+factories, TypeScript declaration strings, or structured schema metadata.
 
 ## Why This Package?
 
@@ -25,6 +25,9 @@ factories or TypeScript declaration strings.
   <Card title="Candid to TS" icon="seti:typescript">
     Returns TypeScript declaration source for the same interface.
   </Card>
+  <Card title="Candid Schema" icon="seti:json">
+    Returns structured types, services, docs, and validation metadata.
+  </Card>
   <Card title="WASM Runtime" icon="rocket">
     Implemented in Rust and compiled to WebAssembly.
   </Card>
@@ -39,7 +42,7 @@ pnpm add @ic-reactor/parser
 ## Usage
 
 ```ts
-import { didToJs, didToTs } from "@ic-reactor/parser"
+import { didToJs, didToTs, parseDid } from "@ic-reactor/parser"
 
 const candid = `service : {
   greet : (text) -> (text) query;
@@ -47,6 +50,7 @@ const candid = `service : {
 
 const jsSource = didToJs(candid)
 const tsSource = didToTs(candid)
+const schema = parseDid(candid)
 ```
 
 <Aside type="caution">
@@ -74,5 +78,6 @@ const jsSource = adapter.compileLocal(
 ## See Also
 
 - [API Reference](/v4/packages/parser/reference) — Detailed function reference
+- [Candid Metadata Tags](/v4/packages/parser/metadata-tags) — Doc-comment metadata and validation tag contract
 - [@ic-reactor/candid](/v4/packages/candid) — Dynamic runtime Candid support
 - [@ic-reactor/codegen](/v4/packages/codegen) — Uses the parser for declaration generation

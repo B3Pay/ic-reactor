@@ -3,6 +3,56 @@
  */
 
 export const SAMPLES: Record<string, { label: string; did: string }> = {
+  metadata: {
+    label: "Metadata + Validation",
+    did: `/// Public profile submitted by application users.
+type UserProfile = record {
+  /// Public profile identifier.
+  /// @format uuid
+  id : text;
+
+  /// Stable username shown in URLs and mentions.
+  /// @minLength 3
+  /// @maxLength 24
+  /// @format username
+  username : text;
+
+  /// Contact email used for account recovery.
+  /// @format email
+  email : text;
+
+  /// Optional verified website.
+  /// @format url
+  website : opt text;
+
+  /// ISO timestamp for the last profile update.
+  /// @format date-time
+  updated_at : text;
+
+  /// Profile reputation score.
+  /// @minimum 0
+  /// @maximum 100
+  reputation : nat8;
+};
+
+/// Result returned after saving a profile.
+type SaveProfileResult = variant {
+  /// Profile accepted and stored.
+  Ok : UserProfile;
+
+  /// Human-readable rejection reason.
+  Err : text;
+};
+
+/// User profile registry service.
+service : {
+  /// Create or replace the caller profile.
+  upsert_profile : (UserProfile) -> (SaveProfileResult);
+
+  /// Look up a profile by username.
+  get_profile : (text) -> (opt UserProfile) query;
+}`,
+  },
   icrc1: {
     label: "ICRC-1 Ledger",
     did: `type Account = record {

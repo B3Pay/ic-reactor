@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { generateCodecDeclarations } from "./renderer"
+import {
+  BUILT_IN_JSDOC_FORMAT_TYPES,
+  generateCodecDeclarations,
+} from "./renderer"
 import type { CandidSchema } from "@ic-reactor/parser"
 
 describe("Codec Declarations Generator", () => {
@@ -155,5 +158,195 @@ describe("Codec Declarations Generator", () => {
     expect(code).toContain("status: c.query([]),")
     expect(code).toContain("fireAndForget: c.update([c.text()]),")
     expect(code).not.toContain("undefined as any")
+  })
+
+  it("renders docs and validation tags as codec metadata", () => {
+    const schema: CandidSchema = {
+      types: [
+        {
+          name: "Profile",
+          metadata: {
+            description: "A user profile.",
+            docs: ["A user profile."],
+          },
+          type: {
+            kind: "record",
+            fields: [
+              {
+                name: "email",
+                type: { kind: "text" },
+                metadata: {
+                  description: "Contact email.",
+                  docs: ["Contact email.", "@format email"],
+                  validation: {
+                    format: {
+                      type: "email",
+                    },
+                  },
+                },
+              },
+              {
+                name: "name",
+                type: { kind: "text" },
+                metadata: {
+                  description: "Display name.",
+                  docs: ["Display name.", "@minLength 2"],
+                  validation: {
+                    minLength: { value: "2" },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+      service: {
+        methods: [
+          {
+            name: "save",
+            mode: "update",
+            args: [{ kind: "reference", name: "Profile" }],
+            returns: [],
+            metadata: {
+              description: "Save a profile.",
+              docs: ["Save a profile."],
+            },
+          },
+        ],
+        metadata: {
+          description: "Profile service.",
+          docs: ["Profile service."],
+        },
+      },
+    }
+
+    const code = generateCodecDeclarations(schema)
+
+    expect(code).toContain("export const Profile = c.record({")
+    expect(code).toContain('}).describe("A user profile.")')
+    expect(code).toContain(
+      'email: c.text().describe("Contact email.").meta({"docs":["Contact email.","@format email"],"validation":{"format":{"type":"email","regex":"^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$","jsonSchemaFormat":"email","errorMessage":"Must be a valid email address"}}}),'
+    )
+    expect(code).toContain(
+      'name: c.text().describe("Display name.").meta({"docs":["Display name.","@minLength 2"],"validation":{"minLength":{"value":"2","message":"Must be at least 2 characters"}}}),'
+    )
+    expect(code).toContain("c.service({")
+    expect(code).toContain('}).describe("Profile service.")')
+    expect(code).toContain(
+      'save: c.update([Profile]).describe("Save a profile.")'
+    )
+  })
+
+  it("lets custom format definitions override built-in defaults", () => {
+    const schema: CandidSchema = {
+      types: [
+        {
+          name: "Profile",
+          type: {
+            kind: "record",
+            fields: [
+              {
+                name: "email",
+                type: { kind: "text" },
+                metadata: {
+                  validation: {
+                    format: {
+                      type: "email",
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+      service: null,
+    }
+
+    const code = generateCodecDeclarations(schema, {
+      customJSDocFormatTypes: {
+        email: {
+          regex: "^[^@]+@[^@]+$",
+          errorMessage: "Configured email error",
+        },
+      },
+    })
+
+    expect(code).toContain(
+      'email: c.text().meta({"validation":{"format":{"type":"email","regex":"^[^@]+@[^@]+$","jsonSchemaFormat":"email","errorMessage":"Configured email error"}}}),'
+    )
+  })
+
+  it("includes Zod-compatible built-in string format names", () => {
+    expect(Object.keys(BUILT_IN_JSDOC_FORMAT_TYPES).sort()).toEqual(
+      [
+        "base64",
+        "base64url",
+        "cidrv4",
+        "cidrv6",
+        "cuid",
+        "cuid2",
+        "date",
+        "date-time",
+        "datetime",
+        "duration",
+        "email",
+        "emoji",
+        "guid",
+        "httpsUrl",
+        "ipv4",
+        "ipv6",
+        "mac",
+        "nanoid",
+        "time",
+        "ulid",
+        "uri",
+        "url",
+        "uuid",
+      ].sort()
+    )
+  })
+
+  it("renders JSON Schema format and content encoding metadata for built-ins", () => {
+    const schema: CandidSchema = {
+      types: [
+        {
+          name: "WithFormats",
+          type: {
+            kind: "record",
+            fields: [
+              {
+                name: "createdAt",
+                type: { kind: "text" },
+                metadata: {
+                  validation: { format: { type: "date-time" } },
+                },
+              },
+              {
+                name: "avatar",
+                type: { kind: "text" },
+                metadata: {
+                  validation: { format: { type: "base64" } },
+                },
+              },
+              {
+                name: "homepage",
+                type: { kind: "text" },
+                metadata: {
+                  validation: { format: { type: "uri" } },
+                },
+              },
+            ],
+          },
+        },
+      ],
+      service: null,
+    }
+
+    const code = generateCodecDeclarations(schema)
+
+    expect(code).toContain('"jsonSchemaFormat":"date-time"')
+    expect(code).toContain('"contentEncoding":"base64"')
+    expect(code).toContain('"jsonSchemaFormat":"uri"')
   })
 })
