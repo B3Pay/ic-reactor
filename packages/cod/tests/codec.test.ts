@@ -7,18 +7,7 @@
 import { describe, it, expect, expectTypeOf } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import type { Principal } from "@icp-sdk/core/principal"
-import {
-  c,
-  CandidCodec,
-  CandidPrimitiveCodec,
-  CandidRecordCodec,
-  CandidVariantCodec,
-  CandidOptCodec,
-  CandidVecCodec,
-  CandidTupleCodec,
-  CandidServiceCodec,
-  CandidMethodCodec,
-} from "../src"
+import { c, CandidMethodCodec } from "../src"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Primitives
