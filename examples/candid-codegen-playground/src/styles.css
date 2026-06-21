@@ -257,57 +257,53 @@ body {
 
 .metadata-strip {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.65rem 1.5rem;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
   background: linear-gradient(
-    90deg,
-    rgba(16, 185, 129, 0.08),
-    rgba(6, 182, 212, 0.05)
+    180deg,
+    rgba(16, 185, 129, 0.06),
+    rgba(6, 182, 212, 0.03)
   );
   border-bottom: 1px solid var(--border-default);
 }
 
-.metadata-copy {
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.65rem;
-  flex: 1;
+.metadata-description {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
-.metadata-title {
+.metadata-description code {
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  color: var(--accent-emerald);
+}
+
+.metadata-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.metadata-label {
+  width: 95px;
   flex-shrink: 0;
   color: var(--accent-emerald);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.7px;
 }
 
-.metadata-text {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.format-list {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
+.format-list,
 .helper-list {
   display: flex;
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
-  justify-content: center;
 }
 
 .format-chip {
@@ -319,6 +315,14 @@ body {
   font-size: 0.7rem;
   line-height: 1;
   padding: 0.35rem 0.45rem;
+  transition: all var(--transition-fast);
+  cursor: default;
+}
+
+.format-chip:hover {
+  background: rgba(6, 182, 212, 0.16);
+  border-color: rgba(6, 182, 212, 0.4);
+  transform: translateY(-1px);
 }
 
 .helper-chip {
@@ -330,6 +334,14 @@ body {
   font-size: 0.7rem;
   line-height: 1;
   padding: 0.35rem 0.45rem;
+  transition: all var(--transition-fast);
+  cursor: default;
+}
+
+.helper-chip:hover {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.42);
+  transform: translateY(-1px);
 }
 
 /* ─── Editor Split ──────────────────────────────────────────────────────── */
@@ -552,27 +564,14 @@ body {
     flex-wrap: wrap;
   }
 
-  .metadata-strip {
-    align-items: flex-start;
+  .metadata-row {
     flex-direction: column;
-  }
-
-  .metadata-copy {
     align-items: flex-start;
-    flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.35rem;
   }
 
-  .metadata-text {
-    white-space: normal;
-  }
-
-  .format-list {
-    justify-content: flex-start;
-  }
-
-  .helper-list {
-    justify-content: flex-start;
+  .metadata-label {
+    width: auto;
   }
 
   .header-subtitle {

@@ -28,8 +28,8 @@ function getCodegenOptions(): GenerateCodecDeclarationsOptions {
   }
 }
 
-let candidInput = SAMPLES.formatHelpers.did
-let selectedSampleKey = "formatHelpers"
+let candidInput = SAMPLES.isoFormats.did
+let selectedSampleKey = "isoFormats"
 let outputCode = ""
 let errorMessage = ""
 let parserReady = false
@@ -118,19 +118,25 @@ function render(): void {
     )
     .join("")
   const formatPreviewOptions = [
+    "@format date",
+    "@format time",
+    "@format datetime",
+    "@format duration",
     "@format uuid",
     "@format email",
     "@format url",
-    "@format date-time",
     "@format base64",
   ]
     .map((format) => `<span class="format-chip">${format}</span>`)
     .join("")
   const helperPreviewOptions = [
+    "c.date()",
+    "c.time()",
+    "c.datetime()",
+    "c.duration()",
     "c.uuid()",
     "c.email()",
     "c.url()",
-    "c.dateTime()",
     "c.base64()",
   ]
     .map((helper) => `<span class="helper-chip">${helper}</span>`)
@@ -170,15 +176,20 @@ function render(): void {
     </div>
 
     <div class="metadata-strip">
-      <div class="metadata-copy">
-        <span class="metadata-title">Format helpers</span>
-        <span class="metadata-text">Built-in @format tags compile to compact Cod helpers with default validation messages.</span>
+      <div class="metadata-description">
+        Built-in <code>@format</code> tags compile to compact Cod validation helpers with default messages.
       </div>
-      <div class="helper-list" aria-label="Generated Cod format helpers">
-        ${helperPreviewOptions}
+      <div class="metadata-row">
+        <span class="metadata-label">Format Tags</span>
+        <div class="format-list" aria-label="Active JSDoc format types">
+          ${formatPreviewOptions}
+        </div>
       </div>
-      <div class="format-list" aria-label="Active JSDoc format types">
-        ${formatPreviewOptions}
+      <div class="metadata-row">
+        <span class="metadata-label">Cod Helpers</span>
+        <div class="helper-list" aria-label="Generated Cod format helpers">
+          ${helperPreviewOptions}
+        </div>
       </div>
     </div>
 
