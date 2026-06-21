@@ -41,13 +41,166 @@ describe("Codec Declarations Generator", () => {
     expect(code).toContain("export type Profile = c.infer<typeof Profile>")
     expect(code).toContain("export const myService = c.service({")
     expect(code).toContain("getProfile: c.query([c.principal()], Profile),")
-    expect(code).toContain("export const idlFactory = myService.idlFactory")
-    expect(code).toContain(
-      "export type _SERVICE = c.ServiceOf<typeof myService>"
-    )
-    expect(code).toContain("export const manifest = myService.manifest()")
+    expect(code).not.toContain("export const idlFactory")
+    expect(code).not.toContain("export type _SERVICE")
+    expect(code).not.toContain("export const manifest")
     expect(code).not.toContain("IDL.")
     expect(code).not.toContain("init")
+  })
+
+  it("can emit compatibility service aliases when requested", () => {
+    const schema: CandidSchema = {
+      types: [],
+      service: {
+        methods: [
+          {
+            name: "ping",
+            mode: "query",
+            args: [],
+            returns: [{ kind: "text" }],
+          },
+        ],
+      },
+    }
+
+    const code = generateCodecDeclarations(schema, {
+      serviceExportName: "backend",
+      includeCompatibilityExports: true,
+    })
+
+    expect(code).toContain("export const backend = c.service({")
+    expect(code).toContain("export const idlFactory = backend.idlFactory")
+    expect(code).toContain("export type _SERVICE = c.ServiceOf<typeof backend>")
+    expect(code).toContain("export const manifest = backend.manifest()")
+  })
+
+  it("falls back to _SERVICE when neither canisterName nor serviceExportName is provided", () => {
+    const schema: CandidSchema = {
+      types: [
+        {
+          name: "canister",
+          type: {
+            kind: "record",
+            fields: [{ name: "name", type: { kind: "text" } }],
+          },
+        },
+      ],
+      service: {
+        methods: [
+          {
+            name: "get",
+            mode: "query",
+            args: [],
+            returns: [{ kind: "reference", name: "canister" }],
+          },
+        ],
+      },
+    }
+
+    const code = generateCodecDeclarations(schema)
+
+    expect(code).toContain("export const canister = c.record({")
+    expect(code).toContain("export const _SERVICE = c.service({")
+    expect(code).toContain("get: c.query([], canister),")
+  })
+
+  it("derives SCREAMING_SNAKE_CASE service export from canisterName", () => {
+    const schema: CandidSchema = {
+      types: [],
+      service: {
+        methods: [
+          {
+            name: "ping",
+            mode: "query",
+            args: [],
+            returns: [{ kind: "text" }],
+          },
+        ],
+      },
+    }
+
+    const code = generateCodecDeclarations(schema, {
+      canisterName: "my_backend",
+    })
+
+    expect(code).toContain("export const MY_BACKEND = c.service({")
+  })
+
+  it("converts hyphens to underscores for canisterName", () => {
+    const schema: CandidSchema = {
+      types: [],
+      service: {
+        methods: [
+          {
+            name: "ping",
+            mode: "query",
+            args: [],
+            returns: [{ kind: "text" }],
+          },
+        ],
+      },
+    }
+
+    const code = generateCodecDeclarations(schema, {
+      canisterName: "internet-identity",
+    })
+
+    expect(code).toContain("export const INTERNET_IDENTITY = c.service({")
+  })
+
+  it("appends _SERVICE suffix when canisterName collides with a declared type", () => {
+    const schema: CandidSchema = {
+      types: [
+        {
+          name: "BACKEND",
+          type: {
+            kind: "record",
+            fields: [{ name: "id", type: { kind: "text" } }],
+          },
+        },
+      ],
+      service: {
+        methods: [
+          {
+            name: "get",
+            mode: "query",
+            args: [],
+            returns: [{ kind: "reference", name: "BACKEND" }],
+          },
+        ],
+      },
+    }
+
+    const code = generateCodecDeclarations(schema, {
+      canisterName: "backend",
+    })
+
+    expect(code).toContain("export const BACKEND = c.record({")
+    expect(code).toContain("export const BACKEND_SERVICE = c.service({")
+  })
+
+  it("serviceExportName takes priority over canisterName", () => {
+    const schema: CandidSchema = {
+      types: [],
+      service: {
+        methods: [
+          {
+            name: "ping",
+            mode: "query",
+            args: [],
+            returns: [{ kind: "text" }],
+          },
+        ],
+      },
+    }
+
+    const code = generateCodecDeclarations(schema, {
+      canisterName: "backend",
+      serviceExportName: "myCustomName",
+    })
+
+    expect(code).toContain("export const myCustomName = c.service({")
+    expect(code).not.toContain("BACKEND")
   })
 
   it("sorts type declarations topologically", () => {

@@ -24,7 +24,6 @@ const CUSTOM_JSDOC_FORMAT_TYPES: NonNullable<
 
 function getCodegenOptions(): GenerateCodecDeclarationsOptions {
   return {
-    serviceExportName: "service",
     customJSDocFormatTypes: CUSTOM_JSDOC_FORMAT_TYPES,
   }
 }

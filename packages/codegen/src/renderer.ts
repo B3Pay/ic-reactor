@@ -135,8 +135,16 @@ export const BUILT_IN_JSDOC_FORMAT_TYPES: Readonly<
 }
 
 export interface GenerateCodecDeclarationsOptions {
+  /**
+   * Canister name used to derive the service export name.
+   * Converted to SCREAMING_SNAKE_CASE (e.g. `"my-backend"` → `MY_BACKEND`).
+   * Ignored when `serviceExportName` is set explicitly.
+   */
+  canisterName?: string
+  /** Explicit service export name. Takes priority over `canisterName`. */
   serviceExportName?: string
   customJSDocFormatTypes?: CustomJSDocFormatTypes
+  includeCompatibilityExports?: boolean
 }
 
 const BUILT_IN_FORMAT_HELPERS: Readonly<Record<string, string>> = {
@@ -228,6 +236,31 @@ function normalizeOptions(
   options: string | GenerateCodecDeclarationsOptions = {}
 ): GenerateCodecDeclarationsOptions {
   return typeof options === "string" ? { serviceExportName: options } : options
+}
+
+/**
+ * Convert a canister name to a SCREAMING_SNAKE_CASE identifier.
+ * Hyphens and spaces are replaced with underscores.
+ */
+function toServiceExportName(canisterName: string): string {
+  return canisterName.replace(/[-\s]+/g, "_").toUpperCase()
+}
+
+function resolveServiceExportName(
+  options: GenerateCodecDeclarationsOptions,
+  declaredTypeNames: Set<string>
+): string {
+  if (options.serviceExportName) return options.serviceExportName
+
+  if (options.canisterName) {
+    let name = toServiceExportName(options.canisterName)
+    if (declaredTypeNames.has(name)) {
+      name = `${name}_SERVICE`
+    }
+    return name
+  }
+
+  return "_SERVICE"
 }
 
 function hasMetadata(
@@ -632,9 +665,6 @@ export function generateCodecDeclarations(
   optionsOrServiceExportName: string | GenerateCodecDeclarationsOptions = {}
 ): string {
   const options = normalizeOptions(optionsOrServiceExportName)
-  const serviceExportName = options.serviceExportName ?? "service"
-  assertIdentifier(serviceExportName, "Service export name")
-
   const lines: string[] = ['import { c } from "@ic-reactor/cod"', ""]
 
   for (const declaration of sortDeclarations(schema.types)) {
@@ -654,6 +684,14 @@ export function generateCodecDeclarations(
   }
 
   if (schema.service) {
+    const includeCompatibilityExports =
+      options.includeCompatibilityExports ?? false
+    const declaredTypeNames = new Set(schema.types.map((t) => t.name))
+    const serviceExportName = resolveServiceExportName(
+      options,
+      declaredTypeNames
+    )
+    assertIdentifier(serviceExportName, "Service export name")
     const methods = schema.service.methods
       .map((method) => {
         const args = method.args
@@ -681,12 +719,15 @@ export function generateCodecDeclarations(
       )}`
     )
     lines.push("")
-    lines.push(`export const idlFactory = ${serviceExportName}.idlFactory`)
-    lines.push(
-      `export type _SERVICE = c.ServiceOf<typeof ${serviceExportName}>`
-    )
-    lines.push("")
-    lines.push(`export const manifest = ${serviceExportName}.manifest()`)
+
+    if (includeCompatibilityExports) {
+      lines.push(`export const idlFactory = ${serviceExportName}.idlFactory`)
+      lines.push(
+        `export type _SERVICE = c.ServiceOf<typeof ${serviceExportName}>`
+      )
+      lines.push("")
+      lines.push(`export const manifest = ${serviceExportName}.manifest()`)
+    }
   }
 
   return `${lines.join("\n").trimEnd()}\n`
