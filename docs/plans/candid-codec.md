@@ -5,7 +5,7 @@ Goal: move IC Reactor from “generate raw `IDL.*` factory code” to a readable
 Not a literal Zod clone. The API should feel familiar, but Candid fidelity comes first.
 
 ```ts
-import { c } from "@ic-reactor/candid"
+import { c } from "@ic-reactor/cod"
 
 export const Account = c.record({
   owner: c.principal(),
@@ -45,7 +45,7 @@ The generated file should no longer expose low-level `IDL.Record(...)` declarati
 
 **Package Ownership**
 
-`@ic-reactor/candid`
+`@ic-reactor/cod`
 
 Owns the codec API:
 
@@ -138,7 +138,7 @@ Preferred output:
 `generated.ts`:
 
 ```ts
-import { c } from "@ic-reactor/candid"
+import { c } from "@ic-reactor/cod"
 import type { Principal } from "@icp-sdk/core/principal"
 
 export const Account = c.record({
@@ -321,7 +321,7 @@ Do not make recursive support the first implementation slice unless parser/codeg
 
 Smallest serious step:
 
-1. Add codec primitives to `@ic-reactor/candid`.
+1. Add codec primitives to `@ic-reactor/cod`.
 2. Support:
    - primitives
    - `opt`
@@ -356,7 +356,7 @@ Keep old generation path available behind compatibility behavior.
 Generated files should import:
 
 ```ts
-import { c } from "@ic-reactor/candid"
+import { c } from "@ic-reactor/cod"
 ```
 
 not raw `IDL`, except maybe internally if unavoidable.
@@ -499,7 +499,7 @@ This should live outside parser/codegen. The generated contract provides the dat
 
 **Testing Plan**
 
-`@ic-reactor/candid`:
+`@ic-reactor/cod`:
 
 - primitive codecs produce correct IDL
 - record/variant/tuple/opt/vec produce correct IDL
@@ -533,7 +533,7 @@ Examples:
 
 **Recommended Sequence**
 
-1. Build `@ic-reactor/candid` codec API manually.
+1. Build `@ic-reactor/cod` codec API manually.
 2. Add tests for manual codecs and IDL equivalence.
 3. Add parser `parseDid()` structured output.
 4. Add codegen renderer from schema to codec TypeScript.
