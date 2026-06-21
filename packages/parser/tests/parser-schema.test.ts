@@ -13,7 +13,7 @@ describe("Candid Schema Parser (parseDid)", () => {
         update_profile : (text, nat64) -> (bool);
       }
     `
-    const parsed = JSON.parse(parser.parseDid(candid))
+    const parsed = parser.parseDid(candid)
 
     expect(parsed).toEqual({
       types: [],
@@ -55,7 +55,7 @@ describe("Candid Schema Parser (parseDid)", () => {
         updateProfile : (Profile) -> (Result);
       }
     `
-    const parsed = JSON.parse(parser.parseDid(candid))
+    const parsed = parser.parseDid(candid)
 
     // Types in Candid are returned by the parser's env.
     // They are usually sorted alphabetically or in insertion order. Let's find each type by name.
@@ -112,7 +112,7 @@ describe("Candid Schema Parser (parseDid)", () => {
         getNested : () -> (Nested) query;
       }
     `
-    const parsed = JSON.parse(parser.parseDid(candid))
+    const parsed = parser.parseDid(candid)
 
     const coordType = parsed.types.find((t: any) => t.name === "Coordinates")
     const nestedType = parsed.types.find((t: any) => t.name === "Nested")

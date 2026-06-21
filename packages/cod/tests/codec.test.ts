@@ -417,6 +417,34 @@ describe("Service Codec", () => {
     })
   })
 
+  describe("query/update with no returns", () => {
+    it("creates no-return query and update methods", () => {
+      const svc = c.service({
+        ping: c.query([]),
+        save: c.update([c.text()]),
+      })
+
+      expect(svc.methods.ping.returnCodec).toBeUndefined()
+      expect(svc.methods.save.returnCodec).toBeUndefined()
+
+      const idl = svc.idlFactory({ IDL })
+      expect(idl.display()).toBe(
+        IDL.Service({
+          ping: IDL.Func([], [], ["query"]),
+          save: IDL.Func([IDL.Text], [], []),
+        }).display()
+      )
+
+      const manifest = svc.manifest()
+      expect(manifest.methods.find((m) => m.name === "ping")!.returns).toEqual(
+        []
+      )
+      expect(manifest.methods.find((m) => m.name === "save")!.returns).toEqual(
+        []
+      )
+    })
+  })
+
   describe("method metadata", () => {
     it("describe() works on methods", () => {
       const method = c.query([c.text()], c.text()).describe("Greet the user")

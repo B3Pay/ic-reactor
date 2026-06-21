@@ -3,7 +3,7 @@ import { generateCodecDeclarations } from "./renderer"
 import type { CandidSchema } from "@ic-reactor/parser"
 
 describe("Codec Declarations Generator", () => {
-  it("should generate declarations for simple services and types", () => {
+  it("generates declarations for simple services and types", () => {
     const schema: CandidSchema = {
       types: [
         {
@@ -31,19 +31,23 @@ describe("Codec Declarations Generator", () => {
 
     const code = generateCodecDeclarations(schema, "myService")
 
-    expect(code).toContain('import { c } from "@ic-reactor/cod";')
+    expect(code).toContain('import { c } from "@ic-reactor/cod"')
     expect(code).toContain("export const Profile = c.record({")
-    expect(code).toContain("name: c.text()")
-    expect(code).toContain("age: c.nat8()")
-    expect(code).toContain("export type Profile = c.infer<typeof Profile>;")
+    expect(code).toContain("name: c.text(),")
+    expect(code).toContain("age: c.nat8(),")
+    expect(code).toContain("export type Profile = c.infer<typeof Profile>")
     expect(code).toContain("export const myService = c.service({")
-    expect(code).toContain("getProfile: c.query([c.principal()], Profile)")
+    expect(code).toContain("getProfile: c.query([c.principal()], Profile),")
+    expect(code).toContain("export const idlFactory = myService.idlFactory")
     expect(code).toContain(
-      "export type myService = c.ServiceOf<typeof myService>;"
+      "export type _SERVICE = c.ServiceOf<typeof myService>"
     )
+    expect(code).toContain("export const manifest = myService.manifest()")
+    expect(code).not.toContain("IDL.")
+    expect(code).not.toContain("init")
   })
 
-  it("should sort type declarations topologically", () => {
+  it("sorts type declarations topologically", () => {
     const schema: CandidSchema = {
       types: [
         {
@@ -67,9 +71,7 @@ describe("Codec Declarations Generator", () => {
       service: null,
     }
 
-    const code = generateCodecDeclarations(schema, "myService")
-
-    // Profile must be defined before Result because Result references Profile.
+    const code = generateCodecDeclarations(schema)
     const profileIdx = code.indexOf("export const Profile")
     const resultIdx = code.indexOf("export const Result")
 
@@ -78,7 +80,7 @@ describe("Codec Declarations Generator", () => {
     expect(profileIdx).toBeLessThan(resultIdx)
   })
 
-  it("should handle cyclic references gracefully", () => {
+  it("rejects recursive references until c.recursive is implemented", () => {
     const schema: CandidSchema = {
       types: [
         {
@@ -101,14 +103,12 @@ describe("Codec Declarations Generator", () => {
       service: null,
     }
 
-    const code = generateCodecDeclarations(schema, "myService")
-
-    expect(code).toContain("export const Node = c.record({")
-    expect(code).toContain("value: c.text()")
-    expect(code).toContain("next: c.opt(Node)")
+    expect(() => generateCodecDeclarations(schema)).toThrow(
+      "Recursive Candid types are not supported yet: Node -> Node"
+    )
   })
 
-  it("should handle unsupported types by falling back to reserved with warning comments", () => {
+  it("falls back to reserved for unsupported Candid type categories", () => {
     const schema: CandidSchema = {
       types: [
         {
@@ -122,18 +122,24 @@ describe("Codec Declarations Generator", () => {
       service: null,
     }
 
-    const code = generateCodecDeclarations(schema, "myService")
+    const code = generateCodecDeclarations(schema)
 
     expect(code).toContain(
-      "callback: /* c.func is not supported */ c.reserved()"
+      "callback: /* c.func is not supported */ c.reserved(),"
     )
   })
 
-  it("should handle query and update with no returns using undefined as any", () => {
+  it("uses no-return query/update codecs without undefined casts", () => {
     const schema: CandidSchema = {
       types: [],
       service: {
         methods: [
+          {
+            name: "status",
+            mode: "query",
+            args: [],
+            returns: [],
+          },
           {
             name: "fireAndForget",
             mode: "update",
@@ -144,10 +150,10 @@ describe("Codec Declarations Generator", () => {
       },
     }
 
-    const code = generateCodecDeclarations(schema, "myService")
+    const code = generateCodecDeclarations(schema)
 
-    expect(code).toContain(
-      "fireAndForget: c.update([c.text()], undefined as any)"
-    )
+    expect(code).toContain("status: c.query([]),")
+    expect(code).toContain("fireAndForget: c.update([c.text()]),")
+    expect(code).not.toContain("undefined as any")
   })
 })

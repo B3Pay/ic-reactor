@@ -4,127 +4,137 @@ import type {
   CandidTypeDeclaration,
 } from "@ic-reactor/parser"
 
-/**
- * Checks if a string is a valid JavaScript identifier that can be used
- * as an unquoted property key in an object.
- */
+const reservedWords = new Set([
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "import",
+  "in",
+  "instanceof",
+  "new",
+  "null",
+  "return",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield",
+  "let",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "static",
+])
+
 function isValidIdentifier(name: string): boolean {
-  const regex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
-  const reserved = new Set([
-    "break",
-    "case",
-    "catch",
-    "class",
-    "const",
-    "continue",
-    "debugger",
-    "default",
-    "delete",
-    "do",
-    "else",
-    "export",
-    "extends",
-    "false",
-    "finally",
-    "for",
-    "function",
-    "if",
-    "import",
-    "in",
-    "instanceof",
-    "new",
-    "null",
-    "return",
-    "super",
-    "switch",
-    "this",
-    "throw",
-    "true",
-    "try",
-    "typeof",
-    "var",
-    "void",
-    "while",
-    "with",
-    "yield",
-    "let",
-    "package",
-    "private",
-    "protected",
-    "public",
-    "static",
-  ])
-  return regex.test(name) && !reserved.has(name)
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) && !reservedWords.has(name)
 }
 
-/**
- * Returns a list of all type names referenced by the given type.
- */
+function assertIdentifier(name: string, label: string): void {
+  if (!isValidIdentifier(name)) {
+    throw new Error(`${label} must be a valid TypeScript identifier: ${name}`)
+  }
+}
+
+function propertyName(name: string): string {
+  return isValidIdentifier(name) ? name : JSON.stringify(name)
+}
+
 function getReferencedNames(type: CandidType): string[] {
   const refs: string[] = []
-  function visit(node: CandidType) {
-    if (!node) return
-    if (node.kind === "reference") {
-      refs.push(node.name)
-    } else if (node.kind === "opt" || node.kind === "vec") {
-      visit(node.type)
-    } else if (node.kind === "record" || node.kind === "variant") {
-      for (const field of node.fields) {
-        visit(field.type)
-      }
-    } else if (node.kind === "tuple") {
-      for (const t of node.types) {
-        visit(t)
-      }
+
+  function visit(node: CandidType): void {
+    switch (node.kind) {
+      case "reference":
+        refs.push(node.name)
+        break
+      case "opt":
+      case "vec":
+        visit(node.type)
+        break
+      case "record":
+      case "variant":
+        for (const field of node.fields) {
+          visit(field.type)
+        }
+        break
+      case "tuple":
+        for (const item of node.types) {
+          visit(item)
+        }
+        break
     }
   }
+
   visit(type)
   return refs
 }
 
-/**
- * Sorts type declarations topologically so that dependencies are defined before they are referenced.
- */
 export function sortDeclarations(
   declarations: CandidTypeDeclaration[]
 ): CandidTypeDeclaration[] {
   const sorted: CandidTypeDeclaration[] = []
   const visited = new Set<string>()
-  const visiting = new Set<string>()
+  const visiting: string[] = []
+  const declarationByName = new Map(
+    declarations.map((decl) => [decl.name, decl])
+  )
 
-  const declMap = new Map(declarations.map((d) => [d.name, d]))
-
-  function visit(name: string) {
+  function visit(name: string): void {
     if (visited.has(name)) return
-    if (visiting.has(name)) {
-      // Cycle detected: break cycle and return
-      return
+
+    const cycleStart = visiting.indexOf(name)
+    if (cycleStart !== -1) {
+      const cycle = [...visiting.slice(cycleStart), name].join(" -> ")
+      throw new Error(`Recursive Candid types are not supported yet: ${cycle}`)
     }
-    visiting.add(name)
-    const decl = declMap.get(name)
-    if (decl) {
-      const deps = getReferencedNames(decl.type)
-      for (const dep of deps) {
-        visit(dep)
-      }
-      sorted.push(decl)
+
+    const declaration = declarationByName.get(name)
+    if (!declaration) return
+
+    visiting.push(name)
+    for (const dependency of getReferencedNames(declaration.type)) {
+      visit(dependency)
     }
-    visiting.delete(name)
+    visiting.pop()
+
     visited.add(name)
+    sorted.push(declaration)
   }
 
-  for (const decl of declarations) {
-    visit(decl.name)
+  for (const declaration of declarations) {
+    visit(declaration.name)
   }
 
   return sorted
 }
 
-/**
- * Recursively renders a CandidType AST node into `@ic-reactor/cod` codec builder syntax.
- */
-export function renderType(type: CandidType, indent: string = ""): string {
-  const nextIndent = indent + "  "
+export function renderType(type: CandidType, indent = ""): string {
+  const nextIndent = `${indent}  `
+
   switch (type.kind) {
     case "null":
       return "c.null()"
@@ -165,6 +175,7 @@ export function renderType(type: CandidType, indent: string = ""): string {
     case "blob":
       return "c.blob()"
     case "reference":
+      assertIdentifier(type.name, "Type reference")
       return type.name
     case "opt":
       return `c.opt(${renderType(type.type, indent)})`
@@ -173,32 +184,31 @@ export function renderType(type: CandidType, indent: string = ""): string {
     case "record": {
       if (type.fields.length === 0) return "c.record({})"
       const fields = type.fields
-        .map((f) => {
-          const key = isValidIdentifier(f.name)
-            ? f.name
-            : JSON.stringify(f.name)
-          return `${nextIndent}${key}: ${renderType(f.type, nextIndent)}`
-        })
-        .join(",\n")
+        .map(
+          (field) =>
+            `${nextIndent}${propertyName(field.name)}: ${renderType(
+              field.type,
+              nextIndent
+            )},`
+        )
+        .join("\n")
       return `c.record({\n${fields}\n${indent}})`
     }
     case "variant": {
       if (type.fields.length === 0) return "c.variant({})"
       const fields = type.fields
-        .map((f) => {
-          const key = isValidIdentifier(f.name)
-            ? f.name
-            : JSON.stringify(f.name)
-          return `${nextIndent}${key}: ${renderType(f.type, nextIndent)}`
-        })
-        .join(",\n")
+        .map(
+          (field) =>
+            `${nextIndent}${propertyName(field.name)}: ${renderType(
+              field.type,
+              nextIndent
+            )},`
+        )
+        .join("\n")
       return `c.variant({\n${fields}\n${indent}})`
     }
-    case "tuple": {
-      if (type.types.length === 0) return "c.tuple([])"
-      const elements = type.types.map((t) => renderType(t, indent)).join(", ")
-      return `c.tuple([${elements}])`
-    }
+    case "tuple":
+      return `c.tuple([${type.types.map((item) => renderType(item, indent)).join(", ")}])`
     case "func":
     case "service":
     case "class":
@@ -206,62 +216,69 @@ export function renderType(type: CandidType, indent: string = ""): string {
     case "knot":
     case "future":
       return `/* c.${type.kind} is not supported */ c.reserved()`
-    default:
-      return "c.reserved()"
   }
 }
 
+function renderMethodReturn(
+  method: NonNullable<CandidSchema["service"]>["methods"][number]
+): string {
+  if (method.mode === "oneway") return ""
+  if (method.returns.length === 0) return ""
+  if (method.returns.length === 1) {
+    return `, ${renderType(method.returns[0], "    ")}`
+  }
+  return `, c.tuple([${method.returns
+    .map((returnType) => renderType(returnType, "    "))
+    .join(", ")}])`
+}
+
 /**
- * Converts a structured CandidSchema JSON AST into readable `@ic-reactor/cod` codec declarations.
- *
- * @param schema The parsed CandidSchema AST
- * @param name The name of the generated top-level service variable (defaults to "service")
+ * Converts a structured CandidSchema AST into readable `@ic-reactor/cod`
+ * codec declarations.
  */
 export function generateCodecDeclarations(
   schema: CandidSchema,
-  name: string = "service"
+  serviceExportName = "service"
 ): string {
-  // Sort the custom type declarations topologically to resolve references
-  const sortedDecls = sortDeclarations(schema.types)
+  assertIdentifier(serviceExportName, "Service export name")
 
-  // Render type declarations
-  const declsCode = sortedDecls
-    .map((decl) => {
-      const rendered = renderType(decl.type)
-      return `export const ${decl.name} = ${rendered};\nexport type ${decl.name} = c.infer<typeof ${decl.name}>;`
-    })
-    .join("\n\n")
+  const lines: string[] = ['import { c } from "@ic-reactor/cod"', ""]
 
-  // Render service methods
-  let serviceCode = ""
-  if (schema.service) {
-    const methodsCode = schema.service.methods
-      .map((method) => {
-        const argsCode = `[${method.args.map((a) => renderType(a, "    ")).join(", ")}]`
-        let retCode = ""
-        if (method.mode === "oneway") {
-          retCode = ""
-        } else {
-          if (method.returns.length === 0) {
-            retCode = ", undefined as any"
-          } else if (method.returns.length === 1) {
-            retCode = `, ${renderType(method.returns[0], "    ")}`
-          } else {
-            retCode = `, c.tuple([${method.returns.map((r) => renderType(r, "    ")).join(", ")}])`
-          }
-        }
-        const key = isValidIdentifier(method.name)
-          ? method.name
-          : JSON.stringify(method.name)
-        return `  ${key}: c.${method.mode}(${argsCode}${retCode})`
-      })
-      .join(",\n")
+  for (const declaration of sortDeclarations(schema.types)) {
+    assertIdentifier(declaration.name, "Type declaration name")
 
-    serviceCode = `export const ${name} = c.service({\n${methodsCode}\n});\nexport type ${name} = c.ServiceOf<typeof ${name}>;`
+    lines.push(
+      `export const ${declaration.name} = ${renderType(declaration.type)}`
+    )
+    lines.push(
+      `export type ${declaration.name} = c.infer<typeof ${declaration.name}>`
+    )
+    lines.push("")
   }
 
-  return `import { c } from "@ic-reactor/cod";
+  if (schema.service) {
+    const methods = schema.service.methods
+      .map((method) => {
+        const args = method.args
+          .map((arg) => renderType(arg, "    "))
+          .join(", ")
+        return `  ${propertyName(method.name)}: c.${method.mode}([${args}]${renderMethodReturn(method)}),`
+      })
+      .join("\n")
 
-${declsCode ? declsCode + "\n\n" : ""}${serviceCode}
-`
+    lines.push(`export const ${serviceExportName} = c.service({`)
+    if (methods.length > 0) {
+      lines.push(methods)
+    }
+    lines.push("})")
+    lines.push("")
+    lines.push(`export const idlFactory = ${serviceExportName}.idlFactory`)
+    lines.push(
+      `export type _SERVICE = c.ServiceOf<typeof ${serviceExportName}>`
+    )
+    lines.push("")
+    lines.push(`export const manifest = ${serviceExportName}.manifest()`)
+  }
+
+  return `${lines.join("\n").trimEnd()}\n`
 }

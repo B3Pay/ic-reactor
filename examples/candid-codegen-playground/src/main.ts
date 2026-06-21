@@ -6,7 +6,7 @@
  */
 
 import "./styles.css"
-import { generateCodecDeclarations } from "@ic-reactor/codegen"
+import { generateCodecDeclarations } from "@ic-reactor/codegen/renderer"
 import { SAMPLES } from "./samples"
 import init, { parseDid } from "@ic-reactor/parser"
 
@@ -39,7 +39,7 @@ function regenerate(): void {
   if (!parserReady) return
 
   try {
-    const schemaAst = JSON.parse(parseDid(candidInput))
+    const schemaAst = parseDid(candidInput)
     outputCode = generateCodecDeclarations(schemaAst, "service")
     errorMessage = ""
   } catch (err) {

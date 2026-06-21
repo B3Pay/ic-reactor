@@ -27,15 +27,18 @@ type InferArgs<T extends readonly CandidCodec<unknown>[]> = {
 /**
  * Build the actor method signature for a single method codec.
  * Query/update: `(...args) => Promise<ReturnType>`
+ * No-return methods: `(...args) => Promise<void>`
  * Oneway:       `(...args) => Promise<void>`
  */
 type MethodSignature<M> =
   M extends CandidMethodCodec<infer A, infer _R, infer Mode>
     ? Mode extends "oneway"
       ? (...args: InferArgs<A>) => Promise<void>
-      : _R extends CandidCodec<infer RT>
-        ? (...args: InferArgs<A>) => Promise<RT>
-        : never
+      : _R extends undefined
+        ? (...args: InferArgs<A>) => Promise<void>
+        : _R extends CandidCodec<infer RT>
+          ? (...args: InferArgs<A>) => Promise<RT>
+          : never
     : never
 
 /** Map a record of method codecs to an actor-like interface. */
@@ -105,8 +108,18 @@ export class CandidMethodCodec<
 export function query<
   A extends readonly CandidCodec<unknown>[],
   R extends CandidCodec<unknown>,
->(args: [...A], ret: R): CandidMethodCodec<A, R, "query"> {
-  return new CandidMethodCodec("query", args, ret)
+>(args: [...A], ret: R): CandidMethodCodec<A, R, "query">
+/**
+ * Define a query method with no return values: `c.query([ArgCodec, ...])`.
+ */
+export function query<A extends readonly CandidCodec<unknown>[]>(
+  args: [...A]
+): CandidMethodCodec<A, undefined, "query">
+export function query<
+  A extends readonly CandidCodec<unknown>[],
+  R extends CandidCodec<unknown> | undefined,
+>(args: [...A], ret?: R): CandidMethodCodec<A, R, "query"> {
+  return new CandidMethodCodec("query", args, ret as R)
 }
 
 /**
@@ -115,8 +128,18 @@ export function query<
 export function update<
   A extends readonly CandidCodec<unknown>[],
   R extends CandidCodec<unknown>,
->(args: [...A], ret: R): CandidMethodCodec<A, R, "update"> {
-  return new CandidMethodCodec("update", args, ret)
+>(args: [...A], ret: R): CandidMethodCodec<A, R, "update">
+/**
+ * Define an update method with no return values: `c.update([ArgCodec, ...])`.
+ */
+export function update<A extends readonly CandidCodec<unknown>[]>(
+  args: [...A]
+): CandidMethodCodec<A, undefined, "update">
+export function update<
+  A extends readonly CandidCodec<unknown>[],
+  R extends CandidCodec<unknown> | undefined,
+>(args: [...A], ret?: R): CandidMethodCodec<A, R, "update"> {
+  return new CandidMethodCodec("update", args, ret as R)
 }
 
 /**
