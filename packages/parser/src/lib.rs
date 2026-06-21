@@ -2,7 +2,7 @@ use candid_parser::syntax::{
     Binding, Dec, IDLActorType, IDLMergedProg, IDLProg, IDLType, TypeField,
 };
 use candid_parser::{check_prog, TypeEnv};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
@@ -249,6 +249,8 @@ fn validation_from_docs(docs: &[String]) -> Option<CandidValidationMetadata> {
         }
     }
 
+    apply_default_validation_messages(&mut validation);
+
     if validation.minimum.is_some()
         || validation.maximum.is_some()
         || validation.min_length.is_some()
@@ -260,6 +262,111 @@ fn validation_from_docs(docs: &[String]) -> Option<CandidValidationMetadata> {
     } else {
         None
     }
+}
+
+fn apply_default_validation_messages(validation: &mut CandidValidationMetadata) {
+    validation.minimum = with_default_bound_message(
+        validation.minimum.take(),
+        "minimum",
+    );
+    validation.maximum = with_default_bound_message(
+        validation.maximum.take(),
+        "maximum",
+    );
+    validation.min_length = with_default_bound_message(
+        validation.min_length.take(),
+        "minLength",
+    );
+    validation.max_length = with_default_bound_message(
+        validation.max_length.take(),
+        "maxLength",
+    );
+    validation.format = with_default_format_message(validation.format.take());
+}
+
+fn with_default_bound_message(
+    bound: Option<CandidValidationBound>,
+    kind: &str,
+) -> Option<CandidValidationBound> {
+    let mut bound = bound?;
+
+    if bound.message.is_none() {
+        bound.message = Some(default_bound_message(kind, &bound.value));
+    }
+
+    Some(bound)
+}
+
+fn with_default_format_message(
+    format: Option<CandidValidationFormat>,
+) -> Option<CandidValidationFormat> {
+    let mut format = format?;
+
+    if format.message.is_none() {
+        format.message = default_format_message(&format.r#type);
+    }
+
+    Some(format)
+}
+
+fn default_bound_message(kind: &str, value: &str) -> String {
+    let rules = default_bound_rules();
+    let template = rules
+        .get(kind)
+        .map(|rule| rule.template.as_str())
+        .unwrap_or(match kind {
+            "minimum" => "Must be at least {value}",
+            "maximum" => "Must be at most {value}",
+            "minLength" => "Must be at least {value} character{plural}",
+            "maxLength" => "Must be at most {value} character{plural}",
+            _ => "{value}",
+        });
+
+    template
+        .replace("{value}", value)
+        .replace("{plural}", if value == "1" { "" } else { "s" })
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct MetadataRule {
+    helper: Option<String>,
+    regex: Option<String>,
+    #[serde(rename = "jsonSchemaFormat")]
+    json_schema_format: Option<String>,
+    #[serde(rename = "contentEncoding")]
+    content_encoding: Option<String>,
+    #[serde(rename = "errorMessage")]
+    error_message: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct ValidationBoundRule {
+    template: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct MetadataRulesFile {
+    #[serde(rename = "defaultValidationMessages")]
+    default_validation_messages: HashMap<String, ValidationBoundRule>,
+}
+
+fn format_rules() -> HashMap<String, MetadataRule> {
+    serde_json::from_str(include_str!("../../codegen/src/metadata-rules.json"))
+        .unwrap_or_default()
+}
+
+fn default_bound_rules() -> HashMap<String, ValidationBoundRule> {
+    serde_json::from_str::<MetadataRulesFile>(include_str!(
+        "../../codegen/src/metadata-rules.json"
+    ))
+    .map(|rules| rules.default_validation_messages)
+    .unwrap_or_default()
+}
+
+fn default_format_message(format_type: &str) -> Option<String> {
+    format_rules()
+        .get(format_type)
+        .and_then(|rule| rule.error_message.clone())
 }
 
 fn parse_bound(raw: &str) -> Option<CandidValidationBound> {
