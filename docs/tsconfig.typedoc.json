@@ -1,12 +1,11 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": "..",
     "jsx": "react-jsx",
     "types": ["node"],
     "paths": {
-      "@ic-reactor/core": ["packages/core/src/index.ts"],
-      "@ic-reactor/react": ["packages/react/src/index.ts"]
+      "@ic-reactor/core": ["../packages/core/src/index.ts"],
+      "@ic-reactor/react": ["../packages/react/src/index.ts"]
     }
   },
   "include": [
