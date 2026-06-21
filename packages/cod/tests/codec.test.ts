@@ -417,20 +417,30 @@ describe("Service Codec", () => {
     })
   })
 
-  describe("query/update with multiple returns", () => {
-    it("creates methods whose IDL returns are separate values", () => {
+  describe("query/update with no returns", () => {
+    it("creates no-return query and update methods", () => {
       const svc = c.service({
-        stats: c.query([], [c.text(), c.nat64()]),
+        ping: c.query([]),
+        save: c.update([c.text()]),
       })
 
-      expect(svc.methods.stats.returnCodec).toBeUndefined()
-      expect(svc.methods.stats.returnCodecs).toHaveLength(2)
+      expect(svc.methods.ping.returnCodec).toBeUndefined()
+      expect(svc.methods.save.returnCodec).toBeUndefined()
 
       const idl = svc.idlFactory({ IDL })
       expect(idl.display()).toBe(
         IDL.Service({
-          stats: IDL.Func([], [IDL.Text, IDL.Nat64], ["query"]),
+          ping: IDL.Func([], [], ["query"]),
+          save: IDL.Func([IDL.Text], [], []),
         }).display()
+      )
+
+      const manifest = svc.manifest()
+      expect(manifest.methods.find((m) => m.name === "ping")!.returns).toEqual(
+        []
+      )
+      expect(manifest.methods.find((m) => m.name === "save")!.returns).toEqual(
+        []
       )
     })
   })

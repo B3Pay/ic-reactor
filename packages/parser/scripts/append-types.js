@@ -1,11 +1,11 @@
-import { appendFileSync } from "node:fs"
-import { join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
+const { readFileSync, writeFileSync } = require("node:fs")
+const { join, resolve } = require("node:path")
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url))
 const pkgRoot = resolve(__dirname, "..")
+const markerStart = "// <ic-reactor-parser-schema-types>"
+const markerEnd = "// </ic-reactor-parser-schema-types>"
 
-const TYPES_DECLARATION = `
+const TYPES_DECLARATION = `${markerStart}
 export interface CandidSchema {
   types: CandidTypeDeclaration[];
   service: CandidServiceDeclaration | null;
@@ -64,6 +64,7 @@ export interface CandidMethodDeclaration {
   args: CandidType[];
   returns: CandidType[];
 }
+${markerEnd}
 `
 
 const targets = [
@@ -72,11 +73,34 @@ const targets = [
   join(pkgRoot, "dist", "bundler", "index.d.ts"),
 ]
 
+function stripExistingDeclaration(content) {
+  const start = content.indexOf(markerStart)
+  const end = content.indexOf(markerEnd)
+  if (start === -1 || end === -1) return content
+  return `${content.slice(0, start).trimEnd()}\n${content
+    .slice(end + markerEnd.length)
+    .trimStart()}`
+}
+
+function replaceParseDidReturnType(content) {
+  return content.replace(
+    /export function parseDid\(prog: string\): [^;]+;/,
+    "export function parseDid(prog: string): CandidSchema;"
+  )
+}
+
 for (const target of targets) {
   try {
-    appendFileSync(target, TYPES_DECLARATION, "utf-8")
-    console.log(`✅ Appended type definitions to ${target}`)
+    const current = readFileSync(target, "utf-8")
+    const withoutExisting = stripExistingDeclaration(current)
+    const updated = replaceParseDidReturnType(withoutExisting)
+    writeFileSync(
+      target,
+      `${updated.trimEnd()}\n\n${TYPES_DECLARATION}`,
+      "utf-8"
+    )
+    console.log(`Appended parser schema type definitions to ${target}`)
   } catch (error) {
-    console.error(`❌ Failed to append type definitions to ${target}:`, error)
+    console.error(`Failed to append type definitions to ${target}:`, error)
   }
 }

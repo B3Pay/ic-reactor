@@ -1,5 +1,6 @@
 use candid_parser::syntax::IDLMergedProg;
 use candid_parser::{check_prog, IDLProg, TypeEnv};
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(js_name = didToJs)]
@@ -46,138 +47,236 @@ pub fn verify_compatability(a: String, b: String) -> Result<bool, String> {
     }
 }
 
-fn type_to_json(ty: &candid_parser::candid::types::Type) -> String {
+#[derive(Serialize)]
+struct CandidSchema {
+    types: Vec<CandidTypeDeclaration>,
+    service: Option<CandidServiceDeclaration>,
+}
+
+#[derive(Serialize)]
+struct CandidTypeDeclaration {
+    name: String,
+    #[serde(rename = "type")]
+    ty: CandidType,
+}
+
+#[derive(Serialize)]
+struct CandidServiceDeclaration {
+    methods: Vec<CandidMethodDeclaration>,
+}
+
+#[derive(Serialize)]
+struct CandidMethodDeclaration {
+    name: String,
+    mode: &'static str,
+    args: Vec<CandidType>,
+    returns: Vec<CandidType>,
+}
+
+#[derive(Serialize)]
+struct CandidField {
+    name: String,
+    #[serde(rename = "type")]
+    ty: CandidType,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+enum CandidType {
+    Null,
+    Bool,
+    Nat,
+    Int,
+    Nat8,
+    Nat16,
+    Nat32,
+    Nat64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Float64,
+    Text,
+    Reserved,
+    Empty,
+    Principal,
+    Blob,
+    Reference {
+        name: String,
+    },
+    Opt {
+        #[serde(rename = "type")]
+        ty: Box<CandidType>,
+    },
+    Vec {
+        #[serde(rename = "type")]
+        ty: Box<CandidType>,
+    },
+    Record {
+        fields: Vec<CandidField>,
+    },
+    Variant {
+        fields: Vec<CandidField>,
+    },
+    Tuple {
+        types: Vec<CandidType>,
+    },
+    Func,
+    Service,
+    Class,
+    Unknown,
+    Knot,
+    Future,
+}
+
+fn label_to_string(label: &candid_parser::candid::types::Label) -> String {
+    match label {
+        candid_parser::candid::types::Label::Id(id) => id.to_string(),
+        candid_parser::candid::types::Label::Unnamed(id) => id.to_string(),
+        candid_parser::candid::types::Label::Named(name) => name.clone(),
+    }
+}
+
+fn type_to_schema(ty: &candid_parser::candid::types::Type) -> CandidType {
     use candid_parser::candid::types::TypeInner;
+
     match ty.as_ref() {
-        TypeInner::Null => r#"{"kind":"null"}"#.to_string(),
-        TypeInner::Bool => r#"{"kind":"bool"}"#.to_string(),
-        TypeInner::Nat => r#"{"kind":"nat"}"#.to_string(),
-        TypeInner::Int => r#"{"kind":"int"}"#.to_string(),
-        TypeInner::Nat8 => r#"{"kind":"nat8"}"#.to_string(),
-        TypeInner::Nat16 => r#"{"kind":"nat16"}"#.to_string(),
-        TypeInner::Nat32 => r#"{"kind":"nat32"}"#.to_string(),
-        TypeInner::Nat64 => r#"{"kind":"nat64"}"#.to_string(),
-        TypeInner::Int8 => r#"{"kind":"int8"}"#.to_string(),
-        TypeInner::Int16 => r#"{"kind":"int16"}"#.to_string(),
-        TypeInner::Int32 => r#"{"kind":"int32"}"#.to_string(),
-        TypeInner::Int64 => r#"{"kind":"int64"}"#.to_string(),
-        TypeInner::Float32 => r#"{"kind":"float32"}"#.to_string(),
-        TypeInner::Float64 => r#"{"kind":"float64"}"#.to_string(),
-        TypeInner::Text => r#"{"kind":"text"}"#.to_string(),
-        TypeInner::Reserved => r#"{"kind":"reserved"}"#.to_string(),
-        TypeInner::Empty => r#"{"kind":"empty"}"#.to_string(),
-        TypeInner::Principal => r#"{"kind":"principal"}"#.to_string(),
-        TypeInner::Var(name) => format!(r#"{{"kind":"reference","name":"{}"}}"#, name),
-        TypeInner::Opt(inner) => format!(r#"{{"kind":"opt","type":{}}}"#, type_to_json(inner)),
+        TypeInner::Null => CandidType::Null,
+        TypeInner::Bool => CandidType::Bool,
+        TypeInner::Nat => CandidType::Nat,
+        TypeInner::Int => CandidType::Int,
+        TypeInner::Nat8 => CandidType::Nat8,
+        TypeInner::Nat16 => CandidType::Nat16,
+        TypeInner::Nat32 => CandidType::Nat32,
+        TypeInner::Nat64 => CandidType::Nat64,
+        TypeInner::Int8 => CandidType::Int8,
+        TypeInner::Int16 => CandidType::Int16,
+        TypeInner::Int32 => CandidType::Int32,
+        TypeInner::Int64 => CandidType::Int64,
+        TypeInner::Float32 => CandidType::Float32,
+        TypeInner::Float64 => CandidType::Float64,
+        TypeInner::Text => CandidType::Text,
+        TypeInner::Reserved => CandidType::Reserved,
+        TypeInner::Empty => CandidType::Empty,
+        TypeInner::Principal => CandidType::Principal,
+        TypeInner::Var(name) => CandidType::Reference { name: name.clone() },
+        TypeInner::Opt(inner) => CandidType::Opt {
+            ty: Box::new(type_to_schema(inner)),
+        },
         TypeInner::Vec(inner) => {
             if let TypeInner::Nat8 = inner.as_ref() {
-                r#"{"kind":"blob"}"#.to_string()
+                CandidType::Blob
             } else {
-                format!(r#"{{"kind":"vec","type":{}}}"#, type_to_json(inner))
+                CandidType::Vec {
+                    ty: Box::new(type_to_schema(inner)),
+                }
             }
         }
         TypeInner::Record(fields) => {
             let is_tuple = fields.iter().enumerate().all(|(idx, field)| {
-                match *field.id {
-                    candid_parser::candid::types::Label::Id(id) | candid_parser::candid::types::Label::Unnamed(id) => id == idx as u32,
-                    _ => false,
-                }
+                matches!(
+                    *field.id,
+                    candid_parser::candid::types::Label::Id(id)
+                        | candid_parser::candid::types::Label::Unnamed(id)
+                        if id == idx as u32
+                )
             });
 
             if is_tuple && !fields.is_empty() {
-                let types_json: Vec<String> = fields.iter().map(|f| type_to_json(&f.ty)).collect();
-                format!(r#"{{"kind":"tuple","types":[{}]}}"#, types_json.join(","))
+                CandidType::Tuple {
+                    types: fields
+                        .iter()
+                        .map(|field| type_to_schema(&field.ty))
+                        .collect(),
+                }
             } else {
-                let fields_json: Vec<String> = fields.iter().map(|f| {
-                    let label = match &*f.id {
-                        candid_parser::candid::types::Label::Id(id)
-                        | candid_parser::candid::types::Label::Unnamed(id) => {
-                            format!("_{}_", id)
-                        }
-                        candid_parser::candid::types::Label::Named(name) => name.clone(),
-                    };
-                    format!(r#"{{"name":"{}","type":{}}}"#, label, type_to_json(&f.ty))
-                }).collect();
-                format!(r#"{{"kind":"record","fields":[{}]}}"#, fields_json.join(","))
+                CandidType::Record {
+                    fields: fields
+                        .iter()
+                        .map(|field| CandidField {
+                            name: label_to_string(&field.id),
+                            ty: type_to_schema(&field.ty),
+                        })
+                        .collect(),
+                }
             }
         }
-        TypeInner::Variant(fields) => {
-            let fields_json: Vec<String> = fields.iter().map(|f| {
-                let label = match &*f.id {
-                    candid_parser::candid::types::Label::Id(id)
-                    | candid_parser::candid::types::Label::Unnamed(id) => {
-                        format!("_{}_", id)
-                    }
-                    candid_parser::candid::types::Label::Named(name) => name.clone(),
-                };
-                format!(r#"{{"name":"{}","type":{}}}"#, label, type_to_json(&f.ty))
-            }).collect();
-            format!(r#"{{"kind":"variant","fields":[{}]}}"#, fields_json.join(","))
-        }
-        TypeInner::Func(_) => r#"{"kind":"func"}"#.to_string(),
-        TypeInner::Service(_) => r#"{"kind":"service"}"#.to_string(),
-        TypeInner::Class(_, _) => r#"{"kind":"class"}"#.to_string(),
-        TypeInner::Unknown => r#"{"kind":"unknown"}"#.to_string(),
-        TypeInner::Knot(_) => r#"{"kind":"knot"}"#.to_string(),
-        TypeInner::Future => r#"{"kind":"future"}"#.to_string(),
+        TypeInner::Variant(fields) => CandidType::Variant {
+            fields: fields
+                .iter()
+                .map(|field| CandidField {
+                    name: label_to_string(&field.id),
+                    ty: type_to_schema(&field.ty),
+                })
+                .collect(),
+        },
+        TypeInner::Func(_) => CandidType::Func,
+        TypeInner::Service(_) => CandidType::Service,
+        TypeInner::Class(_, _) => CandidType::Class,
+        TypeInner::Unknown => CandidType::Unknown,
+        TypeInner::Knot(_) => CandidType::Knot,
+        TypeInner::Future => CandidType::Future,
     }
 }
 
 #[wasm_bindgen(js_name = parseDid)]
-pub fn parse_did(prog: String) -> Result<String, String> {
+pub fn parse_did(prog: String) -> Result<JsValue, String> {
     let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
     let mut env = TypeEnv::new();
     let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
 
-    let mut types_json = Vec::new();
-    // env.0 is the underlying BTreeMap
-    for (name, ty) in env.0 {
-        types_json.push(format!(
-            r#"{{"name":"{}","type":{}}}"#,
-            name, type_to_json(&ty)
-        ));
-    }
+    let types = env
+        .0
+        .into_iter()
+        .map(|(name, ty)| CandidTypeDeclaration {
+            name,
+            ty: type_to_schema(&ty),
+        })
+        .collect();
 
-    let mut methods_json = Vec::new();
-    if let Some(actor_ty) = actor {
+    let service = actor.and_then(|actor_ty| {
         let service_ty = match actor_ty.as_ref() {
             candid_parser::candid::types::TypeInner::Class(_, inner) => inner.clone(),
             _ => actor_ty,
         };
 
         if let candid_parser::candid::types::TypeInner::Service(methods) = service_ty.as_ref() {
-            for (name, ty) in methods {
-                if let candid_parser::candid::types::TypeInner::Func(func) = ty.as_ref() {
-                    let mode = if func.modes.contains(&candid_parser::candid::types::FuncMode::Oneway) {
-                        "oneway"
-                    } else if func.modes.contains(&candid_parser::candid::types::FuncMode::Query) {
-                        "query"
+            let methods = methods
+                .iter()
+                .filter_map(|(name, ty)| {
+                    if let candid_parser::candid::types::TypeInner::Func(func) = ty.as_ref() {
+                        let mode = if func
+                            .modes
+                            .contains(&candid_parser::candid::types::FuncMode::Oneway)
+                        {
+                            "oneway"
+                        } else if func
+                            .modes
+                            .contains(&candid_parser::candid::types::FuncMode::Query)
+                        {
+                            "query"
+                        } else {
+                            "update"
+                        };
+
+                        Some(CandidMethodDeclaration {
+                            name: name.clone(),
+                            mode,
+                            args: func.args.iter().map(type_to_schema).collect(),
+                            returns: func.rets.iter().map(type_to_schema).collect(),
+                        })
                     } else {
-                        "update"
-                    };
+                        None
+                    }
+                })
+                .collect();
 
-                    let args_json: Vec<String> = func.args.iter().map(|t| type_to_json(t)).collect();
-                    let rets_json: Vec<String> = func.rets.iter().map(|t| type_to_json(t)).collect();
-
-                    methods_json.push(format!(
-                        r#"{{"name":"{}","mode":"{}","args":[{}],"returns":[{}]}}"#,
-                        name, mode, args_json.join(","), rets_json.join(",")
-                    ));
-                }
-            }
+            Some(CandidServiceDeclaration { methods })
+        } else {
+            None
         }
-    }
+    });
 
-    let service_str = if methods_json.is_empty() {
-        "null".to_string()
-    } else {
-        format!(r#"{{"methods":[{}]}}"#, methods_json.join(","))
-    };
-
-    let result = format!(
-        r#"{{"types":[{}],"service":{}}}"#,
-        types_json.join(","), service_str
-    );
-
-    Ok(result)
+    serde_wasm_bindgen::to_value(&CandidSchema { types, service }).map_err(|e| e.to_string())
 }
