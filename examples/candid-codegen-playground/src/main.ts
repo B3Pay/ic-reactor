@@ -147,7 +147,7 @@ function render(): void {
           id="candid-input"
           placeholder="Paste your Candid .did definition here…"
           spellcheck="false"
-        >${candidInput}</textarea>
+        ></textarea>
       </div>
 
       <div class="editor-pane">
@@ -156,20 +156,7 @@ function render(): void {
           <span class="pane-title">Cod Schema Output</span>
           <span class="pane-tag output">.ts</span>
         </div>
-        ${
-          errorMessage
-            ? `<div class="error-panel">
-                <div class="error-icon">⚠️</div>
-                <div class="error-title">Candid Parse Error</div>
-                <div class="error-message">${escapeHtml(errorMessage)}</div>
-              </div>`
-            : outputCode
-              ? `<div class="output-code" id="output-code">${highlightCode(outputCode)}</div>`
-              : `<div class="empty-state">
-                  <div class="empty-icon">✨</div>
-                  <div class="empty-text">${parserReady ? "Type or paste a .did definition to see the generated cod schema" : "Initializing parser…"}</div>
-                </div>`
-        }
+        <div id="output-content" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;"></div>
       </div>
     </div>
 
@@ -179,16 +166,42 @@ function render(): void {
     </footer>
   `
 
+  // Programmatically populate output-content to avoid raw DOM HTML reinterpretation
+  const outputContent = document.getElementById("output-content")
+  if (outputContent) {
+    if (errorMessage) {
+      outputContent.innerHTML = `
+        <div class="error-panel">
+          <div class="error-icon">⚠️</div>
+          <div class="error-title">Candid Parse Error</div>
+          <div class="error-message" id="error-message"></div>
+        </div>
+      `
+      const errorMsgEl = document.getElementById("error-message")
+      if (errorMsgEl) {
+        errorMsgEl.textContent = errorMessage
+      }
+    } else if (outputCode) {
+      outputContent.innerHTML = `<div class="output-code" id="output-code">${highlightCode(outputCode)}</div>`
+    } else {
+      const msg = parserReady
+        ? "Type or paste a .did definition to see the generated cod schema"
+        : "Initializing parser…"
+      outputContent.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">✨</div>
+          <div class="empty-text" id="empty-text"></div>
+        </div>
+      `
+      const emptyTextEl = document.getElementById("empty-text")
+      if (emptyTextEl) {
+        emptyTextEl.textContent = msg
+      }
+    }
+  }
+
   // Bind events
   bindEvents()
-}
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
 }
 
 // ─── Event Binding ──────────────────────────────────────────────────────────
@@ -207,6 +220,8 @@ function bindEvents(): void {
   ) as HTMLButtonElement | null
 
   if (textarea) {
+    // Programmatically set textarea value to avoid HTML interpretation of candidInput
+    textarea.value = candidInput
     textarea.addEventListener("input", () => {
       candidInput = textarea.value
       selectedSampleKey = ""
