@@ -313,6 +313,27 @@ describe("Codec Declarations Generator", () => {
     expect(code).not.toContain("undefined as any")
   })
 
+  it("renders multiple method returns as separate return codecs", () => {
+    const schema: CandidSchema = {
+      types: [],
+      service: {
+        methods: [
+          {
+            name: "stats",
+            mode: "query",
+            args: [],
+            returns: [{ kind: "text" }, { kind: "nat64" }],
+          },
+        ],
+      },
+    }
+
+    const code = generateCodecDeclarations(schema)
+
+    expect(code).toContain("stats: c.query([], [c.text(), c.nat64()]),")
+    expect(code).not.toContain("c.tuple([c.text(), c.nat64()])")
+  })
+
   it("renders docs and validation tags as codec metadata", () => {
     const schema: CandidSchema = {
       types: [

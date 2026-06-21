@@ -429,9 +429,9 @@ function renderMethodReturn(
   if (method.returns.length === 1) {
     return `, ${renderType(method.returns[0], "    ", options)}`
   }
-  return `, c.tuple([${method.returns
+  return `, [${method.returns
     .map((returnType) => renderType(returnType, "    ", options))
-    .join(", ")}])`
+    .join(", ")}]`
 }
 
 /**

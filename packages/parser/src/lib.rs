@@ -566,6 +566,13 @@ fn service_method_bindings_from_actor<'a>(
         .unwrap_or_default()
 }
 
+fn syntax_func_for_method(binding: Option<&Binding>) -> Option<&candid_parser::syntax::FuncType> {
+    match binding.map(|binding| &binding.typ) {
+        Some(IDLType::FuncT(func)) => Some(func),
+        _ => None,
+    }
+}
+
 #[wasm_bindgen(js_name = parseDid)]
 pub fn parse_did(prog: String) -> Result<JsValue, String> {
     let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
@@ -602,6 +609,7 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
                             .iter()
                             .find(|binding| binding.id == *name)
                             .copied();
+                        let syntax_func = syntax_func_for_method(binding);
                         let mode = if func
                             .modes
                             .contains(&candid_parser::candid::types::FuncMode::Oneway)
@@ -622,12 +630,24 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
                             args: func
                                 .args
                                 .iter()
-                                .map(|arg| type_to_schema(arg, None))
+                                .enumerate()
+                                .map(|(index, arg)| {
+                                    type_to_schema(
+                                        arg,
+                                        syntax_func.and_then(|func| func.args.get(index)),
+                                    )
+                                })
                                 .collect(),
                             returns: func
                                 .rets
                                 .iter()
-                                .map(|ret| type_to_schema(ret, None))
+                                .enumerate()
+                                .map(|(index, ret)| {
+                                    type_to_schema(
+                                        ret,
+                                        syntax_func.and_then(|func| func.rets.get(index)),
+                                    )
+                                })
                                 .collect(),
                             metadata: binding.and_then(|binding| metadata_from_docs(&binding.docs)),
                         })

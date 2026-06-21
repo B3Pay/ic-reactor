@@ -230,6 +230,69 @@ describe("Candid Schema Parser (parseDid)", () => {
     })
   })
 
+  it("should preserve metadata for inline service method payload fields", () => {
+    const candid = `
+      service : {
+        save : (
+          record {
+            /// Contact email.
+            /// @format email
+            email : text;
+          }
+        ) -> (
+          variant {
+            /// Save succeeded.
+            Ok : record {
+              /// Stored profile identifier.
+              /// @minLength 2
+              id : text;
+            };
+            Err : text;
+          }
+        );
+      }
+    `
+
+    const parsed = parser.parseDid(candid)
+    const method = parsed.service?.methods.find((m: any) => m.name === "save")
+    const arg = method?.args[0]
+    const ret = method?.returns[0]
+
+    if (arg?.kind !== "record" || ret?.kind !== "variant") {
+      throw new Error("Expected inline record argument and variant return")
+    }
+
+    const emailField = arg.fields.find((f: any) => f.name === "email")
+    expect(emailField?.metadata).toEqual({
+      description: "Contact email.",
+      docs: ["Contact email.", "@format email"],
+      validation: {
+        format: {
+          type: "email",
+          message: "Must be a valid email address",
+        },
+      },
+    })
+
+    const okField = ret.fields.find((f: any) => f.name === "Ok")
+    expect(okField?.metadata).toEqual({
+      description: "Save succeeded.",
+      docs: ["Save succeeded."],
+    })
+
+    const idField = okField?.type.fields.find((f: any) => f.name === "id")
+    expect(idField?.metadata).toEqual({
+      description: "Stored profile identifier.",
+      docs: ["Stored profile identifier.", "@minLength 2"],
+      validation: {
+        minLength: {
+          value: "2",
+          message: "Must be at least 2 characters",
+        },
+      },
+    })
+  })
+
   it("should add default validation messages when doc tags omit them", () => {
     const candid = `
       type Profile = record {
