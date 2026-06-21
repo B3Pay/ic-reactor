@@ -224,16 +224,23 @@ describe("Codec Declarations Generator", () => {
 
     expect(code).toContain("export const Profile = c.record({")
     expect(code).toContain('}).describe("A user profile.")')
-    expect(code).toContain(
-      'email: c.text().describe("Contact email.").meta({"docs":["Contact email.","@format email"],"validation":{"format":{"type":"email","regex":"^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$","jsonSchemaFormat":"email","errorMessage":"Must be a valid email address"}}}),'
+    expect(code).not.toContain(
+      'describe("A user profile.").meta({"docs":["A user profile."]})'
     )
+    expect(code).toContain('email: c.email().describe("Contact email."),')
     expect(code).toContain(
       'name: c.text().describe("Display name.").meta({"docs":["Display name.","@minLength 2"],"validation":{"minLength":{"value":"2","message":"Must be at least 2 characters"}}}),'
     )
     expect(code).toContain("c.service({")
     expect(code).toContain('}).describe("Profile service.")')
+    expect(code).not.toContain(
+      'describe("Profile service.").meta({"docs":["Profile service."]})'
+    )
     expect(code).toContain(
       'save: c.update([Profile]).describe("Save a profile.")'
+    )
+    expect(code).not.toContain(
+      'describe("Save a profile.").meta({"docs":["Save a profile."]})'
     )
   })
 
@@ -307,7 +314,7 @@ describe("Codec Declarations Generator", () => {
     )
   })
 
-  it("renders JSON Schema format and content encoding metadata for built-ins", () => {
+  it("renders built-in text format helpers instead of inline metadata", () => {
     const schema: CandidSchema = {
       types: [
         {
@@ -345,8 +352,48 @@ describe("Codec Declarations Generator", () => {
 
     const code = generateCodecDeclarations(schema)
 
-    expect(code).toContain('"jsonSchemaFormat":"date-time"')
-    expect(code).toContain('"contentEncoding":"base64"')
-    expect(code).toContain('"jsonSchemaFormat":"uri"')
+    expect(code).toContain("createdAt: c.dateTime(),")
+    expect(code).toContain("avatar: c.base64(),")
+    expect(code).toContain("homepage: c.uri(),")
+  })
+
+  it("uses built-in format helpers with compact message overrides", () => {
+    const schema: CandidSchema = {
+      types: [
+        {
+          name: "Profile",
+          type: {
+            kind: "record",
+            fields: [
+              {
+                name: "id",
+                type: { kind: "text" },
+                metadata: {
+                  description: "Public profile identifier.",
+                  docs: ["Public profile identifier.", "@format uuid UUID"],
+                  validation: {
+                    format: {
+                      type: "uuid",
+                      message: "UUID",
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+      service: null,
+    }
+
+    const code = generateCodecDeclarations(schema)
+
+    expect(code).toContain(
+      'id: c.uuid("UUID").describe("Public profile identifier."),'
+    )
+    expect(code).not.toContain(".meta(")
+    expect(code).not.toContain('"docs"')
+    expect(code).not.toContain('"regex"')
+    expect(code).not.toContain('"jsonSchemaFormat"')
   })
 })

@@ -3,6 +3,40 @@
  */
 
 export const SAMPLES: Record<string, { label: string; did: string }> = {
+  formatHelpers: {
+    label: "Built-in Format Helpers",
+    did: `/// Contact profile using built-in Cod text-format helpers.
+type ContactProfile = record {
+  /// Public profile identifier.
+  /// @format uuid
+  id : text;
+
+  /// Contact email used for account recovery.
+  /// @format email
+  email : text;
+
+  /// Public website URL.
+  /// @format url
+  website : text;
+
+  /// ISO timestamp for the last profile update.
+  /// @format date-time
+  updated_at : text;
+
+  /// Base64 encoded avatar thumbnail.
+  /// @format base64
+  avatar_thumbnail : text;
+};
+
+/// Contact registry service.
+service : {
+  /// Create or replace the caller contact profile.
+  save_contact : (ContactProfile) -> ();
+
+  /// Load a contact profile by id.
+  get_contact : (text) -> (opt ContactProfile) query;
+}`,
+  },
   metadata: {
     label: "Metadata + Validation",
     did: `/// Public profile submitted by application users.

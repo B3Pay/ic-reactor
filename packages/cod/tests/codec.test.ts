@@ -20,6 +20,28 @@ describe("Primitive Codecs", () => {
     expect(codec.toIDL()).toBe(IDL.Text)
   })
 
+  it("text format helpers produce IDL.Text with validation metadata", () => {
+    const email = c.email()
+
+    expect(email.kind).toBe("text")
+    expect(email.toIDL()).toBe(IDL.Text)
+    expect(email.metadata.validation?.format).toEqual({
+      type: "email",
+      regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+      jsonSchemaFormat: "email",
+      errorMessage: "Must be a valid email address",
+    })
+
+    expect(c.url().metadata.validation?.format?.errorMessage).toBe(
+      "Must be a valid URL"
+    )
+    expect(
+      c.email("Invalid email").metadata.validation?.format?.errorMessage
+    ).toBe("Invalid email")
+    expect(c.uuid().metadata.validation?.format?.jsonSchemaFormat).toBe("uuid")
+    expect(c.dateTime().metadata.validation?.format?.type).toBe("date-time")
+  })
+
   it("c.bool() produces IDL.Bool", () => {
     const codec = c.bool()
     expect(codec.kind).toBe("bool")

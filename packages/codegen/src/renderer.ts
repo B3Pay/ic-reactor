@@ -139,6 +139,32 @@ export interface GenerateCodecDeclarationsOptions {
   customJSDocFormatTypes?: CustomJSDocFormatTypes
 }
 
+const BUILT_IN_FORMAT_HELPERS: Readonly<Record<string, string>> = {
+  email: "email",
+  "date-time": "dateTime",
+  datetime: "datetime",
+  date: "date",
+  time: "time",
+  duration: "duration",
+  url: "url",
+  uri: "uri",
+  httpsUrl: "httpsUrl",
+  ipv4: "ipv4",
+  ipv6: "ipv6",
+  uuid: "uuid",
+  guid: "guid",
+  base64: "base64",
+  base64url: "base64url",
+  cuid: "cuid",
+  cuid2: "cuid2",
+  ulid: "ulid",
+  nanoid: "nanoid",
+  emoji: "emoji",
+  cidrv4: "cidrv4",
+  cidrv6: "cidrv6",
+  mac: "mac",
+}
+
 const reservedWords = new Set([
   "break",
   "case",
@@ -240,6 +266,40 @@ function stripUndefined<T extends Record<string, unknown>>(value: T): T {
   ) as T
 }
 
+function isEmptyObject(value: unknown): boolean {
+  return (
+    value != null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 0
+  )
+}
+
+function textFormatHelperFor(
+  expression: string,
+  metadata: CandidMetadata,
+  options: GenerateCodecDeclarationsOptions
+): string | undefined {
+  const format = metadata.validation?.format
+  if (!format || expression !== "c.text()") return undefined
+  if (options.customJSDocFormatTypes?.[format.type]) {
+    return undefined
+  }
+  return BUILT_IN_FORMAT_HELPERS[format.type]
+}
+
+function hasOnlyDescriptionDocs(
+  docs: string[] | undefined,
+  description: string | undefined
+): boolean {
+  return (
+    docs != null &&
+    description != null &&
+    docs.length === 1 &&
+    docs[0] === description
+  )
+}
+
 function defaultBoundMessage(
   kind: "minimum" | "maximum" | "minLength" | "maxLength",
   value: string
@@ -316,9 +376,28 @@ function applyMetadata(
 ): string {
   if (!hasMetadata(metadata)) return expression
 
+  const textFormatHelper = textFormatHelperFor(expression, metadata, options)
+  const textFormatMessage = metadata.validation?.format?.message
   const renderedMetadata = metadataForRender(metadata, options)
-  const { description, ...rest } = renderedMetadata
-  let result = expression
+  const { description, ...metadataRest } = renderedMetadata
+  const rest: Partial<CandidMetadata> = { ...metadataRest }
+  let result = textFormatHelper
+    ? `c.${textFormatHelper}(${textFormatMessage ? JSON.stringify(textFormatMessage) : ""})`
+    : expression
+
+  if (textFormatHelper) {
+    delete rest.docs
+    if (rest.validation) {
+      const { format: _format, ...validationRest } = rest.validation
+      rest.validation = stripUndefined(validationRest)
+
+      if (isEmptyObject(rest.validation)) {
+        delete rest.validation
+      }
+    }
+  } else if (hasOnlyDescriptionDocs(rest.docs, description)) {
+    delete rest.docs
+  }
 
   if (description) {
     result += `.describe(${JSON.stringify(description)})`
