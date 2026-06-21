@@ -467,6 +467,32 @@ describe("Service Codec", () => {
     })
   })
 
+  describe("query/update with multiple returns", () => {
+    it("creates methods whose IDL returns are separate values", () => {
+      const svc = c.service({
+        stats: c.query([], [c.text(), c.nat64()]),
+      })
+
+      expect(svc.methods.stats.returnCodec).toBeUndefined()
+      expect(svc.methods.stats.returnCodecs).toHaveLength(2)
+
+      const idl = svc.idlFactory({ IDL })
+      expect(idl.display()).toBe(
+        IDL.Service({
+          stats: IDL.Func([], [IDL.Text, IDL.Nat64], ["query"]),
+        }).display()
+      )
+
+      const manifest = svc.manifest()
+      expect(manifest.methods.find((m) => m.name === "stats")!.returns).toEqual(
+        [
+          { kind: "text", metadata: {} },
+          { kind: "nat64", metadata: {} },
+        ]
+      )
+    })
+  })
+
   describe("method metadata", () => {
     it("describe() works on methods", () => {
       const method = c.query([c.text()], c.text()).describe("Greet the user")
@@ -542,6 +568,17 @@ describe("Type Inference", () => {
     const pair = c.tuple([c.text(), c.nat()])
     type PairType = c.infer<typeof pair>
     expectTypeOf<PairType>().toEqualTypeOf<[string, bigint]>()
+  })
+
+  it("service methods with multiple returns infer tuple results", () => {
+    const svc = c.service({
+      stats: c.query([], [c.text(), c.nat64()]),
+    })
+    type Service = c.ServiceOf<typeof svc>
+
+    expectTypeOf<Service["stats"]>().toEqualTypeOf<
+      () => Promise<[string, bigint]>
+    >()
   })
 })
 
