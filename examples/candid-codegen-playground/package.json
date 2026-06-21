@@ -1,0 +1,24 @@
+{
+  "name": "candid-codegen-playground",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ic-reactor/cod": "workspace:*",
+    "@ic-reactor/parser": "^0.4.6"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  },
+  "overrides": {
+    "picomatch": "4.0.4",
+    "yaml": "2.8.3"
+  },
+  "packageManager": "pnpm@10.30.3"
+}

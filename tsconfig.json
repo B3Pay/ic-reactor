@@ -4,6 +4,7 @@
     { "path": "./packages/core" },
     { "path": "./packages/react" },
     { "path": "./packages/candid" },
+    { "path": "./packages/cod" },
     { "path": "./packages/codegen" },
     { "path": "./packages/cli" },
     { "path": "./packages/vite-plugin" }

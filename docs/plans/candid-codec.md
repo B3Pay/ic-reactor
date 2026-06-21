@@ -386,16 +386,23 @@ Tests should assert both:
 - old APIs still work
 - new structured API produces expected schema
 
-**Fourth Slice: Comment Metadata**
+**Fourth Slice: Comment Metadata & JSDoc Validation Tags**
 
-Parse doc comments into schema metadata.
+Parse doc comments into schema metadata and extract JSDoc-style validation tags to feed the validation layer.
 
 Recommended rule:
 
 - `///` and `/** */` immediately before a type attach to that type
 - comments before record fields attach to fields
 - comments before service methods attach to methods
-- preserve raw text, but also normalize clean text
+- preserve raw text, but also extract specific JSDoc validation tags:
+  - `@minimum <value> [err_msg]` -> maps to `.min()`
+  - `@maximum <value> [err_msg]` -> maps to `.max()`
+  - `@minLength <value> [err_msg]` -> maps to `.min()` for strings/vectors
+  - `@maxLength <value> [err_msg]` -> maps to `.max()` for strings/vectors
+  - `@pattern <regex>` -> maps to `.regex()`
+  - `@format <type> [err_msg]` -> maps to custom format validators (e.g. `email`, `uuid`, `ip`)
+- Allow configuring custom format mappings (similar to `customJSDocFormatTypes` in `ts-to-zod`) in the compiler options, mapping custom `@format` values to target regular expressions and error messages.
 
 Example schema:
 
