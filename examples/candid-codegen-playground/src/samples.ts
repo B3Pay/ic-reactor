@@ -3,6 +3,49 @@
  */
 
 export const SAMPLES: Record<string, { label: string; did: string }> = {
+  isoFormats: {
+    label: "ISO Date & Time Formats",
+    did: `/// A calendar event with Zod-aligned ISO date/time validation.
+type CalendarEvent = record {
+  /// Title of the event.
+  title : text;
+
+  /// Full-day date of the event (YYYY-MM-DD).
+  /// Calendar-aware: rejects 2023-02-29 (not a leap year),
+  /// 2024-04-31 (April has 30 days), and invalid months.
+  /// @format date
+  date : text;
+
+  /// Wall-clock start time (HH:mm or HH:mm:ss[.fractional]).
+  /// Seconds are optional — 14:30 and 14:30:00.5 are both valid.
+  /// @format time
+  start_time : text;
+
+  /// ISO 8601 datetime with UTC or offset timezone.
+  /// e.g. 2024-06-15T09:00Z or 2024-06-15T09:00+05:30
+  /// @format datetime
+  created_at : text;
+
+  /// ISO 8601 duration for the event length.
+  /// e.g. PT1H30M (1h30m) or P2DT4H (2 days 4 hours).
+  /// Supports comma as decimal separator: PT10,5S
+  /// @format duration
+  duration : text;
+};
+
+type EventResult = variant {
+  Ok : CalendarEvent;
+  Err : text;
+};
+
+service : {
+  /// Create a new calendar event.
+  create_event : (CalendarEvent) -> (EventResult);
+
+  /// Get events on a specific date (YYYY-MM-DD).
+  get_events_on : (text) -> (vec CalendarEvent) query;
+}`,
+  },
   formatHelpers: {
     label: "Built-in Format Helpers",
     did: `/// Contact profile using built-in Cod text-format helpers.
