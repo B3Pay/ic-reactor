@@ -173,6 +173,9 @@ describe("Candid Schema Parser (parseDid)", () => {
     const accountType = parsed.types.find(
       (t: any) => t.name === "Account"
     ) as parser.CandidTypeDeclaration
+    if (accountType.type.kind !== "record") {
+      throw new Error("Expected record type")
+    }
     const nameField = accountType.type.fields.find(
       (f: any) => f.name === "name"
     )
