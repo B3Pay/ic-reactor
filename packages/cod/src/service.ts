@@ -159,7 +159,7 @@ export class CandidServiceCodec<
     for (const [name, method] of Object.entries(this.methods)) {
       const args = method.argCodecs.map((c) => c.toIDL())
       const rets = method.returnCodec ? [method.returnCodec.toIDL()] : []
-      idlMethods[name] = IDL.Func(args, rets, method.annotations)
+      idlMethods[name] = IDL.Func(args as any, rets as any, method.annotations)
     }
     return IDL.Service(idlMethods) as unknown as IDL.Type<ServiceActor<M>>
   }
@@ -175,15 +175,19 @@ export class CandidServiceCodec<
   get idlFactory(): IDL.InterfaceFactory {
     // Capture `this` for the closure
     const methods = this.methods
-    return ({ IDL: _IDL }: { IDL: typeof IDL }) => {
+    return (({ IDL: _IDL }: any) => {
       const idlMethods: Record<string, IDL.FuncClass> = {}
       for (const [name, method] of Object.entries(methods)) {
         const args = method.argCodecs.map((c) => c.toIDL())
         const rets = method.returnCodec ? [method.returnCodec.toIDL()] : []
-        idlMethods[name] = _IDL.Func(args, rets, method.annotations)
+        idlMethods[name] = _IDL.Func(
+          args as any,
+          rets as any,
+          method.annotations
+        )
       }
       return _IDL.Service(idlMethods)
-    }
+    }) as unknown as IDL.InterfaceFactory
   }
 
   /**

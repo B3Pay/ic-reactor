@@ -117,17 +117,6 @@ describe("Package Exports", () => {
         "checkTextFormat",
         "checkNumberFormat",
         "formatLabel",
-        // Codec API
-        "c",
-        "CandidCodec",
-        "CandidPrimitiveCodec",
-        "CandidOptCodec",
-        "CandidVecCodec",
-        "CandidRecordCodec",
-        "CandidVariantCodec",
-        "CandidTupleCodec",
-        "CandidMethodCodec",
-        "CandidServiceCodec",
       ]
 
       actualExports.forEach((exp) => {

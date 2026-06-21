@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * import { c } from "@ic-reactor/candid"
+ * import { c } from "@ic-reactor/cod"
  *
  * const Account = c.record({
  *   owner: c.principal(),
@@ -62,7 +62,7 @@ import {
 
 import { opt, vec, record, variant, tuple } from "./composites"
 import { query, update, oneway, service } from "./service"
-import type { Infer, ServiceOf } from "./service"
+import type { Infer } from "./service"
 
 /**
  * The `c` namespace — Zod-inspired Candid codec builder.

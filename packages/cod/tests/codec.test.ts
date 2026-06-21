@@ -1,7 +1,7 @@
 /**
  * Candid Codec — Test Suite
  *
- * Tests for Slice 1: primitives, composites, service, metadata, idlFactory, manifest.
+ * Tests for the @ic-reactor/cod package.
  */
 
 import { describe, it, expect, expectTypeOf } from "vitest"
@@ -18,7 +18,7 @@ import {
   CandidTupleCodec,
   CandidServiceCodec,
   CandidMethodCodec,
-} from "../../src/codec"
+} from "../src"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Primitives
