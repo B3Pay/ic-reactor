@@ -187,6 +187,13 @@ describe("Candid Schema Parser (parseDid)", () => {
       description: "Account that receives tokens.",
       docs: ["Account that receives tokens."],
     })
+
+    if (!nameField?.metadata || !emailField?.metadata?.validation?.format) {
+      throw new Error(
+        "Expected name and email fields to have metadata and validation format"
+      )
+    }
+
     expect(nameField.metadata).toEqual({
       description: "Human-readable display name.",
       docs: [
@@ -203,6 +210,11 @@ describe("Candid Schema Parser (parseDid)", () => {
       type: "email",
       message: "Invalid email address",
     })
+
+    if (!parsed.service?.metadata || !parsed.service.methods[0]?.metadata) {
+      throw new Error("Expected service and method metadata to be defined")
+    }
+
     expect(parsed.service.metadata.description).toBe("Ledger service.")
     expect(parsed.service.methods[0].metadata).toEqual({
       description: "Return an account balance.",
