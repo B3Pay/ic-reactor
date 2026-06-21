@@ -95,7 +95,12 @@ const source = generateCodecDeclarations(schema, {
 ```
 
 The renderer preserves parser metadata using `.describe(...)` and
-`.meta(...)`. Built-in `@format` values follow
+`.meta(...)`. Built-in `@format` values compile to Cod helpers such as
+`c.email()`, `c.url()`, and `c.uuid()`. These helpers still encode as Candid
+`text`, but carry the built-in regex and default English error message in
+their metadata.
+
+Built-in format names follow
 [Zod string formats](https://zod.dev/json-schema?id=string-formats#string-formats),
 including `email`, `date-time`, `date`, `duration`, `ipv4`, `ipv6`, `uuid`,
 `uri`, `base64`, `ulid`, `cuid`, `nanoid`, `cidrv4`, `cidrv6`, and `mac`.

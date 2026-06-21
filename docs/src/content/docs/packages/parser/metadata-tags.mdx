@@ -65,7 +65,8 @@ type Profile = record {
 };
 ```
 
-The generated codec renderer keeps these values as metadata:
+The generated codec renderer emits built-in formats as helpers and keeps
+remaining validation as metadata:
 
 ```ts
 export const Profile = c.record({
@@ -73,30 +74,13 @@ export const Profile = c.record({
     .text()
     .describe("Display name.")
     .meta({
-      docs: [
-        "Display name.",
-        "@minLength 2",
-        "@maxLength 32",
-      ],
+      docs: ["Display name.", "@minLength 2", "@maxLength 32"],
       validation: {
         minLength: { value: "2", message: "Must be at least 2 characters" },
         maxLength: { value: "32", message: "Must be at most 32 characters" },
       },
     }),
-  email: c
-    .text()
-    .describe("Contact email.")
-    .meta({
-      docs: ["Contact email.", "@format email"],
-      validation: {
-        format: {
-          type: "email",
-          regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
-          jsonSchemaFormat: "email",
-          errorMessage: "Must be a valid email address",
-        },
-      },
-    }),
+  email: c.email().describe("Contact email."),
 })
 ```
 
@@ -139,6 +123,28 @@ Those can be used without an inline message:
 /// Contact email.
 /// @format email
 email : text;
+```
+
+The generated Cod schema uses the matching helper:
+
+```ts
+email: c.email().describe("Contact email.")
+```
+
+`c.email()` still encodes as Candid `text`, but its metadata includes the
+built-in regex and default English error message.
+
+If the tag includes a message, the renderer passes it to the helper instead of
+emitting inline metadata:
+
+```text
+/// Public profile identifier.
+/// @format uuid UUID
+id : text;
+```
+
+```ts
+id: c.uuid("UUID").describe("Public profile identifier.")
 ```
 
 Pass `customJSDocFormatTypes` to `generateCodecDeclarations` only for

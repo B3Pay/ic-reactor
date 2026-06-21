@@ -6,10 +6,7 @@
  */
 
 import "./styles.css"
-import {
-  BUILT_IN_JSDOC_FORMAT_TYPES,
-  generateCodecDeclarations,
-} from "@ic-reactor/codegen/renderer"
+import { generateCodecDeclarations } from "@ic-reactor/codegen/renderer"
 import type { GenerateCodecDeclarationsOptions } from "@ic-reactor/codegen/renderer"
 import { SAMPLES } from "./samples"
 import init, { parseDid } from "@ic-reactor/parser"
@@ -32,8 +29,8 @@ function getCodegenOptions(): GenerateCodecDeclarationsOptions {
   }
 }
 
-let candidInput = SAMPLES.metadata.did
-let selectedSampleKey = "metadata"
+let candidInput = SAMPLES.formatHelpers.did
+let selectedSampleKey = "formatHelpers"
 let outputCode = ""
 let errorMessage = ""
 let parserReady = false
@@ -96,7 +93,7 @@ function highlightCode(code: string): string {
 
   // c.* function calls
   html = html.replace(
-    /\b(c\.(?:record|variant|opt|vec|tuple|query|update|oneway|service|text|bool|nat|nat8|nat16|nat32|nat64|int|int8|int16|int32|int64|float32|float64|principal|null|reserved|empty|blob|infer|ServiceOf))\b/g,
+    /\b(c\.(?:record|variant|opt|vec|tuple|query|update|oneway|service|text|email|dateTime|datetime|date|time|duration|url|uri|httpsUrl|ipv4|ipv6|uuid|guid|base64|base64url|cuid|cuid2|ulid|nanoid|emoji|cidrv4|cidrv6|mac|bool|nat|nat8|nat16|nat32|nat64|int|int8|int16|int32|int64|float32|float64|principal|null|reserved|empty|blob|infer|ServiceOf))\b/g,
     '<span class="fn">$1</span>'
   )
 
@@ -121,11 +118,23 @@ function render(): void {
         `<option value="${key}" ${key === selectedSampleKey ? "selected" : ""}>${label}</option>`
     )
     .join("")
-  const customFormatOptions = Object.keys({
-    ...BUILT_IN_JSDOC_FORMAT_TYPES,
-    ...CUSTOM_JSDOC_FORMAT_TYPES,
-  })
-    .map((format) => `<span class="format-chip">@format ${format}</span>`)
+  const formatPreviewOptions = [
+    "@format uuid",
+    "@format email",
+    "@format url",
+    "@format date-time",
+    "@format base64",
+  ]
+    .map((format) => `<span class="format-chip">${format}</span>`)
+    .join("")
+  const helperPreviewOptions = [
+    "c.uuid()",
+    "c.email()",
+    "c.url()",
+    "c.dateTime()",
+    "c.base64()",
+  ]
+    .map((helper) => `<span class="helper-chip">${helper}</span>`)
     .join("")
 
   app.innerHTML = `
@@ -163,11 +172,14 @@ function render(): void {
 
     <div class="metadata-strip">
       <div class="metadata-copy">
-        <span class="metadata-title">Metadata tags</span>
-        <span class="metadata-text">Doc comments and validation tags are preserved as Cod descriptions and metadata.</span>
+        <span class="metadata-title">Format helpers</span>
+        <span class="metadata-text">Built-in @format tags compile to compact Cod helpers with default validation messages.</span>
+      </div>
+      <div class="helper-list" aria-label="Generated Cod format helpers">
+        ${helperPreviewOptions}
       </div>
       <div class="format-list" aria-label="Active JSDoc format types">
-        ${customFormatOptions}
+        ${formatPreviewOptions}
       </div>
     </div>
 

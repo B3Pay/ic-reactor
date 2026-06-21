@@ -111,6 +111,21 @@ console.log(nameCodec.metadata.label) // "Full Name"
 console.log(nameCodec.metadata.examples) // ["Alice Vance"]
 ```
 
+Text format helpers such as `c.email()`, `c.url()`, and `c.uuid()` still encode
+as Candid `text`, but include validation metadata with a built-in regex and
+default English error message:
+
+```ts
+const email = c.email()
+const requiredEmail = c.email("Enter a valid account email")
+
+console.log(email.toIDL().display()) // "text"
+console.log(email.metadata.validation?.format?.errorMessage)
+// "Must be a valid email address"
+console.log(requiredEmail.metadata.validation?.format?.errorMessage)
+// "Enter a valid account email"
+```
+
 ---
 
 ## Supported Types Map
