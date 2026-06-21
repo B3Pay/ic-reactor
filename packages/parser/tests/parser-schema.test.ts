@@ -227,4 +227,62 @@ describe("Candid Schema Parser (parseDid)", () => {
       },
     })
   })
+
+  it("should add default validation messages when doc tags omit them", () => {
+    const candid = `
+      type Profile = record {
+        /// @minLength 2
+        /// @maxLength 32
+        name : text;
+
+        /// @format email
+        email : text;
+      };
+
+      service : {
+        /// @minimum 0
+        balance : () -> (nat) query;
+      }
+    `
+
+    const parsed = parser.parseDid(candid)
+    const profileType = parsed.types.find(
+      (t: any) => t.name === "Profile"
+    ) as parser.CandidTypeDeclaration
+
+    if (profileType.type.kind !== "record") {
+      throw new Error("Expected record type")
+    }
+
+    const nameField = profileType.type.fields.find(
+      (f: any) => f.name === "name"
+    )
+    const emailField = profileType.type.fields.find(
+      (f: any) => f.name === "email"
+    )
+
+    if (
+      !nameField?.metadata?.validation ||
+      !emailField?.metadata?.validation?.format
+    ) {
+      throw new Error("Expected validation metadata to be present")
+    }
+
+    expect(nameField.metadata.validation.minLength).toEqual({
+      value: "2",
+      message: "Must be at least 2 characters",
+    })
+    expect(nameField.metadata.validation.maxLength).toEqual({
+      value: "32",
+      message: "Must be at most 32 characters",
+    })
+    expect(emailField.metadata.validation.format).toEqual({
+      type: "email",
+      message: "Must be a valid email address",
+    })
+    expect(parsed.service?.methods[0]?.metadata?.validation?.minimum).toEqual({
+      value: "0",
+      message: "Must be at least 0",
+    })
+  })
 })

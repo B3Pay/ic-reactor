@@ -4,136 +4,20 @@ import type {
   CandidType,
   CandidTypeDeclaration,
 } from "@ic-reactor/parser"
+import {
+  BUILT_IN_FORMAT_HELPERS,
+  BUILT_IN_JSDOC_FORMAT_TYPES,
+  type CustomJSDocFormatTypes,
+  type JSDocFormatDefinition,
+  normalizeValidationMetadata,
+} from "./metadata"
 
-export type JSDocFormatDefinition = {
-  regex?: string
-  errorMessage?: string
-  jsonSchemaFormat?: string
-  contentEncoding?: string
-}
+export {
+  BUILT_IN_JSDOC_FORMAT_TYPES,
+  BUILT_IN_FORMAT_HELPERS,
+} from "./metadata"
 
-export type CustomJSDocFormatTypes = Record<
-  string,
-  string | JSDocFormatDefinition
->
-
-export const BUILT_IN_JSDOC_FORMAT_TYPES: Readonly<
-  Record<string, JSDocFormatDefinition>
-> = {
-  email: {
-    regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
-    jsonSchemaFormat: "email",
-    errorMessage: "Must be a valid email address",
-  },
-  "date-time": {
-    regex:
-      "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d))$",
-    jsonSchemaFormat: "date-time",
-    errorMessage: "Must be a valid ISO datetime",
-  },
-  datetime: {
-    regex:
-      "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d))$",
-    jsonSchemaFormat: "date-time",
-    errorMessage: "Must be a valid ISO datetime",
-  },
-  date: {
-    regex:
-      "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
-    jsonSchemaFormat: "date",
-    errorMessage: "Must be a valid ISO date",
-  },
-  time: {
-    regex: "^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?$",
-    errorMessage: "Must be a valid ISO time",
-  },
-  duration: {
-    regex:
-      "^P(?:(\\d+W)|(?!.*W)(?=\\d|T\\d)(\\d+Y)?(\\d+M)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+([.,]\\d+)?S)?)?)$",
-    jsonSchemaFormat: "duration",
-    errorMessage: "Must be a valid ISO duration",
-  },
-  url: {
-    regex: "^[a-zA-Z][a-zA-Z\\d+.-]*:.+",
-    jsonSchemaFormat: "uri",
-    errorMessage: "Must be a valid URL",
-  },
-  uri: {
-    regex: "^[a-zA-Z][a-zA-Z\\d+.-]*:.+",
-    jsonSchemaFormat: "uri",
-    errorMessage: "Must be a valid URI",
-  },
-  httpsUrl: {
-    regex: "^https://.+",
-    jsonSchemaFormat: "uri",
-    errorMessage: "Must be a valid HTTPS URL",
-  },
-  ipv4: {
-    regex: "^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:\\.|$)){4}$",
-    jsonSchemaFormat: "ipv4",
-    errorMessage: "Must be a valid IPv4 address",
-  },
-  ipv6: {
-    regex:
-      "^((?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|::1|::|(?:[0-9A-Fa-f]{1,4}:){1,7}:|(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,5}(?::[0-9A-Fa-f]{1,4}){1,2}|(?:[0-9A-Fa-f]{1,4}:){1,4}(?::[0-9A-Fa-f]{1,4}){1,3}|(?:[0-9A-Fa-f]{1,4}:){1,3}(?::[0-9A-Fa-f]{1,4}){1,4}|(?:[0-9A-Fa-f]{1,4}:){1,2}(?::[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:(?:(?::[0-9A-Fa-f]{1,4}){1,6}))$",
-    jsonSchemaFormat: "ipv6",
-    errorMessage: "Must be a valid IPv6 address",
-  },
-  uuid: {
-    regex:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
-    jsonSchemaFormat: "uuid",
-    errorMessage: "Must be a valid UUID",
-  },
-  guid: {
-    regex:
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
-    jsonSchemaFormat: "uuid",
-    errorMessage: "Must be a valid GUID",
-  },
-  base64: {
-    regex: "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
-    contentEncoding: "base64",
-    errorMessage: "Must be valid base64",
-  },
-  base64url: {
-    regex: "^[A-Za-z0-9_-]+$",
-    errorMessage: "Must be valid base64url",
-  },
-  cuid: {
-    regex: "^c[a-z0-9]{24}$",
-    errorMessage: "Must be a valid CUID",
-  },
-  cuid2: {
-    regex: "^[a-z][a-z0-9]*$",
-    errorMessage: "Must be a valid CUID2",
-  },
-  ulid: {
-    regex: "^[0-9A-HJKMNP-TV-Z]{26}$",
-    errorMessage: "Must be a valid ULID",
-  },
-  nanoid: {
-    regex: "^[A-Za-z0-9_-]{21}$",
-    errorMessage: "Must be a valid nanoid",
-  },
-  emoji: {
-    regex: "^\\p{Extended_Pictographic}+$",
-    errorMessage: "Must contain only emoji characters",
-  },
-  cidrv4: {
-    regex:
-      "^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)/(?:3[0-2]|[12]?\\d)$",
-    errorMessage: "Must be a valid IPv4 CIDR range",
-  },
-  cidrv6: {
-    regex: "^[0-9A-Fa-f:]+/(?:12[0-8]|1[01]\\d|\\d?\\d)$",
-    errorMessage: "Must be a valid IPv6 CIDR range",
-  },
-  mac: {
-    regex: "^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$",
-    errorMessage: "Must be a valid MAC address",
-  },
-}
+export type { CustomJSDocFormatTypes, JSDocFormatDefinition } from "./metadata"
 
 export interface GenerateCodecDeclarationsOptions {
   /**
@@ -146,32 +30,6 @@ export interface GenerateCodecDeclarationsOptions {
   serviceExportName?: string
   customJSDocFormatTypes?: CustomJSDocFormatTypes
   includeCompatibilityExports?: boolean
-}
-
-const BUILT_IN_FORMAT_HELPERS: Readonly<Record<string, string>> = {
-  email: "email",
-  "date-time": "dateTime",
-  datetime: "datetime",
-  date: "date",
-  time: "time",
-  duration: "duration",
-  url: "url",
-  uri: "uri",
-  httpsUrl: "httpsUrl",
-  ipv4: "ipv4",
-  ipv6: "ipv6",
-  uuid: "uuid",
-  guid: "guid",
-  base64: "base64",
-  base64url: "base64url",
-  cuid: "cuid",
-  cuid2: "cuid2",
-  ulid: "ulid",
-  nanoid: "nanoid",
-  emoji: "emoji",
-  cidrv4: "cidrv4",
-  cidrv6: "cidrv6",
-  mac: "mac",
 }
 
 const reservedWords = new Set([
@@ -270,30 +128,6 @@ function hasMetadata(
   return metadata != null && Object.keys(metadata).length > 0
 }
 
-function normalizeFormatDefinition(
-  definition: CustomJSDocFormatTypes[string] | undefined
-): JSDocFormatDefinition | undefined {
-  if (!definition) return undefined
-  return typeof definition === "string" ? { regex: definition } : definition
-}
-
-function formatDefinitionFor(
-  type: string,
-  options: GenerateCodecDeclarationsOptions
-): JSDocFormatDefinition | undefined {
-  const builtIn = BUILT_IN_JSDOC_FORMAT_TYPES[type]
-  const custom = normalizeFormatDefinition(
-    options.customJSDocFormatTypes?.[type]
-  )
-
-  if (!custom) return builtIn
-  return {
-    ...builtIn,
-    ...custom,
-    errorMessage: custom.errorMessage ?? builtIn?.errorMessage,
-  }
-}
-
 function stripUndefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined)
@@ -334,32 +168,6 @@ function hasOnlyDescriptionDocs(
   )
 }
 
-function defaultBoundMessage(
-  kind: "minimum" | "maximum" | "minLength" | "maxLength",
-  value: string
-): string {
-  switch (kind) {
-    case "minimum":
-      return `Must be at least ${value}`
-    case "maximum":
-      return `Must be at most ${value}`
-    case "minLength":
-      return `Must be at least ${value} character${value === "1" ? "" : "s"}`
-    case "maxLength":
-      return `Must be at most ${value} character${value === "1" ? "" : "s"}`
-  }
-}
-
-function withDefaultBoundMessage<
-  T extends { value: string; message?: string } | undefined,
->(bound: T, kind: "minimum" | "maximum" | "minLength" | "maxLength"): T {
-  if (!bound || bound.message) return bound
-  return {
-    ...bound,
-    message: defaultBoundMessage(kind, bound.value),
-  } as T
-}
-
 function metadataForRender(
   metadata: CandidMetadata,
   options: GenerateCodecDeclarationsOptions
@@ -368,38 +176,11 @@ function metadataForRender(
     return metadata
   }
 
-  const validation = {
-    ...metadata.validation,
-    minimum: withDefaultBoundMessage(metadata.validation.minimum, "minimum"),
-    maximum: withDefaultBoundMessage(metadata.validation.maximum, "maximum"),
-    minLength: withDefaultBoundMessage(
-      metadata.validation.minLength,
-      "minLength"
-    ),
-    maxLength: withDefaultBoundMessage(
-      metadata.validation.maxLength,
-      "maxLength"
-    ),
-  }
-
-  const format = metadata.validation.format
-  const formatDefinition = format
-    ? formatDefinitionFor(format.type, options)
-    : undefined
-
-  if (format && formatDefinition) {
-    validation.format = stripUndefined({
-      ...format,
-      regex: formatDefinition.regex,
-      jsonSchemaFormat: formatDefinition.jsonSchemaFormat,
-      contentEncoding: formatDefinition.contentEncoding,
-      errorMessage: format.message ?? formatDefinition.errorMessage,
-    })
-  }
-
   return {
     ...metadata,
-    validation,
+    validation: normalizeValidationMetadata(metadata.validation, {
+      customJSDocFormatTypes: options.customJSDocFormatTypes,
+    }),
   }
 }
 
