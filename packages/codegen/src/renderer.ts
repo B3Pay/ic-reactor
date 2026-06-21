@@ -1,8 +1,143 @@
 import type {
+  CandidMetadata,
   CandidSchema,
   CandidType,
   CandidTypeDeclaration,
 } from "@ic-reactor/parser"
+
+export type JSDocFormatDefinition = {
+  regex?: string
+  errorMessage?: string
+  jsonSchemaFormat?: string
+  contentEncoding?: string
+}
+
+export type CustomJSDocFormatTypes = Record<
+  string,
+  string | JSDocFormatDefinition
+>
+
+export const BUILT_IN_JSDOC_FORMAT_TYPES: Readonly<
+  Record<string, JSDocFormatDefinition>
+> = {
+  email: {
+    regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+    jsonSchemaFormat: "email",
+    errorMessage: "Must be a valid email address",
+  },
+  "date-time": {
+    regex:
+      "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+    jsonSchemaFormat: "date-time",
+    errorMessage: "Must be a valid ISO datetime",
+  },
+  datetime: {
+    regex:
+      "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+    jsonSchemaFormat: "date-time",
+    errorMessage: "Must be a valid ISO datetime",
+  },
+  date: {
+    regex: "^\\d{4}-\\d{2}-\\d{2}$",
+    jsonSchemaFormat: "date",
+    errorMessage: "Must be a valid ISO date",
+  },
+  time: {
+    regex: "^\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})?$",
+    errorMessage: "Must be a valid ISO time",
+  },
+  duration: {
+    regex:
+      "^P(?=\\d|T\\d)(?:(\\d+)Y)?(?:(\\d+)M)?(?:(\\d+)W)?(?:(\\d+)D)?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+(?:\\.\\d+)?)S)?)?$",
+    jsonSchemaFormat: "duration",
+    errorMessage: "Must be a valid ISO duration",
+  },
+  url: {
+    regex: "^[a-zA-Z][a-zA-Z\\d+.-]*:.+",
+    jsonSchemaFormat: "uri",
+    errorMessage: "Must be a valid URL",
+  },
+  uri: {
+    regex: "^[a-zA-Z][a-zA-Z\\d+.-]*:.+",
+    jsonSchemaFormat: "uri",
+    errorMessage: "Must be a valid URI",
+  },
+  httpsUrl: {
+    regex: "^https://.+",
+    jsonSchemaFormat: "uri",
+    errorMessage: "Must be a valid HTTPS URL",
+  },
+  ipv4: {
+    regex: "^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:\\.|$)){4}$",
+    jsonSchemaFormat: "ipv4",
+    errorMessage: "Must be a valid IPv4 address",
+  },
+  ipv6: {
+    regex:
+      "^((?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|::1|::|(?:[0-9A-Fa-f]{1,4}:){1,7}:|(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,5}(?::[0-9A-Fa-f]{1,4}){1,2}|(?:[0-9A-Fa-f]{1,4}:){1,4}(?::[0-9A-Fa-f]{1,4}){1,3}|(?:[0-9A-Fa-f]{1,4}:){1,3}(?::[0-9A-Fa-f]{1,4}){1,4}|(?:[0-9A-Fa-f]{1,4}:){1,2}(?::[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:(?:(?::[0-9A-Fa-f]{1,4}){1,6}))$",
+    jsonSchemaFormat: "ipv6",
+    errorMessage: "Must be a valid IPv6 address",
+  },
+  uuid: {
+    regex:
+      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+    jsonSchemaFormat: "uuid",
+    errorMessage: "Must be a valid UUID",
+  },
+  guid: {
+    regex:
+      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+    jsonSchemaFormat: "uuid",
+    errorMessage: "Must be a valid GUID",
+  },
+  base64: {
+    regex: "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+    contentEncoding: "base64",
+    errorMessage: "Must be valid base64",
+  },
+  base64url: {
+    regex: "^[A-Za-z0-9_-]+$",
+    errorMessage: "Must be valid base64url",
+  },
+  cuid: {
+    regex: "^c[a-z0-9]{24}$",
+    errorMessage: "Must be a valid CUID",
+  },
+  cuid2: {
+    regex: "^[a-z][a-z0-9]*$",
+    errorMessage: "Must be a valid CUID2",
+  },
+  ulid: {
+    regex: "^[0-9A-HJKMNP-TV-Z]{26}$",
+    errorMessage: "Must be a valid ULID",
+  },
+  nanoid: {
+    regex: "^[A-Za-z0-9_-]{21}$",
+    errorMessage: "Must be a valid nanoid",
+  },
+  emoji: {
+    regex: "^\\p{Extended_Pictographic}+$",
+    errorMessage: "Must contain only emoji characters",
+  },
+  cidrv4: {
+    regex:
+      "^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)/(?:3[0-2]|[12]?\\d)$",
+    errorMessage: "Must be a valid IPv4 CIDR range",
+  },
+  cidrv6: {
+    regex: "^[0-9A-Fa-f:]+/(?:12[0-8]|1[01]\\d|\\d?\\d)$",
+    errorMessage: "Must be a valid IPv6 CIDR range",
+  },
+  mac: {
+    regex: "^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$",
+    errorMessage: "Must be a valid MAC address",
+  },
+}
+
+export interface GenerateCodecDeclarationsOptions {
+  serviceExportName?: string
+  customJSDocFormatTypes?: CustomJSDocFormatTypes
+}
 
 const reservedWords = new Set([
   "break",
@@ -61,6 +196,139 @@ function assertIdentifier(name: string, label: string): void {
 
 function propertyName(name: string): string {
   return isValidIdentifier(name) ? name : JSON.stringify(name)
+}
+
+function normalizeOptions(
+  options: string | GenerateCodecDeclarationsOptions = {}
+): GenerateCodecDeclarationsOptions {
+  return typeof options === "string" ? { serviceExportName: options } : options
+}
+
+function hasMetadata(
+  metadata: CandidMetadata | undefined
+): metadata is CandidMetadata {
+  return metadata != null && Object.keys(metadata).length > 0
+}
+
+function normalizeFormatDefinition(
+  definition: CustomJSDocFormatTypes[string] | undefined
+): JSDocFormatDefinition | undefined {
+  if (!definition) return undefined
+  return typeof definition === "string" ? { regex: definition } : definition
+}
+
+function formatDefinitionFor(
+  type: string,
+  options: GenerateCodecDeclarationsOptions
+): JSDocFormatDefinition | undefined {
+  const builtIn = BUILT_IN_JSDOC_FORMAT_TYPES[type]
+  const custom = normalizeFormatDefinition(
+    options.customJSDocFormatTypes?.[type]
+  )
+
+  if (!custom) return builtIn
+  return {
+    ...builtIn,
+    ...custom,
+    errorMessage: custom.errorMessage ?? builtIn?.errorMessage,
+  }
+}
+
+function stripUndefined<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined)
+  ) as T
+}
+
+function defaultBoundMessage(
+  kind: "minimum" | "maximum" | "minLength" | "maxLength",
+  value: string
+): string {
+  switch (kind) {
+    case "minimum":
+      return `Must be at least ${value}`
+    case "maximum":
+      return `Must be at most ${value}`
+    case "minLength":
+      return `Must be at least ${value} character${value === "1" ? "" : "s"}`
+    case "maxLength":
+      return `Must be at most ${value} character${value === "1" ? "" : "s"}`
+  }
+}
+
+function withDefaultBoundMessage<
+  T extends { value: string; message?: string } | undefined,
+>(bound: T, kind: "minimum" | "maximum" | "minLength" | "maxLength"): T {
+  if (!bound || bound.message) return bound
+  return {
+    ...bound,
+    message: defaultBoundMessage(kind, bound.value),
+  } as T
+}
+
+function metadataForRender(
+  metadata: CandidMetadata,
+  options: GenerateCodecDeclarationsOptions
+): CandidMetadata {
+  if (!metadata.validation) {
+    return metadata
+  }
+
+  const validation = {
+    ...metadata.validation,
+    minimum: withDefaultBoundMessage(metadata.validation.minimum, "minimum"),
+    maximum: withDefaultBoundMessage(metadata.validation.maximum, "maximum"),
+    minLength: withDefaultBoundMessage(
+      metadata.validation.minLength,
+      "minLength"
+    ),
+    maxLength: withDefaultBoundMessage(
+      metadata.validation.maxLength,
+      "maxLength"
+    ),
+  }
+
+  const format = metadata.validation.format
+  const formatDefinition = format
+    ? formatDefinitionFor(format.type, options)
+    : undefined
+
+  if (format && formatDefinition) {
+    validation.format = stripUndefined({
+      ...format,
+      regex: formatDefinition.regex,
+      jsonSchemaFormat: formatDefinition.jsonSchemaFormat,
+      contentEncoding: formatDefinition.contentEncoding,
+      errorMessage: format.message ?? formatDefinition.errorMessage,
+    })
+  }
+
+  return {
+    ...metadata,
+    validation,
+  }
+}
+
+function applyMetadata(
+  expression: string,
+  metadata: CandidMetadata | undefined,
+  options: GenerateCodecDeclarationsOptions
+): string {
+  if (!hasMetadata(metadata)) return expression
+
+  const renderedMetadata = metadataForRender(metadata, options)
+  const { description, ...rest } = renderedMetadata
+  let result = expression
+
+  if (description) {
+    result += `.describe(${JSON.stringify(description)})`
+  }
+
+  if (Object.keys(rest).length > 0) {
+    result += `.meta(${JSON.stringify(rest)})`
+  }
+
+  return result
 }
 
 function getReferencedNames(type: CandidType): string[] {
@@ -132,103 +400,147 @@ export function sortDeclarations(
   return sorted
 }
 
-export function renderType(type: CandidType, indent = ""): string {
+export function renderType(
+  type: CandidType,
+  indent = "",
+  options: GenerateCodecDeclarationsOptions = {}
+): string {
   const nextIndent = `${indent}  `
+  let expression: string
 
   switch (type.kind) {
     case "null":
-      return "c.null()"
+      expression = "c.null()"
+      break
     case "bool":
-      return "c.bool()"
+      expression = "c.bool()"
+      break
     case "nat":
-      return "c.nat()"
+      expression = "c.nat()"
+      break
     case "int":
-      return "c.int()"
+      expression = "c.int()"
+      break
     case "nat8":
-      return "c.nat8()"
+      expression = "c.nat8()"
+      break
     case "nat16":
-      return "c.nat16()"
+      expression = "c.nat16()"
+      break
     case "nat32":
-      return "c.nat32()"
+      expression = "c.nat32()"
+      break
     case "nat64":
-      return "c.nat64()"
+      expression = "c.nat64()"
+      break
     case "int8":
-      return "c.int8()"
+      expression = "c.int8()"
+      break
     case "int16":
-      return "c.int16()"
+      expression = "c.int16()"
+      break
     case "int32":
-      return "c.int32()"
+      expression = "c.int32()"
+      break
     case "int64":
-      return "c.int64()"
+      expression = "c.int64()"
+      break
     case "float32":
-      return "c.float32()"
+      expression = "c.float32()"
+      break
     case "float64":
-      return "c.float64()"
+      expression = "c.float64()"
+      break
     case "text":
-      return "c.text()"
+      expression = "c.text()"
+      break
     case "reserved":
-      return "c.reserved()"
+      expression = "c.reserved()"
+      break
     case "empty":
-      return "c.empty()"
+      expression = "c.empty()"
+      break
     case "principal":
-      return "c.principal()"
+      expression = "c.principal()"
+      break
     case "blob":
-      return "c.blob()"
+      expression = "c.blob()"
+      break
     case "reference":
       assertIdentifier(type.name, "Type reference")
-      return type.name
+      expression = type.name
+      break
     case "opt":
-      return `c.opt(${renderType(type.type, indent)})`
+      expression = `c.opt(${renderType(type.type, indent, options)})`
+      break
     case "vec":
-      return `c.vec(${renderType(type.type, indent)})`
+      expression = `c.vec(${renderType(type.type, indent, options)})`
+      break
     case "record": {
-      if (type.fields.length === 0) return "c.record({})"
-      const fields = type.fields
-        .map(
-          (field) =>
-            `${nextIndent}${propertyName(field.name)}: ${renderType(
-              field.type,
-              nextIndent
-            )},`
-        )
-        .join("\n")
-      return `c.record({\n${fields}\n${indent}})`
+      if (type.fields.length === 0) {
+        expression = "c.record({})"
+      } else {
+        const fields = type.fields
+          .map((field) => {
+            const fieldExpression = applyMetadata(
+              renderType(field.type, nextIndent, options),
+              field.metadata,
+              options
+            )
+            return `${nextIndent}${propertyName(field.name)}: ${fieldExpression},`
+          })
+          .join("\n")
+        expression = `c.record({\n${fields}\n${indent}})`
+      }
+      break
     }
     case "variant": {
-      if (type.fields.length === 0) return "c.variant({})"
-      const fields = type.fields
-        .map(
-          (field) =>
-            `${nextIndent}${propertyName(field.name)}: ${renderType(
-              field.type,
-              nextIndent
-            )},`
-        )
-        .join("\n")
-      return `c.variant({\n${fields}\n${indent}})`
+      if (type.fields.length === 0) {
+        expression = "c.variant({})"
+      } else {
+        const fields = type.fields
+          .map((field) => {
+            const fieldExpression = applyMetadata(
+              renderType(field.type, nextIndent, options),
+              field.metadata,
+              options
+            )
+            return `${nextIndent}${propertyName(field.name)}: ${fieldExpression},`
+          })
+          .join("\n")
+        expression = `c.variant({\n${fields}\n${indent}})`
+      }
+      break
     }
     case "tuple":
-      return `c.tuple([${type.types.map((item) => renderType(item, indent)).join(", ")}])`
+      expression = `c.tuple([${type.types
+        .map((item) => renderType(item, indent, options))
+        .join(", ")}])`
+      break
     case "func":
     case "service":
     case "class":
     case "unknown":
     case "knot":
     case "future":
-      return `/* c.${type.kind} is not supported */ c.reserved()`
+      expression = `/* c.${type.kind} is not supported */ c.reserved()`
+      break
   }
+
+  return applyMetadata(expression, type.metadata, options)
 }
 
 function renderMethodReturn(
-  method: NonNullable<CandidSchema["service"]>["methods"][number]
+  method: NonNullable<CandidSchema["service"]>["methods"][number],
+  options: GenerateCodecDeclarationsOptions
 ): string {
   if (method.mode === "oneway") return ""
   if (method.returns.length === 0) return ""
   if (method.returns.length === 1) {
-    return `, ${renderType(method.returns[0], "    ")}`
+    return `, ${renderType(method.returns[0], "    ", options)}`
   }
   return `, c.tuple([${method.returns
-    .map((returnType) => renderType(returnType, "    "))
+    .map((returnType) => renderType(returnType, "    ", options))
     .join(", ")}])`
 }
 
@@ -238,8 +550,10 @@ function renderMethodReturn(
  */
 export function generateCodecDeclarations(
   schema: CandidSchema,
-  serviceExportName = "service"
+  optionsOrServiceExportName: string | GenerateCodecDeclarationsOptions = {}
 ): string {
+  const options = normalizeOptions(optionsOrServiceExportName)
+  const serviceExportName = options.serviceExportName ?? "service"
   assertIdentifier(serviceExportName, "Service export name")
 
   const lines: string[] = ['import { c } from "@ic-reactor/cod"', ""]
@@ -248,7 +562,11 @@ export function generateCodecDeclarations(
     assertIdentifier(declaration.name, "Type declaration name")
 
     lines.push(
-      `export const ${declaration.name} = ${renderType(declaration.type)}`
+      `export const ${declaration.name} = ${applyMetadata(
+        renderType(declaration.type, "", options),
+        declaration.metadata,
+        options
+      )}`
     )
     lines.push(
       `export type ${declaration.name} = c.infer<typeof ${declaration.name}>`
@@ -260,17 +578,29 @@ export function generateCodecDeclarations(
     const methods = schema.service.methods
       .map((method) => {
         const args = method.args
-          .map((arg) => renderType(arg, "    "))
+          .map((arg) => renderType(arg, "    ", options))
           .join(", ")
-        return `  ${propertyName(method.name)}: c.${method.mode}([${args}]${renderMethodReturn(method)}),`
+        const methodExpression = `c.${method.mode}([${args}]${renderMethodReturn(
+          method,
+          options
+        )})`
+        return `  ${propertyName(method.name)}: ${applyMetadata(
+          methodExpression,
+          method.metadata,
+          options
+        )},`
       })
       .join("\n")
 
-    lines.push(`export const ${serviceExportName} = c.service({`)
-    if (methods.length > 0) {
-      lines.push(methods)
-    }
-    lines.push("})")
+    const serviceExpression =
+      methods.length > 0 ? `c.service({\n${methods}\n})` : "c.service({})"
+    lines.push(
+      `export const ${serviceExportName} = ${applyMetadata(
+        serviceExpression,
+        schema.service.metadata,
+        options
+      )}`
+    )
     lines.push("")
     lines.push(`export const idlFactory = ${serviceExportName}.idlFactory`)
     lines.push(

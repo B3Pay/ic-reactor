@@ -11,51 +11,87 @@ export interface CandidSchema {
   service: CandidServiceDeclaration | null;
 }
 
+export interface CandidMetadata {
+  description?: string;
+  docs?: string[];
+  validation?: CandidValidationMetadata;
+}
+
+export interface CandidValidationMetadata {
+  minimum?: CandidValidationBound;
+  maximum?: CandidValidationBound;
+  minLength?: CandidValidationBound;
+  maxLength?: CandidValidationBound;
+  pattern?: string;
+  format?: CandidValidationFormat;
+}
+
+export interface CandidValidationBound {
+  value: string;
+  message?: string;
+}
+
+export interface CandidValidationFormat {
+  type: string;
+  message?: string;
+  regex?: string;
+  jsonSchemaFormat?: string;
+  contentEncoding?: string;
+  errorMessage?: string;
+}
+
 export type CandidType =
-  | { kind: "null" }
-  | { kind: "bool" }
-  | { kind: "nat" }
-  | { kind: "int" }
-  | { kind: "nat8" }
-  | { kind: "nat16" }
-  | { kind: "nat32" }
-  | { kind: "nat64" }
-  | { kind: "int8" }
-  | { kind: "int16" }
-  | { kind: "int32" }
-  | { kind: "int64" }
-  | { kind: "float32" }
-  | { kind: "float64" }
-  | { kind: "text" }
-  | { kind: "reserved" }
-  | { kind: "empty" }
-  | { kind: "principal" }
-  | { kind: "blob" }
-  | { kind: "reference"; name: string }
-  | { kind: "opt"; type: CandidType }
-  | { kind: "vec"; type: CandidType }
-  | { kind: "record"; fields: CandidField[] }
-  | { kind: "variant"; fields: CandidField[] }
-  | { kind: "tuple"; types: CandidType[] }
-  | { kind: "func" }
-  | { kind: "service" }
-  | { kind: "class" }
-  | { kind: "unknown" }
-  | { kind: "knot" }
-  | { kind: "future" };
+  | ({ kind: "null" } & CandidMetadataCarrier)
+  | ({ kind: "bool" } & CandidMetadataCarrier)
+  | ({ kind: "nat" } & CandidMetadataCarrier)
+  | ({ kind: "int" } & CandidMetadataCarrier)
+  | ({ kind: "nat8" } & CandidMetadataCarrier)
+  | ({ kind: "nat16" } & CandidMetadataCarrier)
+  | ({ kind: "nat32" } & CandidMetadataCarrier)
+  | ({ kind: "nat64" } & CandidMetadataCarrier)
+  | ({ kind: "int8" } & CandidMetadataCarrier)
+  | ({ kind: "int16" } & CandidMetadataCarrier)
+  | ({ kind: "int32" } & CandidMetadataCarrier)
+  | ({ kind: "int64" } & CandidMetadataCarrier)
+  | ({ kind: "float32" } & CandidMetadataCarrier)
+  | ({ kind: "float64" } & CandidMetadataCarrier)
+  | ({ kind: "text" } & CandidMetadataCarrier)
+  | ({ kind: "reserved" } & CandidMetadataCarrier)
+  | ({ kind: "empty" } & CandidMetadataCarrier)
+  | ({ kind: "principal" } & CandidMetadataCarrier)
+  | ({ kind: "blob" } & CandidMetadataCarrier)
+  | ({ kind: "reference"; name: string } & CandidMetadataCarrier)
+  | ({ kind: "opt"; type: CandidType } & CandidMetadataCarrier)
+  | ({ kind: "vec"; type: CandidType } & CandidMetadataCarrier)
+  | ({ kind: "record"; fields: CandidField[] } & CandidMetadataCarrier)
+  | ({ kind: "variant"; fields: CandidField[] } & CandidMetadataCarrier)
+  | ({ kind: "tuple"; types: CandidType[] } & CandidMetadataCarrier)
+  | ({ kind: "func" } & CandidMetadataCarrier)
+  | ({ kind: "service" } & CandidMetadataCarrier)
+  | ({ kind: "class" } & CandidMetadataCarrier)
+  | ({ kind: "unknown" } & CandidMetadataCarrier)
+  | ({ kind: "knot" } & CandidMetadataCarrier)
+  | ({ kind: "future" } & CandidMetadataCarrier);
+
+export interface CandidMetadataCarrier {
+  metadata?: CandidMetadata;
+}
 
 export interface CandidField {
   name: string;
   type: CandidType;
+  metadata?: CandidMetadata;
 }
 
 export interface CandidTypeDeclaration {
   name: string;
   type: CandidType;
+  metadata?: CandidMetadata;
 }
 
 export interface CandidServiceDeclaration {
   methods: CandidMethodDeclaration[];
+  metadata?: CandidMetadata;
 }
 
 export interface CandidMethodDeclaration {
@@ -63,6 +99,7 @@ export interface CandidMethodDeclaration {
   mode: "query" | "update" | "oneway";
   args: CandidType[];
   returns: CandidType[];
+  metadata?: CandidMetadata;
 }
 ${markerEnd}
 `

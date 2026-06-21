@@ -253,6 +253,65 @@ body {
   color: var(--accent-emerald);
 }
 
+/* ─── Metadata Strip ────────────────────────────────────────────────────── */
+
+.metadata-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1.5rem;
+  background: linear-gradient(
+    90deg,
+    rgba(16, 185, 129, 0.08),
+    rgba(6, 182, 212, 0.05)
+  );
+  border-bottom: 1px solid var(--border-default);
+}
+
+.metadata-copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.metadata-title {
+  flex-shrink: 0;
+  color: var(--accent-emerald);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+.metadata-text {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.format-list {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.format-chip {
+  border: 1px solid rgba(6, 182, 212, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(6, 182, 212, 0.08);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.35rem 0.45rem;
+}
+
 /* ─── Editor Split ──────────────────────────────────────────────────────── */
 
 .editor-container {
@@ -471,6 +530,25 @@ body {
 
   .header {
     flex-wrap: wrap;
+  }
+
+  .metadata-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .metadata-copy {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .metadata-text {
+    white-space: normal;
+  }
+
+  .format-list {
+    justify-content: flex-start;
   }
 
   .header-subtitle {

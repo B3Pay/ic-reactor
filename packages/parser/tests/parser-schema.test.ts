@@ -59,8 +59,12 @@ describe("Candid Schema Parser (parseDid)", () => {
 
     // Types in Candid are returned by the parser's env.
     // They are usually sorted alphabetically or in insertion order. Let's find each type by name.
-    const profileType = parsed.types.find((t: any) => t.name === "Profile")
-    const resultType = parsed.types.find((t: any) => t.name === "Result")
+    const profileType = parsed.types.find(
+      (t: any) => t.name === "Profile"
+    ) as parser.CandidTypeDeclaration
+    const resultType = parsed.types.find(
+      (t: any) => t.name === "Result"
+    ) as parser.CandidTypeDeclaration
 
     expect(profileType).toBeDefined()
     expect(profileType.type).toEqual({
@@ -114,8 +118,12 @@ describe("Candid Schema Parser (parseDid)", () => {
     `
     const parsed = parser.parseDid(candid)
 
-    const coordType = parsed.types.find((t: any) => t.name === "Coordinates")
-    const nestedType = parsed.types.find((t: any) => t.name === "Nested")
+    const coordType = parsed.types.find(
+      (t: any) => t.name === "Coordinates"
+    ) as parser.CandidTypeDeclaration
+    const nestedType = parsed.types.find(
+      (t: any) => t.name === "Nested"
+    ) as parser.CandidTypeDeclaration
 
     expect(coordType).toBeDefined()
     expect(coordType.type).toEqual({
@@ -133,6 +141,75 @@ describe("Candid Schema Parser (parseDid)", () => {
         { name: "_1_", type: { kind: "bool" } },
         { name: "name", type: { kind: "text" } },
       ],
+    })
+  })
+
+  it("should preserve doc comments and JSDoc validation tags as metadata", () => {
+    const candid = `
+      /// Account that receives tokens.
+      type Account = record {
+        /// Owner principal.
+        owner : principal;
+
+        /// Human-readable display name.
+        /// @minLength 2 Name is too short
+        /// @maxLength 32 Name is too long
+        name : text;
+
+        /// Contact email.
+        /// @format email Invalid email address
+        email : text;
+      };
+
+      /// Ledger service.
+      service : {
+        /// Return an account balance.
+        /// @minimum 0 Balance cannot be negative
+        balance : (Account) -> (nat) query;
+      }
+    `
+
+    const parsed = parser.parseDid(candid)
+    const accountType = parsed.types.find(
+      (t: any) => t.name === "Account"
+    ) as parser.CandidTypeDeclaration
+    const nameField = accountType.type.fields.find(
+      (f: any) => f.name === "name"
+    )
+    const emailField = accountType.type.fields.find(
+      (f: any) => f.name === "email"
+    )
+
+    expect(accountType.metadata).toEqual({
+      description: "Account that receives tokens.",
+      docs: ["Account that receives tokens."],
+    })
+    expect(nameField.metadata).toEqual({
+      description: "Human-readable display name.",
+      docs: [
+        "Human-readable display name.",
+        "@minLength 2 Name is too short",
+        "@maxLength 32 Name is too long",
+      ],
+      validation: {
+        minLength: { value: "2", message: "Name is too short" },
+        maxLength: { value: "32", message: "Name is too long" },
+      },
+    })
+    expect(emailField.metadata.validation.format).toEqual({
+      type: "email",
+      message: "Invalid email address",
+    })
+    expect(parsed.service.metadata.description).toBe("Ledger service.")
+    expect(parsed.service.methods[0].metadata).toEqual({
+      description: "Return an account balance.",
+      docs: [
+        "Return an account balance.",
+        "@minimum 0 Balance cannot be negative",
+      ],
+      validation: {
+        minimum: { value: "0", message: "Balance cannot be negative" },
+      },
     })
   })
 })
