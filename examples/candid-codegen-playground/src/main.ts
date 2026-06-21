@@ -6,9 +6,9 @@
  */
 
 import "./styles.css"
-import { generateCodSchema } from "./codegen"
+import { generateCodecDeclarations } from "@ic-reactor/codegen"
 import { SAMPLES } from "./samples"
-import init, { didToJs } from "@ic-reactor/parser"
+import init, { parseDid } from "@ic-reactor/parser"
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -39,8 +39,8 @@ function regenerate(): void {
   if (!parserReady) return
 
   try {
-    const jsOutput = didToJs(candidInput)
-    outputCode = generateCodSchema(jsOutput)
+    const schemaAst = JSON.parse(parseDid(candidInput))
+    outputCode = generateCodecDeclarations(schemaAst, "service")
     errorMessage = ""
   } catch (err) {
     outputCode = ""
