@@ -16,10 +16,10 @@
     "@icp-sdk/core": "^5.4.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.5",
-    "@babel/preset-react": "^7.28.5",
-    "@babel/preset-typescript": "^7.28.5",
+    "@babel/core": "^8.0.1",
+    "@babel/preset-env": "^8.0.2",
+    "@babel/preset-react": "^8.0.1",
+    "@babel/preset-typescript": "^8.0.1",
     "@happy-dom/global-registrator": "^20.10.3",
     "@tanstack/react-query": "^5.100.10",
     "@testing-library/jest-dom": "^6.9.1",
