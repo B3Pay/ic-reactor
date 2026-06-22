@@ -1,8 +1,14 @@
-**Plan: Candid Codec API For IC Reactor v4**
+**Plan: COD Candid Contract Runtime For IC Reactor v4**
 
-Goal: move IC Reactor from “generate raw `IDL.*` factory code” to a readable, typed, metadata-rich Candid codec layer inspired by Zod.
+Goal: move IC Reactor from generated raw `IDL.*` factories to a readable,
+typed, metadata-rich Candid contract layer inspired by Zod, while reusing the
+Rust Candid implementation as the source of truth for Candid parsing,
+type-checking, compatibility, and binary encoding/decoding.
 
-Not a literal Zod clone. The API should feel familiar, but Candid fidelity comes first.
+This is not a from-scratch Candid implementation. IC Reactor should own the
+TypeScript contract API and runtime ergonomics, not reimplement the Candid
+spec. The generated app-facing code should use `@ic-reactor/cod`; low-level
+request execution should use `@icp-sdk/agent` directly.
 
 ```ts
 import { c } from "@ic-reactor/cod"
@@ -19,35 +25,54 @@ export const TransferResult = c.variant({
   Err: c.text(),
 })
 
-export const Ledger = c.service({
+export default c.service({
   icrc1_balance_of: c.query([Account], c.nat()),
   icrc1_transfer: c.update([TransferArg], TransferResult),
 })
-
-export const idlFactory = Ledger.idlFactory
-export type _SERVICE = c.ServiceOf<typeof Ledger>
 ```
 
 **Core Direction**
 
 `.did` stays the stable backend/frontend contract.
 
-The generated TypeScript becomes the app-facing contract.
+The Rust Candid implementation remains the semantic authority:
 
-The generated file should no longer expose low-level `IDL.Record(...)` declarations as the primary readable surface. Instead, it emits reusable codec declarations that can produce:
+- parse `.did`
+- type-check Candid
+- resolve aliases and recursive references
+- validate service compatibility
+- produce a structured schema
+- encode arguments to Candid binary
+- decode Candid binary responses
 
+The generated TypeScript becomes the app-facing contract:
+
+- no raw generated `IDL.Record(...)`
+- no generated `idlFactory`
+- no dependency on `Actor.createActor()`
+- reusable COD declarations
 - TypeScript types
-- Candid `IDL.Type`
-- `idlFactory`
-- method manifests
+- service method manifests
 - metadata for forms/docs/AI
-- future validation/serialization helpers
+- validation metadata
+- direct client/runtime support over `@icp-sdk/agent`
+
+`@icp-sdk/agent` should remain responsible for the IC transport layer:
+
+- request signing
+- query/update calls
+- update polling
+- certificates and response verification
+- agent configuration
+
+COD should be responsible for mapping typed service calls to Candid binary
+arguments and typed return values.
 
 **Package Ownership**
 
 `@ic-reactor/cod`
 
-Owns the codec API:
+Owns the public TypeScript contract API:
 
 ```ts
 c.record()
@@ -84,41 +109,53 @@ c.text()
   .meta({ form: { widget: "text" } })
 ```
 
+COD codecs should be immutable contract descriptors. They should not be thin
+wrappers around JavaScript `IDL.Type` instances. Their internal shape should be
+stable enough for generated code, manifests, form rendering, docs, validation,
+and runtime calls.
+
 `@ic-reactor/parser`
 
-Evolves from string-oriented helpers toward structured Candid output:
+Owns Rust/WASM Candid integration. It should expose:
 
 ```ts
-parseDid(source): CandidSchema
+parseDid(source: string): CandidSchema
+didToCod(source: string, options?: DidToCodOptions): string
+encodeCandid(types: CandidTypeSchema[], values: unknown[]): Uint8Array
+decodeCandid(types: CandidTypeSchema[], bytes: Uint8Array): unknown[]
+verifyCompatibility(previousDid: string, nextDid: string): CompatibilityResult
 ```
 
-The schema should include:
+`didToCod()` may be implemented in Rust so the same checked Candid AST/schema
+drives both semantic validation and generated COD TypeScript. The output should
+still be formatted and wrapped by the codegen pipeline when written to disk.
 
-- named types
-- service methods
-- method mode: query/update/oneway
-- argument names if available
-- return types
-- comments/docstrings
-- source spans when useful
-- recursive type relationships
-- raw Candid compatibility data
-
-Existing `didToJs` and `didToTs` stay compatible.
+Existing `didToJs` and `didToTs` may stay temporarily for migration and test
+comparison, but the v4 path should not depend on them.
 
 `@ic-reactor/codegen`
 
-Consumes `parseDid()` and renders codec-based TypeScript.
+Owns generated file orchestration:
 
-It should stop depending on stitched `didToJs`/`didToTs` output for the new v4 path.
+- choosing output paths
+- writing `generated.ts` and `index.ts`
+- preserving user wrappers
+- invoking parser `didToCod()` or `parseDid()`
+- applying formatting
+- integrating CLI and Vite plugin behavior
+
+It should not parse raw generated `IDL` JavaScript.
 
 `@ic-reactor/core`
 
-Consumes generated service contracts, but does not own parsing/codegen.
+Consumes generated COD service contracts and owns runtime client integration
+over `@icp-sdk/agent`. It should not depend on React and should not require
+`Actor.createActor()`.
 
 `@ic-reactor/react`
 
-Consumes generated contracts and creates hooks/factories on top.
+Consumes generated COD service contracts and creates hooks/factories on top of
+the core client runtime.
 
 `@ic-reactor/start`
 
@@ -139,7 +176,6 @@ Preferred output:
 
 ```ts
 import { c } from "@ic-reactor/cod"
-import type { Principal } from "@icp-sdk/core/principal"
 
 export const Account = c.record({
   owner: c.principal(),
@@ -163,23 +199,58 @@ export const TransferResult = c.variant({
 
 export type TransferResult = c.infer<typeof TransferResult>
 
-export const service = c.service({
+export default c.service({
   transfer: c.update([TransferArg], TransferResult),
 })
-
-export const idlFactory = service.idlFactory
-export type _SERVICE = c.ServiceOf<typeof service>
-
-export const manifest = service.manifest()
 ```
 
 `index.ts`:
 
 ```ts
+export { default } from "./generated"
 export * from "./generated"
 ```
 
-No `init` export unless a future concrete use case requires it.
+No `idlFactory` export in the v4 primary path.
+
+No `init` export unless a concrete use case requires constructor argument
+support. If constructor argument support is added, it should be modeled as COD
+metadata/codecs, not as an `IDL` factory helper.
+
+**Runtime Client Shape**
+
+The runtime should call `@icp-sdk/agent` directly using Candid binary generated
+from COD schemas.
+
+Target shape:
+
+```ts
+import service from "./generated"
+
+const ledger = createCodClient({
+  canisterId,
+  agent,
+  service,
+})
+
+const balance = await ledger.icrc1_balance_of({
+  owner,
+  subaccount: [],
+})
+```
+
+Internally:
+
+```text
+method args
+  -> COD method schema
+  -> Rust/WASM encodeCandid()
+  -> agent.query() or agent.call()
+  -> Rust/WASM decodeCandid()
+  -> typed return value
+```
+
+This replaces the need for `Actor.createActor()` in the main IC Reactor runtime.
 
 **Metadata Model**
 
@@ -241,13 +312,14 @@ export const Account = c
 
 **Codec Runtime Design**
 
-Each codec should be an immutable object with:
+Each codec should be an immutable object with enough structural data for
+generation, metadata, manifests, and Rust/WASM encode/decode bridging:
 
 ```ts
 interface CandidCodec<T> {
   readonly kind: string
   readonly metadata: CandidMetadata
-  toIDL(): IDL.Type<T>
+  toSchema(): CandidTypeSchema
   describe(text: string): this
   meta(metadata: CandidMetadata): this
 }
@@ -258,7 +330,7 @@ Service codec:
 ```ts
 interface CandidServiceCodec<TService> {
   readonly methods: Record<string, CandidMethodCodec>
-  idlFactory: IDL.InterfaceFactory
+  toSchema(): CandidServiceSchema
   manifest(): CandidServiceManifest
 }
 ```
@@ -275,7 +347,8 @@ type CandidMethodManifest = {
 }
 ```
 
-This gives `@ic-reactor/react`, `@ic-reactor/start`, docs, playgrounds, and AI tools a stable structured contract.
+This gives `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/start`, docs,
+playgrounds, and AI tools a stable structured contract.
 
 **Type Inference**
 
@@ -294,11 +367,13 @@ c.record({...}) -> object
 c.variant({...}) -> discriminated Candid variant shape
 ```
 
-The first version should match current `didToTs` semantics where possible to avoid breaking examples.
+The first version should match current `didToTs` semantics where possible to
+avoid breaking examples.
 
 **Recursive Types**
 
-Recursive types are the hardest part.
+Recursive types must be supported in the same single implementation pass if
+the Rust schema exposes them from real `.did` files.
 
 Target API:
 
@@ -315,80 +390,34 @@ export const Tree: c.Codec<Tree> = c.recursive("Tree", () =>
 export type Tree = c.infer<typeof Tree>
 ```
 
-Do not make recursive support the first implementation slice unless parser/codegen needs it immediately.
+The Rust Candid parser/type checker should remain responsible for detecting and
+validating recursive relationships. COD only needs to represent the checked
+relationship and preserve it for encode/decode.
 
-**First Useful Implementation Slice**
+**Single Implementation Phase**
 
-Smallest serious step:
+Implement the v4 COD path as one coherent vertical slice:
 
-1. Add codec primitives to `@ic-reactor/cod`.
-2. Support:
-   - primitives
-   - `opt`
-   - `vec`
-   - `blob`
-   - `record`
-   - `variant`
-   - `tuple`
-   - `query`
-   - `update`
-   - `service`
-3. Add `toIDL()`.
-4. Add `c.infer`.
-5. Add `service.idlFactory`.
-6. Add `service.manifest()`.
-7. Add tests proving codec-generated IDL behaves like current generated factories.
+1. Extend `@ic-reactor/parser` so Rust/WASM exposes checked `CandidSchema`,
+   `didToCod()`, `encodeCandid()`, and `decodeCandid()`.
+2. Update `@ic-reactor/cod` so codecs are native structural descriptors with
+   `toSchema()`, metadata chaining, type inference, service manifests, and no
+   required `IDL.Type` backing.
+3. Add method codecs for `query`, `update`, and `oneway`, including argument
+   and return schemas needed by the runtime.
+4. Add the core COD client runtime that maps service methods to direct
+   `@icp-sdk/agent` calls and uses Rust/WASM Candid encode/decode.
+5. Update `@ic-reactor/codegen` so CLI and Vite generation emit COD
+   `generated.ts` and `index.ts` files.
+6. Parse doc comments and JSDoc validation tags into schema metadata and render
+   them into generated COD declarations.
+7. Keep legacy `didToJs`/`didToTs` and raw `IDL` generation only as migration
+   compatibility until v4 no longer needs them.
 
-Do not touch parser/codegen first. Build the codec layer manually and verify the foundation.
+**Comment Metadata & JSDoc Validation Tags**
 
-**Second Slice: Codegen Renderer**
-
-Add a new renderer in `@ic-reactor/codegen`:
-
-```ts
-generateCodecDeclarations(schema: CandidSchema): string
-```
-
-Initially support non-recursive records/variants/services.
-
-Keep old generation path available behind compatibility behavior.
-
-Generated files should import:
-
-```ts
-import { c } from "@ic-reactor/cod"
-```
-
-not raw `IDL`, except maybe internally if unavoidable.
-
-**Third Slice: Parser Schema**
-
-Add:
-
-```ts
-parseDid(source: string): CandidSchema
-```
-
-Start with enough structure for the renderer:
-
-```ts
-type CandidSchema = {
-  types: CandidTypeDeclaration[]
-  service?: CandidServiceDeclaration
-  metadata?: CandidMetadata
-}
-```
-
-Keep `didToJs` / `didToTs` unchanged.
-
-Tests should assert both:
-
-- old APIs still work
-- new structured API produces expected schema
-
-**Fourth Slice: Comment Metadata & JSDoc Validation Tags**
-
-Parse doc comments into schema metadata and extract JSDoc-style validation tags to feed the validation layer.
+Parse doc comments into schema metadata and extract JSDoc-style validation tags
+to feed the validation layer.
 
 Recommended rule:
 
@@ -401,8 +430,10 @@ Recommended rule:
   - `@minLength <value> [err_msg]` -> maps to `.min()` for strings/vectors
   - `@maxLength <value> [err_msg]` -> maps to `.max()` for strings/vectors
   - `@pattern <regex>` -> maps to `.regex()`
-  - `@format <type> [err_msg]` -> maps to custom format validators (e.g. `email`, `uuid`, `ip`)
-- Allow configuring custom format mappings (similar to `customJSDocFormatTypes` in `ts-to-zod`) in the compiler options, mapping custom `@format` values to target regular expressions and error messages.
+  - `@format <type> [err_msg]` -> maps to custom format validators, e.g.
+    `email`, `uuid`, `ip`
+- allow configuring custom format mappings similar to
+  `customJSDocFormatTypes` in `ts-to-zod`
 
 Example schema:
 
@@ -421,25 +452,6 @@ Example schema:
 }
 ```
 
-**Fifth Slice: Replace v4 Generated Output**
-
-Switch `runCanisterPipeline()` to emit:
-
-```text
-generated.ts
-index.ts
-```
-
-using codec declarations.
-
-Keep compatibility protections:
-
-- do not overwrite customized wrappers
-- do not edit generated app artifacts by hand
-- do not break current examples
-- keep existing `didToJs`/`didToTs`
-- avoid React dependencies in parser/codegen/candid/core
-
 **Migration Strategy**
 
 For v4, generated files change from:
@@ -451,25 +463,17 @@ export const idlFactory = ({ IDL }) => { ... }
 to:
 
 ```ts
-export const service = c.service({ ... })
-export const idlFactory = service.idlFactory
+export default c.service({ ... })
 ```
 
-Existing app imports should still work if they import:
+Existing apps that still depend on `idlFactory` should use the legacy generator
+or an explicit compatibility option. The primary v4 generated output should not
+include `idlFactory`.
+
+New apps import richer objects:
 
 ```ts
-idlFactory
-_SERVICE
-```
-
-New apps can import richer objects:
-
-```ts
-Account
-TransferArg
-TransferResult
-service
-manifest
+import service, { Account, TransferArg, TransferResult } from "./generated"
 ```
 
 Legacy `index.generated.ts` handling should remain only for migration.
@@ -495,17 +499,10 @@ Because `TransferArg` knows:
 - nested record shape
 - examples/custom metadata
 
-This should live outside parser/codegen. The generated contract provides the data; UI packages consume it.
+This should live outside parser/codegen. The generated contract provides the
+data; UI packages consume it.
 
 **Testing Plan**
-
-`@ic-reactor/cod`:
-
-- primitive codecs produce correct IDL
-- record/variant/tuple/opt/vec produce correct IDL
-- metadata chaining is immutable
-- service manifest is stable
-- `idlFactory` works with actor creation
 
 `@ic-reactor/parser`:
 
@@ -513,15 +510,38 @@ This should live outside parser/codegen. The generated contract provides the dat
 - parses structured variants
 - parses service methods
 - preserves comments
-- keeps `didToJs`/`didToTs` compatibility
+- extracts validation metadata
+- resolves recursive types
+- encodes arguments using Rust Candid
+- decodes responses using Rust Candid
+- keeps `didToJs`/`didToTs` compatibility while migration support exists
+
+`@ic-reactor/cod`:
+
+- primitive codecs produce stable schemas
+- record/variant/tuple/opt/vec produce stable schemas
+- metadata chaining is immutable
+- service manifest is stable
+- recursive codecs preserve references
+- inferred types match current `didToTs` behavior where possible
+
+`@ic-reactor/core`:
+
+- COD client calls `agent.query()` for query methods
+- COD client calls `agent.call()` and polls for update methods
+- oneway methods return `Promise<void>`
+- arguments are encoded through Rust/WASM Candid helpers
+- responses are decoded through Rust/WASM Candid helpers
+- no `Actor.createActor()` dependency in the primary runtime path
 
 `@ic-reactor/codegen`:
 
-- snapshot generated codec output
+- snapshot generated COD output
 - no unused imports
-- no `init`
-- generated `idlFactory` typechecks
-- generated `_SERVICE` type matches current behavior
+- no `IDL.`
+- no `idlFactory` in primary v4 output
+- no `init` unless constructor support is explicitly modeled
+- generated service type matches current behavior
 - legacy wrapper migration stays safe
 
 Examples:
@@ -529,27 +549,25 @@ Examples:
 - update or add a codec-codegen playground
 - show `.did -> generated.ts`
 - show manifest/metadata panel
+- show direct `@icp-sdk/agent` COD client usage
 - do not commit generated app artifacts unless required by the example
-
-**Recommended Sequence**
-
-1. Build `@ic-reactor/cod` codec API manually.
-2. Add tests for manual codecs and IDL equivalence.
-3. Add parser `parseDid()` structured output.
-4. Add codegen renderer from schema to codec TypeScript.
-5. Switch generated `generated.ts` to codec output.
-6. Add comment metadata support.
-7. Update playground to preview codec output and metadata.
-8. Gradually deprecate raw `IDL.*` generated output for v4.
 
 **End State**
 
-IC Reactor v4 gets a clean contract layer:
+IC Reactor v4 gets a clean contract/runtime layer:
 
-```ts
-.did -> parser schema -> codec generated.ts -> app/runtime/react/start
+```text
+.did
+  -> Rust Candid parser/type checker
+  -> generated COD TypeScript
+  -> COD service schema
+  -> Rust/WASM Candid encode/decode
+  -> @icp-sdk/agent direct calls
+  -> core/react/start
 ```
 
-The generated TypeScript is readable, reusable, strongly typed, metadata-rich, and AI-friendly.
+The generated TypeScript is readable, reusable, strongly typed,
+metadata-rich, and AI-friendly.
 
-Raw Candid IDL still exists, but only as a compilation target. The user-facing model becomes the codec contract.
+Raw Candid `IDL` is no longer the generated contract model and is not required
+for the primary runtime path.
