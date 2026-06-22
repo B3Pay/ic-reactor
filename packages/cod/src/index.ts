@@ -45,6 +45,7 @@ import {
   base64,
   base64url,
   text,
+  pattern,
   cidrv4,
   cidrv6,
   cuid,
@@ -68,6 +69,7 @@ import {
   mac,
   md5,
   nanoid,
+  regex,
   sha1,
   sha256,
   sha384,
@@ -123,6 +125,8 @@ const iso = {
 export const c = {
   // Primitives
   text,
+  regex,
+  pattern,
   email,
   dateTime,
   datetime,

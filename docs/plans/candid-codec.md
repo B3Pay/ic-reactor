@@ -546,6 +546,80 @@ options and merge them into `.meta(...)`. It should not emit
 `c.projectSpecificFormat()` unless `@ic-reactor/cod` exposes that helper as a
 stable public API.
 
+**Lessons From `ts-to-zod`**
+
+`ts-to-zod` is useful as a design reference because it treats comments as a
+small, predictable metadata language rather than a second schema language. COD
+should take the same approach: Candid remains the type source, and comments add
+validation, defaults, descriptions, and generation hints.
+
+Worth adding to the COD plan:
+
+1. Generated output validation
+   - `ts-to-zod` validates generated schemas against the original TypeScript
+     type shape. COD should add an equivalent generated contract check:
+     `.did -> COD -> inferred TypeScript` should be compared against the
+     parser's checked schema shape where possible.
+   - This should be a test/codegen verification tool, not runtime behavior.
+
+2. Explicit generator options
+   - Keep `didToCod()` and codegen options typed and serializable.
+   - Support `customJSDocFormatTypes` for metadata-only custom formats.
+   - Consider filters later, such as generating only declarations that match a
+     canister/type/method predicate. This is useful for large `.did` files.
+
+3. More JSDoc tags that map cleanly to COD metadata
+   - `@description <text>` -> `.describe(...)`, overriding or augmenting plain
+     doc text when present.
+   - `@default <value>` -> metadata only at first, useful for forms and docs.
+     It should not silently alter Candid encoding semantics.
+   - `@deprecated [message]` -> metadata for generated docs and UI warnings.
+   - `@example <value>` -> metadata for forms, docs, and AI context.
+
+4. Element-level validators for vectors
+   - `ts-to-zod` supports array element validators such as
+     `@elementMinLength`, `@elementFormat`, and `@elementPattern`.
+   - COD should support the same idea for `vec text` and numeric vectors:
+     vector-level constraints stay on the vector, while element-level
+     constraints apply to the inner codec.
+   - Example target:
+
+```did
+/// @minLength 1
+/// @elementPattern ^[a-z0-9-]+$
+slugs : vec text;
+```
+
+Generated output:
+
+```ts
+slugs: c.vec(c.regex("^[a-z0-9-]+$")).meta({
+  validation: {
+    minLength: { value: "1", message: "Must be at least 1 character" },
+  },
+})
+```
+
+5. Escape-hatch schema metadata
+   - `ts-to-zod` has an `@schema` escape hatch that can append or override a
+     generated Zod expression.
+   - COD should not allow raw generated TypeScript injection by default.
+     If an escape hatch is needed, prefer a metadata-only tag such as
+     `@codMeta <json>` or a config hook controlled by the local project.
+
+6. Discriminator hints
+   - Candid variants are already discriminated by construction, so COD does not
+     need a direct `@discriminator` equivalent for ordinary variants.
+   - It may still be useful for record unions represented by application-level
+     conventions, but this should remain low priority until there is a real
+     Candid use case.
+
+7. Pattern parsing rule
+   - Follow `ts-to-zod`: `@pattern` should not parse an error message because
+     regex/message boundaries are ambiguous.
+   - If custom pattern messages are needed later, use an explicit companion tag
+     such as `@patternMessage <message>` rather than overloading `@pattern`.
+
 Lower-priority or intentionally excluded Zod APIs:
 
 - `z.coerce.*`, unless COD later needs input coercion before Candid encoding

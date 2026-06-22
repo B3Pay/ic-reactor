@@ -541,6 +541,35 @@ describe("Codec Declarations Generator", () => {
     expect(code).toContain("homepage: c.uri(),")
   })
 
+  it("renders text pattern validators as regex helpers", () => {
+    const schema: CandidSchema = {
+      types: [
+        {
+          name: "Profile",
+          type: {
+            kind: "record",
+            fields: [
+              {
+                name: "slug",
+                type: { kind: "text" },
+                metadata: {
+                  docs: ["@pattern ^[a-z0-9-]+$"],
+                  validation: { pattern: "^[a-z0-9-]+$" },
+                },
+              },
+            ],
+          },
+        },
+      ],
+      service: null,
+    }
+
+    const code = generateCodecDeclarations(schema)
+
+    expect(code).toContain('slug: c.regex("^[a-z0-9-]+$"),')
+    expect(code).not.toContain('"pattern":"^[a-z0-9-]+$"')
+  })
+
   it("uses built-in format helpers with compact message overrides", () => {
     const schema: CandidSchema = {
       types: [

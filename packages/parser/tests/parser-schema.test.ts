@@ -128,6 +128,22 @@ describe("Candid Schema Parser (parseDid)", () => {
     expect(code).toContain("length: c.iso.duration(),")
   })
 
+  it("should generate regex helpers for JSDoc pattern validators", () => {
+    const candid = `
+      type Profile = record {
+        /// @pattern ^[a-z0-9-]+$
+        slug : text;
+      };
+
+      service : {}
+    `
+
+    const code = parser.didToCod(candid)
+
+    expect(code).toContain('slug: c.regex("^[a-z0-9-]+$")')
+    expect(code).not.toContain('"pattern":"^[a-z0-9-]+$"')
+  })
+
   it("should render custom COD formats as metadata", () => {
     const candid = `
       type Profile = record {

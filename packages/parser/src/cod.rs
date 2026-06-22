@@ -419,9 +419,20 @@ fn apply_metadata<'a>(
         .and_then(|format| custom_format_message(format));
     let mut rest = metadata_with_custom_format(metadata, options);
     let description = rest.description.take();
+    let text_pattern = if is_text {
+        metadata
+            .validation
+            .as_ref()
+            .and_then(|validation| validation.pattern.as_ref())
+    } else {
+        None
+    };
     let mut result = if let Some(helper) = text_format_helper {
         strip_format_metadata(&mut rest);
         pp_text_format_helper(&helper, text_format_message)
+    } else if let Some(pattern) = text_pattern {
+        strip_pattern_metadata(&mut rest);
+        pp_text_pattern_helper(pattern)
     } else {
         if has_only_description_docs(&rest.docs, description.as_ref()) {
             rest.docs.clear();
@@ -515,10 +526,24 @@ fn pp_text_format_helper<'a>(helper: &str, message: Option<&String>) -> RcDoc<'a
     }
 }
 
+fn pp_text_pattern_helper<'a>(pattern: &str) -> RcDoc<'a> {
+    str("c.regex").append(enclose("(", json_doc(&pattern), ")"))
+}
+
 fn strip_format_metadata(metadata: &mut CandidMetadata) {
     metadata.docs.clear();
     if let Some(validation) = &mut metadata.validation {
         validation.format = None;
+        if validation_is_empty(validation) {
+            metadata.validation = None;
+        }
+    }
+}
+
+fn strip_pattern_metadata(metadata: &mut CandidMetadata) {
+    metadata.docs.clear();
+    if let Some(validation) = &mut metadata.validation {
+        validation.pattern = None;
         if validation_is_empty(validation) {
             metadata.validation = None;
         }
@@ -801,5 +826,22 @@ mod tests {
 
         assert!(code.contains("\"icrc-1-name\": c.query([], c.text())"));
         assert!(code.contains("\"default\": c.update([c.nat8()])"));
+    }
+
+    #[test]
+    fn emits_regex_helper_for_text_patterns() {
+        let code = render(
+            r#"
+            type Profile = record {
+              /// @pattern ^[a-z0-9-]+$
+              slug : text;
+            };
+
+            service : {}
+            "#,
+        );
+
+        assert!(code.contains("slug: c.regex(\"^[a-z0-9-]+$\")"));
+        assert!(!code.contains("\"pattern\":\"^[a-z0-9-]+$\""));
     }
 }

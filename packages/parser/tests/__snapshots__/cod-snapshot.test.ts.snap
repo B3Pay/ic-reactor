@@ -117,3 +117,14 @@ export default c.service({
   locate: c.query([c.text()], [Coordinates, Status]),
 })"
 `;
+
+exports[`COD Rust renderer snapshots > generates regex helpers for pattern validators 1`] = `
+"import { c } from "@ic-reactor/cod"
+
+export const Profile = c.record({
+  code: c.regex("^[A-Z]{3}$"),
+  slug: c.regex("^[a-z0-9-]+$").describe("Slug used in URLs."),
+})
+export type Profile = c.infer<typeof Profile>
+export default c.service({})"
+`;

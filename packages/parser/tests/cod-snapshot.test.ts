@@ -188,4 +188,21 @@ describe("COD Rust renderer snapshots", () => {
       })
     ).toMatchSnapshot()
   })
+
+  it("generates regex helpers for pattern validators", () => {
+    const candid = `
+      type Profile = record {
+        /// Slug used in URLs.
+        /// @pattern ^[a-z0-9-]+$
+        slug : text;
+
+        /// @pattern ^[A-Z]{3}$
+        code : text;
+      };
+
+      service : {}
+    `
+
+    expect(parser.didToCod(candid)).toMatchSnapshot()
+  })
 })

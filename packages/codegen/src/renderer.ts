@@ -152,6 +152,14 @@ function textFormatHelperFor(
   return BUILT_IN_FORMAT_HELPERS[format.type]
 }
 
+function textPatternFor(
+  expression: string,
+  metadata: CandidMetadata
+): string | undefined {
+  if (expression !== "c.text()") return undefined
+  return metadata.validation?.pattern
+}
+
 function hasOnlyDescriptionDocs(
   docs: string[] | undefined,
   description: string | undefined
@@ -189,17 +197,32 @@ function applyMetadata(
 
   const textFormatHelper = textFormatHelperFor(expression, metadata, options)
   const textFormatMessage = metadata.validation?.format?.message
+  const textPattern = textFormatHelper
+    ? undefined
+    : textPatternFor(expression, metadata)
   const renderedMetadata = metadataForRender(metadata, options)
   const { description, ...metadataRest } = renderedMetadata
   const rest: Partial<CandidMetadata> = { ...metadataRest }
   let result = textFormatHelper
     ? `c.${textFormatHelper}(${textFormatMessage ? JSON.stringify(textFormatMessage) : ""})`
-    : expression
+    : textPattern
+      ? `c.regex(${JSON.stringify(textPattern)})`
+      : expression
 
   if (textFormatHelper) {
     delete rest.docs
     if (rest.validation) {
       const { format: _format, ...validationRest } = rest.validation
+      rest.validation = stripUndefined(validationRest)
+
+      if (isEmptyObject(rest.validation)) {
+        delete rest.validation
+      }
+    }
+  } else if (textPattern) {
+    delete rest.docs
+    if (rest.validation) {
+      const { pattern: _pattern, ...validationRest } = rest.validation
       rest.validation = stripUndefined(validationRest)
 
       if (isEmptyObject(rest.validation)) {

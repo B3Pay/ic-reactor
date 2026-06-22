@@ -51,6 +51,18 @@ export function text(): CandidPrimitiveCodec<string, "text"> {
   return new CandidPrimitiveCodec("text", IDL.Text)
 }
 
+export function regex(
+  pattern: string | RegExp
+): CandidPrimitiveCodec<string, "text"> {
+  return text().meta({
+    validation: {
+      pattern: typeof pattern === "string" ? pattern : pattern.source,
+    },
+  })
+}
+
+export const pattern = regex
+
 export const BUILT_IN_TEXT_FORMATS: Readonly<
   Record<string, CandidValidationFormat>
 > = {

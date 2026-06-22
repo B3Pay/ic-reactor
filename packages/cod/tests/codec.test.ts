@@ -55,6 +55,13 @@ describe("Primitive Codecs", () => {
     })
   })
 
+  it("regex helpers produce IDL.Text with pattern metadata", () => {
+    expect(c.regex("^hello").metadata.validation?.pattern).toBe("^hello")
+    expect(c.pattern(/^[a-z0-9-]+$/).metadata.validation?.pattern).toBe(
+      "^[a-z0-9-]+$"
+    )
+  })
+
   it("c.bool() produces IDL.Bool", () => {
     const codec = c.bool()
     expect(codec.kind).toBe("bool")
