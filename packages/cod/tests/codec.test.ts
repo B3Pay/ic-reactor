@@ -40,6 +40,19 @@ describe("Primitive Codecs", () => {
     ).toBe("Invalid email")
     expect(c.uuid().metadata.validation?.format?.jsonSchemaFormat).toBe("uuid")
     expect(c.dateTime().metadata.validation?.format?.type).toBe("date-time")
+    expect(c.iso.datetime().metadata.validation?.format?.type).toBe("datetime")
+    expect(c.iso.date().metadata.validation?.format?.type).toBe("date")
+    expect(c.iso.time().metadata.validation?.format?.type).toBe("time")
+    expect(c.iso.duration().metadata.validation?.format?.type).toBe("duration")
+    expect(c.httpUrl().metadata.validation?.format?.type).toBe("httpUrl")
+    expect(c.hostname().metadata.validation?.format?.type).toBe("hostname")
+    expect(c.e164().metadata.validation?.format?.type).toBe("e164")
+    expect(c.hex().metadata.validation?.format?.type).toBe("hex")
+    expect(c.jwt().metadata.validation?.format?.type).toBe("jwt")
+    expect(c.sha256("Bad hash").metadata.validation?.format).toMatchObject({
+      type: "sha256",
+      errorMessage: "Bad hash",
+    })
   })
 
   it("c.bool() produces IDL.Bool", () => {

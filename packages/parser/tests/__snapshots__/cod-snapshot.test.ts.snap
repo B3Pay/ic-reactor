@@ -1,0 +1,119 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`COD Rust renderer snapshots > generates Zod-style ISO namespace helpers 1`] = `
+"import { c } from "@ic-reactor/cod"
+
+export const IsoFormats = c.record({
+  day: c.iso.date(),
+  updated_at: c.iso.datetime(),
+  starts_at: c.iso.time(),
+  created_at: c.iso.datetime(),
+  length: c.iso.duration(),
+})
+export type IsoFormats = c.infer<typeof IsoFormats>
+export default c.service({})"
+`;
+
+exports[`COD Rust renderer snapshots > generates Zod-style string format helpers 1`] = `
+"import { c } from "@ic-reactor/cod"
+
+export const StringFormats = c.record({
+  hex: c.hex(),
+  jwt: c.jwt(),
+  url: c.url(),
+  nanoid: c.nanoid(),
+  http_url: c.httpUrl(),
+  cuid: c.cuid(),
+  guid: c.guid(),
+  ulid: c.ulid(),
+  uuid: c.uuid(),
+  cuid2: c.cuid2(),
+  hostname: c.hostname(),
+  base64: c.base64(),
+  email: c.email(),
+  emoji: c.emoji(),
+  base64url: c.base64url(),
+  phone: c.e164(),
+})
+export type StringFormats = c.infer<typeof StringFormats>
+export default c.service({})"
+`;
+
+exports[`COD Rust renderer snapshots > generates a default service contract 1`] = `
+"import { c } from "@ic-reactor/cod"
+
+export const Account = c.record({
+  owner: c.principal(),
+  subaccount: c.opt(c.blob()),
+})
+export type Account = c.infer<typeof Account>
+export const TransferResult = c.variant({ Ok: c.nat(), Err: c.text() })
+export type TransferResult = c.infer<typeof TransferResult>
+export default c.service({
+  icrc1_balance_of: c.query([Account], c.nat()),
+  icrc1_transfer: c.update([Account], TransferResult),
+})"
+`;
+
+exports[`COD Rust renderer snapshots > generates custom format metadata instead of dynamic helpers 1`] = `
+"import { c } from "@ic-reactor/cod"
+
+export const Profile = c.record({
+  slug: c.text().meta(
+    {"docs":["@format slug Invalid slug"],"validation":{"format":{"type":"slug","regex":"^[a-z0-9-]+$","errorMessage":"Invalid slug"}}}
+  ),
+  email: c.text().meta(
+    {"docs":["@format email"],"validation":{"format":{"type":"email","regex":"^[^@]+@[^@]+$","jsonSchemaFormat":"email","errorMessage":"Must be a valid email address"}}}
+  ),
+})
+export type Profile = c.infer<typeof Profile>
+export default c.service({})"
+`;
+
+exports[`COD Rust renderer snapshots > generates hash network and compatibility format helpers 1`] = `
+"import { c } from "@ic-reactor/cod"
+
+export const MoreFormats = c.record({
+  mac: c.mac(),
+  md5: c.md5(),
+  uri: c.uri(),
+  sha256: c.sha256(),
+  sha384: c.sha384(),
+  sha512: c.sha512(),
+  ipv4: c.ipv4(),
+  ipv6: c.ipv6(),
+  sha1: c.sha1(),
+  cidrv4: c.cidrv4(),
+  cidrv6: c.cidrv6(),
+  https_url: c.httpsUrl(),
+})
+export type MoreFormats = c.infer<typeof MoreFormats>
+export default c.service({})"
+`;
+
+exports[`COD Rust renderer snapshots > generates metadata from docs and validation tags 1`] = `
+"import { c } from "@ic-reactor/cod"
+
+export const Account = c.record({
+  owner: c.principal().describe("Owner principal."),
+  email: c.email("Invalid email address").describe("Contact email."),
+}).describe("Account that receives tokens.")
+export type Account = c.infer<typeof Account>
+export default c.service({
+  balance: c.query([Account], c.nat()).describe("Return an account balance."),
+}).describe("Ledger service.")"
+`;
+
+exports[`COD Rust renderer snapshots > generates quoted names tuples and multi-return methods 1`] = `
+"import { c } from "@ic-reactor/cod"
+
+export const Coordinates = c.tuple([c.float64(), c.float64()])
+export type Coordinates = c.infer<typeof Coordinates>
+export const Status = c.variant({ Err: c.text(), Ready: c.null() })
+export type Status = c.infer<typeof Status>
+export default c.service({
+  "default": c.update([c.nat8()]),
+  "icrc-1-name": c.query([], c.text()),
+  locate: c.query([c.text()], [Coordinates, Status]),
+})"
+`;

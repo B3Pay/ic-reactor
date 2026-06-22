@@ -344,6 +344,7 @@ name = "didjs"
 version = "0.0.1"
 dependencies = [
  "candid_parser",
+ "pretty",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",

@@ -40,6 +40,22 @@ export interface CandidValidationFormat {
   errorMessage?: string;
 }
 
+export interface DidToCodOptions {
+  customJSDocFormatTypes?: CustomJSDocFormatTypes;
+}
+
+export type CustomJSDocFormatTypes = Record<
+  string,
+  string | JSDocFormatDefinition
+>;
+
+export interface JSDocFormatDefinition {
+  regex?: string;
+  errorMessage?: string;
+  jsonSchemaFormat?: string;
+  contentEncoding?: string;
+}
+
 export type CandidType =
   | ({ kind: "null" } & CandidMetadataCarrier)
   | ({ kind: "bool" } & CandidMetadataCarrier)
@@ -126,11 +142,20 @@ function replaceParseDidReturnType(content) {
   )
 }
 
+function replaceDidToCodOptionsType(content) {
+  return content.replace(
+    /export function didToCod\(prog: string, options: [^;]+?\): string;/,
+    "export function didToCod(prog: string, options?: DidToCodOptions): string;"
+  )
+}
+
 for (const target of targets) {
   try {
     const current = readFileSync(target, "utf-8")
     const withoutExisting = stripExistingDeclaration(current)
-    const updated = replaceParseDidReturnType(withoutExisting)
+    const updated = replaceDidToCodOptionsType(
+      replaceParseDidReturnType(withoutExisting)
+    )
     writeFileSync(
       target,
       `${updated.trimEnd()}\n\n${TYPES_DECLARATION}`,

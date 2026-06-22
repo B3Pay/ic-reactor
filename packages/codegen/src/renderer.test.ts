@@ -471,14 +471,24 @@ describe("Codec Declarations Generator", () => {
         "date-time",
         "datetime",
         "duration",
+        "e164",
         "email",
         "emoji",
         "guid",
+        "hex",
+        "hostname",
+        "httpUrl",
         "httpsUrl",
         "ipv4",
         "ipv6",
+        "jwt",
         "mac",
+        "md5",
         "nanoid",
+        "sha1",
+        "sha256",
+        "sha384",
+        "sha512",
         "time",
         "ulid",
         "uri",
@@ -526,7 +536,7 @@ describe("Codec Declarations Generator", () => {
 
     const code = generateCodecDeclarations(schema)
 
-    expect(code).toContain("createdAt: c.dateTime(),")
+    expect(code).toContain("createdAt: c.iso.datetime(),")
     expect(code).toContain("avatar: c.base64(),")
     expect(code).toContain("homepage: c.uri(),")
   })

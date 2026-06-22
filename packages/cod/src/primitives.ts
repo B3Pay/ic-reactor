@@ -110,6 +110,23 @@ export const BUILT_IN_TEXT_FORMATS: Readonly<
     jsonSchemaFormat: "uri",
     errorMessage: "Must be a valid HTTPS URL",
   },
+  httpUrl: {
+    type: "httpUrl",
+    regex: "^https?://.+",
+    jsonSchemaFormat: "uri",
+    errorMessage: "Must be a valid HTTP(S) URL",
+  },
+  hostname: {
+    type: "hostname",
+    regex:
+      "^([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$",
+    errorMessage: "Must be a valid hostname",
+  },
+  e164: {
+    type: "e164",
+    regex: "^\\+[1-9]\\d{6,14}$",
+    errorMessage: "Must be a valid E.164 phone number",
+  },
   ipv4: {
     type: "ipv4",
     regex: "^(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:\\.|$)){4}$",
@@ -147,6 +164,16 @@ export const BUILT_IN_TEXT_FORMATS: Readonly<
     type: "base64url",
     regex: "^[A-Za-z0-9_-]+$",
     errorMessage: "Must be valid base64url",
+  },
+  hex: {
+    type: "hex",
+    regex: "^(?:[0-9a-fA-F]{2})*$",
+    errorMessage: "Must be valid hexadecimal",
+  },
+  jwt: {
+    type: "jwt",
+    regex: "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+    errorMessage: "Must be a valid JWT",
   },
   cuid: {
     type: "cuid",
@@ -188,6 +215,31 @@ export const BUILT_IN_TEXT_FORMATS: Readonly<
     type: "mac",
     regex: "^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$",
     errorMessage: "Must be a valid MAC address",
+  },
+  md5: {
+    type: "md5",
+    regex: "^[0-9a-fA-F]{32}$",
+    errorMessage: "Must be a valid MD5 hash",
+  },
+  sha1: {
+    type: "sha1",
+    regex: "^[0-9a-fA-F]{40}$",
+    errorMessage: "Must be a valid SHA-1 hash",
+  },
+  sha256: {
+    type: "sha256",
+    regex: "^[0-9a-fA-F]{64}$",
+    errorMessage: "Must be a valid SHA-256 hash",
+  },
+  sha384: {
+    type: "sha384",
+    regex: "^[0-9a-fA-F]{96}$",
+    errorMessage: "Must be a valid SHA-384 hash",
+  },
+  sha512: {
+    type: "sha512",
+    regex: "^[0-9a-fA-F]{128}$",
+    errorMessage: "Must be a valid SHA-512 hash",
   },
 }
 
@@ -256,6 +308,24 @@ export function httpsUrl(
   return textFormat(BUILT_IN_TEXT_FORMATS.httpsUrl, errorMessage)
 }
 
+export function httpUrl(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return textFormat(BUILT_IN_TEXT_FORMATS.httpUrl, errorMessage)
+}
+
+export function hostname(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return textFormat(BUILT_IN_TEXT_FORMATS.hostname, errorMessage)
+}
+
+export function e164(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return textFormat(BUILT_IN_TEXT_FORMATS.e164, errorMessage)
+}
+
 export function ipv4(
   errorMessage?: string
 ): CandidPrimitiveCodec<string, "text"> {
@@ -290,6 +360,18 @@ export function base64url(
   errorMessage?: string
 ): CandidPrimitiveCodec<string, "text"> {
   return textFormat(BUILT_IN_TEXT_FORMATS.base64url, errorMessage)
+}
+
+export function hex(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return textFormat(BUILT_IN_TEXT_FORMATS.hex, errorMessage)
+}
+
+export function jwt(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return textFormat(BUILT_IN_TEXT_FORMATS.jwt, errorMessage)
 }
 
 export function cuid(
@@ -338,6 +420,43 @@ export function mac(
   errorMessage?: string
 ): CandidPrimitiveCodec<string, "text"> {
   return textFormat(BUILT_IN_TEXT_FORMATS.mac, errorMessage)
+}
+
+export function hash(
+  algorithm: "md5" | "sha1" | "sha256" | "sha384" | "sha512",
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return textFormat(BUILT_IN_TEXT_FORMATS[algorithm], errorMessage)
+}
+
+export function md5(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return hash("md5", errorMessage)
+}
+
+export function sha1(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return hash("sha1", errorMessage)
+}
+
+export function sha256(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return hash("sha256", errorMessage)
+}
+
+export function sha384(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return hash("sha384", errorMessage)
+}
+
+export function sha512(
+  errorMessage?: string
+): CandidPrimitiveCodec<string, "text"> {
+  return hash("sha512", errorMessage)
 }
 
 /** Candid `bool` → `boolean` */

@@ -36,6 +36,151 @@ describe("Candid Schema Parser (parseDid)", () => {
     })
   })
 
+  it("should generate COD TypeScript with a default service export", () => {
+    const candid = `
+      type Account = record {
+        owner : principal;
+        subaccount : opt blob;
+      };
+
+      type TransferResult = variant {
+        Ok : nat;
+        Err : text;
+      };
+
+      service : {
+        icrc1_balance_of : (Account) -> (nat) query;
+        icrc1_transfer : (Account) -> (TransferResult);
+      }
+    `
+
+    const code = parser.didToCod(candid)
+
+    expect(code).toContain('import { c } from "@ic-reactor/cod"')
+    expect(code).toContain("export const Account = c.record({")
+    expect(code).toContain("owner: c.principal(),")
+    expect(code).toContain("subaccount: c.opt(c.blob()),")
+    expect(code).toContain("export type Account = c.infer<typeof Account>")
+    expect(code).toContain("export const TransferResult = c.variant({")
+    expect(code).toContain("Ok: c.nat(),")
+    expect(code).toContain("Err: c.text()")
+    expect(code).toContain("export default c.service({")
+    expect(code).toContain("icrc1_balance_of: c.query([Account], c.nat()),")
+    expect(code).toContain(
+      "icrc1_transfer: c.update([Account], TransferResult),"
+    )
+    expect(code).not.toContain("idlFactory")
+    expect(code).not.toContain("IDL.")
+  })
+
+  it("should generate direct COD helpers for built-in string formats", () => {
+    const candid = `
+      type Profile = record {
+        /// @format email Invalid email
+        email : text;
+        /// @format httpUrl
+        website : text;
+        /// @format hostname
+        host : text;
+        /// @format e164
+        phone : text;
+        /// @format jwt
+        token : text;
+        /// @format sha256 Bad hash
+        checksum : text;
+      };
+
+      service : {}
+    `
+
+    const code = parser.didToCod(candid)
+
+    expect(code).toContain('email: c.email("Invalid email"),')
+    expect(code).toContain("website: c.httpUrl(),")
+    expect(code).toContain("host: c.hostname(),")
+    expect(code).toContain("phone: c.e164(),")
+    expect(code).toContain("token: c.jwt(),")
+    expect(code).toContain('checksum: c.sha256("Bad hash"),')
+    expect(code).not.toContain('"format":{"type":"email"')
+  })
+
+  it("should generate Zod-style ISO namespace helpers", () => {
+    const candid = `
+      type Event = record {
+        /// @format date-time
+        created_at : text;
+        /// @format date
+        day : text;
+        /// @format time
+        starts_at : text;
+        /// @format duration
+        length : text;
+      };
+
+      service : {}
+    `
+
+    const code = parser.didToCod(candid)
+
+    expect(code).toContain("created_at: c.iso.datetime(),")
+    expect(code).toContain("day: c.iso.date(),")
+    expect(code).toContain("starts_at: c.iso.time(),")
+    expect(code).toContain("length: c.iso.duration(),")
+  })
+
+  it("should render custom COD formats as metadata", () => {
+    const candid = `
+      type Profile = record {
+        /// @format slug Invalid slug
+        slug : text;
+      };
+
+      service : {}
+    `
+
+    const code = parser.didToCod(candid, {
+      customJSDocFormatTypes: {
+        slug: {
+          regex: "^[a-z0-9-]+$",
+          errorMessage: "Configured slug error",
+        },
+      },
+    })
+
+    expect(code).toContain("slug: c.text().meta(")
+    expect(code).toContain('"type":"slug"')
+    expect(code).toContain('"regex":"^[a-z0-9-]+$"')
+    expect(code).toContain('"errorMessage":"Invalid slug"')
+    expect(code).not.toContain("c.slug(")
+  })
+
+  it("should render overridden built-in COD formats as metadata", () => {
+    const candid = `
+      type Profile = record {
+        /// @format email
+        email : text;
+      };
+
+      service : {}
+    `
+
+    const code = parser.didToCod(candid, {
+      customJSDocFormatTypes: {
+        email: {
+          regex: "^[^@]+@[^@]+$",
+          errorMessage: "Configured email error",
+        },
+      },
+    })
+
+    expect(code).toContain("email: c.text().meta(")
+    expect(code).toContain('"type":"email"')
+    expect(code).toContain('"regex":"^[^@]+@[^@]+$"')
+    expect(code).toContain('"jsonSchemaFormat":"email"')
+    expect(code).toContain('"errorMessage":"Must be a valid email address"')
+    expect(code).not.toContain("email: c.email(")
+  })
+
   it("should parse custom type declarations", () => {
     const candid = `
       type Profile = record {
@@ -280,7 +425,9 @@ describe("Candid Schema Parser (parseDid)", () => {
       docs: ["Save succeeded."],
     })
 
-    const idField = okField?.type.fields.find((f: any) => f.name === "id")
+    const idField = (okField?.type as any)?.fields.find(
+      (f: any) => f.name === "id"
+    )
     expect(idField?.metadata).toEqual({
       description: "Stored profile identifier.",
       docs: ["Stored profile identifier.", "@minLength 2"],

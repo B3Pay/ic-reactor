@@ -3,8 +3,10 @@ use candid_parser::syntax::{
 };
 use candid_parser::{check_prog, TypeEnv};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use wasm_bindgen::prelude::*;
+
+mod cod;
 
 #[wasm_bindgen(js_name = didToJs)]
 pub fn did_to_js(prog: String) -> Result<String, String> {
@@ -50,7 +52,7 @@ pub fn verify_compatability(a: String, b: String) -> Result<bool, String> {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct CandidSchema {
     types: Vec<CandidTypeDeclaration>,
     service: Option<CandidServiceDeclaration>,
@@ -97,9 +99,17 @@ struct CandidValidationFormat {
     r#type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    regex: Option<String>,
+    #[serde(rename = "jsonSchemaFormat", skip_serializing_if = "Option::is_none")]
+    json_schema_format: Option<String>,
+    #[serde(rename = "contentEncoding", skip_serializing_if = "Option::is_none")]
+    content_encoding: Option<String>,
+    #[serde(rename = "errorMessage", skip_serializing_if = "Option::is_none")]
+    error_message: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct CandidTypeDeclaration {
     name: String,
     #[serde(rename = "type")]
@@ -108,14 +118,14 @@ struct CandidTypeDeclaration {
     metadata: Option<CandidMetadata>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct CandidServiceDeclaration {
     methods: Vec<CandidMethodDeclaration>,
     #[serde(skip_serializing_if = "Option::is_none")]
     metadata: Option<CandidMetadata>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct CandidMethodDeclaration {
     name: String,
     mode: &'static str,
@@ -125,7 +135,7 @@ struct CandidMethodDeclaration {
     metadata: Option<CandidMetadata>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct CandidField {
     name: String,
     #[serde(rename = "type")]
@@ -134,7 +144,7 @@ struct CandidField {
     metadata: Option<CandidMetadata>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 enum CandidType {
     Null,
@@ -265,22 +275,10 @@ fn validation_from_docs(docs: &[String]) -> Option<CandidValidationMetadata> {
 }
 
 fn apply_default_validation_messages(validation: &mut CandidValidationMetadata) {
-    validation.minimum = with_default_bound_message(
-        validation.minimum.take(),
-        "minimum",
-    );
-    validation.maximum = with_default_bound_message(
-        validation.maximum.take(),
-        "maximum",
-    );
-    validation.min_length = with_default_bound_message(
-        validation.min_length.take(),
-        "minLength",
-    );
-    validation.max_length = with_default_bound_message(
-        validation.max_length.take(),
-        "maxLength",
-    );
+    validation.minimum = with_default_bound_message(validation.minimum.take(), "minimum");
+    validation.maximum = with_default_bound_message(validation.maximum.take(), "maximum");
+    validation.min_length = with_default_bound_message(validation.min_length.take(), "minLength");
+    validation.max_length = with_default_bound_message(validation.max_length.take(), "maxLength");
     validation.format = with_default_format_message(validation.format.take());
 }
 
@@ -329,12 +327,6 @@ fn default_bound_message(kind: &str, value: &str) -> String {
 
 #[derive(Debug, Deserialize, Clone)]
 struct MetadataRule {
-    helper: Option<String>,
-    regex: Option<String>,
-    #[serde(rename = "jsonSchemaFormat")]
-    json_schema_format: Option<String>,
-    #[serde(rename = "contentEncoding")]
-    content_encoding: Option<String>,
     #[serde(rename = "errorMessage")]
     error_message: Option<String>,
 }
@@ -351,16 +343,13 @@ struct MetadataRulesFile {
 }
 
 fn format_rules() -> HashMap<String, MetadataRule> {
-    serde_json::from_str(include_str!("../../codegen/src/metadata-rules.json"))
-        .unwrap_or_default()
+    serde_json::from_str(include_str!("../../codegen/src/metadata-rules.json")).unwrap_or_default()
 }
 
 fn default_bound_rules() -> HashMap<String, ValidationBoundRule> {
-    serde_json::from_str::<MetadataRulesFile>(include_str!(
-        "../../codegen/src/metadata-rules.json"
-    ))
-    .map(|rules| rules.default_validation_messages)
-    .unwrap_or_default()
+    serde_json::from_str::<MetadataRulesFile>(include_str!("../../codegen/src/metadata-rules.json"))
+        .map(|rules| rules.default_validation_messages)
+        .unwrap_or_default()
 }
 
 fn default_format_message(format_type: &str) -> Option<String> {
@@ -402,7 +391,37 @@ fn parse_format(raw: &str) -> Option<CandidValidationFormat> {
     Some(CandidValidationFormat {
         r#type: format_type.to_string(),
         message,
+        regex: None,
+        json_schema_format: None,
+        content_encoding: None,
+        error_message: None,
     })
+}
+
+#[derive(Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DidToCodOptions {
+    #[serde(rename = "customJSDocFormatTypes", default)]
+    pub(crate) custom_jsdoc_format_types: HashMap<String, CustomJSDocFormatDefinition>,
+}
+
+#[derive(Clone, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum CustomJSDocFormatDefinition {
+    Regex(String),
+    Definition(CustomJSDocFormatDefinitionObject),
+}
+
+#[derive(Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CustomJSDocFormatDefinitionObject {
+    pub(crate) regex: Option<String>,
+    #[serde(rename = "jsonSchemaFormat")]
+    pub(crate) json_schema_format: Option<String>,
+    #[serde(rename = "contentEncoding")]
+    pub(crate) content_encoding: Option<String>,
+    #[serde(rename = "errorMessage")]
+    pub(crate) error_message: Option<String>,
 }
 
 fn syntax_field_for<'a>(
@@ -575,24 +594,60 @@ fn syntax_func_for_method(binding: Option<&Binding>) -> Option<&candid_parser::s
 
 #[wasm_bindgen(js_name = parseDid)]
 pub fn parse_did(prog: String) -> Result<JsValue, String> {
+    let schema = parse_did_schema(&prog)?;
+    serde_wasm_bindgen::to_value(&schema).map_err(|e| e.to_string())
+}
+
+#[wasm_bindgen(js_name = didToCod)]
+pub fn did_to_cod(prog: String, options: JsValue) -> Result<String, String> {
+    let options = if options.is_null() || options.is_undefined() {
+        DidToCodOptions::default()
+    } else {
+        serde_wasm_bindgen::from_value(options).map_err(|e| e.to_string())?
+    };
+    let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
+    let mut env = TypeEnv::new();
+    let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    let merged = IDLMergedProg::new(ast);
+
+    Ok(cod::compile(&env, &actor, &merged, &options))
+}
+
+fn parse_did_schema(prog: &str) -> Result<CandidSchema, String> {
     let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
     let mut env = TypeEnv::new();
     let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     let type_bindings = type_bindings_by_name(&ast);
     let method_bindings = service_method_bindings_from_actor(ast.actor.as_ref(), &type_bindings);
 
-    let types = env
-        .0
-        .into_iter()
-        .map(|(name, ty)| {
-            let binding = type_bindings.get(&name).copied();
-            CandidTypeDeclaration {
-                name,
-                ty: type_to_schema(&ty, binding.map(|binding| &binding.typ)),
-                metadata: binding.and_then(|binding| metadata_from_docs(&binding.docs)),
+    let mut emitted_type_names = HashSet::new();
+    let mut types = Vec::new();
+
+    for dec in &ast.decs {
+        if let Dec::TypD(binding) = dec {
+            if let Some(ty) = env.0.get(&binding.id) {
+                emitted_type_names.insert(binding.id.clone());
+                types.push(CandidTypeDeclaration {
+                    name: binding.id.clone(),
+                    ty: type_to_schema(ty, Some(&binding.typ)),
+                    metadata: metadata_from_docs(&binding.docs),
+                });
             }
-        })
-        .collect();
+        }
+    }
+
+    for (name, ty) in env.0.iter() {
+        if emitted_type_names.contains(name) {
+            continue;
+        }
+
+        let binding = type_bindings.get(name).copied();
+        types.push(CandidTypeDeclaration {
+            name: name.clone(),
+            ty: type_to_schema(ty, binding.map(|binding| &binding.typ)),
+            metadata: binding.and_then(|binding| metadata_from_docs(&binding.docs)),
+        });
+    }
 
     let service = actor.and_then(|actor_ty| {
         let service_ty = match actor_ty.as_ref() {
@@ -669,5 +724,5 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
         }
     });
 
-    serde_wasm_bindgen::to_value(&CandidSchema { types, service }).map_err(|e| e.to_string())
+    Ok(CandidSchema { types, service })
 }

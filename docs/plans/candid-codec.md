@@ -452,6 +452,110 @@ Example schema:
 }
 ```
 
+**COD vs Zod Compatibility Plan**
+
+COD should stay Candid-first. Zod compatibility is useful when it makes schema
+authoring, generated code, validation metadata, and form rendering familiar,
+but COD should not try to become a full Zod clone. The comparison should be
+tracked as a series of small compatibility slices.
+
+Current Zod-style coverage target:
+
+- string formats: `email`, `uuid`, `guid`, `url`, `httpUrl`, `hostname`,
+  `e164`, `emoji`, `base64`, `base64url`, `hex`, `jwt`, `nanoid`, `cuid`,
+  `cuid2`, `ulid`
+- network formats: `ipv4`, `ipv6`, `cidrv4`, `cidrv6`, `mac`
+- hash formats: `hash(...)`, `md5`, `sha1`, `sha256`, `sha384`, `sha512`
+- ISO formats: `c.iso.date()`, `c.iso.time()`, `c.iso.datetime()`,
+  `c.iso.duration()`
+- COD-specific Candid primitives that Zod does not model: `principal`, `nat`,
+  `int`, `blob`, service schemas, query/update/oneway method schemas, and
+  Candid variant/optional semantics
+
+Snapshot coverage should make generated COD output visually auditable:
+
+1. one snapshot for common string format helpers
+2. one snapshot for ISO namespace helpers
+3. one snapshot for network helpers
+4. one snapshot for hash helpers
+5. one snapshot for custom error messages from Candid metadata
+6. one snapshot for unsupported metadata falling back to `.meta(...)`
+
+Runtime behavior parity should be added helper by helper:
+
+- valid and invalid cases for every format helper
+- custom error message behavior
+- `.describe()` and `.meta()` composition behavior
+- schema/manifest output for every validator, where COD exposes that metadata
+
+Zod option objects should be implemented one by one, in this priority order:
+
+1. `c.iso.datetime({ offset, local, precision })`
+2. `c.iso.time({ precision })`
+3. `c.uuid({ version })`
+4. `c.uuidv4()`, `c.uuidv6()`, `c.uuidv7()`
+5. `c.url({ protocol, hostname, normalize })`
+6. `c.mac({ delimiter })`
+7. `c.jwt({ alg })`
+8. `c.hash("sha256", { enc })`
+9. `c.email({ pattern })`, if COD can expose a safe public regex input shape
+
+Candid metadata mapping should eventually support validator options, not only
+format helper names. The exact tag shape should be designed before
+implementation. One possible target:
+
+```did
+/// @format datetime
+/// @formatOption offset true
+/// @formatOption precision 3
+created_at : text;
+```
+
+Generated output:
+
+```ts
+created_at: c.iso.datetime({ offset: true, precision: 3 })
+```
+
+Dynamic/custom format mappings should render as metadata by default, not as
+generated helper calls. Built-in formats may compile to helpers such as
+`c.email()` or `c.iso.datetime()` because those helpers are part of
+`@ic-reactor/cod`. Project-defined formats should stay portable and explicit:
+
+```did
+/// @format slug Must be a valid slug
+slug : text;
+```
+
+Generated output:
+
+```ts
+slug: c.text().meta({
+  validation: {
+    format: {
+      type: "slug",
+      regex: "^[a-z0-9-]+$",
+      errorMessage: "Must be a valid slug",
+    },
+  },
+})
+```
+
+The Rust `didToCod()` API should accept dynamic format definitions through
+options and merge them into `.meta(...)`. It should not emit
+`c.projectSpecificFormat()` unless `@ic-reactor/cod` exposes that helper as a
+stable public API.
+
+Lower-priority or intentionally excluded Zod APIs:
+
+- `z.coerce.*`, unless COD later needs input coercion before Candid encoding
+- string transforms such as `trim`, `toLowerCase`, `toUpperCase`, and
+  `normalize`, unless they become explicit pre-encode transforms
+- `z.stringFormat(...)`, unless COD needs user-defined reusable named formats
+- `z.templateLiteral(...)`, unless Candid metadata gains a concrete use case
+- broad object composition parity with Zod, where it conflicts with Candid's
+  service/type model
+
 **Migration Strategy**
 
 For v4, generated files change from:
