@@ -1,5 +1,8 @@
 import * as parser from "../dist/nodejs"
 import { describe, it, expect } from "vitest"
+import fs from "node:fs"
+import os from "node:os"
+import path from "node:path"
 
 describe("Candid Schema Parser (parseDid)", () => {
   it("should fail on invalid Candid syntax", () => {
@@ -34,6 +37,61 @@ describe("Candid Schema Parser (parseDid)", () => {
         ],
       },
     })
+  })
+
+  it("should parse .did files with imported types", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ic-reactor-did-"))
+    try {
+      const typesFile = path.join(tmpDir, "types.did")
+      const serviceFile = path.join(tmpDir, "service.did")
+
+      fs.writeFileSync(
+        typesFile,
+        `
+          /// Shared imported profile.
+          type Profile = record {
+            name : text;
+          };
+        `
+      )
+      fs.writeFileSync(
+        serviceFile,
+        `
+          import "types.did";
+
+          service : {
+            get_profile : () -> (Profile) query;
+          }
+        `
+      )
+
+      const parsed = parser.parseDidFile(serviceFile)
+      expect(parsed.types).toEqual([
+        {
+          name: "Profile",
+          type: {
+            kind: "record",
+            fields: [{ name: "name", type: { kind: "text" } }],
+          },
+          metadata: {
+            description: "Shared imported profile.",
+            docs: ["Shared imported profile."],
+          },
+        },
+      ])
+      expect(parsed.service?.methods[0]).toEqual({
+        name: "get_profile",
+        mode: "query",
+        args: [],
+        returns: [{ kind: "reference", name: "Profile" }],
+      })
+
+      const code = parser.didToCodFile(serviceFile)
+      expect(code).toContain("export const Profile = c.record({")
+      expect(code).toContain("get_profile: c.query([], Profile)")
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
   })
 
   it("should generate COD TypeScript with a default service export", () => {

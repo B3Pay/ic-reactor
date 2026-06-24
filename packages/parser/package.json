@@ -40,7 +40,7 @@
     "wasm"
   ],
   "author": "b3hr4d",
-  "license": "MIT",
+  "license": "MIT AND Apache-2.0",
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
@@ -48,7 +48,7 @@
   "scripts": {
     "build": "npm run clean && npm run build:web && npm run build:node && npm run build:bundler && node scripts/append-types.js",
     "build:web": "wasm-pack build --release --target web --out-dir dist/web --out-name index",
-    "build:node": "wasm-pack build --release --target nodejs --out-dir dist/nodejs --out-name index",
+    "build:node": "wasm-pack build --release --target nodejs --out-dir dist/nodejs --out-name index -- --features nodejs-fs",
     "build:bundler": "wasm-pack build --release --target bundler --out-dir dist/bundler --out-name index",
     "prepack": "find dist -name .gitignore -delete",
     "start": "tsc --watch",

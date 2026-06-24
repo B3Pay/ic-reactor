@@ -137,9 +137,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "candid"
-version = "0.10.22"
+version = "0.10.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b64a1b8e8c368f8ffd2aaa64c7189d0a84783ba162f64de647cefedb4f12c88"
+checksum = "1cc4495aa7a596cad1570886668cd3cdb1f077ec2ad28e7e3938a76756c89d80"
 dependencies = [
  "anyhow",
  "binread",
@@ -160,9 +160,9 @@ dependencies = [
 
 [[package]]
 name = "candid_derive"
-version = "0.10.22"
+version = "0.10.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a3ad1d26683b72c7fd16c8b2e3ebacf8785c9532389286c89971c1770ee57ce"
+checksum = "c93f446781aa35d3b2ec5c36e3d67fce948308fe166833ccbb1b3ef8bbb899e0"
 dependencies = [
  "lazy_static",
  "proc-macro2",
@@ -172,9 +172,9 @@ dependencies = [
 
 [[package]]
 name = "candid_parser"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "331d5ed7e9a460cd0db8f1c7641a30fb86d50c1e209a5f8053bc0fbb7c1a5da2"
+checksum = "2e35c12ed409a6c02c6e204db49926c75ceeb622a4a994b828cdd3dea7dfec59"
 dependencies = [
  "anyhow",
  "candid",
@@ -343,6 +343,7 @@ dependencies = [
 name = "didjs"
 version = "0.0.1"
 dependencies = [
+ "candid",
  "candid_parser",
  "pretty",
  "serde",

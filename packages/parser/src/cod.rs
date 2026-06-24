@@ -1,15 +1,14 @@
-use candid_parser::candid::pretty::utils::*;
-use candid_parser::candid::types::{
-    Field, FuncMode, Function, Label, SharedLabel, Type, TypeEnv, TypeInner,
-};
+use candid::pretty::utils::*;
+use candid::types::{Field, FuncMode, Function, Label, SharedLabel, Type, TypeEnv, TypeInner};
 use candid_parser::syntax::{self, IDLActorType, IDLMergedProg, IDLType};
 use pretty::RcDoc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::{
-    metadata_from_docs, CandidMetadata, CustomJSDocFormatDefinition, DidToCodOptions,
+use crate::metadata::{
+    metadata_from_docs, CandidMetadata, CandidValidationFormat, CandidValidationMetadata,
 };
+use crate::options::{CustomJSDocFormatDefinition, DidToCodOptions};
 
 fn find_field<'a>(
     fields: Option<&'a [syntax::TypeField]>,
@@ -223,9 +222,7 @@ fn pp_function<'a>(
     let args = enclose(
         "[",
         concat(
-            func.args
-                .iter()
-                .map(|arg| pp_ty(env, arg, true, options)),
+            func.args.iter().map(|arg| pp_ty(env, arg, true, options)),
             ",",
         ),
         "]",
@@ -250,9 +247,7 @@ fn pp_function<'a>(
             let rets = enclose(
                 "[",
                 concat(
-                    func.rets
-                        .iter()
-                        .map(|ret| pp_ty(env, ret, true, options)),
+                    func.rets.iter().map(|ret| pp_ty(env, ret, true, options)),
                     ",",
                 ),
                 "]",
@@ -354,12 +349,7 @@ fn pp_actor<'a>(
                 options,
             );
             let metadata = syntax.and_then(|syntax| metadata_from_docs(syntax.docs.as_ref()));
-            kwd("export default").append(apply_metadata(
-                service,
-                metadata.as_ref(),
-                false,
-                options,
-            ))
+            kwd("export default").append(apply_metadata(service, metadata.as_ref(), false, options))
         }
         _ => unreachable!(),
     }
@@ -487,11 +477,10 @@ fn metadata_with_custom_format(
             });
         }
         CustomJSDocFormatDefinition::Definition(definition) => {
-            format.regex = definition.regex.clone().or_else(|| {
-                built_in
-                    .as_ref()
-                    .and_then(|rule| rule.regex.clone())
-            });
+            format.regex = definition
+                .regex
+                .clone()
+                .or_else(|| built_in.as_ref().and_then(|rule| rule.regex.clone()));
             format.json_schema_format = definition.json_schema_format.clone().or_else(|| {
                 built_in
                     .as_ref()
@@ -550,7 +539,7 @@ fn strip_pattern_metadata(metadata: &mut CandidMetadata) {
     }
 }
 
-fn validation_is_empty(validation: &crate::CandidValidationMetadata) -> bool {
+fn validation_is_empty(validation: &CandidValidationMetadata) -> bool {
     validation.minimum.is_none()
         && validation.maximum.is_none()
         && validation.min_length.is_none()
@@ -606,7 +595,7 @@ fn format_helper_for(format_type: &str) -> Option<String> {
     format_rule_for(format_type).and_then(|rule| rule.helper)
 }
 
-fn custom_format_message(format: &crate::CandidValidationFormat) -> Option<&String> {
+fn custom_format_message(format: &CandidValidationFormat) -> Option<&String> {
     let message = format.message.as_ref()?;
     let default_message = format_rule_for(&format.r#type).and_then(|rule| rule.error_message);
 
@@ -730,15 +719,11 @@ fn is_reserved_word(name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::compile;
-    use crate::DidToCodOptions;
-    use candid_parser::syntax::{IDLMergedProg, IDLProg};
-    use candid_parser::{check_prog, TypeEnv};
+    use crate::{checker, DidToCodOptions};
 
     fn render(source: &str) -> String {
-        let ast = source.parse::<IDLProg>().expect("valid candid syntax");
-        let mut env = TypeEnv::new();
-        let actor = check_prog(&mut env, &ast).expect("type-checked candid");
-        let merged = IDLMergedProg::new(ast);
+        let (env, actor, merged) =
+            checker::check_source("<test candid>", source).expect("type-checked candid");
 
         compile(&env, &actor, &merged, &DidToCodOptions::default())
     }

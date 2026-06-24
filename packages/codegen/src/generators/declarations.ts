@@ -10,7 +10,7 @@
  *   <outDir>/declarations/<name>.did      — Copy of the source .did file
  */
 
-import { didToJs, didToTs } from "@ic-reactor/parser"
+import { didToJsFile, didToTsFile } from "@ic-reactor/parser"
 import path from "node:path"
 import fs from "node:fs"
 import type { GeneratorResult } from "../types.js"
@@ -69,8 +69,8 @@ export async function generateDeclarations(
     }
     fs.mkdirSync(declarationsDir, { recursive: true })
 
-    const jsContent = didToJs(didContent)
-    const tsContent = didToTs(didContent)
+    const jsContent = didToJsFile(didFile)
+    const tsContent = didToTsFile(didFile)
 
     const jsPath = path.join(declarationsDir, `${baseName}.js`)
     const dtsPath = path.join(declarationsDir, `${baseName}.d.ts`)

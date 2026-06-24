@@ -136,17 +136,27 @@ function stripExistingDeclaration(content) {
 }
 
 function replaceParseDidReturnType(content) {
-  return content.replace(
-    /export function parseDid\(prog: string\): [^;]+;/,
-    "export function parseDid(prog: string): CandidSchema;"
-  )
+  return content
+    .replace(
+      /export function parseDid\(prog: string\): [^;]+;/,
+      "export function parseDid(prog: string): CandidSchema;"
+    )
+    .replace(
+      /export function parseDidFile\(file: string\): [^;]+;/,
+      "export function parseDidFile(file: string): CandidSchema;"
+    )
 }
 
 function replaceDidToCodOptionsType(content) {
-  return content.replace(
-    /export function didToCod\(prog: string, options: [^;]+?\): string;/,
-    "export function didToCod(prog: string, options?: DidToCodOptions): string;"
-  )
+  return content
+    .replace(
+      /export function didToCod\(prog: string, options: [^;]+?\): string;/,
+      "export function didToCod(prog: string, options?: DidToCodOptions): string;"
+    )
+    .replace(
+      /export function didToCodFile\(file: string, options: [^;]+?\): string;/,
+      "export function didToCodFile(file: string, options?: DidToCodOptions): string;"
+    )
 }
 
 for (const target of targets) {
