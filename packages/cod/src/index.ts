@@ -27,6 +27,7 @@ export {
   CandidTupleCodec,
 } from "./composites"
 export { CandidMethodCodec, CandidServiceCodec } from "./service"
+export type { Some, None } from "./composites"
 export type {
   CandidMetadata,
   CandidValidationMetadata,

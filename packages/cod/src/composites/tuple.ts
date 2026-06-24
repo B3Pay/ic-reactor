@@ -23,6 +23,19 @@ export class CandidTupleCodec<
     return IDL.Tuple(...idlTypes) as unknown as IDL.Type<InferTuple<E>>
   }
 
+  toCandid(value: InferTuple<E>): unknown[] {
+    return this.elements.map((element, index) =>
+      element.toCandid(value[index] as never)
+    )
+  }
+
+  fromCandid(value: unknown): InferTuple<E> {
+    const values = Array.isArray(value) ? value : []
+    return this.elements.map((element, index) =>
+      element.fromCandid(values[index])
+    ) as InferTuple<E>
+  }
+
   protected _clone(metadata: CandidMetadata): this {
     return new CandidTupleCodec(this.elements, metadata) as this
   }

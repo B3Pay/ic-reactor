@@ -7,7 +7,7 @@
 import { describe, it, expect, expectTypeOf } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import type { Principal } from "@icp-sdk/core/principal"
-import { c, CandidMethodCodec } from "../src"
+import { c, CandidMethodCodec, type None, type Some } from "../src"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Primitives
@@ -548,10 +548,16 @@ describe("Type Inference", () => {
     expectTypeOf<BlobType>().toEqualTypeOf<Uint8Array | number[]>()
   })
 
-  it("opt type infers as [] | [T]", () => {
+  it("opt type infers as T | null", () => {
     const optText = c.opt(c.text())
     type OptTextType = c.infer<typeof optText>
-    expectTypeOf<OptTextType>().toEqualTypeOf<[] | [string]>()
+    expectTypeOf<OptTextType>().toEqualTypeOf<string | null>()
+  })
+
+  it("nested opt type infers with Some/None wrappers", () => {
+    const nested = c.opt(c.opt(c.text()))
+    type NestedOptType = c.infer<typeof nested>
+    expectTypeOf<NestedOptType>().toEqualTypeOf<Some<string | null> | None>()
   })
 
   it("vec type infers as T[]", () => {
@@ -560,7 +566,7 @@ describe("Type Inference", () => {
     expectTypeOf<VecNatType>().toEqualTypeOf<bigint[]>()
   })
 
-  it("record type infers as object", () => {
+  it("record type infers optional properties for opt fields", () => {
     const Account = c.record({
       owner: c.principal(),
       subaccount: c.opt(c.blob()),
@@ -569,19 +575,33 @@ describe("Type Inference", () => {
 
     expectTypeOf<AccountType>().toEqualTypeOf<{
       owner: Principal
-      subaccount: [] | [Uint8Array | number[]]
+      subaccount?: Uint8Array | number[]
     }>()
   })
 
-  it("variant type infers as discriminated union", () => {
+  it("variant type infers as bindgen-style discriminated union", () => {
     const Result = c.variant({
       Ok: c.nat(),
       Err: c.text(),
+      Pending: c.null(),
     })
     type ResultType = c.infer<typeof Result>
 
-    // Should be { Ok: bigint } | { Err: string }
-    expectTypeOf<ResultType>().toMatchTypeOf<{ Ok: bigint } | { Err: string }>()
+    expectTypeOf<ResultType>().toEqualTypeOf<
+      | { __kind__: "Ok"; Ok: bigint }
+      | { __kind__: "Err"; Err: string }
+      | { __kind__: "Pending"; Pending: null }
+    >()
+  })
+
+  it("all-null variant type infers as enum-like string union", () => {
+    const Status = c.variant({
+      Active: c.null(),
+      Inactive: c.null(),
+    })
+    type StatusType = c.infer<typeof Status>
+
+    expectTypeOf<StatusType>().toEqualTypeOf<"Active" | "Inactive">()
   })
 
   it("tuple type infers correctly", () => {
@@ -598,6 +618,25 @@ describe("Type Inference", () => {
 
     expectTypeOf<Service["stats"]>().toEqualTypeOf<
       () => Promise<[string, bigint]>
+    >()
+  })
+
+  it("service methods infer app-facing argument and return shapes", () => {
+    const Result = c.variant({
+      Ok: c.nat(),
+      Err: c.null(),
+    })
+    const svc = c.service({
+      get: c.query([c.opt(c.text())], Result),
+    })
+    type Service = c.ServiceOf<typeof svc>
+
+    expectTypeOf<Service["get"]>().toEqualTypeOf<
+      (
+        arg: string | null
+      ) => Promise<
+        { __kind__: "Ok"; Ok: bigint } | { __kind__: "Err"; Err: null }
+      >
     >()
   })
 })
@@ -631,34 +670,79 @@ describe("IDL Encode/Decode Roundtrip", () => {
     })
 
     const idl = Result.toIDL()
-    const okValue = { Ok: BigInt(42) }
-    const errValue = { Err: "something went wrong" }
+    const okValue = { __kind__: "Ok", Ok: BigInt(42) } as const
+    const errValue = { __kind__: "Err", Err: "something went wrong" } as const
 
     // Roundtrip Ok
-    const encodedOk = IDL.encode([idl], [okValue])
+    const encodedOk = IDL.encode([idl], [Result.toCandid(okValue)])
     const [decodedOk] = IDL.decode([idl], encodedOk)
-    expect(decodedOk).toEqual(okValue)
+    expect(Result.fromCandid(decodedOk)).toEqual(okValue)
 
     // Roundtrip Err
-    const encodedErr = IDL.encode([idl], [errValue])
+    const encodedErr = IDL.encode([idl], [Result.toCandid(errValue)])
     const [decodedErr] = IDL.decode([idl], encodedErr)
-    expect(decodedErr).toEqual(errValue)
+    expect(Result.fromCandid(decodedErr)).toEqual(errValue)
+  })
+
+  it("all-null variant codec bridges enum-like values to raw IDL", () => {
+    const Status = c.variant({
+      Active: c.null(),
+      Inactive: c.null(),
+    })
+
+    const idl = Status.toIDL()
+    const encoded = IDL.encode([idl], [Status.toCandid("Active")])
+    const [decoded] = IDL.decode([idl], encoded)
+
+    expect(decoded).toEqual({ Active: null })
+    expect(Status.fromCandid(decoded)).toBe("Active")
   })
 
   it("opt codec IDL roundtrips", () => {
     const optNat = c.opt(c.nat())
     const idl = optNat.toIDL()
 
-    const some = [BigInt(99)]
-    const none: never[] = []
+    const some = BigInt(99)
+    const none = null
 
-    const encodedSome = IDL.encode([idl], [some])
+    const encodedSome = IDL.encode([idl], [optNat.toCandid(some)])
     const [decodedSome] = IDL.decode([idl], encodedSome)
-    expect(decodedSome).toEqual(some)
+    expect(optNat.fromCandid(decodedSome)).toEqual(some)
 
-    const encodedNone = IDL.encode([idl], [none])
+    const encodedNone = IDL.encode([idl], [optNat.toCandid(none)])
     const [decodedNone] = IDL.decode([idl], encodedNone)
-    expect(decodedNone).toEqual(none)
+    expect(optNat.fromCandid(decodedNone)).toEqual(none)
+  })
+
+  it("nested opt codec preserves Some/None through raw IDL", () => {
+    const nested = c.opt(c.opt(c.text()))
+    const idl = nested.toIDL()
+    const value: c.infer<typeof nested> = {
+      __kind__: "Some",
+      value: null,
+    }
+
+    const encoded = IDL.encode([idl], [nested.toCandid(value)])
+    const [decoded] = IDL.decode([idl], encoded)
+
+    expect(decoded).toEqual([[]])
+    expect(nested.fromCandid(decoded)).toEqual(value)
+  })
+
+  it("record codec bridges optional fields to raw IDL opt values", () => {
+    const Account = c.record({
+      name: c.text(),
+      memo: c.opt(c.text()),
+    })
+
+    const idl = Account.toIDL()
+    const value: c.infer<typeof Account> = { name: "Alice" }
+
+    const encoded = IDL.encode([idl], [Account.toCandid(value)])
+    const [decoded] = IDL.decode([idl], encoded)
+
+    expect(decoded).toEqual({ name: "Alice", memo: [] })
+    expect(Account.fromCandid(decoded)).toEqual(value)
   })
 
   it("vec codec IDL roundtrips", () => {

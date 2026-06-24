@@ -43,7 +43,7 @@ export const Account = c.record({
 })
 
 // Infer the static TypeScript type
-// Output type: { owner: Principal; subaccount: [] | [Uint8Array | number[]] }
+// Output type: { owner: Principal; subaccount?: Uint8Array | number[] }
 export type Account = c.infer<typeof Account>
 
 // Declare a variant type
@@ -53,6 +53,9 @@ export const TransferResult = c.variant({
 })
 
 export type TransferResult = c.infer<typeof TransferResult>
+// Output type:
+// | { __kind__: "Ok"; Ok: bigint }
+// | { __kind__: "Err"; Err: string }
 ```
 
 ### 2. Declare Canister Services
@@ -93,6 +96,21 @@ const manifest = LedgerService.manifest()
 console.log(JSON.stringify(manifest, null, 2))
 ```
 
+COD infers app-facing TypeScript shapes, while `toIDL()` still exposes the raw
+Candid encoder metadata. When using `IDL.encode()` / `IDL.decode()` directly,
+bridge values through the codec:
+
+```ts
+const Result = c.variant({
+  Ok: c.nat(),
+  Err: c.text(),
+})
+
+const appValue: c.infer<typeof Result> = { __kind__: "Ok", Ok: 42n }
+const candidValue = Result.toCandid(appValue) // { Ok: 42n }
+const decoded = Result.fromCandid(candidValue) // { __kind__: "Ok", Ok: 42n }
+```
+
 ---
 
 ## Metadata Chaining (Immutable)
@@ -130,29 +148,37 @@ console.log(requiredEmail.metadata.validation?.format?.errorMessage)
 
 ## Supported Types Map
 
-| Candid Type       | COD Constructor      | Runtime JS/TS Type       |
-| ----------------- | -------------------- | ------------------------ |
-| `text`            | `c.text()`           | `string`                 |
-| `bool`            | `c.bool()`           | `boolean`                |
-| `nat`             | `c.nat()`            | `bigint`                 |
-| `nat8`            | `c.nat8()`           | `number`                 |
-| `nat16`           | `c.nat16()`          | `number`                 |
-| `nat32`           | `c.nat32()`          | `number`                 |
-| `nat64`           | `c.nat64()`          | `bigint`                 |
-| `int`             | `c.int()`            | `bigint`                 |
-| `int8`            | `c.int8()`           | `number`                 |
-| `int16`           | `c.int16()`          | `number`                 |
-| `int32`           | `c.int32()`          | `number`                 |
-| `int64`           | `c.int64()`          | `bigint`                 |
-| `float32`         | `c.float32()`        | `number`                 |
-| `float64`         | `c.float64()`        | `number`                 |
-| `principal`       | `c.principal()`      | `Principal`              |
-| `null`            | `c.null()`           | `null`                   |
-| `reserved`        | `c.reserved()`       | `any`                    |
-| `empty`           | `c.empty()`          | `never`                  |
-| `blob`            | `c.blob()`           | `Uint8Array \| number[]` |
-| `opt T`           | `c.opt(T)`           | `[] \| [T]`              |
-| `vec T`           | `c.vec(T)`           | `T[]`                    |
-| `record { ... }`  | `c.record({ ... })`  | `Record<string, T>`      |
-| `variant { ... }` | `c.variant({ ... })` | Union of `{ Arm: T }`    |
-| `tuple { A; B }`  | `c.tuple([A, B])`    | `[A, B]`                 |
+| Candid Type       | COD Constructor      | Runtime JS/TS Type                                         |
+| ----------------- | -------------------- | ---------------------------------------------------------- |
+| `text`            | `c.text()`           | `string`                                                   |
+| `bool`            | `c.bool()`           | `boolean`                                                  |
+| `nat`             | `c.nat()`            | `bigint`                                                   |
+| `nat8`            | `c.nat8()`           | `number`                                                   |
+| `nat16`           | `c.nat16()`          | `number`                                                   |
+| `nat32`           | `c.nat32()`          | `number`                                                   |
+| `nat64`           | `c.nat64()`          | `bigint`                                                   |
+| `int`             | `c.int()`            | `bigint`                                                   |
+| `int8`            | `c.int8()`           | `number`                                                   |
+| `int16`           | `c.int16()`          | `number`                                                   |
+| `int32`           | `c.int32()`          | `number`                                                   |
+| `int64`           | `c.int64()`          | `bigint`                                                   |
+| `float32`         | `c.float32()`        | `number`                                                   |
+| `float64`         | `c.float64()`        | `number`                                                   |
+| `principal`       | `c.principal()`      | `Principal`                                                |
+| `null`            | `c.null()`           | `null`                                                     |
+| `reserved`        | `c.reserved()`       | `any`                                                      |
+| `empty`           | `c.empty()`          | `never`                                                    |
+| `blob`            | `c.blob()`           | `Uint8Array \| number[]`                                   |
+| `opt T`           | `c.opt(T)`           | `T \| null`                                                |
+| `vec T`           | `c.vec(T)`           | `T[]`                                                      |
+| `record { ... }`  | `c.record({ ... })`  | Object; `opt` fields become optional properties            |
+| `variant { ... }` | `c.variant({ ... })` | `__kind__` union; all-null variants infer as string unions |
+| `tuple { A; B }`  | `c.tuple([A, B])`    | `[A, B]`                                                   |
+
+Nested options use explicit wrappers to preserve Candid's ambiguity:
+
+```ts
+const Nested = c.opt(c.opt(c.text()))
+type Nested = c.infer<typeof Nested>
+// Some<string | null> | None
+```

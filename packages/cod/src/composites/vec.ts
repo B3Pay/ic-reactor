@@ -1,22 +1,34 @@
 import { IDL } from "@icp-sdk/core/candid"
 import { CandidCodec } from "../codec"
 import type { CandidMetadata } from "../types"
+import type { Infer } from "./types"
 
 /**
  * Candid `vec T` → `T[]`
  */
-export class CandidVecCodec<T> extends CandidCodec<T[]> {
+export class CandidVecCodec<C extends CandidCodec<unknown>> extends CandidCodec<
+  Infer<C>[]
+> {
   readonly kind = "vec" as const
 
   constructor(
-    readonly inner: CandidCodec<T>,
+    readonly inner: C,
     metadata: CandidMetadata = {}
   ) {
     super(metadata)
   }
 
-  toIDL(): IDL.Type<T[]> {
-    return IDL.Vec(this.inner.toIDL()) as IDL.Type<T[]>
+  toIDL(): IDL.Type<Infer<C>[]> {
+    return IDL.Vec(this.inner.toIDL()) as unknown as IDL.Type<Infer<C>[]>
+  }
+
+  toCandid(value: Infer<C>[]): unknown[] {
+    return value.map((item) => this.inner.toCandid(item))
+  }
+
+  fromCandid(value: unknown): Infer<C>[] {
+    if (!Array.isArray(value)) return []
+    return value.map((item) => this.inner.fromCandid(item)) as Infer<C>[]
   }
 
   protected _clone(metadata: CandidMetadata): this {
@@ -25,6 +37,8 @@ export class CandidVecCodec<T> extends CandidCodec<T[]> {
 }
 
 /** Create a vec codec wrapping `inner`. */
-export function vec<T>(inner: CandidCodec<T>): CandidVecCodec<T> {
+export function vec<C extends CandidCodec<unknown>>(
+  inner: C
+): CandidVecCodec<C> {
   return new CandidVecCodec(inner)
 }

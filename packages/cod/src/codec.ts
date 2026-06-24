@@ -28,6 +28,22 @@ export abstract class CandidCodec<T> {
   /** Produce the `@icp-sdk/core` IDL type for this codec. */
   abstract toIDL(): IDL.Type<T>
 
+  /**
+   * Convert an app-facing value into the raw JS shape expected by
+   * `@icp-sdk/core` Candid encoders.
+   */
+  toCandid(value: T): unknown {
+    return value
+  }
+
+  /**
+   * Convert a raw JS value returned by `@icp-sdk/core` Candid decoders into
+   * this codec's app-facing TypeScript shape.
+   */
+  fromCandid(value: unknown): T {
+    return value as T
+  }
+
   // ─── Metadata Chaining (Immutable) ──────────────────────────────────
 
   /** Return a new codec with the given description. */

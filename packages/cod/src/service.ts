@@ -21,7 +21,7 @@ import type {
 
 /** Infer a tuple of TS types from an array of codecs. */
 type InferArgs<T extends readonly CandidCodec<unknown>[]> = {
-  [K in keyof T]: T[K] extends CandidCodec<infer U> ? U : never
+  [K in keyof T]: Infer<T[K]>
 }
 
 /**
@@ -31,15 +31,15 @@ type InferArgs<T extends readonly CandidCodec<unknown>[]> = {
  * Oneway:       `(...args) => Promise<void>`
  */
 type MethodSignature<M> =
-  M extends CandidMethodCodec<infer A, infer _R, infer Mode>
+  M extends CandidMethodCodec<infer A, infer R, infer Mode>
     ? Mode extends "oneway"
       ? (...args: InferArgs<A>) => Promise<void>
-      : (...args: InferArgs<A>) => Promise<InferReturn<_R>>
+      : (...args: InferArgs<A>) => Promise<InferReturn<R>>
     : never
 
 /** Map a record of method codecs to an actor-like interface. */
 type ServiceActor<
-  M extends Record<string, CandidMethodCodec<CandidCodec<unknown>[]>>,
+  M extends Record<string, CandidMethodCodec<readonly CandidCodec<unknown>[]>>,
 > = {
   [K in keyof M]: MethodSignature<M[K]>
 }
@@ -52,9 +52,9 @@ type MethodMode = "query" | "update" | "oneway"
 type ReturnCodecs = readonly CandidCodec<unknown>[] | undefined
 
 type InferReturn<T extends ReturnCodecs> = T extends readonly [
-  CandidCodec<infer R>,
+  infer R extends CandidCodec<unknown>,
 ]
-  ? R
+  ? Infer<R>
   : T extends readonly CandidCodec<unknown>[]
     ? InferArgs<T>
     : void
@@ -201,7 +201,7 @@ function isReturnCodecArray(
  * - `manifest()` for structured method metadata
  */
 export class CandidServiceCodec<
-  M extends Record<string, CandidMethodCodec<CandidCodec<unknown>[]>>,
+  M extends Record<string, CandidMethodCodec<readonly CandidCodec<unknown>[]>>,
 > extends CandidCodec<ServiceActor<M>> {
   readonly kind = "service" as const
 
@@ -294,7 +294,7 @@ export class CandidServiceCodec<
  * Define a service: `c.service({ method: c.query([...], ret), ... })`.
  */
 export function service<
-  M extends Record<string, CandidMethodCodec<CandidCodec<unknown>[]>>,
+  M extends Record<string, CandidMethodCodec<readonly CandidCodec<unknown>[]>>,
 >(methods: M): CandidServiceCodec<M> {
   return new CandidServiceCodec(methods)
 }
