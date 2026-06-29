@@ -60,7 +60,7 @@
   "devDependencies": {
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/candid": "workspace:*",
-    "@tanstack/query-core": "^5.100.10",
+    "@tanstack/query-core": "^5.101.2",
     "@types/node": "^25.9.3",
     "vitest": "^4.1.9",
     "wasm-pack": "0.15.0",

@@ -15,7 +15,7 @@
     "check:examples": "node scripts/check-example-docs.mjs"
   },
   "devDependencies": {
-    "@astrojs/starlight": "^0.40.0",
+    "@astrojs/starlight": "^0.41.1",
     "astro": "^6.4.6",
     "serve": "^14.2.6",
     "typedoc": "^0.28.19",
@@ -27,6 +27,6 @@
     "remark-mdx": "^3.1.1"
   },
   "dependencies": {
-    "starlight-page-actions": "^0.6.1"
+    "starlight-page-actions": "^0.6.2"
   }
 }

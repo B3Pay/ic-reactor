@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@ic-reactor/react": "^3.6.0",
-    "@tanstack/react-query": "^5.0.0",
+    "@tanstack/react-query": "^5.101.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "@icp-sdk/core": "^5.0.0"
@@ -20,14 +20,14 @@
     "@ic-reactor/vite-plugin": "^0.11.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
-    "eslint": "^10.5.0",
+    "vite": "^8.1.0",
+    "eslint": "^10.6.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.3",
-    "globals": "^17.3.0",
-    "typescript-eslint": "^8.55.0"
+    "globals": "^17.7.0",
+    "typescript-eslint": "^8.62.0"
   },
   "overrides": {
     "picomatch": "4.0.4",
