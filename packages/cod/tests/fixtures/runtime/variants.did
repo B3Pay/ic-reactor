@@ -1,0 +1,9 @@
+type Result = variant {
+  ok : nat;
+  err : text;
+  none;
+};
+
+service : {
+  get : () -> (Result) query;
+}

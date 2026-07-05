@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@b3/candid": ["./src/ts/index.ts"]
+    },
+    "noEmit": true
+  },
+  "include": ["src/ts/**/*.ts"]
+}

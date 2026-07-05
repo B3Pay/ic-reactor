@@ -1,0 +1,8 @@
+type Account = record {
+  owner : principal;
+  subaccount : opt blob;
+};
+
+service : {
+  icrc1_balance_of : (Account) -> (nat) query;
+}

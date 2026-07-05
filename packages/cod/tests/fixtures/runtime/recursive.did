@@ -1,0 +1,8 @@
+type List = opt record {
+  head : nat;
+  tail : List;
+};
+
+service : {
+  get : () -> (List) query;
+}

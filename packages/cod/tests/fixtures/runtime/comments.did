@@ -1,0 +1,11 @@
+// Account docs.
+type Account = record {
+  // Owner docs.
+  owner : principal;
+  subaccount : opt blob;
+};
+
+service : {
+  // Returns the account balance.
+  icrc1_balance_of : (Account) -> (nat) query;
+}

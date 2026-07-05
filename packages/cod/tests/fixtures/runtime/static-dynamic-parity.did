@@ -1,0 +1,76 @@
+type Account = record {
+  owner : principal;
+  subaccount : opt blob;
+};
+
+type TransferArg = record {
+  to : Account;
+  fee : opt nat;
+  memo : opt blob;
+  from_subaccount : opt blob;
+  created_at_time : opt nat64;
+  amount : nat;
+};
+
+type TransferError = variant {
+  GenericError : record {
+    message : text;
+    error_code : nat;
+  };
+  TemporarilyUnavailable;
+  BadBurn : record {
+    min_burn_amount : nat;
+  };
+  Duplicate : record {
+    duplicate_of : nat;
+  };
+  BadFee : record {
+    expected_fee : nat;
+  };
+  CreatedInFuture : record {
+    ledger_time : nat64;
+  };
+  TooOld;
+  InsufficientFunds : record {
+    balance : nat;
+  };
+};
+
+type TransferResult = variant {
+  Ok : nat;
+  Err : TransferError;
+};
+
+type RetryState = variant {
+  Later : record {
+    ledger_time : nat64;
+    reason : text;
+  };
+  Never;
+};
+
+type NestedVariant = variant {
+  Retrying : RetryState;
+  Ready;
+};
+
+type MixedRecord = record {
+  count : nat;
+  slot : nat64;
+  blob_value : blob;
+  state : NestedVariant;
+  account : Account;
+  bytes : blob;
+  transfer : TransferArg;
+};
+
+type MixedResult = variant {
+  rejected : NestedVariant;
+  accepted : MixedRecord;
+};
+
+service : {
+  icrc1_balance_of : (Account) -> (nat) query;
+  icrc1_transfer : (TransferArg) -> (TransferResult);
+  inspect : (MixedRecord, NestedVariant) -> (MixedResult) query;
+}
