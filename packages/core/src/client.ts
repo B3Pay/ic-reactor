@@ -5,6 +5,7 @@ import type { QueryClient } from "@tanstack/query-core"
 
 import { HttpAgent } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
+import { initCod } from "@ic-reactor/cod"
 import { IC_HOST_NETWORK_URI } from "./utils/constants"
 import {
   getNetworkByHostname,
@@ -141,6 +142,11 @@ export class ClientManager {
 
     this.initPromise = (async () => {
       this.updateAgentState({ isInitializing: true })
+      try {
+        await initCod()
+      } catch (err) {
+        console.warn("[ic-reactor] failed to initialize cod WASM runtime:", err)
+      }
       if (isDev() && typeof window !== "undefined") {
         console.info(
           `%cic-reactor:%c Initializing agent for ${this.network} network`,

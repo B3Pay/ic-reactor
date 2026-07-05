@@ -5,6 +5,6 @@ export default defineConfig({
     "process.env": {},
   },
   optimizeDeps: {
-    exclude: ["@ic-reactor/parser"],
+    exclude: ["@ic-reactor/cod"],
   },
 })

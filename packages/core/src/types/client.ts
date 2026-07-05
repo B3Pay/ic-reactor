@@ -13,6 +13,14 @@ export interface ClientManagerParameters {
    */
   queryClient: QueryClient
   /**
+   * Force connecting to local replica.
+   */
+  withLocalEnv?: boolean
+  /**
+   * Local network port override.
+   */
+  port?: number
+  /**
    * Optional configuration for the underlying HttpAgent.
    */
   agentOptions?: HttpAgentOptions

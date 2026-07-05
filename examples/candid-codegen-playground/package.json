@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@ic-reactor/cod": "workspace:*",
-    "@ic-reactor/parser": "workspace:*",
     "@ic-reactor/codegen": "workspace:*"
   },
   "devDependencies": {

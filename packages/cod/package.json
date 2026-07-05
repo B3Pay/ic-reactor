@@ -1,0 +1,43 @@
+{
+  "name": "@ic-reactor/cod",
+  "version": "0.1.0",
+  "description": "Rust/WASM Candid parsing and wire encoding for Internet Computer apps.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "pkg"
+  ],
+  "scripts": {
+    "build": "npm run build:wasm && npm run build:ts",
+    "build:example:icrc": "esbuild examples/icrc/src/app.js --bundle --format=esm --outfile=examples/icrc/dist/app.js --sourcemap",
+    "build:ts": "tsc -p tsconfig.json && node scripts/fix-dist-imports.mjs",
+    "build:wasm": "cargo build --lib --target wasm32-unknown-unknown --features wasm --release && rm -rf pkg examples/pkg && mkdir -p pkg && wasm-bindgen target/wasm32-unknown-unknown/release/cod.wasm --target web --out-dir pkg --out-name cod_core && mkdir -p examples/pkg && cp -R pkg/. examples/pkg/",
+    "check": "npm run build:wasm && npm run typecheck && npm run test && cargo test && npm run build:ts",
+    "examples": "node scripts/examples.mjs",
+    "examples:no-open": "node scripts/examples.mjs --no-open",
+    "example:gui": "node scripts/examples.mjs --open-path=/examples/gui/",
+    "example:icrc": "node scripts/examples.mjs --open-path=/examples/icrc/",
+    "example:playground": "node scripts/examples.mjs --open-path=/examples/playground/",
+    "example:runtime-form-workflow": "npm run build:wasm && tsx examples/runtime-form-workflow/src/index.ts",
+    "example:runtime-form-ui": "cd examples/runtime-form-ui && pnpm dev",
+    "test": "node --import tsx --test src/ts/*.test.ts",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@icp-sdk/core": "^5.4.0"
+  }
+}

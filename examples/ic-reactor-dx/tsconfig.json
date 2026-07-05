@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext", "DOM"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "paths": {
+      "cod": ["../../src/ts/index.ts"]
+    }
+  },
+  "include": ["*.ts", "src/**/*.ts", "src/**/*.tsx"]
+}

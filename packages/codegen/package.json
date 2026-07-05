@@ -49,7 +49,7 @@
   "homepage": "https://ic-reactor.b3pay.net/v4/packages/codegen",
   "dependencies": {
     "change-case": "^5.4.4",
-    "@ic-reactor/parser": "workspace:*"
+    "@ic-reactor/cod": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

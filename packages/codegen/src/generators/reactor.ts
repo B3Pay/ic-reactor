@@ -107,9 +107,7 @@ export const {
 
   return `${runtimeTarget === "react" ? 'import { createActorHooks } from "@ic-reactor/react"\n' : ""}import { ${reactorClass} } from "${reactorImportSource}"
 import { clientManager } from "${clientManagerPath}"
-import { idlFactory, type _SERVICE } from "${declarationsPath}"
-
-export type ${serviceName} = _SERVICE
+import { ${canisterName} as serviceSchema } from "${declarationsPath}.generated.js"
 
 /**
  * ${pascalName} Reactor
@@ -120,11 +118,13 @@ export type ${serviceName} = _SERVICE
  * Keep app-specific logic in the stable \`index.ts\` wrapper (or adjacent
  * factory modules). Avoid editing this managed file directly.
  */
-export const ${reactorName} = new ${reactorClass}<${serviceName}>({
+export const ${reactorName} = new ${reactorClass}({
   clientManager,
-  idlFactory,
+  serviceSchema,
 ${canisterIdLine}  name: "${canisterName}",
-})${hookExports || "\n"}`
+})
+
+export type ${serviceName} = typeof ${reactorName}["_actor"]${hookExports || "\n"}`
 }
 
 /**

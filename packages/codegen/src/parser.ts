@@ -1,11 +1,4 @@
-/**
- * Candid Parser Utilities
- *
- * Parses Candid .did files to extract service method signatures.
- * Used by the CLI for listing methods and by advanced generators.
- */
-
-import { didToJs } from "@ic-reactor/parser"
+import { initCod, CandidProgram } from "@ic-reactor/cod"
 import fs from "node:fs"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -32,33 +25,22 @@ export interface MethodInfo {
  *
  * Compiles the Candid to JS and inspects the IDL.Service definition.
  */
-export function extractMethods(didContent: string): MethodInfo[] {
+export async function extractMethods(
+  didContent: string
+): Promise<MethodInfo[]> {
   try {
-    const jsContent = didToJs(didContent)
+    await initCod()
+    const program = new CandidProgram(didContent)
+    const summary = program.summary()
 
-    const methods: MethodInfo[] = []
-
-    // Find the IDL.Service({...}) body
-    const serviceMatch = /IDL\.Service\(\{([\s\S]*?)\}\)/.exec(jsContent)
-    if (!serviceMatch) return methods
-
-    const serviceBody = serviceMatch[1]
-
-    // Match each method: 'methodName': IDL.Func([args], [rets], [annotations])
-    const methodRegex =
-      /['"]([\w]+)['"]\s*:\s*IDL\.Func\(\s*\[(.*?)\],\s*\[.*?\],\s*\[(.*?)\]\)/g
-
-    let match: RegExpExecArray | null
-    while ((match = methodRegex.exec(serviceBody)) !== null) {
-      const [, name, args, annotations] = match
-      methods.push({
-        name,
-        type: annotations.includes("'query'") ? "query" : "mutation",
-        hasArgs: args.trim().length > 0,
-      })
-    }
-
-    return methods
+    return summary.methods.map((m) => ({
+      name: m.name,
+      type:
+        m.modes.includes("query") || m.modes.includes("composite_query")
+          ? "query"
+          : "mutation",
+      hasArgs: m.args.length > 0,
+    }))
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     throw new Error(`Failed to parse Candid: ${msg}`)
@@ -70,7 +52,7 @@ export function extractMethods(didContent: string): MethodInfo[] {
  *
  * @throws if the file does not exist or fails to parse
  */
-export function parseDIDFile(didFilePath: string): MethodInfo[] {
+export async function parseDIDFile(didFilePath: string): Promise<MethodInfo[]> {
   if (!fs.existsSync(didFilePath)) {
     throw new Error(`DID file not found: ${didFilePath}`)
   }

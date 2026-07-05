@@ -64,7 +64,6 @@
   },
   "peerDependenciesMeta": {},
   "devDependencies": {
-    "@ic-reactor/parser": "workspace:^",
     "@icp-sdk/core": "^5.4.0",
     "@size-limit/preset-small-lib": "^12.1.0",
     "@types/node": "^25.9.3",
@@ -77,9 +76,7 @@
       "path": "dist/index.js",
       "limit": "30 KB",
       "gzip": true,
-      "ignore": [
-        "@ic-reactor/parser"
-      ]
+      "ignore": []
     }
   ]
 }

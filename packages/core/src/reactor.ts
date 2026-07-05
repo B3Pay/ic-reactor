@@ -22,6 +22,7 @@ import type {
 import { DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
+import type { ServiceSchema } from "@ic-reactor/cod"
 import { generateKey, extractOkResult } from "./utils/helper"
 import {
   processQueryCallResponse,
@@ -48,7 +49,8 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public clientManager: ClientManager
   public name: string
   public canisterId: Principal
-  public service: IDL.ServiceClass
+  public service?: IDL.ServiceClass
+  public serviceSchema?: ServiceSchema<any>
   public pollingOptions: PollingOptions
 
   constructor(config: ReactorParameters) {
@@ -59,9 +61,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
         ? config.pollingOptions
         : DEFAULT_POLLING_OPTIONS
 
-    const { idlFactory } = config
-    if (!idlFactory) {
-      throw new Error(`[ic-reactor] idlFactory is missing for ${this.name}`)
+    const { idlFactory, serviceSchema } = config
+    if (!idlFactory && !serviceSchema) {
+      throw new Error(
+        `[ic-reactor] either idlFactory or serviceSchema must be provided for ${this.name}`
+      )
     }
 
     let canisterId = config.canisterId
@@ -81,7 +85,12 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     }
 
     this.canisterId = Principal.from(canisterId)
-    this.service = idlFactory({ IDL })
+    if (idlFactory) {
+      this.service = idlFactory({ IDL })
+    }
+    if (serviceSchema) {
+      this.serviceSchema = serviceSchema
+    }
 
     // Register this canister ID for delegation during login
     this.clientManager.registerCanisterId(this.canisterId.toString(), this.name)
@@ -137,6 +146,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * @returns The service interface
    */
   public getServiceInterface(): IDL.ServiceClass {
+    if (!this.service) {
+      throw new Error(
+        `[ic-reactor] Service IDL is not available (using serviceSchema instead)`
+      )
+    }
     return this.service
   }
 
@@ -148,6 +162,9 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   protected getFuncClass<M extends FunctionName<A>>(
     methodName: M
   ): IDL.FuncClass | null {
+    if (!this.service) {
+      return null
+    }
     const field = this.service._fields.find(([name]) => name === methodName)
     return field ? field[1] : null
   }
@@ -156,6 +173,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * Check if a method is a query method (query or composite_query).
    */
   public isQueryMethod<M extends FunctionName<A>>(methodName: M): boolean {
+    if (this.serviceSchema) {
+      const method = this.serviceSchema.methods[methodName as string]
+      if (!method) return false
+      return method.mode === "query" || method.mode === "composite_query"
+    }
     const func = this.getFuncClass(methodName)
     if (!func) return false
     return (
@@ -305,6 +327,45 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     params: Omit<ReactorCallParams<A, M, T>, "queryKey">
   ): Promise<ReactorReturnOk<A, M, T>> {
     try {
+      if (this.serviceSchema) {
+        const transformedArgs = this.transformArgs(
+          params.functionName,
+          params.args
+        )
+        const arg = this.serviceSchema.encodeMethodArgs(
+          params.functionName as string,
+          transformedArgs
+        )
+        const method = this.serviceSchema.methods[params.functionName as string]
+        if (!method) {
+          throw new Error(`Method ${String(params.functionName)} not found`)
+        }
+        const isQuery =
+          method.mode === "query" || method.mode === "composite_query"
+
+        let rawResponse: Uint8Array
+        if (isQuery) {
+          rawResponse = await this.executeQuery(
+            String(params.functionName),
+            arg,
+            params.callConfig
+          )
+        } else {
+          rawResponse = await this.executeCall(
+            String(params.functionName),
+            arg,
+            params.callConfig
+          )
+        }
+
+        const response = this.serviceSchema.decodeMethodReply(
+          params.functionName as string,
+          rawResponse
+        )
+
+        return this.transformResult(params.functionName, response as any)
+      }
+
       const func = this.getFuncClass(params.functionName)
       if (!func) {
         throw new Error(`Method ${String(params.functionName)} not found`)

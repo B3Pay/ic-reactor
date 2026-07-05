@@ -10,7 +10,7 @@
  *   <outDir>/declarations/<name>.did      — Copy of the source .did file
  */
 
-import { didToJsFile, didToTsFile } from "@ic-reactor/parser"
+import { initCod, generateTypescript } from "@ic-reactor/cod"
 import path from "node:path"
 import fs from "node:fs"
 import type { GeneratorResult } from "../types.js"
@@ -69,23 +69,20 @@ export async function generateDeclarations(
     }
     fs.mkdirSync(declarationsDir, { recursive: true })
 
-    const jsContent = didToJsFile(didFile)
-    const tsContent = didToTsFile(didFile)
+    await initCod()
+    const tsContent = generateTypescript(didContent, { canisterName })
 
-    const jsPath = path.join(declarationsDir, `${baseName}.js`)
-    const dtsPath = path.join(declarationsDir, `${baseName}.d.ts`)
+    const tsPath = path.join(declarationsDir, `${baseName}.generated.ts`)
     const didCopyPath = path.join(declarationsDir, `${baseName}.did`)
 
-    fs.writeFileSync(jsPath, jsContent)
-    fs.writeFileSync(dtsPath, tsContent)
+    fs.writeFileSync(tsPath, tsContent)
     fs.writeFileSync(didCopyPath, didContent)
 
     return {
       success: true,
       declarationsDir,
       files: [
-        { success: true, filePath: jsPath },
-        { success: true, filePath: dtsPath },
+        { success: true, filePath: tsPath },
         { success: true, filePath: didCopyPath },
       ],
     }
@@ -107,6 +104,10 @@ export function declarationsExist(
   outDir: string,
   canisterName: string
 ): boolean {
-  const dtsPath = path.join(outDir, "declarations", `${canisterName}.d.ts`)
-  return fs.existsSync(dtsPath)
+  const tsPath = path.join(
+    outDir,
+    "declarations",
+    `${canisterName}.generated.ts`
+  )
+  return fs.existsSync(tsPath)
 }

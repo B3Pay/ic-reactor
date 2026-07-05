@@ -1,0 +1,17 @@
+type ContactId = text;
+
+type Contact = record {
+  // @label Full name
+  name : text;
+
+  // @format email Invalid email address.
+  email : text;
+
+  // @elementMinLength 2 Alias is too short.
+  aliases : vec text;
+};
+
+service : {
+  lookup_contact : (ContactId) -> (opt Contact) query;
+  save_contact : (Contact) -> (ContactId);
+}

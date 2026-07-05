@@ -1,32 +1,8 @@
-/**
- * Candid → Cod Codegen Playground
- *
- * Two-pane editor: Candid .did input on the left, live-generated
- * @ic-reactor/cod schema TypeScript on the right.
- */
-
 import "./styles.css"
-import { generateCodecDeclarations } from "@ic-reactor/codegen/renderer"
-import type { GenerateCodecDeclarationsOptions } from "@ic-reactor/codegen/renderer"
 import { SAMPLES } from "./samples"
-import init, { parseDid } from "@ic-reactor/parser"
+import { initCod, generateTypescript } from "@ic-reactor/cod"
 
 // ─── State ──────────────────────────────────────────────────────────────────
-
-const CUSTOM_JSDOC_FORMAT_TYPES: NonNullable<
-  GenerateCodecDeclarationsOptions["customJSDocFormatTypes"]
-> = {
-  username: {
-    regex: "^[a-z0-9_]+$",
-    errorMessage: "Use lowercase letters, numbers, and underscores",
-  },
-}
-
-function getCodegenOptions(): GenerateCodecDeclarationsOptions {
-  return {
-    customJSDocFormatTypes: CUSTOM_JSDOC_FORMAT_TYPES,
-  }
-}
 
 let candidInput = SAMPLES.isoFormats.did
 let selectedSampleKey = "isoFormats"
@@ -39,7 +15,7 @@ let copyTimeout: ReturnType<typeof setTimeout> | null = null
 
 async function initParser(): Promise<void> {
   try {
-    await init()
+    await initCod()
     parserReady = true
     regenerate()
   } catch (err) {
@@ -55,8 +31,7 @@ function regenerate(): void {
   if (!parserReady) return
 
   try {
-    const schemaAst = parseDid(candidInput)
-    outputCode = generateCodecDeclarations(schemaAst, getCodegenOptions())
+    outputCode = generateTypescript(candidInput)
     errorMessage = ""
   } catch (err) {
     outputCode = ""

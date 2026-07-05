@@ -91,7 +91,7 @@ export async function fetchCandidFromCanister(
     }
 
     // Parse the Candid to extract methods
-    const methods = extractMethods(candidSource)
+    const methods = await extractMethods(candidSource)
 
     return {
       candidSource,

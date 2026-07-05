@@ -1,0 +1,29 @@
+{
+  "name": "ic-reactor-dx",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "network:start": "icp network start -d --project-root-override .",
+    "network:stop": "icp network stop --project-root-override .",
+    "deploy": "icp deploy --project-root-override . contacts",
+    "dev": "vite --host 127.0.0.1",
+    "generate": "cargo run --manifest-path ../../Cargo.toml -- generate contact.did --canister-name contacts --output contact.generated.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ic-reactor/candid": "workspace:*",
+    "@ic-reactor/react": "workspace:*",
+    "@icp-sdk/core": "^5.4.0",
+    "@tanstack/react-query": "^5.100.10",
+    "@ic-reactor/cod": "workspace:*",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vite": "^8.1.3"
+  },
+  "devDependencies": {
+    "@ic-reactor/vite-plugin": "workspace:*",
+    "@types/react": "^19.2.3",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}

@@ -53,7 +53,8 @@
   "author": "Behrad Deylami",
   "license": "MIT",
   "dependencies": {
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@ic-reactor/cod": "workspace:^"
   },
   "peerDependencies": {
     "zod": "^4.3.5",
@@ -69,7 +70,7 @@
     "@icp-sdk/core": "^5.4.0",
     "@size-limit/preset-small-lib": "^12.1.0",
     "@tanstack/query-core": "^5.100.10",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.1.0",
     "fake-indexeddb": "^6.2.5",
     "size-limit": "^12.1.0",
     "vitest": "^4.1.9"

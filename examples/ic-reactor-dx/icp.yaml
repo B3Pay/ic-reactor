@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://github.com/dfinity/icp-cli/raw/refs/tags/v0.1.0-beta.2/docs/schemas/icp-yaml-schema.json
+
+canisters:
+  - name: contacts
+    recipe:
+      type: "@dfinity/rust@v3.3.0"
+      configuration:
+        package: contacts-canister
+        shrink: true
+        candid: contact.did
+
+networks:
+  - name: replica
+    mode: connected
+    url: http://127.0.0.1:4943
+
+environments:
+  - name: replica
+    network: replica
+    canisters:
+      - contacts

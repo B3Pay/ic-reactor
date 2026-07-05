@@ -1,4 +1,4 @@
-import type { CandidMetadata } from "@ic-reactor/parser"
+import type { CandidMetadata } from "./parser-types.js"
 import metadataRules from "./metadata-rules.json"
 
 export type JSDocFormatDefinition = {

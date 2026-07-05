@@ -1,0 +1,4 @@
+.icp/
+.env.local
+node_modules/
+target/

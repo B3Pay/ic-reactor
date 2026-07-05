@@ -54,9 +54,6 @@ export class CandidAdapter {
   /** The optional local parser module. */
   private parserModule?: ReactorParser
 
-  /** Whether parser auto-loading has been attempted. */
-  private parserLoadAttempted = false
-
   /** Function to unsubscribe from identity updates. */
   public unsubscribe: () => void = noop
 
@@ -111,25 +108,7 @@ export class CandidAdapter {
   public async loadParser(module?: ReactorParser): Promise<void> {
     if (module !== undefined) {
       this.parserModule = module
-      this.parserLoadAttempted = true
       return
-    }
-
-    if (this.parserLoadAttempted) {
-      return // Already tried loading
-    }
-
-    this.parserLoadAttempted = true
-
-    try {
-      this.parserModule = (await import(
-        "@ic-reactor/parser" as any
-      )) as unknown as ReactorParser
-      if (typeof this.parserModule?.default === "function") {
-        await (this.parserModule.default as () => Promise<void>)()
-      }
-    } catch (error) {
-      throw new Error(`Error loading parser: ${error}`)
     }
   }
 
@@ -138,23 +117,7 @@ export class CandidAdapter {
    * Useful for optional parser initialization.
    */
   private async tryLoadParser(): Promise<void> {
-    if (this.parserModule || this.parserLoadAttempted) {
-      return
-    }
-
-    this.parserLoadAttempted = true
-
-    try {
-      this.parserModule = (await import(
-        "@ic-reactor/parser" as any
-      )) as unknown as ReactorParser
-      if (typeof this.parserModule?.default === "function") {
-        await (this.parserModule.default as () => Promise<void>)()
-      }
-    } catch {
-      // Silently fail - parser is optional
-      this.parserModule = undefined
-    }
+    // No-op
   }
 
   /**

@@ -33,10 +33,14 @@ export type ActorMethodParameters<T> =
 export type ActorMethodReturnType<T> =
   T extends ActorMethod<any, infer Ret> ? Ret : never
 
+import type { ServiceSchema } from "@ic-reactor/cod"
+
 export interface ReactorParameters {
   clientManager: ClientManager
   name: string
-  idlFactory: (IDL: any) => any
+  idlFactory?: (IDL: any) => any
+  candidSource?: string
+  serviceSchema?: ServiceSchema<any>
   canisterId?: CanisterId
   pollingOptions?: PollingOptions
 }

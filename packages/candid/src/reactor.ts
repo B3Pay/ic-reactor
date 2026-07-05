@@ -88,7 +88,7 @@ export class CandidReactor<
     const { functionName, candid } = options
 
     // Check if method already registered
-    const existing = this.service._fields.find(
+    const existing = this.service!._fields.find(
       ([name]) => name === functionName
     )
     if (existing) return
@@ -111,7 +111,7 @@ export class CandidReactor<
     }
 
     // Inject into our service
-    this.service._fields.push(funcField)
+    this.service!._fields.push(funcField)
   }
 
   /**
@@ -125,14 +125,14 @@ export class CandidReactor<
    * Check if a method is registered (either from initialize or registerMethod).
    */
   public hasMethod(functionName: string): boolean {
-    return this.service._fields.some(([name]) => name === functionName)
+    return this.service!._fields.some(([name]) => name === functionName)
   }
 
   /**
    * Get all registered method names.
    */
   public getMethodNames(): string[] {
-    return this.service._fields.map(([name]) => name)
+    return this.service!._fields.map(([name]) => name)
   }
 
   // ══════════════════════════════════════════════════════════════════════
