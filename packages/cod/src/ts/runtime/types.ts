@@ -27,8 +27,14 @@ export type DocTag = {
 
 export type CandidMethodMode = "query" | "update" | "oneway" | "composite_query"
 
-export type CandidProgramIR = {
+export type ProgramIR = {
+  version: number
   types: CandidTypeDeclIR[]
+  actor: CandidActorIR
+}
+
+export type CandidActorIR = {
+  initArgs: CandidArgIR[]
   service: CandidServiceIR
 }
 
@@ -87,18 +93,27 @@ export type CandidTypeIR =
   | { kind: "record"; fields: CandidFieldIR[] }
   | { kind: "variant"; fields: CandidFieldIR[] }
   | { kind: "ref"; name: string }
-  | { kind: "func"; args: CandidArgIR[]; returns: CandidArgIR[]; mode?: string }
+  | {
+      kind: "func"
+      args: CandidArgIR[]
+      returns: CandidArgIR[]
+      mode: CandidMethodMode
+    }
   | { kind: "service"; methods: CandidMethodIR[] }
 
 export type CandidFieldIR = {
-  name?: string
+  label: CandidFieldLabelIR
   candidId: number
-  tsKey: string
   type: CandidTypeIR
   docs?: string[]
   rawDocs?: string[]
   docTags?: DocTag[]
 }
+
+export type CandidFieldLabelIR =
+  | { kind: "named"; name: string }
+  | { kind: "id"; id: number }
+  | { kind: "unnamed"; id: number }
 
 export type RuntimeTypeInfo = {
   name: string
@@ -128,7 +143,7 @@ export type RuntimeMethodInfo = {
 
 export type RuntimeProgram = {
   readonly source: string
-  readonly ir: CandidProgramIR
+  readonly ir: ProgramIR
   readonly service: ServiceSchema<any>
 
   listTypes(): RuntimeTypeInfo[]

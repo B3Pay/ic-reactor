@@ -1,19 +1,19 @@
 import { FormContext, methodToFormSchema } from "./form.js"
 import type {
   CandidMethodIR,
-  CandidProgramIR,
   FormSchemaOptions,
+  ProgramIR,
   ProgramWorkflowSchema,
   WorkflowMethodNode,
 } from "./types.js"
 
 export function programToWorkflowSchema(
-  ir: CandidProgramIR,
+  ir: ProgramIR,
   options: FormSchemaOptions = {}
 ): ProgramWorkflowSchema {
   const context = new FormContext(ir, options)
   return {
-    nodes: ir.service.methods.map((method) =>
+    nodes: ir.actor.service.methods.map((method) =>
       methodToWorkflowNode(method, context)
     ),
   }

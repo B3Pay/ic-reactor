@@ -37,7 +37,14 @@ export {
   variant,
   vec,
 } from "./schema/collections.js"
-export { MethodSchema, method, query, update } from "./schema/methods.js"
+export {
+  MethodSchema,
+  compositeQuery,
+  method,
+  oneway,
+  query,
+  update,
+} from "./schema/methods.js"
 export type {
   AnyMethodSchema,
   AppTuple,

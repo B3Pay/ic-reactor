@@ -146,7 +146,7 @@ export class ServiceSchema<Methods extends MethodMap> {
         const method = this.method(name)
         const arg = this.encodeMethodArgs(name, args)
         const response =
-          method.mode === "query"
+          method.mode === "query" || method.mode === "composite_query"
             ? await callQuery(agent, canisterId, name, arg)
             : await callUpdate(agent, canisterId, name, arg)
         return this.decodeMethodReply(name, extractReplyBytes(response))

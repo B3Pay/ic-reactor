@@ -2,17 +2,21 @@ import type { AgentLike } from "../index.js"
 import type { AnySchema, ServiceSchema } from "../schema.js"
 import type { CandidProgram } from "../index.js"
 import { programToFormSchema } from "./form.js"
-import { candidTypeText, irToSchema } from "./ir-to-schema.js"
+import {
+  assertProgramIRVersion,
+  candidTypeText,
+  irToSchema,
+} from "./ir-to-schema.js"
 import { RuntimeMethodImpl } from "./method.js"
 import { programToWorkflowSchema } from "./workflow.js"
 import type {
   CandidArgIR,
-  CandidProgramIR,
   CandidTypeIR,
   DynamicActor,
   DynamicActorCallOptions,
   FormSchemaOptions,
   ProgramFormSchema,
+  ProgramIR,
   ProgramWorkflowSchema,
   RuntimeActorOptions,
   RuntimeArgInfo,
@@ -24,7 +28,7 @@ import type {
 
 export class RuntimeProgramImpl implements RuntimeProgram {
   readonly source: string
-  readonly ir: CandidProgramIR
+  readonly ir: ProgramIR
   readonly service: ServiceSchema<any>
 
   readonly #program: CandidProgram
@@ -35,11 +39,12 @@ export class RuntimeProgramImpl implements RuntimeProgram {
 
   constructor(options: {
     source: string
-    ir: CandidProgramIR
+    ir: ProgramIR
     program: CandidProgram
     formOptions?: FormSchemaOptions
   }) {
     this.source = options.source
+    assertProgramIRVersion(options.ir)
     this.ir = options.ir
     this.#program = options.program
     this.#formOptions = options.formOptions ?? {}
@@ -52,7 +57,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
     this.#typeSchemas = schemas.typeSchemas
     this.service = schemas.service
 
-    for (const method of this.ir.service.methods) {
+    for (const method of this.ir.actor.service.methods) {
       const schema = schemas.methodSchemas.get(method.name)
       if (!schema) {
         throw new Error(
@@ -94,7 +99,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   }
 
   listMethods(): RuntimeMethodInfo[] {
-    return this.ir.service.methods.map((method) => {
+    return this.ir.actor.service.methods.map((method) => {
       const info: RuntimeMethodInfo = {
         name: method.name,
         mode: method.mode,

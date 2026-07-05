@@ -20,6 +20,8 @@ import {
   opt,
   principal,
   query,
+  compositeQuery,
+  oneway,
   record,
   service,
   text,
@@ -29,7 +31,30 @@ import {
   type AnySchema,
   type ServiceSchema,
 } from "../schema.js"
-import type { CandidFieldIR, CandidProgramIR, CandidTypeIR } from "./types.js"
+import type {
+  CandidFieldIR,
+  CandidMethodMode,
+  CandidTypeIR,
+  ProgramIR,
+} from "./types.js"
+
+export const PROGRAM_IR_VERSION = 1
+
+export class UnsupportedProgramIRVersionError extends Error {
+  constructor(
+    readonly actual: number,
+    readonly expected = PROGRAM_IR_VERSION
+  ) {
+    super(`Unsupported ProgramIR version ${actual}; expected ${expected}`)
+    this.name = "UnsupportedProgramIRVersionError"
+  }
+}
+
+export function assertProgramIRVersion(ir: ProgramIR): void {
+  if (ir.version !== PROGRAM_IR_VERSION) {
+    throw new UnsupportedProgramIRVersionError(ir.version)
+  }
+}
 
 export type RuntimeSchemaSet = {
   typeSchemas: Map<string, AnySchema>
@@ -37,7 +62,17 @@ export type RuntimeSchemaSet = {
   service: ServiceSchema<any>
 }
 
-export function irToSchema(ir: CandidProgramIR): RuntimeSchemaSet {
+export function fieldObjectKey(field: CandidFieldIR): string {
+  switch (field.label.kind) {
+    case "named":
+      return field.label.name
+    case "id":
+    case "unnamed":
+      return `_${field.label.id}_`
+  }
+}
+
+export function irToSchema(ir: ProgramIR): RuntimeSchemaSet {
   const context = new SchemaContext(ir)
   return context.build()
 }
@@ -47,7 +82,7 @@ class SchemaContext {
   readonly #typeDocs = new Map<string, string[]>()
   readonly #schemas = new Map<string, AnySchema>()
 
-  constructor(readonly ir: CandidProgramIR) {
+  constructor(readonly ir: ProgramIR) {
     for (const declaration of ir.types) {
       this.#types.set(declaration.name, declaration.type)
       if (declaration.docs?.length) {
@@ -64,15 +99,12 @@ class SchemaContext {
     const methodSchemas = new Map<string, AnyMethodSchema>()
     const methods: Record<string, AnyMethodSchema> = {}
 
-    for (const method of this.ir.service.methods) {
+    for (const method of this.ir.actor.service.methods) {
       const args = method.args.map((arg) => this.typeSchema(arg.type, arg.docs))
       const returns = method.returns.map((arg) =>
         this.typeSchema(arg.type, arg.docs)
       )
-      const schema =
-        method.mode === "query" || method.mode === "composite_query"
-          ? query(args, returns)
-          : updateMethod(args, returns)
+      const schema = methodSchema(method.mode, args, returns)
       methodSchemas.set(method.name, schema)
       methods[method.name] = schema
     }
@@ -157,9 +189,15 @@ class SchemaContext {
       case "vec":
         return vec(this.typeSchema(type.inner))
       case "record":
-        return record(fieldsToSchemaMap(type.fields, this))
+        return record(
+          fieldsToSchemaMap(type.fields, this),
+          fieldsToCandidLabelMap(type.fields)
+        )
       case "variant":
-        return variant(fieldsToSchemaMap(type.fields, this))
+        return variant(
+          fieldsToSchemaMap(type.fields, this),
+          fieldsToCandidLabelMap(type.fields)
+        )
       case "ref":
         return lazy(() => this.namedSchema(type.name), type.name).meta({
           name: type.name,
@@ -174,6 +212,23 @@ class SchemaContext {
   }
 }
 
+function methodSchema(
+  mode: CandidMethodMode,
+  args: readonly AnySchema[],
+  returns: readonly AnySchema[]
+): AnyMethodSchema {
+  switch (mode) {
+    case "query":
+      return query(args, returns)
+    case "composite_query":
+      return compositeQuery(args, returns)
+    case "update":
+      return updateMethod(args, returns)
+    case "oneway":
+      return oneway(args, returns)
+  }
+}
+
 function docText(docs: readonly string[] | undefined): string | undefined {
   return docs && docs.length > 0 ? docs.join("\n") : undefined
 }
@@ -184,7 +239,17 @@ function fieldsToSchemaMap(
 ): Record<string, AnySchema> {
   const out: Record<string, AnySchema> = {}
   for (const field of fields) {
-    out[field.tsKey] = context.typeSchema(field.type, field.docs)
+    out[fieldObjectKey(field)] = context.typeSchema(field.type, field.docs)
+  }
+  return out
+}
+
+function fieldsToCandidLabelMap(
+  fields: readonly CandidFieldIR[]
+): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const field of fields) {
+    out[fieldObjectKey(field)] = candidFieldLabel(field)
   }
   return out
 }
@@ -264,7 +329,7 @@ export function candidTypeText(
       const returns = type.returns
         .map((arg) => candidTypeText(arg.type, context, refs))
         .join(", ")
-      const mode = type.mode && type.mode !== "update" ? ` ${type.mode}` : ""
+      const mode = type.mode !== "update" ? ` ${type.mode}` : ""
       return `func (${args}) -> (${returns})${mode}`
     }
     case "service":
@@ -289,15 +354,57 @@ function fieldTypeText(
   refs: Set<string>
 ): string {
   const type = candidTypeText(field.type, context, refs)
-  if (!field.name && /^_\d+_$/.test(field.tsKey)) {
-    return `${field.candidId} : ${type}`
-  }
+  const label = candidFieldLabel(field)
   if (field.type.kind === "null") {
-    return candidLabel(field.name ?? field.tsKey)
+    return label
   }
-  return `${candidLabel(field.name ?? field.tsKey)} : ${type}`
+  return `${label} : ${type}`
+}
+
+function candidFieldLabel(field: CandidFieldIR): string {
+  switch (field.label.kind) {
+    case "named":
+      return candidLabel(field.label.name)
+    case "id":
+    case "unnamed":
+      return String(field.label.id)
+  }
 }
 
 function candidLabel(value: string): string {
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(value) ? value : JSON.stringify(value)
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(value) && !CANDID_KEYWORDS.has(value)
+    ? value
+    : JSON.stringify(value)
 }
+
+const CANDID_KEYWORDS = new Set([
+  "blob",
+  "bool",
+  "decimal",
+  "empty",
+  "float32",
+  "float64",
+  "func",
+  "import",
+  "int",
+  "int8",
+  "int16",
+  "int32",
+  "int64",
+  "nat",
+  "nat8",
+  "nat16",
+  "nat32",
+  "nat64",
+  "null",
+  "opt",
+  "principal",
+  "query",
+  "record",
+  "reserved",
+  "service",
+  "text",
+  "type",
+  "variant",
+  "vec",
+])

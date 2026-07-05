@@ -1,9 +1,8 @@
-import { candidTypeText } from "./ir-to-schema.js"
+import { candidTypeText, fieldObjectKey } from "./ir-to-schema.js"
 import type {
   CandidArgIR,
   CandidFieldIR,
   CandidMethodIR,
-  CandidProgramIR,
   CandidTypeIR,
   CustomJSDocFormat,
   DocTag,
@@ -12,6 +11,7 @@ import type {
   FormValidationRule,
   FormVariantOption,
   MethodFormSchema,
+  ProgramIR,
   ProgramFormSchema,
 } from "./types.js"
 
@@ -21,12 +21,12 @@ type NormalizedCustomFormat = {
 }
 
 export function programToFormSchema(
-  ir: CandidProgramIR,
+  ir: ProgramIR,
   options: FormSchemaOptions = {}
 ): ProgramFormSchema {
   const context = new FormContext(ir, options)
   return {
-    methods: ir.service.methods.map((method) =>
+    methods: ir.actor.service.methods.map((method) =>
       methodToFormSchema(method, context)
     ),
   }
@@ -69,7 +69,7 @@ export class FormContext {
   readonly #customFormats = new Map<string, NormalizedCustomFormat>()
 
   constructor(
-    readonly ir: CandidProgramIR,
+    readonly ir: ProgramIR,
     options: FormSchemaOptions = {}
   ) {
     for (const declaration of ir.types) {
@@ -268,11 +268,12 @@ function recordFieldToFormField(
   field: CandidFieldIR,
   parent: FieldOptions
 ): FormField {
-  const name = field.name ?? field.tsKey
+  const name = fieldDisplayName(field)
+  const key = fieldObjectKey(field)
   return typeToField(field.type, {
     ...parent,
     name,
-    path: `${parent.path}${pathSegment(name)}`,
+    path: `${parent.path}${pathSegment(key)}`,
     required: true,
     docs: field.docs,
     rawDocs: field.rawDocs,
@@ -284,7 +285,8 @@ function variantOption(
   field: CandidFieldIR,
   parent: FieldOptions
 ): FormVariantOption {
-  const name = field.name ?? field.tsKey
+  const name = fieldDisplayName(field)
+  const key = fieldObjectKey(field)
   const option: FormVariantOption = {
     name,
     label: labelFromDocTags(field.docTags) ?? name,
@@ -305,7 +307,7 @@ function variantOption(
     option.field = typeToField(field.type, {
       ...parent,
       name,
-      path: `${parent.path}${pathSegment(name)}`,
+      path: `${parent.path}${pathSegment(key)}`,
       required: true,
       docs: field.docs,
       rawDocs: field.rawDocs,
@@ -313,6 +315,10 @@ function variantOption(
     })
   }
   return option
+}
+
+function fieldDisplayName(field: CandidFieldIR): string {
+  return field.label.kind === "named" ? field.label.name : fieldObjectKey(field)
 }
 
 function baseField(

@@ -16,10 +16,11 @@ use candid_parser::{check_file, check_prog};
 pub use config::{CustomFormat, GeneratorConfig};
 pub use core::{parse_summary_json, CandidProgram, MethodSummary, ProgramSummary};
 pub use docs::{DocBlock, DocTag};
-pub use generator::generate_typescript;
+pub use generator::{generate_typescript, TypeScriptEmitter};
 pub use ir::{
-    CandidArgIr, CandidFieldIr, CandidMethodIr, CandidProgramIr, CandidServiceIr, CandidTypeDeclIr,
-    CandidTypeIr,
+    CandidActorIr, CandidArgIr, CandidFieldIr, CandidFieldLabelIr, CandidMethodIr,
+    CandidMethodModeIr, CandidServiceIr, CandidTypeDeclIr, CandidTypeIr, ProgramIr,
+    PROGRAM_IR_VERSION,
 };
 
 #[derive(Debug)]
@@ -53,7 +54,8 @@ pub fn parse_candid_file(path: impl AsRef<Path>) -> Result<ParsedCandid> {
 
 pub fn generate_typescript_from_source(source: &str, config: &GeneratorConfig) -> Result<String> {
     let parsed = parse_candid_source(source)?;
-    generate_typescript(&parsed.env, &parsed.actor, &parsed.prog, config)
+    let program = ir::program_ir_from_parts(&parsed.env, parsed.actor.as_ref(), &parsed.prog)?;
+    generate_typescript(&program, config)
 }
 
 pub fn generate_typescript_from_file(
@@ -61,5 +63,6 @@ pub fn generate_typescript_from_file(
     config: &GeneratorConfig,
 ) -> Result<String> {
     let parsed = parse_candid_file(path)?;
-    generate_typescript(&parsed.env, &parsed.actor, &parsed.prog, config)
+    let program = ir::program_ir_from_parts(&parsed.env, parsed.actor.as_ref(), &parsed.prog)?;
+    generate_typescript(&program, config)
 }

@@ -7,7 +7,7 @@ use candid_parser::{parse_idl_args, utils};
 use serde::Serialize;
 
 use crate::parse_candid_source;
-use crate::{ir, CandidProgramIr};
+use crate::{ir, ProgramIr};
 
 #[derive(Debug)]
 pub struct CandidProgram {
@@ -77,7 +77,7 @@ impl CandidProgram {
         )
     }
 
-    pub fn ir(&self) -> Result<CandidProgramIr> {
+    pub fn ir(&self) -> Result<ProgramIr> {
         ir::program_ir(&self.env, &self.actor, &self.prog)
     }
 

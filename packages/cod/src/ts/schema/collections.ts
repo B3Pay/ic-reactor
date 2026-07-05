@@ -151,14 +151,20 @@ export function tuple<const Items extends readonly AnySchema[]>(
  * @returns Schema for app and wire objects with the same field names.
  */
 export function record<const Fields extends SchemaFields>(
-  fields: Fields
+  fields: Fields,
+  candidLabels: Partial<Record<StringKeyOf<Fields>, string>> = {}
 ): Schema<RecordWire<Fields>, RecordApp<Fields>> {
   const keys = Object.keys(fields) as Array<StringKeyOf<Fields>>
   const fieldMap = new Map(keys.map((key) => [key, fields[key]!] as const))
+  const labelForKey = (key: StringKeyOf<Fields>) =>
+    candidLabels[key] ?? candidLabel(key)
+  const keyByLabel = new Map(
+    keys.map((key) => [labelForKey(key), key] as const)
+  )
 
   return new Schema<RecordWire<Fields>, RecordApp<Fields>>({
     did: () =>
-      `record { ${keys.map((key) => `${candidLabel(key)} : ${fields[key]!.wireDid()}`).join("; ")} }`,
+      `record { ${keys.map((key) => `${labelForKey(key)} : ${fields[key]!.wireDid()}`).join("; ")} }`,
     toWire: (value) => {
       const wire: Partial<RecordWire<Fields>> = {}
       for (const key of keys) {
@@ -176,7 +182,7 @@ export function record<const Fields extends SchemaFields>(
     wireToText: (value) => {
       const parts = keys.map(
         (key) =>
-          `${candidLabel(key)} = ${fields[key]!.wireToCandid(value[key])}`
+          `${labelForKey(key)} = ${fields[key]!.wireToCandid(value[key])}`
       )
       return `record { ${parts.join("; ")} }`
     },
@@ -188,13 +194,17 @@ export function record<const Fields extends SchemaFields>(
 
       while (!parser.consumeChar("}")) {
         const label = parser.parseLabel()
-        const field = fieldMap.get(label as StringKeyOf<Fields>)
+        const key = keyByLabel.get(label) ?? keyByLabel.get(candidLabel(label))
+        if (!key) {
+          throw parser.error(`unexpected record field ${JSON.stringify(label)}`)
+        }
+        const field = fieldMap.get(key)
         if (!field) {
           throw parser.error(`unexpected record field ${JSON.stringify(label)}`)
         }
         parser.expectChar("=")
-        wire[label as keyof Fields] = field.parseWire(parser)
-        seen.add(label)
+        wire[key as keyof Fields] = field.parseWire(parser)
+        seen.add(key)
         parser.consumeChar(";")
       }
 
@@ -218,10 +228,16 @@ export function record<const Fields extends SchemaFields>(
  * @returns Schema for single-key variant objects.
  */
 export function variant<const Fields extends SchemaFields>(
-  fields: Fields
+  fields: Fields,
+  candidLabels: Partial<Record<StringKeyOf<Fields>, string>> = {}
 ): Schema<VariantWire<Fields>, VariantApp<Fields>> {
   const keys = Object.keys(fields) as Array<StringKeyOf<Fields>>
   const fieldMap = new Map(keys.map((key) => [key, fields[key]!] as const))
+  const labelForKey = (key: StringKeyOf<Fields>) =>
+    candidLabels[key] ?? candidLabel(key)
+  const keyByLabel = new Map(
+    keys.map((key) => [labelForKey(key), key] as const)
+  )
 
   return new Schema<VariantWire<Fields>, VariantApp<Fields>>({
     did: () =>
@@ -229,8 +245,8 @@ export function variant<const Fields extends SchemaFields>(
         .map((key) => {
           const field = fields[key]!
           return field.wireDid() === "null"
-            ? candidLabel(key)
-            : `${candidLabel(key)} : ${field.wireDid()}`
+            ? labelForKey(key)
+            : `${labelForKey(key)} : ${field.wireDid()}`
         })
         .join("; ")} }`,
     toWire: (value) => {
@@ -274,22 +290,26 @@ export function variant<const Fields extends SchemaFields>(
         throw new Error(`unknown variant case ${JSON.stringify(key)}`)
       }
       if (field.wireDid() === "null") {
-        return `variant { ${candidLabel(key)} }`
+        return `variant { ${labelForKey(key)} }`
       }
-      return `variant { ${candidLabel(key)} = ${field.wireToCandid(wireValue)} }`
+      return `variant { ${labelForKey(key)} = ${field.wireToCandid(wireValue)} }`
     },
     textToWire: (parser) => {
       parser.expectWord("variant")
       parser.expectChar("{")
-      const label = parser.parseLabel() as StringKeyOf<Fields>
-      const field = fieldMap.get(label)
+      const label = parser.parseLabel()
+      const key = keyByLabel.get(label) ?? keyByLabel.get(candidLabel(label))
+      if (!key) {
+        throw parser.error(`unexpected variant case ${JSON.stringify(label)}`)
+      }
+      const field = fieldMap.get(key)
       if (!field) {
         throw parser.error(`unexpected variant case ${JSON.stringify(label)}`)
       }
       const value = parser.consumeChar("=") ? field.parseWire(parser) : null
       parser.consumeChar(";")
       parser.expectChar("}")
-      return { [label]: value } as VariantWire<Fields>
+      return { [key]: value } as VariantWire<Fields>
     },
     codecs: [],
   })

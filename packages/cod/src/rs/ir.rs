@@ -29,7 +29,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::docs::{DocBlock, DocTag};
 
-
 pub const PROGRAM_IR_VERSION: u16 = 1;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -66,7 +65,6 @@ pub struct CandidTypeDeclIr {
 pub struct CandidServiceIr {
     pub methods: Vec<CandidMethodIr>,
 }
-
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -157,10 +155,8 @@ pub enum CandidTypeIr {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CandidFieldIr {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub label: CandidFieldLabelIr,
     pub candid_id: u32,
-    pub ts_key: String,
     #[serde(rename = "type")]
     pub typ: CandidTypeIr,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -171,7 +167,23 @@ pub struct CandidFieldIr {
     pub doc_tags: Vec<DocTag>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum CandidFieldLabelIr {
+    Named { name: String },
+    Id { id: u32 },
+    Unnamed { id: u32 },
+}
+
 pub fn program_ir(env: &TypeEnv, actor: &Type, prog: &IDLMergedProg) -> Result<ProgramIr> {
+    program_ir_from_parts(env, Some(actor), prog)
+}
+
+pub fn program_ir_from_parts(
+    env: &TypeEnv,
+    actor: Option<&Type>,
+    prog: &IDLMergedProg,
+) -> Result<ProgramIr> {
     let types = env
         .to_sorted_iter()
         .map(|(name, ty)| {
@@ -189,7 +201,15 @@ pub fn program_ir(env: &TypeEnv, actor: &Type, prog: &IDLMergedProg) -> Result<P
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let actor = actor_ir(env, actor, prog)?;
+    let actor = match actor {
+        Some(actor) => actor_ir(env, actor, prog)?,
+        None => CandidActorIr {
+            init_args: Vec::new(),
+            service: CandidServiceIr {
+                methods: Vec::new(),
+            },
+        },
+    };
 
     Ok(ProgramIr {
         version: PROGRAM_IR_VERSION,
@@ -381,15 +401,22 @@ fn fields_ir(
 ) -> Result<Vec<CandidFieldIr>> {
     fields
         .iter()
-        .map(|field| {
-            let syntax_field = find_syntax_field(syntax_fields, &field.id);
+        .enumerate()
+        .map(|(index, field)| {
+            let syntax_field = find_syntax_field(syntax_fields, &field.id).or_else(|| {
+                syntax_fields
+                    .and_then(|fields| fields.get(index))
+                    .filter(|field| matches!(field.label, Label::Unnamed(_)))
+            });
             let doc = syntax_field
                 .map(|field| doc_meta(&field.docs))
                 .unwrap_or_default();
+            let label = syntax_field
+                .map(|field| field_label_from_label(&field.label))
+                .unwrap_or_else(|| field_label(&field.id));
             Ok(CandidFieldIr {
-                name: label_name(&field.id),
+                label,
                 candid_id: field.id.get_id(),
-                ts_key: ts_key(&field.id),
                 typ: type_ir(env, &field.ty, syntax_field.map(|field| &field.typ))?,
                 docs: doc.docs,
                 raw_docs: doc.raw_docs,
@@ -439,17 +466,11 @@ fn doc_meta(lines: &[String]) -> DocMeta {
     }
 }
 
-fn label_name(label: &SharedLabel) -> Option<String> {
+fn field_label(label: &SharedLabel) -> CandidFieldLabelIr {
     match label.as_ref() {
-        Label::Named(name) => Some(name.clone()),
-        Label::Id(_) | Label::Unnamed(_) => None,
-    }
-}
-
-fn ts_key(label: &SharedLabel) -> String {
-    match label.as_ref() {
-        Label::Named(name) => name.clone(),
-        Label::Id(id) | Label::Unnamed(id) => format!("_{id}_"),
+        Label::Named(name) => CandidFieldLabelIr::Named { name: name.clone() },
+        Label::Id(id) => CandidFieldLabelIr::Id { id: *id },
+        Label::Unnamed(id) => CandidFieldLabelIr::Unnamed { id: *id },
     }
 }
 
@@ -489,7 +510,16 @@ fn find_syntax_field<'a>(
     fields: Option<&'a [candid_parser::syntax::TypeField]>,
     label: &SharedLabel,
 ) -> Option<&'a candid_parser::syntax::TypeField> {
-    fields?.iter().find(|field| field.label == **label)
+    let id = label.get_id();
+    fields?.iter().find(|field| field.label.get_id() == id)
+}
+
+fn field_label_from_label(label: &Label) -> CandidFieldLabelIr {
+    match label {
+        Label::Named(name) => CandidFieldLabelIr::Named { name: name.clone() },
+        Label::Id(id) => CandidFieldLabelIr::Id { id: *id },
+        Label::Unnamed(id) => CandidFieldLabelIr::Unnamed { id: *id },
+    }
 }
 
 fn class_inner_syntax(syntax: Option<&IDLType>) -> Option<&IDLType> {
@@ -527,10 +557,7 @@ service : {
 
         assert_eq!(ir.types[0].name, "Account");
         assert_eq!(ir.types[0].docs, vec!["Account docs."]);
-        assert_eq!(
-            ir.actor.service.methods[0].mode,
-            CandidMethodModeIr::Query
-        );
+        assert_eq!(ir.actor.service.methods[0].mode, CandidMethodModeIr::Query);
         assert_eq!(ir.actor.service.methods[0].docs, vec!["Balance docs."]);
         assert!(matches!(
             ir.actor.service.methods[0].args[0].typ,
@@ -574,10 +601,7 @@ service : {
         let CandidTypeIr::Record { fields } = &contact.typ else {
             panic!("expected Contact record");
         };
-        let email = fields
-            .iter()
-            .find(|field| field.name.as_deref() == Some("email"))
-            .unwrap();
+        let email = fields.iter().find(|field| named(field, "email")).unwrap();
         assert_eq!(email.docs, vec!["Email docs."]);
         assert_eq!(
             email.raw_docs,
@@ -586,10 +610,7 @@ service : {
         assert_eq!(email.doc_tags[0].name, "format");
         assert_eq!(email.doc_tags[0].value, "email Invalid email");
 
-        let phone = fields
-            .iter()
-            .find(|field| field.name.as_deref() == Some("phone"))
-            .unwrap();
+        let phone = fields.iter().find(|field| named(field, "phone")).unwrap();
         assert_eq!(phone.docs, vec!["Phone docs."]);
         assert_eq!(phone.doc_tags[0].name, "format");
         assert_eq!(phone.doc_tags[0].value, "phone-number Must be valid");
@@ -616,9 +637,85 @@ service : (text, opt principal) -> {
         assert_eq!(ir.version, PROGRAM_IR_VERSION);
         assert_eq!(ir.actor.init_args.len(), 2);
         assert_eq!(ir.actor.service.methods.len(), 1);
+        assert_eq!(ir.actor.service.methods[0].mode, CandidMethodModeIr::Query);
+    }
+
+    #[test]
+    fn preserves_all_method_modes() {
+        let parsed = parse_candid_source(
+            r#"
+service : {
+  read : () -> (text) query;
+  stream : () -> (text) composite_query;
+  write : (text) -> ();
+  notify : (text) -> () oneway;
+}
+"#,
+        )
+        .unwrap();
+        let actor = parsed.actor.as_ref().unwrap();
+        let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
+
+        assert_eq!(method_mode(&ir, "read"), CandidMethodModeIr::Query);
         assert_eq!(
-            ir.actor.service.methods[0].mode,
-            CandidMethodModeIr::Query
+            method_mode(&ir, "stream"),
+            CandidMethodModeIr::CompositeQuery
         );
+        assert_eq!(method_mode(&ir, "write"), CandidMethodModeIr::Update);
+        assert_eq!(method_mode(&ir, "notify"), CandidMethodModeIr::Oneway);
+    }
+
+    #[test]
+    fn json_round_trips_and_preserves_field_labels() {
+        let parsed = parse_candid_source(
+            r#"
+type Fields = record {
+  text;
+  named : text;
+  10 : nat;
+};
+
+service : { get : () -> (Fields) query; }
+"#,
+        )
+        .unwrap();
+        let actor = parsed.actor.as_ref().unwrap();
+        let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
+
+        let json = serde_json::to_string(&ir).unwrap();
+        let round_trip: ProgramIr = serde_json::from_str(&json).unwrap();
+        assert_eq!(round_trip, ir);
+
+        let fields_decl = round_trip
+            .types
+            .iter()
+            .find(|decl| decl.name == "Fields")
+            .unwrap();
+        let CandidTypeIr::Record { fields } = &fields_decl.typ else {
+            panic!("expected Fields record");
+        };
+        assert!(fields.iter().any(
+            |field| matches!(&field.label, CandidFieldLabelIr::Named { name } if name == "named")
+        ));
+        assert!(fields
+            .iter()
+            .any(|field| matches!(field.label, CandidFieldLabelIr::Id { id: 10 })));
+        assert!(fields
+            .iter()
+            .any(|field| matches!(field.label, CandidFieldLabelIr::Unnamed { id: 0 })));
+    }
+
+    fn named(field: &CandidFieldIr, expected: &str) -> bool {
+        matches!(&field.label, CandidFieldLabelIr::Named { name } if name == expected)
+    }
+
+    fn method_mode(ir: &ProgramIr, name: &str) -> CandidMethodModeIr {
+        ir.actor
+            .service
+            .methods
+            .iter()
+            .find(|method| method.name == name)
+            .unwrap()
+            .mode
     }
 }

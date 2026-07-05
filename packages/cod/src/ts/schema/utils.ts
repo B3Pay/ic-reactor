@@ -137,8 +137,42 @@ export function assertByte(value: number): void {
  * @returns Identifier text or quoted string label.
  */
 export function candidLabel(value: string): string {
-  return isIdentifier(value) ? value : JSON.stringify(value)
+  return isIdentifier(value) && !CANDID_KEYWORDS.has(value)
+    ? value
+    : JSON.stringify(value)
 }
+
+const CANDID_KEYWORDS = new Set([
+  "blob",
+  "bool",
+  "decimal",
+  "empty",
+  "float32",
+  "float64",
+  "func",
+  "import",
+  "int",
+  "int8",
+  "int16",
+  "int32",
+  "int64",
+  "nat",
+  "nat8",
+  "nat16",
+  "nat32",
+  "nat64",
+  "null",
+  "opt",
+  "principal",
+  "query",
+  "record",
+  "reserved",
+  "service",
+  "text",
+  "type",
+  "variant",
+  "vec",
+])
 
 /**
  * Checks whether a string is valid identifier text for this schema runtime.

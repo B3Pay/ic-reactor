@@ -55,9 +55,9 @@ import {
 import type { ActorFor, ServiceSchema } from "./schema.js"
 import type { MethodMap } from "./schema/methods.js"
 import type {
-  CandidProgramIR,
   CompileDidOptions,
   DynamicActor,
+  ProgramIR,
   RuntimeActorOptions,
 } from "./runtime/types.js"
 export * from "./schema.js"
@@ -324,10 +324,10 @@ export class CandidProgram {
    *
    * @returns Normalized Candid program IR.
    */
-  ir(): CandidProgramIR {
+  ir(): ProgramIR {
     return JSON.parse(
       (this.#inner as unknown as { irJson(): string }).irJson()
-    ) as CandidProgramIR
+    ) as ProgramIR
   }
 
   /**
@@ -627,7 +627,7 @@ export namespace c {
     import("./runtime/types.js").FormValidationRule
 
   /** Normalized Candid program IR. */
-  export type ProgramIR = import("./runtime/types.js").CandidProgramIR
+  export type ProgramIR = import("./runtime/types.js").ProgramIR
 
   /** Runtime method metadata. */
   export type RuntimeMethodInfo = import("./runtime/types.js").RuntimeMethodInfo

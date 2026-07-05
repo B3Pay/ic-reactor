@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { CandidValidationError, c, type FormField } from "./index.js"
+import { PROGRAM_IR_VERSION, fieldObjectKey } from "./runtime/ir-to-schema.js"
+import { RuntimeProgramImpl } from "./runtime/program.js"
 import {
   initWasmForTest,
   programForTest,
@@ -70,6 +72,41 @@ service : { save : (Contact) -> () };
     assert.match(generated, /export const hello_world = c\.service/)
     assert.doesNotMatch(generated, /export const canister = c\.service/)
   })
+
+  it("validates supported ProgramIR version at the runtime boundary", () => {
+    const did = `service : { ping : () -> () query }`
+    const raw = programForTest(did)
+
+    const runtime = new RuntimeProgramImpl({
+      source: did,
+      ir: raw.ir(),
+      program: raw,
+    })
+
+    assert.equal(runtime.ir.version, PROGRAM_IR_VERSION)
+  })
+
+  it("rejects unsupported future ProgramIR versions", () => {
+    const did = `service : { ping : () -> () query }`
+    const raw = programForTest(did)
+    const ir = { ...raw.ir(), version: PROGRAM_IR_VERSION + 1 }
+
+    assert.throws(
+      () => new RuntimeProgramImpl({ source: did, ir, program: raw }),
+      /Unsupported ProgramIR version/
+    )
+  })
+
+  it("rejects unsupported older ProgramIR versions", () => {
+    const did = `service : { ping : () -> () query }`
+    const raw = programForTest(did)
+    const ir = { ...raw.ir(), version: PROGRAM_IR_VERSION - 1 }
+
+    assert.throws(
+      () => new RuntimeProgramImpl({ source: did, ir, program: raw }),
+      /Unsupported ProgramIR version/
+    )
+  })
 })
 
 describe("IR to schema", () => {
@@ -105,6 +142,65 @@ describe("IR to schema", () => {
       list.toCandid({ head: 1n, tail: null }),
       "opt (record { head = 1 : nat; tail = null })"
     )
+  })
+
+  it("derives object keys from language-neutral field labels", async () => {
+    const program = await c.compileDid(`
+type Fields = record {
+  text;
+  named : text;
+  10 : nat;
+  "type" : bool;
+  "not-id" : int;
+};
+service : { save : (Fields) -> () };
+`)
+    const fields = program.ir.types.find((type) => type.name === "Fields")
+    assert.equal(fields?.type.kind, "record")
+    if (fields?.type.kind !== "record") {
+      throw new Error("expected Fields record")
+    }
+
+    assert.deepEqual(
+      fields.type.fields
+        .map((field) => ({ label: field.label, key: fieldObjectKey(field) }))
+        .sort((left, right) => left.key.localeCompare(right.key)),
+      [
+        { label: { kind: "unnamed", id: 0 }, key: "_0_" },
+        { label: { kind: "id", id: 10 }, key: "_10_" },
+        { label: { kind: "named", name: "named" }, key: "named" },
+        { label: { kind: "named", name: "not-id" }, key: "not-id" },
+        { label: { kind: "named", name: "type" }, key: "type" },
+      ].sort((left, right) => left.key.localeCompare(right.key))
+    )
+  })
+
+  it("preserves object encoding and decoding for derived field keys", async () => {
+    const did = `
+type Fields = record {
+  text;
+  10 : nat;
+  "not-id" : int;
+  "type" : bool;
+};
+service : { save : (Fields) -> (Fields) };
+`
+    const program = await c.compileDid(did)
+    const raw = programForTest(did)
+    const value = {
+      _0_: "tuple-ish",
+      _10_: 10n,
+      "not-id": -1n,
+      type: true,
+    }
+
+    const encoded = program.method("save").encodeArgs([value])
+    const expected = raw.encodeMethodArgs(
+      "save",
+      `(record { 0 = "tuple-ish"; 10 = 10 : nat; "not-id" = -1 : int; "type" = true })`
+    )
+    assertBytesEqual(encoded, expected)
+    assert.deepEqual(program.method("save").decodeArgs(encoded), [value])
   })
 })
 
@@ -411,8 +507,12 @@ describe("form schema", () => {
       throw new Error("expected Contact record")
     }
 
-    const emailIr = contact.type.fields.find((field) => field.name === "email")
-    const phoneIr = contact.type.fields.find((field) => field.name === "phone")
+    const emailIr = contact.type.fields.find(
+      (field) => field.label.kind === "named" && field.label.name === "email"
+    )
+    const phoneIr = contact.type.fields.find(
+      (field) => field.label.kind === "named" && field.label.name === "phone"
+    )
     assert.deepEqual(emailIr?.docs, undefined)
     assert.deepEqual(emailIr?.rawDocs, ["@format email Invalid email"])
     assert.deepEqual(emailIr?.docTags, [

@@ -100,6 +100,11 @@ export class CandidTextParser {
     if (this.input[this.#position] === '"') {
       return this.parseQuotedText()
     }
+    const numeric = /^[0-9][0-9_]*/.exec(this.input.slice(this.#position))
+    if (numeric) {
+      this.#position += numeric[0].length
+      return numeric[0].replaceAll("_", "")
+    }
     return this.parseIdentifier()
   }
 

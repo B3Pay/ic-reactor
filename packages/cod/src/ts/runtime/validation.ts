@@ -4,6 +4,7 @@ import type {
   CandidMethodIR,
   CandidTypeIR,
 } from "./types.js"
+import { fieldObjectKey } from "./ir-to-schema.js"
 
 type TypeContext = {
   typeByName(name: string): CandidTypeIR | undefined
@@ -220,7 +221,7 @@ function validateRecord(
 
   const record = value as Record<string, unknown>
   for (const field of fields) {
-    const key = field.tsKey
+    const key = fieldObjectKey(field)
     const childPath = `${path}${pathSegment(key)}`
     const hasField = Object.prototype.hasOwnProperty.call(record, key)
     const fieldValue = hasField ? record[key] : undefined
@@ -250,7 +251,9 @@ function validateVariant(
   }
 
   const [caseName, caseValue] = entries[0]!
-  const field = fields.find((candidate) => candidate.tsKey === caseName)
+  const field = fields.find(
+    (candidate) => fieldObjectKey(candidate) === caseName
+  )
   if (!field) {
     fail(`${path}${pathSegment(caseName)}`, variantExpected(fields), caseValue)
   }
@@ -315,7 +318,7 @@ function fieldExpected(field: CandidFieldIR): string {
 }
 
 function variantExpected(fields: readonly CandidFieldIR[]): string {
-  return `variant case ${fields.map((field) => JSON.stringify(field.tsKey)).join(" | ")}`
+  return `variant case ${fields.map((field) => JSON.stringify(fieldObjectKey(field))).join(" | ")}`
 }
 
 function pathSegment(key: string): string {

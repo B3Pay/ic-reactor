@@ -10,10 +10,10 @@ import { validateMethodArgs, validateMethodReturn } from "./validation.js"
 import { methodToWorkflowNode } from "./workflow.js"
 import type {
   CandidMethodIR,
-  CandidProgramIR,
   DocTag,
   FormSchemaOptions,
   MethodFormSchema,
+  ProgramIR,
   RuntimeArgInfo,
   RuntimeMethod,
   RuntimeMethodCallOptions,
@@ -30,7 +30,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   readonly docTags?: readonly DocTag[]
 
   readonly #program: CandidProgram
-  readonly #ir: CandidProgramIR
+  readonly #ir: ProgramIR
   readonly #methodIr: CandidMethodIR
   readonly #schema: AnyMethodSchema
   readonly #formOptions: FormSchemaOptions
@@ -38,7 +38,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
 
   constructor(options: {
     program: CandidProgram
-    ir: CandidProgramIR
+    ir: ProgramIR
     methodIr: CandidMethodIR
     schema: AnyMethodSchema
     formOptions?: FormSchemaOptions

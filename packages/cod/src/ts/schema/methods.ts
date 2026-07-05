@@ -5,7 +5,7 @@ import { assertTupleLength, candidLabel } from "./utils.js"
 /**
  * Candid service method call mode.
  */
-export type MethodMode = "query" | "update"
+export type MethodMode = "query" | "update" | "composite_query" | "oneway"
 
 /**
  * Accepted return schema input for method constructors.
@@ -118,7 +118,7 @@ export class MethodSchema<
    * @returns Candid service method field text.
    */
   toDid(name: string): string {
-    const mode = this.mode === "query" ? " query" : ""
+    const mode = this.mode === "update" ? "" : ` ${this.mode}`
     return `${candidLabel(name)} : (${this.argsDid()}) -> (${this.returnsDid()})${mode}`
   }
 
@@ -246,6 +246,29 @@ export function query<
 }
 
 /**
+ * Creates a composite query method schema.
+ *
+ * @typeParam Args - Argument schema tuple.
+ * @typeParam Returns - Return schema input.
+ * @param args - Ordered argument schemas.
+ * @param returns - Optional return schema or return schema tuple.
+ * @returns Composite query method schema.
+ */
+export function compositeQuery<
+  const Args extends readonly AnySchema[],
+  const Returns extends ReturnInput = undefined,
+>(
+  args: Args,
+  returns?: Returns
+): MethodSchema<Args, NormalizeReturns<Returns>, "composite_query"> {
+  return new MethodSchema(
+    args,
+    normalizeReturns(returns as Returns),
+    "composite_query"
+  )
+}
+
+/**
  * Creates an update method schema.
  *
  * @typeParam Args - Argument schema tuple.
@@ -262,6 +285,25 @@ export function update<
   returns?: Returns
 ): MethodSchema<Args, NormalizeReturns<Returns>, "update"> {
   return new MethodSchema(args, normalizeReturns(returns as Returns), "update")
+}
+
+/**
+ * Creates a oneway method schema.
+ *
+ * @typeParam Args - Argument schema tuple.
+ * @typeParam Returns - Return schema input.
+ * @param args - Ordered argument schemas.
+ * @param returns - Optional return schema or return schema tuple.
+ * @returns Oneway method schema.
+ */
+export function oneway<
+  const Args extends readonly AnySchema[],
+  const Returns extends ReturnInput = undefined,
+>(
+  args: Args,
+  returns?: Returns
+): MethodSchema<Args, NormalizeReturns<Returns>, "oneway"> {
+  return new MethodSchema(args, normalizeReturns(returns as Returns), "oneway")
 }
 
 /**
