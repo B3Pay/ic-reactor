@@ -1,4 +1,5 @@
-import { candidTypeText, fieldObjectKey } from "./ir-to-schema.js"
+import { candidTypeText } from "./candid-format.js"
+import { fieldObjectKey } from "./program-ir.js"
 import type {
   CandidArgIR,
   CandidFieldIR,
@@ -26,7 +27,7 @@ export function programToFormSchema(
 ): ProgramFormSchema {
   const context = new FormContext(ir, options)
   return {
-    methods: ir.actor.service.methods.map((method) =>
+    methods: (ir.actor?.service.methods ?? []).map((method) =>
       methodToFormSchema(method, context)
     ),
   }

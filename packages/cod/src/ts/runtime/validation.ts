@@ -4,7 +4,7 @@ import type {
   CandidMethodIR,
   CandidTypeIR,
 } from "./types.js"
-import { fieldObjectKey } from "./ir-to-schema.js"
+import { fieldObjectKey } from "./program-ir.js"
 
 type TypeContext = {
   typeByName(name: string): CandidTypeIR | undefined

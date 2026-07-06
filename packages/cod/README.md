@@ -13,7 +13,7 @@ The intended architecture is:
 
 ```ts
 import { readFileSync } from "node:fs"
-import { c } from "cod"
+import { c } from "@ic-reactor/cod"
 
 await c.init(readFileSync("./pkg/cod_core_bg.wasm"))
 
@@ -42,7 +42,7 @@ The TypeScript layer does not reimplement Candid serialization. It passes `.did`
 
 ```ts
 import { readFileSync } from "node:fs"
-import { c } from "cod"
+import { c } from "@ic-reactor/cod"
 
 await c.init(readFileSync("./node_modules/cod/pkg/cod_core_bg.wasm"))
 

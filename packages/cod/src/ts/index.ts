@@ -20,6 +20,7 @@ import {
   int64,
   lazy,
   method,
+  compositeQuery,
   nat,
   nat8,
   nat16,
@@ -28,6 +29,7 @@ import {
   null_,
   opt,
   principal,
+  oneway,
   query,
   record,
   service,
@@ -537,6 +539,12 @@ export const c = {
 
   /** Creates a query method schema. */
   query,
+
+  /** Creates a composite query method schema. */
+  compositeQuery,
+
+  /** Creates a oneway method schema. */
+  oneway,
 
   /** Creates an update method schema. */
   update,

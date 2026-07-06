@@ -88,6 +88,9 @@ export class MethodSchema<
    * @param mode - Method call mode.
    */
   constructor(args: Args, returns: Returns, mode: Mode) {
+    if (mode === "oneway" && returns.length > 0) {
+      throw new Error("Candid oneway methods cannot return values")
+    }
     this.args = args
     this.returns = returns
     this.mode = mode
@@ -291,19 +294,13 @@ export function update<
  * Creates a oneway method schema.
  *
  * @typeParam Args - Argument schema tuple.
- * @typeParam Returns - Return schema input.
  * @param args - Ordered argument schemas.
- * @param returns - Optional return schema or return schema tuple.
  * @returns Oneway method schema.
  */
-export function oneway<
-  const Args extends readonly AnySchema[],
-  const Returns extends ReturnInput = undefined,
->(
-  args: Args,
-  returns?: Returns
-): MethodSchema<Args, NormalizeReturns<Returns>, "oneway"> {
-  return new MethodSchema(args, normalizeReturns(returns as Returns), "oneway")
+export function oneway<const Args extends readonly AnySchema[]>(
+  args: Args
+): MethodSchema<Args, readonly [], "oneway"> {
+  return new MethodSchema(args, [], "oneway")
 }
 
 /**

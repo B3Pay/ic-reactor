@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { CandidValidationError, c, type FormField } from "./index.js"
-import { PROGRAM_IR_VERSION, fieldObjectKey } from "./runtime/ir-to-schema.js"
+import { fieldObjectKey, PROGRAM_IR_VERSION } from "./runtime/program-ir.js"
 import { RuntimeProgramImpl } from "./runtime/program.js"
 import {
   initWasmForTest,
@@ -57,10 +57,75 @@ type Contact = record { email : text };
 service : { save : (Contact) -> () };
 `)
 
+    assert.match(generated, /import \{ c \} from "@ic-reactor\/cod";/)
+    assert.doesNotMatch(generated, /import \{ c \} from "cod";/)
     assert.match(generated, /export const Contact = c\.record/)
     assert.match(generated, /export type Contact = c\.Infer<typeof Contact>/)
     assert.match(generated, /export const canister = c\.service/)
     assert.doesNotMatch(generated, /export function createCandidProgram/)
+  })
+
+  it("preserves type-only DID as actor null", async () => {
+    const program = await c.compileDid(`
+type User = record {
+  name : text;
+};
+`)
+
+    assert.equal(program.ir.actor, null)
+    assert.deepEqual(
+      program.listTypes().map((type) => type.name),
+      ["User"]
+    )
+    assert.deepEqual(program.listMethods(), [])
+    assert.deepEqual(program.toFormSchema(), { methods: [] })
+    assert.deepEqual(program.toWorkflowSchema(), { nodes: [] })
+    assert.throws(() => program.method("anything"), /no service actor/)
+    assert.throws(
+      () =>
+        program.createActor({
+          canisterId: "aaaaa-aa",
+          agent: {},
+        }),
+      /no service actor/
+    )
+  })
+
+  it("preserves empty actor DID as a present actor with no methods", async () => {
+    const program = await c.compileDid(`service : {}`)
+
+    assert.ok(program.ir.actor)
+    assert.deepEqual(program.ir.actor.initArgs, [])
+    assert.deepEqual(program.ir.actor.service.methods, [])
+    assert.deepEqual(program.listMethods(), [])
+  })
+
+  it("preserves normal actor and service constructor in ProgramIR", async () => {
+    const program = await c.compileDid(`
+service : (text, opt principal) -> {
+  greet : (text) -> (text) query;
+}
+`)
+
+    assert.ok(program.ir.actor)
+    assert.equal(program.ir.actor.initArgs.length, 2)
+    assert.deepEqual(
+      program.ir.actor.service.methods.map((method) => method.name),
+      ["greet"]
+    )
+  })
+
+  it("generates no service export for absent actor and an empty service for empty actor", () => {
+    const typeOnly = c.generateTypescript(`
+type User = record {
+  name : text;
+};
+`)
+    const emptyActor = c.generateTypescript(`service : {}`)
+
+    assert.match(typeOnly, /export const User = c\.record/)
+    assert.doesNotMatch(typeOnly, /export const canister = c\.service/)
+    assert.match(emptyActor, /export const canister = c\.service\(\{/)
   })
 
   it("uses a configured canister name when generating TypeScript", () => {

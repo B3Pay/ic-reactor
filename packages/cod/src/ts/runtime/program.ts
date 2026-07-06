@@ -1,13 +1,11 @@
 import type { AgentLike } from "../index.js"
 import type { AnySchema, ServiceSchema } from "../schema.js"
 import type { CandidProgram } from "../index.js"
+import { candidTypeText } from "./candid-format.js"
 import { programToFormSchema } from "./form.js"
-import {
-  assertProgramIRVersion,
-  candidTypeText,
-  irToSchema,
-} from "./ir-to-schema.js"
+import { irToSchema } from "./ir-to-schema.js"
 import { RuntimeMethodImpl } from "./method.js"
+import { assertProgramIRVersion } from "./program-ir.js"
 import { programToWorkflowSchema } from "./workflow.js"
 import type {
   CandidArgIR,
@@ -57,7 +55,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
     this.#typeSchemas = schemas.typeSchemas
     this.service = schemas.service
 
-    for (const method of this.ir.actor.service.methods) {
+    for (const method of this.ir.actor?.service.methods ?? []) {
       const schema = schemas.methodSchemas.get(method.name)
       if (!schema) {
         throw new Error(
@@ -99,7 +97,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   }
 
   listMethods(): RuntimeMethodInfo[] {
-    return this.ir.actor.service.methods.map((method) => {
+    return (this.ir.actor?.service.methods ?? []).map((method) => {
       const info: RuntimeMethodInfo = {
         name: method.name,
         mode: method.mode,
@@ -130,6 +128,9 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   }
 
   method(name: string): RuntimeMethod {
+    if (!this.ir.actor) {
+      throw new Error("Candid program has no service actor")
+    }
     const method = this.#methods.get(name)
     if (!method) {
       throw new Error(`method ${JSON.stringify(name)} not found`)
@@ -138,6 +139,9 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   }
 
   createActor(options: RuntimeActorOptions): DynamicActor {
+    if (!this.ir.actor) {
+      throw new Error("Candid program has no service actor")
+    }
     const methodCallOptions = (
       args: readonly unknown[],
       callOptions: DynamicActorCallOptions

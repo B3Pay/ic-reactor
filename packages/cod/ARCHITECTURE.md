@@ -115,7 +115,7 @@ pub const PROGRAM_IR_VERSION: u16 = 1;
 pub struct ProgramIr {
     pub version: u16,
     pub types: Vec<CandidTypeDeclIr>,
-    pub actor: CandidActorIr,
+    pub actor: Option<CandidActorIr>,
 }
 ```
 
@@ -139,6 +139,16 @@ pub struct CandidActorIr {
 ```
 
 No consumer should need to return to `TypeEnv` to recover actor initialization information.
+
+Absence is represented explicitly. An empty valid Candid structure must never
+be used as a sentinel for absence:
+
+```text
+no actor != empty service actor
+```
+
+For example, a type-only DID has `actor = None` / `actor: null`, while
+`service : {}` has an actor with an empty service method list.
 
 ---
 
@@ -584,7 +594,7 @@ Examples of pass responsibilities:
 
 - verify references resolve
 - verify IDs are valid
-- verify actor service exists
+- verify actor service shape when an actor exists
 - verify method IDs are unique
 - verify the IR version
 - verify compiler invariants
@@ -619,7 +629,7 @@ pub struct ProgramIr {
     pub version: u16,
     pub types: Vec<TypeKindIr>,
     pub declarations: Vec<TypeDeclIr>,
-    pub actor: ActorIr,
+    pub actor: Option<ActorIr>,
 }
 ```
 

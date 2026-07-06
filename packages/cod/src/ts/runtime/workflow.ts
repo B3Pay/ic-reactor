@@ -13,7 +13,7 @@ export function programToWorkflowSchema(
 ): ProgramWorkflowSchema {
   const context = new FormContext(ir, options)
   return {
-    nodes: ir.actor.service.methods.map((method) =>
+    nodes: (ir.actor?.service.methods ?? []).map((method) =>
       methodToWorkflowNode(method, context)
     ),
   }

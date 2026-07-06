@@ -31,6 +31,8 @@ import {
   type AnySchema,
   type ServiceSchema,
 } from "../schema.js"
+import { candidFieldLabel, candidTypeText } from "./candid-format.js"
+import { fieldObjectKey } from "./program-ir.js"
 import type {
   CandidFieldIR,
   CandidMethodMode,
@@ -38,38 +40,10 @@ import type {
   ProgramIR,
 } from "./types.js"
 
-export const PROGRAM_IR_VERSION = 1
-
-export class UnsupportedProgramIRVersionError extends Error {
-  constructor(
-    readonly actual: number,
-    readonly expected = PROGRAM_IR_VERSION
-  ) {
-    super(`Unsupported ProgramIR version ${actual}; expected ${expected}`)
-    this.name = "UnsupportedProgramIRVersionError"
-  }
-}
-
-export function assertProgramIRVersion(ir: ProgramIR): void {
-  if (ir.version !== PROGRAM_IR_VERSION) {
-    throw new UnsupportedProgramIRVersionError(ir.version)
-  }
-}
-
 export type RuntimeSchemaSet = {
   typeSchemas: Map<string, AnySchema>
   methodSchemas: Map<string, AnyMethodSchema>
   service: ServiceSchema<any>
-}
-
-export function fieldObjectKey(field: CandidFieldIR): string {
-  switch (field.label.kind) {
-    case "named":
-      return field.label.name
-    case "id":
-    case "unnamed":
-      return `_${field.label.id}_`
-  }
 }
 
 export function irToSchema(ir: ProgramIR): RuntimeSchemaSet {
@@ -99,7 +73,7 @@ class SchemaContext {
     const methodSchemas = new Map<string, AnyMethodSchema>()
     const methods: Record<string, AnyMethodSchema> = {}
 
-    for (const method of this.ir.actor.service.methods) {
+    for (const method of this.ir.actor?.service.methods ?? []) {
       const args = method.args.map((arg) => this.typeSchema(arg.type, arg.docs))
       const returns = method.returns.map((arg) =>
         this.typeSchema(arg.type, arg.docs)
@@ -225,7 +199,10 @@ function methodSchema(
     case "update":
       return updateMethod(args, returns)
     case "oneway":
-      return oneway(args, returns)
+      if (returns.length > 0) {
+        throw new Error("Candid oneway methods cannot return values")
+      }
+      return oneway(args)
   }
 }
 
@@ -277,134 +254,3 @@ function unsupportedSchema(
     codecs: [],
   }).meta({ candidType, unsupported: true })
 }
-
-export function candidTypeText(
-  type: CandidTypeIR,
-  context?: { typeByName(name: string): CandidTypeIR | undefined },
-  refs: Set<string> = new Set()
-): string {
-  switch (type.kind) {
-    case "null":
-    case "bool":
-    case "text":
-    case "nat":
-    case "int":
-    case "nat8":
-    case "nat16":
-    case "nat32":
-    case "nat64":
-    case "int8":
-    case "int16":
-    case "int32":
-    case "int64":
-    case "float32":
-    case "float64":
-    case "principal":
-    case "blob":
-    case "reserved":
-    case "empty":
-      return type.kind
-    case "opt":
-      return `opt ${candidTypeText(type.inner, context, refs)}`
-    case "vec":
-      return `vec ${candidTypeText(type.inner, context, refs)}`
-    case "record":
-      return `record { ${type.fields.map((field) => fieldTypeText(field, context, refs)).join("; ")} }`
-    case "variant":
-      return `variant { ${type.fields.map((field) => fieldTypeText(field, context, refs)).join("; ")} }`
-    case "ref": {
-      if (!context || refs.has(type.name)) {
-        return type.name
-      }
-      const target = context.typeByName(type.name)
-      if (!target) {
-        return type.name
-      }
-      return candidTypeText(target, context, new Set([...refs, type.name]))
-    }
-    case "func": {
-      const args = type.args
-        .map((arg) => candidTypeText(arg.type, context, refs))
-        .join(", ")
-      const returns = type.returns
-        .map((arg) => candidTypeText(arg.type, context, refs))
-        .join(", ")
-      const mode = type.mode !== "update" ? ` ${type.mode}` : ""
-      return `func (${args}) -> (${returns})${mode}`
-    }
-    case "service":
-      return `service { ${type.methods
-        .map((method) => {
-          const args = method.args
-            .map((arg) => candidTypeText(arg.type, context, refs))
-            .join(", ")
-          const returns = method.returns
-            .map((arg) => candidTypeText(arg.type, context, refs))
-            .join(", ")
-          const mode = method.mode !== "update" ? ` ${method.mode}` : ""
-          return `${candidLabel(method.name)} : (${args}) -> (${returns})${mode}`
-        })
-        .join("; ")} }`
-  }
-}
-
-function fieldTypeText(
-  field: CandidFieldIR,
-  context: { typeByName(name: string): CandidTypeIR | undefined } | undefined,
-  refs: Set<string>
-): string {
-  const type = candidTypeText(field.type, context, refs)
-  const label = candidFieldLabel(field)
-  if (field.type.kind === "null") {
-    return label
-  }
-  return `${label} : ${type}`
-}
-
-function candidFieldLabel(field: CandidFieldIR): string {
-  switch (field.label.kind) {
-    case "named":
-      return candidLabel(field.label.name)
-    case "id":
-    case "unnamed":
-      return String(field.label.id)
-  }
-}
-
-function candidLabel(value: string): string {
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(value) && !CANDID_KEYWORDS.has(value)
-    ? value
-    : JSON.stringify(value)
-}
-
-const CANDID_KEYWORDS = new Set([
-  "blob",
-  "bool",
-  "decimal",
-  "empty",
-  "float32",
-  "float64",
-  "func",
-  "import",
-  "int",
-  "int8",
-  "int16",
-  "int32",
-  "int64",
-  "nat",
-  "nat8",
-  "nat16",
-  "nat32",
-  "nat64",
-  "null",
-  "opt",
-  "principal",
-  "query",
-  "record",
-  "reserved",
-  "service",
-  "text",
-  "type",
-  "variant",
-  "vec",
-])

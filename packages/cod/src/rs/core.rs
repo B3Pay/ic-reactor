@@ -12,7 +12,7 @@ use crate::{ir, ProgramIr};
 #[derive(Debug)]
 pub struct CandidProgram {
     env: TypeEnv,
-    actor: Type,
+    actor: Option<Type>,
     prog: candid_parser::syntax::IDLMergedProg,
 }
 
@@ -34,13 +34,10 @@ pub struct MethodSummary {
 impl CandidProgram {
     pub fn from_source(source: &str) -> Result<Self> {
         let parsed = parse_candid_source(source)?;
-        let actor = parsed
-            .actor
-            .ok_or_else(|| anyhow!("Candid source has no service actor"))?;
 
         Ok(Self {
             env: parsed.env,
-            actor,
+            actor: parsed.actor,
             prog: parsed.prog,
         })
     }
@@ -70,15 +67,13 @@ impl CandidProgram {
     }
 
     pub fn service_did(&self) -> Result<String> {
-        Ok(
-            utils::get_metadata(&self.env, &Some(self.actor.clone())).unwrap_or_else(|| {
-                candid::pretty::candid::compile(&self.env, &Some(self.actor.clone()))
-            }),
-        )
+        let actor = self.require_actor()?;
+        Ok(utils::get_metadata(&self.env, &Some(actor.clone()))
+            .unwrap_or_else(|| candid::pretty::candid::compile(&self.env, &Some(actor.clone()))))
     }
 
     pub fn ir(&self) -> Result<ProgramIr> {
-        ir::program_ir(&self.env, &self.actor, &self.prog)
+        ir::program_ir_from_parts(&self.env, self.actor.as_ref(), &self.prog)
     }
 
     pub fn ir_json(&self) -> Result<String> {
@@ -134,19 +129,27 @@ impl CandidProgram {
     }
 
     fn method(&self, method: &str) -> Result<Function> {
+        let actor = self.require_actor()?;
         self.env
-            .get_method(&self.actor, method)
+            .get_method(actor, method)
             .cloned()
             .with_context(|| format!("method `{method}` not found"))
     }
 
     fn service_parts(&self) -> Result<(Vec<Type>, Type)> {
-        let traced = self.env.trace_type(&self.actor)?;
+        let actor = self.require_actor()?;
+        let traced = self.env.trace_type(actor)?;
         match traced.as_ref() {
             TypeInner::Class(args, service) => Ok((args.clone(), service.clone())),
-            TypeInner::Service(_) => Ok((vec![], self.actor.clone())),
+            TypeInner::Service(_) => Ok((vec![], actor.clone())),
             other => Err(anyhow!("expected service or service class, got {other}")),
         }
+    }
+
+    fn require_actor(&self) -> Result<&Type> {
+        self.actor
+            .as_ref()
+            .ok_or_else(|| anyhow!("Candid source has no service actor"))
     }
 }
 

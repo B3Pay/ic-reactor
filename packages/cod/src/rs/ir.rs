@@ -36,7 +36,7 @@ pub const PROGRAM_IR_VERSION: u16 = 1;
 pub struct ProgramIr {
     pub version: u16,
     pub types: Vec<CandidTypeDeclIr>,
-    pub actor: CandidActorIr,
+    pub actor: Option<CandidActorIr>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -201,15 +201,7 @@ pub fn program_ir_from_parts(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let actor = match actor {
-        Some(actor) => actor_ir(env, actor, prog)?,
-        None => CandidActorIr {
-            init_args: Vec::new(),
-            service: CandidServiceIr {
-                methods: Vec::new(),
-            },
-        },
-    };
+    let actor = actor.map(|actor| actor_ir(env, actor, prog)).transpose()?;
 
     Ok(ProgramIr {
         version: PROGRAM_IR_VERSION,
@@ -557,10 +549,11 @@ service : {
 
         assert_eq!(ir.types[0].name, "Account");
         assert_eq!(ir.types[0].docs, vec!["Account docs."]);
-        assert_eq!(ir.actor.service.methods[0].mode, CandidMethodModeIr::Query);
-        assert_eq!(ir.actor.service.methods[0].docs, vec!["Balance docs."]);
+        let actor = ir.actor.as_ref().unwrap();
+        assert_eq!(actor.service.methods[0].mode, CandidMethodModeIr::Query);
+        assert_eq!(actor.service.methods[0].docs, vec!["Balance docs."]);
         assert!(matches!(
-            ir.actor.service.methods[0].args[0].typ,
+            actor.service.methods[0].args[0].typ,
             CandidTypeIr::Ref { .. }
         ));
     }
@@ -615,7 +608,7 @@ service : {
         assert_eq!(phone.doc_tags[0].name, "format");
         assert_eq!(phone.doc_tags[0].value, "phone-number Must be valid");
 
-        let method = &ir.actor.service.methods[0];
+        let method = &ir.actor.as_ref().unwrap().service.methods[0];
         assert_eq!(method.docs, vec!["Save docs."]);
         assert_eq!(method.doc_tags[0].name, "minimum");
         assert_eq!(method.doc_tags[0].value, "1 Method metadata survives too");
@@ -635,9 +628,39 @@ service : (text, opt principal) -> {
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
 
         assert_eq!(ir.version, PROGRAM_IR_VERSION);
-        assert_eq!(ir.actor.init_args.len(), 2);
-        assert_eq!(ir.actor.service.methods.len(), 1);
-        assert_eq!(ir.actor.service.methods[0].mode, CandidMethodModeIr::Query);
+        let actor = ir.actor.as_ref().unwrap();
+        assert_eq!(actor.init_args.len(), 2);
+        assert_eq!(actor.service.methods.len(), 1);
+        assert_eq!(actor.service.methods[0].mode, CandidMethodModeIr::Query);
+    }
+
+    #[test]
+    fn preserves_absent_actor_as_none() {
+        let parsed = parse_candid_source(
+            r#"
+type User = record {
+  name : text;
+};
+"#,
+        )
+        .unwrap();
+        let ir = program_ir_from_parts(&parsed.env, parsed.actor.as_ref(), &parsed.prog).unwrap();
+
+        assert!(parsed.actor.is_none());
+        assert!(ir.actor.is_none());
+        assert!(ir.types.iter().any(|decl| decl.name == "User"));
+        let json = serde_json::to_value(&ir).unwrap();
+        assert!(json.get("actor").unwrap().is_null());
+    }
+
+    #[test]
+    fn preserves_empty_actor_as_present_actor() {
+        let parsed = parse_candid_source("service : {}").unwrap();
+        let ir = program_ir_from_parts(&parsed.env, parsed.actor.as_ref(), &parsed.prog).unwrap();
+
+        let actor = ir.actor.as_ref().expect("empty service is still an actor");
+        assert!(actor.init_args.is_empty());
+        assert!(actor.service.methods.is_empty());
     }
 
     #[test]
@@ -711,6 +734,8 @@ service : { get : () -> (Fields) query; }
 
     fn method_mode(ir: &ProgramIr, name: &str) -> CandidMethodModeIr {
         ir.actor
+            .as_ref()
+            .unwrap()
             .service
             .methods
             .iter()

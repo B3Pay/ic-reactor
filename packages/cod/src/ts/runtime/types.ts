@@ -30,7 +30,7 @@ export type CandidMethodMode = "query" | "update" | "oneway" | "composite_query"
 export type ProgramIR = {
   version: number
   types: CandidTypeDeclIR[]
-  actor: CandidActorIR
+  actor: CandidActorIR | null
 }
 
 export type CandidActorIR = {

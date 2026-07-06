@@ -7,7 +7,7 @@
     "network:stop": "icp network stop --project-root-override .",
     "deploy": "icp deploy --project-root-override . contacts",
     "dev": "vite --host 127.0.0.1",
-    "generate": "cargo run --manifest-path ../../Cargo.toml -- generate contact.did --canister-name contacts --output contact.generated.ts",
+    "generate": "cargo run --manifest-path ../../packages/cod/Cargo.toml -- generate contact.did --canister-name contacts --output contact.generated.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
