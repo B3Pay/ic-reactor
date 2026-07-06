@@ -23,7 +23,7 @@
 //! parser/type environment directly.
 
 use anyhow::{anyhow, Context, Result};
-use candid::types::{FuncMode, Label, SharedLabel, Type, TypeEnv, TypeInner};
+use candid_parser::candid::types::{FuncMode, Label, SharedLabel, Type, TypeEnv, TypeInner};
 use candid_parser::syntax::{Binding, IDLArgType, IDLMergedProg, IDLType};
 use serde::{Deserialize, Serialize};
 
@@ -388,7 +388,7 @@ fn type_ir(env: &TypeEnv, ty: &Type, syntax: Option<&IDLType>) -> Result<CandidT
 
 fn fields_ir(
     env: &TypeEnv,
-    fields: &[candid::types::Field],
+    fields: &[candid_parser::candid::types::Field],
     syntax_fields: Option<&[candid_parser::syntax::TypeField]>,
 ) -> Result<Vec<CandidFieldIr>> {
     fields
@@ -584,6 +584,7 @@ service : {
         .unwrap();
         let actor = parsed.actor.as_ref().unwrap();
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
+        println!("{}", serde_json::to_string_pretty(&ir).unwrap());
 
         let contact = ir.types.iter().find(|decl| decl.name == "Contact").unwrap();
         assert_eq!(contact.docs, vec!["Contact docs."]);
@@ -726,6 +727,100 @@ service : { get : () -> (Fields) query; }
         assert!(fields
             .iter()
             .any(|field| matches!(field.label, CandidFieldLabelIr::Unnamed { id: 0 })));
+    }
+
+    #[test]
+    fn recursive_types_are_represented_as_refs() {
+        let parsed = parse_candid_source(
+            r#"
+type List = opt record {
+  head : nat;
+  tail : List;
+};
+
+service : {
+  get : () -> (List) query;
+}"#,
+        )
+        .unwrap();
+        let actor = parsed.actor.as_ref().unwrap();
+        let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
+        println!("{}", serde_json::to_string_pretty(&ir).unwrap());
+        // Check that the recursive type is represented as a reference
+        let list_decl = ir.types.iter().find(|decl| decl.name == "List").unwrap();
+        assert!(matches!(
+            &list_decl.typ,
+            CandidTypeIr::Opt { inner }
+                if matches!(
+                    inner.as_ref(),
+                    CandidTypeIr::Record { fields }
+                        if fields.iter().any(|field| matches!(&field.typ, CandidTypeIr::Ref { name } if name == "List"))
+                )
+        ));
+    }
+
+    #[test]
+    fn recursive_service_types_are_represented_as_refs() {
+        let parsed = parse_candid_source(
+            r#"
+type Node = record {
+  value : text;
+  children : vec Node;
+};
+
+service : {
+  root : () -> (Node) query;
+  save : (Node) -> ();
+}"#,
+        )
+        .unwrap();
+        let actor = parsed.actor.as_ref().unwrap();
+        let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
+        println!("{}", serde_json::to_string_pretty(&ir).unwrap());
+        // Check that the recursive type is represented as a reference
+        let node_decl = ir.types.iter().find(|decl| decl.name == "Node").unwrap();
+        assert!(matches!(
+            &node_decl.typ,
+            CandidTypeIr::Record { fields }
+                if fields.iter().any(|field| matches!(&field.typ, CandidTypeIr::Vec { inner } if matches!(inner.as_ref(), CandidTypeIr::Ref { name } if name == "Node")))
+        ));
+    }
+
+    #[test]
+    fn anonymouses_repeated_in_service_methods_are_represented_as_refs() {
+        let parsed = parse_candid_source(
+            r#"
+service : {
+  a : (record { value : text }) -> ();
+  b : (record { value : text }) -> ();
+}"#,
+        )
+        .unwrap();
+        let actor = parsed.actor.as_ref().unwrap();
+        let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
+        println!("{}", serde_json::to_string_pretty(&ir).unwrap());
+        // Check that the repeated anonymous type is represented as a reference
+        let a_method = ir
+            .actor
+            .as_ref()
+            .unwrap()
+            .service
+            .methods
+            .iter()
+            .find(|m| m.name == "a")
+            .unwrap();
+        let b_method = ir
+            .actor
+            .as_ref()
+            .unwrap()
+            .service
+            .methods
+            .iter()
+            .find(|m| m.name == "b")
+            .unwrap();
+        assert!(
+            matches!(&a_method.args[0].typ, CandidTypeIr::Ref { name: a_name } if matches!(&b_method.args[0].typ, CandidTypeIr::Ref { name: b_name } if a_name == b_name)),
+        );
     }
 
     fn named(field: &CandidFieldIr, expected: &str) -> bool {

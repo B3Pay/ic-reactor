@@ -9,7 +9,7 @@ pub mod wasm;
 use std::path::Path;
 
 use anyhow::{bail, Result};
-use candid::types::{Type, TypeEnv};
+use candid_parser::candid::types::{Type, TypeEnv};
 use candid_parser::syntax::{Dec, IDLMergedProg, IDLProg};
 use candid_parser::{check_file, check_prog};
 

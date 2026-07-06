@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use candid::{
+use candid_parser::candid::{
     types::{Function, Type, TypeEnv, TypeInner},
     IDLArgs,
 };
@@ -68,8 +68,11 @@ impl CandidProgram {
 
     pub fn service_did(&self) -> Result<String> {
         let actor = self.require_actor()?;
-        Ok(utils::get_metadata(&self.env, &Some(actor.clone()))
-            .unwrap_or_else(|| candid::pretty::candid::compile(&self.env, &Some(actor.clone()))))
+        Ok(
+            utils::get_metadata(&self.env, &Some(actor.clone())).unwrap_or_else(|| {
+                candid_parser::candid::pretty::candid::compile(&self.env, &Some(actor.clone()))
+            }),
+        )
     }
 
     pub fn ir(&self) -> Result<ProgramIr> {
