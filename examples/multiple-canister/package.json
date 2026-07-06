@@ -7,11 +7,11 @@
     "@ic-reactor/react": "^3.6.0",
     "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^5.4.0",
-    "@tanstack/react-query": "^5.90.16",
+    "@tanstack/react-query": "^5.101.2",
     "@types/node": "25.9.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-hook-form": "^7.79.0",
+    "react-hook-form": "^7.81.0",
     "typescript": "^6.0"
   },
   "scripts": {
@@ -40,8 +40,8 @@
   "devDependencies": {
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
-    "vite": "^8.0.16"
+    "@vitejs/plugin-react": "^6.0.3",
+    "vite": "^8.1.3"
   },
   "overrides": {
     "picomatch": "4.0.4",
