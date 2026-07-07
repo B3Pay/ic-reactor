@@ -38,6 +38,7 @@ export function methodToFormSchema(
   context: FormContext
 ): MethodFormSchema {
   const schema: MethodFormSchema = {
+    methodId: method.id,
     name: method.name,
     mode: method.mode,
     args: method.args.map((arg, index) =>

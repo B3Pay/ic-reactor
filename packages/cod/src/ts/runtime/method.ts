@@ -21,6 +21,7 @@ import type {
 } from "./types.js"
 
 export class RuntimeMethodImpl implements RuntimeMethod {
+  readonly id: RuntimeMethod["id"]
   readonly name: string
   readonly mode: RuntimeMethod["mode"]
   readonly args: RuntimeArgInfo[]
@@ -50,6 +51,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
     this.#methodIr = options.methodIr
     this.#schema = options.schema
     this.#formOptions = options.formOptions ?? {}
+    this.id = options.methodIr.id
     this.name = options.methodIr.name
     this.mode = options.methodIr.mode
     this.args = options.args

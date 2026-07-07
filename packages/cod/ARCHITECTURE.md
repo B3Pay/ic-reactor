@@ -99,10 +99,11 @@ At minimum it owns:
 ProgramIR
  ├─ version
  ├─ types
+ ├─ declarations
+ ├─ methods
  └─ actor
      ├─ init arguments
-     └─ service
-         └─ methods
+     └─ service TypeId
 ```
 
 The program root must be versioned.
@@ -114,8 +115,10 @@ pub const PROGRAM_IR_VERSION: u16 = 1;
 
 pub struct ProgramIr {
     pub version: u16,
-    pub types: Vec<CandidTypeDeclIr>,
-    pub actor: Option<CandidActorIr>,
+    pub types: Vec<TypeNodeIr>,
+    pub declarations: Vec<TypeDeclIr>,
+    pub methods: Vec<MethodIr>,
+    pub actor: Option<ActorIr>,
 }
 ```
 
@@ -129,14 +132,30 @@ service : (text, opt principal) -> {
 }
 ```
 
-Therefore the actor model must preserve:
+Therefore the actor model must preserve constructor arguments and reference a
+service type node:
 
 ```rust
-pub struct CandidActorIr {
-    pub init_args: Vec<CandidArgIr>,
-    pub service: CandidServiceIr,
+pub struct ActorIr {
+    pub init_args: Vec<ArgIr>,
+    pub service: TypeId,
 }
 ```
+
+The referenced type node must be `TypeKindIr::Service`.
+
+Service type nodes do not embed full method bodies. They preserve source order
+by referencing the method arena:
+
+```rust
+pub enum TypeKindIr {
+    Service {
+        methods: Vec<MethodId>,
+    },
+}
+```
+
+`MethodId(n)` means `program.methods[n]` within this exact ProgramIR artifact.
 
 No consumer should need to return to `TypeEnv` to recover actor initialization information.
 
@@ -409,11 +428,18 @@ Deserialize
 PartialEq
 ```
 
-The serialized shape is a contract.
+The serialized shape becomes a compatibility contract when it is published or
+persisted externally.
 
-Any incompatible change requires an explicit IR version decision.
+Any incompatible change to a released or externally persisted contract requires
+an explicit IR version decision.
 
-Do not silently modify the meaning of an existing serialized node while keeping the same IR version.
+Before the first stable ProgramIR contract is released or persisted externally,
+internal redesigns may replace version 1 directly. Do not increment
+`PROGRAM_IR_VERSION` merely to mark an unfinished internal refactor milestone.
+
+Do not silently modify the meaning of a released serialized node while keeping
+the same IR version.
 
 Consumers of serialized IR must validate the version.
 
@@ -603,11 +629,9 @@ Do not hide major semantic transformations inside emitters.
 
 ---
 
-## 11. Type Representation and Future Type Arena
+## 11. Type Arena and Method Arena
 
-The current recursive IR may be used during the initial migration.
-
-The long-term target should be evaluated as a type arena using stable internal IDs.
+The canonical ProgramIR is an arena-shaped graph using artifact-local IDs.
 
 Conceptually:
 
@@ -627,22 +651,38 @@ And:
 ```rust
 pub struct ProgramIr {
     pub version: u16,
-    pub types: Vec<TypeKindIr>,
+    pub types: Vec<TypeNodeIr>,
     pub declarations: Vec<TypeDeclIr>,
+    pub methods: Vec<MethodIr>,
     pub actor: Option<ActorIr>,
 }
 ```
 
-Nodes reference other nodes by ID:
+`TypeId(n)`, `DeclId(n)`, and `MethodId(n)` are indexes into the corresponding
+arena in one exact ProgramIR artifact. They are not global persistent identities
+across independently compiled revisions.
+
+`DeclId(n)` means `program.declarations[n]`. Declaration entries do not store
+their own ID:
+
+```rust
+pub struct TypeDeclIr {
+    pub name: String,
+    pub typ: TypeId,
+    pub metadata: MetadataIr,
+}
+```
+
+Type nodes and service nodes reference other arenas by ID:
 
 ```rust
 pub enum TypeKindIr {
     Opt {
-        inner: TypeId,
+        inner: TypeRefIr,
     },
 
     Vec {
-        inner: TypeId,
+        inner: TypeRefIr,
     },
 
     Record {
@@ -653,10 +693,6 @@ pub enum TypeKindIr {
         fields: Vec<FieldIr>,
     },
 
-    Ref {
-        declaration: DeclId,
-    },
-
     Func {
         args: Vec<ArgIr>,
         returns: Vec<ArgIr>,
@@ -664,12 +700,30 @@ pub enum TypeKindIr {
     },
 
     Service {
-        methods: Vec<MethodIr>,
+        methods: Vec<MethodId>,
     },
 
     // primitives...
 }
 ```
+
+Named declaration references are represented by `TypeRefIr::Decl`, not by a
+`TypeKindIr::Ref` node.
+
+Method bodies live in `ProgramIr.methods`:
+
+```rust
+pub struct MethodIr {
+    pub name: String,
+    pub mode: MethodModeIr,
+    pub args: Vec<ArgIr>,
+    pub returns: Vec<ArgIr>,
+    pub metadata: MetadataIr,
+}
+```
+
+`MethodId(n)` means `program.methods[n]`. `MethodIr` does not store its own ID.
+Service method order is the `Vec<MethodId>` order on the service type node.
 
 Potential advantages include:
 
@@ -678,15 +732,13 @@ Potential advantages include:
 - simple memoization
 - explicit graph representation
 - easier recursion handling
-- stable internal method and type references
+- explicit artifact-local method and type references
 - compact manifests
 - simpler Rust runtime interpretation
 
-Do not perform this migration simultaneously with every other architecture rewrite.
-
-First move all structural consumers onto the current `ProgramIR`.
-
-Then change the representation behind that boundary.
+Do not reconstruct a recursive Candid AST or compatibility IR from the arena
+just to preserve an older consumer implementation. A small graph/index helper is
+allowed; a second structural program model is not.
 
 ---
 
@@ -886,7 +938,13 @@ TypeInner
 
 A workflow node should reference program and method identity where possible.
 
-Long-term workflows should prefer stable internal IDs over method names as their internal representation.
+Workflow projections should use `MethodId` rather than method name as the
+within-program method identity.
+
+Raw numeric `MethodId` values are scoped to one exact ProgramIR artifact. They
+must not be treated as stable persistent identities across contract revisions
+without an additional program fingerprint or equivalent versioned program
+identity.
 
 Names remain display and source-level identities.
 

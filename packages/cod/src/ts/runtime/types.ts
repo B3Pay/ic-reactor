@@ -31,6 +31,7 @@ export type ProgramIR = {
   version: number
   types: ProgramTypeNodeIR[]
   declarations: ProgramTypeDeclIR[]
+  methods: ProgramMethodIR[]
   actor: ProgramActorIR | null
 }
 
@@ -75,7 +76,7 @@ export type ProgramTypeKindIR =
       returns: ProgramArgIR[]
       mode: CandidMethodMode
     }
-  | { kind: "service"; methods: ProgramMethodIR[] }
+  | { kind: "service"; methods: MethodId[] }
 
 export type ProgramMetadataIR = {
   docs?: string[]
@@ -84,7 +85,6 @@ export type ProgramMetadataIR = {
 }
 
 export type ProgramTypeDeclIR = {
-  id: DeclId
   name: string
   type: TypeId
   metadata?: ProgramMetadataIR
@@ -96,7 +96,6 @@ export type ProgramActorIR = {
 }
 
 export type ProgramMethodIR = {
-  id: MethodId
   name: string
   mode: CandidMethodMode
   args: ProgramArgIR[]
@@ -158,6 +157,7 @@ export type CandidServiceIR = {
 }
 
 export type CandidMethodIR = {
+  id: MethodId
   name: string
   mode: CandidMethodMode
   args: CandidArgIR[]
@@ -239,6 +239,7 @@ export type RuntimeArgInfo = {
 }
 
 export type RuntimeMethodInfo = {
+  id: MethodId
   name: string
   mode: CandidMethodMode
   args: RuntimeArgInfo[]
@@ -266,6 +267,7 @@ export type RuntimeProgram = {
 }
 
 export type RuntimeMethod = {
+  readonly id: MethodId
   readonly name: string
   readonly mode: CandidMethodMode
   readonly args: RuntimeArgInfo[]
@@ -332,6 +334,7 @@ export type ProgramFormSchema = {
 }
 
 export type MethodFormSchema = {
+  methodId: MethodId
   name: string
   mode: CandidMethodMode
   docs?: string[]
@@ -409,6 +412,7 @@ export type ProgramWorkflowSchema = {
 export type WorkflowMethodNode = {
   id: string
   type: "canister_method"
+  methodId: MethodId
   methodName: string
   mode: CandidMethodMode
   title: string

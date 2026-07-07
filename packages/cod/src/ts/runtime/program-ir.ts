@@ -8,6 +8,7 @@ import type {
   CandidTypeIR,
   DeclId,
   DocTag,
+  MethodId,
   ProgramArgIR,
   ProgramFieldIR,
   ProgramFieldLabelIR,
@@ -40,32 +41,28 @@ export function assertProgramIRVersion(ir: ProgramIR): void {
 }
 
 export class ProgramIrGraph {
-  readonly #declarationsById = new Map<DeclId, ProgramTypeDeclIR>()
-  readonly #declarationsByName = new Map<string, ProgramTypeDeclIR>()
+  readonly #declarationsByName = new Map<string, DeclId>()
 
   constructor(readonly ir: ProgramIR) {
     for (let index = 0; index < ir.declarations.length; index++) {
       const declaration = ir.declarations[index]!
-      if (this.#declarationsById.has(declaration.id)) {
-        throw new Error(`duplicate ProgramIR declaration id ${declaration.id}`)
-      }
-      if (declaration.id !== index) {
-        throw new Error(
-          `non-sequential ProgramIR declaration id: expected ${index}, got ${declaration.id}`
-        )
-      }
       if (this.#declarationsByName.has(declaration.name)) {
         throw new Error(
           `duplicate ProgramIR declaration name ${JSON.stringify(declaration.name)}`
         )
       }
-      this.#declarationsById.set(declaration.id, declaration)
-      this.#declarationsByName.set(declaration.name, declaration)
+      this.#declarationsByName.set(declaration.name, index)
     }
+
+    this.#validateMethodArena()
   }
 
   declarations(): readonly ProgramTypeDeclIR[] {
     return this.ir.declarations
+  }
+
+  methods(): readonly ProgramMethodIR[] {
+    return this.ir.methods
   }
 
   typeKind(id: TypeId): ProgramTypeKindIR {
@@ -77,15 +74,28 @@ export class ProgramIrGraph {
   }
 
   declaration(id: DeclId): ProgramTypeDeclIR {
-    const declaration = this.#declarationsById.get(id)
+    const declaration = this.ir.declarations[id]
     if (!declaration) {
       throw new Error(`missing ProgramIR declaration ${id}`)
     }
     return declaration
   }
 
-  declarationByName(name: string): ProgramTypeDeclIR | undefined {
+  declarationIdByName(name: string): DeclId | undefined {
     return this.#declarationsByName.get(name)
+  }
+
+  declarationByName(name: string): ProgramTypeDeclIR | undefined {
+    const id = this.declarationIdByName(name)
+    return id === undefined ? undefined : this.declaration(id)
+  }
+
+  method(id: MethodId): ProgramMethodIR {
+    const method = this.ir.methods[id]
+    if (!method) {
+      throw new Error(`missing ProgramIR method ${id}`)
+    }
+    return method
   }
 
   resolveRef(reference: ProgramTypeRefIR): TypeId {
@@ -99,17 +109,29 @@ export class ProgramIrGraph {
   }
 
   actorMethods(): readonly ProgramMethodIR[] {
+    return this.actorMethodIds().map((id) => this.method(id))
+  }
+
+  serviceMethodIds(serviceId: TypeId): readonly MethodId[] {
+    const service = this.typeKind(serviceId)
+    if (service.kind !== "service") {
+      throw new Error(
+        `ProgramIR actor service points to non-service type ${serviceId}`
+      )
+    }
+    return service.methods
+  }
+
+  serviceMethods(serviceId: TypeId): readonly ProgramMethodIR[] {
+    return this.serviceMethodIds(serviceId).map((id) => this.method(id))
+  }
+
+  actorMethodIds(): readonly MethodId[] {
     const actor = this.ir.actor
     if (!actor) {
       return []
     }
-    const service = this.typeKind(actor.service)
-    if (service.kind !== "service") {
-      throw new Error(
-        `ProgramIR actor service points to non-service type ${actor.service}`
-      )
-    }
-    return service.methods
+    return this.serviceMethodIds(actor.service)
   }
 
   runtimeProgram(): RuntimeProgramIR {
@@ -123,8 +145,8 @@ export class ProgramIrGraph {
         ? {
             initArgs: actor.initArgs.map((arg) => this.runtimeArg(arg)),
             service: {
-              methods: this.actorMethods().map((method) =>
-                this.runtimeMethod(method)
+              methods: this.actorMethodIds().map((id) =>
+                this.runtimeMethod(id, this.method(id))
               ),
             },
           }
@@ -160,9 +182,10 @@ export class ProgramIrGraph {
     )
   }
 
-  private runtimeMethod(method: ProgramMethodIR): CandidMethodIR {
+  private runtimeMethod(id: MethodId, method: ProgramMethodIR): CandidMethodIR {
     return withMetadata(
       {
+        id,
         name: method.name,
         mode: method.mode,
         args: method.args.map((arg) => this.runtimeArg(arg)),
@@ -244,13 +267,50 @@ export class ProgramIrGraph {
       case "service":
         return {
           kind: "service",
-          methods: kind.methods.map((method) => this.runtimeMethod(method)),
+          methods: kind.methods.map((id) =>
+            this.runtimeMethod(id, this.method(id))
+          ),
         }
     }
   }
 
   private isNat8Ref(reference: ProgramTypeRefIR): boolean {
     return this.typeKind(this.resolveRef(reference)).kind === "nat8"
+  }
+
+  #validateMethodArena(): void {
+    const referencedMethodIds = new Set<MethodId>()
+
+    for (let typeId = 0; typeId < this.ir.types.length; typeId++) {
+      const kind = this.ir.types[typeId]!.kind
+      if (kind.kind !== "service") {
+        continue
+      }
+
+      const methodNames = new Set<string>()
+      for (const methodId of kind.methods) {
+        if (referencedMethodIds.has(methodId)) {
+          throw new Error(`duplicate ProgramIR method reference ${methodId}`)
+        }
+        referencedMethodIds.add(methodId)
+
+        const method = this.method(methodId)
+        if (methodNames.has(method.name)) {
+          throw new Error(
+            `duplicate ProgramIR method name ${JSON.stringify(method.name)} in service ${typeId}`
+          )
+        }
+        methodNames.add(method.name)
+      }
+    }
+
+    for (let methodId = 0; methodId < this.ir.methods.length; methodId++) {
+      if (!referencedMethodIds.has(methodId)) {
+        throw new Error(
+          `ProgramIR method ${methodId} is not referenced by a service`
+        )
+      }
+    }
   }
 }
 

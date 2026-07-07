@@ -102,6 +102,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   listMethods(): RuntimeMethodInfo[] {
     return (this.#runtimeIr.actor?.service.methods ?? []).map((method) => {
       const info: RuntimeMethodInfo = {
+        id: method.id,
         name: method.name,
         mode: method.mode,
         args: method.args.map((arg, index) => this.argInfo(arg, `arg${index}`)),

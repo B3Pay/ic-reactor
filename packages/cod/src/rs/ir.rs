@@ -83,7 +83,6 @@ impl From<PrimitiveKindIr> for TypeKindIr {
 
 #[derive(Debug, Clone, PartialEq)]
 struct ReservedTypeDeclIr {
-    id: DeclId,
     name: String,
     target: TypeDeclTarget,
     metadata: MetadataIr,
@@ -101,9 +100,9 @@ struct ArenaLoweringContext<'a> {
     prog: &'a IDLMergedProg,
     types: Vec<TypeNodeIr>,
     declarations: Vec<ReservedTypeDeclIr>,
+    methods: Vec<Option<MethodIr>>,
     declarations_by_name: BTreeMap<String, DeclId>,
     primitive_types: BTreeMap<PrimitiveKindIr, TypeId>,
-    next_method_id: u32,
 }
 
 impl<'a> ArenaLoweringContext<'a> {
@@ -113,9 +112,9 @@ impl<'a> ArenaLoweringContext<'a> {
             prog,
             types: Vec::new(),
             declarations: Vec::new(),
+            methods: Vec::new(),
             declarations_by_name: BTreeMap::new(),
             primitive_types: BTreeMap::new(),
-            next_method_id: 0,
         }
     }
 
@@ -130,7 +129,6 @@ impl<'a> ArenaLoweringContext<'a> {
             }
             let metadata = metadata_from_docs(&binding.docs);
             self.declarations.push(ReservedTypeDeclIr {
-                id,
                 name: binding.id.clone(),
                 target: TypeDeclTarget::Pending,
                 metadata,
@@ -194,6 +192,19 @@ impl<'a> ArenaLoweringContext<'a> {
     #[allow(dead_code)]
     fn type_node(&self, id: TypeId) -> Option<&TypeNodeIr> {
         self.types.get(usize::try_from(id.0).ok()?)
+    }
+
+    #[allow(dead_code)]
+    fn methods(&self) -> Vec<&MethodIr> {
+        self.methods
+            .iter()
+            .filter_map(|method| method.as_ref())
+            .collect()
+    }
+
+    #[allow(dead_code)]
+    fn method(&self, id: MethodId) -> Option<&MethodIr> {
+        self.methods.get(usize::try_from(id.0).ok()?)?.as_ref()
     }
 
     #[allow(dead_code)]
@@ -268,7 +279,7 @@ impl<'a> ArenaLoweringContext<'a> {
             IDLType::ServT(methods) => {
                 let methods = methods
                     .iter()
-                    .map(|method| self.lower_method(method))
+                    .map(|method| self.lower_method_id(method))
                     .collect::<Result<Vec<_>>>()?;
                 self.alloc_type(TypeKindIr::Service { methods })
             }
@@ -320,18 +331,20 @@ impl<'a> ArenaLoweringContext<'a> {
         })
     }
 
-    fn lower_method(&mut self, method: &Binding) -> Result<MethodIr> {
+    fn lower_method_id(&mut self, method: &Binding) -> Result<MethodId> {
         let IDLType::FuncT(func) = &method.typ else {
             return Err(anyhow!("method `{}` is not a function", method.id));
         };
-        Ok(MethodIr {
-            id: self.alloc_method_id()?,
+        let id = self.reserve_method_id()?;
+        let lowered = MethodIr {
             name: method.id.clone(),
             mode: method_mode(&func.modes),
             args: self.lower_args(&func.args)?,
             returns: self.lower_args(&func.rets)?,
             metadata: metadata_from_docs(&method.docs),
-        })
+        };
+        self.set_method(id, lowered)?;
+        Ok(id)
     }
 
     fn lower_actor(&mut self, actor: Option<&Type>) -> Result<Option<ActorIr>> {
@@ -382,13 +395,24 @@ impl<'a> ArenaLoweringContext<'a> {
         Ok(id)
     }
 
-    fn alloc_method_id(&mut self) -> Result<MethodId> {
-        let id = MethodId(self.next_method_id);
-        self.next_method_id = self
-            .next_method_id
-            .checked_add(1)
-            .context("ProgramIR method table exceeds u32")?;
+    fn reserve_method_id(&mut self) -> Result<MethodId> {
+        let index =
+            u32::try_from(self.methods.len()).context("ProgramIR method table exceeds u32")?;
+        let id = MethodId(index);
+        self.methods.push(None);
         Ok(id)
+    }
+
+    fn set_method(&mut self, id: MethodId, method: MethodIr) -> Result<()> {
+        let slot = self
+            .methods
+            .get_mut(usize::try_from(id.0).context("ProgramIR method ID does not fit usize")?)
+            .with_context(|| format!("missing reserved ProgramIR method slot {id:?}"))?;
+        if slot.is_some() {
+            return Err(anyhow!("ProgramIR method slot {id:?} was already lowered"));
+        }
+        *slot = Some(method);
+        Ok(())
     }
 
     fn finish(self, actor: Option<ActorIr>) -> Result<ProgramIr> {
@@ -403,10 +427,19 @@ impl<'a> ArenaLoweringContext<'a> {
                     ));
                 };
                 Ok(TypeDeclIr {
-                    id: decl.id,
                     name: decl.name,
                     typ,
                     metadata: decl.metadata,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let methods = self
+            .methods
+            .into_iter()
+            .enumerate()
+            .map(|(index, method)| {
+                method.with_context(|| {
+                    format!("ProgramIR method slot {index} was reserved but not lowered")
                 })
             })
             .collect::<Result<Vec<_>>>()?;
@@ -415,6 +448,7 @@ impl<'a> ArenaLoweringContext<'a> {
             version: PROGRAM_IR_VERSION,
             types: self.types,
             declarations,
+            methods,
             actor,
         };
         program
@@ -566,12 +600,13 @@ service : {
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
 
         let account = declaration(&ir, "Account");
+        let account_id = declaration_id(&ir, "Account");
         assert_eq!(account.metadata.docs, vec!["Account docs."]);
 
         let balance = find_method(actor_methods(&ir), "icrc1_balance_of");
         assert_eq!(balance.mode, MethodModeIr::Query);
         assert_eq!(balance.metadata.docs, vec!["Balance docs."]);
-        assert_eq!(balance.args[0].typ, TypeRefIr::Decl { id: account.id });
+        assert_eq!(balance.args[0].typ, TypeRefIr::Decl { id: account_id });
     }
 
     #[test]
@@ -654,6 +689,72 @@ service : (text, opt principal) -> {
         let methods = service_methods(&ir, actor.service);
         assert_eq!(methods.len(), 1);
         assert_eq!(methods[0].mode, MethodModeIr::Query);
+    }
+
+    #[test]
+    fn service_nodes_reference_method_arena_ids() {
+        let parsed = parse_candid_source(
+            r#"
+service : {
+  balance : () -> (nat) query;
+  transfer : (nat) -> ();
+}
+"#,
+        )
+        .unwrap();
+        let ir = program_ir_from_parts(&parsed.env, parsed.actor.as_ref(), &parsed.prog).unwrap();
+        let graph = ir.graph().unwrap();
+        let actor = ir.actor.as_ref().unwrap();
+
+        assert_eq!(
+            graph.service_method_ids(actor.service).unwrap(),
+            &[MethodId(0), MethodId(1)]
+        );
+        assert_eq!(graph.method(MethodId(0)).unwrap().name, "balance");
+        assert_eq!(graph.method(MethodId(1)).unwrap().name, "transfer");
+        assert_eq!(
+            actor_methods(&ir)
+                .into_iter()
+                .map(|method| method.name)
+                .collect::<Vec<_>>(),
+            vec!["balance", "transfer"]
+        );
+    }
+
+    #[test]
+    fn same_method_name_in_distinct_services_has_distinct_method_ids() {
+        let parsed = parse_candid_source(
+            r#"
+type Ledger = service {
+  get : () -> (nat) query;
+};
+
+type Profile = service {
+  get : () -> (text) query;
+};
+"#,
+        )
+        .unwrap();
+        let ir = program_ir_from_parts(&parsed.env, parsed.actor.as_ref(), &parsed.prog).unwrap();
+        let graph = ir.graph().unwrap();
+        let ledger = declaration(&ir, "Ledger");
+        let profile = declaration(&ir, "Profile");
+
+        assert_eq!(ir.methods.len(), 2);
+        assert_eq!(
+            graph.service_method_ids(ledger.typ).unwrap(),
+            &[MethodId(0)]
+        );
+        assert_eq!(
+            graph.service_method_ids(profile.typ).unwrap(),
+            &[MethodId(1)]
+        );
+        assert_eq!(graph.method(MethodId(0)).unwrap().name, "get");
+        assert_eq!(graph.method(MethodId(1)).unwrap().name, "get");
+        assert_ne!(
+            graph.method(MethodId(0)).unwrap().returns,
+            graph.method(MethodId(1)).unwrap().returns
+        );
     }
 
     #[test]
@@ -759,6 +860,7 @@ service : {
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
         println!("{}", serde_json::to_string_pretty(&ir).unwrap());
         let list_decl = declaration(&ir, "List");
+        let list_decl_id = declaration_id(&ir, "List");
         let TypeKindIr::Opt { inner } = &declaration_type_node(&ir, list_decl).kind else {
             panic!("expected List to lower to opt");
         };
@@ -766,7 +868,7 @@ service : {
             panic!("expected List opt inner to be an anonymous record type");
         };
         let tail = find_field(record_fields(type_node(&ir, *record_id)), "tail");
-        assert_eq!(tail.typ, TypeRefIr::Decl { id: list_decl.id });
+        assert_eq!(tail.typ, TypeRefIr::Decl { id: list_decl_id });
     }
 
     #[test]
@@ -788,6 +890,7 @@ service : {
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
         println!("{}", serde_json::to_string_pretty(&ir).unwrap());
         let node_decl = declaration(&ir, "Node");
+        let node_decl_id = declaration_id(&ir, "Node");
         let children = find_field(declaration_record_fields(&ir, node_decl), "children");
         let TypeRefIr::Type { id: vec_id } = children.typ else {
             panic!("expected children to reference a vec type node");
@@ -795,7 +898,7 @@ service : {
         let TypeKindIr::Vec { inner } = &type_node(&ir, vec_id).kind else {
             panic!("expected children type node to be vec");
         };
-        assert_eq!(*inner, TypeRefIr::Decl { id: node_decl.id });
+        assert_eq!(*inner, TypeRefIr::Decl { id: node_decl_id });
     }
 
     mod type_arena_syntax_verification {
@@ -1020,7 +1123,13 @@ service : {
             context
                 .declarations()
                 .iter()
-                .map(|decl| (decl.id, decl.name.clone()))
+                .enumerate()
+                .map(|(index, decl)| {
+                    (
+                        DeclId(u32::try_from(index).expect("fixture declaration index fits u32")),
+                        decl.name.clone(),
+                    )
+                })
                 .collect()
         }
 
@@ -1191,7 +1300,6 @@ type Profile = record {
 
         #[derive(Debug, Clone, PartialEq, Eq)]
         struct ConceptualDecl {
-            id: DeclId,
             name: &'static str,
             typ: TypeId,
         }
@@ -1233,6 +1341,15 @@ type Profile = record {
                     .unwrap_or_else(|| panic!("missing declaration {id:?}"))
             }
 
+            fn decl_id_by_name(&self, name: &str) -> Option<DeclId> {
+                self.declarations
+                    .iter()
+                    .position(|declaration| declaration.name == name)
+                    .map(|index| {
+                        DeclId(u32::try_from(index).expect("fixture declaration index fits u32"))
+                    })
+            }
+
             fn type_node(&self, id: TypeId) -> &ConceptualType {
                 self.types
                     .get(id_index(id.0))
@@ -1252,12 +1369,10 @@ type Profile = record {
             let program = ConceptualProgram {
                 declarations: vec![
                     ConceptualDecl {
-                        id: DeclId(0),
                         name: "UserId",
                         typ: TypeId(0),
                     },
                     ConceptualDecl {
-                        id: DeclId(1),
                         name: "TransactionId",
                         typ: TypeId(0),
                     },
@@ -1268,10 +1383,10 @@ type Profile = record {
 
             assert!(program.actor.is_none());
             assert_ne!(DeclId(0), DeclId(1));
-            assert_eq!(program.decl(DeclId(0)).id, DeclId(0));
-            assert_eq!(program.decl(DeclId(1)).id, DeclId(1));
             assert_eq!(program.decl(DeclId(0)).name, "UserId");
             assert_eq!(program.decl(DeclId(1)).name, "TransactionId");
+            assert_eq!(program.decl_id_by_name("UserId"), Some(DeclId(0)));
+            assert_eq!(program.decl_id_by_name("TransactionId"), Some(DeclId(1)));
             assert_eq!(program.resolve(decl_ref(0)), TypeId(0));
             assert_eq!(program.resolve(decl_ref(1)), TypeId(0));
             assert_eq!(program.type_node(TypeId(0)), &ConceptualType::Nat64);
@@ -1289,7 +1404,6 @@ type Profile = record {
         fn recursive_type() {
             let program = ConceptualProgram {
                 declarations: vec![ConceptualDecl {
-                    id: DeclId(0),
                     name: "List",
                     typ: TypeId(2),
                 }],
@@ -1318,12 +1432,10 @@ type Profile = record {
             let program = ConceptualProgram {
                 declarations: vec![
                     ConceptualDecl {
-                        id: DeclId(0),
                         name: "A",
                         typ: TypeId(1),
                     },
                     ConceptualDecl {
-                        id: DeclId(1),
                         name: "B",
                         typ: TypeId(3),
                     },
@@ -1352,7 +1464,6 @@ type Profile = record {
         fn named_service_actor() {
             let program = ConceptualProgram {
                 declarations: vec![ConceptualDecl {
-                    id: DeclId(0),
                     name: "Backend",
                     typ: TypeId(1),
                 }],
@@ -1481,6 +1592,13 @@ type Profile = record {
             .unwrap_or_else(|| panic!("missing declaration {name}"))
     }
 
+    fn declaration_id(ir: &ProgramIr, name: &str) -> DeclId {
+        ir.graph()
+            .unwrap()
+            .declaration_id_by_name(name)
+            .unwrap_or_else(|| panic!("missing declaration {name}"))
+    }
+
     fn type_node(ir: &ProgramIr, id: TypeId) -> &TypeNodeIr {
         ir.graph().unwrap().type_node(id).unwrap()
     }
@@ -1500,17 +1618,29 @@ type Profile = record {
         }
     }
 
-    fn service_methods(ir: &ProgramIr, service: TypeId) -> &[MethodIr] {
-        ir.graph().unwrap().service_methods(service).unwrap()
+    fn service_methods(ir: &ProgramIr, service: TypeId) -> Vec<MethodIr> {
+        ir.graph()
+            .unwrap()
+            .service_methods(service)
+            .unwrap()
+            .into_iter()
+            .cloned()
+            .collect()
     }
 
-    fn actor_methods(ir: &ProgramIr) -> &[MethodIr] {
-        ir.graph().unwrap().actor_service().expect("missing actor")
+    fn actor_methods(ir: &ProgramIr) -> Vec<MethodIr> {
+        ir.graph()
+            .unwrap()
+            .actor_service_methods()
+            .expect("missing actor")
+            .into_iter()
+            .cloned()
+            .collect()
     }
 
-    fn find_method<'a>(methods: &'a [MethodIr], name: &str) -> &'a MethodIr {
+    fn find_method(methods: Vec<MethodIr>, name: &str) -> MethodIr {
         methods
-            .iter()
+            .into_iter()
             .find(|method| method.name == name)
             .unwrap_or_else(|| panic!("missing method {name}"))
     }

@@ -5,8 +5,8 @@ use anyhow::{Context, Result};
 use crate::config::GeneratorConfig;
 use crate::docs::DocBlock;
 use crate::{
-    ArgIr, FieldIr, FieldLabelIr, MethodIr, MethodModeIr, ProgramIr, ProgramIrGraph, TypeDeclIr,
-    TypeId, TypeKindIr, TypeRefIr,
+    ArgIr, FieldIr, FieldLabelIr, MethodId, MethodIr, MethodModeIr, ProgramIr, ProgramIrGraph,
+    TypeDeclIr, TypeId, TypeKindIr, TypeRefIr,
 };
 
 const DEFAULT_MODULE_SPECIFIER: &str = "@ic-reactor/cod";
@@ -288,7 +288,7 @@ impl<'a> EmitterProgramBuilder<'a> {
                 mode: *mode,
             },
             TypeKindIr::Service { methods } => CandidTypeIr::Service {
-                methods: self.methods(methods)?,
+                methods: self.method_ids(methods)?,
             },
         })
     }
@@ -316,12 +316,19 @@ impl<'a> EmitterProgramBuilder<'a> {
             .collect()
     }
 
-    fn methods(&self, methods: &[MethodIr]) -> Result<Vec<CandidMethodIr>> {
-        methods.iter().map(|method| self.method(method)).collect()
+    fn method_ids(&self, methods: &[MethodId]) -> Result<Vec<CandidMethodIr>> {
+        methods
+            .iter()
+            .map(|id| self.method(self.graph.method(*id)?))
+            .collect()
     }
 
     fn service_methods(&self, service: TypeId) -> Result<Vec<CandidMethodIr>> {
-        self.methods(self.graph.service_methods(service)?)
+        self.graph
+            .service_methods(service)?
+            .into_iter()
+            .map(|method| self.method(method))
+            .collect()
     }
 
     fn method(&self, method: &MethodIr) -> Result<CandidMethodIr> {

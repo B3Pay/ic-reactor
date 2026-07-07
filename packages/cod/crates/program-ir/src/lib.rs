@@ -23,6 +23,7 @@ pub struct ProgramIr {
     pub version: u16,
     pub types: Vec<TypeNodeIr>,
     pub declarations: Vec<TypeDeclIr>,
+    pub methods: Vec<MethodIr>,
     pub actor: Option<ActorIr>,
 }
 
@@ -100,14 +101,13 @@ pub enum TypeKindIr {
         mode: MethodModeIr,
     },
     Service {
-        methods: Vec<MethodIr>,
+        methods: Vec<MethodId>,
     },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TypeDeclIr {
-    pub id: DeclId,
     pub name: String,
     #[serde(rename = "type")]
     pub typ: TypeId,
@@ -134,7 +134,6 @@ pub struct ArgIr {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MethodIr {
-    pub id: MethodId,
     pub name: String,
     pub mode: MethodModeIr,
     pub args: Vec<ArgIr>,
@@ -199,34 +198,20 @@ pub struct DocTag {
 #[derive(Debug, Clone)]
 pub struct ProgramIrGraph<'a> {
     program: &'a ProgramIr,
-    declarations_by_id: BTreeMap<DeclId, &'a TypeDeclIr>,
     declarations_by_name: BTreeMap<&'a str, DeclId>,
 }
 
 impl<'a> ProgramIrGraph<'a> {
     pub fn new(program: &'a ProgramIr) -> Result<Self, ProgramIrError> {
-        let mut declarations_by_id = BTreeMap::new();
         let mut declarations_by_name = BTreeMap::new();
 
         for (index, declaration) in program.declarations.iter().enumerate() {
-            let expected = DeclId(
+            let id = DeclId(
                 u32::try_from(index)
                     .map_err(|_| ProgramIrError::DeclarationIndexExceedsU32 { index })?,
             );
-            if declarations_by_id
-                .insert(declaration.id, declaration)
-                .is_some()
-            {
-                return Err(ProgramIrError::DuplicateDeclarationId { id: declaration.id });
-            }
-            if declaration.id != expected {
-                return Err(ProgramIrError::NonSequentialDeclarationId {
-                    expected,
-                    actual: declaration.id,
-                });
-            }
             if declarations_by_name
-                .insert(declaration.name.as_str(), declaration.id)
+                .insert(declaration.name.as_str(), id)
                 .is_some()
             {
                 return Err(ProgramIrError::DuplicateDeclarationName {
@@ -237,7 +222,6 @@ impl<'a> ProgramIrGraph<'a> {
 
         let graph = Self {
             program,
-            declarations_by_id,
             declarations_by_name,
         };
         graph.validate()?;
@@ -256,6 +240,10 @@ impl<'a> ProgramIrGraph<'a> {
         &self.program.declarations
     }
 
+    pub fn methods(&self) -> &'a [MethodIr] {
+        &self.program.methods
+    }
+
     pub fn actor(&self) -> Option<&'a ActorIr> {
         self.program.actor.as_ref()
     }
@@ -272,16 +260,26 @@ impl<'a> ProgramIrGraph<'a> {
     }
 
     pub fn declaration(&self, id: DeclId) -> Result<&'a TypeDeclIr, ProgramIrError> {
-        self.declarations_by_id
-            .get(&id)
-            .copied()
+        self.program
+            .declarations
+            .get(decl_index(id)?)
             .ok_or(ProgramIrError::MissingDeclaration { id })
     }
 
+    pub fn declaration_id_by_name(&self, name: &str) -> Option<DeclId> {
+        self.declarations_by_name.get(name).copied()
+    }
+
     pub fn declaration_by_name(&self, name: &str) -> Option<&'a TypeDeclIr> {
-        self.declarations_by_name
-            .get(name)
-            .and_then(|id| self.declaration(*id).ok())
+        self.declaration_id_by_name(name)
+            .and_then(|id| self.declaration(id).ok())
+    }
+
+    pub fn method(&self, id: MethodId) -> Result<&'a MethodIr, ProgramIrError> {
+        self.program
+            .methods
+            .get(method_index(id)?)
+            .ok_or(ProgramIrError::MissingMethod { id })
     }
 
     pub fn resolve_ref(&self, reference: TypeRefIr) -> Result<TypeId, ProgramIrError> {
@@ -298,14 +296,28 @@ impl<'a> ProgramIrGraph<'a> {
         self.type_node(self.resolve_ref(reference)?)
     }
 
-    pub fn service_methods(&self, service: TypeId) -> Result<&'a [MethodIr], ProgramIrError> {
+    pub fn service_method_ids(&self, service: TypeId) -> Result<&'a [MethodId], ProgramIrError> {
         match self.type_kind(service)? {
             TypeKindIr::Service { methods } => Ok(methods),
             _ => Err(ProgramIrError::ActorServiceNotService { id: service }),
         }
     }
 
-    pub fn actor_service(&self) -> Option<&'a [MethodIr]> {
+    pub fn service_methods(&self, service: TypeId) -> Result<Vec<&'a MethodIr>, ProgramIrError> {
+        self.service_method_ids(service)?
+            .iter()
+            .map(|id| self.method(*id))
+            .collect()
+    }
+
+    pub fn actor_service_method_ids(&self) -> Option<&'a [MethodId]> {
+        self.actor().map(|actor| {
+            self.service_method_ids(actor.service)
+                .expect("validated ProgramIr actor service must be a service type")
+        })
+    }
+
+    pub fn actor_service_methods(&self) -> Option<Vec<&'a MethodIr>> {
         self.actor().map(|actor| {
             self.service_methods(actor.service)
                 .expect("validated ProgramIr actor service must be a service type")
@@ -324,12 +336,28 @@ impl<'a> ProgramIrGraph<'a> {
             self.type_node(declaration.typ)?;
         }
 
-        let mut method_ids = BTreeSet::new();
+        for (index, method) in self.program.methods.iter().enumerate() {
+            u32::try_from(index).map_err(|_| ProgramIrError::MethodIndexExceedsU32 { index })?;
+            self.validate_args(&method.args)?;
+            self.validate_args(&method.returns)?;
+        }
+
+        let mut referenced_method_ids = BTreeSet::new();
         for (index, node) in self.program.types.iter().enumerate() {
             let type_id = TypeId(
                 u32::try_from(index).map_err(|_| ProgramIrError::TypeIndexExceedsU32 { index })?,
             );
-            self.validate_type_kind(type_id, &node.kind, &mut method_ids)?;
+            self.validate_type_kind(type_id, &node.kind, &mut referenced_method_ids)?;
+        }
+
+        for (index, _) in self.program.methods.iter().enumerate() {
+            let id = MethodId(
+                u32::try_from(index)
+                    .map_err(|_| ProgramIrError::MethodIndexExceedsU32 { index })?,
+            );
+            if !referenced_method_ids.contains(&id) {
+                return Err(ProgramIrError::UnreferencedMethod { id });
+            }
         }
 
         if let Some(actor) = self.program.actor.as_ref() {
@@ -346,7 +374,7 @@ impl<'a> ProgramIrGraph<'a> {
         &self,
         type_id: TypeId,
         kind: &TypeKindIr,
-        method_ids: &mut BTreeSet<MethodId>,
+        referenced_method_ids: &mut BTreeSet<MethodId>,
     ) -> Result<(), ProgramIrError> {
         match kind {
             TypeKindIr::Opt { inner } | TypeKindIr::Vec { inner } => {
@@ -360,7 +388,7 @@ impl<'a> ProgramIrGraph<'a> {
                 self.validate_args(returns)?;
             }
             TypeKindIr::Service { methods } => {
-                self.validate_methods(type_id, methods, method_ids)?;
+                self.validate_service_method_ids(type_id, methods, referenced_method_ids)?;
             }
             TypeKindIr::Null
             | TypeKindIr::Bool
@@ -397,25 +425,24 @@ impl<'a> ProgramIrGraph<'a> {
         Ok(())
     }
 
-    fn validate_methods(
+    fn validate_service_method_ids(
         &self,
         service: TypeId,
-        methods: &[MethodIr],
-        method_ids: &mut BTreeSet<MethodId>,
+        method_ids: &[MethodId],
+        referenced_method_ids: &mut BTreeSet<MethodId>,
     ) -> Result<(), ProgramIrError> {
         let mut method_names = BTreeSet::new();
-        for method in methods {
-            if !method_ids.insert(method.id) {
-                return Err(ProgramIrError::DuplicateMethodId { id: method.id });
+        for id in method_ids {
+            if !referenced_method_ids.insert(*id) {
+                return Err(ProgramIrError::DuplicateMethodReference { id: *id });
             }
+            let method = self.method(*id)?;
             if !method_names.insert(method.name.as_str()) {
                 return Err(ProgramIrError::DuplicateMethodName {
                     service,
                     name: method.name.clone(),
                 });
             }
-            self.validate_args(&method.args)?;
-            self.validate_args(&method.returns)?;
         }
         Ok(())
     }
@@ -445,14 +472,15 @@ pub enum ProgramIrError {
     UnsupportedVersion { actual: u16, expected: u16 },
     TypeIndexExceedsU32 { index: usize },
     DeclarationIndexExceedsU32 { index: usize },
+    MethodIndexExceedsU32 { index: usize },
     MissingType { id: TypeId },
     MissingDeclaration { id: DeclId },
-    DuplicateDeclarationId { id: DeclId },
-    NonSequentialDeclarationId { expected: DeclId, actual: DeclId },
+    MissingMethod { id: MethodId },
     DuplicateDeclarationName { name: String },
     ActorServiceNotService { id: TypeId },
-    DuplicateMethodId { id: MethodId },
+    DuplicateMethodReference { id: MethodId },
     DuplicateMethodName { service: TypeId, name: String },
+    UnreferencedMethod { id: MethodId },
     DuplicateFieldId { type_id: TypeId, candid_id: u32 },
 }
 
@@ -471,17 +499,16 @@ impl fmt::Display for ProgramIrError {
             Self::DeclarationIndexExceedsU32 { index } => {
                 write!(f, "ProgramIR declaration index {index} exceeds u32")
             }
+            Self::MethodIndexExceedsU32 { index } => {
+                write!(f, "ProgramIR method index {index} exceeds u32")
+            }
             Self::MissingType { id } => write!(f, "missing ProgramIR type node {id:?}"),
             Self::MissingDeclaration { id } => {
                 write!(f, "missing ProgramIR declaration {id:?}")
             }
-            Self::DuplicateDeclarationId { id } => {
-                write!(f, "duplicate ProgramIR declaration id {id:?}")
+            Self::MissingMethod { id } => {
+                write!(f, "missing ProgramIR method {id:?}")
             }
-            Self::NonSequentialDeclarationId { expected, actual } => write!(
-                f,
-                "non-sequential ProgramIR declaration id: expected {expected:?}, got {actual:?}"
-            ),
             Self::DuplicateDeclarationName { name } => {
                 write!(f, "duplicate ProgramIR declaration name `{name}`")
             }
@@ -491,13 +518,16 @@ impl fmt::Display for ProgramIrError {
                     "ProgramIR actor service points to non-service type {id:?}"
                 )
             }
-            Self::DuplicateMethodId { id } => {
-                write!(f, "duplicate ProgramIR method id {id:?}")
+            Self::DuplicateMethodReference { id } => {
+                write!(f, "duplicate ProgramIR method reference {id:?}")
             }
             Self::DuplicateMethodName { service, name } => write!(
                 f,
                 "duplicate ProgramIR method name `{name}` in service {service:?}"
             ),
+            Self::UnreferencedMethod { id } => {
+                write!(f, "ProgramIR method {id:?} is not referenced by a service")
+            }
             Self::DuplicateFieldId { type_id, candid_id } => write!(
                 f,
                 "duplicate ProgramIR field candid id {candid_id} in type {type_id:?}"
@@ -510,6 +540,14 @@ impl Error for ProgramIrError {}
 
 fn type_index(id: TypeId) -> Result<usize, ProgramIrError> {
     usize::try_from(id.0).map_err(|_| ProgramIrError::MissingType { id })
+}
+
+fn decl_index(id: DeclId) -> Result<usize, ProgramIrError> {
+    usize::try_from(id.0).map_err(|_| ProgramIrError::MissingDeclaration { id })
+}
+
+fn method_index(id: MethodId) -> Result<usize, ProgramIrError> {
+    usize::try_from(id.0).map_err(|_| ProgramIrError::MissingMethod { id })
 }
 
 #[cfg(test)]
@@ -546,17 +584,26 @@ mod tests {
                 kind: TypeKindIr::Nat64,
             }],
             declarations: vec![TypeDeclIr {
-                id: DeclId(0),
                 name: "UserId".to_string(),
                 typ: TypeId(0),
                 metadata: MetadataIr::default(),
             }],
+            methods: vec![],
             actor: None,
         };
 
         let json = serde_json::to_string(&program).unwrap();
         let round_trip: ProgramIr = serde_json::from_str(&json).unwrap();
         assert_eq!(round_trip, program);
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            value["declarations"][0],
+            serde_json::json!({
+                "name": "UserId",
+                "type": 0,
+                "metadata": {},
+            })
+        );
     }
 
     #[test]
@@ -566,12 +613,19 @@ mod tests {
             types: vec![TypeNodeIr {
                 kind: TypeKindIr::Nat64,
             }],
-            declarations: vec![TypeDeclIr {
-                id: DeclId(0),
-                name: "UserId".to_string(),
-                typ: TypeId(0),
-                metadata: MetadataIr::default(),
-            }],
+            declarations: vec![
+                TypeDeclIr {
+                    name: "UserId".to_string(),
+                    typ: TypeId(0),
+                    metadata: MetadataIr::default(),
+                },
+                TypeDeclIr {
+                    name: "TransactionId".to_string(),
+                    typ: TypeId(0),
+                    metadata: MetadataIr::default(),
+                },
+            ],
+            methods: vec![],
             actor: None,
         };
 
@@ -585,12 +639,21 @@ mod tests {
         );
         assert_eq!(
             graph
-                .resolve_ref(TypeRefIr::Decl { id: DeclId(0) })
+                .resolve_ref(TypeRefIr::Decl { id: DeclId(1) })
                 .unwrap(),
             TypeId(0)
         );
         assert_eq!(graph.declaration(DeclId(0)).unwrap().name, "UserId");
-        assert_eq!(graph.declaration_by_name("UserId").unwrap().id, DeclId(0));
+        assert_eq!(graph.declaration(DeclId(1)).unwrap().name, "TransactionId");
+        assert_eq!(graph.declaration_id_by_name("UserId"), Some(DeclId(0)));
+        assert_eq!(
+            graph.declaration_id_by_name("TransactionId"),
+            Some(DeclId(1))
+        );
+        assert_eq!(
+            graph.declaration_by_name("TransactionId").unwrap().typ,
+            TypeId(0)
+        );
     }
 
     #[test]
@@ -599,9 +662,10 @@ mod tests {
             version: PROGRAM_IR_VERSION,
             types: vec![TypeNodeIr {
                 kind: TypeKindIr::Service {
-                    methods: vec![method(0, "ping")],
+                    methods: vec![MethodId(0)],
                 },
             }],
+            methods: vec![method("ping")],
             declarations: vec![],
             actor: Some(ActorIr {
                 init_args: vec![],
@@ -610,10 +674,12 @@ mod tests {
         };
 
         let graph = program.graph().unwrap();
-        let methods = graph.actor_service().unwrap();
+        let methods = graph.actor_service_methods().unwrap();
 
         assert_eq!(methods.len(), 1);
         assert_eq!(methods[0].name, "ping");
+        assert_eq!(graph.method(MethodId(0)).unwrap().name, "ping");
+        assert_eq!(graph.actor_service_method_ids().unwrap(), &[MethodId(0)]);
     }
 
     #[test]
@@ -622,11 +688,11 @@ mod tests {
             version: PROGRAM_IR_VERSION,
             types: vec![],
             declarations: vec![TypeDeclIr {
-                id: DeclId(0),
                 name: "Missing".to_string(),
                 typ: TypeId(7),
                 metadata: MetadataIr::default(),
             }],
+            methods: vec![],
             actor: None,
         };
 
@@ -637,32 +703,22 @@ mod tests {
     }
 
     #[test]
-    fn graph_validation_rejects_duplicate_declaration_ids() {
+    fn graph_validation_rejects_missing_declaration_ids() {
         let program = ProgramIr {
             version: PROGRAM_IR_VERSION,
             types: vec![TypeNodeIr {
-                kind: TypeKindIr::Nat,
+                kind: TypeKindIr::Vec {
+                    inner: TypeRefIr::Decl { id: DeclId(7) },
+                },
             }],
-            declarations: vec![
-                TypeDeclIr {
-                    id: DeclId(0),
-                    name: "A".to_string(),
-                    typ: TypeId(0),
-                    metadata: MetadataIr::default(),
-                },
-                TypeDeclIr {
-                    id: DeclId(0),
-                    name: "B".to_string(),
-                    typ: TypeId(0),
-                    metadata: MetadataIr::default(),
-                },
-            ],
+            declarations: vec![],
+            methods: vec![],
             actor: None,
         };
 
         assert_eq!(
             program.validate().unwrap_err(),
-            ProgramIrError::DuplicateDeclarationId { id: DeclId(0) }
+            ProgramIrError::MissingDeclaration { id: DeclId(7) }
         );
     }
 
@@ -675,18 +731,17 @@ mod tests {
             }],
             declarations: vec![
                 TypeDeclIr {
-                    id: DeclId(0),
                     name: "Name".to_string(),
                     typ: TypeId(0),
                     metadata: MetadataIr::default(),
                 },
                 TypeDeclIr {
-                    id: DeclId(1),
                     name: "Name".to_string(),
                     typ: TypeId(0),
                     metadata: MetadataIr::default(),
                 },
             ],
+            methods: vec![],
             actor: None,
         };
 
@@ -706,6 +761,7 @@ mod tests {
                 kind: TypeKindIr::Text,
             }],
             declarations: vec![],
+            methods: vec![],
             actor: Some(ActorIr {
                 init_args: vec![],
                 service: TypeId(0),
@@ -719,28 +775,67 @@ mod tests {
     }
 
     #[test]
-    fn graph_validation_rejects_duplicate_method_ids() {
+    fn graph_validation_rejects_missing_method_ids() {
         let program = ProgramIr {
             version: PROGRAM_IR_VERSION,
-            types: vec![
-                TypeNodeIr {
-                    kind: TypeKindIr::Service {
-                        methods: vec![method(0, "a")],
-                    },
+            types: vec![TypeNodeIr {
+                kind: TypeKindIr::Service {
+                    methods: vec![MethodId(7)],
                 },
-                TypeNodeIr {
-                    kind: TypeKindIr::Service {
-                        methods: vec![method(0, "b")],
-                    },
-                },
-            ],
+            }],
             declarations: vec![],
+            methods: vec![],
             actor: None,
         };
 
         assert_eq!(
             program.validate().unwrap_err(),
-            ProgramIrError::DuplicateMethodId { id: MethodId(0) }
+            ProgramIrError::MissingMethod { id: MethodId(7) }
+        );
+    }
+
+    #[test]
+    fn graph_validation_rejects_duplicate_method_references() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![
+                TypeNodeIr {
+                    kind: TypeKindIr::Service {
+                        methods: vec![MethodId(0)],
+                    },
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Service {
+                        methods: vec![MethodId(0)],
+                    },
+                },
+            ],
+            declarations: vec![],
+            methods: vec![method("shared")],
+            actor: None,
+        };
+
+        assert_eq!(
+            program.validate().unwrap_err(),
+            ProgramIrError::DuplicateMethodReference { id: MethodId(0) }
+        );
+    }
+
+    #[test]
+    fn graph_validation_rejects_unreferenced_methods() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![TypeNodeIr {
+                kind: TypeKindIr::Service { methods: vec![] },
+            }],
+            declarations: vec![],
+            methods: vec![method("orphan")],
+            actor: None,
+        };
+
+        assert_eq!(
+            program.validate().unwrap_err(),
+            ProgramIrError::UnreferencedMethod { id: MethodId(0) }
         );
     }
 
@@ -762,6 +857,7 @@ mod tests {
                 },
             ],
             declarations: vec![],
+            methods: vec![],
             actor: None,
         };
 
@@ -774,9 +870,8 @@ mod tests {
         );
     }
 
-    fn method(id: u32, name: &str) -> MethodIr {
+    fn method(name: &str) -> MethodIr {
         MethodIr {
-            id: MethodId(id),
             name: name.to_string(),
             mode: MethodModeIr::Query,
             args: vec![],

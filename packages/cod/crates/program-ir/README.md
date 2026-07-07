@@ -20,7 +20,9 @@ compiler passes.
 6. The type arena stores wire structure. Semantic conveniences such as blob,
    tuple, and result are analysis layered on top of structural wire truth.
 7. Primitive type reuse is allowed. Composite structural interning is deferred.
-8. Graph validation and ID resolution are owned by this crate.
+8. `MethodId` identifies one method body in the method arena. Service type
+   nodes store ordered `MethodId` references.
+9. Graph validation and ID resolution are owned by this crate.
 
 ## Graph Shape
 
@@ -31,7 +33,10 @@ Program IR
     │      └── TypeId -> TypeNodeIr
     │
     ├── Declarations
-    │      └── DeclId -> declaration name + target TypeId
+    │      └── DeclId(index) -> declarations[index] -> name + target TypeId
+    │
+    ├── Methods
+    │      └── MethodId -> method name + signature + metadata
     │
     └── Actor
            └── service TypeId
@@ -49,12 +54,12 @@ type TransactionId = nat64;
 Conceptually:
 
 ```text
-DeclId(0) UserId        -> TypeId(0) Nat64
-DeclId(1) TransactionId -> TypeId(0) Nat64
+declarations[0] UserId        -> TypeId(0) Nat64
+declarations[1] TransactionId -> TypeId(0) Nat64
 ```
 
-This preserves source-level declaration identity without changing Candid wire
-compatibility.
+`DeclId(n)` is the arena index `program.declarations[n]`. `TypeDeclIr` does
+not store a redundant `id` field.
 
 ## Reference Model
 
@@ -93,15 +98,19 @@ The graph resolver validates the Program IR before exposing borrowed accessors:
 
 - `type_node(TypeId)`
 - `declaration(DeclId)`
+- `declaration_id_by_name(name)`
 - `declaration_by_name(name)`
+- `method(MethodId)`
 - `resolve_ref(TypeRefIr) -> TypeId`
+- `service_method_ids(TypeId)`
 - `service_methods(TypeId)`
-- `actor_service()`
+- `actor_service_method_ids()`
+- `actor_service_methods()`
 
-Validation currently checks version support, declaration ID/name uniqueness,
-sequential declaration IDs, missing type/declaration references, actor service
-targets, duplicate method IDs/names, and duplicate field candid IDs inside
-record and variant nodes.
+Validation currently checks version support, declaration name uniqueness,
+missing type/declaration/method references, actor service targets, duplicate
+method references, duplicate method names per service, unreferenced methods,
+and duplicate field candid IDs inside record and variant nodes.
 
 ## Initial Lowering Policy
 
@@ -109,6 +118,8 @@ The first arena lowerer should:
 
 - reserve all declarations in source order before lowering declaration bodies
 - allocate type IDs with checked `u32` conversion
+- allocate method IDs with checked `u32` conversion and store service method
+  order as `MethodId` references
 - reuse primitive type nodes
 - allocate separate composite nodes for repeated anonymous composites
 - preserve named type uses as `TypeRefIr::Decl`

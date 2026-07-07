@@ -45,6 +45,7 @@ describe("compileDid runtime program", () => {
       ["Account"]
     )
     assert.equal(program.method("icrc1_balance_of").name, "icrc1_balance_of")
+    assert.equal(program.method("icrc1_balance_of").id, 0)
     assert.equal(program.type("Account").metadata().name, "Account")
   })
 
@@ -106,6 +107,7 @@ type User = record {
       throw new Error("expected actor service")
     }
     assert.deepEqual(service.methods, [])
+    assert.deepEqual(program.ir.methods, [])
     assert.deepEqual(program.listMethods(), [])
   })
 
@@ -123,10 +125,42 @@ service : (text, opt principal) -> {
     if (service?.kind !== "service") {
       throw new Error("expected actor service")
     }
+    assert.deepEqual(service.methods, [0])
     assert.deepEqual(
-      service.methods.map((method) => method.name),
+      program.ir.methods.map((method) => method.name),
       ["greet"]
     )
+    assert.equal(new ProgramIrGraph(program.ir).method(0).name, "greet")
+  })
+
+  it("treats declaration IDs as declaration arena indexes", async () => {
+    const program = await c.compileDid(`
+type UserId = nat64;
+type TransactionId = nat64;
+`)
+    const graph = new ProgramIrGraph(program.ir)
+
+    assert.equal(graph.declarationIdByName("UserId"), 0)
+    assert.equal(graph.declarationIdByName("TransactionId"), 1)
+    assert.equal(graph.declaration(0).name, "UserId")
+    assert.equal(graph.declaration(1).name, "TransactionId")
+    assert.equal(graph.declaration(0).type, graph.declaration(1).type)
+    assert.equal(Object.hasOwn(program.ir.declarations[0]!, "id"), false)
+    assert.throws(() => graph.declaration(7), /missing ProgramIR declaration 7/)
+  })
+
+  it("rejects service method IDs that do not resolve through the method arena", () => {
+    const did = `service : { ping : () -> () query }`
+    const raw = programForTest(did)
+    const ir = raw.ir()
+    const service = ir.actor && ir.types[ir.actor.service]?.kind
+    assert.equal(service?.kind, "service")
+    if (service?.kind !== "service") {
+      throw new Error("expected actor service")
+    }
+    service.methods = [99]
+
+    assert.throws(() => new ProgramIrGraph(ir), /missing ProgramIR method 99/)
   })
 
   it("generates no service export for absent actor and an empty service for empty actor", () => {
@@ -722,7 +756,11 @@ describe("workflow schema", () => {
       ["icrc1_balance_of", "icrc1_transfer"]
     )
     assert.equal(workflow.nodes[0]?.type, "canister_method")
+    assert.equal(workflow.nodes[0]?.id, "method:0")
+    assert.equal(workflow.nodes[0]?.methodId, 0)
     assert.equal(workflow.nodes[0]?.mode, "query")
+    assert.equal(workflow.nodes[1]?.id, "method:1")
+    assert.equal(workflow.nodes[1]?.methodId, 1)
     assert.equal(workflow.nodes[1]?.mode, "update")
     assert.equal(workflow.nodes[1]?.inputs[0]?.kind, "record")
     assert.equal(workflow.nodes[1]?.outputs[0]?.kind, "variant")

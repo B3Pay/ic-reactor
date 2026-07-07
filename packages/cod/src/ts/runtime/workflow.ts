@@ -25,8 +25,9 @@ export function methodToWorkflowNode(
 ): WorkflowMethodNode {
   const form = methodToFormSchema(method, context)
   const node: WorkflowMethodNode = {
-    id: method.name,
+    id: `method:${method.id}`,
     type: "canister_method",
+    methodId: method.id,
     methodName: method.name,
     mode: method.mode,
     title: method.name,
