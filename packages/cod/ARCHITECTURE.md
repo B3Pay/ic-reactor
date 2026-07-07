@@ -796,28 +796,28 @@ The TypeScript emitter should be boring.
 Conceptually:
 
 ```rust
-fn emit_type(
-    program: &ProgramIr,
-    typ: &CandidTypeIr,
+fn emit_type_id(
+    graph: &ProgramIrGraph<'_>,
+    id: TypeId,
     out: &mut String,
 ) -> Result<()> {
-    match typ {
-        CandidTypeIr::Null => {
+    match graph.type_kind(id)? {
+        TypeKindIr::Null => {
             out.push_str("c.null()");
         }
 
-        CandidTypeIr::Bool => {
+        TypeKindIr::Bool => {
             out.push_str("c.bool()");
         }
 
-        CandidTypeIr::Opt { inner } => {
+        TypeKindIr::Opt { inner } => {
             out.push_str("c.opt(");
-            emit_type(program, inner, out)?;
+            emit_type_ref(graph, *inner, out)?;
             out.push(')');
         }
 
-        CandidTypeIr::Record { fields } => {
-            emit_record(program, fields, out)?;
+        TypeKindIr::Record { fields } => {
+            emit_record(graph, fields, out)?;
         }
 
         // ...
@@ -825,11 +825,26 @@ fn emit_type(
 
     Ok(())
 }
+
+fn emit_type_ref(
+    graph: &ProgramIrGraph<'_>,
+    reference: TypeRefIr,
+    out: &mut String,
+) -> Result<()> {
+    match reference {
+        TypeRefIr::Type { id } => emit_type_id(graph, id, out),
+        TypeRefIr::Decl { id } => emit_declaration_ref(graph, id, out),
+    }
+}
 ```
 
 The emitter formats an already-understood program.
 
 It does not understand Candid itself.
+
+The emitter must not first convert `ProgramIR` into an `EmitterProgram`,
+`CandidTypeIr`, `GeneratorIR`, or any other recursive compatibility AST. It may
+use `ProgramIrGraph` as an index/view over the canonical arenas.
 
 ### Hard emitter rule
 
@@ -1092,9 +1107,20 @@ They should project from one method model.
 
 ---
 
-## 18. Current Legacy Compiler Debt
+## 18. TypeScript Emitter Boundary
 
-The existing `generator.rs` currently walks:
+The TypeScript emitter consumes:
+
+```text
+ProgramIr
+ProgramIrGraph
+TypeId / DeclId / MethodId
+TypeRefIr
+```
+
+directly.
+
+It must not inspect Candid frontend or type-checker representations such as:
 
 ```text
 TypeEnv
@@ -1103,17 +1129,22 @@ IDLType
 IDLMergedProg
 ```
 
-directly.
+It also must not reconstruct a recursive compatibility model such as:
 
-It independently performs structural interpretation that overlaps with `ProgramIR` lowering.
+```text
+EmitterProgram
+CandidTypeIr
+CandidMethodIr
+CandidFieldIr
+```
 
-This is known compiler debt.
+The emitter may contain TypeScript-specific formatting logic and derived output
+models. It must not create a second structural description of the Candid
+program.
 
-Until the migration is complete:
-
-> `generator.rs` must not gain new structural Candid interpretation.
-
-The next compiler milestone is:
+Remaining emitter semantic choices, such as tuple-like record formatting and
+vector typed-array TypeScript formatting, should move to shared semantic
+analysis when that pass exists.
 
 ```rust
 generate_typescript(

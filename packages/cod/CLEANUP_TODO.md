@@ -251,9 +251,9 @@ can become a persistent method reference.
 
 **Priority: Critical**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
-Current generator recreates an old recursive Candid model:
+Before this cleanup, the generator recreated an old recursive Candid model:
 
 ```rust
 EmitterProgram
@@ -267,7 +267,7 @@ CandidFieldIr
 EmitterProgramBuilder
 ```
 
-Then it converts `ProgramIrGraph` into that recursive model.
+It converted `ProgramIrGraph` into that recursive model.
 
 Delete all of it.
 

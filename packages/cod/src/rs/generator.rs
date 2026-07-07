@@ -89,259 +89,6 @@ const TS_KEYWORDS: &[&str] = &[
     "yield",
 ];
 
-type CandidFieldLabelIr = FieldLabelIr;
-type CandidMethodModeIr = MethodModeIr;
-
-#[derive(Debug, Clone)]
-struct EmitterProgram {
-    types: Vec<CandidTypeDeclIr>,
-    actor: Option<CandidActorIr>,
-}
-
-#[derive(Debug, Clone)]
-struct CandidActorIr {
-    init_args: Vec<CandidArgIr>,
-    service: CandidServiceIr,
-}
-
-#[derive(Debug, Clone)]
-struct CandidTypeDeclIr {
-    name: String,
-    typ: CandidTypeIr,
-    raw_docs: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-struct CandidServiceIr {
-    methods: Vec<CandidMethodIr>,
-}
-
-#[derive(Debug, Clone)]
-struct CandidMethodIr {
-    name: String,
-    mode: CandidMethodModeIr,
-    args: Vec<CandidArgIr>,
-    returns: Vec<CandidArgIr>,
-    raw_docs: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-struct CandidArgIr {
-    typ: CandidTypeIr,
-}
-
-#[derive(Debug, Clone)]
-enum CandidTypeIr {
-    Null,
-    Bool,
-    Text,
-    Nat,
-    Int,
-    Nat8,
-    Nat16,
-    Nat32,
-    Nat64,
-    Int8,
-    Int16,
-    Int32,
-    Int64,
-    Float32,
-    Float64,
-    Principal,
-    Reserved,
-    Empty,
-    Opt {
-        inner: Box<CandidTypeIr>,
-    },
-    Vec {
-        inner: Box<CandidTypeIr>,
-    },
-    Record {
-        fields: Vec<CandidFieldIr>,
-    },
-    Variant {
-        fields: Vec<CandidFieldIr>,
-    },
-    Ref {
-        name: String,
-    },
-    Func {
-        args: Vec<CandidArgIr>,
-        returns: Vec<CandidArgIr>,
-        mode: CandidMethodModeIr,
-    },
-    Service {
-        methods: Vec<CandidMethodIr>,
-    },
-}
-
-#[derive(Debug, Clone)]
-struct CandidFieldIr {
-    label: CandidFieldLabelIr,
-    typ: CandidTypeIr,
-    raw_docs: Vec<String>,
-}
-
-struct EmitterProgramBuilder<'a> {
-    graph: ProgramIrGraph<'a>,
-}
-
-impl EmitterProgram {
-    fn from_program(program: &ProgramIr) -> Result<Self> {
-        let builder = EmitterProgramBuilder::new(program)?;
-        builder.build()
-    }
-}
-
-impl<'a> EmitterProgramBuilder<'a> {
-    fn new(program: &'a ProgramIr) -> Result<Self> {
-        Ok(Self {
-            graph: program.graph().context("invalid ProgramIR graph")?,
-        })
-    }
-
-    fn build(&self) -> Result<EmitterProgram> {
-        let types = self
-            .graph
-            .declarations()
-            .iter()
-            .map(|declaration| self.type_declaration(declaration))
-            .collect::<Result<Vec<_>>>()?;
-        let actor = if let Some(actor) = self.graph.actor() {
-            Some(CandidActorIr {
-                init_args: self.args(&actor.init_args)?,
-                service: CandidServiceIr {
-                    methods: self.service_methods(actor.service)?,
-                },
-            })
-        } else {
-            None
-        };
-
-        Ok(EmitterProgram { types, actor })
-    }
-
-    fn type_declaration(&self, declaration: &TypeDeclIr) -> Result<CandidTypeDeclIr> {
-        Ok(CandidTypeDeclIr {
-            name: declaration.name.clone(),
-            typ: self.type_id(declaration.typ)?,
-            raw_docs: declaration.metadata.raw_docs.clone(),
-        })
-    }
-
-    fn type_ref(&self, reference: TypeRefIr) -> Result<CandidTypeIr> {
-        match reference {
-            TypeRefIr::Type { id } => self.type_id(id),
-            TypeRefIr::Decl { id } => {
-                let declaration = self.graph.declaration(id)?;
-                Ok(CandidTypeIr::Ref {
-                    name: declaration.name.clone(),
-                })
-            }
-        }
-    }
-
-    fn type_id(&self, id: TypeId) -> Result<CandidTypeIr> {
-        let node = self.graph.type_node(id)?;
-        self.type_kind(&node.kind)
-    }
-
-    fn type_kind(&self, kind: &TypeKindIr) -> Result<CandidTypeIr> {
-        Ok(match kind {
-            TypeKindIr::Null => CandidTypeIr::Null,
-            TypeKindIr::Bool => CandidTypeIr::Bool,
-            TypeKindIr::Text => CandidTypeIr::Text,
-            TypeKindIr::Nat => CandidTypeIr::Nat,
-            TypeKindIr::Int => CandidTypeIr::Int,
-            TypeKindIr::Nat8 => CandidTypeIr::Nat8,
-            TypeKindIr::Nat16 => CandidTypeIr::Nat16,
-            TypeKindIr::Nat32 => CandidTypeIr::Nat32,
-            TypeKindIr::Nat64 => CandidTypeIr::Nat64,
-            TypeKindIr::Int8 => CandidTypeIr::Int8,
-            TypeKindIr::Int16 => CandidTypeIr::Int16,
-            TypeKindIr::Int32 => CandidTypeIr::Int32,
-            TypeKindIr::Int64 => CandidTypeIr::Int64,
-            TypeKindIr::Float32 => CandidTypeIr::Float32,
-            TypeKindIr::Float64 => CandidTypeIr::Float64,
-            TypeKindIr::Principal => CandidTypeIr::Principal,
-            TypeKindIr::Reserved => CandidTypeIr::Reserved,
-            TypeKindIr::Empty => CandidTypeIr::Empty,
-            TypeKindIr::Opt { inner } => CandidTypeIr::Opt {
-                inner: Box::new(self.type_ref(*inner)?),
-            },
-            TypeKindIr::Vec { inner } => CandidTypeIr::Vec {
-                inner: Box::new(self.type_ref(*inner)?),
-            },
-            TypeKindIr::Record { fields } => CandidTypeIr::Record {
-                fields: self.fields(fields)?,
-            },
-            TypeKindIr::Variant { fields } => CandidTypeIr::Variant {
-                fields: self.fields(fields)?,
-            },
-            TypeKindIr::Func {
-                args,
-                returns,
-                mode,
-            } => CandidTypeIr::Func {
-                args: self.args(args)?,
-                returns: self.args(returns)?,
-                mode: *mode,
-            },
-            TypeKindIr::Service { methods } => CandidTypeIr::Service {
-                methods: self.method_ids(methods)?,
-            },
-        })
-    }
-
-    fn fields(&self, fields: &[FieldIr]) -> Result<Vec<CandidFieldIr>> {
-        fields
-            .iter()
-            .map(|field| {
-                Ok(CandidFieldIr {
-                    label: field.label.clone(),
-                    typ: self.type_ref(field.typ)?,
-                    raw_docs: field.metadata.raw_docs.clone(),
-                })
-            })
-            .collect()
-    }
-
-    fn args(&self, args: &[ArgIr]) -> Result<Vec<CandidArgIr>> {
-        args.iter()
-            .map(|arg| {
-                Ok(CandidArgIr {
-                    typ: self.type_ref(arg.typ)?,
-                })
-            })
-            .collect()
-    }
-
-    fn method_ids(&self, methods: &[MethodId]) -> Result<Vec<CandidMethodIr>> {
-        methods
-            .iter()
-            .map(|id| self.method(self.graph.method(*id)?))
-            .collect()
-    }
-
-    fn service_methods(&self, service: TypeId) -> Result<Vec<CandidMethodIr>> {
-        self.graph
-            .service_methods(service)?
-            .into_iter()
-            .map(|method| self.method(method))
-            .collect()
-    }
-
-    fn method(&self, method: &MethodIr) -> Result<CandidMethodIr> {
-        Ok(CandidMethodIr {
-            name: method.name.clone(),
-            mode: method.mode,
-            args: self.args(&method.args)?,
-            returns: self.args(&method.returns)?,
-            raw_docs: method.metadata.raw_docs.clone(),
-        })
-    }
-}
-
 /// The TypeScript emitter formats ProgramIr. It must not structurally interpret
 /// Candid frontend or type-checker representations.
 #[derive(Debug, Clone)]
@@ -357,7 +104,7 @@ impl TypeScriptEmitter {
     }
 
     pub fn emit(&self, program: &ProgramIr) -> Result<String> {
-        let program = EmitterProgram::from_program(program)?;
+        let graph = program.graph().context("invalid ProgramIR graph")?;
         let mut out = String::new();
 
         if self.config.emit_banner {
@@ -368,13 +115,13 @@ impl TypeScriptEmitter {
         out.push_str(";\n\n");
 
         let mut emitted_types = BTreeSet::new();
-        for declaration in &program.types {
-            self.push_named_schema(&mut out, declaration, &emitted_types)?;
+        for declaration in graph.declarations() {
+            self.push_named_schema(&mut out, &graph, declaration, &emitted_types)?;
             emitted_types.insert(declaration.name.clone());
             out.push('\n');
         }
 
-        self.push_actor_schema(&mut out, &program, &emitted_types)?;
+        self.push_actor_schema(&mut out, &graph, &emitted_types)?;
         if !emitted_types.is_empty() {
             out.push('\n');
         }
@@ -385,18 +132,19 @@ impl TypeScriptEmitter {
     fn push_named_schema(
         &self,
         out: &mut String,
-        declaration: &CandidTypeDeclIr,
+        graph: &ProgramIrGraph<'_>,
+        declaration: &TypeDeclIr,
         available_refs: &BTreeSet<String>,
     ) -> Result<()> {
-        push_doc_comment(out, &doc_block(&declaration.raw_docs), "");
+        push_doc_comment(out, &doc_block(&declaration.metadata.raw_docs), "");
 
         let name = type_name(&declaration.name);
-        match &declaration.typ {
-            CandidTypeIr::Service { methods } => {
+        match graph.type_kind(declaration.typ)? {
+            TypeKindIr::Service { methods } => {
                 out.push_str("export const ");
                 out.push_str(&name);
                 out.push_str(" = ");
-                push_service_schema_expr(out, methods, "", available_refs)?;
+                push_service_schema_expr(out, graph, methods, "", available_refs)?;
                 out.push_str(";\n");
                 out.push_str("export type ");
                 out.push_str(&name);
@@ -404,11 +152,11 @@ impl TypeScriptEmitter {
                 out.push_str(&name);
                 out.push_str(".methods>;\n");
             }
-            typ => {
+            _ => {
                 out.push_str("export const ");
                 out.push_str(&name);
                 out.push_str(" = ");
-                push_schema_expr(out, typ, "", available_refs)?;
+                push_type_id_schema_expr(out, graph, declaration.typ, "", available_refs)?;
                 out.push_str(";\n");
                 out.push_str("export type ");
                 out.push_str(&name);
@@ -424,16 +172,16 @@ impl TypeScriptEmitter {
     fn push_actor_schema(
         &self,
         out: &mut String,
-        program: &EmitterProgram,
+        graph: &ProgramIrGraph<'_>,
         available_refs: &BTreeSet<String>,
     ) -> Result<()> {
-        let Some(actor) = program.actor.as_ref() else {
+        let Some(actor) = graph.actor() else {
             return Ok(());
         };
 
         if !actor.init_args.is_empty() {
             out.push_str("export const initArgs = c.tuple(");
-            push_schema_tuple_arg(out, &actor.init_args, "", available_refs)?;
+            push_arg_tuple_schema_expr(out, graph, &actor.init_args, "", available_refs)?;
             out.push_str(");\n");
             out.push_str("export type InitArgs = c.Infer<typeof initArgs>;\n\n");
         }
@@ -441,7 +189,8 @@ impl TypeScriptEmitter {
         out.push_str("export const ");
         out.push_str(&canister_export_name(&self.config.canister_name));
         out.push_str(" = ");
-        push_service_schema_expr(out, &actor.service.methods, "", available_refs)?;
+        let methods = graph.service_method_ids(actor.service)?;
+        push_service_schema_expr(out, graph, methods, "", available_refs)?;
         out.push_str(";\n");
         Ok(())
     }
@@ -451,95 +200,117 @@ pub fn generate_typescript(program: &ProgramIr, config: &GeneratorConfig) -> Res
     TypeScriptEmitter::new(config).emit(program)
 }
 
-fn push_schema_expr(
+fn push_type_ref_schema_expr(
     out: &mut String,
-    typ: &CandidTypeIr,
+    graph: &ProgramIrGraph<'_>,
+    reference: TypeRefIr,
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
-    match typ {
-        CandidTypeIr::Null => out.push_str("c.null()"),
-        CandidTypeIr::Bool => out.push_str("c.bool()"),
-        CandidTypeIr::Nat => out.push_str("c.nat()"),
-        CandidTypeIr::Int => out.push_str("c.int()"),
-        CandidTypeIr::Nat8 => out.push_str("c.nat8()"),
-        CandidTypeIr::Nat16 => out.push_str("c.nat16()"),
-        CandidTypeIr::Nat32 => out.push_str("c.nat32()"),
-        CandidTypeIr::Nat64 => out.push_str("c.nat64()"),
-        CandidTypeIr::Int8 => out.push_str("c.int8()"),
-        CandidTypeIr::Int16 => out.push_str("c.int16()"),
-        CandidTypeIr::Int32 => out.push_str("c.int32()"),
-        CandidTypeIr::Int64 => out.push_str("c.int64()"),
-        CandidTypeIr::Float32 => out.push_str("c.float32()"),
-        CandidTypeIr::Float64 => out.push_str("c.float64()"),
-        CandidTypeIr::Text => out.push_str("c.text()"),
-        CandidTypeIr::Principal => out.push_str("c.principal()"),
-        CandidTypeIr::Ref { name } => {
-            if available_refs.contains(name) {
-                out.push_str(&type_name(name));
-            } else {
-                out.push_str("c.lazy(() => ");
-                out.push_str(&type_name(name));
-                out.push_str(", ");
-                out.push_str(&json_string(name));
-                out.push(')');
-            }
-        }
-        CandidTypeIr::Opt { inner } => {
-            push_wrapped_schema_expr(out, "c.opt", inner, indent, available_refs)?;
-        }
-        CandidTypeIr::Vec { inner } => {
-            push_wrapped_schema_expr(out, "c.vec", inner, indent, available_refs)?;
-        }
-        CandidTypeIr::Record { fields } => {
-            push_record_schema_expr(out, fields, indent, available_refs)?;
-        }
-        CandidTypeIr::Variant { fields } => {
-            push_variant_schema_expr(out, fields, indent, available_refs)?;
-        }
-        CandidTypeIr::Reserved
-        | CandidTypeIr::Empty
-        | CandidTypeIr::Func { .. }
-        | CandidTypeIr::Service { .. } => {
-            push_unsupported_schema_expr(out, typ)?;
+    match reference {
+        TypeRefIr::Type { id } => push_type_id_schema_expr(out, graph, id, indent, available_refs)?,
+        TypeRefIr::Decl { id } => {
+            let declaration = graph.declaration(id)?;
+            push_declaration_schema_ref(out, &declaration.name, available_refs);
         }
     }
 
     Ok(())
 }
 
+fn push_type_id_schema_expr(
+    out: &mut String,
+    graph: &ProgramIrGraph<'_>,
+    id: TypeId,
+    indent: &str,
+    available_refs: &BTreeSet<String>,
+) -> Result<()> {
+    match graph.type_kind(id)? {
+        TypeKindIr::Null => out.push_str("c.null()"),
+        TypeKindIr::Bool => out.push_str("c.bool()"),
+        TypeKindIr::Nat => out.push_str("c.nat()"),
+        TypeKindIr::Int => out.push_str("c.int()"),
+        TypeKindIr::Nat8 => out.push_str("c.nat8()"),
+        TypeKindIr::Nat16 => out.push_str("c.nat16()"),
+        TypeKindIr::Nat32 => out.push_str("c.nat32()"),
+        TypeKindIr::Nat64 => out.push_str("c.nat64()"),
+        TypeKindIr::Int8 => out.push_str("c.int8()"),
+        TypeKindIr::Int16 => out.push_str("c.int16()"),
+        TypeKindIr::Int32 => out.push_str("c.int32()"),
+        TypeKindIr::Int64 => out.push_str("c.int64()"),
+        TypeKindIr::Float32 => out.push_str("c.float32()"),
+        TypeKindIr::Float64 => out.push_str("c.float64()"),
+        TypeKindIr::Text => out.push_str("c.text()"),
+        TypeKindIr::Principal => out.push_str("c.principal()"),
+        TypeKindIr::Opt { inner } => {
+            push_wrapped_schema_expr(out, graph, "c.opt", *inner, indent, available_refs)?;
+        }
+        TypeKindIr::Vec { inner } => {
+            push_wrapped_schema_expr(out, graph, "c.vec", *inner, indent, available_refs)?;
+        }
+        TypeKindIr::Record { fields } => {
+            push_record_schema_expr(out, graph, fields, indent, available_refs)?;
+        }
+        TypeKindIr::Variant { fields } => {
+            push_variant_schema_expr(out, graph, fields, indent, available_refs)?;
+        }
+        TypeKindIr::Reserved
+        | TypeKindIr::Empty
+        | TypeKindIr::Func { .. }
+        | TypeKindIr::Service { .. } => {
+            push_unsupported_schema_expr(out, graph, id)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn push_declaration_schema_ref(out: &mut String, name: &str, available_refs: &BTreeSet<String>) {
+    if available_refs.contains(name) {
+        out.push_str(&type_name(name));
+    } else {
+        out.push_str("c.lazy(() => ");
+        out.push_str(&type_name(name));
+        out.push_str(", ");
+        out.push_str(&json_string(name));
+        out.push(')');
+    }
+}
+
 fn push_wrapped_schema_expr(
     out: &mut String,
+    graph: &ProgramIrGraph<'_>,
     wrapper: &str,
-    inner: &CandidTypeIr,
+    inner: TypeRefIr,
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
     out.push_str(wrapper);
     out.push('(');
-    push_schema_expr(out, inner, indent, available_refs)?;
+    push_type_ref_schema_expr(out, graph, inner, indent, available_refs)?;
     out.push(')');
     Ok(())
 }
 
 fn push_record_schema_expr(
     out: &mut String,
-    fields: &[CandidFieldIr],
+    graph: &ProgramIrGraph<'_>,
+    fields: &[FieldIr],
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
     if is_tuple_fields(fields) {
-        return push_tuple_schema_expr(out, fields, indent, available_refs);
+        return push_tuple_schema_expr(out, graph, fields, indent, available_refs);
     }
 
     let child_indent = format!("{indent}  ");
     out.push_str("c.record({\n");
     for field in fields {
-        push_doc_comment(out, &doc_block(&field.raw_docs), &child_indent);
+        push_doc_comment(out, &doc_block(&field.metadata.raw_docs), &child_indent);
         out.push_str(&child_indent);
         out.push_str(&property_key(field));
         out.push_str(": ");
-        push_schema_expr(out, &field.typ, &child_indent, available_refs)?;
+        push_type_ref_schema_expr(out, graph, field.typ, &child_indent, available_refs)?;
         out.push_str(",\n");
     }
     out.push_str(indent);
@@ -549,7 +320,8 @@ fn push_record_schema_expr(
 
 fn push_tuple_schema_expr(
     out: &mut String,
-    fields: &[CandidFieldIr],
+    graph: &ProgramIrGraph<'_>,
+    fields: &[FieldIr],
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
@@ -561,9 +333,9 @@ fn push_tuple_schema_expr(
     let child_indent = format!("{indent}  ");
     out.push_str("c.tuple([\n");
     for field in fields {
-        push_doc_comment(out, &doc_block(&field.raw_docs), &child_indent);
+        push_doc_comment(out, &doc_block(&field.metadata.raw_docs), &child_indent);
         out.push_str(&child_indent);
-        push_schema_expr(out, &field.typ, &child_indent, available_refs)?;
+        push_type_ref_schema_expr(out, graph, field.typ, &child_indent, available_refs)?;
         out.push_str(",\n");
     }
     out.push_str(indent);
@@ -573,18 +345,19 @@ fn push_tuple_schema_expr(
 
 fn push_variant_schema_expr(
     out: &mut String,
-    fields: &[CandidFieldIr],
+    graph: &ProgramIrGraph<'_>,
+    fields: &[FieldIr],
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
     let child_indent = format!("{indent}  ");
     out.push_str("c.variant({\n");
     for field in fields {
-        push_doc_comment(out, &doc_block(&field.raw_docs), &child_indent);
+        push_doc_comment(out, &doc_block(&field.metadata.raw_docs), &child_indent);
         out.push_str(&child_indent);
         out.push_str(&property_key(field));
         out.push_str(": ");
-        push_schema_expr(out, &field.typ, &child_indent, available_refs)?;
+        push_type_ref_schema_expr(out, graph, field.typ, &child_indent, available_refs)?;
         out.push_str(",\n");
     }
     out.push_str(indent);
@@ -594,19 +367,21 @@ fn push_variant_schema_expr(
 
 fn push_service_schema_expr(
     out: &mut String,
-    methods: &[CandidMethodIr],
+    graph: &ProgramIrGraph<'_>,
+    methods: &[MethodId],
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
     let child_indent = format!("{indent}  ");
     out.push_str("c.service({\n");
 
-    for method in methods {
-        push_doc_comment(out, &doc_block(&method.raw_docs), &child_indent);
+    for method_id in methods {
+        let method = graph.method(*method_id)?;
+        push_doc_comment(out, &doc_block(&method.metadata.raw_docs), &child_indent);
         out.push_str(&child_indent);
         out.push_str(&object_key(&method.name));
         out.push_str(": ");
-        push_method_schema_expr(out, method, &child_indent, available_refs)?;
+        push_method_schema_expr(out, graph, method, &child_indent, available_refs)?;
         out.push_str(",\n");
     }
 
@@ -617,14 +392,15 @@ fn push_service_schema_expr(
 
 fn push_method_schema_expr(
     out: &mut String,
-    method: &CandidMethodIr,
+    graph: &ProgramIrGraph<'_>,
+    method: &MethodIr,
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
     out.push_str(method_builder(method.mode));
     out.push('(');
-    push_schema_tuple_arg(out, &method.args, indent, available_refs)?;
-    if matches!(method.mode, CandidMethodModeIr::Oneway) {
+    push_arg_tuple_schema_expr(out, graph, &method.args, indent, available_refs)?;
+    if matches!(method.mode, MethodModeIr::Oneway) {
         out.push(')');
         return Ok(());
     }
@@ -632,20 +408,21 @@ fn push_method_schema_expr(
         0 => {}
         1 => {
             out.push_str(", ");
-            push_schema_expr(out, &method.returns[0].typ, indent, available_refs)?;
+            push_type_ref_schema_expr(out, graph, method.returns[0].typ, indent, available_refs)?;
         }
         _ => {
             out.push_str(", ");
-            push_schema_tuple_arg(out, &method.returns, indent, available_refs)?;
+            push_arg_tuple_schema_expr(out, graph, &method.returns, indent, available_refs)?;
         }
     }
     out.push(')');
     Ok(())
 }
 
-fn push_schema_tuple_arg(
+fn push_arg_tuple_schema_expr(
     out: &mut String,
-    items: &[CandidArgIr],
+    graph: &ProgramIrGraph<'_>,
+    items: &[ArgIr],
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
@@ -654,118 +431,129 @@ fn push_schema_tuple_arg(
         if index > 0 {
             out.push_str(", ");
         }
-        push_schema_expr(out, &item.typ, indent, available_refs)?;
+        push_type_ref_schema_expr(out, graph, item.typ, indent, available_refs)?;
     }
     out.push(']');
     Ok(())
 }
 
-fn method_builder(mode: CandidMethodModeIr) -> &'static str {
+fn method_builder(mode: MethodModeIr) -> &'static str {
     match mode {
-        CandidMethodModeIr::Query => "c.query",
-        CandidMethodModeIr::CompositeQuery => "c.compositeQuery",
-        CandidMethodModeIr::Update => "c.update",
-        CandidMethodModeIr::Oneway => "c.oneway",
+        MethodModeIr::Query => "c.query",
+        MethodModeIr::CompositeQuery => "c.compositeQuery",
+        MethodModeIr::Update => "c.update",
+        MethodModeIr::Oneway => "c.oneway",
     }
 }
 
-fn push_unsupported_schema_expr(out: &mut String, typ: &CandidTypeIr) -> Result<()> {
+fn push_unsupported_schema_expr(
+    out: &mut String,
+    graph: &ProgramIrGraph<'_>,
+    id: TypeId,
+) -> Result<()> {
     out.push_str("c.unsupported");
-    let app_type = unsupported_app_type(typ)?;
+    let app_type = unsupported_app_type(graph, id)?;
     if app_type != "unknown" {
         out.push('<');
         out.push_str(&app_type);
         out.push('>');
     }
     out.push('(');
-    out.push_str(&json_string(&candid_type_text(typ)?));
+    out.push_str(&json_string(&candid_type_text_id(graph, id)?));
     out.push(')');
     Ok(())
 }
 
-fn unsupported_app_type(typ: &CandidTypeIr) -> Result<String> {
-    Ok(match typ {
-        CandidTypeIr::Empty => "never".to_string(),
-        CandidTypeIr::Func { .. } => "c.CandidFuncReference".to_string(),
-        CandidTypeIr::Service { .. } => "c.PrincipalLike".to_string(),
-        _ => ts_type(typ, true)?,
+fn unsupported_app_type(graph: &ProgramIrGraph<'_>, id: TypeId) -> Result<String> {
+    Ok(match graph.type_kind(id)? {
+        TypeKindIr::Empty => "never".to_string(),
+        TypeKindIr::Func { .. } => "c.CandidFuncReference".to_string(),
+        TypeKindIr::Service { .. } => "c.PrincipalLike".to_string(),
+        _ => type_id_ts_type(graph, id, true)?,
     })
 }
 
-fn candid_type_text(typ: &CandidTypeIr) -> Result<String> {
-    Ok(match typ {
-        CandidTypeIr::Null => "null".to_string(),
-        CandidTypeIr::Bool => "bool".to_string(),
-        CandidTypeIr::Nat => "nat".to_string(),
-        CandidTypeIr::Int => "int".to_string(),
-        CandidTypeIr::Nat8 => "nat8".to_string(),
-        CandidTypeIr::Nat16 => "nat16".to_string(),
-        CandidTypeIr::Nat32 => "nat32".to_string(),
-        CandidTypeIr::Nat64 => "nat64".to_string(),
-        CandidTypeIr::Int8 => "int8".to_string(),
-        CandidTypeIr::Int16 => "int16".to_string(),
-        CandidTypeIr::Int32 => "int32".to_string(),
-        CandidTypeIr::Int64 => "int64".to_string(),
-        CandidTypeIr::Float32 => "float32".to_string(),
-        CandidTypeIr::Float64 => "float64".to_string(),
-        CandidTypeIr::Text => "text".to_string(),
-        CandidTypeIr::Principal => "principal".to_string(),
-        CandidTypeIr::Reserved => "reserved".to_string(),
-        CandidTypeIr::Empty => "empty".to_string(),
-        CandidTypeIr::Ref { name } => name.clone(),
-        CandidTypeIr::Opt { inner } => format!("opt {}", candid_type_text(inner)?),
-        CandidTypeIr::Vec { inner } => format!("vec {}", candid_type_text(inner)?),
-        CandidTypeIr::Record { fields } => format!(
+fn candid_type_text_ref(graph: &ProgramIrGraph<'_>, reference: TypeRefIr) -> Result<String> {
+    match reference {
+        TypeRefIr::Type { id } => candid_type_text_id(graph, id),
+        TypeRefIr::Decl { id } => Ok(graph.declaration(id)?.name.clone()),
+    }
+}
+
+fn candid_type_text_id(graph: &ProgramIrGraph<'_>, id: TypeId) -> Result<String> {
+    Ok(match graph.type_kind(id)? {
+        TypeKindIr::Null => "null".to_string(),
+        TypeKindIr::Bool => "bool".to_string(),
+        TypeKindIr::Nat => "nat".to_string(),
+        TypeKindIr::Int => "int".to_string(),
+        TypeKindIr::Nat8 => "nat8".to_string(),
+        TypeKindIr::Nat16 => "nat16".to_string(),
+        TypeKindIr::Nat32 => "nat32".to_string(),
+        TypeKindIr::Nat64 => "nat64".to_string(),
+        TypeKindIr::Int8 => "int8".to_string(),
+        TypeKindIr::Int16 => "int16".to_string(),
+        TypeKindIr::Int32 => "int32".to_string(),
+        TypeKindIr::Int64 => "int64".to_string(),
+        TypeKindIr::Float32 => "float32".to_string(),
+        TypeKindIr::Float64 => "float64".to_string(),
+        TypeKindIr::Text => "text".to_string(),
+        TypeKindIr::Principal => "principal".to_string(),
+        TypeKindIr::Reserved => "reserved".to_string(),
+        TypeKindIr::Empty => "empty".to_string(),
+        TypeKindIr::Opt { inner } => format!("opt {}", candid_type_text_ref(graph, *inner)?),
+        TypeKindIr::Vec { inner } => format!("vec {}", candid_type_text_ref(graph, *inner)?),
+        TypeKindIr::Record { fields } => format!(
             "record {{ {} }}",
             fields
                 .iter()
-                .map(|field| candid_field_text(field, false))
+                .map(|field| candid_field_text(graph, field, false))
                 .collect::<Result<Vec<_>>>()?
                 .join("; ")
         ),
-        CandidTypeIr::Variant { fields } => format!(
+        TypeKindIr::Variant { fields } => format!(
             "variant {{ {} }}",
             fields
                 .iter()
-                .map(|field| candid_field_text(field, true))
+                .map(|field| candid_field_text(graph, field, true))
                 .collect::<Result<Vec<_>>>()?
                 .join("; ")
         ),
-        CandidTypeIr::Func {
+        TypeKindIr::Func {
             args,
             returns,
             mode,
         } => format!(
             "func ({}) -> ({}){}",
             args.iter()
-                .map(|arg| candid_type_text(&arg.typ))
+                .map(|arg| candid_type_text_ref(graph, arg.typ))
                 .collect::<Result<Vec<_>>>()?
                 .join(", "),
             returns
                 .iter()
-                .map(|ret| candid_type_text(&ret.typ))
+                .map(|ret| candid_type_text_ref(graph, ret.typ))
                 .collect::<Result<Vec<_>>>()?
                 .join(", "),
             method_mode_suffix(*mode)
         ),
-        CandidTypeIr::Service { methods } => format!(
+        TypeKindIr::Service { methods } => format!(
             "service {{ {} }}",
             methods
                 .iter()
-                .map(|method| {
+                .map(|method_id| {
+                    let method = graph.method(*method_id)?;
                     Ok(format!(
                         "{} : ({}) -> ({}){}",
                         candid_label(&method.name),
                         method
                             .args
                             .iter()
-                            .map(|arg| candid_type_text(&arg.typ))
+                            .map(|arg| candid_type_text_ref(graph, arg.typ))
                             .collect::<Result<Vec<_>>>()?
                             .join(", "),
                         method
                             .returns
                             .iter()
-                            .map(|ret| candid_type_text(&ret.typ))
+                            .map(|ret| candid_type_text_ref(graph, ret.typ))
                             .collect::<Result<Vec<_>>>()?
                             .join(", "),
                         method_mode_suffix(method.mode)
@@ -777,18 +565,29 @@ fn candid_type_text(typ: &CandidTypeIr) -> Result<String> {
     })
 }
 
-fn candid_field_text(field: &CandidFieldIr, variant: bool) -> Result<String> {
+fn candid_field_text(graph: &ProgramIrGraph<'_>, field: &FieldIr, variant: bool) -> Result<String> {
     let label = candid_field_label(&field.label);
-    if variant && matches!(field.typ, CandidTypeIr::Null) {
+    if variant && type_ref_is_direct_null(graph, field.typ)? {
         return Ok(label);
     }
-    Ok(format!("{} : {}", label, candid_type_text(&field.typ)?))
+    Ok(format!(
+        "{} : {}",
+        label,
+        candid_type_text_ref(graph, field.typ)?
+    ))
 }
 
-fn candid_field_label(label: &CandidFieldLabelIr) -> String {
+fn type_ref_is_direct_null(graph: &ProgramIrGraph<'_>, reference: TypeRefIr) -> Result<bool> {
+    match reference {
+        TypeRefIr::Type { id } => Ok(matches!(graph.type_kind(id)?, TypeKindIr::Null)),
+        TypeRefIr::Decl { .. } => Ok(false),
+    }
+}
+
+fn candid_field_label(label: &FieldLabelIr) -> String {
     match label {
-        CandidFieldLabelIr::Named { name } => candid_label(name),
-        CandidFieldLabelIr::Id { candid_id } | CandidFieldLabelIr::Unnamed { candid_id } => {
+        FieldLabelIr::Named { name } => candid_label(name),
+        FieldLabelIr::Id { candid_id } | FieldLabelIr::Unnamed { candid_id } => {
             candid_id.to_string()
         }
     }
@@ -802,24 +601,29 @@ fn candid_label(name: &str) -> String {
     }
 }
 
-fn method_mode_suffix(mode: CandidMethodModeIr) -> &'static str {
+fn method_mode_suffix(mode: MethodModeIr) -> &'static str {
     match mode {
-        CandidMethodModeIr::Query => " query",
-        CandidMethodModeIr::CompositeQuery => " composite_query",
-        CandidMethodModeIr::Update => "",
-        CandidMethodModeIr::Oneway => " oneway",
+        MethodModeIr::Query => " query",
+        MethodModeIr::CompositeQuery => " composite_query",
+        MethodModeIr::Update => "",
+        MethodModeIr::Oneway => " oneway",
     }
 }
 
-fn push_service_type_body(out: &mut String, methods: &[CandidMethodIr]) -> Result<()> {
+fn push_service_type_body(
+    out: &mut String,
+    graph: &ProgramIrGraph<'_>,
+    methods: &[MethodId],
+) -> Result<()> {
     out.push_str("{\n");
 
-    for method in methods {
-        push_doc_comment(out, &doc_block(&method.raw_docs), "  ");
+    for method_id in methods {
+        let method = graph.method(*method_id)?;
+        push_doc_comment(out, &doc_block(&method.metadata.raw_docs), "  ");
         out.push_str("  ");
         out.push_str(&object_key(&method.name));
         out.push_str(": ");
-        out.push_str(&actor_method_type(method)?);
+        out.push_str(&actor_method_type(graph, method)?);
         out.push_str(";\n");
     }
 
@@ -827,46 +631,69 @@ fn push_service_type_body(out: &mut String, methods: &[CandidMethodIr]) -> Resul
     Ok(())
 }
 
-fn ts_type(typ: &CandidTypeIr, inline_service_as_ref: bool) -> Result<String> {
-    Ok(match typ {
-        CandidTypeIr::Null => "null".to_string(),
-        CandidTypeIr::Bool => "boolean".to_string(),
-        CandidTypeIr::Nat | CandidTypeIr::Int | CandidTypeIr::Nat64 | CandidTypeIr::Int64 => {
+fn type_ref_ts_type(
+    graph: &ProgramIrGraph<'_>,
+    reference: TypeRefIr,
+    inline_service_as_ref: bool,
+) -> Result<String> {
+    match reference {
+        TypeRefIr::Type { id } => type_id_ts_type(graph, id, inline_service_as_ref),
+        TypeRefIr::Decl { id } => Ok(type_name(&graph.declaration(id)?.name)),
+    }
+}
+
+fn type_id_ts_type(
+    graph: &ProgramIrGraph<'_>,
+    id: TypeId,
+    inline_service_as_ref: bool,
+) -> Result<String> {
+    Ok(match graph.type_kind(id)? {
+        TypeKindIr::Null => "null".to_string(),
+        TypeKindIr::Bool => "boolean".to_string(),
+        TypeKindIr::Nat | TypeKindIr::Int | TypeKindIr::Nat64 | TypeKindIr::Int64 => {
             "bigint".to_string()
         }
-        CandidTypeIr::Nat8
-        | CandidTypeIr::Nat16
-        | CandidTypeIr::Nat32
-        | CandidTypeIr::Int8
-        | CandidTypeIr::Int16
-        | CandidTypeIr::Int32
-        | CandidTypeIr::Float32
-        | CandidTypeIr::Float64 => "number".to_string(),
-        CandidTypeIr::Text => "string".to_string(),
-        CandidTypeIr::Reserved => "unknown".to_string(),
-        CandidTypeIr::Empty => "never".to_string(),
-        CandidTypeIr::Principal => "Principal".to_string(),
-        CandidTypeIr::Ref { name } => type_name(name),
-        CandidTypeIr::Opt { inner } => format!("[] | [{}]", ts_type(inner, inline_service_as_ref)?),
-        CandidTypeIr::Vec { inner } => vec_type(inner, inline_service_as_ref)?,
-        CandidTypeIr::Record { fields } => record_type(fields, inline_service_as_ref)?,
-        CandidTypeIr::Variant { fields } => variant_type(fields, inline_service_as_ref)?,
-        CandidTypeIr::Func { .. } => "c.CandidFuncReference".to_string(),
-        CandidTypeIr::Service { methods } => {
+        TypeKindIr::Nat8
+        | TypeKindIr::Nat16
+        | TypeKindIr::Nat32
+        | TypeKindIr::Int8
+        | TypeKindIr::Int16
+        | TypeKindIr::Int32
+        | TypeKindIr::Float32
+        | TypeKindIr::Float64 => "number".to_string(),
+        TypeKindIr::Text => "string".to_string(),
+        TypeKindIr::Reserved => "unknown".to_string(),
+        TypeKindIr::Empty => "never".to_string(),
+        TypeKindIr::Principal => "Principal".to_string(),
+        TypeKindIr::Opt { inner } => {
+            format!(
+                "[] | [{}]",
+                type_ref_ts_type(graph, *inner, inline_service_as_ref)?
+            )
+        }
+        TypeKindIr::Vec { inner } => vec_type(graph, *inner, inline_service_as_ref)?,
+        TypeKindIr::Record { fields } => record_type(graph, fields, inline_service_as_ref)?,
+        TypeKindIr::Variant { fields } => variant_type(graph, fields, inline_service_as_ref)?,
+        TypeKindIr::Func { .. } => "c.CandidFuncReference".to_string(),
+        TypeKindIr::Service { methods } => {
             if inline_service_as_ref {
                 "Principal".to_string()
             } else {
                 let mut body = String::new();
-                push_service_type_body(&mut body, methods)?;
+                push_service_type_body(&mut body, graph, methods)?;
                 body
             }
         }
     })
 }
 
-fn record_type(fields: &[CandidFieldIr], inline_service_as_ref: bool) -> Result<String> {
+fn record_type(
+    graph: &ProgramIrGraph<'_>,
+    fields: &[FieldIr],
+    inline_service_as_ref: bool,
+) -> Result<String> {
     if is_tuple_fields(fields) {
-        return tuple_type_from_fields(fields, inline_service_as_ref);
+        return tuple_type_from_fields(graph, fields, inline_service_as_ref);
     }
 
     let mut out = String::from("{ ");
@@ -876,21 +703,29 @@ fn record_type(fields: &[CandidFieldIr], inline_service_as_ref: bool) -> Result<
         }
         out.push_str(&property_key(field));
         out.push_str(": ");
-        out.push_str(&ts_type(&field.typ, inline_service_as_ref)?);
+        out.push_str(&type_ref_ts_type(graph, field.typ, inline_service_as_ref)?);
     }
     out.push_str(" }");
     Ok(out)
 }
 
-fn tuple_type_from_fields(fields: &[CandidFieldIr], inline_service_as_ref: bool) -> Result<String> {
+fn tuple_type_from_fields(
+    graph: &ProgramIrGraph<'_>,
+    fields: &[FieldIr],
+    inline_service_as_ref: bool,
+) -> Result<String> {
     let mut parts = Vec::with_capacity(fields.len());
     for field in fields {
-        parts.push(ts_type(&field.typ, inline_service_as_ref)?);
+        parts.push(type_ref_ts_type(graph, field.typ, inline_service_as_ref)?);
     }
     Ok(format!("[{}]", parts.join(", ")))
 }
 
-fn variant_type(fields: &[CandidFieldIr], inline_service_as_ref: bool) -> Result<String> {
+fn variant_type(
+    graph: &ProgramIrGraph<'_>,
+    fields: &[FieldIr],
+    inline_service_as_ref: bool,
+) -> Result<String> {
     if fields.is_empty() {
         return Ok("never".to_string());
     }
@@ -900,34 +735,45 @@ fn variant_type(fields: &[CandidFieldIr], inline_service_as_ref: bool) -> Result
         arms.push(format!(
             "{{ {}: {} }}",
             property_key(field),
-            ts_type(&field.typ, inline_service_as_ref)?
+            type_ref_ts_type(graph, field.typ, inline_service_as_ref)?
         ));
     }
 
     Ok(arms.join(" | "))
 }
 
-fn vec_type(inner: &CandidTypeIr, inline_service_as_ref: bool) -> Result<String> {
-    Ok(match inner {
-        CandidTypeIr::Nat8 => "Uint8Array | number[]".to_string(),
-        CandidTypeIr::Nat16 => "Uint16Array | number[]".to_string(),
-        CandidTypeIr::Nat32 => "Uint32Array | number[]".to_string(),
-        CandidTypeIr::Nat64 => "BigUint64Array | bigint[]".to_string(),
-        CandidTypeIr::Int8 => "Int8Array | number[]".to_string(),
-        CandidTypeIr::Int16 => "Int16Array | number[]".to_string(),
-        CandidTypeIr::Int32 => "Int32Array | number[]".to_string(),
-        CandidTypeIr::Int64 => "BigInt64Array | bigint[]".to_string(),
-        _ => format!("Array<{}>", ts_type(inner, inline_service_as_ref)?),
-    })
+fn vec_type(
+    graph: &ProgramIrGraph<'_>,
+    inner: TypeRefIr,
+    inline_service_as_ref: bool,
+) -> Result<String> {
+    if let TypeRefIr::Type { id } = inner {
+        match graph.type_kind(id)? {
+            TypeKindIr::Nat8 => return Ok("Uint8Array | number[]".to_string()),
+            TypeKindIr::Nat16 => return Ok("Uint16Array | number[]".to_string()),
+            TypeKindIr::Nat32 => return Ok("Uint32Array | number[]".to_string()),
+            TypeKindIr::Nat64 => return Ok("BigUint64Array | bigint[]".to_string()),
+            TypeKindIr::Int8 => return Ok("Int8Array | number[]".to_string()),
+            TypeKindIr::Int16 => return Ok("Int16Array | number[]".to_string()),
+            TypeKindIr::Int32 => return Ok("Int32Array | number[]".to_string()),
+            TypeKindIr::Int64 => return Ok("BigInt64Array | bigint[]".to_string()),
+            _ => {}
+        }
+    }
+
+    Ok(format!(
+        "Array<{}>",
+        type_ref_ts_type(graph, inner, inline_service_as_ref)?
+    ))
 }
 
-fn actor_method_type(method: &CandidMethodIr) -> Result<String> {
+fn actor_method_type(graph: &ProgramIrGraph<'_>, method: &MethodIr) -> Result<String> {
     let args = method
         .args
         .iter()
-        .map(|arg| ts_type(&arg.typ, true))
+        .map(|arg| type_ref_ts_type(graph, arg.typ, true))
         .collect::<Result<Vec<_>>>()?;
-    let ret = return_type(&method.returns)?;
+    let ret = return_type(graph, &method.returns)?;
     Ok(format!(
         "c.CandidActorMethod<[{}], {}>",
         args.join(", "),
@@ -935,14 +781,14 @@ fn actor_method_type(method: &CandidMethodIr) -> Result<String> {
     ))
 }
 
-fn return_type(rets: &[CandidArgIr]) -> Result<String> {
+fn return_type(graph: &ProgramIrGraph<'_>, rets: &[ArgIr]) -> Result<String> {
     Ok(match rets.len() {
         0 => "undefined".to_string(),
-        1 => ts_type(&rets[0].typ, true)?,
+        1 => type_ref_ts_type(graph, rets[0].typ, true)?,
         _ => {
             let items = rets
                 .iter()
-                .map(|arg| ts_type(&arg.typ, true))
+                .map(|arg| type_ref_ts_type(graph, arg.typ, true))
                 .collect::<Result<Vec<_>>>()?;
             format!("[{}]", items.join(", "))
         }
@@ -973,18 +819,18 @@ fn doc_block(raw_docs: &[String]) -> DocBlock {
     DocBlock::parse(raw_docs)
 }
 
-fn is_tuple_fields(fields: &[CandidFieldIr]) -> bool {
+fn is_tuple_fields(fields: &[FieldIr]) -> bool {
     !fields.is_empty()
         && fields
             .iter()
             .enumerate()
-            .all(|(index, field)| matches!(field.label, CandidFieldLabelIr::Unnamed { candid_id } if candid_id == index as u32))
+            .all(|(index, field)| matches!(field.label, FieldLabelIr::Unnamed { candid_id } if candid_id == index as u32))
 }
 
-fn property_key(field: &CandidFieldIr) -> String {
+fn property_key(field: &FieldIr) -> String {
     match &field.label {
-        CandidFieldLabelIr::Named { name } => object_key(name),
-        CandidFieldLabelIr::Id { candid_id } | CandidFieldLabelIr::Unnamed { candid_id } => {
+        FieldLabelIr::Named { name } => object_key(name),
+        FieldLabelIr::Id { candid_id } | FieldLabelIr::Unnamed { candid_id } => {
             format!("_{}_", candid_id)
         }
     }
@@ -1080,7 +926,11 @@ fn json_string(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{generate_typescript_from_source, GeneratorConfig};
+    use crate::{
+        generate_typescript, generate_typescript_from_source, ActorIr, ArgIr, DeclId, FieldIr,
+        FieldLabelIr, GeneratorConfig, MetadataIr, MethodId, MethodIr, MethodModeIr, ProgramIr,
+        TypeDeclIr, TypeId, TypeKindIr, TypeNodeIr, TypeRefIr, PROGRAM_IR_VERSION,
+    };
 
     #[test]
     fn generates_types_with_docs() {
@@ -1280,7 +1130,74 @@ type All = record {
     }
 
     #[test]
-    fn emitter_does_not_import_candid_frontend_types() {
+    fn emits_from_canonical_program_ir_graph() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![
+                TypeNodeIr {
+                    kind: TypeKindIr::Nat64,
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Record {
+                        fields: vec![FieldIr {
+                            label: FieldLabelIr::Named {
+                                name: "owner".to_string(),
+                            },
+                            typ: TypeRefIr::Decl { id: DeclId(0) },
+                            metadata: MetadataIr::default(),
+                        }],
+                    },
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Service {
+                        methods: vec![MethodId(0)],
+                    },
+                },
+            ],
+            declarations: vec![
+                TypeDeclIr {
+                    name: "UserId".to_string(),
+                    typ: TypeId(0),
+                    metadata: MetadataIr::default(),
+                },
+                TypeDeclIr {
+                    name: "Account".to_string(),
+                    typ: TypeId(1),
+                    metadata: MetadataIr::default(),
+                },
+            ],
+            methods: vec![MethodIr {
+                name: "save".to_string(),
+                mode: MethodModeIr::Update,
+                args: vec![ArgIr {
+                    name: None,
+                    typ: TypeRefIr::Decl { id: DeclId(1) },
+                    metadata: MetadataIr::default(),
+                }],
+                returns: vec![ArgIr {
+                    name: None,
+                    typ: TypeRefIr::Decl { id: DeclId(0) },
+                    metadata: MetadataIr::default(),
+                }],
+                metadata: MetadataIr::default(),
+            }],
+            actor: Some(ActorIr {
+                init_args: vec![],
+                service: TypeId(2),
+            }),
+        };
+
+        program.validate().unwrap();
+        let ts = generate_typescript(&program, &GeneratorConfig::default()).unwrap();
+
+        assert!(ts.contains("export const UserId = c.nat64();"));
+        assert!(ts.contains("export const Account = c.record({"));
+        assert!(ts.contains("owner: UserId,"));
+        assert!(ts.contains("save: c.update([Account], UserId),"));
+    }
+
+    #[test]
+    fn emitter_uses_program_ir_without_compatibility_ast() {
         let source = include_str!("generator.rs");
         let forbidden = [
             concat!("candid", "::"),
@@ -1289,12 +1206,22 @@ type All = record {
             concat!("Type", "Inner"),
             concat!("IDL", "Type"),
             concat!("IDL", "MergedProg"),
+            concat!("Emitter", "Program"),
+            concat!("Candid", "ActorIr"),
+            concat!("Candid", "ServiceIr"),
+            concat!("Candid", "MethodIr"),
+            concat!("Candid", "ArgIr"),
+            concat!("Candid", "TypeIr"),
+            concat!("Candid", "Type", "DeclIr"),
+            concat!("Candid", "FieldIr"),
+            concat!("Candid", "FieldLabelIr"),
+            concat!("Candid", "MethodModeIr"),
         ];
 
         for token in forbidden {
             assert!(
                 !source.contains(token),
-                "TypeScript emitter must not structurally inspect {token}"
+                "TypeScript emitter must consume ProgramIR directly, not {token}"
             );
         }
     }
