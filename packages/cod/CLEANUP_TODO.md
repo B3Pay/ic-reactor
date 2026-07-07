@@ -4,6 +4,8 @@
 
 **Priority: Critical**
 
+**Status: [x] Done**
+
 Current problem:
 
 ```rust
@@ -59,6 +61,8 @@ graph.service_methods(TypeId)
 
 **Priority: High**
 
+**Status: [x] Done**
+
 Current:
 
 ```rust
@@ -103,6 +107,8 @@ No duplicated identity. No `NonSequentialDeclarationId`. No `DuplicateDeclaratio
 ### **IR-03 — Strengthen ProgramIR invariants**
 
 **Priority: Critical**
+
+**Status: [x] Done**
 
 Three validations are currently missing.
 
@@ -205,6 +211,8 @@ derives the Candid hash from `name`.
 
 **Priority: High, mostly architectural/documentation**
 
+**Status: [x] Done**
+
 `TypeId`, `DeclId`, and `MethodId` are currently allocated during compilation.
 
 Therefore:
@@ -242,6 +250,8 @@ can become a persistent method reference.
 ### **IR-05 — Delete Rust `EmitterProgram` compatibility IR**
 
 **Priority: Critical**
+
+**Status: [ ] Pending**
 
 Current generator recreates an old recursive Candid model:
 
@@ -288,6 +298,8 @@ The emitter directly visits ProgramIR.
 
 **Priority: Critical**
 
+**Status: [ ] Pending**
+
 Current TS has both:
 
 ```ts
@@ -330,6 +342,8 @@ All consumers traverse the arena directly.
 ### **IR-07 — Add a shared semantic analysis layer**
 
 **Priority: Critical after IR-05/06**
+
+**Status: [ ] Pending**
 
 Current semantic divergence already exists.
 
@@ -396,6 +410,8 @@ The wire graph remains true Candid structure.
 
 **Priority: High**
 
+**Status: [ ] Pending**
+
 The current parity test claims it covers `vec nat8`, but its fixture actually declares both relevant fields as `blob`.
 
 Add explicit fixtures:
@@ -439,6 +455,8 @@ form semantic choice
 ### **IR-09 — Compile and lower once inside `CandidProgram`**
 
 **Priority: High**
+
+**Status: [ ] Pending**
 
 Current:
 
@@ -492,6 +510,8 @@ Our law becomes real:
 
 **Priority: Medium/High**
 
+**Status: [ ] Pending**
+
 Current `summary()` calls:
 
 ```rust
@@ -524,6 +544,8 @@ but not for program inspection.
 ### **IR-11 — Add `encode_method_reply` and remove fake DID reparsing**
 
 **Priority: High**
+
+**Status: [ ] Pending**
 
 Current runtime reply encoding builds a fake DID:
 
@@ -578,6 +600,8 @@ replyProgram()
 ### **IR-12 — Make the Rust ↔ TS ProgramIR contract exact**
 
 **Priority: High**
+
+**Status: [ ] Pending**
 
 Current Rust metadata is structurally required:
 
@@ -639,6 +663,8 @@ Add a golden Rust → JSON → TS ProgramIR contract test.
 
 **Priority: High**
 
+**Status: [ ] Pending**
+
 Current:
 
 ```ts
@@ -679,6 +705,8 @@ No need to add Zod as a dependency.
 ### **IR-14 — Preserve actor absence through the runtime**
 
 **Priority: Medium**
+
+**Status: [ ] Pending**
 
 ProgramIR correctly preserves:
 
@@ -721,6 +749,8 @@ service : {}
 ### **IR-15 — Rewrite `ARCHITECTURE.md` to match the implemented arena**
 
 **Priority: Critical before future Codex feature work**
+
+**Status: [ ] Pending**
 
 Current architecture document still shows the old recursive ProgramIR root and embedded service actor.
 

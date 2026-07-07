@@ -618,7 +618,7 @@ Examples of pass responsibilities:
 - stabilize declaration ordering where appropriate
 - resolve canonical field identities
 - remove frontend-only representations
-- prepare stable references
+- prepare deterministic artifact-local references
 
 ### Semantic analysis
 
@@ -673,6 +673,18 @@ pub struct ProgramIr {
 `TypeId(n)`, `DeclId(n)`, and `MethodId(n)` are indexes into the corresponding
 arena in one exact ProgramIR artifact. They are not global persistent identities
 across independently compiled revisions.
+
+These IDs are only meaningful together with the exact `ProgramIr` value that
+allocated them. Persisting a raw `TypeId`, `DeclId`, or `MethodId` without an
+external program identity is invalid architecture.
+
+A future durable reference may look like:
+
+```text
+ProgramFingerprint + MethodId
+```
+
+ProgramIR does not define `ProgramFingerprint` yet.
 
 `DeclId(n)` means `program.declarations[n]`. Declaration entries do not store
 their own ID:
@@ -965,6 +977,9 @@ must not be treated as stable persistent identities across contract revisions
 without an additional program fingerprint or equivalent versioned program
 identity.
 
+Workflow node IDs derived from raw method IDs, such as `method:0`, are therefore
+projection-local IDs unless they are paired with a concrete program identity.
+
 Names remain display and source-level identities.
 
 ---
@@ -1026,7 +1041,7 @@ The future IC Reactor architecture should be method-first.
 A method should eventually provide the structural information needed by adapters:
 
 ```text
-method identity
+method identity within one ProgramIR artifact
 method name
 mode
 arguments

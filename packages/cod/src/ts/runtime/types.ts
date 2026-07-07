@@ -35,6 +35,9 @@ export type ProgramIR = {
   actor: ProgramActorIR | null
 }
 
+// ProgramIR numeric IDs are local to one exact ProgramIR artifact. Do not
+// persist raw IDs across independently compiled revisions without an external
+// program identity.
 export type TypeId = number
 export type DeclId = number
 export type MethodId = number

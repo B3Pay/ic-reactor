@@ -755,6 +755,36 @@ type Profile = service {
     }
 
     #[test]
+    fn raw_method_ids_are_scoped_to_exact_program_artifact() {
+        let first = parse_candid_source(
+            r#"
+service : {
+  alpha : () -> ();
+}
+"#,
+        )
+        .unwrap();
+        let first_ir =
+            program_ir_from_parts(&first.env, first.actor.as_ref(), &first.prog).unwrap();
+
+        let second = parse_candid_source(
+            r#"
+service : {
+  aardvark : () -> ();
+  alpha : () -> ();
+}
+"#,
+        )
+        .unwrap();
+        let second_ir =
+            program_ir_from_parts(&second.env, second.actor.as_ref(), &second.prog).unwrap();
+
+        assert_eq!(actor_method_id(&first_ir, "alpha"), MethodId(0));
+        assert_eq!(actor_method_id(&second_ir, "alpha"), MethodId(1));
+        assert_eq!(actor_method_id(&second_ir, "aardvark"), MethodId(0));
+    }
+
+    #[test]
     fn preserves_absent_actor_as_none() {
         let parsed = parse_candid_source(
             r#"
@@ -1633,6 +1663,18 @@ type Profile = record {
             .into_iter()
             .cloned()
             .collect()
+    }
+
+    fn actor_method_id(ir: &ProgramIr, name: &str) -> MethodId {
+        let graph = ir.graph().unwrap();
+        let actor = ir.actor.as_ref().expect("missing actor");
+        graph
+            .service_method_ids(actor.service)
+            .unwrap()
+            .iter()
+            .copied()
+            .find(|id| graph.method(*id).unwrap().name == name)
+            .unwrap_or_else(|| panic!("missing method {name}"))
     }
 
     fn find_method(methods: Vec<MethodIr>, name: &str) -> MethodIr {

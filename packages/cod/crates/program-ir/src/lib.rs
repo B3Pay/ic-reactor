@@ -37,14 +37,26 @@ impl ProgramIr {
     }
 }
 
+/// Structural type node identity local to one exact `ProgramIr` artifact.
+///
+/// The raw numeric value is not a persistent identity across independently
+/// compiled artifacts.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(transparent)]
 pub struct TypeId(pub u32);
 
+/// Named Candid declaration identity local to one exact `ProgramIr` artifact.
+///
+/// The raw numeric value is not a persistent identity across independently
+/// compiled artifacts.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(transparent)]
 pub struct DeclId(pub u32);
 
+/// Method arena identity local to one exact `ProgramIr` artifact.
+///
+/// The raw numeric value is not a persistent identity across independently
+/// compiled artifacts.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(transparent)]
 pub struct MethodId(pub u32);

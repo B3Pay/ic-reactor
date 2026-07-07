@@ -10,8 +10,10 @@ compiler passes.
 
 ## Design Rules
 
-1. `TypeId` identifies one structural type node in the type arena.
-2. `DeclId` identifies one named Candid declaration.
+1. `TypeId` identifies one structural type node in the type arena of one exact
+   Program IR artifact.
+2. `DeclId` identifies one named Candid declaration in one exact Program IR
+   artifact.
 3. `TypeRefIr` represents a type use and preserves whether source syntax used a
    structural type directly or referred to a named declaration.
 4. Named references are not type nodes. They appear only as `TypeRefIr::Decl`.
@@ -24,8 +26,9 @@ compiler passes.
 8. The type arena stores wire structure. Semantic conveniences such as blob,
    tuple, and result are analysis layered on top of structural wire truth.
 9. Primitive type reuse is allowed. Composite structural interning is deferred.
-10. `MethodId` identifies one method body in the method arena. Service type
-    nodes store ordered `MethodId` references.
+10. `MethodId` identifies one method body in the method arena of one exact
+    Program IR artifact. Service type nodes store ordered `MethodId`
+    references.
 11. Graph validation and ID resolution are owned by this crate.
 
 ## Graph Shape
@@ -64,6 +67,27 @@ declarations[1] TransactionId -> TypeId(0) Nat64
 
 `DeclId(n)` is the arena index `program.declarations[n]`. `TypeDeclIr` does
 not store a redundant `id` field.
+
+## ID Scope
+
+`TypeId`, `DeclId`, and `MethodId` are local to one exact serialized
+`ProgramIr` value.
+
+For example, `MethodId(7)` means:
+
+```text
+program.methods[7] in this ProgramIr artifact
+```
+
+It does not mean:
+
+```text
+the permanent identity of that Candid method across future compilations
+```
+
+Any durable reference across contract revisions must pair the raw ID with an
+external program identity, such as a future program fingerprint. ProgramIR does
+not define that persistent identity yet.
 
 ## Reference Model
 
