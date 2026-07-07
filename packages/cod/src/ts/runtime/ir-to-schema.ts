@@ -37,7 +37,7 @@ import type {
   CandidFieldIR,
   CandidMethodMode,
   CandidTypeIR,
-  ProgramIR,
+  RuntimeProgramIR,
 } from "./types.js"
 
 export type RuntimeSchemaSet = {
@@ -46,7 +46,7 @@ export type RuntimeSchemaSet = {
   service: ServiceSchema<any>
 }
 
-export function irToSchema(ir: ProgramIR): RuntimeSchemaSet {
+export function irToSchema(ir: RuntimeProgramIR): RuntimeSchemaSet {
   const context = new SchemaContext(ir)
   return context.build()
 }
@@ -56,7 +56,7 @@ class SchemaContext {
   readonly #typeDocs = new Map<string, string[]>()
   readonly #schemas = new Map<string, AnySchema>()
 
-  constructor(readonly ir: ProgramIR) {
+  constructor(readonly ir: RuntimeProgramIR) {
     for (const declaration of ir.types) {
       this.#types.set(declaration.name, declaration.type)
       if (declaration.docs?.length) {

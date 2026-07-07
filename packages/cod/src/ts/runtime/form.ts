@@ -12,8 +12,8 @@ import type {
   FormValidationRule,
   FormVariantOption,
   MethodFormSchema,
-  ProgramIR,
   ProgramFormSchema,
+  RuntimeProgramIR,
 } from "./types.js"
 
 type NormalizedCustomFormat = {
@@ -22,7 +22,7 @@ type NormalizedCustomFormat = {
 }
 
 export function programToFormSchema(
-  ir: ProgramIR,
+  ir: RuntimeProgramIR,
   options: FormSchemaOptions = {}
 ): ProgramFormSchema {
   const context = new FormContext(ir, options)
@@ -70,7 +70,7 @@ export class FormContext {
   readonly #customFormats = new Map<string, NormalizedCustomFormat>()
 
   constructor(
-    readonly ir: ProgramIR,
+    readonly ir: RuntimeProgramIR,
     options: FormSchemaOptions = {}
   ) {
     for (const declaration of ir.types) {

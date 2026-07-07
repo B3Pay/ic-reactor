@@ -411,12 +411,16 @@ impl<'a> ArenaLoweringContext<'a> {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(ProgramIr {
+        let program = ProgramIr {
             version: PROGRAM_IR_VERSION,
             types: self.types,
             declarations,
             actor,
-        })
+        };
+        program
+            .validate()
+            .context("lowered invalid ProgramIR graph")?;
+        Ok(program)
     }
 }
 
@@ -1471,16 +1475,14 @@ type Profile = record {
     }
 
     fn declaration<'a>(ir: &'a ProgramIr, name: &str) -> &'a TypeDeclIr {
-        ir.declarations
-            .iter()
-            .find(|decl| decl.name == name)
+        ir.graph()
+            .unwrap()
+            .declaration_by_name(name)
             .unwrap_or_else(|| panic!("missing declaration {name}"))
     }
 
     fn type_node(ir: &ProgramIr, id: TypeId) -> &TypeNodeIr {
-        ir.types
-            .get(usize::try_from(id.0).expect("type ID does not fit usize"))
-            .unwrap_or_else(|| panic!("missing type node {id:?}"))
+        ir.graph().unwrap().type_node(id).unwrap()
     }
 
     fn declaration_type_node<'a>(ir: &'a ProgramIr, decl: &TypeDeclIr) -> &'a TypeNodeIr {
@@ -1499,15 +1501,11 @@ type Profile = record {
     }
 
     fn service_methods(ir: &ProgramIr, service: TypeId) -> &[MethodIr] {
-        match &type_node(ir, service).kind {
-            TypeKindIr::Service { methods } => methods,
-            other => panic!("expected service node, got {other:?}"),
-        }
+        ir.graph().unwrap().service_methods(service).unwrap()
     }
 
     fn actor_methods(ir: &ProgramIr) -> &[MethodIr] {
-        let actor = ir.actor.as_ref().expect("missing actor");
-        service_methods(ir, actor.service)
+        ir.graph().unwrap().actor_service().expect("missing actor")
     }
 
     fn find_method<'a>(methods: &'a [MethodIr], name: &str) -> &'a MethodIr {

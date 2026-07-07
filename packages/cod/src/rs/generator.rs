@@ -1,12 +1,12 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 
 use crate::config::GeneratorConfig;
 use crate::docs::DocBlock;
 use crate::{
-    ArgIr, DeclId, FieldIr, FieldLabelIr, MethodIr, MethodModeIr, ProgramIr, TypeDeclIr, TypeId,
-    TypeKindIr, TypeRefIr,
+    ArgIr, FieldIr, FieldLabelIr, MethodIr, MethodModeIr, ProgramIr, ProgramIrGraph, TypeDeclIr,
+    TypeId, TypeKindIr, TypeRefIr,
 };
 
 const DEFAULT_MODULE_SPECIFIER: &str = "@ic-reactor/cod";
@@ -183,8 +183,7 @@ struct CandidFieldIr {
 }
 
 struct EmitterProgramBuilder<'a> {
-    program: &'a ProgramIr,
-    declarations_by_id: BTreeMap<DeclId, &'a TypeDeclIr>,
+    graph: ProgramIrGraph<'a>,
 }
 
 impl EmitterProgram {
@@ -196,30 +195,19 @@ impl EmitterProgram {
 
 impl<'a> EmitterProgramBuilder<'a> {
     fn new(program: &'a ProgramIr) -> Result<Self> {
-        let mut declarations_by_id = BTreeMap::new();
-        for declaration in &program.declarations {
-            if declarations_by_id
-                .insert(declaration.id, declaration)
-                .is_some()
-            {
-                return Err(anyhow!("duplicate declaration id {:?}", declaration.id));
-            }
-        }
-
         Ok(Self {
-            program,
-            declarations_by_id,
+            graph: program.graph().context("invalid ProgramIR graph")?,
         })
     }
 
     fn build(&self) -> Result<EmitterProgram> {
         let types = self
-            .program
-            .declarations
+            .graph
+            .declarations()
             .iter()
             .map(|declaration| self.type_declaration(declaration))
             .collect::<Result<Vec<_>>>()?;
-        let actor = if let Some(actor) = self.program.actor.as_ref() {
+        let actor = if let Some(actor) = self.graph.actor() {
             Some(CandidActorIr {
                 init_args: self.args(&actor.init_args)?,
                 service: CandidServiceIr {
@@ -245,10 +233,7 @@ impl<'a> EmitterProgramBuilder<'a> {
         match reference {
             TypeRefIr::Type { id } => self.type_id(id),
             TypeRefIr::Decl { id } => {
-                let declaration = self
-                    .declarations_by_id
-                    .get(&id)
-                    .with_context(|| format!("missing declaration {id:?}"))?;
+                let declaration = self.graph.declaration(id)?;
                 Ok(CandidTypeIr::Ref {
                     name: declaration.name.clone(),
                 })
@@ -257,11 +242,7 @@ impl<'a> EmitterProgramBuilder<'a> {
     }
 
     fn type_id(&self, id: TypeId) -> Result<CandidTypeIr> {
-        let node = self
-            .program
-            .types
-            .get(usize::try_from(id.0).context("ProgramIR TypeId does not fit usize")?)
-            .with_context(|| format!("missing type node {id:?}"))?;
+        let node = self.graph.type_node(id)?;
         self.type_kind(&node.kind)
     }
 
@@ -340,18 +321,7 @@ impl<'a> EmitterProgramBuilder<'a> {
     }
 
     fn service_methods(&self, service: TypeId) -> Result<Vec<CandidMethodIr>> {
-        let service = self
-            .program
-            .types
-            .get(
-                usize::try_from(service.0)
-                    .context("ProgramIR service TypeId does not fit usize")?,
-            )
-            .with_context(|| format!("missing actor service type {service:?}"))?;
-        let TypeKindIr::Service { methods } = &service.kind else {
-            return Err(anyhow!("actor service points to non-service type"));
-        };
-        self.methods(methods)
+        self.methods(self.graph.service_methods(service)?)
     }
 
     fn method(&self, method: &MethodIr) -> Result<CandidMethodIr> {

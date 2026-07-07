@@ -13,7 +13,7 @@ import type {
   DocTag,
   FormSchemaOptions,
   MethodFormSchema,
-  ProgramIR,
+  RuntimeProgramIR,
   RuntimeArgInfo,
   RuntimeMethod,
   RuntimeMethodCallOptions,
@@ -30,7 +30,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   readonly docTags?: readonly DocTag[]
 
   readonly #program: CandidProgram
-  readonly #ir: ProgramIR
+  readonly #ir: RuntimeProgramIR
   readonly #methodIr: CandidMethodIR
   readonly #schema: AnyMethodSchema
   readonly #formOptions: FormSchemaOptions
@@ -38,7 +38,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
 
   constructor(options: {
     program: CandidProgram
-    ir: ProgramIR
+    ir: RuntimeProgramIR
     methodIr: CandidMethodIR
     schema: AnyMethodSchema
     formOptions?: FormSchemaOptions

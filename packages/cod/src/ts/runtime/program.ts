@@ -5,7 +5,7 @@ import { candidTypeText } from "./candid-format.js"
 import { programToFormSchema } from "./form.js"
 import { irToSchema } from "./ir-to-schema.js"
 import { RuntimeMethodImpl } from "./method.js"
-import { assertProgramIRVersion } from "./program-ir.js"
+import { assertProgramIRVersion, runtimeProgramView } from "./program-ir.js"
 import { programToWorkflowSchema } from "./workflow.js"
 import type {
   CandidArgIR,
@@ -16,6 +16,7 @@ import type {
   ProgramFormSchema,
   ProgramIR,
   ProgramWorkflowSchema,
+  RuntimeProgramIR,
   RuntimeActorOptions,
   RuntimeArgInfo,
   RuntimeMethod,
@@ -31,6 +32,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
 
   readonly #program: CandidProgram
   readonly #formOptions: FormSchemaOptions
+  readonly #runtimeIr: RuntimeProgramIR
   readonly #typeSchemas: Map<string, AnySchema>
   readonly #methods = new Map<string, RuntimeMethod>()
   readonly #types = new Map<string, CandidTypeIR>()
@@ -46,16 +48,17 @@ export class RuntimeProgramImpl implements RuntimeProgram {
     this.ir = options.ir
     this.#program = options.program
     this.#formOptions = options.formOptions ?? {}
+    this.#runtimeIr = runtimeProgramView(options.ir)
 
-    for (const declaration of this.ir.types) {
+    for (const declaration of this.#runtimeIr.types) {
       this.#types.set(declaration.name, declaration.type)
     }
 
-    const schemas = irToSchema(this.ir)
+    const schemas = irToSchema(this.#runtimeIr)
     this.#typeSchemas = schemas.typeSchemas
     this.service = schemas.service
 
-    for (const method of this.ir.actor?.service.methods ?? []) {
+    for (const method of this.#runtimeIr.actor?.service.methods ?? []) {
       const schema = schemas.methodSchemas.get(method.name)
       if (!schema) {
         throw new Error(
@@ -64,7 +67,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
       }
       const runtimeMethod = new RuntimeMethodImpl({
         program: this.#program,
-        ir: this.ir,
+        ir: this.#runtimeIr,
         methodIr: method,
         schema,
         formOptions: this.#formOptions,
@@ -78,7 +81,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   }
 
   listTypes(): RuntimeTypeInfo[] {
-    return this.ir.types.map((declaration) => {
+    return this.#runtimeIr.types.map((declaration) => {
       const info: RuntimeTypeInfo = {
         name: declaration.name,
         candidType: candidTypeText(declaration.type, this),
@@ -97,7 +100,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   }
 
   listMethods(): RuntimeMethodInfo[] {
-    return (this.ir.actor?.service.methods ?? []).map((method) => {
+    return (this.#runtimeIr.actor?.service.methods ?? []).map((method) => {
       const info: RuntimeMethodInfo = {
         name: method.name,
         mode: method.mode,
@@ -198,11 +201,11 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   }
 
   toFormSchema(): ProgramFormSchema {
-    return programToFormSchema(this.ir, this.#formOptions)
+    return programToFormSchema(this.#runtimeIr, this.#formOptions)
   }
 
   toWorkflowSchema(): ProgramWorkflowSchema {
-    return programToWorkflowSchema(this.ir, this.#formOptions)
+    return programToWorkflowSchema(this.#runtimeIr, this.#formOptions)
   }
 
   typeByName(name: string): CandidTypeIR | undefined {

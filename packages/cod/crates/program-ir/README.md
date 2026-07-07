@@ -20,6 +20,7 @@ compiler passes.
 6. The type arena stores wire structure. Semantic conveniences such as blob,
    tuple, and result are analysis layered on top of structural wire truth.
 7. Primitive type reuse is allowed. Composite structural interning is deferred.
+8. Graph validation and ID resolution are owned by this crate.
 
 ## Graph Shape
 
@@ -85,6 +86,23 @@ TypeRefIr::Decl { id: ... }
 Consumers that only care about wire structure can resolve either reference to a
 `TypeId`. Consumers that care about source declarations can preserve `DeclId`.
 
+## Graph API
+
+Consumers should use `ProgramIr::graph()` instead of creating local lookup maps.
+The graph resolver validates the Program IR before exposing borrowed accessors:
+
+- `type_node(TypeId)`
+- `declaration(DeclId)`
+- `declaration_by_name(name)`
+- `resolve_ref(TypeRefIr) -> TypeId`
+- `service_methods(TypeId)`
+- `actor_service()`
+
+Validation currently checks version support, declaration ID/name uniqueness,
+sequential declaration IDs, missing type/declaration references, actor service
+targets, duplicate method IDs/names, and duplicate field candid IDs inside
+record and variant nodes.
+
 ## Initial Lowering Policy
 
 The first arena lowerer should:
@@ -96,5 +114,5 @@ The first arena lowerer should:
 - preserve named type uses as `TypeRefIr::Decl`
 - keep semantic annotations out of the initial structural lowering
 
-Composite deduplication, semantic recognition, canonical ID remapping, and
-validation are separate compiler passes.
+Composite deduplication, semantic recognition, and canonical ID remapping remain
+separate compiler passes.

@@ -4,7 +4,11 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { CandidValidationError, c, type FormField } from "./index.js"
-import { fieldObjectKey, PROGRAM_IR_VERSION } from "./runtime/program-ir.js"
+import {
+  fieldObjectKey,
+  PROGRAM_IR_VERSION,
+  ProgramIrGraph,
+} from "./runtime/program-ir.js"
 import { RuntimeProgramImpl } from "./runtime/program.js"
 import {
   initWasmForTest,
@@ -96,7 +100,12 @@ type User = record {
 
     assert.ok(program.ir.actor)
     assert.deepEqual(program.ir.actor.initArgs, [])
-    assert.deepEqual(program.ir.actor.service.methods, [])
+    const service = program.ir.types[program.ir.actor.service]?.kind
+    assert.equal(service?.kind, "service")
+    if (service?.kind !== "service") {
+      throw new Error("expected actor service")
+    }
+    assert.deepEqual(service.methods, [])
     assert.deepEqual(program.listMethods(), [])
   })
 
@@ -109,8 +118,13 @@ service : (text, opt principal) -> {
 
     assert.ok(program.ir.actor)
     assert.equal(program.ir.actor.initArgs.length, 2)
+    const service = program.ir.types[program.ir.actor.service]?.kind
+    assert.equal(service?.kind, "service")
+    if (service?.kind !== "service") {
+      throw new Error("expected actor service")
+    }
     assert.deepEqual(
-      program.ir.actor.service.methods.map((method) => method.name),
+      service.methods.map((method) => method.name),
       ["greet"]
     )
   })
@@ -220,19 +234,27 @@ type Fields = record {
 };
 service : { save : (Fields) -> () };
 `)
-    const fields = program.ir.types.find((type) => type.name === "Fields")
-    assert.equal(fields?.type.kind, "record")
-    if (fields?.type.kind !== "record") {
+    const graph = new ProgramIrGraph(program.ir)
+    const fieldsDecl = graph.declarationByName("Fields")
+    const fields = fieldsDecl && program.ir.types[fieldsDecl.type]?.kind
+    assert.equal(fields?.kind, "record")
+    if (fields?.kind !== "record") {
       throw new Error("expected Fields record")
     }
 
     assert.deepEqual(
-      fields.type.fields
-        .map((field) => ({ label: field.label, key: fieldObjectKey(field) }))
+      fields.fields
+        .map((field) => ({
+          label:
+            field.label.kind === "named"
+              ? { kind: "named", name: field.label.name }
+              : field.label,
+          key: fieldObjectKey(field),
+        }))
         .sort((left, right) => left.key.localeCompare(right.key)),
       [
-        { label: { kind: "unnamed", id: 0 }, key: "_0_" },
-        { label: { kind: "id", id: 10 }, key: "_10_" },
+        { label: { kind: "unnamed", candid_id: 0 }, key: "_0_" },
+        { label: { kind: "id", candid_id: 10 }, key: "_10_" },
         { label: { kind: "named", name: "named" }, key: "named" },
         { label: { kind: "named", name: "not-id" }, key: "not-id" },
         { label: { kind: "named", name: "type" }, key: "type" },
@@ -562,28 +584,34 @@ describe("form schema", () => {
         },
       },
     })
-    const contact = program.ir.types.find((type) => type.name === "Contact")
+    const graph = new ProgramIrGraph(program.ir)
+    const contact = graph.declarationByName("Contact")
+    const contactType = contact && program.ir.types[contact.type]?.kind
 
-    assert.deepEqual(contact?.docs, ["Contact docs."])
-    assert.deepEqual(contact?.rawDocs, ["Contact docs.", "@strict"])
-    assert.deepEqual(contact?.docTags, [{ name: "strict", value: "" }])
-    assert.equal(contact?.type.kind, "record")
-    if (contact?.type.kind !== "record") {
+    assert.deepEqual(contact?.metadata?.docs, ["Contact docs."])
+    assert.deepEqual(contact?.metadata?.rawDocs, ["Contact docs.", "@strict"])
+    assert.deepEqual(contact?.metadata?.docTags, [
+      { name: "strict", value: "" },
+    ])
+    assert.equal(contactType?.kind, "record")
+    if (contactType?.kind !== "record") {
       throw new Error("expected Contact record")
     }
 
-    const emailIr = contact.type.fields.find(
+    const emailIr = contactType.fields.find(
       (field) => field.label.kind === "named" && field.label.name === "email"
     )
-    const phoneIr = contact.type.fields.find(
+    const phoneIr = contactType.fields.find(
       (field) => field.label.kind === "named" && field.label.name === "phone"
     )
-    assert.deepEqual(emailIr?.docs, undefined)
-    assert.deepEqual(emailIr?.rawDocs, ["@format email Invalid email"])
-    assert.deepEqual(emailIr?.docTags, [
+    assert.deepEqual(emailIr?.metadata?.docs, undefined)
+    assert.deepEqual(emailIr?.metadata?.rawDocs, [
+      "@format email Invalid email",
+    ])
+    assert.deepEqual(emailIr?.metadata?.docTags, [
       { name: "format", value: "email Invalid email" },
     ])
-    assert.deepEqual(phoneIr?.docTags, [
+    assert.deepEqual(phoneIr?.metadata?.docTags, [
       { name: "format", value: "phone-number" },
     ])
 

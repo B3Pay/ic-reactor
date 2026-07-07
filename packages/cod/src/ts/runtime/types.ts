@@ -29,6 +29,113 @@ export type CandidMethodMode = "query" | "update" | "oneway" | "composite_query"
 
 export type ProgramIR = {
   version: number
+  types: ProgramTypeNodeIR[]
+  declarations: ProgramTypeDeclIR[]
+  actor: ProgramActorIR | null
+}
+
+export type TypeId = number
+export type DeclId = number
+export type MethodId = number
+
+export type ProgramTypeRefIR =
+  | { kind: "type"; id: TypeId }
+  | { kind: "decl"; id: DeclId }
+
+export type ProgramTypeNodeIR = {
+  kind: ProgramTypeKindIR
+}
+
+export type ProgramTypeKindIR =
+  | { kind: "null" }
+  | { kind: "bool" }
+  | { kind: "text" }
+  | { kind: "nat" }
+  | { kind: "int" }
+  | { kind: "nat8" }
+  | { kind: "nat16" }
+  | { kind: "nat32" }
+  | { kind: "nat64" }
+  | { kind: "int8" }
+  | { kind: "int16" }
+  | { kind: "int32" }
+  | { kind: "int64" }
+  | { kind: "float32" }
+  | { kind: "float64" }
+  | { kind: "principal" }
+  | { kind: "reserved" }
+  | { kind: "empty" }
+  | { kind: "opt"; inner: ProgramTypeRefIR }
+  | { kind: "vec"; inner: ProgramTypeRefIR }
+  | { kind: "record"; fields: ProgramFieldIR[] }
+  | { kind: "variant"; fields: ProgramFieldIR[] }
+  | {
+      kind: "func"
+      args: ProgramArgIR[]
+      returns: ProgramArgIR[]
+      mode: CandidMethodMode
+    }
+  | { kind: "service"; methods: ProgramMethodIR[] }
+
+export type ProgramMetadataIR = {
+  docs?: string[]
+  rawDocs?: string[]
+  docTags?: DocTag[]
+}
+
+export type ProgramTypeDeclIR = {
+  id: DeclId
+  name: string
+  type: TypeId
+  metadata?: ProgramMetadataIR
+}
+
+export type ProgramActorIR = {
+  initArgs: ProgramArgIR[]
+  service: TypeId
+}
+
+export type ProgramMethodIR = {
+  id: MethodId
+  name: string
+  mode: CandidMethodMode
+  args: ProgramArgIR[]
+  returns: ProgramArgIR[]
+  metadata?: ProgramMetadataIR
+}
+
+export type ProgramArgIR = {
+  name?: string
+  type: ProgramTypeRefIR
+  metadata?: ProgramMetadataIR
+}
+
+export type ProgramFieldIR = {
+  label: ProgramFieldLabelIR
+  type: ProgramTypeRefIR
+  metadata?: ProgramMetadataIR
+}
+
+export type ProgramFieldLabelIR =
+  | {
+      kind: "named"
+      name: string
+      candid_id?: number
+      candidId?: number
+    }
+  | {
+      kind: "id"
+      candid_id?: number
+      candidId?: number
+    }
+  | {
+      kind: "unnamed"
+      candid_id?: number
+      candidId?: number
+    }
+
+export type RuntimeProgramIR = {
+  version: number
   types: CandidTypeDeclIR[]
   actor: CandidActorIR | null
 }

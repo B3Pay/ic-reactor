@@ -2,13 +2,13 @@ import { FormContext, methodToFormSchema } from "./form.js"
 import type {
   CandidMethodIR,
   FormSchemaOptions,
-  ProgramIR,
   ProgramWorkflowSchema,
+  RuntimeProgramIR,
   WorkflowMethodNode,
 } from "./types.js"
 
 export function programToWorkflowSchema(
-  ir: ProgramIR,
+  ir: RuntimeProgramIR,
   options: FormSchemaOptions = {}
 ): ProgramWorkflowSchema {
   const context = new FormContext(ir, options)
