@@ -330,11 +330,21 @@ Conceptually:
 
 ```rust
 pub enum CandidFieldLabelIr {
-    Named(String),
-    Id(u32),
-    Unnamed(u32),
+    Named {
+        name: String,
+    },
+    Id {
+        candid_id: u32,
+    },
+    Unnamed {
+        candid_id: u32,
+    },
 }
 ```
+
+For named labels, the Candid numeric field ID is derived from the name using
+the Candid label hash. The canonical IR must not store both the name and a
+separate named-label ID that can disagree.
 
 A TypeScript emitter can derive:
 
@@ -622,6 +632,8 @@ Examples of pass responsibilities:
 - verify IDs are valid
 - verify actor service shape when an actor exists
 - verify method IDs are unique
+- verify oneway methods and function types have no returns
+- reject direct structural `TypeRefIr::Type` cycles
 - verify the IR version
 - verify compiler invariants
 
@@ -709,6 +721,13 @@ pub enum TypeKindIr {
 
 Named declaration references are represented by `TypeRefIr::Decl`, not by a
 `TypeKindIr::Ref` node.
+
+Direct `TypeRefIr::Type` edges must be acyclic. Legitimate recursive Candid
+structure crosses a declaration boundary:
+
+```text
+Type -> Decl -> Type
+```
 
 Method bodies live in `ProgramIr.methods`:
 

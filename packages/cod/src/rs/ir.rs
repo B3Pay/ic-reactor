@@ -560,10 +560,7 @@ fn primitive_kind(kind: &PrimType) -> PrimitiveKindIr {
 fn field_label_ir_from_label(label: &Label) -> FieldLabelIr {
     let candid_id = label.get_id();
     match label {
-        Label::Named(name) => FieldLabelIr::Named {
-            name: name.clone(),
-            candid_id,
-        },
+        Label::Named(name) => FieldLabelIr::Named { name: name.clone() },
         Label::Id(_) => FieldLabelIr::Id { candid_id },
         Label::Unnamed(_) => FieldLabelIr::Unnamed { candid_id },
     }
@@ -831,9 +828,9 @@ service : { get : () -> (Fields) query; }
 
         let fields_decl = declaration(&round_trip, "Fields");
         let fields = declaration_record_fields(&round_trip, fields_decl);
-        assert!(fields.iter().any(
-            |field| matches!(&field.label, FieldLabelIr::Named { name, .. } if name == "named")
-        ));
+        assert!(fields
+            .iter()
+            .any(|field| matches!(&field.label, FieldLabelIr::Named { name } if name == "named")));
         assert!(fields
             .iter()
             .any(|field| matches!(&field.label, FieldLabelIr::Id { candid_id: 10 })));
@@ -1283,7 +1280,7 @@ type Profile = record {
         fn find_field<'a>(fields: &'a [FieldIr], name: &str) -> &'a FieldIr {
             fields
                 .iter()
-                .find(|field| matches!(&field.label, FieldLabelIr::Named { name: field_name, .. } if field_name == name))
+                .find(|field| matches!(&field.label, FieldLabelIr::Named { name: field_name } if field_name == name))
                 .unwrap_or_else(|| panic!("missing field {name}"))
         }
     }
@@ -1653,7 +1650,7 @@ type Profile = record {
     }
 
     fn named(field: &FieldIr, expected: &str) -> bool {
-        matches!(&field.label, FieldLabelIr::Named { name, .. } if name == expected)
+        matches!(&field.label, FieldLabelIr::Named { name } if name == expected)
     }
 
     fn method_mode(ir: &ProgramIr, name: &str) -> MethodModeIr {

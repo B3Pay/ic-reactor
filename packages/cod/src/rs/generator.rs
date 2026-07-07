@@ -787,7 +787,7 @@ fn candid_field_text(field: &CandidFieldIr, variant: bool) -> Result<String> {
 
 fn candid_field_label(label: &CandidFieldLabelIr) -> String {
     match label {
-        CandidFieldLabelIr::Named { name, .. } => candid_label(name),
+        CandidFieldLabelIr::Named { name } => candid_label(name),
         CandidFieldLabelIr::Id { candid_id } | CandidFieldLabelIr::Unnamed { candid_id } => {
             candid_id.to_string()
         }
@@ -983,7 +983,7 @@ fn is_tuple_fields(fields: &[CandidFieldIr]) -> bool {
 
 fn property_key(field: &CandidFieldIr) -> String {
     match &field.label {
-        CandidFieldLabelIr::Named { name, .. } => object_key(name),
+        CandidFieldLabelIr::Named { name } => object_key(name),
         CandidFieldLabelIr::Id { candid_id } | CandidFieldLabelIr::Unnamed { candid_id } => {
             format!("_{}_", candid_id)
         }

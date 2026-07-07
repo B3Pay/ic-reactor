@@ -17,12 +17,16 @@ compiler passes.
 4. Named references are not type nodes. They appear only as `TypeRefIr::Decl`.
 5. Recursion is represented through declaration references, not parser knot IDs
    or string refs.
-6. The type arena stores wire structure. Semantic conveniences such as blob,
+6. Direct `TypeRefIr::Type` edges are acyclic. Legitimate recursion must pass
+   through `TypeRefIr::Decl`.
+7. Named field labels store the source name only; their Candid numeric field ID
+   is derived from that name.
+8. The type arena stores wire structure. Semantic conveniences such as blob,
    tuple, and result are analysis layered on top of structural wire truth.
-7. Primitive type reuse is allowed. Composite structural interning is deferred.
-8. `MethodId` identifies one method body in the method arena. Service type
-   nodes store ordered `MethodId` references.
-9. Graph validation and ID resolution are owned by this crate.
+9. Primitive type reuse is allowed. Composite structural interning is deferred.
+10. `MethodId` identifies one method body in the method arena. Service type
+    nodes store ordered `MethodId` references.
+11. Graph validation and ID resolution are owned by this crate.
 
 ## Graph Shape
 
@@ -108,8 +112,9 @@ The graph resolver validates the Program IR before exposing borrowed accessors:
 - `actor_service_methods()`
 
 Validation currently checks version support, declaration name uniqueness,
-missing type/declaration/method references, actor service targets, duplicate
-method references, duplicate method names per service, unreferenced methods,
+missing type/declaration/method references, actor service targets, oneway
+method/function return invariants, duplicate method references, duplicate
+method names per service, unreferenced methods, direct structural type cycles,
 and duplicate field candid IDs inside record and variant nodes.
 
 ## Initial Lowering Policy

@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { CandidValidationError, c, type FormField } from "./index.js"
 import {
+  candidLabelId,
   fieldObjectKey,
   PROGRAM_IR_VERSION,
   ProgramIrGraph,
@@ -275,6 +276,23 @@ service : { save : (Fields) -> () };
     if (fields?.kind !== "record") {
       throw new Error("expected Fields record")
     }
+    const namedField = fields.fields.find(
+      (field) => field.label.kind === "named" && field.label.name === "named"
+    )
+    assert.ok(namedField)
+    assert.equal(Object.hasOwn(namedField.label, "candid_id"), false)
+    assert.equal(Object.hasOwn(namedField.label, "candidId"), false)
+
+    const runtimeFields = graph.runtimeTypeByName("Fields")
+    assert.equal(runtimeFields?.kind, "record")
+    if (runtimeFields?.kind !== "record") {
+      throw new Error("expected runtime Fields record")
+    }
+    const runtimeNamedField = runtimeFields.fields.find(
+      (field) => field.label.kind === "named" && field.label.name === "named"
+    )
+    assert.equal(candidLabelId("owner"), 947_296_307)
+    assert.equal(runtimeNamedField?.candidId, candidLabelId("named"))
 
     assert.deepEqual(
       fields.fields

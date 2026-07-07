@@ -119,8 +119,6 @@ export type ProgramFieldLabelIR =
   | {
       kind: "named"
       name: string
-      candid_id?: number
-      candidId?: number
     }
   | {
       kind: "id"

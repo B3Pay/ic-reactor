@@ -24,6 +24,8 @@ import type {
 
 export const PROGRAM_IR_VERSION = 1
 
+const utf8Encoder = new TextEncoder()
+
 export class UnsupportedProgramIRVersionError extends Error {
   constructor(
     readonly actual: number,
@@ -328,6 +330,14 @@ export function fieldObjectKey(field: CandidFieldIR | ProgramFieldIR): string {
   }
 }
 
+export function candidLabelId(name: string): number {
+  let hash = 0
+  for (const byte of utf8Encoder.encode(name)) {
+    hash = (Math.imul(hash, 223) + byte) >>> 0
+  }
+  return hash
+}
+
 function runtimeFieldLabel(label: ProgramFieldLabelIR): CandidFieldLabelIR {
   switch (label.kind) {
     case "named":
@@ -349,6 +359,9 @@ function fieldCandidId(field: CandidFieldIR | ProgramFieldIR): number {
 function fieldLabelCandidId(
   label: CandidFieldLabelIR | ProgramFieldLabelIR
 ): number {
+  if (label.kind === "named") {
+    return candidLabelId(label.name)
+  }
   if ("id" in label && typeof label.id === "number") {
     return label.id
   }

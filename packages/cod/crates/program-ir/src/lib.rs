@@ -162,7 +162,7 @@ pub struct FieldIr {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum FieldLabelIr {
-    Named { name: String, candid_id: u32 },
+    Named { name: String },
     Id { candid_id: u32 },
     Unnamed { candid_id: u32 },
 }
@@ -170,11 +170,20 @@ pub enum FieldLabelIr {
 impl FieldLabelIr {
     pub fn candid_id(&self) -> u32 {
         match self {
-            Self::Named { candid_id, .. }
-            | Self::Id { candid_id }
-            | Self::Unnamed { candid_id } => *candid_id,
+            Self::Named { name } => candid_label_id(name),
+            Self::Id { candid_id } | Self::Unnamed { candid_id } => *candid_id,
         }
     }
+}
+
+/// Computes the Candid numeric field identifier for a named label.
+///
+/// This is the language-neutral Candid label hash: start at zero, then for each
+/// UTF-8 byte multiply by 223 and add the byte modulo 2^32.
+pub fn candid_label_id(name: &str) -> u32 {
+    name.as_bytes().iter().fold(0u32, |hash, byte| {
+        hash.wrapping_mul(223).wrapping_add(u32::from(*byte))
+    })
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -337,9 +346,11 @@ impl<'a> ProgramIrGraph<'a> {
         }
 
         for (index, method) in self.program.methods.iter().enumerate() {
-            u32::try_from(index).map_err(|_| ProgramIrError::MethodIndexExceedsU32 { index })?;
-            self.validate_args(&method.args)?;
-            self.validate_args(&method.returns)?;
+            let id = MethodId(
+                u32::try_from(index)
+                    .map_err(|_| ProgramIrError::MethodIndexExceedsU32 { index })?,
+            );
+            self.validate_method_signature(id, method)?;
         }
 
         let mut referenced_method_ids = BTreeSet::new();
@@ -367,6 +378,8 @@ impl<'a> ProgramIrGraph<'a> {
             }
         }
 
+        self.validate_no_direct_type_cycles()?;
+
         Ok(())
     }
 
@@ -383,9 +396,19 @@ impl<'a> ProgramIrGraph<'a> {
             TypeKindIr::Record { fields } | TypeKindIr::Variant { fields } => {
                 self.validate_fields(type_id, fields)?;
             }
-            TypeKindIr::Func { args, returns, .. } => {
+            TypeKindIr::Func {
+                args,
+                returns,
+                mode,
+            } => {
                 self.validate_args(args)?;
                 self.validate_args(returns)?;
+                if *mode == MethodModeIr::Oneway && !returns.is_empty() {
+                    return Err(ProgramIrError::OnewayFuncTypeHasReturns {
+                        id: type_id,
+                        returns: returns.len(),
+                    });
+                }
             }
             TypeKindIr::Service { methods } => {
                 self.validate_service_method_ids(type_id, methods, referenced_method_ids)?;
@@ -410,6 +433,22 @@ impl<'a> ProgramIrGraph<'a> {
             | TypeKindIr::Empty => {}
         }
 
+        Ok(())
+    }
+
+    fn validate_method_signature(
+        &self,
+        id: MethodId,
+        method: &MethodIr,
+    ) -> Result<(), ProgramIrError> {
+        self.validate_args(&method.args)?;
+        self.validate_args(&method.returns)?;
+        if method.mode == MethodModeIr::Oneway && !method.returns.is_empty() {
+            return Err(ProgramIrError::OnewayMethodHasReturns {
+                id,
+                returns: method.returns.len(),
+            });
+        }
         Ok(())
     }
 
@@ -465,6 +504,111 @@ impl<'a> ProgramIrGraph<'a> {
         }
         Ok(())
     }
+
+    fn validate_no_direct_type_cycles(&self) -> Result<(), ProgramIrError> {
+        let mut states = vec![TypeVisitState::Unvisited; self.program.types.len()];
+        for index in 0..self.program.types.len() {
+            let id = TypeId(
+                u32::try_from(index).map_err(|_| ProgramIrError::TypeIndexExceedsU32 { index })?,
+            );
+            self.visit_direct_type_edges(id, &mut states)?;
+        }
+        Ok(())
+    }
+
+    fn visit_direct_type_edges(
+        &self,
+        id: TypeId,
+        states: &mut [TypeVisitState],
+    ) -> Result<(), ProgramIrError> {
+        let index = type_index(id)?;
+        match states
+            .get_mut(index)
+            .ok_or(ProgramIrError::MissingType { id })?
+        {
+            state @ TypeVisitState::Unvisited => {
+                *state = TypeVisitState::Visiting;
+            }
+            TypeVisitState::Visiting => {
+                return Err(ProgramIrError::DirectTypeCycle { id });
+            }
+            TypeVisitState::Visited => {
+                return Ok(());
+            }
+        }
+
+        match self.type_kind(id)? {
+            TypeKindIr::Opt { inner } | TypeKindIr::Vec { inner } => {
+                self.visit_direct_type_ref(*inner, states)?;
+            }
+            TypeKindIr::Record { fields } | TypeKindIr::Variant { fields } => {
+                for field in fields {
+                    self.visit_direct_type_ref(field.typ, states)?;
+                }
+            }
+            TypeKindIr::Func { args, returns, .. } => {
+                self.visit_direct_args(args, states)?;
+                self.visit_direct_args(returns, states)?;
+            }
+            TypeKindIr::Service { methods } => {
+                for id in methods {
+                    let method = self.method(*id)?;
+                    self.visit_direct_args(&method.args, states)?;
+                    self.visit_direct_args(&method.returns, states)?;
+                }
+            }
+            TypeKindIr::Null
+            | TypeKindIr::Bool
+            | TypeKindIr::Text
+            | TypeKindIr::Nat
+            | TypeKindIr::Int
+            | TypeKindIr::Nat8
+            | TypeKindIr::Nat16
+            | TypeKindIr::Nat32
+            | TypeKindIr::Nat64
+            | TypeKindIr::Int8
+            | TypeKindIr::Int16
+            | TypeKindIr::Int32
+            | TypeKindIr::Int64
+            | TypeKindIr::Float32
+            | TypeKindIr::Float64
+            | TypeKindIr::Principal
+            | TypeKindIr::Reserved
+            | TypeKindIr::Empty => {}
+        }
+
+        states[index] = TypeVisitState::Visited;
+        Ok(())
+    }
+
+    fn visit_direct_args(
+        &self,
+        args: &[ArgIr],
+        states: &mut [TypeVisitState],
+    ) -> Result<(), ProgramIrError> {
+        for arg in args {
+            self.visit_direct_type_ref(arg.typ, states)?;
+        }
+        Ok(())
+    }
+
+    fn visit_direct_type_ref(
+        &self,
+        reference: TypeRefIr,
+        states: &mut [TypeVisitState],
+    ) -> Result<(), ProgramIrError> {
+        if let TypeRefIr::Type { id } = reference {
+            self.visit_direct_type_edges(id, states)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TypeVisitState {
+    Unvisited,
+    Visiting,
+    Visited,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -478,6 +622,9 @@ pub enum ProgramIrError {
     MissingMethod { id: MethodId },
     DuplicateDeclarationName { name: String },
     ActorServiceNotService { id: TypeId },
+    OnewayMethodHasReturns { id: MethodId, returns: usize },
+    OnewayFuncTypeHasReturns { id: TypeId, returns: usize },
+    DirectTypeCycle { id: TypeId },
     DuplicateMethodReference { id: MethodId },
     DuplicateMethodName { service: TypeId, name: String },
     UnreferencedMethod { id: MethodId },
@@ -518,6 +665,18 @@ impl fmt::Display for ProgramIrError {
                     "ProgramIR actor service points to non-service type {id:?}"
                 )
             }
+            Self::OnewayMethodHasReturns { id, returns } => write!(
+                f,
+                "ProgramIR oneway method {id:?} has {returns} return value(s)"
+            ),
+            Self::OnewayFuncTypeHasReturns { id, returns } => write!(
+                f,
+                "ProgramIR oneway function type {id:?} has {returns} return value(s)"
+            ),
+            Self::DirectTypeCycle { id } => write!(
+                f,
+                "ProgramIR direct structural type cycle reaches {id:?}; recursion must pass through a declaration reference"
+            ),
             Self::DuplicateMethodReference { id } => {
                 write!(f, "duplicate ProgramIR method reference {id:?}")
             }
@@ -567,13 +726,17 @@ mod tests {
     }
 
     #[test]
-    fn field_label_carries_candid_id() {
+    fn named_field_label_derives_candid_id() {
         let label = FieldLabelIr::Named {
             name: "owner".to_string(),
-            candid_id: 947_296_307,
         };
 
         assert_eq!(label.candid_id(), 947_296_307);
+        assert_eq!(candid_label_id("owner"), 947_296_307);
+        assert_eq!(
+            serde_json::to_value(label).unwrap(),
+            serde_json::json!({ "kind": "named", "name": "owner" })
+        );
     }
 
     #[test]
@@ -795,6 +958,137 @@ mod tests {
     }
 
     #[test]
+    fn graph_validation_rejects_oneway_method_returns() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![
+                TypeNodeIr {
+                    kind: TypeKindIr::Service {
+                        methods: vec![MethodId(0)],
+                    },
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Text,
+                },
+            ],
+            declarations: vec![],
+            methods: vec![MethodIr {
+                name: "notify".to_string(),
+                mode: MethodModeIr::Oneway,
+                args: vec![],
+                returns: vec![arg(TypeRefIr::Type { id: TypeId(1) })],
+                metadata: MetadataIr::default(),
+            }],
+            actor: None,
+        };
+
+        assert_eq!(
+            program.validate().unwrap_err(),
+            ProgramIrError::OnewayMethodHasReturns {
+                id: MethodId(0),
+                returns: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn graph_validation_rejects_oneway_func_type_returns() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![
+                TypeNodeIr {
+                    kind: TypeKindIr::Func {
+                        args: vec![],
+                        returns: vec![arg(TypeRefIr::Type { id: TypeId(1) })],
+                        mode: MethodModeIr::Oneway,
+                    },
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Text,
+                },
+            ],
+            declarations: vec![],
+            methods: vec![],
+            actor: None,
+        };
+
+        assert_eq!(
+            program.validate().unwrap_err(),
+            ProgramIrError::OnewayFuncTypeHasReturns {
+                id: TypeId(0),
+                returns: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn graph_validation_rejects_direct_structural_type_cycles() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![TypeNodeIr {
+                kind: TypeKindIr::Opt {
+                    inner: TypeRefIr::Type { id: TypeId(0) },
+                },
+            }],
+            declarations: vec![],
+            methods: vec![],
+            actor: None,
+        };
+
+        assert_eq!(
+            program.validate().unwrap_err(),
+            ProgramIrError::DirectTypeCycle { id: TypeId(0) }
+        );
+    }
+
+    #[test]
+    fn graph_validation_rejects_service_method_direct_structural_type_cycles() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![TypeNodeIr {
+                kind: TypeKindIr::Service {
+                    methods: vec![MethodId(0)],
+                },
+            }],
+            declarations: vec![],
+            methods: vec![MethodIr {
+                name: "self_ref".to_string(),
+                mode: MethodModeIr::Query,
+                args: vec![arg(TypeRefIr::Type { id: TypeId(0) })],
+                returns: vec![],
+                metadata: MetadataIr::default(),
+            }],
+            actor: None,
+        };
+
+        assert_eq!(
+            program.validate().unwrap_err(),
+            ProgramIrError::DirectTypeCycle { id: TypeId(0) }
+        );
+    }
+
+    #[test]
+    fn graph_validation_allows_recursion_through_declaration_refs() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![TypeNodeIr {
+                kind: TypeKindIr::Opt {
+                    inner: TypeRefIr::Decl { id: DeclId(0) },
+                },
+            }],
+            declarations: vec![TypeDeclIr {
+                name: "Loop".to_string(),
+                typ: TypeId(0),
+                metadata: MetadataIr::default(),
+            }],
+            methods: vec![],
+            actor: None,
+        };
+
+        program.validate().unwrap();
+    }
+
+    #[test]
     fn graph_validation_rejects_duplicate_method_references() {
         let program = ProgramIr {
             version: PROGRAM_IR_VERSION,
@@ -847,8 +1141,8 @@ mod tests {
                 TypeNodeIr {
                     kind: TypeKindIr::Record {
                         fields: vec![
-                            named_field("a", 42, TypeRefIr::Type { id: TypeId(1) }),
-                            named_field("b", 42, TypeRefIr::Type { id: TypeId(1) }),
+                            named_field("a", TypeRefIr::Type { id: TypeId(1) }),
+                            id_field(97, TypeRefIr::Type { id: TypeId(1) }),
                         ],
                     },
                 },
@@ -865,7 +1159,7 @@ mod tests {
             program.validate().unwrap_err(),
             ProgramIrError::DuplicateFieldId {
                 type_id: TypeId(0),
-                candid_id: 42,
+                candid_id: 97,
             }
         );
     }
@@ -880,12 +1174,27 @@ mod tests {
         }
     }
 
-    fn named_field(name: &str, candid_id: u32, typ: TypeRefIr) -> FieldIr {
+    fn arg(typ: TypeRefIr) -> ArgIr {
+        ArgIr {
+            name: None,
+            typ,
+            metadata: MetadataIr::default(),
+        }
+    }
+
+    fn named_field(name: &str, typ: TypeRefIr) -> FieldIr {
         FieldIr {
             label: FieldLabelIr::Named {
                 name: name.to_string(),
-                candid_id,
             },
+            typ,
+            metadata: MetadataIr::default(),
+        }
+    }
+
+    fn id_field(candid_id: u32, typ: TypeRefIr) -> FieldIr {
+        FieldIr {
+            label: FieldLabelIr::Id { candid_id },
             typ,
             metadata: MetadataIr::default(),
         }
