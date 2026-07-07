@@ -19,8 +19,9 @@ pub use docs::{DocBlock, DocTag};
 pub use generator::{generate_typescript, TypeScriptEmitter};
 pub use ir::{
     CandidActorIr, CandidArgIr, CandidFieldIr, CandidFieldLabelIr, CandidMethodIr,
-    CandidMethodModeIr, CandidServiceIr, CandidTypeDeclIr, CandidTypeIr, DeclId, ProgramIr, TypeId,
-    TypeRefIr, PROGRAM_IR_VERSION,
+    CandidMethodModeIr, CandidServiceIr, CandidTypeDeclIr, CandidTypeIr, DeclId, FieldIr,
+    FieldLabelIr, MetadataIr, ProgramIr, TypeId, TypeKindIr, TypeNodeIr, TypeRefIr,
+    PROGRAM_IR_VERSION,
 };
 
 #[derive(Debug)]

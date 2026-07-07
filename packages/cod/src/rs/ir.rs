@@ -26,7 +26,7 @@ use std::collections::BTreeMap;
 
 use anyhow::{anyhow, Context, Result};
 use candid_parser::candid::types::{FuncMode, Label, SharedLabel, Type, TypeEnv, TypeInner};
-use candid_parser::syntax::{Binding, IDLArgType, IDLMergedProg, IDLType};
+use candid_parser::syntax::{Binding, IDLArgType, IDLMergedProg, IDLType, PrimType, TypeField};
 use serde::{Deserialize, Serialize};
 
 use crate::docs::{DocBlock, DocTag};
@@ -48,6 +48,124 @@ pub enum TypeRefIr {
     Decl { id: DeclId },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TypeNodeIr {
+    pub kind: TypeKindIr,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypeKindIr {
+    Null,
+    Bool,
+    Text,
+    Nat,
+    Int,
+    Nat8,
+    Nat16,
+    Nat32,
+    Nat64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Float64,
+    Principal,
+    Reserved,
+    Empty,
+    Opt { inner: TypeRefIr },
+    Vec { inner: TypeRefIr },
+    Record { fields: Vec<FieldIr> },
+    Variant { fields: Vec<FieldIr> },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FieldIr {
+    pub label: FieldLabelIr,
+    #[serde(rename = "type")]
+    pub typ: TypeRefIr,
+    pub metadata: MetadataIr,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum FieldLabelIr {
+    Named { name: String, candid_id: u32 },
+    Id { candid_id: u32 },
+    Unnamed { candid_id: u32 },
+}
+
+impl FieldLabelIr {
+    pub fn candid_id(&self) -> u32 {
+        match self {
+            Self::Named { candid_id, .. }
+            | Self::Id { candid_id }
+            | Self::Unnamed { candid_id } => *candid_id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MetadataIr {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub docs: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub raw_docs: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub doc_tags: Vec<DocTag>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum PrimitiveKindIr {
+    Null,
+    Bool,
+    Text,
+    Nat,
+    Int,
+    Nat8,
+    Nat16,
+    Nat32,
+    Nat64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Float64,
+    Principal,
+    Reserved,
+    Empty,
+}
+
+impl From<PrimitiveKindIr> for TypeKindIr {
+    fn from(kind: PrimitiveKindIr) -> Self {
+        match kind {
+            PrimitiveKindIr::Null => Self::Null,
+            PrimitiveKindIr::Bool => Self::Bool,
+            PrimitiveKindIr::Text => Self::Text,
+            PrimitiveKindIr::Nat => Self::Nat,
+            PrimitiveKindIr::Int => Self::Int,
+            PrimitiveKindIr::Nat8 => Self::Nat8,
+            PrimitiveKindIr::Nat16 => Self::Nat16,
+            PrimitiveKindIr::Nat32 => Self::Nat32,
+            PrimitiveKindIr::Nat64 => Self::Nat64,
+            PrimitiveKindIr::Int8 => Self::Int8,
+            PrimitiveKindIr::Int16 => Self::Int16,
+            PrimitiveKindIr::Int32 => Self::Int32,
+            PrimitiveKindIr::Int64 => Self::Int64,
+            PrimitiveKindIr::Float32 => Self::Float32,
+            PrimitiveKindIr::Float64 => Self::Float64,
+            PrimitiveKindIr::Principal => Self::Principal,
+            PrimitiveKindIr::Reserved => Self::Reserved,
+            PrimitiveKindIr::Empty => Self::Empty,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ReservedTypeDeclIr {
     id: DeclId,
@@ -57,8 +175,10 @@ struct ReservedTypeDeclIr {
 struct ArenaLoweringContext<'a> {
     _env: &'a TypeEnv,
     prog: &'a IDLMergedProg,
+    types: Vec<TypeNodeIr>,
     declarations: Vec<ReservedTypeDeclIr>,
     declarations_by_name: BTreeMap<String, DeclId>,
+    primitive_types: BTreeMap<PrimitiveKindIr, TypeId>,
 }
 
 impl<'a> ArenaLoweringContext<'a> {
@@ -66,8 +186,10 @@ impl<'a> ArenaLoweringContext<'a> {
         Self {
             _env: env,
             prog,
+            types: Vec::new(),
             declarations: Vec::new(),
             declarations_by_name: BTreeMap::new(),
+            primitive_types: BTreeMap::new(),
         }
     }
 
@@ -95,6 +217,16 @@ impl<'a> ArenaLoweringContext<'a> {
     }
 
     #[allow(dead_code)]
+    fn types(&self) -> &[TypeNodeIr] {
+        &self.types
+    }
+
+    #[allow(dead_code)]
+    fn type_node(&self, id: TypeId) -> Option<&TypeNodeIr> {
+        self.types.get(usize::try_from(id.0).ok()?)
+    }
+
+    #[allow(dead_code)]
     fn declaration_id(&self, name: &str) -> Option<DeclId> {
         self.declarations_by_name.get(name).copied()
     }
@@ -108,6 +240,83 @@ impl<'a> ArenaLoweringContext<'a> {
                 .with_context(|| format!("unreserved Candid declaration `{name}`")),
             _ => Ok(TypeRefIr::Type { id: structural_id }),
         }
+    }
+
+    #[allow(dead_code)]
+    fn lower_type_ref(&mut self, syntax: &IDLType) -> Result<TypeRefIr> {
+        match syntax {
+            IDLType::VarT(name) => self
+                .declaration_id(name)
+                .map(|id| TypeRefIr::Decl { id })
+                .with_context(|| format!("unreserved Candid declaration `{name}`")),
+            _ => self.lower_type(syntax).map(|id| TypeRefIr::Type { id }),
+        }
+    }
+
+    #[allow(dead_code)]
+    fn lower_type(&mut self, syntax: &IDLType) -> Result<TypeId> {
+        match syntax {
+            IDLType::PrimT(kind) => self.lower_primitive_type(primitive_kind(kind)),
+            IDLType::PrincipalT => self.lower_primitive_type(PrimitiveKindIr::Principal),
+            IDLType::OptT(inner) => {
+                let inner = self.lower_type_ref(inner)?;
+                self.alloc_type(TypeKindIr::Opt { inner })
+            }
+            IDLType::VecT(inner) => {
+                let inner = self.lower_type_ref(inner)?;
+                self.alloc_type(TypeKindIr::Vec { inner })
+            }
+            IDLType::RecordT(fields) => {
+                let fields = self.lower_fields(fields)?;
+                self.alloc_type(TypeKindIr::Record { fields })
+            }
+            IDLType::VariantT(fields) => {
+                let fields = self.lower_fields(fields)?;
+                self.alloc_type(TypeKindIr::Variant { fields })
+            }
+            IDLType::VarT(name) => Err(anyhow!(
+                "expected structural type syntax, got declaration reference `{name}`"
+            )),
+            IDLType::FuncT(_) | IDLType::ServT(_) | IDLType::ClassT(_, _) => Err(anyhow!(
+                "function, service, and service class arena lowering is not implemented yet"
+            )),
+        }
+    }
+
+    fn lower_primitive_type(&mut self, kind: PrimitiveKindIr) -> Result<TypeId> {
+        if let Some(id) = self.primitive_types.get(&kind) {
+            return Ok(*id);
+        }
+
+        let id = self.alloc_type(TypeKindIr::from(kind))?;
+        self.primitive_types.insert(kind, id);
+        Ok(id)
+    }
+
+    fn lower_fields(&mut self, fields: &[TypeField]) -> Result<Vec<FieldIr>> {
+        fields
+            .iter()
+            .map(|field| {
+                let typ = self.lower_type_ref(&field.typ)?;
+                let docs = doc_meta(&field.docs);
+                Ok(FieldIr {
+                    label: field_label_ir_from_label(&field.label),
+                    typ,
+                    metadata: MetadataIr {
+                        docs: docs.docs,
+                        raw_docs: docs.raw_docs,
+                        doc_tags: docs.tags,
+                    },
+                })
+            })
+            .collect()
+    }
+
+    fn alloc_type(&mut self, kind: TypeKindIr) -> Result<TypeId> {
+        let index = u32::try_from(self.types.len()).context("ProgramIR type arena exceeds u32")?;
+        let id = TypeId(index);
+        self.types.push(TypeNodeIr { kind });
+        Ok(id)
     }
 }
 
@@ -594,6 +803,40 @@ fn field_label_from_label(label: &Label) -> CandidFieldLabelIr {
         Label::Named(name) => CandidFieldLabelIr::Named { name: name.clone() },
         Label::Id(id) => CandidFieldLabelIr::Id { id: *id },
         Label::Unnamed(id) => CandidFieldLabelIr::Unnamed { id: *id },
+    }
+}
+
+fn primitive_kind(kind: &PrimType) -> PrimitiveKindIr {
+    match kind {
+        PrimType::Null => PrimitiveKindIr::Null,
+        PrimType::Bool => PrimitiveKindIr::Bool,
+        PrimType::Text => PrimitiveKindIr::Text,
+        PrimType::Nat => PrimitiveKindIr::Nat,
+        PrimType::Int => PrimitiveKindIr::Int,
+        PrimType::Nat8 => PrimitiveKindIr::Nat8,
+        PrimType::Nat16 => PrimitiveKindIr::Nat16,
+        PrimType::Nat32 => PrimitiveKindIr::Nat32,
+        PrimType::Nat64 => PrimitiveKindIr::Nat64,
+        PrimType::Int8 => PrimitiveKindIr::Int8,
+        PrimType::Int16 => PrimitiveKindIr::Int16,
+        PrimType::Int32 => PrimitiveKindIr::Int32,
+        PrimType::Int64 => PrimitiveKindIr::Int64,
+        PrimType::Float32 => PrimitiveKindIr::Float32,
+        PrimType::Float64 => PrimitiveKindIr::Float64,
+        PrimType::Reserved => PrimitiveKindIr::Reserved,
+        PrimType::Empty => PrimitiveKindIr::Empty,
+    }
+}
+
+fn field_label_ir_from_label(label: &Label) -> FieldLabelIr {
+    let candid_id = label.get_id();
+    match label {
+        Label::Named(name) => FieldLabelIr::Named {
+            name: name.clone(),
+            candid_id,
+        },
+        Label::Id(_) => FieldLabelIr::Id { candid_id },
+        Label::Unnamed(_) => FieldLabelIr::Unnamed { candid_id },
     }
 }
 
@@ -1109,6 +1352,144 @@ service : {
             let ir =
                 program_ir_from_parts(&parsed.env, parsed.actor.as_ref(), &parsed.prog).unwrap();
             serde_json::to_string(&ir).unwrap()
+        }
+    }
+
+    mod type_arena_allocation_verification {
+        use super::*;
+
+        #[test]
+        fn primitive_type_allocation_reuses_type_ids() {
+            let parsed = parse_candid_source(
+                r#"
+type UserId = nat64;
+type TransactionId = nat64;
+"#,
+            )
+            .unwrap();
+            let mut context = ArenaLoweringContext::new(&parsed.env, &parsed.prog);
+            context.reserve_declarations().unwrap();
+
+            let user_id = context
+                .lower_type(&parsed.prog.lookup("UserId").unwrap().typ)
+                .unwrap();
+            let transaction_id = context
+                .lower_type(&parsed.prog.lookup("TransactionId").unwrap().typ)
+                .unwrap();
+
+            assert_eq!(user_id, TypeId(0));
+            assert_eq!(transaction_id, TypeId(0));
+            assert_eq!(
+                context.types(),
+                &[TypeNodeIr {
+                    kind: TypeKindIr::Nat64,
+                }]
+            );
+        }
+
+        #[test]
+        fn repeated_anonymous_composites_allocate_distinct_type_ids() {
+            let parsed = parse_candid_source(
+                r#"
+service : {
+  a : (record { value : text }) -> ();
+  b : (record { value : text }) -> ();
+}
+"#,
+            )
+            .unwrap();
+            let mut context = ArenaLoweringContext::new(&parsed.env, &parsed.prog);
+            context.reserve_declarations().unwrap();
+            let methods = actor_service_syntax(&parsed.prog).unwrap();
+            let a = first_arg_type(find_method(&methods, "a"));
+            let b = first_arg_type(find_method(&methods, "b"));
+
+            let a_ref = context.lower_type_ref(a).unwrap();
+            let b_ref = context.lower_type_ref(b).unwrap();
+
+            assert_eq!(a_ref, TypeRefIr::Type { id: TypeId(1) });
+            assert_eq!(b_ref, TypeRefIr::Type { id: TypeId(2) });
+            assert_ne!(a_ref, b_ref);
+            assert_eq!(context.types().len(), 3);
+            assert_eq!(context.type_node(TypeId(0)).unwrap().kind, TypeKindIr::Text);
+            assert_eq!(
+                record_field(context.type_node(TypeId(1)).unwrap(), "value").typ,
+                TypeRefIr::Type { id: TypeId(0) }
+            );
+            assert_eq!(
+                record_field(context.type_node(TypeId(2)).unwrap(), "value").typ,
+                TypeRefIr::Type { id: TypeId(0) }
+            );
+            assert_eq!(
+                context.type_node(TypeId(1)).unwrap(),
+                context.type_node(TypeId(2)).unwrap()
+            );
+        }
+
+        #[test]
+        fn composite_allocation_preserves_named_declaration_refs() {
+            let parsed = parse_candid_source(
+                r#"
+type UserId = nat64;
+type Profile = record {
+  id : UserId;
+  aliases : vec text;
+};
+"#,
+            )
+            .unwrap();
+            let mut context = ArenaLoweringContext::new(&parsed.env, &parsed.prog);
+            context.reserve_declarations().unwrap();
+
+            let profile = context
+                .lower_type(&parsed.prog.lookup("Profile").unwrap().typ)
+                .unwrap();
+            let fields = record_fields(context.type_node(profile).unwrap());
+            let id = find_field(fields, "id");
+            let aliases = find_field(fields, "aliases");
+
+            assert_eq!(profile, TypeId(2));
+            assert_eq!(id.typ, TypeRefIr::Decl { id: DeclId(0) });
+            assert_eq!(aliases.typ, TypeRefIr::Type { id: TypeId(1) });
+            assert_eq!(context.type_node(TypeId(0)).unwrap().kind, TypeKindIr::Text);
+            assert_eq!(
+                context.type_node(TypeId(1)).unwrap().kind,
+                TypeKindIr::Vec {
+                    inner: TypeRefIr::Type { id: TypeId(0) },
+                }
+            );
+        }
+
+        fn find_method<'a>(methods: &'a [Binding], name: &str) -> &'a Binding {
+            methods
+                .iter()
+                .find(|method| method.id == name)
+                .unwrap_or_else(|| panic!("missing method {name}"))
+        }
+
+        fn first_arg_type(method: &Binding) -> &IDLType {
+            let IDLType::FuncT(func) = &method.typ else {
+                panic!("expected method function type, got {:?}", method.typ);
+            };
+            &func.args.first().expect("missing first argument").typ
+        }
+
+        fn record_field<'a>(node: &'a TypeNodeIr, name: &str) -> &'a FieldIr {
+            find_field(record_fields(node), name)
+        }
+
+        fn record_fields(node: &TypeNodeIr) -> &[FieldIr] {
+            match &node.kind {
+                TypeKindIr::Record { fields } => fields,
+                other => panic!("expected record node, got {other:?}"),
+            }
+        }
+
+        fn find_field<'a>(fields: &'a [FieldIr], name: &str) -> &'a FieldIr {
+            fields
+                .iter()
+                .find(|field| matches!(&field.label, FieldLabelIr::Named { name: field_name, .. } if field_name == name))
+                .unwrap_or_else(|| panic!("missing field {name}"))
         }
     }
 
