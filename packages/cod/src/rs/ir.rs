@@ -22,6 +22,8 @@
 //! emitter must ultimately consume only `ProgramIr` and must not walk the Candid
 //! parser/type environment directly.
 
+use std::collections::BTreeMap;
+
 use anyhow::{anyhow, Context, Result};
 use candid_parser::candid::types::{FuncMode, Label, SharedLabel, Type, TypeEnv, TypeInner};
 use candid_parser::syntax::{Binding, IDLArgType, IDLMergedProg, IDLType};
@@ -30,6 +32,84 @@ use serde::{Deserialize, Serialize};
 use crate::docs::{DocBlock, DocTag};
 
 pub const PROGRAM_IR_VERSION: u16 = 1;
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[serde(transparent)]
+pub struct TypeId(pub u32);
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[serde(transparent)]
+pub struct DeclId(pub u32);
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypeRefIr {
+    Type { id: TypeId },
+    Decl { id: DeclId },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ReservedTypeDeclIr {
+    id: DeclId,
+    name: String,
+}
+
+struct ArenaLoweringContext<'a> {
+    _env: &'a TypeEnv,
+    prog: &'a IDLMergedProg,
+    declarations: Vec<ReservedTypeDeclIr>,
+    declarations_by_name: BTreeMap<String, DeclId>,
+}
+
+impl<'a> ArenaLoweringContext<'a> {
+    fn new(env: &'a TypeEnv, prog: &'a IDLMergedProg) -> Self {
+        Self {
+            _env: env,
+            prog,
+            declarations: Vec::new(),
+            declarations_by_name: BTreeMap::new(),
+        }
+    }
+
+    fn reserve_declarations(&mut self) -> Result<()> {
+        for binding in self.prog.bindings() {
+            let index = u32::try_from(self.declarations.len())
+                .context("ProgramIR declaration table exceeds u32")?;
+            let id = DeclId(index);
+            let previous = self.declarations_by_name.insert(binding.id.clone(), id);
+            if previous.is_some() {
+                return Err(anyhow!("duplicate Candid declaration `{}`", binding.id));
+            }
+            self.declarations.push(ReservedTypeDeclIr {
+                id,
+                name: binding.id.clone(),
+            });
+        }
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    fn declarations(&self) -> &[ReservedTypeDeclIr] {
+        &self.declarations
+    }
+
+    #[allow(dead_code)]
+    fn declaration_id(&self, name: &str) -> Option<DeclId> {
+        self.declarations_by_name.get(name).copied()
+    }
+
+    #[allow(dead_code)]
+    fn type_ref_from_syntax(&self, syntax: &IDLType, structural_id: TypeId) -> Result<TypeRefIr> {
+        match syntax {
+            IDLType::VarT(name) => self
+                .declaration_id(name)
+                .map(|id| TypeRefIr::Decl { id })
+                .with_context(|| format!("unreserved Candid declaration `{name}`")),
+            _ => Ok(TypeRefIr::Type { id: structural_id }),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -184,6 +264,9 @@ pub fn program_ir_from_parts(
     actor: Option<&Type>,
     prog: &IDLMergedProg,
 ) -> Result<ProgramIr> {
+    let mut arena_lowerer = ArenaLoweringContext::new(env, prog);
+    arena_lowerer.reserve_declarations()?;
+
     let types = env
         .to_sorted_iter()
         .map(|(name, ty)| {
@@ -786,41 +869,542 @@ service : {
         ));
     }
 
-    #[test]
-    fn anonymouses_repeated_in_service_methods_are_represented_as_refs() {
-        let parsed = parse_candid_source(
-            r#"
+    mod type_arena_syntax_verification {
+        use super::*;
+        use candid_parser::syntax::PrimType;
+
+        #[test]
+        fn syntax_distinguishes_direct_type_and_declaration_reference() {
+            let parsed = parse_candid_source(
+                r#"
+type UserId = nat64;
+
 service : {
-  a : (record { value : text }) -> ();
-  b : (record { value : text }) -> ();
-}"#,
-        )
-        .unwrap();
-        let actor = parsed.actor.as_ref().unwrap();
-        let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
-        println!("{}", serde_json::to_string_pretty(&ir).unwrap());
-        // Check that the repeated anonymous type is represented as a reference
-        let a_method = ir
-            .actor
-            .as_ref()
-            .unwrap()
-            .service
-            .methods
-            .iter()
-            .find(|m| m.name == "a")
+  direct : (nat64) -> ();
+  named : (UserId) -> ();
+}
+"#,
+            )
             .unwrap();
-        let b_method = ir
-            .actor
-            .as_ref()
-            .unwrap()
-            .service
-            .methods
-            .iter()
-            .find(|m| m.name == "b")
+            let methods = actor_service_syntax(&parsed.prog).unwrap();
+            let direct = find_method(&methods, "direct");
+            let named = find_method(&methods, "named");
+            let mut context = ArenaLoweringContext::new(&parsed.env, &parsed.prog);
+            context.reserve_declarations().unwrap();
+
+            assert!(matches!(
+                first_arg_type(direct),
+                IDLType::PrimT(PrimType::Nat64)
+            ));
+            assert!(matches!(
+                first_arg_type(named),
+                IDLType::VarT(name) if name == "UserId"
+            ));
+            assert_eq!(
+                context
+                    .type_ref_from_syntax(first_arg_type(direct), TypeId(7))
+                    .unwrap(),
+                TypeRefIr::Type { id: TypeId(7) }
+            );
+            assert_eq!(
+                context
+                    .type_ref_from_syntax(first_arg_type(named), TypeId(7))
+                    .unwrap(),
+                TypeRefIr::Decl { id: DeclId(0) }
+            );
+        }
+
+        #[test]
+        fn recursive_type_use_is_source_declaration_reference() {
+            let parsed = parse_candid_source(
+                r#"
+type List = opt record {
+  head : nat;
+  tail : List;
+};
+"#,
+            )
             .unwrap();
-        assert!(
-            matches!(&a_method.args[0].typ, CandidTypeIr::Ref { name: a_name } if matches!(&b_method.args[0].typ, CandidTypeIr::Ref { name: b_name } if a_name == b_name)),
-        );
+            let mut context = ArenaLoweringContext::new(&parsed.env, &parsed.prog);
+            context.reserve_declarations().unwrap();
+            let list = parsed.prog.lookup("List").unwrap();
+            let IDLType::OptT(inner) = &list.typ else {
+                panic!("expected List to be opt, got {:?}", list.typ);
+            };
+            let IDLType::RecordT(fields) = inner.as_ref() else {
+                panic!("expected List inner to be record, got {inner:?}");
+            };
+            let tail = fields
+                .iter()
+                .find(|field| matches!(&field.label, Label::Named(name) if name == "tail"))
+                .expect("missing tail field");
+
+            assert!(matches!(&tail.typ, IDLType::VarT(name) if name == "List"));
+            assert_eq!(
+                context.type_ref_from_syntax(&tail.typ, TypeId(99)).unwrap(),
+                TypeRefIr::Decl { id: DeclId(0) }
+            );
+        }
+
+        #[test]
+        fn mutual_recursion_decl_refs_are_available_before_body_lowering() {
+            let parsed = parse_candid_source(
+                r#"
+type A = record {
+  b : opt B;
+};
+
+type B = record {
+  a : opt A;
+};
+"#,
+            )
+            .unwrap();
+            let mut context = ArenaLoweringContext::new(&parsed.env, &parsed.prog);
+            context.reserve_declarations().unwrap();
+
+            let a = parsed.prog.lookup("A").unwrap();
+            let b = parsed.prog.lookup("B").unwrap();
+            let a_b_inner = opt_field_inner(a, "b");
+            let b_a_inner = opt_field_inner(b, "a");
+
+            assert_eq!(
+                context.type_ref_from_syntax(a_b_inner, TypeId(99)).unwrap(),
+                TypeRefIr::Decl { id: DeclId(1) }
+            );
+            assert_eq!(
+                context.type_ref_from_syntax(b_a_inner, TypeId(99)).unwrap(),
+                TypeRefIr::Decl { id: DeclId(0) }
+            );
+        }
+
+        #[test]
+        fn named_service_actor_preserves_actor_declaration_reference() {
+            let parsed = parse_candid_source(
+                r#"
+type Backend = service {
+  get : () -> (text) query;
+};
+
+service : Backend;
+"#,
+            )
+            .unwrap();
+            let backend = parsed.prog.lookup("Backend").unwrap();
+            let actor = parsed.prog.resolve_actor().unwrap().unwrap();
+            let mut context = ArenaLoweringContext::new(&parsed.env, &parsed.prog);
+            context.reserve_declarations().unwrap();
+
+            assert!(matches!(&backend.typ, IDLType::ServT(methods) if methods.len() == 1));
+            assert!(matches!(&actor.typ, IDLType::VarT(name) if name == "Backend"));
+            assert_eq!(
+                context
+                    .type_ref_from_syntax(&actor.typ, TypeId(99))
+                    .unwrap(),
+                TypeRefIr::Decl { id: DeclId(0) }
+            );
+        }
+
+        #[test]
+        fn source_order_declaration_reservation_is_deterministic() {
+            let source = r#"
+type Zed = nat;
+type Alpha = text;
+type Middle = bool;
+"#;
+
+            let reservations = reserve_source_order_decl_ids(source);
+            assert_eq!(
+                reservations,
+                vec![
+                    (DeclId(0), "Zed".to_string()),
+                    (DeclId(1), "Alpha".to_string()),
+                    (DeclId(2), "Middle".to_string()),
+                ]
+            );
+
+            for _ in 0..3 {
+                assert_eq!(reserve_source_order_decl_ids(source), reservations);
+            }
+
+            assert_eq!(
+                env_sorted_declaration_order(source),
+                vec!["Alpha".to_string(), "Middle".to_string(), "Zed".to_string()]
+            );
+        }
+
+        #[test]
+        fn current_program_ir_json_is_deterministic_across_compiles() {
+            let source = r#"
+type Zed = nat;
+type Alpha = record {
+  id : Zed;
+};
+
+service : {
+  get : (Alpha) -> (Zed) query;
+}
+"#;
+
+            let first = program_ir_json(source);
+            for _ in 0..3 {
+                assert_eq!(program_ir_json(source), first);
+            }
+        }
+
+        fn find_method<'a>(methods: &'a [Binding], name: &str) -> &'a Binding {
+            methods
+                .iter()
+                .find(|method| method.id == name)
+                .unwrap_or_else(|| panic!("missing method {name}"))
+        }
+
+        fn first_arg_type(method: &Binding) -> &IDLType {
+            let IDLType::FuncT(func) = &method.typ else {
+                panic!("expected method function type, got {:?}", method.typ);
+            };
+            &func.args.first().expect("missing first argument").typ
+        }
+
+        fn opt_field_inner<'a>(binding: &'a Binding, field_name: &str) -> &'a IDLType {
+            let IDLType::RecordT(fields) = &binding.typ else {
+                panic!(
+                    "expected record type for {}, got {:?}",
+                    binding.id, binding.typ
+                );
+            };
+            let field = fields
+                .iter()
+                .find(|field| matches!(&field.label, Label::Named(name) if name == field_name))
+                .unwrap_or_else(|| panic!("missing field {field_name}"));
+            let IDLType::OptT(inner) = &field.typ else {
+                panic!("expected opt field {field_name}, got {:?}", field.typ);
+            };
+
+            inner
+        }
+
+        fn reserve_source_order_decl_ids(source: &str) -> Vec<(DeclId, String)> {
+            let parsed = parse_candid_source(source).unwrap();
+            let mut context = ArenaLoweringContext::new(&parsed.env, &parsed.prog);
+            context.reserve_declarations().unwrap();
+            context
+                .declarations()
+                .iter()
+                .map(|decl| (decl.id, decl.name.clone()))
+                .collect()
+        }
+
+        fn env_sorted_declaration_order(source: &str) -> Vec<String> {
+            let parsed = parse_candid_source(source).unwrap();
+            parsed
+                .env
+                .to_sorted_iter()
+                .map(|(name, _)| name.to_string())
+                .collect()
+        }
+
+        fn program_ir_json(source: &str) -> String {
+            let parsed = parse_candid_source(source).unwrap();
+            let ir =
+                program_ir_from_parts(&parsed.env, parsed.actor.as_ref(), &parsed.prog).unwrap();
+            serde_json::to_string(&ir).unwrap()
+        }
+    }
+
+    mod type_arena_conceptual_fixtures {
+        use super::*;
+
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        struct ConceptualProgram {
+            declarations: Vec<ConceptualDecl>,
+            types: Vec<ConceptualType>,
+            actor: Option<ConceptualActor>,
+        }
+
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        struct ConceptualDecl {
+            id: DeclId,
+            name: &'static str,
+            typ: TypeId,
+        }
+
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        struct ConceptualActor {
+            init_args: Vec<TypeRefIr>,
+            service: TypeId,
+        }
+
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        enum ConceptualType {
+            Nat,
+            Nat64,
+            Text,
+            Opt(TypeRefIr),
+            Record(Vec<ConceptualField>),
+            Service(Vec<ConceptualMethod>),
+        }
+
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        struct ConceptualField {
+            label: &'static str,
+            typ: TypeRefIr,
+        }
+
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        struct ConceptualMethod {
+            name: &'static str,
+            mode: CandidMethodModeIr,
+            args: Vec<TypeRefIr>,
+            returns: Vec<TypeRefIr>,
+        }
+
+        impl ConceptualProgram {
+            fn decl(&self, id: DeclId) -> &ConceptualDecl {
+                self.declarations
+                    .get(id_index(id.0))
+                    .unwrap_or_else(|| panic!("missing declaration {id:?}"))
+            }
+
+            fn type_node(&self, id: TypeId) -> &ConceptualType {
+                self.types
+                    .get(id_index(id.0))
+                    .unwrap_or_else(|| panic!("missing type {id:?}"))
+            }
+
+            fn resolve(&self, reference: TypeRefIr) -> TypeId {
+                match reference {
+                    TypeRefIr::Type { id } => id,
+                    TypeRefIr::Decl { id } => self.decl(id).typ,
+                }
+            }
+        }
+
+        #[test]
+        fn declaration_identity() {
+            let program = ConceptualProgram {
+                declarations: vec![
+                    ConceptualDecl {
+                        id: DeclId(0),
+                        name: "UserId",
+                        typ: TypeId(0),
+                    },
+                    ConceptualDecl {
+                        id: DeclId(1),
+                        name: "TransactionId",
+                        typ: TypeId(0),
+                    },
+                ],
+                types: vec![ConceptualType::Nat64],
+                actor: None,
+            };
+
+            assert!(program.actor.is_none());
+            assert_ne!(DeclId(0), DeclId(1));
+            assert_eq!(program.decl(DeclId(0)).id, DeclId(0));
+            assert_eq!(program.decl(DeclId(1)).id, DeclId(1));
+            assert_eq!(program.decl(DeclId(0)).name, "UserId");
+            assert_eq!(program.decl(DeclId(1)).name, "TransactionId");
+            assert_eq!(program.resolve(decl_ref(0)), TypeId(0));
+            assert_eq!(program.resolve(decl_ref(1)), TypeId(0));
+            assert_eq!(program.type_node(TypeId(0)), &ConceptualType::Nat64);
+            assert_eq!(
+                serde_json::to_value(type_ref(5)).unwrap(),
+                serde_json::json!({ "kind": "type", "id": 5 })
+            );
+            assert_eq!(
+                serde_json::to_value(decl_ref(2)).unwrap(),
+                serde_json::json!({ "kind": "decl", "id": 2 })
+            );
+        }
+
+        #[test]
+        fn recursive_type() {
+            let program = ConceptualProgram {
+                declarations: vec![ConceptualDecl {
+                    id: DeclId(0),
+                    name: "List",
+                    typ: TypeId(2),
+                }],
+                types: vec![
+                    ConceptualType::Nat,
+                    ConceptualType::Record(vec![
+                        field("head", type_ref(0)),
+                        field("tail", decl_ref(0)),
+                    ]),
+                    ConceptualType::Opt(type_ref(1)),
+                ],
+                actor: None,
+            };
+
+            let fields = record_fields(program.type_node(TypeId(1)));
+            let tail = find_field(fields, "tail");
+
+            assert_eq!(program.decl(DeclId(0)).typ, TypeId(2));
+            assert_eq!(tail.typ, decl_ref(0));
+            assert_eq!(program.resolve(tail.typ), TypeId(2));
+            assert!(matches!(tail.typ, TypeRefIr::Decl { id: DeclId(0) }));
+        }
+
+        #[test]
+        fn mutual_recursion() {
+            let program = ConceptualProgram {
+                declarations: vec![
+                    ConceptualDecl {
+                        id: DeclId(0),
+                        name: "A",
+                        typ: TypeId(1),
+                    },
+                    ConceptualDecl {
+                        id: DeclId(1),
+                        name: "B",
+                        typ: TypeId(3),
+                    },
+                ],
+                types: vec![
+                    ConceptualType::Opt(decl_ref(1)),
+                    ConceptualType::Record(vec![field("b", type_ref(0))]),
+                    ConceptualType::Opt(decl_ref(0)),
+                    ConceptualType::Record(vec![field("a", type_ref(2))]),
+                ],
+                actor: None,
+            };
+
+            let a_fields = record_fields(program.type_node(program.decl(DeclId(0)).typ));
+            let b_reference =
+                opt_inner(program.type_node(program.resolve(find_field(a_fields, "b").typ)));
+            assert_eq!(b_reference, decl_ref(1));
+
+            let b_fields = record_fields(program.type_node(program.decl(DeclId(1)).typ));
+            let a_reference =
+                opt_inner(program.type_node(program.resolve(find_field(b_fields, "a").typ)));
+            assert_eq!(a_reference, decl_ref(0));
+        }
+
+        #[test]
+        fn named_service_actor() {
+            let program = ConceptualProgram {
+                declarations: vec![ConceptualDecl {
+                    id: DeclId(0),
+                    name: "Backend",
+                    typ: TypeId(1),
+                }],
+                types: vec![
+                    ConceptualType::Text,
+                    ConceptualType::Service(vec![method(
+                        "get",
+                        CandidMethodModeIr::Query,
+                        vec![],
+                        vec![type_ref(0)],
+                    )]),
+                ],
+                actor: Some(ConceptualActor {
+                    init_args: vec![],
+                    service: TypeId(1),
+                }),
+            };
+
+            let actor = program.actor.as_ref().unwrap();
+            assert!(actor.init_args.is_empty());
+            assert_eq!(actor.service, program.decl(DeclId(0)).typ);
+
+            let methods = service_methods(program.type_node(actor.service));
+            assert_eq!(methods.len(), 1);
+            assert_eq!(methods[0].name, "get");
+            assert_eq!(methods[0].mode, CandidMethodModeIr::Query);
+            assert_eq!(methods[0].returns, vec![type_ref(0)]);
+            assert_eq!(
+                program.type_node(program.resolve(methods[0].returns[0])),
+                &ConceptualType::Text
+            );
+        }
+
+        #[test]
+        fn repeated_anonymous_types() {
+            let repeated_record = ConceptualType::Record(vec![field("value", type_ref(0))]);
+            let program = ConceptualProgram {
+                declarations: vec![],
+                types: vec![
+                    ConceptualType::Text,
+                    repeated_record.clone(),
+                    repeated_record,
+                    ConceptualType::Service(vec![
+                        method("a", CandidMethodModeIr::Update, vec![type_ref(1)], vec![]),
+                        method("b", CandidMethodModeIr::Update, vec![type_ref(2)], vec![]),
+                    ]),
+                ],
+                actor: Some(ConceptualActor {
+                    init_args: vec![],
+                    service: TypeId(3),
+                }),
+            };
+
+            assert_ne!(TypeId(1), TypeId(2));
+            assert_eq!(program.type_node(TypeId(1)), program.type_node(TypeId(2)));
+
+            let actor = program.actor.as_ref().unwrap();
+            let methods = service_methods(program.type_node(actor.service));
+            assert_eq!(methods[0].args, vec![type_ref(1)]);
+            assert_eq!(methods[1].args, vec![type_ref(2)]);
+        }
+
+        fn type_ref(id: u32) -> TypeRefIr {
+            TypeRefIr::Type { id: TypeId(id) }
+        }
+
+        fn decl_ref(id: u32) -> TypeRefIr {
+            TypeRefIr::Decl { id: DeclId(id) }
+        }
+
+        fn field(label: &'static str, typ: TypeRefIr) -> ConceptualField {
+            ConceptualField { label, typ }
+        }
+
+        fn method(
+            name: &'static str,
+            mode: CandidMethodModeIr,
+            args: Vec<TypeRefIr>,
+            returns: Vec<TypeRefIr>,
+        ) -> ConceptualMethod {
+            ConceptualMethod {
+                name,
+                mode,
+                args,
+                returns,
+            }
+        }
+
+        fn find_field<'a>(fields: &'a [ConceptualField], expected: &str) -> &'a ConceptualField {
+            fields
+                .iter()
+                .find(|field| field.label == expected)
+                .unwrap_or_else(|| panic!("missing field {expected}"))
+        }
+
+        fn opt_inner(typ: &ConceptualType) -> TypeRefIr {
+            match typ {
+                ConceptualType::Opt(inner) => *inner,
+                other => panic!("expected opt type, got {other:?}"),
+            }
+        }
+
+        fn record_fields(typ: &ConceptualType) -> &[ConceptualField] {
+            match typ {
+                ConceptualType::Record(fields) => fields,
+                other => panic!("expected record type, got {other:?}"),
+            }
+        }
+
+        fn service_methods(typ: &ConceptualType) -> &[ConceptualMethod] {
+            match typ {
+                ConceptualType::Service(methods) => methods,
+                other => panic!("expected service type, got {other:?}"),
+            }
+        }
+
+        fn id_index(id: u32) -> usize {
+            usize::try_from(id).expect("fixture ID does not fit usize")
+        }
     }
 
     fn named(field: &CandidFieldIr, expected: &str) -> bool {
