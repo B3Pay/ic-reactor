@@ -25,99 +25,14 @@
 use std::collections::BTreeMap;
 
 use anyhow::{anyhow, Context, Result};
-use candid_parser::candid::types::{FuncMode, Label, SharedLabel, Type, TypeEnv, TypeInner};
+use candid_parser::candid::types::{FuncMode, Label, Type, TypeEnv, TypeInner};
 use candid_parser::syntax::{Binding, IDLArgType, IDLMergedProg, IDLType, PrimType, TypeField};
-use serde::{Deserialize, Serialize};
+use ic_reactor_program_ir::{
+    ActorIr, ArgIr, DeclId, FieldIr, FieldLabelIr, MetadataIr, MethodId, MethodIr, MethodModeIr,
+    ProgramIr, TypeDeclIr, TypeId, TypeKindIr, TypeNodeIr, TypeRefIr, PROGRAM_IR_VERSION,
+};
 
 use crate::docs::{DocBlock, DocTag};
-
-pub const PROGRAM_IR_VERSION: u16 = 1;
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(transparent)]
-pub struct TypeId(pub u32);
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(transparent)]
-pub struct DeclId(pub u32);
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum TypeRefIr {
-    Type { id: TypeId },
-    Decl { id: DeclId },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct TypeNodeIr {
-    pub kind: TypeKindIr,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum TypeKindIr {
-    Null,
-    Bool,
-    Text,
-    Nat,
-    Int,
-    Nat8,
-    Nat16,
-    Nat32,
-    Nat64,
-    Int8,
-    Int16,
-    Int32,
-    Int64,
-    Float32,
-    Float64,
-    Principal,
-    Reserved,
-    Empty,
-    Opt { inner: TypeRefIr },
-    Vec { inner: TypeRefIr },
-    Record { fields: Vec<FieldIr> },
-    Variant { fields: Vec<FieldIr> },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct FieldIr {
-    pub label: FieldLabelIr,
-    #[serde(rename = "type")]
-    pub typ: TypeRefIr,
-    pub metadata: MetadataIr,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum FieldLabelIr {
-    Named { name: String, candid_id: u32 },
-    Id { candid_id: u32 },
-    Unnamed { candid_id: u32 },
-}
-
-impl FieldLabelIr {
-    pub fn candid_id(&self) -> u32 {
-        match self {
-            Self::Named { candid_id, .. }
-            | Self::Id { candid_id }
-            | Self::Unnamed { candid_id } => *candid_id,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct MetadataIr {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub raw_docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub doc_tags: Vec<DocTag>,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum PrimitiveKindIr {
@@ -166,10 +81,19 @@ impl From<PrimitiveKindIr> for TypeKindIr {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 struct ReservedTypeDeclIr {
     id: DeclId,
     name: String,
+    target: TypeDeclTarget,
+    metadata: MetadataIr,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TypeDeclTarget {
+    Pending,
+    Lowering,
+    Lowered(TypeId),
 }
 
 struct ArenaLoweringContext<'a> {
@@ -179,6 +103,7 @@ struct ArenaLoweringContext<'a> {
     declarations: Vec<ReservedTypeDeclIr>,
     declarations_by_name: BTreeMap<String, DeclId>,
     primitive_types: BTreeMap<PrimitiveKindIr, TypeId>,
+    next_method_id: u32,
 }
 
 impl<'a> ArenaLoweringContext<'a> {
@@ -190,6 +115,7 @@ impl<'a> ArenaLoweringContext<'a> {
             declarations: Vec::new(),
             declarations_by_name: BTreeMap::new(),
             primitive_types: BTreeMap::new(),
+            next_method_id: 0,
         }
     }
 
@@ -202,13 +128,57 @@ impl<'a> ArenaLoweringContext<'a> {
             if previous.is_some() {
                 return Err(anyhow!("duplicate Candid declaration `{}`", binding.id));
             }
+            let metadata = metadata_from_docs(&binding.docs);
             self.declarations.push(ReservedTypeDeclIr {
                 id,
                 name: binding.id.clone(),
+                target: TypeDeclTarget::Pending,
+                metadata,
             });
         }
 
         Ok(())
+    }
+
+    fn lower_declaration_bodies(&mut self) -> Result<()> {
+        for index in 0..self.declarations.len() {
+            let id =
+                DeclId(u32::try_from(index).context("ProgramIR declaration table exceeds u32")?);
+            self.lower_declaration(id)?;
+        }
+
+        Ok(())
+    }
+
+    fn lower_declaration(&mut self, id: DeclId) -> Result<TypeId> {
+        let index = id_index(id)?;
+        match self
+            .declarations
+            .get(index)
+            .with_context(|| format!("missing Candid declaration {id:?}"))?
+            .target
+        {
+            TypeDeclTarget::Lowered(typ) => return Ok(typ),
+            TypeDeclTarget::Lowering => {
+                return Err(anyhow!(
+                    "cyclic Candid type alias through declaration `{}`",
+                    self.declarations[index].name
+                ));
+            }
+            TypeDeclTarget::Pending => {}
+        }
+
+        self.declarations[index].target = TypeDeclTarget::Lowering;
+        let name = self.declarations[index].name.clone();
+        let syntax = self
+            .prog
+            .lookup(&name)
+            .with_context(|| format!("missing Candid syntax for declaration `{name}`"))?
+            .typ
+            .clone();
+        let typ = self.lower_declaration_type(&syntax)?;
+        self.declarations[index].target = TypeDeclTarget::Lowered(typ);
+        Ok(typ)
     }
 
     #[allow(dead_code)]
@@ -239,6 +209,18 @@ impl<'a> ArenaLoweringContext<'a> {
                 .map(|id| TypeRefIr::Decl { id })
                 .with_context(|| format!("unreserved Candid declaration `{name}`")),
             _ => Ok(TypeRefIr::Type { id: structural_id }),
+        }
+    }
+
+    fn lower_declaration_type(&mut self, syntax: &IDLType) -> Result<TypeId> {
+        match syntax {
+            IDLType::VarT(name) => {
+                let id = self
+                    .declaration_id(name)
+                    .with_context(|| format!("unreserved Candid declaration `{name}`"))?;
+                self.lower_declaration(id)
+            }
+            _ => self.lower_type(syntax),
         }
     }
 
@@ -274,11 +256,25 @@ impl<'a> ArenaLoweringContext<'a> {
                 let fields = self.lower_fields(fields)?;
                 self.alloc_type(TypeKindIr::Variant { fields })
             }
+            IDLType::FuncT(func) => {
+                let args = self.lower_args(&func.args)?;
+                let returns = self.lower_args(&func.rets)?;
+                self.alloc_type(TypeKindIr::Func {
+                    args,
+                    returns,
+                    mode: method_mode(&func.modes),
+                })
+            }
+            IDLType::ServT(methods) => {
+                let methods = methods
+                    .iter()
+                    .map(|method| self.lower_method(method))
+                    .collect::<Result<Vec<_>>>()?;
+                self.alloc_type(TypeKindIr::Service { methods })
+            }
+            IDLType::ClassT(_, inner) => self.lower_type(inner),
             IDLType::VarT(name) => Err(anyhow!(
                 "expected structural type syntax, got declaration reference `{name}`"
-            )),
-            IDLType::FuncT(_) | IDLType::ServT(_) | IDLType::ClassT(_, _) => Err(anyhow!(
-                "function, service, and service class arena lowering is not implemented yet"
             )),
         }
     }
@@ -312,156 +308,116 @@ impl<'a> ArenaLoweringContext<'a> {
             .collect()
     }
 
+    fn lower_args(&mut self, args: &[IDLArgType]) -> Result<Vec<ArgIr>> {
+        args.iter().map(|arg| self.lower_arg(arg)).collect()
+    }
+
+    fn lower_arg(&mut self, arg: &IDLArgType) -> Result<ArgIr> {
+        Ok(ArgIr {
+            name: arg.name.clone(),
+            typ: self.lower_type_ref(&arg.typ)?,
+            metadata: MetadataIr::default(),
+        })
+    }
+
+    fn lower_method(&mut self, method: &Binding) -> Result<MethodIr> {
+        let IDLType::FuncT(func) = &method.typ else {
+            return Err(anyhow!("method `{}` is not a function", method.id));
+        };
+        Ok(MethodIr {
+            id: self.alloc_method_id()?,
+            name: method.id.clone(),
+            mode: method_mode(&func.modes),
+            args: self.lower_args(&func.args)?,
+            returns: self.lower_args(&func.rets)?,
+            metadata: metadata_from_docs(&method.docs),
+        })
+    }
+
+    fn lower_actor(&mut self, actor: Option<&Type>) -> Result<Option<ActorIr>> {
+        let Some(actor) = actor else {
+            return Ok(None);
+        };
+
+        let syntax_actor = self
+            .prog
+            .resolve_actor()
+            .context("failed to resolve actor syntax")?
+            .context("checked actor exists but source actor syntax is absent")?;
+
+        let (init_args, service_syntax) = match &syntax_actor.typ {
+            IDLType::ClassT(args, inner) => (self.lower_args(args)?, inner.as_ref()),
+            service => (Vec::new(), service),
+        };
+
+        let service = match service_syntax {
+            IDLType::VarT(name) => {
+                let decl_id = self
+                    .declaration_id(name)
+                    .with_context(|| format!("unreserved actor service declaration `{name}`"))?;
+                self.lower_declaration(decl_id)?
+            }
+            IDLType::ServT(_) => self.lower_type(service_syntax)?,
+            other => {
+                if matches!(
+                    self._env.trace_type(actor)?.as_ref(),
+                    TypeInner::Service(_) | TypeInner::Class(_, _)
+                ) {
+                    self.lower_type(other)?
+                } else {
+                    return Err(anyhow!(
+                        "expected service or service class actor, got {other:?}"
+                    ));
+                }
+            }
+        };
+
+        Ok(Some(ActorIr { init_args, service }))
+    }
+
     fn alloc_type(&mut self, kind: TypeKindIr) -> Result<TypeId> {
         let index = u32::try_from(self.types.len()).context("ProgramIR type arena exceeds u32")?;
         let id = TypeId(index);
         self.types.push(TypeNodeIr { kind });
         Ok(id)
     }
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ProgramIr {
-    pub version: u16,
-    pub types: Vec<CandidTypeDeclIr>,
-    pub actor: Option<CandidActorIr>,
-}
+    fn alloc_method_id(&mut self) -> Result<MethodId> {
+        let id = MethodId(self.next_method_id);
+        self.next_method_id = self
+            .next_method_id
+            .checked_add(1)
+            .context("ProgramIR method table exceeds u32")?;
+        Ok(id)
+    }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CandidActorIr {
-    pub init_args: Vec<CandidArgIr>,
-    pub service: CandidServiceIr,
-}
+    fn finish(self, actor: Option<ActorIr>) -> Result<ProgramIr> {
+        let declarations = self
+            .declarations
+            .into_iter()
+            .map(|decl| {
+                let TypeDeclTarget::Lowered(typ) = decl.target else {
+                    return Err(anyhow!(
+                        "Candid declaration `{}` was not lowered",
+                        decl.name
+                    ));
+                };
+                Ok(TypeDeclIr {
+                    id: decl.id,
+                    name: decl.name,
+                    typ,
+                    metadata: decl.metadata,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CandidTypeDeclIr {
-    pub name: String,
-    #[serde(rename = "type")]
-    pub typ: CandidTypeIr,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub raw_docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub doc_tags: Vec<DocTag>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CandidServiceIr {
-    pub methods: Vec<CandidMethodIr>,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum CandidMethodModeIr {
-    Query,
-    CompositeQuery,
-    Update,
-    Oneway,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CandidMethodIr {
-    pub name: String,
-    pub mode: CandidMethodModeIr,
-    pub args: Vec<CandidArgIr>,
-    pub returns: Vec<CandidArgIr>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub raw_docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub doc_tags: Vec<DocTag>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CandidArgIr {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(rename = "type")]
-    pub typ: CandidTypeIr,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub raw_docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub doc_tags: Vec<DocTag>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum CandidTypeIr {
-    Null,
-    Bool,
-    Text,
-    Nat,
-    Int,
-    Nat8,
-    Nat16,
-    Nat32,
-    Nat64,
-    Int8,
-    Int16,
-    Int32,
-    Int64,
-    Float32,
-    Float64,
-    Principal,
-    Blob,
-    Reserved,
-    Empty,
-    Opt {
-        inner: Box<CandidTypeIr>,
-    },
-    Vec {
-        inner: Box<CandidTypeIr>,
-    },
-    Record {
-        fields: Vec<CandidFieldIr>,
-    },
-    Variant {
-        fields: Vec<CandidFieldIr>,
-    },
-    Ref {
-        name: String,
-    },
-    Func {
-        args: Vec<CandidArgIr>,
-        returns: Vec<CandidArgIr>,
-        mode: CandidMethodModeIr,
-    },
-    Service {
-        methods: Vec<CandidMethodIr>,
-    },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CandidFieldIr {
-    pub label: CandidFieldLabelIr,
-    pub candid_id: u32,
-    #[serde(rename = "type")]
-    pub typ: CandidTypeIr,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub raw_docs: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub doc_tags: Vec<DocTag>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum CandidFieldLabelIr {
-    Named { name: String },
-    Id { id: u32 },
-    Unnamed { id: u32 },
+        Ok(ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: self.types,
+            declarations,
+            actor,
+        })
+    }
 }
 
 pub fn program_ir(env: &TypeEnv, actor: &Type, prog: &IDLMergedProg) -> Result<ProgramIr> {
@@ -475,253 +431,23 @@ pub fn program_ir_from_parts(
 ) -> Result<ProgramIr> {
     let mut arena_lowerer = ArenaLoweringContext::new(env, prog);
     arena_lowerer.reserve_declarations()?;
-
-    let types = env
-        .to_sorted_iter()
-        .map(|(name, ty)| {
-            let syntax = prog.lookup(name);
-            let doc = syntax
-                .map(|binding| doc_meta(&binding.docs))
-                .unwrap_or_default();
-            Ok(CandidTypeDeclIr {
-                name: name.to_string(),
-                typ: type_ir(env, ty, syntax.map(|binding| &binding.typ))?,
-                docs: doc.docs,
-                raw_docs: doc.raw_docs,
-                doc_tags: doc.tags,
-            })
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    let actor = actor.map(|actor| actor_ir(env, actor, prog)).transpose()?;
-
-    Ok(ProgramIr {
-        version: PROGRAM_IR_VERSION,
-        types,
-        actor,
-    })
+    arena_lowerer.lower_declaration_bodies()?;
+    let actor = arena_lowerer.lower_actor(actor)?;
+    arena_lowerer.finish(actor)
 }
 
-fn actor_ir(env: &TypeEnv, actor: &Type, prog: &IDLMergedProg) -> Result<CandidActorIr> {
-    let (init_args, service) = match env.trace_type(actor)?.as_ref() {
-        TypeInner::Class(args, service) => (args.clone(), service.clone()),
-        TypeInner::Service(_) => (Vec::new(), actor.clone()),
-        other => return Err(anyhow!("expected service or service class, got {other}")),
-    };
-
-    let syntax_actor = prog.resolve_actor().ok().flatten();
-    let syntax_init_args = match syntax_actor.as_ref().map(|actor| &actor.typ) {
-        Some(IDLType::ClassT(args, _)) => Some(args.as_slice()),
-        _ => None,
-    };
-
-    let init_args = init_args
-        .iter()
-        .enumerate()
-        .map(|(index, ty)| {
-            let syntax_arg = syntax_init_args.and_then(|args| args.get(index));
-            arg_ir(env, ty, syntax_arg)
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    Ok(CandidActorIr {
-        init_args,
-        service: service_ir(env, &service, prog)?,
-    })
-}
-
-fn service_ir(env: &TypeEnv, service: &Type, prog: &IDLMergedProg) -> Result<CandidServiceIr> {
-    let methods = env.as_service(service)?;
-    let syntax_methods = actor_service_syntax(prog);
-
-    Ok(CandidServiceIr {
-        methods: methods
-            .iter()
-            .map(|(name, ty)| {
-                let syntax = syntax_methods
-                    .as_deref()
-                    .and_then(|methods| methods.iter().find(|binding| binding.id == *name));
-                method_ir(env, name, ty, syntax)
-            })
-            .collect::<Result<Vec<_>>>()?,
-    })
-}
-
-fn method_ir(
-    env: &TypeEnv,
-    name: &str,
-    ty: &Type,
-    syntax: Option<&Binding>,
-) -> Result<CandidMethodIr> {
-    let func = env
-        .as_func(ty)
-        .with_context(|| format!("method `{name}` is not a function"))?;
-    let syntax_func = match syntax.map(|binding| &binding.typ) {
-        Some(IDLType::FuncT(func)) => Some(func),
-        _ => None,
-    };
-    let doc = syntax
-        .map(|binding| doc_meta(&binding.docs))
-        .unwrap_or_default();
-
-    Ok(CandidMethodIr {
-        name: name.to_string(),
-        mode: mode(&func.modes),
-        args: func
-            .args
-            .iter()
-            .enumerate()
-            .map(|(index, ty)| {
-                let syntax_arg = syntax_func.and_then(|func| func.args.get(index));
-                arg_ir(env, ty, syntax_arg)
-            })
-            .collect::<Result<Vec<_>>>()?,
-        returns: func
-            .rets
-            .iter()
-            .enumerate()
-            .map(|(index, ty)| {
-                let syntax_arg = syntax_func.and_then(|func| func.rets.get(index));
-                arg_ir(env, ty, syntax_arg)
-            })
-            .collect::<Result<Vec<_>>>()?,
-        docs: doc.docs,
-        raw_docs: doc.raw_docs,
-        doc_tags: doc.tags,
-    })
-}
-
-fn arg_ir(env: &TypeEnv, ty: &Type, syntax: Option<&IDLArgType>) -> Result<CandidArgIr> {
-    Ok(CandidArgIr {
-        name: syntax.and_then(|arg| arg.name.clone()),
-        typ: type_ir(env, ty, syntax.map(|arg| &arg.typ))?,
-        docs: Vec::new(),
-        raw_docs: Vec::new(),
-        doc_tags: Vec::new(),
-    })
-}
-
-fn type_ir(env: &TypeEnv, ty: &Type, syntax: Option<&IDLType>) -> Result<CandidTypeIr> {
-    if ty.is_blob(env) {
-        return Ok(CandidTypeIr::Blob);
-    }
-
-    Ok(match ty.as_ref() {
-        TypeInner::Null => CandidTypeIr::Null,
-        TypeInner::Bool => CandidTypeIr::Bool,
-        TypeInner::Text => CandidTypeIr::Text,
-        TypeInner::Nat => CandidTypeIr::Nat,
-        TypeInner::Int => CandidTypeIr::Int,
-        TypeInner::Nat8 => CandidTypeIr::Nat8,
-        TypeInner::Nat16 => CandidTypeIr::Nat16,
-        TypeInner::Nat32 => CandidTypeIr::Nat32,
-        TypeInner::Nat64 => CandidTypeIr::Nat64,
-        TypeInner::Int8 => CandidTypeIr::Int8,
-        TypeInner::Int16 => CandidTypeIr::Int16,
-        TypeInner::Int32 => CandidTypeIr::Int32,
-        TypeInner::Int64 => CandidTypeIr::Int64,
-        TypeInner::Float32 => CandidTypeIr::Float32,
-        TypeInner::Float64 => CandidTypeIr::Float64,
-        TypeInner::Principal => CandidTypeIr::Principal,
-        TypeInner::Reserved | TypeInner::Unknown | TypeInner::Future => CandidTypeIr::Reserved,
-        TypeInner::Empty => CandidTypeIr::Empty,
-        TypeInner::Var(name) => CandidTypeIr::Ref { name: name.clone() },
-        TypeInner::Knot(id) => CandidTypeIr::Ref {
-            name: id.to_string(),
-        },
-        TypeInner::Opt(inner) => CandidTypeIr::Opt {
-            inner: Box::new(type_ir(env, inner, opt_syntax(syntax))?),
-        },
-        TypeInner::Vec(inner) => CandidTypeIr::Vec {
-            inner: Box::new(type_ir(env, inner, vec_syntax(syntax))?),
-        },
-        TypeInner::Record(fields) => CandidTypeIr::Record {
-            fields: fields_ir(env, fields, record_syntax_fields(syntax))?,
-        },
-        TypeInner::Variant(fields) => CandidTypeIr::Variant {
-            fields: fields_ir(env, fields, record_syntax_fields(syntax))?,
-        },
-        TypeInner::Func(func) => {
-            let syntax_func = match syntax {
-                Some(IDLType::FuncT(func)) => Some(func),
-                _ => None,
-            };
-            CandidTypeIr::Func {
-                args: func
-                    .args
-                    .iter()
-                    .enumerate()
-                    .map(|(index, ty)| {
-                        let syntax_arg = syntax_func.and_then(|func| func.args.get(index));
-                        arg_ir(env, ty, syntax_arg)
-                    })
-                    .collect::<Result<Vec<_>>>()?,
-                returns: func
-                    .rets
-                    .iter()
-                    .enumerate()
-                    .map(|(index, ty)| {
-                        let syntax_arg = syntax_func.and_then(|func| func.rets.get(index));
-                        arg_ir(env, ty, syntax_arg)
-                    })
-                    .collect::<Result<Vec<_>>>()?,
-                mode: mode(&func.modes),
-            }
-        }
-        TypeInner::Service(methods) => CandidTypeIr::Service {
-            methods: methods
-                .iter()
-                .map(|(name, ty)| method_ir(env, name, ty, None))
-                .collect::<Result<Vec<_>>>()?,
-        },
-        TypeInner::Class(_, inner) => type_ir(env, inner, class_inner_syntax(syntax))?,
-    })
-}
-
-fn fields_ir(
-    env: &TypeEnv,
-    fields: &[candid_parser::candid::types::Field],
-    syntax_fields: Option<&[candid_parser::syntax::TypeField]>,
-) -> Result<Vec<CandidFieldIr>> {
-    fields
-        .iter()
-        .enumerate()
-        .map(|(index, field)| {
-            let syntax_field = find_syntax_field(syntax_fields, &field.id).or_else(|| {
-                syntax_fields
-                    .and_then(|fields| fields.get(index))
-                    .filter(|field| matches!(field.label, Label::Unnamed(_)))
-            });
-            let doc = syntax_field
-                .map(|field| doc_meta(&field.docs))
-                .unwrap_or_default();
-            let label = syntax_field
-                .map(|field| field_label_from_label(&field.label))
-                .unwrap_or_else(|| field_label(&field.id));
-            Ok(CandidFieldIr {
-                label,
-                candid_id: field.id.get_id(),
-                typ: type_ir(env, &field.ty, syntax_field.map(|field| &field.typ))?,
-                docs: doc.docs,
-                raw_docs: doc.raw_docs,
-                doc_tags: doc.tags,
-            })
-        })
-        .collect()
-}
-
-fn mode(modes: &[FuncMode]) -> CandidMethodModeIr {
+fn method_mode(modes: &[FuncMode]) -> MethodModeIr {
     if modes.iter().any(|mode| matches!(mode, FuncMode::Oneway)) {
-        CandidMethodModeIr::Oneway
+        MethodModeIr::Oneway
     } else if modes
         .iter()
         .any(|mode| matches!(mode, FuncMode::CompositeQuery))
     {
-        CandidMethodModeIr::CompositeQuery
+        MethodModeIr::CompositeQuery
     } else if modes.iter().any(|mode| matches!(mode, FuncMode::Query)) {
-        CandidMethodModeIr::Query
+        MethodModeIr::Query
     } else {
-        CandidMethodModeIr::Update
+        MethodModeIr::Update
     }
 }
 
@@ -750,14 +476,16 @@ fn doc_meta(lines: &[String]) -> DocMeta {
     }
 }
 
-fn field_label(label: &SharedLabel) -> CandidFieldLabelIr {
-    match label.as_ref() {
-        Label::Named(name) => CandidFieldLabelIr::Named { name: name.clone() },
-        Label::Id(id) => CandidFieldLabelIr::Id { id: *id },
-        Label::Unnamed(id) => CandidFieldLabelIr::Unnamed { id: *id },
+fn metadata_from_docs(lines: &[String]) -> MetadataIr {
+    let docs = doc_meta(lines);
+    MetadataIr {
+        docs: docs.docs,
+        raw_docs: docs.raw_docs,
+        doc_tags: docs.tags,
     }
 }
 
+#[cfg(test)]
 fn actor_service_syntax(prog: &IDLMergedProg) -> Option<Vec<Binding>> {
     match prog.resolve_actor().ok().flatten()?.typ {
         IDLType::ServT(methods) => Some(methods),
@@ -766,43 +494,6 @@ fn actor_service_syntax(prog: &IDLMergedProg) -> Option<Vec<Binding>> {
             _ => None,
         },
         _ => None,
-    }
-}
-
-fn opt_syntax(syntax: Option<&IDLType>) -> Option<&IDLType> {
-    match syntax {
-        Some(IDLType::OptT(inner)) => Some(inner),
-        _ => None,
-    }
-}
-
-fn vec_syntax(syntax: Option<&IDLType>) -> Option<&IDLType> {
-    match syntax {
-        Some(IDLType::VecT(inner)) => Some(inner),
-        _ => None,
-    }
-}
-
-fn record_syntax_fields(syntax: Option<&IDLType>) -> Option<&[candid_parser::syntax::TypeField]> {
-    match syntax {
-        Some(IDLType::RecordT(fields)) | Some(IDLType::VariantT(fields)) => Some(fields),
-        _ => None,
-    }
-}
-
-fn find_syntax_field<'a>(
-    fields: Option<&'a [candid_parser::syntax::TypeField]>,
-    label: &SharedLabel,
-) -> Option<&'a candid_parser::syntax::TypeField> {
-    let id = label.get_id();
-    fields?.iter().find(|field| field.label.get_id() == id)
-}
-
-fn field_label_from_label(label: &Label) -> CandidFieldLabelIr {
-    match label {
-        Label::Named(name) => CandidFieldLabelIr::Named { name: name.clone() },
-        Label::Id(id) => CandidFieldLabelIr::Id { id: *id },
-        Label::Unnamed(id) => CandidFieldLabelIr::Unnamed { id: *id },
     }
 }
 
@@ -840,11 +531,8 @@ fn field_label_ir_from_label(label: &Label) -> FieldLabelIr {
     }
 }
 
-fn class_inner_syntax(syntax: Option<&IDLType>) -> Option<&IDLType> {
-    match syntax {
-        Some(IDLType::ClassT(_, inner)) => Some(inner),
-        _ => syntax,
-    }
+fn id_index(id: DeclId) -> Result<usize> {
+    usize::try_from(id.0).context("ProgramIR declaration ID does not fit usize")
 }
 
 #[cfg(test)]
@@ -873,15 +561,13 @@ service : {
         let actor = parsed.actor.as_ref().unwrap();
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
 
-        assert_eq!(ir.types[0].name, "Account");
-        assert_eq!(ir.types[0].docs, vec!["Account docs."]);
-        let actor = ir.actor.as_ref().unwrap();
-        assert_eq!(actor.service.methods[0].mode, CandidMethodModeIr::Query);
-        assert_eq!(actor.service.methods[0].docs, vec!["Balance docs."]);
-        assert!(matches!(
-            actor.service.methods[0].args[0].typ,
-            CandidTypeIr::Ref { .. }
-        ));
+        let account = declaration(&ir, "Account");
+        assert_eq!(account.metadata.docs, vec!["Account docs."]);
+
+        let balance = find_method(actor_methods(&ir), "icrc1_balance_of");
+        assert_eq!(balance.mode, MethodModeIr::Query);
+        assert_eq!(balance.metadata.docs, vec!["Balance docs."]);
+        assert_eq!(balance.args[0].typ, TypeRefIr::Decl { id: account.id });
     }
 
     #[test]
@@ -912,33 +598,37 @@ service : {
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
         println!("{}", serde_json::to_string_pretty(&ir).unwrap());
 
-        let contact = ir.types.iter().find(|decl| decl.name == "Contact").unwrap();
-        assert_eq!(contact.docs, vec!["Contact docs."]);
-        assert_eq!(contact.raw_docs, vec!["Contact docs.", "@strict"]);
-        assert_eq!(contact.doc_tags[0].name, "strict");
-        assert_eq!(contact.doc_tags[0].value, "");
+        let contact = declaration(&ir, "Contact");
+        assert_eq!(contact.metadata.docs, vec!["Contact docs."]);
+        assert_eq!(contact.metadata.raw_docs, vec!["Contact docs.", "@strict"]);
+        assert_eq!(contact.metadata.doc_tags[0].name, "strict");
+        assert_eq!(contact.metadata.doc_tags[0].value, "");
 
-        let CandidTypeIr::Record { fields } = &contact.typ else {
-            panic!("expected Contact record");
-        };
+        let fields = declaration_record_fields(&ir, contact);
         let email = fields.iter().find(|field| named(field, "email")).unwrap();
-        assert_eq!(email.docs, vec!["Email docs."]);
+        assert_eq!(email.metadata.docs, vec!["Email docs."]);
         assert_eq!(
-            email.raw_docs,
+            email.metadata.raw_docs,
             vec!["Email docs.", "@format email Invalid email"]
         );
-        assert_eq!(email.doc_tags[0].name, "format");
-        assert_eq!(email.doc_tags[0].value, "email Invalid email");
+        assert_eq!(email.metadata.doc_tags[0].name, "format");
+        assert_eq!(email.metadata.doc_tags[0].value, "email Invalid email");
 
         let phone = fields.iter().find(|field| named(field, "phone")).unwrap();
-        assert_eq!(phone.docs, vec!["Phone docs."]);
-        assert_eq!(phone.doc_tags[0].name, "format");
-        assert_eq!(phone.doc_tags[0].value, "phone-number Must be valid");
+        assert_eq!(phone.metadata.docs, vec!["Phone docs."]);
+        assert_eq!(phone.metadata.doc_tags[0].name, "format");
+        assert_eq!(
+            phone.metadata.doc_tags[0].value,
+            "phone-number Must be valid"
+        );
 
-        let method = &ir.actor.as_ref().unwrap().service.methods[0];
-        assert_eq!(method.docs, vec!["Save docs."]);
-        assert_eq!(method.doc_tags[0].name, "minimum");
-        assert_eq!(method.doc_tags[0].value, "1 Method metadata survives too");
+        let method = find_method(actor_methods(&ir), "save");
+        assert_eq!(method.metadata.docs, vec!["Save docs."]);
+        assert_eq!(method.metadata.doc_tags[0].name, "minimum");
+        assert_eq!(
+            method.metadata.doc_tags[0].value,
+            "1 Method metadata survives too"
+        );
     }
 
     #[test]
@@ -957,8 +647,9 @@ service : (text, opt principal) -> {
         assert_eq!(ir.version, PROGRAM_IR_VERSION);
         let actor = ir.actor.as_ref().unwrap();
         assert_eq!(actor.init_args.len(), 2);
-        assert_eq!(actor.service.methods.len(), 1);
-        assert_eq!(actor.service.methods[0].mode, CandidMethodModeIr::Query);
+        let methods = service_methods(&ir, actor.service);
+        assert_eq!(methods.len(), 1);
+        assert_eq!(methods[0].mode, MethodModeIr::Query);
     }
 
     #[test]
@@ -975,7 +666,7 @@ type User = record {
 
         assert!(parsed.actor.is_none());
         assert!(ir.actor.is_none());
-        assert!(ir.types.iter().any(|decl| decl.name == "User"));
+        assert!(ir.declarations.iter().any(|decl| decl.name == "User"));
         let json = serde_json::to_value(&ir).unwrap();
         assert!(json.get("actor").unwrap().is_null());
     }
@@ -987,7 +678,7 @@ type User = record {
 
         let actor = ir.actor.as_ref().expect("empty service is still an actor");
         assert!(actor.init_args.is_empty());
-        assert!(actor.service.methods.is_empty());
+        assert!(service_methods(&ir, actor.service).is_empty());
     }
 
     #[test]
@@ -1006,13 +697,10 @@ service : {
         let actor = parsed.actor.as_ref().unwrap();
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
 
-        assert_eq!(method_mode(&ir, "read"), CandidMethodModeIr::Query);
-        assert_eq!(
-            method_mode(&ir, "stream"),
-            CandidMethodModeIr::CompositeQuery
-        );
-        assert_eq!(method_mode(&ir, "write"), CandidMethodModeIr::Update);
-        assert_eq!(method_mode(&ir, "notify"), CandidMethodModeIr::Oneway);
+        assert_eq!(method_mode(&ir, "read"), MethodModeIr::Query);
+        assert_eq!(method_mode(&ir, "stream"), MethodModeIr::CompositeQuery);
+        assert_eq!(method_mode(&ir, "write"), MethodModeIr::Update);
+        assert_eq!(method_mode(&ir, "notify"), MethodModeIr::Oneway);
     }
 
     #[test]
@@ -1036,23 +724,17 @@ service : { get : () -> (Fields) query; }
         let round_trip: ProgramIr = serde_json::from_str(&json).unwrap();
         assert_eq!(round_trip, ir);
 
-        let fields_decl = round_trip
-            .types
-            .iter()
-            .find(|decl| decl.name == "Fields")
-            .unwrap();
-        let CandidTypeIr::Record { fields } = &fields_decl.typ else {
-            panic!("expected Fields record");
-        };
+        let fields_decl = declaration(&round_trip, "Fields");
+        let fields = declaration_record_fields(&round_trip, fields_decl);
         assert!(fields.iter().any(
-            |field| matches!(&field.label, CandidFieldLabelIr::Named { name } if name == "named")
+            |field| matches!(&field.label, FieldLabelIr::Named { name, .. } if name == "named")
         ));
         assert!(fields
             .iter()
-            .any(|field| matches!(field.label, CandidFieldLabelIr::Id { id: 10 })));
+            .any(|field| matches!(&field.label, FieldLabelIr::Id { candid_id: 10 })));
         assert!(fields
             .iter()
-            .any(|field| matches!(field.label, CandidFieldLabelIr::Unnamed { id: 0 })));
+            .any(|field| matches!(&field.label, FieldLabelIr::Unnamed { candid_id: 0 })));
     }
 
     #[test]
@@ -1072,17 +754,15 @@ service : {
         let actor = parsed.actor.as_ref().unwrap();
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
         println!("{}", serde_json::to_string_pretty(&ir).unwrap());
-        // Check that the recursive type is represented as a reference
-        let list_decl = ir.types.iter().find(|decl| decl.name == "List").unwrap();
-        assert!(matches!(
-            &list_decl.typ,
-            CandidTypeIr::Opt { inner }
-                if matches!(
-                    inner.as_ref(),
-                    CandidTypeIr::Record { fields }
-                        if fields.iter().any(|field| matches!(&field.typ, CandidTypeIr::Ref { name } if name == "List"))
-                )
-        ));
+        let list_decl = declaration(&ir, "List");
+        let TypeKindIr::Opt { inner } = &declaration_type_node(&ir, list_decl).kind else {
+            panic!("expected List to lower to opt");
+        };
+        let TypeRefIr::Type { id: record_id } = inner else {
+            panic!("expected List opt inner to be an anonymous record type");
+        };
+        let tail = find_field(record_fields(type_node(&ir, *record_id)), "tail");
+        assert_eq!(tail.typ, TypeRefIr::Decl { id: list_decl.id });
     }
 
     #[test]
@@ -1103,13 +783,15 @@ service : {
         let actor = parsed.actor.as_ref().unwrap();
         let ir = program_ir(&parsed.env, actor, &parsed.prog).unwrap();
         println!("{}", serde_json::to_string_pretty(&ir).unwrap());
-        // Check that the recursive type is represented as a reference
-        let node_decl = ir.types.iter().find(|decl| decl.name == "Node").unwrap();
-        assert!(matches!(
-            &node_decl.typ,
-            CandidTypeIr::Record { fields }
-                if fields.iter().any(|field| matches!(&field.typ, CandidTypeIr::Vec { inner } if matches!(inner.as_ref(), CandidTypeIr::Ref { name } if name == "Node")))
-        ));
+        let node_decl = declaration(&ir, "Node");
+        let children = find_field(declaration_record_fields(&ir, node_decl), "children");
+        let TypeRefIr::Type { id: vec_id } = children.typ else {
+            panic!("expected children to reference a vec type node");
+        };
+        let TypeKindIr::Vec { inner } = &type_node(&ir, vec_id).kind else {
+            panic!("expected children type node to be vec");
+        };
+        assert_eq!(*inner, TypeRefIr::Decl { id: node_decl.id });
     }
 
     mod type_arena_syntax_verification {
@@ -1535,7 +1217,7 @@ type Profile = record {
         #[derive(Debug, Clone, PartialEq, Eq)]
         struct ConceptualMethod {
             name: &'static str,
-            mode: CandidMethodModeIr,
+            mode: MethodModeIr,
             args: Vec<TypeRefIr>,
             returns: Vec<TypeRefIr>,
         }
@@ -1674,7 +1356,7 @@ type Profile = record {
                     ConceptualType::Text,
                     ConceptualType::Service(vec![method(
                         "get",
-                        CandidMethodModeIr::Query,
+                        MethodModeIr::Query,
                         vec![],
                         vec![type_ref(0)],
                     )]),
@@ -1692,7 +1374,7 @@ type Profile = record {
             let methods = service_methods(program.type_node(actor.service));
             assert_eq!(methods.len(), 1);
             assert_eq!(methods[0].name, "get");
-            assert_eq!(methods[0].mode, CandidMethodModeIr::Query);
+            assert_eq!(methods[0].mode, MethodModeIr::Query);
             assert_eq!(methods[0].returns, vec![type_ref(0)]);
             assert_eq!(
                 program.type_node(program.resolve(methods[0].returns[0])),
@@ -1710,8 +1392,8 @@ type Profile = record {
                     repeated_record.clone(),
                     repeated_record,
                     ConceptualType::Service(vec![
-                        method("a", CandidMethodModeIr::Update, vec![type_ref(1)], vec![]),
-                        method("b", CandidMethodModeIr::Update, vec![type_ref(2)], vec![]),
+                        method("a", MethodModeIr::Update, vec![type_ref(1)], vec![]),
+                        method("b", MethodModeIr::Update, vec![type_ref(2)], vec![]),
                     ]),
                 ],
                 actor: Some(ConceptualActor {
@@ -1743,7 +1425,7 @@ type Profile = record {
 
         fn method(
             name: &'static str,
-            mode: CandidMethodModeIr,
+            mode: MethodModeIr,
             args: Vec<TypeRefIr>,
             returns: Vec<TypeRefIr>,
         ) -> ConceptualMethod {
@@ -1788,19 +1470,65 @@ type Profile = record {
         }
     }
 
-    fn named(field: &CandidFieldIr, expected: &str) -> bool {
-        matches!(&field.label, CandidFieldLabelIr::Named { name } if name == expected)
+    fn declaration<'a>(ir: &'a ProgramIr, name: &str) -> &'a TypeDeclIr {
+        ir.declarations
+            .iter()
+            .find(|decl| decl.name == name)
+            .unwrap_or_else(|| panic!("missing declaration {name}"))
     }
 
-    fn method_mode(ir: &ProgramIr, name: &str) -> CandidMethodModeIr {
-        ir.actor
-            .as_ref()
-            .unwrap()
-            .service
-            .methods
+    fn type_node(ir: &ProgramIr, id: TypeId) -> &TypeNodeIr {
+        ir.types
+            .get(usize::try_from(id.0).expect("type ID does not fit usize"))
+            .unwrap_or_else(|| panic!("missing type node {id:?}"))
+    }
+
+    fn declaration_type_node<'a>(ir: &'a ProgramIr, decl: &TypeDeclIr) -> &'a TypeNodeIr {
+        type_node(ir, decl.typ)
+    }
+
+    fn declaration_record_fields<'a>(ir: &'a ProgramIr, decl: &TypeDeclIr) -> &'a [FieldIr] {
+        record_fields(declaration_type_node(ir, decl))
+    }
+
+    fn record_fields(node: &TypeNodeIr) -> &[FieldIr] {
+        match &node.kind {
+            TypeKindIr::Record { fields } => fields,
+            other => panic!("expected record node, got {other:?}"),
+        }
+    }
+
+    fn service_methods(ir: &ProgramIr, service: TypeId) -> &[MethodIr] {
+        match &type_node(ir, service).kind {
+            TypeKindIr::Service { methods } => methods,
+            other => panic!("expected service node, got {other:?}"),
+        }
+    }
+
+    fn actor_methods(ir: &ProgramIr) -> &[MethodIr] {
+        let actor = ir.actor.as_ref().expect("missing actor");
+        service_methods(ir, actor.service)
+    }
+
+    fn find_method<'a>(methods: &'a [MethodIr], name: &str) -> &'a MethodIr {
+        methods
             .iter()
             .find(|method| method.name == name)
-            .unwrap()
-            .mode
+            .unwrap_or_else(|| panic!("missing method {name}"))
+    }
+
+    fn find_field<'a>(fields: &'a [FieldIr], name: &str) -> &'a FieldIr {
+        fields
+            .iter()
+            .find(|field| named(field, name))
+            .unwrap_or_else(|| panic!("missing field {name}"))
+    }
+
+    fn named(field: &FieldIr, expected: &str) -> bool {
+        matches!(&field.label, FieldLabelIr::Named { name, .. } if name == expected)
+    }
+
+    fn method_mode(ir: &ProgramIr, name: &str) -> MethodModeIr {
+        find_method(actor_methods(ir), name).mode
     }
 }

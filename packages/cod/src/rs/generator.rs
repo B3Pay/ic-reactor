@@ -1,12 +1,12 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 
 use crate::config::GeneratorConfig;
 use crate::docs::DocBlock;
 use crate::{
-    CandidArgIr, CandidFieldIr, CandidFieldLabelIr, CandidMethodIr, CandidMethodModeIr,
-    CandidTypeDeclIr, CandidTypeIr, ProgramIr,
+    ArgIr, DeclId, FieldIr, FieldLabelIr, MethodIr, MethodModeIr, ProgramIr, TypeDeclIr, TypeId,
+    TypeKindIr, TypeRefIr,
 };
 
 const DEFAULT_MODULE_SPECIFIER: &str = "@ic-reactor/cod";
@@ -89,6 +89,282 @@ const TS_KEYWORDS: &[&str] = &[
     "yield",
 ];
 
+type CandidFieldLabelIr = FieldLabelIr;
+type CandidMethodModeIr = MethodModeIr;
+
+#[derive(Debug, Clone)]
+struct EmitterProgram {
+    types: Vec<CandidTypeDeclIr>,
+    actor: Option<CandidActorIr>,
+}
+
+#[derive(Debug, Clone)]
+struct CandidActorIr {
+    init_args: Vec<CandidArgIr>,
+    service: CandidServiceIr,
+}
+
+#[derive(Debug, Clone)]
+struct CandidTypeDeclIr {
+    name: String,
+    typ: CandidTypeIr,
+    raw_docs: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct CandidServiceIr {
+    methods: Vec<CandidMethodIr>,
+}
+
+#[derive(Debug, Clone)]
+struct CandidMethodIr {
+    name: String,
+    mode: CandidMethodModeIr,
+    args: Vec<CandidArgIr>,
+    returns: Vec<CandidArgIr>,
+    raw_docs: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct CandidArgIr {
+    typ: CandidTypeIr,
+}
+
+#[derive(Debug, Clone)]
+enum CandidTypeIr {
+    Null,
+    Bool,
+    Text,
+    Nat,
+    Int,
+    Nat8,
+    Nat16,
+    Nat32,
+    Nat64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Float64,
+    Principal,
+    Reserved,
+    Empty,
+    Opt {
+        inner: Box<CandidTypeIr>,
+    },
+    Vec {
+        inner: Box<CandidTypeIr>,
+    },
+    Record {
+        fields: Vec<CandidFieldIr>,
+    },
+    Variant {
+        fields: Vec<CandidFieldIr>,
+    },
+    Ref {
+        name: String,
+    },
+    Func {
+        args: Vec<CandidArgIr>,
+        returns: Vec<CandidArgIr>,
+        mode: CandidMethodModeIr,
+    },
+    Service {
+        methods: Vec<CandidMethodIr>,
+    },
+}
+
+#[derive(Debug, Clone)]
+struct CandidFieldIr {
+    label: CandidFieldLabelIr,
+    typ: CandidTypeIr,
+    raw_docs: Vec<String>,
+}
+
+struct EmitterProgramBuilder<'a> {
+    program: &'a ProgramIr,
+    declarations_by_id: BTreeMap<DeclId, &'a TypeDeclIr>,
+}
+
+impl EmitterProgram {
+    fn from_program(program: &ProgramIr) -> Result<Self> {
+        let builder = EmitterProgramBuilder::new(program)?;
+        builder.build()
+    }
+}
+
+impl<'a> EmitterProgramBuilder<'a> {
+    fn new(program: &'a ProgramIr) -> Result<Self> {
+        let mut declarations_by_id = BTreeMap::new();
+        for declaration in &program.declarations {
+            if declarations_by_id
+                .insert(declaration.id, declaration)
+                .is_some()
+            {
+                return Err(anyhow!("duplicate declaration id {:?}", declaration.id));
+            }
+        }
+
+        Ok(Self {
+            program,
+            declarations_by_id,
+        })
+    }
+
+    fn build(&self) -> Result<EmitterProgram> {
+        let types = self
+            .program
+            .declarations
+            .iter()
+            .map(|declaration| self.type_declaration(declaration))
+            .collect::<Result<Vec<_>>>()?;
+        let actor = if let Some(actor) = self.program.actor.as_ref() {
+            Some(CandidActorIr {
+                init_args: self.args(&actor.init_args)?,
+                service: CandidServiceIr {
+                    methods: self.service_methods(actor.service)?,
+                },
+            })
+        } else {
+            None
+        };
+
+        Ok(EmitterProgram { types, actor })
+    }
+
+    fn type_declaration(&self, declaration: &TypeDeclIr) -> Result<CandidTypeDeclIr> {
+        Ok(CandidTypeDeclIr {
+            name: declaration.name.clone(),
+            typ: self.type_id(declaration.typ)?,
+            raw_docs: declaration.metadata.raw_docs.clone(),
+        })
+    }
+
+    fn type_ref(&self, reference: TypeRefIr) -> Result<CandidTypeIr> {
+        match reference {
+            TypeRefIr::Type { id } => self.type_id(id),
+            TypeRefIr::Decl { id } => {
+                let declaration = self
+                    .declarations_by_id
+                    .get(&id)
+                    .with_context(|| format!("missing declaration {id:?}"))?;
+                Ok(CandidTypeIr::Ref {
+                    name: declaration.name.clone(),
+                })
+            }
+        }
+    }
+
+    fn type_id(&self, id: TypeId) -> Result<CandidTypeIr> {
+        let node = self
+            .program
+            .types
+            .get(usize::try_from(id.0).context("ProgramIR TypeId does not fit usize")?)
+            .with_context(|| format!("missing type node {id:?}"))?;
+        self.type_kind(&node.kind)
+    }
+
+    fn type_kind(&self, kind: &TypeKindIr) -> Result<CandidTypeIr> {
+        Ok(match kind {
+            TypeKindIr::Null => CandidTypeIr::Null,
+            TypeKindIr::Bool => CandidTypeIr::Bool,
+            TypeKindIr::Text => CandidTypeIr::Text,
+            TypeKindIr::Nat => CandidTypeIr::Nat,
+            TypeKindIr::Int => CandidTypeIr::Int,
+            TypeKindIr::Nat8 => CandidTypeIr::Nat8,
+            TypeKindIr::Nat16 => CandidTypeIr::Nat16,
+            TypeKindIr::Nat32 => CandidTypeIr::Nat32,
+            TypeKindIr::Nat64 => CandidTypeIr::Nat64,
+            TypeKindIr::Int8 => CandidTypeIr::Int8,
+            TypeKindIr::Int16 => CandidTypeIr::Int16,
+            TypeKindIr::Int32 => CandidTypeIr::Int32,
+            TypeKindIr::Int64 => CandidTypeIr::Int64,
+            TypeKindIr::Float32 => CandidTypeIr::Float32,
+            TypeKindIr::Float64 => CandidTypeIr::Float64,
+            TypeKindIr::Principal => CandidTypeIr::Principal,
+            TypeKindIr::Reserved => CandidTypeIr::Reserved,
+            TypeKindIr::Empty => CandidTypeIr::Empty,
+            TypeKindIr::Opt { inner } => CandidTypeIr::Opt {
+                inner: Box::new(self.type_ref(*inner)?),
+            },
+            TypeKindIr::Vec { inner } => CandidTypeIr::Vec {
+                inner: Box::new(self.type_ref(*inner)?),
+            },
+            TypeKindIr::Record { fields } => CandidTypeIr::Record {
+                fields: self.fields(fields)?,
+            },
+            TypeKindIr::Variant { fields } => CandidTypeIr::Variant {
+                fields: self.fields(fields)?,
+            },
+            TypeKindIr::Func {
+                args,
+                returns,
+                mode,
+            } => CandidTypeIr::Func {
+                args: self.args(args)?,
+                returns: self.args(returns)?,
+                mode: *mode,
+            },
+            TypeKindIr::Service { methods } => CandidTypeIr::Service {
+                methods: self.methods(methods)?,
+            },
+        })
+    }
+
+    fn fields(&self, fields: &[FieldIr]) -> Result<Vec<CandidFieldIr>> {
+        fields
+            .iter()
+            .map(|field| {
+                Ok(CandidFieldIr {
+                    label: field.label.clone(),
+                    typ: self.type_ref(field.typ)?,
+                    raw_docs: field.metadata.raw_docs.clone(),
+                })
+            })
+            .collect()
+    }
+
+    fn args(&self, args: &[ArgIr]) -> Result<Vec<CandidArgIr>> {
+        args.iter()
+            .map(|arg| {
+                Ok(CandidArgIr {
+                    typ: self.type_ref(arg.typ)?,
+                })
+            })
+            .collect()
+    }
+
+    fn methods(&self, methods: &[MethodIr]) -> Result<Vec<CandidMethodIr>> {
+        methods.iter().map(|method| self.method(method)).collect()
+    }
+
+    fn service_methods(&self, service: TypeId) -> Result<Vec<CandidMethodIr>> {
+        let service = self
+            .program
+            .types
+            .get(
+                usize::try_from(service.0)
+                    .context("ProgramIR service TypeId does not fit usize")?,
+            )
+            .with_context(|| format!("missing actor service type {service:?}"))?;
+        let TypeKindIr::Service { methods } = &service.kind else {
+            return Err(anyhow!("actor service points to non-service type"));
+        };
+        self.methods(methods)
+    }
+
+    fn method(&self, method: &MethodIr) -> Result<CandidMethodIr> {
+        Ok(CandidMethodIr {
+            name: method.name.clone(),
+            mode: method.mode,
+            args: self.args(&method.args)?,
+            returns: self.args(&method.returns)?,
+            raw_docs: method.metadata.raw_docs.clone(),
+        })
+    }
+}
+
 /// The TypeScript emitter formats ProgramIr. It must not structurally interpret
 /// Candid frontend or type-checker representations.
 #[derive(Debug, Clone)]
@@ -104,6 +380,7 @@ impl TypeScriptEmitter {
     }
 
     pub fn emit(&self, program: &ProgramIr) -> Result<String> {
+        let program = EmitterProgram::from_program(program)?;
         let mut out = String::new();
 
         if self.config.emit_banner {
@@ -120,7 +397,7 @@ impl TypeScriptEmitter {
             out.push('\n');
         }
 
-        self.push_actor_schema(&mut out, program, &emitted_types)?;
+        self.push_actor_schema(&mut out, &program, &emitted_types)?;
         if !emitted_types.is_empty() {
             out.push('\n');
         }
@@ -170,7 +447,7 @@ impl TypeScriptEmitter {
     fn push_actor_schema(
         &self,
         out: &mut String,
-        program: &ProgramIr,
+        program: &EmitterProgram,
         available_refs: &BTreeSet<String>,
     ) -> Result<()> {
         let Some(actor) = program.actor.as_ref() else {
@@ -220,7 +497,6 @@ fn push_schema_expr(
         CandidTypeIr::Float64 => out.push_str("c.float64()"),
         CandidTypeIr::Text => out.push_str("c.text()"),
         CandidTypeIr::Principal => out.push_str("c.principal()"),
-        CandidTypeIr::Blob => out.push_str("c.blob()"),
         CandidTypeIr::Ref { name } => {
             if available_refs.contains(name) {
                 out.push_str(&type_name(name));
@@ -457,7 +733,6 @@ fn candid_type_text(typ: &CandidTypeIr) -> Result<String> {
         CandidTypeIr::Float64 => "float64".to_string(),
         CandidTypeIr::Text => "text".to_string(),
         CandidTypeIr::Principal => "principal".to_string(),
-        CandidTypeIr::Blob => "blob".to_string(),
         CandidTypeIr::Reserved => "reserved".to_string(),
         CandidTypeIr::Empty => "empty".to_string(),
         CandidTypeIr::Ref { name } => name.clone(),
@@ -535,8 +810,10 @@ fn candid_field_text(field: &CandidFieldIr, variant: bool) -> Result<String> {
 
 fn candid_field_label(label: &CandidFieldLabelIr) -> String {
     match label {
-        CandidFieldLabelIr::Named { name } => candid_label(name),
-        CandidFieldLabelIr::Id { id } | CandidFieldLabelIr::Unnamed { id } => id.to_string(),
+        CandidFieldLabelIr::Named { name, .. } => candid_label(name),
+        CandidFieldLabelIr::Id { candid_id } | CandidFieldLabelIr::Unnamed { candid_id } => {
+            candid_id.to_string()
+        }
     }
 }
 
@@ -592,7 +869,6 @@ fn ts_type(typ: &CandidTypeIr, inline_service_as_ref: bool) -> Result<String> {
         CandidTypeIr::Reserved => "unknown".to_string(),
         CandidTypeIr::Empty => "never".to_string(),
         CandidTypeIr::Principal => "Principal".to_string(),
-        CandidTypeIr::Blob => "Uint8Array | number[]".to_string(),
         CandidTypeIr::Ref { name } => type_name(name),
         CandidTypeIr::Opt { inner } => format!("[] | [{}]", ts_type(inner, inline_service_as_ref)?),
         CandidTypeIr::Vec { inner } => vec_type(inner, inline_service_as_ref)?,
@@ -725,13 +1001,15 @@ fn is_tuple_fields(fields: &[CandidFieldIr]) -> bool {
         && fields
             .iter()
             .enumerate()
-            .all(|(index, field)| matches!(field.label, CandidFieldLabelIr::Unnamed { id } if id == index as u32))
+            .all(|(index, field)| matches!(field.label, CandidFieldLabelIr::Unnamed { candid_id } if candid_id == index as u32))
 }
 
 fn property_key(field: &CandidFieldIr) -> String {
     match &field.label {
-        CandidFieldLabelIr::Named { name } => object_key(name),
-        CandidFieldLabelIr::Id { id } | CandidFieldLabelIr::Unnamed { id } => format!("_{}_", id),
+        CandidFieldLabelIr::Named { name, .. } => object_key(name),
+        CandidFieldLabelIr::Id { candid_id } | CandidFieldLabelIr::Unnamed { candid_id } => {
+            format!("_{}_", candid_id)
+        }
     }
 }
 
@@ -1019,8 +1297,9 @@ type All = record {
         assert!(ts.contains("p: c.principal(),"));
         assert!(ts.contains("r: c.unsupported(\"reserved\"),"));
         assert!(ts.contains("e: c.unsupported<never>(\"empty\"),"));
-        assert!(ts.contains("cb: c.lazy(() => Callback, \"Callback\"),"));
-        assert!(ts.contains("bytes: c.blob(),"));
+        assert!(ts.contains("cb: Callback,"));
+        assert!(!ts.contains("cb: c.lazy(() => Callback, \"Callback\"),"));
+        assert!(ts.contains("bytes: c.vec(c.nat8()),"));
     }
 
     #[test]

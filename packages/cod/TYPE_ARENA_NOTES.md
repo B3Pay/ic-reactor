@@ -1,9 +1,9 @@
 # COD Type Arena Design Notes
 
-> Status: architecture design for Program IR v2.
+> Status: architecture design for arena-shaped Program IR.
 >
 > This document defines the intended type-arena model before implementation.
-> It is not a compatibility contract for Program IR v1.
+> It is not a compatibility contract for the current recursive Program IR.
 
 ## Goal
 
@@ -26,7 +26,7 @@ The current recursive IR is a useful first implementation, but it mixes several 
 - references to declarations
 - semantic conveniences such as `Blob`
 
-Program IR v2 must separate those concepts.
+Program IR must separate those concepts.
 
 The central model is:
 
@@ -192,7 +192,7 @@ A consumer interested in source declaration identity can preserve the declaratio
 
 ## 4. Named references are not type nodes
 
-Program IR v2 must not contain:
+Program IR must not contain:
 
 ```rust
 TypeKindIr::Ref {
@@ -246,7 +246,7 @@ CandidTypeIr::Ref {
 
 This leaks a parser implementation detail into canonical Program IR.
 
-Program IR v2 must never expose parser `Knot` IDs as declaration names.
+Program IR must never expose parser `Knot` IDs as declaration names.
 
 Recursive relationships must resolve to `DeclId`.
 
@@ -314,7 +314,7 @@ has Candid wire structure equivalent to:
 vec nat8
 ```
 
-Therefore Program IR v2 should structurally represent it as:
+Therefore Program IR should structurally represent it as:
 
 ```text
 Vec
@@ -338,7 +338,7 @@ Wire structure and semantic interpretation are separate layers.
 
 ---
 
-# Proposed Program IR v2 Shape
+# Proposed Program IR Shape
 
 The intended model is approximately:
 
@@ -574,7 +574,7 @@ pub enum TypeKindIr {
 }
 ```
 
-Program IR v2 should initially have no:
+Program IR should initially have no:
 
 ```text
 Blob
@@ -974,7 +974,7 @@ Actor
 
 But `Service` is already a Candid structural type.
 
-Program IR v2 should use:
+Program IR should use:
 
 ```rust
 #[derive(
@@ -1337,7 +1337,7 @@ MethodId
 
 # Initial Arena Interning Policy
 
-Program IR v2 should not initially perform composite structural interning.
+Program IR should not initially perform composite structural interning.
 
 Given:
 
@@ -1485,7 +1485,7 @@ Do not expose provisional Program IR through the public compiler API.
 
 # Program IR Validation
 
-Program IR v2 must validate its own graph.
+Program IR must validate its own graph.
 
 The Candid frontend validating source does not remove the need for Program IR invariants.
 
@@ -1976,7 +1976,7 @@ Composite structural interning is deferred.
 
 # Required Initial Tests
 
-Before considering Program IR v2 complete, tests should prove:
+Before considering arena Program IR complete, tests should prove:
 
 ## Declaration identity
 
@@ -2119,7 +2119,7 @@ Initial lowering does not require structural deduplication.
 
 ## JSON round trip
 
-Program IR v2 must:
+Program IR must:
 
 ```text
 serialize
@@ -2176,7 +2176,7 @@ Everything else is secondary.
 
 # Consumer Rule
 
-After Program IR v2 exists, every structural consumer must resolve types through Program IR.
+After arena Program IR exists, every structural consumer must resolve types through Program IR.
 
 Conceptually:
 
@@ -2209,7 +2209,7 @@ The Program IR module owns graph resolution semantics.
 
 # Final Architecture Rule
 
-Program IR v2 must make these statements true:
+Program IR must make these statements true:
 
 ```text
 A type is structure.

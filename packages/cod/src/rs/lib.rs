@@ -17,11 +17,9 @@ pub use config::{CustomFormat, GeneratorConfig};
 pub use core::{parse_summary_json, CandidProgram, MethodSummary, ProgramSummary};
 pub use docs::{DocBlock, DocTag};
 pub use generator::{generate_typescript, TypeScriptEmitter};
-pub use ir::{
-    CandidActorIr, CandidArgIr, CandidFieldIr, CandidFieldLabelIr, CandidMethodIr,
-    CandidMethodModeIr, CandidServiceIr, CandidTypeDeclIr, CandidTypeIr, DeclId, FieldIr,
-    FieldLabelIr, MetadataIr, ProgramIr, TypeId, TypeKindIr, TypeNodeIr, TypeRefIr,
-    PROGRAM_IR_VERSION,
+pub use ic_reactor_program_ir::{
+    ActorIr, ArgIr, DeclId, FieldIr, FieldLabelIr, MetadataIr, MethodId, MethodIr, MethodModeIr,
+    ProgramIr, TypeDeclIr, TypeId, TypeKindIr, TypeNodeIr, TypeRefIr, PROGRAM_IR_VERSION,
 };
 
 #[derive(Debug)]

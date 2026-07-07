@@ -6,6 +6,10 @@ rust-version = "1.78"
 description = "Generate cod Candid schemas and TypeScript types from Candid .did files."
 license = "MIT"
 
+[workspace]
+members = [".", "crates/program-ir"]
+resolver = "2"
+
 [lib]
 name = "cod"
 path = "src/rs/lib.rs"
@@ -28,6 +32,7 @@ anyhow = "1.0.103"
 candid_parser = "0.4.0"
 clap = { version = "4.6.1", features = ["derive"] }
 console_error_panic_hook = { version = "0.1.7", optional = true }
+ic-reactor-program-ir = { path = "crates/program-ir" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 serde-wasm-bindgen = { version = "0.6.5", optional = true }

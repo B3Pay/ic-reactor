@@ -1,16 +1,9 @@
-use serde::{Deserialize, Serialize};
+pub use ic_reactor_program_ir::DocTag;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DocBlock {
     pub lines: Vec<String>,
     pub tags: Vec<DocTag>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DocTag {
-    pub name: String,
-    pub value: String,
 }
 
 impl DocBlock {
