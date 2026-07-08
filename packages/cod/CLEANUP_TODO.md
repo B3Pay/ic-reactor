@@ -410,7 +410,7 @@ The wire graph remains true Candid structure.
 
 **Priority: High**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
 The current parity test claims it covers `vec nat8`, but its fixture actually declares both relevant fields as `blob`.
 

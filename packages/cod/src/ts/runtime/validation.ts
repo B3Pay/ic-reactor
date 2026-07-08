@@ -219,6 +219,10 @@ function validateTypeId(
       })
       return
     case "record":
+      if (semantics.isTupleType(id)) {
+        validateTuple(type.fields, value, graph, semantics, path, seen)
+        return
+      }
       validateRecord(type.fields, value, graph, semantics, path, seen)
       return
     case "variant":
@@ -261,6 +265,30 @@ function validateRecord(
 
     validateTypeRef(field.type, fieldValue, graph, semantics, childPath, seen)
   }
+}
+
+function validateTuple(
+  fields: readonly ProgramFieldIR[],
+  value: unknown,
+  graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph,
+  path: string,
+  seen: WeakSet<object>
+): void {
+  if (!Array.isArray(value) || value.length !== fields.length) {
+    fail(path, `tuple with ${fields.length} value(s)`, value)
+  }
+
+  fields.forEach((field, index) => {
+    validateTypeRef(
+      field.type,
+      value[index],
+      graph,
+      semantics,
+      `${path}[${index}]`,
+      seen
+    )
+  })
 }
 
 function validateVariant(

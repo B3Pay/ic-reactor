@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { c } from "./index.js"
+import { candidLabelId, ProgramIrGraph } from "./runtime/program-ir.js"
+import { ProgramSemanticsGraph } from "./runtime/semantics.js"
 import { assertBytesEqual, initWasmForTest } from "./test-helpers.js"
 
 const __filename = fileURLToPath(import.meta.url)
@@ -75,6 +77,15 @@ const NestedVariant = c.variant({
   Ready: c.null(),
 })
 
+const ExplicitVec = c.blob()
+
+const Pair = c.tuple([c.text(), c.nat64()])
+
+const Result = c.variant({
+  Ok: c.nat(),
+  Err: c.text(),
+})
+
 const MixedRecord = c.record({
   count: c.nat(),
   slot: c.nat64(),
@@ -94,6 +105,7 @@ const staticService = c.service({
   icrc1_balance_of: c.query([Account], c.nat()),
   icrc1_transfer: c.update([TransferArg], TransferResult),
   inspect: c.query([MixedRecord, NestedVariant], MixedResult),
+  inspect_semantics: c.query([ExplicitVec, Pair], Result),
 })
 
 const owner = "ryjl3-tyaaa-aaaaa-aaaba-cai"
@@ -102,6 +114,7 @@ const fromSubaccount = bytes(32, 3)
 const memo = new Uint8Array([0xde, 0xad, 0xbe, 0xef])
 const blobValue = new Uint8Array([0xca, 0xfe, 0xba, 0xbe])
 const vecNat8Value = new Uint8Array([0, 1, 2, 3, 255])
+const pairValue: [string, bigint] = ["tuple", 64n]
 
 const account = {
   owner,
@@ -168,7 +181,7 @@ const cases: ParityCase[] = [
     },
   },
   {
-    name: "inspect covers records, variants, nested variants, blob, and vec nat8 source",
+    name: "inspect covers records, variants, nested variants, and blob fields",
     methodName: "inspect",
     args: [
       mixedRecord,
@@ -178,6 +191,14 @@ const cases: ParityCase[] = [
     ],
     reply: {
       accepted: mixedRecord,
+    },
+  },
+  {
+    name: "inspect_semantics covers explicit vec nat8, tuple record, and Result variant",
+    methodName: "inspect_semantics",
+    args: [vecNat8Value, pairValue],
+    reply: {
+      Ok: 123n,
     },
   },
 ]
@@ -222,8 +243,60 @@ describe("static-vs-dynamic runtime parity", () => {
   }
 })
 
+describe("semantic projection parity", () => {
+  it("aligns generated static schemas, dynamic schemas, and forms", () => {
+    const generated = c.generateTypescript(didSource)
+    assert.match(generated, /export const ExplicitVec = c\.blob\(\);/)
+    assert.match(generated, /export const Pair = c\.tuple\(\[/)
+    assert.match(generated, /export const Result = c\.variant\(\{/)
+
+    const graph = new ProgramIrGraph(dynamicProgram.ir)
+    const semantics = new ProgramSemanticsGraph(graph)
+
+    assert.equal(typeSemantic(graph, semantics, "ExplicitVec")?.kind, "blob")
+    assert.equal(typeSemantic(graph, semantics, "Pair")?.kind, "tuple")
+    assert.deepEqual(semantics.resultType(typeId(graph, "Result")), {
+      kind: "result",
+      okField: candidLabelId("Ok"),
+      errField: candidLabelId("Err"),
+    })
+
+    assert.equal(
+      dynamicProgram.type("ExplicitVec").wireDid(),
+      ExplicitVec.wireDid()
+    )
+    assert.equal(dynamicProgram.type("Pair").wireDid(), Pair.wireDid())
+    assert.equal(dynamicProgram.type("Result").wireDid(), Result.wireDid())
+    assert.doesNotThrow(() => dynamicProgram.type("Pair").toCandid(pairValue))
+    assert.deepEqual(dynamicProgram.type("Pair").toWire(pairValue), pairValue)
+
+    const form = dynamicProgram.method("inspect_semantics").toFormSchema()
+    assert.deepEqual(
+      form.args.map((field) => field.kind),
+      ["blob", "tuple"]
+    )
+    assert.equal(form.returns[0]?.kind, "variant")
+  })
+})
+
 function bytes(length: number, lastByte: number): Uint8Array {
   const value = new Uint8Array(length)
   value[length - 1] = lastByte
   return value
+}
+
+function typeId(graph: ProgramIrGraph, name: string): number {
+  const declaration = graph.declarationByName(name)
+  if (!declaration) {
+    throw new Error(`missing declaration ${name}`)
+  }
+  return declaration.type
+}
+
+function typeSemantic(
+  graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph,
+  name: string
+) {
+  return semantics.semantic(typeId(graph, name))
 }

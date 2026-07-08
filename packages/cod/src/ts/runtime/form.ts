@@ -229,7 +229,11 @@ function typeIdToField(id: TypeId, options: FieldOptions): FormField {
       return field
     }
     case "record": {
-      const field = baseField("record", options, candidType)
+      const field = baseField(
+        semantics.isTupleType(id) ? "tuple" : "record",
+        options,
+        candidType
+      )
       field.children = type.fields.map((recordField) =>
         recordFieldToFormField(recordField, options)
       )

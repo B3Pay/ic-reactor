@@ -25,6 +25,7 @@ import {
   record,
   service,
   text,
+  tuple,
   variant,
   vec,
   type AnyMethodSchema,
@@ -195,6 +196,13 @@ class SchemaContext {
       case "vec":
         return vec(this.typeRefSchema(type.inner))
       case "record":
+        if (this.semantics.isTupleType(id)) {
+          return tuple(
+            type.fields.map((field) =>
+              this.typeRefSchema(field.type, field.metadata?.docs)
+            )
+          )
+        }
         return record(
           fieldsToSchemaMap(type.fields, this),
           fieldsToCandidLabelMap(type.fields)

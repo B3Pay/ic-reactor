@@ -100,6 +100,14 @@ export function fieldStateToValue(
         fieldStateToValue(item, templateField)
       )
     }
+    case "tuple":
+      return (field.children ?? []).map((child) => {
+        const childState = state.children?.[child.name]
+        if (!childState) {
+          throw new FormStateError(child.path, "missing tuple item state")
+        }
+        return fieldStateToValue(childState, child)
+      })
     case "record": {
       const result: Record<string, unknown> = {}
       for (const child of field.children ?? []) {
@@ -218,6 +226,20 @@ function validateFieldState(
             rebaseFieldPath(templateField, `${field.path}[${index}]`),
             issues
           )
+        }
+        return
+      }
+      case "tuple": {
+        for (const child of field.children ?? []) {
+          const childState = state.children?.[child.name]
+          if (!childState) {
+            pushIssue(
+              issues,
+              new FormStateError(child.path, "missing tuple item state")
+            )
+            continue
+          }
+          validateFieldState(childState, child, issues)
         }
         return
       }
@@ -685,6 +707,13 @@ function createFieldState(field: FormField): FieldState {
         value: null,
         items: [],
       }
+    case "tuple": {
+      const children: Record<string, FieldState> = {}
+      for (const child of field.children ?? []) {
+        children[child.name] = createFieldState(child)
+      }
+      return { value: null, children }
+    }
     case "record": {
       const children: Record<string, FieldState> = {}
       for (const child of field.children ?? []) {

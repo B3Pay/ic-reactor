@@ -246,6 +246,11 @@ fn push_type_id_schema_expr(
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
+    if matches!(semantics.semantic(id)?, Some(TypeSemanticIr::Blob)) {
+        out.push_str("c.blob()");
+        return Ok(());
+    }
+
     match graph.type_kind(id)? {
         TypeKindIr::Null => out.push_str("c.null()"),
         TypeKindIr::Bool => out.push_str("c.bool()"),
@@ -734,6 +739,10 @@ fn type_id_ts_type(
     id: TypeId,
     inline_service_as_ref: bool,
 ) -> Result<String> {
+    if matches!(semantics.semantic(id)?, Some(TypeSemanticIr::Blob)) {
+        return Ok("Uint8Array | number[]".to_string());
+    }
+
     Ok(match graph.type_kind(id)? {
         TypeKindIr::Null => "null".to_string(),
         TypeKindIr::Bool => "boolean".to_string(),
@@ -1232,7 +1241,7 @@ type All = record {
         assert!(ts.contains("e: c.unsupported<never>(\"empty\"),"));
         assert!(ts.contains("cb: Callback,"));
         assert!(!ts.contains("cb: c.lazy(() => Callback, \"Callback\"),"));
-        assert!(ts.contains("bytes: c.vec(c.nat8()),"));
+        assert!(ts.contains("bytes: c.blob(),"));
     }
 
     #[test]

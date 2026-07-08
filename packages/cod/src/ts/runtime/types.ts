@@ -309,6 +309,7 @@ export type FormField = {
     | "blob"
     | "option"
     | "array"
+    | "tuple"
     | "record"
     | "variant"
     | "unsupported"
