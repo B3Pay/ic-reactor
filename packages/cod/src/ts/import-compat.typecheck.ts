@@ -1,4 +1,4 @@
-import { actor, c } from "@b3/candid"
+import { actor, c } from "../ts"
 
 const Account = c.record({
   owner: c.principal(),
