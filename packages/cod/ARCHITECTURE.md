@@ -256,21 +256,17 @@ actor Type
 Candid Function definitions
 ```
 
-For example:
+The implemented Rust boundary is:
 
 ```rust
-pub struct CandidCodec {
-    env: TypeEnv,
-    actor: Type,
-}
-```
-
-A compiled program may conceptually contain:
-
-```rust
-pub struct CompiledProgram {
+pub struct CandidProgram {
     ir: ProgramIr,
     codec: CandidCodec,
+}
+
+pub struct CandidCodec {
+    env: TypeEnv,
+    actor: Option<Type>,
 }
 ```
 
@@ -285,6 +281,10 @@ CandidCodec
     ↓
 wire implementation
 ```
+
+`CandidProgram::ir()` returns the cached `ProgramIr` by reference. It must not
+re-lower from `TypeEnv`, `Type`, or `IDLMergedProg`. The merged Candid program is
+a frontend/lowering input, not part of the compiled program.
 
 The codec must not become a second structural program API.
 

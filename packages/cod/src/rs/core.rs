@@ -11,9 +11,14 @@ use crate::{ir, ProgramIr};
 
 #[derive(Debug)]
 pub struct CandidProgram {
+    ir: ProgramIr,
+    codec: CandidCodec,
+}
+
+#[derive(Debug)]
+struct CandidCodec {
     env: TypeEnv,
     actor: Option<Type>,
-    prog: candid_parser::syntax::IDLMergedProg,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -34,15 +39,64 @@ pub struct MethodSummary {
 impl CandidProgram {
     pub fn from_source(source: &str) -> Result<Self> {
         let parsed = parse_candid_source(source)?;
+        let ir = ir::program_ir_from_parts(&parsed.env, parsed.actor.as_ref(), &parsed.prog)?;
 
         Ok(Self {
-            env: parsed.env,
-            actor: parsed.actor,
-            prog: parsed.prog,
+            ir,
+            codec: CandidCodec {
+                env: parsed.env,
+                actor: parsed.actor,
+            },
         })
     }
 
     pub fn summary(&self) -> Result<ProgramSummary> {
+        self.codec.summary()
+    }
+
+    pub fn service_did(&self) -> Result<String> {
+        self.codec.service_did()
+    }
+
+    pub fn ir(&self) -> &ProgramIr {
+        &self.ir
+    }
+
+    pub fn ir_json(&self) -> Result<String> {
+        Ok(serde_json::to_string_pretty(self.ir())?)
+    }
+
+    pub fn encode_method_args(&self, method: &str, args_text: &str) -> Result<Vec<u8>> {
+        self.codec.encode_method_args(method, args_text)
+    }
+
+    pub fn decode_method_args(&self, method: &str, bytes: &[u8]) -> Result<String> {
+        self.codec.decode_method_args(method, bytes)
+    }
+
+    pub fn decode_method_reply(&self, method: &str, bytes: &[u8]) -> Result<String> {
+        self.codec.decode_method_reply(method, bytes)
+    }
+
+    pub fn encode_init_args(&self, args_text: &str) -> Result<Vec<u8>> {
+        self.codec.encode_init_args(args_text)
+    }
+
+    pub fn decode_init_args(&self, bytes: &[u8]) -> Result<String> {
+        self.codec.decode_init_args(bytes)
+    }
+
+    pub fn encode_dynamic_args(args_text: &str) -> Result<Vec<u8>> {
+        Ok(parse_idl_args(args_text)?.to_bytes()?)
+    }
+
+    pub fn decode_dynamic_args(bytes: &[u8]) -> Result<String> {
+        Ok(IDLArgs::from_bytes(bytes)?.to_string())
+    }
+}
+
+impl CandidCodec {
+    fn summary(&self) -> Result<ProgramSummary> {
         let (init_args, service) = self.service_parts()?;
         let methods = self
             .env
@@ -66,7 +120,7 @@ impl CandidProgram {
         })
     }
 
-    pub fn service_did(&self) -> Result<String> {
+    fn service_did(&self) -> Result<String> {
         let actor = self.require_actor()?;
         Ok(
             utils::get_metadata(&self.env, &Some(actor.clone())).unwrap_or_else(|| {
@@ -75,50 +129,34 @@ impl CandidProgram {
         )
     }
 
-    pub fn ir(&self) -> Result<ProgramIr> {
-        ir::program_ir_from_parts(&self.env, self.actor.as_ref(), &self.prog)
-    }
-
-    pub fn ir_json(&self) -> Result<String> {
-        Ok(serde_json::to_string_pretty(&self.ir()?)?)
-    }
-
-    pub fn encode_method_args(&self, method: &str, args_text: &str) -> Result<Vec<u8>> {
+    fn encode_method_args(&self, method: &str, args_text: &str) -> Result<Vec<u8>> {
         let func = self.method(method)?;
         self.encode_args_for_types(args_text, &func.args)
             .with_context(|| format!("failed to encode args for method `{method}`"))
     }
 
-    pub fn decode_method_args(&self, method: &str, bytes: &[u8]) -> Result<String> {
+    fn decode_method_args(&self, method: &str, bytes: &[u8]) -> Result<String> {
         let func = self.method(method)?;
         self.decode_args_for_types(bytes, &func.args)
             .with_context(|| format!("failed to decode args for method `{method}`"))
     }
 
-    pub fn decode_method_reply(&self, method: &str, bytes: &[u8]) -> Result<String> {
+    fn decode_method_reply(&self, method: &str, bytes: &[u8]) -> Result<String> {
         let func = self.method(method)?;
         self.decode_args_for_types(bytes, &func.rets)
             .with_context(|| format!("failed to decode reply for method `{method}`"))
     }
 
-    pub fn encode_init_args(&self, args_text: &str) -> Result<Vec<u8>> {
+    fn encode_init_args(&self, args_text: &str) -> Result<Vec<u8>> {
         let (init_args, _) = self.service_parts()?;
         self.encode_args_for_types(args_text, &init_args)
             .context("failed to encode init args")
     }
 
-    pub fn decode_init_args(&self, bytes: &[u8]) -> Result<String> {
+    fn decode_init_args(&self, bytes: &[u8]) -> Result<String> {
         let (init_args, _) = self.service_parts()?;
         self.decode_args_for_types(bytes, &init_args)
             .context("failed to decode init args")
-    }
-
-    pub fn encode_dynamic_args(args_text: &str) -> Result<Vec<u8>> {
-        Ok(parse_idl_args(args_text)?.to_bytes()?)
-    }
-
-    pub fn decode_dynamic_args(bytes: &[u8]) -> Result<String> {
-        Ok(IDLArgs::from_bytes(bytes)?.to_string())
     }
 
     fn encode_args_for_types(&self, args_text: &str, types: &[Type]) -> Result<Vec<u8>> {
@@ -200,9 +238,10 @@ service : {
     fn decodes_method_replies_with_expected_return_types() {
         let program = CandidProgram::from_source(DID).unwrap();
         let reply = program
+            .codec
             .encode_args_for_types(
                 r#"(variant { ok = 10 })"#,
-                &program.method("save").unwrap().rets,
+                &program.codec.method("save").unwrap().rets,
             )
             .unwrap();
         let decoded = program.decode_method_reply("save", &reply).unwrap();
@@ -218,6 +257,19 @@ service : {
 
         assert!(decoded.contains("42"));
         assert!(decoded.contains("ic"));
+    }
+
+    #[test]
+    fn ir_is_lowered_once_and_returned_by_reference() {
+        let program = CandidProgram::from_source(DID).unwrap();
+        let first = program.ir();
+        let second = program.ir();
+
+        assert!(std::ptr::eq(first, second));
+        assert_eq!(
+            serde_json::to_string_pretty(first).unwrap(),
+            program.ir_json().unwrap()
+        );
     }
 
     #[test]
