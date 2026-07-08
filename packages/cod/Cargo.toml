@@ -2,7 +2,7 @@
 name = "cod"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.78"
+rust-version = "1.88"
 description = "Generate cod Candid schemas and TypeScript types from Candid .did files."
 license = "MIT"
 

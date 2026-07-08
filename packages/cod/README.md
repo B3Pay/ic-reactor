@@ -175,12 +175,18 @@ Core capabilities:
 
 ## Build WASM
 
+The local Rust toolchain for this package is pinned in `rust-toolchain.toml`
+because the current locked Candid dependency graph requires Rust 1.88.
+
 ```bash
-cargo build --lib --target wasm32-unknown-unknown --features wasm --release
-wasm-bindgen target/wasm32-unknown-unknown/release/cod.wasm \
+wasm-pack build \
   --target web \
   --out-dir pkg \
-  --out-name cod_core
+  --out-name cod_core \
+  --release \
+  --no-opt \
+  -- \
+  --features wasm
 npm run build
 ```
 

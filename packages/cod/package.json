@@ -19,7 +19,7 @@
     "build": "npm run build:wasm && npm run build:ts",
     "build:example:icrc": "esbuild examples/icrc/src/app.js --bundle --format=esm --outfile=examples/icrc/dist/app.js --sourcemap",
     "build:ts": "tsc -p tsconfig.json && node scripts/fix-dist-imports.mjs",
-    "build:wasm": "cargo build --lib --target wasm32-unknown-unknown --features wasm --release && rm -rf pkg examples/pkg && mkdir -p pkg && wasm-bindgen target/wasm32-unknown-unknown/release/cod.wasm --target web --out-dir pkg --out-name cod_core && mkdir -p examples/pkg && cp -R pkg/. examples/pkg/",
+    "build:wasm": "wasm-pack build --target web --out-dir pkg --out-name cod_core --release --no-opt -- --features wasm && mkdir -p examples/pkg && cp -R pkg/. examples/pkg/",
     "check": "npm run build:wasm && npm run typecheck && npm run test && cargo test && npm run build:ts",
     "examples": "node scripts/examples.mjs",
     "examples:no-open": "node scripts/examples.mjs --no-open",

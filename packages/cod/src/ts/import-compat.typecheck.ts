@@ -1,4 +1,4 @@
-import { actor, c } from "../ts"
+import { actor, c } from "@ic-reactor/cod"
 
 const Account = c.record({
   owner: c.principal(),

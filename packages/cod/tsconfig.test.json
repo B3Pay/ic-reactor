@@ -4,7 +4,7 @@
     "baseUrl": ".",
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@b3/candid": ["./src/ts/index.ts"]
+      "@ic-reactor/cod": ["./src/ts/index.ts"]
     },
     "noEmit": true
   },
