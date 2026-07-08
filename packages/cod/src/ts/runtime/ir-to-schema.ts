@@ -36,7 +36,8 @@ import {
   candidTypeTextId,
   candidTypeTextRef,
 } from "./candid-format.js"
-import { fieldObjectKey, isBlobTypeId, ProgramIrGraph } from "./program-ir.js"
+import { fieldObjectKey, ProgramIrGraph } from "./program-ir.js"
+import { ProgramSemanticsGraph } from "./semantics.js"
 import type {
   CandidMethodMode,
   ProgramFieldIR,
@@ -58,10 +59,12 @@ export function irToSchema(ir: ProgramIR): RuntimeSchemaSet {
 
 class SchemaContext {
   readonly graph: ProgramIrGraph
+  readonly semantics: ProgramSemanticsGraph
   readonly #schemas = new Map<string, AnySchema>()
 
   constructor(readonly ir: ProgramIR) {
     this.graph = new ProgramIrGraph(ir)
+    this.semantics = new ProgramSemanticsGraph(this.graph)
   }
 
   build(): RuntimeSchemaSet {
@@ -109,7 +112,12 @@ class SchemaContext {
       declaration.metadata?.docs
     ).meta({
       name,
-      candidType: candidTypeTextId(this.graph, declaration.type, new Set([id])),
+      candidType: candidTypeTextId(
+        this.graph,
+        this.semantics,
+        declaration.type,
+        new Set([id])
+      ),
     })
     this.#schemas.set(name, schema)
     return schema
@@ -130,7 +138,7 @@ class SchemaContext {
     const description = docText(docs)
     return schema.meta({
       ...(description ? { docs: description } : {}),
-      candidType: candidTypeTextRef(this.graph, reference),
+      candidType: candidTypeTextRef(this.graph, this.semantics, reference),
     })
   }
 
@@ -139,12 +147,12 @@ class SchemaContext {
     const description = docText(docs)
     return schema.meta({
       ...(description ? { docs: description } : {}),
-      candidType: candidTypeTextId(this.graph, id),
+      candidType: candidTypeTextId(this.graph, this.semantics, id),
     })
   }
 
   private typeSchemaInner(id: TypeId): AnySchema {
-    if (isBlobTypeId(this.graph, id)) {
+    if (this.semantics.isBlobType(id)) {
       return blob()
     }
 
@@ -200,7 +208,10 @@ class SchemaContext {
       case "empty":
       case "func":
       case "service":
-        return unsupportedSchema(type.kind, candidTypeTextId(this.graph, id))
+        return unsupportedSchema(
+          type.kind,
+          candidTypeTextId(this.graph, this.semantics, id)
+        )
     }
   }
 }

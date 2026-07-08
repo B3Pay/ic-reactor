@@ -7,6 +7,7 @@ import {
 import type { AnyMethodSchema, AnySchema } from "../schema.js"
 import { FormContext, methodToFormSchema } from "./form.js"
 import { ProgramIrGraph } from "./program-ir.js"
+import { ProgramSemanticsGraph } from "./semantics.js"
 import { validateMethodArgs, validateMethodReturn } from "./validation.js"
 import { methodToWorkflowNode } from "./workflow.js"
 import type {
@@ -35,6 +36,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   readonly #program: CandidProgram
   readonly #ir: ProgramIR
   readonly #graph: ProgramIrGraph
+  readonly #semantics: ProgramSemanticsGraph
   readonly #methodId: MethodId
   readonly #methodIr: ProgramMethodIR
   readonly #schema: AnyMethodSchema
@@ -45,6 +47,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
     program: CandidProgram
     ir: ProgramIR
     graph: ProgramIrGraph
+    semantics: ProgramSemanticsGraph
     methodId: MethodId
     methodIr: ProgramMethodIR
     schema: AnyMethodSchema
@@ -55,6 +58,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
     this.#program = options.program
     this.#ir = options.ir
     this.#graph = options.graph
+    this.#semantics = options.semantics
     this.#methodId = options.methodId
     this.#methodIr = options.methodIr
     this.#schema = options.schema
@@ -84,7 +88,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   }
 
   encodeArgs(args: readonly unknown[]): Uint8Array {
-    validateMethodArgs(this.#methodIr, args, this.#graph)
+    validateMethodArgs(this.#methodIr, args, this.#graph, this.#semantics)
     return this.#program.encodeMethodArgs(
       this.name,
       this.#schema.argsToCandid(args as any)
@@ -106,7 +110,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   decodeReply(bytes: Uint8Array): unknown {
     const text = this.#program.decodeMethodReply(this.name, bytes)
     const value = this.#schema.decodeReplyText(text)
-    validateMethodReturn(this.#methodIr, value, this.#graph)
+    validateMethodReturn(this.#methodIr, value, this.#graph, this.#semantics)
     return value
   }
 

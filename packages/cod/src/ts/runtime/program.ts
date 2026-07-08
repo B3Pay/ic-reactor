@@ -6,6 +6,7 @@ import { programToFormSchema } from "./form.js"
 import { irToSchema } from "./ir-to-schema.js"
 import { RuntimeMethodImpl } from "./method.js"
 import { assertProgramIRVersion, ProgramIrGraph } from "./program-ir.js"
+import { ProgramSemanticsGraph } from "./semantics.js"
 import { programToWorkflowSchema } from "./workflow.js"
 import type {
   DynamicActor,
@@ -32,6 +33,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   readonly #program: CandidProgram
   readonly #formOptions: FormSchemaOptions
   readonly #graph: ProgramIrGraph
+  readonly #semantics: ProgramSemanticsGraph
   readonly #typeSchemas: Map<string, AnySchema>
   readonly #methods = new Map<string, RuntimeMethod>()
 
@@ -47,6 +49,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
     this.#program = options.program
     this.#formOptions = options.formOptions ?? {}
     this.#graph = new ProgramIrGraph(options.ir)
+    this.#semantics = new ProgramSemanticsGraph(this.#graph)
 
     const schemas = irToSchema(this.ir)
     this.#typeSchemas = schemas.typeSchemas
@@ -64,6 +67,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
         program: this.#program,
         ir: this.ir,
         graph: this.#graph,
+        semantics: this.#semantics,
         methodId,
         methodIr: method,
         schema,
@@ -84,6 +88,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
         name: declaration.name,
         candidType: candidTypeTextId(
           this.#graph,
+          this.#semantics,
           declaration.type,
           new Set([declarationId])
         ),
@@ -215,7 +220,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   private argInfo(arg: ProgramArgIR, fallbackName: string): RuntimeArgInfo {
     const info: RuntimeArgInfo = {
       name: arg.name ?? fallbackName,
-      candidType: candidTypeTextRef(this.#graph, arg.type),
+      candidType: candidTypeTextRef(this.#graph, this.#semantics, arg.type),
     }
     if (arg.metadata?.docs?.length) {
       info.docs = arg.metadata.docs

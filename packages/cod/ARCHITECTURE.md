@@ -539,17 +539,25 @@ The semantic interpretation may be:
 Result<User, Error>
 ```
 
-The desired architecture is:
+The implemented architecture is:
 
 ```text
 ProgramIR wire structure
           ↓
-semantic analysis pass
+ProgramSemantics analysis
           ↓
-Program semantics
+ProgramSemantics
 ```
 
-Possible semantic concepts include:
+`ProgramSemantics` is a separate projection indexed by `TypeId`:
+
+```rust
+pub struct ProgramSemantics {
+    pub types: Vec<TypeSemantics>,
+}
+```
+
+Current semantic concepts include:
 
 ```rust
 pub enum TypeSemanticIr {
@@ -562,9 +570,10 @@ pub enum TypeSemanticIr {
 }
 ```
 
-The exact representation may evolve.
+`ProgramSemantics` is not embedded in `TypeKindIr` and does not change the
+serialized ProgramIR version.
 
-The architectural rule does not:
+The architectural rule is:
 
 > Semantic conveniences must not replace or falsify the underlying Candid contract.
 
@@ -591,11 +600,13 @@ lower
     ↓
 canonicalize
     ↓
-semantic analysis
-    ↓
 validate
     ↓
 Canonical ProgramIR
+    ↓
+semantic analysis
+    ↓
+ProgramSemantics projection
 ```
 
 Conceptually:
@@ -606,8 +617,9 @@ let parsed = frontend::candid::parse(source)?;
 let mut program = lower::candid::lower(&parsed)?;
 
 passes::canonicalize::run(&mut program)?;
-passes::semantics::run(&mut program)?;
 passes::validate::run(&program)?;
+
+let semantics = ProgramSemantics::analyze(&program)?;
 ```
 
 Examples of pass responsibilities:
@@ -798,6 +810,7 @@ Conceptually:
 ```rust
 fn emit_type_id(
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     id: TypeId,
     out: &mut String,
 ) -> Result<()> {
@@ -817,7 +830,11 @@ fn emit_type_id(
         }
 
         TypeKindIr::Record { fields } => {
-            emit_record(graph, fields, out)?;
+            if matches!(semantics.semantic(id)?, Some(TypeSemanticIr::Tuple)) {
+                emit_tuple(graph, semantics, fields, out)?;
+            } else {
+                emit_record(graph, semantics, fields, out)?;
+            }
         }
 
         // ...
@@ -828,11 +845,12 @@ fn emit_type_id(
 
 fn emit_type_ref(
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     reference: TypeRefIr,
     out: &mut String,
 ) -> Result<()> {
     match reference {
-        TypeRefIr::Type { id } => emit_type_id(graph, id, out),
+        TypeRefIr::Type { id } => emit_type_id(graph, semantics, id, out),
         TypeRefIr::Decl { id } => emit_declaration_ref(graph, id, out),
     }
 }
@@ -844,7 +862,8 @@ It does not understand Candid itself.
 
 The emitter must not first convert `ProgramIR` into an `EmitterProgram`,
 `CandidTypeIr`, `GeneratorIR`, or any other recursive compatibility AST. It may
-use `ProgramIrGraph` as an index/view over the canonical arenas.
+use `ProgramIrGraph` as an index/view over the canonical arenas and
+`ProgramSemantics` for shared semantic presentation decisions.
 
 ### Hard emitter rule
 
@@ -899,7 +918,11 @@ IDs directly:
 
 ```ts
 irToSchema(ir: ProgramIR)
-validateMethodArgs(method: ProgramMethodIR, graph: ProgramIrGraph)
+validateMethodArgs(
+  method: ProgramMethodIR,
+  graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph
+)
 ```
 
 For example:
@@ -916,7 +939,7 @@ Those derived details must not be written back into canonical `ProgramIR`.
 
 ---
 
-## 14. Forms Consume ProgramIR and Semantic Metadata
+## 14. Forms Consume ProgramIR and ProgramSemantics
 
 Forms are not part of the Candid compiler.
 
@@ -927,7 +950,7 @@ The flow is:
 ```text
 ProgramIR
     +
-semantic metadata
+ProgramSemantics
     +
 form registry/configuration
     ↓
@@ -1149,6 +1172,7 @@ ProgramIr
 ProgramIrGraph
 TypeId / DeclId / MethodId
 TypeRefIr
+ProgramSemantics
 ```
 
 directly.
@@ -1175,9 +1199,10 @@ The emitter may contain TypeScript-specific formatting logic and derived output
 models. It must not create a second structural description of the Candid
 program.
 
-Remaining emitter semantic choices, such as tuple-like record formatting and
-vector typed-array TypeScript formatting, should move to shared semantic
-analysis when that pass exists.
+Tuple-like record formatting must use `ProgramSemantics`, not a private emitter
+predicate. TypeScript-specific surface choices, such as typed-array TypeScript
+types for numeric vectors, may remain emitter formatting as long as they do not
+pretend to be canonical Candid structure.
 
 ```rust
 generate_typescript(

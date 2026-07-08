@@ -204,22 +204,3 @@ export function candidLabelId(name: string): number {
   }
   return hash
 }
-
-export function isBlobTypeId(graph: ProgramIrGraph, id: TypeId): boolean {
-  const kind = graph.typeKind(id)
-  return kind.kind === "vec" && isNat8Ref(graph, kind.inner)
-}
-
-export function isBlobRef(
-  graph: ProgramIrGraph,
-  reference: ProgramTypeRefIR
-): boolean {
-  return isBlobTypeId(graph, graph.resolveRef(reference))
-}
-
-export function isNat8Ref(
-  graph: ProgramIrGraph,
-  reference: ProgramTypeRefIR
-): boolean {
-  return graph.typeKind(graph.resolveRef(reference)).kind === "nat8"
-}

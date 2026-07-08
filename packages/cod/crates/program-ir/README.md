@@ -141,6 +141,40 @@ method/function return invariants, duplicate method references, duplicate
 method names per service, unreferenced methods, direct structural type cycles,
 and duplicate field candid IDs inside record and variant nodes.
 
+## Semantic Analysis
+
+Consumers that need application-level interpretations should use
+`ProgramIr::semantics()` or `ProgramSemantics::analyze(&program)`.
+
+`ProgramSemantics` is indexed by `TypeId`:
+
+```rust
+pub struct ProgramSemantics {
+    pub types: Vec<TypeSemantics>,
+}
+
+pub struct TypeSemantics {
+    pub semantic: Option<TypeSemanticIr>,
+}
+```
+
+The initial semantic set is:
+
+```rust
+pub enum TypeSemanticIr {
+    Blob,
+    Tuple,
+    Result {
+        ok_field: u32,
+        err_field: u32,
+    },
+}
+```
+
+This analysis is derived from structural Program IR. A `vec nat8` remains
+`TypeKindIr::Vec`; a tuple-like record remains `TypeKindIr::Record`; a
+Result-like variant remains `TypeKindIr::Variant`.
+
 ## Initial Lowering Policy
 
 The first arena lowerer should:

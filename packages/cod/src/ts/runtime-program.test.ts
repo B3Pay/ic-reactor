@@ -13,6 +13,10 @@ import {
 } from "./runtime/program-ir.js"
 import { RuntimeProgramImpl } from "./runtime/program.js"
 import {
+  analyzeProgramSemantics,
+  ProgramSemanticsGraph,
+} from "./runtime/semantics.js"
+import {
   initWasmForTest,
   programForTest,
   assertBytesEqual,
@@ -307,10 +311,43 @@ service : { save : (Fields) -> () };
     )
   })
 
+  it("derives shared semantics without replacing ProgramIR wire kinds", async () => {
+    const program = await c.compileDid(`
+type Bytes = vec nat8;
+type Pair = record { text; nat64 };
+type Outcome = variant { Ok : nat; Err : text };
+service : { inspect : (Bytes, Pair) -> (Outcome) query };
+`)
+    const graph = new ProgramIrGraph(program.ir)
+    const semantics = new ProgramSemanticsGraph(
+      graph,
+      analyzeProgramSemantics(graph)
+    )
+    const bytes = graph.declarationByName("Bytes")
+    const pair = graph.declarationByName("Pair")
+    const outcome = graph.declarationByName("Outcome")
+    assert.ok(bytes)
+    assert.ok(pair)
+    assert.ok(outcome)
+
+    assert.equal(semantics.semantic(bytes.type)?.kind, "blob")
+    assert.equal(semantics.semantic(pair.type)?.kind, "tuple")
+    assert.deepEqual(semantics.resultType(outcome.type), {
+      kind: "result",
+      okField: candidLabelId("Ok"),
+      errField: candidLabelId("Err"),
+    })
+
+    assert.equal(graph.typeKind(bytes.type).kind, "vec")
+    assert.equal(graph.typeKind(pair.type).kind, "record")
+    assert.equal(graph.typeKind(outcome.type).kind, "variant")
+  })
+
   it("does not keep the TypeScript runtime compatibility IR", () => {
     const runtimeFiles = [
       "types.ts",
       "program-ir.ts",
+      "semantics.ts",
       "ir-to-schema.ts",
       "form.ts",
       "workflow.ts",

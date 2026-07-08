@@ -35,6 +35,19 @@ export type ProgramIR = {
   actor: ProgramActorIR | null
 }
 
+export type ProgramSemanticsIR = {
+  types: ProgramTypeSemanticsIR[]
+}
+
+export type ProgramTypeSemanticsIR = {
+  semantic?: ProgramTypeSemanticIR
+}
+
+export type ProgramTypeSemanticIR =
+  | { kind: "blob" }
+  | { kind: "tuple" }
+  | { kind: "result"; okField: number; errField: number }
+
 // ProgramIR numeric IDs are local to one exact ProgramIR artifact. Do not
 // persist raw IDs across independently compiled revisions without an external
 // program identity.

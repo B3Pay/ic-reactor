@@ -32,6 +32,10 @@ impl ProgramIr {
         ProgramIrGraph::new(self)
     }
 
+    pub fn semantics(&self) -> Result<ProgramSemantics, ProgramIrError> {
+        ProgramSemantics::analyze(self)
+    }
+
     pub fn validate(&self) -> Result<(), ProgramIrError> {
         self.graph().map(|_| ())
     }
@@ -214,6 +218,111 @@ pub struct MetadataIr {
 pub struct DocTag {
     pub name: String,
     pub value: String,
+}
+
+/// Language-neutral semantic projection over structural ProgramIR.
+///
+/// Semantics are derived from the wire graph and indexed by `TypeId`. They do
+/// not replace `TypeKindIr`, which remains the canonical Candid wire shape.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgramSemantics {
+    pub types: Vec<TypeSemantics>,
+}
+
+impl ProgramSemantics {
+    pub fn analyze(program: &ProgramIr) -> Result<Self, ProgramIrError> {
+        let graph = program.graph()?;
+        let mut types = Vec::with_capacity(graph.types().len());
+
+        for node in graph.types() {
+            types.push(TypeSemantics {
+                semantic: detect_type_semantic(&graph, &node.kind)?,
+            });
+        }
+
+        Ok(Self { types })
+    }
+
+    pub fn type_semantics(&self, id: TypeId) -> Result<&TypeSemantics, ProgramIrError> {
+        self.types
+            .get(type_index(id)?)
+            .ok_or(ProgramIrError::MissingType { id })
+    }
+
+    pub fn semantic(&self, id: TypeId) -> Result<Option<&TypeSemanticIr>, ProgramIrError> {
+        Ok(self.type_semantics(id)?.semantic.as_ref())
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TypeSemantics {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic: Option<TypeSemanticIr>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TypeSemanticIr {
+    Blob,
+    Tuple,
+    Result {
+        #[serde(rename = "okField")]
+        ok_field: u32,
+        #[serde(rename = "errField")]
+        err_field: u32,
+    },
+}
+
+fn detect_type_semantic(
+    graph: &ProgramIrGraph<'_>,
+    kind: &TypeKindIr,
+) -> Result<Option<TypeSemanticIr>, ProgramIrError> {
+    Ok(match kind {
+        TypeKindIr::Vec { inner } if is_blob_inner(graph, *inner)? => Some(TypeSemanticIr::Blob),
+        TypeKindIr::Record { fields } if fields_are_tuple(fields) => Some(TypeSemanticIr::Tuple),
+        TypeKindIr::Variant { fields } => result_semantic(fields),
+        _ => None,
+    })
+}
+
+fn is_blob_inner(graph: &ProgramIrGraph<'_>, inner: TypeRefIr) -> Result<bool, ProgramIrError> {
+    Ok(matches!(
+        graph.type_kind(graph.resolve_ref(inner)?)?,
+        TypeKindIr::Nat8
+    ))
+}
+
+fn fields_are_tuple(fields: &[FieldIr]) -> bool {
+    !fields.is_empty()
+        && fields.iter().enumerate().all(|(index, field)| {
+            matches!(field.label, FieldLabelIr::Unnamed { candid_id } if candid_id == index as u32)
+        })
+}
+
+fn result_semantic(fields: &[FieldIr]) -> Option<TypeSemanticIr> {
+    if fields.len() != 2 {
+        return None;
+    }
+
+    let mut ok_field = None;
+    let mut err_field = None;
+    for field in fields {
+        let FieldLabelIr::Named { name } = &field.label else {
+            return None;
+        };
+        match name.to_ascii_lowercase().as_str() {
+            "ok" => ok_field = Some(field.label.candid_id()),
+            "err" => err_field = Some(field.label.candid_id()),
+            _ => return None,
+        }
+    }
+
+    Some(TypeSemanticIr::Result {
+        ok_field: ok_field?,
+        err_field: err_field?,
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -1176,6 +1285,115 @@ mod tests {
         );
     }
 
+    #[test]
+    fn semantic_analysis_detects_semantics_without_replacing_wire_kinds() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![
+                TypeNodeIr {
+                    kind: TypeKindIr::Nat8,
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Vec {
+                        inner: TypeRefIr::Type { id: TypeId(0) },
+                    },
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Text,
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Nat64,
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Record {
+                        fields: vec![
+                            unnamed_field(0, TypeRefIr::Type { id: TypeId(2) }),
+                            unnamed_field(1, TypeRefIr::Type { id: TypeId(3) }),
+                        ],
+                    },
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Variant {
+                        fields: vec![
+                            named_field("Ok", TypeRefIr::Type { id: TypeId(3) }),
+                            named_field("Err", TypeRefIr::Type { id: TypeId(2) }),
+                        ],
+                    },
+                },
+            ],
+            declarations: vec![],
+            methods: vec![],
+            actor: None,
+        };
+
+        let semantics = program.semantics().unwrap();
+
+        assert_eq!(
+            semantics.semantic(TypeId(1)).unwrap(),
+            Some(&TypeSemanticIr::Blob)
+        );
+        assert_eq!(
+            semantics.semantic(TypeId(4)).unwrap(),
+            Some(&TypeSemanticIr::Tuple)
+        );
+        assert_eq!(
+            semantics.semantic(TypeId(5)).unwrap(),
+            Some(&TypeSemanticIr::Result {
+                ok_field: candid_label_id("Ok"),
+                err_field: candid_label_id("Err"),
+            })
+        );
+
+        let graph = program.graph().unwrap();
+        assert!(matches!(
+            graph.type_kind(TypeId(1)).unwrap(),
+            TypeKindIr::Vec { .. }
+        ));
+        assert!(matches!(
+            graph.type_kind(TypeId(4)).unwrap(),
+            TypeKindIr::Record { .. }
+        ));
+        assert!(matches!(
+            graph.type_kind(TypeId(5)).unwrap(),
+            TypeKindIr::Variant { .. }
+        ));
+    }
+
+    #[test]
+    fn semantic_analysis_resolves_decl_refs_and_rejects_empty_tuple_records() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![
+                TypeNodeIr {
+                    kind: TypeKindIr::Nat8,
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Vec {
+                        inner: TypeRefIr::Decl { id: DeclId(0) },
+                    },
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Record { fields: vec![] },
+                },
+            ],
+            declarations: vec![TypeDeclIr {
+                name: "Byte".to_string(),
+                typ: TypeId(0),
+                metadata: MetadataIr::default(),
+            }],
+            methods: vec![],
+            actor: None,
+        };
+
+        let semantics = program.semantics().unwrap();
+
+        assert_eq!(
+            semantics.semantic(TypeId(1)).unwrap(),
+            Some(&TypeSemanticIr::Blob)
+        );
+        assert_eq!(semantics.semantic(TypeId(2)).unwrap(), None);
+    }
+
     fn method(name: &str) -> MethodIr {
         MethodIr {
             name: name.to_string(),
@@ -1199,6 +1417,14 @@ mod tests {
             label: FieldLabelIr::Named {
                 name: name.to_string(),
             },
+            typ,
+            metadata: MetadataIr::default(),
+        }
+    }
+
+    fn unnamed_field(candid_id: u32, typ: TypeRefIr) -> FieldIr {
+        FieldIr {
+            label: FieldLabelIr::Unnamed { candid_id },
             typ,
             metadata: MetadataIr::default(),
         }

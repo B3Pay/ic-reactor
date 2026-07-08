@@ -1,5 +1,6 @@
 import { candidTypeTextId } from "./candid-format.js"
-import { fieldObjectKey, isBlobTypeId, ProgramIrGraph } from "./program-ir.js"
+import { fieldObjectKey, ProgramIrGraph } from "./program-ir.js"
+import { ProgramSemanticsGraph } from "./semantics.js"
 import type {
   CustomJSDocFormat,
   DeclId,
@@ -68,6 +69,7 @@ export function methodToFormSchema(
 
 export class FormContext {
   readonly graph: ProgramIrGraph
+  readonly semantics: ProgramSemanticsGraph
   readonly #customFormats = new Map<string, NormalizedCustomFormat>()
 
   constructor(
@@ -75,6 +77,7 @@ export class FormContext {
     options: FormSchemaOptions = {}
   ) {
     this.graph = new ProgramIrGraph(ir)
+    this.semantics = new ProgramSemanticsGraph(this.graph)
 
     for (const [name, format] of Object.entries(customFormatTypes(options))) {
       this.#customFormats.set(name, normalizeCustomFormat(format))
@@ -152,9 +155,10 @@ function declarationRefToField(id: DeclId, options: FieldOptions): FormField {
 
 function typeIdToField(id: TypeId, options: FieldOptions): FormField {
   const graph = options.context.graph
-  const candidType = candidTypeTextId(graph, id)
+  const semantics = options.context.semantics
+  const candidType = candidTypeTextId(graph, semantics, id)
 
-  if (isBlobTypeId(graph, id)) {
+  if (semantics.isBlobType(id)) {
     return baseField("blob", options, candidType)
   }
 

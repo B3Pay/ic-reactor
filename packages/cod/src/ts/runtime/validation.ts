@@ -1,4 +1,5 @@
-import { fieldObjectKey, isBlobTypeId, ProgramIrGraph } from "./program-ir.js"
+import { fieldObjectKey, ProgramIrGraph } from "./program-ir.js"
+import type { ProgramSemanticsGraph } from "./semantics.js"
 import type {
   ProgramArgIR,
   ProgramFieldIR,
@@ -30,7 +31,8 @@ export class CandidValidationError extends Error {
 export function validateMethodArgs(
   method: ProgramMethodIR,
   args: readonly unknown[],
-  graph: ProgramIrGraph
+  graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph
 ): void {
   if (!Array.isArray(args)) {
     throw new CandidValidationError(
@@ -48,14 +50,15 @@ export function validateMethodArgs(
   }
 
   method.args.forEach((arg, index) => {
-    validateArg(arg, args[index], graph, `args[${index}]`)
+    validateArg(arg, args[index], graph, semantics, `args[${index}]`)
   })
 }
 
 export function validateMethodReturn(
   method: ProgramMethodIR,
   value: unknown,
-  graph: ProgramIrGraph
+  graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph
 ): void {
   if (method.returns.length === 0) {
     if (value !== undefined) {
@@ -65,7 +68,7 @@ export function validateMethodReturn(
   }
 
   if (method.returns.length === 1) {
-    validateArg(method.returns[0]!, value, graph, "returns[0]")
+    validateArg(method.returns[0]!, value, graph, semantics, "returns[0]")
     return
   }
 
@@ -78,7 +81,7 @@ export function validateMethodReturn(
   }
 
   method.returns.forEach((arg, index) => {
-    validateArg(arg, value[index], graph, `returns[${index}]`)
+    validateArg(arg, value[index], graph, semantics, `returns[${index}]`)
   })
 }
 
@@ -86,29 +89,46 @@ function validateArg(
   arg: ProgramArgIR,
   value: unknown,
   graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph,
   path: string
 ): void {
-  validateTypeRef(arg.type, value, graph, path, new WeakSet<object>())
+  validateTypeRef(
+    arg.type,
+    value,
+    graph,
+    semantics,
+    path,
+    new WeakSet<object>()
+  )
 }
 
 function validateTypeRef(
   reference: ProgramTypeRefIR,
   value: unknown,
   graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph,
   path: string,
   seen: WeakSet<object>
 ): void {
-  validateTypeId(graph.resolveRef(reference), value, graph, path, seen)
+  validateTypeId(
+    graph.resolveRef(reference),
+    value,
+    graph,
+    semantics,
+    path,
+    seen
+  )
 }
 
 function validateTypeId(
   id: TypeId,
   value: unknown,
   graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph,
   path: string,
   seen: WeakSet<object>
 ): void {
-  if (isBlobTypeId(graph, id)) {
+  if (semantics.isBlobType(id)) {
     if (!isBlobLike(value)) fail(path, "blob", value)
     return
   }
@@ -183,19 +203,26 @@ function validateTypeId(
       return
     case "opt":
       if (value === null || value === undefined) return
-      validateTypeRef(type.inner, value, graph, path, seen)
+      validateTypeRef(type.inner, value, graph, semantics, path, seen)
       return
     case "vec":
       if (!Array.isArray(value)) fail(path, "array", value)
       value.forEach((item, index) => {
-        validateTypeRef(type.inner, item, graph, `${path}[${index}]`, seen)
+        validateTypeRef(
+          type.inner,
+          item,
+          graph,
+          semantics,
+          `${path}[${index}]`,
+          seen
+        )
       })
       return
     case "record":
-      validateRecord(type.fields, value, graph, path, seen)
+      validateRecord(type.fields, value, graph, semantics, path, seen)
       return
     case "variant":
-      validateVariant(type.fields, value, graph, path, seen)
+      validateVariant(type.fields, value, graph, semantics, path, seen)
       return
     case "reserved":
       return
@@ -213,6 +240,7 @@ function validateRecord(
   fields: readonly ProgramFieldIR[],
   value: unknown,
   graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph,
   path: string,
   seen: WeakSet<object>
 ): void {
@@ -228,10 +256,10 @@ function validateRecord(
     const fieldValue = hasField ? record[key] : undefined
 
     if (!hasField && !isOptionalRef(field.type, graph)) {
-      fail(childPath, fieldExpected(field, graph), fieldValue)
+      fail(childPath, fieldExpected(field, graph, semantics), fieldValue)
     }
 
-    validateTypeRef(field.type, fieldValue, graph, childPath, seen)
+    validateTypeRef(field.type, fieldValue, graph, semantics, childPath, seen)
   }
 }
 
@@ -239,6 +267,7 @@ function validateVariant(
   fields: readonly ProgramFieldIR[],
   value: unknown,
   graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph,
   path: string,
   seen: WeakSet<object>
 ): void {
@@ -263,6 +292,7 @@ function validateVariant(
     field.type,
     caseValue,
     graph,
+    semantics,
     `${path}${pathSegment(caseName)}`,
     seen
   )
@@ -321,11 +351,15 @@ function isOptionalRef(
   return graph.typeKind(graph.resolveRef(reference)).kind === "opt"
 }
 
-function fieldExpected(field: ProgramFieldIR, graph: ProgramIrGraph): string {
+function fieldExpected(
+  field: ProgramFieldIR,
+  graph: ProgramIrGraph,
+  semantics: ProgramSemanticsGraph
+): string {
   if (field.type.kind === "decl") {
     return graph.declaration(field.type.id).name
   }
-  if (isBlobTypeId(graph, field.type.id)) {
+  if (semantics.isBlobType(field.type.id)) {
     return "blob"
   }
   return graph.typeKind(field.type.id).kind

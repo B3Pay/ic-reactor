@@ -343,7 +343,7 @@ All consumers traverse the arena directly.
 
 **Priority: Critical after IR-05/06**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
 Current semantic divergence already exists.
 

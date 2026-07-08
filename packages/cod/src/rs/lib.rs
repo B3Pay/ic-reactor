@@ -19,8 +19,8 @@ pub use docs::{DocBlock, DocTag};
 pub use generator::{generate_typescript, TypeScriptEmitter};
 pub use ic_reactor_program_ir::{
     ActorIr, ArgIr, DeclId, FieldIr, FieldLabelIr, MetadataIr, MethodId, MethodIr, MethodModeIr,
-    ProgramIr, ProgramIrError, ProgramIrGraph, TypeDeclIr, TypeId, TypeKindIr, TypeNodeIr,
-    TypeRefIr, PROGRAM_IR_VERSION,
+    ProgramIr, ProgramIrError, ProgramIrGraph, ProgramSemantics, TypeDeclIr, TypeId, TypeKindIr,
+    TypeNodeIr, TypeRefIr, TypeSemanticIr, TypeSemantics, PROGRAM_IR_VERSION,
 };
 
 #[derive(Debug)]

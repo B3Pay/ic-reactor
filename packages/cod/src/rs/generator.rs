@@ -6,7 +6,7 @@ use crate::config::GeneratorConfig;
 use crate::docs::DocBlock;
 use crate::{
     ArgIr, FieldIr, FieldLabelIr, MethodId, MethodIr, MethodModeIr, ProgramIr, ProgramIrGraph,
-    TypeDeclIr, TypeId, TypeKindIr, TypeRefIr,
+    ProgramSemantics, TypeDeclIr, TypeId, TypeKindIr, TypeRefIr, TypeSemanticIr,
 };
 
 const DEFAULT_MODULE_SPECIFIER: &str = "@ic-reactor/cod";
@@ -105,6 +105,7 @@ impl TypeScriptEmitter {
 
     pub fn emit(&self, program: &ProgramIr) -> Result<String> {
         let graph = program.graph().context("invalid ProgramIR graph")?;
+        let semantics = program.semantics().context("invalid ProgramIR semantics")?;
         let mut out = String::new();
 
         if self.config.emit_banner {
@@ -116,12 +117,12 @@ impl TypeScriptEmitter {
 
         let mut emitted_types = BTreeSet::new();
         for declaration in graph.declarations() {
-            self.push_named_schema(&mut out, &graph, declaration, &emitted_types)?;
+            self.push_named_schema(&mut out, &graph, &semantics, declaration, &emitted_types)?;
             emitted_types.insert(declaration.name.clone());
             out.push('\n');
         }
 
-        self.push_actor_schema(&mut out, &graph, &emitted_types)?;
+        self.push_actor_schema(&mut out, &graph, &semantics, &emitted_types)?;
         if !emitted_types.is_empty() {
             out.push('\n');
         }
@@ -133,6 +134,7 @@ impl TypeScriptEmitter {
         &self,
         out: &mut String,
         graph: &ProgramIrGraph<'_>,
+        semantics: &ProgramSemantics,
         declaration: &TypeDeclIr,
         available_refs: &BTreeSet<String>,
     ) -> Result<()> {
@@ -144,7 +146,7 @@ impl TypeScriptEmitter {
                 out.push_str("export const ");
                 out.push_str(&name);
                 out.push_str(" = ");
-                push_service_schema_expr(out, graph, methods, "", available_refs)?;
+                push_service_schema_expr(out, graph, semantics, methods, "", available_refs)?;
                 out.push_str(";\n");
                 out.push_str("export type ");
                 out.push_str(&name);
@@ -156,7 +158,14 @@ impl TypeScriptEmitter {
                 out.push_str("export const ");
                 out.push_str(&name);
                 out.push_str(" = ");
-                push_type_id_schema_expr(out, graph, declaration.typ, "", available_refs)?;
+                push_type_id_schema_expr(
+                    out,
+                    graph,
+                    semantics,
+                    declaration.typ,
+                    "",
+                    available_refs,
+                )?;
                 out.push_str(";\n");
                 out.push_str("export type ");
                 out.push_str(&name);
@@ -173,6 +182,7 @@ impl TypeScriptEmitter {
         &self,
         out: &mut String,
         graph: &ProgramIrGraph<'_>,
+        semantics: &ProgramSemantics,
         available_refs: &BTreeSet<String>,
     ) -> Result<()> {
         let Some(actor) = graph.actor() else {
@@ -181,7 +191,14 @@ impl TypeScriptEmitter {
 
         if !actor.init_args.is_empty() {
             out.push_str("export const initArgs = c.tuple(");
-            push_arg_tuple_schema_expr(out, graph, &actor.init_args, "", available_refs)?;
+            push_arg_tuple_schema_expr(
+                out,
+                graph,
+                semantics,
+                &actor.init_args,
+                "",
+                available_refs,
+            )?;
             out.push_str(");\n");
             out.push_str("export type InitArgs = c.Infer<typeof initArgs>;\n\n");
         }
@@ -190,7 +207,7 @@ impl TypeScriptEmitter {
         out.push_str(&canister_export_name(&self.config.canister_name));
         out.push_str(" = ");
         let methods = graph.service_method_ids(actor.service)?;
-        push_service_schema_expr(out, graph, methods, "", available_refs)?;
+        push_service_schema_expr(out, graph, semantics, methods, "", available_refs)?;
         out.push_str(";\n");
         Ok(())
     }
@@ -203,12 +220,15 @@ pub fn generate_typescript(program: &ProgramIr, config: &GeneratorConfig) -> Res
 fn push_type_ref_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     reference: TypeRefIr,
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
     match reference {
-        TypeRefIr::Type { id } => push_type_id_schema_expr(out, graph, id, indent, available_refs)?,
+        TypeRefIr::Type { id } => {
+            push_type_id_schema_expr(out, graph, semantics, id, indent, available_refs)?
+        }
         TypeRefIr::Decl { id } => {
             let declaration = graph.declaration(id)?;
             push_declaration_schema_ref(out, &declaration.name, available_refs);
@@ -221,6 +241,7 @@ fn push_type_ref_schema_expr(
 fn push_type_id_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     id: TypeId,
     indent: &str,
     available_refs: &BTreeSet<String>,
@@ -243,22 +264,42 @@ fn push_type_id_schema_expr(
         TypeKindIr::Text => out.push_str("c.text()"),
         TypeKindIr::Principal => out.push_str("c.principal()"),
         TypeKindIr::Opt { inner } => {
-            push_wrapped_schema_expr(out, graph, "c.opt", *inner, indent, available_refs)?;
+            push_wrapped_schema_expr(
+                out,
+                graph,
+                semantics,
+                "c.opt",
+                *inner,
+                indent,
+                available_refs,
+            )?;
         }
         TypeKindIr::Vec { inner } => {
-            push_wrapped_schema_expr(out, graph, "c.vec", *inner, indent, available_refs)?;
+            push_wrapped_schema_expr(
+                out,
+                graph,
+                semantics,
+                "c.vec",
+                *inner,
+                indent,
+                available_refs,
+            )?;
         }
         TypeKindIr::Record { fields } => {
-            push_record_schema_expr(out, graph, fields, indent, available_refs)?;
+            if matches!(semantics.semantic(id)?, Some(TypeSemanticIr::Tuple)) {
+                push_tuple_schema_expr(out, graph, semantics, fields, indent, available_refs)?;
+            } else {
+                push_record_schema_expr(out, graph, semantics, fields, indent, available_refs)?;
+            }
         }
         TypeKindIr::Variant { fields } => {
-            push_variant_schema_expr(out, graph, fields, indent, available_refs)?;
+            push_variant_schema_expr(out, graph, semantics, fields, indent, available_refs)?;
         }
         TypeKindIr::Reserved
         | TypeKindIr::Empty
         | TypeKindIr::Func { .. }
         | TypeKindIr::Service { .. } => {
-            push_unsupported_schema_expr(out, graph, id)?;
+            push_unsupported_schema_expr(out, graph, semantics, id)?;
         }
     }
 
@@ -280,6 +321,7 @@ fn push_declaration_schema_ref(out: &mut String, name: &str, available_refs: &BT
 fn push_wrapped_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     wrapper: &str,
     inner: TypeRefIr,
     indent: &str,
@@ -287,7 +329,7 @@ fn push_wrapped_schema_expr(
 ) -> Result<()> {
     out.push_str(wrapper);
     out.push('(');
-    push_type_ref_schema_expr(out, graph, inner, indent, available_refs)?;
+    push_type_ref_schema_expr(out, graph, semantics, inner, indent, available_refs)?;
     out.push(')');
     Ok(())
 }
@@ -295,14 +337,11 @@ fn push_wrapped_schema_expr(
 fn push_record_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     fields: &[FieldIr],
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
-    if is_tuple_fields(fields) {
-        return push_tuple_schema_expr(out, graph, fields, indent, available_refs);
-    }
-
     let child_indent = format!("{indent}  ");
     out.push_str("c.record({\n");
     for field in fields {
@@ -310,7 +349,14 @@ fn push_record_schema_expr(
         out.push_str(&child_indent);
         out.push_str(&property_key(field));
         out.push_str(": ");
-        push_type_ref_schema_expr(out, graph, field.typ, &child_indent, available_refs)?;
+        push_type_ref_schema_expr(
+            out,
+            graph,
+            semantics,
+            field.typ,
+            &child_indent,
+            available_refs,
+        )?;
         out.push_str(",\n");
     }
     out.push_str(indent);
@@ -321,6 +367,7 @@ fn push_record_schema_expr(
 fn push_tuple_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     fields: &[FieldIr],
     indent: &str,
     available_refs: &BTreeSet<String>,
@@ -335,7 +382,14 @@ fn push_tuple_schema_expr(
     for field in fields {
         push_doc_comment(out, &doc_block(&field.metadata.raw_docs), &child_indent);
         out.push_str(&child_indent);
-        push_type_ref_schema_expr(out, graph, field.typ, &child_indent, available_refs)?;
+        push_type_ref_schema_expr(
+            out,
+            graph,
+            semantics,
+            field.typ,
+            &child_indent,
+            available_refs,
+        )?;
         out.push_str(",\n");
     }
     out.push_str(indent);
@@ -346,6 +400,7 @@ fn push_tuple_schema_expr(
 fn push_variant_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     fields: &[FieldIr],
     indent: &str,
     available_refs: &BTreeSet<String>,
@@ -357,7 +412,14 @@ fn push_variant_schema_expr(
         out.push_str(&child_indent);
         out.push_str(&property_key(field));
         out.push_str(": ");
-        push_type_ref_schema_expr(out, graph, field.typ, &child_indent, available_refs)?;
+        push_type_ref_schema_expr(
+            out,
+            graph,
+            semantics,
+            field.typ,
+            &child_indent,
+            available_refs,
+        )?;
         out.push_str(",\n");
     }
     out.push_str(indent);
@@ -368,6 +430,7 @@ fn push_variant_schema_expr(
 fn push_service_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     methods: &[MethodId],
     indent: &str,
     available_refs: &BTreeSet<String>,
@@ -381,7 +444,7 @@ fn push_service_schema_expr(
         out.push_str(&child_indent);
         out.push_str(&object_key(&method.name));
         out.push_str(": ");
-        push_method_schema_expr(out, graph, method, &child_indent, available_refs)?;
+        push_method_schema_expr(out, graph, semantics, method, &child_indent, available_refs)?;
         out.push_str(",\n");
     }
 
@@ -393,13 +456,14 @@ fn push_service_schema_expr(
 fn push_method_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     method: &MethodIr,
     indent: &str,
     available_refs: &BTreeSet<String>,
 ) -> Result<()> {
     out.push_str(method_builder(method.mode));
     out.push('(');
-    push_arg_tuple_schema_expr(out, graph, &method.args, indent, available_refs)?;
+    push_arg_tuple_schema_expr(out, graph, semantics, &method.args, indent, available_refs)?;
     if matches!(method.mode, MethodModeIr::Oneway) {
         out.push(')');
         return Ok(());
@@ -408,11 +472,25 @@ fn push_method_schema_expr(
         0 => {}
         1 => {
             out.push_str(", ");
-            push_type_ref_schema_expr(out, graph, method.returns[0].typ, indent, available_refs)?;
+            push_type_ref_schema_expr(
+                out,
+                graph,
+                semantics,
+                method.returns[0].typ,
+                indent,
+                available_refs,
+            )?;
         }
         _ => {
             out.push_str(", ");
-            push_arg_tuple_schema_expr(out, graph, &method.returns, indent, available_refs)?;
+            push_arg_tuple_schema_expr(
+                out,
+                graph,
+                semantics,
+                &method.returns,
+                indent,
+                available_refs,
+            )?;
         }
     }
     out.push(')');
@@ -422,6 +500,7 @@ fn push_method_schema_expr(
 fn push_arg_tuple_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     items: &[ArgIr],
     indent: &str,
     available_refs: &BTreeSet<String>,
@@ -431,7 +510,7 @@ fn push_arg_tuple_schema_expr(
         if index > 0 {
             out.push_str(", ");
         }
-        push_type_ref_schema_expr(out, graph, item.typ, indent, available_refs)?;
+        push_type_ref_schema_expr(out, graph, semantics, item.typ, indent, available_refs)?;
     }
     out.push(']');
     Ok(())
@@ -449,10 +528,11 @@ fn method_builder(mode: MethodModeIr) -> &'static str {
 fn push_unsupported_schema_expr(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     id: TypeId,
 ) -> Result<()> {
     out.push_str("c.unsupported");
-    let app_type = unsupported_app_type(graph, id)?;
+    let app_type = unsupported_app_type(graph, semantics, id)?;
     if app_type != "unknown" {
         out.push('<');
         out.push_str(&app_type);
@@ -464,12 +544,16 @@ fn push_unsupported_schema_expr(
     Ok(())
 }
 
-fn unsupported_app_type(graph: &ProgramIrGraph<'_>, id: TypeId) -> Result<String> {
+fn unsupported_app_type(
+    graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
+    id: TypeId,
+) -> Result<String> {
     Ok(match graph.type_kind(id)? {
         TypeKindIr::Empty => "never".to_string(),
         TypeKindIr::Func { .. } => "c.CandidFuncReference".to_string(),
         TypeKindIr::Service { .. } => "c.PrincipalLike".to_string(),
-        _ => type_id_ts_type(graph, id, true)?,
+        _ => type_id_ts_type(graph, semantics, id, true)?,
     })
 }
 
@@ -613,6 +697,7 @@ fn method_mode_suffix(mode: MethodModeIr) -> &'static str {
 fn push_service_type_body(
     out: &mut String,
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     methods: &[MethodId],
 ) -> Result<()> {
     out.push_str("{\n");
@@ -623,7 +708,7 @@ fn push_service_type_body(
         out.push_str("  ");
         out.push_str(&object_key(&method.name));
         out.push_str(": ");
-        out.push_str(&actor_method_type(graph, method)?);
+        out.push_str(&actor_method_type(graph, semantics, method)?);
         out.push_str(";\n");
     }
 
@@ -633,17 +718,19 @@ fn push_service_type_body(
 
 fn type_ref_ts_type(
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     reference: TypeRefIr,
     inline_service_as_ref: bool,
 ) -> Result<String> {
     match reference {
-        TypeRefIr::Type { id } => type_id_ts_type(graph, id, inline_service_as_ref),
+        TypeRefIr::Type { id } => type_id_ts_type(graph, semantics, id, inline_service_as_ref),
         TypeRefIr::Decl { id } => Ok(type_name(&graph.declaration(id)?.name)),
     }
 }
 
 fn type_id_ts_type(
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     id: TypeId,
     inline_service_as_ref: bool,
 ) -> Result<String> {
@@ -668,19 +755,23 @@ fn type_id_ts_type(
         TypeKindIr::Opt { inner } => {
             format!(
                 "[] | [{}]",
-                type_ref_ts_type(graph, *inner, inline_service_as_ref)?
+                type_ref_ts_type(graph, semantics, *inner, inline_service_as_ref)?
             )
         }
-        TypeKindIr::Vec { inner } => vec_type(graph, *inner, inline_service_as_ref)?,
-        TypeKindIr::Record { fields } => record_type(graph, fields, inline_service_as_ref)?,
-        TypeKindIr::Variant { fields } => variant_type(graph, fields, inline_service_as_ref)?,
+        TypeKindIr::Vec { inner } => vec_type(graph, semantics, *inner, inline_service_as_ref)?,
+        TypeKindIr::Record { fields } => {
+            record_type(graph, semantics, id, fields, inline_service_as_ref)?
+        }
+        TypeKindIr::Variant { fields } => {
+            variant_type(graph, semantics, fields, inline_service_as_ref)?
+        }
         TypeKindIr::Func { .. } => "c.CandidFuncReference".to_string(),
         TypeKindIr::Service { methods } => {
             if inline_service_as_ref {
                 "Principal".to_string()
             } else {
                 let mut body = String::new();
-                push_service_type_body(&mut body, graph, methods)?;
+                push_service_type_body(&mut body, graph, semantics, methods)?;
                 body
             }
         }
@@ -689,11 +780,13 @@ fn type_id_ts_type(
 
 fn record_type(
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
+    id: TypeId,
     fields: &[FieldIr],
     inline_service_as_ref: bool,
 ) -> Result<String> {
-    if is_tuple_fields(fields) {
-        return tuple_type_from_fields(graph, fields, inline_service_as_ref);
+    if matches!(semantics.semantic(id)?, Some(TypeSemanticIr::Tuple)) {
+        return tuple_type_from_fields(graph, semantics, fields, inline_service_as_ref);
     }
 
     let mut out = String::from("{ ");
@@ -703,7 +796,12 @@ fn record_type(
         }
         out.push_str(&property_key(field));
         out.push_str(": ");
-        out.push_str(&type_ref_ts_type(graph, field.typ, inline_service_as_ref)?);
+        out.push_str(&type_ref_ts_type(
+            graph,
+            semantics,
+            field.typ,
+            inline_service_as_ref,
+        )?);
     }
     out.push_str(" }");
     Ok(out)
@@ -711,18 +809,25 @@ fn record_type(
 
 fn tuple_type_from_fields(
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     fields: &[FieldIr],
     inline_service_as_ref: bool,
 ) -> Result<String> {
     let mut parts = Vec::with_capacity(fields.len());
     for field in fields {
-        parts.push(type_ref_ts_type(graph, field.typ, inline_service_as_ref)?);
+        parts.push(type_ref_ts_type(
+            graph,
+            semantics,
+            field.typ,
+            inline_service_as_ref,
+        )?);
     }
     Ok(format!("[{}]", parts.join(", ")))
 }
 
 fn variant_type(
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     fields: &[FieldIr],
     inline_service_as_ref: bool,
 ) -> Result<String> {
@@ -735,7 +840,7 @@ fn variant_type(
         arms.push(format!(
             "{{ {}: {} }}",
             property_key(field),
-            type_ref_ts_type(graph, field.typ, inline_service_as_ref)?
+            type_ref_ts_type(graph, semantics, field.typ, inline_service_as_ref)?
         ));
     }
 
@@ -744,6 +849,7 @@ fn variant_type(
 
 fn vec_type(
     graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
     inner: TypeRefIr,
     inline_service_as_ref: bool,
 ) -> Result<String> {
@@ -763,17 +869,21 @@ fn vec_type(
 
     Ok(format!(
         "Array<{}>",
-        type_ref_ts_type(graph, inner, inline_service_as_ref)?
+        type_ref_ts_type(graph, semantics, inner, inline_service_as_ref)?
     ))
 }
 
-fn actor_method_type(graph: &ProgramIrGraph<'_>, method: &MethodIr) -> Result<String> {
+fn actor_method_type(
+    graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
+    method: &MethodIr,
+) -> Result<String> {
     let args = method
         .args
         .iter()
-        .map(|arg| type_ref_ts_type(graph, arg.typ, true))
+        .map(|arg| type_ref_ts_type(graph, semantics, arg.typ, true))
         .collect::<Result<Vec<_>>>()?;
-    let ret = return_type(graph, &method.returns)?;
+    let ret = return_type(graph, semantics, &method.returns)?;
     Ok(format!(
         "c.CandidActorMethod<[{}], {}>",
         args.join(", "),
@@ -781,14 +891,18 @@ fn actor_method_type(graph: &ProgramIrGraph<'_>, method: &MethodIr) -> Result<St
     ))
 }
 
-fn return_type(graph: &ProgramIrGraph<'_>, rets: &[ArgIr]) -> Result<String> {
+fn return_type(
+    graph: &ProgramIrGraph<'_>,
+    semantics: &ProgramSemantics,
+    rets: &[ArgIr],
+) -> Result<String> {
     Ok(match rets.len() {
         0 => "undefined".to_string(),
-        1 => type_ref_ts_type(graph, rets[0].typ, true)?,
+        1 => type_ref_ts_type(graph, semantics, rets[0].typ, true)?,
         _ => {
             let items = rets
                 .iter()
-                .map(|arg| type_ref_ts_type(graph, arg.typ, true))
+                .map(|arg| type_ref_ts_type(graph, semantics, arg.typ, true))
                 .collect::<Result<Vec<_>>>()?;
             format!("[{}]", items.join(", "))
         }
@@ -817,14 +931,6 @@ fn push_doc_comment(out: &mut String, docs: &DocBlock, indent: &str) {
 
 fn doc_block(raw_docs: &[String]) -> DocBlock {
     DocBlock::parse(raw_docs)
-}
-
-fn is_tuple_fields(fields: &[FieldIr]) -> bool {
-    !fields.is_empty()
-        && fields
-            .iter()
-            .enumerate()
-            .all(|(index, field)| matches!(field.label, FieldLabelIr::Unnamed { candid_id } if candid_id == index as u32))
 }
 
 fn property_key(field: &FieldIr) -> String {
