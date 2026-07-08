@@ -1,11 +1,53 @@
-import type { CandidFieldIR, CandidTypeIR } from "./types.js"
+import {
+  fieldLabelCandidId,
+  isBlobRef,
+  isBlobTypeId,
+  ProgramIrGraph,
+} from "./program-ir.js"
+import type {
+  DeclId,
+  ProgramFieldIR,
+  ProgramTypeRefIR,
+  TypeId,
+} from "./types.js"
 
-export function candidTypeText(
-  type: CandidTypeIR,
-  context?: { typeByName(name: string): CandidTypeIR | undefined },
-  refs: Set<string> = new Set()
+export function candidTypeTextRef(
+  graph: ProgramIrGraph,
+  reference: ProgramTypeRefIR,
+  refs: Set<DeclId> = new Set()
 ): string {
-  switch (type.kind) {
+  if (isBlobRef(graph, reference)) {
+    return "blob"
+  }
+
+  switch (reference.kind) {
+    case "type":
+      return candidTypeTextId(graph, reference.id, refs)
+    case "decl": {
+      const declaration = graph.declaration(reference.id)
+      if (refs.has(reference.id)) {
+        return declaration.name
+      }
+      return candidTypeTextId(
+        graph,
+        declaration.type,
+        new Set([...refs, reference.id])
+      )
+    }
+  }
+}
+
+export function candidTypeTextId(
+  graph: ProgramIrGraph,
+  id: TypeId,
+  refs: Set<DeclId> = new Set()
+): string {
+  if (isBlobTypeId(graph, id)) {
+    return "blob"
+  }
+
+  const kind = graph.typeKind(id)
+  switch (kind.kind) {
     case "null":
     case "bool":
     case "text":
@@ -22,46 +64,36 @@ export function candidTypeText(
     case "float32":
     case "float64":
     case "principal":
-    case "blob":
     case "reserved":
     case "empty":
-      return type.kind
+      return kind.kind
     case "opt":
-      return `opt ${candidTypeText(type.inner, context, refs)}`
+      return `opt ${candidTypeTextRef(graph, kind.inner, refs)}`
     case "vec":
-      return `vec ${candidTypeText(type.inner, context, refs)}`
+      return `vec ${candidTypeTextRef(graph, kind.inner, refs)}`
     case "record":
-      return `record { ${type.fields.map((field) => fieldTypeText(field, context, refs)).join("; ")} }`
+      return `record { ${kind.fields.map((field) => fieldTypeText(graph, field, refs)).join("; ")} }`
     case "variant":
-      return `variant { ${type.fields.map((field) => fieldTypeText(field, context, refs)).join("; ")} }`
-    case "ref": {
-      if (!context || refs.has(type.name)) {
-        return type.name
-      }
-      const target = context.typeByName(type.name)
-      if (!target) {
-        return type.name
-      }
-      return candidTypeText(target, context, new Set([...refs, type.name]))
-    }
+      return `variant { ${kind.fields.map((field) => fieldTypeText(graph, field, refs)).join("; ")} }`
     case "func": {
-      const args = type.args
-        .map((arg) => candidTypeText(arg.type, context, refs))
+      const args = kind.args
+        .map((arg) => candidTypeTextRef(graph, arg.type, refs))
         .join(", ")
-      const returns = type.returns
-        .map((arg) => candidTypeText(arg.type, context, refs))
+      const returns = kind.returns
+        .map((arg) => candidTypeTextRef(graph, arg.type, refs))
         .join(", ")
-      const mode = type.mode !== "update" ? ` ${type.mode}` : ""
+      const mode = kind.mode !== "update" ? ` ${kind.mode}` : ""
       return `func (${args}) -> (${returns})${mode}`
     }
     case "service":
-      return `service { ${type.methods
-        .map((method) => {
+      return `service { ${kind.methods
+        .map((methodId) => {
+          const method = graph.method(methodId)
           const args = method.args
-            .map((arg) => candidTypeText(arg.type, context, refs))
+            .map((arg) => candidTypeTextRef(graph, arg.type, refs))
             .join(", ")
           const returns = method.returns
-            .map((arg) => candidTypeText(arg.type, context, refs))
+            .map((arg) => candidTypeTextRef(graph, arg.type, refs))
             .join(", ")
           const mode = method.mode !== "update" ? ` ${method.mode}` : ""
           return `${candidLabel(method.name)} : (${args}) -> (${returns})${mode}`
@@ -70,13 +102,13 @@ export function candidTypeText(
   }
 }
 
-export function candidFieldLabel(field: CandidFieldIR): string {
+export function candidFieldLabel(field: ProgramFieldIR): string {
   switch (field.label.kind) {
     case "named":
       return candidLabel(field.label.name)
     case "id":
     case "unnamed":
-      return String(field.label.id)
+      return String(fieldLabelCandidId(field.label))
   }
 }
 
@@ -87,16 +119,25 @@ export function candidLabel(value: string): string {
 }
 
 function fieldTypeText(
-  field: CandidFieldIR,
-  context: { typeByName(name: string): CandidTypeIR | undefined } | undefined,
-  refs: Set<string>
+  graph: ProgramIrGraph,
+  field: ProgramFieldIR,
+  refs: Set<DeclId>
 ): string {
-  const type = candidTypeText(field.type, context, refs)
+  const type = candidTypeTextRef(graph, field.type, refs)
   const label = candidFieldLabel(field)
-  if (field.type.kind === "null") {
+  if (isDirectNullRef(graph, field.type)) {
     return label
   }
   return `${label} : ${type}`
+}
+
+function isDirectNullRef(
+  graph: ProgramIrGraph,
+  reference: ProgramTypeRefIR
+): boolean {
+  return (
+    reference.kind === "type" && graph.typeKind(reference.id).kind === "null"
+  )
 }
 
 const CANDID_KEYWORDS = new Set([

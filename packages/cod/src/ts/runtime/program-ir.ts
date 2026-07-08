@@ -1,24 +1,14 @@
 import type {
-  CandidActorIR,
-  CandidArgIR,
-  CandidFieldIR,
-  CandidFieldLabelIR,
-  CandidMethodIR,
-  CandidTypeDeclIR,
-  CandidTypeIR,
   DeclId,
-  DocTag,
   MethodId,
-  ProgramArgIR,
   ProgramFieldIR,
   ProgramFieldLabelIR,
   ProgramIR,
-  ProgramMetadataIR,
   ProgramMethodIR,
   ProgramTypeDeclIR,
   ProgramTypeKindIR,
+  ProgramTypeNodeIR,
   ProgramTypeRefIR,
-  RuntimeProgramIR,
   TypeId,
 } from "./types.js"
 
@@ -46,6 +36,8 @@ export class ProgramIrGraph {
   readonly #declarationsByName = new Map<string, DeclId>()
 
   constructor(readonly ir: ProgramIR) {
+    assertProgramIRVersion(ir)
+
     for (let index = 0; index < ir.declarations.length; index++) {
       const declaration = ir.declarations[index]!
       if (this.#declarationsByName.has(declaration.name)) {
@@ -59,6 +51,10 @@ export class ProgramIrGraph {
     this.#validateMethodArena()
   }
 
+  typeNodes(): readonly ProgramTypeNodeIR[] {
+    return this.ir.types
+  }
+
   declarations(): readonly ProgramTypeDeclIR[] {
     return this.ir.declarations
   }
@@ -67,12 +63,16 @@ export class ProgramIrGraph {
     return this.ir.methods
   }
 
-  typeKind(id: TypeId): ProgramTypeKindIR {
+  typeNode(id: TypeId): ProgramTypeNodeIR {
     const node = this.ir.types[id]
     if (!node) {
       throw new Error(`missing ProgramIR type node ${id}`)
     }
-    return node.kind
+    return node
+  }
+
+  typeKind(id: TypeId): ProgramTypeKindIR {
+    return this.typeNode(id).kind
   }
 
   declaration(id: DeclId): ProgramTypeDeclIR {
@@ -110,10 +110,6 @@ export class ProgramIrGraph {
     }
   }
 
-  actorMethods(): readonly ProgramMethodIR[] {
-    return this.actorMethodIds().map((id) => this.method(id))
-  }
-
   serviceMethodIds(serviceId: TypeId): readonly MethodId[] {
     const service = this.typeKind(serviceId)
     if (service.kind !== "service") {
@@ -136,148 +132,8 @@ export class ProgramIrGraph {
     return this.serviceMethodIds(actor.service)
   }
 
-  runtimeProgram(): RuntimeProgramIR {
-    const actor = this.ir.actor
-    return {
-      version: this.ir.version,
-      types: this.ir.declarations.map((declaration) =>
-        this.runtimeDeclaration(declaration)
-      ),
-      actor: actor
-        ? {
-            initArgs: actor.initArgs.map((arg) => this.runtimeArg(arg)),
-            service: {
-              methods: this.actorMethodIds().map((id) =>
-                this.runtimeMethod(id, this.method(id))
-              ),
-            },
-          }
-        : null,
-    }
-  }
-
-  runtimeTypeByName(name: string): CandidTypeIR | undefined {
-    const declaration = this.declarationByName(name)
-    return declaration ? this.runtimeTypeId(declaration.type) : undefined
-  }
-
-  runtimeTypeId(id: TypeId): CandidTypeIR {
-    return this.runtimeTypeKind(this.typeKind(id))
-  }
-
-  runtimeTypeRef(reference: ProgramTypeRefIR): CandidTypeIR {
-    switch (reference.kind) {
-      case "decl":
-        return { kind: "ref", name: this.declaration(reference.id).name }
-      case "type":
-        return this.runtimeTypeId(reference.id)
-    }
-  }
-
-  private runtimeDeclaration(declaration: ProgramTypeDeclIR): CandidTypeDeclIR {
-    return withMetadata(
-      {
-        name: declaration.name,
-        type: this.runtimeTypeId(declaration.type),
-      },
-      declaration.metadata
-    )
-  }
-
-  private runtimeMethod(id: MethodId, method: ProgramMethodIR): CandidMethodIR {
-    return withMetadata(
-      {
-        id,
-        name: method.name,
-        mode: method.mode,
-        args: method.args.map((arg) => this.runtimeArg(arg)),
-        returns: method.returns.map((arg) => this.runtimeArg(arg)),
-      },
-      method.metadata
-    )
-  }
-
-  private runtimeArg(arg: ProgramArgIR): CandidArgIR {
-    const out: CandidArgIR = withMetadata(
-      {
-        type: this.runtimeTypeRef(arg.type),
-      },
-      arg.metadata
-    )
-    if (arg.name !== undefined) {
-      out.name = arg.name
-    }
-    return out
-  }
-
-  private runtimeField(field: ProgramFieldIR): CandidFieldIR {
-    const label = runtimeFieldLabel(field.label)
-    return withMetadata(
-      {
-        label,
-        candidId: fieldLabelCandidId(field.label),
-        type: this.runtimeTypeRef(field.type),
-      },
-      field.metadata
-    )
-  }
-
-  private runtimeTypeKind(kind: ProgramTypeKindIR): CandidTypeIR {
-    switch (kind.kind) {
-      case "null":
-      case "bool":
-      case "text":
-      case "nat":
-      case "int":
-      case "nat8":
-      case "nat16":
-      case "nat32":
-      case "nat64":
-      case "int8":
-      case "int16":
-      case "int32":
-      case "int64":
-      case "float32":
-      case "float64":
-      case "principal":
-      case "reserved":
-      case "empty":
-        return { kind: kind.kind }
-      case "opt":
-        return { kind: "opt", inner: this.runtimeTypeRef(kind.inner) }
-      case "vec":
-        return this.isNat8Ref(kind.inner)
-          ? { kind: "blob" }
-          : { kind: "vec", inner: this.runtimeTypeRef(kind.inner) }
-      case "record":
-        return {
-          kind: "record",
-          fields: kind.fields.map((field) => this.runtimeField(field)),
-        }
-      case "variant":
-        return {
-          kind: "variant",
-          fields: kind.fields.map((field) => this.runtimeField(field)),
-        }
-      case "func":
-        return {
-          kind: "func",
-          args: kind.args.map((arg) => this.runtimeArg(arg)),
-          returns: kind.returns.map((arg) => this.runtimeArg(arg)),
-          mode: kind.mode,
-        }
-      case "service":
-        return {
-          kind: "service",
-          methods: kind.methods.map((id) =>
-            this.runtimeMethod(id, this.method(id))
-          ),
-        }
-    }
-  }
-
-  private isNat8Ref(reference: ProgramTypeRefIR): boolean {
-    return this.typeKind(this.resolveRef(reference)).kind === "nat8"
+  actorMethods(): readonly ProgramMethodIR[] {
+    return this.actorMethodIds().map((id) => this.method(id))
   }
 
   #validateMethodArena(): void {
@@ -316,11 +172,7 @@ export class ProgramIrGraph {
   }
 }
 
-export function runtimeProgramView(ir: ProgramIR): RuntimeProgramIR {
-  return new ProgramIrGraph(ir).runtimeProgram()
-}
-
-export function fieldObjectKey(field: CandidFieldIR | ProgramFieldIR): string {
+export function fieldObjectKey(field: ProgramFieldIR): string {
   switch (field.label.kind) {
     case "named":
       return field.label.name
@@ -328,6 +180,21 @@ export function fieldObjectKey(field: CandidFieldIR | ProgramFieldIR): string {
     case "unnamed":
       return `_${fieldCandidId(field)}_`
   }
+}
+
+export function fieldCandidId(field: ProgramFieldIR): number {
+  return fieldLabelCandidId(field.label)
+}
+
+export function fieldLabelCandidId(label: ProgramFieldLabelIR): number {
+  if (label.kind === "named") {
+    return candidLabelId(label.name)
+  }
+  const candidId = label.candidId ?? label.candid_id
+  if (typeof candidId === "number") {
+    return candidId
+  }
+  throw new Error(`ProgramIR field label ${label.kind} is missing candid id`)
 }
 
 export function candidLabelId(name: string): number {
@@ -338,62 +205,21 @@ export function candidLabelId(name: string): number {
   return hash
 }
 
-function runtimeFieldLabel(label: ProgramFieldLabelIR): CandidFieldLabelIR {
-  switch (label.kind) {
-    case "named":
-      return { kind: "named", name: label.name }
-    case "id":
-      return { kind: "id", id: fieldLabelCandidId(label) }
-    case "unnamed":
-      return { kind: "unnamed", id: fieldLabelCandidId(label) }
-  }
+export function isBlobTypeId(graph: ProgramIrGraph, id: TypeId): boolean {
+  const kind = graph.typeKind(id)
+  return kind.kind === "vec" && isNat8Ref(graph, kind.inner)
 }
 
-function fieldCandidId(field: CandidFieldIR | ProgramFieldIR): number {
-  if ("candidId" in field && typeof field.candidId === "number") {
-    return field.candidId
-  }
-  return fieldLabelCandidId(field.label)
+export function isBlobRef(
+  graph: ProgramIrGraph,
+  reference: ProgramTypeRefIR
+): boolean {
+  return isBlobTypeId(graph, graph.resolveRef(reference))
 }
 
-function fieldLabelCandidId(
-  label: CandidFieldLabelIR | ProgramFieldLabelIR
-): number {
-  if (label.kind === "named") {
-    return candidLabelId(label.name)
-  }
-  if ("id" in label && typeof label.id === "number") {
-    return label.id
-  }
-  const labelWithId = label as { candidId?: number; candid_id?: number }
-  const candidId = labelWithId.candidId ?? labelWithId.candid_id
-  if (typeof candidId === "number") {
-    return candidId
-  }
-  throw new Error(`ProgramIR field label ${label.kind} is missing candid id`)
-}
-
-function withMetadata<T extends object>(
-  value: T,
-  metadata: ProgramMetadataIR | undefined
-): T & {
-  docs?: string[]
-  rawDocs?: string[]
-  docTags?: DocTag[]
-} {
-  const out: T & {
-    docs?: string[]
-    rawDocs?: string[]
-    docTags?: DocTag[]
-  } = { ...value }
-  if (metadata?.docs?.length) {
-    out.docs = metadata.docs
-  }
-  if (metadata?.rawDocs?.length) {
-    out.rawDocs = metadata.rawDocs
-  }
-  if (metadata?.docTags?.length) {
-    out.docTags = metadata.docTags
-  }
-  return out
+export function isNat8Ref(
+  graph: ProgramIrGraph,
+  reference: ProgramTypeRefIR
+): boolean {
+  return graph.typeKind(graph.resolveRef(reference)).kind === "nat8"
 }

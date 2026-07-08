@@ -31,13 +31,18 @@ import {
   type AnySchema,
   type ServiceSchema,
 } from "../schema.js"
-import { candidFieldLabel, candidTypeText } from "./candid-format.js"
-import { fieldObjectKey } from "./program-ir.js"
+import {
+  candidFieldLabel,
+  candidTypeTextId,
+  candidTypeTextRef,
+} from "./candid-format.js"
+import { fieldObjectKey, isBlobTypeId, ProgramIrGraph } from "./program-ir.js"
 import type {
-  CandidFieldIR,
   CandidMethodMode,
-  CandidTypeIR,
-  RuntimeProgramIR,
+  ProgramFieldIR,
+  ProgramIR,
+  ProgramTypeRefIR,
+  TypeId,
 } from "./types.js"
 
 export type RuntimeSchemaSet = {
@@ -46,37 +51,34 @@ export type RuntimeSchemaSet = {
   service: ServiceSchema<any>
 }
 
-export function irToSchema(ir: RuntimeProgramIR): RuntimeSchemaSet {
+export function irToSchema(ir: ProgramIR): RuntimeSchemaSet {
   const context = new SchemaContext(ir)
   return context.build()
 }
 
 class SchemaContext {
-  readonly #types = new Map<string, CandidTypeIR>()
-  readonly #typeDocs = new Map<string, string[]>()
+  readonly graph: ProgramIrGraph
   readonly #schemas = new Map<string, AnySchema>()
 
-  constructor(readonly ir: RuntimeProgramIR) {
-    for (const declaration of ir.types) {
-      this.#types.set(declaration.name, declaration.type)
-      if (declaration.docs?.length) {
-        this.#typeDocs.set(declaration.name, declaration.docs)
-      }
-    }
+  constructor(readonly ir: ProgramIR) {
+    this.graph = new ProgramIrGraph(ir)
   }
 
   build(): RuntimeSchemaSet {
-    for (const declaration of this.ir.types) {
+    for (const declaration of this.graph.declarations()) {
       this.namedSchema(declaration.name)
     }
 
     const methodSchemas = new Map<string, AnyMethodSchema>()
     const methods: Record<string, AnyMethodSchema> = {}
 
-    for (const method of this.ir.actor?.service.methods ?? []) {
-      const args = method.args.map((arg) => this.typeSchema(arg.type, arg.docs))
+    for (const methodId of this.graph.actorMethodIds()) {
+      const method = this.graph.method(methodId)
+      const args = method.args.map((arg) =>
+        this.typeRefSchema(arg.type, arg.metadata?.docs)
+      )
       const returns = method.returns.map((arg) =>
-        this.typeSchema(arg.type, arg.docs)
+        this.typeRefSchema(arg.type, arg.metadata?.docs)
       )
       const schema = methodSchema(method.mode, args, returns)
       methodSchemas.set(method.name, schema)
@@ -96,33 +98,57 @@ class SchemaContext {
       return existing
     }
 
-    const type = this.#types.get(name)
-    if (!type) {
+    const id = this.graph.declarationIdByName(name)
+    if (id === undefined) {
       throw new Error(`Candid type ${JSON.stringify(name)} not found`)
     }
 
-    const schema = this.typeSchema(type, this.#typeDocs.get(name)).meta({
+    const declaration = this.graph.declaration(id)
+    const schema = this.typeIdSchema(
+      declaration.type,
+      declaration.metadata?.docs
+    ).meta({
       name,
-      candidType: candidTypeText(type, this, new Set([name])),
+      candidType: candidTypeTextId(this.graph, declaration.type, new Set([id])),
     })
     this.#schemas.set(name, schema)
     return schema
   }
 
-  typeSchema(type: CandidTypeIR, docs?: readonly string[]): AnySchema {
-    const schema = this.typeSchemaInner(type)
+  typeRefSchema(
+    reference: ProgramTypeRefIR,
+    docs?: readonly string[]
+  ): AnySchema {
+    const schema =
+      reference.kind === "decl"
+        ? lazy(
+            () => this.namedSchema(this.graph.declaration(reference.id).name),
+            this.graph.declaration(reference.id).name
+          )
+        : this.typeIdSchema(reference.id)
+
     const description = docText(docs)
     return schema.meta({
       ...(description ? { docs: description } : {}),
-      candidType: candidTypeText(type, this),
+      candidType: candidTypeTextRef(this.graph, reference),
     })
   }
 
-  typeByName(name: string): CandidTypeIR | undefined {
-    return this.#types.get(name)
+  typeIdSchema(id: TypeId, docs?: readonly string[]): AnySchema {
+    const schema = this.typeSchemaInner(id)
+    const description = docText(docs)
+    return schema.meta({
+      ...(description ? { docs: description } : {}),
+      candidType: candidTypeTextId(this.graph, id),
+    })
   }
 
-  private typeSchemaInner(type: CandidTypeIR): AnySchema {
+  private typeSchemaInner(id: TypeId): AnySchema {
+    if (isBlobTypeId(this.graph, id)) {
+      return blob()
+    }
+
+    const type = this.graph.typeKind(id)
     switch (type.kind) {
       case "null":
         return null_()
@@ -156,12 +182,10 @@ class SchemaContext {
         return float64()
       case "principal":
         return principal()
-      case "blob":
-        return blob()
       case "opt":
-        return opt(this.typeSchema(type.inner)).optional()
+        return opt(this.typeRefSchema(type.inner)).optional()
       case "vec":
-        return vec(this.typeSchema(type.inner))
+        return vec(this.typeRefSchema(type.inner))
       case "record":
         return record(
           fieldsToSchemaMap(type.fields, this),
@@ -172,16 +196,11 @@ class SchemaContext {
           fieldsToSchemaMap(type.fields, this),
           fieldsToCandidLabelMap(type.fields)
         )
-      case "ref":
-        return lazy(() => this.namedSchema(type.name), type.name).meta({
-          name: type.name,
-          candidType: type.name,
-        })
       case "reserved":
       case "empty":
       case "func":
       case "service":
-        return unsupportedSchema(type, this)
+        return unsupportedSchema(type.kind, candidTypeTextId(this.graph, id))
     }
   }
 }
@@ -211,18 +230,21 @@ function docText(docs: readonly string[] | undefined): string | undefined {
 }
 
 function fieldsToSchemaMap(
-  fields: readonly CandidFieldIR[],
+  fields: readonly ProgramFieldIR[],
   context: SchemaContext
 ): Record<string, AnySchema> {
   const out: Record<string, AnySchema> = {}
   for (const field of fields) {
-    out[fieldObjectKey(field)] = context.typeSchema(field.type, field.docs)
+    out[fieldObjectKey(field)] = context.typeRefSchema(
+      field.type,
+      field.metadata?.docs
+    )
   }
   return out
 }
 
 function fieldsToCandidLabelMap(
-  fields: readonly CandidFieldIR[]
+  fields: readonly ProgramFieldIR[]
 ): Record<string, string> {
   const out: Record<string, string> = {}
   for (const field of fields) {
@@ -231,12 +253,8 @@ function fieldsToCandidLabelMap(
   return out
 }
 
-function unsupportedSchema(
-  type: CandidTypeIR,
-  context: SchemaContext
-): AnySchema {
-  const candidType = candidTypeText(type, context)
-  const reason = `Candid ${type.kind} values are not supported by the runtime schema codec yet`
+function unsupportedSchema(kind: string, candidType: string): AnySchema {
+  const reason = `Candid ${kind} values are not supported by the runtime schema codec yet`
   return new Schema<unknown, unknown>({
     did: () => candidType,
     toWire: () => {

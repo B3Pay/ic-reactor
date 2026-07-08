@@ -298,9 +298,9 @@ The emitter directly visits ProgramIR.
 
 **Priority: Critical**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
-Current TS has both:
+Before this cleanup, TS had both:
 
 ```ts
 ProgramIR
@@ -316,15 +316,15 @@ CandidArgIR
 CandidFieldIR
 ```
 
-`ProgramIrGraph.runtimeProgram()` reconstructs the recursive tree.
+`ProgramIrGraph.runtimeProgram()` reconstructed the recursive tree.
 
-Then `RuntimeProgramImpl` immediately switches to it:
+Then `RuntimeProgramImpl` immediately switched to it:
 
 ```ts
 this.#runtimeIr = runtimeProgramView(options.ir)
 ```
 
-Delete this compatibility model.
+This compatibility model was deleted.
 
 Target:
 
@@ -347,13 +347,13 @@ All consumers traverse the arena directly.
 
 Current semantic divergence already exists.
 
-TS converts:
+TS runtime currently interprets:
 
 ```text
 vec nat8 → blob
 ```
 
-inside `runtimeProgramView`.
+through shared runtime graph/schema helpers.
 
 Rust generator keeps:
 

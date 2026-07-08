@@ -1,40 +1,41 @@
 import { FormContext, methodToFormSchema } from "./form.js"
 import type {
-  CandidMethodIR,
   FormSchemaOptions,
+  MethodId,
+  ProgramIR,
   ProgramWorkflowSchema,
-  RuntimeProgramIR,
   WorkflowMethodNode,
 } from "./types.js"
 
 export function programToWorkflowSchema(
-  ir: RuntimeProgramIR,
+  ir: ProgramIR,
   options: FormSchemaOptions = {}
 ): ProgramWorkflowSchema {
   const context = new FormContext(ir, options)
   return {
-    nodes: (ir.actor?.service.methods ?? []).map((method) =>
-      methodToWorkflowNode(method, context)
-    ),
+    nodes: context.graph
+      .actorMethodIds()
+      .map((methodId) => methodToWorkflowNode(methodId, context)),
   }
 }
 
 export function methodToWorkflowNode(
-  method: CandidMethodIR,
+  methodId: MethodId,
   context: FormContext
 ): WorkflowMethodNode {
-  const form = methodToFormSchema(method, context)
+  const method = context.graph.method(methodId)
+  const form = methodToFormSchema(methodId, context)
   const node: WorkflowMethodNode = {
-    id: `method:${method.id}`,
+    id: `method:${methodId}`,
     type: "canister_method",
-    methodId: method.id,
+    methodId,
     methodName: method.name,
     mode: method.mode,
     title: method.name,
     inputs: form.args,
     outputs: form.returns,
   }
-  const description = docText(method.docs)
+  const description = docText(method.metadata?.docs)
   if (description) {
     node.description = description
   }

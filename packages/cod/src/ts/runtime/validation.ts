@@ -1,14 +1,11 @@
+import { fieldObjectKey, isBlobTypeId, ProgramIrGraph } from "./program-ir.js"
 import type {
-  CandidArgIR,
-  CandidFieldIR,
-  CandidMethodIR,
-  CandidTypeIR,
+  ProgramArgIR,
+  ProgramFieldIR,
+  ProgramMethodIR,
+  ProgramTypeRefIR,
+  TypeId,
 } from "./types.js"
-import { fieldObjectKey } from "./program-ir.js"
-
-type TypeContext = {
-  typeByName(name: string): CandidTypeIR | undefined
-}
 
 /**
  * Error thrown when an app-level value does not match a DID-derived schema.
@@ -31,9 +28,9 @@ export class CandidValidationError extends Error {
 }
 
 export function validateMethodArgs(
-  method: CandidMethodIR,
+  method: ProgramMethodIR,
   args: readonly unknown[],
-  context: TypeContext
+  graph: ProgramIrGraph
 ): void {
   if (!Array.isArray(args)) {
     throw new CandidValidationError(
@@ -51,14 +48,14 @@ export function validateMethodArgs(
   }
 
   method.args.forEach((arg, index) => {
-    validateArg(arg, args[index], context, `args[${index}]`)
+    validateArg(arg, args[index], graph, `args[${index}]`)
   })
 }
 
 export function validateMethodReturn(
-  method: CandidMethodIR,
+  method: ProgramMethodIR,
   value: unknown,
-  context: TypeContext
+  graph: ProgramIrGraph
 ): void {
   if (method.returns.length === 0) {
     if (value !== undefined) {
@@ -68,7 +65,7 @@ export function validateMethodReturn(
   }
 
   if (method.returns.length === 1) {
-    validateArg(method.returns[0]!, value, context, "returns[0]")
+    validateArg(method.returns[0]!, value, graph, "returns[0]")
     return
   }
 
@@ -81,32 +78,38 @@ export function validateMethodReturn(
   }
 
   method.returns.forEach((arg, index) => {
-    validateArg(arg, value[index], context, `returns[${index}]`)
+    validateArg(arg, value[index], graph, `returns[${index}]`)
   })
 }
 
 function validateArg(
-  arg: CandidArgIR,
+  arg: ProgramArgIR,
   value: unknown,
-  context: TypeContext,
+  graph: ProgramIrGraph,
   path: string
 ): void {
-  validateValue(arg.type, value, context, path, new WeakSet<object>())
+  validateTypeRef(arg.type, value, graph, path, new WeakSet<object>())
 }
 
-function validateValue(
-  type: CandidTypeIR,
+function validateTypeRef(
+  reference: ProgramTypeRefIR,
   value: unknown,
-  context: TypeContext,
+  graph: ProgramIrGraph,
   path: string,
   seen: WeakSet<object>
 ): void {
-  if (type.kind === "ref") {
-    const target = context.typeByName(type.name)
-    if (!target) {
-      throw new CandidValidationError(path, type.name, value)
-    }
-    validateValue(target, value, context, path, seen)
+  validateTypeId(graph.resolveRef(reference), value, graph, path, seen)
+}
+
+function validateTypeId(
+  id: TypeId,
+  value: unknown,
+  graph: ProgramIrGraph,
+  path: string,
+  seen: WeakSet<object>
+): void {
+  if (isBlobTypeId(graph, id)) {
+    if (!isBlobLike(value)) fail(path, "blob", value)
     return
   }
 
@@ -117,6 +120,7 @@ function validateValue(
     seen.add(value)
   }
 
+  const type = graph.typeKind(id)
   switch (type.kind) {
     case "null":
       if (value !== null) fail(path, "null", value)
@@ -177,24 +181,21 @@ function validateValue(
     case "principal":
       if (!isPrincipalLike(value)) fail(path, "principal", value)
       return
-    case "blob":
-      if (!isBlobLike(value)) fail(path, "blob", value)
-      return
     case "opt":
       if (value === null || value === undefined) return
-      validateValue(type.inner, value, context, path, seen)
+      validateTypeRef(type.inner, value, graph, path, seen)
       return
     case "vec":
       if (!Array.isArray(value)) fail(path, "array", value)
       value.forEach((item, index) => {
-        validateValue(type.inner, item, context, `${path}[${index}]`, seen)
+        validateTypeRef(type.inner, item, graph, `${path}[${index}]`, seen)
       })
       return
     case "record":
-      validateRecord(type.fields, value, context, path, seen)
+      validateRecord(type.fields, value, graph, path, seen)
       return
     case "variant":
-      validateVariant(type.fields, value, context, path, seen)
+      validateVariant(type.fields, value, graph, path, seen)
       return
     case "reserved":
       return
@@ -209,9 +210,9 @@ function validateValue(
 }
 
 function validateRecord(
-  fields: readonly CandidFieldIR[],
+  fields: readonly ProgramFieldIR[],
   value: unknown,
-  context: TypeContext,
+  graph: ProgramIrGraph,
   path: string,
   seen: WeakSet<object>
 ): void {
@@ -226,18 +227,18 @@ function validateRecord(
     const hasField = Object.prototype.hasOwnProperty.call(record, key)
     const fieldValue = hasField ? record[key] : undefined
 
-    if (!hasField && field.type.kind !== "opt") {
-      fail(childPath, fieldExpected(field), fieldValue)
+    if (!hasField && !isOptionalRef(field.type, graph)) {
+      fail(childPath, fieldExpected(field, graph), fieldValue)
     }
 
-    validateValue(field.type, fieldValue, context, childPath, seen)
+    validateTypeRef(field.type, fieldValue, graph, childPath, seen)
   }
 }
 
 function validateVariant(
-  fields: readonly CandidFieldIR[],
+  fields: readonly ProgramFieldIR[],
   value: unknown,
-  context: TypeContext,
+  graph: ProgramIrGraph,
   path: string,
   seen: WeakSet<object>
 ): void {
@@ -258,10 +259,10 @@ function validateVariant(
     fail(`${path}${pathSegment(caseName)}`, variantExpected(fields), caseValue)
   }
 
-  validateValue(
+  validateTypeRef(
     field.type,
     caseValue,
-    context,
+    graph,
     `${path}${pathSegment(caseName)}`,
     seen
   )
@@ -313,11 +314,24 @@ function isBlobLike(value: unknown): boolean {
   )
 }
 
-function fieldExpected(field: CandidFieldIR): string {
-  return field.type.kind === "ref" ? field.type.name : field.type.kind
+function isOptionalRef(
+  reference: ProgramTypeRefIR,
+  graph: ProgramIrGraph
+): boolean {
+  return graph.typeKind(graph.resolveRef(reference)).kind === "opt"
 }
 
-function variantExpected(fields: readonly CandidFieldIR[]): string {
+function fieldExpected(field: ProgramFieldIR, graph: ProgramIrGraph): string {
+  if (field.type.kind === "decl") {
+    return graph.declaration(field.type.id).name
+  }
+  if (isBlobTypeId(graph, field.type.id)) {
+    return "blob"
+  }
+  return graph.typeKind(field.type.id).kind
+}
+
+function variantExpected(fields: readonly ProgramFieldIR[]): string {
   return `variant case ${fields.map((field) => JSON.stringify(fieldObjectKey(field))).join(" | ")}`
 }
 

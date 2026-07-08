@@ -884,6 +884,24 @@ The schema runtime must not inspect Candid Rust types.
 
 The schema runtime must not maintain an independent program AST.
 
+The TypeScript runtime must not reconstruct compatibility models such as:
+
+```text
+RuntimeProgramIR
+CandidTypeIR
+CandidMethodIR
+CandidArgIR
+CandidFieldIR
+```
+
+Runtime adapters should traverse `ProgramIR` through `ProgramIrGraph` and arena
+IDs directly:
+
+```ts
+irToSchema(ir: ProgramIR)
+validateMethodArgs(method: ProgramMethodIR, graph: ProgramIrGraph)
+```
+
 For example:
 
 ```ts
@@ -958,6 +976,14 @@ widget = text input
 
 That derived UI model belongs to the form layer.
 
+The form adapter may keep a `ProgramIrGraph` index, but it must not rebuild a
+recursive form-side Candid AST before producing `FormSchema`:
+
+```ts
+programToFormSchema(ir: ProgramIR)
+methodToFormSchema(method: MethodId, context: FormContext)
+```
+
 ---
 
 ## 15. Workflows Consume ProgramIR
@@ -967,7 +993,7 @@ Workflow nodes are projections of methods.
 The flow is:
 
 ```text
-ProgramIR method
+ProgramIR + MethodId
        ↓
 workflow adapter
        ↓
@@ -986,6 +1012,13 @@ A workflow node should reference program and method identity where possible.
 
 Workflow projections should use `MethodId` rather than method name as the
 within-program method identity.
+
+Conceptually:
+
+```ts
+programToWorkflowSchema(ir: ProgramIR)
+methodToWorkflowNode(method: MethodId, context: FormContext)
+```
 
 Raw numeric `MethodId` values are scoped to one exact ProgramIR artifact. They
 must not be treated as stable persistent identities across contract revisions

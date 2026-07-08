@@ -1,22 +1,21 @@
 import type { AgentLike } from "../index.js"
 import type { AnySchema, ServiceSchema } from "../schema.js"
 import type { CandidProgram } from "../index.js"
-import { candidTypeText } from "./candid-format.js"
+import { candidTypeTextId, candidTypeTextRef } from "./candid-format.js"
 import { programToFormSchema } from "./form.js"
 import { irToSchema } from "./ir-to-schema.js"
 import { RuntimeMethodImpl } from "./method.js"
-import { assertProgramIRVersion, runtimeProgramView } from "./program-ir.js"
+import { assertProgramIRVersion, ProgramIrGraph } from "./program-ir.js"
 import { programToWorkflowSchema } from "./workflow.js"
 import type {
-  CandidArgIR,
-  CandidTypeIR,
   DynamicActor,
   DynamicActorCallOptions,
+  DeclId,
   FormSchemaOptions,
+  ProgramArgIR,
   ProgramFormSchema,
   ProgramIR,
   ProgramWorkflowSchema,
-  RuntimeProgramIR,
   RuntimeActorOptions,
   RuntimeArgInfo,
   RuntimeMethod,
@@ -32,10 +31,9 @@ export class RuntimeProgramImpl implements RuntimeProgram {
 
   readonly #program: CandidProgram
   readonly #formOptions: FormSchemaOptions
-  readonly #runtimeIr: RuntimeProgramIR
+  readonly #graph: ProgramIrGraph
   readonly #typeSchemas: Map<string, AnySchema>
   readonly #methods = new Map<string, RuntimeMethod>()
-  readonly #types = new Map<string, CandidTypeIR>()
 
   constructor(options: {
     source: string
@@ -48,17 +46,14 @@ export class RuntimeProgramImpl implements RuntimeProgram {
     this.ir = options.ir
     this.#program = options.program
     this.#formOptions = options.formOptions ?? {}
-    this.#runtimeIr = runtimeProgramView(options.ir)
+    this.#graph = new ProgramIrGraph(options.ir)
 
-    for (const declaration of this.#runtimeIr.types) {
-      this.#types.set(declaration.name, declaration.type)
-    }
-
-    const schemas = irToSchema(this.#runtimeIr)
+    const schemas = irToSchema(this.ir)
     this.#typeSchemas = schemas.typeSchemas
     this.service = schemas.service
 
-    for (const method of this.#runtimeIr.actor?.service.methods ?? []) {
+    for (const methodId of this.#graph.actorMethodIds()) {
+      const method = this.#graph.method(methodId)
       const schema = schemas.methodSchemas.get(method.name)
       if (!schema) {
         throw new Error(
@@ -67,7 +62,9 @@ export class RuntimeProgramImpl implements RuntimeProgram {
       }
       const runtimeMethod = new RuntimeMethodImpl({
         program: this.#program,
-        ir: this.#runtimeIr,
+        ir: this.ir,
+        graph: this.#graph,
+        methodId,
         methodIr: method,
         schema,
         formOptions: this.#formOptions,
@@ -81,28 +78,34 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   }
 
   listTypes(): RuntimeTypeInfo[] {
-    return this.#runtimeIr.types.map((declaration) => {
+    return this.ir.declarations.map((declaration, index) => {
+      const declarationId = index as DeclId
       const info: RuntimeTypeInfo = {
         name: declaration.name,
-        candidType: candidTypeText(declaration.type, this),
+        candidType: candidTypeTextId(
+          this.#graph,
+          declaration.type,
+          new Set([declarationId])
+        ),
       }
-      if (declaration.docs?.length) {
-        info.docs = declaration.docs
+      if (declaration.metadata?.docs?.length) {
+        info.docs = declaration.metadata.docs
       }
-      if (declaration.rawDocs?.length) {
-        info.rawDocs = declaration.rawDocs
+      if (declaration.metadata?.rawDocs?.length) {
+        info.rawDocs = declaration.metadata.rawDocs
       }
-      if (declaration.docTags?.length) {
-        info.docTags = declaration.docTags
+      if (declaration.metadata?.docTags?.length) {
+        info.docTags = declaration.metadata.docTags
       }
       return info
     })
   }
 
   listMethods(): RuntimeMethodInfo[] {
-    return (this.#runtimeIr.actor?.service.methods ?? []).map((method) => {
+    return this.#graph.actorMethodIds().map((methodId) => {
+      const method = this.#graph.method(methodId)
       const info: RuntimeMethodInfo = {
-        id: method.id,
+        id: methodId,
         name: method.name,
         mode: method.mode,
         args: method.args.map((arg, index) => this.argInfo(arg, `arg${index}`)),
@@ -110,14 +113,14 @@ export class RuntimeProgramImpl implements RuntimeProgram {
           this.argInfo(arg, `return${index}`)
         ),
       }
-      if (method.docs?.length) {
-        info.docs = method.docs
+      if (method.metadata?.docs?.length) {
+        info.docs = method.metadata.docs
       }
-      if (method.rawDocs?.length) {
-        info.rawDocs = method.rawDocs
+      if (method.metadata?.rawDocs?.length) {
+        info.rawDocs = method.metadata.rawDocs
       }
-      if (method.docTags?.length) {
-        info.docTags = method.docTags
+      if (method.metadata?.docTags?.length) {
+        info.docTags = method.metadata.docTags
       }
       return info
     })
@@ -202,30 +205,26 @@ export class RuntimeProgramImpl implements RuntimeProgram {
   }
 
   toFormSchema(): ProgramFormSchema {
-    return programToFormSchema(this.#runtimeIr, this.#formOptions)
+    return programToFormSchema(this.ir, this.#formOptions)
   }
 
   toWorkflowSchema(): ProgramWorkflowSchema {
-    return programToWorkflowSchema(this.#runtimeIr, this.#formOptions)
+    return programToWorkflowSchema(this.ir, this.#formOptions)
   }
 
-  typeByName(name: string): CandidTypeIR | undefined {
-    return this.#types.get(name)
-  }
-
-  private argInfo(arg: CandidArgIR, fallbackName: string): RuntimeArgInfo {
+  private argInfo(arg: ProgramArgIR, fallbackName: string): RuntimeArgInfo {
     const info: RuntimeArgInfo = {
       name: arg.name ?? fallbackName,
-      candidType: candidTypeText(arg.type, this),
+      candidType: candidTypeTextRef(this.#graph, arg.type),
     }
-    if (arg.docs?.length) {
-      info.docs = arg.docs
+    if (arg.metadata?.docs?.length) {
+      info.docs = arg.metadata.docs
     }
-    if (arg.rawDocs?.length) {
-      info.rawDocs = arg.rawDocs
+    if (arg.metadata?.rawDocs?.length) {
+      info.rawDocs = arg.metadata.rawDocs
     }
-    if (arg.docTags?.length) {
-      info.docTags = arg.docTags
+    if (arg.metadata?.docTags?.length) {
+      info.docTags = arg.metadata.docTags
     }
     return info
   }

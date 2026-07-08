@@ -7,6 +7,7 @@ import { CandidValidationError, c, type FormField } from "./index.js"
 import {
   candidLabelId,
   fieldObjectKey,
+  fieldLabelCandidId,
   PROGRAM_IR_VERSION,
   ProgramIrGraph,
 } from "./runtime/program-ir.js"
@@ -283,16 +284,8 @@ service : { save : (Fields) -> () };
     assert.equal(Object.hasOwn(namedField.label, "candid_id"), false)
     assert.equal(Object.hasOwn(namedField.label, "candidId"), false)
 
-    const runtimeFields = graph.runtimeTypeByName("Fields")
-    assert.equal(runtimeFields?.kind, "record")
-    if (runtimeFields?.kind !== "record") {
-      throw new Error("expected runtime Fields record")
-    }
-    const runtimeNamedField = runtimeFields.fields.find(
-      (field) => field.label.kind === "named" && field.label.name === "named"
-    )
     assert.equal(candidLabelId("owner"), 947_296_307)
-    assert.equal(runtimeNamedField?.candidId, candidLabelId("named"))
+    assert.equal(fieldLabelCandidId(namedField.label), candidLabelId("named"))
 
     assert.deepEqual(
       fields.fields
@@ -312,6 +305,51 @@ service : { save : (Fields) -> () };
         { label: { kind: "named", name: "type" }, key: "type" },
       ].sort((left, right) => left.key.localeCompare(right.key))
     )
+  })
+
+  it("does not keep the TypeScript runtime compatibility IR", () => {
+    const runtimeFiles = [
+      "types.ts",
+      "program-ir.ts",
+      "ir-to-schema.ts",
+      "form.ts",
+      "workflow.ts",
+      "program.ts",
+      "method.ts",
+      "validation.ts",
+      "candid-format.ts",
+    ]
+    const forbidden = [
+      ["Runtime", "ProgramIR"].join(""),
+      ["Candid", "ActorIR"].join(""),
+      ["Candid", "TypeDeclIR"].join(""),
+      ["Candid", "ServiceIR"].join(""),
+      ["Candid", "MethodIR"].join(""),
+      ["Candid", "ArgIR"].join(""),
+      ["Candid", "TypeIR"].join(""),
+      ["Candid", "FieldIR"].join(""),
+      ["Candid", "FieldLabelIR"].join(""),
+      ["runtime", "ProgramView"].join(""),
+      ["runtime", "TypeRef"].join(""),
+      ["runtime", "TypeId"].join(""),
+      ["runtime", "TypeByName"].join(""),
+    ]
+
+    for (const file of runtimeFiles) {
+      const source = readFileSync(resolve(__dirname, "runtime", file), "utf8")
+      for (const token of forbidden) {
+        assert.doesNotMatch(
+          source,
+          new RegExp(`\\b${token}\\b`),
+          `${file} must not contain ${token}`
+        )
+      }
+      assert.doesNotMatch(
+        source,
+        /kind:\s*"ref"/,
+        `${file} must not rebuild ref nodes`
+      )
+    }
   })
 
   it("preserves object encoding and decoding for derived field keys", async () => {

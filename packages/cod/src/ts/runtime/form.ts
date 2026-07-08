@@ -1,19 +1,21 @@
-import { candidTypeText } from "./candid-format.js"
-import { fieldObjectKey } from "./program-ir.js"
+import { candidTypeTextId } from "./candid-format.js"
+import { fieldObjectKey, isBlobTypeId, ProgramIrGraph } from "./program-ir.js"
 import type {
-  CandidArgIR,
-  CandidFieldIR,
-  CandidMethodIR,
-  CandidTypeIR,
   CustomJSDocFormat,
+  DeclId,
   DocTag,
   FormField,
   FormSchemaOptions,
   FormValidationRule,
   FormVariantOption,
   MethodFormSchema,
+  MethodId,
+  ProgramArgIR,
+  ProgramFieldIR,
   ProgramFormSchema,
-  RuntimeProgramIR,
+  ProgramIR,
+  ProgramTypeRefIR,
+  TypeId,
 } from "./types.js"
 
 type NormalizedCustomFormat = {
@@ -22,23 +24,24 @@ type NormalizedCustomFormat = {
 }
 
 export function programToFormSchema(
-  ir: RuntimeProgramIR,
+  ir: ProgramIR,
   options: FormSchemaOptions = {}
 ): ProgramFormSchema {
   const context = new FormContext(ir, options)
   return {
-    methods: (ir.actor?.service.methods ?? []).map((method) =>
-      methodToFormSchema(method, context)
-    ),
+    methods: context.graph
+      .actorMethodIds()
+      .map((methodId) => methodToFormSchema(methodId, context)),
   }
 }
 
 export function methodToFormSchema(
-  method: CandidMethodIR,
+  methodId: MethodId,
   context: FormContext
 ): MethodFormSchema {
+  const method = context.graph.method(methodId)
   const schema: MethodFormSchema = {
-    methodId: method.id,
+    methodId,
     name: method.name,
     mode: method.mode,
     args: method.args.map((arg, index) =>
@@ -48,15 +51,15 @@ export function methodToFormSchema(
       argToField(arg, `return${index}`, `returns[${index}]`, true, context)
     ),
   }
-  const docs = presentDocLines(method.docs)
+  const docs = presentDocLines(method.metadata?.docs)
   if (docs) {
     schema.docs = docs
   }
-  const rawDocs = presentDocLines(method.rawDocs)
+  const rawDocs = presentDocLines(method.metadata?.rawDocs)
   if (rawDocs) {
     schema.rawDocs = rawDocs
   }
-  const docTags = presentDocTags(method.docTags)
+  const docTags = presentDocTags(method.metadata?.docTags)
   if (docTags) {
     schema.docTags = docTags
   }
@@ -64,51 +67,18 @@ export function methodToFormSchema(
 }
 
 export class FormContext {
-  readonly #types = new Map<string, CandidTypeIR>()
-  readonly #docs = new Map<string, string[]>()
-  readonly #rawDocs = new Map<string, string[]>()
-  readonly #docTags = new Map<string, DocTag[]>()
+  readonly graph: ProgramIrGraph
   readonly #customFormats = new Map<string, NormalizedCustomFormat>()
 
   constructor(
-    readonly ir: RuntimeProgramIR,
+    readonly ir: ProgramIR,
     options: FormSchemaOptions = {}
   ) {
-    for (const declaration of ir.types) {
-      this.#types.set(declaration.name, declaration.type)
-      const docs = presentDocLines(declaration.docs)
-      if (docs) {
-        this.#docs.set(declaration.name, docs)
-      }
-      const rawDocs = presentDocLines(declaration.rawDocs)
-      if (rawDocs) {
-        this.#rawDocs.set(declaration.name, rawDocs)
-      }
-      const docTags = presentDocTags(declaration.docTags)
-      if (docTags) {
-        this.#docTags.set(declaration.name, docTags)
-      }
-    }
+    this.graph = new ProgramIrGraph(ir)
 
     for (const [name, format] of Object.entries(customFormatTypes(options))) {
       this.#customFormats.set(name, normalizeCustomFormat(format))
     }
-  }
-
-  typeByName(name: string): CandidTypeIR | undefined {
-    return this.#types.get(name)
-  }
-
-  docsByName(name: string): string[] | undefined {
-    return this.#docs.get(name)
-  }
-
-  rawDocsByName(name: string): string[] | undefined {
-    return this.#rawDocs.get(name)
-  }
-
-  docTagsByName(name: string): DocTag[] | undefined {
-    return this.#docTags.get(name)
   }
 
   customFormat(name: string): NormalizedCustomFormat | undefined {
@@ -117,19 +87,19 @@ export class FormContext {
 }
 
 function argToField(
-  arg: CandidArgIR,
+  arg: ProgramArgIR,
   fallbackName: string,
   path: string,
   required: boolean,
   context: FormContext
 ): FormField {
-  return typeToField(arg.type, {
+  return typeRefToField(arg.type, {
     name: arg.name ?? fallbackName,
     path,
     required,
-    docs: arg.docs,
-    rawDocs: arg.rawDocs,
-    docTags: arg.docTags,
+    docs: arg.metadata?.docs,
+    rawDocs: arg.metadata?.rawDocs,
+    docTags: arg.metadata?.docTags,
     context,
     refs: new Set(),
   })
@@ -144,55 +114,63 @@ type FieldOptions = {
   docTags?: readonly DocTag[] | undefined
   validationDocTags?: readonly DocTag[] | undefined
   context: FormContext
-  refs: Set<string>
+  refs: Set<DeclId>
 }
 
-function typeToField(type: CandidTypeIR, options: FieldOptions): FormField {
-  if (type.kind === "ref") {
-    const docs = options.docs ?? options.context.docsByName(type.name)
-    const rawDocs = options.rawDocs ?? options.context.rawDocsByName(type.name)
-    const docTags = options.docTags ?? options.context.docTagsByName(type.name)
+function typeRefToField(
+  reference: ProgramTypeRefIR,
+  options: FieldOptions
+): FormField {
+  if (reference.kind === "decl") {
+    return declarationRefToField(reference.id, options)
+  }
+  return typeIdToField(reference.id, options)
+}
 
-    if (options.refs.has(type.name)) {
-      return baseField(
-        type,
-        "unsupported",
-        { ...options, docs, rawDocs, docTags },
-        type.name
-      )
-    }
+function declarationRefToField(id: DeclId, options: FieldOptions): FormField {
+  const declaration = options.context.graph.declaration(id)
+  const docs = options.docs ?? declaration.metadata?.docs
+  const rawDocs = options.rawDocs ?? declaration.metadata?.rawDocs
+  const docTags = options.docTags ?? declaration.metadata?.docTags
 
-    const target = options.context.typeByName(type.name)
-    if (!target) {
-      return baseField(
-        type,
-        "unsupported",
-        { ...options, docs, rawDocs, docTags },
-        type.name
-      )
-    }
-
-    return typeToField(target, {
-      ...options,
-      docs,
-      rawDocs,
-      docTags,
-      refs: new Set([...options.refs, type.name]),
-    })
+  if (options.refs.has(id)) {
+    return baseField(
+      "unsupported",
+      { ...options, docs, rawDocs, docTags },
+      declaration.name
+    )
   }
 
+  return typeIdToField(declaration.type, {
+    ...options,
+    docs,
+    rawDocs,
+    docTags,
+    refs: new Set([...options.refs, id]),
+  })
+}
+
+function typeIdToField(id: TypeId, options: FieldOptions): FormField {
+  const graph = options.context.graph
+  const candidType = candidTypeTextId(graph, id)
+
+  if (isBlobTypeId(graph, id)) {
+    return baseField("blob", options, candidType)
+  }
+
+  const type = graph.typeKind(id)
   switch (type.kind) {
     case "null":
-      return baseField(type, "null", options)
+      return baseField("null", options, candidType)
     case "bool":
-      return baseField(type, "boolean", options)
+      return baseField("boolean", options, candidType)
     case "text":
-      return baseField(type, "text", options)
+      return baseField("text", options, candidType)
     case "nat":
     case "int":
     case "nat64":
     case "int64":
-      return baseField(type, "bigint", options)
+      return baseField("bigint", options, candidType)
     case "nat8":
     case "nat16":
     case "nat32":
@@ -201,15 +179,17 @@ function typeToField(type: CandidTypeIR, options: FieldOptions): FormField {
     case "int32":
     case "float32":
     case "float64":
-      return baseField(type, "number", options)
+      return baseField("number", options, candidType)
     case "principal":
-      return baseField(type, "principal", options)
-    case "blob":
-      return baseField(type, "blob", options)
+      return baseField("principal", options, candidType)
     case "opt": {
-      const field = baseField(type, "option", { ...options, required: false })
+      const field = baseField(
+        "option",
+        { ...options, required: false },
+        candidType
+      )
       field.children = [
-        typeToField(type.inner, {
+        typeRefToField(type.inner, {
           ...options,
           name: "value",
           path: `${options.path}.value`,
@@ -226,12 +206,12 @@ function typeToField(type: CandidTypeIR, options: FieldOptions): FormField {
       return field
     }
     case "vec": {
-      const field = baseField(type, "array", options)
+      const field = baseField("array", options, candidType)
       const elementTags = elementDocTags(
         combinedDocTags(options.docTags, options.validationDocTags)
       )
       field.children = [
-        typeToField(type.inner, {
+        typeRefToField(type.inner, {
           ...options,
           name: "item",
           path: `${options.path}[0]`,
@@ -245,14 +225,14 @@ function typeToField(type: CandidTypeIR, options: FieldOptions): FormField {
       return field
     }
     case "record": {
-      const field = baseField(type, "record", options)
+      const field = baseField("record", options, candidType)
       field.children = type.fields.map((recordField) =>
         recordFieldToFormField(recordField, options)
       )
       return field
     }
     case "variant": {
-      const field = baseField(type, "variant", options)
+      const field = baseField("variant", options, candidType)
       field.options = type.fields.map((variantField) =>
         variantOption(variantField, options)
       )
@@ -262,72 +242,71 @@ function typeToField(type: CandidTypeIR, options: FieldOptions): FormField {
     case "empty":
     case "func":
     case "service":
-      return baseField(type, "unsupported", options)
+      return baseField("unsupported", options, candidType)
   }
 }
 
 function recordFieldToFormField(
-  field: CandidFieldIR,
+  field: ProgramFieldIR,
   parent: FieldOptions
 ): FormField {
   const name = fieldDisplayName(field)
   const key = fieldObjectKey(field)
-  return typeToField(field.type, {
+  return typeRefToField(field.type, {
     ...parent,
     name,
     path: `${parent.path}${pathSegment(key)}`,
     required: true,
-    docs: field.docs,
-    rawDocs: field.rawDocs,
-    docTags: field.docTags,
+    docs: field.metadata?.docs,
+    rawDocs: field.metadata?.rawDocs,
+    docTags: field.metadata?.docTags,
   })
 }
 
 function variantOption(
-  field: CandidFieldIR,
+  field: ProgramFieldIR,
   parent: FieldOptions
 ): FormVariantOption {
   const name = fieldDisplayName(field)
   const key = fieldObjectKey(field)
   const option: FormVariantOption = {
     name,
-    label: labelFromDocTags(field.docTags) ?? name,
+    label: labelFromDocTags(field.metadata?.docTags) ?? name,
   }
-  const docs = presentDocLines(field.docs)
+  const docs = presentDocLines(field.metadata?.docs)
   if (docs) {
     option.docs = docs
   }
-  const rawDocs = presentDocLines(field.rawDocs)
+  const rawDocs = presentDocLines(field.metadata?.rawDocs)
   if (rawDocs) {
     option.rawDocs = rawDocs
   }
-  const docTags = presentDocTags(field.docTags)
+  const docTags = presentDocTags(field.metadata?.docTags)
   if (docTags) {
     option.docTags = docTags
   }
-  if (field.type.kind !== "null") {
-    option.field = typeToField(field.type, {
+  if (!isDirectNullRef(parent.context.graph, field.type)) {
+    option.field = typeRefToField(field.type, {
       ...parent,
       name,
       path: `${parent.path}${pathSegment(key)}`,
       required: true,
-      docs: field.docs,
-      rawDocs: field.rawDocs,
-      docTags: field.docTags,
+      docs: field.metadata?.docs,
+      rawDocs: field.metadata?.rawDocs,
+      docTags: field.metadata?.docTags,
     })
   }
   return option
 }
 
-function fieldDisplayName(field: CandidFieldIR): string {
+function fieldDisplayName(field: ProgramFieldIR): string {
   return field.label.kind === "named" ? field.label.name : fieldObjectKey(field)
 }
 
 function baseField(
-  type: CandidTypeIR,
   kind: FormField["kind"],
   options: FieldOptions,
-  candidType = candidTypeText(type, options.context),
+  candidType: string,
   docs = options.docs
 ): FormField {
   const field: FormField = {
@@ -359,6 +338,15 @@ function baseField(
     field.validation = validation
   }
   return field
+}
+
+function isDirectNullRef(
+  graph: ProgramIrGraph,
+  reference: ProgramTypeRefIR
+): boolean {
+  return (
+    reference.kind === "type" && graph.typeKind(reference.id).kind === "null"
+  )
 }
 
 function pathSegment(key: string): string {

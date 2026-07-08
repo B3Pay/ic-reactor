@@ -6,14 +6,16 @@ import {
 } from "../index.js"
 import type { AnyMethodSchema, AnySchema } from "../schema.js"
 import { FormContext, methodToFormSchema } from "./form.js"
+import { ProgramIrGraph } from "./program-ir.js"
 import { validateMethodArgs, validateMethodReturn } from "./validation.js"
 import { methodToWorkflowNode } from "./workflow.js"
 import type {
-  CandidMethodIR,
   DocTag,
   FormSchemaOptions,
+  MethodId,
   MethodFormSchema,
-  RuntimeProgramIR,
+  ProgramIR,
+  ProgramMethodIR,
   RuntimeArgInfo,
   RuntimeMethod,
   RuntimeMethodCallOptions,
@@ -31,16 +33,20 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   readonly docTags?: readonly DocTag[]
 
   readonly #program: CandidProgram
-  readonly #ir: RuntimeProgramIR
-  readonly #methodIr: CandidMethodIR
+  readonly #ir: ProgramIR
+  readonly #graph: ProgramIrGraph
+  readonly #methodId: MethodId
+  readonly #methodIr: ProgramMethodIR
   readonly #schema: AnyMethodSchema
   readonly #formOptions: FormSchemaOptions
   #replyProgram?: CandidProgram
 
   constructor(options: {
     program: CandidProgram
-    ir: RuntimeProgramIR
-    methodIr: CandidMethodIR
+    ir: ProgramIR
+    graph: ProgramIrGraph
+    methodId: MethodId
+    methodIr: ProgramMethodIR
     schema: AnyMethodSchema
     formOptions?: FormSchemaOptions
     args: RuntimeArgInfo[]
@@ -48,22 +54,24 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   }) {
     this.#program = options.program
     this.#ir = options.ir
+    this.#graph = options.graph
+    this.#methodId = options.methodId
     this.#methodIr = options.methodIr
     this.#schema = options.schema
     this.#formOptions = options.formOptions ?? {}
-    this.id = options.methodIr.id
+    this.id = options.methodId
     this.name = options.methodIr.name
     this.mode = options.methodIr.mode
     this.args = options.args
     this.returns = options.returns
-    if (options.methodIr.docs?.length) {
-      this.docs = options.methodIr.docs
+    if (options.methodIr.metadata?.docs?.length) {
+      this.docs = options.methodIr.metadata.docs
     }
-    if (options.methodIr.rawDocs?.length) {
-      this.rawDocs = options.methodIr.rawDocs
+    if (options.methodIr.metadata?.rawDocs?.length) {
+      this.rawDocs = options.methodIr.metadata.rawDocs
     }
-    if (options.methodIr.docTags?.length) {
-      this.docTags = options.methodIr.docTags
+    if (options.methodIr.metadata?.docTags?.length) {
+      this.docTags = options.methodIr.metadata.docTags
     }
   }
 
@@ -76,7 +84,7 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   }
 
   encodeArgs(args: readonly unknown[]): Uint8Array {
-    validateMethodArgs(this.#methodIr, args, this)
+    validateMethodArgs(this.#methodIr, args, this.#graph)
     return this.#program.encodeMethodArgs(
       this.name,
       this.#schema.argsToCandid(args as any)
@@ -98,20 +106,20 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   decodeReply(bytes: Uint8Array): unknown {
     const text = this.#program.decodeMethodReply(this.name, bytes)
     const value = this.#schema.decodeReplyText(text)
-    validateMethodReturn(this.#methodIr, value, this)
+    validateMethodReturn(this.#methodIr, value, this.#graph)
     return value
   }
 
   toFormSchema(): MethodFormSchema {
     return methodToFormSchema(
-      this.#methodIr,
+      this.#methodId,
       new FormContext(this.#ir, this.#formOptions)
     )
   }
 
   toWorkflowNode(): WorkflowMethodNode {
     return methodToWorkflowNode(
-      this.#methodIr,
+      this.#methodId,
       new FormContext(this.#ir, this.#formOptions)
     )
   }
@@ -140,10 +148,6 @@ export class RuntimeMethodImpl implements RuntimeMethod {
             updateRequest(options, this.name, arg)
           )
     return this.decodeReply(extractReplyBytes(response))
-  }
-
-  typeByName(name: string) {
-    return this.#ir.types.find((type) => type.name === name)?.type
   }
 
   private replyProgram(): CandidProgram {
