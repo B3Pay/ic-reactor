@@ -286,6 +286,8 @@ wire implementation
 re-lower from `TypeEnv`, `Type`, or `IDLMergedProg`. The merged Candid program is
 a frontend/lowering input, not part of the compiled program.
 
+Program summaries are derived from `ProgramIrGraph`, not from codec internals.
+
 The codec must not become a second structural program API.
 
 Forms must not inspect the codec.

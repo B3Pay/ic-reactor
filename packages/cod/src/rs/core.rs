@@ -7,7 +7,10 @@ use candid_parser::{parse_idl_args, utils};
 use serde::Serialize;
 
 use crate::parse_candid_source;
-use crate::{ir, ProgramIr};
+use crate::{
+    ir, ArgIr, FieldIr, FieldLabelIr, MethodModeIr, ProgramIr, ProgramIrGraph, TypeId, TypeKindIr,
+    TypeRefIr,
+};
 
 #[derive(Debug)]
 pub struct CandidProgram {
@@ -51,7 +54,8 @@ impl CandidProgram {
     }
 
     pub fn summary(&self) -> Result<ProgramSummary> {
-        self.codec.summary()
+        let graph = self.ir.graph()?;
+        ProgramSummary::from_graph(&graph)
     }
 
     pub fn service_did(&self) -> Result<String> {
@@ -95,31 +99,34 @@ impl CandidProgram {
     }
 }
 
-impl CandidCodec {
-    fn summary(&self) -> Result<ProgramSummary> {
-        let (init_args, service) = self.service_parts()?;
-        let methods = self
-            .env
-            .as_service(&service)?
-            .iter()
-            .map(|(name, method)| {
-                let func = self.env.as_func(method)?;
+impl ProgramSummary {
+    pub fn from_graph(graph: &ProgramIrGraph<'_>) -> Result<Self> {
+        let actor = graph
+            .actor()
+            .ok_or_else(|| anyhow!("Candid source has no service actor"))?;
+
+        let methods = graph
+            .service_methods(actor.service)?
+            .into_iter()
+            .map(|method| {
                 Ok(MethodSummary {
-                    name: name.clone(),
-                    modes: func.modes.iter().map(|mode| format!("{mode:?}")).collect(),
-                    args: func.args.iter().map(type_to_string).collect(),
-                    returns: func.rets.iter().map(type_to_string).collect(),
+                    name: method.name.clone(),
+                    modes: method_summary_modes(method.mode),
+                    args: candid_arg_type_texts(graph, &method.args)?,
+                    returns: candid_arg_type_texts(graph, &method.returns)?,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(ProgramSummary {
-            service: type_to_string(&service),
-            init_args: init_args.iter().map(type_to_string).collect(),
+        Ok(Self {
+            service: candid_type_text_id(graph, actor.service)?,
+            init_args: candid_arg_type_texts(graph, &actor.init_args)?,
             methods,
         })
     }
+}
 
+impl CandidCodec {
     fn service_did(&self) -> Result<String> {
         let actor = self.require_actor()?;
         Ok(
@@ -199,9 +206,182 @@ pub fn parse_summary_json(source: &str) -> Result<String> {
     Ok(serde_json::to_string_pretty(&program.summary()?)?)
 }
 
-fn type_to_string(ty: &Type) -> String {
-    ty.to_string()
+fn candid_arg_type_texts(graph: &ProgramIrGraph<'_>, args: &[ArgIr]) -> Result<Vec<String>> {
+    args.iter()
+        .map(|arg| candid_type_text_ref(graph, arg.typ))
+        .collect()
 }
+
+fn candid_type_text_ref(graph: &ProgramIrGraph<'_>, reference: TypeRefIr) -> Result<String> {
+    match reference {
+        TypeRefIr::Type { id } => candid_type_text_id(graph, id),
+        TypeRefIr::Decl { id } => Ok(graph.declaration(id)?.name.clone()),
+    }
+}
+
+fn candid_type_text_id(graph: &ProgramIrGraph<'_>, id: TypeId) -> Result<String> {
+    Ok(match graph.type_kind(id)? {
+        TypeKindIr::Null => "null".to_string(),
+        TypeKindIr::Bool => "bool".to_string(),
+        TypeKindIr::Nat => "nat".to_string(),
+        TypeKindIr::Int => "int".to_string(),
+        TypeKindIr::Nat8 => "nat8".to_string(),
+        TypeKindIr::Nat16 => "nat16".to_string(),
+        TypeKindIr::Nat32 => "nat32".to_string(),
+        TypeKindIr::Nat64 => "nat64".to_string(),
+        TypeKindIr::Int8 => "int8".to_string(),
+        TypeKindIr::Int16 => "int16".to_string(),
+        TypeKindIr::Int32 => "int32".to_string(),
+        TypeKindIr::Int64 => "int64".to_string(),
+        TypeKindIr::Float32 => "float32".to_string(),
+        TypeKindIr::Float64 => "float64".to_string(),
+        TypeKindIr::Text => "text".to_string(),
+        TypeKindIr::Principal => "principal".to_string(),
+        TypeKindIr::Reserved => "reserved".to_string(),
+        TypeKindIr::Empty => "empty".to_string(),
+        TypeKindIr::Opt { inner } => format!("opt {}", candid_type_text_ref(graph, *inner)?),
+        TypeKindIr::Vec { inner } => format!("vec {}", candid_type_text_ref(graph, *inner)?),
+        TypeKindIr::Record { fields } => format!(
+            "record {{ {} }}",
+            fields
+                .iter()
+                .map(|field| candid_field_text(graph, field, false))
+                .collect::<Result<Vec<_>>>()?
+                .join("; ")
+        ),
+        TypeKindIr::Variant { fields } => format!(
+            "variant {{ {} }}",
+            fields
+                .iter()
+                .map(|field| candid_field_text(graph, field, true))
+                .collect::<Result<Vec<_>>>()?
+                .join("; ")
+        ),
+        TypeKindIr::Func {
+            args,
+            returns,
+            mode,
+        } => format!(
+            "func ({}) -> ({}){}",
+            candid_arg_type_texts(graph, args)?.join(", "),
+            candid_arg_type_texts(graph, returns)?.join(", "),
+            method_mode_suffix(*mode)
+        ),
+        TypeKindIr::Service { methods } => format!(
+            "service {{ {} }}",
+            methods
+                .iter()
+                .map(|method_id| {
+                    let method = graph.method(*method_id)?;
+                    Ok(format!(
+                        "{} : ({}) -> ({}){}",
+                        candid_label(&method.name),
+                        candid_arg_type_texts(graph, &method.args)?.join(", "),
+                        candid_arg_type_texts(graph, &method.returns)?.join(", "),
+                        method_mode_suffix(method.mode)
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?
+                .join("; ")
+        ),
+    })
+}
+
+fn candid_field_text(graph: &ProgramIrGraph<'_>, field: &FieldIr, variant: bool) -> Result<String> {
+    let label = candid_field_label(&field.label);
+    if variant && type_ref_is_direct_null(graph, field.typ)? {
+        return Ok(label);
+    }
+
+    Ok(format!(
+        "{} : {}",
+        label,
+        candid_type_text_ref(graph, field.typ)?
+    ))
+}
+
+fn type_ref_is_direct_null(graph: &ProgramIrGraph<'_>, reference: TypeRefIr) -> Result<bool> {
+    match reference {
+        TypeRefIr::Type { id } => Ok(matches!(graph.type_kind(id)?, TypeKindIr::Null)),
+        TypeRefIr::Decl { .. } => Ok(false),
+    }
+}
+
+fn candid_field_label(label: &FieldLabelIr) -> String {
+    match label {
+        FieldLabelIr::Named { name } => candid_label(name),
+        FieldLabelIr::Id { candid_id } | FieldLabelIr::Unnamed { candid_id } => {
+            candid_id.to_string()
+        }
+    }
+}
+
+fn candid_label(name: &str) -> String {
+    if is_candid_identifier(name) && !CANDID_KEYWORDS.contains(&name) {
+        name.to_string()
+    } else {
+        serde_json::to_string(name).expect("serializing a string cannot fail")
+    }
+}
+
+fn is_candid_identifier(name: &str) -> bool {
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first.is_ascii_alphabetic() || first == '_')
+        && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+}
+
+fn method_summary_modes(mode: MethodModeIr) -> Vec<String> {
+    match mode {
+        MethodModeIr::Query => vec!["query".to_string()],
+        MethodModeIr::CompositeQuery => vec!["composite_query".to_string()],
+        MethodModeIr::Update => vec![],
+        MethodModeIr::Oneway => vec!["oneway".to_string()],
+    }
+}
+
+fn method_mode_suffix(mode: MethodModeIr) -> &'static str {
+    match mode {
+        MethodModeIr::Query => " query",
+        MethodModeIr::CompositeQuery => " composite_query",
+        MethodModeIr::Update => "",
+        MethodModeIr::Oneway => " oneway",
+    }
+}
+
+const CANDID_KEYWORDS: &[&str] = &[
+    "blob",
+    "bool",
+    "decimal",
+    "empty",
+    "float32",
+    "float64",
+    "func",
+    "import",
+    "int",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "nat",
+    "nat8",
+    "nat16",
+    "nat32",
+    "nat64",
+    "null",
+    "opt",
+    "principal",
+    "query",
+    "record",
+    "reserved",
+    "service",
+    "text",
+    "type",
+    "variant",
+    "vec",
+];
 
 #[cfg(test)]
 mod tests {
@@ -279,5 +459,66 @@ service : {
         assert_eq!(summary.methods.len(), 2);
         assert!(summary.methods.iter().any(|method| method.name == "lookup"));
         assert!(summary.methods.iter().any(|method| method.name == "save"));
+    }
+
+    #[test]
+    fn summary_consumes_program_ir_and_preserves_declaration_refs() {
+        let summary = CandidProgram::from_source(DID).unwrap().summary().unwrap();
+        let save = summary
+            .methods
+            .iter()
+            .find(|method| method.name == "save")
+            .unwrap();
+        let lookup = summary
+            .methods
+            .iter()
+            .find(|method| method.name == "lookup")
+            .unwrap();
+
+        assert_eq!(save.modes, Vec::<String>::new());
+        assert_eq!(save.args, vec!["Contact"]);
+        assert_eq!(save.returns, vec!["variant { ok : nat; err : text }"]);
+        assert_eq!(lookup.modes, vec!["query"]);
+        assert_eq!(lookup.returns, vec!["opt Contact"]);
+    }
+
+    #[test]
+    fn summary_reports_service_class_init_args_and_modes_from_program_ir() {
+        let summary = CandidProgram::from_source(
+            r#"
+type Config = record { owner : principal };
+
+service : (Config, opt text) -> {
+  read : () -> (text) query;
+  stream : () -> (text) composite_query;
+  write : (text) -> ();
+  notify : (text) -> () oneway;
+}
+"#,
+        )
+        .unwrap()
+        .summary()
+        .unwrap();
+
+        assert_eq!(summary.init_args, vec!["Config", "opt text"]);
+        assert!(summary.service.contains("read : () -> (text) query"));
+        assert_eq!(summary_method(&summary, "read").modes, vec!["query"]);
+        assert_eq!(
+            summary_method(&summary, "stream").modes,
+            vec!["composite_query"]
+        );
+        assert_eq!(
+            summary_method(&summary, "write").modes,
+            Vec::<String>::new()
+        );
+        assert_eq!(summary_method(&summary, "notify").modes, vec!["oneway"]);
+    }
+
+    fn summary_method<'a>(summary: &'a ProgramSummary, name: &str) -> &'a MethodSummary {
+        summary
+            .methods
+            .iter()
+            .find(|method| method.name == name)
+            .unwrap()
     }
 }

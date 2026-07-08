@@ -510,7 +510,7 @@ Our law becomes real:
 
 **Priority: Medium/High**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
 Current `summary()` calls:
 
