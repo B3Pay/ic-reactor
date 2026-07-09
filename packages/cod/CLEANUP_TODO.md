@@ -706,7 +706,7 @@ No need to add Zod as a dependency.
 
 **Priority: Medium**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
 ProgramIR correctly preserves:
 
@@ -750,7 +750,7 @@ service : {}
 
 **Priority: Critical before future Codex feature work**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
 Current architecture document still shows the old recursive ProgramIR root and embedded service actor.
 

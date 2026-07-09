@@ -381,7 +381,7 @@ pub mode: String
 Good:
 
 ```rust
-pub enum CandidMethodModeIr {
+pub enum MethodModeIr {
     Query,
     CompositeQuery,
     Update,
@@ -753,7 +753,7 @@ pub enum TypeKindIr {
     Func {
         args: Vec<ArgIr>,
         returns: Vec<ArgIr>,
-        mode: CandidMethodModeIr,
+        mode: MethodModeIr,
     },
 
     Service {
@@ -888,7 +888,7 @@ use `ProgramIrGraph` as an index/view over the canonical arenas and
 
 ### Hard emitter rule
 
-The final TypeScript emitter should import no structural Candid compiler APIs.
+The TypeScript emitter must import no structural Candid compiler APIs.
 
 The following imports should not exist in the emitter:
 
@@ -953,6 +953,11 @@ const schemas = irToSchema(program.ir)
 ```
 
 is the correct direction.
+
+The runtime must preserve actor absence exactly as ProgramIR does. A type-only
+DID has `program.ir.actor === null` and therefore `runtime.service === null`.
+An explicit empty actor, `service : {}`, has an actor and therefore projects to
+`c.service({})`.
 
 This adapter may derive JavaScript-specific details such as property keys.
 

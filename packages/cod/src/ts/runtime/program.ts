@@ -28,7 +28,7 @@ import type {
 export class RuntimeProgramImpl implements RuntimeProgram {
   readonly source: string
   readonly ir: ProgramIR
-  readonly service: ServiceSchema<any>
+  readonly service: ServiceSchema<any> | null
 
   readonly #program: CandidProgram
   readonly #formOptions: FormSchemaOptions

@@ -50,7 +50,7 @@ import type {
 export type RuntimeSchemaSet = {
   typeSchemas: Map<string, AnySchema>
   methodSchemas: Map<string, AnyMethodSchema>
-  service: ServiceSchema<any>
+  service: ServiceSchema<any> | null
 }
 
 export function irToSchema(ir: ProgramIR): RuntimeSchemaSet {
@@ -92,7 +92,7 @@ class SchemaContext {
     return {
       typeSchemas: this.#schemas,
       methodSchemas,
-      service: service(methods),
+      service: this.graph.actor() ? service(methods) : null,
     }
   }
 

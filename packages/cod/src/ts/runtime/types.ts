@@ -175,7 +175,7 @@ export type RuntimeMethodInfo = {
 export type RuntimeProgram = {
   readonly source: string
   readonly ir: ProgramIR
-  readonly service: ServiceSchema<any>
+  readonly service: ServiceSchema<any> | null
 
   listTypes(): RuntimeTypeInfo[]
   listMethods(): RuntimeMethodInfo[]

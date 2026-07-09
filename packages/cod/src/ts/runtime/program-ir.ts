@@ -110,6 +110,10 @@ export class ProgramIrGraph {
     return this.ir.methods
   }
 
+  actor(): ProgramActorIR | null {
+    return this.ir.actor
+  }
+
   typeNode(id: TypeId): ProgramTypeNodeIR {
     const node = this.ir.types[id]
     if (!node) {
@@ -172,7 +176,7 @@ export class ProgramIrGraph {
   }
 
   actorMethodIds(): readonly MethodId[] {
-    const actor = this.ir.actor
+    const actor = this.actor()
     if (!actor) {
       return []
     }

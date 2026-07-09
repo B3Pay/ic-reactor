@@ -86,6 +86,7 @@ type User = record {
 `)
 
     assert.equal(program.ir.actor, null)
+    assert.equal(program.service, null)
     assert.deepEqual(
       program.listTypes().map((type) => type.name),
       ["User"]
@@ -108,6 +109,7 @@ type User = record {
     const program = await c.compileDid(`service : {}`)
 
     assert.ok(program.ir.actor)
+    assert.deepEqual(program.service?.methods, {})
     assert.deepEqual(program.ir.actor.initArgs, [])
     const service = program.ir.types[program.ir.actor.service]?.kind
     assert.equal(service?.kind, "service")
