@@ -485,6 +485,13 @@ JSON.parse(value) as ProgramIR
 
 is automatically a compatible program.
 
+The TypeScript runtime boundary must parse serialized IR through
+`parseProgramIR(value: unknown)` or `validateProgramIR(value: unknown)`. Shape
+validation checks the exact JSON contract before graph validation runs.
+`ProgramIrGraph` then validates ProgramIR graph invariants such as resolved
+type/declaration/method references, actor service targets, oneway returns,
+duplicate field IDs, method arena references, and direct structural cycles.
+
 ---
 
 ## 9. Wire Truth and Semantic Meaning Are Separate

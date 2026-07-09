@@ -5,7 +5,7 @@ import { candidTypeTextId, candidTypeTextRef } from "./candid-format.js"
 import { programToFormSchema } from "./form.js"
 import { irToSchema } from "./ir-to-schema.js"
 import { RuntimeMethodImpl } from "./method.js"
-import { assertProgramIRVersion, ProgramIrGraph } from "./program-ir.js"
+import { ProgramIrGraph, validateProgramIR } from "./program-ir.js"
 import { ProgramSemanticsGraph } from "./semantics.js"
 import { programToWorkflowSchema } from "./workflow.js"
 import type {
@@ -44,7 +44,7 @@ export class RuntimeProgramImpl implements RuntimeProgram {
     formOptions?: FormSchemaOptions
   }) {
     this.source = options.source
-    assertProgramIRVersion(options.ir)
+    validateProgramIR(options.ir)
     this.ir = options.ir
     this.#program = options.program
     this.#formOptions = options.formOptions ?? {}

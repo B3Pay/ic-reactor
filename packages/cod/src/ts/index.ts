@@ -41,6 +41,7 @@ import {
   vec,
 } from "./schema.js"
 import { compileDid } from "./runtime/compile-did.js"
+import { parseProgramIR } from "./runtime/program-ir.js"
 import {
   addArrayItem,
   createFormState,
@@ -66,6 +67,14 @@ export * from "./schema.js"
 export { compileDid } from "./runtime/compile-did.js"
 export * from "./runtime/form-state.js"
 export { CandidValidationError } from "./runtime/validation.js"
+export {
+  InvalidProgramIRError,
+  PROGRAM_IR_VERSION,
+  ProgramIrGraph,
+  UnsupportedProgramIRVersionError,
+  parseProgramIR,
+  validateProgramIR,
+} from "./runtime/program-ir.js"
 export * from "./runtime/types.js"
 
 /**
@@ -327,9 +336,8 @@ export class CandidProgram {
    * @returns Normalized Candid program IR.
    */
   ir(): ProgramIR {
-    return JSON.parse(
-      (this.#inner as unknown as { irJson(): string }).irJson()
-    ) as ProgramIR
+    const value: unknown = JSON.parse(this.#inner.irJson())
+    return parseProgramIR(value)
   }
 
   /**

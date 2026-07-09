@@ -8,6 +8,7 @@ import {
   candidLabelId,
   fieldObjectKey,
   fieldLabelCandidId,
+  parseProgramIR,
   PROGRAM_IR_VERSION,
   ProgramIrGraph,
 } from "./runtime/program-ir.js"
@@ -21,6 +22,7 @@ import {
   programForTest,
   assertBytesEqual,
 } from "./test-helpers.js"
+import type { ProgramIR, ProgramTypeKindIR } from "./runtime/types.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -224,6 +226,140 @@ type User = record {
     assert.throws(
       () => new RuntimeProgramImpl({ source: did, ir, program: raw }),
       /Unsupported ProgramIR version/
+    )
+  })
+
+  it("parses valid ProgramIR JSON at the TypeScript boundary", () => {
+    const raw = programForTest(`service : { ping : () -> () query }`)
+    const ir = raw.ir()
+
+    assert.equal(parseProgramIR(ir), ir)
+    assert.equal(
+      new RuntimeProgramImpl({ source: "", ir, program: raw }).ir,
+      ir
+    )
+  })
+
+  it("rejects malformed ProgramIR JSON shapes before graph traversal", () => {
+    const validEmptyActor: ProgramIR = {
+      version: PROGRAM_IR_VERSION,
+      types: [{ kind: { kind: "service", methods: [] } }],
+      declarations: [],
+      methods: [],
+      actor: { initArgs: [], service: 0 },
+    }
+
+    assert.throws(
+      () => parseProgramIR(null),
+      /Invalid ProgramIR at ProgramIR: expected object/
+    )
+    assert.throws(
+      () => parseProgramIR({ ...validEmptyActor, extra: true }),
+      /unexpected field "extra"/
+    )
+    assert.throws(
+      () => parseProgramIR({ ...validEmptyActor, types: "nope" }),
+      /Invalid ProgramIR at ProgramIR\.types: expected array/
+    )
+    assert.throws(
+      () =>
+        parseProgramIR({
+          ...validEmptyActor,
+          types: [{ kind: { kind: "ref" } }],
+        }),
+      /unsupported type kind "ref"/
+    )
+    assert.throws(
+      () =>
+        parseProgramIR({
+          ...validEmptyActor,
+          types: [
+            {
+              kind: {
+                kind: "record",
+                fields: [
+                  {
+                    label: { kind: "id", candid_id: 10 },
+                    type: { kind: "type", id: 0 },
+                  },
+                ],
+              },
+            },
+          ],
+          actor: null,
+        }),
+      /unexpected field "candid_id"/
+    )
+    assert.throws(
+      () =>
+        parseProgramIR({
+          ...validEmptyActor,
+          types: [
+            {
+              kind: {
+                kind: "record",
+                fields: [
+                  {
+                    label: { kind: "id" },
+                    type: { kind: "type", id: 0 },
+                  },
+                ],
+              },
+            },
+          ],
+          actor: null,
+        }),
+      /missing field "candidId"/
+    )
+    assert.throws(
+      () =>
+        parseProgramIR({
+          ...validEmptyActor,
+          declarations: [{ name: "Empty", type: 0, metadata: {} }],
+        }),
+      /empty metadata must be omitted/
+    )
+  })
+
+  it("rejects shape-valid ProgramIR values that violate graph invariants", () => {
+    assertInvalidProgramIR((ir) => {
+      ir.declarations[0]!.type = 99
+    }, /missing ProgramIR type node 99/)
+    assertInvalidProgramIR((ir) => {
+      ir.methods[0]!.args[0]!.type = { kind: "decl", id: 99 }
+    }, /missing ProgramIR declaration 99/)
+    assertInvalidProgramIR((ir) => {
+      const service = actorService(ir)
+      service.methods = [99]
+    }, /missing ProgramIR method 99/)
+    assertInvalidProgramIR((ir) => {
+      ir.actor!.service = 0
+    }, /ProgramIR actor service points to non-service type 0/)
+    assertInvalidProgramIR((ir) => {
+      ir.methods[0]!.mode = "oneway"
+      ir.methods[0]!.returns = [{ type: { kind: "type", id: 0 } }]
+    }, /ProgramIR oneway method 0 has 1 return value/)
+    assertInvalidProgramIR((ir) => {
+      const user = ir.declarations[0]!
+      const record = ir.types[user.type]!.kind
+      if (record.kind !== "record") {
+        throw new Error("expected User record")
+      }
+      record.fields.push({
+        label: { kind: "id", candidId: candidLabelId("name") },
+        type: { kind: "type", id: 0 },
+      })
+    }, /duplicate ProgramIR field candid id/)
+    assert.throws(
+      () =>
+        parseProgramIR({
+          version: PROGRAM_IR_VERSION,
+          types: [{ kind: { kind: "opt", inner: { kind: "type", id: 0 } } }],
+          declarations: [],
+          methods: [],
+          actor: null,
+        }),
+      /ProgramIR direct structural type cycle reaches 0/
     )
   })
 })
@@ -963,6 +1099,43 @@ describe("workflow schema", () => {
 
 function fixture(name: string): string {
   return readFileSync(resolve(fixtureDir, name), "utf8")
+}
+
+function assertInvalidProgramIR(
+  mutate: (ir: ProgramIR) => void,
+  expected: RegExp
+): void {
+  const ir = programIRFixture()
+  mutate(ir)
+  assert.throws(() => parseProgramIR(ir), expected)
+}
+
+function programIRFixture(): ProgramIR {
+  return structuredClone(
+    programForTest(`
+type User = record {
+  name : text;
+};
+
+service : {
+  save : (User) -> () query;
+}
+`).ir()
+  )
+}
+
+function actorService(
+  ir: ProgramIR
+): Extract<ProgramTypeKindIR, { kind: "service" }> {
+  const actor = ir.actor
+  if (!actor) {
+    throw new Error("expected actor")
+  }
+  const service = ir.types[actor.service]?.kind
+  if (service?.kind !== "service") {
+    throw new Error("expected actor service")
+  }
+  return service
 }
 
 function transferArg() {

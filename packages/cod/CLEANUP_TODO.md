@@ -663,7 +663,7 @@ Add a golden Rust → JSON → TS ProgramIR contract test.
 
 **Priority: High**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
 Current:
 
