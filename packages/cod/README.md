@@ -168,7 +168,7 @@ Core capabilities:
 
 - Parse and type-check `.did` services with `candid_parser`.
 - Encode method args from Candid text to wire bytes.
-- Decode method args or replies from wire bytes to typed Candid text.
+- Encode/decode method args or replies between Candid text and wire bytes.
 - Encode/decode service-class init args.
 - Encode/decode dynamic args without a `.did`.
 - Emit service summaries and canonical service DID.

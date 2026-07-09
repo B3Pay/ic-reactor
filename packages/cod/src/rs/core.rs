@@ -78,6 +78,10 @@ impl CandidProgram {
         self.codec.decode_method_args(method, bytes)
     }
 
+    pub fn encode_method_reply(&self, method: &str, reply_text: &str) -> Result<Vec<u8>> {
+        self.codec.encode_method_reply(method, reply_text)
+    }
+
     pub fn decode_method_reply(&self, method: &str, bytes: &[u8]) -> Result<String> {
         self.codec.decode_method_reply(method, bytes)
     }
@@ -146,6 +150,12 @@ impl CandidCodec {
         let func = self.method(method)?;
         self.decode_args_for_types(bytes, &func.args)
             .with_context(|| format!("failed to decode args for method `{method}`"))
+    }
+
+    fn encode_method_reply(&self, method: &str, reply_text: &str) -> Result<Vec<u8>> {
+        let func = self.method(method)?;
+        self.encode_args_for_types(reply_text, &func.rets)
+            .with_context(|| format!("failed to encode reply for method `{method}`"))
     }
 
     fn decode_method_reply(&self, method: &str, bytes: &[u8]) -> Result<String> {
@@ -423,6 +433,18 @@ service : {
                 r#"(variant { ok = 10 })"#,
                 &program.codec.method("save").unwrap().rets,
             )
+            .unwrap();
+        let decoded = program.decode_method_reply("save", &reply).unwrap();
+
+        assert!(decoded.contains("variant"));
+        assert!(decoded.contains("10 : nat"));
+    }
+
+    #[test]
+    fn encodes_method_replies_with_expected_return_types() {
+        let program = CandidProgram::from_source(DID).unwrap();
+        let reply = program
+            .encode_method_reply("save", r#"(variant { ok = 10 })"#)
             .unwrap();
         let decoded = program.decode_method_reply("save", &reply).unwrap();
 

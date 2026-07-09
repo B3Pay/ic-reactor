@@ -51,6 +51,13 @@ impl WasmCandidProgram {
             .map_err(to_js_error)
     }
 
+    #[wasm_bindgen(js_name = encodeMethodReply)]
+    pub fn encode_method_reply(&self, method: &str, reply_text: &str) -> Result<Vec<u8>, JsValue> {
+        self.inner
+            .encode_method_reply(method, reply_text)
+            .map_err(to_js_error)
+    }
+
     #[wasm_bindgen(js_name = decodeMethodReply)]
     pub fn decode_method_reply(&self, method: &str, bytes: &[u8]) -> Result<String, JsValue> {
         self.inner

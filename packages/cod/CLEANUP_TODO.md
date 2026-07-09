@@ -545,7 +545,7 @@ but not for program inspection.
 
 **Priority: High**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
 Current runtime reply encoding builds a fake DID:
 

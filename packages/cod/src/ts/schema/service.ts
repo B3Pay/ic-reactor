@@ -24,7 +24,6 @@ export class ServiceSchema<Methods extends MethodMap> {
   readonly methods: Methods
 
   #program?: CandidProgram
-  #replyPrograms = new Map<string, CandidProgram>()
 
   /**
    * Creates a service schema.
@@ -104,11 +103,9 @@ export class ServiceSchema<Methods extends MethodMap> {
     method: Name,
     value: MethodResult<Methods[Name]>
   ): CandidBytes {
-    const methodSchema = this.method(method)
-    const program = this.replyProgram(method, methodSchema)
-    return program.encodeMethodArgs(
-      "__reply",
-      methodSchema.replyToCandid(value)
+    return this.program().encodeMethodReply(
+      method,
+      this.method(method).replyToCandid(value)
     )
   }
 
@@ -171,27 +168,6 @@ export class ServiceSchema<Methods extends MethodMap> {
       )
     }
     return method
-  }
-
-  /**
-   * Returns a cached helper program used to encode synthetic reply tuples.
-   *
-   * @typeParam Name - Method name.
-   * @param name - Method name whose reply program is needed.
-   * @param method - Method schema used to build the helper DID.
-   * @returns Candid program for the synthetic `__reply` method.
-   */
-  private replyProgram<Name extends StringKeyOf<Methods>>(
-    name: Name,
-    method: Methods[Name]
-  ): CandidProgram {
-    let program = this.#replyPrograms.get(name)
-    if (!program) {
-      const did = `service : {\n  __reply : (${method.returnsDid()}) -> ();\n}`
-      program = new CandidProgram(did)
-      this.#replyPrograms.set(name, program)
-    }
-    return program
   }
 }
 

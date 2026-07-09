@@ -41,7 +41,6 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   readonly #methodIr: ProgramMethodIR
   readonly #schema: AnyMethodSchema
   readonly #formOptions: FormSchemaOptions
-  #replyProgram?: CandidProgram
 
   constructor(options: {
     program: CandidProgram
@@ -101,8 +100,8 @@ export class RuntimeMethodImpl implements RuntimeMethod {
   }
 
   encodeReply(value: unknown): Uint8Array {
-    return this.replyProgram().encodeMethodArgs(
-      "__reply",
+    return this.#program.encodeMethodReply(
+      this.name,
       this.#schema.replyToCandid(value as any)
     )
   }
@@ -152,13 +151,6 @@ export class RuntimeMethodImpl implements RuntimeMethod {
             updateRequest(options, this.name, arg)
           )
     return this.decodeReply(extractReplyBytes(response))
-  }
-
-  private replyProgram(): CandidProgram {
-    this.#replyProgram ??= new CandidProgram(
-      `service : {\n  __reply : (${this.#schema.returnsDid()}) -> ();\n}`
-    )
-    return this.#replyProgram
   }
 }
 

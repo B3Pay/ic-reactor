@@ -246,7 +246,7 @@ Candid's checked type environment is valuable for:
 - typed argument annotation
 - Candid wire encoding
 - Candid wire decoding
-- typed reply decoding
+- typed reply encoding and decoding
 
 The codec may privately retain:
 
@@ -287,6 +287,10 @@ re-lower from `TypeEnv`, `Type`, or `IDLMergedProg`. The merged Candid program i
 a frontend/lowering input, not part of the compiled program.
 
 Program summaries are derived from `ProgramIrGraph`, not from codec internals.
+
+Reply encoding uses the compiled program codec for the real method returns. The
+TypeScript runtime must not synthesize helper DID programs such as `__reply` to
+encode return tuples.
 
 The codec must not become a second structural program API.
 

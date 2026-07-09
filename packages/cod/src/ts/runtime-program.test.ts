@@ -389,6 +389,23 @@ service : { inspect : (Bytes, Pair) -> (Outcome) query };
     }
   })
 
+  it("does not synthesize fake DID programs for reply encoding", () => {
+    const runtimeMethod = readFileSync(
+      resolve(__dirname, "runtime", "method.ts"),
+      "utf8"
+    )
+    const schemaService = readFileSync(
+      resolve(__dirname, "schema", "service.ts"),
+      "utf8"
+    )
+
+    for (const source of [runtimeMethod, schemaService]) {
+      assert.doesNotMatch(source, /__reply/)
+      assert.doesNotMatch(source, /replyProgram/)
+      assert.doesNotMatch(source, /returnsDid\(\)/)
+    }
+  })
+
   it("preserves object encoding and decoding for derived field keys", async () => {
     const did = `
 type Fields = record {
@@ -470,6 +487,20 @@ describe("dynamic method bytes", () => {
 
     const reply = method.encodeReply(123n)
     assert.equal(method.decodeReply(reply), 123n)
+  })
+
+  it("encodes replies through the compiled CandidProgram", () => {
+    const raw = programForTest(`
+service : {
+  save : () -> (variant { ok : nat; err : text });
+}
+`)
+
+    const reply = raw.encodeMethodReply("save", `(variant { ok = 10 })`)
+    const decoded = raw.decodeMethodReply("save", reply)
+
+    assert.match(decoded, /variant/)
+    assert.match(decoded, /10 : nat/)
   })
 })
 

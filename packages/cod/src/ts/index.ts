@@ -364,6 +364,17 @@ export class CandidProgram {
   }
 
   /**
+   * Encodes method reply text to Candid bytes.
+   *
+   * @param method - Method name.
+   * @param reply - Parenthesized Candid reply tuple text.
+   * @returns Encoded Candid reply bytes.
+   */
+  encodeMethodReply(method: string, reply: CandidTextArgs): CandidBytes {
+    return this.#inner.encodeMethodReply(method, reply)
+  }
+
+  /**
    * Decodes method reply bytes to Candid text.
    *
    * @param method - Method name.
