@@ -138,13 +138,11 @@ export type ProgramFieldLabelIR =
     }
   | {
       kind: "id"
-      candid_id?: number
-      candidId?: number
+      candidId: number
     }
   | {
       kind: "unnamed"
-      candid_id?: number
-      candidId?: number
+      candidId: number
     }
 
 export type RuntimeTypeInfo = {

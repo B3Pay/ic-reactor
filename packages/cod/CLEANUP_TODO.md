@@ -601,7 +601,7 @@ replyProgram()
 
 **Priority: High**
 
-**Status: [ ] Pending**
+**Status: [x] Done**
 
 Current Rust metadata is structurally required:
 

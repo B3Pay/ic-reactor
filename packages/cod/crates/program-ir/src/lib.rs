@@ -127,6 +127,7 @@ pub struct TypeDeclIr {
     pub name: String,
     #[serde(rename = "type")]
     pub typ: TypeId,
+    #[serde(default, skip_serializing_if = "MetadataIr::is_empty")]
     pub metadata: MetadataIr,
 }
 
@@ -144,6 +145,7 @@ pub struct ArgIr {
     pub name: Option<String>,
     #[serde(rename = "type")]
     pub typ: TypeRefIr,
+    #[serde(default, skip_serializing_if = "MetadataIr::is_empty")]
     pub metadata: MetadataIr,
 }
 
@@ -154,6 +156,7 @@ pub struct MethodIr {
     pub mode: MethodModeIr,
     pub args: Vec<ArgIr>,
     pub returns: Vec<ArgIr>,
+    #[serde(default, skip_serializing_if = "MetadataIr::is_empty")]
     pub metadata: MetadataIr,
 }
 
@@ -172,15 +175,24 @@ pub struct FieldIr {
     pub label: FieldLabelIr,
     #[serde(rename = "type")]
     pub typ: TypeRefIr,
+    #[serde(default, skip_serializing_if = "MetadataIr::is_empty")]
     pub metadata: MetadataIr,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum FieldLabelIr {
-    Named { name: String },
-    Id { candid_id: u32 },
-    Unnamed { candid_id: u32 },
+    Named {
+        name: String,
+    },
+    Id {
+        #[serde(rename = "candidId")]
+        candid_id: u32,
+    },
+    Unnamed {
+        #[serde(rename = "candidId")]
+        candid_id: u32,
+    },
 }
 
 impl FieldLabelIr {
@@ -211,6 +223,12 @@ pub struct MetadataIr {
     pub raw_docs: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub doc_tags: Vec<DocTag>,
+}
+
+impl MetadataIr {
+    pub fn is_empty(&self) -> bool {
+        self.docs.is_empty() && self.raw_docs.is_empty() && self.doc_tags.is_empty()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -861,6 +879,26 @@ mod tests {
     }
 
     #[test]
+    fn numeric_field_labels_serialize_with_camel_case_candid_id() {
+        assert_eq!(
+            serde_json::to_value(FieldLabelIr::Id { candid_id: 10 }).unwrap(),
+            serde_json::json!({ "kind": "id", "candidId": 10 })
+        );
+        assert_eq!(
+            serde_json::to_value(FieldLabelIr::Unnamed { candid_id: 0 }).unwrap(),
+            serde_json::json!({ "kind": "unnamed", "candidId": 0 })
+        );
+
+        let label: FieldLabelIr =
+            serde_json::from_value(serde_json::json!({ "kind": "id", "candidId": 42 })).unwrap();
+        assert_eq!(label, FieldLabelIr::Id { candid_id: 42 });
+        let legacy = serde_json::from_value::<FieldLabelIr>(
+            serde_json::json!({ "kind": "id", "candid_id": 42 }),
+        );
+        assert!(legacy.is_err());
+    }
+
+    #[test]
     fn program_ir_json_round_trips() {
         let program = ProgramIr {
             version: PROGRAM_IR_VERSION,
@@ -885,7 +923,92 @@ mod tests {
             serde_json::json!({
                 "name": "UserId",
                 "type": 0,
-                "metadata": {},
+            })
+        );
+    }
+
+    #[test]
+    fn empty_metadata_is_optional_in_json_contract() {
+        let program = ProgramIr {
+            version: PROGRAM_IR_VERSION,
+            types: vec![
+                TypeNodeIr {
+                    kind: TypeKindIr::Nat64,
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Record {
+                        fields: vec![FieldIr {
+                            label: FieldLabelIr::Named {
+                                name: "id".to_string(),
+                            },
+                            typ: TypeRefIr::Type { id: TypeId(0) },
+                            metadata: MetadataIr::default(),
+                        }],
+                    },
+                },
+                TypeNodeIr {
+                    kind: TypeKindIr::Service {
+                        methods: vec![MethodId(0)],
+                    },
+                },
+            ],
+            declarations: vec![TypeDeclIr {
+                name: "UserId".to_string(),
+                typ: TypeId(0),
+                metadata: MetadataIr::default(),
+            }],
+            methods: vec![MethodIr {
+                name: "save".to_string(),
+                mode: MethodModeIr::Update,
+                args: vec![ArgIr {
+                    name: None,
+                    typ: TypeRefIr::Type { id: TypeId(1) },
+                    metadata: MetadataIr::default(),
+                }],
+                returns: vec![],
+                metadata: MetadataIr::default(),
+            }],
+            actor: Some(ActorIr {
+                init_args: vec![ArgIr {
+                    name: None,
+                    typ: TypeRefIr::Type { id: TypeId(0) },
+                    metadata: MetadataIr::default(),
+                }],
+                service: TypeId(2),
+            }),
+        };
+
+        let value = serde_json::to_value(&program).unwrap();
+        assert!(value["declarations"][0].get("metadata").is_none());
+        assert!(value["methods"][0].get("metadata").is_none());
+        assert!(value["methods"][0]["args"][0].get("metadata").is_none());
+        assert!(value["actor"]["initArgs"][0].get("metadata").is_none());
+        assert!(value["types"][1]["kind"]["fields"][0]
+            .get("metadata")
+            .is_none());
+
+        let round_trip: ProgramIr = serde_json::from_value(value).unwrap();
+        assert_eq!(round_trip, program);
+    }
+
+    #[test]
+    fn non_empty_metadata_is_serialized() {
+        let metadata = MetadataIr {
+            docs: vec!["Documented.".to_string()],
+            raw_docs: vec!["Documented.".to_string(), "@strict".to_string()],
+            doc_tags: vec![DocTag {
+                name: "strict".to_string(),
+                value: "".to_string(),
+            }],
+        };
+
+        assert!(!metadata.is_empty());
+        assert_eq!(
+            serde_json::to_value(metadata).unwrap(),
+            serde_json::json!({
+                "docs": ["Documented."],
+                "rawDocs": ["Documented.", "@strict"],
+                "docTags": [{ "name": "strict", "value": "" }],
             })
         );
     }

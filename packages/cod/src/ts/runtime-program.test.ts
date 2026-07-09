@@ -302,13 +302,83 @@ service : { save : (Fields) -> () };
         }))
         .sort((left, right) => left.key.localeCompare(right.key)),
       [
-        { label: { kind: "unnamed", candid_id: 0 }, key: "_0_" },
-        { label: { kind: "id", candid_id: 10 }, key: "_10_" },
+        { label: { kind: "unnamed", candidId: 0 }, key: "_0_" },
+        { label: { kind: "id", candidId: 10 }, key: "_10_" },
         { label: { kind: "named", name: "named" }, key: "named" },
         { label: { kind: "named", name: "not-id" }, key: "not-id" },
         { label: { kind: "named", name: "type" }, key: "type" },
       ].sort((left, right) => left.key.localeCompare(right.key))
     )
+  })
+
+  it("matches the Rust JSON ProgramIR contract at the TS boundary", () => {
+    const raw = programForTest(`
+/// Contact docs.
+/// @strict
+type Contact = record {
+  text;
+  // Email docs.
+  email : text;
+  10 : nat;
+};
+
+service : {
+  // Save docs.
+  save : (Contact) -> (Contact) query;
+}
+`)
+    const ir = raw.ir()
+    const graph = new ProgramIrGraph(ir)
+    const contact = graph.declarationByName("Contact")
+    assert.ok(contact)
+    assert.deepEqual(contact.metadata, {
+      docs: ["Contact docs."],
+      rawDocs: ["Contact docs.", "@strict"],
+      docTags: [{ name: "strict", value: "" }],
+    })
+
+    const contactKind = ir.types[contact.type]?.kind
+    assert.equal(contactKind?.kind, "record")
+    if (contactKind?.kind !== "record") {
+      throw new Error("expected Contact record")
+    }
+
+    const email = contactKind.fields.find(
+      (field) => field.label.kind === "named" && field.label.name === "email"
+    )
+    const unnamed = contactKind.fields.find(
+      (field) => field.label.kind === "unnamed"
+    )
+    const numeric = contactKind.fields.find(
+      (field) => field.label.kind === "id"
+    )
+    assert.ok(email)
+    assert.ok(unnamed)
+    assert.ok(numeric)
+
+    assert.deepEqual(email.label, { kind: "named", name: "email" })
+    assert.equal(Object.hasOwn(email.label, "candidId"), false)
+    assert.equal(Object.hasOwn(email.label, "candid_id"), false)
+    assert.deepEqual(email.metadata, {
+      docs: ["Email docs."],
+      rawDocs: ["Email docs."],
+    })
+
+    assert.deepEqual(unnamed.label, { kind: "unnamed", candidId: 0 })
+    assert.equal(Object.hasOwn(unnamed.label, "candid_id"), false)
+    assert.equal(Object.hasOwn(unnamed, "metadata"), false)
+
+    assert.deepEqual(numeric.label, { kind: "id", candidId: 10 })
+    assert.equal(Object.hasOwn(numeric.label, "candid_id"), false)
+    assert.equal(Object.hasOwn(numeric, "metadata"), false)
+
+    const save = graph.method(0)
+    assert.deepEqual(save.metadata, {
+      docs: ["Save docs."],
+      rawDocs: ["Save docs."],
+    })
+    assert.equal(Object.hasOwn(save.args[0]!, "metadata"), false)
+    assert.equal(Object.hasOwn(save.returns[0]!, "metadata"), false)
   })
 
   it("derives shared semantics without replacing ProgramIR wire kinds", async () => {

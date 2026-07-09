@@ -31,6 +31,21 @@ compiler passes.
     references.
 11. Graph validation and ID resolution are owned by this crate.
 
+## Serialized JSON Contract
+
+The Rust serde model defines the canonical Program IR JSON shape. TypeScript
+types mirror that shape exactly.
+
+Rust structs store metadata as concrete `MetadataIr` values so compiler code can
+avoid nullable metadata internally. The serialized contract omits empty
+metadata and deserializes missing metadata back to `MetadataIr::default()`.
+Non-empty metadata uses `docs`, `rawDocs`, and `docTags`.
+
+Numeric and unnamed field labels serialize their field ID as `candidId`. Named
+field labels serialize only `name`; their numeric Candid field ID is derived
+from that name. The serialized contract does not include legacy aliases such as
+`candid_id`.
+
 ## Graph Shape
 
 ```text

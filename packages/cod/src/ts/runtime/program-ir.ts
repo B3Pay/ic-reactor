@@ -190,7 +190,7 @@ export function fieldLabelCandidId(label: ProgramFieldLabelIR): number {
   if (label.kind === "named") {
     return candidLabelId(label.name)
   }
-  const candidId = label.candidId ?? label.candid_id
+  const candidId = label.candidId
   if (typeof candidId === "number") {
     return candidId
   }

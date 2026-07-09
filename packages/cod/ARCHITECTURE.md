@@ -459,6 +459,14 @@ the same IR version.
 
 Consumers of serialized IR must validate the version.
 
+The Rust `program-ir` serde model defines the canonical JSON shape. TypeScript
+types mirror that shape exactly; they must not accept compatibility aliases for
+unfinished internal contracts. Empty `MetadataIr` values are omitted from JSON
+and deserialize back to empty metadata. Non-empty metadata serializes as
+`docs`, `rawDocs`, and `docTags`. Numeric and unnamed field labels serialize
+their field ID as `candidId`; named labels serialize only `name` and derive the
+Candid field ID from that name.
+
 Conceptually:
 
 ```ts
