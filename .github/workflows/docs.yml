@@ -119,7 +119,11 @@ jobs:
 
           # Keep canonical llms files available at the site root.
           cp v3-docs-source/llms.txt final-docs/llms.txt
-          cp v3-docs-source/llms-full.txt final-docs/llms-full.txt
+          if [ -f "v3-docs-source/llms-full.txt" ]; then
+            cp v3-docs-source/llms-full.txt final-docs/llms-full.txt
+          else
+            cp llms-full.txt final-docs/llms-full.txt
+          fi
 
           # Normalize the version selector in preserved static versions.
           node << 'NODE'
