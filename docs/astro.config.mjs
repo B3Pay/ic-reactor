@@ -6,7 +6,7 @@ const SITE_URL = "https://ic-reactor.b3pay.net"
 
 export default defineConfig({
   site: SITE_URL,
-  base: "/v4/",
+  base: "/v3/",
   output: "static",
   integrations: [
     starlight({

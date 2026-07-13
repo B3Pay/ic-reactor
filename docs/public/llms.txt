@@ -5,16 +5,33 @@ longer task-oriented guide, read `llms-full.txt`.
 
 ## Project
 
-IC Reactor v4 is a TypeScript monorepo for building Internet Computer apps with
+IC Reactor v3 is a TypeScript monorepo for building Internet Computer apps with
 typed canister calls, TanStack Query caching, React hooks, optional
 authentication helpers, runtime Candid parsing, and code generation.
 
 Repository: `https://github.com/B3Pay/ic-reactor`
-Docs: `https://ic-reactor.b3pay.net/v4/`
+Docs: `https://ic-reactor.b3pay.net/v3/`
 
-Release posture: this branch is the next major release line. Package manifests
-may still show pre-release versions until release automation performs the final
-version bump.
+Release posture: the published documentation and package manifests target the
+stable v3.6.0 runtime release.
+
+## Package Versions
+
+Runtime lane:
+
+- `@ic-reactor/core`: `3.6.0`
+- `@ic-reactor/react`: `3.6.0`
+- `@ic-reactor/candid`: `3.6.0`
+
+Codegen lane:
+
+- `@ic-reactor/codegen`: `0.11.1`
+- `@ic-reactor/cli`: `0.11.1`
+- `@ic-reactor/vite-plugin`: `0.11.1`
+
+Parser lane:
+
+- `@ic-reactor/parser`: `0.4.6`
 
 ## Canonical AI Entrypoints
 
@@ -34,7 +51,7 @@ version bump.
 | Package                   | Owns                                                                                                               | Start here                                                                                    |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
 | `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, `@tanstack/query-core` cache integration | `packages/core/src/`, `packages/core/README.md`                                               |
-| `@ic-reactor/react`       | React hook factories, query/mutation factories, `defineReactor`, `useActorMethod`, Internet Identity auth, and identity-attribute hooks | `packages/react/src/`, `packages/react/README.md`, `skill-packages/ic-reactor-hooks/SKILL.md` |
+| `@ic-reactor/react`       | React hook factories, query/mutation factories, `useActorMethod`, Internet Identity auth, and identity-attribute hooks | `packages/react/src/`, `packages/react/README.md`, `skill-packages/ic-reactor-hooks/SKILL.md` |
 | `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                                      | `packages/candid/src/`, `packages/candid/README.md`                                           |
 | `@ic-reactor/parser`      | Rust/WASM Candid parser and published web/node/bundler outputs                                                     | `packages/parser/src/`, `packages/parser/README.md`                                           |
 | `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline used by CLI and Vite plugin                                  | `packages/codegen/src/`, `packages/codegen/README.md`                                         |

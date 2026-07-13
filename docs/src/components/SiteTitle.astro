@@ -11,7 +11,6 @@ import Default from "@astrojs/starlight/components/SiteTitle.astro"
         onchange="handleVersionChange(event)"
         aria-label="Select version"
       >
-        <option value="v4">v4</option>
         <option value="v3">v3</option>
         <option value="v2">v2</option>
       </select>
@@ -23,8 +22,8 @@ import Default from "@astrojs/starlight/components/SiteTitle.astro"
   function handleVersionChange(event) {
     const version = event.target.value
     const { pathname, search, hash } = window.location
-    const nextPath = pathname.match(/^\/v[234](\/|$)/)
-      ? pathname.replace(/^\/v[234](?=\/|$)/, `/${version}`)
+    const nextPath = pathname.match(/^\/v[23](\/|$)/)
+      ? pathname.replace(/^\/v[23](?=\/|$)/, `/${version}`)
       : `/${version}/`
 
     window.location.href = `${nextPath}${search}${hash}`
@@ -33,9 +32,9 @@ import Default from "@astrojs/starlight/components/SiteTitle.astro"
   const versionSelect = document.getElementById("version-select")
   if (versionSelect) {
     const currentVersion =
-      window.location.pathname.match(/^\/(v2|v3|v4)(\/|$)/)?.[1] ?? "v4"
+      window.location.pathname.match(/^\/(v2|v3)(\/|$)/)?.[1] ?? "v3"
 
-    if (["v2", "v3", "v4"].includes(currentVersion)) {
+    if (["v2", "v3"].includes(currentVersion)) {
       versionSelect.value = currentVersion
     }
   }

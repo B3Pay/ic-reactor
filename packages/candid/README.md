@@ -6,7 +6,7 @@ Lightweight adapter for fetching and parsing Candid definitions from Internet Co
 
 - Package AI quick guide: [`./llms.txt`](./llms.txt)
 - Full guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Project AI guide: https://ic-reactor.b3pay.net/v4/guides/ai-friendliness/
+- Project AI guide: https://ic-reactor.b3pay.net/v3/guides/ai-friendliness/
 
 Install the shared hook skill in consumer repos:
 

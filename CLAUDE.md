@@ -4,15 +4,12 @@ This file provides context for Claude-based AI agents working in the IC Reactor 
 
 ## Project Overview
 
-**IC Reactor v4** is a type-safe TypeScript monorepo for building Internet Computer (ICP) applications. It uses TanStack Query for caching/refetching, `@icp-sdk/*` packages for IC agent/auth/candid primitives, and generated or hand-written Candid service types for end-to-end TypeScript safety.
-
-This branch is the next major release line. Package manifests may still show
-pre-release versions until release automation performs the final version bump.
+**IC Reactor v3** is a type-safe TypeScript monorepo for building Internet Computer (ICP) applications. It uses TanStack Query for caching/refetching, `@icp-sdk/*` packages for IC agent/auth/candid primitives, and generated or hand-written Candid service types for end-to-end TypeScript safety.
 
 ### Core Packages
 
 - `@ic-reactor/core` (`packages/core`, `3.6.0`) — Core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration
-- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, `defineReactor`, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks
+- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks
 - `@ic-reactor/candid` (`packages/candid`, `3.6.0`) — Dynamic Candid adapter/reactors and metadata reactors
 - `@ic-reactor/parser` (`packages/parser`, `0.4.6`) — Rust/WASM Candid parser
 - `@ic-reactor/codegen` (`packages/codegen`, `0.11.1`) — Shared generation pipeline used by CLI and Vite plugin
@@ -54,12 +51,11 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
 - **Type Safety**: Use Candid types. Avoid `any` or loose typing.
 - **DisplayReactor**: Prefer `DisplayReactor` for UI components (handles BigInt/Principal serialization).
 - **Reactor**: Use standard `Reactor` when raw Candid types are required.
-- **Setup Pattern**: Prefer `defineReactor` for new React setup; use manual `ClientManager` + reactor setup when construction order needs finer control.
+- **Setup Pattern**: Use `ClientManager` + `Reactor` + `createActorHooks` for React setup.
 - **Factory Pattern**: Use `createActorHooks`, `createQuery`, `createSuspenseQuery`, `createInfiniteQuery`, `createSuspenseInfiniteQuery`, and `createMutation` factories instead of manual hook implementations.
 
 ## React Hook Patterns
 
-- For the fastest canister bootstrap, prefer `defineReactor(...)`.
 - For component-level canister calls with an existing reactor, prefer `createActorHooks(reactor)`.
 - For reusable operations shared across components and non-React code, prefer:
   - `createQuery` / `createSuspenseQuery`

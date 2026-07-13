@@ -6,20 +6,19 @@ compact manifest and package routing table.
 
 ## What IC Reactor Is
 
-IC Reactor v4 is a TypeScript/React monorepo for Internet Computer apps. It wraps
+IC Reactor v3 is a TypeScript/React monorepo for Internet Computer apps. It wraps
 typed canister calls with TanStack Query caching, reusable query/mutation
 objects, React hooks, optional Internet Identity auth helpers, runtime Candid
 parsing, and code generation from `.did` files.
 
-This branch is the next major release line. Package manifests may still show
-pre-release versions until release automation performs the final version bump.
+This documentation targets the stable v3.6.0 runtime release.
 
 ## Package Boundaries
 
 | Package                   | Responsibility                                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `@ic-reactor/core`        | Framework-agnostic runtime with `ClientManager`, `Reactor`, `DisplayReactor`, and `@tanstack/query-core` integration. No React imports. |
-| `@ic-reactor/react`       | React hooks, `defineReactor`, `createActorHooks`, query/mutation factories, Internet Identity auth, and identity-attribute hooks.       |
+| `@ic-reactor/react`       | React hooks, `createActorHooks`, query/mutation factories, Internet Identity auth, and identity-attribute hooks.                         |
 | `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters, `CandidReactor`, display variants, and metadata reactors.                                     |
 | `@ic-reactor/parser`      | Rust/WASM Candid parser that publishes web, nodejs, and bundler outputs.                                                                |
 | `@ic-reactor/codegen`     | Shared generator pipeline for declarations, reactor files, stable wrappers, and client helpers.                                         |
@@ -52,33 +51,6 @@ Dynamic Candid:
 pnpm add @ic-reactor/candid @ic-reactor/parser
 ```
 
-## Fastest React Setup
-
-Use `defineReactor` for one-call setup. It creates or reuses a `QueryClient`,
-`ClientManager`, reactor instance, and bound hooks. Set `display: true` for
-UI-friendly values instead of raw `bigint` and `Principal` values.
-
-```ts
-import { defineReactor } from "@ic-reactor/react"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
-
-export const {
-  reactor: backend,
-  queryClient,
-  clientManager,
-  useActorQuery,
-  useActorMutation,
-  useActorMethod,
-} = defineReactor<_SERVICE>({
-  name: "backend",
-  idlFactory,
-  display: true,
-})
-```
-
-Share one agent across canisters by passing the same `clientManager` or
-`queryClient` into later `defineReactor` calls.
-
 ## Manual Runtime Setup
 
 Use this when construction order or dependency injection needs to be explicit.
@@ -108,7 +80,7 @@ required.
 
 | Need                              | Preferred API                                  | Works outside React                                                |
 | --------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
-| Fast one-canister setup           | `defineReactor(params)`                        | Reactor and factory methods only                                   |
+| Component hooks with one canister | `ClientManager` + `Reactor` + `createActorHooks` | No                                                               |
 | Generic component hooks           | `createActorHooks(reactor)`                    | No                                                                 |
 | Method-specific reusable reads    | `createQuery`, `createSuspenseQuery`           | Yes: `.fetch()`, `.prefetch()`, `.invalidate()`, `.getCacheData()` |
 | Paginated reads                   | `createInfiniteQuery`, suspense variant        | Yes: `.fetch()`, `.invalidate()`, `.getCacheData()`                |

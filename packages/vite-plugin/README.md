@@ -8,7 +8,7 @@ Vite plugin for IC Reactor code generation. It runs the shared
 
 - Package AI quick guide: [`./llms.txt`](./llms.txt)
 - Full guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Project AI guide: https://ic-reactor.b3pay.net/v4/guides/ai-friendliness/
+- Project AI guide: https://ic-reactor.b3pay.net/v3/guides/ai-friendliness/
 
 Install the shared hook skill in consumer repos:
 
@@ -134,6 +134,6 @@ the new declarations are picked up.
 
 ## See Also
 
-- Docs: https://ic-reactor.b3pay.net/v4/packages/vite-plugin
+- Docs: https://ic-reactor.b3pay.net/v3/packages/vite-plugin
 - `@ic-reactor/codegen`: ../codegen/README.md
 - `@ic-reactor/cli`: ../cli/README.md

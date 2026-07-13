@@ -7,7 +7,7 @@ TypeScript declaration strings.
 ## AI Assistants
 
 - Full guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Project AI guide: https://ic-reactor.b3pay.net/v4/guides/ai-friendliness/
+- Project AI guide: https://ic-reactor.b3pay.net/v3/guides/ai-friendliness/
 
 Install the shared hook skill in consumer repos:
 
@@ -64,6 +64,6 @@ let that package load the parser when needed.
 
 ## See Also
 
-- Docs: https://ic-reactor.b3pay.net/v4/packages/parser
+- Docs: https://ic-reactor.b3pay.net/v3/packages/parser
 - `@ic-reactor/candid`: ../candid/README.md
 - `@ic-reactor/codegen`: ../codegen/README.md

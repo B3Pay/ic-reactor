@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  V3_DOCS_REF: baa1ad6898c700bdf53ae5d5a9d5a2332efd9aa6
+  V3_DOCS_REF: v3.6.0
 
 jobs:
   build:
@@ -31,7 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Checkout v3 documentation source
+      - name: Checkout released v3 documentation source
         uses: actions/checkout@v6
         with:
           ref: ${{ env.V3_DOCS_REF }}
@@ -69,11 +69,11 @@ jobs:
       - name: Build documentation (Astro)
         run: pnpm docs:build
 
-      - name: Install v3 dependencies
+      - name: Install released v3 dependencies
         working-directory: v3-docs-source
         run: pnpm install --frozen-lockfile
 
-      - name: Build v3 documentation (Astro)
+      - name: Build released v3 documentation (Astro)
         working-directory: v3-docs-source
         run: pnpm docs:build
 
@@ -102,35 +102,31 @@ jobs:
             shopt -s dotglob
             for item in final-docs/*; do
               case "$(basename "$item")" in
-                v2|v3|v4|llms.txt|llms-full.txt|CNAME|.nojekyll) continue;;
+                v2|v3|llms.txt|llms-full.txt|CNAME|.nojekyll) continue;;
               esac
               mv "$item" final-docs/v2/
             done
             shopt -u dotglob
           fi
 
-          # Replace v3 with the pinned pre-v4 Astro build.
+          # Replace the published v3 docs with the exact v3.6.0 release build.
           rm -rf final-docs/v3
           mkdir -p final-docs/v3
           cp -r v3-docs-source/docs/dist/* final-docs/v3/
 
-          # Replace v4 with new Astro build while preserving v2 and v3
+          # v4 is not released. Remove any stale preview documentation.
           rm -rf final-docs/v4
-          mkdir -p final-docs/v4
-          cp -r docs/dist/* final-docs/v4/
 
           # Keep canonical llms files available at the site root.
-          cp llms.txt final-docs/llms.txt
-          cp llms-full.txt final-docs/llms-full.txt
+          cp v3-docs-source/llms.txt final-docs/llms.txt
+          cp v3-docs-source/llms-full.txt final-docs/llms-full.txt
 
-          # Normalize the version selector in preserved static versions too.
-          # This lets existing /v2 and /v3 pages link to the new /v4 docs.
+          # Normalize the version selector in preserved static versions.
           node << 'NODE'
           const fs = require("node:fs")
           const path = require("node:path")
 
           const selectorHtml = `<select id="version-select" onchange="handleVersionChange(event)" aria-label="Select version">
-                  <option value="v4">v4</option>
                   <option value="v3">v3</option>
                   <option value="v2">v2</option>
                 </select>`
@@ -139,14 +135,14 @@ jobs:
                 (function () {
                   var select = document.getElementById("version-select");
                   if (!select) return;
-                  var match = window.location.pathname.match(/^\\/(v2|v3|v4)(\\/|$)/);
-                  var currentVersion = match ? match[1] : "v4";
+                  var match = window.location.pathname.match(/^\\/(v2|v3)(\\/|$)/);
+                  var currentVersion = match ? match[1] : "v3";
                   select.value = currentVersion;
                   select.addEventListener("change", function (event) {
                     var version = event.target.value;
                     var path = window.location.pathname || "/";
-                    var nextPath = /^\\/v[234](\\/|$)/.test(path)
-                      ? path.replace(/^\\/v[234](?=\\/|$)/, "/" + version)
+                    var nextPath = /^\\/v[23](\\/|$)/.test(path)
+                      ? path.replace(/^\\/v[23](?=\\/|$)/, "/" + version)
                       : "/" + version + "/";
                     window.location.href = nextPath + window.location.search + window.location.hash;
                   });
@@ -156,11 +152,11 @@ jobs:
           const linkRewrites = [
             ["https://ic-reactor.b3pay.net/ic-reactor/", "/v2/"],
             ["ic-reactor.b3pay.net/ic-reactor", "ic-reactor.b3pay.net/v2"],
-            ["https://b3pay.github.io/ic-reactor/modules/core.html", "/v4/packages/core/"],
-            ["https://b3pay.github.io/ic-reactor/modules/parser.html", "/v4/packages/parser/"],
-            ["https://b3pay.github.io/ic-reactor/modules/react.html", "/v4/packages/react/"],
-            ["https://b3pay.github.io/ic-reactor/modules/visitor.html", "/v4/packages/candid/"],
-            ["https://b3pay.github.io/ic-reactor/", "/v4/"],
+            ["https://b3pay.github.io/ic-reactor/modules/core.html", "/v3/packages/core/"],
+            ["https://b3pay.github.io/ic-reactor/modules/parser.html", "/v3/packages/parser/"],
+            ["https://b3pay.github.io/ic-reactor/modules/react.html", "/v3/packages/react/"],
+            ["https://b3pay.github.io/ic-reactor/modules/visitor.html", "/v3/packages/candid/"],
+            ["https://b3pay.github.io/ic-reactor/", "/v3/"],
           ]
 
           function walk(dir) {
@@ -210,14 +206,14 @@ jobs:
           <html>
             <head>
               <meta charset="utf-8" />
-              <meta http-equiv="refresh" content="0; url=/v4/" />
+              <meta http-equiv="refresh" content="0; url=/v3/" />
               <title>IC Reactor Docs</title>
               <script>
-                window.location.replace("/v4/");
+                window.location.replace("/v3/");
               </script>
             </head>
             <body>
-              <p>Redirecting to v4 documentation…</p>
+              <p>Redirecting to v3 documentation…</p>
             </body>
           </html>
           EOF
@@ -242,11 +238,7 @@ jobs:
                     window.location.replace("/v3/");
                     return;
                   }
-                  if (path.startsWith("/v4")) {
-                    window.location.replace("/v4/");
-                    return;
-                  }
-                  window.location.replace("/v4" + path);
+                  window.location.replace("/v3" + path);
                 })();
               </script>
             </head>

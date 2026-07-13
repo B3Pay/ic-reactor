@@ -4,8 +4,7 @@ Follow these repository-specific patterns when suggesting code:
 
 ## Project Snapshot
 
-- This branch is the next major release line and should be described as IC Reactor v4.
-- Package manifests may still show pre-release versions until release automation performs the final version bump.
+- This branch publishes the IC Reactor v3 documentation and release line.
 - Runtime packages are `@ic-reactor/core`, `@ic-reactor/react`, and `@ic-reactor/candid` at `3.6.0`.
 - Code generation packages are `@ic-reactor/codegen`, `@ic-reactor/cli`, and `@ic-reactor/vite-plugin` at `0.11.1`.
 - The WASM parser package is `@ic-reactor/parser` at `0.4.6`.
@@ -23,7 +22,7 @@ Follow these repository-specific patterns when suggesting code:
 ## Package Ownership
 
 - `packages/core` owns framework-agnostic runtime behavior: `ClientManager`, `Reactor`, `DisplayReactor`, and query-cache integration.
-- `packages/react` owns React hooks, query/mutation factories, `defineReactor`, `useActorMethod`, Internet Identity auth, and identity-attribute hooks.
+- `packages/react` owns React hooks, query/mutation factories, `useActorMethod`, Internet Identity auth, and identity-attribute hooks.
 - `packages/candid` owns runtime Candid fetching/parsing adapters and dynamic reactors.
 - `packages/parser` owns the Rust/WASM Candid parser.
 - `packages/codegen` owns declaration, reactor, client, and hook generation.
@@ -32,7 +31,7 @@ Follow these repository-specific patterns when suggesting code:
 
 ## React Hook Patterns (Important)
 
-- For new React canister setup, prefer `defineReactor(...)` when one-call setup is enough.
+- For new React canister setup, use `ClientManager`, `Reactor`, and `createActorHooks`.
 - For component-level canister calls with an existing reactor, prefer `createActorHooks(reactor)`.
 - For reusable operations shared across components and non-React code, prefer:
   - `createQuery`

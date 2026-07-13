@@ -19,7 +19,7 @@ Framework-agnostic core library for building type-safe Internet Computer applica
 
 - Package AI quick guide: [`./llms.txt`](./llms.txt)
 - Full guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Project AI guide: https://ic-reactor.b3pay.net/v4/guides/ai-friendliness/
+- Project AI guide: https://ic-reactor.b3pay.net/v3/guides/ai-friendliness/
 
 Install the shared hook skill in consumer repos:
 
@@ -590,7 +590,7 @@ const agent = backend.agent
 
 ## Documentation
 
-For comprehensive guides and API reference, visit the [documentation site](https://ic-reactor.b3pay.net/v4).
+For comprehensive guides and API reference, visit the [documentation site](https://ic-reactor.b3pay.net/v3).
 
 ## License
 
