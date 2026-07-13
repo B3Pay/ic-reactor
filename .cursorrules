@@ -2,9 +2,8 @@
 
 ## Project Context
 
-You are working on **IC Reactor v4**, a type-safe TypeScript library for building Internet Computer (IC) applications.
+You are working on **IC Reactor v3**, a type-safe TypeScript library for building Internet Computer (IC) applications.
 It leverages **TanStack Query** for state management and caching, and the repo uses `@icp-sdk/*` packages for IC agent/auth/candid primitives.
-This branch is the next major release line; package manifests may still show pre-release versions until release automation performs the final version bump.
 
 ## Package Surface
 
@@ -16,7 +15,7 @@ This branch is the next major release line; package manifests may still show pre
 
 - **Type Safety**: usage of `Candid` types is mandatory. Avoid `any` or loose typing.
 - **DisplayReactor**: Prefer `DisplayReactor` over standard `Reactor` for UI components to handle BigInt serialization automatically.
-- **Setup Pattern**: Prefer `defineReactor` for new React setup when one-call bootstrap is enough.
+- **Setup Pattern**: Use `ClientManager`, `Reactor`, and `createActorHooks` for React setup.
 - **Factory Pattern**: Use `createActorHooks`, `createQuery`, `createSuspenseQuery`, `createInfiniteQuery`, `createSuspenseInfiniteQuery`, and `createMutation` factories instead of manual hook implementations.
 
 ## Preferred Patterns

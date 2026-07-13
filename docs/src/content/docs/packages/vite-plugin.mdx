@@ -7,11 +7,11 @@ editUrl: false
 import { Aside } from "@astrojs/starlight/components"
 
 `@ic-reactor/vite-plugin` runs the shared
-[`@ic-reactor/codegen`](/v4/packages/codegen) pipeline inside Vite. It
+[`@ic-reactor/codegen`](/v3/packages/codegen) pipeline inside Vite. It
 generates declarations and typed reactor entrypoints, with optional React
 hooks, from `.did` files, watches for changes, and can inject the `ic_env`
 cookie used by
-[`ClientManager`](/v4/reference/clientmanager).
+[`ClientManager`](/v3/reference/clientmanager).
 
 ## Installation
 
@@ -131,17 +131,17 @@ When a watched `.did` file changes, the plugin:
 
 <Aside type="tip">
   Use the Vite plugin when you want the fastest `.did` edit loop. Use the
-  [CLI](/v4/packages/cli) when you want explicit generation in non-Vite or CI
+  [CLI](/v3/packages/cli) when you want explicit generation in non-Vite or CI
   workflows.
 </Aside>
 
 ## Examples
 
-- [Vite Plugin Demo](/v4/examples/vite-plugin)
-- [Vite Environment Variables](/v4/examples/vite-env)
-- [Codegen in Action](/v4/examples/codegen-in-action)
+- [Vite Plugin Demo](/v3/examples/vite-plugin)
+- [Vite Environment Variables](/v3/examples/vite-env)
+- [Codegen in Action](/v3/examples/codegen-in-action)
 
 ## See Also
 
-- [@ic-reactor/codegen](/v4/packages/codegen)
-- [@ic-reactor/cli](/v4/packages/cli)
+- [@ic-reactor/codegen](/v3/packages/codegen)
+- [@ic-reactor/cli](/v3/packages/cli)

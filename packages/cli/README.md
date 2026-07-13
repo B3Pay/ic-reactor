@@ -8,7 +8,7 @@ files from your `.did` files, with optional React hook exports.
 
 - Package AI quick guide: [`./llms.txt`](./llms.txt)
 - Full guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Project AI guide: https://ic-reactor.b3pay.net/v4/guides/ai-friendliness/
+- Project AI guide: https://ic-reactor.b3pay.net/v3/guides/ai-friendliness/
 
 Install the shared hook skill in consumer repos:
 
@@ -136,6 +136,6 @@ inside a Vite app.
 
 ## See Also
 
-- Docs: https://ic-reactor.b3pay.net/v4/packages/cli
+- Docs: https://ic-reactor.b3pay.net/v3/packages/cli
 - `@ic-reactor/codegen`: ../codegen/README.md
 - `@ic-reactor/vite-plugin`: ../vite-plugin/README.md
