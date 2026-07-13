@@ -40,6 +40,6 @@
   },
   "devDependencies": {
     "@icp-sdk/core": "^5.4.0",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   }
 }
