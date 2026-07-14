@@ -1,6 +1,6 @@
 {
   "name": "ic-reactor",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "type": "module",
   "private": true,
   "description": "The modern, type-safe library for building Internet Computer applications",
@@ -13,8 +13,8 @@
     "docs:preview": "cd docs && pnpm preview",
     "size": "pnpm -r --filter \"./packages/**\" run size",
     "size:analyze": "pnpm -r --filter \"./packages/**\" run analyze",
-    "prepublish:check": "pnpm run build && pnpm run test && pnpm run size",
-    "pack:check": "pnpm -r --filter \"./packages/**\" exec npm pack --dry-run",
+    "prepublish:check": "pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid build && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid test && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid size",
+    "pack:check": "pnpm -r --filter \"./packages/**\" --filter \"!@ic-reactor/cod\" exec npm pack --dry-run",
     "sync:examples": "node scripts/sync-example-versions.js",
     "typecheck:examples": "node scripts/typecheck-examples.js",
     "check:ai-context": "node scripts/check-ai-context.js",
@@ -69,10 +69,11 @@
       "rollup": "4.60.1",
       "smol-toml": "1.6.1",
       "svgo": "4.0.1",
-      "tar": "7.5.13",
+      "tar": "7.5.20",
       "yaml": "2.8.3",
       "follow-redirects": "1.16.0",
-      "ws": "8.20.1"
+      "undici": "7.28.0",
+      "ws": "8.21.0"
     },
     "ignoredBuiltDependencies": [
       "wasm-pack"

@@ -45,7 +45,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://ic-reactor.b3pay.net/v4/packages/vite-plugin",
+  "homepage": "https://ic-reactor.b3pay.net/v3/packages/vite-plugin",
   "dependencies": {
     "@ic-reactor/codegen": "workspace:*"
   },

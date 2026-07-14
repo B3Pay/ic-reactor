@@ -76,8 +76,20 @@ export class ClientManager {
     const canisterEnv =
       typeof window !== "undefined" ? safeGetCanisterEnv() : undefined
 
+    // Locally deployed asset-canister pages and IC boundary domains can route
+    // agent traffic through their serving origin. Ordinary web hosts (Vercel,
+    // Cloudflare, etc.) cannot, so they retain the default IC API fallback.
+    if (typeof window !== "undefined") {
+      const browserOrigin = window.location.origin
+      const browserNetwork = getNetworkByHostname(
+        new URL(browserOrigin).hostname
+      )
+      if (browserNetwork === "local" || isMainnetHost(browserOrigin)) {
+        agentOptions.host = agentOptions.host ?? browserOrigin
+      }
+    }
+
     if (isDev() && typeof window !== "undefined") {
-      agentOptions.host = agentOptions.host ?? window.location.origin
       if (agentOptions.verifyQuerySignatures == null) {
         agentOptions.verifyQuerySignatures = false
       }

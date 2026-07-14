@@ -34,7 +34,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://ic-reactor.b3pay.net/v4/packages/cli",
+  "homepage": "https://ic-reactor.b3pay.net/v3/packages/cli",
   "dependencies": {
     "@clack/prompts": "^1.7.0",
     "@ic-reactor/codegen": "workspace:*",

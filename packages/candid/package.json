@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/candid",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "description": "IC Reactor Candid Adapter - Fetch and parse Candid definitions from Internet Computer canisters",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -35,7 +35,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://ic-reactor.b3pay.net/v4/packages/candid",
+  "homepage": "https://ic-reactor.b3pay.net/v3/packages/candid",
   "keywords": [
     "internet-computer",
     "icp",

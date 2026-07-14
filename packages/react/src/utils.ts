@@ -3,6 +3,7 @@
  */
 
 import type { QueryKey } from "@tanstack/react-query"
+import type { ReactorQueryData } from "@ic-reactor/core"
 import { generateKey } from "@ic-reactor/core"
 
 /**
@@ -10,6 +11,10 @@ import { generateKey } from "@ic-reactor/core"
  * from the base query key. Not part of the public API.
  */
 export const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
+
+/** Convert a direct reactor result into a value TanStack Query can cache. */
+export const normalizeQueryData = <T>(value: T): ReactorQueryData<T> =>
+  (value === undefined ? null : value) as ReactorQueryData<T>
 
 /**
  * Merge a base query key, optional per-call query key, and optional key-args
