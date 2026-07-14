@@ -130,6 +130,21 @@ export type ReactorReturnOk<
   Transform extends TransformKey = "candid",
 > = TransformReturnRegistry<OkResult<ActorMethodReturnType<A[M]>>, A>[Transform]
 
+/**
+ * Data stored by TanStack Query for a reactor call.
+ *
+ * TanStack Query reserves `undefined` for a missing cache entry, so successful
+ * canister results that contain only `undefined` are represented as `null` at
+ * the query boundary. Direct `callMethod` calls keep their original result.
+ */
+export type ReactorQueryData<T> = 0 extends 1 & T
+  ? T
+  : [T] extends [void]
+    ? null
+    : undefined extends T
+      ? Exclude<T, undefined> | null
+      : T
+
 export type ReactorReturnErr<
   A,
   M extends FunctionName<A>,

@@ -31,6 +31,7 @@ import type {
   BaseActor,
   TransformKey,
   ReactorReturnOk,
+  ReactorQueryData,
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import {
@@ -45,7 +46,7 @@ import {
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
 import { NoInfer } from "./types"
-import { mergeFactoryQueryKey } from "./utils"
+import { mergeFactoryQueryKey, normalizeQueryData } from "./utils"
 
 type SuspenseInfiniteFactoryCallOptions = {
   queryKey?: QueryKey
@@ -86,7 +87,7 @@ export type SuspenseInfiniteQueryPageData<
   Service = BaseActor,
   Method extends FunctionName<Service> = FunctionName<Service>,
   Transform extends TransformKey = "candid",
-> = ReactorReturnOk<Service, Method, Transform>
+> = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
 
 /** The error type for infinite queries */
 export type SuspenseInfiniteQueryError<
@@ -331,7 +332,9 @@ const createSuspenseInfiniteQueryImpl = <
       args,
       callConfig,
     })
-    return result
+    return normalizeQueryData<ReactorReturnOk<Service, Method, Transform>>(
+      result as ReactorReturnOk<Service, Method, Transform>
+    )
   }
 
   // Get infinite query options for fetchInfiniteQuery
