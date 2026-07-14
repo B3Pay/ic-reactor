@@ -11,7 +11,7 @@ typed canister calls with TanStack Query caching, reusable query/mutation
 objects, React hooks, optional Internet Identity auth helpers, runtime Candid
 parsing, and code generation from `.did` files.
 
-This documentation targets the stable v3.6.0 runtime release.
+This documentation targets the stable v3.7.0 runtime release.
 
 ## Package Boundaries
 

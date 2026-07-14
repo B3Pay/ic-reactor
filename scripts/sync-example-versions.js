@@ -4,14 +4,20 @@
  *
  * Usage:
  *   node scripts/sync-example-versions.js           # Uses versions from local package.json files
- *   node scripts/sync-example-versions.js 3.0.0    # Uses specified version
+ *   node scripts/sync-example-versions.js 3.0.0    # Uses specified runtime version
  *   node scripts/sync-example-versions.js workspace # Sets to workspace:*
  *
  * This script updates all @ic-reactor/* dependencies in examples
  * to match the current local package versions, ensuring StackBlitz compatibility.
  */
 
-import { readFileSync, writeFileSync, readdirSync, statSync } from "fs"
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  statSync,
+} from "fs"
 import { join, dirname, relative } from "path"
 import { fileURLToPath } from "url"
 
@@ -33,6 +39,12 @@ const packages = [
   "@ic-reactor/vite-plugin",
 ]
 
+const runtimePackages = new Set([
+  "@ic-reactor/core",
+  "@ic-reactor/react",
+  "@ic-reactor/candid",
+])
+
 const packageVersions = new Map(
   readdirSync(join(rootDir, "packages"))
     .map((name) => join(rootDir, "packages", name, "package.json"))
@@ -51,7 +63,12 @@ const packageVersions = new Map(
 const targetVersionFor = (pkgName) => {
   if (cliVersion === "workspace") return "workspace:*"
 
-  const v = cliVersion || packageVersions.get(pkgName)
+  // A runtime release must not assign its major version to independently
+  // versioned parser/tooling packages.
+  const v =
+    cliVersion && runtimePackages.has(pkgName)
+      ? cliVersion
+      : packageVersions.get(pkgName)
   if (!v) throw new Error(`Missing local package version for ${pkgName}`)
 
   return v.startsWith("^") ? v : `^${v}`
@@ -86,11 +103,29 @@ let updatedCount = 0
 for (const pkgPath of packageJsonFiles) {
   const example = dirname(relative(examplesDir, pkgPath))
 
+  // npm lockfiles cannot resolve a runtime version until it has been
+  // published. Keep those examples internally consistent during preparation;
+  // refresh them in the post-publish example sync.
+  if (cliVersion && existsSync(join(dirname(pkgPath), "package-lock.json"))) {
+    console.log(
+      `  - ${example}: skipped (npm lockfile requires published packages)`
+    )
+    continue
+  }
+
   try {
     const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"))
     let modified = false
 
     for (const pkgName of packages) {
+      if (
+        cliVersion &&
+        cliVersion !== "workspace" &&
+        !runtimePackages.has(pkgName)
+      ) {
+        continue
+      }
+
       const targetVersion = targetVersionFor(pkgName)
 
       // Check dependencies

@@ -1,6 +1,7 @@
 {
   "name": "@ic-reactor/cod",
   "version": "3.6.0",
+  "private": true,
   "description": "Zod-inspired Candid codec for the Internet Computer",
   "main": "dist/index.js",
   "module": "dist/index.js",

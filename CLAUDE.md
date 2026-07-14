@@ -8,9 +8,9 @@ This file provides context for Claude-based AI agents working in the IC Reactor 
 
 ### Core Packages
 
-- `@ic-reactor/core` (`packages/core`, `3.6.0`) — Core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration
-- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks
-- `@ic-reactor/candid` (`packages/candid`, `3.6.0`) — Dynamic Candid adapter/reactors and metadata reactors
+- `@ic-reactor/core` (`packages/core`, `3.7.0`) — Core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration
+- `@ic-reactor/react` (`packages/react`, `3.7.0`) — React bindings, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks
+- `@ic-reactor/candid` (`packages/candid`, `3.7.0`) — Dynamic Candid adapter/reactors and metadata reactors
 - `@ic-reactor/parser` (`packages/parser`, `0.4.6`) — Rust/WASM Candid parser
 - `@ic-reactor/codegen` (`packages/codegen`, `0.11.1`) — Shared generation pipeline used by CLI and Vite plugin
 - `@ic-reactor/cli` (`packages/cli`, `0.11.1`) — `ic-reactor` CLI for explicit declaration/reactor generation

@@ -20,10 +20,11 @@ overrides:
   rollup: 4.60.1
   smol-toml: 1.6.1
   svgo: 4.0.1
-  tar: 7.5.13
+  tar: 7.5.20
   yaml: 2.8.3
   follow-redirects: 1.16.0
-  ws: 8.20.1
+  undici: 7.28.0
+  ws: 8.21.0
 
 importers:
 
@@ -188,7 +189,7 @@ importers:
   examples/all-in-one-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -289,10 +290,10 @@ importers:
   examples/candid-parser:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@microlink/react-json-view':
         specifier: ^1.31.22
@@ -326,7 +327,7 @@ importers:
   examples/ckbtc-wallet:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -363,7 +364,7 @@ importers:
   examples/codec-demo:
     dependencies:
       '@ic-reactor/core':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.0.0
@@ -382,7 +383,7 @@ importers:
   examples/codegen-in-action:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.0.0
@@ -422,7 +423,7 @@ importers:
   examples/custom-provider:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -468,7 +469,7 @@ importers:
   examples/icp-reactor-demo/frontend:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -514,7 +515,7 @@ importers:
   examples/identity-attributes-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -554,10 +555,10 @@ importers:
   examples/metadata-reactor-capabilities-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/candid
       '@ic-reactor/core':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.0.0
@@ -576,10 +577,10 @@ importers:
   examples/metadata-reactor-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/candid
       '@ic-reactor/core':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.0.0
@@ -598,7 +599,7 @@ importers:
   examples/multiple-canister:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -641,7 +642,7 @@ importers:
   examples/nextjs:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -693,7 +694,7 @@ importers:
   examples/nextjs-app-router:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -742,7 +743,7 @@ importers:
   examples/query-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -782,10 +783,10 @@ importers:
   examples/result-types-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.0.0
@@ -816,7 +817,7 @@ importers:
   examples/suspense-infinite-query-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@ic-reactor/vite-plugin':
         specifier: 0.11.1
@@ -859,10 +860,10 @@ importers:
   examples/tanstack-form-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.0.0
@@ -899,7 +900,7 @@ importers:
   examples/tanstack-router:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -993,7 +994,7 @@ importers:
   examples/typescript-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
@@ -1070,7 +1071,7 @@ importers:
   examples/vite-plugin-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.7.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.0.0
@@ -7783,8 +7784,8 @@ packages:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
     engines: {node: '>=6'}
 
-  tar@7.5.13:
-    resolution: {integrity: sha512-tOG/7GyXpFevhXVh8jOPJrmtRpOTsYqUIkVdVooZYJS/z8WhfQUX8RJILmeuJNinGAMSu1veBr4asSHFt5/hng==}
+  tar@7.5.20:
+    resolution: {integrity: sha512-9FcyK4PA6+WbzlTM9WhQm6vB5W7cP7dUiPsv1g7YDwEQnQ1CGpK3MGlKk/ITVWMk05kHZuBhmVhiv8LZoy/PFQ==}
     engines: {node: '>=18'}
 
   test-exclude@6.0.0:
@@ -8034,8 +8035,8 @@ packages:
   undici-types@8.3.0:
     resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
 
-  undici@7.27.2:
-    resolution: {integrity: sha512-uZsKNuzQxDMUY6M3pIMvy5tvlGmtq8XJ2oLAkfRKGNu+1VQAIvLy2xIVG5ATZl5wDXl/tddByAWCizRbOme+TA==}
+  undici@7.28.0:
+    resolution: {integrity: sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==}
     engines: {node: '>=20.18.1'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
@@ -8506,8 +8507,8 @@ packages:
     resolution: {integrity: sha512-+QU2zd6OTD8XWIJCbffaiQeH9U73qIqafo1x6V1snCWYGJf6cVE0cDR4D8xRzcEnfI21IFrUPzPGtcPf8AC+Rw==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
-  ws@8.20.1:
-    resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
+  ws@8.21.0:
+    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -11268,7 +11269,7 @@ snapshots:
 
   '@tanstack/devtools-event-bus@0.4.2':
     dependencies:
-      ws: 8.20.1
+      ws: 8.21.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -13071,7 +13072,7 @@ snapshots:
       buffer-image-size: 0.6.4
       entities: 7.0.1
       whatwg-mimetype: 3.0.0
-      ws: 8.20.1
+      ws: 8.21.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -13824,7 +13825,7 @@ snapshots:
       whatwg-encoding: 3.1.1
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.2.0
-      ws: 8.20.1
+      ws: 8.21.0
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -13848,7 +13849,7 @@ snapshots:
       saxes: 6.0.0
       symbol-tree: 3.2.4
       tough-cookie: 6.0.1
-      undici: 7.27.2
+      undici: 7.28.0
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
@@ -15888,7 +15889,7 @@ snapshots:
 
   tapable@2.3.3: {}
 
-  tar@7.5.13:
+  tar@7.5.20:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
@@ -16112,7 +16113,7 @@ snapshots:
 
   undici-types@8.3.0: {}
 
-  undici@7.27.2: {}
+  undici@7.28.0: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
@@ -16467,7 +16468,7 @@ snapshots:
 
   wasm-pack@0.15.0:
     dependencies:
-      tar: 7.5.13
+      tar: 7.5.20
 
   web-namespaces@2.0.1: {}
 
@@ -16558,7 +16559,7 @@ snapshots:
       imurmurhash: 0.1.4
       signal-exit: 4.1.0
 
-  ws@8.20.1: {}
+  ws@8.21.0: {}
 
   xml-name-validator@5.0.0: {}
 

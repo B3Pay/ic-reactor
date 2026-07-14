@@ -9,7 +9,7 @@
     "deploy": "dfx deploy"
   },
   "dependencies": {
-    "@ic-reactor/react": "^3.6.0",
+    "@ic-reactor/react": "^3.7.0",
     "@ic-reactor/vite-plugin": "0.11.1",
     "@icp-sdk/core": "^6.0.0",
     "@tanstack/react-query": "^5.101",

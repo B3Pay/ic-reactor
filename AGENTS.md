@@ -8,9 +8,9 @@ Treat the published documentation and package manifests as the v3 release line.
 
 ### Packages
 
-- `@ic-reactor/core` (`packages/core`, `3.6.0`) — core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration.
-- `@ic-reactor/react` (`packages/react`, `3.6.0`) — React bindings, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks.
-- `@ic-reactor/candid` (`packages/candid`, `3.6.0`) — dynamic Candid adapter/reactors and metadata reactors.
+- `@ic-reactor/core` (`packages/core`, `3.7.0`) — core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration.
+- `@ic-reactor/react` (`packages/react`, `3.7.0`) — React bindings, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks.
+- `@ic-reactor/candid` (`packages/candid`, `3.7.0`) — dynamic Candid adapter/reactors and metadata reactors.
 - `@ic-reactor/parser` (`packages/parser`, `0.4.6`) — Rust/WASM Candid parser.
 - `@ic-reactor/codegen` (`packages/codegen`, `0.11.1`) — shared generation pipeline used by CLI and Vite plugin.
 - `@ic-reactor/cli` (`packages/cli`, `0.11.1`) — `ic-reactor` CLI for explicit declaration/reactor generation.
@@ -19,7 +19,7 @@ Treat the published documentation and package manifests as the v3 release line.
 ### Package alignment rules
 
 - Describe published documentation as IC Reactor v3.
-- Keep package-specific docs aligned with the released v3.6.0 runtime and its published tooling.
+- Keep package-specific docs aligned with the released v3.7.0 runtime and its published tooling.
 - Prefer `@icp-sdk/*` package names in docs and examples.
 - Use `ClientManager` + `Reactor` + `createActorHooks` for React setup.
 

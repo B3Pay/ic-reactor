@@ -46,7 +46,7 @@
     "url": "git+https://github.com/B3Pay/ic-reactor.git",
     "directory": "packages/codegen"
   },
-  "homepage": "https://ic-reactor.b3pay.net/v4/packages/codegen",
+  "homepage": "https://ic-reactor.b3pay.net/v3/packages/codegen",
   "dependencies": {
     "@ic-reactor/parser": "workspace:*",
     "change-case": "^5.4.4"

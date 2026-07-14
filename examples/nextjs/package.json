@@ -28,7 +28,7 @@
     "generate": "dfx generate"
   },
   "dependencies": {
-    "@ic-reactor/react": "^3.6.0",
+    "@ic-reactor/react": "^3.7.0",
     "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^6.0.0",
     "@tailwindcss/postcss": "^4.3.2",
