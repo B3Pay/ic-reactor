@@ -81,8 +81,10 @@ export function App() {
 
 - `createActorHooks(reactor)` for per-canister hooks like `useActorQuery` and
   `useActorMutation`
-- `createAuthHooks(clientManager)` for `useAuth`, `useAgentState`,
-  `useUserPrincipal`, and identity attribute hooks
+- `createAuthHooks(authentication)` for `useAuth`, `useAgentState`, and
+  `useUserPrincipal`
+- `createIdentityAttributeHooks(identityAttributes)` for signed identity
+  attribute requests
 - direct reactor hooks like `useReactorQuery` when you want to pass the reactor
   instance at call time
 - factory helpers like `createQuery`, `createSuspenseQuery`,
@@ -136,16 +138,34 @@ const mutation = updateProfile.useMutation({
 
 ## Identity Attributes / OpenID email and profile values
 
-`createAuthHooks(clientManager)` exposes `useIdentityAttributes()` for signed
-identity attributes from `@icp-sdk/auth` v7. Existing `useAuth()`, `login()`,
-`logout()`, and `useUserPrincipal()` consumers keep the same IC Reactor API, but
-the configured auth client must support the v7 constructor/sign-in/sign-out API.
+Identity attributes use a dedicated `IdentityAttributesManager`, with React
+bindings created by `createIdentityAttributeHooks`. The configured auth client
+must support the `@icp-sdk/auth` v7 constructor, sign-in, sign-out, and
+attribute-request APIs.
 
 ```tsx
-import { createAuthHooks } from "@ic-reactor/react"
+// src/auth.ts
+import {
+  AuthenticationManager,
+  IdentityAttributesManager,
+  createAuthHooks,
+  createIdentityAttributeHooks,
+} from "@ic-reactor/react"
 import { clientManager } from "./reactor"
 
-const { useIdentityAttributes } = createAuthHooks(clientManager)
+const authentication = new AuthenticationManager({ clientManager })
+export const { useAuth, useAgentState, useUserPrincipal } =
+  createAuthHooks(authentication)
+
+const identityAttributes = new IdentityAttributesManager(authentication)
+export const { useIdentityAttributes } =
+  createIdentityAttributeHooks(identityAttributes)
+```
+
+```tsx
+// src/RegisterWithOpenIdProvider.tsx
+import { useIdentityAttributes } from "./auth"
+import { backend } from "./reactor"
 
 function RegisterWithOpenIdProvider() {
   const {
