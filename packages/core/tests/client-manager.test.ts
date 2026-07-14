@@ -92,7 +92,10 @@ describe("ClientManager", () => {
 
     it("uses the serving origin for browser agent calls", () => {
       vi.stubGlobal("window", {
-        location: { origin: "http://127.0.0.1:3000" },
+        location: {
+          hostname: "backend.localhost",
+          origin: "http://backend.localhost:3000",
+        },
       })
       ;(safeGetCanisterEnv as any).mockReturnValue({
         "PUBLIC_CANISTER_ID:backend": "aaaaa-aa",
@@ -100,8 +103,38 @@ describe("ClientManager", () => {
 
       const manager = new ClientManager({ queryClient })
 
-      expect(manager.agentHost?.toString()).toBe("http://127.0.0.1:3000/")
+      expect(manager.agentHost?.toString()).toBe(
+        "http://backend.localhost:3000/"
+      )
       expect(manager.isLocal).toBe(true)
+    })
+
+    it("uses the serving origin on an IC boundary domain", () => {
+      vi.stubGlobal("window", {
+        location: {
+          hostname: "aaaaa-aa.icp0.io",
+          origin: "https://aaaaa-aa.icp0.io",
+        },
+      })
+
+      const manager = new ClientManager({ queryClient })
+
+      expect(manager.agentHost?.toString()).toBe("https://icp0.io/")
+      expect(manager.isLocal).toBe(false)
+    })
+
+    it("uses the IC API fallback for non-IC browser origins", () => {
+      vi.stubGlobal("window", {
+        location: {
+          hostname: "app.example.com",
+          origin: "https://app.example.com",
+        },
+      })
+
+      const manager = new ClientManager({ queryClient })
+
+      expect(manager.agentHost?.toString()).toBe("https://ic0.app/")
+      expect(manager.isLocal).toBe(false)
     })
   })
 
