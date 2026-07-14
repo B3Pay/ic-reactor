@@ -32,8 +32,7 @@ export interface PartitionDetail {
   size: bigint
 }
 export type Result =
-  | { Ok: [Uint8Array | number[], Uint8Array | number[]] }
-  | { Err: string }
+  { Ok: [Uint8Array | number[], Uint8Array | number[]] } | { Err: string }
 export type Task =
   | { CleanUpKeys: null }
   | { SendText: { body: string; phone_number: string } }
