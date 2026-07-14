@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@ic-reactor/cod": "workspace:*",
-    "@ic-reactor/parser": "workspace:*",
-    "@ic-reactor/codegen": "workspace:*"
+    "@ic-reactor/codegen": "workspace:*",
+    "@ic-reactor/parser": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^6.0.3",
