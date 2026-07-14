@@ -186,8 +186,8 @@ enum CandidType {
 
 fn label_to_string(label: &candid_parser::candid::types::Label) -> String {
     match label {
-        candid_parser::candid::types::Label::Id(id) => id.to_string(),
-        candid_parser::candid::types::Label::Unnamed(id) => id.to_string(),
+        candid_parser::candid::types::Label::Id(id)
+        | candid_parser::candid::types::Label::Unnamed(id) => format!("_{}_", id),
         candid_parser::candid::types::Label::Named(name) => name.clone(),
     }
 }
