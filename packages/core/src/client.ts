@@ -76,11 +76,17 @@ export class ClientManager {
     const canisterEnv =
       typeof window !== "undefined" ? safeGetCanisterEnv() : undefined
 
-    // Browser apps should send agent traffic through the origin that served
-    // them. This is required for locally deployed asset-canister subdomains
-    // and also keeps mainnet deployments on their current boundary node.
+    // Locally deployed asset-canister pages and IC boundary domains can route
+    // agent traffic through their serving origin. Ordinary web hosts (Vercel,
+    // Cloudflare, etc.) cannot, so they retain the default IC API fallback.
     if (typeof window !== "undefined") {
-      agentOptions.host = agentOptions.host ?? window.location.origin
+      const browserOrigin = window.location.origin
+      const browserNetwork = getNetworkByHostname(
+        new URL(browserOrigin).hostname
+      )
+      if (browserNetwork === "local" || isMainnetHost(browserOrigin)) {
+        agentOptions.host = agentOptions.host ?? browserOrigin
+      }
     }
 
     if (isDev() && typeof window !== "undefined") {
