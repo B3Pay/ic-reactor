@@ -9,13 +9,13 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.1.4"
   },
   "dependencies": {
     "@ic-reactor/candid": "^3.6.0",
     "@ic-reactor/core": "^3.6.0",
-    "@icp-sdk/core": "^5.4.0",
+    "@icp-sdk/core": "^6.0.0",
     "@tanstack/query-core": "^5.101.2"
   },
   "overrides": {

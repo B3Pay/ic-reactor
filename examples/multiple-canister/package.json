@@ -6,13 +6,13 @@
   "dependencies": {
     "@ic-reactor/react": "^3.6.0",
     "@icp-sdk/auth": "^7.1.0",
-    "@icp-sdk/core": "^5.4.0",
+    "@icp-sdk/core": "^6.0.0",
     "@tanstack/react-query": "^5.101.2",
-    "@types/node": "25.9.3",
+    "@types/node": "26.1.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.81.0",
-    "typescript": "^6.0"
+    "typescript": "^7.0"
   },
   "scripts": {
     "dev": "vite --port 3000",

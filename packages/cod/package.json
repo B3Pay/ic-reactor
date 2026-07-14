@@ -36,10 +36,10 @@
   "license": "MIT",
   "dependencies": {},
   "peerDependencies": {
-    "@icp-sdk/core": "^5.4.0"
+    "@icp-sdk/core": "^6.0.0"
   },
   "devDependencies": {
-    "@icp-sdk/core": "^5.4.0",
+    "@icp-sdk/core": "^6.0.0",
     "vitest": "^4.1.10"
   }
 }
