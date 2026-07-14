@@ -169,16 +169,13 @@ const result = await backend.callMethod({
 Generate a TanStack Query cache key for a method call:
 
 ```typescript
-const queryKey = backend.generateQueryKey(
-  {
-    functionName: "getUser",
-    args: ["user-123"],
-  },
-  {
-    canisterId: otherCanisterId,
-    effectiveCanisterId: managementCanisterId,
-  }
-)
+const queryKey = backend.generateQueryKey({
+  functionName: "getUser",
+  args: ["user-123"],
+}, {
+  canisterId: otherCanisterId,
+  effectiveCanisterId: managementCanisterId,
+})
 // Returns: [canisterId, "getUser", { effectiveCanisterId: "..." }, "user-123"]
 ```
 
@@ -455,13 +452,10 @@ This method ensures the data is in the cache (fetching it if necessary) and retu
 Get the current data from the cache without fetching:
 
 ```typescript
-const user = backend.getQueryData(
-  {
-    functionName: "getUser",
-    args: ["user-123"],
-  },
-  { canisterId: otherCanisterId }
-)
+const user = backend.getQueryData({
+  functionName: "getUser",
+  args: ["user-123"],
+}, { canisterId: otherCanisterId })
 
 if (user) {
   console.log("User in cache:", user.name)

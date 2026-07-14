@@ -4,18 +4,6 @@ Vite plugin for IC Reactor code generation. It runs the shared
 `@ic-reactor/codegen` pipeline, watches `.did` files, and can inject the
 `ic_env` cookie used by `ClientManager` during local development.
 
-## AI Assistants
-
-- Package AI quick guide: [`./llms.txt`](./llms.txt)
-- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Project AI guide: https://ic-reactor.b3pay.net/v3/guides/ai-friendliness/
-
-Install the shared hook skill in consumer repos:
-
-```bash
-npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
-```
-
 ## Install
 
 ```bash
@@ -49,6 +37,7 @@ import { QueryClient } from "@tanstack/react-query"
 export const queryClient = new QueryClient()
 export const clientManager = new ClientManager({
   queryClient,
+  withCanisterEnv: true,
 })
 ```
 

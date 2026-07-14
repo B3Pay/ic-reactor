@@ -35,8 +35,7 @@ Use [`MetadataDisplayReactor`](/v3/packages/candid/metadatadisplayreactor) if yo
 
 <CardGrid>
   <Card title="Form Schema Generation" icon="list-format">
-    Generate field trees, defaults, component hints, and zod schemas directly
-    from Candid.
+    Generate field trees, defaults, component hints, and zod schemas directly from Candid.
   </Card>
   <Card title="Output Resolution" icon="document">
     Resolve canister return values with method-aware output metadata.
@@ -101,9 +100,7 @@ console.log(transferInput?.schema)
 const transferOutput = reactor.getOutputMeta("icrc1_transfer")
 const raw = await reactor.callMethod({
   functionName: "icrc1_transfer",
-  args: [
-    /* candid args */
-  ],
+  args: [/* candid args */],
 })
 const resolved = transferOutput?.resolve(raw)
 ```
@@ -116,7 +113,6 @@ const resolved = transferOutput?.resolve(raw)
 - hydration decoding for initial form values
 
 Hydration status can be:
-
 - `empty`
 - `hydrated`
 - `skipped`
@@ -174,10 +170,11 @@ const meta = reactor.getInputMeta("get_metadata")
 ```
 
 <Steps>
-  1. Create and initialize `MetadataReactor`. 2. Read method metadata with
-  `getInputMeta` / `getOutputMeta`. 3. Build UI state from `defaults` +
-  `schema`. 4. Optionally hydrate from `candidArgsHex` for replay/edit flows. 5.
-  Call the method and resolve output through `MethodMeta.resolve`.
+  1. Create and initialize `MetadataReactor`.
+  2. Read method metadata with `getInputMeta` / `getOutputMeta`.
+  3. Build UI state from `defaults` + `schema`.
+  4. Optionally hydrate from `candidArgsHex` for replay/edit flows.
+  5. Call the method and resolve output through `MethodMeta.resolve`.
 </Steps>
 
 ## Practical Pattern: Dynamic Form + Result Viewer
@@ -230,6 +227,5 @@ const rendered = outputMeta?.resolve(raw)
 
 <Aside type="tip">
   `MetadataReactor` is usually the right default for runtime metadata tooling.
-  Reach for `MetadataDisplayReactor` when your app explicitly depends on
-  display-type argument transforms.
+  Reach for `MetadataDisplayReactor` when your app explicitly depends on display-type argument transforms.
 </Aside>

@@ -42,8 +42,8 @@ Most users will want the React package, which includes everything you need:
 </Tabs>
 
 <Aside type="tip">
-  `@ic-reactor/react` depends on and re-exports `@ic-reactor/core`, so React
-  apps install and import only `@ic-reactor/react` for IC Reactor runtime APIs.
+  `@ic-reactor/react` re-exports everything from `@ic-reactor/core`, so you only
+  need one import for everything!
 </Aside>
 
 ### Non-React Projects (Node.js, Svelte, Vue, etc.)
@@ -106,16 +106,14 @@ pnpm add -D @ic-reactor/cli
 
 ## Package Overview
 
-| Package                  | Purpose                                 | For React | For Non-React |
-| ------------------------ | --------------------------------------- | --------- | ------------- |
-| `@ic-reactor/react`      | React hooks + included core runtime     | ✅        | ❌            |
-| `@ic-reactor/core`       | Core: Reactor, ClientManager, utilities | included  | ✅            |
-| `@ic-reactor/candid`     | Runtime Candid fetching/parsing         | Optional  | Optional      |
-| `@ic-reactor/parser`     | WASM `.did` parser outputs              | Optional  | Optional      |
-| `@icp-sdk/core`          | IC SDK for agents and Candid            | ✅        | ✅            |
-| `@tanstack/react-query`  | TanStack Query for React                | ✅        | ❌            |
-| `@tanstack/query-core`   | TanStack Query core (caching engine)    | included  | ✅            |
-| `@icp-sdk/auth`          | Internet Identity authentication        | Optional  | Optional      |
+| Package                 | Purpose                                 | For React | For Non-React |
+| ----------------------- | --------------------------------------- | --------- | ------------- |
+| `@ic-reactor/react`     | React hooks + re-exports core           | ✅        | ❌            |
+| `@ic-reactor/core`      | Core: Reactor, ClientManager, utilities | included  | ✅            |
+| `@icp-sdk/core`         | IC SDK for agents and Candid            | ✅        | ✅            |
+| `@tanstack/react-query` | TanStack Query for React                | ✅        | ❌            |
+| `@tanstack/query-core`  | TanStack Query core (caching engine)    | included  | ✅            |
+| `@icp-sdk/auth`         | Internet Identity authentication        | Optional  | Optional      |
 
 **✅ Required** • **included** means it comes with the parent package • **Optional** for specific features
 

@@ -63,7 +63,7 @@ generation and local development.
 
 ## How They Fit Together
 
-- `@ic-reactor/react` depends on `@ic-reactor/core`, re-exports the runtime classes, and owns the React auth helpers.
+- `@ic-reactor/react` depends on `@ic-reactor/core` and re-exports the runtime classes.
 - `@ic-reactor/candid` builds on `@ic-reactor/core` and can optionally use `@ic-reactor/parser` for local Candid compilation.
 - `@ic-reactor/cli` and `@ic-reactor/vite-plugin` both use `@ic-reactor/codegen` under the hood.
 - The tooling packages help you generate declarations and hooks, while the runtime packages execute queries, mutations, auth flows, and dynamic canister calls.

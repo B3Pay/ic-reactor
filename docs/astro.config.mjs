@@ -2,10 +2,8 @@ import { defineConfig } from "astro/config"
 import starlight from "@astrojs/starlight"
 import starlightPageActions from "starlight-page-actions"
 
-const SITE_URL = "https://ic-reactor.b3pay.net"
-
 export default defineConfig({
-  site: SITE_URL,
+  site: "https://ic-reactor.b3pay.net",
   base: "/v3/",
   output: "static",
   integrations: [
@@ -16,7 +14,7 @@ export default defineConfig({
       },
       plugins: [
         starlightPageActions({
-          baseUrl: SITE_URL,
+          baseUrl: "https://ic-reactor.b3pay.net",
           actions: {
             chatgpt: true,
             claude: true,
@@ -229,10 +227,6 @@ export default defineConfig({
             { label: "All-in-One Demo", link: "/examples/all-in-one-demo" },
             { label: "ICP Reactor Demo", link: "/examples/icp-reactor" },
             { label: "Query Demo", link: "/examples/query-demo" },
-            {
-              label: "Identity Attributes",
-              link: "/examples/identity-attributes",
-            },
             { label: "Infinite Query", link: "/examples/infinite-query" },
             {
               label: "Result Types Demo",
@@ -241,10 +235,6 @@ export default defineConfig({
             {
               label: "Metadata Reactor Demo",
               link: "/examples/metadata-reactor",
-            },
-            {
-              label: "Metadata Capabilities",
-              link: "/examples/metadata-reactor-capabilities",
             },
             { label: "Candid Parser", link: "/examples/candid-parser" },
             { label: "Vite Plugin Demo", link: "/examples/vite-plugin" },
@@ -258,10 +248,6 @@ export default defineConfig({
             },
             { label: "TanStack Router", link: "/examples/tanstack-router" },
             { label: "TanStack Form Demo", link: "/examples/tanstack-form" },
-            {
-              label: "Next.js App Router",
-              link: "/examples/nextjs-app-router",
-            },
             { label: "Next.js Integration", link: "/examples/nextjs" },
             {
               label: "Multiple Canisters",
@@ -320,7 +306,6 @@ export default defineConfig({
                   items: [
                     { label: "Overview", link: "/packages/react" },
                     { label: "React Setup", link: "/framework/react-setup" },
-                    { label: "Authentication", link: "/guides/authentication" },
                     {
                       label: "createActorHooks",
                       link: "/reference/createactorhooks/overview",

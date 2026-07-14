@@ -56,17 +56,17 @@ function CreatePost() {
 
 ### Optional Options
 
-| Option              | Type                 | Default | Description                                                       |
-| ------------------- | -------------------- | ------- | ----------------------------------------------------------------- |
-| `callConfig`        | `CallConfig`         | -       | IC agent call configuration                                       |
-| `invalidateQueries` | `QueryKey[]`         | -       | Query keys to invalidate on success                               |
+| Option              | Type                 | Default | Description                                                     |
+| ------------------- | -------------------- | ------- | --------------------------------------------------------------- |
+| `callConfig`        | `CallConfig`         | -       | IC agent call configuration                                     |
+| `invalidateQueries` | `QueryKey[]`         | -       | Query keys to invalidate on success                             |
 | `onCanisterError`   | `function`           | -       | Called only for `Result { Err }` variants (canister logic errors) |
-| `retry`             | `number \| boolean`  | `0`     | Number of retry attempts                                          |
-| `retryDelay`        | `number \| function` | -       | Delay between retries                                             |
-| `onMutate`          | `function`           | -       | Called before mutation                                            |
-| `onSuccess`         | `function`           | -       | Called on successful mutation                                     |
-| `onError`           | `function`           | -       | Called on ALL errors (canister, network, agent)                   |
-| `onSettled`         | `function`           | -       | Called after success or error                                     |
+| `retry`             | `number \| boolean`  | `0`     | Number of retry attempts                                        |
+| `retryDelay`        | `number \| function` | -       | Delay between retries                                           |
+| `onMutate`          | `function`           | -       | Called before mutation                                          |
+| `onSuccess`         | `function`           | -       | Called on successful mutation                                   |
+| `onError`           | `function`           | -       | Called on ALL errors (canister, network, agent)                 |
+| `onSettled`         | `function`           | -       | Called after success or error                                   |
 
 ### Callback Signatures
 
@@ -300,8 +300,7 @@ const { mutate } = useActorMutation({
   },
 })
 ```
-
-````
+```
 
 ### Per-Mutation Callbacks
 
@@ -321,7 +320,7 @@ mutate([postData], {
     navigate(`/posts/${postData.id}`)
   },
 })
-````
+```
 
 ### With Loading State
 
