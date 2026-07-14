@@ -253,6 +253,97 @@ body {
   color: var(--accent-emerald);
 }
 
+/* ─── Metadata Strip ────────────────────────────────────────────────────── */
+
+.metadata-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
+  background: linear-gradient(
+    180deg,
+    rgba(16, 185, 129, 0.06),
+    rgba(6, 182, 212, 0.03)
+  );
+  border-bottom: 1px solid var(--border-default);
+}
+
+.metadata-description {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.metadata-description code {
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  color: var(--accent-emerald);
+}
+
+.metadata-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.metadata-label {
+  width: 95px;
+  flex-shrink: 0;
+  color: var(--accent-emerald);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+.format-list,
+.helper-list {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.format-chip {
+  border: 1px solid rgba(6, 182, 212, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(6, 182, 212, 0.08);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.35rem 0.45rem;
+  transition: all var(--transition-fast);
+  cursor: default;
+}
+
+.format-chip:hover {
+  background: rgba(6, 182, 212, 0.16);
+  border-color: rgba(6, 182, 212, 0.4);
+  transform: translateY(-1px);
+}
+
+.helper-chip {
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  border-radius: var(--radius-sm);
+  background: rgba(16, 185, 129, 0.09);
+  color: var(--accent-emerald);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.35rem 0.45rem;
+  transition: all var(--transition-fast);
+  cursor: default;
+}
+
+.helper-chip:hover {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.42);
+  transform: translateY(-1px);
+}
+
 /* ─── Editor Split ──────────────────────────────────────────────────────── */
 
 .editor-container {
@@ -471,6 +562,16 @@ body {
 
   .header {
     flex-wrap: wrap;
+  }
+
+  .metadata-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .metadata-label {
+    width: auto;
   }
 
   .header-subtitle {

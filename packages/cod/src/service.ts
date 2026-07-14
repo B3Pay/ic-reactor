@@ -49,7 +49,6 @@ type ServiceActor<
 // ─────────────────────────────────────────────────────────────────────────────
 
 type MethodMode = "query" | "update" | "oneway"
-
 type ReturnCodecs = readonly CandidCodec<unknown>[] | undefined
 
 type InferReturn<T extends ReturnCodecs> = T extends readonly [
@@ -119,10 +118,17 @@ export function query<
   A extends readonly CandidCodec<unknown>[],
   R extends CandidCodec<unknown>,
 >(args: [...A], ret: R): CandidMethodCodec<A, readonly [R], "query">
+/**
+ * Define a query method with multiple return values:
+ * `c.query([ArgCodec, ...], [ReturnCodec, ...])`.
+ */
 export function query<
   A extends readonly CandidCodec<unknown>[],
   R extends readonly CandidCodec<unknown>[],
 >(args: [...A], rets: [...R]): CandidMethodCodec<A, R, "query">
+/**
+ * Define a query method with no return values: `c.query([ArgCodec, ...])`.
+ */
 export function query<A extends readonly CandidCodec<unknown>[]>(
   args: [...A]
 ): CandidMethodCodec<A, undefined, "query">
@@ -140,10 +146,17 @@ export function update<
   A extends readonly CandidCodec<unknown>[],
   R extends CandidCodec<unknown>,
 >(args: [...A], ret: R): CandidMethodCodec<A, readonly [R], "update">
+/**
+ * Define an update method with multiple return values:
+ * `c.update([ArgCodec, ...], [ReturnCodec, ...])`.
+ */
 export function update<
   A extends readonly CandidCodec<unknown>[],
   R extends readonly CandidCodec<unknown>[],
 >(args: [...A], rets: [...R]): CandidMethodCodec<A, R, "update">
+/**
+ * Define an update method with no return values: `c.update([ArgCodec, ...])`.
+ */
 export function update<A extends readonly CandidCodec<unknown>[]>(
   args: [...A]
 ): CandidMethodCodec<A, undefined, "update">
@@ -206,7 +219,7 @@ export class CandidServiceCodec<
     const idlMethods: Record<string, IDL.FuncClass> = {}
     for (const [name, method] of Object.entries(this.methods)) {
       const args = method.argCodecs.map((c) => c.toIDL())
-      const rets = method.returnCodecs?.map((codec) => codec.toIDL()) ?? []
+      const rets = method.returnCodecs?.map((c) => c.toIDL()) ?? []
       idlMethods[name] = IDL.Func(args as any, rets as any, method.annotations)
     }
     return IDL.Service(idlMethods) as unknown as IDL.Type<ServiceActor<M>>
@@ -227,7 +240,7 @@ export class CandidServiceCodec<
       const idlMethods: Record<string, IDL.FuncClass> = {}
       for (const [name, method] of Object.entries(methods)) {
         const args = method.argCodecs.map((c) => c.toIDL())
-        const rets = method.returnCodecs?.map((codec) => codec.toIDL()) ?? []
+        const rets = method.returnCodecs?.map((c) => c.toIDL()) ?? []
         idlMethods[name] = _IDL.Func(
           args as any,
           rets as any,

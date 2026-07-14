@@ -6,14 +6,30 @@
  */
 
 import "./styles.css"
-import { generateCodecDeclarations } from "@ic-reactor/codegen"
+import { generateCodecDeclarations } from "@ic-reactor/codegen/renderer"
+import type { GenerateCodecDeclarationsOptions } from "@ic-reactor/codegen/renderer"
 import { SAMPLES } from "./samples"
 import init, { parseDid } from "@ic-reactor/parser"
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
-let candidInput = SAMPLES.icrc1.did
-let selectedSampleKey = "icrc1"
+const CUSTOM_JSDOC_FORMAT_TYPES: NonNullable<
+  GenerateCodecDeclarationsOptions["customJSDocFormatTypes"]
+> = {
+  username: {
+    regex: "^[a-z0-9_]+$",
+    errorMessage: "Use lowercase letters, numbers, and underscores",
+  },
+}
+
+function getCodegenOptions(): GenerateCodecDeclarationsOptions {
+  return {
+    customJSDocFormatTypes: CUSTOM_JSDOC_FORMAT_TYPES,
+  }
+}
+
+let candidInput = SAMPLES.isoFormats.did
+let selectedSampleKey = "isoFormats"
 let outputCode = ""
 let errorMessage = ""
 let parserReady = false
@@ -39,8 +55,8 @@ function regenerate(): void {
   if (!parserReady) return
 
   try {
-    const schemaAst = JSON.parse(parseDid(candidInput))
-    outputCode = generateCodecDeclarations(schemaAst, "service")
+    const schemaAst = parseDid(candidInput)
+    outputCode = generateCodecDeclarations(schemaAst, getCodegenOptions())
     errorMessage = ""
   } catch (err) {
     outputCode = ""
@@ -76,7 +92,7 @@ function highlightCode(code: string): string {
 
   // c.* function calls
   html = html.replace(
-    /\b(c\.(?:record|variant|opt|vec|tuple|query|update|oneway|service|text|bool|nat|nat8|nat16|nat32|nat64|int|int8|int16|int32|int64|float32|float64|principal|null|reserved|empty|blob|infer|ServiceOf))\b/g,
+    /\b(c\.(?:record|variant|opt|vec|tuple|query|update|oneway|service|text|email|dateTime|datetime|date|time|duration|url|uri|httpsUrl|ipv4|ipv6|uuid|guid|base64|base64url|cuid|cuid2|ulid|nanoid|emoji|cidrv4|cidrv6|mac|bool|nat|nat8|nat16|nat32|nat64|int|int8|int16|int32|int64|float32|float64|principal|null|reserved|empty|blob|infer|ServiceOf))\b/g,
     '<span class="fn">$1</span>'
   )
 
@@ -100,6 +116,30 @@ function render(): void {
       ([key, { label }]) =>
         `<option value="${key}" ${key === selectedSampleKey ? "selected" : ""}>${label}</option>`
     )
+    .join("")
+  const formatPreviewOptions = [
+    "@format date",
+    "@format time",
+    "@format datetime",
+    "@format duration",
+    "@format uuid",
+    "@format email",
+    "@format url",
+    "@format base64",
+  ]
+    .map((format) => `<span class="format-chip">${format}</span>`)
+    .join("")
+  const helperPreviewOptions = [
+    "c.date()",
+    "c.time()",
+    "c.datetime()",
+    "c.duration()",
+    "c.uuid()",
+    "c.email()",
+    "c.url()",
+    "c.base64()",
+  ]
+    .map((helper) => `<span class="helper-chip">${helper}</span>`)
     .join("")
 
   app.innerHTML = `
@@ -133,6 +173,24 @@ function render(): void {
         <span id="copy-icon">📋</span>
         <span id="copy-label">Copy output</span>
       </button>
+    </div>
+
+    <div class="metadata-strip">
+      <div class="metadata-description">
+        Built-in <code>@format</code> tags compile to compact Cod validation helpers with default messages.
+      </div>
+      <div class="metadata-row">
+        <span class="metadata-label">Format Tags</span>
+        <div class="format-list" aria-label="Active JSDoc format types">
+          ${formatPreviewOptions}
+        </div>
+      </div>
+      <div class="metadata-row">
+        <span class="metadata-label">Cod Helpers</span>
+        <div class="helper-list" aria-label="Generated Cod format helpers">
+          ${helperPreviewOptions}
+        </div>
+      </div>
     </div>
 
     <div class="editor-container">

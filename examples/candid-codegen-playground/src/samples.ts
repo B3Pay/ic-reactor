@@ -3,6 +3,133 @@
  */
 
 export const SAMPLES: Record<string, { label: string; did: string }> = {
+  isoFormats: {
+    label: "ISO Date & Time Formats",
+    did: `/// A calendar event with Zod-aligned ISO date/time validation.
+type CalendarEvent = record {
+  /// Title of the event.
+  title : text;
+
+  /// Full-day date of the event (YYYY-MM-DD).
+  /// Calendar-aware: rejects 2023-02-29 (not a leap year),
+  /// 2024-04-31 (April has 30 days), and invalid months.
+  /// @format date
+  date : text;
+
+  /// Wall-clock start time (HH:mm or HH:mm:ss[.fractional]).
+  /// Seconds are optional — 14:30 and 14:30:00.5 are both valid.
+  /// @format time
+  start_time : text;
+
+  /// ISO 8601 datetime with UTC or offset timezone.
+  /// e.g. 2024-06-15T09:00Z or 2024-06-15T09:00+05:30
+  /// @format datetime
+  created_at : text;
+
+  /// ISO 8601 duration for the event length.
+  /// e.g. PT1H30M (1h30m) or P2DT4H (2 days 4 hours).
+  /// Supports comma as decimal separator: PT10,5S
+  /// @format duration
+  duration : text;
+};
+
+type EventResult = variant {
+  Ok : CalendarEvent;
+  Err : text;
+};
+
+service : {
+  /// Create a new calendar event.
+  create_event : (CalendarEvent) -> (EventResult);
+
+  /// Get events on a specific date (YYYY-MM-DD).
+  get_events_on : (text) -> (vec CalendarEvent) query;
+}`,
+  },
+  formatHelpers: {
+    label: "Built-in Format Helpers",
+    did: `/// Contact profile using built-in Cod text-format helpers.
+type ContactProfile = record {
+  /// Public profile identifier.
+  /// @format uuid
+  id : text;
+
+  /// Contact email used for account recovery.
+  /// @format email
+  email : text;
+
+  /// Public website URL.
+  /// @format url
+  website : text;
+
+  /// ISO timestamp for the last profile update.
+  /// @format date-time
+  updated_at : text;
+
+  /// Base64 encoded avatar thumbnail.
+  /// @format base64
+  avatar_thumbnail : text;
+};
+
+/// Contact registry service.
+service : {
+  /// Create or replace the caller contact profile.
+  save_contact : (ContactProfile) -> ();
+
+  /// Load a contact profile by id.
+  get_contact : (text) -> (opt ContactProfile) query;
+}`,
+  },
+  metadata: {
+    label: "Metadata + Validation",
+    did: `/// Public profile submitted by application users.
+type UserProfile = record {
+  /// Public profile identifier.
+  /// @format uuid
+  id : text;
+
+  /// Stable username shown in URLs and mentions.
+  /// @minLength 3
+  /// @maxLength 24
+  /// @format username
+  username : text;
+
+  /// Contact email used for account recovery.
+  /// @format email
+  email : text;
+
+  /// Optional verified website.
+  /// @format url
+  website : opt text;
+
+  /// ISO timestamp for the last profile update.
+  /// @format date-time
+  updated_at : text;
+
+  /// Profile reputation score.
+  /// @minimum 0
+  /// @maximum 100
+  reputation : nat8;
+};
+
+/// Result returned after saving a profile.
+type SaveProfileResult = variant {
+  /// Profile accepted and stored.
+  Ok : UserProfile;
+
+  /// Human-readable rejection reason.
+  Err : text;
+};
+
+/// User profile registry service.
+service : {
+  /// Create or replace the caller profile.
+  upsert_profile : (UserProfile) -> (SaveProfileResult);
+
+  /// Look up a profile by username.
+  get_profile : (text) -> (opt UserProfile) query;
+}`,
+  },
   icrc1: {
     label: "ICRC-1 Ledger",
     did: `type Account = record {

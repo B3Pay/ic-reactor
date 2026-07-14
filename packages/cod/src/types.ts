@@ -39,8 +39,33 @@ export type CandidMetadata = {
     max?: string | number
     options?: unknown[]
   }
+  /** Validation metadata for generated forms and validation helpers */
+  validation?: CandidValidationMetadata
   /** Arbitrary extension point */
   custom?: Record<string, unknown>
+}
+
+export type CandidValidationMetadata = {
+  minimum?: CandidValidationBound
+  maximum?: CandidValidationBound
+  minLength?: CandidValidationBound
+  maxLength?: CandidValidationBound
+  pattern?: string
+  format?: CandidValidationFormat
+}
+
+export type CandidValidationBound = {
+  value: string
+  message?: string
+}
+
+export type CandidValidationFormat = {
+  type: string
+  message?: string
+  regex?: string
+  jsonSchemaFormat?: string
+  contentEncoding?: string
+  errorMessage?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

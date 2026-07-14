@@ -1,0 +1,171 @@
+---
+title: "Candid Metadata Tags"
+description: IC Reactor's doc-comment metadata contract for Candid schemas
+editUrl: false
+---
+
+`@ic-reactor/parser` preserves Candid doc comments and maps a small,
+JSDoc-style validation vocabulary into schema metadata.
+
+This is not a Candid language standard. The standard base is ordinary Candid
+doc comments (`///` and block doc comments). The tag vocabulary below is the
+IC Reactor contract for generated codec metadata, chosen to stay close to
+familiar JSON Schema and `ts-to-zod` names.
+
+## Comment Mapping
+
+Doc comments immediately before a type, field, service, or method are attached
+to that node:
+
+```text
+/// Account that receives tokens.
+type Account = record {
+  /// Owner principal.
+  owner : principal;
+};
+
+/// Ledger service.
+service : {
+  /// Return an account balance.
+  balance : (Account) -> (nat) query;
+}
+```
+
+The parser emits:
+
+- `metadata.description`: non-tag doc lines joined with newlines
+- `metadata.docs`: all doc lines, including tag lines
+- `metadata.validation`: parsed validation tags when present
+
+## Validation Tags
+
+IC Reactor currently recognizes these tags:
+
+| Tag                            | Metadata               | Typical use                             |
+| ------------------------------ | ---------------------- | --------------------------------------- |
+| `@minimum <value> [message]`   | `validation.minimum`   | Numeric lower bounds                    |
+| `@maximum <value> [message]`   | `validation.maximum`   | Numeric upper bounds                    |
+| `@minLength <value> [message]` | `validation.minLength` | Text, blob, or vector lower length      |
+| `@maxLength <value> [message]` | `validation.maxLength` | Text, blob, or vector upper length      |
+| `@pattern <regex>`             | `validation.pattern`   | Text pattern hints                      |
+| `@format <type> [message]`     | `validation.format`    | Named formats such as `email` or `uuid` |
+
+Example:
+
+```text
+type Profile = record {
+  /// Display name.
+  /// @minLength 2
+  /// @maxLength 32
+  name : text;
+
+  /// Contact email.
+  /// @format email
+  email : text;
+};
+```
+
+The generated codec renderer emits built-in formats as helpers and keeps
+remaining validation as metadata:
+
+```ts
+export const Profile = c.record({
+  name: c
+    .text()
+    .describe("Display name.")
+    .meta({
+      docs: ["Display name.", "@minLength 2", "@maxLength 32"],
+      validation: {
+        minLength: { value: "2", message: "Must be at least 2 characters" },
+        maxLength: { value: "32", message: "Must be at most 32 characters" },
+      },
+    }),
+  email: c.email().describe("Contact email."),
+})
+```
+
+## Built-In And Custom Formats
+
+The codec renderer includes built-in definitions aligned with
+[Zod string formats](https://zod.dev/json-schema?id=string-formats#string-formats).
+Formats that Zod maps to JSON Schema `format` also include `jsonSchemaFormat`
+metadata; `base64` includes `contentEncoding`.
+
+Built-in names:
+
+- `email`
+- `date-time`
+- `datetime`
+- `date`
+- `time`
+- `duration`
+- `url`
+- `uri`
+- `httpsUrl`
+- `ipv4`
+- `ipv6`
+- `uuid`
+- `guid`
+- `base64`
+- `base64url`
+- `cuid`
+- `cuid2`
+- `ulid`
+- `nanoid`
+- `emoji`
+- `cidrv4`
+- `cidrv6`
+- `mac`
+
+Those can be used without an inline message:
+
+```text
+/// Contact email.
+/// @format email
+email : text;
+```
+
+The generated Cod schema uses the matching helper:
+
+```ts
+email: c.email().describe("Contact email.")
+```
+
+`c.email()` still encodes as Candid `text`, but its metadata includes the
+built-in regex and default English error message.
+
+If the tag includes a message, the renderer passes it to the helper instead of
+emitting inline metadata:
+
+```text
+/// Public profile identifier.
+/// @format uuid UUID
+id : text;
+```
+
+```ts
+id: c.uuid("UUID").describe("Public profile identifier.")
+```
+
+Pass `customJSDocFormatTypes` to `generateCodecDeclarations` only for
+project-specific formats or to override a built-in regex/message:
+
+```ts
+import { generateCodecDeclarations } from "@ic-reactor/codegen/renderer"
+
+const source = generateCodecDeclarations(schema, {
+  customJSDocFormatTypes: {
+    principalText: "^[a-z0-9-]+$",
+  },
+})
+```
+
+If the Candid tag includes its own message, that message takes precedence over
+the configured `errorMessage`.
+
+## Runtime Validation
+
+These tags are metadata only today. They are meant for generated forms,
+documentation, AI context, and future validation helpers. Generated codec output
+does not enforce validation until `@ic-reactor/cod` owns explicit validation
+APIs.

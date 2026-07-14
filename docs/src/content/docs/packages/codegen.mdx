@@ -52,6 +52,8 @@ await runCanisterPipeline({
 - `runCanisterPipeline` for full end-to-end generation.
 - Naming helpers like `toPascalCase`, `getReactorName`, and `getServiceTypeName`.
 - Parser helpers like `parseDIDFile` and `extractMethods`.
+- `generateCodecDeclarations` from `@ic-reactor/codegen/renderer` for turning
+  structured Candid schemas into `@ic-reactor/cod` declarations.
 - Lower-level generators when you need declarations, reactor files, or client files separately.
 
 For each canister, the pipeline writes:
@@ -74,6 +76,53 @@ Generated output can target any of these reactor classes:
 
 - `react` (default): generates the reactor plus bound React hooks
 - `core`: generates only the typed reactor exports with no React dependency
+
+## Codec Renderer
+
+The codec renderer consumes the structured schema returned by
+`@ic-reactor/parser` and emits readable `@ic-reactor/cod` declarations.
+
+```ts
+import { parseDid } from "@ic-reactor/parser"
+import { generateCodecDeclarations } from "@ic-reactor/codegen/renderer"
+
+const schema = parseDid(candidSource)
+const source = generateCodecDeclarations(schema, {
+  serviceExportName: "backend",
+  customJSDocFormatTypes: {
+    principalText: "^[a-z0-9-]+$",
+  },
+})
+```
+
+The renderer preserves parser metadata using `.describe(...)` and
+`.meta(...)`. Built-in `@format` values compile to Cod helpers such as
+`c.email()`, `c.url()`, and `c.uuid()`. These helpers still encode as Candid
+`text`, but carry the built-in regex and default English error message in
+their metadata.
+
+Built-in format names follow
+[Zod string formats](https://zod.dev/json-schema?id=string-formats#string-formats),
+including `email`, `date-time`, `date`, `duration`, `ipv4`, `ipv6`, `uuid`,
+`uri`, `base64`, `ulid`, `cuid`, `nanoid`, `cidrv4`, `cidrv6`, and `mac`.
+`customJSDocFormatTypes` is only needed for project-specific formats or
+overrides. Validation tags are metadata only for now; generated codec output
+does not enforce them until validation APIs exist in `@ic-reactor/cod`.
+
+By default, service output is a single service codec export:
+
+```ts
+export const _SERVICE = c.service({ ... })
+```
+
+The default starts with underscores to avoid collisions with Candid type names
+such as `type canister = ...`. Use `serviceExportName` to choose a
+domain-specific name. Set `includeCompatibilityExports: true` only when you also
+need top-level `idlFactory`, `_SERVICE`, and `manifest` aliases for older
+integration code.
+
+See [Candid Metadata Tags](/v4/packages/parser/metadata-tags) for the supported
+doc-comment tags and custom format mapping contract.
 
 ## See Also
 

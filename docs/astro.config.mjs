@@ -375,6 +375,10 @@ export default defineConfig({
                   items: [
                     { label: "Overview", link: "/packages/parser" },
                     {
+                      label: "Metadata Tags",
+                      link: "/packages/parser/metadata-tags",
+                    },
+                    {
                       label: "API Reference",
                       link: "/packages/parser/reference",
                     },

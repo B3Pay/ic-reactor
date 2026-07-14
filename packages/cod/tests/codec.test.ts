@@ -20,6 +20,28 @@ describe("Primitive Codecs", () => {
     expect(codec.toIDL()).toBe(IDL.Text)
   })
 
+  it("text format helpers produce IDL.Text with validation metadata", () => {
+    const email = c.email()
+
+    expect(email.kind).toBe("text")
+    expect(email.toIDL()).toBe(IDL.Text)
+    expect(email.metadata.validation?.format).toEqual({
+      type: "email",
+      regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+      jsonSchemaFormat: "email",
+      errorMessage: "Must be a valid email address",
+    })
+
+    expect(c.url().metadata.validation?.format?.errorMessage).toBe(
+      "Must be a valid URL"
+    )
+    expect(
+      c.email("Invalid email").metadata.validation?.format?.errorMessage
+    ).toBe("Invalid email")
+    expect(c.uuid().metadata.validation?.format?.jsonSchemaFormat).toBe("uuid")
+    expect(c.dateTime().metadata.validation?.format?.type).toBe("date-time")
+  })
+
   it("c.bool() produces IDL.Bool", () => {
     const codec = c.bool()
     expect(codec.kind).toBe("bool")
@@ -417,6 +439,34 @@ describe("Service Codec", () => {
     })
   })
 
+  describe("query/update with no returns", () => {
+    it("creates no-return query and update methods", () => {
+      const svc = c.service({
+        ping: c.query([]),
+        save: c.update([c.text()]),
+      })
+
+      expect(svc.methods.ping.returnCodec).toBeUndefined()
+      expect(svc.methods.save.returnCodec).toBeUndefined()
+
+      const idl = svc.idlFactory({ IDL })
+      expect(idl.display()).toBe(
+        IDL.Service({
+          ping: IDL.Func([], [], ["query"]),
+          save: IDL.Func([IDL.Text], [], []),
+        }).display()
+      )
+
+      const manifest = svc.manifest()
+      expect(manifest.methods.find((m) => m.name === "ping")!.returns).toEqual(
+        []
+      )
+      expect(manifest.methods.find((m) => m.name === "save")!.returns).toEqual(
+        []
+      )
+    })
+  })
+
   describe("query/update with multiple returns", () => {
     it("creates methods whose IDL returns are separate values", () => {
       const svc = c.service({
@@ -431,6 +481,14 @@ describe("Service Codec", () => {
         IDL.Service({
           stats: IDL.Func([], [IDL.Text, IDL.Nat64], ["query"]),
         }).display()
+      )
+
+      const manifest = svc.manifest()
+      expect(manifest.methods.find((m) => m.name === "stats")!.returns).toEqual(
+        [
+          { kind: "text", metadata: {} },
+          { kind: "nat64", metadata: {} },
+        ]
       )
     })
   })
@@ -510,6 +568,17 @@ describe("Type Inference", () => {
     const pair = c.tuple([c.text(), c.nat()])
     type PairType = c.infer<typeof pair>
     expectTypeOf<PairType>().toEqualTypeOf<[string, bigint]>()
+  })
+
+  it("service methods with multiple returns infer tuple results", () => {
+    const svc = c.service({
+      stats: c.query([], [c.text(), c.nat64()]),
+    })
+    type Service = c.ServiceOf<typeof svc>
+
+    expectTypeOf<Service["stats"]>().toEqualTypeOf<
+      () => Promise<[string, bigint]>
+    >()
   })
 })
 
