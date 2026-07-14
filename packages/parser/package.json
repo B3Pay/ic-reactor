@@ -58,16 +58,16 @@
     "analyze": "size-limit"
   },
   "devDependencies": {
-    "@ic-reactor/core": "workspace:*",
     "@ic-reactor/candid": "workspace:*",
+    "@ic-reactor/core": "workspace:*",
+    "@icp-sdk/auth": "^7.1.0",
+    "@icp-sdk/core": "^6.0.0",
+    "@size-limit/preset-small-lib": "^12.1.0",
     "@tanstack/query-core": "^5.100.10",
     "@types/node": "^25.9.3",
+    "size-limit": "^12.1.0",
     "vitest": "^4.1.9",
-    "wasm-pack": "0.15.0",
-    "@icp-sdk/core": "^5.4.0",
-    "@icp-sdk/auth": "^7.1.0",
-    "@size-limit/preset-small-lib": "^12.1.0",
-    "size-limit": "^12.1.0"
+    "wasm-pack": "0.15.0"
   },
   "size-limit": [
     {

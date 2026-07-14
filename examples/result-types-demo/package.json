@@ -11,14 +11,14 @@
   "dependencies": {
     "@ic-reactor/candid": "^3.6.0",
     "@ic-reactor/react": "^3.6.0",
-    "@icp-sdk/core": "^5.2.1",
+    "@icp-sdk/core": "^6.0.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^6.0.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.16"
   },

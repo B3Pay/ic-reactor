@@ -100,7 +100,7 @@ describe("Reactor callConfig overrides", () => {
       {
         methodName: "readName",
         arg: IDL.encode([], []),
-        effectiveCanisterId: Principal.from(overrideCanisterId),
+        effectiveTarget: { canisterId: Principal.from(overrideCanisterId) },
       }
     )
   })
@@ -201,7 +201,7 @@ describe("Reactor callConfig overrides", () => {
       {
         methodName: "writeName",
         arg: IDL.encode([], []),
-        effectiveCanisterId: Principal.from(overrideCanisterId),
+        effectiveTarget: { canisterId: Principal.from(overrideCanisterId) },
         nonce: undefined,
       }
     )
