@@ -96,4 +96,24 @@ describe("Reactor.getQueryOptions", () => {
 
     expect(options.queryKey).toEqual([mockCanisterId, "test", '["123"]'])
   })
+
+  it("normalizes successful undefined results to null for TanStack Query", async () => {
+    mockAgent.query.mockResolvedValue(createMockQueryResponse([], []))
+
+    const directResult = await reactor.callMethod({
+      functionName: "test",
+      args: [1n],
+    })
+    expect(directResult).toBeUndefined()
+
+    const queryResult = await reactor.fetchQuery({
+      functionName: "test",
+      args: [1n],
+    })
+
+    expect(queryResult).toBeNull()
+    expect(
+      reactor.getQueryData({ functionName: "test", args: [1n] })
+    ).toBeNull()
+  })
 })

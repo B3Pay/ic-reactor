@@ -11,6 +11,7 @@ import {
   TransformKey,
   ReactorArgs,
   ReactorReturnOk,
+  ReactorQueryData,
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
@@ -19,13 +20,13 @@ export interface UseActorQueryParameters<
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
-  Selected = ReactorReturnOk<Service, Method, Transform>,
+  Selected = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
 > extends Omit<
   QueryObserverOptions<
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     ReactorReturnErr<Service, Method, Transform>,
     Selected,
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     QueryKey
   >,
   "queryKey" | "queryFn"
@@ -41,7 +42,7 @@ export type UseActorQueryConfig<
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
-  Selected = ReactorReturnOk<Service, Method, Transform>,
+  Selected = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
 > = Omit<
   UseActorQueryParameters<Service, Method, Transform, Selected>,
   "reactor"
@@ -51,7 +52,7 @@ export type UseActorQueryResult<
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
-  Selected = ReactorReturnOk<Service, Method, Transform>,
+  Selected = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
 > = UseQueryResult<Selected, ReactorReturnErr<Service, Method, Transform>>
 
 /**
@@ -76,7 +77,7 @@ export const useActorQuery = <
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
-  Selected = ReactorReturnOk<Service, Method, Transform>,
+  Selected = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
 >({
   reactor,
   functionName,

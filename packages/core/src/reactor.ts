@@ -14,6 +14,7 @@ import type {
   TransformKey,
   ReactorArgs,
   ReactorReturnOk,
+  ReactorQueryData,
   ReactorQueryParams,
   ReactorCallParams,
   CanisterId,
@@ -23,6 +24,7 @@ import { DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { generateKey, extractOkResult } from "./utils/helper"
+import { toReactorQueryData } from "./utils/query-data"
 import {
   processQueryCallResponse,
   processUpdateCallResponse,
@@ -242,10 +244,15 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
 
   public getQueryOptions<M extends FunctionName<A>>(
     params: ReactorCallParams<A, M, T>
-  ): FetchQueryOptions<ReactorReturnOk<A, M, T>> {
+  ): FetchQueryOptions<ReactorQueryData<ReactorReturnOk<A, M, T>>> {
     return {
       queryKey: this.generateQueryKey(params, params.callConfig),
-      queryFn: () => this.callMethod(params),
+      queryFn: async () => {
+        const result = await this.callMethod(params)
+        return toReactorQueryData<ReactorReturnOk<A, M, T>>(
+          result as ReactorReturnOk<A, M, T>
+        )
+      },
     }
   }
 
@@ -386,9 +393,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    */
   public async fetchQuery<M extends FunctionName<A>>(
     params: ReactorCallParams<A, M, T>
-  ): Promise<ReactorReturnOk<A, M, T>> {
+  ): Promise<ReactorQueryData<ReactorReturnOk<A, M, T>>> {
     const options = this.getQueryOptions(params)
-    return this.queryClient.ensureQueryData<ReactorReturnOk<A, M, T>>(options)
+    return this.queryClient.ensureQueryData<
+      ReactorQueryData<ReactorReturnOk<A, M, T>>
+    >(options)
   }
 
   /**
@@ -397,9 +406,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public getQueryData<M extends FunctionName<A>>(
     params: ReactorQueryParams<A, M, T>,
     callConfig?: CallConfig
-  ): ReactorReturnOk<A, M, T> | undefined {
+  ): ReactorQueryData<ReactorReturnOk<A, M, T>> | undefined {
     const queryKey = this.generateQueryKey(params, callConfig)
-    return this.queryClient.getQueryData<ReactorReturnOk<A, M, T>>(queryKey)
+    return this.queryClient.getQueryData<
+      ReactorQueryData<ReactorReturnOk<A, M, T>>
+    >(queryKey)
   }
 
   /**

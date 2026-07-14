@@ -5,6 +5,7 @@
 import type {
   FunctionName,
   ReactorReturnOk,
+  ReactorQueryData,
   ReactorReturnErr,
   ReactorArgs,
   BaseActor,
@@ -42,7 +43,7 @@ export type QueryFnData<
   Service = BaseActor,
   Method extends FunctionName<Service> = FunctionName<Service>,
   Transform extends TransformKey = "candid",
-> = ReactorReturnOk<Service, Method, Transform>
+> = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
 
 /** The error type for queries */
 export type QueryError<
@@ -70,10 +71,10 @@ export interface BaseQueryConfig<
   Selected = QueryFnData<Service, Method, Transform>,
 > extends Omit<
   QueryObserverOptions<
-    ReactorReturnOk<Service, Method, Transform>,
+    QueryFnData<Service, Method, Transform>,
     ReactorReturnErr<Service, Method, Transform>,
     Selected,
-    ReactorReturnOk<Service, Method, Transform>,
+    QueryFnData<Service, Method, Transform>,
     QueryKey
   >,
   "queryFn" | "queryKey"

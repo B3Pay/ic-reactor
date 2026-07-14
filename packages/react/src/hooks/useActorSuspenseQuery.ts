@@ -12,6 +12,7 @@ import {
   TransformKey,
   ReactorArgs,
   ReactorReturnOk,
+  ReactorQueryData,
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
@@ -20,13 +21,13 @@ export interface UseActorSuspenseQueryParameters<
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
-  Selected = ReactorReturnOk<Service, Method, Transform>,
+  Selected = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
 > extends Omit<
   QueryObserverOptions<
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     ReactorReturnErr<Service, Method, Transform>,
     Selected,
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     QueryKey
   >,
   "queryKey" | "queryFn"
@@ -42,7 +43,7 @@ export type UseActorSuspenseQueryConfig<
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
-  Selected = ReactorReturnOk<Service, Method, Transform>,
+  Selected = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
 > = Omit<
   UseActorSuspenseQueryParameters<Service, Method, Transform, Selected>,
   "reactor"
@@ -52,7 +53,7 @@ export type UseActorSuspenseQueryResult<
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
-  Selected = ReactorReturnOk<Service, Method, Transform>,
+  Selected = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
 > = UseSuspenseQueryResult<
   Selected,
   ReactorReturnErr<Service, Method, Transform>
@@ -80,7 +81,7 @@ export const useActorSuspenseQuery = <
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
-  Selected = ReactorReturnOk<Service, Method, Transform>,
+  Selected = ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
 >({
   reactor,
   functionName,
@@ -110,7 +111,7 @@ export const useActorSuspenseQuery = <
     {
       // Suspense queries don't support skipToken, so cast the queryFn
       queryFn: queryFn as QueryFunction<
-        ReactorReturnOk<Service, Method, Transform>,
+        ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
         QueryKey
       >,
       ...options,
