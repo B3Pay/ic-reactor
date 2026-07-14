@@ -27,12 +27,7 @@ export type FormFieldComponentType =
  * Input type hints for HTML input elements.
  */
 export type FormInputType =
-  | "text"
-  | "number"
-  | "checkbox"
-  | "select"
-  | "file"
-  | "textarea"
+  "text" | "number" | "checkbox" | "select" | "file" | "textarea"
 
 /**
  * Rendering hints for the UI.

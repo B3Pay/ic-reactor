@@ -175,9 +175,7 @@ describe("Zod Codecs - Variant Types", () => {
     type TodoStatus = { Active: null } | { Completed: null } | { Open: null }
 
     type TodoStatusDisplay =
-      | { _type: "Active" }
-      | { _type: "Completed" }
-      | { _type: "Open" }
+      { _type: "Active" } | { _type: "Completed" } | { _type: "Open" }
 
     const statusType = IDL.Variant({
       Active: IDL.Null,
@@ -238,9 +236,7 @@ describe("Zod Codecs - Variant Types", () => {
 
   it("should handle complex variants with optional values", () => {
     type ValidationStatus =
-      | { Valid: null }
-      | { Invalid: { error: string } }
-      | { Pending: null }
+      { Valid: null } | { Invalid: { error: string } } | { Pending: null }
 
     type ValidationStatusDisplay =
       | { _type: "Valid" }

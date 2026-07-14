@@ -29,8 +29,7 @@ export interface IdentityAttributeResult {
 type IdentityAttributeOpenIdProviderAlias = "google" | "apple" | "microsoft"
 
 export type IdentityAttributeOpenIdProvider =
-  | IdentityAttributeOpenIdProviderAlias
-  | (string & {})
+  IdentityAttributeOpenIdProviderAlias | (string & {})
 
 export interface AuthenticationClientOptions {
   identityProvider?: string | URL

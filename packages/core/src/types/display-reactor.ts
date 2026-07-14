@@ -15,8 +15,7 @@ import {
  * Either success (true) or failure with issues.
  */
 export type ValidationResult =
-  | { success: true }
-  | { success: false; issues: ValidationIssue[] }
+  { success: true } | { success: false; issues: ValidationIssue[] }
 
 /**
  * A validator function that validates method arguments.
