@@ -417,6 +417,24 @@ describe("Service Codec", () => {
     })
   })
 
+  describe("query/update with multiple returns", () => {
+    it("creates methods whose IDL returns are separate values", () => {
+      const svc = c.service({
+        stats: c.query([], [c.text(), c.nat64()]),
+      })
+
+      expect(svc.methods.stats.returnCodec).toBeUndefined()
+      expect(svc.methods.stats.returnCodecs).toHaveLength(2)
+
+      const idl = svc.idlFactory({ IDL })
+      expect(idl.display()).toBe(
+        IDL.Service({
+          stats: IDL.Func([], [IDL.Text, IDL.Nat64], ["query"]),
+        }).display()
+      )
+    })
+  })
+
   describe("method metadata", () => {
     it("describe() works on methods", () => {
       const method = c.query([c.text()], c.text()).describe("Greet the user")

@@ -78,7 +78,7 @@ describe("Codec Declarations Generator", () => {
     expect(profileIdx).toBeLessThan(resultIdx)
   })
 
-  it("should handle cyclic references gracefully", () => {
+  it("rejects recursive references until c.recursive is implemented", () => {
     const schema: CandidSchema = {
       types: [
         {
@@ -101,11 +101,9 @@ describe("Codec Declarations Generator", () => {
       service: null,
     }
 
-    const code = generateCodecDeclarations(schema, "myService")
-
-    expect(code).toContain("export const Node = c.record({")
-    expect(code).toContain("value: c.text()")
-    expect(code).toContain("next: c.opt(Node)")
+    expect(() => generateCodecDeclarations(schema, "myService")).toThrow(
+      "Recursive Candid types are not supported yet: Node -> Node"
+    )
   })
 
   it("should handle unsupported types by falling back to reserved with warning comments", () => {
@@ -129,7 +127,7 @@ describe("Codec Declarations Generator", () => {
     )
   })
 
-  it("should handle query and update with no returns using undefined as any", () => {
+  it("renders no-return methods without undefined casts", () => {
     const schema: CandidSchema = {
       types: [],
       service: {
@@ -146,8 +144,28 @@ describe("Codec Declarations Generator", () => {
 
     const code = generateCodecDeclarations(schema, "myService")
 
-    expect(code).toContain(
-      "fireAndForget: c.update([c.text()], undefined as any)"
-    )
+    expect(code).toContain("fireAndForget: c.update([c.text()])")
+    expect(code).not.toContain("undefined as any")
+  })
+
+  it("renders multiple method returns as separate return codecs", () => {
+    const schema: CandidSchema = {
+      types: [],
+      service: {
+        methods: [
+          {
+            name: "stats",
+            mode: "query",
+            args: [],
+            returns: [{ kind: "text" }, { kind: "nat64" }],
+          },
+        ],
+      },
+    }
+
+    const code = generateCodecDeclarations(schema, "myService")
+
+    expect(code).toContain("stats: c.query([], [c.text(), c.nat64()])")
+    expect(code).not.toContain("c.tuple([c.text(), c.nat64()])")
   })
 })

@@ -90,17 +90,18 @@ export function sortDeclarations(
 ): CandidTypeDeclaration[] {
   const sorted: CandidTypeDeclaration[] = []
   const visited = new Set<string>()
-  const visiting = new Set<string>()
+  const visiting: string[] = []
 
   const declMap = new Map(declarations.map((d) => [d.name, d]))
 
   function visit(name: string) {
     if (visited.has(name)) return
-    if (visiting.has(name)) {
-      // Cycle detected: break cycle and return
-      return
+    const cycleStart = visiting.indexOf(name)
+    if (cycleStart !== -1) {
+      const cycle = [...visiting.slice(cycleStart), name].join(" -> ")
+      throw new Error(`Recursive Candid types are not supported yet: ${cycle}`)
     }
-    visiting.add(name)
+    visiting.push(name)
     const decl = declMap.get(name)
     if (decl) {
       const deps = getReferencedNames(decl.type)
@@ -109,7 +110,7 @@ export function sortDeclarations(
       }
       sorted.push(decl)
     }
-    visiting.delete(name)
+    visiting.pop()
     visited.add(name)
   }
 
@@ -243,11 +244,11 @@ export function generateCodecDeclarations(
           retCode = ""
         } else {
           if (method.returns.length === 0) {
-            retCode = ", undefined as any"
+            retCode = ""
           } else if (method.returns.length === 1) {
             retCode = `, ${renderType(method.returns[0], "    ")}`
           } else {
-            retCode = `, c.tuple([${method.returns.map((r) => renderType(r, "    ")).join(", ")}])`
+            retCode = `, [${method.returns.map((r) => renderType(r, "    ")).join(", ")}]`
           }
         }
         const key = isValidIdentifier(method.name)

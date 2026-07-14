@@ -90,8 +90,10 @@ fn type_to_json(ty: &candid_parser::candid::types::Type) -> String {
             } else {
                 let fields_json: Vec<String> = fields.iter().map(|f| {
                     let label = match &*f.id {
-                        candid_parser::candid::types::Label::Id(id) => id.to_string(),
-                        candid_parser::candid::types::Label::Unnamed(id) => id.to_string(),
+                        candid_parser::candid::types::Label::Id(id)
+                        | candid_parser::candid::types::Label::Unnamed(id) => {
+                            format!("_{}_", id)
+                        }
                         candid_parser::candid::types::Label::Named(name) => name.clone(),
                     };
                     format!(r#"{{"name":"{}","type":{}}}"#, label, type_to_json(&f.ty))
@@ -102,8 +104,10 @@ fn type_to_json(ty: &candid_parser::candid::types::Type) -> String {
         TypeInner::Variant(fields) => {
             let fields_json: Vec<String> = fields.iter().map(|f| {
                 let label = match &*f.id {
-                    candid_parser::candid::types::Label::Id(id) => id.to_string(),
-                    candid_parser::candid::types::Label::Unnamed(id) => id.to_string(),
+                    candid_parser::candid::types::Label::Id(id)
+                    | candid_parser::candid::types::Label::Unnamed(id) => {
+                        format!("_{}_", id)
+                    }
                     candid_parser::candid::types::Label::Named(name) => name.clone(),
                 };
                 format!(r#"{{"name":"{}","type":{}}}"#, label, type_to_json(&f.ty))

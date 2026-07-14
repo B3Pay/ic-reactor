@@ -123,16 +123,14 @@ describe("Candid Schema Parser (parseDid)", () => {
       types: [{ kind: "float64" }, { kind: "float64" }],
     })
 
-    // Nested record has named fields and unnamed fields (index 0, 1)
-    // The parser checks if fields are unnamed consecutive indices. If not, it falls back to a normal record.
-    // Here we have "name", "0", "1". Since "name" is not a consecutive u32 index starting at 0,
-    // it should be parsed as a normal record with fields.
+    // Mixed numeric and named labels must retain numeric ID semantics. The
+    // `_N_` spelling is recognized by the JavaScript IDL builder as label N.
     expect(nestedType).toBeDefined()
     expect(nestedType.type).toEqual({
       kind: "record",
       fields: [
-        { name: "0", type: { kind: "nat32" } },
-        { name: "1", type: { kind: "bool" } },
+        { name: "_0_", type: { kind: "nat32" } },
+        { name: "_1_", type: { kind: "bool" } },
         { name: "name", type: { kind: "text" } },
       ],
     })
