@@ -272,8 +272,11 @@ importers:
       '@ic-reactor/cod':
         specifier: workspace:*
         version: link:../../packages/cod
+      '@ic-reactor/codegen':
+        specifier: workspace:*
+        version: link:../../packages/codegen
       '@ic-reactor/parser':
-        specifier: ^0.4.6
+        specifier: workspace:*
         version: link:../../packages/parser
     devDependencies:
       typescript:

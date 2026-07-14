@@ -27,15 +27,14 @@ type InferArgs<T extends readonly CandidCodec<unknown>[]> = {
 /**
  * Build the actor method signature for a single method codec.
  * Query/update: `(...args) => Promise<ReturnType>`
+ * No-return methods: `(...args) => Promise<void>`
  * Oneway:       `(...args) => Promise<void>`
  */
 type MethodSignature<M> =
   M extends CandidMethodCodec<infer A, infer _R, infer Mode>
     ? Mode extends "oneway"
       ? (...args: InferArgs<A>) => Promise<void>
-      : _R extends CandidCodec<infer RT>
-        ? (...args: InferArgs<A>) => Promise<RT>
-        : never
+      : (...args: InferArgs<A>) => Promise<InferReturn<_R>>
     : never
 
 /** Map a record of method codecs to an actor-like interface. */
@@ -51,6 +50,16 @@ type ServiceActor<
 
 type MethodMode = "query" | "update" | "oneway"
 
+type ReturnCodecs = readonly CandidCodec<unknown>[] | undefined
+
+type InferReturn<T extends ReturnCodecs> = T extends readonly [
+  CandidCodec<infer R>,
+]
+  ? R
+  : T extends readonly CandidCodec<unknown>[]
+    ? InferArgs<T>
+    : void
+
 /**
  * Codec for a single service method.
  *
@@ -59,7 +68,7 @@ type MethodMode = "query" | "update" | "oneway"
  */
 export class CandidMethodCodec<
   A extends readonly CandidCodec<unknown>[] = CandidCodec<unknown>[],
-  R extends CandidCodec<unknown> | undefined = CandidCodec<unknown> | undefined,
+  R extends ReturnCodecs = ReturnCodecs,
   M extends MethodMode = MethodMode,
 > {
   readonly metadata: CandidMetadata
@@ -67,10 +76,14 @@ export class CandidMethodCodec<
   constructor(
     readonly mode: M,
     readonly argCodecs: A,
-    readonly returnCodec: R,
+    readonly returnCodecs: R,
     metadata: CandidMetadata = {}
   ) {
     this.metadata = Object.freeze({ ...metadata })
+  }
+
+  get returnCodec(): CandidCodec<unknown> | undefined {
+    return this.returnCodecs?.length === 1 ? this.returnCodecs[0] : undefined
   }
 
   /** IDL annotations array for `IDL.Func`. */
@@ -82,7 +95,7 @@ export class CandidMethodCodec<
 
   /** Return a new method codec with the given description. */
   describe(text: string): CandidMethodCodec<A, R, M> {
-    return new CandidMethodCodec(this.mode, this.argCodecs, this.returnCodec, {
+    return new CandidMethodCodec(this.mode, this.argCodecs, this.returnCodecs, {
       ...this.metadata,
       description: text,
     })
@@ -90,7 +103,7 @@ export class CandidMethodCodec<
 
   /** Return a new method codec with arbitrary metadata merged in. */
   meta(m: Partial<CandidMetadata>): CandidMethodCodec<A, R, M> {
-    return new CandidMethodCodec(this.mode, this.argCodecs, this.returnCodec, {
+    return new CandidMethodCodec(this.mode, this.argCodecs, this.returnCodecs, {
       ...this.metadata,
       ...m,
     })
@@ -105,8 +118,19 @@ export class CandidMethodCodec<
 export function query<
   A extends readonly CandidCodec<unknown>[],
   R extends CandidCodec<unknown>,
->(args: [...A], ret: R): CandidMethodCodec<A, R, "query"> {
-  return new CandidMethodCodec("query", args, ret)
+>(args: [...A], ret: R): CandidMethodCodec<A, readonly [R], "query">
+export function query<
+  A extends readonly CandidCodec<unknown>[],
+  R extends readonly CandidCodec<unknown>[],
+>(args: [...A], rets: [...R]): CandidMethodCodec<A, R, "query">
+export function query<A extends readonly CandidCodec<unknown>[]>(
+  args: [...A]
+): CandidMethodCodec<A, undefined, "query">
+export function query<
+  A extends readonly CandidCodec<unknown>[],
+  R extends CandidCodec<unknown> | readonly CandidCodec<unknown>[] | undefined,
+>(args: [...A], ret?: R): CandidMethodCodec<A, ReturnCodecs, "query"> {
+  return new CandidMethodCodec("query", args, normalizeReturnCodecs(ret))
 }
 
 /**
@@ -115,8 +139,19 @@ export function query<
 export function update<
   A extends readonly CandidCodec<unknown>[],
   R extends CandidCodec<unknown>,
->(args: [...A], ret: R): CandidMethodCodec<A, R, "update"> {
-  return new CandidMethodCodec("update", args, ret)
+>(args: [...A], ret: R): CandidMethodCodec<A, readonly [R], "update">
+export function update<
+  A extends readonly CandidCodec<unknown>[],
+  R extends readonly CandidCodec<unknown>[],
+>(args: [...A], rets: [...R]): CandidMethodCodec<A, R, "update">
+export function update<A extends readonly CandidCodec<unknown>[]>(
+  args: [...A]
+): CandidMethodCodec<A, undefined, "update">
+export function update<
+  A extends readonly CandidCodec<unknown>[],
+  R extends CandidCodec<unknown> | readonly CandidCodec<unknown>[] | undefined,
+>(args: [...A], ret?: R): CandidMethodCodec<A, ReturnCodecs, "update"> {
+  return new CandidMethodCodec("update", args, normalizeReturnCodecs(ret))
 }
 
 /**
@@ -126,6 +161,19 @@ export function oneway<A extends readonly CandidCodec<unknown>[]>(
   args: [...A]
 ): CandidMethodCodec<A, undefined, "oneway"> {
   return new CandidMethodCodec("oneway", args, undefined)
+}
+
+function normalizeReturnCodecs(
+  ret?: CandidCodec<unknown> | readonly CandidCodec<unknown>[]
+): ReturnCodecs {
+  if (!ret) return undefined
+  return isReturnCodecArray(ret) ? ret : [ret]
+}
+
+function isReturnCodecArray(
+  ret: CandidCodec<unknown> | readonly CandidCodec<unknown>[]
+): ret is readonly CandidCodec<unknown>[] {
+  return Array.isArray(ret)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,7 +206,7 @@ export class CandidServiceCodec<
     const idlMethods: Record<string, IDL.FuncClass> = {}
     for (const [name, method] of Object.entries(this.methods)) {
       const args = method.argCodecs.map((c) => c.toIDL())
-      const rets = method.returnCodec ? [method.returnCodec.toIDL()] : []
+      const rets = method.returnCodecs?.map((codec) => codec.toIDL()) ?? []
       idlMethods[name] = IDL.Func(args as any, rets as any, method.annotations)
     }
     return IDL.Service(idlMethods) as unknown as IDL.Type<ServiceActor<M>>
@@ -179,7 +227,7 @@ export class CandidServiceCodec<
       const idlMethods: Record<string, IDL.FuncClass> = {}
       for (const [name, method] of Object.entries(methods)) {
         const args = method.argCodecs.map((c) => c.toIDL())
-        const rets = method.returnCodec ? [method.returnCodec.toIDL()] : []
+        const rets = method.returnCodecs?.map((codec) => codec.toIDL()) ?? []
         idlMethods[name] = _IDL.Func(
           args as any,
           rets as any,
@@ -205,16 +253,11 @@ export class CandidServiceCodec<
           })
         )
 
-        const returns: CandidFieldManifest[] = method.returnCodec
-          ? [
-              {
-                kind: (
-                  method.returnCodec as CandidCodec<unknown> & { kind: string }
-                ).kind,
-                metadata: method.returnCodec.metadata,
-              },
-            ]
-          : []
+        const returns: CandidFieldManifest[] =
+          method.returnCodecs?.map((codec) => ({
+            kind: (codec as CandidCodec<unknown> & { kind: string }).kind,
+            metadata: codec.metadata,
+          })) ?? []
 
         return {
           name,
