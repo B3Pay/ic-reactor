@@ -76,8 +76,14 @@ export class ClientManager {
     const canisterEnv =
       typeof window !== "undefined" ? safeGetCanisterEnv() : undefined
 
-    if (isDev() && typeof window !== "undefined") {
+    // Browser apps should send agent traffic through the origin that served
+    // them. This is required for locally deployed asset-canister subdomains
+    // and also keeps mainnet deployments on their current boundary node.
+    if (typeof window !== "undefined") {
       agentOptions.host = agentOptions.host ?? window.location.origin
+    }
+
+    if (isDev() && typeof window !== "undefined") {
       if (agentOptions.verifyQuerySignatures == null) {
         agentOptions.verifyQuerySignatures = false
       }

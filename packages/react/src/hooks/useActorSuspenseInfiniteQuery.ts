@@ -12,9 +12,11 @@ import {
   TransformKey,
   ReactorArgs,
   ReactorReturnOk,
+  ReactorQueryData,
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
+import { normalizeQueryData } from "../utils"
 
 /**
  * Parameters for useActorSuspenseInfiniteQuery hook.
@@ -26,12 +28,12 @@ export interface UseActorSuspenseInfiniteQueryParameters<
   Transform extends TransformKey = "candid",
   TPageParam = unknown,
   Selected = InfiniteData<
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     TPageParam
   >,
 > extends Omit<
   UseSuspenseInfiniteQueryOptions<
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     ReactorReturnErr<Service, Method, Transform>,
     Selected,
     QueryKey,
@@ -53,8 +55,8 @@ export interface UseActorSuspenseInfiniteQueryParameters<
   initialPageParam: TPageParam
   /** Function to determine next page parameter */
   getNextPageParam: (
-    lastPage: ReactorReturnOk<Service, Method, Transform>,
-    allPages: ReactorReturnOk<Service, Method, Transform>[],
+    lastPage: ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+    allPages: ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>[],
     lastPageParam: TPageParam,
     allPageParams: TPageParam[]
   ) => TPageParam | undefined | null
@@ -81,7 +83,10 @@ export type UseActorSuspenseInfiniteQueryResult<
   Transform extends TransformKey = "candid",
   TPageParam = unknown,
 > = UseSuspenseInfiniteQueryResult<
-  InfiniteData<ReactorReturnOk<Service, Method, Transform>, TPageParam>,
+  InfiniteData<
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+    TPageParam
+  >,
   ReactorReturnErr<Service, Method, Transform>
 >
 
@@ -132,11 +137,14 @@ export const useActorSuspenseInfiniteQuery = <
   const queryFn = useCallback(
     async ({ pageParam }: { pageParam: TPageParam }) => {
       const args = getArgs(pageParam)
-      return reactor.callMethod({
+      const result = await reactor.callMethod({
         functionName,
         args,
         callConfig,
       })
+      return normalizeQueryData<ReactorReturnOk<Service, Method, Transform>>(
+        result as ReactorReturnOk<Service, Method, Transform>
+      )
     },
     [reactor, functionName, getArgs, callConfig]
   )

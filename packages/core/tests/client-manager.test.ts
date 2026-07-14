@@ -90,7 +90,7 @@ describe("ClientManager", () => {
       vi.restoreAllMocks()
     })
 
-    it("automatically uses ic_env in the browser when present", () => {
+    it("uses the serving origin for browser agent calls", () => {
       vi.stubGlobal("window", {
         location: { origin: "http://127.0.0.1:3000" },
       })

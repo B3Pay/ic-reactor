@@ -21,6 +21,7 @@ import {
   DisplayReactor,
   ReactorReturnErr,
   ReactorReturnOk,
+  ReactorQueryData,
   BaseActor,
   FunctionName,
   TransformKey,
@@ -53,10 +54,10 @@ export type ActorHooks<Service, Transform extends TransformKey> = {
         Service,
         Method,
         Transform,
-        ReactorReturnOk<Service, Method, Transform>
+        ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
       >
     ): UseQueryResult<
-      ReactorReturnOk<Service, Method, Transform>,
+      ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
       ReactorReturnErr<Service, Method, Transform>
     >
     <Method extends FunctionName<Service>, TData>(
@@ -70,10 +71,10 @@ export type ActorHooks<Service, Transform extends TransformKey> = {
         Service,
         Method,
         Transform,
-        ReactorReturnOk<Service, Method, Transform>
+        ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
       >
     ): UseSuspenseQueryResult<
-      ReactorReturnOk<Service, Method, Transform>,
+      ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
       ReactorReturnErr<Service, Method, Transform>
     >
     <Method extends FunctionName<Service>, TData>(
@@ -90,7 +91,10 @@ export type ActorHooks<Service, Transform extends TransformKey> = {
   >(
     config: InfiniteQueryConfig<Service, Method, Transform, TPageParam>
   ) => UseInfiniteQueryResult<
-    InfiniteData<ReactorReturnOk<Service, Method, Transform>, TPageParam>,
+    InfiniteData<
+      ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+      TPageParam
+    >,
     ReactorReturnErr<Service, Method, Transform>
   >
 
@@ -100,7 +104,10 @@ export type ActorHooks<Service, Transform extends TransformKey> = {
   >(
     config: SuspenseInfiniteQueryConfig<Service, Method, Transform, TPageParam>
   ) => UseSuspenseInfiniteQueryResult<
-    InfiniteData<ReactorReturnOk<Service, Method, Transform>, TPageParam>,
+    InfiniteData<
+      ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+      TPageParam
+    >,
     ReactorReturnErr<Service, Method, Transform>
   >
 
