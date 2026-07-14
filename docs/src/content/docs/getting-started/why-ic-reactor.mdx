@@ -202,18 +202,17 @@ One of IC Reactor's most elegant features:
 // Your Candid method returns: variant { Ok: nat; Err: text }
 
 const { mutate } = useActorMutation({
-functionName: "transfer",
-onSuccess: (balance) => {
-// balance is typed as `bigint` - Err case throws automatically!
-console.log(`New balance: ${balance}`)
-},
-onCanisterError: (error) => {
-// error.err is typed as `string`
-console.error(`Transfer failed: ${error.err}`)
-},
+  functionName: "transfer",
+  onSuccess: (balance) => {
+    // balance is typed as `bigint` - Err case throws automatically!
+    console.log(`New balance: ${balance}`)
+  },
+  onCanisterError: (error) => {
+    // error.err is typed as `string`
+    console.error(`Transfer failed: ${error.err}`)
+  },
 })
-
-````
+```
   </TabItem>
   <TabItem label="Without IC Reactor">
 ```typescript
@@ -228,8 +227,7 @@ if ("Ok" in result) {
   // What if it's lowercase? What if the shape changes?
   throw new Error("Unexpected result shape")
 }
-````
-
+```
   </TabItem>
 </Tabs>
 
@@ -293,7 +291,7 @@ As the creator and maintainer of IC Reactor, here's my honest assessment:
 
 3. **Developer Experience** — The API is intuitive if you know TanStack Query. If you don't, you learn a skill that transfers to any React project.
 
-4. **Production Ready** — This is v3, not v1. We've learned from two prior major versions, countless production apps, and real user feedback.
+4. **Production Ready** — This is v3, not v1. We've learned from two major versions, countless production apps, and real user feedback.
 
 ### Where We're Still Improving
 

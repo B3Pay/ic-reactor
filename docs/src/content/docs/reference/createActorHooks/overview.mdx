@@ -48,7 +48,7 @@ Using a `Reactor` instance is the only supported way to create actor hooks:
 ```typescript
 import { createActorHooks } from "@ic-reactor/react"
 import { clientManager } from "./reactor"
-import { Reactor } from "@ic-reactor/react"
+import { Reactor } from "@ic-reactor/core"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
 const backend = new Reactor<_SERVICE>({
@@ -67,7 +67,7 @@ To enable automatic display transformations (BigInt → string, Principal → te
 
 ```typescript
 import { createActorHooks } from "@ic-reactor/react"
-import { DisplayReactor } from "@ic-reactor/react"
+import { DisplayReactor } from "@ic-reactor/core"
 import { clientManager } from "./reactor"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
@@ -111,7 +111,7 @@ createActorHooks(reactor: Reactor<A, T>)
 
 ```typescript
 // src/reactor/index.ts
-import { ClientManager, Reactor } from "@ic-reactor/react"
+import { ClientManager, Reactor } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/query-core"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
@@ -132,9 +132,8 @@ export const backend = new Reactor<_SERVICE>({
 
 ```typescript
 // src/reactor/hooks.ts
-import { createActorHooks } from "@ic-reactor/react"
-import { createAuthHooks } from "@ic-reactor/react"
-import { authentication, backend } from "./index"
+import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import { backend, clientManager } from "./index"
 
 // Create hooks for the backend canister
 export const {
@@ -149,7 +148,7 @@ export const {
 
 // Create auth hooks
 export const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(authentication)
+  createAuthHooks(clientManager)
 ```
 
 ### Multiple Canisters
@@ -183,10 +182,8 @@ You can define everything in one place:
 
 ```typescript
 // src/reactor/hooks.ts
-import { createActorHooks } from "@ic-reactor/react"
-import { createAuthHooks } from "@ic-reactor/react"
-import { ClientManager, Reactor } from "@ic-reactor/react"
-import { AuthenticationManager } from "@ic-reactor/react"
+import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import { ClientManager, Reactor } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/query-core"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
@@ -196,7 +193,6 @@ const clientManager = new ClientManager({
   queryClient,
   withProcessEnv: true,
 })
-const authentication = new AuthenticationManager({ clientManager })
 
 const backend = new Reactor<_SERVICE>({
   clientManager,
@@ -208,7 +204,7 @@ const backend = new Reactor<_SERVICE>({
 // Returns hooks
 export const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
-export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
+export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
 
 // Export for use elsewhere
 export { queryClient, clientManager, backend }

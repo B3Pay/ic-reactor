@@ -6,7 +6,7 @@ editUrl: false
 
 import { Aside } from "@astrojs/starlight/components"
 
-`createAuthHooks` creates React hooks bound to an `AuthenticationManager`.
+`createAuthHooks` is a factory function that creates React hooks for managing Internet Identity authentication. The hooks are bound to a specific `ClientManager` instance.
 
 ## Import
 
@@ -18,17 +18,17 @@ import { createAuthHooks } from "@ic-reactor/react"
 
 ```typescript
 import { createAuthHooks } from "@ic-reactor/react"
-import { authentication } from "./reactor"
+import { clientManager } from "./reactor"
 
 const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(authentication)
+  createAuthHooks(clientManager)
 ```
 
 ## Parameters
 
-| Parameter        | Type                    | Description                       |
-| ---------------- | ----------------------- | --------------------------------- |
-| `authentication` | `AuthenticationManager` | Authentication manager to bind to |
+| Parameter       | Type            | Description                           |
+| --------------- | --------------- | ------------------------------------- |
+| `clientManager` | `ClientManager` | The ClientManager instance to bind to |
 
 ## Return Value
 
@@ -44,8 +44,7 @@ const { useAuth, useUserPrincipal, useAgentState } =
 
 ```typescript
 // src/reactor/index.ts
-import { ClientManager } from "@ic-reactor/react"
-import { AuthenticationManager } from "@ic-reactor/react"
+import { ClientManager } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/query-core"
 
 export const queryClient = new QueryClient()
@@ -54,16 +53,15 @@ export const clientManager = new ClientManager({
   queryClient,
   withProcessEnv: true,
 })
-export const authentication = new AuthenticationManager({ clientManager })
 ```
 
 ```typescript
 // src/reactor/hooks.ts
 import { createAuthHooks } from "@ic-reactor/react"
-import { authentication } from "./index"
+import { clientManager } from "./index"
 
 export const { useAuth, useUserPrincipal, useAgentState } =
-  createAuthHooks(authentication)
+  createAuthHooks(clientManager)
 ```
 
 ```tsx

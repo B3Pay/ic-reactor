@@ -105,19 +105,19 @@ The `ic-reactor.json` file controls the CLI behavior.
 | `outDir`            | `string`                         | Base output directory for generated files (required). |
 | `canisters`         | `Record<string, CanisterConfig>` | Map of canister names to configurations (required).   |
 | `clientManagerPath` | `string`                         | Path to a custom `ClientManager` instance (optional). |
-| `target`            | `"react" \| "core"`              | Default generated runtime target (optional).          |
+| `target`            | `"react" \| "core"`             | Default generated runtime target (optional).          |
 
 ### Canister Config
 
-| Key                 | Type     | Description                                                                                                                          |
-| :------------------ | :------- | :----------------------------------------------------------------------------------------------------------------------------------- |
-| `name`              | `string` | Canister name (required). Must match the key in `canisters`.                                                                         |
-| `didFile`           | `string` | Path to the `.did` file (required).                                                                                                  |
-| `mode`              | `string` | Reactor class to generate: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`. |
-| `outDir`            | `string` | Override output directory for this canister.                                                                                         |
-| `clientManagerPath` | `string` | Override client manager path.                                                                                                        |
-| `target`            | `string` | Override generated runtime target.                                                                                                   |
-| `canisterId`        | `string` | Optional fixed canister ID.                                                                                                          |
+| Key                 | Type     | Description                                                                                                                                          |
+| :------------------ | :------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`              | `string` | Canister name (required). Must match the key in `canisters`.                                                                                         |
+| `didFile`           | `string` | Path to the `.did` file (required).                                                                                                                  |
+| `mode`              | `string` | Reactor class to generate: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`.                 |
+| `outDir`            | `string` | Override output directory for this canister.                                                                                                         |
+| `clientManagerPath` | `string` | Override client manager path.                                                                                                                        |
+| `target`            | `string` | Override generated runtime target.                                                                                                                   |
+| `canisterId`        | `string` | Optional fixed canister ID.                                                                                                                          |
 
 ## Examples
 

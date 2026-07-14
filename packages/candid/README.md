@@ -2,18 +2,6 @@
 
 Lightweight adapter for fetching and parsing Candid definitions from Internet Computer canisters.
 
-## AI Assistants
-
-- Package AI quick guide: [`./llms.txt`](./llms.txt)
-- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Project AI guide: https://ic-reactor.b3pay.net/v3/guides/ai-friendliness/
-
-Install the shared hook skill in consumer repos:
-
-```bash
-npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
-```
-
 ## Features
 
 - **Fetch Candid Definitions**: Retrieve Candid interface definitions from any canister

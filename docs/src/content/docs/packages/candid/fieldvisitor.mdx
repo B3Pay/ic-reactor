@@ -52,17 +52,17 @@ type FormArgumentsMeta = {
 
 Every `FormFieldNode` includes:
 
-| Property       | Type                     | Description                             |
-| -------------- | ------------------------ | --------------------------------------- |
-| `type`         | `FormFieldType`          | Candid field category                   |
-| `label`        | `string`                 | Raw field label                         |
-| `displayLabel` | `string`                 | Human-readable label                    |
-| `name`         | `string`                 | Form path                               |
-| `schema`       | `z.ZodTypeAny`           | Field-level validation schema           |
-| `component`    | `FormFieldComponentType` | Suggested renderer component            |
-| `renderHint`   | `FormRenderHint`         | Primitive/compound and input type hints |
-| `defaultValue` | `unknown`                | Default value for initialization        |
-| `candidType`   | `string`                 | Original Candid type text               |
+| Property       | Type                 | Description                             |
+| -------------- | -------------------- | --------------------------------------- |
+| `type`         | `FormFieldType`      | Candid field category                   |
+| `label`        | `string`             | Raw field label                         |
+| `displayLabel` | `string`             | Human-readable label                    |
+| `name`         | `string`             | Form path                               |
+| `schema`       | `z.ZodTypeAny`       | Field-level validation schema           |
+| `component`    | `FormFieldComponentType` | Suggested renderer component        |
+| `renderHint`   | `FormRenderHint`     | Primitive/compound and input type hints |
+| `defaultValue` | `unknown`            | Default value for initialization        |
+| `candidType`   | `string`             | Original Candid type text               |
 
 ## UI Hints
 

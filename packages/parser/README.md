@@ -4,17 +4,6 @@ WASM-based Candid parser used by IC Reactor tooling and dynamic Candid
 workflows. It turns raw Candid source into JavaScript IDL factories or
 TypeScript declaration strings.
 
-## AI Assistants
-
-- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Project AI guide: https://ic-reactor.b3pay.net/v3/guides/ai-friendliness/
-
-Install the shared hook skill in consumer repos:
-
-```bash
-npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
-```
-
 ## Install
 
 ```bash

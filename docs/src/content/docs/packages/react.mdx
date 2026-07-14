@@ -8,12 +8,12 @@ import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components"
 
 `@ic-reactor/react` is the recommended package for React applications. It
 re-exports the runtime classes from [`@ic-reactor/core`](/v3/packages/core) and
-adds hook factories, direct reactor hooks, and reusable query
+adds hook factories, auth hooks, direct reactor hooks, and reusable query
 factories designed around TanStack Query.
 
 ## Why Use This Package
 
-- You want idiomatic React hooks for queries, mutations, and suspense.
+- You want idiomatic React hooks for queries, mutations, suspense, and auth.
 - You want `ClientManager`, `Reactor`, and `DisplayReactor` from one package.
 - You want to keep your app code focused on components instead of manual query wiring.
 
@@ -22,7 +22,7 @@ factories designed around TanStack Query.
 ```bash
 pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
 
-# Optional: Internet Identity support and React auth hooks
+# Optional: Internet Identity support
 pnpm add @icp-sdk/auth
 ```
 
@@ -38,6 +38,11 @@ pnpm add @icp-sdk/auth
     title="createActorHooks"
     description="Generate typed canister hooks from a bound reactor instance."
     href="/v3/reference/createactorhooks/overview"
+  />
+  <LinkCard
+    title="createAuthHooks"
+    description="React hooks for login, logout, agent state, and user principal access."
+    href="/v3/reference/createauthhooks/overview"
   />
   <LinkCard
     title="Reactor Hooks"
@@ -78,20 +83,11 @@ export const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
 ## Identity Attributes
 
-Use a dedicated identity-attribute hook factory for optional signed OpenID
-email and profile attributes:
+`createAuthHooks(clientManager)` also returns `useIdentityAttributes()` for
+signed OpenID email and profile attributes:
 
 ```tsx
-import {
-  AuthenticationManager,
-  IdentityAttributesManager,
-} from "@ic-reactor/react"
-import { createIdentityAttributeHooks } from "@ic-reactor/react"
-
-const authentication = new AuthenticationManager({ clientManager })
-const identityAttributes = new IdentityAttributesManager(authentication)
-const { useIdentityAttributes } =
-  createIdentityAttributeHooks(identityAttributes)
+const { useIdentityAttributes } = createAuthHooks(clientManager)
 
 function ContinueWithProvider() {
   const { requestOpenIdAttributes, isRequestingAttributes } =

@@ -333,7 +333,9 @@ import { backend } from "../reactor"
 // Define mutation once
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  invalidateQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
+  invalidateQueries: [
+    backend.generateQueryKey({ functionName: "getPosts" }),
+  ],
 })
 
 // Use in components
@@ -354,7 +356,7 @@ async function createPostInLoader(data: PostInput) {
 IC Reactor provides structured error types for mutations:
 
 ```tsx
-import { CanisterError, CallError } from "@ic-reactor/react"
+import { CanisterError, CallError } from "@ic-reactor/core"
 
 const { mutate } = useActorMutation({
   functionName: "transfer",
