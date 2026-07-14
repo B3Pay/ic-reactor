@@ -27,6 +27,6 @@
     "typedoc-plugin-markdown": "^4.11.0"
   },
   "dependencies": {
-    "starlight-page-actions": "^0.6.2"
+    "starlight-page-actions": "^0.7.0"
   }
 }
