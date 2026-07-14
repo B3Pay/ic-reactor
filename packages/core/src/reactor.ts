@@ -206,13 +206,23 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       : this.canisterId.toString()
     const queryKeys: any[] = [resolvedCanisterId, params.functionName]
 
-    if (callConfig?.effectiveCanisterId) {
-      const effectiveCanisterId = Principal.from(
-        callConfig.effectiveCanisterId
-      ).toString()
+    const effectiveTarget =
+      callConfig?.effectiveTarget ??
+      (callConfig?.effectiveCanisterId
+        ? { canisterId: callConfig.effectiveCanisterId }
+        : undefined)
 
-      if (effectiveCanisterId !== resolvedCanisterId) {
-        queryKeys.push({ effectiveCanisterId })
+    if (effectiveTarget) {
+      const targetKey =
+        "canisterId" in effectiveTarget
+          ? { canisterId: effectiveTarget.canisterId.toString() }
+          : { subnetId: effectiveTarget.subnetId.toString() }
+
+      if (
+        !("canisterId" in targetKey) ||
+        targetKey.canisterId !== resolvedCanisterId
+      ) {
+        queryKeys.push({ effectiveTarget: targetKey })
       }
     }
 
@@ -404,9 +414,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     const canisterId = callConfig?.canisterId
       ? Principal.from(callConfig.canisterId)
       : this.canisterId
-    const effectiveTarget = {
-      canisterId: callConfig?.effectiveCanisterId ?? canisterId,
-    }
+    const effectiveTarget =
+      callConfig?.effectiveTarget ??
+      (callConfig?.effectiveCanisterId
+        ? { canisterId: callConfig.effectiveCanisterId }
+        : { canisterId })
 
     const response = await agent.query(canisterId, {
       methodName,
@@ -429,9 +441,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     const canisterId = callConfig?.canisterId
       ? Principal.from(callConfig.canisterId)
       : this.canisterId
-    const effectiveTarget = {
-      canisterId: callConfig?.effectiveCanisterId ?? canisterId,
-    }
+    const effectiveTarget =
+      callConfig?.effectiveTarget ??
+      (callConfig?.effectiveCanisterId
+        ? { canisterId: callConfig.effectiveCanisterId }
+        : { canisterId })
     const pollingOptions = callConfig?.pollingOptions ?? this.pollingOptions
 
     const response = await agent.call(canisterId, {
@@ -446,7 +460,8 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       canisterId,
       methodName,
       agent,
-      pollingOptions
+      pollingOptions,
+      effectiveTarget
     )
   }
 

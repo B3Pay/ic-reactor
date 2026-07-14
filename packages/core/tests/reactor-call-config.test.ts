@@ -30,6 +30,7 @@ describe("Reactor callConfig overrides", () => {
 
   const defaultCanisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
   const overrideCanisterId = "rrkah-fqaaa-aaaaa-aaaaq-cai"
+  const effectiveSubnetId = "r7inp-6aaaa-aaaaa-aaabq-cai"
 
   const testIdlFactory: IDL.InterfaceFactory = ({ IDL }) =>
     IDL.Service({
@@ -165,7 +166,32 @@ describe("Reactor callConfig overrides", () => {
     ).toEqual([
       defaultCanisterId,
       "readName",
-      { effectiveCanisterId: overrideCanisterId },
+      { effectiveTarget: { canisterId: overrideCanisterId } },
+    ])
+  })
+
+  it("uses an effective subnet target for query calls and cache keys", async () => {
+    defaultAgent.query.mockResolvedValue(createMockQueryResponse("query-ok"))
+    const effectiveTarget = { subnetId: Principal.fromText(effectiveSubnetId) }
+
+    await reactor.callMethod({
+      functionName: "readName",
+      callConfig: { effectiveTarget },
+    })
+
+    expect(defaultAgent.query).toHaveBeenCalledWith(
+      Principal.from(defaultCanisterId),
+      expect.objectContaining({ effectiveTarget })
+    )
+    expect(
+      reactor.generateQueryKey(
+        { functionName: "readName" },
+        { effectiveTarget }
+      )
+    ).toEqual([
+      defaultCanisterId,
+      "readName",
+      { effectiveTarget: { subnetId: effectiveSubnetId } },
     ])
   })
 
@@ -210,7 +236,40 @@ describe("Reactor callConfig overrides", () => {
       Principal.from(overrideCanisterId),
       "writeName",
       overrideAgent,
-      pollingOptions
+      pollingOptions,
+      { canisterId: Principal.from(overrideCanisterId) }
+    )
+  })
+
+  it("uses the effective target for update routing and response handling", async () => {
+    defaultAgent.call.mockResolvedValue({
+      requestId: new Uint8Array([1, 2, 3]),
+      response: {
+        ok: true,
+        status: 202,
+        statusText: "Accepted",
+        body: null,
+        headers: [],
+      },
+    })
+    const effectiveTarget = { subnetId: Principal.fromText(effectiveSubnetId) }
+
+    await reactor.callMethod({
+      functionName: "writeName",
+      callConfig: { effectiveTarget },
+    })
+
+    expect(defaultAgent.call).toHaveBeenCalledWith(
+      Principal.from(defaultCanisterId),
+      expect.objectContaining({ effectiveTarget })
+    )
+    expect(agentUtils.processUpdateCallResponse).toHaveBeenCalledWith(
+      expect.any(Object),
+      Principal.from(defaultCanisterId),
+      "writeName",
+      defaultAgent,
+      expect.any(Object),
+      effectiveTarget
     )
   })
 })

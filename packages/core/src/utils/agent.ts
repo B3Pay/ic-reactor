@@ -4,6 +4,7 @@ import type {
   HttpDetailsResponse,
   PollingOptions,
   SubmitResponse,
+  TargetPrincipal,
 } from "@icp-sdk/core/agent"
 import { Principal } from "@icp-sdk/core/principal"
 
@@ -82,6 +83,7 @@ export function processQueryCallResponse(
  * @param methodName - The method name being called
  * @param agent - The HTTP agent
  * @param pollingOptions - Options for polling
+ * @param effectiveTarget - Canister or subnet used to route and verify the call
  * @returns The raw reply bytes
  * @throws RejectError if the call was rejected
  * @throws UnknownError if the response format is unexpected
@@ -91,9 +93,9 @@ export async function processUpdateCallResponse(
   canisterId: Principal,
   methodName: string,
   agent: Agent,
-  pollingOptions: PollingOptions
+  pollingOptions: PollingOptions,
+  effectiveTarget: TargetPrincipal
 ): Promise<Uint8Array> {
-  const effectiveTarget = { canisterId }
   let reply: Uint8Array | undefined
   let certificate: Certificate | undefined
 
