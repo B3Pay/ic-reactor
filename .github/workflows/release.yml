@@ -20,8 +20,6 @@ jobs:
         workspace:
           - packages/core
           - packages/react
-          - packages/auth
-          - packages/auth-react
           - packages/candid
     steps:
       - name: Checkout
@@ -57,8 +55,9 @@ jobs:
         run: npm i -g npm@^11.5.1 && npm --version
 
       - name: Install dependencies
-        # install only publishable packages and their dependency graph
-        run: pnpm install --frozen-lockfile --filter "./packages/**..."
+        # Install only this v3 package and its dependency graph. In particular,
+        # keep unreleased v4 workspaces such as @ic-reactor/cod out of v3 tags.
+        run: pnpm install --frozen-lockfile --filter "{./${{ matrix.workspace }}}..."
 
       - name: Cache Rust dependencies
         uses: actions/cache@v6
@@ -74,12 +73,12 @@ jobs:
       # parser is released separately via the release-tools workflow, so we don't need to
       # build it here. keeping this step slows down the job.
 
-      # Build and test only publishable package workspaces.
-      - name: Build packages (excluding e2e)
-        run: pnpm -r --filter "./packages/**" build
+      # Build this publishable package and the workspace packages it depends on.
+      - name: Build package dependency graph
+        run: pnpm -r --filter "{./${{ matrix.workspace }}}..." build
 
-      - name: Run tests (excluding e2e)
-        run: pnpm -r --filter "./packages/**" test
+      - name: Run package tests
+        run: pnpm --filter "{./${{ matrix.workspace }}}" test
 
       - name: Determine publish tag
         run: |
