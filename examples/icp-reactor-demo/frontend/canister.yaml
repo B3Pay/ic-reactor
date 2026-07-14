@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://github.com/dfinity/icp-cli/raw/refs/tags/v0.1.0-beta.2/docs/schemas/canister-yaml-schema.json
+# yaml-language-server: $schema=https://github.com/dfinity/icp-cli/raw/main/docs/schemas/canister-yaml-schema.json
 
 name: frontend
 
@@ -6,8 +6,8 @@ build:
   steps:
     # Download the asset canister WASM
     - type: pre-built
-      url: https://github.com/dfinity/sdk/raw/89243f2268b6d0ec77d589b7b1b27af931f70edd/src/distributed/assetstorage.wasm.gz
-      sha256: b312a16c3179cf8384afa852e468c1333b7439d4c5a39f26df69b12320f629f8
+      url: https://github.com/dfinity/sdk/raw/refs/tags/0.27.0/src/distributed/assetstorage.wasm.gz
+      sha256: 865eb25df5a6d857147e078bb33c727797957247f7af2635846d65c5397b36a6
 
     # Build the frontend app
     - type: script
@@ -16,6 +16,8 @@ build:
 sync:
   steps:
     # Upload built assets to the asset canister
-    - type: assets
+    - type: plugin
+      url: https://github.com/dfinity/certified-assets/releases/download/migration-v2.2.1-6b48585/sync_plugin.wasm
+      sha256: ca7cb5666c30d2875f8d5e10535f8a53f97a86c79c263f7d5bdac2fdd1bbf83c
       dirs:
         - dist
