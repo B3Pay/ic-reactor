@@ -29,10 +29,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Checkout released v3 documentation source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.V3_DOCS_REF }}
           path: v3-docs-source
@@ -80,7 +80,7 @@ jobs:
       # docs/dist should be Astro static output
 
       - name: Download existing Pages content
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: existing-pages
