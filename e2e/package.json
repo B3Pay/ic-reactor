@@ -16,10 +16,10 @@
     "@icp-sdk/core": "^6.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.1",
-    "@babel/preset-env": "^8.0.2",
-    "@babel/preset-react": "^8.0.1",
-    "@babel/preset-typescript": "^8.0.1",
+    "@babel/core": "^7.29.7",
+    "@babel/preset-env": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.7",
     "@happy-dom/global-registrator": "^20.10.6",
     "@tanstack/react-query": "^5.101.2",
     "@testing-library/jest-dom": "^6.9.1",
@@ -41,7 +41,7 @@
     "react-dom": "^19.2.7",
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.10",
     "whatwg-fetch": "^3.6.20"
   }

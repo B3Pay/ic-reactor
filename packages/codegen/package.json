@@ -48,13 +48,13 @@
   },
   "homepage": "https://ic-reactor.b3pay.net/v4/packages/codegen",
   "dependencies": {
-    "change-case": "^5.4.4",
-    "@ic-reactor/parser": "workspace:*"
+    "@ic-reactor/parser": "workspace:*",
+    "change-case": "^5.4.4"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
     "tsup": "^8.5.1",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.10"
   }
 }
