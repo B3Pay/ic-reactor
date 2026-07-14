@@ -32,8 +32,7 @@ export type CanisterChangeDetails =
   | { controllers_change: CreationRecord }
   | { code_uninstall: null }
 export type CanisterChangeOrigin =
-  | { from_user: FromUserRecord }
-  | { from_canister: FromCanisterRecord }
+  { from_user: FromUserRecord } | { from_canister: FromCanisterRecord }
 export interface CanisterInfoResponse {
   controllers: Array<Principal>
   module_hash: [] | [Uint8Array | number[]]
@@ -41,9 +40,7 @@ export interface CanisterInfoResponse {
   total_num_changes: bigint
 }
 export type CanisterInstallMode =
-  | { reinstall: null }
-  | { upgrade: null }
-  | { install: null }
+  { reinstall: null } | { upgrade: null } | { install: null }
 export interface CanisterStatusResponse {
   status: CanisterStatusType
   memory_size: bigint
@@ -54,9 +51,7 @@ export interface CanisterStatusResponse {
   module_hash: [] | [Uint8Array | number[]]
 }
 export type CanisterStatusType =
-  | { stopped: null }
-  | { stopping: null }
-  | { running: null }
+  { stopped: null } | { stopping: null } | { running: null }
 export interface CodeDeploymentRecord {
   mode: CanisterInstallMode
   module_hash: Uint8Array | number[]

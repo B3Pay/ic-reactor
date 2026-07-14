@@ -127,8 +127,7 @@ const createSuspenseQueryImpl = <
     updater
   ) => {
     return reactor.queryClient.setQueryData(getQueryKey(), updater as any) as
-      | TData
-      | undefined
+      TData | undefined
   }
 
   return {

@@ -12,7 +12,7 @@
     "@ic-reactor/react": "^3.6.0",
     "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^6.0.0",
-    "@tanstack/react-query": "^5.100.5",
+    "@tanstack/react-query": "^5.101.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
@@ -20,9 +20,9 @@
     "@ic-reactor/vite-plugin": "^0.11.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.1.4"
   },
   "overrides": {
     "picomatch": "4.0.4",

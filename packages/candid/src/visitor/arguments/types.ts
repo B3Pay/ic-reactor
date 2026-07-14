@@ -50,12 +50,7 @@ export type FieldComponentType =
  * Input type hints for HTML input elements.
  */
 export type InputType =
-  | "text"
-  | "number"
-  | "checkbox"
-  | "select"
-  | "file"
-  | "textarea"
+  "text" | "number" | "checkbox" | "select" | "file" | "textarea"
 
 /**
  * Rendering hints for the UI.
@@ -378,8 +373,4 @@ export type CompoundField =
 
 /** Primitive field types with direct values */
 export type PrimitiveField =
-  | PrincipalField
-  | NumberField
-  | TextField
-  | BooleanField
-  | NullField
+  PrincipalField | NumberField | TextField | BooleanField | NullField

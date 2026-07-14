@@ -20,12 +20,14 @@ export type CandidVariant<T> =
     ? {
         _type: CandidVariantKey<T> & string
       } & {
-        [K in CandidVariantKey<T> & string as CandidVariantValue<
-          T,
-          K
-        > extends null
-          ? never
-          : K]: CandidVariantValue<T, K>
+        [
+          K in CandidVariantKey<T> & string as CandidVariantValue<
+            T,
+            K
+          > extends null
+            ? never
+            : K
+        ]: CandidVariantValue<T, K>
       }
     : T
 

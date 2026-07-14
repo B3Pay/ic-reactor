@@ -343,8 +343,7 @@ const createInfiniteQueryImpl = <
   const fetch = async (): Promise<Selected> => {
     // Check cache first
     const cachedData = reactor.queryClient.getQueryData(getQueryKey()) as
-      | TInfiniteData
-      | undefined
+      TInfiniteData | undefined
 
     if (cachedData !== undefined) {
       return select ? select(cachedData) : (cachedData as Selected)

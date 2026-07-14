@@ -1238,9 +1238,7 @@ describe("Codec Schema Visitor - Project Candid Types", () => {
 
   it("should handle TransactionStatus variant", () => {
     type TransactionStatus =
-      | { Pending: null }
-      | { Confirmed: null }
-      | { Failed: string }
+      { Pending: null } | { Confirmed: null } | { Failed: string }
 
     const statusType = IDL.Variant({
       Pending: IDL.Null,
@@ -1379,8 +1377,7 @@ describe("Codec Schema Visitor - Project Candid Types", () => {
 
   it("should handle Result<T, ApiError> pattern", () => {
     type Result<T> =
-      | { Ok: T }
-      | { Err: { code: string; message: [] | [string] } }
+      { Ok: T } | { Err: { code: string; message: [] | [string] } }
 
     const resultType = IDL.Variant({
       Ok: IDL.Record({ order_id: IDL.Text }),
