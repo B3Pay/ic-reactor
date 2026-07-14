@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "@ic-reactor/react": "^3.6.0",
+    "@icp-sdk/core": "^6.0.0",
     "@tanstack/react-query": "^5.101.2",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "@icp-sdk/core": "^5.4.0"
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@ic-reactor/vite-plugin": "^0.11.1",

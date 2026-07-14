@@ -29,8 +29,8 @@ import {
   PollStrategy,
   RequestId,
   RequestStatusResponseStatus,
+  TargetPrincipal,
 } from "@icp-sdk/core/agent"
-import { Principal } from "@icp-sdk/core/principal"
 
 export interface PollingConfig {
   /**
@@ -283,14 +283,14 @@ export function createPollingStrategy(cfg: PollingConfig = {}): PollStrategy {
    * Async strategy function invoked by the IC agent on each polling cycle.
    * Determines whether to continue waiting based on request status.
    *
-   * @param {Principal} _canisterId - Target canister principal (unused but required by interface)
+   * @param {TargetPrincipal} _effectiveTarget - Target canister or subnet (unused but required by interface)
    * @param {RequestId} _requestId - Request identifier (unused but required by interface)
    * @param {RequestStatusResponseStatus} [rawStatus] - Current request status from IC
    * @returns {Promise<void>} - Resolves after calculated delay, or immediately for terminal states
    * @throws {Error} - If abortSignal is triggered
    */
   return async function strategy(
-    _canisterId: Principal,
+    _effectiveTarget: TargetPrincipal,
     _requestId: RequestId,
     rawStatus?: RequestStatusResponseStatus
   ): Promise<void> {

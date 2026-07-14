@@ -404,12 +404,14 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     const canisterId = callConfig?.canisterId
       ? Principal.from(callConfig.canisterId)
       : this.canisterId
-    const effectiveCanisterId = callConfig?.effectiveCanisterId ?? canisterId
+    const effectiveTarget = {
+      canisterId: callConfig?.effectiveCanisterId ?? canisterId,
+    }
 
     const response = await agent.query(canisterId, {
       methodName,
       arg,
-      effectiveCanisterId,
+      effectiveTarget,
     })
 
     return processQueryCallResponse(response, canisterId, methodName)
@@ -427,13 +429,15 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     const canisterId = callConfig?.canisterId
       ? Principal.from(callConfig.canisterId)
       : this.canisterId
-    const effectiveCanisterId = callConfig?.effectiveCanisterId ?? canisterId
+    const effectiveTarget = {
+      canisterId: callConfig?.effectiveCanisterId ?? canisterId,
+    }
     const pollingOptions = callConfig?.pollingOptions ?? this.pollingOptions
 
     const response = await agent.call(canisterId, {
       methodName,
       arg,
-      effectiveCanisterId,
+      effectiveTarget,
       nonce: callConfig?.nonce,
     })
 

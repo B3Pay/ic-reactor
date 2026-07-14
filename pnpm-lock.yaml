@@ -95,10 +95,10 @@ importers:
         version: link:../packages/vite-plugin
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
     devDependencies:
       '@babel/core':
         specifier: ^7.29.0
@@ -192,10 +192,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@radix-ui/react-scroll-area':
         specifier: ^1.2.14
         version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -327,10 +327,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101
         version: 5.101.2(react@19.2.7)
@@ -363,8 +363,8 @@ importers:
         specifier: ^3.6.0
         version: link:../../packages/core
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/query-core':
         specifier: ^5.101
         version: 5.101.2
@@ -382,8 +382,8 @@ importers:
         specifier: ^3.6.0
         version: link:../../packages/react
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101.2
         version: 5.101.2(react@19.2.7)
@@ -423,10 +423,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101.2
         version: 5.101.2(react@19.2.7)
@@ -460,7 +460,7 @@ importers:
     dependencies:
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
 
   examples/icp-reactor-demo/frontend:
     dependencies:
@@ -469,10 +469,10 @@ importers:
         version: link:../../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101
         version: 5.101.2(react@19.2.7)
@@ -515,10 +515,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.3.1
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101.2
         version: 5.101.2(react@19.2.7)
@@ -557,8 +557,8 @@ importers:
         specifier: ^3.6.0
         version: link:../../packages/core
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/query-core':
         specifier: ^5.101.2
         version: 5.101.2
@@ -579,8 +579,8 @@ importers:
         specifier: ^3.6.0
         version: link:../../packages/core
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/query-core':
         specifier: ^5.101.2
         version: 5.101.2
@@ -599,10 +599,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101.2
         version: 5.101.2(react@19.2.7)
@@ -642,10 +642,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tailwindcss/postcss':
         specifier: ^4.3.2
         version: 4.3.2
@@ -694,10 +694,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101.2
         version: 5.101.2(react@19.2.7)
@@ -743,10 +743,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101
         version: 5.101.2(react@19.2.7)
@@ -785,8 +785,8 @@ importers:
         specifier: ^3.6.0
         version: link:../../packages/react
       '@icp-sdk/core':
-        specifier: ^5.2.1
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -819,8 +819,8 @@ importers:
         specifier: 0.11.1
         version: link:../../packages/vite-plugin
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101
         version: 5.101.2(react@19.2.7)
@@ -862,8 +862,8 @@ importers:
         specifier: ^3.6.0
         version: link:../../packages/react
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-form':
         specifier: ^1.33.2
         version: 1.33.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -900,10 +900,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tailwindcss/vite':
         specifier: ^4.3.2
         version: 4.3.2(vite@8.1.4(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
@@ -994,10 +994,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/devtools-vite':
         specifier: ^0.8.1
         version: 0.8.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(rolldown-vite@7.2.5(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)(jiti@2.7.0)(yaml@2.8.3))
@@ -1018,8 +1018,8 @@ importers:
         specifier: ^3.6.0
         version: link:../../../packages/react
       '@icp-sdk/core':
-        specifier: ^5.0.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101.2
         version: 5.101.2(react@19.2.7)
@@ -1070,8 +1070,8 @@ importers:
         specifier: ^3.6.0
         version: link:../../packages/react
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@tanstack/react-query':
         specifier: ^5.101.2
         version: 5.101.2(react@19.2.7)
@@ -1117,8 +1117,8 @@ importers:
         specifier: workspace:^
         version: link:../parser
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@size-limit/preset-small-lib':
         specifier: ^12.1.0
         version: 12.1.0(size-limit@12.1.0(jiti@2.7.0))
@@ -1144,8 +1144,8 @@ importers:
         specifier: ^0.4.0
         version: 0.4.0
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -1166,8 +1166,8 @@ importers:
   packages/cod:
     devDependencies:
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
@@ -1192,7 +1192,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@25.9.3)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.4(@types/node@25.9.3)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3))
+        version: 4.1.10(@types/node@25.9.3)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.4(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
 
   packages/core:
     dependencies:
@@ -1201,8 +1201,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@size-limit/preset-small-lib':
         specifier: ^12.1.0
         version: 12.1.0(size-limit@12.1.0(jiti@2.7.0))
@@ -1232,10 +1232,10 @@ importers:
         version: link:../core
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@size-limit/preset-small-lib':
         specifier: ^12.1.0
         version: 12.1.0(size-limit@12.1.0(jiti@2.7.0))
@@ -1263,10 +1263,10 @@ importers:
     devDependencies:
       '@icp-sdk/auth':
         specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@5.4.0)
+        version: 7.1.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
-        specifier: ^5.4.0
-        version: 5.4.0
+        specifier: ^6.0.0
+        version: 6.0.0
       '@size-limit/preset-small-lib':
         specifier: ^12.1.0
         version: 12.1.0(size-limit@12.1.0(jiti@2.7.0))
@@ -2820,8 +2820,8 @@ packages:
     resolution: {integrity: sha512-WXJoPIVnqCgFSNcprVpHwPBNWA1prwPh1/ezQYVrCP+Zj8CCJ7zj9L7p5cFcN7ghxoxfbx6tYT8t/HN9fyeYkA==}
     hasBin: true
 
-  '@icp-sdk/core@5.4.0':
-    resolution: {integrity: sha512-yedhCkHIhCxI65W8id99Mi8fUgSyqKSTbD57AphquNcFV2/3Rjykng0/6H08mHswKydDcv6Y0+e8aPdrznewCw==}
+  '@icp-sdk/core@6.0.0':
+    resolution: {integrity: sha512-z+oHm+MTB/Xo27LQCYXDpVcUyFQwceupoyqkYCW6aaiZ2GJ1BvhRbSMsm7XDHAgCuZmWULPxpiTFUnHZLDEKzw==}
 
   '@icp-sdk/signer@5.4.0':
     resolution: {integrity: sha512-l7HKJ02ZszAWvBV0dSW7uNVNVwsVAlWp9zMirHk/wrtQpglMDSxh1kcXiha5R5YkIooy/d5Pt8QKHDPG4Orj6A==}
@@ -3337,13 +3337,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@noble/curves@1.9.7':
-    resolution: {integrity: sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==}
-    engines: {node: ^14.21.3 || >=16}
-
-  '@noble/hashes@1.8.0':
-    resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
-    engines: {node: ^14.21.3 || >=16}
+  '@noble/curves@2.2.0':
+    resolution: {integrity: sha512-T/BoHgFXirb0ENSPBquzX0rcjXeM6Lo892a2jlYJkqk83LqZx0l1Of7DzlKJ6jkpvMrkHSnAcgb5JegL8SeIkQ==}
+    engines: {node: '>= 20.19.0'}
 
   '@noble/hashes@2.2.0':
     resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
@@ -4009,14 +4005,14 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@scure/base@1.2.6':
-    resolution: {integrity: sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg==}
+  '@scure/base@2.2.0':
+    resolution: {integrity: sha512-b8XEupJibegiXV+tDUseI8oLQc8ei3d/4Jkb2RpbHh3MfE054ov3uIz2dhFkB3FI8iwYkEh0gGCApkrYggkPNg==}
 
-  '@scure/bip32@1.7.0':
-    resolution: {integrity: sha512-E4FFX/N3f4B80AKWp5dP6ow+flD1LQZo/w8UnLGYZO674jS6YnYeepycOOksv+vLPSpgN35wgKgy+ybfTb2SMw==}
+  '@scure/bip32@2.2.0':
+    resolution: {integrity: sha512-zFr7t2F+a9+5tB7QbarF2HQNYrgjCNaoLAupZdKkrFMYMozJf5zqH2WJCQibMzm1qQ0QogrxVGO3qXfQDYMaQg==}
 
-  '@scure/bip39@1.6.0':
-    resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
+  '@scure/bip39@2.2.0':
+    resolution: {integrity: sha512-T/Bj/YvYMNkIPq6EENO6/rcs2e7qTNuyoUXf0KBFDmp0ZDu0H2X4Lq6yC3i0c8PcWkov5EbW+yQZZbdMmk154A==}
 
   '@shikijs/core@4.3.1':
     resolution: {integrity: sha512-ANMDxuaPsNMdDC1m4vfvhlDmJweMwkE5XitTwrq2rWHx5jM+dlm4MmHt2PP6t0uejfR77SuhrhJ0zEijIF/uhA==}
@@ -10077,28 +10073,28 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@icp-sdk/auth@7.1.0(@icp-sdk/core@5.4.0)':
+  '@icp-sdk/auth@7.1.0(@icp-sdk/core@6.0.0)':
     dependencies:
-      '@icp-sdk/core': 5.4.0
-      '@icp-sdk/signer': 5.4.0(@icp-sdk/core@5.4.0)
+      '@icp-sdk/core': 6.0.0
+      '@icp-sdk/signer': 5.4.0(@icp-sdk/core@6.0.0)
       idb: 7.1.1
 
   '@icp-sdk/bindgen@0.4.0':
     dependencies:
       commander: 14.0.3
 
-  '@icp-sdk/core@5.4.0':
+  '@icp-sdk/core@6.0.0':
     dependencies:
       '@dfinity/cbor': 0.2.3
-      '@noble/curves': 1.9.7
-      '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
+      '@noble/curves': 2.2.0
+      '@noble/hashes': 2.2.0
+      '@scure/bip32': 2.2.0
+      '@scure/bip39': 2.2.0
       asn1js: 3.0.10
 
-  '@icp-sdk/signer@5.4.0(@icp-sdk/core@5.4.0)':
+  '@icp-sdk/signer@5.4.0(@icp-sdk/core@6.0.0)':
     dependencies:
-      '@icp-sdk/core': 5.4.0
+      '@icp-sdk/core': 6.0.0
 
   '@img/colour@1.1.0':
     optional: true
@@ -10624,11 +10620,9 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.2.10':
     optional: true
 
-  '@noble/curves@1.9.7':
+  '@noble/curves@2.2.0':
     dependencies:
-      '@noble/hashes': 1.8.0
-
-  '@noble/hashes@1.8.0': {}
+      '@noble/hashes': 2.2.0
 
   '@noble/hashes@2.2.0': {}
 
@@ -11055,18 +11049,18 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
 
-  '@scure/base@1.2.6': {}
+  '@scure/base@2.2.0': {}
 
-  '@scure/bip32@1.7.0':
+  '@scure/bip32@2.2.0':
     dependencies:
-      '@noble/curves': 1.9.7
-      '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.6
+      '@noble/curves': 2.2.0
+      '@noble/hashes': 2.2.0
+      '@scure/base': 2.2.0
 
-  '@scure/bip39@1.6.0':
+  '@scure/bip39@2.2.0':
     dependencies:
-      '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.6
+      '@noble/hashes': 2.2.0
+      '@scure/base': 2.2.0
 
   '@shikijs/core@4.3.1':
     dependencies:
@@ -11897,14 +11891,6 @@ snapshots:
       '@vitest/utils': 4.1.10
       chai: 6.2.2
       tinyrainbow: 3.1.0
-
-  '@vitest/mocker@4.1.10(vite@8.1.4(@types/node@25.9.3)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3))':
-    dependencies:
-      '@vitest/spy': 4.1.10
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 8.1.4(@types/node@25.9.3)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3)
 
   '@vitest/mocker@4.1.10(vite@8.1.4(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))':
     dependencies:
@@ -16476,20 +16462,6 @@ snapshots:
     dependencies:
       vite: 8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3)
 
-  vite@8.1.4(@types/node@25.9.3)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3):
-    dependencies:
-      lightningcss: 1.32.0
-      picomatch: 4.0.4
-      postcss: 8.5.12
-      rolldown: 1.1.5
-      tinyglobby: 0.2.17
-    optionalDependencies:
-      '@types/node': 25.9.3
-      esbuild: 0.27.7
-      fsevents: 2.3.3
-      jiti: 2.7.0
-      yaml: 2.8.3
-
   vite@8.1.4(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3):
     dependencies:
       lightningcss: 1.32.0
@@ -16521,36 +16493,6 @@ snapshots:
   vitefu@1.1.3(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3)):
     optionalDependencies:
       vite: 8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3)
-
-  vitest@4.1.10(@types/node@25.9.3)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.4(@types/node@25.9.3)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3)):
-    dependencies:
-      '@vitest/expect': 4.1.10
-      '@vitest/mocker': 4.1.10(vite@8.1.4(@types/node@25.9.3)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3))
-      '@vitest/pretty-format': 4.1.10
-      '@vitest/runner': 4.1.10
-      '@vitest/snapshot': 4.1.10
-      '@vitest/spy': 4.1.10
-      '@vitest/utils': 4.1.10
-      es-module-lexer: 2.3.1
-      expect-type: 1.4.0
-      magic-string: 0.30.21
-      obug: 2.1.3
-      pathe: 2.0.3
-      picomatch: 4.0.4
-      std-env: 4.2.0
-      tinybench: 2.9.0
-      tinyexec: 1.2.4
-      tinyglobby: 0.2.17
-      tinyrainbow: 3.1.0
-      vite: 8.1.4(@types/node@25.9.3)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@types/node': 25.9.3
-      '@vitest/coverage-v8': 4.1.10(vitest@4.1.10)
-      happy-dom: 20.10.6
-      jsdom: 29.1.1(@noble/hashes@2.2.0)
-    transitivePeerDependencies:
-      - msw
 
   vitest@4.1.10(@types/node@25.9.3)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.4(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3)):
     dependencies:

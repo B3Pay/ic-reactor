@@ -11,7 +11,7 @@
   "dependencies": {
     "@ic-reactor/react": "^3.6.0",
     "@ic-reactor/vite-plugin": "0.11.1",
-    "@icp-sdk/core": "^5.4.0",
+    "@icp-sdk/core": "^6.0.0",
     "@tanstack/react-query": "^5.101",
     "@tanstack/react-query-devtools": "^5.101",
     "react": "^19.2.7",

@@ -15,7 +15,7 @@
   "dependencies": {
     "@ic-reactor/react": "^3.6.0",
     "@icp-sdk/auth": "^7.1.0",
-    "@icp-sdk/core": "^5.4.0",
+    "@icp-sdk/core": "^6.0.0",
     "@tanstack/devtools-vite": "^0.8.1",
     "@tanstack/query-core": "^5.101"
   },

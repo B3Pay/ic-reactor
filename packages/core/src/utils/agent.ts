@@ -40,6 +40,8 @@ export function processQueryCallResponse(
   canisterId: Principal,
   methodName: string
 ): Uint8Array {
+  const effectiveTarget = { canisterId }
+
   switch (response.status) {
     case QueryResponseStatus.Rejected: {
       const uncertifiedRejectErrorCode = new UncertifiedRejectErrorCode(
@@ -51,6 +53,7 @@ export function processQueryCallResponse(
       )
       uncertifiedRejectErrorCode.callContext = {
         canisterId,
+        effectiveTarget,
         methodName,
         httpDetails: response.httpDetails,
       }
@@ -90,6 +93,7 @@ export async function processUpdateCallResponse(
   agent: Agent,
   pollingOptions: PollingOptions
 ): Promise<Uint8Array> {
+  const effectiveTarget = { canisterId }
   let reply: Uint8Array | undefined
   let certificate: Certificate | undefined
 
@@ -101,7 +105,7 @@ export async function processUpdateCallResponse(
     certificate = await Certificate.create({
       certificate: cert,
       rootKey: agent.rootKey,
-      principal: { canisterId },
+      principal: effectiveTarget,
       agent,
     })
 
@@ -144,6 +148,7 @@ export async function processUpdateCallResponse(
         )
         certifiedRejectErrorCode.callContext = {
           canisterId,
+          effectiveTarget,
           methodName,
           httpDetails: result.response,
         }
@@ -160,6 +165,7 @@ export async function processUpdateCallResponse(
     )
     errorCode.callContext = {
       canisterId,
+      effectiveTarget,
       methodName,
       httpDetails: result.response,
     }
@@ -171,7 +177,7 @@ export async function processUpdateCallResponse(
     // Contains the certificate and the reply from the boundary node
     const response = await pollForResponse(
       agent,
-      canisterId,
+      effectiveTarget,
       result.requestId,
       pollingOptions
     )
@@ -193,6 +199,7 @@ export async function processUpdateCallResponse(
   )
   errorCode.callContext = {
     canisterId,
+    effectiveTarget,
     methodName,
     httpDetails,
   }
