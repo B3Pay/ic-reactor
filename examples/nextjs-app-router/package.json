@@ -13,7 +13,7 @@
     "@icp-sdk/auth": "^7.1.0",
     "@icp-sdk/core": "^6.0.0",
     "@tanstack/react-query": "^5.101.2",
-    "lucide-react": "^1.24.0",
+    "lucide-react": "^1.25.0",
     "next": "^16.2.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
@@ -22,9 +22,9 @@
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "autoprefixer": "^10.5.2",
-    "postcss": "^8.5.19",
-    "tailwindcss": "^4.3.2",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.20",
+    "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3"
   },
   "packageManager": "pnpm@10.30.3"
