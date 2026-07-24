@@ -1196,7 +1196,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
+        version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.4(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3))
 
   packages/core:
     dependencies:
@@ -1266,8 +1266,8 @@ importers:
         version: link:../core
     devDependencies:
       '@icp-sdk/auth':
-        specifier: ^7.1.0
-        version: 7.1.0(@icp-sdk/core@6.0.0)
+        specifier: ^8.0.0
+        version: 8.0.0(@icp-sdk/core@6.0.0)
       '@icp-sdk/core':
         specifier: ^6.0.0
         version: 6.0.0
@@ -2820,6 +2820,11 @@ packages:
     peerDependencies:
       '@icp-sdk/core': ^5
 
+  '@icp-sdk/auth@8.0.0':
+    resolution: {integrity: sha512-TAaIAhwkyqoS3D4rR7KYLl7s+USWlRN/r1QwQrk9oltRDyay046DEUmeilDu1WOIwjo1/z0jIXh4nb6vycTVew==}
+    peerDependencies:
+      '@icp-sdk/core': ^5
+
   '@icp-sdk/bindgen@0.4.0':
     resolution: {integrity: sha512-WXJoPIVnqCgFSNcprVpHwPBNWA1prwPh1/ezQYVrCP+Zj8CCJ7zj9L7p5cFcN7ghxoxfbx6tYT8t/HN9fyeYkA==}
     hasBin: true
@@ -2827,8 +2832,8 @@ packages:
   '@icp-sdk/core@6.0.0':
     resolution: {integrity: sha512-z+oHm+MTB/Xo27LQCYXDpVcUyFQwceupoyqkYCW6aaiZ2GJ1BvhRbSMsm7XDHAgCuZmWULPxpiTFUnHZLDEKzw==}
 
-  '@icp-sdk/signer@5.4.0':
-    resolution: {integrity: sha512-l7HKJ02ZszAWvBV0dSW7uNVNVwsVAlWp9zMirHk/wrtQpglMDSxh1kcXiha5R5YkIooy/d5Pt8QKHDPG4Orj6A==}
+  '@icp-sdk/signer@5.6.0':
+    resolution: {integrity: sha512-zL8SR7YvMaTrEq6/8+ZX5wvTsXSUOm79dyZz7dj8MvHNZpH8pOKxE8QNmqThW4112EKES4ZLGxnAr3BJV1Oryg==}
     peerDependencies:
       '@icp-sdk/core': ^5
 
@@ -10077,7 +10082,13 @@ snapshots:
   '@icp-sdk/auth@7.1.0(@icp-sdk/core@6.0.0)':
     dependencies:
       '@icp-sdk/core': 6.0.0
-      '@icp-sdk/signer': 5.4.0(@icp-sdk/core@6.0.0)
+      '@icp-sdk/signer': 5.6.0(@icp-sdk/core@6.0.0)
+      idb: 7.1.1
+
+  '@icp-sdk/auth@8.0.0(@icp-sdk/core@6.0.0)':
+    dependencies:
+      '@icp-sdk/core': 6.0.0
+      '@icp-sdk/signer': 5.6.0(@icp-sdk/core@6.0.0)
       idb: 7.1.1
 
   '@icp-sdk/bindgen@0.4.0':
@@ -10093,7 +10104,7 @@ snapshots:
       '@scure/bip39': 2.2.0
       asn1js: 3.0.10
 
-  '@icp-sdk/signer@5.4.0(@icp-sdk/core@6.0.0)':
+  '@icp-sdk/signer@5.6.0(@icp-sdk/core@6.0.0)':
     dependencies:
       '@icp-sdk/core': 6.0.0
 
@@ -11876,6 +11887,14 @@ snapshots:
       '@vitest/utils': 4.1.10
       chai: 6.2.2
       tinyrainbow: 3.1.0
+
+  '@vitest/mocker@4.1.10(vite@8.1.4(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3))':
+    dependencies:
+      '@vitest/spy': 4.1.10
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 8.1.4(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3)
 
   '@vitest/mocker@4.1.10(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))':
     dependencies:
@@ -16408,6 +16427,20 @@ snapshots:
     dependencies:
       vite: 8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3)
 
+  vite@8.1.4(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3):
+    dependencies:
+      lightningcss: 1.32.0
+      picomatch: 4.0.4
+      postcss: 8.5.12
+      rolldown: 1.1.5
+      tinyglobby: 0.2.17
+    optionalDependencies:
+      '@types/node': 26.1.1
+      esbuild: 0.27.7
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      yaml: 2.8.3
+
   vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3):
     dependencies:
       lightningcss: 1.32.0
@@ -16425,6 +16458,36 @@ snapshots:
   vitefu@1.1.3(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3)):
     optionalDependencies:
       vite: 8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3)
+
+  vitest@4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.4(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3)):
+    dependencies:
+      '@vitest/expect': 4.1.10
+      '@vitest/mocker': 4.1.10(vite@8.1.4(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3))
+      '@vitest/pretty-format': 4.1.10
+      '@vitest/runner': 4.1.10
+      '@vitest/snapshot': 4.1.10
+      '@vitest/spy': 4.1.10
+      '@vitest/utils': 4.1.10
+      es-module-lexer: 2.3.1
+      expect-type: 1.4.0
+      magic-string: 0.30.21
+      obug: 2.1.3
+      pathe: 2.0.3
+      picomatch: 4.0.4
+      std-env: 4.2.0
+      tinybench: 2.9.0
+      tinyexec: 1.2.4
+      tinyglobby: 0.2.17
+      tinyrainbow: 3.1.0
+      vite: 8.1.4(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.8.3)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 26.1.1
+      '@vitest/coverage-v8': 4.1.10(vitest@4.1.10)
+      happy-dom: 20.10.6
+      jsdom: 29.1.1(@noble/hashes@2.2.0)
+    transitivePeerDependencies:
+      - msw
 
   vitest@4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3)):
     dependencies:

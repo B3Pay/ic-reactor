@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest"
 import { ClientManager, Reactor, DisplayReactor } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/react-query"
 import { defineReactor } from "./defineReactor"
+import { AuthenticationManager } from "./auth/authentication-manager"
+import { IdentityAttributesManager } from "./auth/identity-attributes-manager"
 import { ActorMethod } from "@icp-sdk/core/agent"
 
 const idlFactory = ({ IDL }: any) =>
@@ -66,5 +68,58 @@ describe("defineReactor", () => {
 
     expect(index.clientManager).toBe(ledger.clientManager)
     expect(index.reactor).not.toBe(ledger.reactor)
+  })
+
+  it("does not construct the auth manager until auth is used", () => {
+    const result = defineReactor<TestActor>(baseConfig)
+
+    // Constructing AuthenticationManager dynamically imports the optional
+    // @icp-sdk/auth peer; reactors that never use auth must not trigger it.
+    expect(
+      Object.getOwnPropertyDescriptor(result, "authentication")?.get
+    ).toBeTypeOf("function")
+    expect(result.authentication).toBeInstanceOf(AuthenticationManager)
+    // Same instance on repeat access.
+    expect(result.authentication).toBe(result.authentication)
+  })
+
+  it("bootstraps Internet Identity alongside the actor hooks", () => {
+    const result = defineReactor<TestActor>(baseConfig)
+
+    expect(result.authentication).toBeInstanceOf(AuthenticationManager)
+    expect(result.identityAttributes).toBeInstanceOf(IdentityAttributesManager)
+    expect(result.authentication.clientManager).toBe(result.clientManager)
+    expect(typeof result.useAuth).toBe("function")
+    expect(typeof result.useUserPrincipal).toBe("function")
+    expect(typeof result.useAgentState).toBe("function")
+    expect(typeof result.useIdentityAttributes).toBe("function")
+  })
+
+  it("forwards auth options to the AuthenticationManager", async () => {
+    const { authentication } = defineReactor<TestActor>({
+      ...baseConfig,
+      auth: { identityProvider: "https://identity.example.com/authorize" },
+    })
+
+    // Exposed through the client the manager would build.
+    expect(
+      (
+        authentication as unknown as {
+          resolveClientOptions: (o?: unknown) => { identityProvider: string }
+        }
+      ).resolveClientOptions().identityProvider
+    ).toBe("https://identity.example.com/authorize")
+  })
+
+  it("lets multiple reactors share one Internet Identity session", () => {
+    const ledger = defineReactor<TestActor>({ ...baseConfig, name: "ledger" })
+    const index = defineReactor<TestActor>({
+      ...baseConfig,
+      name: "index",
+      clientManager: ledger.clientManager,
+      authentication: ledger.authentication,
+    })
+
+    expect(index.authentication).toBe(ledger.authentication)
   })
 })

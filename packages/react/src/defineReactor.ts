@@ -33,7 +33,25 @@
  *   name: "index",
  *   idlFactory: indexIdl,
  *   clientManager: ledger.clientManager,
+ *   authentication: ledger.authentication, // one Internet Identity session
  * })
+ * ```
+ *
+ * @example Internet Identity is wired up out of the box
+ * ```typescript
+ * const { useAuth, useIdentityAttributes } = defineReactor<_SERVICE>({
+ *   name: "backend",
+ *   idlFactory,
+ *   // Needed when the app is served from more than one origin.
+ *   auth: { derivationOrigin: "https://app.example.com" },
+ * })
+ *
+ * function LoginButton() {
+ *   const { login, logout, isAuthenticated, principal } = useAuth()
+ *   return isAuthenticated
+ *     ? <button onClick={() => logout()}>{principal?.toText()}</button>
+ *     : <button onClick={() => login()}>Sign in</button>
+ * }
  * ```
  */
 import { ClientManager, Reactor, DisplayReactor } from "@ic-reactor/core"
@@ -46,6 +64,13 @@ import type {
 } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/react-query"
 import { createActorHooks, ActorHooks } from "./createActorHooks"
+import { AuthenticationManager } from "./auth/authentication-manager"
+import { IdentityAttributesManager } from "./auth/identity-attributes-manager"
+import { createIdentityAttributeHooks } from "./auth/createIdentityAttributeHooks"
+import type { UseIdentityAttributesReturn } from "./auth/createIdentityAttributeHooks"
+import { createAuthHooks } from "./hooks/createAuthHooks"
+import type { CreateAuthHooksReturn } from "./hooks/createAuthHooks"
+import type { AuthenticationManagerParameters } from "./auth/authentication-manager"
 
 /** Options shared by both the standard and display variants of defineReactor. */
 export interface DefineReactorSharedParameters
@@ -62,6 +87,16 @@ export interface DefineReactorSharedParameters
    * QueryClient is reused, or a new one is created.
    */
   queryClient?: QueryClient
+  /**
+   * Reuse an existing AuthenticationManager, so several reactors share one
+   * Internet Identity session. When omitted, one is created for this reactor.
+   */
+  authentication?: AuthenticationManager
+  /**
+   * Internet Identity options forwarded to the AuthenticationManager
+   * (`identityProvider`, `derivationOrigin`, `idleOptions`, `storage`, …).
+   */
+  auth?: Omit<AuthenticationManagerParameters, "clientManager">
 }
 
 /** Parameters for a standard (raw Candid types) reactor. */
@@ -83,11 +118,17 @@ export type DefineReactorResult<
   Service,
   Transform extends TransformKey,
   R extends Reactor<Service, Transform>,
-> = ActorHooks<Service, Transform> & {
-  reactor: R
-  clientManager: ClientManager
-  queryClient: QueryClient
-}
+> = ActorHooks<Service, Transform> &
+  CreateAuthHooksReturn & {
+    reactor: R
+    clientManager: ClientManager
+    queryClient: QueryClient
+    /** Internet Identity session manager backing `useAuth`. */
+    authentication: AuthenticationManager
+    /** Signed identity attribute requests backing `useIdentityAttributes`. */
+    identityAttributes: IdentityAttributesManager
+    useIdentityAttributes: () => UseIdentityAttributesReturn
+  }
 
 export function defineReactor<Service = BaseActor>(
   params: DefineDisplayReactorParameters<Service>
@@ -104,6 +145,8 @@ export function defineReactor<Service = BaseActor>(
   const {
     clientManager: providedClientManager,
     queryClient: providedQueryClient,
+    authentication: providedAuthentication,
+    auth,
     display,
     agentOptions,
     name,
@@ -146,5 +189,46 @@ export function defineReactor<Service = BaseActor>(
 
   const hooks = createActorHooks(reactor)
 
-  return { ...hooks, reactor, clientManager, queryClient }
+  // Auth is built on first use. `AuthenticationManager` dynamically imports the
+  // optional `@icp-sdk/auth` peer as soon as it is constructed, and reactors
+  // that never touch authentication should not pay for that.
+  let authenticationInstance: AuthenticationManager | undefined
+  const getAuthentication = () =>
+    (authenticationInstance ??=
+      providedAuthentication ??
+      new AuthenticationManager({ ...auth, clientManager }))
+
+  let identityAttributesInstance: IdentityAttributesManager | undefined
+  const getIdentityAttributes = () =>
+    (identityAttributesInstance ??= new IdentityAttributesManager(
+      getAuthentication()
+    ))
+
+  let authHooks: CreateAuthHooksReturn | undefined
+  const getAuthHooks = () =>
+    (authHooks ??= createAuthHooks(getAuthentication()))
+
+  let attributeHooks:
+    ReturnType<typeof createIdentityAttributeHooks> | undefined
+  const getAttributeHooks = () =>
+    (attributeHooks ??= createIdentityAttributeHooks(getIdentityAttributes()))
+
+  return {
+    ...hooks,
+    reactor,
+    clientManager,
+    queryClient,
+    // Stable wrappers: the hook call order inside them never changes, so the
+    // rules of hooks still hold.
+    useAuth: () => getAuthHooks().useAuth(),
+    useAgentState: () => getAuthHooks().useAgentState(),
+    useUserPrincipal: () => getAuthHooks().useUserPrincipal(),
+    useIdentityAttributes: () => getAttributeHooks().useIdentityAttributes(),
+    get authentication() {
+      return getAuthentication()
+    },
+    get identityAttributes() {
+      return getIdentityAttributes()
+    },
+  }
 }

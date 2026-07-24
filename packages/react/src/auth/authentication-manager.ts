@@ -15,10 +15,14 @@ import {
   localInternetIdentityProvider,
 } from "./constants"
 
-export interface AuthenticationManagerParameters {
+export interface AuthenticationManagerParameters extends AuthenticationClientOptions {
   clientManager: ClientManager
+  /**
+   * Bring your own client instance. When provided, IC Reactor never constructs
+   * one and never applies the options below to it.
+   */
   authClient?: AuthClientLike
-  identityProvider?: string | URL
+  /** Canister ID of a locally deployed Internet Identity. */
   internetIdentityId?: string
 }
 
@@ -49,6 +53,7 @@ export class AuthenticationManager {
     AuthClientConstructor | undefined
   >
   private authModuleMissing = false
+  private authClientOptions?: AuthenticationClientOptions
   private authStateValue: AuthState = {
     identity: null,
     isAuthenticating: false,
@@ -57,6 +62,7 @@ export class AuthenticationManager {
   }
   private readonly identityProvider?: string | URL
   private readonly internetIdentityId?: string
+  private readonly defaultClientOptions: AuthenticationClientOptions
   public readonly clientManager: ClientManager
 
   /** The current authentication state. */
@@ -69,6 +75,7 @@ export class AuthenticationManager {
     authClient,
     identityProvider,
     internetIdentityId,
+    ...clientOptions
   }: AuthenticationManagerParameters) {
     this.clientManager = clientManager
     const canisterEnv =
@@ -82,6 +89,7 @@ export class AuthenticationManager {
       canisterEnv?.["internet_identity"] ||
       canisterEnv?.["PUBLIC_CANISTER_ID:internet_identity"] ||
       canisterEnv?.["CANISTER_ID_INTERNET_IDENTITY"]
+    this.defaultClientOptions = clientOptions
 
     if (authClient) {
       this.authClientWasProvided = true
@@ -111,23 +119,35 @@ export class AuthenticationManager {
   }
 
   /**
-   * Preloads and creates an AuthClient before a user gesture is needed.
+   * Preloads the auth module and creates an AuthClient ahead of time.
+   *
+   * Call (and await) this before wiring up a login button: it makes
+   * {@link login} and {@link IdentityAttributesManager.request} able to open
+   * the identity provider synchronously inside the click handler, which is
+   * what browser popup blockers and the ICRC-29 transport require.
    */
   public async prepareClient(options?: AuthenticationClientOptions) {
-    const clientOptions = getAuthClientOptions({
-      ...options,
-      identityProvider:
-        options?.identityProvider ?? this.getDefaultIdentityProvider(),
-    })
+    const clientOptions = this.resolveClientOptions(options)
 
-    if (
-      this.authClient &&
-      (!this.shouldRecreateClient(clientOptions) || this.authClientWasProvided)
-    ) {
+    if (this.authClient && !this.shouldRecreateClient(clientOptions)) {
       return this.authClient
     }
 
     return this.initializeClient(clientOptions)
+  }
+
+  /**
+   * Returns an AuthClient without awaiting, or `undefined` when the auth
+   * module has not been loaded yet.
+   *
+   * Callers that must stay inside a user gesture use this instead of
+   * {@link ensureClient}; awaiting anything before opening the identity
+   * provider window loses the gesture.
+   */
+  public getPreparedClient(
+    options?: AuthenticationClientOptions
+  ): AuthClientLike | undefined {
+    return this.ensurePreparedClient(this.resolveClientOptions(options))
   }
 
   public authenticate = async (): Promise<Identity | undefined> => {
@@ -157,9 +177,7 @@ export class AuthenticationManager {
       try {
         if (!this.authClient) {
           const authClient = await this.initializeClient(
-            getAuthClientOptions({
-              identityProvider: this.getDefaultIdentityProvider(),
-            })
+            this.resolveClientOptions()
           )
           if (!authClient) {
             this.updateState({ isAuthenticating: false })
@@ -168,7 +186,12 @@ export class AuthenticationManager {
         }
         const identity = await this.authClient!.getIdentity()
         const isAuthenticated = await this.authClient!.isAuthenticated()
-        this.clientManager.updateAgent(identity)
+        // Restoring an anonymous session is the common first-load case; pushing
+        // it through updateAgent would invalidate the whole query cache on
+        // every mount for nothing.
+        if (isAuthenticated || !identity.getPrincipal().isAnonymous()) {
+          this.clientManager.updateAgent(identity)
+        }
         this.updateState({
           identity,
           isAuthenticated,
@@ -191,13 +214,10 @@ export class AuthenticationManager {
     let didCompleteSignIn = false
 
     try {
-      const identityProvider =
-        loginOptions?.identityProvider || this.getDefaultIdentityProvider()
-      const authClientOptions = getAuthClientOptions({
-        ...loginOptions,
-        identityProvider,
-      })
+      const authClientOptions = this.resolveClientOptions(loginOptions)
 
+      // Stays synchronous when `prepareClient()` has already loaded the auth
+      // module, so `signIn()` still runs inside the caller's click handler.
       if (!this.ensurePreparedClient(authClientOptions)) {
         await this.initializeClient(authClientOptions)
       }
@@ -275,6 +295,7 @@ export class AuthenticationManager {
     }
 
     this.authClient = new AuthClient(options)
+    this.authClientOptions = options
     return this.authClient
   }
 
@@ -309,10 +330,7 @@ export class AuthenticationManager {
   private ensurePreparedClient(
     options?: AuthenticationClientOptions
   ): AuthClientLike | undefined {
-    if (
-      this.authClient &&
-      (!this.shouldRecreateClient(options) || this.authClientWasProvided)
-    ) {
+    if (this.authClient && !this.shouldRecreateClient(options)) {
       return this.authClient
     }
 
@@ -322,11 +340,41 @@ export class AuthenticationManager {
     }
 
     this.authClient = new AuthClient(options)
+    this.authClientOptions = options
     return this.authClient
   }
 
+  /**
+   * Only rebuild the client when the effective options actually changed.
+   *
+   * Recreating on every call would discard the client warmed up by
+   * `prepareClient()` and register a duplicate sign-out callback on the
+   * shared IdleManager singleton each time.
+   */
   private shouldRecreateClient(options?: AuthenticationClientOptions): boolean {
-    return !this.authClientWasProvided && hasAuthClientOptions(options)
+    if (this.authClientWasProvided) {
+      return false
+    }
+    return !isSameAuthClientOptions(this.authClientOptions, options)
+  }
+
+  /**
+   * Merges constructor-level defaults with per-call overrides and fills in the
+   * network-appropriate identity provider.
+   */
+  private resolveClientOptions(
+    options?: AuthenticationClientOptions
+  ): AuthenticationClientOptions {
+    const merged = getAuthClientOptions({
+      ...this.defaultClientOptions,
+      ...options,
+    })
+
+    return {
+      ...merged,
+      identityProvider:
+        merged?.identityProvider ?? this.getDefaultIdentityProvider(),
+    }
   }
 
   private async syncStateFromClient(revision = this.authStateRevision) {
@@ -350,11 +398,7 @@ export class AuthenticationManager {
 
   /** @internal Used by IdentityAttributesManager. */
   public async ensureClient(options?: AuthenticationClientOptions) {
-    const clientOptions = getAuthClientOptions({
-      ...options,
-      identityProvider:
-        options?.identityProvider ?? this.getDefaultIdentityProvider(),
-    })
+    const clientOptions = this.resolveClientOptions(options)
     if (!this.ensurePreparedClient(clientOptions)) {
       await this.initializeClient(clientOptions)
     }
@@ -452,6 +496,12 @@ function getAuthClientOptions(
     identityProvider: options.identityProvider,
     windowOpenerFeatures: options.windowOpenerFeatures,
     openIdProvider: getAuthClientOpenIdProvider(options.openIdProvider),
+    derivationOrigin: options.derivationOrigin,
+    storage: options.storage,
+    keyType: options.keyType,
+    idleOptions: options.idleOptions,
+    identity: options.identity,
+    transport: options.transport,
   }
 }
 
@@ -465,11 +515,34 @@ function getAuthClientOpenIdProvider(
     : undefined
 }
 
-function hasAuthClientOptions(options?: AuthenticationClientOptions): boolean {
-  return Boolean(
-    options?.identityProvider ||
-    options?.windowOpenerFeatures ||
-    options?.openIdProvider
+/**
+ * Compares the options two AuthClients would be built from. Object-valued
+ * options (`storage`, `identity`, `idleOptions`) are compared by reference,
+ * which is what module-scoped configuration produces.
+ */
+function isSameAuthClientOptions(
+  current?: AuthenticationClientOptions,
+  next?: AuthenticationClientOptions
+): boolean {
+  if (current === next) {
+    return true
+  }
+  if (!current || !next) {
+    return false
+  }
+
+  return (
+    String(current.identityProvider ?? "") ===
+      String(next.identityProvider ?? "") &&
+    current.windowOpenerFeatures === next.windowOpenerFeatures &&
+    current.openIdProvider === next.openIdProvider &&
+    String(current.derivationOrigin ?? "") ===
+      String(next.derivationOrigin ?? "") &&
+    current.storage === next.storage &&
+    current.keyType === next.keyType &&
+    current.idleOptions === next.idleOptions &&
+    current.identity === next.identity &&
+    current.transport === next.transport
   )
 }
 

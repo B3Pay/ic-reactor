@@ -61,10 +61,11 @@ describe("IdentityAttributesManager", () => {
     })
 
     expect(authClient.signIn).toHaveBeenCalledTimes(1)
-    expect(authClient.requestAttributes).toHaveBeenCalledWith({
-      keys: ["openid:https://issuer.example.com:email"],
-      nonce: new Uint8Array([9, 9]),
-    })
+    // The nonce is handed over in its deferred form so the auth client opens
+    // the identity provider window inside the user gesture.
+    const [request] = authClient.requestAttributes.mock.calls[0]
+    expect(request.keys).toEqual(["openid:https://issuer.example.com:email"])
+    await expect(request.nonce).resolves.toEqual(new Uint8Array([9, 9]))
     expect(result.principal).toBe("aaaaa-aa")
     expect(authentication.authState.isAuthenticated).toBe(true)
   })
@@ -78,10 +79,11 @@ describe("IdentityAttributesManager", () => {
       nonce: new Uint8Array([9]),
     })
 
-    expect(authClient.requestAttributes).toHaveBeenCalledWith({
-      keys: ["openid:https://login.microsoftonline.com/{tid}/v2.0:email"],
-      nonce: new Uint8Array([9]),
-    })
+    const [request] = authClient.requestAttributes.mock.calls[0]
+    expect(request.keys).toEqual([
+      "openid:https://login.microsoftonline.com/{tid}/v2.0:email",
+    ])
+    await expect(request.nonce).resolves.toEqual(new Uint8Array([9]))
     expect(result.requestedKeys).toEqual([
       "openid:https://login.microsoftonline.com/{tid}/v2.0:email",
     ])
