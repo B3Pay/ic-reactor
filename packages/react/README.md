@@ -136,12 +136,41 @@ const mutation = updateProfile.useMutation({
 })
 ```
 
-## Identity Attributes / OpenID email and profile values
+## Internet Identity
 
-Identity attributes use a dedicated `IdentityAttributesManager`, with React
-bindings created by `createIdentityAttributeHooks`. The configured auth client
-must support the `@icp-sdk/auth` v7 constructor, sign-in, sign-out, and
-attribute-request APIs.
+`defineReactor` wires up Internet Identity for you — `useAuth`,
+`useUserPrincipal`, `useAgentState` and `useIdentityAttributes` come back
+alongside the actor hooks:
+
+```tsx
+// src/reactor.ts
+export const { useActorQuery, useAuth, useIdentityAttributes, authentication } =
+  defineReactor<_SERVICE>({
+    name: "backend",
+    idlFactory,
+    auth: {
+      // Required when the app is served from more than one origin, so every
+      // origin resolves to the same principal.
+      derivationOrigin: "https://app.example.com",
+      // The default signs the user out and reloads after 10 minutes idle.
+      idleOptions: { disableIdle: true },
+    },
+  })
+```
+
+Auth options are forwarded to the underlying `@icp-sdk/auth` client:
+`identityProvider`, `derivationOrigin`, `windowOpenerFeatures`,
+`openIdProvider`, `storage`, `keyType`, `idleOptions`, `identity`, and
+`transport`. Only the `"google" | "apple" | "microsoft"` aliases are accepted
+for `openIdProvider`; any other value is dropped, since raw issuer URLs are
+only meaningful on `requestOpenIdAttributes`, where they scope the keys.
+
+Pass `authentication` from one reactor into another to share a single session
+across canisters. That reactor adopts the manager's `ClientManager` so sign-in
+updates the agent it calls through, so pass either `authentication` or `auth` —
+not both.
+
+Set up manually when you need more control:
 
 ```tsx
 // src/auth.ts
@@ -162,6 +191,35 @@ export const { useIdentityAttributes } =
   createIdentityAttributeHooks(identityAttributes)
 ```
 
+`useAuth()` calls `authentication.prepareClient()` on mount. Outside React, do
+it yourself during startup — it preloads the auth module so `login()` can open
+the identity provider window synchronously inside a click handler, which is
+what browser popup blockers require.
+
+## Identity Attributes / OpenID email and profile values
+
+Identity attributes use a dedicated `IdentityAttributesManager`, with React
+bindings created by `createIdentityAttributeHooks`. Works with `@icp-sdk/auth`
+v7 and v8; the two versions disagree on the nonce contract and IC Reactor
+normalizes whichever form you pass.
+
+**Pass the nonce as a callback.** Awaiting your backend before calling
+`requestOpenIdAttributes` ends the user gesture, and the browser then blocks
+the Internet Identity window:
+
+```tsx
+// ✅ window opens immediately, nonce resolves while the user is in II
+await requestOpenIdAttributes({
+  nonce: () => backend.registerBegin(),
+  openIdProvider: "google",
+  keys: ["email", "name"],
+})
+
+// ❌ gesture is gone by the time the window would open
+const nonce = await backend.registerBegin()
+await requestOpenIdAttributes({ nonce, openIdProvider: "google", keys })
+```
+
 ```tsx
 // src/RegisterWithOpenIdProvider.tsx
 import { useIdentityAttributes } from "./auth"
@@ -176,10 +234,8 @@ function RegisterWithOpenIdProvider() {
   } = useIdentityAttributes()
 
   async function handleProviderLogin() {
-    const nonce = await backend.registerBegin()
-
     const result = await requestOpenIdAttributes({
-      nonce,
+      nonce: () => backend.registerBegin(),
       openIdProvider: "microsoft",
       keys: ["email", "name"],
       windowOpenerFeatures: popupCenter(),

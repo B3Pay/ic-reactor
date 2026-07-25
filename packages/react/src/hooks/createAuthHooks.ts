@@ -90,7 +90,9 @@ export const createAuthHooks = (
     // Track if we've already initialized to avoid duplicate calls
     const initializedRef = useRef(false)
 
-    // Auto-initialize on first mount to restore previous session
+    // Auto-initialize on first mount to restore previous session.
+    // `prepareClient` also warms up the AuthClient so a later `login()` can
+    // open the identity provider window inside the click handler.
     useEffect(() => {
       if (!initializedRef.current) {
         initializedRef.current = true
@@ -99,6 +101,9 @@ export const createAuthHooks = (
           .catch(() => undefined)
           .then(() => clientManager.initialize())
           .then(() => authentication.authenticate())
+          // Failures are already reflected in authState/agentState; without
+          // this the rejection escapes as an unhandled promise rejection.
+          .catch(() => undefined)
       }
     }, [])
 

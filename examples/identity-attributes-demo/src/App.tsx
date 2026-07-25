@@ -48,7 +48,7 @@ const productionSteps = [
   },
   {
     title: "2. Frontend requests attributes",
-    body: "Pass that backend-issued nonce to useIdentityAttributes(). Never create the production nonce in browser state.",
+    body: "Pass that backend-issued nonce to useIdentityAttributes() as a callback, so the Internet Identity window opens inside the click before the nonce resolves. Never create the production nonce in browser state.",
   },
   {
     title: "3. Backend verifies payload",
@@ -61,12 +61,17 @@ const productionSteps = [
 ]
 
 const productionSnippet = `async function registerWithAttributes() {
-  const { nonce } = await api.registerBegin({
-    expectedKeys: ["email", "name"],
-  })
-
+  // Pass the nonce as a callback, not an awaited value: awaiting the backend
+  // first would end the click's user gesture and the browser would block the
+  // Internet Identity window. The callback lets the window open immediately
+  // while the nonce is still being fetched.
   const result = await requestOpenIdAttributes({
-    nonce,
+    nonce: async () => {
+      const { nonce } = await api.registerBegin({
+        expectedKeys: ["email", "name"],
+      })
+      return nonce
+    },
     openIdProvider: "google",
     keys: ["email", "name"],
   })
