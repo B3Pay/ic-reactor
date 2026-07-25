@@ -39,8 +39,27 @@ export interface IdentityAttributeResult {
   completedAt: string
 }
 
+/**
+ * The providers Internet Identity supports for one-click sign-in. Only these
+ * three reach the underlying auth client.
+ */
 type IdentityAttributeOpenIdProviderAlias = "google" | "apple" | "microsoft"
 
+/**
+ * An OpenID provider, either as a well-known alias or as a raw issuer URL.
+ *
+ * The two forms are **not** interchangeable, and what each one does depends on
+ * where it is passed:
+ *
+ * - An alias (`"google" | "apple" | "microsoft"`) is forwarded to the auth
+ *   client, which adds an `openid` search param to the identity provider URL so
+ *   the user signs in through that provider directly.
+ * - Any other string is treated as a raw issuer URL and is **never** forwarded
+ *   to the auth client, so it never affects how the user signs in. It is only
+ *   meaningful when passed to {@link IdentityAttributesManager.requestOpenId}
+ *   (or `identityAttributeKeys`), which scopes the requested keys to
+ *   `openid:<issuer>:<key>`. Passed anywhere else it has no effect at all.
+ */
 export type IdentityAttributeOpenIdProvider =
   IdentityAttributeOpenIdProviderAlias | (string & {})
 
@@ -78,7 +97,14 @@ export interface AuthenticationClientOptions {
   identityProvider?: string | URL
   /** `window.open` features string for the identity provider popup. */
   windowOpenerFeatures?: string
-  /** OpenID provider for one-click sign-in. */
+  /**
+   * Provider for one-click sign-in.
+   *
+   * Only the `"google" | "apple" | "microsoft"` aliases reach the auth client.
+   * Any other value is dropped here and has **no effect** — raw issuer URLs are
+   * only meaningful on `requestOpenId`, where they scope the requested keys.
+   * @see {@link IdentityAttributeOpenIdProvider}
+   */
   openIdProvider?: IdentityAttributeOpenIdProvider
   /**
    * Derivation origin for the identity provider.
@@ -138,6 +164,15 @@ export interface RequestOpenIdIdentityAttributesParameters extends Omit<
   RequestIdentityAttributesParameters,
   "openIdProvider"
 > {
+  /**
+   * Provider the requested `keys` are scoped to, producing
+   * `openid:<issuer>:<key>`.
+   *
+   * Passing one of the `"google" | "apple" | "microsoft"` aliases additionally
+   * routes sign-in through that provider, so the user grants attribute access
+   * in the same step. A raw issuer URL only scopes the keys.
+   * @see {@link IdentityAttributeOpenIdProvider}
+   */
   openIdProvider: IdentityAttributeOpenIdProvider
 }
 

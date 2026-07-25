@@ -80,21 +80,33 @@ export interface DefineReactorSharedParameters
   /**
    * Reuse an existing ClientManager (e.g. to share one agent across canisters).
    * When omitted, a ClientManager is created from the agent options below.
+   *
+   * A supplied or adopted manager brings its own agent and QueryClient, so
+   * `agentOptions` and `queryClient` apply only when this call creates one.
    */
   clientManager?: ClientManager
   /**
-   * Reuse an existing QueryClient. When omitted, the provided ClientManager's
-   * QueryClient is reused, or a new one is created.
+   * QueryClient for a ClientManager created by this call.
+   *
+   * Ignored when `clientManager` or `authentication` is supplied — queries run
+   * against that manager's own QueryClient, which is what is returned.
    */
   queryClient?: QueryClient
   /**
    * Reuse an existing AuthenticationManager, so several reactors share one
    * Internet Identity session. When omitted, one is created for this reactor.
+   *
+   * Its `clientManager` is adopted for this reactor, so sign-in updates the
+   * same agent the reactor calls through. Supplying a different `clientManager`
+   * alongside it is rejected.
    */
   authentication?: AuthenticationManager
   /**
    * Internet Identity options forwarded to the AuthenticationManager
    * (`identityProvider`, `derivationOrigin`, `idleOptions`, `storage`, …).
+   *
+   * Mutually exclusive with `authentication`: a manager built elsewhere is
+   * already configured, so these could not be applied to it.
    */
   auth?: Omit<AuthenticationManagerParameters, "clientManager">
 }
@@ -155,17 +167,43 @@ export function defineReactor<Service = BaseActor>(
     pollingOptions,
   } = params as DefineDisplayReactorParameters<Service>
 
-  const queryClient =
-    providedQueryClient ??
-    providedClientManager?.queryClient ??
-    new QueryClient()
+  // A shared AuthenticationManager updates the identity on its own
+  // ClientManager. Giving this reactor a different one would leave its calls
+  // anonymous after sign-in, so adopt the manager's rather than building a new
+  // one, and refuse an explicit mismatch instead of splitting them silently.
+  if (
+    providedClientManager &&
+    providedAuthentication &&
+    providedAuthentication.clientManager !== providedClientManager
+  ) {
+    throw new Error(
+      `[ic-reactor] defineReactor("${name}") received an \`authentication\` manager bound to a different \`clientManager\`. ` +
+        `Sign-in would update the authentication manager's agent while this reactor calls through another one, ` +
+        `leaving its calls anonymous. Pass \`clientManager: authentication.clientManager\`, or omit \`clientManager\` to adopt it.`
+    )
+  }
+
+  // `auth` configures a manager this call would build; an existing one is
+  // already constructed, so these options could only be dropped on the floor.
+  if (providedAuthentication && auth) {
+    throw new Error(
+      `[ic-reactor] defineReactor("${name}") received both \`authentication\` and \`auth\`. ` +
+        `The supplied manager is already configured, so \`auth\` (${Object.keys(auth).join(", ")}) would be ignored. ` +
+        `Pass those options where that AuthenticationManager is created, or drop \`authentication\` to build one here.`
+    )
+  }
 
   const clientManager =
     providedClientManager ??
+    providedAuthentication?.clientManager ??
     new ClientManager({
-      queryClient,
+      queryClient: providedQueryClient ?? new QueryClient(),
       agentOptions,
     })
+
+  // Always report the QueryClient actually in use: when a ClientManager is
+  // supplied or adopted, its own QueryClient is the one queries run against.
+  const queryClient = clientManager.queryClient
 
   const reactorConfig = {
     clientManager,

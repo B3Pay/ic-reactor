@@ -122,4 +122,70 @@ describe("defineReactor", () => {
 
     expect(index.authentication).toBe(ledger.authentication)
   })
+
+  it("adopts the ClientManager of a shared authentication manager", () => {
+    const ledger = defineReactor<TestActor>({ ...baseConfig, name: "ledger" })
+
+    // `authentication` without `clientManager`: the reactor must not get an
+    // agent the auth manager never updates, or sign-in would leave this
+    // reactor's calls anonymous.
+    const index = defineReactor<TestActor>({
+      ...baseConfig,
+      name: "index",
+      authentication: ledger.authentication,
+    })
+
+    expect(index.clientManager).toBe(ledger.clientManager)
+    expect(index.queryClient).toBe(ledger.queryClient)
+    expect(index.reactor.clientManager).toBe(
+      ledger.authentication.clientManager
+    )
+  })
+
+  it("reports the QueryClient the ClientManager actually uses", () => {
+    const managerQueryClient = new QueryClient()
+    const clientManager = new ClientManager({ queryClient: managerQueryClient })
+
+    // Queries run against clientManager.queryClient, so returning the stray
+    // one passed alongside it would hand back a cache nothing writes to.
+    const result = defineReactor<TestActor>({
+      ...baseConfig,
+      clientManager,
+      queryClient: new QueryClient(),
+    })
+
+    expect(result.queryClient).toBe(managerQueryClient)
+    expect(result.queryClient).toBe(result.clientManager.queryClient)
+  })
+
+  it("rejects an authentication manager bound to a different ClientManager", () => {
+    const ledger = defineReactor<TestActor>({ ...baseConfig, name: "ledger" })
+    const other = new ClientManager({ queryClient: new QueryClient() })
+
+    // Silently splitting them would make sign-in update one agent while the
+    // reactor calls through another.
+    expect(() =>
+      defineReactor<TestActor>({
+        ...baseConfig,
+        name: "index",
+        clientManager: other,
+        authentication: ledger.authentication,
+      })
+    ).toThrow(/clientManager/i)
+  })
+
+  it("rejects auth options passed alongside an existing authentication manager", () => {
+    const ledger = defineReactor<TestActor>({ ...baseConfig, name: "ledger" })
+
+    // The shared manager is already built, so `auth` could only be dropped —
+    // silently losing e.g. derivationOrigin would change the user's principal.
+    expect(() =>
+      defineReactor<TestActor>({
+        ...baseConfig,
+        name: "index",
+        authentication: ledger.authentication,
+        auth: { derivationOrigin: "https://app.example.com" },
+      })
+    ).toThrow(/derivationOrigin/)
+  })
 })

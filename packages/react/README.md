@@ -161,8 +161,14 @@ export const { useActorQuery, useAuth, useIdentityAttributes, authentication } =
 Auth options are forwarded to the underlying `@icp-sdk/auth` client:
 `identityProvider`, `derivationOrigin`, `windowOpenerFeatures`,
 `openIdProvider`, `storage`, `keyType`, `idleOptions`, `identity`, and
-`transport`. Pass `authentication` from one reactor into another to share a
-single session across canisters.
+`transport`. Only the `"google" | "apple" | "microsoft"` aliases are accepted
+for `openIdProvider`; any other value is dropped, since raw issuer URLs are
+only meaningful on `requestOpenIdAttributes`, where they scope the keys.
+
+Pass `authentication` from one reactor into another to share a single session
+across canisters. That reactor adopts the manager's `ClientManager` so sign-in
+updates the agent it calls through, so pass either `authentication` or `auth` —
+not both.
 
 Set up manually when you need more control:
 
