@@ -40,8 +40,8 @@ export interface IdentityAttributeResult {
 }
 
 /**
- * The providers Internet Identity supports for one-click sign-in. Only these
- * three reach the underlying auth client.
+ * The providers that Internet Identity supports for one-click sign-in. Only
+ * these three reach the underlying auth client.
  */
 type IdentityAttributeOpenIdProviderAlias = "google" | "apple" | "microsoft"
 
