@@ -12,6 +12,17 @@ pnpm add @ic-reactor/parser
 
 ## API
 
+### `default init(module_or_path?): Promise<InitOutput>`
+
+Instantiates the WebAssembly module. **Required before any other export on the
+web build** — that is the build bundlers and browsers resolve. The Node build
+instantiates itself at import time, so `init()` is a no-op there.
+
+### `initSync(module): InitOutput`
+
+Synchronous variant of `init()` for when you already hold the compiled module or
+its bytes.
+
 ### `didToJs(candid: string): string`
 
 Returns JavaScript source that exports `idlFactory` and `init`.
@@ -20,14 +31,29 @@ Returns JavaScript source that exports `idlFactory` and `init`.
 
 Returns TypeScript declaration source for the same Candid interface.
 
+### `parseDid(candid: string): CandidSchema`
+
+Returns a structured description of the interface — the declared types and the
+service — instead of generated source.
+
+### `validateIDL(candid: string): boolean`
+
+Returns whether the Candid source parses. Backs `CandidAdapter.validateCandid`.
+
+### `verifyCompatability(a: string, b: string): boolean`
+
+Returns whether two Candid interfaces are upgrade-compatible.
+
 ## Example
 
 ```ts
-import { didToJs, didToTs } from "@ic-reactor/parser"
+import init, { didToJs, didToTs } from "@ic-reactor/parser"
 
 const candid = `service : {
   greet : (text) -> (text) query;
 }`
+
+await init() // required on the web build; harmless on Node
 
 const jsSource = didToJs(candid)
 const tsSource = didToTs(candid)
@@ -48,8 +74,12 @@ let that package load the parser when needed.
 ## Notes
 
 - The package is compiled from Rust to WebAssembly.
-- It returns source strings rather than ready-made JS objects.
-- Browser environments need standard WASM support from the bundler/runtime.
+- `didToJs` / `didToTs` return source strings rather than ready-made JS objects.
+- There is a single `.` entry point; the right WASM build is picked through
+  `package.json` export conditions. `browser`, `workerd` and the `default`
+  fallback resolve to the web build, which needs `await init()` first. The
+  `node` condition resolves to the Node build, which self-initializes.
+  Calling a function on the web build before `init()` throws.
 
 ## See Also
 

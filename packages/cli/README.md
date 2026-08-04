@@ -57,7 +57,8 @@ pnpm exec ic-reactor init [options]
 
 Options:
   -y, --yes              Skip prompts and use defaults
-  -o, --out-dir <path>   Output directory for generated files
+  -o, --out-dir <path>   Output directory (only applied together with -y;
+                         the interactive flow prompts for it instead)
 ```
 
 ### `generate` / `g`
@@ -67,22 +68,34 @@ pnpm exec ic-reactor generate [options]
 
 Options:
   -c, --canister <name>  Generate only one configured canister
-  --clean                Clean the output directory before generation
-  --bindgen-only         Generate only .did, .did.d.ts, and .js declarations
+  --bindgen-only         Generate only the declarations/ files
 ```
+
+The `declarations/` directory is removed and rewritten on every run, so there is
+no separate clean step.
 
 Malformed `ic-reactor.json` files now fail with a parse error instead of being
 silently ignored.
 
 ## Generated Output
 
-For each canister, the CLI generates:
+For each canister, the CLI writes into `<outDir>/<canister>/`:
 
-- `<canister>.did` copy
-- `<canister>.did.d.ts` TypeScript service types
-- `<canister>.js` IDL factory module
+- `declarations/<did-basename>.did` copy
+- `declarations/<did-basename>.d.ts` TypeScript service types
+- `declarations/<did-basename>.js` IDL factory module
 - `index.generated.ts` managed reactor implementation, with optional typed hook exports
 - `index.ts` user-facing entrypoint
+
+`<did-basename>` is the file name of the `.did` source without its extension —
+it matches the canister name only when the two happen to be the same.
+
+With `target: "react"`, `index.generated.ts` exports the reactor plus six hooks
+named after the canister — `use<Canister>Query`, `use<Canister>SuspenseQuery`,
+`use<Canister>InfiniteQuery`, `use<Canister>SuspenseInfiniteQuery`,
+`use<Canister>Mutation` and `use<Canister>Method`. Query and mutation _objects_
+(`createQuery` / `createMutation`) are never generated; write those by hand over
+the generated reactor when you need imperative access outside React.
 
 The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
 once, then preserves it unless the file is still the default wrapper or an
@@ -116,11 +129,15 @@ inside a Vite app.
 
 - Node.js 18+
 - TypeScript 5+
-- `@ic-reactor/react` in the consuming app if you use `target: "react"`
+- `@ic-reactor/react` in the consuming app if you use `target: "react"` with
+  `Reactor` or `DisplayReactor`
 - `@ic-reactor/core` in the consuming app if you use `target: "core"` with
   `Reactor` or `DisplayReactor`
-- `@ic-reactor/candid` in the consuming app if you use `target: "core"` with a
-  candid reactor class
+- `@ic-reactor/candid` in the consuming app whenever `mode` is `CandidReactor`,
+  `CandidDisplayReactor` or `MetadataDisplayReactor` — those three always import
+  from `@ic-reactor/candid`, regardless of `target`. With `target: "react"` the
+  generated file also imports `createActorHooks` from `@ic-reactor/react`, so
+  both packages are needed.
 
 ## See Also
 

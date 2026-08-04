@@ -21,18 +21,18 @@ Framework-agnostic core library for building type-safe Internet Computer applica
 - ⚡ **TanStack Query Integration** — Automatic caching, background refetching, optimistic updates
 - 🔄 **Auto Transformations** — `DisplayReactor` converts BigInt to string, Principal to text
 - 📦 **Result Unwrapping** — Automatic `Ok`/`Err` handling from Candid Result types
-- 🔐 **Internet Identity** — Built-in authentication with session restoration
-- 🏗️ **Multi-Canister Support** — Shared authentication across canisters
+- 🔑 **Identity Aware** — Swap the agent identity at runtime and invalidate the affected queries
+- 🏗️ **Multi-Canister Support** — One agent and one cache shared across canisters
 
 ## Installation
 
 ```bash
-# Core library
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
-
-# Optional: For Internet Identity authentication
-npm install @icp-sdk/auth
 ```
+
+> **Note**: Internet Identity is not part of this package. `AuthenticationManager`,
+> `IdentityAttributesManager` and the optional `@icp-sdk/auth` peer live in
+> [`@ic-reactor/react`](../react).
 
 ## Core Concepts
 
@@ -41,26 +41,21 @@ npm install @icp-sdk/auth
 ```
 ┌─────────────────┐    ┌──────────────┐    ┌─────────────────────┐
 │  ClientManager  │───▶│   Reactor    │───▶│  TanStack Query     │
-│  (Agent + Auth) │    │  (Canister)  │    │  (Caching Layer)    │
+│ (Agent + Cache) │    │  (Canister)  │    │  (Caching Layer)    │
 └─────────────────┘    └──────────────┘    └─────────────────────┘
-         │                    │
-         │              ┌─────▼─────┐
-         │              │ Display   │
-         │              │ Reactor   │
-         │              └───────────┘
-         │              (Type Transforms)
-         ▼
-┌─────────────────┐
-│ Internet        │
-│ Identity        │
-└─────────────────┘
+                              │
+                        ┌─────▼─────┐
+                        │ Display   │
+                        │ Reactor   │
+                        └───────────┘
+                        (Type Transforms)
 ```
 
 ## Quick Start
 
 ### 1. Create ClientManager
 
-The `ClientManager` handles the IC agent, authentication, and query client:
+The `ClientManager` handles the IC agent and the query client:
 
 ```typescript
 import { ClientManager } from "@ic-reactor/core"
@@ -74,12 +69,15 @@ const queryClient = new QueryClient({
 
 const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: true, // Reads DFX_NETWORK from environment
 })
 
-// Initialize agent and restore session
+// Initialize the agent (fetches the root key on non-mainnet hosts)
 await clientManager.initialize()
 ```
+
+The network is detected automatically: in the browser from the serving origin,
+in Node/SSR from `ICP_NETWORK` / `DFX_NETWORK`. Pass `agentOptions.host` to
+override it.
 
 ### 2. Create Reactor
 
@@ -128,90 +126,42 @@ backend.invalidateQueries({ functionName: "greet" })
 
 ```typescript
 interface ClientManagerParameters {
-  queryClient: QueryClient // TanStack Query client
-  port?: number // Local replica port (default: 4943)
-  withLocalEnv?: boolean // Force local network
-  withProcessEnv?: boolean // Read DFX_NETWORK from env
-  withCanisterEnv?: boolean // Read canister IDs from environment
-  agentOptions?: HttpAgentOptions // Custom agent options
-  authClient?: AuthClient // Pre-configured auth client
+  queryClient: QueryClient // TanStack Query client (required)
+  agentOptions?: HttpAgentOptions // Custom HttpAgent options (host, identity, rootKey, ...)
 }
 ```
 
-### Authentication Methods
+### Authentication
+
+Authentication is **not** part of `@ic-reactor/core`. `ClientManager` only holds
+the active identity and re-signs the agent when it changes. Internet Identity
+sign-in lives in `AuthenticationManager` from
+[`@ic-reactor/react`](../react), which also owns the optional `@icp-sdk/auth`
+peer and the `IdentityAttributesManager` used for signed OpenID attributes:
 
 ```typescript
-// Initialize agent and restore previous session
-await clientManager.initialize()
+import { AuthenticationManager } from "@ic-reactor/react"
 
-// Trigger login flow (opens Internet Identity)
-await clientManager.login({
-  identityProvider: "https://identity.ic0.app", // optional, auto-detected
+const authentication = new AuthenticationManager({ clientManager })
+
+// Preload the auth module so login() can open the identity provider window
+// synchronously inside a click handler (browser popup blockers require this).
+await authentication.prepareClient()
+
+await authentication.login({
   onSuccess: () => console.log("Logged in!"),
   onError: (error) => console.error(error),
 })
 
-// Logout and revert to anonymous identity
-await clientManager.logout()
+await authentication.logout()
 
-// Manually authenticate (restore session)
-const identity = await clientManager.authenticate()
+// Restore a previous session
+const identity = await authentication.authenticate()
 ```
 
-### Identity Attributes / OpenID email and profile values
-
-`ClientManager` uses the `@icp-sdk/auth` v7 `signIn()` / `requestAttributes()`
-API. Apps can request signed identity attributes directly, without adding a
-local compatibility shim.
-
-```typescript
-import { identityAttributeKeys } from "@ic-reactor/core"
-
-const nonce = await backend.registerBegin()
-
-const result = await clientManager.requestOpenIdIdentityAttributes({
-  nonce,
-  openIdProvider: "microsoft",
-  keys: ["email", "name"],
-  windowOpenerFeatures: popupCenter(),
-})
-
-console.log(result.decodedAttributes.email)
-console.log(result.decodedAttributes.name)
-
-await backend.registerFinish({
-  data: result.signedAttributes.data,
-  signature: result.signedAttributes.signature,
-})
-```
-
-Pass a documented auth provider alias (`"google"`, `"apple"`, or `"microsoft"`)
-or the OpenID provider issuer URL your app expects:
-
-```typescript
-const result = await clientManager.requestOpenIdIdentityAttributes({
-  nonce,
-  openIdProvider: "https://issuer.example.com",
-  keys: ["sub", "email"],
-})
-```
-
-For lower-level control, pass scoped keys yourself:
-
-```typescript
-const result = await clientManager.requestIdentityAttributes({
-  nonce,
-  keys: identityAttributeKeys({
-    openIdProvider: "https://issuer.example.com",
-    keys: ["sub", "email"],
-  }),
-})
-```
-
-The frontend `decodedAttributes` values are a display convenience for UX only.
-Production code must verify `signedAttributes.data`, `signedAttributes.signature`,
-the backend-issued nonce, origin, timestamp, and expected keys in the canister or
-backend before trusting or storing an email or name.
+Signing in calls `clientManager.updateAgent(identity)`, which replaces the
+agent's identity, notifies identity subscribers, and invalidates the cached
+queries of every connected canister.
 
 ### State Subscriptions
 
@@ -221,11 +171,6 @@ const unsubAgent = clientManager.subscribeAgentState((state) => {
   console.log("Agent state:", state.isInitialized, state.network)
 })
 
-// Subscribe to auth state changes
-const unsubAuth = clientManager.subscribeAuthState((state) => {
-  console.log("Auth state:", state.isAuthenticated, state.identity)
-})
-
 // Subscribe to identity changes
 const unsubIdentity = clientManager.subscribe((identity) => {
   console.log("New identity:", identity.getPrincipal().toText())
@@ -233,19 +178,23 @@ const unsubIdentity = clientManager.subscribe((identity) => {
 
 // Cleanup
 unsubAgent()
-unsubAuth()
 unsubIdentity()
 ```
+
+Auth state (`isAuthenticated`, `identity`, …) is published by
+`authentication.subscribeAuthState()` in `@ic-reactor/react`.
 
 ### Properties
 
 ```typescript
 clientManager.agent // HttpAgent instance
 clientManager.agentState // { isInitialized, isInitializing, error, network, isLocalhost }
-clientManager.authState // { identity, isAuthenticated, isAuthenticating, error }
 clientManager.queryClient // TanStack QueryClient
-clientManager.network // "ic" | "local"
-clientManager.isLocal // boolean
+clientManager.network // "local" | "remote" | "ic"
+clientManager.isLocal // boolean — true whenever network !== "ic"
+
+// Async: forwards HttpAgent.getPrincipal()
+const principal = await clientManager.getUserPrincipal()
 ```
 
 ## Reactor API
@@ -253,14 +202,17 @@ clientManager.isLocal // boolean
 ### Constructor Options
 
 ```typescript
-interface ReactorParameters<A> {
+interface ReactorParameters {
   clientManager: ClientManager
-  idlFactory: IDL.InterfaceFactory
-  name: string // Required display name
-  canisterId?: string | Principal // Optional if using env vars
+  name: string // Required: also the ic_env lookup key
+  idlFactory: (IDL: any) => any
+  canisterId?: string | Principal // Optional: resolved from the ic_env cookie via name
   pollingOptions?: PollingOptions // Custom polling for update calls
 }
 ```
+
+When `canisterId` is omitted, it is resolved from the `ic_env` cookie under the
+key `PUBLIC_CANISTER_ID:<name>`; the constructor throws if it is not there.
 
 ### Core Methods
 
@@ -313,13 +265,19 @@ reactor.name // string
 
 ### Type Transformations
 
-| Candid Type                      | Reactor (raw) | DisplayReactor |
-| -------------------------------- | ------------- | -------------- |
-| `nat`, `int`                     | `bigint`      | `string`       |
-| `nat8/16/32/64`, `int8/16/32/64` | `bigint`      | `string`       |
-| `Principal`                      | `Principal`   | `string`       |
-| `vec nat8` (≤32 bytes)           | `Uint8Array`  | `string` (hex) |
-| `Result<Ok, Err>`                | Unwrapped     | Unwrapped      |
+| Candid Type                | Reactor (raw) | DisplayReactor          |
+| -------------------------- | ------------- | ----------------------- |
+| `nat`, `int`               | `bigint`      | `string`                |
+| `nat8/16/32`, `int8/16/32` | `number`      | `number`                |
+| `nat64`, `int64`           | `bigint`      | `string`                |
+| `Principal`                | `Principal`   | `string`                |
+| `vec nat8` (≤512 bytes)    | `Uint8Array`  | `string` (hex, no `0x`) |
+| `vec nat8` (>512 bytes)    | `Uint8Array`  | `Uint8Array`            |
+| `Result<Ok, Err>`          | Unwrapped     | Unwrapped               |
+
+Fixed-width integers up to 32 bits stay numbers on both sides; only the 64-bit
+types cross the `bigint` ↔ `string` boundary. On encode, the ≤32-bit codecs also
+accept numeric strings so form inputs can be submitted directly.
 
 ### Usage
 
@@ -329,6 +287,7 @@ import { DisplayReactor } from "@ic-reactor/core"
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
 })
 
@@ -350,6 +309,7 @@ import { DisplayReactor, ValidationError } from "@ic-reactor/core"
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: "...",
   validators: {
     transfer: (args) => {
@@ -460,7 +420,13 @@ const result2 = extractOkResult({ ok: "success" }) // "success"
 ### Query Key Generation
 
 ```typescript
-const queryKey = reactor.generateQueryKey(
+const queryKey = reactor.generateQueryKey({
+  functionName: "get_user",
+  args: ["user-123"],
+})
+// [reactor.canisterId.toString(), "get_user", '["user-123"]']
+
+const scopedKey = reactor.generateQueryKey(
   {
     functionName: "get_user",
     args: ["user-123"],
@@ -470,8 +436,15 @@ const queryKey = reactor.generateQueryKey(
     effectiveCanisterId: managementCanisterId, // optional
   }
 )
-// ["canister-id", "get_user", "serialized-args"]
+// [otherCanisterId, "get_user", { effectiveTarget: { canisterId: managementCanisterId } }, '["user-123"]']
 ```
+
+The key shape is
+`[resolvedCanisterId, functionName, { effectiveTarget }?, argKey?, ...queryKey]`.
+`argKey` is a single string — `JSON.stringify(args)` with `bigint` rendered as a
+decimal string — not the individual arguments. The `{ effectiveTarget }` segment
+is dropped when it names the same canister the key is already rooted at, and any
+custom `queryKey` is appended element-wise.
 
 If you pass `callConfig` to `fetchQuery`, `getQueryOptions`, or the React query
 hooks/factories, use the same `callConfig` when generating or looking up query
@@ -496,22 +469,21 @@ import type {
 ### State Types
 
 ```typescript
-import type { AgentState, AuthState } from "@ic-reactor/core"
+import type { AgentState } from "@ic-reactor/core"
 
 interface AgentState {
   isInitialized: boolean
   isInitializing: boolean
   error: Error | undefined
-  network: "ic" | "local" | undefined
+  network: string | undefined
   isLocalhost: boolean
 }
+```
 
-interface AuthState {
-  identity: Identity | null
-  isAuthenticated: boolean
-  isAuthenticating: boolean
-  error: Error | undefined
-}
+`AuthState` is exported by [`@ic-reactor/react`](../react), not by this package:
+
+```typescript
+import type { AuthState } from "@ic-reactor/react"
 ```
 
 ## Advanced Usage
@@ -519,39 +491,47 @@ interface AuthState {
 ### Multiple Canisters
 
 ```typescript
-const clientManager = new ClientManager({ queryClient, withProcessEnv: true })
+const clientManager = new ClientManager({ queryClient })
 
-// All reactors share the same agent and authentication
+// All reactors share the same agent and identity
 const backend = new Reactor<Backend>({
   clientManager,
   idlFactory: backendIdl,
+  name: "backend",
   canisterId: "...",
 })
 const ledger = new DisplayReactor<Ledger>({
   clientManager,
   idlFactory: ledgerIdl,
+  name: "ledger",
   canisterId: "...",
 })
 const nft = new Reactor<NFT>({
   clientManager,
   idlFactory: nftIdl,
+  name: "nft",
   canisterId: "...",
 })
 
-// Login once, all canisters use the same identity
-await clientManager.login()
+// Sign in once (via @ic-reactor/react) — every reactor picks up the identity
+await authentication.login()
 ```
 
 ### Custom Polling Options
 
+`pollingOptions` is the `PollingOptions` type from `@icp-sdk/core/agent`:
+
 ```typescript
+import { defaultStrategy } from "@icp-sdk/core/agent"
+
 const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId: "...",
   pollingOptions: {
-    maxRetries: 5,
-    strategyFactory: () => /* custom strategy */,
+    strategy: defaultStrategy(),
+    preSignReadStateRequest: false,
   },
 })
 ```

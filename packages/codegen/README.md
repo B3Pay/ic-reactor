@@ -54,16 +54,17 @@ need to skip `index.generated.ts` and `index.ts`.
 
 You can also use individual generators if you need more granular control:
 
-- **`generateDeclarations`**: Generates `.js` (factory), `.d.ts` (types), and `.did` copy.
-- **`generateReactorFile`**: Generates the managed `index.generated.ts` implementation using either `DisplayReactor` or `Reactor`.
+- **`generateDeclarations`**: Writes `declarations/<did-basename>.js` (factory), `.d.ts` (types), and a `.did` copy. The `declarations/` directory is wiped and recreated on every run.
+- **`generateReactorFile`**: Generates the managed `index.generated.ts` implementation using any `ReactorClassName` — `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, or `MetadataDisplayReactor`. With `target: "react"` it also emits the six `createActorHooks` exports (`use<Canister>Query`, `use<Canister>SuspenseQuery`, `use<Canister>InfiniteQuery`, `use<Canister>SuspenseInfiniteQuery`, `use<Canister>Mutation`, `use<Canister>Method`). No `createQuery` / `createMutation` objects are generated.
 - **`generateReactorEntryFile`**: Generates the stable `index.ts` wrapper that re-exports from `index.generated.ts`.
 - **`generateClientFile`**: Generates a `ClientManager` boilerplate file that
   imports `ClientManager` from `@ic-reactor/react`.
 
 ## Utilities
 
-- **`parseDIDFile`**: Parses a `.did` file and extracts method signatures.
-- **`toPascalCase` / `toCamelCase`**: Naming helpers.
+- **`parseDIDFile` / `extractMethods`**: Parse a `.did` file and extract method signatures.
+- **`toPascalCase` / `getReactorName` / `getServiceTypeName`**: Naming helpers.
+- **`generateCodecDeclarations`**: Renders a `@ic-reactor/cod` codec module from Candid (also available on the `./renderer` subpath).
 
 ## License
 

@@ -31,17 +31,25 @@ export default defineConfig({
 
 ```ts
 // src/clients.ts
-import { ClientManager } from "@ic-reactor/core"
+import { ClientManager } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient()
 export const clientManager = new ClientManager({
   queryClient,
-  withCanisterEnv: true,
 })
 ```
 
-The plugin generates files under `src/declarations/<canister>/` by default.
+No opt-in flag is needed to pick up the plugin's environment: the plugin sets
+the `ic_env` cookie and `ClientManager` reads it automatically in the browser.
+
+The plugin generates files under `src/declarations/<canister>/` by default —
+`declarations/<did-basename>.{js,d.ts,did}` plus a managed `index.generated.ts`
+and a stable `index.ts` wrapper. With `target: "react"`, `index.generated.ts`
+exports the reactor and six hooks named after the canister
+(`use<Canister>Query`, `use<Canister>SuspenseQuery`,
+`use<Canister>InfiniteQuery`, `use<Canister>SuspenseInfiniteQuery`,
+`use<Canister>Mutation`, `use<Canister>Method`).
 
 If you want non-React output, set `target: "core"` and install the matching
 runtime package instead of `@ic-reactor/react`.

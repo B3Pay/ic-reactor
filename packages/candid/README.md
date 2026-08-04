@@ -16,8 +16,11 @@ Lightweight adapter for fetching and parsing Candid definitions from Internet Co
 ## Installation
 
 ```bash
-npm install @ic-reactor/candid @icp-sdk/core
+npm install @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core zod
 ```
+
+`ClientManager` requires a TanStack `QueryClient`, so `@tanstack/query-core` is
+needed even when you only use the adapter.
 
 ### Optional: Local Parser
 
@@ -79,8 +82,9 @@ const { idlFactory } = await adapter.getCandidDefinition(
 ```typescript
 import { CandidReactor } from "@ic-reactor/candid"
 import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
 
-const clientManager = new ClientManager()
+const clientManager = new ClientManager({ queryClient: new QueryClient() })
 await clientManager.initialize()
 
 // Option 1: Fetch Candid from network
@@ -92,7 +96,7 @@ const reactor = new CandidReactor({
 await reactor.initialize() // Fetches IDL from network
 
 // Option 2: Provide Candid string directly (no network fetch)
-const reactor = new CandidReactor({
+const inlineReactor = new CandidReactor({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
   name: "my-canister",
@@ -101,7 +105,7 @@ const reactor = new CandidReactor({
     icrc1_balance_of : (record { owner : principal }) -> (nat) query;
   }`,
 })
-await reactor.initialize() // Parses provided Candid string
+await inlineReactor.initialize() // Parses provided Candid string
 
 // Now use standard Reactor methods!
 const name = await reactor.callMethod({ functionName: "icrc1_name" })
@@ -263,13 +267,16 @@ console.log(isValid) // true
 
 ### Compile Candid to JavaScript
 
+Both compile methods return the generated JavaScript **source string** — not a
+`CandidDefinition`. Use `parseCandidSource()` when you want an `idlFactory`.
+
 ```typescript
-// Local compilation (requires parser)
+// Local compilation (requires parser) — string, throws if the parser is not loaded
 await adapter.loadParser()
 const jsCode = adapter.compileLocal("service { greet: (text) -> (text) query }")
 
-// Remote compilation (uses didjs canister)
-const jsCode = await adapter.compileRemote(
+// Remote compilation (uses didjs canister) — string | undefined
+const remoteJsCode = await adapter.compileRemote(
   "service { greet: (text) -> (text) query }"
 )
 ```
@@ -287,7 +294,11 @@ new CandidAdapter(params: CandidAdapterParameters)
 | Parameter         | Type                  | Required | Description                                        |
 | ----------------- | --------------------- | -------- | -------------------------------------------------- |
 | `clientManager`   | `CandidClientManager` | Yes      | Client manager providing agent and identity access |
-| `didjsCanisterId` | `string`              | No       | Custom didjs canister ID                           |
+| `didjsCanisterId` | `CanisterId`          | No       | Custom didjs canister ID                           |
+
+When `didjsCanisterId` is omitted it defaults to `a4gq6-oaaaa-aaaab-qaa4q-cai`
+on mainnet and `bd3sg-teaaa-aaaaa-qaaba-cai` locally, and is re-evaluated
+whenever the identity changes.
 
 #### Properties
 
@@ -295,7 +306,7 @@ new CandidAdapter(params: CandidAdapterParameters)
 | ----------------- | --------------------- | -------------------------------------------- |
 | `clientManager`   | `CandidClientManager` | The client manager instance                  |
 | `agent`           | `HttpAgent`           | The HTTP agent from the client manager       |
-| `didjsCanisterId` | `string`              | The didjs canister ID for remote compilation |
+| `didjsCanisterId` | `CanisterId`          | The didjs canister ID for remote compilation |
 | `hasParser`       | `boolean`             | Whether the local parser is loaded           |
 
 #### Methods
@@ -340,14 +351,15 @@ Extends `Reactor` from `@ic-reactor/core`.
 new CandidReactor(config: CandidReactorParameters)
 ```
 
-| Parameter       | Type               | Required | Description                                      |
-| --------------- | ------------------ | -------- | ------------------------------------------------ |
-| `name`          | `string`           | Yes      | Name of the canister/reactor                     |
-| `clientManager` | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`           |
-| `canisterId`    | `CanisterId`       | No       | The canister ID (optional if using env vars)     |
-| `candid`        | `string`           | No       | Candid service definition (avoids network fetch) |
-| `idlFactory`    | `InterfaceFactory` | No       | IDL factory (if already available)               |
-| `actor`         | `A`                | No       | Existing actor instance                          |
+| Parameter        | Type               | Required | Description                                       |
+| ---------------- | ------------------ | -------- | ------------------------------------------------- |
+| `name`           | `string`           | Yes      | Name of the canister/reactor                      |
+| `clientManager`  | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`            |
+| `canisterId`     | `CanisterId`       | No       | The canister ID (optional if using env vars)      |
+| `candid`         | `string`           | No       | Candid service definition (avoids network fetch)  |
+| `idlFactory`     | `InterfaceFactory` | No       | IDL factory (if already available)                |
+| `adapter`        | `CandidAdapter`    | No       | Reuse an existing adapter instead of creating one |
+| `pollingOptions` | `PollingOptions`   | No       | Polling configuration for update calls            |
 
 #### Methods
 
@@ -402,7 +414,7 @@ type CanisterId = string | Principal
 
 3. **Evaluation**: The compiled JavaScript is dynamically imported to extract the `idlFactory` and optional `init` function.
 
-4. **Dynamic Execution**: For `call` and `query` methods, the adapter wraps the provided Candid signature in a temporary service definition, compiles it to an `idlFactory`, and then uses an `Actor` to encode arguments and execute the call reliably.
+4. **Dynamic Execution**: `registerMethod()` wraps the provided Candid signature in a temporary service definition, compiles it to an `idlFactory`, and merges the resulting field into the reactor's service. The call itself then goes through the core `Reactor`, which encodes arguments with `IDL.encode` and dispatches via `agent.query()` / `agent.call()` — no `Actor` is ever constructed.
 
 5. **Identity Changes**: The adapter subscribes to identity changes from the ClientManager. When the identity changes, it re-evaluates the default didjs canister ID (unless a custom one was provided).
 

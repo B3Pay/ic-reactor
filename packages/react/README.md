@@ -13,6 +13,11 @@ pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 pnpm add @icp-sdk/auth
 ```
 
+`@icp-sdk/auth` is an optional peer. `AuthenticationManager` reaches it through a
+literal `import("@icp-sdk/auth/client")`, so Vite, Rollup and webpack resolve it
+at build time and code-split it into its own chunk — and tree-shake it away
+entirely in apps that never reference the class.
+
 ## Quick Start
 
 ```tsx
@@ -25,7 +30,6 @@ export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({
   queryClient,
-  withCanisterEnv: true,
 })
 
 export const backend = new Reactor<_SERVICE>({
@@ -194,7 +198,31 @@ export const { useIdentityAttributes } =
 `useAuth()` calls `authentication.prepareClient()` on mount. Outside React, do
 it yourself during startup — it preloads the auth module so `login()` can open
 the identity provider window synchronously inside a click handler, which is
-what browser popup blockers require.
+what browser popup blockers require:
+
+```ts
+// once, at startup — awaits the dynamic import and builds the AuthClient
+await authentication.prepareClient()
+
+// later, inside the click handler — no await before signIn(), so the popup
+// still counts as user-initiated
+button.onclick = () => authentication.login()
+```
+
+`authentication.getPreparedClient()` returns the already-built client
+synchronously, or `undefined` when the module has not loaded yet.
+
+If your bundler cannot resolve the optional peer at all, construct the client
+yourself and inject it — IC Reactor then never imports `@icp-sdk/auth`:
+
+```ts
+import { AuthClient } from "@icp-sdk/auth/client"
+
+const authentication = new AuthenticationManager({
+  clientManager,
+  authClient: new AuthClient(),
+})
+```
 
 ## Identity Attributes / OpenID email and profile values
 
