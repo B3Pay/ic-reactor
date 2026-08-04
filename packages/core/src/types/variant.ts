@@ -18,7 +18,15 @@ export type CandidVariantToIntersection<U> = (
  */
 export type CandidVariantKey<T> = T extends any
   ? | Exclude<keyof T, "_type">
-    | (T extends { _type: infer D extends string } ? D : never)
+    // Only a *literal* discriminant names an arm. When `_type` is the wide
+    // `string` (an unresolved or hand-written shape), folding it in would
+    // collapse the whole key union to `string` and every key/value helper
+    // would stop type-checking its argument.
+    | (T extends { _type: infer D extends string }
+        ? string extends D
+          ? never
+          : D
+        : never)
   : never
 
 export type CandidVariantValue<T, K extends CandidVariantKey<T>> =

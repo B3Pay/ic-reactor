@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
 import { ClientManager } from "../src/client.js"
+import { Reactor } from "../src/reactor.js"
 import { AnonymousIdentity } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
@@ -190,16 +191,28 @@ describe("ClientManager", () => {
       const manager = new ClientManager({ queryClient })
       const overriddenId = "rrkah-fqaaa-aaaaa-aaaaq-cai"
 
-      // Reactor.generateQueryKey registers the resolved id for overridden calls,
-      // so those queries are not left cached under the previous identity.
-      manager.registerCanisterId(overriddenId)
-      queryClient.setQueryData([overriddenId, "get_user"], { id: 1 })
+      const reactor = new Reactor({
+        name: "override-reactor",
+        clientManager: manager,
+        canisterId,
+        idlFactory: ({ IDL }) =>
+          IDL.Service({ get_user: IDL.Func([], [IDL.Text], ["query"]) }),
+      })
 
+      // Going through the real reactor is the point: an overridden call roots its
+      // key at a canister the client was never told about, and generateQueryKey is
+      // what registers it. Registering by hand here would test nothing.
+      const key = reactor.generateQueryKey(
+        { functionName: "get_user" },
+        { canisterId: overriddenId }
+      )
+      expect(key[0]).toBe(overriddenId)
+      expect(manager.connectedCanisterIds()).toContain(overriddenId)
+
+      queryClient.setQueryData(key, { id: 1 })
       manager.updateAgent(new AnonymousIdentity())
 
-      expect(
-        queryClient.getQueryState([overriddenId, "get_user"])?.isInvalidated
-      ).toBe(true)
+      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
     })
   })
 })

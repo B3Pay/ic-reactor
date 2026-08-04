@@ -98,10 +98,13 @@ const RELEASE_PATHS = [
 // 4. Git Commit and Tag
 console.log("\n📂 Creating release commit and tag...")
 try {
-  // Stage only the files this script rewrites. `git add .` would sweep in any
-  // untracked scratch file, and since core/react/candid ship "src", it would be
-  // committed, tagged and published inside the tarball.
-  run("git", ["add", "--", ...RELEASE_PATHS])
+  // `-u` stages modifications to already-tracked files only, so no untracked
+  // scratch file can be swept in -- `git add .` would have committed, tagged and
+  // published one, since core/react/candid ship "src". It also keeps `examples`
+  // safe to pass as a directory: sync-example-versions.js only rewrites
+  // package.json files under it, at either workspace depth, but an untracked file
+  // sitting there must never ride along.
+  run("git", ["add", "-u", "--", ...RELEASE_PATHS])
   run("git", ["commit", "-m", `chore: release v${version}`])
 
   try {

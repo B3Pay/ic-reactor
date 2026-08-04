@@ -170,6 +170,31 @@ describe("Reactor callConfig overrides", () => {
     ])
   })
 
+  it("registers a callConfig.canisterId override with the client manager", () => {
+    // A query made against an overridden canister is cached under a key rooted at
+    // a canister the client was never told about, so ClientManager.updateAgent's
+    // canister-scoped cancel and invalidate would miss it and leave it cached
+    // under the previous identity. generateQueryKey registers it to close that gap.
+    const clientManager = reactor.clientManager
+
+    reactor.generateQueryKey(
+      { functionName: "readName" },
+      { canisterId: overrideCanisterId }
+    )
+
+    expect(clientManager.registerCanisterId).toHaveBeenCalledWith(
+      overrideCanisterId
+    )
+  })
+
+  it("does not re-register when no canisterId override is supplied", () => {
+    const clientManager = reactor.clientManager
+
+    reactor.generateQueryKey({ functionName: "readName" })
+
+    expect(clientManager.registerCanisterId).not.toHaveBeenCalled()
+  })
+
   it("uses an effective subnet target for query calls and cache keys", async () => {
     defaultAgent.query.mockResolvedValue(createMockQueryResponse("query-ok"))
     const effectiveTarget = { subnetId: Principal.fromText(effectiveSubnetId) }
