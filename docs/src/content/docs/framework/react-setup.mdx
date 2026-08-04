@@ -31,10 +31,7 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
 
    export const queryClient = new QueryClient()
 
-   export const clientManager = new ClientManager({
-     queryClient,
-     withProcessEnv: true,
-   })
+   export const clientManager = new ClientManager({ queryClient })
 
    export const backend = new Reactor<_SERVICE>({
      clientManager,
@@ -54,7 +51,11 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
 
    ```typescript
    // src/reactor/hooks.ts
-   import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+   import {
+     AuthenticationManager,
+     createActorHooks,
+     createAuthHooks,
+   } from "@ic-reactor/react"
    import { backend, clientManager } from "./index"
 
    // Actor hooks for your canister
@@ -65,12 +66,14 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
      useActorInfiniteQuery,
    } = createActorHooks(backend)
 
-   // Auth hooks for authentication
+   // Auth hooks are bound to an AuthenticationManager, not the ClientManager
+   export const authentication = new AuthenticationManager({ clientManager })
+
    export const {
      useAuth,
      useUserPrincipal,
      useAgentState,
-   } = createAuthHooks(clientManager)
+   } = createAuthHooks(authentication)
    ```
 
 3. ### Setup Provider (Optional)
@@ -197,7 +200,7 @@ const { login } = useAuth()
 
 // With options
 login({
-  identityProvider: "https://identity.ic0.app",
+  identityProvider: "https://id.ai/authorize",
   maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days
   onSuccess: () => {
     console.log("Logged in successfully!")
@@ -282,12 +285,18 @@ export const backend = new Reactor<Backend>({
 
 ```typescript
 // src/reactor/hooks.ts
-import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import {
+  AuthenticationManager,
+  createActorHooks,
+  createAuthHooks,
+} from "@ic-reactor/react"
 import { ledger, backend, clientManager } from "./index"
+
+export const authentication = new AuthenticationManager({ clientManager })
 
 export const ledgerHooks = createActorHooks(ledger)
 export const backendHooks = createActorHooks(backend)
-export const authHooks = createAuthHooks(clientManager)
+export const authHooks = createAuthHooks(authentication)
 
 // Export individual hooks for convenience
 export const {
@@ -324,18 +333,20 @@ const backend = new DisplayReactor<_SERVICE>({
 
 ## Session Persistence
 
-Sessions are automatically persisted in IndexedDB. Authentication hooks like `useAuth` automatically initialize the session restoration on first use.
+Sessions are automatically persisted in IndexedDB. Authentication hooks like `useAuth` automatically initialize the agent and restore the session on first use.
 
-To manually initialize explicitly on app load (optional):
+To restore the session yourself on app load (optional), call
+`authentication.authenticate()` — `clientManager.initialize()` only initializes
+the agent:
 
 ```tsx
 // src/App.tsx
 import { useEffect } from "react"
-import { clientManager } from "./reactor"
+import { authentication } from "./reactor/hooks"
 
 function App() {
   useEffect(() => {
-    clientManager.initialize()
+    authentication.authenticate()
   }, [])
 
   return <YourApp />

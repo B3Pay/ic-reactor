@@ -16,7 +16,7 @@ function AgentStatus() {
     isInitialized, // Agent is ready
     isInitializing, // Agent is starting up
     isLocalhost, // Connected to local network
-    network, // "ic" | "local"
+    network, // "ic" | "local" | "remote" | undefined
     error, // Error | undefined
   } = useAgentState()
 
@@ -32,7 +32,7 @@ function AgentStatus() {
 | `isInitialized`  | `boolean`            | Whether the agent has finished initializing                   |
 | `isInitializing` | `boolean`            | Whether the agent is currently initializing                   |
 | `isLocalhost`    | `boolean`            | Whether the agent is connected to a local development network |
-| `network`        | `"ic" \| "local"`    | The network the agent is connected to                         |
+| `network`        | `string \| undefined` | The network the agent is connected to — `"ic"`, `"local"`, or `"remote"` (Codespaces/Gitpod) |
 | `error`          | `Error \| undefined` | Any error that occurred during initialization                 |
 
 ## Examples

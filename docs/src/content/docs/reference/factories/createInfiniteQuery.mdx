@@ -73,13 +73,17 @@ getPreviousPageParam: (
 
 ## Return Value
 
-| Property           | Type                                   | Description                      |
-| ------------------ | -------------------------------------- | -------------------------------- |
-| `fetch`            | `() => Promise<T>`                     | Fetch first page (for loaders)   |
-| `useInfiniteQuery` | `(options?) => UseInfiniteQueryResult` | React hook                       |
-| `refetch`          | `() => Promise<void>`                  | Invalidate and refetch all pages |
-| `getQueryKey`      | `() => QueryKey`                       | Get the query key                |
-| `getCacheData`     | `(select?) => T`                       | Read from cache                  |
+| Property           | Type                                   | Description                                 |
+| ------------------ | -------------------------------------- | ------------------------------------------- |
+| `fetch`            | `() => Promise<T>`                     | Fetch first page (for loaders)              |
+| `useInfiniteQuery` | `(options?) => UseInfiniteQueryResult` | React hook                                  |
+| `invalidate`       | `() => Promise<void>`                  | Invalidate the cache (refetches if active)  |
+| `getQueryKey`      | `() => QueryKey`                       | Get the query key                           |
+| `getCacheData`     | `(select?) => T \| undefined`          | Read from cache without fetching            |
+
+These five keys are the whole object. To force a refetch from a component, use
+the `refetch` returned by `useInfiniteQuery()`; outside React, call
+`invalidate()`.
 
 ---
 

@@ -76,8 +76,10 @@ If you're not using React, install the core package directly:
 
 <Aside type="note">
   The `@icp-sdk/auth` package is optional and only needed for Internet Identity
-  authentication. It's dynamically imported when needed, so it won't increase
-  your bundle size if you don't use it.
+  authentication, which lives in `@ic-reactor/react`. It is loaded through a
+  dynamic `import()`, so your bundler splits it into its own chunk instead of
+  adding it to your main bundle. See [Internet
+  Identity](#internet-identity-icp-sdkauth) below.
 </Aside>
 
 ## Optional Tooling
@@ -103,6 +105,19 @@ pnpm add -D @ic-reactor/cli
 ```
 
 [Read more about CLI](/v3/packages/cli)
+
+### Internet Identity (`@icp-sdk/auth`)
+
+Needed only if you sign users in with Internet Identity. It is an **optional
+peer dependency** of `@ic-reactor/react` — `AuthenticationManager` loads it with
+a dynamic `import()`, so nothing breaks when it is absent, but `login()` will
+not work until you install it:
+
+```bash
+pnpm add @icp-sdk/auth
+```
+
+[Read more about Authentication](/v3/guides/authentication)
 
 ## Package Overview
 
@@ -149,12 +164,19 @@ can supply them in three ways:
 3. **Manual or existing workflow**: keep using your existing generator such as
    `dfx generate` or `@icp-sdk/bindgen`
 
-The generated files typically include:
+With **@ic-reactor/vite-plugin** or **@ic-reactor/cli**, every canister gets its
+own folder under the output directory (default `src/declarations`):
 
-- `index.js` or `<canister>.js` with the `idlFactory`
-- `<canister>.did.d.ts` service types
-- an optional generated `index.ts` reactor entrypoint when you use IC Reactor
-  tooling
+- `declarations/<did-basename>.js` with the `idlFactory`
+- `declarations/<did-basename>.d.ts` service types
+- `declarations/<did-basename>.did` a copy of the source `.did`
+- `index.generated.ts` — the managed reactor (plus React hooks when
+  `target: "react"`); regenerated on every run
+- `index.ts` — a stable wrapper that re-exports the generated file and is safe
+  to customize
+
+`dfx generate` and `@icp-sdk/bindgen` use their own layout, typically an
+`index.js` factory plus a `<canister>.did.d.ts` service type.
 
 <Aside type="note">
   If you use **@ic-reactor/vite-plugin** or **@ic-reactor/cli**, you do not need

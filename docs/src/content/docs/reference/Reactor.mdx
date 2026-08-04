@@ -53,7 +53,7 @@ If you're familiar with the standard `Actor` class from `@icp-sdk/core/agent`, y
     With `DisplayReactor`, auto-convert BigInt → string, Principal → text for easy UI rendering
   </Card>
   <Card title="Identity Management" icon="seti:lock">
-    Shares authentication state across all reactors via `ClientManager`
+    Shares one agent and identity across all reactors via `ClientManager`
   </Card>
 </CardGrid>
 
@@ -176,8 +176,20 @@ const queryKey = backend.generateQueryKey({
   canisterId: otherCanisterId,
   effectiveCanisterId: managementCanisterId,
 })
-// Returns: [canisterId, "getUser", { effectiveCanisterId: "..." }, "user-123"]
+// Returns:
+// [otherCanisterId, "getUser", { effectiveTarget: { canisterId: managementCanisterId } }, '["user-123"]']
 ```
+
+The key is composed as:
+
+```
+[resolvedCanisterId, functionName, { effectiveTarget }?, argKey?, ...queryKey]
+```
+
+- **`resolvedCanisterId`** — `callConfig.canisterId` when supplied (normalized via `Principal.from(...).toString()`), otherwise the reactor's own canister ID.
+- **`{ effectiveTarget }`** — a wrapper object holding either `{ canisterId }` or `{ subnetId }`, built from `callConfig.effectiveTarget` or from `callConfig.effectiveCanisterId`. A `canisterId`-shaped target is **omitted** when it equals `resolvedCanisterId`, so the common case produces no such segment.
+- **`argKey`** — args are **one single string segment**, `JSON.stringify(args)` with BigInt values rendered as decimal strings. They are not spread into separate elements, and `args: []` still produces the literal `"[]"`.
+- **`...queryKey`** — a custom `queryKey` is spread onto the end; it never replaces the identity prefix.
 
 Use this for:
 
@@ -298,7 +310,6 @@ export const queryClient = new QueryClient({
 
 export const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: true,
 })
 
 export const backend = new Reactor<_SERVICE>({
@@ -480,7 +491,8 @@ class LoggingReactor extends Reactor<BackendService> {
 
   // Override fetchQuery to add custom logic (e.g. auth checks)
   async fetchQuery(params) {
-    if (!this.clientManager.isAuthenticated) {
+    const principal = await this.clientManager.getUserPrincipal()
+    if (principal.isAnonymous()) {
       console.warn("User not authenticated")
     }
     return super.fetchQuery(params)
@@ -490,6 +502,7 @@ class LoggingReactor extends Reactor<BackendService> {
 const backend = new LoggingReactor({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId,
 })
 ```
@@ -556,6 +569,7 @@ import { DisplayReactor } from "@ic-reactor/core"
 const reactor = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
+  name: "backend",
   canisterId,
 })
 
@@ -579,7 +593,7 @@ See [DisplayReactor](/v3/reference/displayreactor#validation) for full validatio
 ## See Also
 
 - [DisplayReactor](/v3/reference/displayreactor) — Type transformations and validation
-- [ClientManager](/v3/reference/clientmanager) — Agent and auth management
+- [ClientManager](/v3/reference/clientmanager) — Agent, identity, and cache management
 - [createActorHooks](/v3/reference/createactorhooks/overview) — Create React hooks
 - [Error Handling](/v3/guides/error-handling) — Handle canister errors
 - [Type Safety](/v3/guides/type-safety) — Type system details

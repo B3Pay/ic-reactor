@@ -85,7 +85,7 @@ All react-query options are available:
 | Option                 | Type                 | Default     | Description                                              |
 | :--------------------- | :------------------- | :---------- | :------------------------------------------------------- |
 | `enabled`              | `boolean`            | `true`      | For queries: whether to auto-fetch.                      |
-| `staleTime`            | `number`             | `300000`    | How long data stays fresh (ms).                          |
+| `staleTime`            | `number`             | `0`         | How long data stays fresh (ms).                          |
 | `gcTime`               | `number`             | `300000`    | Time before unused data is garbage collected (ms).       |
 | `refetchInterval`      | `number \| false`    | `false`     | Polling interval in ms.                                  |
 | `refetchOnWindowFocus` | `boolean`            | `true`      | Refetch when window regains focus.                       |
@@ -108,7 +108,7 @@ All react-query options are available:
 | `isSuccess`      | `boolean`                               | Whether the method has completed successfully.                     |
 | `error`          | `ReactorReturnErr<A, M, T> \| null`     | The error object if one occurred.                                  |
 | `isQuery`        | `boolean`                               | `true` if it's a query method, `false` otherwise.                  |
-| `functionType`   | `FunctionType`                          | `"query"`, `"update"`, or `"composite_query"`.                     |
+| `functionType`   | `FunctionType`                          | `"query"` or `"update"`. Candid `composite_query` methods report `"query"`. |
 | `reset`          | `() => void`                            | Clears the state (data and error).                                 |
 | `refetch`        | `() => Promise`                         | For queries: manually refetches the data.                          |
 | `queryResult`    | `UseQueryResult`                        | The raw result if it's a query.                                    |

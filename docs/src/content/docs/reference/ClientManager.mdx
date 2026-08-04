@@ -1,6 +1,6 @@
 ---
 title: ClientManager
-description: The unified hub for agent, authentication, and caching
+description: The unified hub for the IC agent and query caching
 editUrl: false
 ---
 
@@ -15,9 +15,10 @@ import { Aside, Card, CardGrid } from "@astrojs/starlight/components"
     Manages the IC HTTP agent for all canister communication, handling network
     detection and initialization
   </Card>
-  <Card title="AuthClient" icon="seti:lock">
-    Coordinates authentication with Internet Identity, including login, logout,
-    and session restoration
+  <Card title="Identity" icon="seti:lock">
+    Holds the active identity and swaps it into the agent when it changes.
+    Internet Identity sign-in itself lives in `AuthenticationManager`
+    (`@ic-reactor/react`)
   </Card>
   <Card title="QueryClient" icon="document">
     Integrates TanStack Query for automatic caching, deduplication, and
@@ -30,17 +31,16 @@ import { Aside, Card, CardGrid } from "@astrojs/starlight/components"
 Without ClientManager, connecting to the IC typically involves:
 
 - Creating and configuring an `HttpAgent` manually
-- Managing `AuthClient` lifecycle separately
 - Passing agents to actors and keeping them in sync after login/logout
 - Manually invalidating cached data when identity changes
 
-**ClientManager solves this by providing a unified interface** where all these concerns are managed together. When a user logs in, the agent automatically updates, all queries invalidate, and your reactors seamlessly use the new identity.
+**ClientManager solves this by providing a unified interface** where all these concerns are managed together. When the identity changes, the agent is updated, the affected queries invalidate, and your reactors seamlessly use the new identity.
 
 ```typescript
 // One ClientManager, shared by all your reactors
-const clientManager = new ClientManager({ queryClient, withProcessEnv: true })
+const clientManager = new ClientManager({ queryClient })
 
-// Create multiple reactors - they all share the same agent and auth state
+// Create multiple reactors - they all share the same agent and identity
 const backend = new Reactor<BackendService>({
   clientManager,
   idlFactory,
@@ -54,8 +54,9 @@ const ledger = new Reactor<LedgerService>({
   canisterId: ledgerId,
 })
 
-// Login once - all reactors automatically use the new identity
-await clientManager.login()
+// Sign in once - all reactors automatically use the new identity
+const authentication = new AuthenticationManager({ clientManager })
+await authentication.login()
 ```
 
 ## Import
@@ -74,21 +75,17 @@ const queryClient = new QueryClient()
 
 const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: true,
 })
 ```
 
 ## Constructor Options
 
-| Option            | Type               | Default  | Description                                                 |
-| ----------------- | ------------------ | -------- | ----------------------------------------------------------- |
-| `queryClient`     | `QueryClient`      | Required | TanStack Query client instance                              |
-| `authClient`      | `AuthClient`       | -        | Pre-initialized AuthClient instance                         |
-| `withProcessEnv`  | `boolean`          | `false`  | Auto-detect network from DFX_NETWORK                        |
-| `withLocalEnv`    | `boolean`          | `false`  | Force local development mode                                |
-| `withCanisterEnv` | `boolean`          | `false`  | ⚠️ **EXPERIMENTAL** - Use canister env from `ic_env` cookie |
-| `port`            | `number`           | `4943`   | Local replica port                                          |
-| `agentOptions`    | `HttpAgentOptions` | `{}`     | Additional HttpAgent options                                |
+| Option         | Type               | Default  | Description                                                                    |
+| -------------- | ------------------ | -------- | ------------------------------------------------------------------------------ |
+| `queryClient`  | `QueryClient`      | Required | TanStack Query client instance                                                 |
+| `agentOptions` | `HttpAgentOptions` | `{}`     | Options forwarded to the `HttpAgent` (`host`, `identity`, `rootKey`, `retryTimes`, `verifyQuerySignatures`, …) |
+
+These are the only two members of `ClientManagerParameters`. Network detection needs no flag — see [Network Configuration](#network-configuration).
 
 ## Properties
 
@@ -97,8 +94,7 @@ const clientManager = new ClientManager({
 | `agent`       | `HttpAgent`                   | The IC HTTP agent (getter)         |
 | `queryClient` | `QueryClient`                 | TanStack Query client              |
 | `agentState`  | `AgentState`                  | Current agent initialization state |
-| `authState`   | `AuthState`                   | Current authentication state       |
-| `agentHost`   | `URL`                         | The host URL of the agent          |
+| `agentHost`   | `URL \| undefined`            | The host URL of the agent          |
 | `network`     | `"ic" \| "local" \| "remote"` | Current network type               |
 | `isLocal`     | `boolean`                     | Whether connected to local replica |
 
@@ -109,18 +105,7 @@ interface AgentState {
   isInitialized: boolean
   isInitializing: boolean
   isLocalhost: boolean
-  network: "ic" | "local" | "remote" | undefined
-  error: Error | undefined
-}
-```
-
-### AuthState Type
-
-```typescript
-interface AuthState {
-  identity: Identity | null
-  isAuthenticated: boolean
-  isAuthenticating: boolean
+  network: string | undefined // "ic" | "local" | "remote"
   error: Error | undefined
 }
 ```
@@ -129,7 +114,7 @@ interface AuthState {
 
 ### initialize
 
-Initialize the agent and trigger authentication in the background:
+Initialize the agent:
 
 ```typescript
 await clientManager.initialize()
@@ -138,14 +123,15 @@ await clientManager.initialize()
 This method:
 
 1. Initializes the HttpAgent (fetches root key for local networks)
-2. Triggers session restoration in the background (non-blocking)
-3. Returns the ClientManager instance
+2. Returns the ClientManager instance
+
+Session restoration is **not** part of this call — it belongs to `AuthenticationManager.authenticate()` (or the `useAuth` hook, which calls it for you).
 
 ---
 
 ### initializeAgent
 
-Initialize only the HttpAgent (without authentication):
+Initialize the HttpAgent. `initialize()` delegates to this method, so the two are interchangeable:
 
 ```typescript
 await clientManager.initializeAgent()
@@ -153,75 +139,24 @@ await clientManager.initializeAgent()
 
 ---
 
-### authenticate
-
-Attempt to restore a previous authentication session:
-
-```typescript
-const identity = await clientManager.authenticate()
-```
-
-This dynamically imports the `@icp-sdk/auth` module. If the module isn't installed, it fails gracefully.
-
----
-
-### login
-
-Authenticate with Internet Identity:
-
-```typescript
-await clientManager.login({
-  identityProvider: "https://identity.ic0.app",
-  maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days
-  onSuccess: () => console.log("Logged in!"),
-  onError: (error) => console.error("Login failed:", error),
-})
-```
-
-<Aside type="note">
-  The `identityProvider` is auto-detected based on network if not provided:
-
-  <ul>
-    <li>
-      <strong>mainnet</strong>: <code>https://identity.ic0.app</code>
-    </li>
-    <li>
-      <strong>local</strong>:{" "}
-      <code>http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize</code>
-    </li>
-  </ul>
-</Aside>
-
----
-
-### logout
-
-Clear authentication and reset to anonymous identity:
-
-```typescript
-await clientManager.logout()
-```
-
-This automatically invalidates all cached queries.
-
----
-
 ### updateAgent
 
-Update the agent's identity and invalidate all queries:
+Swap the agent's identity and invalidate the queries of every registered canister:
 
 ```typescript
 clientManager.updateAgent(newIdentity)
 ```
 
+In-flight queries for those canisters are cancelled first, so results signed by the previous identity cannot land in the cache. Queries that do not belong to a registered canister — the rest of your app's REST/GraphQL data — are left untouched.
+
 ---
 
 ### getUserPrincipal
 
-Get the current user's Principal:
+Get the current user's Principal. This forwards `agent.getPrincipal()`, so it returns a **promise**:
 
 ```typescript
-const principal = clientManager.getUserPrincipal()
+const principal = await clientManager.getUserPrincipal()
 ```
 
 ---
@@ -234,22 +169,6 @@ Subscribe to agent state changes:
 const unsubscribe = clientManager.subscribeAgentState((state) => {
   console.log("Agent state:", state)
   // { isInitialized, isInitializing, isLocalhost, network, error }
-})
-
-// Later
-unsubscribe()
-```
-
----
-
-### subscribeAuthState
-
-Subscribe to authentication state changes:
-
-```typescript
-const unsubscribe = clientManager.subscribeAuthState((state) => {
-  console.log("Auth state:", state)
-  // { identity, isAuthenticated, isAuthenticating, error }
 })
 
 // Later
@@ -314,7 +233,6 @@ export const queryClient = new QueryClient({
 // Create ClientManager
 export const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: true, // Auto-detect network
 })
 
 // Create Reactor
@@ -329,17 +247,14 @@ export const backend = new Reactor<_SERVICE>({
 ### Network Configuration
 
 ```typescript
-// Auto-detect based on DFX_NETWORK environment variable
-const clientManager = new ClientManager({
-  queryClient,
-  withProcessEnv: true,
-})
+// Browser: the host is inferred from window.location.origin when the page is
+// served from localhost/127.0.0.1 or from an IC boundary domain
+const clientManager = new ClientManager({ queryClient })
 
-// Force local development mode
+// Explicit local host — non-browser environments, or a replica on a custom port
 const clientManager = new ClientManager({
   queryClient,
-  withLocalEnv: true,
-  port: 8080, // Custom port
+  agentOptions: { host: "http://127.0.0.1:8080" },
 })
 
 // Custom agent options
@@ -352,62 +267,21 @@ const clientManager = new ClientManager({
 })
 ```
 
-### Canister Environment (Experimental)
+### Canister Environment
 
-<Aside type="caution">
-  The `withCanisterEnv` option is **experimental** and may cause issues with
-  update calls on localhost development. Use with caution and only when you need
-  automatic environment detection from the `@icp-sdk` toolchain.
-</Aside>
+When your app is served by the `@icp-sdk` toolchain (e.g., `icp-cli`) or by [`@ic-reactor/vite-plugin`](/v3/packages/vite-plugin), the dev server injects an `ic_env` cookie carrying the local canister IDs and root key. `ClientManager` reads that cookie **automatically** in the browser — there is no option to enable:
 
-When using the `@icp-sdk` toolchain (e.g., `icp-cli`), the development server injects environment information via an `ic_env` cookie. The `withCanisterEnv` option enables reading this cookie to automatically configure:
-
-- Agent host from `window.location.origin` in dev mode
-- Query signature verification (disabled in dev mode for performance)
-- Root key from the cookie for local replica certificate verification
-
-```typescript
-// ⚠️ EXPERIMENTAL - May cause issues with update calls on localhost
-const clientManager = new ClientManager({
-  queryClient,
-  withCanisterEnv: true,
-})
-```
-
-**When to use:**
-
-- You're using `@icp-sdk` / `icp-cli` for development
-- You want automatic environment detection without manual configuration
-- You understand the experimental nature and potential issues
-
-**When NOT to use:**
-
-- For production deployments
-- When you need reliable update calls on localhost
-- When using `dfx` directly (use `withProcessEnv` instead)
-
-### With Pre-initialized AuthClient
-
-```typescript
-import { AuthClient } from "@icp-sdk/auth/client"
-
-const authClient = new AuthClient()
-
-const clientManager = new ClientManager({
-  queryClient,
-  authClient, // Pass existing AuthClient
-})
-```
+- Agent host taken from `window.location.origin` when the page is served from a local or IC boundary host
+- Query signature verification disabled in development for performance
+- Root key from the cookie, accepted only on non-mainnet hosts
 
 ### Subscribing to State Changes
 
 ```typescript
 // In React with useEffect
 useEffect(() => {
-  const unsubAuth = clientManager.subscribeAuthState((state) => {
-    if (state.isAuthenticated) {
-      console.log("User logged in:", state.identity?.getPrincipal().toText())
-    }
+  const unsubIdentity = clientManager.subscribe((identity) => {
+    console.log("New identity:", identity.getPrincipal().toText())
   })
 
   const unsubAgent = clientManager.subscribeAgentState((state) => {
@@ -417,7 +291,7 @@ useEffect(() => {
   })
 
   return () => {
-    unsubAuth()
+    unsubIdentity()
     unsubAgent()
   }
 }, [])
@@ -425,21 +299,29 @@ useEffect(() => {
 
 ### Authentication Flow
 
+Sign-in lives on `AuthenticationManager` from `@ic-reactor/react`; `ClientManager` only receives the resulting identity.
+
 ```typescript
-// Initialize on app start
+import { AuthenticationManager } from "@ic-reactor/react"
+
+const authentication = new AuthenticationManager({ clientManager })
+
+// Initialize the agent on app start
 await clientManager.initialize()
 
-// Check if already authenticated
-if (clientManager.authState.isAuthenticated) {
-  console.log("Welcome back!", clientManager.getUserPrincipal().toText())
+// Restore a previous session, if any
+await authentication.authenticate()
+
+if (authentication.authState.isAuthenticated) {
+  console.log("Welcome back!", (await clientManager.getUserPrincipal()).toText())
 }
 
 // Login handler
 async function handleLogin() {
-  await clientManager.login({
+  await authentication.login({
     onSuccess: () => {
       console.log("Logged in!")
-      // Queries are automatically invalidated
+      // Queries for connected canisters are automatically invalidated
     },
     onError: (error) => {
       console.error("Login failed:", error)
@@ -449,18 +331,15 @@ async function handleLogin() {
 
 // Logout handler
 async function handleLogout() {
-  await clientManager.logout()
-  // Queries are automatically invalidated
+  await authentication.logout()
+  // Queries for connected canisters are automatically invalidated
 }
 ```
 
 ### Network Detection
 
 ```typescript
-const clientManager = new ClientManager({
-  queryClient,
-  withProcessEnv: true,
-})
+const clientManager = new ClientManager({ queryClient })
 
 // Check current network
 console.log(clientManager.isLocal) // true if local
@@ -470,20 +349,23 @@ console.log(clientManager.agentHost?.toString()) // The host URL
 
 ## Automatic Query Invalidation
 
-When authentication state changes (login/logout), ClientManager automatically invalidates all cached queries. This ensures:
+When the identity changes, `updateAgent()` invalidates the cached queries of every canister registered with this ClientManager. This ensures:
 
 - Fresh data is fetched for the new identity
 - No cached data leaks between users
 - Queries re-run with the new principal
 
 ```typescript
-// This happens automatically on identity change:
-queryClient.invalidateQueries()
+// This happens automatically on identity change, for each connected canister:
+queryClient.cancelQueries({ queryKey: [canisterId] })
+queryClient.invalidateQueries({ queryKey: [canisterId] })
 ```
+
+Because the scope is the canister ID — the first segment of every reactor query key — non-reactor queries in a shared `QueryClient` are not refetched on sign-in or sign-out.
 
 ## Pay-as-you-go Authentication
 
-The `@icp-sdk/auth` package is an **optional peer dependency**. The auth module is only dynamically imported when you call `login()` or `authenticate()`. This keeps your bundle size small if you don't need authentication.
+The `@icp-sdk/auth` package is an **optional peer dependency**. `ClientManager` never imports it. `AuthenticationManager` loads it through a dynamic `import("@icp-sdk/auth/client")`, so bundlers put it in a separate chunk and drop it entirely from apps that never construct one.
 
 ```bash
 # Only install if you need authentication
@@ -494,12 +376,14 @@ npm install @icp-sdk/auth
 
 <Aside type="note">
   All Reactors sharing the same ClientManager will share the same agent and
-  authentication state. This is the recommended pattern.
+  identity. This is the recommended pattern.
 </Aside>
 
 <Aside type="tip">
-  Use `withProcessEnv: true` for projects using dfx. It automatically detects
-  local vs mainnet based on the `DFX_NETWORK` environment variable.
+  Network detection needs no flag. In the browser the host is inferred from
+  `window.location.origin` when the page is served from `localhost`/`127.0.0.1`
+  (or an IC boundary domain). In Node/SSR, `ICP_NETWORK`/`DFX_NETWORK` is read
+  from `process.env`. Pass `agentOptions.host` to override either.
 </Aside>
 
 <Aside type="caution">
@@ -509,7 +393,7 @@ npm install @icp-sdk/auth
 
 ## External Authentication
 
-While ClientManager includes built-in support for Internet Identity, it's designed to work with **any identity provider**. You can integrate alternative authentication methods by updating the agent's identity.
+While `AuthenticationManager` covers Internet Identity, ClientManager itself is provider-agnostic and works with **any identity provider**. You can integrate alternative authentication methods by updating the agent's identity.
 
 ### Using External Auth Providers
 

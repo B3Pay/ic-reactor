@@ -265,7 +265,7 @@ async function handleWithdraw(amount: bigint) {
 
 ### Multiple Related Refetches
 
-You can provide a list of query keys OR a function that returns them based on the mutation arguments.
+`invalidateQueries` is always an **array of query keys** — never a function of the mutation arguments. Supply it on the factory when the keys are known up front, or on `useMutation()` when they depend on component state.
 
 #### Option 1: Static Keys (if args are known in advance)
 

@@ -24,20 +24,20 @@ This pattern is often called "stale-while-revalidate" and provides the best user
 Cache keys are automatically generated from your query parameters:
 
 ```typescript
-// Query key: ['rrkah-fqaaa...', 'getUser', 'user-123']
+// Query key: ['rrkah-fqaaa...', 'getUser', '["user-123"]']
 const { data } = useActorQuery({
   functionName: "getUser",
   args: ["user-123"],
 })
 
-// Query key: ['rrkah-fqaaa...', 'getUser', 'user-456']
+// Query key: ['rrkah-fqaaa...', 'getUser', '["user-456"]']
 const { data } = useActorQuery({
   functionName: "getUser",
   args: ["user-456"],
 })
 ```
 
-Each unique combination of canister ID, function name, and arguments creates a separate cache entry.
+Each unique combination of canister ID, function name, and arguments creates a separate cache entry. The whole `args` array is serialized into a **single** string segment with `JSON.stringify` (BigInt values become decimal strings), so the key is always `[canisterId, functionName, argsJson]` — arguments are never spread into separate elements.
 
 ### Custom Query Keys
 
@@ -47,9 +47,15 @@ You can add custom keys for more granular cache control:
 const { data } = useActorQuery({
   functionName: "getData",
   args: [],
-  queryKey: ["version", "2"], // Appended to auto-generated key
+  queryKey: ["version", "2"], // Spread onto the end of the auto-generated key
 })
+// Full key: ['rrkah-fqaaa...', 'getData', '[]', 'version', '2']
 ```
+
+<Aside type="note">
+  An empty `args: []` is still truthy, so it contributes the literal segment
+  `"[]"`. Only omitting `args` entirely drops that segment.
+</Aside>
 
 ### Accessing Query Keys
 
@@ -65,12 +71,18 @@ const queryKey = backend.generateQueryKey({
   canisterId: otherCanisterId,
   effectiveCanisterId: managementCanisterId,
 })
-// ['rrkah-fqaaa...', 'getUser', { effectiveCanisterId: 'aaaaa-aa' }, 'user-123']
+// [otherCanisterId, 'getUser', { effectiveTarget: { canisterId: 'aaaaa-aa' } }, '["user-123"]']
 ```
+
+Note that `callConfig.canisterId` **replaces** the reactor's own canister ID in
+the first segment, and the effective target is wrapped in an `effectiveTarget`
+object. That segment is dropped entirely when the effective canister ID equals
+the resolved canister ID, so a call that targets only its own canister produces
+the plain `[canisterId, functionName, argsJson]` key.
 
 If a query uses `callConfig`, pass the same `callConfig` when generating,
 reading, or invalidating that cache key. Cache entries are partitioned by the
-resolved target canister and optional `effectiveCanisterId`.
+resolved target canister and optional effective target.
 
 ## Stale Time
 
@@ -337,7 +349,7 @@ function LikeButton({ postId }: { postId: string }) {
 Set global defaults for all queries:
 
 ```typescript
-import { QueryClient } from "@tanstack/query-core"
+import { QueryClient } from "@tanstack/react-query"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -360,7 +372,7 @@ const queryClient = new QueryClient({
 Don't retry business logic errors:
 
 ```typescript
-import { CanisterError } from "@ic-reactor/core"
+import { CanisterError } from "@ic-reactor/react"
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -147,7 +147,7 @@ import { getUserQuery } from "../queries"
 export const Route = createFileRoute("/users/$userId")({
   // Prefetch in loader
   loader: async ({ params }) => {
-    return { user: await getUserQuery(params.userId).fetch() }
+    return { user: await getUserQuery([params.userId]).fetch() }
   },
 
   component: UserPage,
@@ -155,7 +155,7 @@ export const Route = createFileRoute("/users/$userId")({
 
 function UserPage() {
   // Data already loaded, instant render
-  const { data } = getUserQuery(Route.useParams().userId).useQuery()
+  const { data } = getUserQuery([Route.useParams().userId]).useQuery()
   return <Profile user={data} />
 }
 ```
@@ -167,7 +167,7 @@ import { json, useLoaderData } from "react-router-dom"
 import { getUserQuery } from "../queries"
 
 export async function loader({ params }) {
-  const user = await getUserQuery(params.userId).fetch()
+  const user = await getUserQuery([params.userId]).fetch()
   return json({ user })
 }
 
@@ -180,8 +180,9 @@ export function UserPage() {
 ## Notes
 
 <Aside type="tip">
-  Factory results are cached internally. Calling `getUserQuery("alice")`
-  multiple times returns the same object instance.
+  A `*Factory` variant takes the **args tuple**, not a bare value — the same
+  array you would pass to `args`. Results are cached internally, so calling
+  `getUserQuery(["alice"])` multiple times returns the same object instance.
 </Aside>
 
 <Aside type="note">
