@@ -34,20 +34,36 @@ function run(cmd, args, cwd) {
 const entries = execFileSync("git", ["-C", examplesDir, "ls-files", "-z"], {
   encoding: "utf8",
 })
-// Discover example directories that contain a package.json.
+// Discover example projects at BOTH depths, matching pnpm-workspace.yaml's
+// `examples/*` and `examples/*/*`. Keying only on the first path segment used to
+// drop examples/vite-environment-variables entirely -- it has no top-level
+// package.json, so the canonical ic_env injection demo was never type-checked.
+const tracked = entries.split("\0").filter(Boolean)
 const dirs = [
   ...new Set(
-    entries
-      .split("\0")
-      .filter(Boolean)
-      .map((p) => p.split("/")[0])
+    tracked.flatMap((p) => {
+      const parts = p.split("/")
+      const candidates = []
+      if (parts.length >= 2) candidates.push(parts[0])
+      if (parts.length >= 3) candidates.push(`${parts[0]}/${parts[1]}`)
+      return candidates
+    })
   ),
 ]
   .filter((name) => existsSync(join(examplesDir, name, "package.json")))
-  .filter((name) => !SKIP.has(name))
+  .filter((name) => !SKIP.has(name.split("/")[0]))
+  // A directory that only contains a nested project is a container, not a project.
+  .filter((name, _i, all) => {
+    const isContainer =
+      !name.includes("/") &&
+      !existsSync(join(examplesDir, name, "tsconfig.json")) &&
+      all.some((other) => other.startsWith(`${name}/`))
+    return !isContainer
+  })
   .sort()
 
 const failures = []
+const skipped = []
 
 for (const name of dirs) {
   const dir = join(examplesDir, name)
@@ -62,7 +78,10 @@ for (const name of dirs) {
     if (existsSync(join(frontend, "tsconfig.json"))) {
       project = frontend
     } else {
-      console.log(`\u23ed\ufe0f  ${name}: no tsconfig.json, skipping`)
+      // Previously a silent `continue` that still counted toward "All N examples
+      // type-check cleanly" -- a project could drop out of coverage unnoticed.
+      console.error(`\u274c ${name}: has a package.json but no tsconfig.json`)
+      skipped.push(name)
       continue
     }
   }
@@ -81,8 +100,17 @@ for (const name of dirs) {
   if (result.status !== 0) failures.push(name)
 }
 
+if (skipped.length > 0) {
+  console.error(
+    `\n\u274c Not type-checked (add a tsconfig.json, or add to SKIP with a reason): ${skipped.join(", ")}`
+  )
+}
 if (failures.length > 0) {
   console.error(`\n\u274c Type errors in: ${failures.join(", ")}`)
-  process.exit(1)
 }
-console.log(`\n\u2705 All ${dirs.length} examples type-check cleanly`)
+if (failures.length > 0 || skipped.length > 0) process.exit(1)
+
+console.log(
+  `\n\u2705 All ${dirs.length - skipped.length} examples type-check cleanly` +
+    (SKIP.size > 0 ? ` (skipped by name: ${[...SKIP].join(", ")})` : "")
+)
