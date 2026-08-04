@@ -42,8 +42,7 @@ export interface CreateUserInput {
 }
 
 export type CreateUserError =
-  | { EmailAlreadyExists: null }
-  | { InvalidEmail: null }
+  { EmailAlreadyExists: null } | { InvalidEmail: null }
 
 export type Result = { Ok: User } | { Err: CreateUserError }
 
@@ -182,14 +181,20 @@ const { error } = useActorMutation({
 
 With `DisplayReactor`, types are automatically transformed:
 
-| Candid Type | Raw TypeScript | Display (transformed)     |
-| ----------- | -------------- | ------------------------- |
-| `nat`       | `bigint`       | `string`                  |
-| `int`       | `bigint`       | `string`                  |
-| `nat64`     | `bigint`       | `string`                  |
-| `principal` | `Principal`    | `string`                  |
-| `blob`      | `Uint8Array`   | `hexString`, `Uint8Array` |
-| `opt T`     | `[T] \| []`    | `T \| null`               |
+| Candid Type                | Raw TypeScript | Display (transformed)                            |
+| -------------------------- | -------------- | ------------------------------------------------ |
+| `nat`                      | `bigint`       | `string`                                         |
+| `int`                      | `bigint`       | `string`                                         |
+| `nat64` / `int64`          | `bigint`       | `string`                                         |
+| `nat8/16/32`, `int8/16/32` | `number`       | `number` (unchanged; accepts a numeric `string`) |
+| `principal`                | `Principal`    | `string`                                         |
+| `blob`                     | `Uint8Array`   | `string` (hex, ≤512 bytes) or `Uint8Array`       |
+| `opt T`                    | `[T] \| []`    | `T \| null`                                      |
+
+<Aside type="note">
+  The hex string a blob decodes to is a plain `string` with no `0x` prefix.
+  Blobs longer than 512 bytes are left as `Uint8Array` rather than hex-encoded.
+</Aside>
 
 ### Using DisplayReactor
 

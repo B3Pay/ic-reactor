@@ -43,31 +43,67 @@ A simplified "Twitter-like" dApp that demonstrates the full power of IC Reactor,
 
 ## Key Code
 
-### Optimistic Mutation
+### Reusable Query and Mutation Objects
 
 ```typescript
-// Optimistically update the UI before the canister confirms
-const { mutate } = useActorMutation({
-  functionName: "like_post",
-  onMutate: async (postId) => {
-    // Cancel queries to avoid overwrites
-    await queryClient.cancelQueries({ queryKey: ["posts"] })
+// src/lib/factories.ts
+import { createMutation, createQuery } from "@ic-reactor/react"
+import { backendReactor } from "../canisters/backend"
 
-    // Snapshot previous value
-    const previousPosts = queryClient.getQueryData(["posts"])
-
-    // Optimistically update
-    queryClient.setQueryData(["posts"], (old: Post[]) =>
-      old.map((post) =>
-        post.id === postId ? { ...post, likes: post.likes + 1 } : post
-      )
-    )
-
-    return { previousPosts }
-  },
-  onCanisterError: (error, variables, context) => {
-    // Rollback on logic error (e.g., "Already liked")
-    queryClient.setQueryData(["posts"], context.previousPosts)
-  },
+export const getLikes = createQuery(backendReactor, {
+  functionName: "get_likes",
+  refetchInterval: 3000,
 })
+
+export const likeHeart = createMutation(backendReactor, {
+  functionName: "like",
+})
+```
+
+### Three Mutation Callbacks
+
+`onCanisterError` fires only for canister `Result { Err }` variants and receives
+**two** arguments — the `CanisterError` and the mutation variables. `onError`
+fires for every error and is the one that receives the `onMutate` context:
+
+```typescript
+// src/lib/useHeart.ts
+const { mutateAsync: likeMutate } = likeHeart.useMutation({
+  // Canister returned { Ok }
+  onSuccess: () => {
+    addLog("success", "Like confirmed by canister")
+  },
+  // Canister returned { Err } — business logic errors only
+  onCanisterError: (error, variables) => {
+    addLog("error", `Canister rejected like: ${error.message}`)
+  },
+  // Every error, including network and agent failures
+  onError: (error, variables, context) => {
+    console.error("Like mutation error:", error)
+  },
+  onSettled: () => getLikes.invalidate(),
+})
+```
+
+<Aside type="caution">
+  Rolling back an optimistic update belongs in `onError`, not `onCanisterError`:
+  only `onError` is handed the value your `onMutate` returned. `onCanisterError`
+  is invoked with `(error, variables)` and nothing else.
+</Aside>
+
+### Optimistic Updates
+
+The demo uses React's `useOptimistic` rather than writing into the query cache,
+so the optimistic state unwinds by itself when the transition settles:
+
+```tsx
+const { data: likes = [] } = getLikes.useQuery()
+
+const [optimisticLikes, addOptimisticLike] = useOptimistic(
+  likes,
+  (state, newLike: { type: "add" | "remove"; principal: string }) =>
+    newLike.type === "add"
+      ? [...state, newLike.principal]
+      : state.filter((p) => p !== newLike.principal)
+)
 ```

@@ -10,11 +10,11 @@ A full-featured application demonstrating IC Reactor with TanStack Router for na
 
 ## Features Demonstrated
 
-- Route-based data prefetching with `loader`
-- `getQueryOptions()` for router integration
-- Protected routes with authentication
-- Query invalidation after mutations
-- Multiple canisters with shared `ClientManager`
+- Retargeting one reactor per route with `setCanisterId()` in a `loader`
+- Generated `createQuery` / `createSuspenseQuery` / `createSuspenseQueryFactory` / `createMutation` modules, one per method
+- Suspense-based data fetching with `<Suspense>` boundaries
+- Query invalidation after mutations with `reactor.invalidateQueries()`
+- Authentication with `createAuthHooks`
 - File-based routing structure
 
 ## Links
@@ -44,49 +44,89 @@ A full-featured application demonstrating IC Reactor with TanStack Router for na
 
 ## Key Code
 
-### Route Loader with Prefetching
+### One Shared Reactor
+
+A single `DisplayReactor` is defined once and retargeted per route, so every
+generated query object keeps working when the user switches tokens:
 
 ```typescript
+// src/canisters/ledger/reactor.ts
+import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
+import { clientManager } from "../../lib/client"
+import { idlFactory, type _SERVICE } from "./declarations/icrc1.did"
+
+export type LedgerService = _SERVICE
+
+export const ledgerReactor = new DisplayReactor<LedgerService>({
+  clientManager,
+  idlFactory,
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+
+export const { useActorQuery, useActorMutation, useActorSuspenseQuery } =
+  createActorHooks(ledgerReactor)
+```
+
+<Aside type="caution">
+  `useActorQuery` and friends are **not** exported from `@ic-reactor/react`
+  without a prefix — they come from `createActorHooks(reactor)`, already bound
+  to that reactor. The package-level exports are `useReactorQuery`,
+  `useReactorMutation`, and so on, which each take a `reactor` prop.
+</Aside>
+
+### Route Loader
+
+The loader points the shared reactor at the canister for this route. Query keys
+are rooted at the reactor's canister ID, so every cached entry is scoped
+automatically:
+
+```tsx
 // src/routes/wallet/$canisterId.tsx
+import { createFileRoute } from "@tanstack/react-router"
+import { ledgerReactor } from "@/canisters/ledger/reactor"
+
 export const Route = createFileRoute("/wallet/$canisterId")({
-  loader: async ({ params, context }) => {
-    const { queryClient, clientManager } = context
-
-    // Create reactor for this canister
-    const reactor = new DisplayReactor<Ledger>({
-      clientManager,
-      canisterId: params.canisterId,
-      idlFactory: ledgerIdlFactory,
-    })
-
-    // Prefetch data before rendering
-    await queryClient.prefetchQuery(
-      reactor.getQueryOptions({ functionName: "icrc1_name" })
-    )
-
-    return { reactor }
+  component: TokenWallet,
+  loader: async ({ params: { canisterId } }) => {
+    ledgerReactor.setCanisterId(canisterId)
   },
+})
+
+function TokenWallet() {
+  // Refresh every query for the active canister
+  const handleRefreshAll = () => ledgerReactor.invalidateQueries()
+  // ...
+}
+```
+
+### Per-Method Query Modules
+
+Generated hook modules wrap the reactor in reusable query objects, usable both
+inside components and in loaders:
+
+```typescript
+// src/canisters/ledger/hooks/icrc1NameQuery.ts
+import { createQuery } from "@ic-reactor/react"
+import { ledgerReactor } from "../reactor"
+
+export const icrc1NameQuery = createQuery(ledgerReactor, {
+  functionName: "icrc1_name",
 })
 ```
 
-### Using Prefetched Data
-
 ```tsx
-function WalletPage() {
-  const { reactor } = Route.useLoaderData()
+// src/components/token-name.tsx
+import { icrc1NameQuery } from "@/canisters/ledger/hooks"
 
-  // Data is already cached from loader!
-  const { data: name } = useActorQuery({
-    reactor,
-    functionName: "icrc1_name",
-  })
-
-  return <h1>{name}</h1>
+export function TokenName() {
+  const { data: name } = icrc1NameQuery.useQuery()
+  return <span>{name ?? "Token"}</span>
 }
 ```
 
 <Aside type="note">
-  TanStack Router's loader runs before the component renders, ensuring data is
-  available immediately. Combined with IC Reactor's caching, this provides
-  instant navigation between routes.
+  The same object also exposes `.fetch()`, `.invalidate()`, `.getQueryKey()`,
+  `.getCacheData()`, `.prefetch()`, and `.setData()` — use those from a router
+  loader or any other non-React code.
 </Aside>

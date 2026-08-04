@@ -33,7 +33,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://ic-reactor.b3pay.net/v4/packages/cod",
+  "homepage": "https://ic-reactor.b3pay.net/v3/",
   "author": "Behrad Deylami",
   "license": "MIT",
   "peerDependencies": {

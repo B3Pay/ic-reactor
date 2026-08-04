@@ -10,11 +10,11 @@ Shows how to implement infinite scrolling with IC Reactor using TanStack Query's
 
 ## Features Demonstrated
 
-- `useActorInfiniteQuery` for paginated data
-- `useSuspenseInfiniteQuery` for suspense-based infinite loading
+- `useActorInfiniteQuery` / `useActorSuspenseInfiniteQuery` for paginated data
+- `createSuspenseInfiniteQueryFactory` for a reusable, arg-parameterised query
 - Cursor-based pagination
-- Load more on scroll
-- `getNextPageParam` for automatic pagination
+- Load more on scroll with an `IntersectionObserver` sentinel
+- `getArgs` + `initialPageParam` + `getNextPageParam` for automatic pagination
 
 ## Links
 
@@ -43,21 +43,31 @@ Shows how to implement infinite scrolling with IC Reactor using TanStack Query's
 
 ## Key Code
 
+The canister method is `get_posts : (opt text, nat64, nat64) -> (PostsResponse)`,
+where `PostsResponse` is `{ posts : vec Post; next_cursor : opt nat64 }`. Three
+options are required on every infinite query: `getArgs` turns the page parameter
+into the call arguments, `initialPageParam` seeds the first page, and
+`getNextPageParam` reads the cursor off the last page.
+
 ```tsx
-import { useActorInfiniteQuery } from "@ic-reactor/react"
+import { useBackendInfiniteQuery } from "./declarations/backend"
 
 function InfiniteList() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useActorInfiniteQuery({
-      functionName: "getItems",
-      initialPageParam: 0,
-      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    useBackendInfiniteQuery({
+      functionName: "get_posts",
+      initialPageParam: 0n,
+      getArgs: (cursor) => [[], cursor, 10n],
+      getNextPageParam: (lastPage) =>
+        lastPage.next_cursor.length === 0 ? undefined : lastPage.next_cursor[0],
     })
 
   return (
     <div>
       {data?.pages.map((page) =>
-        page.items.map((item) => <Item key={item.id} {...item} />)
+        page.posts.map((post) => (
+          <PostCard key={post.id.toString()} post={post} />
+        ))
       )}
 
       {hasNextPage && (
@@ -70,26 +80,78 @@ function InfiniteList() {
 }
 ```
 
-### With Suspense
+<Aside type="caution">
+  `useBackendInfiniteQuery` is the generated alias for
+  `createActorHooks(backendReactor).useActorInfiniteQuery`. The unprefixed
+  `useActorInfiniteQuery` is **not** exported from `@ic-reactor/react` — the
+  package-level export is `useReactorInfiniteQuery`, which takes an extra
+  `reactor` option.
+</Aside>
+
+Without generated hooks, the same query reads:
 
 ```tsx
-import { useActorSuspenseInfiniteQuery } from "@ic-reactor/react"
+import { useReactorInfiniteQuery } from "@ic-reactor/react"
+import { backendReactor } from "./declarations/backend"
 
-function SuspenseInfiniteList() {
-  const { data, fetchNextPage, hasNextPage } = useActorSuspenseInfiniteQuery({
-    functionName: "getItems",
-    initialPageParam: 0,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+function InfiniteList() {
+  const { data } = useReactorInfiniteQuery({
+    reactor: backendReactor,
+    functionName: "get_posts",
+    initialPageParam: 0n,
+    getArgs: (cursor) => [[], cursor, 10n],
+    getNextPageParam: (lastPage) =>
+      lastPage.next_cursor.length === 0 ? undefined : lastPage.next_cursor[0],
   })
+  // ...
+}
+```
 
-  // No need for loading state - Suspense handles it!
+### With Suspense
+
+The demo defines the query once at module scope with
+`createSuspenseInfiniteQueryFactory`, so `getArgs` is supplied per call site
+instead of being baked in:
+
+```typescript
+// src/store.ts
+import { createSuspenseInfiniteQueryFactory } from "@ic-reactor/react"
+import { backendReactor } from "./declarations/backend"
+
+export const getPostsQuery = createSuspenseInfiniteQueryFactory(
+  backendReactor,
+  {
+    functionName: "get_posts",
+    initialPageParam: 0n,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.next_cursor.length === 0) return undefined
+      return lastPage.next_cursor[0]
+    },
+    gcTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 1,
+  }
+)
+```
+
+```tsx
+// src/App.tsx
+function Feed({ category }: { category: string }) {
+  const postsQuery = getPostsQuery(
+    (cursor) => [category === "All" ? [] : [category], cursor, 10n],
+    { queryKey: [category] }
+  )
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    postsQuery.useSuspenseInfiniteQuery()
+
+  const allPosts = data.pages.flatMap((p) => p.posts)
+
+  // No need for a loading state — Suspense handles it
   return (
     <div>
-      {data.pages
-        .flatMap((page) => page.items)
-        .map((item) => (
-          <Item key={item.id} {...item} />
-        ))}
+      {allPosts.map((post) => (
+        <PostCard key={post.id.toString()} post={post} />
+      ))}
     </div>
   )
 }

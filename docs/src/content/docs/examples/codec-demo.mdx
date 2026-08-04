@@ -44,39 +44,54 @@ Demonstrates the automatic type transformation system comparing `DisplayReactor`
 
 ## Type Transformation Reference
 
-| Candid Type        | Raw TypeScript | Display (transformed) |
-| ------------------ | -------------- | --------------------- |
-| `nat` / `int`      | `bigint`       | `string`              |
-| `principal`        | `Principal`    | `string`              |
-| `opt T`            | `[T] \| []`    | `T \| null`           |
-| `blob` (≤96 bytes) | `Uint8Array`   | `string` (hex)        |
-| `variant { A }`    | `{ A: null }`  | `{ _type: "A" }`      |
+| Candid Type                | Raw TypeScript | Display (transformed) |
+| -------------------------- | -------------- | --------------------- |
+| `nat` / `int`              | `bigint`       | `string`              |
+| `nat64` / `int64`          | `bigint`       | `string`              |
+| `nat8/16/32`, `int8/16/32` | `number`       | `number` (unchanged)  |
+| `principal`                | `Principal`    | `string`              |
+| `opt T`                    | `[T] \| []`    | `T \| null`           |
+| `blob` (≤512 bytes)        | `Uint8Array`   | `string` (hex)        |
+| `blob` (>512 bytes)        | `Uint8Array`   | `Uint8Array`          |
+| `variant { A }`            | `{ A: null }`  | `{ _type: "A" }`      |
 
 ## Key Code
 
 ```typescript
+// src/main.ts
 import { Reactor, DisplayReactor } from "@ic-reactor/react"
 
 // Regular Reactor - raw Candid types
-const rawReactor = new Reactor<_SERVICE>({
+const rawReactor = new Reactor<Ledger>({
   clientManager,
   idlFactory,
-  canisterId: "...",
+  name: "ICP-raw",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
 })
 
 // DisplayReactor - transformed types for UI
-const displayReactor = new DisplayReactor<_SERVICE>({
+const displayReactor = new DisplayReactor<Ledger>({
   clientManager,
   idlFactory,
-  canisterId: "...",
+  name: "ICP",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
 })
 
-// Raw: data.balance is bigint
-const raw = await rawReactor.callMethod({ functionName: "getBalance", args: [...] })
+// Raw: rawSupply is bigint — 123456789000000000n
+const rawSupply = await rawReactor.callMethod({
+  functionName: "icrc1_total_supply",
+})
 
-// Display: data.balance is string
-const display = await displayReactor.callMethod({ functionName: "getBalance", args: [...] })
+// Display: displaySupply is string — "123456789000000000"
+const displaySupply = await displayReactor.callMethod({
+  functionName: "icrc1_total_supply",
+})
 ```
+
+<Aside type="caution">
+  Both classes require a `name`. Give the raw and display reactors distinct
+  names when you point them at the same canister, as this example does.
+</Aside>
 
 <Aside type="tip">
   Use `DisplayReactor` for UI components and `Reactor` when you need to perform

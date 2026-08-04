@@ -46,38 +46,48 @@ Pure TypeScript example showing IC Reactor without React, for Node.js or other n
 ### Basic Setup
 
 ```typescript
+// src/main.ts
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/query-core"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+import { ledgerIdlFactory } from "./declarations/ledger"
+import type { Ledger } from "./declarations/ledger.type"
 
 const queryClient = new QueryClient()
-const clientManager = new ClientManager({ queryClient })
 
-const backend = new Reactor<_SERVICE>({
+const clientManager = new ClientManager({
+  agentOptions: { host: "https://ic0.app" },
+  queryClient,
+})
+
+const ledgerReactor = new Reactor<Ledger>({
   clientManager,
-  idlFactory,
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  idlFactory: ledgerIdlFactory,
+  name: "Ledger",
 })
 ```
+
+<Aside type="caution">
+  `name` is required on every reactor — it is what the `ic_env` cookie lookup
+  and the dev-tools logging key off.
+</Aside>
 
 ### Direct Method Calls
 
 ```typescript
-// Query method
-const name = await backend.callMethod({
-  functionName: "icrc1_name",
-})
+// Query method — fetchQuery goes through the cache
+const name = await ledgerReactor.fetchQuery({ functionName: "icrc1_name" })
 console.log("Token name:", name)
 
-// Query with args
-const balance = await backend.callMethod({
+// Query with args — callMethod bypasses the cache
+const balance = await ledgerReactor.callMethod({
   functionName: "icrc1_balance_of",
   args: [{ owner: principal, subaccount: [] }],
 })
 console.log("Balance:", balance)
 
 // Update method (mutation)
-const result = await backend.callMethod({
+const blockIndex = await ledgerReactor.callMethod({
   functionName: "icrc1_transfer",
   args: [
     {
@@ -90,14 +100,17 @@ const result = await backend.callMethod({
     },
   ],
 })
-console.log("Transfer result:", result)
+console.log("Transfer block index:", blockIndex)
+
+// Drop every cached query for this canister after a write
+ledgerReactor.invalidateQueries()
 ```
 
 ### Using QueryClient Directly
 
 ```typescript
 // Get query options for manual execution
-const queryOptions = backend.getQueryOptions({
+const queryOptions = ledgerReactor.getQueryOptions({
   functionName: "icrc1_name",
 })
 
