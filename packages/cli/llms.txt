@@ -36,4 +36,4 @@ Do not hand-edit `index.generated.ts`.
 ## Full References
 
 - Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
-- CLI docs: https://ic-reactor.b3pay.net/v4/packages/cli
+- CLI docs: https://ic-reactor.b3pay.net/v3/packages/cli

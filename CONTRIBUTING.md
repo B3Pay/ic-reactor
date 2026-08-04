@@ -37,9 +37,31 @@ You can check formatting without modifying files:
 pnpm format:check
 ```
 
+Both scripts glob `packages/**` only, so root markdown, `docs/`, `examples/`,
+and `skill-packages/` are not formatted or checked by them.
+
+5. Run the remaining CI gates before opening a PR:
+
+```bash
+pnpm check:ai-context  # llms.txt versions match every package.json
+pnpm typecheck         # every package, including its tests
+```
+
+If you changed a package's `exports`, `files`, build output, or module format,
+also run:
+
+```bash
+pnpm verify:packages
+```
+
+It packs each publishable package, installs the tarballs into a scratch project
+outside the workspace, imports and requires every entry point in real Node, and
+runs `publint` + `attw`. Nothing else in CI can catch a broken published
+artifact, because in-repo consumers resolve through workspace symlinks.
+
 ## Pre-commit hooks
 
-This repo uses Husky + lint-staged. Hooks will be installed automatically when you run `pnpm install` (the `prepare` script runs `husky install`). The `pre-commit` hook runs `lint-staged` to format and add staged files.
+This repo uses Husky + lint-staged. Hooks will be installed automatically when you run `pnpm install` (the `prepare` script runs `husky`). The `pre-commit` hook runs `lint-staged` to format and add staged files.
 
 If you need to re-install hooks manually:
 

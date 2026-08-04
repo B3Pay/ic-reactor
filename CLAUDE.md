@@ -51,7 +51,7 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
 - **Type Safety**: Use Candid types. Avoid `any` or loose typing.
 - **DisplayReactor**: Prefer `DisplayReactor` for UI components (handles BigInt/Principal serialization).
 - **Reactor**: Use standard `Reactor` when raw Candid types are required.
-- **Setup Pattern**: Use `ClientManager` + `Reactor` + `createActorHooks` for React setup.
+- **Setup Pattern**: Prefer `defineReactor(...)` for one-call setup (it creates the `QueryClient`, `ClientManager`, reactor, and bound hooks together). Drop to `ClientManager` + `Reactor` + `createActorHooks` when construction order must be explicit.
 - **Factory Pattern**: Use `createActorHooks`, `createQuery`, `createSuspenseQuery`, `createInfiniteQuery`, `createSuspenseInfiniteQuery`, and `createMutation` factories instead of manual hook implementations.
 
 ## React Hook Patterns
@@ -64,6 +64,7 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
   - `createMutation`
 - Define reusable query/mutation objects at module scope (not inside components).
 - Use `useActorMethod` only when a unified query/update hook is specifically helpful.
+- For Internet Identity, use `createAuthHooks(authentication)` where `authentication` is an `AuthenticationManager` — never a `ClientManager`. `useIdentityAttributes` comes from `createIdentityAttributeHooks(identityAttributes)`, not `createAuthHooks`.
 
 ## Inside React vs Outside React
 
@@ -88,14 +89,23 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
 ## Development
 
 ```bash
-pnpm install    # Install dependencies
-pnpm build      # Build all packages
-pnpm test       # Run all tests
-pnpm exec tsc --noEmit # Root type check used by CI
+pnpm install            # Install dependencies
+pnpm build              # Build all packages
+pnpm test               # Run all tests
+pnpm typecheck          # Type-check every package incl. tests (CI gate)
 pnpm typecheck:examples # Type-check example apps
-pnpm format     # Format code with Prettier
-pnpm docs:build # Build docs site
+pnpm format             # Format code with Prettier (packages/** only)
+pnpm format:check       # Verify formatting without writing (CI gate, packages/** only)
+pnpm check:ai-context   # Verify llms.txt versions match package.json (CI gate)
+pnpm verify:packages    # Pack + publint + attw + real-Node import of published artifacts
+pnpm docs:build         # Build docs site
 ```
+
+`pnpm typecheck` runs each package's own `typecheck` script. The root
+`tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root
+type-checks nothing. Run `pnpm verify:packages` after changing a package's
+`exports`, `files`, build output, or module format — in-repo consumers resolve
+through workspace symlinks, so nothing else sees the published artifact.
 
 ## Key File References
 

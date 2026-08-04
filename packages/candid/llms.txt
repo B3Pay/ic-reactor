@@ -36,4 +36,4 @@ pnpm add @ic-reactor/parser # optional local parser
 ## Full References
 
 - Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Candid docs: https://ic-reactor.b3pay.net/v4/packages/candid
+- Candid docs: https://ic-reactor.b3pay.net/v3/packages/candid

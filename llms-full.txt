@@ -20,7 +20,7 @@ This documentation targets the stable v3.7.0 runtime release.
 | `@ic-reactor/core`        | Framework-agnostic runtime with `ClientManager`, `Reactor`, `DisplayReactor`, and `@tanstack/query-core` integration. No React imports. |
 | `@ic-reactor/react`       | React hooks, `createActorHooks`, query/mutation factories, Internet Identity auth, and identity-attribute hooks.                         |
 | `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters, `CandidReactor`, display variants, and metadata reactors.                                     |
-| `@ic-reactor/parser`      | Rust/WASM Candid parser that publishes web, nodejs, and bundler outputs.                                                                |
+| `@ic-reactor/parser`      | Rust/WASM Candid parser. One entrypoint (`@ic-reactor/parser`); conditional exports pick the browser or Node build.                     |
 | `@ic-reactor/codegen`     | Shared generator pipeline for declarations, reactor files, stable wrappers, and client helpers.                                         |
 | `@ic-reactor/cli`         | CLI around `@ic-reactor/codegen`, config loading, commands, and schema.                                                                 |
 | `@ic-reactor/vite-plugin` | Vite watch-mode generation and local IC environment injection.                                                                          |
@@ -51,6 +51,55 @@ Dynamic Candid:
 pnpm add @ic-reactor/candid @ic-reactor/parser
 ```
 
+## One-Call Setup
+
+`defineReactor` creates the `QueryClient`, `ClientManager`, reactor, and bound
+hooks in one call. `display: true` selects `DisplayReactor` instead of `Reactor`.
+
+```ts
+import { defineReactor } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+export const backendApp = defineReactor<_SERVICE>({
+  name: "backend",
+  idlFactory,
+  display: true,
+})
+
+export const {
+  reactor: backend,
+  queryClient,
+  useActorQuery,
+  useActorMutation,
+  useActorMethod,
+  useAuth,
+  useIdentityAttributes,
+} = backendApp
+```
+
+It returns the six `createActorHooks` hooks plus `useAuth`, `useAgentState`,
+`useUserPrincipal`, `useIdentityAttributes`, and the underlying `reactor`,
+`clientManager`, `queryClient`, `authentication`, and `identityAttributes`.
+`authentication` and `identityAttributes` are lazy getters, so the optional
+`@icp-sdk/auth` peer is only loaded once auth is actually touched.
+
+To share one agent and one Internet Identity session across canisters, pass the
+first result's `authentication` into the next call:
+
+```ts
+import { idlFactory as indexIdl, type _SERVICE as _INDEX } from "./declarations/index_canister"
+
+export const indexApp = defineReactor<_INDEX>({
+  name: "index",
+  idlFactory: indexIdl,
+  authentication: backendApp.authentication,
+})
+```
+
+Passing `authentication` alone is enough — its `clientManager` is adopted.
+Passing a *different* `clientManager` alongside it throws, because sign-in would
+update one agent while the reactor calls through another.
+
 ## Manual Runtime Setup
 
 Use this when construction order or dependency injection needs to be explicit.
@@ -80,13 +129,14 @@ required.
 
 | Need                              | Preferred API                                  | Works outside React                                                |
 | --------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
-| Component hooks with one canister | `ClientManager` + `Reactor` + `createActorHooks` | No                                                               |
+| Component hooks with one canister | `defineReactor(params)`                        | No                                                                 |
+| Explicit construction order       | `ClientManager` + `Reactor` + `createActorHooks` | No                                                               |
 | Generic component hooks           | `createActorHooks(reactor)`                    | No                                                                 |
 | Method-specific reusable reads    | `createQuery`, `createSuspenseQuery`           | Yes: `.fetch()`, `.prefetch()`, `.invalidate()`, `.getCacheData()` |
 | Paginated reads                   | `createInfiniteQuery`, suspense variant        | Yes: `.fetch()`, `.invalidate()`, `.getCacheData()`                |
 | Reusable updates                  | `createMutation`                               | Yes: `.execute(args)`                                              |
 | One imperative component call API | `useActorMethod`                               | No                                                                 |
-| Larger `.did`-driven apps         | `@ic-reactor/vite-plugin` or `@ic-reactor/cli` | Generated factory objects expose imperative helpers                |
+| Larger `.did`-driven apps         | `@ic-reactor/vite-plugin` or `@ic-reactor/cli` | No — generated exports are hooks; use the generated reactor's `.fetchQuery()` / `.callMethod()` |
 
 ## Inside React vs Outside React
 
@@ -152,13 +202,29 @@ Prefer `query.getQueryKey()` or `query.invalidate()` over hard-coded cache keys.
 managers.
 
 ```ts
-import { AuthenticationManager } from "@ic-reactor/react"
-import { createAuthHooks } from "@ic-reactor/react"
+import {
+  AuthenticationManager,
+  IdentityAttributesManager,
+  createAuthHooks,
+  createIdentityAttributeHooks,
+} from "@ic-reactor/react"
 
 export const authentication = new AuthenticationManager({ clientManager })
 export const { useAuth, useAgentState, useUserPrincipal } =
   createAuthHooks(authentication)
+
+export const identityAttributes = new IdentityAttributesManager(authentication)
+export const { useIdentityAttributes } =
+  createIdentityAttributeHooks(identityAttributes)
 ```
+
+`createAuthHooks` takes an `AuthenticationManager`, never a `ClientManager`, and
+returns exactly `useAuth`, `useAgentState`, and `useUserPrincipal`.
+`useIdentityAttributes` comes only from `createIdentityAttributeHooks`.
+
+Pass identity-attribute nonces as a callback (`nonce: () => backend.registerBegin()`).
+Awaiting the nonce before the call ends the user gesture and the browser blocks
+the Internet Identity window.
 
 ## Error Handling (Important)
 
@@ -207,18 +273,20 @@ development.
 
 Use `@ic-reactor/candid` for explorers, dev tools, unknown canisters, metadata
 forms, or Candid strings discovered at runtime. Use `@ic-reactor/parser` when
-local `.did` parsing is needed; it publishes WASM outputs for browser, Node.js,
-and bundler environments.
+local `.did` parsing is needed; it ships WASM builds for browser and Node.js.
 
-### Parser Import Paths
+### Parser Import Path
 
-`@ic-reactor/parser` publishes dedicated exports for:
+`@ic-reactor/parser` has a single entrypoint:
 
-- web/browser usage
-- `nodejs`
-- bundler contexts
+```ts
+import { didToJs, parseDid, validateIDL } from "@ic-reactor/parser"
+```
 
-Select the environment-appropriate entrypoint to avoid runtime loader mismatch.
+There are no `/web`, `/nodejs`, or `/bundler` subpath exports — the package's
+`exports` map declares only `"."` and `"./package.json"`. Conditional exports
+pick the build: `browser`/`workerd`/default resolve to `dist/web`, and `node`
+resolves to `dist/nodejs`. Do not deep-import `dist/`.
 
 ### Common Candid Patterns
 
@@ -266,15 +334,30 @@ verify the affected CLI/Vite consumer.
 
 | Change type           | Commands                                                                           |
 | --------------------- | ---------------------------------------------------------------------------------- |
-| Docs only             | `pnpm format:check`, `pnpm docs:build`                                             |
+| Docs only             | `pnpm format:check`, `pnpm check:ai-context`, `pnpm docs:build`                    |
+| AI context files      | `pnpm check:ai-context`                                                            |
 | React hooks/factories | `pnpm --filter @ic-reactor/react test`                                             |
 | Core runtime          | `pnpm --filter @ic-reactor/core test`                                              |
 | React auth            | `pnpm --filter @ic-reactor/react test`                                             |
 | Parser/candid         | `pnpm --filter @ic-reactor/parser build`, `pnpm --filter @ic-reactor/candid test`  |
 | Codegen               | `pnpm --filter @ic-reactor/codegen test` plus affected CLI/Vite checks             |
-| Broad package change  | `pnpm exec tsc --noEmit`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`            |
+| Broad package change  | `pnpm typecheck`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`                    |
+| Package exports/build/module format | `pnpm verify:packages`                                               |
 | Examples              | `pnpm typecheck:examples`                                                          |
 | Docs site             | `pnpm docs:build`                                                                  |
 
 Do not run package build and package test concurrently when parser/candid tests
 depend on parser `dist`; parser builds remove and recreate `dist`.
+
+Script notes:
+
+- `pnpm format:check` globs `packages/**` only; root markdown, `docs/`,
+  `examples/`, and `skill-packages/` are not covered by Prettier.
+- `pnpm check:ai-context` is a CI gate asserting `llms.txt` package versions
+  match each `package.json` and that every `packages/*/llms.txt` exists.
+- `pnpm typecheck` runs each package's own `typecheck` script and covers tests
+  as well as `src`. The root `tsconfig.json` is references-only, so
+  `pnpm exec tsc --noEmit` at the root type-checks nothing.
+- `pnpm verify:packages` packs every publishable package, installs the tarballs
+  outside the workspace, imports/requires each entry point in real Node, and
+  runs `publint` + `attw`. It is the only check that sees what consumers get.

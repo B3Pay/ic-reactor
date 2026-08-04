@@ -7,7 +7,7 @@ It leverages **TanStack Query** for state management and caching, and the repo u
 
 ## Package Surface
 
-- Runtime lane (`3.6.0`): `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/auth`, `@ic-reactor/auth-react`, `@ic-reactor/candid`.
+- Runtime lane (`3.7.0`): `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/candid`. Internet Identity auth ships inside `@ic-reactor/react` (`packages/react/src/auth/`); there is no separate auth package.
 - Codegen lane (`0.11.1`): `@ic-reactor/codegen`, `@ic-reactor/cli`, `@ic-reactor/vite-plugin`.
 - Parser lane (`0.4.6`): `@ic-reactor/parser`.
 
@@ -15,7 +15,7 @@ It leverages **TanStack Query** for state management and caching, and the repo u
 
 - **Type Safety**: usage of `Candid` types is mandatory. Avoid `any` or loose typing.
 - **DisplayReactor**: Prefer `DisplayReactor` over standard `Reactor` for UI components to handle BigInt serialization automatically.
-- **Setup Pattern**: Use `ClientManager`, `Reactor`, and `createActorHooks` for React setup.
+- **Setup Pattern**: Prefer `defineReactor(...)` for one-call React setup; fall back to `ClientManager`, `Reactor`, and `createActorHooks` when construction order must be explicit.
 - **Factory Pattern**: Use `createActorHooks`, `createQuery`, `createSuspenseQuery`, `createInfiniteQuery`, `createSuspenseInfiniteQuery`, and `createMutation` factories instead of manual hook implementations.
 
 ## Preferred Patterns
@@ -45,6 +45,8 @@ const { mutate } = useActorMutation({
 
 - Use `useAuth` for simple login/logout actions.
 - Use `useAgentState` to check if the agent is initialized or to get network details.
+- Create auth hooks with `createAuthHooks(authentication)` where `authentication = new AuthenticationManager({ clientManager })` — never pass a `ClientManager` directly.
+- `useIdentityAttributes` comes from `createIdentityAttributeHooks(identityAttributes)`, not from `createAuthHooks`.
 - Avoid deprecated hooks like `useAuthState`.
 
 ## Naming Conventions
