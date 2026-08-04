@@ -231,8 +231,8 @@ importers:
         version: 3.6.0
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.11.1
-        version: 0.11.1(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
+        specifier: ^0.12.0
+        version: link:../../packages/vite-plugin
       '@icp-sdk/bindgen':
         specifier: ^0.4.0
         version: 0.4.0
@@ -270,10 +270,10 @@ importers:
         specifier: workspace:*
         version: link:../../packages/cod
       '@ic-reactor/codegen':
-        specifier: workspace:*
+        specifier: ^0.12.0
         version: link:../../packages/codegen
       '@ic-reactor/parser':
-        specifier: workspace:*
+        specifier: ^0.4.7
         version: link:../../packages/parser
     devDependencies:
       typescript:
@@ -395,11 +395,11 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/cli':
-        specifier: ^0.11.1
-        version: 0.11.1
+        specifier: ^0.12.0
+        version: link:../../packages/cli
       '@ic-reactor/vite-plugin':
-        specifier: ^0.11.1
-        version: 0.11.1(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
+        specifier: ^0.12.0
+        version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
@@ -441,8 +441,8 @@ importers:
         version: 6.0.3
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.11.1
-        version: 0.11.1(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
+        specifier: ^0.12.0
+        version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
@@ -487,8 +487,8 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.11.1
-        version: 0.11.1(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
+        specifier: ^0.12.0
+        version: link:../../../packages/vite-plugin
       '@icp-sdk/bindgen':
         specifier: ^0.4.0
         version: 0.4.0
@@ -530,8 +530,8 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.11.1
-        version: 0.11.1(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
+        specifier: ^0.12.0
+        version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
@@ -816,8 +816,8 @@ importers:
         specifier: ^3.8.0
         version: link:../../packages/react
       '@ic-reactor/vite-plugin':
-        specifier: 0.11.1
-        version: 0.11.1(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
+        specifier: ^0.12.0
+        version: link:../../packages/vite-plugin
       '@icp-sdk/core':
         specifier: ^6.0.0
         version: 6.0.0
@@ -948,8 +948,8 @@ importers:
         version: 1.4.0
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.11.1
-        version: 0.11.1(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
+        specifier: ^0.12.0
+        version: link:../../packages/vite-plugin
       '@tanstack/devtools-vite':
         specifier: ^0.8
         version: 0.8.3(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
@@ -1083,8 +1083,8 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.11.1
-        version: 0.11.1(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.8.3))
+        specifier: ^0.12.0
+        version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
@@ -2673,11 +2673,6 @@ packages:
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
 
-  '@ic-reactor/cli@0.11.1':
-    resolution: {integrity: sha512-Ms7ns8uv1QqNn11z1ZQ+5LjwaukxDL3G9INxWKpcdSdP93veRFHUIVO59fmOJaBWdl26cbNMB8e0v2kQXxDzZw==}
-    engines: {node: '>=18'}
-    hasBin: true
-
   '@ic-reactor/codegen@0.11.1':
     resolution: {integrity: sha512-VEfRi5xPQj7K9QLPSxy+HLPeeIdkiazIDITLPal7+BpKMnw27vFbsKAa+r+PPOMbEWCA0ft1VgrBwzc0ZuWWGA==}
 
@@ -2699,16 +2694,9 @@ packages:
     peerDependencies:
       '@icp-sdk/core': ^5
 
-  '@icp-sdk/bindgen@0.3.0':
-    resolution: {integrity: sha512-yRG0EnzhmmsErGSrSGG2HGQIhf2u4FYs8DjLNd06B3WJ735Tx3sxyDxmWKHTqLKrniQSvAFErRKqJWwwpYdfVQ==}
-    hasBin: true
-
   '@icp-sdk/bindgen@0.4.0':
     resolution: {integrity: sha512-WXJoPIVnqCgFSNcprVpHwPBNWA1prwPh1/ezQYVrCP+Zj8CCJ7zj9L7p5cFcN7ghxoxfbx6tYT8t/HN9fyeYkA==}
     hasBin: true
-
-  '@icp-sdk/core@5.4.0':
-    resolution: {integrity: sha512-yedhCkHIhCxI65W8id99Mi8fUgSyqKSTbD57AphquNcFV2/3Rjykng0/6H08mHswKydDcv6Y0+e8aPdrznewCw==}
 
   '@icp-sdk/core@6.0.0':
     resolution: {integrity: sha512-z+oHm+MTB/Xo27LQCYXDpVcUyFQwceupoyqkYCW6aaiZ2GJ1BvhRbSMsm7XDHAgCuZmWULPxpiTFUnHZLDEKzw==}
@@ -3234,17 +3222,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@noble/curves@1.9.7':
-    resolution: {integrity: sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==}
-    engines: {node: ^14.21.3 || >=16}
-
   '@noble/curves@2.2.0':
     resolution: {integrity: sha512-T/BoHgFXirb0ENSPBquzX0rcjXeM6Lo892a2jlYJkqk83LqZx0l1Of7DzlKJ6jkpvMrkHSnAcgb5JegL8SeIkQ==}
     engines: {node: '>= 20.19.0'}
-
-  '@noble/hashes@1.8.0':
-    resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
-    engines: {node: ^14.21.3 || >=16}
 
   '@noble/hashes@2.2.0':
     resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
@@ -4007,20 +3987,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@scure/base@1.2.6':
-    resolution: {integrity: sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg==}
-
   '@scure/base@2.2.0':
     resolution: {integrity: sha512-b8XEupJibegiXV+tDUseI8oLQc8ei3d/4Jkb2RpbHh3MfE054ov3uIz2dhFkB3FI8iwYkEh0gGCApkrYggkPNg==}
 
-  '@scure/bip32@1.7.0':
-    resolution: {integrity: sha512-E4FFX/N3f4B80AKWp5dP6ow+flD1LQZo/w8UnLGYZO674jS6YnYeepycOOksv+vLPSpgN35wgKgy+ybfTb2SMw==}
-
   '@scure/bip32@2.2.0':
     resolution: {integrity: sha512-zFr7t2F+a9+5tB7QbarF2HQNYrgjCNaoLAupZdKkrFMYMozJf5zqH2WJCQibMzm1qQ0QogrxVGO3qXfQDYMaQg==}
-
-  '@scure/bip39@1.6.0':
-    resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
 
   '@scure/bip39@2.2.0':
     resolution: {integrity: sha512-T/Bj/YvYMNkIPq6EENO6/rcs2e7qTNuyoUXf0KBFDmp0ZDu0H2X4Lq6yC3i0c8PcWkov5EbW+yQZZbdMmk154A==}
@@ -10092,15 +10063,6 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@ic-reactor/cli@0.11.1':
-    dependencies:
-      '@clack/prompts': 1.7.0
-      '@ic-reactor/codegen': 0.11.1
-      '@icp-sdk/bindgen': 0.3.0
-      '@icp-sdk/core': 5.4.0
-      commander: 14.0.3
-      picocolors: 1.1.1
-
   '@ic-reactor/codegen@0.11.1':
     dependencies:
       '@ic-reactor/parser': 0.4.6
@@ -10125,22 +10087,9 @@ snapshots:
       '@icp-sdk/signer': 5.6.0(@icp-sdk/core@6.0.0)
       idb: 7.1.1
 
-  '@icp-sdk/bindgen@0.3.0':
-    dependencies:
-      commander: 14.0.3
-
   '@icp-sdk/bindgen@0.4.0':
     dependencies:
       commander: 14.0.3
-
-  '@icp-sdk/core@5.4.0':
-    dependencies:
-      '@dfinity/cbor': 0.2.3
-      '@noble/curves': 1.9.7
-      '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      asn1js: 3.0.10
 
   '@icp-sdk/core@6.0.0':
     dependencies:
@@ -10686,15 +10635,9 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.2.12':
     optional: true
 
-  '@noble/curves@1.9.7':
-    dependencies:
-      '@noble/hashes': 1.8.0
-
   '@noble/curves@2.2.0':
     dependencies:
       '@noble/hashes': 2.2.0
-
-  '@noble/hashes@1.8.0': {}
 
   '@noble/hashes@2.2.0': {}
 
@@ -11172,26 +11115,13 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
 
-  '@scure/base@1.2.6': {}
-
   '@scure/base@2.2.0': {}
-
-  '@scure/bip32@1.7.0':
-    dependencies:
-      '@noble/curves': 1.9.7
-      '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.6
 
   '@scure/bip32@2.2.0':
     dependencies:
       '@noble/curves': 2.2.0
       '@noble/hashes': 2.2.0
       '@scure/base': 2.2.0
-
-  '@scure/bip39@1.6.0':
-    dependencies:
-      '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.6
 
   '@scure/bip39@2.2.0':
     dependencies:

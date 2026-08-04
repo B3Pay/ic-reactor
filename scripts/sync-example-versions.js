@@ -118,14 +118,14 @@ for (const pkgPath of packageJsonFiles) {
     let modified = false
 
     for (const pkgName of packages) {
-      if (
-        cliVersion &&
-        cliVersion !== "workspace" &&
-        !runtimePackages.has(pkgName)
-      ) {
-        continue
-      }
-
+      // Every @ic-reactor dependency is synced, including the independently
+      // versioned tooling lane. targetVersionFor() already keeps the lanes
+      // apart -- it only applies the CLI-supplied version to runtime packages
+      // and reads every other package's version from its own manifest. Skipping
+      // non-runtime packages here as well meant nothing ever synced the tooling
+      // lane into the examples: release-tools.js does not run this script at
+      // all, so examples stayed pinned to the previous tools release and
+      // external sandboxes (StackBlitz/CodeSandbox) installed stale plugins.
       const targetVersion = targetVersionFor(pkgName)
 
       // Check dependencies
