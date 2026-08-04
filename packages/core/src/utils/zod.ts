@@ -2,8 +2,8 @@
 // Zod Integration Helper
 // ============================================================================
 
-import { ValidationIssue } from "../errors"
-import { ValidationResult, Validator } from "../types"
+import { ValidationIssue } from "../errors/index.js"
+import { ValidationResult, Validator } from "../types/index.js"
 
 /**
  * Create a validator from a Zod schema.

@@ -34,18 +34,38 @@ export default defineConfig({
 
 ### 2. Set Up ClientManager
 
-The `ClientManager` can now automatically detect your environment through the `ic_env` cookie set by the Vite plugin or an asset canister.
+The `ClientManager` automatically detects your environment through the `ic_env`
+cookie set by the Vite plugin or an asset canister.
+
+Put it where the generated reactors expect it. The plugin's default
+`clientManagerPath` is `"../../clients"`, and its default `outDir` is
+`src/declarations`, so the generated
+`src/declarations/backend/index.generated.ts` resolves `clientManager` from
+`src/clients.ts`:
 
 ```typescript
-// src/reactor/index.ts
-import { ClientManager } from "@ic-reactor/react"
-import { queryClient } from "./queryClient"
+// src/clients.ts
+import {
+  AuthenticationManager,
+  ClientManager,
+  createAuthHooks,
+} from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
 
-export const clientManager = new ClientManager({
-  queryClient,
-  // Automatically detects network and canister IDs from ic_env cookie
-})
+export const queryClient = new QueryClient()
+
+// Network and local canister IDs come from the ic_env cookie automatically
+export const clientManager = new ClientManager({ queryClient })
+
+export const authentication = new AuthenticationManager({ clientManager })
+export const { useAuth, useAgentState } = createAuthHooks(authentication)
 ```
+
+<Aside type="tip">
+  If you would rather keep the file somewhere else, set `clientManagerPath` on
+  the plugin (or on an individual canister) to the import path the generated
+  reactor should use, relative to the generated file.
+</Aside>
 
 ### 3. Run Development Cycle
 
@@ -72,24 +92,59 @@ export const clientManager = new ClientManager({
 
 If you're not using the Vite plugin, you can still configure everything manually.
 
-### 1. Setup ClientManager with withProcessEnv
+### 1. Setup ClientManager
+
+`ClientManagerParameters` has exactly two members: the required `queryClient`
+and an optional `agentOptions` (the `HttpAgentOptions` handed to the underlying
+`HttpAgent`). There is no flag to turn network detection on — it always runs.
+
+```typescript
+import { ClientManager } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+
+export const queryClient = new QueryClient()
+
+// Served from localhost → the host is inferred from window.location.origin
+export const clientManager = new ClientManager({ queryClient })
+```
+
+To point the agent somewhere else, pass the host explicitly:
 
 ```typescript
 export const clientManager = new ClientManager({
-  // Auto-detects network based on DFX_NETWORK env var
-  withProcessEnv: true,
+  queryClient,
+  agentOptions: { host: "http://127.0.0.1:4943" },
 })
 ```
 
-### 2. Configure Environment Variables
-
-Create `.env.local` for local development:
+### 2. Configure Canister IDs
 
 ```bash
 # .env.local
-DFX_NETWORK=local
 VITE_BACKEND_CANISTER_ID=bkyz2-fmaaa-aaaaa-qaaaq-cai
 ```
+
+```typescript
+import { Reactor } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+export const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  name: "backend",
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+})
+```
+
+<Aside type="caution">
+  `DFX_NETWORK` in `.env.local` does nothing in a browser bundle. IC Reactor
+  reads it from `process.env`, which Vite does not inline, so it is only visible
+  in Node/SSR. In the browser the host comes from `window.location.origin` when
+  the page is served from `localhost`/`127.0.0.1`, or from `agentOptions.host`
+  when you set it. Canister IDs must likewise be passed to the reactor
+  explicitly — `import.meta.env.VITE_*` is read by your code, never by IC
+  Reactor.
+</Aside>
 
 ## Fetching Root Key
 
@@ -103,7 +158,7 @@ When communicating with the IC mainnet, the agent uses a hardcoded public key to
 
 ```tsx
 import { useEffect } from "react"
-import { clientManager, useAgentState } from "./reactor"
+import { clientManager, useAgentState } from "./clients"
 
 function App() {
   const { isInitialized } = useAgentState()
@@ -134,12 +189,13 @@ Check if your local replica is running and on which port.
 
 1. If you use `icp-cli`, run `icp network status -e local --json` and check the returned port.
 2. If you use a manual `dfx` workflow, run `dfx info webserver-port`.
-3. If the replica is not on `4943`, update your `ClientManager` config:
+3. If the replica is not on `4943`, point the agent at it through
+   `agentOptions.host`:
 
    ```typescript
    export const clientManager = new ClientManager({
-     port: 8000, // or your specific port
-     withProcessEnv: true,
+     queryClient,
+     agentOptions: { host: "http://127.0.0.1:8000" },
    })
    ```
 
@@ -172,12 +228,13 @@ Internet Identity canister.
    dfx deploy internet_identity --specified-id rdmx6-jaaaa-aaaaa-aaadq-cai
    ```
 
-3. Login using the local provider URL. `useAuth` handles this automatically if
-   `withProcessEnv` is set correctly.
+3. Login using the local provider URL. `useAuth` handles this automatically once
+   the local Internet Identity canister is deployed and the page is served from
+   localhost.
 
    ```typescript
    // Auto-detects based on network
    // Local: http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize
-   // Mainnet: https://identity.ic0.app
+   // Mainnet: https://id.ai/authorize
    const { login } = useAuth()
    ```

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { generateReactorEntryFile, generateReactorFile } from "./generators"
+import {
+  generateReactorEntryFile,
+  generateReactorFile,
+} from "./generators/index.js"
 
 describe("Reactor generator", () => {
   it("keeps default behavior as DisplayReactor", () => {

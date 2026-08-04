@@ -1,6 +1,6 @@
 import type { BaseActor, FunctionName, FunctionType } from "@ic-reactor/core"
 import * as z from "zod"
-import type { VisitorDataType, TextFormat, NumberFormat } from "../types"
+import type { VisitorDataType, TextFormat, NumberFormat } from "../types.js"
 
 export type { VisitorDataType, TextFormat, NumberFormat }
 

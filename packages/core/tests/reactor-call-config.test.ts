@@ -3,14 +3,14 @@ import { ActorMethod, QueryResponseStatus } from "@icp-sdk/core/agent"
 import { QueryClient } from "@tanstack/query-core"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { ClientManager } from "../src/client"
-import { Reactor } from "../src/reactor"
-import type { BaseActor } from "../src/types/reactor"
-import * as agentUtils from "../src/utils/agent"
+import { ClientManager } from "../src/client.js"
+import { Reactor } from "../src/reactor.js"
+import type { BaseActor } from "../src/types/reactor.js"
+import * as agentUtils from "../src/utils/agent.js"
 
 vi.mock("../src/utils/agent", async () => {
   const actual =
-    await vi.importActual<typeof import("../src/utils/agent")>(
+    await vi.importActual<typeof import("../src/utils/agent.js")>(
       "../src/utils/agent"
     )
 
@@ -168,6 +168,31 @@ describe("Reactor callConfig overrides", () => {
       "readName",
       { effectiveTarget: { canisterId: overrideCanisterId } },
     ])
+  })
+
+  it("registers a callConfig.canisterId override with the client manager", () => {
+    // A query made against an overridden canister is cached under a key rooted at
+    // a canister the client was never told about, so ClientManager.updateAgent's
+    // canister-scoped cancel and invalidate would miss it and leave it cached
+    // under the previous identity. generateQueryKey registers it to close that gap.
+    const clientManager = reactor.clientManager
+
+    reactor.generateQueryKey(
+      { functionName: "readName" },
+      { canisterId: overrideCanisterId }
+    )
+
+    expect(clientManager.registerCanisterId).toHaveBeenCalledWith(
+      overrideCanisterId
+    )
+  })
+
+  it("does not re-register when no canisterId override is supplied", () => {
+    const clientManager = reactor.clientManager
+
+    reactor.generateQueryKey({ functionName: "readName" })
+
+    expect(clientManager.registerCanisterId).not.toHaveBeenCalled()
   })
 
   it("uses an effective subnet target for query calls and cache keys", async () => {

@@ -45,27 +45,61 @@ Defining all your actors in one place makes it easy to manage imports throughout
 
 ```typescript
 // src/reactor.ts
-import { ClientManager, DisplayReactor } from "@ic-reactor/react"
-import { idlFactory as icpIdl } from "./declarations/icp"
-import { idlFactory as customIdl } from "./declarations/custom"
+import { AuthenticationManager, defineReactor } from "@ic-reactor/react"
+import { createAuthHooks } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+import {
+  idlFactory as icrc2IdlFactory,
+  type _SERVICE as ICRC2,
+} from "./declarations/icrc2"
+import {
+  idlFactory as icdvIdlFactory,
+  type _SERVICE as ICDV,
+} from "./declarations/icdv"
 
-// 1. Shared Client Manager (handles Auth)
-const clientManager = new ClientManager()
+// 1. Shared QueryClient
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30 seconds
+    },
+  },
+})
 
-// 2. Define Reactors
-export const icpReactor = new DisplayReactor({
+// 2. ICP Ledger (ICRC2) — this first call creates the shared ClientManager
+export const {
+  reactor: icpLedger,
   clientManager,
+  useActorQuery: useICPQuery,
+  useActorMutation: useICPMutation,
+} = defineReactor<ICRC2>({
+  name: "ICP Ledger",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
-  idlFactory: icpIdl,
+  idlFactory: icrc2IdlFactory,
+  queryClient,
+  agentOptions: { host: "https://ic0.app" },
 })
 
-export const customReactor = new DisplayReactor({
+// 3. ICDV Token — reuses the same ClientManager (shared agent)
+export const {
+  reactor: icdvToken,
+  useActorQuery: useICDVQuery,
+  useActorMutation: useICDVMutation,
+} = defineReactor<ICDV>({
+  name: "ICDV Token",
+  canisterId: "agtsn-xyaaa-aaaag-ak3kq-cai",
+  idlFactory: icdvIdlFactory,
   clientManager,
-  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
-  idlFactory: customIdl,
 })
 
-// 3. Export Hooks
-export const { useActorQuery: useIcpQuery } = createActorHooks(icpReactor)
-export const { useActorQuery: useCustomQuery } = createActorHooks(customReactor)
+// 4. One Internet Identity session for both canisters
+export const authentication = new AuthenticationManager({ clientManager })
+
+export const { useAuth, useUserPrincipal, useAgentState } =
+  createAuthHooks(authentication)
 ```
+
+<Aside type="tip">
+  Passing the first call's `clientManager` into the second is what makes both
+  canisters share a single agent — and therefore a single login session.
+</Aside>

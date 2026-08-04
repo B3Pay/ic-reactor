@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { CandidAdapter } from "../../src/adapter"
-import type { CandidClientManager, ReactorParser } from "../../src/types"
-import { importCandidDefinition } from "../../src/utils"
+import { CandidAdapter } from "../../src/adapter.js"
+import type { CandidClientManager, ReactorParser } from "../../src/types.js"
+import { importCandidDefinition } from "../../src/utils.js"
 import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
-} from "../../src/constants"
+} from "../../src/constants.js"
 import type { Identity } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 
@@ -101,22 +101,24 @@ describe("CandidAdapter Integration", () => {
 
       // Mock tmp hack success then didjs compilation
       let queryCount = 0
-      mockAgent.query.mockImplementation((canisterId: string, options: any) => {
-        queryCount++
-        if (options.methodName === "__get_candid_interface_tmp_hack") {
-          return Promise.resolve({
-            reply: {
-              arg: IDL.encode([IDL.Text], [candidSource]),
-            },
-          })
-        } else if (options.methodName === "did_to_js") {
-          return Promise.resolve({
-            reply: {
-              arg: IDL.encode([IDL.Opt(IDL.Text)], [[compiledJs]]),
-            },
-          })
+      mockAgent.query.mockImplementation(
+        (_canisterId: string, options: any) => {
+          queryCount++
+          if (options.methodName === "__get_candid_interface_tmp_hack") {
+            return Promise.resolve({
+              reply: {
+                arg: IDL.encode([IDL.Text], [candidSource]),
+              },
+            })
+          } else if (options.methodName === "did_to_js") {
+            return Promise.resolve({
+              reply: {
+                arg: IDL.encode([IDL.Opt(IDL.Text)], [[compiledJs]]),
+              },
+            })
+          }
         }
-      })
+      )
 
       // Execute
       const result = await adapter.getCandidDefinition(

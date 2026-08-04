@@ -7,9 +7,9 @@ import {
   AuthenticationManager,
   IdentityAttributeResult,
   IdentityAttributesManager,
-} from "../../src/auth"
-import { createAuthHooks } from "../../src/hooks/createAuthHooks"
-import { createIdentityAttributeHooks } from "../../src/auth/createIdentityAttributeHooks"
+} from "../../src/auth/index.js"
+import { createAuthHooks } from "../../src/hooks/createAuthHooks.js"
+import { createIdentityAttributeHooks } from "../../src/auth/createIdentityAttributeHooks.js"
 
 // ============================================================================
 // Helpers

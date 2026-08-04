@@ -4,12 +4,12 @@ import {
   ClientManager,
   ValidationError,
   fromZodSchema,
-} from "../src"
+} from "../src/index.js"
 import { IDL } from "@icp-sdk/core/candid"
 import { QueryClient } from "@tanstack/query-core"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { Principal } from "@icp-sdk/core/principal"
-import { ValidationResult } from "../src/types/display-reactor"
+import { ValidationResult } from "../src/types/display-reactor.js"
 
 // Define test actor type - these are CANDID types
 interface TestActor {

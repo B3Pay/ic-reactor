@@ -2,7 +2,7 @@ import { ClientManager, uint8ArrayToHex } from "@ic-reactor/core"
 import { HttpAgent } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { beforeEach, describe, expect, it } from "vitest"
-import { MetadataReactor } from "../../src/metadata-reactor"
+import { MetadataReactor } from "../../src/metadata-reactor.js"
 
 function createMockClientManager(): ClientManager {
   const agent = HttpAgent.createSync({ host: "https://ic0.app" })

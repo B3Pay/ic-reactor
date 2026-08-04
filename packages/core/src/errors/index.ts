@@ -1,4 +1,4 @@
-import { NullishType } from "../display/types"
+import { NullishType } from "../display/types.js"
 
 /**
  * Interface representing the generic shape of an API error.

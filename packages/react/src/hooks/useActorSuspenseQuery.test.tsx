@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import React, { Suspense } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useActorSuspenseQuery } from "./useActorSuspenseQuery"
+import { useActorSuspenseQuery } from "./useActorSuspenseQuery.js"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { Reactor } from "@ic-reactor/core"
 

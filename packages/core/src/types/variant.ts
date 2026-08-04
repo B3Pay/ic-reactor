@@ -8,8 +8,25 @@ export type CandidVariantToIntersection<U> = (
   ? I
   : never
 
+/**
+ * The selectable keys of a variant.
+ *
+ * Display variants carry a `_type` discriminant alongside a payload key. A
+ * null-payload arm has no payload key at all (`{ _type: "Pending" }`), so the
+ * discriminant value is the only key that identifies it — `CandidVariantValue`
+ * already resolves such a key to `null`.
+ */
 export type CandidVariantKey<T> = T extends any
-  ? Exclude<keyof T, "_type">
+  ? | Exclude<keyof T, "_type">
+    // Only a *literal* discriminant names an arm. When `_type` is the wide
+    // `string` (an unresolved or hand-written shape), folding it in would
+    // collapse the whole key union to `string` and every key/value helper
+    // would stop type-checking its argument.
+    | (T extends { _type: infer D extends string }
+        ? string extends D
+          ? never
+          : D
+        : never)
   : never
 
 export type CandidVariantValue<T, K extends CandidVariantKey<T>> =

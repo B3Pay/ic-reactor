@@ -24,7 +24,8 @@ function Feed() {
   const { data, fetchNextPage, hasNextPage } = useReactorInfiniteQuery({
     reactor: backend, // 👈 Required
     functionName: "getPosts",
-    args: [],
+    getArgs: (pageParam) => [{ cursor: pageParam, limit: 20 }] as const,
+    initialPageParam: null as string | null,
     getNextPageParam: (lastPage, allPages) => lastPage.nextCursor,
   })
 
@@ -46,11 +47,18 @@ function Feed() {
 
 ### Required Options
 
-| Option             | Type            | Description                                              |
-| ------------------ | --------------- | -------------------------------------------------------- |
-| `reactor`          | `Reactor<A, T>` | The Reactor instance to use                              |
-| `functionName`     | `string`        | The canister method to call                              |
-| `getNextPageParam` | `function`      | Function to determine the next page param (cursor/index) |
+| Option             | Type                  | Description                                              |
+| ------------------ | --------------------- | -------------------------------------------------------- |
+| `reactor`          | `Reactor<A, T>`       | The Reactor instance to use                              |
+| `functionName`     | `string`              | The canister method to call                              |
+| `getArgs`          | `(pageParam) => Args` | Builds the call arguments for each page                  |
+| `initialPageParam` | `TPageParam`          | Page param the first fetch starts from                   |
+| `getNextPageParam` | `function`            | Function to determine the next page param (cursor/index) |
+
+<Aside type="caution">
+  There is no `args` option on this hook — arguments come from `getArgs`, which
+  is called for every page. `getArgs` and `initialPageParam` are both required.
+</Aside>
 
 ### Optional Options
 

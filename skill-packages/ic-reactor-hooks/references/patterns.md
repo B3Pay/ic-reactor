@@ -31,37 +31,46 @@ Source: `packages/react/src/createActorHooks.ts`
 
 ### `createQuery(...)`
 
-Returns an object with:
+Returns an object with exactly:
 
 - `.useQuery(options?)`
 - `.fetch()`
+- `.prefetch()`
 - `.invalidate()`
 - `.getQueryKey()`
 - `.getCacheData(select?)`
+- `.setData(updater)`
+
+There is no `.refetch()`.
 
 Source: `packages/react/src/createQuery.ts`
 
 ### `createSuspenseQuery(...)`
 
-Returns an object with:
+Returns an object with exactly:
 
 - `.useSuspenseQuery(options?)`
 - `.fetch()`
+- `.prefetch()`
 - `.invalidate()`
 - `.getQueryKey()`
 - `.getCacheData(select?)`
+- `.setData(updater)`
 
 Source: `packages/react/src/createSuspenseQuery.ts`
 
 ### `createInfiniteQuery(...)`
 
-Returns an object with:
+Returns an object with exactly:
 
 - `.useInfiniteQuery(options?)`
 - `.fetch()`
 - `.invalidate()`
 - `.getQueryKey()`
 - `.getCacheData(select?)`
+
+No `.prefetch()`, `.setData()`, or `.refetch()` — the suspense variant is the
+same set with `.useSuspenseInfiniteQuery(options?)` instead.
 
 Source: `packages/react/src/createInfiniteQuery.ts`
 

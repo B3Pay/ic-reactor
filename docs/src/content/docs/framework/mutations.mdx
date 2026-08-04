@@ -51,14 +51,22 @@ Arguments are passed to the `mutate` function as an array (matching the canister
 
 ```tsx
 // Canister method: transfer(to: Principal, amount: nat64) -> Result<TransferReceipt, TransferError>
+import { Principal } from "@icp-sdk/core/principal"
 
 const { mutate } = useActorMutation({
   functionName: "transfer",
 })
 
-// Call with arguments as array
-mutate(["aaaaa-aa", BigInt(1000000)])
+// Call with arguments as array, in raw Candid types
+mutate([Principal.fromText("aaaaa-aa"), BigInt(1000000)])
 ```
+
+<Aside type="note">
+  Argument types follow the reactor the hooks were built from. A plain `Reactor`
+  expects Candid values (`Principal`, `bigint`), while a `DisplayReactor`
+  expects their display forms — the same call becomes
+  `mutate(["aaaaa-aa", "1000000"])`.
+</Aside>
 
 ## Side Effects
 
@@ -356,7 +364,7 @@ async function createPostInLoader(data: PostInput) {
 IC Reactor provides structured error types for mutations:
 
 ```tsx
-import { CanisterError, CallError } from "@ic-reactor/core"
+import { CanisterError, CallError } from "@ic-reactor/react"
 
 const { mutate } = useActorMutation({
   functionName: "transfer",

@@ -7,7 +7,7 @@ import type {
 import type { Principal } from "@icp-sdk/core/principal"
 import type { IDL } from "@icp-sdk/core/candid"
 
-import { _SERVICE } from "./todo.did"
+import { _SERVICE } from "./todo.did.js"
 
 export declare const idlFactory: IDL.InterfaceFactory
 export declare const canisterId: string

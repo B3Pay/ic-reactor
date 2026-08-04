@@ -8,7 +8,9 @@
     "sourceMap": true,
     "jsx": "react-jsx",
     "noEmit": false,
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    "module": "NodeNext",
+    "moduleResolution": "nodenext"
   },
   "include": ["src"],
   "exclude": [

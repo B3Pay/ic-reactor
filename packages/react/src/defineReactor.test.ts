@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest"
 import { ClientManager, Reactor, DisplayReactor } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/react-query"
-import { defineReactor } from "./defineReactor"
-import { AuthenticationManager } from "./auth/authentication-manager"
-import { IdentityAttributesManager } from "./auth/identity-attributes-manager"
+import { defineReactor } from "./defineReactor.js"
+import { AuthenticationManager } from "./auth/authentication-manager.js"
+import { IdentityAttributesManager } from "./auth/identity-attributes-manager.js"
 import { ActorMethod } from "@icp-sdk/core/agent"
 
 const idlFactory = ({ IDL }: any) =>

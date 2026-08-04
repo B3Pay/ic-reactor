@@ -6,14 +6,14 @@
  */
 
 import { IDL } from "@icp-sdk/core/candid"
-import { CandidCodec } from "./codec"
-import type { Infer } from "./composites"
+import { CandidCodec } from "./codec.js"
+import type { Infer } from "./composites.js"
 import type {
   CandidFieldManifest,
   CandidMetadata,
   CandidMethodManifest,
   CandidServiceManifest,
-} from "./types"
+} from "./types.js"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Type-Level Helpers

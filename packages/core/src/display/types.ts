@@ -4,12 +4,12 @@ import type {
   IsOptionalType,
   IsBlobType,
   UnionToTuple,
-} from "../types/transform"
+} from "../types/transform.js"
 import type {
   CandidVariantKey,
   CandidVariantValue,
   IsCandidVariant,
-} from "../types/variant"
+} from "../types/variant.js"
 
 type VariantsOf<T> =
   T extends Record<infer K extends CandidVariantKey<T>, any>

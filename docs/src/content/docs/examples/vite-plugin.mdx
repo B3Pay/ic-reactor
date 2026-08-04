@@ -54,10 +54,12 @@ export default defineConfig({
   plugins: [
     react(),
     icReactor({
+      outDir: "./frontend/lib/canisters",
       canisters: [
         {
           name: "backend",
-          didFile: "./backend/backend.did",
+          didFile: "./frontend/declarations/backend.did",
+          clientManagerPath: "../../clients",
         },
       ],
     }),
@@ -65,15 +67,49 @@ export default defineConfig({
 })
 ```
 
-By default, the plugin generates `src/lib/canisters/backend/index.generated.ts`
-plus a stable `src/lib/canisters/backend/index.ts` wrapper, which you can then
-import as:
+`outDir` defaults to `src/declarations` and `clientManagerPath` to
+`../../clients`; this example overrides `outDir` so the generated code sits next
+to the rest of the frontend. For each canister the plugin writes
+`<outDir>/backend/index.generated.ts` plus a stable `<outDir>/backend/index.ts`
+wrapper. The generated hooks are named after the canister, so you import them as:
 
 ```tsx
-import { useActorQuery } from "./lib/canisters/backend"
+import { useBackendQuery, useBackendMutation } from "./lib/canisters/backend"
 
 function App() {
-  const { data } = useActorQuery({ functionName: "greet", args: ["IC"] })
-  return <div>{data}</div>
+  const { data: greeting, isPending: greetingPending } = useBackendQuery({
+    functionName: "greet",
+    args: ["Vite Plugin"],
+  })
+
+  const {
+    data: count,
+    isPending: countPending,
+    refetch: refetchCount,
+  } = useBackendQuery({
+    functionName: "getCount",
+  })
+
+  const { mutate: increment, isPending: incrementing } = useBackendMutation({
+    functionName: "increment",
+    onSuccess: () => refetchCount(),
+  })
+
+  return (
+    <div>
+      <p>{greetingPending ? "Loading..." : greeting}</p>
+      <p>Current Count: {countPending ? "..." : count?.toString()}</p>
+      <button onClick={() => increment([])} disabled={incrementing}>
+        Increment
+      </button>
+    </div>
+  )
 }
 ```
+
+<Aside type="note">
+  The generated module exports `useBackendQuery`, `useBackendSuspenseQuery`,
+  `useBackendInfiniteQuery`, `useBackendSuspenseInfiniteQuery`,
+  `useBackendMutation`, and `useBackendMethod` — the six `createActorHooks`
+  hooks, renamed after the canister.
+</Aside>

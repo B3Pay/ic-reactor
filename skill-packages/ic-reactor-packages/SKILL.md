@@ -5,9 +5,9 @@ description: >-
   architecture. Use when work spans package ownership, package.json exports,
   tsconfig/project references, build/test scripts, generated artifacts,
   dependency boundaries, release readiness, or deciding where an AI agent should
-  start for @ic-reactor/core, @ic-reactor/react, @ic-reactor/react,
-  @ic-reactor/react, @ic-reactor/candid, @ic-reactor/parser,
-  @ic-reactor/codegen, @ic-reactor/cli, or @ic-reactor/vite-plugin.
+  start for @ic-reactor/core, @ic-reactor/react, @ic-reactor/candid,
+  @ic-reactor/parser, @ic-reactor/codegen, @ic-reactor/cli, or
+  @ic-reactor/vite-plugin.
 ---
 
 # IC Reactor Packages
@@ -39,35 +39,43 @@ entry points, verification commands, or known failure modes.
 
 ## Package Routing
 
-| Task                                                      | Start here                              |
-| --------------------------------------------------------- | --------------------------------------- |
-| Agent/query runtime, canister calls, display transforms   | `packages/core`                         |
-| React hooks, factories, `defineReactor`, `useActorMethod` | `packages/react` and `ic-reactor-hooks` |
-| Internet Identity login, auth state, identity attributes  | `packages/react/src/auth`               |
-| React auth hooks                                          | `packages/react/src/auth`               |
-| Dynamic Candid fetch/parse, metadata reactors             | `packages/candid`                       |
-| Rust/WASM Candid parsing                                  | `packages/parser`                       |
-| Declaration/reactor/client generation                     | `packages/codegen`                      |
-| `ic-reactor` executable and config schema                 | `packages/cli`                          |
-| Vite `.did` watching and environment injection            | `packages/vite-plugin`                  |
+| Task                                                      | Start here                                                                                               |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Agent/query runtime, canister calls, display transforms   | `packages/core`                                                                                          |
+| React hooks, factories, `defineReactor`, `useActorMethod` | `packages/react` and `ic-reactor-hooks`                                                                  |
+| Internet Identity login and auth state                    | `packages/react/src/auth/authentication-manager.ts`                                                      |
+| Signed OpenID identity attributes                         | `packages/react/src/auth/identity-attributes-manager.ts`                                                 |
+| React auth and identity-attribute hooks                   | `packages/react/src/hooks/createAuthHooks.ts`, `packages/react/src/auth/createIdentityAttributeHooks.ts` |
+| Dynamic Candid fetch/parse, metadata reactors             | `packages/candid`                                                                                        |
+| Rust/WASM Candid parsing                                  | `packages/parser`                                                                                        |
+| Declaration/reactor/client generation                     | `packages/codegen`                                                                                       |
+| `ic-reactor` executable and config schema                 | `packages/cli`                                                                                           |
+| Vite `.did` watching and environment injection            | `packages/vite-plugin`                                                                                   |
 
 ## Verification
 
 Use CI-aligned commands:
 
-- Root type check: `pnpm exec tsc --noEmit`
+- Format check (CI gate, covers `packages/**` only): `pnpm format:check`
+- AI context check (CI gate): `pnpm check:ai-context`
+- Type check every package including tests (CI gate): `pnpm typecheck`
 - Strict project-reference sanity: `pnpm exec tsc -b`
 - Package builds: `pnpm build`
 - Package tests: `pnpm test`
+- Published-artifact verification (pack + publint + attw + real Node import): `pnpm verify:packages`
 - Example type checks: `pnpm typecheck:examples`
 - Docs build: `pnpm docs:build`
 - Dependency audit: `corepack pnpm audit --audit-level moderate`
+
+Run `pnpm verify:packages` after any change to a package's `exports`, `files`,
+build output, or module format — in-repo consumers resolve through workspace
+symlinks, so nothing else catches a broken published artifact.
 
 For focused work, prefer filters such as:
 
 ```bash
 pnpm --filter @ic-reactor/react test
-pnpm --filter @ic-reactor/react test
+pnpm --filter @ic-reactor/core test
 pnpm --filter @ic-reactor/codegen test
 pnpm --filter @ic-reactor/vite-plugin test
 ```

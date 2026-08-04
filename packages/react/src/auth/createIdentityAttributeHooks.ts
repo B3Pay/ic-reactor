@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react"
-import type { IdentityAttributesManager } from "./identity-attributes-manager"
+import type { IdentityAttributesManager } from "./identity-attributes-manager.js"
 import type {
   IdentityAttributeResult,
   RequestIdentityAttributesParameters,
   RequestOpenIdIdentityAttributesParameters,
-} from "./types"
+} from "./types.js"
 
 export interface UseIdentityAttributesReturn {
   requestAttributes: (

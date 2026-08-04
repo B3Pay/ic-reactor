@@ -10,11 +10,17 @@ import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
 
 ## Overview
 
-The adapter supports multiple methods for obtaining Candid:
+Fetching the Candid source and compiling it to JavaScript are two separate steps, each with its own fallback chain.
 
-1. **Canister Metadata** — Query the canister's `__get_candid_interface_tmp_hack` method
-2. **didjs Canister** — Use the didjs canister to compile Candid to JavaScript
-3. **Local Parser** — Use the optional [`@ic-reactor/parser`](/v3/packages/parser) for offline compilation
+**Fetching the source:**
+
+1. **Canister metadata** (preferred) — reads the canister's `candid` metadata path
+2. **`__get_candid_interface_tmp_hack`** (fallback) — query method on the canister
+
+**Compiling to JavaScript:**
+
+1. **Local parser** (preferred) — the optional [`@ic-reactor/parser`](/v3/packages/parser) WASM module, auto-loaded when installed
+2. **didjs canister** (fallback) — remote `did_to_js` call
 
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
@@ -49,7 +55,7 @@ new CandidAdapter(config: CandidAdapterParameters)
 The didjs canister ID is auto-selected based on network:
 
 - **IC Mainnet**: `a4gq6-oaaaa-aaaab-qaa4q-cai`
-- **Local**: `a4gq6-oaaaa-aaaab-qaa4q-cai` (same, but requires local deployment)
+- **Local**: `bd3sg-teaaa-aaaaa-qaaba-cai` (must be deployed to the local replica)
 
 ---
 
@@ -93,8 +99,9 @@ console.log(candidSource)
 ```
 
 <Aside type="note">
-  This method queries the canister's metadata. It doesn't parse or compile the
-  Candid.
+  This method queries the canister's `candid` metadata first, then falls back to
+  the `__get_candid_interface_tmp_hack` query method. It doesn't parse or compile
+  the Candid.
 </Aside>
 
 ---
@@ -115,8 +122,11 @@ const { idlFactory } = await adapter.parseCandidSource(candidSource)
 
 This method:
 
-1. Tries local parsing if the parser is loaded
-2. Falls back to remote compilation via didjs canister
+1. Tries the local parser first, auto-loading `@ic-reactor/parser` if it is installed
+2. Falls back to remote compilation via the didjs canister
+
+It is the only method that returns a `CandidDefinition` — `compileLocal` and
+`compileRemote` return the compiled JavaScript source instead.
 
 ---
 
@@ -134,7 +144,7 @@ const adapter = new CandidAdapter({ clientManager })
 await adapter.loadParser()
 
 // Now compileLocal works
-const definition = adapter.compileLocal(candidSource)
+const jsSource = adapter.compileLocal(candidSource)
 ```
 
 <Aside type="tip">
@@ -146,11 +156,13 @@ const definition = adapter.compileLocal(candidSource)
 
 ### compileLocal(candidSource)
 
-Compile Candid using the local WASM parser (synchronous after loading).
+Compile Candid using the local WASM parser (synchronous after loading). Returns
+the compiled JavaScript **source string** — not a `CandidDefinition`. Use
+`parseCandidSource()` when you need an `idlFactory`.
 
 ```typescript
 // Requires loadParser() first
-const { idlFactory } = adapter.compileLocal(candidSource)
+const jsSource: string = adapter.compileLocal(candidSource)
 ```
 
 **Throws** if the parser hasn't been loaded.
@@ -159,10 +171,11 @@ const { idlFactory } = adapter.compileLocal(candidSource)
 
 ### compileRemote(candidSource)
 
-Compile Candid using the didjs canister.
+Compile Candid using the didjs canister. Also returns the compiled JavaScript
+source, wrapped in a promise.
 
 ```typescript
-const { idlFactory } = await adapter.compileRemote(candidSource)
+const jsSource = await adapter.compileRemote(candidSource) // string | undefined
 ```
 
 This is the fallback method when local parsing isn't available.
@@ -204,8 +217,10 @@ Requires the parser to be loaded.
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
 import { ClientManager } from "@ic-reactor/core"
+import { IDL } from "@icp-sdk/core/candid"
+import { QueryClient } from "@tanstack/query-core"
 
-const clientManager = new ClientManager()
+const clientManager = new ClientManager({ queryClient: new QueryClient() })
 await clientManager.initialize()
 
 const adapter = new CandidAdapter({ clientManager })
@@ -235,7 +250,7 @@ await adapter.loadParser()
 
 // All subsequent compilations are local (fast!)
 const candidSource = await adapter.fetchCandidSource(canisterId)
-const { idlFactory } = adapter.compileLocal(candidSource)
+const jsSource = adapter.compileLocal(candidSource)
 ```
 
 ### Error Handling

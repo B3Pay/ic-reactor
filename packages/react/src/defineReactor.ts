@@ -63,14 +63,14 @@ import type {
   DisplayReactorParameters,
 } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/react-query"
-import { createActorHooks, ActorHooks } from "./createActorHooks"
-import { AuthenticationManager } from "./auth/authentication-manager"
-import { IdentityAttributesManager } from "./auth/identity-attributes-manager"
-import { createIdentityAttributeHooks } from "./auth/createIdentityAttributeHooks"
-import type { UseIdentityAttributesReturn } from "./auth/createIdentityAttributeHooks"
-import { createAuthHooks } from "./hooks/createAuthHooks"
-import type { CreateAuthHooksReturn } from "./hooks/createAuthHooks"
-import type { AuthenticationManagerParameters } from "./auth/authentication-manager"
+import { createActorHooks, ActorHooks } from "./createActorHooks.js"
+import { AuthenticationManager } from "./auth/authentication-manager.js"
+import { IdentityAttributesManager } from "./auth/identity-attributes-manager.js"
+import { createIdentityAttributeHooks } from "./auth/createIdentityAttributeHooks.js"
+import type { UseIdentityAttributesReturn } from "./auth/createIdentityAttributeHooks.js"
+import { createAuthHooks } from "./hooks/createAuthHooks.js"
+import type { CreateAuthHooksReturn } from "./hooks/createAuthHooks.js"
+import type { AuthenticationManagerParameters } from "./auth/authentication-manager.js"
 
 /** Options shared by both the standard and display variants of defineReactor. */
 export interface DefineReactorSharedParameters

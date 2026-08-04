@@ -17,16 +17,16 @@
  */
 
 // Re-export classes and types for advanced consumers
-export { CandidCodec } from "./codec"
-export { CandidPrimitiveCodec } from "./primitives"
+export { CandidCodec } from "./codec.js"
+export { CandidPrimitiveCodec } from "./primitives.js"
 export {
   CandidOptCodec,
   CandidVecCodec,
   CandidRecordCodec,
   CandidVariantCodec,
   CandidTupleCodec,
-} from "./composites"
-export { CandidMethodCodec, CandidServiceCodec } from "./service"
+} from "./composites.js"
+export { CandidMethodCodec, CandidServiceCodec } from "./service.js"
 export type {
   CandidMetadata,
   CandidValidationMetadata,
@@ -35,7 +35,7 @@ export type {
   CandidMethodManifest,
   CandidFieldManifest,
   CandidServiceManifest,
-} from "./types"
+} from "./types.js"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // `c` Namespace
@@ -84,11 +84,11 @@ import {
   reserved,
   empty,
   blob,
-} from "./primitives"
+} from "./primitives.js"
 
-import { opt, vec, record, variant, tuple } from "./composites"
-import { query, update, oneway, service } from "./service"
-import type { Infer } from "./service"
+import { opt, vec, record, variant, tuple } from "./composites.js"
+import { query, update, oneway, service } from "./service.js"
+import type { Infer } from "./service.js"
 
 /**
  * The `c` namespace — Zod-inspired Candid codec builder.
@@ -173,5 +173,5 @@ export namespace c {
   export type infer<T> = Infer<T>
 
   /** Infer the actor-like interface from a service codec. */
-  export type ServiceOf<T> = import("./service").ServiceOf<T>
+  export type ServiceOf<T> = import("./service.js").ServiceOf<T>
 }

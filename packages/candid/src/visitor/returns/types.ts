@@ -5,7 +5,7 @@ import type {
   ActorMethodReturnType,
 } from "@ic-reactor/core"
 import type { IDL } from "@icp-sdk/core/candid"
-import type { VisitorDataType, TextFormat, NumberFormat } from "../types"
+import type { VisitorDataType, TextFormat, NumberFormat } from "../types.js"
 
 // ════════════════════════════════════════════════════════════════════════════
 // Core Types & Formats

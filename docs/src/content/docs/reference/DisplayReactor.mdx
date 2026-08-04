@@ -136,7 +136,7 @@ const backend = new DisplayReactor<_SERVICE>({
 })
 
 // Pass it to createActorHooks - all hooks use display types
-const { useActorQuery, useActorMutation, reactor } = createActorHooks(backend)
+const { useActorQuery, useActorMutation } = createActorHooks(backend)
 ```
 
 ## Type Transformations

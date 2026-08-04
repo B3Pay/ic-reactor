@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import * as vitePluginModule from "./index"
-import type { IcReactorPluginOptions } from "./index"
+import * as vitePluginModule from "./index.js"
+import type { IcReactorPluginOptions } from "./index.js"
 import path from "path"
 import { execFileSync } from "child_process"
 import { runCanisterPipeline } from "@ic-reactor/codegen"

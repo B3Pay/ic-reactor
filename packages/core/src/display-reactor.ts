@@ -1,11 +1,11 @@
-import { Reactor } from "./reactor"
+import { Reactor } from "./reactor.js"
 import {
   didToDisplayCodec,
   transformArgsWithCodec,
   transformResultWithCodec,
   didTypeFromArray,
   ActorDisplayCodec,
-} from "./display"
+} from "./display/index.js"
 import {
   ActorMethodParameters,
   ActorMethodReturnType,
@@ -15,15 +15,15 @@ import {
   ActorMethodCodecs,
   BaseActor,
   TransformKey,
-} from "./types/reactor"
-import { extractOkResult } from "./utils/helper"
-import { ValidationError } from "./errors"
+} from "./types/reactor.js"
+import { extractOkResult } from "./utils/helper.js"
+import { ValidationError } from "./errors/index.js"
 import {
   DisplayReactorParameters,
   DisplayValidator,
   ValidationResult,
   Validator,
-} from "./types/display-reactor"
+} from "./types/display-reactor.js"
 
 // ============================================================================
 // DisplayReactor

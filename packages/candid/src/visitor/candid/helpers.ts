@@ -1,4 +1,4 @@
-import type { FormFieldNode } from "./types"
+import type { FormFieldNode } from "./types.js"
 
 export function cloneField<T extends FormFieldNode>(field: T): T {
   return field.type === "vector" ||

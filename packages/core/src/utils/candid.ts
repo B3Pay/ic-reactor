@@ -3,7 +3,7 @@ import {
   CandidVariantKey,
   CandidVariantValue,
   CandidKeyValue,
-} from "../types"
+} from "../types/index.js"
 
 const VARIANT_DISCRIMINATOR = "_type"
 

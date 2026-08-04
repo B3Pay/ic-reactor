@@ -1,6 +1,6 @@
 import { useSyncExternalStore, useEffect, useRef, useMemo } from "react"
-import type { AuthenticationManager } from "../auth/authentication-manager"
-import type { AuthState, AuthenticationSignInOptions } from "../auth/types"
+import type { AuthenticationManager } from "../auth/authentication-manager.js"
+import type { AuthState, AuthenticationSignInOptions } from "../auth/types.js"
 import type { AgentState } from "@ic-reactor/core"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { Identity } from "@icp-sdk/core/agent"

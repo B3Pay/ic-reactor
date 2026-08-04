@@ -168,7 +168,7 @@ return (
 ### Error Handling
 
 ```tsx
-import { CanisterError, CallError } from "@ic-reactor/core"
+import { CanisterError, CallError } from "@ic-reactor/react"
 
 const { data, error, isError } = useActorQuery({
   functionName: "getBalance",
@@ -209,8 +209,12 @@ const { data } = useActorQuery({
   args: [],
   queryKey: ["version", "2"],
 })
-// Full key: [canisterId, "getData", "version", "2"]
+// Full key: [canisterId, "getData", "[]", "version", "2"]
 ```
+
+The args segment is the JSON-serialized `args` array, so an empty `args: []`
+still contributes the literal `"[]"`. Custom `queryKey` segments are appended
+after it, never in place of the identity prefix.
 
 ### Dependent Queries
 
@@ -247,9 +251,11 @@ The types are automatically inferred from your actor interface, so you typically
 ## Notes
 
 <Aside type="note">
-  The query key is automatically generated from `[canisterId, functionName,
-  ...args]`. This ensures that queries with different arguments are cached
-  separately.
+  The query key is automatically generated as `[canisterId, functionName,
+  JSON.stringify(args), ...queryKey]`, with an extra `{ effectiveTarget }`
+  segment inserted after `functionName` when `callConfig` targets a different
+  canister or subnet. Arguments are one single serialized segment, so queries
+  with different arguments are cached separately.
 </Aside>
 
 <Aside type="tip">

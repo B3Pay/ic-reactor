@@ -64,11 +64,11 @@ logout() // Clears session and updates state
 
 ### authenticate()
 
-Authenticates the user without a popup. Useful for re-authenticating an existing session:
+Restores an existing session without a popup. Resolves to the recovered `Identity`, or `undefined` when there is no session to restore (or the optional `@icp-sdk/auth` peer is not installed):
 
 ```typescript
 const { authenticate } = useAuth()
-await authenticate()
+const identity = await authenticate()
 ```
 
 ## Return Value
@@ -76,8 +76,8 @@ await authenticate()
 | Property           | Type                          | Description                                            |
 | ------------------ | ----------------------------- | ------------------------------------------------------ |
 | `login`            | `(options?) => Promise<void>` | Triggers the login flow                                |
-| `logout`           | `() => Promise<void>`         | Logs the user out                                      |
-| `authenticate`     | `() => Promise<void>`         | Authenticates without popup                            |
+| `logout`           | `(options?: { returnTo?: string }) => Promise<void>` | Logs the user out               |
+| `authenticate`     | `() => Promise<Identity \| undefined>` | Restores an existing session without a popup  |
 | `isAuthenticated`  | `boolean`                     | Whether the user is currently authenticated            |
 | `isAuthenticating` | `boolean`                     | Whether an authentication process is in progress       |
 | `identity`         | `Identity \| null`            | The current user's `@icp-sdk/core/agent` Identity      |

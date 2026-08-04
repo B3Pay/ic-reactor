@@ -7,7 +7,7 @@
  */
 
 import type { IDL } from "@icp-sdk/core/candid"
-import type { CandidMetadata } from "./types"
+import type { CandidMetadata } from "./types.js"
 
 /**
  * Base class for all Candid codecs.

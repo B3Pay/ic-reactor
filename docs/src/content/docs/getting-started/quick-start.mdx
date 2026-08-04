@@ -63,9 +63,11 @@ This tutorial walks you through creating your first IC Reactor integration with 
    ```
 
    <Aside type="tip">
-     When you start your dev server, the plugin will create a folder at
-     `src/declarations/backend/` containing `index.ts` (the reactor) and
-     `backend.did.d.ts` (the types).
+     When you start your dev server, the plugin creates
+     `src/declarations/backend/` containing `index.generated.ts` (the managed
+     reactor and hooks), a stable `index.ts` wrapper that re-exports it, and a
+     `declarations/` folder with `backend.js`, `backend.d.ts`, and a copy of
+     `backend.did`.
    </Aside>
 
 3. ## Initialize ClientManager
@@ -78,11 +80,13 @@ This tutorial walks you through creating your first IC Reactor integration with 
    import { QueryClient } from "@tanstack/react-query"
 
    export const queryClient = new QueryClient()
-   export const clientManager = new ClientManager({
-     queryClient,
-     withCanisterEnv: true, // Enable cookie-based env injection
-   })
+   export const clientManager = new ClientManager({ queryClient })
    ```
+
+   <Aside type="note">
+     `ClientManager` reads the plugin's `ic_env` cookie in the browser on its
+     own — there is no flag to enable it.
+   </Aside>
 
 4. ## Fetch data with Generated Hooks
 
@@ -145,14 +149,33 @@ Using the Vite plugin provides several advantages out-of-the-box:
 - **Auto-Canister IDs**: Canister IDs are automatically detected from your local network through `icp-cli` when environment injection is enabled.
 - **Identity Support**: Works seamlessly with local Internet Identity setups.
 
-## Environment Variables
+## Canister IDs
 
-The plugin handles environment variables for you in development. For production, you might still want to set canister IDs in your environment file:
+In development the plugin injects local canister IDs through the `ic_env`
+cookie, and the generated reactor resolves its own ID from that cookie using the
+key `PUBLIC_CANISTER_ID:backend`.
 
-```bash
-# .env.local (for Vite)
-VITE_BACKEND_CANISTER_ID=rrkah-fqaaa-aaaaa-aaaaq-cai
+For production, pin the ID on the canister entry in `vite.config.ts`. The
+generated reactor then emits it directly and no cookie or environment variable
+is involved:
+
+```typescript
+icReactor({
+  canisters: [
+    {
+      name: "backend",
+      didFile: "src/backend/backend.did",
+      canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+    },
+  ],
+})
 ```
+
+<Aside type="caution">
+  IC Reactor never reads `VITE_*` variables itself. If you prefer to keep IDs in
+  `.env`, you have to pass the value into a hand-written reactor yourself — see
+  [React Setup](/v3/framework/react-setup).
+</Aside>
 
 ## What's Next?
 

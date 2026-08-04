@@ -96,10 +96,56 @@ export const {
 })
 ```
 
-Share one agent across canisters by passing the returned `clientManager` (or
-`queryClient`) into the next `defineReactor` call. Drop down to manual
-`ClientManager` + `Reactor` + `createActorHooks` only when you need finer control
-over construction order.
+Share one agent **and one Internet Identity session** across canisters by passing
+the returned `clientManager` **and** `authentication` into the next
+`defineReactor` call:
+
+```ts
+const ledger = defineReactor<_LEDGER>({ name: "ledger", idlFactory: ledgerIdl })
+
+const index = defineReactor<_INDEX>({
+  name: "index",
+  idlFactory: indexIdl,
+  clientManager: ledger.clientManager,
+  authentication: ledger.authentication, // one Internet Identity session
+})
+```
+
+Passing `authentication` alone is enough — its `clientManager` is adopted.
+Passing a _different_ `clientManager` alongside it throws, because sign-in would
+update one agent while the reactor calls through another.
+
+Drop down to manual `ClientManager` + `Reactor` + `createActorHooks` only when
+you need finer control over construction order.
+
+### 0b. Auth Hooks (manual setup)
+
+`defineReactor` already returns `useAuth`, `useAgentState`, `useUserPrincipal`,
+and `useIdentityAttributes`. When wiring auth by hand, note that the two hook
+factories take **managers**, not a `ClientManager`:
+
+```ts
+import {
+  AuthenticationManager,
+  IdentityAttributesManager,
+  createAuthHooks,
+  createIdentityAttributeHooks,
+} from "@ic-reactor/react"
+import { clientManager } from "./reactor"
+
+export const authentication = new AuthenticationManager({ clientManager })
+export const identityAttributes = new IdentityAttributesManager(authentication)
+
+export const { useAuth, useAgentState, useUserPrincipal } =
+  createAuthHooks(authentication)
+
+export const { useIdentityAttributes } =
+  createIdentityAttributeHooks(identityAttributes)
+```
+
+`createAuthHooks` returns exactly `useAuth`, `useAgentState`, and
+`useUserPrincipal`; `useIdentityAttributes` only ever comes from
+`createIdentityAttributeHooks`.
 
 ### 1. Generic Actor Hooks (component-first)
 
@@ -146,12 +192,15 @@ Use these instead:
 
 ## Inspect These Files First
 
+- `packages/react/src/defineReactor.ts`
 - `packages/react/src/createActorHooks.ts`
 - `packages/react/src/createQuery.ts`
 - `packages/react/src/createSuspenseQuery.ts`
 - `packages/react/src/createInfiniteQuery.ts`
 - `packages/react/src/createMutation.ts`
 - `packages/react/src/hooks/useActorMethod.ts`
+- `packages/react/src/hooks/createAuthHooks.ts`
+- `packages/react/src/auth/createIdentityAttributeHooks.ts`
 - `examples/all-in-one-demo/src/lib/factories.ts`
 - `examples/tanstack-router/src/canisters/ledger/hooks/`
 - `packages/react/README.md`

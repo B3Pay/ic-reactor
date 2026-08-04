@@ -16,7 +16,7 @@ import {
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { normalizeQueryData } from "../utils"
+import { normalizeQueryData } from "../utils.js"
 
 /**
  * Parameters for useActorInfiniteQuery hook.

@@ -6,7 +6,7 @@ import {
   extractValidationErrors,
   handleValidationError,
   isValidationError,
-} from "../src/validation"
+} from "../src/validation.js"
 import { ValidationError } from "@ic-reactor/core"
 
 describe("Validation Utilities", () => {

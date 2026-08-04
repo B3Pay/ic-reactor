@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, vi } from "vitest"
-import { DisplayReactor, ClientManager } from "../src"
+import { DisplayReactor, ClientManager } from "../src/index.js"
 import { IDL } from "@icp-sdk/core/candid"
 import { QueryClient } from "@tanstack/query-core"
 import { ActorMethod } from "@icp-sdk/core/agent"
@@ -170,8 +170,6 @@ describe("DisplayReactor Codec Functionality", () => {
 
       // Verify arg was transformed to Candid (500n)
       expect(spySimple).toHaveBeenCalled()
-      // The first call to executeQuery (simple_method)
-      const callArgs = spySimple.mock.calls[0]
       // Result transformation should happen after extraction
 
       // Verify result is display type ("1000")
@@ -192,9 +190,9 @@ describe("DisplayReactor Codec Functionality", () => {
         [{ Ok: { id: 123n, status: { Active: null } } }]
       )
 
-      const spyComplex = vi
-        .spyOn(reactor as any, "executeQuery")
-        .mockResolvedValue(mockReturnComplex)
+      vi.spyOn(reactor as any, "executeQuery").mockResolvedValue(
+        mockReturnComplex
+      )
 
       // Call with display type args
       const resultComplex = await reactor.callMethod({

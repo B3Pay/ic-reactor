@@ -3,7 +3,7 @@ import { ActorMethod, ActorSubclass, HttpAgent } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { MetadataDisplayReactor } from "../../src/metadata-display-reactor"
+import { MetadataDisplayReactor } from "../../src/metadata-display-reactor.js"
 import {
   MethodMeta,
   NumberNode,
@@ -14,7 +14,7 @@ import {
   TupleNode,
   VariantNode,
   VectorNode,
-} from "../../src/visitor/returns"
+} from "../../src/visitor/returns/index.js"
 
 // ════════════════════════════════════════════════════════════════════════════
 // Test Actor Interface

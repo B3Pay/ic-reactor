@@ -44,14 +44,15 @@ new CandidReactor(config: CandidReactorParameters)
 
 ### Parameters
 
-| Parameter       | Type               | Required | Description                                      |
-| --------------- | ------------------ | -------- | ------------------------------------------------ |
-| `clientManager` | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`           |
-| `name`          | `string`           | Yes      | Required for logging & environment lookup        |
-| `canisterId`    | `CanisterId`       | No       | Optional if defined in environment               |
-| `candid`        | `string`           | No       | Candid service definition (avoids network fetch) |
-| `idlFactory`    | `InterfaceFactory` | No       | IDL factory (if already available)               |
-| `actor`         | `A`                | No       | Existing actor instance                          |
+| Parameter        | Type               | Required | Description                                      |
+| ---------------- | ------------------ | -------- | ------------------------------------------------ |
+| `clientManager`  | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`           |
+| `name`           | `string`           | Yes      | Required for logging & environment lookup        |
+| `canisterId`     | `CanisterId`       | No       | Optional if defined in environment               |
+| `candid`         | `string`           | No       | Candid service definition (avoids network fetch) |
+| `idlFactory`     | `InterfaceFactory` | No       | IDL factory (if already available)               |
+| `adapter`        | `CandidAdapter`    | No       | Reuse an existing `CandidAdapter` instance       |
+| `pollingOptions` | `PollingOptions`   | No       | Update-call polling configuration                |
 
 ### Initialization Options
 

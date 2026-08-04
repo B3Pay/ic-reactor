@@ -43,8 +43,8 @@ import {
   InfiniteQueryObserverOptions,
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { NoInfer } from "./types"
-import { mergeFactoryQueryKey, normalizeQueryData } from "./utils"
+import { NoInfer } from "./types.js"
+import { mergeFactoryQueryKey, normalizeQueryData } from "./utils.js"
 
 type InfiniteQueryFactoryFn<
   Service,

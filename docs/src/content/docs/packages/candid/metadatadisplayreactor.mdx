@@ -308,37 +308,8 @@ The system automatically detects formats from field labels:
 
 ### Basic Setup
 
-There are two ways to create a MetadataDisplayReactor:
+Create the reactor with `new`, then initialize it:
 
-<Tabs>
-  <TabItem label="Factory Function (Recommended)">
-```typescript
-import { ClientManager } from "@ic-reactor/core"
-import { createMetadataReactor } from "@ic-reactor/candid"
-import { QueryClient } from "@tanstack/query-core"
-
-// 1. Create client manager
-const clientManager = new ClientManager({
-queryClient: new QueryClient(),
-withProcessEnv: true,
-})
-
-await clientManager.initialize()
-
-// 2. Create and initialize reactor in one step
-const reactor = await createMetadataReactor({
-canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger
-clientManager,
-name: "ICPLedger",
-})
-
-// 3. Get available methods
-const methods = reactor.getMethodNames()
-console.log(methods) // \["icrc1_balance_of", "icrc1_transfer", ...\]
-
-````
-  </TabItem>
-  <TabItem label="Manual Initialization">
 ```typescript
 import { ClientManager } from "@ic-reactor/core"
 import { MetadataDisplayReactor } from "@ic-reactor/candid"
@@ -347,7 +318,6 @@ import { QueryClient } from "@tanstack/query-core"
 // 1. Create client manager
 const clientManager = new ClientManager({
   queryClient: new QueryClient(),
-  withProcessEnv: true,
 })
 
 await clientManager.initialize()
@@ -364,11 +334,8 @@ await reactor.initialize()
 
 // 4. Get available methods
 const methods = reactor.getMethodNames()
-console.log(methods) // \["icrc1_balance_of", "icrc1_transfer", ...\]
-````
-
-  </TabItem>
-</Tabs>
+console.log(methods) // ["icrc1_balance_of", "icrc1_transfer", ...]
+```
 
 ### Building Dynamic Forms
 
@@ -600,10 +567,10 @@ console.log(result)
 //   raw: 1000000000n
 // }
 
-// Or get metadata and resolve manually
+// The resolved result keeps the raw canister value, so you can resolve it
+// again yourself with the same metadata
 const outputMeta = reactor.getOutputMeta("icrc1_balance_of")
-const rawResult = await actor.icrc1_balance_of({ owner: principal })
-const resolved = outputMeta.resolve(rawResult)
+const resolved = outputMeta?.resolve(result.raw)
 ```
 
 ### Dynamic Result Rendering
@@ -839,7 +806,6 @@ async function createCanisterExplorer(canisterId: string) {
   // Setup
   const clientManager = new ClientManager({
     queryClient: new QueryClient(),
-    withProcessEnv: true,
   })
   await clientManager.initialize()
 
@@ -966,17 +932,17 @@ console.log("Balance:", balance)
 <LinkCard
   title="CandidDisplayReactor"
   description="The base class for display transformations without metadata"
-  href="/candid/display-reactor"
+  href="/v3/packages/candid/candiddisplayreactor"
 />
 
 <LinkCard
   title="TanStack Form Integration"
   description="Using ic-reactor with TanStack Form for type-safe forms"
-  href="/guides/tanstack-form"
+  href="/v3/examples/tanstack-form"
 />
 
 <LinkCard
-  title="Display Codec"
+  title="DisplayReactor"
   description="Understanding the display type transformation system"
-  href="/core/display-codec"
+  href="/v3/reference/displayreactor"
 />

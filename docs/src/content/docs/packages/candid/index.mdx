@@ -49,7 +49,7 @@ Most IC applications know which canisters they'll interact with at build time. B
 ## Installation
 
 ```bash
-npm install @ic-reactor/candid @ic-reactor/core
+npm install @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core zod
 ```
 
 For local parsing (recommended for production):
@@ -67,8 +67,9 @@ The easiest way to interact with canisters dynamically:
 ```typescript
 import { CandidReactor } from "@ic-reactor/candid"
 import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
 
-const clientManager = new ClientManager()
+const clientManager = new ClientManager({ queryClient: new QueryClient() })
 await clientManager.initialize()
 
 // Create a reactor for any canister
@@ -151,10 +152,10 @@ const definition = await adapter.getCandidDefinition(
 
 ### Candid Fetching Methods
 
-The adapter tries multiple methods to get a canister's Candid:
+The adapter tries multiple methods to get a canister's Candid source:
 
-1. **Canister Metadata** (preferred) — Queries `__get_candid_interface_tmp_hack`
-2. **didjs Canister** (fallback) — Uses the didjs canister to compile Candid to JS
+1. **Canister metadata** (preferred) — reads the canister's `candid` metadata path
+2. **`__get_candid_interface_tmp_hack`** (fallback) — query method on the canister
 
 <Aside type="tip">
   The metadata method is faster and doesn't require external dependencies. Most
@@ -164,12 +165,14 @@ The adapter tries multiple methods to get a canister's Candid:
 ### Local vs Remote Parsing
 
 ```typescript
-// Remote parsing (default) — Uses didjs canister
-const definition = await adapter.parseCandidSource(candidSource)
+// Automatic — local parser when it can be loaded, otherwise the didjs canister.
+// Returns a CandidDefinition ({ idlFactory, init? }).
+const parsed = await adapter.parseCandidSource(candidSource)
 
-// Local parsing — Faster, offline, requires @ic-reactor/parser
+// Local only — faster, offline, requires @ic-reactor/parser.
+// Returns the compiled JavaScript source as a string.
 await adapter.loadParser()
-const definition = adapter.compileLocal(candidSource)
+const jsSource = adapter.compileLocal(candidSource)
 ```
 
 <Aside type="note">

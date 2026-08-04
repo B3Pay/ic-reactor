@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { ResultFieldVisitor } from "./index"
+import { ResultFieldVisitor } from "./index.js"
 import type {
   ResultNode,
   ResolvedNode,
@@ -19,7 +19,7 @@ import type {
   FuncNode,
   MethodMeta,
   ServiceMeta,
-} from "./types"
+} from "./types.js"
 import { IDL } from "@icp-sdk/core/candid"
 
 describe("ResultFieldVisitor", () => {

@@ -53,7 +53,7 @@ Parser lane:
 | `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, `@tanstack/query-core` cache integration | `packages/core/src/`, `packages/core/README.md`                                               |
 | `@ic-reactor/react`       | React hook factories, query/mutation factories, `useActorMethod`, Internet Identity auth, and identity-attribute hooks | `packages/react/src/`, `packages/react/README.md`, `skill-packages/ic-reactor-hooks/SKILL.md` |
 | `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                                      | `packages/candid/src/`, `packages/candid/README.md`                                           |
-| `@ic-reactor/parser`      | Rust/WASM Candid parser and published web/node/bundler outputs                                                     | `packages/parser/src/`, `packages/parser/README.md`                                           |
+| `@ic-reactor/parser`      | Rust/WASM Candid parser; one `.` entrypoint with browser/node conditional exports                                 | `packages/parser/src/`, `packages/parser/README.md`                                           |
 | `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline used by CLI and Vite plugin                                  | `packages/codegen/src/`, `packages/codegen/README.md`                                         |
 | `@ic-reactor/cli`         | `ic-reactor` executable and config schema                                                                          | `packages/cli/src/`, `packages/cli/schema.json`                                               |
 | `@ic-reactor/vite-plugin` | Vite `.did` watching, generation, local environment-cookie injection                                               | `packages/vite-plugin/src/`, `packages/vite-plugin/README.md`                                 |
@@ -62,10 +62,11 @@ Parser lane:
 
 | Task                                      | Preferred reference                                                                                                |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| One-call React setup (reactor + hooks)    | `defineReactor` in `packages/react/src/defineReactor.ts`, `skill-packages/ic-reactor-hooks/SKILL.md`               |
 | Build a React canister integration        | `packages/react/README.md`, `docs/src/content/docs/framework/react-setup.mdx`                                      |
 | Choose inside-React vs outside-React APIs | `skill-packages/ic-reactor-hooks/SKILL.md`, `llms-full.txt`                                                        |
 | Add reusable query/mutation factories     | `docs/src/content/docs/reference/factories/overview.mdx`, `skill-packages/ic-reactor-hooks/references/patterns.md` |
-| Add auth/login or identity attributes     | `packages/react/src/auth/`, `packages/react/README.md`, `docs/src/content/docs/guides/authentication.mdx`          |
+| Add auth/login or identity attributes     | `AuthenticationManager` + `createAuthHooks`, `IdentityAttributesManager` + `createIdentityAttributeHooks` in `packages/react/src/auth/`, `docs/src/content/docs/guides/authentication.mdx` |
 | Change generated hook output              | `packages/codegen/src/`, then verify CLI/Vite consumers                                                            |
 | Configure Vite generation                 | `packages/vite-plugin/README.md`, `docs/src/content/docs/packages/vite-plugin.mdx`                                 |
 | Configure CLI generation                  | `packages/cli/README.md`, `docs/src/content/docs/packages/cli.mdx`                                                 |
@@ -86,14 +87,30 @@ declarations, and generated hook files. For codegen behavior, edit
 
 | Change                     | Minimum verification                                                                             |
 | -------------------------- | ------------------------------------------------------------------------------------------------ |
-| Docs only                  | `pnpm format:check`, `pnpm docs:build`                                                           |
+| Docs only                  | `pnpm format:check`, `pnpm check:ai-context`, `pnpm docs:build`                                  |
 | Skill/frontmatter/metadata | YAML/frontmatter parse check plus `pnpm format:check`                                            |
+| AI context files           | `pnpm check:ai-context`                                                                          |
 | React hooks/factories      | `pnpm --filter @ic-reactor/react test`                                                           |
 | Runtime core               | `pnpm --filter @ic-reactor/core test`                                                            |
 | React auth                 | `pnpm --filter @ic-reactor/react test`                                                           |
 | Codegen/CLI/Vite output    | `pnpm --filter @ic-reactor/codegen test` plus affected CLI/Vite checks                           |
-| Broad package change       | `pnpm exec tsc --noEmit`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`                          |
+| Broad package change       | `pnpm typecheck`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`                                  |
+| Package exports/build output/module format | `pnpm verify:packages`                                                           |
 | Examples                   | `pnpm typecheck:examples`                                                                        |
+
+Notes:
+
+- `pnpm format:check` globs `packages/**` only. Root markdown, `docs/`,
+  `examples/`, and `skill-packages/` are outside Prettier's reach.
+- `pnpm check:ai-context` is a CI gate: it asserts the package versions listed
+  above match each `package.json` and that every `packages/*/llms.txt` exists.
+- `pnpm typecheck` runs each package's own `typecheck` script, so `src` **and**
+  tests are covered. The root `tsconfig.json` is references-only, so
+  `pnpm exec tsc --noEmit` at the root checks nothing.
+- `pnpm verify:packages` packs every publishable package, installs the tarballs
+  outside the workspace, imports/requires each entry point in real Node, and
+  runs `publint` + `attw`. In-repo consumers resolve through workspace symlinks,
+  so this is the only check that sees the published artifact.
 
 ## Inside React vs Outside React
 

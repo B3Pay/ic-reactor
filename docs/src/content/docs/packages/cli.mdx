@@ -41,7 +41,7 @@ npx ic-reactor init
 Options:
 
 - `-y, --yes`: Skip prompts and use defaults.
-- `-o, --out-dir <path>`: Output directory for generated hooks (default: `src/declarations`).
+- `-o, --out-dir <path>`: Output directory for generated files (default: `src/declarations`). Only applied together with `-y`; the interactive flow prompts for it instead.
 
 ### `generate`
 
@@ -55,16 +55,18 @@ npx ic-reactor generate
 Options:
 
 - `-c, --canister <name>`: Generate only for a specific canister.
-- `--clean`: Clean output directory before generating.
-- `--bindgen-only`: Generate only `.did`, `.did.d.ts`, and `.js` declarations.
+- `--bindgen-only`: Generate only the files under `declarations/`.
 
-For each canister, the CLI writes:
+For each canister, the CLI writes into `<outDir>/<canister>/`:
 
-- `<canister>.did` copy
-- `<canister>.did.d.ts` TypeScript service types
-- `<canister>.js` IDL factory module
+- `declarations/<did-basename>.did` copy
+- `declarations/<did-basename>.d.ts` TypeScript service types
+- `declarations/<did-basename>.js` IDL factory module
 - `index.generated.ts` managed reactor implementation, with optional typed hook exports
 - `index.ts` user-facing entrypoint
+
+Declaration filenames follow the `.did` file's basename, not the canister name,
+and `declarations/` is recreated from scratch on every run.
 
 The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
 once, then preserves it unless the file is still the default wrapper or an

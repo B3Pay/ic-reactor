@@ -51,14 +51,17 @@ new CandidDisplayReactor<A = BaseActor, T extends TransformKey = "display">(
 
 ### Parameters
 
-| Parameter       | Type                        | Required | Description                                      |
-| --------------- | --------------------------- | -------- | ------------------------------------------------ |
-| `clientManager` | `ClientManager`             | Yes      | Client manager from `@ic-reactor/core`           |
-| `name`          | `string`                    | Yes      | Required for logging & environment lookup        |
-| `canisterId`    | `CanisterId`                | No       | Optional if defined in environment               |
-| `candid`        | `string`                    | No       | Candid service definition (avoids network fetch) |
-| `idlFactory`    | `InterfaceFactory`          | No       | IDL factory (if already available)               |
-| `validators`    | `Record<string, Validator>` | No       | Initial validators for method arguments          |
+| Parameter        | Type                                                    | Required | Description                                          |
+| ---------------- | ------------------------------------------------------- | -------- | ---------------------------------------------------- |
+| `clientManager`  | `ClientManager`                                          | Yes      | Client manager from `@ic-reactor/core`               |
+| `name`           | `string`                                                 | Yes      | Required for logging & environment lookup            |
+| `canisterId`     | `CanisterId`                                             | No       | Optional if defined in environment                   |
+| `candid`         | `string`                                                 | No       | Candid service definition (avoids network fetch)     |
+| `idlFactory`     | `InterfaceFactory`                                       | No       | IDL factory (if already available)                   |
+| `adapter`        | `CandidAdapter`                                          | No       | Reuse an existing `CandidAdapter` instance           |
+| `funcClass`      | `{ methodName: string; func: IDL.FuncClass }`             | No       | Register a single `IDL.FuncClass` (no `initialize()`) |
+| `pollingOptions` | `PollingOptions`                                         | No       | Update-call polling configuration                    |
+| `validators`     | `Partial<Record<FunctionName<A>, DisplayValidator<A, M>>>` | No       | Initial validators for method arguments              |
 
 ### Initialization Options
 
@@ -112,7 +115,7 @@ new CandidDisplayReactor<A = BaseActor, T extends TransformKey = "display">(
 | `nat64`, `int64` | `string`     | `1234567890n` → `"1234567890"`           |
 | `principal`      | `string`     | `Principal.fromText(...)` → `"aaaaa-aa"` |
 | `opt T`          | `T \| null`  | `[value]` → `value`, `[]` → `null`       |
-| `blob` (small)   | `string`     | Hex-encoded string                       |
+| `blob` (≤ 512 B) | `string`     | Hex-encoded string (no `0x` prefix)      |
 
 <Aside type="tip">
   These transformations work bidirectionally! You can pass display types as

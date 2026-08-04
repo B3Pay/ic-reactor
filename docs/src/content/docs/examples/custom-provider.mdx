@@ -43,30 +43,55 @@ This example demonstrates how to build a **Token Viewer** where the user can inp
 
 ### The Dynamic Provider
 
-```typescript
-export const ICRC1Context = createContext<ActorHooks | null>(null)
+```tsx
+// src/ICRC1Provider.tsx
+import { PropsWithChildren, createContext, useMemo } from "react"
+import { Reactor, createActorHooks, ActorHooks } from "@ic-reactor/react"
+import { idlFactory, type ICRC1 } from "./declarations/icrc1"
+import { clientManager } from "./reactor"
 
-export const ICRC1Provider = ({ canisterId, children }) => {
-  const [hooks, setHooks] = useState<ActorHooks | null>(null)
+// `ActorHooks` takes two type parameters: the service, and the transform
+// the reactor was built with ("candid" here, "display" for a DisplayReactor).
+type ICRC1Hooks = ActorHooks<ICRC1, "candid">
 
-  useEffect(() => {
-    // Create a new reactor when canisterId changes
-    const reactor = new DisplayReactor({
+interface ICRC1ContextValue {
+  canisterId: string
+  hooks: ICRC1Hooks
+}
+
+const ICRC1Context = createContext<ICRC1ContextValue | null>(null)
+
+interface ICRC1ProviderProps extends PropsWithChildren {
+  canisterId: string
+}
+
+const ICRC1Provider: React.FC<ICRC1ProviderProps> = ({
+  children,
+  canisterId,
+}) => {
+  // Rebuild the reactor and its hooks whenever the canister ID changes
+  const hooks = useMemo<ICRC1Hooks>(() => {
+    const reactor = new Reactor<ICRC1>({
+      name: "icrc1",
       clientManager,
       canisterId,
       idlFactory,
     })
 
-    // Generate hooks for this specific reactor
-    setHooks(createActorHooks(reactor))
+    return createActorHooks(reactor)
   }, [canisterId])
 
-  if (!hooks) return <div>Initializing...</div>
-
   return (
-    <ICRC1Context.Provider value={hooks}>
+    <ICRC1Context.Provider value={{ canisterId, hooks }}>
       {children}
     </ICRC1Context.Provider>
   )
 }
+
+export default ICRC1Provider
 ```
+
+<Aside type="caution">
+  `name` is required on every reactor, and `ActorHooks` has no default type
+  parameters — a bare `ActorHooks` will not compile.
+</Aside>

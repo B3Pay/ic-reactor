@@ -40,4 +40,4 @@ Do not hand-edit generated output.
 ## Full References
 
 - Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Core docs: https://ic-reactor.b3pay.net/v4/packages/core
+- Core docs: https://ic-reactor.b3pay.net/v3/packages/core

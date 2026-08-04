@@ -4,14 +4,14 @@ import type {
   IdentityAttributeResult,
   RequestIdentityAttributesParameters,
   RequestOpenIdIdentityAttributesParameters,
-} from "./types"
+} from "./types.js"
 
-import { AuthenticationManager } from "./authentication-manager"
+import { AuthenticationManager } from "./authentication-manager.js"
 import {
   decodeIdentityAttributeValues,
   identityAttributeKeys,
   normalizeSignedIdentityAttributes,
-} from "./identity-attributes"
+} from "./identity-attributes.js"
 
 /**
  * Requests and decodes signed identity attributes for an authenticated

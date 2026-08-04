@@ -3,21 +3,21 @@
 export * from "@ic-reactor/core"
 
 // Re-export hooks
-export * from "./hooks"
+export * from "./hooks/index.js"
 
 // Validation utilities for React
-export * from "./validation"
+export * from "./validation.js"
 
 // React-specific exports
-export * from "./createActorHooks"
-export * from "./defineReactor"
+export * from "./createActorHooks.js"
+export * from "./defineReactor.js"
 
-export * from "./createQuery"
-export * from "./createSuspenseQuery"
-export * from "./createInfiniteQuery"
-export * from "./createSuspenseInfiniteQuery"
-export * from "./createMutation"
+export * from "./createQuery.js"
+export * from "./createSuspenseQuery.js"
+export * from "./createInfiniteQuery.js"
+export * from "./createSuspenseInfiniteQuery.js"
+export * from "./createMutation.js"
 
-export * from "./auth"
+export * from "./auth/index.js"
 
-export * from "./types"
+export * from "./types.js"

@@ -44,5 +44,5 @@ Do not hand-edit generated `index.generated.ts` files. Put app-specific code in
 ## Full References
 
 - Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
-- React package docs: https://ic-reactor.b3pay.net/v4/packages/react
+- React package docs: https://ic-reactor.b3pay.net/v3/packages/react
 - Skill install: `npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks`

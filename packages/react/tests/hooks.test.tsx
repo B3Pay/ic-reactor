@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import React from "react"
-import { createActorHooks } from "../src"
+import { createActorHooks } from "../src/index.js"
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ActorMethod } from "@icp-sdk/core/agent"

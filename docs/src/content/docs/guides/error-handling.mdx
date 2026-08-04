@@ -10,7 +10,7 @@ IC Reactor provides structured error handling for both canister-level and networ
 
 ## Error Types
 
-IC Reactor distinguishes between two types of errors:
+IC Reactor distinguishes between three types of errors:
 
 <CardGrid>
   <Card title="CanisterError" icon="warning">
@@ -20,6 +20,10 @@ IC Reactor distinguishes between two types of errors:
   <Card title="CallError" icon="error">
     Network, agent, or trap errors (e.g., connection timeout, canister trapped)
   </Card>
+  <Card title="ValidationError" icon="approve-check">
+    Argument validation failures raised by `DisplayReactor` before the call is
+    ever sent
+  </Card>
 </CardGrid>
 
 ### CanisterError
@@ -27,7 +31,7 @@ IC Reactor distinguishes between two types of errors:
 Thrown when your canister returns an `Err` variant from a `Result` type:
 
 ```typescript
-import { CanisterError } from "@ic-reactor/core"
+import { CanisterError } from "@ic-reactor/react"
 
 // Your canister method returns Result<User, GetUserError>
 // On Err, IC Reactor throws CanisterError with the error value
@@ -47,7 +51,7 @@ if (error instanceof CanisterError) {
 Thrown for network, agent, or canister trap errors:
 
 ```typescript
-import { CallError } from "@ic-reactor/core"
+import { CallError } from "@ic-reactor/react"
 
 if (error instanceof CallError) {
   console.log("Call error:", error.message)
@@ -55,16 +59,44 @@ if (error instanceof CallError) {
 }
 ```
 
+### ValidationError
+
+Thrown by a `DisplayReactor` when the arguments you pass fail its validators —
+before anything is sent to the canister. It carries the failing method name and
+one issue per invalid field:
+
+```typescript
+import { isValidationError } from "@ic-reactor/react"
+
+try {
+  await transferMutation.execute([{ to: "", amount: "-100" }])
+} catch (error) {
+  if (isValidationError(error)) {
+    console.log(error.methodName) // "transfer"
+    console.log(error.issues)
+    // [
+    //   { path: ["to"], message: "Recipient is required" },
+    //   { path: ["amount"], message: "Amount must be positive" }
+    // ]
+  }
+}
+```
+
+`@ic-reactor/react` also ships form helpers built on it —
+`mapValidationErrors`, `getFieldError`, `getFieldErrors`,
+`extractValidationErrors`, and `handleValidationError`. See
+[Validation](/v3/reference/reactvalidation) for the full surface.
+
 ## Handling Query Errors
 
 ### In Components
 
 ```tsx
-import { CanisterError, CallError } from "@ic-reactor/core"
+import { CanisterError, CallError } from "@ic-reactor/react"
 import { useActorQuery } from "../reactor/hooks"
 
 function UserProfile({ userId }: { userId: string }) {
-  const { data, error, isError, isPending } = useActorQuery({
+  const { data, error, isError, isPending, refetch } = useActorQuery({
     functionName: "getUser",
     args: [userId],
   })
@@ -170,7 +202,7 @@ function TransferForm() {
 when you need to distinguish manually:
 
 ```tsx
-import { CanisterError } from "@ic-reactor/core"
+import { CanisterError } from "@ic-reactor/react"
 
 function TransferForm() {
   const { mutate, isPending, error } = useActorMutation({
@@ -261,8 +293,8 @@ if (error instanceof CanisterError) {
 Configure your QueryClient to retry network errors but not business logic errors:
 
 ```typescript
-import { QueryClient } from "@tanstack/query-core"
-import { CanisterError } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/react-query"
+import { CanisterError } from "@ic-reactor/react"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -409,7 +441,7 @@ const { mutate } = useActorMutation({
 ## Best Practices
 
 1. **Use `onCanisterError` for mutations** — Separates canister `Result { Err }` variants from network/agent errors without manual `instanceof` checks
-2. **Distinguish error types** — Handle `CanisterError` and `CallError` differently
+2. **Distinguish error types** — Handle `CanisterError`, `CallError`, and `ValidationError` differently
 3. **Don't retry business errors** — If the canister says "insufficient funds", retrying won't help
 4. **Show actionable messages** — Tell users how to fix the issue
 5. **Provide recovery options** — Retry buttons, form reset, etc.

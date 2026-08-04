@@ -2,13 +2,13 @@
 // Validation Types
 // ============================================================================
 
-import { ValidationIssue } from "../errors"
+import { ValidationIssue } from "../errors/index.js"
 import {
   BaseActor,
   FunctionName,
   ReactorArgs,
   ReactorParameters,
-} from "./reactor"
+} from "./reactor.js"
 
 /**
  * Validation result returned by a validator function.

@@ -39,7 +39,7 @@ import type {
   MutationResult,
   MutationHookOptions,
   NoInfer,
-} from "./types"
+} from "./types.js"
 
 // ============================================================================
 // Internal helpers

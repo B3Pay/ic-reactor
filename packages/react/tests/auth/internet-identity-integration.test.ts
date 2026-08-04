@@ -11,14 +11,14 @@ import { ClientManager } from "@ic-reactor/core"
 import {
   AuthenticationManager,
   IdentityAttributesManager,
-} from "../../src/auth"
+} from "../../src/auth/index.js"
 import {
   installFakeIdentityProvider,
   withUserGesture,
   encodeAttributes,
   fromBase64,
   type FakeIdentityProvider,
-} from "./fake-identity-provider"
+} from "./fake-identity-provider.js"
 
 let provider: FakeIdentityProvider
 

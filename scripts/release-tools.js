@@ -79,12 +79,30 @@ try {
   process.exit(1)
 }
 
+const RELEASE_PATHS = [
+  "pnpm-lock.yaml",
+  "packages/codegen/package.json",
+  "packages/vite-plugin/package.json",
+  "packages/cli/package.json",
+  "packages/parser/package.json",
+  "packages/codegen/llms.txt",
+  "packages/vite-plugin/llms.txt",
+  "packages/cli/llms.txt",
+  "examples",
+]
+
 // 3. Git Commit and Tag
 console.log("\n📂 Creating release commit and tag...")
 const tagName = `tools-v${version}`
 
 try {
-  run("git", ["add", "."])
+  // `-u` stages modifications to already-tracked files only, so no untracked
+  // scratch file can be swept in -- `git add .` would have committed, tagged and
+  // published one, since core/react/candid ship "src". It also keeps `examples`
+  // safe to pass as a directory: sync-example-versions.js only rewrites
+  // package.json files under it, at either workspace depth, but an untracked file
+  // sitting there must never ride along.
+  run("git", ["add", "-u", "--", ...RELEASE_PATHS])
   run("git", ["commit", "-m", `chore: release tools v${version}`])
 
   // Tagging
@@ -113,6 +131,9 @@ if (shouldPublish || dryRun) {
       "--access",
       "public",
     ]
+    // A hyphen means a prerelease; publishing it to `latest` would hand it to
+    // every plain `npm install`.
+    if (version.includes("-")) publishArgs.push("--tag", "beta")
     if (dryRun) publishArgs.push("--dry-run")
 
     console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)

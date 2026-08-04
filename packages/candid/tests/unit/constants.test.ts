@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
-} from "../../src/constants"
+} from "../../src/constants.js"
 
 describe("Constants", () => {
   describe("DEFAULT_IC_DIDJS_ID", () => {

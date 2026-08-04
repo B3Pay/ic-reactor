@@ -1,6 +1,6 @@
-import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants"
-import { CanisterError } from "../errors"
-import { OkResult } from "../types"
+import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants.js"
+import { CanisterError } from "../errors/index.js"
+import { OkResult } from "../types/index.js"
 
 export const generateKey = (args: any[]) => {
   return JSON.stringify(args, (_, v) =>

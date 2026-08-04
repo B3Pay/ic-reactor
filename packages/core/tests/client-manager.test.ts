@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
-import { ClientManager } from "../src/client"
+import { ClientManager } from "../src/client.js"
+import { Reactor } from "../src/reactor.js"
+import { AnonymousIdentity } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 vi.mock("@icp-sdk/core/agent/canister-env", () => ({
@@ -161,5 +163,56 @@ describe("ClientManager", () => {
     const manager = new ClientManager({ queryClient })
 
     expect((await manager.getUserPrincipal()).isAnonymous()).toBe(true)
+  })
+
+  describe("updateAgent invalidation scope", () => {
+    const canisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+    it("invalidates registered canister queries but leaves non-IC queries alone", () => {
+      const manager = new ClientManager({ queryClient })
+      manager.registerCanisterId(canisterId, "ledger")
+
+      queryClient.setQueryData([canisterId, "icrc1_name"], "ICP")
+      queryClient.setQueryData(["user-preferences"], { theme: "dark" })
+
+      manager.updateAgent(new AnonymousIdentity())
+
+      expect(
+        queryClient.getQueryState([canisterId, "icrc1_name"])?.isInvalidated
+      ).toBe(true)
+      // Apps share one QueryClient with the rest of their app; signing in must not
+      // mark their unrelated queries stale.
+      expect(
+        queryClient.getQueryState(["user-preferences"])?.isInvalidated
+      ).toBe(false)
+    })
+
+    it("covers canisters reached only through a callConfig override", () => {
+      const manager = new ClientManager({ queryClient })
+      const overriddenId = "rrkah-fqaaa-aaaaa-aaaaq-cai"
+
+      const reactor = new Reactor({
+        name: "override-reactor",
+        clientManager: manager,
+        canisterId,
+        idlFactory: ({ IDL }) =>
+          IDL.Service({ get_user: IDL.Func([], [IDL.Text], ["query"]) }),
+      })
+
+      // Going through the real reactor is the point: an overridden call roots its
+      // key at a canister the client was never told about, and generateQueryKey is
+      // what registers it. Registering by hand here would test nothing.
+      const key = reactor.generateQueryKey(
+        { functionName: "get_user" },
+        { canisterId: overriddenId }
+      )
+      expect(key[0]).toBe(overriddenId)
+      expect(manager.connectedCanisterIds()).toContain(overriddenId)
+
+      queryClient.setQueryData(key, { id: 1 })
+      manager.updateAgent(new AnonymousIdentity())
+
+      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+    })
   })
 })

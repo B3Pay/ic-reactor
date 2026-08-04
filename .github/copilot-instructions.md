@@ -31,7 +31,7 @@ Follow these repository-specific patterns when suggesting code:
 
 ## React Hook Patterns (Important)
 
-- For new React canister setup, use `ClientManager`, `Reactor`, and `createActorHooks`.
+- For new React canister setup, prefer `defineReactor(...)`; use `ClientManager`, `Reactor`, and `createActorHooks` when construction order must be explicit.
 - For component-level canister calls with an existing reactor, prefer `createActorHooks(reactor)`.
 - For reusable operations shared across components and non-React code, prefer:
   - `createQuery`
@@ -43,6 +43,8 @@ Follow these repository-specific patterns when suggesting code:
   - `createMutation`
 - Define reusable query/mutation objects at module scope (not inside components).
 - Use `useActorMethod` only when a unified query/update hook is specifically helpful.
+- Build auth hooks with `createAuthHooks(authentication)` where `authentication = new AuthenticationManager({ clientManager })` — it never takes a `ClientManager`.
+- `useIdentityAttributes` comes from `createIdentityAttributeHooks(identityAttributes)`, not from `createAuthHooks`.
 
 ## Inside React vs Outside React
 
@@ -86,14 +88,16 @@ Follow these repository-specific patterns when suggesting code:
 - `examples/all-in-one-demo/src/lib/factories.ts`
 - `examples/tanstack-router/src/canisters/ledger/hooks/`
 - `AGENTS.md`
-- `llms.txt`
 - `llms-full.txt`
 - `skill-packages/ic-reactor-hooks/SKILL.md`
 - `skill-packages/ic-reactor-packages/SKILL.md`
 
 ## Verification
 
+- Format check (CI gate; covers `packages/**` only): `pnpm format:check`
+- AI context check (CI gate): `pnpm check:ai-context`
+- Type check used by CI: `pnpm typecheck` (every package, `src` and tests; the root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing)
 - Package builds: `pnpm build`
 - Package tests: `pnpm test`
-- Root type check used by CI: `pnpm exec tsc --noEmit`
+- Published-artifact verification: `pnpm verify:packages` (pack + publint + attw + real Node import; run it after `exports`/`files`/build-output changes)
 - Example type checks: `pnpm typecheck:examples`

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { createActorHooks } from "../src"
+import { createActorHooks } from "../src/index.js"
 import { ClientManager, DisplayReactor, Reactor } from "@ic-reactor/core"
 import { renderHook, waitFor } from "@testing-library/react"
 import { Actor, ActorMethod } from "@icp-sdk/core/agent"

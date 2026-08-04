@@ -10,25 +10,35 @@ IC Reactor provides seamless integration with Internet Identity for authenticati
 
 ## Setup
 
-Authentication hooks are created by passing your `ClientManager` instance to `createAuthHooks`:
+Authentication hooks are created by passing an `AuthenticationManager` to
+`createAuthHooks`. Identity-attribute hooks come from a separate
+`createIdentityAttributeHooks` factory:
 
 ```typescript
 // src/reactor/hooks.ts
-import { createAuthHooks } from "@ic-reactor/react"
+import {
+  AuthenticationManager,
+  IdentityAttributesManager,
+  createAuthHooks,
+  createIdentityAttributeHooks,
+} from "@ic-reactor/react"
 import { clientManager } from "./index"
 
-export const {
-  useAuth,
-  useUserPrincipal,
-  useAgentState,
-  useIdentityAttributes,
-} = createAuthHooks(clientManager)
+export const authentication = new AuthenticationManager({ clientManager })
+export const identityAttributes = new IdentityAttributesManager(authentication)
+
+export const { useAuth, useUserPrincipal, useAgentState } =
+  createAuthHooks(authentication)
+
+export const { useIdentityAttributes } =
+  createIdentityAttributeHooks(identityAttributes)
 ```
 
 <Aside type="note">
-  These hooks are bound to the specific `ClientManager` instance you created.
-  All actors using the same client manager will share the same authentication
-  state.
+  These hooks are bound to the specific `AuthenticationManager` you created. All
+  reactors sharing that manager's `ClientManager` share the same authentication
+  state. `createAuthHooks` returns exactly `useAuth`, `useUserPrincipal`, and
+  `useAgentState` — `useIdentityAttributes` is not one of them.
 </Aside>
 
 ## useAuth
@@ -65,12 +75,12 @@ const { login } = useAuth()
 
 login({
   // Identity provider URL (auto-detected based on network)
-  identityProvider: "https://identity.ic0.app",
+  identityProvider: "https://id.ai/authorize",
 
   // Session duration (default: 8 hours)
   maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days
 
-  // Callbacks
+  // Callbacks — onError receives an optional error string
   onSuccess: () => {
     console.log("Logged in!")
     navigate("/dashboard")
@@ -82,26 +92,66 @@ login({
 })
 ```
 
+### Client Options
+
+Every option below can be passed either once, on the `AuthenticationManager`
+constructor, or per call to `login()` — the per-call value wins.
+
+| Option                 | Type                                 | Default                    | Description                                                                               |
+| ---------------------- | ------------------------------------ | -------------------------- | ----------------------------------------------------------------------------------------- |
+| `identityProvider`     | `string \| URL`                      | auto-detected              | Identity provider URL                                                                     |
+| `derivationOrigin`     | `string \| URL`                      | –                          | Origin the principal is derived from — see the callout below                              |
+| `idleOptions`          | `AuthClientIdleOptions`              | 10 min → sign out + reload | Idle detection and what happens on timeout                                                |
+| `storage`              | `AuthClientStorageLike`              | IndexedDB                  | Persistent storage backend for the session key and delegation                             |
+| `keyType`              | `"ECDSA" \| "Ed25519"`               | `"ECDSA"`                  | Session key algorithm; use `"Ed25519"` when the storage backend cannot hold a `CryptoKey` |
+| `windowOpenerFeatures` | `string`                             | –                          | `window.open` features string for the identity provider popup                             |
+| `openIdProvider`       | `"google" \| "apple" \| "microsoft"` | –                          | One-click sign-in through that provider                                                   |
+| `transport`            | `"window" \| "redirect"`             | `"window"`                 | How the client talks to the provider; `"redirect"` needs `@icp-sdk/auth` v8               |
+| `identity`             | `SignIdentity \| PartialIdentity`    | –                          | An existing identity to authenticate via delegation                                       |
+
+`login()` additionally accepts `maxTimeToLive`, `targets`, `onSuccess`, and
+`onError`. The `AuthenticationManager` constructor additionally accepts
+`clientManager` (required), `authClient` (bring your own client instance), and
+`internetIdentityId` (canister ID of a locally deployed Internet Identity).
+
+<Aside type="caution">
+  Set `derivationOrigin` whenever your app is served from more than one origin
+  (a custom domain plus `<canisterId>.icp0.io`, say) — without it each origin
+  resolves to a **different** principal for the same user.
+</Aside>
+
+<Aside type="caution">
+  Idle detection is on by default: after 10 minutes without activity the
+  underlying client signs the user out **and reloads the page**. Pass
+  `idleOptions: { disableIdle: true }` to turn it off,
+  `idleOptions: { idleTimeout: 30 * 60_000 }` to lengthen it, or
+  `idleOptions: { disableDefaultIdleCallback: true, onIdle: … }` to keep the
+  detection but handle the timeout yourself.
+</Aside>
+
 ### Auto-Detected Identity Provider
 
-The `ClientManager` automatically selects the correct Internet Identity provider based on your network:
+The `AuthenticationManager` automatically selects the correct Internet Identity provider based on your network:
 
 | Network      | Identity Provider                                             |
 | ------------ | ------------------------------------------------------------- |
-| IC (mainnet) | `https://identity.ic0.app`                                    |
+| IC (mainnet) | `https://id.ai/authorize`                                     |
 | Local        | `http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize` |
 
-You can override this by passing `identityProvider` to the login options.
+The local URL uses the replica port from the agent host and the
+`internet_identity` canister ID from the `ic_env` cookie when one is present.
+You can override the whole thing by passing `identityProvider`.
 
 ## Identity Attributes
 
-IC Reactor can request signed identity attributes from `@icp-sdk/auth` v7 for
-OpenID email and profile flows. Use `useIdentityAttributes()` when a React
+IC Reactor can request signed identity attributes from `@icp-sdk/auth` v7 or v8
+for OpenID email and profile flows. Use `useIdentityAttributes()` when a React
 component needs to request attributes and send the signed payload to a backend or
 canister for verification.
 
 ```tsx
-import { useIdentityAttributes } from "../reactor/hooks"
+import { useEffect } from "react"
+import { authentication, useIdentityAttributes } from "../reactor/hooks"
 
 function RegisterWithOpenIdProvider() {
   const {
@@ -111,11 +161,16 @@ function RegisterWithOpenIdProvider() {
     attributeError,
   } = useIdentityAttributes()
 
-  async function handleRegister() {
-    const nonce = await backend.registerBegin()
+  // Preload the auth module so the identity provider window can be opened
+  // synchronously from the click handler below.
+  useEffect(() => {
+    authentication.prepareClient()
+  }, [])
 
+  async function handleRegister() {
     const result = await requestOpenIdAttributes({
-      nonce,
+      // Pass the nonce as a callback — see the caution below
+      nonce: () => backend.registerBegin(),
       openIdProvider: "microsoft",
       keys: ["email", "name"],
     })
@@ -136,10 +191,23 @@ function RegisterWithOpenIdProvider() {
 }
 ```
 
+<Aside type="caution">
+  Pass `nonce` as a function, never an already-awaited value. Awaiting the nonce
+  before calling `requestOpenIdAttributes` ends the browser's user gesture, so
+  the Internet Identity window is blocked. The callback form lets the window
+  open first and the nonce resolve behind it. (`@icp-sdk/auth` v8 requires the
+  function form outright; IC Reactor normalizes whichever form you pass to what
+  the installed client expects.)
+</Aside>
+
 Pass a documented auth provider alias (`"google"`, `"apple"`, or
 `"microsoft"`) or an issuer URL such as `"https://issuer.example.com"` for
-custom OpenID providers. For non-React code, use
-`clientManager.requestOpenIdIdentityAttributes()` directly.
+custom OpenID providers. Only the three aliases change how the user signs in; a
+raw issuer URL just scopes the requested keys to `openid:<issuer>:<key>`.
+
+For non-React code, use `identityAttributes.requestOpenId()` — or
+`identityAttributes.request()` for non-OpenID keys — on the
+`IdentityAttributesManager` directly.
 
 <Aside type="caution">
   The decoded attribute values are only a frontend display convenience. Your
@@ -218,7 +286,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 ## Session Persistence
 
-Sessions are automatically persisted in IndexedDB. When users return to your app, the `useAuth` hook (or `clientManager.initialize()`) automatically triggers session restoration.
+Sessions are automatically persisted in IndexedDB. When users return to your app, the `useAuth` hook automatically triggers session restoration. `clientManager.initialize()` only initializes the agent — outside React, call `authentication.authenticate()` to restore a session.
 
 ### Session Duration
 
@@ -237,11 +305,13 @@ login({
 
 ## Automatic Query Invalidation
 
-IC Reactor automatically invalidates all cached queries when the user's identity changes. This ensures:
+IC Reactor cancels and invalidates the cached queries of every **connected canister** when the user's identity changes. This ensures:
 
 - **Login**: Fresh data is fetched for the authenticated user
 - **Logout**: Cached user data is cleared immediately
 - **Session restore**: Queries are refreshed if a session is restored
+
+Invalidation is scoped by canister ID (every reactor query key starts with one), so sharing a `QueryClient` with the rest of your app does not cause your unrelated REST or GraphQL queries to refetch on every sign-in.
 
 This prevents cross-account data leakage and ensures data freshness.
 

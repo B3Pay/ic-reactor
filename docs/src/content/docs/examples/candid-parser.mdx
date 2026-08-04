@@ -57,6 +57,7 @@ const clientManager = new ClientManager({
 // Create a CandidDisplayReactor instance
 // It automatically converts bigint → string, Principal → string
 const reactor = new CandidDisplayReactor({
+  name: "Candid Display Reactor", // required on every reactor
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP Ledger
   clientManager,
 })

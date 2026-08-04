@@ -5,7 +5,7 @@ trap 'icp network stop >/dev/null 2>&1 || true' EXIT
 echo "===========SETUP========="
 icp network start -d
 icp deploy hello_actor
-pnpm install
+pnpm install --frozen-lockfile
 echo "===========SETUP DONE========="
 
 echo "===========VERIFYING DEPLOYMENT========="

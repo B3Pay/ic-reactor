@@ -28,12 +28,19 @@ In the rapidly evolving landscape of Internet Computer development, choosing the
 
 ### Our Packages Are Tiny
 
-| Package               | Minified + Gzipped | What's Included                               |
-| --------------------- | ------------------ | --------------------------------------------- |
-| **@ic-reactor/core**  | **~28 KB**         | Reactor, caching, transformations, validation |
-| **@ic-reactor/react** | **~2.6 KB**        | React hooks (excludes core + react)           |
+| Package               | Minified + Gzipped | What's Included                                     |
+| --------------------- | ------------------ | --------------------------------------------------- |
+| **@ic-reactor/core**  | **~8 KB**          | Reactor, caching, transformations, validation       |
+| **@ic-reactor/react** | **~8 KB**          | React hooks (excludes core, React, TanStack Query)  |
 
-That's it. **~30 KB total** for a complete, production-ready data layer.
+That's it. **~16 KB total** for a complete, production-ready data layer.
+
+<Aside type="note">
+  These are the numbers `pnpm size` reports (`size-limit`, gzipped), measured
+  with peer dependencies excluded. The repository enforces budgets of 50 KB for
+  `@ic-reactor/core` and 30 KB for `@ic-reactor/react`, so a regression fails
+  CI.
+</Aside>
 
 ### Minimal Dependencies
 
@@ -85,12 +92,13 @@ IC Reactor's architecture was built with **modern software engineering principle
 │                    Your Application                         │
 ├─────────────────────────────────────────────────────────────┤
 │  React Layer (@ic-reactor/react)                            │
+│  ├── defineReactor()    → reactor + all hooks in one call   │
 │  ├── createActorHooks() → useActorQuery, useActorMutation   │
 │  ├── createAuthHooks()  → useAuth, useUserPrincipal         │
 │  └── Validation utilities for forms                         │
 ├─────────────────────────────────────────────────────────────┤
 │  Core Layer (@ic-reactor/core)                              │
-│  ├── ClientManager     → Agent + Auth state management      │
+│  ├── ClientManager     → Agent + identity + cache wiring    │
 │  ├── Reactor           → Canister calls + TanStack caching  │
 │  └── DisplayReactor    → Type transformations + validation  │
 ├─────────────────────────────────────────────────────────────┤
@@ -107,7 +115,7 @@ IC Reactor's architecture was built with **modern software engineering principle
 
 | Feature                     | IC Reactor                       | DIY (raw SDK)              |
 | --------------------------- | -------------------------------- | -------------------------- |
-| **Additional Bundle Size**  | **~30 KB** (on top of SDK)       | **~50+ KB** of custom code |
+| **Additional Bundle Size**  | **~16 KB** (on top of SDK)       | **~50+ KB** of custom code |
 | **Type Safety**             | ✅ End-to-end from Candid        | ⚠️ Manual type assertions  |
 | **Query Caching**           | ✅ TanStack Query built-in       | ❌ Build your own          |
 | **Background Refetch**      | ✅ Automatic                     | ❌ Build your own          |
@@ -126,7 +134,7 @@ IC Reactor's architecture was built with **modern software engineering principle
 <Aside>
   Both approaches require the ICP SDK (`@icp-sdk/core`). The comparison above
   shows what you add **on top of** the SDK. IC Reactor gives you a complete data
-  layer in ~30 KB; building it yourself typically results in more code that does
+  layer in ~16 KB; building it yourself typically results in more code that does
   less.
 </Aside>
 
@@ -241,7 +249,7 @@ if ("Ok" in result) {
 | `nat64` / `int64`     | `1234567890123456789n`      | `"1234567890123456789"`      | ✅         |
 | `principal`           | `Principal.fromText("...")` | `"aaaaa-aa"`                 | ✅         |
 | `opt T`               | `[value]` or `[]`           | `value` or `undefined`       | ✅         |
-| `blob` (≤96 bytes)    | `Uint8Array`                | `"1234..."`                  | ✅         |
+| `blob` (≤512 bytes)   | `Uint8Array`                | `"1234..."` (hex)            | ✅         |
 | `variant { Ok; Err }` | `{ Ok: value }`             | `{ _type: "Ok", Ok: value }` | ✅         |
 
 This means your React components never deal with:
@@ -346,7 +354,7 @@ The alternative is spending weeks building what we've spent years perfecting.
 | Aspect                    | IC Reactor                         | DIY Custom Solution            |
 | ------------------------- | ---------------------------------- | ------------------------------ |
 | **Learning Curve**        | ~1 hour if you know TanStack Query | ~2-4 weeks for custom solution |
-| **Additional Code**       | ~30 KB (battle-tested)             | ~50+ KB (untested custom code) |
+| **Additional Code**       | ~16 KB (battle-tested)             | ~50+ KB (untested custom code) |
 | **Type Safety**           | Full end-to-end                    | Partial, requires manual work  |
 | **Maintenance**           | Community + maintainer             | Your team only                 |
 | **Production Apps**       | Dozens                             | Depends on your testing        |

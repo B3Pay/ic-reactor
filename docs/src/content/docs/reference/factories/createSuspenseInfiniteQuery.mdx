@@ -58,13 +58,17 @@ Same options as `createInfiniteQuery`:
 
 ## Return Value
 
-| Property                   | Type                  | Description                    |
-| -------------------------- | --------------------- | ------------------------------ |
-| `fetch`                    | `() => Promise<T>`    | Fetch first page (for loaders) |
-| `useSuspenseInfiniteQuery` | `hook`                | Suspense-enabled React hook    |
-| `refetch`                  | `() => Promise<void>` | Invalidate and refetch         |
-| `getQueryKey`              | `() => QueryKey`      | Get the query key              |
-| `getCacheData`             | `(select?) => T`      | Read from cache                |
+| Property                   | Type                          | Description                                |
+| -------------------------- | ----------------------------- | ------------------------------------------ |
+| `fetch`                    | `() => Promise<T>`            | Fetch first page (for loaders)             |
+| `useSuspenseInfiniteQuery` | `hook`                        | Suspense-enabled React hook                |
+| `invalidate`               | `() => Promise<void>`         | Invalidate the cache (refetches if active) |
+| `getQueryKey`              | `() => QueryKey`              | Get the query key                          |
+| `getCacheData`             | `(select?) => T \| undefined` | Read from cache without fetching           |
+
+These five keys are the whole object. To force a refetch from a component, use
+the `refetch` returned by `useSuspenseInfiniteQuery()`; outside React, call
+`invalidate()`.
 
 ---
 

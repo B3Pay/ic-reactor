@@ -4,9 +4,28 @@ description: Detailed reference for the @ic-reactor/parser package
 editUrl: false
 ---
 
+import { Aside } from "@astrojs/starlight/components"
+
 ## Exports
 
-The package exports two main functions for converting Candid definitions.
+The package exports five functions plus a default WASM initializer:
+`didToJs`, `didToTs`, `parseDid`, `validateIDL`, `verifyCompatability`, and the
+default `init` (with a synchronous `initSync` companion).
+
+<Aside type="caution" title="Initialize the WASM module first">
+  In browsers and bundlers the package resolves to `dist/web`, where the WASM
+  module is only instantiated by `await init()`. Calling any function before
+  that throws. The Node build (`dist/nodejs`) instantiates itself at import
+  time, so no `init()` call is needed there.
+
+```typescript
+import init, { didToJs } from "@ic-reactor/parser"
+
+await init() // required on the web build
+const js = didToJs("service:{}")
+```
+
+</Aside>
 
 ### `didToJs`
 
@@ -58,14 +77,70 @@ const ts = didToTs("service:{}")
 // export interface _SERVICE ...
 ```
 
+### `parseDid`
+
+`parseDid(candid: string): CandidSchema`
+
+Parses a Candid interface string into a structured schema object (type
+declarations plus the service declaration), including any metadata tags.
+
+**Returns:**
+
+- A `CandidSchema`: `{ types: CandidTypeDeclaration[]; service: CandidServiceDeclaration | null }`.
+  Doc-comment metadata and validation tags are carried on the nodes — see
+  [Candid Metadata Tags](/v3/packages/parser/metadata-tags).
+
+```typescript
+const schema = parseDid("service:{}")
+// { types: [...], service: { ... } | null }
+```
+
+### `validateIDL`
+
+`validateIDL(candid: string): boolean`
+
+Returns `true` when the Candid source parses and type-checks. This is what
+[`CandidAdapter.validateCandid()`](/v3/packages/candid/candidadapter) calls.
+
+```typescript
+const isValid = validateIDL("service : { greet : (text) -> (text) query }")
+```
+
+### `verifyCompatability`
+
+`verifyCompatability(a: string, b: string): boolean`
+
+Checks whether interface `b` is a compatible upgrade of interface `a` — useful
+for guarding canister upgrades against breaking interface changes.
+
+```typescript
+const compatible = verifyCompatability(oldDid, newDid)
+```
+
+### `default` (`init`)
+
+`init(module_or_path?): Promise<InitOutput>`
+
+Instantiates the WASM module. Required once before any other function on the
+web build. A synchronous `initSync(module)` variant is also exported for
+environments where the WASM bytes are already available.
+
+```typescript
+import init, { initSync } from "@ic-reactor/parser"
+
+await init()
+```
+
 ## Module Formats
 
 The package builds for multiple targets to ensure compatibility across environments.
 
-| Folder         | Format     | Environment              |
-| :------------- | :--------- | :----------------------- |
-| `dist/web`     | ES Modules | Browsers                 |
-| `dist/nodejs`  | CommonJS   | Node.js                  |
-| `dist/bundler` | ES Modules | Bundlers (Webpack, Vite) |
+| Folder         | Format     | Resolved by                                     |
+| :------------- | :--------- | :---------------------------------------------- |
+| `dist/web`     | ES Modules | `browser`, `workerd` and `default` conditions    |
+| `dist/nodejs`  | CommonJS   | `node` condition                                 |
+| `dist/bundler` | ES Modules | Built and shipped, but not reachable via exports |
 
-Most modern bundlers (Vite, Next.js) will automatically pick up the correct version via `package.json` exports.
+There is no `./web`, `./nodejs` or `./bundler` subpath — the package has a
+single `.` entry and the right build is picked by export conditions. Bundlers
+resolve the `browser` condition to `dist/web`, which requires `await init()`.

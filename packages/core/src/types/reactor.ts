@@ -6,10 +6,10 @@ import type {
 } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryKey } from "@tanstack/query-core"
-import type { ClientManager } from "../client"
-import type { CallError, CanisterError } from "../errors"
-import type { OkResult, ErrResult } from "./result"
-import type { DisplayOf, ActorDisplayCodec } from "../display"
+import type { ClientManager } from "../client.js"
+import type { CallError, CanisterError } from "../errors/index.js"
+import type { OkResult, ErrResult } from "./result.js"
+import type { DisplayOf, ActorDisplayCodec } from "../display/index.js"
 
 export interface DefaultActorType {
   [key: string]: ActorMethod<any, any>

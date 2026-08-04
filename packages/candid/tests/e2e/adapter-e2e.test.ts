@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest"
-import { CandidAdapter } from "../../src/adapter"
-import type { CandidClientManager } from "../../src/types"
+import { CandidAdapter } from "../../src/adapter.js"
+import type { CandidClientManager } from "../../src/types.js"
 import { HttpAgent, Actor } from "@icp-sdk/core/agent"
 import { Principal } from "@icp-sdk/core/principal"
 

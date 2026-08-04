@@ -62,7 +62,8 @@ function handleValidationError(
 **Usage:**
 
 ```tsx
-const { mutate } = useActorMutation({
+const { mutate } = useReactorMutation({
+  reactor: backend,
   functionName: "transfer",
   onError: handleValidationError(
     (errors) => setFormErrors(errors), // Called if validation error
@@ -98,15 +99,17 @@ function extractValidationErrors(error: unknown): Record<string, string> | null
 ```tsx
 import { useState } from "react"
 import {
-  useActorMutation,
+  useReactorMutation,
   mapValidationErrors,
   isValidationError,
 } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 function TransferForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const { mutate, isPending } = useActorMutation({
+  const { mutate, isPending } = useReactorMutation({
+    reactor: backend,
     functionName: "transfer",
     onError: (error) => {
       if (isValidationError(error)) {
@@ -150,15 +153,17 @@ function TransferForm() {
 ```tsx
 import { useForm } from "react-hook-form"
 import {
-  useActorMutation,
+  useReactorMutation,
   mapValidationErrors,
   isValidationError,
 } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 function TransferForm() {
   const { register, handleSubmit, setError } = useForm()
 
-  const { mutate } = useActorMutation({
+  const { mutate } = useReactorMutation({
+    reactor: backend,
     functionName: "transfer",
     onError: (error) => {
       if (isValidationError(error)) {

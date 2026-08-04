@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest"
-import { CandidReactor } from "../../src/reactor"
+import { CandidReactor } from "../../src/reactor.js"
 import { ActorMethod, HttpAgent } from "@icp-sdk/core/agent"
 import { ClientManager } from "@ic-reactor/core"
 

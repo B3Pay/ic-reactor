@@ -9,9 +9,9 @@
     "ic-reactor": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --clean --no-splitting",
+    "build": "tsup src/index.ts --format esm --dts --clean --no-splitting",
     "dev": "tsup src/index.ts --format esm --watch --no-splitting",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },
   "keywords": [
     "internet-computer",

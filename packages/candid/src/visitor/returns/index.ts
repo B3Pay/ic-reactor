@@ -1,19 +1,19 @@
-import { isQuery } from "../helpers"
-import { checkTextFormat, checkNumberFormat } from "../constants"
-import { formatLabel } from "../arguments/helpers"
+import { isQuery } from "../helpers.js"
+import { checkTextFormat, checkNumberFormat } from "../constants.js"
+import { formatLabel } from "../arguments/helpers.js"
 import {
   MetadataError,
   NumberFormat,
   TextFormat,
   VisitorDataType,
-} from "../arguments/types"
+} from "../arguments/types.js"
 import type {
   ResultNode,
   ResolvedNode,
   MethodMeta,
   ServiceMeta,
   MethodResult,
-} from "./types"
+} from "./types.js"
 
 import { sha256 } from "@noble/hashes/sha2.js"
 import { IDL } from "@icp-sdk/core/candid"
@@ -25,7 +25,7 @@ import type {
   FunctionType,
 } from "@ic-reactor/core"
 
-export * from "./types"
+export * from "./types.js"
 
 // ════════════════════════════════════════════════════════════════════════════
 // Node Factory - Eliminates Boilerplate

@@ -7,8 +7,8 @@
 
 import { IDL } from "@icp-sdk/core/candid"
 import type { Principal } from "@icp-sdk/core/principal"
-import { CandidCodec } from "./codec"
-import type { CandidMetadata, CandidValidationFormat } from "./types"
+import { CandidCodec } from "./codec.js"
+import type { CandidMetadata, CandidValidationFormat } from "./types.js"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic Primitive Codec

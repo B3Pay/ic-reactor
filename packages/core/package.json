@@ -12,20 +12,25 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "src",
+    "!src/**/*.test.*",
+    "!src/**/*.spec.*",
+    "!**/*.tsbuildinfo",
     "README.md",
     "llms.txt"
   ],
   "scripts": {
-    "build": "rm -rf dist tsconfig.tsbuildinfo && tsc -b",
+    "build": "pnpm run version:sync && rm -rf dist tsconfig.tsbuildinfo && tsc -b",
     "test": "vitest run",
     "version:sync": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); fs.writeFileSync('./src/version.ts', '/**\\n * Library version - automatically synced from package.json.\\n */\\nexport const VERSION = \\\"' + pkg.version + '\\\"\\n');\"",
     "size": "size-limit",
-    "analyze": "size-limit"
+    "analyze": "size-limit",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },
   "repository": {
     "type": "git",

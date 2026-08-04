@@ -62,8 +62,10 @@ Returns a TanStack Query mutation result object, same as `useActorMutation`.
 const { mutate } = useReactorMutation({
   reactor: backend,
   functionName: "transfer",
-  args: [recipient, amount], // Optional default args
 })
+
+// Arguments are supplied at call time, not in the hook config
+mutate([recipient, amount])
 ```
 
 ### With Callbacks

@@ -7,30 +7,65 @@ on:
       - "parser-v*"
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
+
+concurrency:
+  group: release-npm
+  cancel-in-progress: false
 
 jobs:
+  # The matrix used to be an unconditional 4-way fan-out on BOTH tag prefixes, so
+  # cutting `parser-v0.4.7` also published codegen, vite-plugin and cli -- whatever
+  # state their manifests happened to be in. Derive the targets from the tag instead.
+  setup:
+    name: Resolve release targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      workspaces: ${{ steps.resolve.outputs.workspaces }}
+    steps:
+      - id: resolve
+        run: |
+          set -euo pipefail
+          REF="${GITHUB_REF##*/}"
+          case "$REF" in
+            parser-v*)
+              # parser only.
+              WS='["packages/parser"]' ;;
+            tools-v*)
+              # parser first: @ic-reactor/codegen pins it exactly, so it must exist on
+              # the registry before codegen publishes. Already-published versions are
+              # skipped by the guard in the publish step.
+              WS='["packages/parser","packages/codegen","packages/vite-plugin","packages/cli"]' ;;
+            *)
+              echo "::error::Unrecognized release tag: $REF"; exit 1 ;;
+          esac
+          echo "Tag $REF -> $WS"
+          echo "workspaces=$WS" >> "$GITHUB_OUTPUT"
+
   release:
     name: Release to npm
+    needs: setup
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
     strategy:
       max-parallel: 1
-      fail-fast: false
+      # A dependency leg that fails must stop the dependents from publishing against
+      # a version that will never exist on the registry.
+      fail-fast: true
       matrix:
-        workspace:
-          - packages/codegen
-          - packages/vite-plugin
-          - packages/cli
-          - packages/parser
+        workspace: ${{ fromJson(needs.setup.outputs.workspaces) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
@@ -46,7 +81,7 @@ jobs:
         run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
 
       - name: Cache pnpm store
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
@@ -86,7 +121,9 @@ jobs:
       - name: Publish to npm (uses npm CLI for OIDC)
         # pnpm pack converts workspace:^ to real versions, then npm publish for OIDC auth
         working-directory: ${{ matrix.workspace }}
+        shell: bash
         run: |
+          set -euo pipefail
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
 
@@ -97,14 +134,20 @@ jobs:
           else
             # Pack first - this converts workspace:^ to actual versions
             TARBALL=$(pnpm pack | tail -1)
+            if [ -z "$TARBALL" ] || [ ! -s "$TARBALL" ]; then
+              echo "::error::pnpm pack produced no tarball; refusing to publish."
+              exit 1
+            fi
             echo "Publishing tarball: $TARBALL"
             # Publish the tarball (npm for OIDC support)
-            npm publish "$TARBALL" --access public --tag $TAG
+            npm publish "$TARBALL" --access public --tag "$TAG"
           fi
 
       - name: Create GitHub Release
-        if: matrix.workspace == 'packages/codegen'
-        uses: softprops/action-gh-release@v3
+        if: |
+          (startsWith(github.ref_name, 'parser-v') && matrix.workspace == 'packages/parser') ||
+          (startsWith(github.ref_name, 'tools-v') && matrix.workspace == 'packages/codegen')
+        uses: softprops/action-gh-release@c12583777ecdfd3be55c69cf75464299dc01057e # v3
         with:
           generate_release_notes: true
           draft: false

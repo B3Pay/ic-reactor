@@ -6,8 +6,8 @@
  */
 
 import { IDL } from "@icp-sdk/core/candid"
-import { CandidCodec } from "./codec"
-import type { CandidMetadata } from "./types"
+import { CandidCodec } from "./codec.js"
+import type { CandidMetadata } from "./types.js"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Type-Level Helpers

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { createMutation } from "../src/createMutation"
+import { createMutation } from "../src/createMutation.js"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { Reactor } from "@ic-reactor/core"
 

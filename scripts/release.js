@@ -54,6 +54,7 @@ function updatePackageJson(filePath, newVersion) {
     }
   } catch (err) {
     console.error(`❌ Failed to update ${filePath}: ${err.message}`)
+    process.exit(1)
   }
 }
 
@@ -82,10 +83,28 @@ try {
   console.error("❌ Failed to sync example versions")
 }
 
+const RELEASE_PATHS = [
+  "package.json",
+  "pnpm-lock.yaml",
+  "packages/core/package.json",
+  "packages/react/package.json",
+  "packages/candid/package.json",
+  "packages/core/llms.txt",
+  "packages/react/llms.txt",
+  "packages/candid/llms.txt",
+  "examples",
+]
+
 // 4. Git Commit and Tag
 console.log("\n📂 Creating release commit and tag...")
 try {
-  run("git", ["add", "."])
+  // `-u` stages modifications to already-tracked files only, so no untracked
+  // scratch file can be swept in -- `git add .` would have committed, tagged and
+  // published one, since core/react/candid ship "src". It also keeps `examples`
+  // safe to pass as a directory: sync-example-versions.js only rewrites
+  // package.json files under it, at either workspace depth, but an untracked file
+  // sitting there must never ride along.
+  run("git", ["add", "-u", "--", ...RELEASE_PATHS])
   run("git", ["commit", "-m", `chore: release v${version}`])
 
   try {
@@ -94,7 +113,8 @@ try {
 
   run("git", ["tag", `v${version}`])
 } catch (error) {
-  console.error("❌ Git operations failed.")
+  console.error("❌ Git operations failed:", error.message)
+  process.exit(1)
 }
 
 // 5. Publish to npm (pnpm -r publish automatically converts workspace:^ to real versions)
@@ -117,6 +137,9 @@ if (shouldPublish || dryRun) {
       "--access",
       "public",
     ]
+    // A hyphen means a prerelease (3.8.0-beta.1). Publishing that to `latest` would
+    // hand it to every plain `npm install`.
+    if (version.includes("-")) publishArgs.push("--tag", "beta")
     if (dryRun) publishArgs.push("--dry-run")
     console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)
     run("pnpm", publishArgs)

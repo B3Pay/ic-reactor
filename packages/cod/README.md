@@ -19,11 +19,21 @@ Just as **Zod** defines JavaScript and TypeScript schemas, **COD** lets you defi
 
 ---
 
-## Installation
+## Availability
 
-```sh
-pnpm add @ic-reactor/cod
-```
+> **Preview — not published.** `@ic-reactor/cod` is marked `"private": true` and
+> is deliberately excluded from the v3 release train, so there is no package on
+> npm to install. It is consumable inside this monorepo only:
+>
+> ```json
+> // package.json
+> "dependencies": {
+>   "@ic-reactor/cod": "workspace:*"
+> }
+> ```
+>
+> See `examples/candid-codegen-playground` for a working setup. The API below
+> may change before the package is released.
 
 ---
 
@@ -130,29 +140,29 @@ console.log(requiredEmail.metadata.validation?.format?.errorMessage)
 
 ## Supported Types Map
 
-| Candid Type       | COD Constructor      | Runtime JS/TS Type       |
-| ----------------- | -------------------- | ------------------------ |
-| `text`            | `c.text()`           | `string`                 |
-| `bool`            | `c.bool()`           | `boolean`                |
-| `nat`             | `c.nat()`            | `bigint`                 |
-| `nat8`            | `c.nat8()`           | `number`                 |
-| `nat16`           | `c.nat16()`          | `number`                 |
-| `nat32`           | `c.nat32()`          | `number`                 |
-| `nat64`           | `c.nat64()`          | `bigint`                 |
-| `int`             | `c.int()`            | `bigint`                 |
-| `int8`            | `c.int8()`           | `number`                 |
-| `int16`           | `c.int16()`          | `number`                 |
-| `int32`           | `c.int32()`          | `number`                 |
-| `int64`           | `c.int64()`          | `bigint`                 |
-| `float32`         | `c.float32()`        | `number`                 |
-| `float64`         | `c.float64()`        | `number`                 |
-| `principal`       | `c.principal()`      | `Principal`              |
-| `null`            | `c.null()`           | `null`                   |
-| `reserved`        | `c.reserved()`       | `any`                    |
-| `empty`           | `c.empty()`          | `never`                  |
-| `blob`            | `c.blob()`           | `Uint8Array \| number[]` |
-| `opt T`           | `c.opt(T)`           | `[] \| [T]`              |
-| `vec T`           | `c.vec(T)`           | `T[]`                    |
-| `record { ... }`  | `c.record({ ... })`  | `Record<string, T>`      |
-| `variant { ... }` | `c.variant({ ... })` | Union of `{ Arm: T }`    |
-| `tuple { A; B }`  | `c.tuple([A, B])`    | `[A, B]`                 |
+| Candid Type       | COD Constructor      | Runtime JS/TS Type                                       |
+| ----------------- | -------------------- | -------------------------------------------------------- |
+| `text`            | `c.text()`           | `string`                                                 |
+| `bool`            | `c.bool()`           | `boolean`                                                |
+| `nat`             | `c.nat()`            | `bigint`                                                 |
+| `nat8`            | `c.nat8()`           | `number`                                                 |
+| `nat16`           | `c.nat16()`          | `number`                                                 |
+| `nat32`           | `c.nat32()`          | `number`                                                 |
+| `nat64`           | `c.nat64()`          | `bigint`                                                 |
+| `int`             | `c.int()`            | `bigint`                                                 |
+| `int8`            | `c.int8()`           | `number`                                                 |
+| `int16`           | `c.int16()`          | `number`                                                 |
+| `int32`           | `c.int32()`          | `number`                                                 |
+| `int64`           | `c.int64()`          | `bigint`                                                 |
+| `float32`         | `c.float32()`        | `number`                                                 |
+| `float64`         | `c.float64()`        | `number`                                                 |
+| `principal`       | `c.principal()`      | `Principal`                                              |
+| `null`            | `c.null()`           | `null`                                                   |
+| `reserved`        | `c.reserved()`       | `any`                                                    |
+| `empty`           | `c.empty()`          | `never`                                                  |
+| `blob`            | `c.blob()`           | `Uint8Array \| number[]`                                 |
+| `opt T`           | `c.opt(T)`           | `[] \| [T]`                                              |
+| `vec T`           | `c.vec(T)`           | `T[]`                                                    |
+| `record { ... }`  | `c.record({ ... })`  | `{ [K in keyof T]: Infer<T[K]> }` — one property per key |
+| `variant { ... }` | `c.variant({ ... })` | Union of `{ Arm: T }`                                    |
+| `tuple { A; B }`  | `c.tuple([A, B])`    | `[A, B]`                                                 |

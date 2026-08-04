@@ -2,8 +2,8 @@ import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import type { BaseActor, FunctionName } from "@ic-reactor/core"
 import * as z from "zod"
-import { isQuery } from "../helpers"
-import { formatLabel } from "../arguments/helpers"
+import { isQuery } from "../helpers.js"
+import { formatLabel } from "../arguments/helpers.js"
 import type {
   FormServiceMeta,
   FormArgumentsMeta,
@@ -11,10 +11,10 @@ import type {
   FormFieldType,
   FormRenderHint,
   VariableRefCandidate,
-} from "./types"
-import { cloneField, toFormValue } from "./helpers"
+} from "./types.js"
+import { cloneField, toFormValue } from "./helpers.js"
 
-export * from "./types"
+export * from "./types.js"
 
 const COMPOUND_RENDER_HINT: FormRenderHint = {
   isCompound: true,

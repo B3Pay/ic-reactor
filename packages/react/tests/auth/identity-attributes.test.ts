@@ -3,7 +3,7 @@ import { IDL } from "@icp-sdk/core/candid"
 import {
   decodeIdentityAttributeValues,
   identityAttributeKeys,
-} from "../../src/auth/identity-attributes"
+} from "../../src/auth/identity-attributes.js"
 
 describe("Internet Identity attributes", () => {
   it("builds scoped identity attribute keys for OpenID providers", () => {

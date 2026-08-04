@@ -21,7 +21,8 @@ Treat the published documentation and package manifests as the v3 release line.
 - Describe published documentation as IC Reactor v3.
 - Keep package-specific docs aligned with the released v3.7.0 runtime and its published tooling.
 - Prefer `@icp-sdk/*` package names in docs and examples.
-- Use `ClientManager` + `Reactor` + `createActorHooks` for React setup.
+- Prefer `defineReactor(...)` for React setup; use `ClientManager` + `Reactor` + `createActorHooks` when explicit construction order is needed.
+- `createAuthHooks` takes an `AuthenticationManager`, not a `ClientManager`. `useIdentityAttributes` comes from `createIdentityAttributeHooks`, not `createAuthHooks`.
 
 ## Skills
 
@@ -48,9 +49,12 @@ Use this map before editing so you can start in the package that owns the behavi
 
 ## Verification commands
 
+- Format check (CI gate; globs `packages/**` only, so root markdown, `docs/`, `examples/`, and `skill-packages/` are not covered): `pnpm format:check`
+- AI context check (CI gate; asserts `llms.txt` versions match every `package.json` and each `packages/*/llms.txt` exists): `pnpm check:ai-context`
+- Type check used by CI: `pnpm typecheck` — runs each package's own `typecheck` script, covering `src` and tests. The root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing.
 - Package builds: `pnpm build`
 - Package tests: `pnpm test`
-- Root type check used by CI: `pnpm exec tsc --noEmit`
+- Published-artifact verification: `pnpm verify:packages` — packs every publishable package, installs the tarballs outside the workspace, imports/requires each entry point in real Node, and runs `publint` + `attw`. Run it after any change to `exports`, `files`, build output, or module format; in-repo consumers resolve through workspace symlinks, so nothing else catches a broken published artifact.
 - Example type checks: `pnpm typecheck:examples`
 - Docs build: `pnpm docs:build`
 - Dependency audit: `corepack pnpm audit --audit-level moderate`

@@ -29,7 +29,7 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 - typed canister method calls
 - built-in cache keys and invalidation primitives
 - typed `Ok`/`Err` result handling
-- shared auth/agent management via `ClientManager`
+- shared agent + cache management via `ClientManager`, with Internet Identity in `AuthenticationManager`
 - reusable query/mutation objects that work both inside and outside React
 
 ## Package Overview
@@ -70,6 +70,33 @@ pnpm add @ic-reactor/candid @ic-reactor/parser
 
 ## Quick Start (React)
 
+### 0. Fastest path: `defineReactor`
+
+```ts
+// src/reactor.ts
+import { defineReactor } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE } from "./declarations/my_canister"
+
+export const {
+  reactor: backendReactor,
+  queryClient,
+  clientManager,
+  useActorQuery,
+  useActorMutation,
+  useAuth,
+} = defineReactor<_SERVICE>({
+  name: "backend",
+  idlFactory,
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  display: true,
+})
+```
+
+One call creates the `QueryClient`, `ClientManager`, reactor, and bound hooks —
+including `useAuth`, `useAgentState`, `useUserPrincipal`, and
+`useIdentityAttributes`. Steps 1–3 below show the manual equivalent, for when you
+need explicit construction order.
+
 ### 1. Create a shared client manager and reactor
 
 ```ts
@@ -82,7 +109,6 @@ export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({
   queryClient,
-  // withCanisterEnv: true, // optional: useful in local/dev setups
 })
 
 export const backendReactor = new Reactor<_SERVICE>({
@@ -97,7 +123,11 @@ export const backendReactor = new Reactor<_SERVICE>({
 
 ```ts
 // src/hooks.ts
-import { createActorHooks, createAuthHooks } from "@ic-reactor/react"
+import {
+  AuthenticationManager,
+  createActorHooks,
+  createAuthHooks,
+} from "@ic-reactor/react"
 import { backendReactor, clientManager } from "./reactor"
 
 export const {
@@ -107,7 +137,9 @@ export const {
   useActorInfiniteQuery,
 } = createActorHooks(backendReactor)
 
-export const { useAuth, useUserPrincipal } = createAuthHooks(clientManager)
+export const authentication = new AuthenticationManager({ clientManager })
+
+export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
 ```
 
 ### 3. Use in React components
@@ -255,20 +287,29 @@ npx @ic-reactor/cli init
 npx @ic-reactor/cli generate
 ```
 
-Generated query/mutation files typically expose both:
+Each generated canister directory contains `declarations/`, a managed
+`index.generated.ts`, and a stable `index.ts` wrapper. The generated file exports
+the reactor plus typed React hooks only:
 
-- React methods (`.useQuery()`, `.useMutation()`)
-- imperative methods (`.fetch()`, `.execute()`, `.invalidate()`)
+- `use<Canister>Query`, `use<Canister>SuspenseQuery`, `use<Canister>InfiniteQuery`,
+  `use<Canister>SuspenseInfiniteQuery`, `use<Canister>Mutation`, `use<Canister>Method`
+
+Codegen does not emit `createQuery` / `createMutation` objects. For outside-React
+use, call the generated reactor directly (`.fetchQuery()`, `.callMethod()`,
+`.invalidateQueries()`), or hand-write factory objects over it in a wrapper
+module.
 
 ## Dynamic Candid (Explorers and Dev Tools)
 
 ```ts
 import { CandidDisplayReactor } from "@ic-reactor/candid"
 import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
 
-const clientManager = new ClientManager()
+const clientManager = new ClientManager({ queryClient: new QueryClient() })
 
 const reactor = new CandidDisplayReactor({
+  name: "icp-ledger",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
 })
@@ -285,14 +326,14 @@ console.log(balance)
 
 ## Reactor vs Standard Actor (Summary)
 
-| Feature                                   | Standard Actor | IC Reactor            |
-| ----------------------------------------- | -------------- | --------------------- |
-| Type-safe method calls                    | ✅             | ✅                    |
-| Query caching                             | ❌             | ✅                    |
-| Background refetching                     | ❌             | ✅                    |
-| Typed `Ok`/`Err` handling                 | ❌ (manual)    | ✅                    |
-| Shared auth/identity + cache coordination | ❌             | ✅ (`ClientManager`)  |
-| Display-friendly transforms               | ❌             | ✅ (`DisplayReactor`) |
+| Feature                                   | Standard Actor | IC Reactor                                     |
+| ----------------------------------------- | -------------- | ---------------------------------------------- |
+| Type-safe method calls                    | ✅             | ✅                                             |
+| Query caching                             | ❌             | ✅                                             |
+| Background refetching                     | ❌             | ✅                                             |
+| Typed `Ok`/`Err` handling                 | ❌ (manual)    | ✅                                             |
+| Shared auth/identity + cache coordination | ❌             | ✅ (`ClientManager` + `AuthenticationManager`) |
+| Display-friendly transforms               | ❌             | ✅ (`DisplayReactor`)                          |
 
 ## Examples
 
@@ -338,6 +379,19 @@ pnpm build
 # Run package tests
 pnpm test
 
+# Type-check every package, including its tests (CI gate)
+pnpm typecheck
+
+# Check formatting (CI gate; globs packages/** only)
+pnpm format:check
+
+# Check llms.txt versions against every package.json (CI gate)
+pnpm check:ai-context
+
+# Pack, install outside the workspace, and verify the published artifacts
+# (real Node import + publint + attw)
+pnpm verify:packages
+
 # Run e2e tests
 pnpm test-e2e
 
@@ -353,7 +407,8 @@ This repository is intentionally structured to work well with AI coding assistan
 
 | File                                                                   | Purpose                                       |
 | ---------------------------------------------------------------------- | --------------------------------------------- |
-| [`llms.txt`](./llms.txt)                                               | High-level library context for LLMs           |
+| [`llms.txt`](./llms.txt)                                               | Compact package/task routing manifest         |
+| [`llms-full.txt`](./llms-full.txt)                                     | Longer prompt-ready API and task guide        |
 | [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context            |
 | [`AGENTS.md`](./AGENTS.md)                                             | OpenAI Codex agent instructions               |
 | [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                   |

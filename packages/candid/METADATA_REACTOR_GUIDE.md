@@ -36,22 +36,22 @@ It provides:
 
 ```typescript
 import { ClientManager } from "@ic-reactor/core"
-import { createMetadataReactor } from "@ic-reactor/candid"
+import { MetadataDisplayReactor } from "@ic-reactor/candid"
 import { QueryClient } from "@tanstack/query-core"
 
 // Setup
 const clientManager = new ClientManager({
   queryClient: new QueryClient(),
-  withProcessEnv: true,
 })
 await clientManager.initialize()
 
-// Create and initialize reactor with factory function
-const reactor = await createMetadataReactor({
+// Create the reactor, then initialize it
+const reactor = new MetadataDisplayReactor({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
   name: "ICPLedger",
 })
+await reactor.initialize()
 
 // Get available methods
 const methods = reactor.getMethodNames()
@@ -347,37 +347,26 @@ The system automatically detects formats from field labels:
 
 ```typescript
 import { ClientManager } from "@ic-reactor/core"
-import {
-  createMetadataReactor,
-  MetadataDisplayReactor,
-} from "@ic-reactor/candid"
+import { MetadataDisplayReactor } from "@ic-reactor/candid"
 import { QueryClient } from "@tanstack/query-core"
 
 // 1. Create client manager
 const clientManager = new ClientManager({
   queryClient: new QueryClient(),
-  withProcessEnv: true,
 })
 await clientManager.initialize()
 
-// Option 1: Use factory function (recommended)
-const reactor = await createMetadataReactor({
+// 2. Construct the reactor and initialize it
+const reactor = new MetadataDisplayReactor({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
   name: "ICPLedger",
 })
-
-// Option 2: Manual initialization
-const reactor2 = new MetadataDisplayReactor({
-  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
-  clientManager,
-  name: "ICPLedger",
-})
-await reactor2.initialize()
+await reactor.initialize()
 
 // Get available methods
 const methods = reactor.getMethodNames()
-console.log(methods) // \["icrc1_balance_of", "icrc1_transfer", ...\]
+console.log(methods) // ["icrc1_balance_of", "icrc1_transfer", ...]
 ```
 
 ### Building Dynamic Forms
@@ -727,24 +716,35 @@ formatLabel("userAddress") // "User Address"
 | `callMethod(options)`          | Call a method with display type transformation |
 | `callDynamicWithMeta(options)` | Register, call, and return metadata            |
 
-### Factory Function
+### Construction
+
+There is no factory function — construct with `new`, then `await initialize()`:
 
 ```typescript
-// Recommended way to create a reactor
-const reactor = await createMetadataReactor(options)
+const reactor = new MetadataDisplayReactor(options)
+await reactor.initialize()
 ```
 
 ### Constructor Options
 
 ```typescript
 interface CandidDisplayReactorParameters<A> {
-  canisterId: string
   clientManager: ClientManager
-  name?: string
+  name: string // Required — also the ic_env lookup key
+  canisterId?: CanisterId // Optional if resolvable from the ic_env cookie
   candid?: string // Optional: provide Candid source directly
-  adapter?: CandidAdapter
+  idlFactory?: (IDL: any) => any // Optional: skip fetching/parsing entirely
+  adapter?: CandidAdapter // Optional: reuse an existing adapter
+  pollingOptions?: PollingOptions // Optional: update-call polling config
+  funcClass?: { methodName: string; func: IDL.FuncClass } // Single-method service
+  validators?: Partial<{
+    [M in FunctionName<A>]: DisplayValidator<A, M>
+  }>
 }
 ```
+
+When `funcClass` is provided the reactor is ready immediately — no
+`initialize()` call is needed.
 
 ### FieldNode Properties
 

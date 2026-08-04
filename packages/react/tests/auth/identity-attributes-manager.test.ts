@@ -5,7 +5,7 @@ import { ClientManager } from "@ic-reactor/core"
 import {
   AuthenticationManager,
   IdentityAttributesManager,
-} from "../../src/auth"
+} from "../../src/auth/index.js"
 
 const authClientMocks = vi.hoisted(() => ({
   factory: vi.fn(),
