@@ -80,6 +80,9 @@ try {
 }
 
 const RELEASE_PATHS = [
+  // updateLlmsVersion() rewrites the root manifest; without it here the bump
+  // is left unstaged and check:ai-context fails on the released commit.
+  "llms.txt",
   "pnpm-lock.yaml",
   "packages/codegen/package.json",
   "packages/vite-plugin/package.json",

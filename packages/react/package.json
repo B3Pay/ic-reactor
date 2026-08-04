@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/react",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "description": "IC Reactor React library for building Internet Computer apps",
   "main": "dist/index.js",
   "module": "dist/index.js",
