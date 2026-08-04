@@ -7,7 +7,7 @@ import {
   RecordField,
   TupleField,
   VariantField,
-} from "./types"
+} from "./types.js"
 
 // ════════════════════════════════════════════════════════════════════════════
 // Type Guards

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { normalizeCandidInterface } from "../../src/utils"
+import { normalizeCandidInterface } from "../../src/utils.js"
 
 describe("normalizeCandidInterface", () => {
   it("should handle basic shorthand", () => {

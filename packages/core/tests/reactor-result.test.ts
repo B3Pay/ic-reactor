@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { Actor, ActorMethod, QueryResponseStatus } from "@icp-sdk/core/agent"
+import { ActorMethod, QueryResponseStatus } from "@icp-sdk/core/agent"
 import { QueryClient } from "@tanstack/query-core"
-import { BaseActor } from "../src/types/reactor"
+import { BaseActor } from "../src/types/reactor.js"
 import { IDL } from "@icp-sdk/core/candid"
-import { CanisterError, isCanisterError } from "../src/errors"
-import { ClientManager } from "../src/client"
-import { Reactor } from "../src/reactor"
+import { CanisterError, isCanisterError } from "../src/errors/index.js"
+import { ClientManager } from "../src/client.js"
+import { Reactor } from "../src/reactor.js"
 
 // Mock Actor module - we still need this for the legacy actor path
 vi.mock("@icp-sdk/core/agent", async () => {

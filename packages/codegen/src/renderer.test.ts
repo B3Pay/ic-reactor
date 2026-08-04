@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   BUILT_IN_JSDOC_FORMAT_TYPES,
   generateCodecDeclarations,
-} from "./renderer"
+} from "./renderer.js"
 import type { CandidSchema } from "@ic-reactor/parser"
 
 describe("Codec Declarations Generator", () => {

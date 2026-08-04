@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 
 // Import everything from the main index to verify exports
-import * as CandidPackage from "../../src/index"
+import * as CandidPackage from "../../src/index.js"
 
 describe("Package Exports", () => {
   describe("CandidAdapter", () => {

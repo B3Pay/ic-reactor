@@ -7,7 +7,7 @@ import {
   uint8ArrayToHex,
   hexToUint8Array,
   isNullish,
-} from "../utils"
+} from "../utils/index.js"
 
 function createFixedNumberCodec(bits: number, signed: boolean): z.ZodTypeAny {
   const min = signed ? -(2 ** (bits - 1)) : 0

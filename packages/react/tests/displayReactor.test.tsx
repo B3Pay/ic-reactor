@@ -12,7 +12,7 @@ import {
   createSuspenseQueryFactory,
   createSuspenseInfiniteQuery,
   createSuspenseInfiniteQueryFactory,
-} from "../src"
+} from "../src/index.js"
 import { ClientManager, Reactor, DisplayReactor } from "@ic-reactor/core"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { IDL } from "@icp-sdk/core/candid"

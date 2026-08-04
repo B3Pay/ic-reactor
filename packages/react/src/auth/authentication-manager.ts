@@ -5,7 +5,7 @@ import type {
   AuthState,
   AuthenticationClientOptions,
   AuthenticationSignInOptions,
-} from "./types"
+} from "./types.js"
 import { ClientManager, isDev } from "@ic-reactor/core"
 
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
@@ -13,7 +13,7 @@ import {
   IC_INTERNET_IDENTITY_PROVIDER,
   INTERNET_IDENTITY_PROVIDER_ENV_KEY,
   localInternetIdentityProvider,
-} from "./constants"
+} from "./constants.js"
 
 export interface AuthenticationManagerParameters extends AuthenticationClientOptions {
   clientManager: ClientManager
@@ -29,8 +29,6 @@ export interface AuthenticationManagerParameters extends AuthenticationClientOpt
 type AuthClientConstructor = {
   new (options?: AuthenticationClientOptions): AuthClientLike
 }
-
-const AUTH_CLIENT_MODULE = "@icp-sdk/auth/client"
 
 /**
  * Manages Internet Identity sign-in, session restoration, and authentication
@@ -228,7 +226,7 @@ export class AuthenticationManager {
 
       if (!this.authClient) {
         throw new Error(
-          "Authentication module is missing or failed to initialize. To use login, please install the auth package: npm install @icp-sdk/auth"
+          "Authentication module is missing or failed to initialize. To use login, install the optional auth peer: npm install @icp-sdk/auth. If it is already installed and your bundler could not resolve it, pass a pre-constructed client instead: new AuthenticationManager({ clientManager, authClient: new AuthClient(...) })"
         )
       }
 
@@ -271,7 +269,7 @@ export class AuthenticationManager {
   public logout = async (options?: { returnTo?: string }) => {
     if (!this.authClient) {
       throw new Error(
-        "Authentication module is missing or failed to initialize. To use logout, please install the auth package: npm install @icp-sdk/auth"
+        "Authentication module is missing or failed to initialize. To use logout, install the optional auth peer: npm install @icp-sdk/auth. If it is already installed and your bundler could not resolve it, pass a pre-constructed client instead: new AuthenticationManager({ clientManager, authClient: new AuthClient(...) })"
       )
     }
     this.updateState({ isAuthenticating: true, error: undefined })
@@ -305,7 +303,7 @@ export class AuthenticationManager {
   ): Promise<Identity> {
     if (!this.authClient) {
       throw new Error(
-        "Authentication module is missing or failed to initialize. To use login, please install the auth package: npm install @icp-sdk/auth"
+        "Authentication module is missing or failed to initialize. To use login, install the optional auth peer: npm install @icp-sdk/auth. If it is already installed and your bundler could not resolve it, pass a pre-constructed client instead: new AuthenticationManager({ clientManager, authClient: new AuthClient(...) })"
       )
     }
 
@@ -451,11 +449,12 @@ export class AuthenticationManager {
     }
 
     if (!this.authClientConstructorPromise) {
-      // Keep the optional auth peer out of non-auth bundles. Vite/Rollup/esbuild
-      // can otherwise try to resolve this package even when auth APIs are unused.
-      this.authClientConstructorPromise = import(
-        /* @vite-ignore */ AUTH_CLIENT_MODULE
-      )
+      // The specifier must stay a literal: a variable specifier (or /* @vite-ignore */)
+      // makes bundlers skip this import entirely, so the bare specifier survives into
+      // the browser, where it cannot be resolved without an import map and every login
+      // path fails. A literal lets Vite/Rollup/webpack code-split the optional peer,
+      // and lets them tree-shake it away for apps that never reference this class.
+      this.authClientConstructorPromise = import("@icp-sdk/auth/client")
         .then((authModule) => {
           const AuthClient = (
             authModule as { AuthClient?: AuthClientConstructor }

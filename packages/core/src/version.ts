@@ -1,5 +1,4 @@
-import pkg from "../package.json"
 /**
  * Library version - automatically synced from package.json.
  */
-export const VERSION = pkg.version
+export const VERSION = "3.7.0"

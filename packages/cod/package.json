@@ -22,7 +22,8 @@
   ],
   "scripts": {
     "build": "rm -rf dist tsconfig.tsbuildinfo && tsc -b",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },
   "repository": {
     "type": "git",

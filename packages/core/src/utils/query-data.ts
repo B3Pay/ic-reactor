@@ -1,4 +1,4 @@
-import type { ReactorQueryData } from "../types/reactor"
+import type { ReactorQueryData } from "../types/reactor.js"
 
 /** Convert a direct reactor result into a value TanStack Query can cache. */
 export const toReactorQueryData = <T>(value: T): ReactorQueryData<T> =>

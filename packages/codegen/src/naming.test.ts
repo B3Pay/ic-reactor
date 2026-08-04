@@ -4,7 +4,7 @@ import {
   toCamelCase,
   getReactorName,
   getServiceTypeName,
-} from "./naming"
+} from "./naming.js"
 
 describe("Naming Utilities", () => {
   describe("Base Conversions", () => {

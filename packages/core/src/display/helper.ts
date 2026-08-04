@@ -1,6 +1,6 @@
 import { IDL } from "@icp-sdk/core/candid"
-import { ActorDisplayCodec, DisplayOf, DisplayCodec } from "./types"
-import { DisplayCodecVisitor } from "./visitor"
+import { ActorDisplayCodec, DisplayOf, DisplayCodec } from "./types.js"
+import { DisplayCodecVisitor } from "./visitor.js"
 
 export function didToDisplayCodec<
   TCandid = unknown,

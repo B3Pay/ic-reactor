@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { didToDisplayCodec } from "../../src/display"
+import { didToDisplayCodec } from "../../src/display/index.js"
 
 describe("Display Codec - didToDisplayCodec", () => {
   describe("Primitive Types", () => {

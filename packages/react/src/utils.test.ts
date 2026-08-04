@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { normalizeQueryData } from "./utils"
+import { normalizeQueryData } from "./utils.js"
 
 describe("normalizeQueryData", () => {
   it("uses null for a successful undefined query result", () => {

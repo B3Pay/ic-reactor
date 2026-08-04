@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { todoIDLTypes } from "./idl-types"
-import { didToDisplayCodec } from "../../src/display/helper"
+import { todoIDLTypes } from "./idl-types.js"
+import { didToDisplayCodec } from "../../src/display/helper.js"
 
 describe("Codec Visitor - Todo Types", () => {
   const idlTypes = todoIDLTypes

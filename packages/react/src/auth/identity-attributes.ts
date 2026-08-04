@@ -4,8 +4,8 @@ import type {
   IdentityAttributeOpenIdProvider,
   IdentityAttributeValues,
   SignedIdentityAttributes,
-} from "./types"
-import { IC_INTERNET_IDENTITY_PROVIDER } from "./constants"
+} from "./types.js"
+import { IC_INTERNET_IDENTITY_PROVIDER } from "./constants.js"
 
 export const IDENTITY_ATTRIBUTES_PROVIDER = IC_INTERNET_IDENTITY_PROVIDER
 

@@ -3,7 +3,7 @@ import type {
   PollingOptions,
   ReadStateOptions,
 } from "@icp-sdk/core/agent"
-import type { ClientManager } from "./client"
+import type { ClientManager } from "./client.js"
 import type { QueryKey, FetchQueryOptions } from "@tanstack/query-core"
 import type {
   ReactorParameters,
@@ -18,18 +18,18 @@ import type {
   ReactorQueryParams,
   ReactorCallParams,
   CanisterId,
-} from "./types/reactor"
+} from "./types/reactor.js"
 
 import { DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { generateKey, extractOkResult } from "./utils/helper"
-import { toReactorQueryData } from "./utils/query-data"
+import { generateKey, extractOkResult } from "./utils/helper.js"
+import { toReactorQueryData } from "./utils/query-data.js"
 import {
   processQueryCallResponse,
   processUpdateCallResponse,
-} from "./utils/agent"
-import { CallError, CanisterError, ValidationError } from "./errors"
+} from "./utils/agent.js"
+import { CallError, CanisterError, ValidationError } from "./errors/index.js"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 /**
@@ -206,6 +206,15 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     const resolvedCanisterId = callConfig?.canisterId
       ? Principal.from(callConfig.canisterId).toString()
       : this.canisterId.toString()
+
+    // A `callConfig.canisterId` override roots the key at a canister the client was
+    // never told about, so it would be missed by the canister-scoped cancel and
+    // invalidate in ClientManager.updateAgent and stay cached under the old identity.
+    // Registering here keeps that registry complete. Registration is idempotent.
+    if (callConfig?.canisterId) {
+      this.clientManager.registerCanisterId(resolvedCanisterId)
+    }
+
     const queryKeys: any[] = [resolvedCanisterId, params.functionName]
 
     const effectiveTarget =

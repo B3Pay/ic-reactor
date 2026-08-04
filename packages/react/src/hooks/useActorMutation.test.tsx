@@ -4,7 +4,7 @@ import React from "react"
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { Actor, ActorMethod } from "@icp-sdk/core/agent"
-import { useActorMutation } from "./useActorMutation"
+import { useActorMutation } from "./useActorMutation.js"
 
 // Mock IDL factory
 const idlFactory = ({ IDL }: any) => {

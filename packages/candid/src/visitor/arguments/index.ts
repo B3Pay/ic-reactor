@@ -1,6 +1,6 @@
-import { isQuery } from "../helpers"
-import { checkTextFormat, checkNumberFormat } from "../constants"
-import { MetadataError } from "./types"
+import { isQuery } from "../helpers.js"
+import { checkTextFormat, checkNumberFormat } from "../constants.js"
+import { MetadataError } from "./types.js"
 import type {
   FieldNode,
   RecordField,
@@ -24,17 +24,17 @@ import type {
   BlobValidationResult,
   TextFormat,
   NumberFormat,
-} from "./types"
+} from "./types.js"
 
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { BaseActor, FunctionName } from "@ic-reactor/core"
 import * as z from "zod"
-import { formatLabel } from "./helpers"
+import { formatLabel } from "./helpers.js"
 
-export * from "./types"
-export * from "./helpers"
-export { checkTextFormat, checkNumberFormat } from "../constants"
+export * from "./types.js"
+export * from "./helpers.js"
+export { checkTextFormat, checkNumberFormat } from "../constants.js"
 
 // ════════════════════════════════════════════════════════════════════════════
 // Render Hint Helpers

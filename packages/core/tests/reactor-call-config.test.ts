@@ -3,14 +3,14 @@ import { ActorMethod, QueryResponseStatus } from "@icp-sdk/core/agent"
 import { QueryClient } from "@tanstack/query-core"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { ClientManager } from "../src/client"
-import { Reactor } from "../src/reactor"
-import type { BaseActor } from "../src/types/reactor"
-import * as agentUtils from "../src/utils/agent"
+import { ClientManager } from "../src/client.js"
+import { Reactor } from "../src/reactor.js"
+import type { BaseActor } from "../src/types/reactor.js"
+import * as agentUtils from "../src/utils/agent.js"
 
 vi.mock("../src/utils/agent", async () => {
   const actual =
-    await vi.importActual<typeof import("../src/utils/agent")>(
+    await vi.importActual<typeof import("../src/utils/agent.js")>(
       "../src/utils/agent"
     )
 

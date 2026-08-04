@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
-import { Actor, ActorMethod, ActorSubclass } from "@icp-sdk/core/agent"
+import { ActorMethod, ActorSubclass } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
-import { ClientManager } from "../src/client"
-import { Reactor } from "../src/reactor"
+import { ClientManager } from "../src/client.js"
+import { Reactor } from "../src/reactor.js"
 
 describe("ICP Integration Test", () => {
   it.skip("should fetch ICP token symbol from mainnet", async () => {
@@ -63,7 +63,7 @@ describe("ICP Integration Test", () => {
     }>
 
     // 3. Initialize Reactor for ICP Ledger
-    const ledgerReactor = new Reactor({
+    const ledgerReactor = new Reactor<LedgerActor>({
       name: "ledger-reactor",
       clientManager,
       idlFactory,

@@ -6,7 +6,7 @@ import {
   getVariantValue,
   getVariantValueByKey,
   isKeyMatchVariant,
-} from "../src"
+} from "../src/index.js"
 
 describe("candid variant helpers", () => {
   it("supports raw single-key variants", () => {

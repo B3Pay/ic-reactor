@@ -4,7 +4,7 @@ import React, { Suspense } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { Reactor } from "@ic-reactor/core"
-import { createQuery, createQueryFactory } from "../src/createQuery"
+import { createQuery, createQueryFactory } from "../src/createQuery.js"
 
 // Define Actor Interface
 interface User {

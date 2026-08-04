@@ -1,4 +1,4 @@
-import type { CandidDefinition } from "./types"
+import type { CandidDefinition } from "./types.js"
 import { IDL } from "@icp-sdk/core/candid"
 
 /**

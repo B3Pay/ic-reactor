@@ -34,18 +34,18 @@ import {
   UseMutationResult,
   InfiniteData,
 } from "@tanstack/react-query"
-import { useActorQuery } from "./hooks/useActorQuery"
-import { useActorSuspenseQuery } from "./hooks/useActorSuspenseQuery"
-import { useActorInfiniteQuery } from "./hooks/useActorInfiniteQuery"
-import { useActorSuspenseInfiniteQuery } from "./hooks/useActorSuspenseInfiniteQuery"
-import { useActorMutation } from "./hooks/useActorMutation"
+import { useActorQuery } from "./hooks/useActorQuery.js"
+import { useActorSuspenseQuery } from "./hooks/useActorSuspenseQuery.js"
+import { useActorInfiniteQuery } from "./hooks/useActorInfiniteQuery.js"
+import { useActorSuspenseInfiniteQuery } from "./hooks/useActorSuspenseInfiniteQuery.js"
+import { useActorMutation } from "./hooks/useActorMutation.js"
 import {
   useActorMethod,
   UseActorMethodParameters,
-} from "./hooks/useActorMethod"
-import { InfiniteQueryConfig } from "./createInfiniteQuery"
-import { SuspenseInfiniteQueryConfig } from "./createSuspenseInfiniteQuery"
-import { QueryConfig, SuspenseQueryConfig, MutationConfig } from "./types"
+} from "./hooks/useActorMethod.js"
+import { InfiniteQueryConfig } from "./createInfiniteQuery.js"
+import { SuspenseInfiniteQueryConfig } from "./createSuspenseInfiniteQuery.js"
+import { QueryConfig, SuspenseQueryConfig, MutationConfig } from "./types.js"
 
 export type ActorHooks<Service, Transform extends TransformKey> = {
   useActorQuery: {

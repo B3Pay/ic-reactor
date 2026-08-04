@@ -4,7 +4,7 @@ import type {
   CandidAdapterParameters,
   CandidDefinition,
   ReactorParser,
-} from "../../src/types"
+} from "../../src/types.js"
 import type { HttpAgent } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { IDL } from "@icp-sdk/core/candid"
@@ -38,7 +38,7 @@ describe("Types", () => {
           call: () => Promise.resolve({}),
         } as unknown as HttpAgent,
         isLocal: false,
-        subscribe: (callback) => () => {},
+        subscribe: (_callback) => () => {},
       }
 
       expect(mockClientManager.agent).toBeDefined()
@@ -66,7 +66,7 @@ describe("Types", () => {
       const mockClientManager: CandidClientManager = {
         agent: {} as HttpAgent,
         isLocal: false,
-        subscribe: (callback) => {
+        subscribe: (_callback) => {
           return () => {
             subscribed = false
           }
@@ -169,8 +169,8 @@ describe("Types", () => {
   describe("ReactorParser", () => {
     it("should have required didToJs method", () => {
       const parser: ReactorParser = {
-        didToJs: (source: string) => `export const idlFactory = () => {}`,
-        validateIDL: (source: string) => true,
+        didToJs: (_source: string) => `export const idlFactory = () => {}`,
+        validateIDL: (_source: string) => true,
       }
 
       expect(typeof parser.didToJs).toBe("function")
@@ -179,8 +179,8 @@ describe("Types", () => {
 
     it("should have required validateIDL method", () => {
       const parser: ReactorParser = {
-        didToJs: (source: string) => "",
-        validateIDL: (source: string) => true,
+        didToJs: (_source: string) => "",
+        validateIDL: (_source: string) => true,
       }
 
       expect(typeof parser.validateIDL).toBe("function")
@@ -190,8 +190,8 @@ describe("Types", () => {
     it("should have optional default method", () => {
       const parser: ReactorParser = {
         default: async () => {},
-        didToJs: (source: string) => "",
-        validateIDL: (source: string) => true,
+        didToJs: (_source: string) => "",
+        validateIDL: (_source: string) => true,
       }
 
       expect(typeof parser.default).toBe("function")
@@ -199,8 +199,8 @@ describe("Types", () => {
 
     it("should allow undefined default method", () => {
       const parser: ReactorParser = {
-        didToJs: (source: string) => "",
-        validateIDL: (source: string) => true,
+        didToJs: (_source: string) => "",
+        validateIDL: (_source: string) => true,
       }
 
       expect(parser.default).toBeUndefined()

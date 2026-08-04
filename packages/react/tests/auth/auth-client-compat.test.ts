@@ -9,7 +9,7 @@ import { ClientManager } from "@ic-reactor/core"
 import {
   AuthenticationManager,
   IdentityAttributesManager,
-} from "../../src/auth"
+} from "../../src/auth/index.js"
 
 const authClientMocks = vi.hoisted(() => ({ factory: vi.fn() }))
 
@@ -64,7 +64,7 @@ describe("@icp-sdk/auth nonce contract", () => {
 
     await attributes.request({ keys: ["email"], nonce: new Uint8Array([4, 2]) })
 
-    const [request] = authClient.requestAttributes.mock.calls[0] as [
+    const [request] = authClient.requestAttributes.mock.calls[0] as unknown as [
       { nonce: unknown },
     ]
     expect(typeof request.nonce).not.toBe("function")
@@ -80,7 +80,7 @@ describe("@icp-sdk/auth nonce contract", () => {
 
     await attributes.request({ keys: ["email"], nonce: new Uint8Array([4, 2]) })
 
-    const [request] = authClient.requestAttributes.mock.calls[0] as [
+    const [request] = authClient.requestAttributes.mock.calls[0] as unknown as [
       { nonce: unknown },
     ]
     // v8 calls `nonce()`; handing it a Uint8Array would throw at runtime.
@@ -100,7 +100,7 @@ describe("@icp-sdk/auth nonce contract", () => {
 
     // v8 journals the nonce itself, so it must stay unevaluated until called.
     expect(produce).not.toHaveBeenCalled()
-    const [request] = authClient.requestAttributes.mock.calls[0] as [
+    const [request] = authClient.requestAttributes.mock.calls[0] as unknown as [
       { nonce: () => Promise<Uint8Array> },
     ]
     await expect(request.nonce()).resolves.toEqual(new Uint8Array([7]))
@@ -117,7 +117,7 @@ describe("@icp-sdk/auth nonce contract", () => {
 
     // v7 has no thunk support, so the callback is invoked for it.
     expect(produce).toHaveBeenCalledTimes(1)
-    const [request] = authClient.requestAttributes.mock.calls[0] as [
+    const [request] = authClient.requestAttributes.mock.calls[0] as unknown as [
       { nonce: Promise<Uint8Array> },
     ]
     await expect(request.nonce).resolves.toEqual(new Uint8Array([7]))
@@ -133,7 +133,7 @@ describe("@icp-sdk/auth nonce contract", () => {
       nonce: Promise.resolve(new Uint8Array([1])),
     })
 
-    const [request] = authClient.requestAttributes.mock.calls[0] as [
+    const [request] = authClient.requestAttributes.mock.calls[0] as unknown as [
       { nonce: Promise<Uint8Array> },
     ]
     await expect(request.nonce).resolves.toEqual(new Uint8Array([1]))

@@ -34,8 +34,8 @@ import type {
   SuspenseQueryResult,
   SuspenseQueryFactoryConfig,
   NoInfer,
-} from "./types"
-import { buildChainedSelect } from "./utils"
+} from "./types.js"
+import { buildChainedSelect } from "./utils.js"
 
 // ============================================================================
 // Internal Implementation

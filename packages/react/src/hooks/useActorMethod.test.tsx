@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react"
 import React from "react"
 import { ClientManager, Reactor, CallError } from "@ic-reactor/core"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useActorMethod } from "./useActorMethod"
+import { useActorMethod } from "./useActorMethod.js"
 import { ActorMethod } from "@icp-sdk/core/agent"
 
 const idlFactory = ({ IDL }: any) => {

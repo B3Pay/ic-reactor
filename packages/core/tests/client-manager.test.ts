@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
-import { ClientManager } from "../src/client"
+import { ClientManager } from "../src/client.js"
+import { AnonymousIdentity } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 vi.mock("@icp-sdk/core/agent/canister-env", () => ({
@@ -161,5 +162,44 @@ describe("ClientManager", () => {
     const manager = new ClientManager({ queryClient })
 
     expect((await manager.getUserPrincipal()).isAnonymous()).toBe(true)
+  })
+
+  describe("updateAgent invalidation scope", () => {
+    const canisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+    it("invalidates registered canister queries but leaves non-IC queries alone", () => {
+      const manager = new ClientManager({ queryClient })
+      manager.registerCanisterId(canisterId, "ledger")
+
+      queryClient.setQueryData([canisterId, "icrc1_name"], "ICP")
+      queryClient.setQueryData(["user-preferences"], { theme: "dark" })
+
+      manager.updateAgent(new AnonymousIdentity())
+
+      expect(
+        queryClient.getQueryState([canisterId, "icrc1_name"])?.isInvalidated
+      ).toBe(true)
+      // Apps share one QueryClient with the rest of their app; signing in must not
+      // mark their unrelated queries stale.
+      expect(
+        queryClient.getQueryState(["user-preferences"])?.isInvalidated
+      ).toBe(false)
+    })
+
+    it("covers canisters reached only through a callConfig override", () => {
+      const manager = new ClientManager({ queryClient })
+      const overriddenId = "rrkah-fqaaa-aaaaa-aaaaq-cai"
+
+      // Reactor.generateQueryKey registers the resolved id for overridden calls,
+      // so those queries are not left cached under the previous identity.
+      manager.registerCanisterId(overriddenId)
+      queryClient.setQueryData([overriddenId, "get_user"], { id: 1 })
+
+      manager.updateAgent(new AnonymousIdentity())
+
+      expect(
+        queryClient.getQueryState([overriddenId, "get_user"])?.isInvalidated
+      ).toBe(true)
+    })
   })
 })

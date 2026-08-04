@@ -1,17 +1,17 @@
 import type { Identity } from "@icp-sdk/core/agent"
-import type { ClientManagerParameters, AgentState } from "./types/client"
+import type { ClientManagerParameters, AgentState } from "./types/client.js"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryClient } from "@tanstack/query-core"
 
 import { HttpAgent } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
-import { IC_HOST_NETWORK_URI } from "./utils/constants"
+import { IC_HOST_NETWORK_URI } from "./utils/constants.js"
 import {
   getNetworkByHostname,
   getProcessEnvNetwork,
   isDev,
   isMainnetHost,
-} from "./utils/helper"
+} from "./utils/helper.js"
 
 /**
  * ClientManager is a central class for managing the Internet Computer (IC) agent.
@@ -230,6 +230,9 @@ export class ClientManager {
    * This is used for informational purposes and network detection.
    */
   public registerCanisterId(canisterId: string, name?: string): void {
+    if (this.#targetCanisterIds.has(canisterId)) {
+      return
+    }
     if (isDev() && typeof window !== "undefined") {
       const actorName = name || canisterId
       console.info(
@@ -310,17 +313,23 @@ export class ClientManager {
         }
       )
     }
-    // Cancel all queries for connected canisters to prevent race conditions
-    // with the old identity
-    this.connectedCanisterIds().forEach((canisterId) => {
-      this.queryClient.cancelQueries({
-        queryKey: [canisterId],
-      })
+    // Cancel in-flight queries for connected canisters to prevent race conditions
+    // with the old identity, then invalidate the same scope. Both are keyed on the
+    // canister ID because every reactor query key starts with one. Apps commonly
+    // share a QueryClient with the rest of their app, so an unfiltered
+    // invalidateQueries() here would also refetch their unrelated REST/GraphQL
+    // queries on every sign-in and sign-out.
+    const canisterIds = this.connectedCanisterIds()
+    canisterIds.forEach((canisterId) => {
+      this.queryClient.cancelQueries({ queryKey: [canisterId] })
     })
 
     this.#agent.replaceIdentity(identity)
     this.notifySubscribers(identity)
-    this.queryClient.invalidateQueries()
+
+    canisterIds.forEach((canisterId) => {
+      this.queryClient.invalidateQueries({ queryKey: [canisterId] })
+    })
   }
 
   private notifySubscribers(identity: Identity) {

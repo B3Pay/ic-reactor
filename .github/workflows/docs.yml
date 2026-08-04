@@ -19,9 +19,6 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
-env:
-  V3_DOCS_REF: v3.6.0
-
 jobs:
   build:
     name: Build Documentation
@@ -30,12 +27,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Checkout released v3 documentation source
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.V3_DOCS_REF }}
-          path: v3-docs-source
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -69,31 +60,33 @@ jobs:
       - name: Build documentation (Astro)
         run: pnpm docs:build
 
-      - name: Install released v3 dependencies
-        working-directory: v3-docs-source
-        run: pnpm install --frozen-lockfile
-
-      - name: Build released v3 documentation (Astro)
-        working-directory: v3-docs-source
-        run: pnpm docs:build
-
       # docs/dist should be Astro static output
 
       - name: Download existing Pages content
+        id: existing-pages
         uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: existing-pages
+        # gh-pages does not exist on the very first deploy. A failure here is only
+        # tolerable in that case; the guard below turns any other failure into an error
+        # instead of silently publishing a site whose /v2 URLs all 404.
         continue-on-error: true
 
       - name: Merge existing + new docs
         run: |
+          set -euo pipefail
           mkdir -p final-docs
 
-          # Copy existing gh-pages content if exists
           if [ -d "existing-pages" ]; then
-            cp -r existing-pages/* final-docs/ 2>/dev/null || true
+            cp -r existing-pages/* final-docs/
             rm -rf final-docs/.git
+          elif git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "::error::gh-pages exists remotely but could not be checked out." \
+                 "Refusing to publish, which would drop every previously published version."
+            exit 1
+          else
+            echo "gh-pages does not exist yet - treating this as the first deploy."
           fi
 
           # Ensure v2 exists by moving the legacy TypeDoc root into /v2 once.
@@ -109,21 +102,17 @@ jobs:
             shopt -u dotglob
           fi
 
-          # Replace the published v3 docs with the exact v3.6.0 release build.
+          # Publish the docs built from this commit.
           rm -rf final-docs/v3
           mkdir -p final-docs/v3
-          cp -r v3-docs-source/docs/dist/* final-docs/v3/
+          cp -r docs/dist/* final-docs/v3/
 
           # v4 is not released. Remove any stale preview documentation.
           rm -rf final-docs/v4
 
           # Keep canonical llms files available at the site root.
-          cp v3-docs-source/llms.txt final-docs/llms.txt
-          if [ -f "v3-docs-source/llms-full.txt" ]; then
-            cp v3-docs-source/llms-full.txt final-docs/llms-full.txt
-          else
-            cp llms-full.txt final-docs/llms-full.txt
-          fi
+          cp llms.txt final-docs/llms.txt
+          cp llms-full.txt final-docs/llms-full.txt
 
           # Normalize the version selector in preserved static versions.
           node << 'NODE'

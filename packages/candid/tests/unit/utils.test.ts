@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { importCandidDefinition } from "../../src/utils"
+import { importCandidDefinition } from "../../src/utils.js"
 
 describe("Utils", () => {
   describe("importCandidDefinition", () => {

@@ -10,7 +10,8 @@
     "noEmit": false,
     "allowImportingTsExtensions": false,
     "lib": ["ES2020", "DOM"],
-    "moduleResolution": "bundler"
+    "module": "NodeNext",
+    "moduleResolution": "nodenext"
   },
   "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "**/*.spec.ts", "tests/**/*"],

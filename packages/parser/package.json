@@ -6,21 +6,35 @@
   "files": [
     "dist/web/*",
     "dist/nodejs/*",
-    "dist/bundler/*"
+    "dist/bundler/*",
+    "!dist/**/.gitignore",
+    "README.md",
+    "LICENSE_MIT",
+    "LICENSE_APACHE"
   ],
   "main": "dist/nodejs/index.js",
   "module": "dist/web/index.js",
-  "types": "dist/web/index.d.ts",
+  "types": "dist/nodejs/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/web/index.d.ts",
-      "browser": "./dist/web/index.js",
-      "node": "./dist/nodejs/index.js",
-      "workerd": "./dist/web/index.js",
-      "import": "./dist/nodejs/index.js",
-      "require": "./dist/nodejs/index.js",
-      "default": "./dist/web/index.js"
-    }
+      "browser": {
+        "types": "./dist/web/index.d.ts",
+        "default": "./dist/web/index.js"
+      },
+      "workerd": {
+        "types": "./dist/web/index.d.ts",
+        "default": "./dist/web/index.js"
+      },
+      "node": {
+        "types": "./dist/nodejs/index.d.ts",
+        "default": "./dist/nodejs/index.js"
+      },
+      "default": {
+        "types": "./dist/web/index.d.ts",
+        "default": "./dist/web/index.js"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "repository": {
     "type": "git",

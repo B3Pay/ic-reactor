@@ -9,7 +9,7 @@ import {
   isUrl,
   isImage,
   isUuid,
-} from "./helpers"
+} from "./helpers.js"
 
 describe("Helpers", () => {
   describe("isPrincipalId", () => {

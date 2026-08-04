@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { CandidAdapter } from "../../src/adapter"
-import type { CandidClientManager, ReactorParser } from "../../src/types"
+import { CandidAdapter } from "../../src/adapter.js"
+import type { CandidClientManager, ReactorParser } from "../../src/types.js"
 import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
-} from "../../src/constants"
+} from "../../src/constants.js"
 import { IDL } from "@icp-sdk/core/candid"
 
 // Mock parser behavior

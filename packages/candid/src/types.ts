@@ -6,7 +6,7 @@ import type {
   DisplayReactorParameters,
   ReactorParameters,
 } from "@ic-reactor/core"
-import type { CandidAdapter } from "./adapter"
+import type { CandidAdapter } from "./adapter.js"
 
 export interface DynamicMethodOptions {
   /** The method name to register. */

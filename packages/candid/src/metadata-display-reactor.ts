@@ -3,23 +3,23 @@ import type {
   BaseActor,
   FunctionName,
 } from "@ic-reactor/core"
-import { CandidDisplayReactor } from "./display-reactor"
+import { CandidDisplayReactor } from "./display-reactor.js"
 import type {
   CandidDisplayReactorParameters,
   DynamicMethodOptions,
-} from "./types"
+} from "./types.js"
 import {
   FieldVisitor,
   ArgumentsMeta,
   ArgumentsServiceMeta,
   MetadataError,
-} from "./visitor/arguments"
+} from "./visitor/arguments/index.js"
 import {
   MethodMeta,
   MethodResult,
   ResultFieldVisitor,
   ServiceMeta,
-} from "./visitor/returns"
+} from "./visitor/returns/index.js"
 
 // ============================================================================
 // MetadataDisplayReactor

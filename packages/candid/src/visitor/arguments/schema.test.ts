@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { FieldVisitor } from "./index"
+import { FieldVisitor } from "./index.js"
 import * as z from "zod"
 
 describe("FieldVisitor Schema Generation", () => {

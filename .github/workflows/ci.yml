@@ -6,14 +6,21 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only collapse runs for the same pull request. Keying on github.ref made every
+  # push to main share one group, so back-to-back merges cancelled each other and
+  # left commits on main with no completed CI run.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -59,11 +66,12 @@ jobs:
         run: pnpm build
 
       - name: Type check
-        run: pnpm exec tsc --noEmit
+        run: pnpm typecheck
 
   typecheck-examples:
     name: Type Check Examples
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -110,6 +118,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -154,6 +163,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -209,5 +219,11 @@ jobs:
       - name: Check package sizes
         run: pnpm size
 
-      - name: Verify package contents
-        run: pnpm pack:check
+      - name: Verify published artifacts
+        # Packs every publishable package, installs the tarballs into a scratch
+        # project outside the workspace, imports/requires every entry point in real
+        # Node, and runs publint + attw. In-repo consumers reach packages through
+        # workspace symlinks and bundler-mode resolution, so nothing else in CI can
+        # catch a broken published artifact -- which is how 3.7.0 shipped
+        # extensionless ESM specifiers and a cli `types` entry that was never built.
+        run: pnpm verify:packages

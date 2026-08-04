@@ -4,12 +4,12 @@ import type {
   TransformArgsRegistry,
   TransformKey,
 } from "@ic-reactor/core"
-import type { CandidReactorParameters, DynamicMethodOptions } from "./types"
+import type { CandidReactorParameters, DynamicMethodOptions } from "./types.js"
 
 import { Reactor } from "@ic-reactor/core"
-import { CandidAdapter } from "./adapter"
+import { CandidAdapter } from "./adapter.js"
 import { IDL } from "@icp-sdk/core/candid"
-import { normalizeCandidInterface } from "./utils"
+import { normalizeCandidInterface } from "./utils.js"
 
 export class CandidReactor<
   A = BaseActor,

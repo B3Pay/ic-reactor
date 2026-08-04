@@ -5,10 +5,6 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@dfinity/agent': npm:@icp-sdk/core/agent@^5.2.0
-  '@dfinity/candid': npm:@icp-sdk/core/candid@^5.2.0
-  '@dfinity/principal': npm:@icp-sdk/core/principal@^5.2.0
-  '@dfinity/identity': npm:@icp-sdk/core/identity@^5.2.0
   axios: 1.16.0
   brace-expansion: 5.0.6
   devalue: 5.8.1

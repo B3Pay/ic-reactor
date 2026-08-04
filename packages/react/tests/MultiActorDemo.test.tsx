@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { createActorHooks } from "../src"
+import { createActorHooks } from "../src/index.js"
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { renderHook } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"

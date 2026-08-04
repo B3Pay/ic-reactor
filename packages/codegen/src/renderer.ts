@@ -8,12 +8,15 @@ import {
   BUILT_IN_FORMAT_HELPERS,
   type CustomJSDocFormatTypes,
   normalizeValidationMetadata,
-} from "./metadata"
+} from "./metadata.js"
 
-export { BUILT_IN_JSDOC_FORMAT_TYPES } from "./metadata"
-export { BUILT_IN_FORMAT_HELPERS } from "./metadata"
+export { BUILT_IN_JSDOC_FORMAT_TYPES } from "./metadata.js"
+export { BUILT_IN_FORMAT_HELPERS } from "./metadata.js"
 
-export type { CustomJSDocFormatTypes, JSDocFormatDefinition } from "./metadata"
+export type {
+  CustomJSDocFormatTypes,
+  JSDocFormatDefinition,
+} from "./metadata.js"
 
 export interface GenerateCodecDeclarationsOptions {
   /**

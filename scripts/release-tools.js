@@ -79,12 +79,27 @@ try {
   process.exit(1)
 }
 
+const RELEASE_PATHS = [
+  "pnpm-lock.yaml",
+  "packages/codegen/package.json",
+  "packages/vite-plugin/package.json",
+  "packages/cli/package.json",
+  "packages/parser/package.json",
+  "packages/codegen/llms.txt",
+  "packages/vite-plugin/llms.txt",
+  "packages/cli/llms.txt",
+  "examples",
+]
+
 // 3. Git Commit and Tag
 console.log("\n📂 Creating release commit and tag...")
 const tagName = `tools-v${version}`
 
 try {
-  run("git", ["add", "."])
+  // Stage only the files this script rewrites. `git add .` would sweep in any
+  // untracked scratch file, and since core/react/candid ship "src", it would be
+  // committed, tagged and published inside the tarball.
+  run("git", ["add", "--", ...RELEASE_PATHS])
   run("git", ["commit", "-m", `chore: release tools v${version}`])
 
   // Tagging
@@ -113,6 +128,9 @@ if (shouldPublish || dryRun) {
       "--access",
       "public",
     ]
+    // A hyphen means a prerelease; publishing it to `latest` would hand it to
+    // every plain `npm install`.
+    if (version.includes("-")) publishArgs.push("--tag", "beta")
     if (dryRun) publishArgs.push("--dry-run")
 
     console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)

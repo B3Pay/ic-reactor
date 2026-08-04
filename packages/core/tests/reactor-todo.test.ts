@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
-import { ClientManager, DisplayReactor } from "../src"
+import { ClientManager, DisplayReactor } from "../src/index.js"
 import { QueryClient } from "@tanstack/query-core"
-import { idlFactory, canisterId, todo } from "./candid/todo"
+import { idlFactory, canisterId, todo } from "./candid/todo/index.js"
 
 describe("TodoActor Test", () => {
   // 1. Setup Client Manager with Todo Actor
@@ -19,7 +19,7 @@ describe("TodoActor Test", () => {
   // Type checking verification (static check)
   // acts as a "compile-time" test to ensure types are inferred correctly
   it("should infer types correctly", () => {
-    const _typedCall = async () => {
+    const typedCall = async () => {
       const result = await todoActor.callMethod({
         functionName: "addTodo", // Type hint should appear here
         args: ["New Task"], // Type hint should check this is string
@@ -27,7 +27,9 @@ describe("TodoActor Test", () => {
       const todos = await todoActor.callMethod({
         functionName: "getAllTodos",
       })
+      return { result, todos }
     }
+    void typedCall
 
     expect(todoActor).toBeInstanceOf(DisplayReactor)
   })

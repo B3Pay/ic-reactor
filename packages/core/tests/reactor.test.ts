@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { Actor, ActorMethod, QueryResponseStatus } from "@icp-sdk/core/agent"
+import { ActorMethod, QueryResponseStatus } from "@icp-sdk/core/agent"
 import { QueryClient } from "@tanstack/query-core"
-import { Principal } from "@icp-sdk/core/principal"
 import { IDL } from "@icp-sdk/core/candid"
-import { BaseActor } from "../src/types/reactor"
-import { ClientManager } from "../src/client"
-import { Reactor } from "../src/reactor"
+import { BaseActor } from "../src/types/reactor.js"
+import { ClientManager } from "../src/client.js"
+import { Reactor } from "../src/reactor.js"
 
 // Mock Actor module - still needed for legacy actor initialization path
 vi.mock("@icp-sdk/core/agent", async () => {
@@ -24,7 +23,6 @@ vi.mock("@icp-sdk/core/agent", async () => {
 describe("Reactor Constructor", () => {
   let mockClientManager: ClientManager
   const mockCanisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
-  const mockPrincipal = Principal.fromText(mockCanisterId)
 
   // Create a real IDL factory for testing
   const mockIdlFactory: IDL.InterfaceFactory = ({ IDL }) => {

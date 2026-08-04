@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   createInfiniteQuery,
   createInfiniteQueryFactory,
-} from "../src/createInfiniteQuery"
+} from "../src/createInfiniteQuery.js"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { Reactor } from "@ic-reactor/core"
 

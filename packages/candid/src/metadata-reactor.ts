@@ -6,8 +6,11 @@ import type {
 } from "@ic-reactor/core"
 import { hexToUint8Array } from "@ic-reactor/core"
 import { IDL } from "@icp-sdk/core/candid"
-import { CandidReactor } from "./reactor"
-import type { DynamicMethodOptions, MetadataReactorParameters } from "./types"
+import { CandidReactor } from "./reactor.js"
+import type {
+  DynamicMethodOptions,
+  MetadataReactorParameters,
+} from "./types.js"
 import {
   CandidFormVisitor,
   FormServiceMeta,
@@ -17,14 +20,14 @@ import {
   MethodMetadataOptions,
   CandidFormMetadata,
   ExprHydration,
-} from "./visitor/candid"
-import { MetadataError } from "./visitor/arguments"
+} from "./visitor/candid/index.js"
+import { MetadataError } from "./visitor/arguments/index.js"
 import {
   MethodMeta,
   MethodResult,
   ResultFieldVisitor,
   ServiceMeta,
-} from "./visitor/returns"
+} from "./visitor/returns/index.js"
 
 declare module "@ic-reactor/core" {
   interface TransformArgsRegistry<T> {

@@ -6,7 +6,7 @@ import {
   RecordField,
   VariantField,
   VectorField,
-} from "./index"
+} from "./index.js"
 
 describe("ArgumentFieldVisitor", () => {
   const visitor = new FieldVisitor()

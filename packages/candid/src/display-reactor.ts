@@ -1,8 +1,8 @@
 import type {
   CandidDisplayReactorParameters,
   DynamicMethodOptions,
-} from "./types"
-import { CandidAdapter } from "./adapter"
+} from "./types.js"
+import { CandidAdapter } from "./adapter.js"
 
 import {
   BaseActor,

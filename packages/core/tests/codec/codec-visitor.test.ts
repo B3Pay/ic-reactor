@@ -13,7 +13,10 @@
 import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { didToDisplayCodec, didToDisplayCodecs } from "../../src/display"
+import {
+  didToDisplayCodec,
+  didToDisplayCodecs,
+} from "../../src/display/index.js"
 
 describe("Codec Schema Visitor - Basic Type Transformations", () => {
   it("should convert Principal to string with asDisplay/asCandid", () => {
