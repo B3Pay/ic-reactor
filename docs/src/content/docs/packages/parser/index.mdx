@@ -42,11 +42,15 @@ pnpm add @ic-reactor/parser
 ## Usage
 
 ```ts
-import { didToJs, didToTs, parseDid } from "@ic-reactor/parser"
+import init, { didToJs, didToTs, parseDid } from "@ic-reactor/parser"
 
 const candid = `service : {
   greet : (text) -> (text) query;
 }`
+
+// Required on the web build (browsers and bundlers); the Node build
+// instantiates its WASM module at import time.
+await init()
 
 const jsSource = didToJs(candid)
 const tsSource = didToTs(candid)
@@ -64,9 +68,10 @@ const schema = parseDid(candid)
 ```ts
 import { CandidAdapter } from "@ic-reactor/candid"
 import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
 
 const adapter = new CandidAdapter({
-  clientManager: new ClientManager(),
+  clientManager: new ClientManager({ queryClient: new QueryClient() }),
 })
 
 await adapter.loadParser()

@@ -56,11 +56,24 @@ await runCanisterPipeline({
   structured Candid schemas into `@ic-reactor/cod` declarations.
 - Lower-level generators when you need declarations, reactor files, or client files separately.
 
-For each canister, the pipeline writes:
+For each canister, the pipeline writes into `<outDir>/<name>/`:
 
+- `declarations/<did-basename>.js`: the IDL factory module
+- `declarations/<did-basename>.d.ts`: the TypeScript service types
+- `declarations/<did-basename>.did`: a copy of the source `.did`
 - `index.generated.ts`: managed implementation, always regenerated
 - `index.ts`: stable entry wrapper, preserved unless it still matches the
   default wrapper or an older generated scaffold that can be migrated
+
+The declaration filenames come from the `.did` file's basename, not the
+canister name, and the whole `declarations/` directory is recreated on every
+run. With `target: "react"`, `index.generated.ts` also exports the hooks bound
+to the generated reactor — `use<Pascal>Query`, `use<Pascal>SuspenseQuery`,
+`use<Pascal>InfiniteQuery`, `use<Pascal>SuspenseInfiniteQuery`,
+`use<Pascal>Mutation`, and `use<Pascal>Method`. No `createQuery` or
+`createMutation` objects are generated; for use outside React, call the
+generated reactor's `fetchQuery()` / `callMethod()` / `invalidateQueries()`
+directly.
 
 ## Reactor Modes
 
@@ -71,6 +84,10 @@ Generated output can target any of these reactor classes:
 - `CandidReactor`
 - `CandidDisplayReactor`
 - `MetadataDisplayReactor`
+
+The three Candid modes always import from `@ic-reactor/candid`, regardless of
+runtime target, so that package must be installed when you pick one. Only
+`Reactor` and `DisplayReactor` switch import source based on the target.
 
 ## Runtime Target
 
@@ -94,6 +111,12 @@ const source = generateCodecDeclarations(schema, {
   },
 })
 ```
+
+<Aside type="note">
+  This runs in Node, where `@ic-reactor/parser` resolves to its self-initializing
+  build. In a browser or bundler the parser resolves to the WASM `web` build and
+  you must `await init()` before calling `parseDid`.
+</Aside>
 
 The renderer preserves parser metadata using `.describe(...)` and
 `.meta(...)`. Built-in `@format` values compile to Cod helpers such as
@@ -121,7 +144,7 @@ domain-specific name. Set `includeCompatibilityExports: true` only when you also
 need top-level `idlFactory`, `_SERVICE`, and `manifest` aliases for older
 integration code.
 
-See [Candid Metadata Tags](/v4/packages/parser/metadata-tags) for the supported
+See [Candid Metadata Tags](/v3/packages/parser/metadata-tags) for the supported
 doc-comment tags and custom format mapping contract.
 
 ## See Also

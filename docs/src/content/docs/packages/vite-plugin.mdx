@@ -45,8 +45,15 @@ plugin imports `clientManager` from `../../clients`.
 
 For each canister, generation produces:
 
+- `declarations/<did-basename>.js`, `.d.ts`, and a `.did` copy
 - `index.generated.ts`: managed implementation regenerated on every run
 - `index.ts`: stable entry wrapper that re-exports from `index.generated.ts`
+
+With the default `target: "react"`, `index.generated.ts` exports the reactor
+plus hooks named after the canister — for a canister named `backend`:
+`useBackendQuery`, `useBackendSuspenseQuery`, `useBackendInfiniteQuery`,
+`useBackendSuspenseInfiniteQuery`, `useBackendMutation`, and
+`useBackendMethod`.
 
 ## Plugin Options
 

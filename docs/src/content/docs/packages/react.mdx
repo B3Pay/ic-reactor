@@ -22,7 +22,7 @@ factories designed around TanStack Query.
 ```bash
 pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
 
-# Optional: Internet Identity support
+# Optional: Internet Identity support (@icp-sdk/auth v7 or v8)
 pnpm add @icp-sdk/auth
 ```
 
@@ -70,7 +70,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { idlFactory, type _SERVICE } from "./declarations/backend"
 
 const queryClient = new QueryClient()
-const clientManager = new ClientManager({ queryClient, withCanisterEnv: true })
+const clientManager = new ClientManager({ queryClient })
 
 const backend = new Reactor<_SERVICE>({
   clientManager,
@@ -83,28 +83,44 @@ export const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
 ## Identity Attributes
 
-`createAuthHooks(clientManager)` also returns `useIdentityAttributes()` for
-signed OpenID email and profile attributes:
+`useIdentityAttributes()` comes from `createIdentityAttributeHooks()`, a factory
+separate from `createAuthHooks()`. It returns the helpers for requesting signed
+OpenID email and profile attributes:
 
 ```tsx
-const { useIdentityAttributes } = createAuthHooks(clientManager)
+import {
+  AuthenticationManager,
+  IdentityAttributesManager,
+  createIdentityAttributeHooks,
+} from "@ic-reactor/react"
+
+const authentication = new AuthenticationManager({ clientManager })
+const identityAttributes = new IdentityAttributesManager(authentication)
+
+const { useIdentityAttributes } =
+  createIdentityAttributeHooks(identityAttributes)
 
 function ContinueWithProvider() {
   const { requestOpenIdAttributes, isRequestingAttributes } =
     useIdentityAttributes()
 
   async function handleClick() {
-    const nonce = await backend.registerBegin()
-
     const result = await requestOpenIdAttributes({
-      nonce,
+      // Pass the nonce as a callback: awaiting it first ends the user gesture
+      // and the browser blocks the Internet Identity window.
+      nonce: () => backend.callMethod({ functionName: "register_begin" }),
       openIdProvider: "microsoft",
       keys: ["email", "name"],
     })
 
-    await backend.registerFinish({
-      data: result.signedAttributes.data,
-      signature: result.signedAttributes.signature,
+    await backend.callMethod({
+      functionName: "register_finish",
+      args: [
+        {
+          data: result.signedAttributes.data,
+          signature: result.signedAttributes.signature,
+        },
+      ],
     })
   }
 

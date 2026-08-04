@@ -7,7 +7,7 @@ editUrl: false
 import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components"
 
 `@ic-reactor/core` is the framework-agnostic foundation of IC Reactor. It gives
-you the runtime building blocks for agent management, authentication,
+you the runtime building blocks for agent management, identity wiring,
 TanStack Query integration, and typed canister interaction without depending on
 React.
 
@@ -27,18 +27,21 @@ React.
 ## Installation
 
 ```bash
-pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
-
-# Optional: Internet Identity support
-pnpm add @icp-sdk/auth
+pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core zod
 ```
+
+<Aside type="note">
+  Internet Identity is not part of this package. `AuthenticationManager` lives
+  in [@ic-reactor/react](/v3/packages/react), which pulls in the optional
+  `@icp-sdk/auth` peer.
+</Aside>
 
 ## What's Included
 
 <CardGrid>
   <LinkCard
     title="ClientManager"
-    description="Shared agent, authentication, and query-client orchestration."
+    description="Shared agent, identity, and query-client orchestration."
     href="/v3/reference/clientmanager"
   />
   <LinkCard
@@ -68,7 +71,6 @@ import { idlFactory, type _SERVICE } from "./declarations/backend"
 const queryClient = new QueryClient()
 const clientManager = new ClientManager({
   queryClient,
-  withProcessEnv: true,
 })
 
 await clientManager.initialize()
@@ -87,31 +89,42 @@ const greeting = await backend.fetchQuery({
 
 ## Identity Attributes
 
-`ClientManager` exposes provider-neutral helpers for signed OpenID identity
-attributes from `@icp-sdk/auth` v7:
+Identity attributes are **not** part of `@ic-reactor/core`.
+`IdentityAttributesManager` in [@ic-reactor/react](/v3/packages/react) requests
+signed OpenID identity attributes through `@icp-sdk/auth` v7 or v8:
 
 ```typescript
 import {
+  AuthenticationManager,
+  IdentityAttributesManager,
   identityAttributeKeys,
-} from "@ic-reactor/core"
+} from "@ic-reactor/react"
 
-const nonce = await backend.registerBegin()
+const authentication = new AuthenticationManager({ clientManager })
+const identityAttributes = new IdentityAttributesManager(authentication)
 
-const result = await clientManager.requestOpenIdIdentityAttributes({
-  nonce,
+const result = await identityAttributes.requestOpenId({
+  // Pass the nonce as a callback: awaiting it first ends the user gesture
+  // and the browser blocks the Internet Identity window.
+  nonce: () => backend.callMethod({ functionName: "register_begin" }),
   openIdProvider: "microsoft",
   keys: ["email", "name"],
 })
 
-await backend.registerFinish({
-  data: result.signedAttributes.data,
-  signature: result.signedAttributes.signature,
+await backend.callMethod({
+  functionName: "register_finish",
+  args: [
+    {
+      data: result.signedAttributes.data,
+      signature: result.signedAttributes.signature,
+    },
+  ],
 })
 ```
 
 Use `openIdProvider: "google"`, `"apple"`, `"microsoft"`, or a provider issuer
 URL. For lower-level requests, build scoped keys with `identityAttributeKeys()`
-and pass them to `clientManager.requestIdentityAttributes()`.
+and pass them to `identityAttributes.request()`.
 
 ## See Also
 
