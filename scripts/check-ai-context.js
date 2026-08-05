@@ -50,6 +50,16 @@ const aiContextFiles = [
 /** The docs site is served under this base; see docs/astro.config.mjs. */
 const DOCS_BASE = "/v3/"
 
+/**
+ * Versions that legitimately appear in the AI-context files without belonging to
+ * an @ic-reactor package (a documented Node or pnpm version, for example).
+ *
+ * Deliberately starts empty: every version-like token in these files today is an
+ * @ic-reactor version, so anything else is drift until someone says otherwise.
+ * Adding an entry here is the explicit way to say "this one is not ours".
+ */
+const ALLOWED_EXTERNAL_VERSIONS = new Set([])
+
 const llmsPath = join(rootDir, "llms.txt")
 const llmsText = readFileSync(llmsPath, "utf8")
 
@@ -84,10 +94,18 @@ for (const packageDir of requiredPackageLlms) {
 }
 
 // ── 3. No stale version anywhere in the AI-context files ─────────────────────
-// Every semver-looking token in these files refers to an @ic-reactor package, so
-// any token that is not a current package version is stale prose. This is what
-// catches a release that bumps the manifests but leaves the guidance behind.
-const SEMVER = /`v?(\d+\.\d+\.\d+)`|(?<![\w.])v(\d+\.\d+\.\d+)(?![\w.])/g
+// Matches every semver-shaped token regardless of how it is written: backticked,
+// `v`-prefixed, or bare in prose. An earlier version of this check only matched
+// the first two forms, so a stale bare "3.7.0" in a sentence passed silently --
+// which defeats the point, since prose is exactly where these versions rot.
+//
+// The lookarounds keep it from matching a fragment of a longer dotted number
+// (1.2.3.4) while still allowing a version at the end of a sentence ("v3.8.0.").
+const SEMVER = /(?<![\d.])v?(\d+\.\d+\.\d+)(?![\d.]\d)/g
+
+// Any /vN/ path segment, not just one inside markdown link syntax -- the same
+// narrowness bug as above.
+const VERSIONED_DOC_PATH = /\/v\d+\//g
 
 for (const relPath of aiContextFiles) {
   const absPath = join(rootDir, relPath)
@@ -98,28 +116,25 @@ for (const relPath of aiContextFiles) {
   const text = readFileSync(absPath, "utf8")
 
   text.split("\n").forEach((line, i) => {
-    for (const match of line.matchAll(SEMVER)) {
-      const version = match[1] ?? match[2]
-      if (!validVersions.has(version)) {
-        failures.push(
-          `${relPath}:${i + 1} refers to version ${version}, which no @ic-reactor package is at. ` +
-            `Current: ${[...currentVersions]
-              .map(([n, v]) => `${n}@${v}`)
-              .join(", ")}`
-        )
-      }
+    for (const [, version] of line.matchAll(SEMVER)) {
+      if (validVersions.has(version)) continue
+      if (ALLOWED_EXTERNAL_VERSIONS.has(version)) continue
+
+      failures.push(
+        `${relPath}:${i + 1} refers to version ${version}, which no @ic-reactor package is at. ` +
+          `Current: ${[...currentVersions].map(([n, v]) => `${n}@${v}`).join(", ")}. ` +
+          `If this version is not an @ic-reactor package, add it to ` +
+          `ALLOWED_EXTERNAL_VERSIONS in scripts/check-ai-context.js.`
+      )
     }
 
     // 4. Doc links must use the served base. /v4/ was never published and the
     //    docs workflow deletes it on every deploy, so such links 404.
-    if (line.includes("ic-reactor.b3pay.net/v") || line.includes("](/v")) {
-      const bad = line.match(/\/v(\d+)\//g) ?? []
-      for (const seg of bad) {
-        if (seg !== DOCS_BASE) {
-          failures.push(
-            `${relPath}:${i + 1} links to ${seg} but the docs site is served under ${DOCS_BASE}`
-          )
-        }
+    for (const seg of line.match(VERSIONED_DOC_PATH) ?? []) {
+      if (seg !== DOCS_BASE) {
+        failures.push(
+          `${relPath}:${i + 1} references ${seg} but the docs site is served under ${DOCS_BASE}`
+        )
       }
     }
   })
