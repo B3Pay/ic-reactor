@@ -10,7 +10,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-npm
+  # Keyed per tag, NOT per lane. A shared group serialises publishes, but GitHub
+  # keeps only ONE run pending per group: when a third run arrives, the run that
+  # was already waiting is cancelled outright. Pushing parser-v*, tools-v* and v*
+  # back to back therefore silently dropped the middle release.
+  #
+  # Ordering across lanes is enforced where it actually matters instead -- the
+  # release-tools matrix publishes parser before its dependents with
+  # max-parallel: 1 and fail-fast: true, and codegen's pinned parser version is
+  # asserted to exist on npm before it publishes.
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -126,6 +135,25 @@ jobs:
           set -euo pipefail
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          # pnpm pack rewrites `workspace:*` to an EXACT version, so a dependency
+          # that is not yet on the registry makes this package permanently
+          # uninstallable -- npm versions are immutable, so recovery means bumping
+          # everything again. The matrix orders parser first, but that only holds
+          # within a single run; assert it rather than assume it.
+          for DEP in $(node -p "
+            const d = require('./package.json').dependencies || {};
+            Object.keys(d).filter((k) => k.startsWith('@ic-reactor/')).join('\n')
+          "); do
+            DEP_DIR="${DEP#@ic-reactor/}"
+            DEP_VERSION=$(node -p "require('${GITHUB_WORKSPACE}/packages/${DEP_DIR}/package.json').version")
+            if ! npm view "${DEP}@${DEP_VERSION}" version > /dev/null 2>&1; then
+              echo "::error::$PACKAGE_NAME depends on ${DEP}@${DEP_VERSION}, which is not on npm."
+              echo "::error::Publishing now would ship a package nobody can install. Release ${DEP} first."
+              exit 1
+            fi
+            echo "dependency ${DEP}@${DEP_VERSION} is on npm"
+          done
 
           echo "Checking if $PACKAGE_NAME@$PACKAGE_VERSION exists on npm..."
 

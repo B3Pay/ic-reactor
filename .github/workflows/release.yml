@@ -9,7 +9,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-npm
+  # Keyed per tag, NOT per lane. A shared group serialises publishes, but GitHub
+  # keeps only ONE run pending per group: when a third run arrives, the run that
+  # was already waiting is cancelled outright. Pushing parser-v*, tools-v* and v*
+  # back to back therefore silently dropped the middle release.
+  #
+  # Ordering across lanes is enforced where it actually matters instead -- the
+  # release-tools matrix publishes parser before its dependents with
+  # max-parallel: 1 and fail-fast: true, and codegen's pinned parser version is
+  # asserted to exist on npm before it publishes.
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
