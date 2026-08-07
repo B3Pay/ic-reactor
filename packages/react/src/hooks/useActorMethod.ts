@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import {
   useQuery,
   useMutation,
@@ -188,17 +188,30 @@ export function useActorMethod<
 
   const functionType: FunctionType = isQuery ? "query" : "update"
 
-  // Generate query key
-  const queryKey = useMemo(() => {
-    if (customQueryKey) return customQueryKey
-    return reactor.generateQueryKey(
-      {
-        functionName,
-        args,
-      },
-      callConfig
-    )
-  }, [reactor, functionName, args, callConfig, customQueryKey])
+  // Latest callbacks, read at dispatch time: this keeps a rerendered closure
+  // from being ignored, and keeps callback identity out of the effect deps.
+  const onSuccessRef = useRef(onSuccess)
+  const onErrorRef = useRef(onError)
+  onSuccessRef.current = onSuccess
+  onErrorRef.current = onError
+
+  // Build the key for a given set of call arguments.
+  //
+  // A custom `queryKey` is appended to the canister/function prefix rather than
+  // replacing it, matching `useActorQuery`. Used verbatim it would carry no
+  // canister id, so the entry would be invisible to the canister-scoped
+  // invalidation `ClientManager.updateAgent` runs on identity change and would
+  // keep serving the previous principal's data after sign-in or sign-out.
+  const buildQueryKey = useCallback(
+    (keyArgs: ReactorArgs<Service, Method, Transform> | undefined): QueryKey =>
+      reactor.generateQueryKey(
+        { functionName, args: keyArgs, queryKey: customQueryKey },
+        callConfig
+      ),
+    [reactor, functionName, callConfig, customQueryKey]
+  )
+
+  const queryKey = useMemo(() => buildQueryKey(args), [buildQueryKey, args])
 
   // ============================================================================
   // Query Implementation
@@ -210,25 +223,50 @@ export function useActorMethod<
   >(
     {
       queryKey,
-      queryFn: async () => {
-        try {
-          const result = await reactor.callMethod({
-            functionName,
-            args,
-            callConfig,
-          })
-          onSuccess?.(result)
-          return result
-        } catch (error) {
-          onError?.(error as ReactorReturnErr<Service, Method, Transform>)
-          throw error
-        }
-      },
+      // Callbacks deliberately do NOT live here: a queryFn runs once per fetch
+      // attempt, so `onError` fired on every retry (four times with the default
+      // QueryClient) and `onSuccess` never fired when data came from the cache
+      // or a deduped sibling. They are dispatched from the settled observer
+      // result below instead.
+      queryFn: () =>
+        reactor.callMethod({
+          functionName,
+          args,
+          callConfig,
+        }),
       enabled: isQuery && enabled,
       ...queryOptions,
     },
     reactor.queryClient
   )
+
+  // Dispatch the query callbacks from the settled observer result, once per
+  // distinct outcome. TanStack v5 removed `onSuccess`/`onError` from useQuery
+  // for exactly this reason, so the settle timestamps are what identify a new
+  // result: they also advance for a cache hit on a fresh mount, which is the
+  // case that previously never notified at all.
+  const notifiedSuccessAt = useRef<number | undefined>(undefined)
+  const notifiedErrorAt = useRef<number | undefined>(undefined)
+
+  const { status, data, error, dataUpdatedAt, errorUpdatedAt } = queryResult
+
+  useEffect(() => {
+    if (!isQuery) return
+    if (status === "success" && dataUpdatedAt !== notifiedSuccessAt.current) {
+      notifiedSuccessAt.current = dataUpdatedAt
+      onSuccessRef.current?.(data)
+    }
+  }, [isQuery, status, data, dataUpdatedAt])
+
+  useEffect(() => {
+    if (!isQuery) return
+    if (status === "error" && errorUpdatedAt !== notifiedErrorAt.current) {
+      notifiedErrorAt.current = errorUpdatedAt
+      onErrorRef.current?.(
+        error as ReactorReturnErr<Service, Method, Transform>
+      )
+    }
+  }, [isQuery, status, error, errorUpdatedAt])
 
   // ============================================================================
   // Mutation Implementation
@@ -250,7 +288,7 @@ export function useActorMethod<
         return result
       },
       onSuccess: (data) => {
-        onSuccess?.(data)
+        onSuccessRef.current?.(data)
         // Invalidate specified queries after successful mutation
         if (invalidateQueries && invalidateQueries.length > 0) {
           invalidateQueries.forEach((key) => {
@@ -259,7 +297,7 @@ export function useActorMethod<
         }
       },
       onError: (error) => {
-        onError?.(error)
+        onErrorRef.current?.(error)
       },
     },
     reactor.queryClient
@@ -276,9 +314,14 @@ export function useActorMethod<
       if (isQuery) {
         // For queries, refetch with new args if provided
         if (callArgs !== undefined) {
+          // Key on the args actually being called. Reusing the hook's
+          // mount-time key would store this result under the previous args'
+          // entry — poisoning it for every other reader — and let fetchQuery
+          // dedupe onto an in-flight request for the old args, returning that
+          // response as though it answered this one.
           try {
             const result = await reactor.queryClient.fetchQuery({
-              queryKey,
+              queryKey: buildQueryKey(callArgs),
               queryFn: () =>
                 reactor.callMethod({
                   functionName,
@@ -287,10 +330,17 @@ export function useActorMethod<
                 }),
               staleTime: 0,
             })
-            onSuccess?.(result)
+            // Dispatched here rather than by the observer effect: this result
+            // lands under the called args' key, which the mounted observer (bound
+            // to the hook's own args) does not watch. That separation is also why
+            // this can no longer double-fire the way it did when both wrote to
+            // the same key.
+            onSuccessRef.current?.(result)
             return result
           } catch (error) {
-            onError?.(error as ReactorReturnErr<Service, Method, Transform>)
+            onErrorRef.current?.(
+              error as ReactorReturnErr<Service, Method, Transform>
+            )
             return undefined
           }
         }
@@ -309,11 +359,9 @@ export function useActorMethod<
       reactor,
       functionName,
       callConfig,
-      queryKey,
+      buildQueryKey,
       queryResult,
       mutationResult,
-      onSuccess,
-      onError,
     ]
   )
 

@@ -748,9 +748,31 @@ describe("useActorMethod - React Query Inherited Options", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    // Verify the query is cached under custom key
-    const cachedData = queryClient.getQueryData(customQueryKey)
-    expect(cachedData).toBe("Hello!")
+    // The custom key is APPENDED to the canister/function prefix rather than
+    // replacing it, matching useActorQuery. Used verbatim the entry would carry
+    // no canister id and would be skipped by the canister-scoped invalidation
+    // ClientManager.updateAgent runs on identity change, so it would keep
+    // serving the previous principal's data.
+    expect(queryClient.getQueryData(customQueryKey)).toBeUndefined()
+
+    const storedKey = queryClient
+      .getQueryCache()
+      .getAll()
+      .map((query) => query.queryKey)
+      .find((key) => key.includes("custom"))
+
+    expect(storedKey?.[0]).toBe(reactor.canisterId.toString())
+    expect(storedKey?.[1]).toBe("greet")
+    expect(storedKey?.slice(-4)).toEqual(customQueryKey)
+    expect(queryClient.getQueryData(storedKey!)).toBe("Hello!")
+
+    // The entry is reachable by the canister-scoped prefix, which is the
+    // property that makes identity-switch invalidation work.
+    expect(
+      queryClient.getQueryCache().findAll({
+        queryKey: [reactor.canisterId.toString()],
+      }).length
+    ).toBeGreaterThan(0)
   })
 
   it("should support refetchInterval option (inherited from QueryObserverOptions)", async () => {
@@ -794,5 +816,120 @@ describe("useActorMethod - React Query Inherited Options", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data).toBe("Hello!")
+  })
+})
+
+describe("useActorMethod - cache-key and callback correctness", () => {
+  let queryClient: QueryClient
+  let clientManager: ClientManager
+  let reactor: Reactor<TestActor>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+    clientManager = new ClientManager({ queryClient })
+    reactor = new Reactor<TestActor>({
+      clientManager,
+      canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+      idlFactory,
+      name: "test",
+    })
+  })
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+
+  it("call(newArgs) stores the result under the called args' key, not the mounted one", async () => {
+    // Regression: the result used to be written under the hook's mount-time
+    // key, poisoning it for every other reader of those args.
+    vi.spyOn(reactor, "callMethod").mockImplementation(
+      (async ({ args }: any) => `Hello, ${args?.[0]}!`) as any
+    )
+
+    const { result } = renderHook(
+      () =>
+        useActorMethod({ reactor, functionName: "greet", args: ["default"] }),
+      { wrapper }
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const keyA = reactor.generateQueryKey({
+      functionName: "greet",
+      args: ["default"] as never,
+    })
+    const keyB = reactor.generateQueryKey({
+      functionName: "greet",
+      args: ["override"] as never,
+    })
+
+    await result.current.call(["override"] as never)
+
+    expect(queryClient.getQueryData(keyB)).toBe("Hello, override!")
+    // args A's entry must be untouched.
+    expect(queryClient.getQueryData(keyA)).toBe("Hello, default!")
+  })
+
+  it("fires onError once per settled failure, not once per retry attempt", async () => {
+    const onError = vi.fn()
+    vi.spyOn(reactor, "callMethod").mockRejectedValue(new Error("nope"))
+
+    const { result } = renderHook(
+      () =>
+        useActorMethod({
+          reactor,
+          functionName: "greet",
+          args: ["boom"],
+          onError,
+          retry: 2,
+          retryDelay: () => 1,
+        }),
+      { wrapper }
+    )
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    // 3 fetch attempts, but the consumer sees one failure.
+    expect(onError).toHaveBeenCalledTimes(1)
+  })
+
+  it("fires onSuccess on a cache hit, where the queryFn never runs", async () => {
+    vi.spyOn(reactor, "callMethod").mockResolvedValue("cached!")
+
+    const first = renderHook(
+      () =>
+        useActorMethod({
+          reactor,
+          functionName: "greet",
+          args: ["warm"],
+          // Keep the entry fresh so the second mount genuinely reads from cache
+          // instead of refetching (which would run the queryFn and mask this).
+          staleTime: Infinity,
+        }),
+      { wrapper }
+    )
+    await waitFor(() => expect(first.result.current.isSuccess).toBe(true))
+    first.unmount()
+
+    // Second mount reads straight from the cache — previously onSuccess lived
+    // inside the queryFn, so it never fired here.
+    const onSuccess = vi.fn()
+    const second = renderHook(
+      () =>
+        useActorMethod({
+          reactor,
+          functionName: "greet",
+          args: ["warm"],
+          staleTime: Infinity,
+          onSuccess,
+        }),
+      { wrapper }
+    )
+
+    await waitFor(() => expect(second.result.current.isSuccess).toBe(true))
+    expect(onSuccess).toHaveBeenCalledWith("cached!")
   })
 })
