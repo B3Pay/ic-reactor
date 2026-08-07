@@ -313,6 +313,54 @@ must send `signedAttributes.data` and `signedAttributes.signature` to the backen
 or canister and verify the signature, nonce, origin, timestamp, and requested keys
 before trusting or storing the attributes.
 
+## Server-Side Rendering
+
+**Build the reactor inside the request, not at module scope.**
+
+A reactor owns its `QueryClient`. On a server a module-scope reactor is created
+once per process and shared by every request, and query keys are
+`[canisterId, functionName, args]` — they do not include the caller. So a
+cached result for a caller-scoped method (`get_my_balance`, a deposit address,
+`my_profile`) is handed to whichever request asks next:
+
+```tsx
+// ❌ Shared by every request on the server
+export const app = defineReactor<_SERVICE>({
+  name: "backend",
+  idlFactory,
+  canisterId,
+})
+```
+
+```tsx
+// ✅ Per request: nothing is shared between users
+export default async function Page() {
+  const app = defineReactor<_SERVICE>({
+    name: "backend",
+    idlFactory,
+    canisterId,
+    queryClient: new QueryClient(),
+  })
+
+  const data = await app.reactor.fetchQuery({ functionName: "get_my_profile" })
+  return <Profile data={data} />
+}
+```
+
+Two further constraints on the App Router specifically:
+
+- Hooks are client-only, like every React hook — call them from a `"use client"`
+  module. A server component may import `Reactor` / `ClientManager` and make
+  imperative calls; that path works.
+- Hooks bind to their reactor's own `QueryClient` rather than to a
+  `QueryClientProvider`, so `HydrationBoundary` prefetch does not feed them
+  unless the provider's client _is_ that reactor's client. Next.js also
+  evaluates a shared module twice on the server (the RSC and SSR graphs), so a
+  module-scope reactor is two different instances there.
+
+If none of that applies — a client-only SPA — module-scope reactors are exactly
+right and none of this is a concern.
+
 ## Query Result Methods
 
 Every object returned by `createQuery`, `createSuspenseQuery`, and their

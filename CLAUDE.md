@@ -73,6 +73,10 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
   - query `.fetch()` / `.invalidate()` / `.getCacheData()`
   - mutation `.execute()`
   - reactor `.fetchQuery()` / `.getQueryData()` / `.invalidateQueries()` / `.callMethod()`
+- On a server (SSR/RSC), build the reactor inside the request rather than at
+  module scope. A reactor owns its `QueryClient` and query keys carry no caller
+  principal, so a module-scope reactor shares one cache across all requests and
+  can serve one user's caller-scoped data to another.
 
 ## Cache Invalidation
 
