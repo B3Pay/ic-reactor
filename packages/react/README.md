@@ -14,9 +14,26 @@ pnpm add @icp-sdk/auth
 ```
 
 `@icp-sdk/auth` is an optional peer. `AuthenticationManager` reaches it through a
-literal `import("@icp-sdk/auth/client")`, so Vite, Rollup and webpack resolve it
-at build time and code-split it into its own chunk — and tree-shake it away
-entirely in apps that never reference the class.
+literal `import("@icp-sdk/auth/client")`, so Vite, Rollup and webpack code-split
+it into its own async chunk. That chunk is never fetched unless something
+touches authentication, and its bytes are dropped from the output entirely in
+apps that never reference the class.
+
+Bundlers still **resolve** that specifier while building the module graph, which
+happens before any tree-shaking — so a missing peer cannot simply be optimized
+away. The import therefore sits inside a `try` block, which webpack-family
+bundlers treat as declaring an optional dependency: with the peer absent the
+build succeeds and prints one warning,
+`Module not found: Can't resolve '@icp-sdk/auth/client'`. Only the login paths
+are affected, and they throw an actionable error if they are ever called.
+
+Install the peer to remove the warning, or silence it with
+[`ignoreWarnings`](https://webpack.js.org/configuration/other-options/#ignorewarnings):
+
+```js
+// webpack.config.js / next.config.js (webpack)
+ignoreWarnings: [{ module: /@ic-reactor\/react/, message: /@icp-sdk\/auth/ }]
+```
 
 ## Quick Start
 
