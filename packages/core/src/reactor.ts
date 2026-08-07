@@ -23,7 +23,11 @@ import type {
 import { DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { generateKey, extractOkResult } from "./utils/helper.js"
+import {
+  generateKey,
+  extractOkResult,
+  toHashableKeySegment,
+} from "./utils/helper.js"
 import { toReactorQueryData } from "./utils/query-data.js"
 import {
   processQueryCallResponse,
@@ -217,6 +221,16 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
 
     const queryKeys: any[] = [resolvedCanisterId, params.functionName]
 
+    // Two reactors over the same canister return differently-shaped data when
+    // their transforms differ (a DisplayReactor's string nats vs a Reactor's
+    // bigints), so they must not share a cache entry. Only non-default
+    // transforms add a segment, which keeps existing candid keys byte-identical.
+    // It sits before the args segment so that the prefix built by
+    // `invalidateQueries({ functionName })` still matches keys that carry args.
+    if (this.transform !== "candid") {
+      queryKeys.push({ transform: this.transform })
+    }
+
     const effectiveTarget =
       callConfig?.effectiveTarget ??
       (callConfig?.effectiveCanisterId
@@ -242,7 +256,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       queryKeys.push(argKey)
     }
     if (params.queryKey) {
-      queryKeys.push(...params.queryKey)
+      // Caller-supplied segments are hashed by React Query with JSON.stringify,
+      // which throws on a BigInt. Args and factory key-args are already routed
+      // through a BigInt-safe serializer; do the same here so a natural key like
+      // `queryKey: [tokenId]` cannot blank the component tree.
+      queryKeys.push(...params.queryKey.map(toHashableKeySegment))
     }
 
     return queryKeys
