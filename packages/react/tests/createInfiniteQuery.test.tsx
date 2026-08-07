@@ -129,7 +129,15 @@ describe("createInfiniteQuery", () => {
       })
 
       const queryKey = postsQuery.getQueryKey()
-      expect(queryKey).toEqual(["test-canister", "getPosts"])
+      expect(queryKey).toEqual([
+        "test-canister",
+        "getPosts",
+        // Scoped by the first page's args, so two infinite queries on this
+        // method with different arguments cannot share a cache entry.
+        {
+          __ic_reactor_factory_key_args: '[{"cursor":0,"limit":10}]',
+        },
+      ])
     })
 
     it("should return correct refetch key", () => {
@@ -141,7 +149,68 @@ describe("createInfiniteQuery", () => {
       })
 
       const refetchKey = postsQuery.getQueryKey()
-      expect(refetchKey).toEqual(["test-canister", "getPosts"])
+      expect(refetchKey).toEqual([
+        "test-canister",
+        "getPosts",
+        // Scoped by the first page's args, so two infinite queries on this
+        // method with different arguments cannot share a cache entry.
+        {
+          __ic_reactor_factory_key_args: '[{"cursor":0,"limit":10}]',
+        },
+      ])
+    })
+  })
+
+  describe("cache-key scoping by call arguments", () => {
+    it("gives two queries on the same method with different args distinct keys", () => {
+      // Regression guard: the args live in the `getArgs` closure, not in the
+      // config, so before this was fixed both queries produced
+      // ["test-canister","getPosts"] and served each other's pages.
+      const small = createInfiniteQuery(mockReactor, {
+        functionName: "getPosts",
+        initialPageParam: 0,
+        getArgs: (cursor) => [{ cursor, limit: 3 }] as const,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+      })
+      const large = createInfiniteQuery(mockReactor, {
+        functionName: "getPosts",
+        initialPageParam: 0,
+        getArgs: (cursor) => [{ cursor, limit: 10 }] as const,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+      })
+
+      expect(small.getQueryKey()).not.toEqual(large.getQueryKey())
+    })
+
+    it("keeps the key stable across calls for identical args", () => {
+      const query = createInfiniteQuery(mockReactor, {
+        functionName: "getPosts",
+        initialPageParam: 0,
+        getArgs: (cursor) => [{ cursor, limit: 10 }] as const,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+      })
+
+      expect(query.getQueryKey()).toEqual(query.getQueryKey())
+    })
+
+    it("lets getKeyArgs drop the cursor so pages share one entry", () => {
+      const withCursor = createInfiniteQuery(mockReactor, {
+        functionName: "getPosts",
+        initialPageParam: 0,
+        getArgs: (cursor) => [{ cursor, limit: 10 }] as const,
+        getKeyArgs: ([args]) => [{ limit: args.limit }],
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+      })
+      const startedElsewhere = createInfiniteQuery(mockReactor, {
+        functionName: "getPosts",
+        initialPageParam: 25,
+        getArgs: (cursor) => [{ cursor, limit: 10 }] as const,
+        getKeyArgs: ([args]) => [{ limit: args.limit }],
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+      })
+
+      // Same logical query, different starting cursor -> same cache entry.
+      expect(withCursor.getQueryKey()).toEqual(startedElsewhere.getQueryKey())
     })
   })
 

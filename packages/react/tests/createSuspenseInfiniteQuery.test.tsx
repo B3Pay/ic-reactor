@@ -138,7 +138,15 @@ describe("createSuspenseInfiniteQuery", () => {
       })
 
       const queryKey = postsQuery.getQueryKey()
-      expect(queryKey).toEqual(["test-canister", "getPosts"])
+      expect(queryKey).toEqual([
+        "test-canister",
+        "getPosts",
+        // Scoped by the first page's args, so two infinite queries on this
+        // method with different arguments cannot share a cache entry.
+        {
+          __ic_reactor_factory_key_args: '[{"cursor":0,"limit":10}]',
+        },
+      ])
     })
 
     it("should return correct refetch key", () => {
@@ -149,7 +157,13 @@ describe("createSuspenseInfiniteQuery", () => {
         getNextPageParam: (lastPage) => lastPage.nextCursor,
       })
 
-      expect(postsQuery.getQueryKey()).toEqual(["test-canister", "getPosts"])
+      expect(postsQuery.getQueryKey()).toEqual([
+        "test-canister",
+        "getPosts",
+        {
+          __ic_reactor_factory_key_args: '[{"cursor":0,"limit":10}]',
+        },
+      ])
     })
   })
 

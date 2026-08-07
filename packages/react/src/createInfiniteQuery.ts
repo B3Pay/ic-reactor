@@ -126,6 +126,16 @@ export interface InfiniteQueryConfig<
   initialPageParam: TPageParam
   /** Function to get args from page parameter */
   getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
+  /**
+   * Narrows what the cache key derives from the call arguments.
+   *
+   * By default the key is scoped by `getArgs(initialPageParam)`, so two
+   * infinite queries on the same method with different arguments stay in
+   * separate cache entries. Supply this when those args embed the cursor and
+   * only part of them identifies the query — return the stable, serializable
+   * portion (typically everything except the pagination field).
+   */
+  getKeyArgs?: (args: ReactorArgs<Service, Method, Transform>) => unknown
   /** Function to determine next page parameter */
   getNextPageParam: (
     lastPage: InfiniteQueryPageData<Service, Method, Transform>,
@@ -155,17 +165,12 @@ export type InfiniteQueryFactoryConfig<
     TPageParam
   >,
 > = Omit<
+  // `getArgs` is supplied per factory call. `getKeyArgs` is inherited from
+  // InfiniteQueryConfig, which now applies it for every infinite query rather
+  // than only for factory-created ones.
   InfiniteQueryConfig<Service, Method, Transform, TPageParam, Selected>,
   "getArgs"
-> & {
-  /**
-   * Optional key-args derivation for factory calls.
-   * Receives the resolved args from `getArgs(initialPageParam)` and should return
-   * a stable serializable representation of the logical query identity
-   * (typically excluding pagination/cursor fields).
-   */
-  getKeyArgs?: (args: ReactorArgs<Service, Method, Transform>) => unknown
-}
+>
 
 // ============================================================================
 // Hook Interface
@@ -292,6 +297,7 @@ const createInfiniteQueryImpl = <
     queryKey: customQueryKey,
     initialPageParam,
     getArgs,
+    getKeyArgs,
     getNextPageParam,
     getPreviousPageParam,
     maxPages,
@@ -300,12 +306,22 @@ const createInfiniteQueryImpl = <
     ...rest
   } = config
 
-  // Get query key from actor manager
+  // Fold the call arguments into the key. Without them every infinite query on
+  // a method shares one cache entry, so two lists with different `getArgs` (a
+  // different page size, a different filter) serve each other's pages — the
+  // arguments live in a closure, not in the config, so nothing else
+  // distinguishes them.
+  //
+  // The first page's args stand for the query's identity; `getKeyArgs` lets a
+  // caller drop the cursor field when it is part of those args.
   const getQueryKey = (): QueryKey => {
+    const initialArgs = getArgs(initialPageParam)
+    const keyArgs = getKeyArgs?.(initialArgs) ?? initialArgs
+
     return reactor.generateQueryKey(
       {
         functionName,
-        queryKey: customQueryKey,
+        queryKey: mergeFactoryQueryKey(customQueryKey, undefined, keyArgs),
       },
       callConfig
     )
@@ -535,10 +551,8 @@ export function createInfiniteQueryFactory<
   > = (
     getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
   ) => {
-    const initialArgs = getArgs(config.initialPageParam)
-    const keyArgs = config.getKeyArgs?.(initialArgs) ?? initialArgs
-    const queryKey = mergeFactoryQueryKey(config.queryKey, undefined, keyArgs)
-
+    // `getKeyArgs` and the args-derived key segment are applied by the impl,
+    // which now does it for every infinite query rather than only for factories.
     return createInfiniteQueryImpl<
       Service,
       Method,
@@ -546,16 +560,13 @@ export function createInfiniteQueryFactory<
       TPageParam,
       Selected
     >(reactor, {
-      ...(({ getKeyArgs: _getKeyArgs, ...rest }) => rest)(
-        config as InfiniteQueryFactoryConfig<
-          Service,
-          Method,
-          Transform,
-          TPageParam,
-          Selected
-        >
-      ),
-      queryKey,
+      ...(config as InfiniteQueryFactoryConfig<
+        Service,
+        Method,
+        Transform,
+        TPageParam,
+        Selected
+      >),
       getArgs,
     })
   }

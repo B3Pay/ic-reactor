@@ -137,6 +137,15 @@ export interface SuspenseInfiniteQueryConfig<
   queryKey?: QueryKey
   /** Function to get args from page parameter */
   getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
+  /**
+   * Narrows what the cache key derives from the call arguments.
+   *
+   * By default the key is scoped by `getArgs(initialPageParam)`, so two
+   * infinite queries on the same method with different arguments stay in
+   * separate cache entries. Supply this when those args embed the cursor and
+   * only part of them identifies the query.
+   */
+  getKeyArgs?: (args: ReactorArgs<Service, Method, Transform>) => unknown
 }
 
 /**
@@ -152,17 +161,11 @@ export type SuspenseInfiniteQueryFactoryConfig<
     TPageParam
   >,
 > = Omit<
+  // `getArgs` is supplied per factory call. `getKeyArgs` is inherited from
+  // SuspenseInfiniteQueryConfig, which now applies it for every infinite query.
   SuspenseInfiniteQueryConfig<Service, Method, Transform, TPageParam, Selected>,
   "getArgs"
-> & {
-  /**
-   * Optional key-args derivation for factory calls.
-   * Receives the resolved args from `getArgs(initialPageParam)` and should return
-   * a stable serializable representation of the logical query identity
-   * (typically excluding pagination/cursor fields).
-   */
-  getKeyArgs?: (args: ReactorArgs<Service, Method, Transform>) => unknown
-}
+>
 
 // ============================================================================
 // Hook Interface
@@ -301,6 +304,7 @@ const createSuspenseInfiniteQueryImpl = <
     queryKey: customQueryKey,
     initialPageParam,
     getArgs,
+    getKeyArgs,
     getNextPageParam,
     getPreviousPageParam,
     maxPages,
@@ -309,12 +313,18 @@ const createSuspenseInfiniteQueryImpl = <
     ...rest
   } = config
 
-  // Get query key from actor manager
+  // Fold the call arguments into the key — see the matching comment in
+  // createInfiniteQuery. Without them every infinite query on a method shares
+  // one cache entry, because the arguments live in a `getArgs` closure rather
+  // than in the config.
   const getQueryKey = (): QueryKey => {
+    const initialArgs = getArgs(initialPageParam)
+    const keyArgs = getKeyArgs?.(initialArgs) ?? initialArgs
+
     return reactor.generateQueryKey(
       {
         functionName,
-        queryKey: customQueryKey,
+        queryKey: mergeFactoryQueryKey(customQueryKey, undefined, keyArgs),
       },
       callConfig
     )
@@ -550,12 +560,13 @@ export function createSuspenseInfiniteQueryFactory<
     getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>,
     options?: SuspenseInfiniteFactoryCallOptions
   ) => {
-    const initialArgs = getArgs(config.initialPageParam)
-    const keyArgs = config.getKeyArgs?.(initialArgs) ?? initialArgs
+    // Only the caller-supplied segments are merged here; the args-derived
+    // segment is added by the impl, which does it for every infinite query.
+    // Applying it in both places would append the args twice.
     const queryKey = mergeFactoryQueryKey(
       config.queryKey,
       options?.queryKey,
-      keyArgs
+      undefined
     )
 
     return createSuspenseInfiniteQueryImpl<
@@ -565,15 +576,13 @@ export function createSuspenseInfiniteQueryFactory<
       TPageParam,
       Selected
     >(reactor, {
-      ...(({ getKeyArgs: _getKeyArgs, ...rest }) => rest)(
-        config as SuspenseInfiniteQueryFactoryConfig<
-          Service,
-          Method,
-          Transform,
-          TPageParam,
-          Selected
-        >
-      ),
+      ...(config as SuspenseInfiniteQueryFactoryConfig<
+        Service,
+        Method,
+        Transform,
+        TPageParam,
+        Selected
+      >),
       queryKey,
       getArgs,
     } as SuspenseInfiniteQueryConfig<
