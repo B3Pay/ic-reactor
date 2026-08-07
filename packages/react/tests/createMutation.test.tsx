@@ -360,7 +360,7 @@ describe("createMutation - execute() runs the factory callback chain", () => {
       },
     })
 
-    const result = await mutation.execute([{ name: "Alice", age: 30n }])
+    const result = await mutation.execute([{ name: "Alice", age: 30 }])
 
     expect(result).toBe(true)
     expect(fired).toEqual(["onSuccess"])
@@ -381,7 +381,7 @@ describe("createMutation - execute() runs the factory callback chain", () => {
       },
     })
 
-    await expect(mutation.execute([{ name: "Alice", age: 30n }])).rejects.toBe(
+    await expect(mutation.execute([{ name: "Alice", age: 30 }])).rejects.toBe(
       canisterError
     )
     expect(fired).toEqual(["onCanisterError", "onError"])
@@ -394,7 +394,7 @@ describe("createMutation - execute() runs the factory callback chain", () => {
       invalidateQueries: [["test-canister", "getUser"]],
     })
 
-    await mutation.execute([{ name: "Alice", age: 30n }])
+    await mutation.execute([{ name: "Alice", age: 30 }])
 
     expect(spy).toHaveBeenCalledWith({
       queryKey: ["test-canister", "getUser"],
@@ -411,7 +411,7 @@ describe("createMutation - execute() runs the factory callback chain", () => {
     })
 
     await expect(
-      mutation.execute([{ name: "Alice", age: 30n }])
+      mutation.execute([{ name: "Alice", age: 30 }])
     ).rejects.toThrow("boom")
     expect(spy).not.toHaveBeenCalled()
   })
