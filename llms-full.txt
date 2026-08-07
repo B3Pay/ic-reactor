@@ -81,7 +81,10 @@ It returns the six `createActorHooks` hooks plus `useAuth`, `useAgentState`,
 `useUserPrincipal`, `useIdentityAttributes`, and the underlying `reactor`,
 `clientManager`, `queryClient`, `authentication`, and `identityAttributes`.
 `authentication` and `identityAttributes` are lazy getters, so the optional
-`@icp-sdk/auth` peer is only loaded once auth is actually touched.
+`@icp-sdk/auth` peer is only loaded once auth is actually touched. Omitting the
+peer builds everywhere; webpack-family bundlers print one `Module not found`
+warning for it because the import is declared optional, silenceable with
+`ignoreWarnings: [{ module: /@ic-reactor\/react/, message: /@icp-sdk\/auth/ }]`.
 
 To share one agent and one Internet Identity session across canisters, pass the
 first result's `authentication` into the next call:

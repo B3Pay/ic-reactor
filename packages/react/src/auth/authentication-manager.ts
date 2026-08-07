@@ -455,12 +455,7 @@ export class AuthenticationManager {
     }
 
     if (!this.authClientConstructorPromise) {
-      // The specifier must stay a literal: a variable specifier (or /* @vite-ignore */)
-      // makes bundlers skip this import entirely, so the bare specifier survives into
-      // the browser, where it cannot be resolved without an import map and every login
-      // path fails. A literal lets Vite/Rollup/webpack code-split the optional peer,
-      // and lets them tree-shake it away for apps that never reference this class.
-      this.authClientConstructorPromise = import("@icp-sdk/auth/client")
+      this.authClientConstructorPromise = importAuthClientModule()
         .then((authModule) => {
           const AuthClient = (
             authModule as { AuthClient?: AuthClientConstructor }
@@ -487,6 +482,37 @@ export class AuthenticationManager {
     }
 
     return this.authClientConstructorPromise
+  }
+}
+
+/**
+ * Loads the optional `@icp-sdk/auth` peer.
+ *
+ * The `try` is load-bearing, not defensive. webpack flags a dynamic import
+ * that sits lexically inside a `try` block as an *optional* dependency
+ * (`ImportParserPlugin`: `dep.optional = Boolean(parser.scope.inTry)`), and
+ * `Compilation` reports an unresolvable optional dependency as a build
+ * *warning* instead of a fatal "Module not found" error, emitting a module
+ * that rejects at runtime. Without the `try`, every webpack-based toolchain
+ * (webpack, `next build --webpack`, Rspack) fails to build for consumers who
+ * never touch authentication, because npm/pnpm do not install optional peers.
+ * Do not hoist this import out of the `try`, and do not wrap it in a nested
+ * function — webpack resets `inTry` at every function boundary.
+ *
+ * The specifier must also stay a literal: a variable specifier (or
+ * `@vite-ignore`) makes bundlers skip this import entirely, so the bare
+ * specifier survives into the browser, where it cannot be resolved without an
+ * import map and every login path fails. A literal lets Vite/Rollup/webpack
+ * code-split the optional peer, and lets them tree-shake it away for apps that
+ * never reference this class.
+ */
+function importAuthClientModule(): Promise<unknown> {
+  try {
+    return import("@icp-sdk/auth/client")
+  } catch (error) {
+    // Native ESM without an import map (and bundlers that neither resolve nor
+    // stub the specifier) throw synchronously rather than rejecting.
+    return Promise.reject(error)
   }
 }
 
