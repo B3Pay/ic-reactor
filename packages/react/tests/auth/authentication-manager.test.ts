@@ -311,4 +311,121 @@ describe("AuthenticationManager", () => {
       openIdProvider: undefined,
     })
   })
+
+  describe("ic_env identity provider is scoped to non-mainnet networks", () => {
+    function mainnetManager() {
+      const manager = new ClientManager({
+        queryClient: new QueryClient(),
+        agentOptions: { host: "https://icp-api.io" },
+      })
+      vi.spyOn(manager, "initializeAgent").mockResolvedValue()
+      return manager
+    }
+
+    it("ignores a cross-origin provider from the ic_env cookie", async () => {
+      // On mainnet the provider comes from configuration, not the environment,
+      // matching how ClientManager treats the cookie's root key.
+      vi.stubGlobal("window", {
+        location: { origin: "https://app.example.com" },
+      })
+      vi.stubGlobal("document", {
+        cookie:
+          "ic_env=INTERNET_IDENTITY_PROVIDER%3Dhttps%3A%2F%2Fother.example%2Fauthorize",
+      })
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const authClient = createAuthClient()
+      const AuthClient = mockAuthClientModule(authClient)
+
+      const authentication = new AuthenticationManager({
+        clientManager: mainnetManager(),
+      })
+      await authentication.login()
+
+      expect(AuthClient).toHaveBeenCalledWith({
+        identityProvider: "https://id.ai/authorize",
+        windowOpenerFeatures: undefined,
+        openIdProvider: undefined,
+      })
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("https://other.example")
+      )
+      warn.mockRestore()
+    })
+
+    it("still accepts a same-origin provider from the ic_env cookie", async () => {
+      vi.stubGlobal("window", {
+        location: { origin: "https://app.example.com" },
+      })
+      vi.stubGlobal("document", {
+        cookie:
+          "ic_env=INTERNET_IDENTITY_PROVIDER%3Dhttps%3A%2F%2Fapp.example.com%2Fauthorize",
+      })
+      const authClient = createAuthClient()
+      const AuthClient = mockAuthClientModule(authClient)
+
+      const authentication = new AuthenticationManager({
+        clientManager: mainnetManager(),
+      })
+      await authentication.login()
+
+      expect(AuthClient).toHaveBeenCalledWith({
+        identityProvider: "https://app.example.com/authorize",
+        windowOpenerFeatures: undefined,
+        openIdProvider: undefined,
+      })
+    })
+
+    it("keeps an explicitly configured provider, which is never cookie-sourced", async () => {
+      vi.stubGlobal("window", {
+        location: { origin: "https://app.example.com" },
+      })
+      vi.stubGlobal("document", {
+        cookie:
+          "ic_env=INTERNET_IDENTITY_PROVIDER%3Dhttps%3A%2F%2Fother.example%2Fauthorize",
+      })
+      const authClient = createAuthClient()
+      const AuthClient = mockAuthClientModule(authClient)
+
+      const authentication = new AuthenticationManager({
+        clientManager: mainnetManager(),
+        identityProvider: "https://self-hosted-ii.example.com/authorize",
+      })
+      await authentication.login()
+
+      expect(AuthClient).toHaveBeenCalledWith({
+        identityProvider: "https://self-hosted-ii.example.com/authorize",
+        windowOpenerFeatures: undefined,
+        openIdProvider: undefined,
+      })
+    })
+  })
+
+  it("ignores an ic_env internet_identity id that is not a principal", async () => {
+    // Interpolated into `http://<id>.localhost:<port>/authorize`, so only a
+    // bare principal can be substituted in safely.
+    vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:8000" } })
+    vi.stubGlobal("document", {
+      cookie: "ic_env=internet_identity%3Dnot-a-principal%2Fx%23",
+    })
+    const authClient = createAuthClient()
+    const AuthClient = mockAuthClientModule(authClient)
+    const localClientManager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "http://127.0.0.1:8000" },
+    })
+    vi.spyOn(localClientManager, "initializeAgent").mockResolvedValue()
+
+    const authentication = new AuthenticationManager({
+      clientManager: localClientManager,
+    })
+    await authentication.login()
+
+    // Falls back to the well-known local II canister id.
+    expect(AuthClient).toHaveBeenCalledWith({
+      identityProvider:
+        "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:8000/authorize",
+      windowOpenerFeatures: undefined,
+      openIdProvider: undefined,
+    })
+  })
 })
