@@ -6,8 +6,9 @@ import type {
   AuthenticationClientOptions,
   AuthenticationSignInOptions,
 } from "./types.js"
-import { ClientManager, isDev } from "@ic-reactor/core"
+import { ClientManager, isDev, isMainnetHost } from "@ic-reactor/core"
 
+import { Principal } from "@icp-sdk/core/principal"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import {
   IC_INTERNET_IDENTITY_PROVIDER,
@@ -80,13 +81,18 @@ export class AuthenticationManager {
       typeof window !== "undefined" ? getAuthenticationCanisterEnv() : undefined
     this.identityProvider =
       identityProvider ||
-      canisterEnv?.[INTERNET_IDENTITY_PROVIDER_ENV_KEY] ||
-      canisterEnv?.["PUBLIC_INTERNET_IDENTITY_PROVIDER"]
+      acceptEnvIdentityProvider(
+        canisterEnv?.[INTERNET_IDENTITY_PROVIDER_ENV_KEY] ||
+          canisterEnv?.["PUBLIC_INTERNET_IDENTITY_PROVIDER"],
+        clientManager
+      )
     this.internetIdentityId =
       internetIdentityId ||
-      canisterEnv?.["internet_identity"] ||
-      canisterEnv?.["PUBLIC_CANISTER_ID:internet_identity"] ||
-      canisterEnv?.["CANISTER_ID_INTERNET_IDENTITY"]
+      acceptEnvCanisterId(
+        canisterEnv?.["internet_identity"] ||
+          canisterEnv?.["PUBLIC_CANISTER_ID:internet_identity"] ||
+          canisterEnv?.["CANISTER_ID_INTERNET_IDENTITY"]
+      )
     this.defaultClientOptions = clientOptions
 
     if (authClient) {
@@ -543,6 +549,80 @@ function isSameAuthClientOptions(
     current.identity === next.identity &&
     current.transport === next.transport
   )
+}
+
+/**
+ * Decides whether an Internet Identity provider carried by the `ic_env` cookie
+ * may be used.
+ *
+ * The cookie is written by the replica serving a local or testnet deployment,
+ * and it is only authoritative in that setting: cookies are not origin-isolated
+ * the way script-accessible storage is, so on a mainnet deployment the identity
+ * provider is configuration that belongs in code rather than something read
+ * back out of the environment at runtime. `AuthClient` treats `identityProvider`
+ * as trusted developer configuration and does not re-check it.
+ *
+ * This mirrors the root-key guard in `ClientManager` (see `packages/core`):
+ * both values arrive from the same cookie and get the same treatment — adopted
+ * off-mainnet, ignored on mainnet in favour of the pinned default.
+ *
+ * A provider on the app's own origin is always accepted: it is exactly as
+ * trustworthy as the page doing the asking. Callers that need a custom provider
+ * on mainnet pass `identityProvider` explicitly.
+ */
+function acceptEnvIdentityProvider(
+  value: string | undefined,
+  clientManager: ClientManager
+): string | undefined {
+  if (!value) return undefined
+
+  const pageOrigin =
+    typeof window !== "undefined" ? window.location?.origin : undefined
+
+  let url: URL
+  try {
+    url = new URL(value, pageOrigin)
+  } catch {
+    return undefined
+  }
+
+  if (pageOrigin && url.origin === pageOrigin) {
+    return url.toString()
+  }
+
+  // `isMainnetHost` matches only the real boundary domains and defaults to true
+  // for an unknown host, so custom testnets keep working while anything that
+  // looks like mainnet fails closed. `clientManager.isLocal` would be wrong
+  // here: it treats every unrecognized hostname as "ic".
+  if (isMainnetHost(clientManager.agentHost?.toString())) {
+    console.warn(
+      `[ic-reactor] Ignoring the Internet Identity provider from the ic_env cookie ` +
+        `("${url.origin}") because this reactor targets mainnet, where the provider ` +
+        `is taken from configuration rather than the environment. Pass ` +
+        `\`identityProvider\` to AuthenticationManager to use a custom provider on mainnet.`
+    )
+    return undefined
+  }
+
+  return url.toString()
+}
+
+/**
+ * Accepts an Internet Identity canister ID from `ic_env` only when it parses as
+ * a principal.
+ *
+ * The value is interpolated into a provider URL
+ * (`http://<id>.localhost:<port>/authorize`), so anything that is not a bare
+ * principal can change the shape of that URL rather than just its subdomain.
+ * Only reachable on local networks, since mainnet uses the pinned provider.
+ */
+function acceptEnvCanisterId(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  try {
+    return Principal.fromText(value).toText()
+  } catch {
+    return undefined
+  }
 }
 
 function getAuthenticationCanisterEnv(): Record<string, string> | undefined {
