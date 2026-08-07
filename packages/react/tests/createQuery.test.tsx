@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { Reactor } from "@ic-reactor/core"
 import { createQuery, createQueryFactory } from "../src/createQuery.js"
+import { buildChainedSelect } from "../src/utils.js"
 
 // Define Actor Interface
 interface User {
@@ -511,5 +512,76 @@ describe("createQuery - setData", () => {
     await waitFor(() => {
       expect(result.current.data).toEqual(updated)
     })
+  })
+})
+
+describe("createQuery - select memoization", () => {
+  let queryClient: QueryClient
+  let mockReactor: ReturnType<typeof createMockReactor>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    mockReactor = createMockReactor(queryClient)
+  })
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+
+  it("does not re-run a config select on every render", async () => {
+    // Regression: the chained select used to be a fresh closure each render, so
+    // QueryObserver's `options.select === previousSelectFn` memo never hit and
+    // the select re-ran per render.
+    const select = vi.fn((user: User) => user.name)
+    const query = createQuery(mockReactor, {
+      functionName: "get_user",
+      select,
+    })
+
+    const { result, rerender } = renderHook(() => query.useQuery(), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const afterLoad = select.mock.calls.length
+    for (let i = 0; i < 5; i++) rerender()
+
+    expect(select.mock.calls.length).toBe(afterLoad)
+  })
+
+  it("keeps data reference-stable across renders for a non-plain select result", async () => {
+    // A Map cannot be structurally shared by replaceEqualDeep, so an unstable
+    // select handed the consumer a new reference every render — which turns any
+    // useEffect([data]) that sets state into an unbounded loop.
+    const query = createQuery(mockReactor, {
+      functionName: "get_user",
+      select: (user: User) => new Map([["name", user.name]]),
+    })
+
+    const { result, rerender } = renderHook(() => query.useQuery(), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const seen = new Set<unknown>()
+    for (let i = 0; i < 5; i++) {
+      seen.add(result.current.data)
+      rerender()
+    }
+
+    expect(seen.size).toBe(1)
+  })
+
+  it("passes the caller's own function through when only one select is present", () => {
+    const configSelect = (user: User) => user.name
+    const query = createQuery(mockReactor, {
+      functionName: "get_user",
+      select: configSelect,
+    })
+    // No wrapper is allocated for the single-select case, so a module-scope
+    // select stays referentially stable for the observer.
+    expect(query).toBeDefined()
+    expect(buildChainedSelect(configSelect, undefined)).toBe(configSelect)
+    const hookSelect = (name: string) => name
+    expect(buildChainedSelect(undefined, hookSelect)).toBe(hookSelect)
+    expect(buildChainedSelect(undefined, undefined)).toBeUndefined()
   })
 })
