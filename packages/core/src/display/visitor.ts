@@ -188,7 +188,10 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     if (elemType.name === "nat8") {
       return z.codec(
         z.union([z.instanceof(Uint8Array), z.array(z.number())]),
-        z.union([z.string(), z.instanceof(Uint8Array)]),
+        // `number[]` belongs on the display side too: `DisplayOf` already types
+        // a blob as `Uint8Array | number[] | string`, and a plain byte array is
+        // what hand-written args and JSON round-trips produce.
+        z.union([z.string(), z.instanceof(Uint8Array), z.array(z.number())]),
         {
           decode: (val) => {
             if (!val) return val
@@ -198,6 +201,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           encode: (val) => {
             if (typeof val === "string") {
               return hexToUint8Array(val)
+            }
+            if (Array.isArray(val)) {
+              return Uint8Array.from(val)
             }
             return val
           },
@@ -258,6 +264,26 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
       },
       encode: (val) => {
         if (isNullish(val)) return [] as []
+
+        // Also accept the canonical Candid optional forms — `[]` for none and
+        // `[value]` for some — because that is exactly how generated `_SERVICE`
+        // declarations type an `opt` field (`[] | [T]`), so writing them is the
+        // natural thing to do and used to fail.
+        if (Array.isArray(val)) {
+          if (val.length === 0) return [] as []
+          if (val.length === 1) {
+            // The element may itself be an array (`opt vec …`), so only read
+            // this as the optional wrapper when the element codec accepts the
+            // unwrapped value; otherwise fall through and encode the array
+            // itself as the value.
+            try {
+              return [elemCodec.encode(val[0])] as [any]
+            } catch {
+              // Not a wrapper — treat the array as the value below.
+            }
+          }
+        }
+
         return [elemCodec.encode(val)] as [any]
       },
     })
