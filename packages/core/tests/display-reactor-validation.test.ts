@@ -364,3 +364,55 @@ describe("DisplayReactor with Validation", () => {
     })
   })
 })
+
+describe("DisplayReactor validator scoping", () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const clientManager = new ClientManager({ queryClient })
+
+  it("keeps the validator registered for concurrent callers during an in-flight call", async () => {
+    // Regression: the validator was removed for the whole duration of the call
+    // (2-15s for a real update), so every other consumer of the reactor was
+    // unvalidated in that window — and validate() actively reported success for
+    // input it otherwise rejects.
+    const reactor = new DisplayReactor<TestActor>({
+      name: "test-reactor",
+      idlFactory,
+      canisterId,
+      clientManager,
+    })
+
+    reactor.registerValidator("transfer", async ([input]) => {
+      if (input.to === "blocked-address") {
+        return {
+          success: false,
+          issues: [{ path: ["to"], message: "This address is blocked" }],
+        }
+      }
+      return { success: true }
+    })
+
+    // Hold the call open: callMethod returns a promise that never settles, so
+    // the reactor stays mid-flight for the rest of the test.
+    const callMethodSpy = vi
+      .spyOn(reactor, "callMethod")
+      .mockImplementation((() => new Promise(() => {})) as never)
+
+    const inFlight = reactor.callMethodWithValidation({
+      functionName: "transfer",
+      args: [{ to: "allowed", amount: "1" }],
+    })
+    inFlight.catch(() => undefined)
+
+    await vi.waitFor(() => expect(callMethodSpy).toHaveBeenCalled())
+
+    // Mid-flight, the reactor must look exactly as it does at rest.
+    expect(reactor.hasValidator("transfer")).toBe(true)
+    await expect(
+      reactor.validate("transfer", [
+        { to: "blocked-address", amount: "1" },
+      ] as never)
+    ).resolves.toMatchObject({ success: false })
+  })
+})
