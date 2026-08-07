@@ -16,7 +16,7 @@ import {
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { normalizeQueryData } from "../utils.js"
+import { mergeFactoryQueryKey, normalizeQueryData } from "../utils.js"
 
 /**
  * Parameters for useActorInfiniteQuery hook.
@@ -119,8 +119,30 @@ export const useActorInfiniteQuery = <
   // reactor/function identity. Using the custom key verbatim would cause cache
   // collisions if two different actors or methods share the same key string.
   const baseQueryKey = useMemo(
-    () => reactor.generateQueryKey({ functionName, queryKey }, callConfig),
-    [queryKey, reactor, functionName, callConfig]
+    () =>
+      reactor.generateQueryKey(
+        {
+          functionName,
+          // Fold the call arguments into the key. They live in the `getArgs`
+          // closure rather than in the config, so without this two hooks on the
+          // same method with different arguments share one cache entry and
+          // serve each other's pages.
+          queryKey: mergeFactoryQueryKey(
+            queryKey,
+            undefined,
+            getArgs(options.initialPageParam)
+          ),
+        },
+        callConfig
+      ),
+    [
+      queryKey,
+      reactor,
+      functionName,
+      callConfig,
+      getArgs,
+      options.initialPageParam,
+    ]
   )
 
   // Memoize queryFn to prevent recreation on every render
