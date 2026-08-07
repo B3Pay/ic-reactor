@@ -314,9 +314,30 @@ Agents should account for these patterns in generated TypeScript:
 | App stack | Recommended path |
 | --------- | ---------------- |
 | Vite + React | `@ic-reactor/vite-plugin` + generated declarations/hooks |
-| Next.js (pages/app router) | CLI generation + reusable query/mutation factories in shared modules |
+| Next.js (pages/app router) | CLI generation + factories; hooks in `"use client"` modules. On the server build the reactor per request (see SSR rule below) |
 | TanStack Router | query/mutation factories with `.fetch()` for loaders and `.useQuery()` for components |
 | Plain TS/node scripts | `@ic-reactor/core` + imperative APIs (`callMethod`, `fetchQuery`, `invalidateQueries`) |
+
+### SSR rule
+
+A reactor owns its `QueryClient`, and query keys are
+`[canisterId, functionName, args]` with no caller principal. A module-scope
+reactor on a server is therefore shared by every request, so a cached
+caller-scoped result (`get_my_balance`, deposit address, `my_profile`) is served
+to the next request. Under SSR/RSC, construct the reactor inside the request:
+
+```ts
+const app = defineReactor<_SERVICE>({
+  name: "backend",
+  idlFactory,
+  canisterId,
+  queryClient: new QueryClient(),
+})
+```
+
+Module scope stays correct for client-only SPAs. Hooks are client-only; they
+also bind to their reactor's own `QueryClient`, so `HydrationBoundary` prefetch
+does not reach them unless the provider's client is that same instance.
 
 ## Generated File Boundaries
 
