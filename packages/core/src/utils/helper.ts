@@ -8,6 +8,34 @@ export const generateKey = (args: any[]) => {
   )
 }
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (typeof value !== "object" || value === null) return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+/**
+ * Make one query-key segment safe for React Query's `JSON.stringify` hashing by
+ * rendering BigInt values as strings.
+ *
+ * Only arrays and plain objects are walked. Class instances (a `Principal`, a
+ * `Date`) are returned untouched so their existing hash is preserved — this
+ * converts what would otherwise throw, and changes nothing else.
+ */
+export const toHashableKeySegment = (value: unknown): unknown => {
+  if (typeof value === "bigint") return value.toString()
+  if (Array.isArray(value)) return value.map(toHashableKeySegment)
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        toHashableKeySegment(item),
+      ])
+    )
+  }
+  return value
+}
+
 const getEnv = () => {
   try {
     return process.env
