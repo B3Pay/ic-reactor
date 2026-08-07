@@ -35,7 +35,14 @@ export interface UseActorMutationParameters<
   reactor: Reactor<Service, Transform>
   functionName: Method
   callConfig?: CallConfig
-  invalidateQueries?: QueryKey[]
+  /**
+   * Queries to invalidate upon successful mutation.
+   *
+   * `undefined` entries are skipped, so the common
+   * `[maybeQuery?.getQueryKey()]` idiom is safe when the optional query object
+   * is absent.
+   */
+  invalidateQueries?: (QueryKey | undefined)[]
   /**
    * Callback for canister-level business logic errors.
    * Called when the canister returns a Result { Err: E } variant.
@@ -126,10 +133,18 @@ export const useActorMutation = <
       >
     ) => {
       if (invalidateQueries) {
+        // Skip undefined entries. React Query reads `{ queryKey: undefined }`
+        // as "match everything", so a single undefined — which the natural
+        // `invalidateQueries: [maybeQuery?.getQueryKey()]` idiom produces
+        // whenever the optional query object is absent — would invalidate every
+        // query in the client, including an app's unrelated non-canister ones.
+        // `createMutation.invalidateAll` already filters the same way.
         await Promise.all(
-          invalidateQueries.map((queryKey) =>
-            reactor.queryClient.invalidateQueries({ queryKey })
-          )
+          invalidateQueries
+            .filter((queryKey) => queryKey !== undefined)
+            .map((queryKey) =>
+              reactor.queryClient.invalidateQueries({ queryKey })
+            )
         )
       }
       await onSuccess?.(...params)
