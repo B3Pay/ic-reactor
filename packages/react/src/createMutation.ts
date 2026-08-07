@@ -91,16 +91,46 @@ const createMutationImpl = <
 
   /**
    * Imperative execution for non-React usage.
-   * Calls the canister method and invalidates factory-level queries.
+   *
+   * Runs the same factory-level chain the hook does — invalidation, then
+   * `onSuccess`, or `onCanisterError`/`onError` on failure — so a mutation
+   * object behaves the same through both call paths. Only hook-level callbacks
+   * are absent, because there is no hook here to supply them.
+   *
+   * The error is rethrown after the callbacks run, so `await execute(...)`
+   * still rejects for the caller.
+   *
    * Use this in route loaders, scripts, or server-side code.
    */
   const execute = async (
     args: ReactorArgs<Service, Method, Transform>
   ): Promise<ReactorReturnOk<Service, Method, Transform>> => {
-    const result = await callFn(args)
+    let result: ReactorReturnOk<Service, Method, Transform>
+    try {
+      result = await callFn(args)
+    } catch (error) {
+      if (isCanisterError(error)) {
+        factoryOnCanisterError?.(error, args)
+      }
+      // No mutation context or instance exists on the imperative path.
+      factoryOnError?.(
+        error as Parameters<NonNullable<typeof factoryOnError>>[0],
+        args,
+        undefined as never,
+        undefined as never
+      )
+      throw error
+    }
+
     if (factoryInvalidateQueries) {
       await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
     }
+    await factoryOnSuccess?.(
+      result,
+      args,
+      undefined as never,
+      undefined as never
+    )
     return result
   }
 

@@ -4,7 +4,7 @@ import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createMutation } from "../src/createMutation.js"
 import { ActorMethod } from "@icp-sdk/core/agent"
-import { Reactor } from "@ic-reactor/core"
+import { Reactor, CanisterError } from "@ic-reactor/core"
 
 // Define a test actor type with various argument patterns
 type TestActor = {
@@ -331,5 +331,88 @@ describe("createMutation", () => {
         queryKey: ["test-canister", "getUser"],
       })
     })
+  })
+})
+
+describe("createMutation - execute() runs the factory callback chain", () => {
+  let queryClient: QueryClient
+  let mockReactor: ReturnType<typeof createMockReactor>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+    mockReactor = createMockReactor(queryClient)
+  })
+
+  it("runs factory onSuccess, matching the hook path", async () => {
+    // Regression: execute() honoured invalidateQueries but skipped every
+    // factory callback, so the documented "one mutation, two call paths"
+    // silently lost error handling outside React.
+    const fired: string[] = []
+    const mutation = createMutation(mockReactor, {
+      functionName: "updateUser",
+      onSuccess: () => {
+        fired.push("onSuccess")
+      },
+    })
+
+    const result = await mutation.execute([{ name: "Alice", age: 30n }])
+
+    expect(result).toBe(true)
+    expect(fired).toEqual(["onSuccess"])
+  })
+
+  it("runs factory onCanisterError and onError, then rethrows", async () => {
+    const fired: string[] = []
+    const canisterError = new CanisterError({ InsufficientFunds: null } as any)
+    vi.spyOn(mockReactor, "callMethod").mockRejectedValue(canisterError)
+
+    const mutation = createMutation(mockReactor, {
+      functionName: "updateUser",
+      onCanisterError: () => {
+        fired.push("onCanisterError")
+      },
+      onError: () => {
+        fired.push("onError")
+      },
+    })
+
+    await expect(mutation.execute([{ name: "Alice", age: 30n }])).rejects.toBe(
+      canisterError
+    )
+    expect(fired).toEqual(["onCanisterError", "onError"])
+  })
+
+  it("still invalidates factory queries on success", async () => {
+    const spy = vi.spyOn(queryClient, "invalidateQueries")
+    const mutation = createMutation(mockReactor, {
+      functionName: "updateUser",
+      invalidateQueries: [["test-canister", "getUser"]],
+    })
+
+    await mutation.execute([{ name: "Alice", age: 30n }])
+
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: ["test-canister", "getUser"],
+    })
+  })
+
+  it("does not invalidate when the call fails", async () => {
+    vi.spyOn(mockReactor, "callMethod").mockRejectedValue(new Error("boom"))
+    const spy = vi.spyOn(queryClient, "invalidateQueries")
+
+    const mutation = createMutation(mockReactor, {
+      functionName: "updateUser",
+      invalidateQueries: [["test-canister", "getUser"]],
+    })
+
+    await expect(
+      mutation.execute([{ name: "Alice", age: 30n }])
+    ).rejects.toThrow("boom")
+    expect(spy).not.toHaveBeenCalled()
   })
 })
