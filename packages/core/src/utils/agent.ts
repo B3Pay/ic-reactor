@@ -2,6 +2,7 @@ import type {
   Agent,
   ApiQueryResponse,
   HttpDetailsResponse,
+  Identity,
   PollingOptions,
   SubmitResponse,
   TargetPrincipal,
@@ -94,7 +95,8 @@ export async function processUpdateCallResponse(
   methodName: string,
   agent: Agent,
   pollingOptions: PollingOptions,
-  effectiveTarget: TargetPrincipal
+  effectiveTarget: TargetPrincipal,
+  identity?: Identity
 ): Promise<Uint8Array> {
   let reply: Uint8Array | undefined
   let certificate: Certificate | undefined
@@ -177,8 +179,32 @@ export async function processUpdateCallResponse(
   // Fall back to polling if we receive an Accepted response code
   if (result.response.status === 202) {
     // Contains the certificate and the reply from the boundary node
+    // `pollForResponse` signs its read_state through `agent.readState`, which
+    // reads whatever identity the shared agent currently holds. Pin it to the
+    // one that submitted, or a sign-in/sign-out mid-poll makes the replica
+    // reject the read for a call that has already committed. The delegate keeps
+    // the same agent underneath, so transforms, root key and subnet-key caching
+    // are untouched.
+    const pollingAgent: Agent = identity
+      ? Object.create(agent, {
+          readState: {
+            value: (
+              target: Parameters<Agent["readState"]>[0],
+              fields: Parameters<Agent["readState"]>[1],
+              _identity?: unknown,
+              request?: unknown
+            ) =>
+              (
+                agent.readState as (
+                  ...args: unknown[]
+                ) => ReturnType<Agent["readState"]>
+              )(target, fields, identity, request),
+          },
+        })
+      : agent
+
     const response = await pollForResponse(
-      agent,
+      pollingAgent,
       effectiveTarget,
       result.requestId,
       pollingOptions

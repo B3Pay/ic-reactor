@@ -486,12 +486,24 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
         : { canisterId })
     const pollingOptions = callConfig?.pollingOptions ?? this.pollingOptions
 
-    const response = await agent.call(canisterId, {
+    // Pin the call to the identity installed right now. `updateAgent` mutates
+    // the shared agent in place — deliberately, so retained Actors and
+    // transforms keep working — which used to mean a sign-in or sign-out
+    // part-way through re-signed the read_state of a call that had already been
+    // submitted, and the replica answered 403 for a call that had committed.
+    const identity = callConfig?.agent ? undefined : this.clientManager.identity
+
+    const callOptions = {
       methodName,
       arg,
       effectiveTarget,
       nonce: callConfig?.nonce,
-    })
+    }
+    // Only widen the call when there is something to pin, so an agent supplied
+    // through `callConfig` keeps being invoked exactly as before.
+    const response = identity
+      ? await agent.call(canisterId, callOptions, identity)
+      : await agent.call(canisterId, callOptions)
 
     return await processUpdateCallResponse(
       response,
@@ -499,7 +511,8 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       methodName,
       agent,
       pollingOptions,
-      effectiveTarget
+      effectiveTarget,
+      identity
     )
   }
 

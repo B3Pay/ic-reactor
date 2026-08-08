@@ -262,7 +262,10 @@ describe("Reactor callConfig overrides", () => {
       "writeName",
       overrideAgent,
       pollingOptions,
-      { canisterId: Principal.from(overrideCanisterId) }
+      { canisterId: Principal.from(overrideCanisterId) },
+      // A callConfig-supplied agent brings its own identity, so nothing is
+      // pinned for it.
+      undefined
     )
   })
 
@@ -294,7 +297,9 @@ describe("Reactor callConfig overrides", () => {
       "writeName",
       defaultAgent,
       expect.any(Object),
-      effectiveTarget
+      effectiveTarget,
+      // No identity has been installed on this manager, so there is none to pin.
+      undefined
     )
   })
 })
