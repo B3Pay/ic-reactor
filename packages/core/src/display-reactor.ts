@@ -269,21 +269,34 @@ export class DisplayReactor<
       }
     }
 
-    // Skip synchronous validation in transformArgs by temporarily removing validator
+    // The validator has already run above, so `transformArgs` must not run it
+    // again synchronously (it would reject an async validator outright). It is
+    // removed to achieve that — but `validators` is shared reactor state, so the
+    // removal must not outlive this call's synchronous section, or every other
+    // caller is unvalidated for the 2-15s an update takes: a second submit, a
+    // different component calling callMethod(), or a form calling validate() on
+    // change, which would report success for input it otherwise rejects.
+    //
+    // `callMethod` invokes `transformArgs` synchronously, before it awaits
+    // anything, so starting the call and restoring the validator in the same
+    // tick keeps the gap unobservable — no other code can interleave. The
+    // promise is awaited only after the validator is back in place.
     const validator = this.validators.get(params.functionName)
     if (validator) {
       this.validators.delete(params.functionName)
     }
 
+    let pending: Promise<ReactorReturnOk<A, M, T>>
     try {
       // @ts-ignore
-      return await this.callMethod(params)
+      pending = this.callMethod(params)
     } finally {
-      // Restore validator
       if (validator) {
         this.validators.set(params.functionName, validator)
       }
     }
+
+    return await pending
   }
 
   // ============================================================================
