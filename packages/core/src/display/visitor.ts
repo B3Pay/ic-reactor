@@ -190,8 +190,15 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
         z.union([z.instanceof(Uint8Array), z.array(z.number())]),
         // `number[]` belongs on the display side too: `DisplayOf` already types
         // a blob as `Uint8Array | number[] | string`, and a plain byte array is
-        // what hand-written args and JSON round-trips produce.
-        z.union([z.string(), z.instanceof(Uint8Array), z.array(z.number())]),
+        // what hand-written args and JSON round-trips produce. The byte bounds
+        // are declared here so an out-of-range entry is reported with its
+        // index instead of being silently wrapped by `Uint8Array.from`, which
+        // turns `[-1, 256, 1.5]` into `[255, 0, 1]` — a different valid payload.
+        z.union([
+          z.string(),
+          z.instanceof(Uint8Array),
+          z.array(z.number().int().min(0).max(255)),
+        ]),
         {
           decode: (val) => {
             if (!val) return val
@@ -257,6 +264,24 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   ): z.ZodTypeAny {
     const elemCodec = elemType.accept(this, null)
 
+    // Only a vector-valued element can be confused with the Candid optional
+    // wrapper, since both are arrays. Decide from the element TYPE rather than
+    // by probing the codec: element codecs are built on `z.any()` and pass
+    // unknown shapes straight through, so a probe reports success for values
+    // the element cannot actually represent.
+    const elemIsVec = elemType.name.startsWith("vec ")
+    const elemIsBlob = elemType.name === "vec nat8"
+
+    /** Is `inner` a plausible value for the element type, i.e. is `[inner]` a wrapper? */
+    const isWrappedValue = (inner: unknown): boolean => {
+      if (!elemIsVec) return true // non-vector element: `[v]` is unambiguous
+      if (Array.isArray(inner)) return true
+      // A blob also accepts its scalar display forms.
+      return (
+        elemIsBlob && (inner instanceof Uint8Array || typeof inner === "string")
+      )
+    }
+
     return z.codec(z.any(), z.any(), {
       decode: (val) => {
         if (!Array.isArray(val) || val.length === 0) return undefined
@@ -270,18 +295,14 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
         // declarations type an `opt` field (`[] | [T]`), so writing them is the
         // natural thing to do and used to fail.
         if (Array.isArray(val)) {
+          // `[]` is none at an optional position, per Candid. Some(empty vec)
+          // is written `[[]]`, which the branch below handles.
           if (val.length === 0) return [] as []
-          if (val.length === 1) {
-            // The element may itself be an array (`opt vec …`), so only read
-            // this as the optional wrapper when the element codec accepts the
-            // unwrapped value; otherwise fall through and encode the array
-            // itself as the value.
-            try {
-              return [elemCodec.encode(val[0])] as [any]
-            } catch {
-              // Not a wrapper — treat the array as the value below.
-            }
+          if (val.length === 1 && isWrappedValue(val[0])) {
+            return [elemCodec.encode(val[0])] as [any]
           }
+          // Otherwise the array IS the value — e.g. `opt vec text` given
+          // `["only"]`, a bare one-element vector.
         }
 
         return [elemCodec.encode(val)] as [any]

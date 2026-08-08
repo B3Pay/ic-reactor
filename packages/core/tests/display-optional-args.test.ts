@@ -59,4 +59,48 @@ describe("display codec — canonical Candid optional argument forms", () => {
       expect(optText().asDisplay(["hi"])).toBe("hi")
     })
   })
+
+  describe("opt vec (non-blob) — a bare one-element vector is not a wrapper", () => {
+    const optVecText = () => didToDisplayCodec(IDL.Opt(IDL.Vec(IDL.Text)))
+
+    it("keeps a bare one-element vector as the value", () => {
+      // The ambiguous case: ["only"] is a one-element vec, not Some("only").
+      // Deciding by probing the element codec got this wrong, because element
+      // codecs are built on z.any() and accept anything.
+      expect(optVecText().asCandid(["only"])).toEqual([["only"]])
+    })
+
+    it("keeps a bare multi-element vector as the value", () => {
+      expect(optVecText().asCandid(["a", "b"])).toEqual([["a", "b"]])
+    })
+
+    it("reads a nested array as the wrapper", () => {
+      expect(optVecText().asCandid([["a"]])).toEqual([["a"]])
+    })
+
+    it("reads [[]] as some(empty vec) and [] as none", () => {
+      expect(optVecText().asCandid([[]])).toEqual([[]])
+      expect(optVecText().asCandid([])).toEqual([])
+    })
+  })
+
+  describe("blob byte bounds", () => {
+    const optBlob = () => didToDisplayCodec(IDL.Opt(IDL.Vec(IDL.Nat8)))
+
+    it("rejects out-of-range and fractional bytes instead of wrapping them", () => {
+      // Uint8Array.from would silently turn [-1, 256, 1.5] into [255, 0, 1] —
+      // a different, valid-looking payload.
+      expect(() => optBlob().asCandid([[-1, 256, 1.5]])).toThrow()
+    })
+
+    it("reads a bare one-element byte array as a one-byte blob", () => {
+      expect(optBlob().asCandid([255])).toEqual([Uint8Array.from([255])])
+    })
+
+    it("accepts a hex string as some", () => {
+      expect(optBlob().asCandid(["deadbeef"])).toEqual([
+        Uint8Array.from([0xde, 0xad, 0xbe, 0xef]),
+      ])
+    })
+  })
 })
