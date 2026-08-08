@@ -220,9 +220,20 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     // Regular array: codec each element
     const elemCodec = elemType.accept(this, null)
 
-    // Special case: Vec<Tuple(Text, Value)> → Map (for key-value pairs)
+    // Special case: Vec<Tuple(Text, Value)> → object keyed by the text.
+    //
+    // The key really must be `text`. This used to accept ANY 2-tuple, so a
+    // `vec record { Account; nat }` — a real shape, e.g. the ckBTC ledger's
+    // `InitArgs.initial_balances` — was run through `Object.fromEntries` and
+    // every entry collapsed onto the single key "[object Object]", losing all
+    // but the last. It also contradicted the declared type: `DisplayOf` maps to
+    // `Record<string, …>` only for `Array<[string, B]>` and leaves any other
+    // tuple vector as an array, so the runtime was returning an object where
+    // the types promised a list.
+    const tupleFields =
+      elemType instanceof IDL.TupleClass ? elemType._fields : undefined
     const isTextTuple =
-      elemType instanceof IDL.TupleClass && elemType._fields.length === 2
+      tupleFields?.length === 2 && tupleFields[0][1].name === "text"
 
     if (isTextTuple) {
       return z.codec(z.any(), z.any(), {
