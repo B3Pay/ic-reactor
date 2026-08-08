@@ -251,3 +251,80 @@ export class ValidationError extends Error {
 export function isValidationError(error: unknown): error is ValidationError {
   return error instanceof ValidationError
 }
+
+/**
+ * Reject codes the IC defines as retryable. Everything else is a decision the
+ * replica will repeat for an identical call.
+ *
+ * @see https://internetcomputer.org/docs/references/ic-interface-spec#reject-codes
+ */
+const RETRYABLE_REJECT_CODES = new Set([
+  2, // SysTransient — the system was temporarily unable to process the call
+  6, // SysUnknown — the outcome is genuinely unknown, so a retry can resolve it
+])
+
+/**
+ * Whether retrying a failed canister call could plausibly produce a different
+ * result.
+ *
+ * Only a {@link CallError} ever involves the network; every other failure is
+ * decided before the request leaves the client or by the canister itself, so
+ * repeating the identical call repeats the identical outcome:
+ *
+ * - {@link CanisterError} — the canister returned an `Err` variant.
+ * - {@link ValidationError} — rejected by a validator client-side.
+ * - anything else (a Candid encode or decode failure, for instance) — raised
+ *   without a request being sent.
+ *
+ * A `CallError` is retried unless the replica rejected it with a deterministic
+ * reject code. Anything unrecognised is treated as retryable, so this can only
+ * ever remove pointless attempts, never suppress a useful one.
+ *
+ * @example Opt in on a QueryClient you construct yourself
+ * ```ts
+ * new QueryClient({
+ *   defaultOptions: { queries: { retry: reactorRetry } },
+ * })
+ * ```
+ */
+export function isRetryableReactorError(error: unknown): boolean {
+  if (isCanisterError(error)) return false
+  if (isValidationError(error)) return false
+  if (!isCallError(error)) return false
+
+  const rejectCode = readRejectCode(error.cause)
+  if (typeof rejectCode === "number") {
+    return RETRYABLE_REJECT_CODES.has(rejectCode)
+  }
+
+  // Transport, protocol and certificate failures carry no reject code.
+  return true
+}
+
+/**
+ * Pull the reject code out of a `CallError.cause`.
+ *
+ * The agent nests it: the cause is a `RejectError` whose `code` is a
+ * `…RejectErrorCode` carrying `rejectCode`. The flat position is checked too,
+ * so a hand-built or future-shaped cause still classifies.
+ */
+function readRejectCode(cause: unknown): number | undefined {
+  const candidate = cause as
+    { rejectCode?: unknown; code?: { rejectCode?: unknown } } | undefined
+  if (typeof candidate?.rejectCode === "number") return candidate.rejectCode
+  if (typeof candidate?.code?.rejectCode === "number") {
+    return candidate.code.rejectCode
+  }
+  return undefined
+}
+
+/**
+ * TanStack Query `retry` predicate built on {@link isRetryableReactorError},
+ * keeping React Query's default of three attempts for failures worth repeating.
+ *
+ * This is the default for the `QueryClient` that `defineReactor` creates. Pass
+ * it explicitly when you supply your own client.
+ */
+export function reactorRetry(failureCount: number, error: unknown): boolean {
+  return failureCount < 3 && isRetryableReactorError(error)
+}
