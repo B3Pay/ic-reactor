@@ -42,6 +42,50 @@ function updateLlmsVersion(packageName, newVersion) {
   }
 }
 
+// Every file `scripts/check-ai-context.js` verifies. `updateLlmsVersion` only
+// rewrites the backticked version table in the root llms.txt, so prose mentions
+// elsewhere ("targets the stable v3.8.0 runtime release", the package tables in
+// AGENTS.md/CLAUDE.md, ...) were left behind and failed the check:ai-context CI
+// gate on the release commit itself.
+const AI_CONTEXT_FILES = [
+  "llms.txt",
+  "llms-full.txt",
+  "AGENTS.md",
+  "CLAUDE.md",
+  ".cursorrules",
+  ".github/copilot-instructions.md",
+  "skill-packages/README.md",
+  "skill-packages/ic-reactor-hooks/SKILL.md",
+  "skill-packages/ic-reactor-packages/SKILL.md",
+  "skill-packages/ic-reactor-packages/references/package-map.md",
+  "packages/core/llms.txt",
+  "packages/react/llms.txt",
+  "packages/candid/llms.txt",
+]
+
+function syncAiContextVersions(oldVersion, newVersion) {
+  if (oldVersion === newVersion) return
+  // Same boundaries as check-ai-context.js's SEMVER, so `3.9.0` inside `3.9.01`
+  // or a longer dotted string is not touched. Matches an optional leading `v`.
+  const escaped = oldVersion.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
+  const pattern = new RegExp(`(?<![\\d.])(v?)${escaped}(?![\\d.]\\d)`, "g")
+
+  for (const relativePath of AI_CONTEXT_FILES) {
+    const fullPath = join(rootDir, relativePath)
+    let text
+    try {
+      text = readFileSync(fullPath, "utf-8")
+    } catch {
+      continue // optional file
+    }
+    const updated = text.replace(pattern, `$1${newVersion}`)
+    if (updated !== text) {
+      writeFileSync(fullPath, updated, "utf-8")
+      console.log(`✅ Synced ${relativePath} to ${newVersion}`)
+    }
+  }
+}
+
 function updatePackageJson(filePath, newVersion) {
   try {
     const fullPath = join(rootDir, filePath)
@@ -58,6 +102,13 @@ function updatePackageJson(filePath, newVersion) {
   }
 }
 
+// The runtime version being replaced. Captured before any file is rewritten so
+// the AI-context sync below can target exactly that string and leave the
+// independently-versioned tooling (codegen, cli, vite-plugin, parser) alone.
+const previousVersion = JSON.parse(
+  readFileSync(join(rootDir, "packages/core/package.json"), "utf-8")
+).version
+
 console.log(`\n🚀 Starting release process for v${version}...\n`)
 
 // 1. Update library versions
@@ -66,7 +117,33 @@ updatePackageJson("packages/core/package.json", version)
 updatePackageJson("packages/react/package.json", version)
 updatePackageJson("packages/candid/package.json", version)
 
-// 2. Update library lockfile while examples still point to workspace
+// 2. Regenerate packages/core/src/version.ts from the bumped package.json.
+//    `version:sync` normally runs only as part of core's `build`, which a
+//    release never invokes, so without this the committed VERSION would keep
+//    reporting the previous release even though the path is staged below.
+console.log("\n🔢 Regenerating core version constant...")
+try {
+  run("pnpm", ["--filter", "@ic-reactor/core", "version:sync"])
+} catch (error) {
+  console.error("❌ Failed to regenerate packages/core/src/version.ts")
+  process.exit(1)
+}
+
+// 3. Sync every AI-context file the check:ai-context gate reads
+console.log("\n🧠 Syncing AI-context versions...")
+syncAiContextVersions(previousVersion, version)
+
+// 4. Sync examples to literal version for the Git Commit (StackBlitz support)
+try {
+  console.log("\n📦 Syncing examples to literal version for StackBlitz...")
+  run("node", ["scripts/sync-example-versions.js", version])
+} catch (error) {
+  console.error("❌ Failed to sync example versions")
+}
+
+// 5. Update the lockfile LAST. Running it before the example sync leaves the
+//    lockfile describing the previous literal versions, and CI installs with
+//    --frozen-lockfile, so the release commit fails to install.
 console.log("\n🔗 Updating lockfile (pnpm install)...")
 try {
   run("pnpm", ["install", "--no-frozen-lockfile"])
@@ -75,30 +152,23 @@ try {
   process.exit(1)
 }
 
-// 3. Sync examples to literal version for the Git Commit (StackBlitz support)
-try {
-  console.log("\n📦 Syncing examples to literal version for StackBlitz...")
-  run("node", ["scripts/sync-example-versions.js", version])
-} catch (error) {
-  console.error("❌ Failed to sync example versions")
-}
-
 const RELEASE_PATHS = [
-  // updateLlmsVersion() rewrites the root manifest; without it here the bump
-  // is left unstaged and check:ai-context fails on the released commit.
-  "llms.txt",
+  // Every file syncAiContextVersions() may rewrite; without them the bumps are
+  // left unstaged and check:ai-context fails on the released commit.
+  ...AI_CONTEXT_FILES,
   "package.json",
   "pnpm-lock.yaml",
   "packages/core/package.json",
   "packages/react/package.json",
   "packages/candid/package.json",
-  "packages/core/llms.txt",
-  "packages/react/llms.txt",
-  "packages/candid/llms.txt",
+  // Regenerated from package.json by core's `version:sync` at build time. It is
+  // committed, so without staging it here the repo keeps reporting the previous
+  // release's VERSION even though the published artifact is correct.
+  "packages/core/src/version.ts",
   "examples",
 ]
 
-// 4. Git Commit and Tag
+// 6. Git Commit and Tag
 console.log("\n📂 Creating release commit and tag...")
 try {
   // `-u` stages modifications to already-tracked files only, so no untracked
@@ -120,7 +190,7 @@ try {
   process.exit(1)
 }
 
-// 5. Publish to npm (pnpm -r publish automatically converts workspace:^ to real versions)
+// 7. Publish to npm (pnpm -r publish automatically converts workspace:^ to real versions)
 const shouldPublish = process.argv.includes("--publish")
 const dryRun = process.argv.includes("--dry-run")
 
