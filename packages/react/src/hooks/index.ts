@@ -1,40 +1,27 @@
 // ============================================================================
 // Hooks
 //
-// Each hook is exported under both names. `useActorMethod` always was, and the
-// `UseActor*` / `UseReactor*` type aliases always were, so exporting the other
-// five values under only one name was an inconsistency rather than a decision.
+// These are the RAW hooks: they take the reactor as a property. They are
+// therefore exported as `useReactor*` only — the `useActor*` names belong to
+// the bound hooks `createActorHooks` returns, which take no reactor. Aliasing
+// the raw implementations under the bound names would hand a caller following
+// the documented `useActorQuery({ functionName })` shape an undefined reactor.
 // ============================================================================
 
 // useActorQuery / useReactorQuery
-export {
-  useActorQuery,
-  useActorQuery as useReactorQuery,
-} from "./useActorQuery.js"
+export { useActorQuery as useReactorQuery } from "./useActorQuery.js"
 
 // useActorMutation / useReactorMutation
-export {
-  useActorMutation,
-  useActorMutation as useReactorMutation,
-} from "./useActorMutation.js"
+export { useActorMutation as useReactorMutation } from "./useActorMutation.js"
 
 // useActorSuspenseQuery / useReactorSuspenseQuery
-export {
-  useActorSuspenseQuery,
-  useActorSuspenseQuery as useReactorSuspenseQuery,
-} from "./useActorSuspenseQuery.js"
+export { useActorSuspenseQuery as useReactorSuspenseQuery } from "./useActorSuspenseQuery.js"
 
 // useActorInfiniteQuery / useReactorInfiniteQuery
-export {
-  useActorInfiniteQuery,
-  useActorInfiniteQuery as useReactorInfiniteQuery,
-} from "./useActorInfiniteQuery.js"
+export { useActorInfiniteQuery as useReactorInfiniteQuery } from "./useActorInfiniteQuery.js"
 
 // useActorSuspenseInfiniteQuery / useReactorSuspenseInfiniteQuery
-export {
-  useActorSuspenseInfiniteQuery,
-  useActorSuspenseInfiniteQuery as useReactorSuspenseInfiniteQuery,
-} from "./useActorSuspenseInfiniteQuery.js"
+export { useActorSuspenseInfiniteQuery as useReactorSuspenseInfiniteQuery } from "./useActorSuspenseInfiniteQuery.js"
 
 // useActorMethod / useReactorMethod
 export {

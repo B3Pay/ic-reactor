@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19.0"
   },
   "sideEffects": false,
   "exports": {
