@@ -54,7 +54,12 @@
  * }
  * ```
  */
-import { ClientManager, Reactor, DisplayReactor } from "@ic-reactor/core"
+import {
+  ClientManager,
+  Reactor,
+  DisplayReactor,
+  reactorRetry,
+} from "@ic-reactor/core"
 import type {
   BaseActor,
   TransformKey,
@@ -142,6 +147,23 @@ export type DefineReactorResult<
     useIdentityAttributes: () => UseIdentityAttributesReturn
   }
 
+/**
+ * The QueryClient this module creates when the caller does not supply one.
+ *
+ * React Query retries every failure three times by default, which for canister
+ * calls means four attempts and several seconds of backoff on outcomes that
+ * cannot change — a canister `Err`, a validation failure, a Candid encode
+ * error that never reached the network. `reactorRetry` keeps the same three
+ * attempts for transport failures and stops immediately on the rest.
+ *
+ * A caller-supplied `queryClient` is left exactly as given; opt in there with
+ * `defaultOptions: { queries: { retry: reactorRetry } }`.
+ */
+const createDefaultQueryClient = () =>
+  new QueryClient({
+    defaultOptions: { queries: { retry: reactorRetry } },
+  })
+
 export function defineReactor<Service = BaseActor>(
   params: DefineDisplayReactorParameters<Service>
 ): DefineReactorResult<Service, "display", DisplayReactor<Service>>
@@ -197,7 +219,7 @@ export function defineReactor<Service = BaseActor>(
     providedClientManager ??
     providedAuthentication?.clientManager ??
     new ClientManager({
-      queryClient: providedQueryClient ?? new QueryClient(),
+      queryClient: providedQueryClient ?? createDefaultQueryClient(),
       agentOptions,
     })
 
