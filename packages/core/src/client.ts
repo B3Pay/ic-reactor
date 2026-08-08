@@ -44,6 +44,8 @@ import {
 export class ClientManager {
   #agent: HttpAgent
   #identitySubscribers: Array<(identity: Identity) => void> = []
+  /** The identity currently installed on the agent, captured per call. */
+  #identity?: Identity
   #agentStateSubscribers: Array<(state: AgentState) => void> = []
   #targetCanisterIds: Set<string> = new Set()
 
@@ -219,6 +221,17 @@ export class ClientManager {
   }
 
   /**
+   * The identity currently installed on the agent, if one was set explicitly.
+   *
+   * Calls capture this at submit time and pass it back on every request they
+   * make, so a sign-in or sign-out part-way through cannot re-sign a request
+   * that is already in flight.
+   */
+  public get identity(): Identity | undefined {
+    return this.#identity
+  }
+
+  /**
    * Returns the current user's Principal identity.
    */
   public getUserPrincipal() {
@@ -324,24 +337,13 @@ export class ClientManager {
       this.queryClient.cancelQueries({ queryKey: [canisterId] })
     })
 
-    // Build a NEW agent rather than calling `replaceIdentity` on the shared
-    // one. An update call that outlives the sync-call window polls with the
-    // agent it captured at submit time; mutating that object in place meant the
-    // read_state got signed by the *new* identity and the replica answered 403
-    // — for a call that had already committed on chain, with the reply then
-    // unrecoverable from the app. A fresh instance leaves in-flight calls
-    // holding the identity that submitted them.
-    //
-    // `config` carries the original options (host, fetch, verifyQuerySignatures
-    // …) and `rootKey` carries anything `fetchRootKey()` obtained, which local
-    // replicas and custom testnets depend on — both are preserved so the new
-    // agent is equivalent in every respect but the identity.
-    const previousAgent = this.#agent
-    this.#agent = HttpAgent.createSync({
-      ...previousAgent.config,
-      rootKey: previousAgent.rootKey ?? undefined,
-      identity,
-    })
+    // The agent is mutated in place, so anything holding a reference to
+    // `clientManager.agent` — an SDK Actor built during app setup, a transform
+    // installed with `addTransform`, an `initializeAgent()` still fetching the
+    // root key — keeps working across a sign-in. Pinning a call to the identity
+    // that submitted it is handled per call instead, in `Reactor.executeCall`.
+    this.#agent.replaceIdentity(identity)
+    this.#identity = identity
 
     // Clean the cache BEFORE notifying, and after the agent already holds the
     // new identity. A subscriber commonly reacts by starting an imperative
