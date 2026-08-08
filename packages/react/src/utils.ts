@@ -74,3 +74,48 @@ export function buildChainedSelect<TData, TSelected, TFinal = TSelected>(
   if (!hookSelect) return configSelect
   return (rawData: TData) => hookSelect(configSelect(rawData))
 }
+
+/**
+ * How many memoized query objects an args-late factory keeps.
+ *
+ * The memo exists so `getBalance(sameArgs)` returns the same object twice; it
+ * was unbounded, so an open-ended argument space — a per-principal balance in a
+ * long-lived SPA, a search-as-you-type filter, a cursor-keyed list — grew it
+ * forever (measured at ~2.9 kB per entry, 55.8 MB for 20k). A few hundred
+ * covers any realistic working set while capping the worst case.
+ */
+const FACTORY_CACHE_LIMIT = 256
+
+/**
+ * Smallest useful LRU: a `Map` already iterates in insertion order, so
+ * re-inserting on read is enough to track recency.
+ *
+ * Eviction is safe — it costs memoization, never correctness. A query object is
+ * a closure over the reactor and config, so one rebuilt after eviction behaves
+ * identically; only its reference identity differs.
+ */
+export function createBoundedCache<V>(limit: number = FACTORY_CACHE_LIMIT) {
+  const entries = new Map<string, V>()
+
+  return {
+    get(key: string): V | undefined {
+      const value = entries.get(key)
+      if (value === undefined) return undefined
+      // Touch: move to the most-recent end.
+      entries.delete(key)
+      entries.set(key, value)
+      return value
+    },
+    set(key: string, value: V): void {
+      if (entries.has(key)) entries.delete(key)
+      else if (entries.size >= limit) {
+        const oldest = entries.keys().next().value
+        if (oldest !== undefined) entries.delete(oldest)
+      }
+      entries.set(key, value)
+    },
+    get size(): number {
+      return entries.size
+    },
+  }
+}

@@ -326,6 +326,18 @@ const query2 = getUserQuery(["alice"])
 console.log(query1 === query2) // true
 ```
 
+The cache holds the 256 most recently used argument sets. That covers any
+realistic working set, but a factory called with an open-ended range of
+arguments — one query per principal in a long-lived session, a
+search-as-you-type filter, a cursor-keyed list — will eventually evict the
+oldest entries rather than grow without bound.
+
+Eviction costs memoization, not correctness: a query object is a closure over
+the reactor and its config, so one rebuilt after eviction behaves identically
+and only its reference identity differs. It matters only if you compare
+instances or put one in a dependency array *and* cycle through more than 256
+distinct argument sets.
+
 ---
 
 ## Notes
