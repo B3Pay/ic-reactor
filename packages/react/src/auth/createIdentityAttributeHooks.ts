@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { IdentityAttributesManager } from "./identity-attributes-manager.js"
 import type {
   IdentityAttributeResult,
@@ -67,6 +67,29 @@ export function createIdentityAttributeHooks(
     const clearAttributes = useCallback(() => {
       setAttributes(null)
       setAttributeError(null)
+    }, [])
+
+    // Decoded attributes are the signed-in user's personal data — a name, an
+    // email. They used to survive a sign-out or a switch to another account,
+    // so the next person to look at the screen saw the previous user's details.
+    // Drop them whenever the principal behind them changes.
+    const attributedPrincipal = useRef<string | undefined>(undefined)
+    useEffect(() => {
+      const { authentication } = identityAttributes
+      const currentPrincipal = () =>
+        authentication.authState.isAuthenticated
+          ? authentication.authState.identity?.getPrincipal().toText()
+          : undefined
+
+      attributedPrincipal.current ??= currentPrincipal()
+
+      return authentication.subscribeAuthState(() => {
+        const principal = currentPrincipal()
+        if (principal === attributedPrincipal.current) return
+        attributedPrincipal.current = principal
+        setAttributes(null)
+        setAttributeError(null)
+      })
     }, [])
 
     return {

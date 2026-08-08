@@ -3,6 +3,7 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ClientManager } from "@ic-reactor/core"
+import { Principal } from "@icp-sdk/core/principal"
 import {
   AuthenticationManager,
   IdentityAttributeResult,
@@ -423,5 +424,93 @@ describe("createIdentityAttributeHooks - useIdentityAttributes", () => {
 
     expect(result.current.attributes).toBeNull()
     expect(result.current.attributeError).toBeNull()
+  })
+})
+
+describe("useIdentityAttributes — PII is dropped when the principal changes", () => {
+  let queryClient: QueryClient
+  let clientManager: ClientManager
+  let authentication: ReturnType<typeof makeAuthentication>
+  let identityAttributes: IdentityAttributesManager
+
+  const seed = {
+    principal: "aaaaa-aa",
+    requestedKeys: ["openid:https://issuer.example.com:email"],
+    signedAttributes: {
+      data: new Uint8Array([1]),
+      signature: new Uint8Array([2]),
+    },
+    decodedAttributes: { email: "ada@example.com", name: "Ada Lovelace" },
+    completedAt: new Date().toISOString(),
+  }
+
+  beforeEach(() => {
+    queryClient = makeQueryClient()
+    clientManager = makeClientManager(queryClient)
+    authentication = makeAuthentication(clientManager)
+    identityAttributes = new IdentityAttributesManager(authentication)
+    vi.spyOn(clientManager, "initialize").mockResolvedValue(clientManager)
+    vi.spyOn(identityAttributes, "requestOpenId").mockResolvedValue(
+      seed as never
+    )
+    // The attributes belong to a signed-in principal — that is the state in
+    // which they are ever obtained.
+    ;(authentication as any).updateState({
+      identity: { getPrincipal: () => Principal.fromText("aaaaa-aa") },
+      isAuthenticated: true,
+    })
+  })
+
+  const request = async (result: { current: any }) => {
+    await act(async () => {
+      await result.current.requestOpenIdAttributes({
+        openIdProvider: "https://issuer.example.com",
+        keys: ["email"],
+        nonce: new Uint8Array([1, 2, 3]),
+      })
+    })
+  }
+
+  it("clears the previous user's decoded attributes on sign-out", async () => {
+    // Regression: a name and email survived a sign-out, so the next person to
+    // look at the screen saw the previous user's details.
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    await request(result)
+    expect(result.current.attributes?.decodedAttributes).toEqual(
+      seed.decodedAttributes
+    )
+
+    await act(async () => {
+      ;(authentication as any).updateState({
+        identity: null,
+        isAuthenticated: false,
+      })
+    })
+
+    expect(result.current.attributes).toBeNull()
+  })
+
+  it("leaves them alone while the same session continues", async () => {
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    await request(result)
+
+    // An unrelated state change (a loading flag) must not discard them.
+    await act(async () => {
+      ;(authentication as any).updateState({ isAuthenticating: true })
+    })
+
+    expect(result.current.attributes?.decodedAttributes).toEqual(
+      seed.decodedAttributes
+    )
   })
 })
