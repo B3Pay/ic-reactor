@@ -7,7 +7,11 @@ import type {
 import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryKey } from "@tanstack/query-core"
 import type { ClientManager } from "../client.js"
-import type { CallError, CanisterError } from "../errors/index.js"
+import type {
+  CallError,
+  CanisterError,
+  ValidationError,
+} from "../errors/index.js"
 import type { OkResult, ErrResult } from "./result.js"
 import type { DisplayOf, ActorDisplayCodec } from "../display/index.js"
 
@@ -157,6 +161,11 @@ export type ReactorReturnErr<
       >[Transform]
     >
   | CallError
+  // A DisplayReactor with a registered validator throws this before the call
+  // leaves the client, so it reaches exactly the same catch blocks and hook
+  // `error` slots as the other two. Omitting it made those handlers look
+  // exhaustive when they were not.
+  | ValidationError
 
 /**
  * Helper type for actor method codecs returend by getCodec
