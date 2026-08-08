@@ -170,14 +170,19 @@ function RegisterWithOpenIdProvider() {
   async function handleRegister() {
     const result = await requestOpenIdAttributes({
       // Pass the nonce as a callback — see the caution below
-      nonce: () => backend.registerBegin(),
+      nonce: () => backend.callMethod({ functionName: "register_begin" }),
       openIdProvider: "microsoft",
       keys: ["email", "name"],
     })
 
-    await backend.registerFinish({
-      data: result.signedAttributes.data,
-      signature: result.signedAttributes.signature,
+    await backend.callMethod({
+      functionName: "register_finish",
+      args: [
+        {
+          data: result.signedAttributes.data,
+          signature: result.signedAttributes.signature,
+        },
+      ],
     })
   }
 

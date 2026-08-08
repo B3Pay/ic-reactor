@@ -53,6 +53,9 @@ export const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
+  // Required. Omit it only when the vite-plugin injects an `ic_env` cookie for
+  // this canister; outside that flow the constructor throws.
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
 })
 
 export const {
@@ -255,13 +258,13 @@ the Internet Identity window:
 ```tsx
 // ✅ window opens immediately, nonce resolves while the user is in II
 await requestOpenIdAttributes({
-  nonce: () => backend.registerBegin(),
+  nonce: () => backend.callMethod({ functionName: "register_begin" }),
   openIdProvider: "google",
   keys: ["email", "name"],
 })
 
 // ❌ gesture is gone by the time the window would open
-const nonce = await backend.registerBegin()
+const nonce = await backend.callMethod({ functionName: "register_begin" })
 await requestOpenIdAttributes({ nonce, openIdProvider: "google", keys })
 ```
 
@@ -280,7 +283,7 @@ function RegisterWithOpenIdProvider() {
 
   async function handleProviderLogin() {
     const result = await requestOpenIdAttributes({
-      nonce: () => backend.registerBegin(),
+      nonce: () => backend.callMethod({ functionName: "register_begin" }),
       openIdProvider: "microsoft",
       keys: ["email", "name"],
       windowOpenerFeatures: popupCenter(),
@@ -289,9 +292,14 @@ function RegisterWithOpenIdProvider() {
     console.log(result.decodedAttributes.email)
     console.log(result.decodedAttributes.name)
 
-    await backend.registerFinish({
-      data: result.signedAttributes.data,
-      signature: result.signedAttributes.signature,
+    await backend.callMethod({
+      functionName: "register_finish",
+      args: [
+        {
+          data: result.signedAttributes.data,
+          signature: result.signedAttributes.signature,
+        },
+      ],
     })
   }
 
