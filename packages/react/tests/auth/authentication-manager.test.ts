@@ -429,3 +429,72 @@ describe("AuthenticationManager", () => {
     })
   })
 })
+
+describe("AuthenticationManager session hygiene", () => {
+  let clientManager: ClientManager
+
+  beforeEach(() => {
+    authClientMocks.factory.mockReset()
+    vi.clearAllMocks()
+    ;(safeGetCanisterEnv as any).mockReturnValue(undefined)
+    clientManager = new ClientManager({ queryClient: new QueryClient() })
+    vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("re-observes an expired delegation instead of trusting the cached flag", async () => {
+    // Regression: once authenticated, authenticate() returned on the cached
+    // flag and never consulted the client again, so a delegation that lapsed
+    // mid-session left the UI rendering a signed-in state indefinitely.
+    const authClient = createAuthClient()
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+
+    await authentication.login()
+    expect(authentication.authState.isAuthenticated).toBe(true)
+
+    // The delegation lapses; the client now reports signed out.
+    authClient.isAuthenticated.mockResolvedValue(false)
+    authClient.getIdentity.mockReturnValue(identity("2vxsx-fae"))
+
+    await authentication.authenticate()
+
+    expect(authentication.authState.isAuthenticated).toBe(false)
+  })
+
+  it("keeps the session when the expiry check itself fails", async () => {
+    // A transient failure must not sign anyone out.
+    const authClient = createAuthClient()
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+
+    await authentication.login()
+    authClient.isAuthenticated.mockRejectedValue(new Error("storage blip"))
+
+    await authentication.authenticate()
+
+    expect(authentication.authState.isAuthenticated).toBe(true)
+  })
+
+  it("does not strand isAuthenticating when signOut fails", async () => {
+    const authClient = createAuthClient()
+    authClient.signOut.mockRejectedValue(new Error("storage unavailable"))
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+
+    await expect(authentication.logout()).rejects.toThrow("storage unavailable")
+
+    expect(authentication.authState.isAuthenticating).toBe(false)
+    expect(authentication.authState.error).toBeInstanceOf(Error)
+  })
+})

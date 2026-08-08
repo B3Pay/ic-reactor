@@ -156,7 +156,24 @@ export class AuthenticationManager {
 
   public authenticate = async (): Promise<Identity | undefined> => {
     if (this.authState.isAuthenticated) {
-      return this.authState.identity || undefined
+      // Returning on the cached flag alone meant a delegation that expired
+      // mid-session was never re-observed: the UI kept rendering a signed-in
+      // state while every update call failed, and only a reload recovered.
+      // Re-ask the client, which reads the cached expiry rather than hitting
+      // storage. A throw here is treated as "still valid" so a transient
+      // failure cannot sign anyone out.
+      if (!this.authClient) {
+        return this.authState.identity || undefined
+      }
+      const stillValid = await Promise.resolve(
+        this.authClient.isAuthenticated()
+      ).catch(() => true)
+      if (stillValid) {
+        return this.authState.identity || undefined
+      }
+      // Expired — drop the stale flag and fall through to re-derive state,
+      // which resets the agent to the anonymous identity.
+      this.updateState({ isAuthenticated: false })
     }
     if (this.authPromise) {
       return this.authPromise
@@ -279,14 +296,22 @@ export class AuthenticationManager {
       )
     }
     this.updateState({ isAuthenticating: true, error: undefined })
-    await this.authClient.signOut(options)
-    const identity = await this.authClient.getIdentity()
-    this.clientManager.updateAgent(identity)
-    this.updateState({
-      identity,
-      isAuthenticated: false,
-      isAuthenticating: false,
-    })
+    try {
+      await this.authClient.signOut(options)
+      const identity = await this.authClient.getIdentity()
+      this.clientManager.updateAgent(identity)
+      this.updateState({
+        identity,
+        isAuthenticated: false,
+        isAuthenticating: false,
+      })
+    } catch (error) {
+      // Without this the manager was left with `isAuthenticating: true` and no
+      // recorded error, so a button disabled on `isAuthenticating` stayed stuck
+      // and nothing told the app why.
+      this.updateState({ error: error as Error, isAuthenticating: false })
+      throw error
+    }
   }
 
   private async initializeClient(
