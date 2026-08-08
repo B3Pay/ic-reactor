@@ -36,7 +36,7 @@ import type {
   SuspenseQueryFactoryConfig,
   NoInfer,
 } from "./types.js"
-import { buildChainedSelect } from "./utils.js"
+import { buildChainedSelect, createBoundedCache } from "./utils.js"
 
 // ============================================================================
 // Internal Implementation
@@ -195,14 +195,14 @@ export function createSuspenseQueryFactory<
   Selected,
   QueryError<Service, Method, Transform>
 > {
-  const cache = new Map<
-    string,
-    SuspenseQueryResult<
-      QueryFnData<Service, Method, Transform>,
-      Selected,
-      QueryError<Service, Method, Transform>
-    >
-  >()
+  const cache =
+    createBoundedCache<
+      SuspenseQueryResult<
+        QueryFnData<Service, Method, Transform>,
+        Selected,
+        QueryError<Service, Method, Transform>
+      >
+    >()
 
   return (args: ReactorArgs<Service, Method, Transform>) => {
     const key = reactor.generateQueryKey({
