@@ -6,6 +6,9 @@
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "sideEffects": false,
   "exports": {
     ".": {
@@ -100,6 +103,9 @@
   ],
   "peerDependenciesMeta": {
     "@icp-sdk/auth": {
+      "optional": true
+    },
+    "react-dom": {
       "optional": true
     }
   }

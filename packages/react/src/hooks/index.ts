@@ -1,21 +1,40 @@
 // ============================================================================
 // Hooks
+//
+// Each hook is exported under both names. `useActorMethod` always was, and the
+// `UseActor*` / `UseReactor*` type aliases always were, so exporting the other
+// five values under only one name was an inconsistency rather than a decision.
 // ============================================================================
 
 // useActorQuery / useReactorQuery
-export { useActorQuery as useReactorQuery } from "./useActorQuery.js"
+export {
+  useActorQuery,
+  useActorQuery as useReactorQuery,
+} from "./useActorQuery.js"
 
 // useActorMutation / useReactorMutation
-export { useActorMutation as useReactorMutation } from "./useActorMutation.js"
+export {
+  useActorMutation,
+  useActorMutation as useReactorMutation,
+} from "./useActorMutation.js"
 
 // useActorSuspenseQuery / useReactorSuspenseQuery
-export { useActorSuspenseQuery as useReactorSuspenseQuery } from "./useActorSuspenseQuery.js"
+export {
+  useActorSuspenseQuery,
+  useActorSuspenseQuery as useReactorSuspenseQuery,
+} from "./useActorSuspenseQuery.js"
 
 // useActorInfiniteQuery / useReactorInfiniteQuery
-export { useActorInfiniteQuery as useReactorInfiniteQuery } from "./useActorInfiniteQuery.js"
+export {
+  useActorInfiniteQuery,
+  useActorInfiniteQuery as useReactorInfiniteQuery,
+} from "./useActorInfiniteQuery.js"
 
 // useActorSuspenseInfiniteQuery / useReactorSuspenseInfiniteQuery
-export { useActorSuspenseInfiniteQuery as useReactorSuspenseInfiniteQuery } from "./useActorSuspenseInfiniteQuery.js"
+export {
+  useActorSuspenseInfiniteQuery,
+  useActorSuspenseInfiniteQuery as useReactorSuspenseInfiniteQuery,
+} from "./useActorSuspenseInfiniteQuery.js"
 
 // useActorMethod / useReactorMethod
 export {
