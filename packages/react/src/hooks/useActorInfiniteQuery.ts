@@ -138,6 +138,11 @@ export const useActorInfiniteQuery = <
     [
       queryKey,
       reactor,
+      // `canisterId` is mutable reactor state that `setCanisterId` can change,
+      // while `reactor` itself stays the same object — so it has to be a
+      // dependency in its own right or the key stays pinned to the old canister
+      // while the queryFn already calls the new one.
+      reactor.canisterId?.toString(),
       functionName,
       callConfig,
       getArgs,

@@ -6,6 +6,7 @@ import { ActorMethod } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { useActorQuery } from "../src/hooks/useActorQuery.js"
+import { useActorInfiniteQuery } from "../src/hooks/useActorInfiniteQuery.js"
 
 interface TestActor {
   icrc1_name: ActorMethod<[], string>
@@ -84,5 +85,72 @@ describe("useActorQuery — reactor.setCanisterId", () => {
     expect(queryClient.getQueryData([LEDGER_B, "icrc1_name"])).toBe(
       `name-of-${LEDGER_B}`
     )
+  })
+})
+
+describe("useActorInfiniteQuery — reactor.setCanisterId", () => {
+  let queryClient: QueryClient
+  let reactor: Reactor<TestActor>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    reactor = new Reactor<TestActor>({
+      clientManager: new ClientManager({
+        queryClient,
+        agentOptions: { host: "https://icp-api.io" },
+      }),
+      name: "ledger",
+      canisterId: LEDGER_A,
+      idlFactory,
+    })
+    vi.spyOn(reactor, "callMethod").mockImplementation(
+      (async () => `page-of-${reactor.canisterId.toString()}`) as never
+    )
+  })
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+
+  it("re-keys onto the new canister instead of reusing the old key", async () => {
+    // Stable across renders: an inline closure would change the memo deps every
+    // render and mask whether the canister id is a dependency at all.
+    const getArgs = () => [] as never
+    const getNextPageParam = () => null
+
+    const { result, rerender } = renderHook(
+      () =>
+        useActorInfiniteQuery({
+          reactor,
+          functionName: "icrc1_name",
+          initialPageParam: 0,
+          getArgs,
+          getNextPageParam,
+        }),
+      { wrapper }
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const keysBefore = queryClient
+      .getQueryCache()
+      .getAll()
+      .map((q) => q.queryKey[0])
+    expect(keysBefore).toContain(LEDGER_A)
+
+    act(() => {
+      reactor.setCanisterId(LEDGER_B)
+    })
+    rerender()
+
+    await waitFor(() => {
+      const keys = queryClient
+        .getQueryCache()
+        .getAll()
+        .map((q) => q.queryKey[0])
+      // A separate entry rooted at the new canister, not a reused old one.
+      expect(keys).toContain(LEDGER_B)
+    })
   })
 })
