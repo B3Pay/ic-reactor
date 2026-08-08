@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react"
+import { useCallback } from "react"
 import {
   useMutation,
   UseMutationOptions,
@@ -167,16 +167,24 @@ export const useActorMutation = <
     [onCanisterError, onError]
   )
 
-  const mutationOptions = useMemo(
-    () => ({
+  // Not memoized. The deps could only ever list the values destructured above,
+  // never the `options` rest bucket, so everything passed straight through —
+  // `onMutate`, `onSettled`, `retry`, `meta`, `gcTime` — was frozen at the first
+  // render: `useMutation` calls `observer.setOptions` from an effect keyed on
+  // the options identity, so a later render's closures never reached it. A
+  // component passing only `onSettled` would report the recipient selected at
+  // mount rather than at submit.
+  //
+  // `createMutation`'s own hook builds its options inline for the same reason.
+  // A fresh object per render costs nothing here: `setOptions` diffs the values
+  // rather than the reference.
+  return useMutation(
+    {
       ...options,
       mutationFn,
       onSuccess: handleSuccess,
       onError: handleError,
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mutationFn, handleSuccess, handleError]
+    },
+    reactor.queryClient
   )
-
-  return useMutation(mutationOptions, reactor.queryClient)
 }
