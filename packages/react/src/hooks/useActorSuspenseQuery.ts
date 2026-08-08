@@ -109,7 +109,7 @@ export const useActorSuspenseQuery = <
     // dependency in its own right or the key stays pinned to the old canister.
     [
       reactor,
-      reactor.canisterId.toString(),
+      reactor.canisterId?.toString(),
       callConfig,
       functionName,
       args,
