@@ -356,8 +356,14 @@ export interface MutationConfig<
   functionName: Method
   /** Call configuration for the actor method */
   callConfig?: CallConfig
-  /** Queries to invalidate upon successful mutation */
-  invalidateQueries?: QueryKey[]
+  /**
+   * Queries to invalidate upon successful mutation.
+   *
+   * `undefined` entries are skipped, so the common
+   * `[maybeQuery?.getQueryKey()]` idiom is safe when the optional query object
+   * is absent.
+   */
+  invalidateQueries?: (QueryKey | undefined)[]
   /**
    * Callback for canister-level business logic errors.
    * Called when the canister returns a Result { Err: E } variant.
