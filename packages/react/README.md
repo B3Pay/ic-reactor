@@ -41,7 +41,7 @@ ignoreWarnings: [{ module: /@ic-reactor\/react/, message: /@icp-sdk\/auth/ }]
 // src/reactor.ts
 import { ClientManager, Reactor, createActorHooks } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 export const queryClient = new QueryClient()
 
@@ -53,9 +53,10 @@ export const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
-  // Required. Omit it only when the vite-plugin injects an `ic_env` cookie for
-  // this canister; outside that flow the constructor throws.
-  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  // `dfx` writes this alongside the idlFactory. Required — omit it only when
+  // the vite-plugin injects an `ic_env` cookie for this canister; outside that
+  // flow the constructor throws.
+  canisterId,
 })
 
 export const {
