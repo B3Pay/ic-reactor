@@ -26,13 +26,14 @@ import { execFileSync, spawnSync } from "node:child_process"
 import {
   cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   rmSync,
   readdirSync,
   readFileSync,
   writeFileSync,
 } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { dirname, join, relative } from "node:path"
 import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 
@@ -87,6 +88,16 @@ function detectPackage() {
 const pkg = detectPackage()
 const pkgDir = join(packagesDir, pkg)
 
+if (pkg === "parser") {
+  console.error(
+    "parser is not supported: its tests import the built `dist/nodejs` WASM\n" +
+      "artifact, so reverting `src/lib.rs` changes nothing that the tests load.\n" +
+      "Both passes would run the same binary and every test would look\n" +
+      "non-discriminating. Rebuild and compare by hand instead."
+  )
+  process.exit(1)
+}
+
 function git(...a) {
   return execFileSync("git", a, { cwd: rootDir, encoding: "utf8" }).trim()
 }
@@ -114,7 +125,9 @@ function runTests(label) {
   const results = new Map()
   for (const file of report.testResults ?? []) {
     for (const t of file.assertionResults ?? []) {
-      results.set(t.fullName ?? t.title, t.status === "passed")
+      // Keep the status verbatim. Collapsing it to a boolean made every
+      // skipped or todo test look like a failure, and this repo has both.
+      results.set(t.fullName ?? t.title, t.status)
     }
   }
   return results
@@ -127,6 +140,27 @@ const sourcePaths = allPackages
 
 const backupDir = mkdtempSync(join(tmpdir(), "verify-test-fails-"))
 let restored = false
+
+/**
+ * The caller's staged changes under the source trees, as a patch.
+ *
+ * `git checkout <base> -- <paths>` overwrites those index entries, and the
+ * `git reset` that undoes it resets them to HEAD — silently discarding whatever
+ * the caller had staged, including a partial-staging selection. Captured here
+ * and re-applied on the way out.
+ */
+const stagedPatch = (() => {
+  try {
+    const diff = execFileSync(
+      "git",
+      ["diff", "--cached", "--binary", "--", ...sourcePaths],
+      { cwd: rootDir, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+    )
+    return diff.trim() ? diff : undefined
+  } catch {
+    return undefined
+  }
+})()
 
 function restore() {
   if (restored || keep) return
@@ -143,10 +177,16 @@ function restore() {
   // by accident — so unstage those paths too.
   try {
     execFileSync("git", ["reset", "-q", "--", ...sourcePaths], { cwd: rootDir })
+    if (stagedPatch) {
+      const patchFile = join(backupDir, "staged.patch")
+      writeFileSync(patchFile, stagedPatch)
+      execFileSync("git", ["apply", "--cached", patchFile], { cwd: rootDir })
+    }
   } catch {
     console.error(
-      "\n⚠ Could not unstage the reverted paths. Run:\n" +
-        `    git reset -- ${sourcePaths.join(" ")}\n`
+      "\n⚠ Could not fully restore the git index for the source paths.\n" +
+        `    git reset -- ${sourcePaths.join(" ")}\n` +
+        (stagedPatch ? "    (your staged changes may need re-staging)\n" : "")
     )
   }
   rmSync(backupDir, { recursive: true, force: true })
@@ -173,10 +213,40 @@ for (const rel of sourcePaths) {
     recursive: true,
   })
 }
+const colocatedTestsBefore = colocatedTests()
+
+/** Every colocated test file under the reverted source trees. */
+function colocatedTests() {
+  const found = []
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(entry.name)) found.push(full)
+    }
+  }
+  for (const rel of sourcePaths) walk(join(rootDir, rel))
+  return found
+}
 
 console.log(`→ reverting sources to ${base} and re-running…`)
 try {
   git("checkout", base, "--", ...sourcePaths)
+  // Some packages colocate tests under `src` (codegen does). Checking out the
+  // whole tree would swap those for their base versions — or delete ones the
+  // branch adds — so the tests being judged would not be the ones written.
+  // Put them back from the copy taken a moment ago.
+  for (const rel of sourcePaths) {
+    const srcRoot = join(rootDir, rel)
+    const savedRoot = join(backupDir, rel.replaceAll("/", "__"))
+    for (const abs of colocatedTestsBefore) {
+      if (!abs.startsWith(`${srcRoot}/`)) continue
+      const saved = join(savedRoot, relative(srcRoot, abs))
+      if (!existsSync(saved)) continue
+      mkdirSync(dirname(abs), { recursive: true })
+      cpSync(saved, abs)
+    }
+  }
 } catch (error) {
   console.error(
     `✖ Could not check out sources from "${base}": ${error.message}`
@@ -189,13 +259,17 @@ restore()
 // ── report ────────────────────────────────────────────────────────────────
 const discriminating = []
 const bothPass = []
-const bothFail = []
+const failingNow = []
+const skipped = []
 
-for (const [name, passedAfter] of after) {
-  const passedBefore = before.get(name)
-  if (passedAfter && passedBefore === false) discriminating.push(name)
-  else if (passedAfter && passedBefore !== false) bothPass.push(name)
-  else if (!passedAfter) bothFail.push(name)
+for (const [name, statusAfter] of after) {
+  const statusBefore = before.get(name)
+  if (statusAfter === "failed") failingNow.push(name)
+  else if (statusAfter !== "passed") skipped.push(name)
+  // Only an outright failure on the base counts as evidence. A test that was
+  // skipped there says nothing either way.
+  else if (statusBefore === "failed") discriminating.push(name)
+  else bothPass.push(name)
 }
 
 const pad = (n) => String(n).padStart(3)
@@ -211,13 +285,24 @@ if (bothPass.length) {
   for (const n of bothPass) console.log(`      • ${n}`)
 }
 
-if (bothFail.length) {
-  console.log(`\n${pad(bothFail.length)} failing now       (fix these first)`)
-  for (const n of bothFail) console.log(`      ✗ ${n}`)
+if (failingNow.length) {
+  console.log(`\n${pad(failingNow.length)} failing now       (fix these first)`)
+  for (const n of failingNow) console.log(`      ✗ ${n}`)
+}
+
+if (skipped.length) {
+  console.log(
+    `\n${pad(skipped.length)} skipped            (not evidence either way)`
+  )
+  for (const n of skipped) console.log(`      – ${n}`)
 }
 
 console.log("")
-if (bothFail.length) process.exit(1)
+if (failingNow.length) process.exit(1)
+if (discriminating.length === 0 && bothPass.length === 0 && skipped.length) {
+  console.log("Every test here is skipped, so this run proves nothing.\n")
+  process.exit(2)
+}
 if (discriminating.length === 0) {
   console.log(
     "No test in this file distinguishes the fix. That is correct for a pure\n" +
