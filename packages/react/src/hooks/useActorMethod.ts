@@ -208,7 +208,16 @@ export function useActorMethod<
         { functionName, args: keyArgs, queryKey: customQueryKey },
         callConfig
       ),
-    [reactor, functionName, callConfig, customQueryKey]
+    // `canisterId` is mutable reactor state that `setCanisterId` can change,
+    // while `reactor` itself stays the same object — so it has to be a
+    // dependency in its own right or the key stays pinned to the old canister.
+    [
+      reactor,
+      reactor.canisterId?.toString(),
+      functionName,
+      callConfig,
+      customQueryKey,
+    ]
   )
 
   const queryKey = useMemo(() => buildQueryKey(args), [buildQueryKey, args])

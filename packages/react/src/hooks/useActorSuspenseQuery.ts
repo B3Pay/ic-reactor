@@ -104,7 +104,17 @@ export const useActorSuspenseQuery = <
         args,
         queryKey: defaultQueryKey,
       }),
-    [reactor, callConfig, functionName, args, defaultQueryKey]
+    // `canisterId` is mutable reactor state that `setCanisterId` can change,
+    // while `reactor` itself stays the same object — so it has to be a
+    // dependency in its own right or the key stays pinned to the old canister.
+    [
+      reactor,
+      reactor.canisterId?.toString(),
+      callConfig,
+      functionName,
+      args,
+      defaultQueryKey,
+    ]
   )
 
   return useSuspenseQuery(
