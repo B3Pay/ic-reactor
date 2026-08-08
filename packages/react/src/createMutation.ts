@@ -76,6 +76,8 @@ const createMutationImpl = <
     onSuccess: factoryOnSuccess,
     onCanisterError: factoryOnCanisterError,
     onError: factoryOnError,
+    onMutate: factoryOnMutate,
+    onSettled: factoryOnSettled,
     ...factoryOptions
   } = config
 
@@ -174,6 +176,20 @@ const createMutationImpl = <
           }
           factoryOnError?.(error, variables, context, mutation)
           restOptions.onError?.(error, variables, context, mutation)
+        },
+        // `onMutate` and `onSettled` are composed like `onSuccess`/`onError`
+        // above. They used to arrive through the `...restOptions` spread, so a
+        // hook-level one silently replaced the factory's — factory teardown,
+        // telemetry or logging simply vanished the moment any call site passed
+        // its own, with no warning and no type error. Chaining is what a
+        // reader who has seen `onSuccess` chain already expects.
+        onMutate: async (...params) => {
+          await factoryOnMutate?.(...params)
+          return await restOptions.onMutate?.(...params)
+        },
+        onSettled: async (...params) => {
+          await factoryOnSettled?.(...params)
+          await restOptions.onSettled?.(...params)
         },
       },
       reactor.queryClient
