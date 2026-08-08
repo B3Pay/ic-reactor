@@ -56,7 +56,7 @@ describe("useActorMutation — pass-through options are not frozen", () => {
 
     rerender({ label: "v2" })
     await act(async () => {
-      result.current.mutate(["alice"] as never)
+      result.current.mutate(["alice"])
     })
     await waitFor(() => expect(settled.length).toBeGreaterThan(0))
 
@@ -79,7 +79,7 @@ describe("useActorMutation — pass-through options are not frozen", () => {
 
     rerender({ label: "v2" })
     await act(async () => {
-      result.current.mutate(["alice"] as never)
+      result.current.mutate(["alice"])
     })
     await waitFor(() => expect(mutated.length).toBeGreaterThan(0))
 

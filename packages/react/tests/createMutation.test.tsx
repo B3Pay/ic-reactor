@@ -416,3 +416,63 @@ describe("createMutation - execute() runs the factory callback chain", () => {
     expect(spy).not.toHaveBeenCalled()
   })
 })
+
+describe("createMutation - every lifecycle callback composes", () => {
+  let queryClient: QueryClient
+  let mockReactor: ReturnType<typeof createMockReactor>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+    mockReactor = createMockReactor(queryClient)
+  })
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+
+  it("chains factory and hook onMutate and onSettled, not last-wins", async () => {
+    // These two used to arrive via the `...restOptions` spread, so a hook-level
+    // callback silently replaced the factory's — factory teardown or telemetry
+    // vanished the moment any call site passed its own.
+    const order: string[] = []
+    const mutation = createMutation(mockReactor, {
+      functionName: "updateUser",
+      onMutate: () => {
+        order.push("factory.onMutate")
+      },
+      onSettled: () => {
+        order.push("factory.onSettled")
+      },
+    })
+
+    const { result } = renderHook(
+      () =>
+        mutation.useMutation({
+          onMutate: () => {
+            order.push("hook.onMutate")
+          },
+          onSettled: () => {
+            order.push("hook.onSettled")
+          },
+        }),
+      { wrapper }
+    )
+
+    await act(async () => {
+      result.current.mutate([{ name: "Alice", age: 30 }])
+    })
+    await waitFor(() => expect(order).toContain("hook.onSettled"))
+
+    expect(order).toEqual([
+      "factory.onMutate",
+      "hook.onMutate",
+      "factory.onSettled",
+      "hook.onSettled",
+    ])
+  })
+})
