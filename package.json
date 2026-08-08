@@ -17,6 +17,7 @@
     "sync:examples": "node scripts/sync-example-versions.js",
     "typecheck:examples": "node scripts/typecheck-examples.js",
     "check:ai-context": "node scripts/check-ai-context.js",
+    "verify:test-fails": "node scripts/verify-test-fails.js",
     "release": "node scripts/release.js",
     "release:tools": "node scripts/release-tools.js",
     "clean": "node scripts/clean-node-modules.js",

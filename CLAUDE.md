@@ -102,12 +102,24 @@ pnpm format             # Format code with Prettier (packages/** only)
 pnpm format:check       # Verify formatting without writing (CI gate, packages/** only)
 pnpm check:ai-context   # Verify llms.txt versions match package.json (CI gate)
 pnpm verify:packages    # Pack + publint + attw + real-Node import of published artifacts
+pnpm verify:test-fails <file> --package <pkg>  # Check a new test actually fails without the fix
 pnpm docs:build         # Build docs site
 ```
 
 `pnpm typecheck` runs each package's own `typecheck` script. The root
 `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root
-type-checks nothing. Run `pnpm verify:packages` after changing a package's
+type-checks nothing.
+
+When a change fixes a bug, run `pnpm verify:test-fails` on the new test file
+before opening the PR. It reverts `packages/*/src` to a base revision, re-runs
+the tests against that older code, and reports which ones flipped. A test that
+passes with and without the fix proves nothing about it — it is either an
+invariant guard, which is worth keeping, or vacuous, which is easy to write by
+accident (an inline closure that changes a memo dependency every render, a
+fixture that never reaches the state the defect lives in, an error shape
+invented rather than captured from a real failure).
+
+Run `pnpm verify:packages` after changing a package's
 `exports`, `files`, build output, or module format — in-repo consumers resolve
 through workspace symlinks, so nothing else sees the published artifact.
 
