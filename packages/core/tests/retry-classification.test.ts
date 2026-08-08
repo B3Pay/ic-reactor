@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   CallError,
   CanisterError,
@@ -26,12 +26,28 @@ describe("isRetryableReactorError", () => {
       )
     })
 
-    it("does not retry an encode/decode failure, which never left the client", () => {
-      expect(
-        isRetryableReactorError(
-          new TypeError("Invalid record {owner:principal} argument: 42")
-        )
-      ).toBe(false)
+    it("does not retry an encode failure, which reaches us wrapped in CallError", () => {
+      // The shape production actually produces: Reactor.callMethod wraps every
+      // error other than CanisterError/ValidationError in a CallError, so an
+      // IDL.encode TypeError arrives as a CallError with a plain-Error cause
+      // and no reject code. A bare TypeError never reaches the predicate.
+      const wrapped = new CallError(
+        'Failed to call method "icrc1_balance_of": Invalid record argument: 42',
+        new TypeError("Invalid record {owner:principal} argument: 42")
+      )
+      expect(isRetryableReactorError(wrapped)).toBe(false)
+    })
+
+    it("does not retry a decode failure either", () => {
+      const wrapped = new CallError(
+        'Failed to call method "icrc1_name": decode error',
+        new Error("Invalid nat argument")
+      )
+      expect(isRetryableReactorError(wrapped)).toBe(false)
+    })
+
+    it("does not retry a bare non-CallError", () => {
+      expect(isRetryableReactorError(new TypeError("boom"))).toBe(false)
     })
 
     it("does not retry a deterministic replica rejection", () => {
@@ -47,29 +63,55 @@ describe("isRetryableReactorError", () => {
 
     it("also reads a flat rejectCode, for a differently shaped cause", () => {
       expect(
-        isRetryableReactorError(new CallError("trap", { rejectCode: 5 }))
+        isRetryableReactorError(
+          new CallError("trap", { kind: "Reject", rejectCode: 5 })
+        )
       ).toBe(false)
     })
 
     it("does not retry a destination-invalid rejection", () => {
       expect(
         isRetryableReactorError(
-          new CallError("bad canister", { code: { rejectCode: 3 } })
+          new CallError("bad canister", {
+            kind: "Reject",
+            code: { rejectCode: 3 },
+          })
         )
       ).toBe(false)
     })
   })
 
   describe("still retries what a retry could fix", () => {
-    it("retries a transport failure, which carries no reject code", () => {
-      const network = new CallError("fetch failed", new Error("ECONNRESET"))
+    it("retries a transport failure from the agent", () => {
+      // Agent errors expose a `kind`; that is what separates them from our own
+      // encode/decode faults, which carry none.
+      const network = new CallError("fetch failed", {
+        name: "TransportError",
+        kind: "Transport",
+      })
       expect(isRetryableReactorError(network)).toBe(true)
+    })
+
+    it("retries a certificate-verification failure", () => {
+      expect(
+        isRetryableReactorError(
+          new CallError("bad cert", { name: "TrustError", kind: "Trust" })
+        )
+      ).toBe(true)
+    })
+
+    it("retries an agent error whose kind is unfamiliar", () => {
+      // Bias toward retrying within agent errors, so an unknown transport-level
+      // fault is never silently made fatal.
+      expect(
+        isRetryableReactorError(new CallError("odd", { kind: "SomethingNew" }))
+      ).toBe(true)
     })
 
     it("retries a SysTransient rejection", () => {
       expect(
         isRetryableReactorError(
-          new CallError("busy", { code: { rejectCode: 2 } })
+          new CallError("busy", { kind: "Reject", code: { rejectCode: 2 } })
         )
       ).toBe(true)
     })
@@ -77,29 +119,48 @@ describe("isRetryableReactorError", () => {
     it("retries a SysUnknown rejection, whose outcome is genuinely unknown", () => {
       expect(
         isRetryableReactorError(
-          new CallError("unknown", { code: { rejectCode: 6 } })
+          new CallError("unknown", { kind: "Reject", code: { rejectCode: 6 } })
         )
       ).toBe(true)
     })
 
-    it("treats an unrecognised CallError shape as retryable", () => {
-      // Fail open: this can only ever remove pointless attempts.
-      expect(isRetryableReactorError(new CallError("odd"))).toBe(true)
+    it("does not retry a CallError with no agent error underneath", () => {
+      // No `kind` and no reject code means no request was made.
+      expect(isRetryableReactorError(new CallError("odd"))).toBe(false)
     })
   })
 })
 
 describe("reactorRetry", () => {
-  const transient = new CallError("busy", { code: { rejectCode: 2 } })
+  const transient = new CallError("busy", {
+    kind: "Reject",
+    code: { rejectCode: 2 },
+  })
   const decided = new CanisterError({ InsufficientFunds: null })
 
-  it("keeps React Query's three attempts for retryable failures", () => {
-    expect(reactorRetry(0, transient)).toBe(true)
-    expect(reactorRetry(2, transient)).toBe(true)
-    expect(reactorRetry(3, transient)).toBe(false)
+  describe("in a browser", () => {
+    beforeEach(() => {
+      vi.stubGlobal("window", {})
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it("keeps React Query's three attempts for retryable failures", () => {
+      expect(reactorRetry(0, transient)).toBe(true)
+      expect(reactorRetry(2, transient)).toBe(true)
+      expect(reactorRetry(3, transient)).toBe(false)
+    })
+
+    it("stops immediately on a decided outcome", () => {
+      expect(reactorRetry(0, decided)).toBe(false)
+    })
   })
 
-  it("stops immediately on a decided outcome", () => {
-    expect(reactorRetry(0, decided)).toBe(false)
+  it("does not retry at all on the server", () => {
+    // TanStack defaults to zero retries server-side; supplying a predicate
+    // overrides that, so a failed prefetch would pick up 1s/2s/4s of backoff.
+    expect(typeof window).toBe("undefined")
+    expect(reactorRetry(0, transient)).toBe(false)
   })
 })

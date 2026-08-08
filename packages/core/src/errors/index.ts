@@ -267,18 +267,24 @@ const RETRYABLE_REJECT_CODES = new Set([
  * Whether retrying a failed canister call could plausibly produce a different
  * result.
  *
- * Only a {@link CallError} ever involves the network; every other failure is
- * decided before the request leaves the client or by the canister itself, so
- * repeating the identical call repeats the identical outcome:
+ * The rule is "retry only what the agent reports as a condition that could
+ * differ next time". Concretely:
  *
- * - {@link CanisterError} — the canister returned an `Err` variant.
- * - {@link ValidationError} — rejected by a validator client-side.
- * - anything else (a Candid encode or decode failure, for instance) — raised
- *   without a request being sent.
+ * - {@link CanisterError} — the canister returned an `Err` variant. Never.
+ * - {@link ValidationError} — refused by a validator client-side. Never.
+ * - {@link CallError} — `Reactor.callMethod` wraps *everything* else in one of
+ *   these, including our own Candid encode/decode and transform failures, so
+ *   the wrapper alone says nothing. The decision comes from the cause:
+ *   - an agent error (it carries a `kind`): retried, except for a rejection
+ *     whose reject code is one the replica will simply repeat;
+ *   - anything else: not retried, because no agent error means no request was
+ *     ever made — the failure happened in encoding, decoding or transforming,
+ *     and the identical input produces the identical failure.
+ * - any other error: not retried, for the same reason.
  *
- * A `CallError` is retried unless the replica rejected it with a deterministic
- * reject code. Anything unrecognised is treated as retryable, so this can only
- * ever remove pointless attempts, never suppress a useful one.
+ * Within agent errors the bias is toward retrying: an unrecognised `kind`, or a
+ * rejection whose code cannot be read, still retries, so an unfamiliar
+ * transport-level fault is never silently made fatal.
  *
  * @example Opt in on a QueryClient you construct yourself
  * ```ts
@@ -292,13 +298,34 @@ export function isRetryableReactorError(error: unknown): boolean {
   if (isValidationError(error)) return false
   if (!isCallError(error)) return false
 
-  const rejectCode = readRejectCode(error.cause)
+  const cause = error.cause
+
+  // No agent error underneath means the request never went out: an IDL encode
+  // or decode failure, or a transform fault. Retrying re-runs identical input.
+  if (!isAgentErrorLike(cause)) return false
+
+  const rejectCode = readRejectCode(cause)
   if (typeof rejectCode === "number") {
     return RETRYABLE_REJECT_CODES.has(rejectCode)
   }
 
   // Transport, protocol and certificate failures carry no reject code.
   return true
+}
+
+/**
+ * Does this look like an error raised by the agent rather than by our own
+ * encoding?
+ *
+ * Agent errors expose a `kind` ("Transport", "Reject", "Trust", "Protocol");
+ * a rejection additionally carries a reject code. A plain `Error` or
+ * `TypeError` from `IDL.encode`/`IDL.decode` has neither.
+ */
+function isAgentErrorLike(cause: unknown): boolean {
+  if (!cause || typeof cause !== "object") return false
+  const candidate = cause as { kind?: unknown }
+  if (typeof candidate.kind === "string") return true
+  return readRejectCode(cause) !== undefined
 }
 
 /**
@@ -318,13 +345,10 @@ function readRejectCode(cause: unknown): number | undefined {
   return undefined
 }
 
-/**
- * TanStack Query `retry` predicate built on {@link isRetryableReactorError},
- * keeping React Query's default of three attempts for failures worth repeating.
- *
- * This is the default for the `QueryClient` that `defineReactor` creates. Pass
- * it explicitly when you supply your own client.
- */
 export function reactorRetry(failureCount: number, error: unknown): boolean {
+  // TanStack defaults to zero retries on the server. Supplying a predicate
+  // overrides that, so a failed prefetch or render would pick up the 1s/2s/4s
+  // backoffs and add seven seconds to a request that used to fail fast.
+  if (typeof window === "undefined") return false
   return failureCount < 3 && isRetryableReactorError(error)
 }
