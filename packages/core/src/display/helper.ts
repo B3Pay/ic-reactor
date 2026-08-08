@@ -45,18 +45,28 @@ export function transformArgsWithCodec<T extends unknown[]>(
     return (args || []) as T
   }
 
+  // A codec failure is the most precise diagnostic available — it names the
+  // field and the expected shape. Swallowing it and passing the untransformed
+  // display args on to IDL.encode replaced that with a generic Candid error
+  // raised far from the real cause, or silently encoded something the caller
+  // did not intend. Fail here instead, preserving the original error as `cause`.
+  const failed = (err: unknown, shape: string): never => {
+    const error = new Error(
+      `[ic-reactor] Could not convert ${shape} from display types to Candid: ` +
+        `${err instanceof Error ? err.message : String(err)}`
+    )
+    // Assigned rather than passed to the constructor: the package targets a lib
+    // without the ErrorOptions overload.
+    ;(error as Error & { cause?: unknown }).cause = err
+    throw error
+  }
+
   // Single argument - unwrap from array and transform
   if (args.length === 1) {
     try {
       return [argsCodec.asCandid(args[0])] as T
     } catch (err) {
-      // Log the failure so it is visible during development; return as-is as
-      // a best-effort fallback so callers can still surface IDL encode errors.
-      console.error(
-        "[ic-reactor] transformArgsWithCodec failed (single arg):",
-        err
-      )
-      return args as T
+      return failed(err, "the argument")
     }
   }
 
@@ -64,11 +74,7 @@ export function transformArgsWithCodec<T extends unknown[]>(
   try {
     return argsCodec.asCandid(args) as T
   } catch (err) {
-    console.error(
-      "[ic-reactor] transformArgsWithCodec failed (tuple args):",
-      err
-    )
-    return args as T
+    return failed(err, "the arguments")
   }
 }
 
