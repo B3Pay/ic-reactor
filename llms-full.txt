@@ -225,7 +225,8 @@ export const { useIdentityAttributes } =
 returns exactly `useAuth`, `useAgentState`, and `useUserPrincipal`.
 `useIdentityAttributes` comes only from `createIdentityAttributeHooks`.
 
-Pass identity-attribute nonces as a callback (`nonce: () => backend.registerBegin()`).
+Pass identity-attribute nonces as a callback
+(`nonce: () => backend.callMethod({ functionName: "register_begin" })`).
 Awaiting the nonce before the call ends the user gesture and the browser blocks
 the Internet Identity window.
 
