@@ -22,6 +22,7 @@
  * postsQuery.invalidate()
  */
 
+import { useMemo } from "react"
 import type {
   Reactor,
   FunctionName,
@@ -44,7 +45,11 @@ import {
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
 import { NoInfer } from "./types.js"
-import { mergeFactoryQueryKey, normalizeQueryData } from "./utils.js"
+import {
+  buildChainedSelect,
+  mergeFactoryQueryKey,
+  normalizeQueryData,
+} from "./utils.js"
 
 type InfiniteQueryFactoryFn<
   Service,
@@ -384,14 +389,12 @@ const createInfiniteQueryImpl = <
     Selected,
     TError
   > = (options: any): any => {
-    // Chain the selects: raw -> config.select -> options.select
-    const chainedSelect = (rawData: TInfiniteData) => {
-      const firstPass = select ? select(rawData) : rawData
-      if (options?.select) {
-        return options.select(firstPass)
-      }
-      return firstPass
-    }
+    // Memoized and identity-preserving; see buildChainedSelect for why the
+    // function identity matters to the observer's select-result cache.
+    const chainedSelect = useMemo(
+      () => buildChainedSelect(select as never, options?.select),
+      [options?.select]
+    )
 
     return useInfiniteQuery(
       {

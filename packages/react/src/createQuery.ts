@@ -30,6 +30,7 @@ import type {
   ReactorArgs,
   TransformKey,
 } from "@ic-reactor/core"
+import { useMemo } from "react"
 import {
   QueryKey,
   useQuery,
@@ -110,6 +111,12 @@ const createQueryImpl = <
 
   const useQueryHook = ((options?: UseQueryHookOptions) => {
     const baseOptions = reactor.getQueryOptions(params)
+    // Memoized so the observer's select-result cache can hit; see
+    // buildChainedSelect. `select` comes from the factory config and is stable.
+    const chainedSelect = useMemo(
+      () => buildChainedSelect(select, options?.select),
+      [options?.select]
+    )
     return useQuery(
       {
         queryKey: baseOptions.queryKey,
@@ -117,7 +124,7 @@ const createQueryImpl = <
         ...rest,
         ...options,
         queryFn: baseOptions.queryFn,
-        select: buildChainedSelect(select, options?.select),
+        select: chainedSelect,
       },
       reactor.queryClient
     )

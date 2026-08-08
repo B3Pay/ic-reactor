@@ -46,20 +46,31 @@ export function mergeFactoryQueryKey(
 }
 
 /**
- * Build a chained select function that first applies the config-level select
- * (if any) and then the hook-level select (if any).
+ * Build a chained select that applies the config-level select (if any) and then
+ * the hook-level select (if any).
  *
- * This enables `createQuery` / `createSuspenseQuery` to support two-level
- * select chaining without duplicating the logic.
+ * Returns the caller's own function untouched when only one of the two is
+ * present, and `undefined` when neither is — allocating a wrapper only for the
+ * genuinely chained case. Identity matters here: `QueryObserver` memoizes a
+ * select result on `options.select === previousSelectFn`, so a wrapper rebuilt
+ * on every render defeats that check. The select then re-runs each render, and
+ * for a select returning a non-plain value (a `Map`, a `Date`, a `Principal`)
+ * `replaceEqualDeep` cannot structurally share the result either, so `data`
+ * gets a fresh reference every render and a `useEffect([data])` that sets state
+ * becomes an unbounded loop.
+ *
+ * Callers should still memoize the result, since the chained case allocates.
  */
 export function buildChainedSelect<TData, TSelected, TFinal = TSelected>(
   configSelect: ((data: TData) => TSelected) | undefined,
   hookSelect: ((data: TSelected) => TFinal) | undefined
-): (rawData: TData) => TSelected | TFinal {
-  return (rawData: TData) => {
-    const firstPass = configSelect
-      ? configSelect(rawData)
-      : (rawData as unknown as TSelected)
-    return hookSelect ? hookSelect(firstPass) : firstPass
+): ((rawData: TData) => TSelected | TFinal) | undefined {
+  if (!configSelect) {
+    // `hookSelect` receives the raw data when there is no config-level select,
+    // matching the previous behaviour.
+    return hookSelect as unknown as
+      ((rawData: TData) => TSelected | TFinal) | undefined
   }
+  if (!hookSelect) return configSelect
+  return (rawData: TData) => hookSelect(configSelect(rawData))
 }

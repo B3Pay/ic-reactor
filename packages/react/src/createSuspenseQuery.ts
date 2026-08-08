@@ -25,6 +25,7 @@ import type {
   ReactorArgs,
   TransformKey,
 } from "@ic-reactor/core"
+import { useMemo } from "react"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import type {
   QueryFnData,
@@ -95,6 +96,12 @@ const createSuspenseQueryImpl = <
     TError
   > = (options: any): any => {
     const baseOptions = reactor.getQueryOptions(params)
+    // Memoized so the observer's select-result cache can hit; see
+    // buildChainedSelect. `select` comes from the factory config and is stable.
+    const chainedSelect = useMemo(
+      () => buildChainedSelect(select, options?.select),
+      [options?.select]
+    )
     return useSuspenseQuery(
       {
         queryKey: baseOptions.queryKey,
@@ -102,7 +109,7 @@ const createSuspenseQueryImpl = <
         ...rest,
         ...options,
         queryFn: baseOptions.queryFn,
-        select: buildChainedSelect(select, options?.select),
+        select: chainedSelect,
       },
       reactor.queryClient
     )
