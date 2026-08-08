@@ -1,5 +1,11 @@
 // ============================================================================
 // Hooks
+//
+// These are the RAW hooks: they take the reactor as a property. They are
+// therefore exported as `useReactor*` only — the `useActor*` names belong to
+// the bound hooks `createActorHooks` returns, which take no reactor. Aliasing
+// the raw implementations under the bound names would hand a caller following
+// the documented `useActorQuery({ functionName })` shape an undefined reactor.
 // ============================================================================
 
 // useActorQuery / useReactorQuery

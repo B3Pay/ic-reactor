@@ -39,6 +39,24 @@ export interface CreateAuthHooksReturn {
 export const createAuthHooks = (
   authentication: AuthenticationManager
 ): CreateAuthHooksReturn => {
+  // Passing a ClientManager here is the natural mistake — it is what
+  // `AuthenticationManager` is built from, and the two are adjacent in every
+  // setup snippet. TypeScript rejects it, but a JS caller got no error until
+  // render, where it surfaced as "Cannot destructure property 'isAuthenticated'
+  // of 'useAuthState(...)' as it is undefined" — which names neither the cause
+  // nor this function.
+  if (
+    !authentication ||
+    typeof authentication.subscribeAuthState !== "function"
+  ) {
+    throw new TypeError(
+      "[ic-reactor] createAuthHooks() expects an AuthenticationManager, not a " +
+        "ClientManager. Build one first: " +
+        "`new AuthenticationManager({ clientManager })`, or take it from " +
+        "`defineReactor(...).authentication`."
+    )
+  }
+
   const { clientManager } = authentication
   /**
    * Subscribe to agent state changes.

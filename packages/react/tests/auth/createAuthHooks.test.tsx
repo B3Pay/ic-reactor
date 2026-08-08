@@ -556,3 +556,26 @@ describe("useIdentityAttributes — PII is dropped when the principal changes", 
     )
   })
 })
+
+describe("createAuthHooks — argument guard", () => {
+  it("rejects a ClientManager with a message that names the mistake", () => {
+    // TypeScript catches this; a JS caller used to get no error until render,
+    // as "Cannot destructure property 'isAuthenticated' … as it is undefined".
+    const clientManager = makeClientManager(makeQueryClient())
+
+    expect(() => createAuthHooks(clientManager as never)).toThrow(
+      /expects an AuthenticationManager, not a ClientManager/
+    )
+  })
+
+  it("rejects undefined rather than failing later", () => {
+    expect(() => createAuthHooks(undefined as never)).toThrow(TypeError)
+  })
+
+  it("accepts a real AuthenticationManager", () => {
+    const authentication = makeAuthentication(
+      makeClientManager(makeQueryClient())
+    )
+    expect(() => createAuthHooks(authentication)).not.toThrow()
+  })
+})
