@@ -495,6 +495,48 @@ describe("useIdentityAttributes — PII is dropped when the principal changes", 
     expect(result.current.attributes).toBeNull()
   })
 
+  it("does not publish a request that resolves after the user signed out", async () => {
+    // The subscription clears on the principal change, but an in-flight request
+    // still resolving afterwards would call setAttributes and put the previous
+    // user's PII back with no further auth event to clear it again.
+    let release: (v: unknown) => void = () => {}
+    vi.spyOn(identityAttributes, "requestOpenId").mockImplementation(
+      () => new Promise((resolve) => (release = resolve)) as never
+    )
+
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    let pending!: Promise<unknown>
+    act(() => {
+      pending = result.current
+        .requestOpenIdAttributes({
+          openIdProvider: "https://issuer.example.com",
+          keys: ["email"],
+          nonce: new Uint8Array([1, 2, 3]),
+        })
+        .catch(() => undefined)
+    })
+
+    // Sign out while the request is still outstanding.
+    await act(async () => {
+      ;(authentication as any).updateState({
+        identity: null,
+        isAuthenticated: false,
+      })
+    })
+
+    await act(async () => {
+      release(seed)
+      await pending
+    })
+
+    expect(result.current.attributes).toBeNull()
+  })
+
   it("leaves them alone while the same session continues", async () => {
     const { useIdentityAttributes } =
       createIdentityAttributeHooks(identityAttributes)
