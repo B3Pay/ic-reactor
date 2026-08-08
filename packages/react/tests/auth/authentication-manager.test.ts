@@ -498,3 +498,70 @@ describe("AuthenticationManager session hygiene", () => {
     expect(authentication.authState.error).toBeInstanceOf(Error)
   })
 })
+
+describe("AuthenticationManager logout/authenticate race", () => {
+  let clientManager: ClientManager
+
+  beforeEach(() => {
+    authClientMocks.factory.mockReset()
+    vi.clearAllMocks()
+    ;(safeGetCanisterEnv as any).mockReturnValue(undefined)
+    clientManager = new ClientManager({ queryClient: new QueryClient() })
+    vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("does not re-install the signed-out identity when logout wins the race", async () => {
+    // Regression: a stalled authenticate() applied its result unconditionally,
+    // putting the delegation of a user who had just signed out back on the
+    // agent.
+    const authClient = createAuthClient()
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+    const signedInPrincipal = authentication.authState.identity
+      ?.getPrincipal()
+      .toText()
+
+    // Stall the identity read so logout can complete underneath it.
+    let releaseIdentity: () => void = () => {}
+    const stalled = new Promise<void>((resolve) => {
+      releaseIdentity = resolve
+    })
+    const signedInIdentity = authClient.getIdentity()
+    const anonymous = identity("2vxsx-fae")
+    let stalledOnce = false
+    authClient.getIdentity.mockImplementation(async () => {
+      if (!stalledOnce) {
+        // Only authenticate()'s read stalls; logout() must be able to proceed.
+        stalledOnce = true
+        await stalled
+        return signedInIdentity
+      }
+      return anonymous
+    })
+    authClient.isAuthenticated.mockResolvedValue(false)
+    ;(authentication as any).authStateValue = {
+      ...authentication.authState,
+      isAuthenticated: false,
+    }
+
+    const pending = authentication.authenticate()
+    await authentication.logout()
+    releaseIdentity()
+    await pending
+
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(
+      authentication.authState.identity?.getPrincipal().isAnonymous()
+    ).toBe(true)
+    expect(authentication.authState.identity?.getPrincipal().toText()).not.toBe(
+      signedInPrincipal
+    )
+  })
+})

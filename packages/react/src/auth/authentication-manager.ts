@@ -195,6 +195,11 @@ export class AuthenticationManager {
         )
       }
       this.updateState({ isAuthenticating: true })
+      // Anything that changes auth state — a logout, notably — bumps this. If
+      // it moves while the awaits below are in flight, the result we are
+      // holding describes a session that has since ended, and installing it
+      // would put the signed-out user's delegation back on the agent.
+      const revision = this.authStateRevision
       try {
         if (!this.authClient) {
           const authClient = await this.initializeClient(
@@ -207,6 +212,11 @@ export class AuthenticationManager {
         }
         const identity = await this.authClient!.getIdentity()
         const isAuthenticated = await this.authClient!.isAuthenticated()
+
+        if (revision !== this.authStateRevision) {
+          // Superseded — leave whatever ran in the meantime in place.
+          return this.authState.identity || undefined
+        }
         // Restoring an anonymous session is the common first-load case; pushing
         // it through updateAgent would invalidate the whole query cache on
         // every mount for nothing.
