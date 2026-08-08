@@ -165,7 +165,7 @@ describe("ClientManager", () => {
     expect((await manager.getUserPrincipal()).isAnonymous()).toBe(true)
   })
 
-  describe("updateAgent invalidation scope", () => {
+  describe("updateAgent cache scope", () => {
     const canisterId = "ryjl3-tyaaa-aaaaa-aaaba-cai"
 
     it("invalidates registered canister queries but leaves non-IC queries alone", () => {
@@ -177,11 +177,17 @@ describe("ClientManager", () => {
 
       manager.updateAgent(new AnonymousIdentity())
 
+      // Inactive canister entries are removed outright, not merely marked
+      // stale: query keys carry no principal, so leaving the data in place kept
+      // the previous identity's caller-scoped results readable.
       expect(
-        queryClient.getQueryState([canisterId, "icrc1_name"])?.isInvalidated
-      ).toBe(true)
+        queryClient.getQueryState([canisterId, "icrc1_name"])
+      ).toBeUndefined()
       // Apps share one QueryClient with the rest of their app; signing in must not
-      // mark their unrelated queries stale.
+      // touch their unrelated queries.
+      expect(queryClient.getQueryData(["user-preferences"])).toEqual({
+        theme: "dark",
+      })
       expect(
         queryClient.getQueryState(["user-preferences"])?.isInvalidated
       ).toBe(false)
@@ -212,7 +218,8 @@ describe("ClientManager", () => {
       queryClient.setQueryData(key, { id: 1 })
       manager.updateAgent(new AnonymousIdentity())
 
-      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+      // Same guarantee as for a normally-keyed canister: the entry is gone.
+      expect(queryClient.getQueryState(key)).toBeUndefined()
     })
   })
 })

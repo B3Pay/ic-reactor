@@ -325,11 +325,34 @@ export class ClientManager {
     })
 
     this.#agent.replaceIdentity(identity)
-    this.notifySubscribers(identity)
 
+    // Clean the cache BEFORE notifying, and after the agent already holds the
+    // new identity. A subscriber commonly reacts by starting an imperative
+    // `fetchQuery` for the new principal; that query has no observer yet, so it
+    // would be classified inactive and `removeQueries` would cancel it, leaving
+    // the subscriber's promise rejected with a TanStack CancelledError. Anything
+    // a subscriber starts must therefore outlive this sweep. Refetches triggered
+    // here are already signed by the new identity.
     canisterIds.forEach((canisterId) => {
+      // Inactive entries are REMOVED, not just invalidated. Query keys carry no
+      // principal, so a caller-scoped result (a balance-of-self, a deposit
+      // address, my-profile) stays readable through getQueryData/fetchQuery
+      // under the new identity for as long as it lives in the cache —
+      // indefinitely for an entry whose component has unmounted, which is the
+      // normal case when a sign-out unmounts the authenticated tree.
+      // Invalidating alone left the data in place.
+      this.queryClient.removeQueries({
+        queryKey: [canisterId],
+        type: "inactive",
+      })
+      // Active entries stay invalidated rather than removed, so their mounted
+      // observers reliably refetch. They still show the previous identity's
+      // data for the length of that refetch; closing that window needs the
+      // principal in the key itself.
       this.queryClient.invalidateQueries({ queryKey: [canisterId] })
     })
+
+    this.notifySubscribers(identity)
   }
 
   private notifySubscribers(identity: Identity) {
