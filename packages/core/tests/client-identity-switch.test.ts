@@ -84,4 +84,45 @@ describe("ClientManager.updateAgent — cached data across an identity switch", 
     expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
     unsubscribe()
   })
+
+  it("does not cancel a fetch a subscriber starts on notification", async () => {
+    // Regression: the cache sweep used to run AFTER notifySubscribers. A
+    // subscriber reacting by kicking off an imperative fetch for the new
+    // principal created an observerless — therefore "inactive" — query, which
+    // removeQueries then cancelled, rejecting the subscriber's promise with a
+    // TanStack CancelledError and discarding the result.
+    let started: Promise<unknown> | undefined
+    clientManager.subscribe(() => {
+      started = queryClient.fetchQuery({
+        queryKey: [CANISTER_ID, "balance_after_switch"],
+        queryFn: async () => "FETCHED-FOR-NEW-IDENTITY",
+      })
+    })
+
+    clientManager.updateAgent(Ed25519KeyIdentity.generate())
+
+    await expect(started).resolves.toBe("FETCHED-FOR-NEW-IDENTITY")
+    expect(
+      queryClient.getQueryData([CANISTER_ID, "balance_after_switch"])
+    ).toBe("FETCHED-FOR-NEW-IDENTITY")
+  })
+
+  it("still clears the previous identity's data when a subscriber refetches", async () => {
+    // The reordering must not weaken the guarantee the sweep exists for.
+    const stale = [CANISTER_ID, "get_withdrawal_account"]
+    queryClient.setQueryData(stale, "ACCOUNT-OF-IDENTITY-A")
+
+    let started: Promise<unknown> | undefined
+    clientManager.subscribe(() => {
+      started = queryClient.fetchQuery({
+        queryKey: [CANISTER_ID, "something_else"],
+        queryFn: async () => "ok",
+      })
+    })
+
+    clientManager.updateAgent(Ed25519KeyIdentity.generate())
+    await started
+
+    expect(queryClient.getQueryData(stale)).toBeUndefined()
+  })
 })
