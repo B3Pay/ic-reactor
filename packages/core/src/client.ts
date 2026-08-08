@@ -324,7 +324,24 @@ export class ClientManager {
       this.queryClient.cancelQueries({ queryKey: [canisterId] })
     })
 
-    this.#agent.replaceIdentity(identity)
+    // Build a NEW agent rather than calling `replaceIdentity` on the shared
+    // one. An update call that outlives the sync-call window polls with the
+    // agent it captured at submit time; mutating that object in place meant the
+    // read_state got signed by the *new* identity and the replica answered 403
+    // — for a call that had already committed on chain, with the reply then
+    // unrecoverable from the app. A fresh instance leaves in-flight calls
+    // holding the identity that submitted them.
+    //
+    // `config` carries the original options (host, fetch, verifyQuerySignatures
+    // …) and `rootKey` carries anything `fetchRootKey()` obtained, which local
+    // replicas and custom testnets depend on — both are preserved so the new
+    // agent is equivalent in every respect but the identity.
+    const previousAgent = this.#agent
+    this.#agent = HttpAgent.createSync({
+      ...previousAgent.config,
+      rootKey: previousAgent.rootKey ?? undefined,
+      identity,
+    })
 
     // Clean the cache BEFORE notifying, and after the agent already holds the
     // new identity. A subscriber commonly reacts by starting an imperative
