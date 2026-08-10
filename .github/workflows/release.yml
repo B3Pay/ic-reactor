@@ -136,8 +136,8 @@ jobs:
         run: npm i -g npm@^11.5.1 && npm --version
 
       - name: Install dependencies
-        # Install only this v3 package and its dependency graph. In particular,
-        # keep unreleased v4 workspaces such as @ic-reactor/cod out of v3 tags.
+        # Install only this v3 package and its dependency graph, keeping any
+        # unreleased workspaces out of v3 tags.
         run: pnpm install --frozen-lockfile --filter "{./${{ matrix.workspace }}}..."
 
       - name: Cache Rust dependencies

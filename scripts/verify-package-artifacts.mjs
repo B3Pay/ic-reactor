@@ -204,11 +204,8 @@ try {
       try {
         // --profile node16: these packages are ESM-first and target Node 16+ /
         // modern bundler resolution. node10 is TypeScript's pre-`exports` algorithm,
-        // under which subpath exports (e.g. @ic-reactor/codegen/renderer) cannot
-        // resolve at all without shipping root-level shim files.
-        // --profile node16: node10 is TypeScript's pre-`exports` algorithm, under which
-        //   subpath exports (@ic-reactor/codegen/renderer) cannot resolve without
-        //   shipping root-level shim files. These packages target Node 16+.
+        // under which subpath exports cannot resolve at all without shipping
+        // root-level shim files.
         // cjs-resolves-to-esm: core/react/candid/cli are deliberately ESM-only
         //   ("type": "module", no require condition); CJS consumers use dynamic import.
         run("npx", ["--yes", "@arethetypeswrong/cli@latest", "--pack", join(scratch, file),
