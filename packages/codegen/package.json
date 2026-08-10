@@ -17,16 +17,6 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./renderer": {
-      "import": {
-        "types": "./dist/renderer.d.ts",
-        "default": "./dist/renderer.js"
-      },
-      "require": {
-        "types": "./dist/renderer.d.cts",
-        "default": "./dist/renderer.cjs"
-      }
-    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -36,8 +26,8 @@
     "llms.txt"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/renderer.ts --format esm,cjs --dts --tsconfig tsconfig.json",
-    "dev": "tsup src/index.ts src/renderer.ts --format esm,cjs --dts --watch --tsconfig tsconfig.json",
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --tsconfig tsconfig.json",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch --tsconfig tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"

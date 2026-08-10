@@ -64,7 +64,6 @@ You can also use individual generators if you need more granular control:
 
 - **`parseDIDFile` / `extractMethods`**: Parse a `.did` file and extract method signatures.
 - **`toPascalCase` / `getReactorName` / `getServiceTypeName`**: Naming helpers.
-- **`generateCodecDeclarations`**: Renders a `@ic-reactor/cod` codec module from Candid (also available on the `./renderer` subpath).
 
 ## License
 

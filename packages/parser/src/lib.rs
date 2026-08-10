@@ -351,16 +351,13 @@ struct MetadataRulesFile {
 }
 
 fn format_rules() -> HashMap<String, MetadataRule> {
-    serde_json::from_str(include_str!("../../codegen/src/metadata-rules.json"))
-        .unwrap_or_default()
+    serde_json::from_str(include_str!("metadata-rules.json")).unwrap_or_default()
 }
 
 fn default_bound_rules() -> HashMap<String, ValidationBoundRule> {
-    serde_json::from_str::<MetadataRulesFile>(include_str!(
-        "../../codegen/src/metadata-rules.json"
-    ))
-    .map(|rules| rules.default_validation_messages)
-    .unwrap_or_default()
+    serde_json::from_str::<MetadataRulesFile>(include_str!("metadata-rules.json"))
+        .map(|rules| rules.default_validation_messages)
+        .unwrap_or_default()
 }
 
 fn default_format_message(format_type: &str) -> Option<String> {

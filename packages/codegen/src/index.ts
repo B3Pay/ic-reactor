@@ -26,6 +26,3 @@ export type { MethodInfo, MethodType } from "./parser.js"
 
 // Individual Generators (Advanced Usage)
 export * from "./generators/index.js"
-
-// Renderer (Candid Codec)
-export { generateCodecDeclarations } from "./renderer.js"
