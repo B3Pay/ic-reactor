@@ -267,7 +267,8 @@ describe("Display Codec - didToDisplayCodec", () => {
       const codec = didToDisplayCodec(IDL.Vec(IDL.Nat8))
       const bytes = new Uint8Array([1, 2, 3, 4])
 
-      // Small blobs get converted to hex
+      // Blobs decode to hex regardless of size; this fixture is small only
+      // for readability
       const decoded = codec.asDisplay(bytes)
       expect(typeof decoded).toBe("string")
       expect(decoded).toMatch(/^[0-9a-f]+$/)

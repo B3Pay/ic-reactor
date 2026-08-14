@@ -259,8 +259,11 @@ interface ResultNode {
 | `variant`   | Variant types                              |
 | `result`    | Special case for `Ok`/`Err` variants       |
 | `nullable`  | Optional types                             |
-| `blob`      | Binary data with hash                      |
 | `func`      | Function references (canister ID + method) |
+
+Blob nodes keep `type: "blob"` but resolve with `displayType: "string"` — the
+value is always a hex string, and `length` is the byte count. Key any
+blob-specific rendering (byte count, hash summary) on `node.type`.
 
 ### Resolution Example
 
@@ -564,6 +567,20 @@ console.log(result)
 
 // Render results
 function ResultNode({ node }) {
+  // Blob nodes resolve with displayType "string" — the value is always a hex
+  // string, whatever the payload size — so key their compact byte-count
+  // rendering on the node's own type instead.
+  if (node.type === "blob") {
+    return (
+      <div>
+        <strong>{node.label}:</strong>
+        <code>
+          {node.length} bytes (hash: {node.hash.slice(0, 16)}...)
+        </code>
+      </div>
+    )
+  }
+
   switch (node.displayType) {
     case "string":
     case "number":
@@ -633,16 +650,6 @@ function ResultNode({ node }) {
         )
       }
       return <ResultNode node={node.value} />
-
-    case "blob":
-      return (
-        <div>
-          <strong>{node.label}:</strong>
-          <code>
-            {node.length} bytes (hash: {node.hash.slice(0, 16)}...)
-          </code>
-        </div>
-      )
 
     case "func":
       return (

@@ -2,6 +2,32 @@ import { describe, it, expect } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import { didToDisplayCodec } from "../src/display/index.js"
 import { hexToUint8Array } from "../src/utils/index.js"
+import type { BlobType, DisplayResultOf } from "../src/display/types.js"
+import type { TransformReturnRegistry } from "../src/types/index.js"
+
+// Type-level pins for the direction-aware blob mapping: results are exactly
+// `string`, args keep the wider union the encode path genuinely accepts.
+// These lines compile only while that stays true (the typecheck CI gate runs
+// tsc over tests).
+type BlobResult = TransformReturnRegistry<Uint8Array>["display"]
+type _ResultIsString = BlobResult extends string
+  ? string extends BlobResult
+    ? true
+    : never
+  : never
+type _NestedIsString =
+  DisplayResultOf<{ certificate: Uint8Array }> extends {
+    certificate: string
+  }
+    ? true
+    : never
+type _ArgsKeepUnion = Uint8Array extends BlobType ? true : never
+const _typePins: [true, true, true] = [
+  true as _ResultIsString,
+  true as _NestedIsString,
+  true as _ArgsKeepUnion,
+]
+void _typePins
 
 // Regression for the 512-byte representation switch (#245): the display
 // transform rendered a blob as a hex string at or below 512 bytes and as a

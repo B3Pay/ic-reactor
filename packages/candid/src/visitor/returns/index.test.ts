@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { ResultFieldVisitor } from "./index.js"
+import { MetadataError } from "../arguments/types.js"
 import type {
   ResultNode,
   ResolvedNode,
@@ -629,6 +630,33 @@ describe("ResultFieldVisitor", () => {
       expect(blobResolved.length).toBe(4) // bytes, not hex characters
       expect(blobResolved.hash).toBeDefined()
       expect(blobResolved.hash).toHaveLength(64)
+    })
+
+    it("resolves an already-hex blob without fabricating length or hash", () => {
+      // visitOpt passes already-transformed inner values straight through, so
+      // a blob node can legitimately receive a hex string. It used to fall
+      // into `new Uint8Array(string)`, which yields ZERO bytes — reporting
+      // length 0 and sha256("") for a real payload.
+      const blobType = IDL.Vec(IDL.Nat8)
+      const field = visitor.visitVec(blobType, IDL.Nat8, "data")
+
+      const blobResolved = field.resolve("1234abcd") as ResolvedNode<"blob">
+
+      expect(blobResolved.value).toBe("1234abcd")
+      expect(blobResolved.length).toBe(4)
+      // Same hash as resolving the equivalent raw bytes.
+      const fromBytes = field.resolve(
+        new Uint8Array([0x12, 0x34, 0xab, 0xcd])
+      ) as ResolvedNode<"blob">
+      expect(blobResolved.hash).toBe(fromBytes.hash)
+    })
+
+    it("rejects nullish blob data loudly instead of resolving an empty node", () => {
+      const blobType = IDL.Vec(IDL.Nat8)
+      const field = visitor.visitVec(blobType, IDL.Nat8, "data")
+
+      expect(() => field.resolve(null)).toThrow(MetadataError)
+      expect(() => field.resolve(undefined)).toThrow(MetadataError)
     })
 
     it("should handle large blob (> 512 bytes) as hex too", () => {

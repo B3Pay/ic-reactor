@@ -17,7 +17,11 @@ import type {
 
 import { sha256 } from "@noble/hashes/sha2.js"
 import { IDL } from "@icp-sdk/core/candid"
-import { DisplayCodecVisitor, uint8ArrayToHex } from "@ic-reactor/core"
+import {
+  DisplayCodecVisitor,
+  uint8ArrayToHex,
+  hexToUint8Array,
+} from "@ic-reactor/core"
 import type {
   ActorMethodReturnType,
   BaseActor,
@@ -484,9 +488,30 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           // of size, so `displayType` stays the schema's "string" and
           // `length` can finally be what its type declares: bytes, not hex
           // characters.
+          //
+          // `data` is raw candid bytes on the normal reactor flow, but
+          // visitOpt hands already-transformed inner values through, so a
+          // hex string is a supported shape here. It must not fall into a
+          // `new Uint8Array(...)` coercion: a string (or null) taken through
+          // the TypedArray length constructor yields ZERO bytes, fabricating
+          // `length: 0` and a sha256 of the empty payload for a real blob.
           const bytes =
-            data instanceof Uint8Array ? data : new Uint8Array(data as number[])
-          const value = codec.decode(data) as string
+            data instanceof Uint8Array
+              ? data
+              : Array.isArray(data)
+                ? new Uint8Array(data)
+                : typeof data === "string"
+                  ? hexToUint8Array(data)
+                  : null
+          if (bytes === null) {
+            throw new MetadataError(
+              `Expected blob bytes or hex string, but got ${data === null ? "null" : typeof data}`,
+              label,
+              "blob"
+            )
+          }
+          const value =
+            typeof data === "string" ? data : (codec.decode(data) as string)
           return {
             ...node,
             value,
