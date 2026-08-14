@@ -271,8 +271,7 @@ reactor.name // string
 | `nat8/16/32`, `int8/16/32` | `number`      | `number`                |
 | `nat64`, `int64`           | `bigint`      | `string`                |
 | `Principal`                | `Principal`   | `string`                |
-| `vec nat8` (≤512 bytes)    | `Uint8Array`  | `string` (hex, no `0x`) |
-| `vec nat8` (>512 bytes)    | `Uint8Array`  | `Uint8Array`            |
+| `vec nat8` (blob)          | `Uint8Array`  | `string` (hex, no `0x`) |
 | `Result<Ok, Err>`          | Unwrapped     | Unwrapped               |
 
 Fixed-width integers up to 32 bits stay numbers on both sides; only the 64-bit

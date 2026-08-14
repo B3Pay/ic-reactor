@@ -626,22 +626,25 @@ describe("ResultFieldVisitor", () => {
         new Uint8Array([0x12, 0x34, 0xab, 0xcd])
       ) as ResolvedNode<"blob">
       expect(blobResolved.value).toBe("1234abcd")
+      expect(blobResolved.length).toBe(4) // bytes, not hex characters
       expect(blobResolved.hash).toBeDefined()
       expect(blobResolved.hash).toHaveLength(64)
     })
 
-    it("should handle large blob (> 512 bytes)", () => {
+    it("should handle large blob (> 512 bytes) as hex too", () => {
       const blobType = IDL.Vec(IDL.Nat8)
       const field = visitor.visitVec(blobType, IDL.Nat8, "large_data")
 
       expect(field.type).toBe("blob")
-      // Create a large Uint8Array
+      // Above the old 512-byte cutoff that used to leave the value as a
+      // Uint8Array with displayType "blob" — the representation no longer
+      // switches with payload size.
       const largeData = new Uint8Array(513).fill(0xaa)
       const blobResolved = field.resolve(largeData) as ResolvedNode<"blob">
 
-      expect(blobResolved.value).toBeInstanceOf(Uint8Array)
-      expect(blobResolved.displayType).toBe("blob")
-      expect(blobResolved.value).toHaveLength(513)
+      expect(blobResolved.value).toBe("aa".repeat(513))
+      expect(blobResolved.displayType).toBe("string")
+      expect(blobResolved.length).toBe(513)
     })
 
     it("should handle nested vectors", () => {

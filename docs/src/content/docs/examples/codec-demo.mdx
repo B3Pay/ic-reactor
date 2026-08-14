@@ -51,8 +51,7 @@ Demonstrates the automatic type transformation system comparing `DisplayReactor`
 | `nat8/16/32`, `int8/16/32` | `number`       | `number` (unchanged)  |
 | `principal`                | `Principal`    | `string`              |
 | `opt T`                    | `[T] \| []`    | `T \| null`           |
-| `blob` (≤512 bytes)        | `Uint8Array`   | `string` (hex)        |
-| `blob` (>512 bytes)        | `Uint8Array`   | `Uint8Array`          |
+| `blob`                     | `Uint8Array`   | `string` (hex)        |
 | `variant { A }`            | `{ A: null }`  | `{ _type: "A" }`      |
 
 ## Key Code

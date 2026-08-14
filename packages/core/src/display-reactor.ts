@@ -37,7 +37,7 @@ import {
  * - `bigint` → `string` (for JSON/UI display)
  * - `Principal` → `string` (text representation)
  * - `[T] | []` → `T | null` (optional unwrapping)
- * - Small blobs → hex strings
+ * - Blobs (`vec nat8`) → hex strings, at every size
  *
  * ### Validation (Optional)
  * Register validators to check arguments before canister calls.

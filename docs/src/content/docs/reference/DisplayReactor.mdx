@@ -80,7 +80,7 @@ You'd normally need to write conversion logic everywhere in your app:
   createdAt: "1703500800000000000",     // string - parse as needed
   metadata: { "a": 1, "b": 2 },         // Plain Object - simple access
   status: { _type: "Active" },          // Normalized variant
-  avatar: "89504e47...",                // Small blobs → hex string
+  avatar: "89504e47...",                // Blobs → hex string, at every size
   description: null,                    // null instead of []
 }
 ```
@@ -152,7 +152,7 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
     `[T] | []` → `T | null` JavaScript-native nullish
   </Card>
   <Card title="Blobs" icon="document">
-    Small → hex `string` Large → `Uint8Array`
+    `vec nat8` → hex `string`, at every size
   </Card>
 </CardGrid>
 
@@ -174,11 +174,10 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
 #### Identity & Binary Types
 
-| Candid            | TypeScript   | Display      | Notes                           |
-| ----------------- | ------------ | ------------ | ------------------------------- |
-| `principal`       | `Principal`  | `string`     | e.g., `"rrkah-fqaaa..."`        |
-| `blob` ≤512 bytes | `Uint8Array` | `string`     | Hex format: `"89504e..."`       |
-| `blob` >512 bytes | `Uint8Array` | `Uint8Array` | Unchanged (avoids huge strings) |
+| Candid      | TypeScript   | Display  | Notes                        |
+| ----------- | ------------ | -------- | ---------------------------- |
+| `principal` | `Principal`  | `string` | e.g., `"rrkah-fqaaa..."`     |
+| `blob`      | `Uint8Array` | `string` | Hex, no `0x`: `"89504e..."`  |
 
 #### Container Types
 
@@ -379,20 +378,32 @@ const avatar = user.avatar // Already null or value
 
 ### Handling Blobs (Binary Data)
 
-Blobs (`vec nat8`) are handled intelligently based on size:
+Every blob (`vec nat8`) decodes to a lowercase hex string with no `0x`
+prefix, whatever its size. One Candid type, one JavaScript type — a display
+value is always JSON-safe, so persisting or serialising it never corrupts
+binary fields.
 
-- **Small blobs (≤512 bytes)**: Converted to hex strings for easy display and storage
-- **Large blobs (>512 bytes)**: Stay as `Uint8Array` to avoid huge hex strings
+<Aside type="caution" title="Changed behavior — was size-dependent">
+  In 3.10 and earlier, only blobs of 512 bytes or fewer decoded to hex;
+  anything larger stayed a `Uint8Array`, so one field could change JS type
+  with payload size and JSON-serialising a result silently corrupted large
+  blobs. If you branched on `typeof blob === "string"`, the `Uint8Array`
+  branch is now dead — delete it, or convert back with the exported
+  `hexToUint8Array(value)`. If you were relying on raw bytes for large
+  payloads (hex doubles the in-memory size), read them through a plain
+  `Reactor`, which leaves blobs untransformed.
+</Aside>
 
 ```typescript
 // Candid: blob (vec nat8)
 
-// Small blob example (e.g., a hash, signature, or small icon)
+// Every blob is a hex string (hash, signature, icon, image — any size)
 const hash = user.passwordHash // "2cf24dba5fb0a30e..."
 const signature = tx.signature // "3045022100ab..."
+const imageData = user.avatar // "89504e470d0a1a0a..." (hex too)
 
-// Large blob example (e.g., image data)
-const imageData = user.avatar // Uint8Array (stays as-is)
+// Need the bytes back? hexToUint8Array is exported from the package.
+// const bytes = hexToUint8Array(imageData)
 
 // When sending blobs back, you can use either format:
 mutate([

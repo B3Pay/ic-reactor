@@ -480,19 +480,18 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         hash: "",
         value: "", // empty schema placeholder, populated on resolve
         resolve(data: unknown): ResolvedNode<"blob"> {
-          const value = codec.decode(data) as string | Uint8Array
+          // The display codec renders every blob as a hex string regardless
+          // of size, so `displayType` stays the schema's "string" and
+          // `length` can finally be what its type declares: bytes, not hex
+          // characters.
+          const bytes =
+            data instanceof Uint8Array ? data : new Uint8Array(data as number[])
+          const value = codec.decode(data) as string
           return {
             ...node,
             value,
-            displayType: typeof value === "string" ? "string" : "blob",
-            hash: uint8ArrayToHex(
-              sha256(
-                data instanceof Uint8Array
-                  ? data
-                  : new Uint8Array(data as number[])
-              )
-            ),
-            length: value.length,
+            hash: uint8ArrayToHex(sha256(bytes)),
+            length: bytes.length,
             raw: data,
           }
         },
