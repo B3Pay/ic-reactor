@@ -89,3 +89,13 @@ export const { useActorQuery: useQueryTodo, useActorMutation: useMutateTodo } =
   automatic regeneration on `.did` changes, use the Vite plugin examples
   instead.
 </Aside>
+
+<Aside type="caution">
+  These module-scope reactors are for the client bundle. On the server —
+  `getServerSideProps` or the App Router — do not call canisters through a
+  module-scope reactor: it is reused by every request served by the same server
+  module graph, and query keys carry no caller principal, so one user's
+  caller-scoped data can be served to another request. Build the reactor (with
+  its own `QueryClient`) inside the request instead — see
+  [Server-Side Rendering](/v3/framework/react-setup#server-side-rendering).
+</Aside>
