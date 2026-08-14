@@ -291,12 +291,15 @@ if (error instanceof CanisterError) {
 ### Built-in Retry Classification
 
 Most canister-call failures cannot change on retry: a canister `Err` variant, a
-`ValidationError`, a Candid encode or decode failure that never reached the
-network, a replica rejection the replica will simply repeat for an identical
-call. Retrying those costs several attempts and seconds of backoff to arrive at
-the same failure. Only a `CallError` caused by an agent-level fault — a
-transport, protocol, or certificate failure, or a `SysTransient`/`SysUnknown`
-rejection — can plausibly produce a different result next time.
+`ValidationError`, a Candid encode failure that never produced a request, a
+decode failure on the reply (the same reply decodes to the same error — and for
+an update, the canister may already have committed the change, so a retry would
+submit it again), a replica rejection the replica will simply repeat for an
+identical call. Retrying those costs several attempts and seconds of backoff to
+arrive at the same failure. Only a `CallError` caused by an agent-level fault —
+a transport, protocol, or certificate failure, or a
+`SysTransient`/`SysUnknown` rejection — can plausibly produce a different
+result next time.
 
 IC Reactor ships this classification as two functions, exported from
 `@ic-reactor/core` and re-exported by `@ic-reactor/react`:
@@ -306,10 +309,11 @@ IC Reactor ships this classification as two functions, exported from
   agent error underneath (encode/decode/transform failures) are never
   retryable.
 - **`reactorRetry(failureCount, error)`** — a TanStack Query `retry` predicate
-  built on it: up to 3 attempts for retryable errors, none otherwise. It always
-  returns `false` on the server (`typeof window === "undefined"`), preserving
-  TanStack Query's no-retries-on-server default so a failed prefetch or render
-  keeps failing fast.
+  built on it: up to 3 retries (4 attempts in total) for retryable errors, none
+  otherwise. It always returns `false` on the server
+  (`typeof window === "undefined"`), preserving TanStack Query's
+  no-retries-on-server default so a failed prefetch or render keeps failing
+  fast.
 
 The `QueryClient` that `defineReactor` creates already uses `reactorRetry` as
 its default for queries. A `QueryClient` you construct yourself opts in
