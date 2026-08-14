@@ -1,4 +1,4 @@
 /**
  * Library version - automatically synced from package.json.
  */
-export const VERSION = "3.10.0"
+export const VERSION = "3.11.0"
