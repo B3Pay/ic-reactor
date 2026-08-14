@@ -26,6 +26,21 @@ pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
 pnpm add @icp-sdk/auth
 ```
 
+`react` is the only required React peer — `react-dom` is declared as an
+**optional** peer and never imported. `@icp-sdk/auth` is optional too: it is
+loaded through a literal `import("@icp-sdk/auth/client")` inside a `try`
+block, so the build succeeds without it, but webpack-family bundlers print one
+`Module not found: Can't resolve '@icp-sdk/auth/client'` warning while
+resolving the module graph. Install the peer to remove the warning, or
+silence it:
+
+```js
+// webpack.config.js / next.config.js (webpack)
+ignoreWarnings: [{ module: /@ic-reactor\/react/, message: /@icp-sdk\/auth/ }]
+```
+
+The package requires Node.js 18+ (declared in `engines`).
+
 ## What's Included
 
 <CardGrid>

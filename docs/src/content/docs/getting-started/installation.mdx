@@ -10,7 +10,10 @@ IC Reactor is compatible with React 18+, and works with TypeScript 5+.
 
 ## Prerequisites
 
-- **Node.js** 18 or later
+- **Node.js** 18 or later for `@ic-reactor/core` and `@ic-reactor/react`;
+  `@ic-reactor/candid` requires Node 20.19.0 or later (the floor of its
+  `@noble/hashes` dependency). Each package declares this in its `engines`
+  field.
 - **A package manager**: npm, yarn, pnpm, or bun
 
 ## Install Packages
@@ -44,6 +47,12 @@ Most users will want the React package, which includes everything you need:
 <Aside type="tip">
   `@ic-reactor/react` re-exports everything from `@ic-reactor/core`, so you only
   need one import for everything!
+</Aside>
+
+<Aside type="note">
+  `react` is the only required React peer. `react-dom` is declared as an
+  **optional** peer — the package never imports it — so renderers without a
+  DOM (React Native, custom hosts) work without installing it.
 </Aside>
 
 ### Non-React Projects (Node.js, Svelte, Vue, etc.)
@@ -116,6 +125,27 @@ not work until you install it:
 ```bash
 pnpm add @icp-sdk/auth
 ```
+
+Bundlers still **resolve** that specifier while building the module graph,
+which happens before any tree-shaking — so a missing peer cannot simply be
+optimized away. The import sits inside a `try` block, which webpack-family
+bundlers treat as declaring an optional dependency: with the peer absent the
+build succeeds and prints one warning,
+`Module not found: Can't resolve '@icp-sdk/auth/client'`. Only the login paths
+are affected, and they throw an actionable error if they are ever called.
+
+Install the peer to remove the warning, or silence it with
+[`ignoreWarnings`](https://webpack.js.org/configuration/other-options/#ignorewarnings):
+
+```js
+// webpack.config.js / next.config.js (webpack)
+ignoreWarnings: [{ module: /@ic-reactor\/react/, message: /@icp-sdk\/auth/ }]
+```
+
+Vite, Rollup, and webpack all code-split the auth module into its own async
+chunk. That chunk is never fetched unless something touches authentication,
+and its bytes are dropped from the output entirely in apps that never
+reference `AuthenticationManager`.
 
 [Read more about Authentication](/v3/guides/authentication)
 
