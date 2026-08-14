@@ -128,8 +128,8 @@ pnpm add @icp-sdk/auth
 
 Bundlers still **resolve** that specifier while building the module graph,
 which happens before any tree-shaking — so a missing peer cannot simply be
-optimized away. The import sits inside a `try` block, which webpack-family
-bundlers treat as declaring an optional dependency: with the peer absent the
+optimized away. The import sits inside a `try` block, which **webpack-family
+bundlers** treat as declaring an optional dependency: with the peer absent the
 build succeeds and prints one warning,
 `Module not found: Can't resolve '@icp-sdk/auth/client'`. Only the login paths
 are affected, and they throw an actionable error if they are ever called.
@@ -138,11 +138,31 @@ Install the peer to remove the warning, or silence it with
 [`ignoreWarnings`](https://webpack.js.org/configuration/other-options/#ignorewarnings):
 
 ```js
-// webpack.config.js / next.config.js (webpack)
-ignoreWarnings: [{ module: /@ic-reactor\/react/, message: /@icp-sdk\/auth/ }]
+// webpack.config.js
+module.exports = {
+  ignoreWarnings: [{ module: /@ic-reactor\/react/, message: /@icp-sdk\/auth/ }],
+}
 ```
 
-Vite, Rollup, and webpack all code-split the auth module into its own async
+```js
+// next.config.js — ignoreWarnings only takes effect inside webpack()
+module.exports = {
+  webpack: (config) => {
+    config.ignoreWarnings = [
+      { module: /@ic-reactor\/react/, message: /@icp-sdk\/auth/ },
+    ]
+    return config
+  },
+}
+```
+
+The optional-`try` treatment is webpack-specific — other bundlers may refuse
+to resolve the missing specifier at build time. If yours does, install the
+peer, or construct the `AuthClient` yourself and pass it as `authClient` to
+`AuthenticationManager`, in which case IC Reactor never imports
+`@icp-sdk/auth` at all.
+
+With the peer installed, the auth module is code-split into its own async
 chunk. That chunk is never fetched unless something touches authentication,
 and its bytes are dropped from the output entirely in apps that never
 reference `AuthenticationManager`.

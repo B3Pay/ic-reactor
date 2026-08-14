@@ -379,11 +379,11 @@ function App() {
 
 Every setup on this page defines the reactor at module scope, which is exactly
 right for a client-only SPA — but on a server it is a data leak. A reactor owns
-its `QueryClient`, so a module-scope reactor is created once per process and
-shared by every request, and query keys are `[canisterId, functionName, args]`
-— they do not include the caller. A cached result for a caller-scoped method
-(`get_my_balance`, a deposit address, `my_profile`) is handed to whichever
-request asks next:
+its `QueryClient`, and module scope outlives the request: every request served
+by the same server module graph shares one reactor and one cache. No segment
+of a reactor query key identifies the caller, so a cached result for a
+caller-scoped method (`get_my_balance`, a deposit address, `my_profile`) is
+handed to whichever request asks next:
 
 ```tsx
 import { defineReactor } from "@ic-reactor/react"
@@ -412,6 +412,12 @@ export default async function Page() {
   return <Profile data={data} />
 }
 ```
+
+The fresh reactor's agent is **anonymous**. A per-request `QueryClient`
+isolates the cache; it does not carry the caller's identity. For a
+caller-scoped method like `get_my_profile` to answer as the request's user,
+thread that request's identity into the reactor — `agentOptions: { identity }`
+on the `defineReactor` call — however your server derives it.
 
 Two further constraints on the Next.js App Router specifically:
 

@@ -29,15 +29,23 @@ pnpm add @icp-sdk/auth
 `react` is the only required React peer — `react-dom` is declared as an
 **optional** peer and never imported. `@icp-sdk/auth` is optional too: it is
 loaded through a literal `import("@icp-sdk/auth/client")` inside a `try`
-block, so the build succeeds without it, but webpack-family bundlers print one
-`Module not found: Can't resolve '@icp-sdk/auth/client'` warning while
-resolving the module graph. Install the peer to remove the warning, or
-silence it:
+block, which **webpack-family bundlers** treat as declaring an optional
+dependency — with the peer absent the build succeeds and prints one
+`Module not found: Can't resolve '@icp-sdk/auth/client'` warning. Install the
+peer to remove the warning, or silence it with
+[`ignoreWarnings`](https://webpack.js.org/configuration/other-options/#ignorewarnings)
+(in Next.js, assign it inside the `webpack(config)` callback):
 
 ```js
-// webpack.config.js / next.config.js (webpack)
+// webpack.config.js
 ignoreWarnings: [{ module: /@ic-reactor\/react/, message: /@icp-sdk\/auth/ }]
 ```
+
+That optional-`try` treatment is webpack-specific — other bundlers may fail to
+resolve the missing specifier at build time. If yours does, install the peer,
+or construct the `AuthClient` yourself and pass it as `authClient` to
+`AuthenticationManager`, in which case IC Reactor never imports
+`@icp-sdk/auth` at all.
 
 The package requires Node.js 18+ (declared in `engines`).
 
