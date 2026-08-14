@@ -359,6 +359,13 @@ async function createPostInLoader(data: PostInput) {
 }
 ```
 
+`execute()` behaves like the hook path at the factory level: it runs the
+factory's `invalidateQueries` and `onSuccess` on success, or its
+`onCanisterError` and `onError` on failure — then rethrows so the `await` still
+rejects. Factory-level `onMutate` and `onSettled` belong to TanStack Query's
+mutation lifecycle and only run through `useMutation()`. See
+[createMutation](/v3/reference/factories/createmutation) for details.
+
 ## Error Handling
 
 IC Reactor provides structured error types for mutations:

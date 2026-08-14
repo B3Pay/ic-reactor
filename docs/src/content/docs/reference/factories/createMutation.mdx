@@ -75,10 +75,10 @@ const transferMutation = createMutation(backend, {
 
 ## Return Value
 
-| Property      | Type                              | Description                      |
-| ------------- | --------------------------------- | -------------------------------- |
-| `useMutation` | `(options?) => UseMutationResult` | React hook for components        |
-| `execute`     | `(args) => Promise<T>`            | Direct execution (for utilities) |
+| Property      | Type                              | Description                                                 |
+| ------------- | --------------------------------- | ----------------------------------------------------------- |
+| `useMutation` | `(options?) => UseMutationResult` | React hook for components                                   |
+| `execute`     | `(args) => Promise<T>`            | Imperative call that runs the factory-level callback chain  |
 
 ---
 
@@ -142,11 +142,18 @@ function NewPostPage() {
 
 ### Optimistic Updates
 
-Update UI immediately before the canister responds:
+Update UI immediately before the canister responds. Pass `onMutate` to
+`useMutation()`, not to the factory: the context handed to `onError` is the
+return value of the **hook-level** `onMutate` — a factory-level `onMutate` runs,
+but its return value is not kept, so a snapshot taken there is lost:
 
 ```typescript
 const likePostMutation = createMutation(backend, {
   functionName: "likePost",
+})
+
+// In your component
+const { mutate } = likePostMutation.useMutation({
   onMutate: async (args) => {
     const [postId] = args
     const queryKey = getPostQuery(postId).getQueryKey()
@@ -263,6 +270,14 @@ async function handleWithdraw(amount: bigint) {
 </button>
 ```
 
+`execute()` runs the same factory-level chain the hook path does. On success it
+awaits the factory's `invalidateQueries` and then its `onSuccess`; on failure it
+calls the factory's `onCanisterError` (for canister `Err` variants) followed by
+its `onError`, and then **rethrows**, so `await execute(...)` still rejects for
+the caller. Hook-level callbacks are absent because there is no hook on this
+path, and `onMutate`/`onSettled` do not run either — they belong to TanStack
+Query's mutation lifecycle, which only `useMutation()` has.
+
 ### Multiple Related Refetches
 
 `invalidateQueries` is always an **array of query keys** — never a function of the mutation arguments. Supply it on the factory when the keys are known up front, or on `useMutation()` when they depend on component state.
@@ -330,7 +345,11 @@ const createPostMutation = createMutation(backend, {
 
 ### Callback Chaining
 
-Factory callbacks run first, then hook callbacks:
+Factory and hook callbacks **chain** — both run, factory first. This holds for
+all of them: `onSuccess`, `onError`, `onCanisterError`, `onMutate`, and
+`onSettled`. A hook-level callback never replaces the factory's, so factory
+teardown, telemetry, or logging cannot silently vanish because a call site
+passed its own handler:
 
 ```typescript
 // Factory level - runs first
@@ -348,6 +367,12 @@ const { mutate } = updateProfileMutation.useMutation({
   },
 })
 ```
+
+One asymmetry to know about: the mutation's **context** — the value handed to
+`onSuccess`, `onError`, and `onSettled` — is the return value of the
+**hook-level** `onMutate`. A factory-level `onMutate` runs first but its return
+value is not kept, so snapshot rollback state (as in the optimistic-update
+example above) belongs in the `onMutate` you pass to `useMutation()`.
 
 ### With Loading State UI
 
@@ -444,8 +469,10 @@ Disable buttons and show loading indicators:
 </Aside>
 
 <Aside type="note">
-  The `execute()` method is useful for utility functions, event handlers, or
-  when you need to await the result outside of React's lifecycle.
+  The `execute()` method is useful for route loaders, scripts, and utility
+  functions outside of React's lifecycle. It runs the factory's
+  `invalidateQueries`, `onSuccess`, `onCanisterError`, and `onError` — the same
+  chain as the hook path — and rethrows failures after the callbacks run.
 </Aside>
 
 <Aside type="caution">
