@@ -310,15 +310,11 @@ login({
 
 ## Automatic Query Invalidation
 
-IC Reactor cancels and invalidates the cached queries of every **connected canister** when the user's identity changes. This ensures:
+When the user's identity changes — on login, logout, and session restore — IC Reactor sweeps the cache of every **connected canister**: in-flight queries are cancelled, inactive cached entries are **removed**, and active queries are invalidated so they refetch as the new identity.
 
-- **Login**: Fresh data is fetched for the authenticated user
-- **Logout**: Cached user data is cleared immediately
-- **Session restore**: Queries are refreshed if a session is restored
+Removal matters because query keys carry no principal. An entry that was only invalidated would still be readable through `getQueryData` or `fetchQuery` under the next identity — so the previous principal's inactive data (a balance, a profile, a deposit address) is dropped outright, and only the queries a mounted component is actively watching live on through a refetch.
 
-Invalidation is scoped by canister ID (every reactor query key starts with one), so sharing a `QueryClient` with the rest of your app does not cause your unrelated REST or GraphQL queries to refetch on every sign-in.
-
-This prevents cross-account data leakage and ensures data freshness.
+The sweep is scoped by canister ID (every reactor query key starts with one), so sharing a `QueryClient` with the rest of your app does not cause your unrelated REST or GraphQL queries to refetch on every sign-in.
 
 ## Without Authentication
 

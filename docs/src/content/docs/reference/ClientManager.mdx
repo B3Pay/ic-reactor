@@ -349,19 +349,20 @@ console.log(clientManager.agentHost?.toString()) // The host URL
 
 ## Automatic Query Invalidation
 
-When the identity changes, `updateAgent()` invalidates the cached queries of every canister registered with this ClientManager. This ensures:
+When the identity changes, `updateAgent()` sweeps the cached queries of every canister registered with this ClientManager:
 
-- Fresh data is fetched for the new identity
-- No cached data leaks between users
-- Queries re-run with the new principal
+- **In-flight queries are cancelled**, so a response signed by the previous identity cannot land after the switch
+- **Inactive entries are removed** — not just invalidated. Query keys carry no principal, so a merely-stale entry (a balance whose component has unmounted, a cached profile) would stay readable through `getQueryData` or `fetchQuery` under the new identity
+- **Active entries are invalidated**, so their mounted observers refetch as the new identity. They keep showing the previous identity's data only for the length of that refetch
 
 ```typescript
 // This happens automatically on identity change, for each connected canister:
 queryClient.cancelQueries({ queryKey: [canisterId] })
+queryClient.removeQueries({ queryKey: [canisterId], type: "inactive" })
 queryClient.invalidateQueries({ queryKey: [canisterId] })
 ```
 
-Because the scope is the canister ID — the first segment of every reactor query key — non-reactor queries in a shared `QueryClient` are not refetched on sign-in or sign-out.
+Because the scope is the canister ID — the first segment of every reactor query key — non-reactor queries in a shared `QueryClient` are not refetched or removed on sign-in or sign-out.
 
 ## Pay-as-you-go Authentication
 

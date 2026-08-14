@@ -282,9 +282,11 @@ ledgerReactor.setCanisterId(Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"))
 | `canisterId` | `string \| Principal` | The new canister ID |
 
 <Aside type="note">
-  After calling `setCanisterId`, you should invalidate any cached queries since
-  they were for the previous canister. Call `reactor.invalidateQueries()` after
-  switching.
+  No cache cleanup is needed after switching. Query keys start with the
+  canister ID, so the two canisters never share a cache entry: mounted hooks —
+  including the infinite-query variants — follow the switch and re-key to the
+  new canister, while the previous canister's entries stay cached under their
+  own keys and are reused if you switch back.
 </Aside>
 
 ---

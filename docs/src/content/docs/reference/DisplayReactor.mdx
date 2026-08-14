@@ -215,6 +215,13 @@ console.log(user.balance) // "1000000" (string, not bigint)
 console.log(user.createdAt) // "1703500800000000000" (string)
 ```
 
+If an argument cannot be converted — a malformed principal string, a
+non-numeric amount — the call **throws** instead of passing the untransformed
+display value on to Candid encoding. The error names the failing conversion and
+keeps the underlying codec failure as `cause`, so the diagnostic points at the
+bad field rather than surfacing as a generic `IDL.encode` error raised far from
+the real cause.
+
 ## Automatic Result Unwrapping
 
 IC Reactor automatically unwraps Candid `Result` types (`variant { Ok: T; Err: E }`):
