@@ -307,7 +307,9 @@ IC Reactor ships this classification as two functions, exported from
 - **`isRetryableReactorError(error)`** — returns `true` only when a retry could
   help. `CanisterError`, `ValidationError`, and a `CallError` without an
   agent error underneath (encode/decode/transform failures) are never
-  retryable.
+  retryable. Within agent errors the bias runs the other way: an unrecognized
+  `kind`, or a rejection whose code cannot be read, still retries, so an
+  unfamiliar transport-level fault is never silently made fatal.
 - **`reactorRetry(failureCount, error)`** — a TanStack Query `retry` predicate
   built on it: up to 3 retries (4 attempts in total) for retryable errors, none
   otherwise. It always returns `false` on the server

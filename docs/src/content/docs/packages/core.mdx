@@ -108,6 +108,9 @@ or a `SysTransient`/`SysUnknown` replica rejection. A canister `Err` variant
 (`CanisterError`), a `ValidationError`, a Candid encode failure (no request
 was ever made), and a decode failure on the reply are never retryable:
 identical input — or the identical reply — produces the identical failure.
+Within agent errors the bias is toward retrying — an unrecognized `kind`, or a
+rejection whose code cannot be read, still retries, so an unfamiliar
+transport-level fault is never silently made fatal.
 
 `reactorRetry(failureCount, error)` is a ready-made TanStack Query `retry`
 predicate on top of it — up to 3 retries (4 attempts in total) for retryable
