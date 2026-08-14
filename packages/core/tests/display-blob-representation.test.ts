@@ -8,26 +8,20 @@ import type { TransformReturnRegistry } from "../src/types/index.js"
 // Type-level pins for the direction-aware blob mapping: results are exactly
 // `string`, args keep the wider union the encode path genuinely accepts.
 // These lines compile only while that stays true (the typecheck CI gate runs
-// tsc over tests).
+// tsc over tests). No `as` assertions: `true as never` is legal (never is
+// assignable to true), so an asserted pin still compiles when a helper
+// collapses to never. IsExact yields a plain true/false, and assigning the
+// bare literal `true` to it fails tsc the moment either direction regresses.
+type IsExact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 type BlobResult = TransformReturnRegistry<Uint8Array>["display"]
-type _ResultIsString = BlobResult extends string
-  ? string extends BlobResult
-    ? true
-    : never
-  : never
-type _NestedIsString =
-  DisplayResultOf<{ certificate: Uint8Array }> extends {
-    certificate: string
-  }
-    ? true
-    : never
-type _ArgsKeepUnion = Uint8Array extends BlobType ? true : never
-const _typePins: [true, true, true] = [
-  true as _ResultIsString,
-  true as _NestedIsString,
-  true as _ArgsKeepUnion,
-]
-void _typePins
+const _resultIsString: IsExact<BlobResult, string> = true
+const _nestedIsString: IsExact<
+  DisplayResultOf<{ certificate: Uint8Array }>,
+  { certificate: string }
+> = true
+const _argsKeepBytes: Uint8Array extends BlobType ? true : false = true
+const _argsKeepByteArray: number[] extends BlobType ? true : false = true
+void [_resultIsString, _nestedIsString, _argsKeepBytes, _argsKeepByteArray]
 
 // Regression for the 512-byte representation switch (#245): the display
 // transform rendered a blob as a hex string at or below 512 bytes and as a
