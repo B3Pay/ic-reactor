@@ -267,7 +267,8 @@ describe("Display Codec - didToDisplayCodec", () => {
       const codec = didToDisplayCodec(IDL.Vec(IDL.Nat8))
       const bytes = new Uint8Array([1, 2, 3, 4])
 
-      // Small blobs get converted to hex
+      // Blobs decode to hex regardless of size; this fixture is small only
+      // for readability
       const decoded = codec.asDisplay(bytes)
       expect(typeof decoded).toBe("string")
       expect(decoded).toMatch(/^[0-9a-f]+$/)
@@ -278,18 +279,19 @@ describe("Display Codec - didToDisplayCodec", () => {
       expect(Array.from(encoded)).toEqual([1, 2, 3, 4])
     })
 
-    it("should handle large Vec of Nat8 as Uint8Array without hex conversion", () => {
+    it("should handle large Vec of Nat8 as hex too — no size threshold", () => {
       const codec = didToDisplayCodec<Uint8Array>(IDL.Vec(IDL.Nat8))
-      // Create a large array (> 512 bytes)
+      // Well past the old 512-byte cutoff that used to leave this one as a
+      // Uint8Array while smaller blobs became hex strings.
       const largeBytes = new Uint8Array(1000).fill(42)
 
       const decoded = codec.asDisplay(largeBytes)
-      expect(decoded).toBeInstanceOf(Uint8Array)
-      expect(decoded).toEqual(largeBytes)
+      expect(typeof decoded).toBe("string")
+      expect(decoded).toBe("2a".repeat(1000))
 
-      const encoded = codec.asCandid(largeBytes)
+      const encoded = codec.asCandid(decoded) as Uint8Array
       expect(encoded).toBeInstanceOf(Uint8Array)
-      expect(encoded).toEqual(decoded)
+      expect(encoded).toEqual(largeBytes)
     })
   })
 

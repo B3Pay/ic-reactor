@@ -98,8 +98,8 @@ interface RecursiveNodeExtras {
 }
 
 interface BlobNodeExtras {
-  /** The blob value as hex/base64 or Uint8Array */
-  value: string | Uint8Array
+  /** The blob value as a hex string (no 0x prefix), at every size */
+  value: string
   /** Hash of the blob content */
   hash: string
   /** Length in bytes */

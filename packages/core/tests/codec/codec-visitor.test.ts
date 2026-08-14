@@ -512,10 +512,12 @@ describe("Codec Schema Visitor - Array Types", () => {
     expect(typeof displayValue).toBe("string")
     expect(displayValue).toMatch(/^[0-9a-f]+$/i)
 
-    // Large array -> stays as Uint8Array
+    // Large array -> hex string too; the representation no longer switches
+    // JS type at a size threshold.
     const largeArray = new Uint8Array(600)
     const displayLarge = codec.asDisplay(largeArray)
-    expect(displayLarge).toBeInstanceOf(Uint8Array)
+    expect(typeof displayLarge).toBe("string")
+    expect(displayLarge).toBe("00".repeat(600))
   })
 })
 

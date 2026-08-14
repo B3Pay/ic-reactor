@@ -13,7 +13,11 @@ import type {
   ValidationError,
 } from "../errors/index.js"
 import type { OkResult, ErrResult } from "./result.js"
-import type { DisplayOf, ActorDisplayCodec } from "../display/index.js"
+import type {
+  DisplayOf,
+  DisplayResultOf,
+  ActorDisplayCodec,
+} from "../display/index.js"
 
 export interface DefaultActorType {
   [key: string]: ActorMethod<any, any>
@@ -98,7 +102,9 @@ export interface TransformArgsRegistry<T> {
 // @ts-expect-error - A is used in module augmentation
 export interface TransformReturnRegistry<T, A = BaseActor> {
   candid: T
-  display: DisplayOf<T>
+  // Result position: a blob is exactly `string` (hex). The wider BlobType
+  // union stays on the args side, where encode accepts all three forms.
+  display: DisplayResultOf<T>
 }
 
 /**
@@ -177,7 +183,7 @@ export interface ActorMethodCodecs<A, M extends FunctionName<A>> {
   >
   result: ActorDisplayCodec<
     ActorMethodReturnType<A[M]>,
-    DisplayOf<ActorMethodReturnType<A[M]>>
+    DisplayResultOf<ActorMethodReturnType<A[M]>>
   >
 }
 

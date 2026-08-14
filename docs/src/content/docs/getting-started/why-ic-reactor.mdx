@@ -249,7 +249,7 @@ if ("Ok" in result) {
 | `nat64` / `int64`     | `1234567890123456789n`      | `"1234567890123456789"`      | ✅         |
 | `principal`           | `Principal.fromText("...")` | `"aaaaa-aa"`                 | ✅         |
 | `opt T`               | `[value]` or `[]`           | `value` or `undefined`       | ✅         |
-| `blob` (≤512 bytes)   | `Uint8Array`                | `"1234..."` (hex)            | ✅         |
+| `blob`                | `Uint8Array`                | `"1234..."` (hex)            | ✅         |
 | `variant { Ok; Err }` | `{ Ok: value }`             | `{ _type: "Ok", Ok: value }` | ✅         |
 
 This means your React components never deal with:

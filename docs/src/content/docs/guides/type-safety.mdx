@@ -188,12 +188,15 @@ With `DisplayReactor`, types are automatically transformed:
 | `nat64` / `int64`          | `bigint`       | `string`                                         |
 | `nat8/16/32`, `int8/16/32` | `number`       | `number` (unchanged; accepts a numeric `string`) |
 | `principal`                | `Principal`    | `string`                                         |
-| `blob`                     | `Uint8Array`   | `string` (hex, ≤512 bytes) or `Uint8Array`       |
+| `blob`                     | `Uint8Array`   | `string` (hex, at every size)                    |
 | `opt T`                    | `[T] \| []`    | `T \| null`                                      |
 
 <Aside type="note">
-  The hex string a blob decodes to is a plain `string` with no `0x` prefix.
-  Blobs longer than 512 bytes are left as `Uint8Array` rather than hex-encoded.
+  The hex string a blob decodes to is a plain `string` with no `0x` prefix,
+  regardless of the blob's size. (Releases up to and including v3.10.0 left
+  blobs longer than 512 bytes as `Uint8Array`; every release after v3.10.0
+  no longer switches representation with payload size. Use the exported
+  `hexToUint8Array` to get bytes back.)
 </Aside>
 
 ### Using DisplayReactor

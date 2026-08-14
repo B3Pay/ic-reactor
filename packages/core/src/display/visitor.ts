@@ -202,8 +202,16 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
         {
           decode: (val) => {
             if (!val) return val
-            if (val.length <= 512) return uint8ArrayToHex(val)
-            return val as Uint8Array<ArrayBuffer>
+            // One representation regardless of size. A 512-byte threshold
+            // used to leave larger blobs as Uint8Array, so a single Candid
+            // type produced two JS types depending on payload size —
+            // sometimes within one record — and JSON-serialising a display
+            // value corrupted exactly the large blobs
+            // (JSON.stringify(Uint8Array) is an index-keyed object). Display
+            // values are the JSON-safe layer; callers that need bytes back
+            // have hexToUint8Array, and raw-candid Reactor never enters this
+            // codec.
+            return uint8ArrayToHex(val)
           },
           encode: (val) => {
             if (typeof val === "string") {
