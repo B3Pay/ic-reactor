@@ -288,26 +288,66 @@ if (error instanceof CanisterError) {
 
 ## Retry Configuration
 
-### Don't Retry Business Errors
+### Built-in Retry Classification
 
-Configure your QueryClient to retry network errors but not business logic errors:
+Most canister-call failures cannot change on retry: a canister `Err` variant, a
+`ValidationError`, a Candid encode failure that never produced a request, a
+decode failure on the reply (the same reply decodes to the same error — and for
+an update, the canister may already have committed the change, so a retry would
+submit it again), a replica rejection the replica will simply repeat for an
+identical call. Retrying those costs several attempts and seconds of backoff to
+arrive at the same failure. Only a `CallError` caused by an agent-level fault —
+a transport, protocol, or certificate failure, or a
+`SysTransient`/`SysUnknown` rejection — can plausibly produce a different
+result next time.
+
+IC Reactor ships this classification as two functions, exported from
+`@ic-reactor/core` and re-exported by `@ic-reactor/react`:
+
+- **`isRetryableReactorError(error)`** — returns `true` only when a retry could
+  help. `CanisterError`, `ValidationError`, and a `CallError` without an
+  agent error underneath (encode/decode/transform failures) are never
+  retryable. Within agent errors the bias runs the other way: an unrecognized
+  `kind`, or a rejection whose code cannot be read, still retries, so an
+  unfamiliar transport-level fault is never silently made fatal.
+- **`reactorRetry(failureCount, error)`** — a TanStack Query `retry` predicate
+  built on it: up to 3 retries (4 attempts in total) for retryable errors, none
+  otherwise. It always returns `false` on the server
+  (`typeof window === "undefined"`), preserving TanStack Query's
+  no-retries-on-server default so a failed prefetch or render keeps failing
+  fast.
+
+The `QueryClient` that `defineReactor` creates already uses `reactorRetry` as
+its default for queries. A `QueryClient` you construct yourself opts in
+explicitly:
 
 ```typescript
 import { QueryClient } from "@tanstack/react-query"
-import { CanisterError } from "@ic-reactor/react"
+import { reactorRetry } from "@ic-reactor/react"
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount, error) => {
-        // Never retry canister business logic errors
-        if (error instanceof CanisterError) {
-          return false
-        }
+      retry: reactorRetry,
+    },
+  },
+})
+```
 
-        // Retry network errors up to 3 times
-        return failureCount < 3
-      },
+### Custom Retry Logic
+
+Combine `isRetryableReactorError` with your own policy when you need different
+attempt counts or delays:
+
+```typescript
+import { QueryClient } from "@tanstack/react-query"
+import { isRetryableReactorError } from "@ic-reactor/react"
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) =>
+        failureCount < 5 && isRetryableReactorError(error),
       retryDelay: (attemptIndex) => {
         // Exponential backoff: 1s, 2s, 4s...
         return Math.min(1000 * 2 ** attemptIndex, 30000)
@@ -320,7 +360,7 @@ const queryClient = new QueryClient({
 })
 ```
 
-### Custom Retry Logic
+Per-query overrides still work as in plain TanStack Query:
 
 ```typescript
 const { data } = useActorQuery({
@@ -402,6 +442,8 @@ const { data } = useActorQuery({
 ### Log Errors for Debugging
 
 ```typescript
+import { isRetryableReactorError, reactorRetry } from "@ic-reactor/react"
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -410,10 +452,10 @@ const queryClient = new QueryClient({
         console.error("Query failed:", {
           failureCount,
           error,
-          isCanisterError: error instanceof CanisterError,
+          isRetryable: isRetryableReactorError(error),
         })
 
-        return failureCount < 3 && !(error instanceof CanisterError)
+        return reactorRetry(failureCount, error)
       },
     },
   },
@@ -442,7 +484,7 @@ const { mutate } = useActorMutation({
 
 1. **Use `onCanisterError` for mutations** — Separates canister `Result { Err }` variants from network/agent errors without manual `instanceof` checks
 2. **Distinguish error types** — Handle `CanisterError`, `CallError`, and `ValidationError` differently
-3. **Don't retry business errors** — If the canister says "insufficient funds", retrying won't help
+3. **Don't retry deterministic failures** — If the canister says "insufficient funds", retrying won't help. `reactorRetry` (the default when `defineReactor` creates the `QueryClient`) classifies this for you
 4. **Show actionable messages** — Tell users how to fix the issue
 5. **Provide recovery options** — Retry buttons, form reset, etc.
 6. **Log appropriately** — Send business errors to analytics, network errors to monitoring
