@@ -369,26 +369,29 @@ const queryClient = new QueryClient({
 
 ### Smart Retry Logic
 
-Don't retry business logic errors:
+Retrying helps only when the failure could change next time — a transport
+fault, a transient replica rejection. A canister `Err` variant, a validation
+failure, or a Candid encode error is deterministic, and retrying it spends
+several attempts and seconds of backoff to reach the same failure. IC Reactor
+ships this classification as `reactorRetry`, which is already the query default
+in the `QueryClient` that `defineReactor` creates. Opt in on a `QueryClient`
+you construct yourself:
 
 ```typescript
-import { CanisterError } from "@ic-reactor/react"
+import { reactorRetry } from "@ic-reactor/react"
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount, error) => {
-        // Don't retry canister business logic errors
-        if (error instanceof CanisterError) {
-          return false
-        }
-        // Retry network errors up to 3 times
-        return failureCount < 3
-      },
+      retry: reactorRetry,
     },
   },
 })
 ```
+
+For custom attempt counts, build your own predicate on
+`isRetryableReactorError` — see
+[Error Handling — Retry Configuration](/v3/guides/error-handling#retry-configuration).
 
 ## Prefetching
 

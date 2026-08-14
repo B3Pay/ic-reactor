@@ -87,6 +87,35 @@ const greeting = await backend.fetchQuery({
 })
 ```
 
+## Retry Classification
+
+Whether a failed call is worth retrying is decided by what failed, and most
+failures are deterministic. `@ic-reactor/core` exports the classification
+(`@ic-reactor/react` re-exports both functions):
+
+```typescript
+import { reactorRetry, isRetryableReactorError } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: reactorRetry } },
+})
+```
+
+`isRetryableReactorError(error)` returns `true` only for a `CallError` whose
+cause is an agent-level fault — a transport, protocol, or certificate failure,
+or a `SysTransient`/`SysUnknown` replica rejection. A canister `Err` variant
+(`CanisterError`), a `ValidationError`, and a Candid encode/decode failure
+that never produced a request are never retryable: identical input produces
+the identical failure.
+
+`reactorRetry(failureCount, error)` is a ready-made TanStack Query `retry`
+predicate on top of it — up to 3 attempts for retryable errors, none
+otherwise, and always `false` on the server so a failed prefetch keeps failing
+fast. `defineReactor` in `@ic-reactor/react` already installs it as the query
+default on the `QueryClient` it creates; a `QueryClient` you construct
+yourself opts in as shown above.
+
 ## Identity Attributes
 
 Identity attributes are **not** part of `@ic-reactor/core`.
