@@ -384,10 +384,11 @@ value is always JSON-safe, so persisting or serialising it never corrupts
 binary fields.
 
 <Aside type="caution" title="Changed behavior — was size-dependent">
-  In 3.10 and earlier, only blobs of 512 bytes or fewer decoded to hex;
-  anything larger stayed a `Uint8Array`, so one field could change JS type
-  with payload size and JSON-serialising a result silently corrupted large
-  blobs. If you branched on `typeof blob === "string"`, the `Uint8Array`
+  Releases up to and including v3.10.0 decode only blobs of 512 bytes or
+  fewer to hex; anything larger stays a `Uint8Array`, so one field could
+  change JS type with payload size and JSON-serialising a result silently
+  corrupted large blobs. Every release after v3.10.0 decodes all blobs to
+  hex. If you branched on `typeof blob === "string"`, the `Uint8Array`
   branch is now dead — delete it, or convert back with the exported
   `hexToUint8Array(value)`. If you were relying on raw bytes for large
   payloads (hex doubles the in-memory size), read them through a plain

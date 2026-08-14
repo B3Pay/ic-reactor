@@ -193,9 +193,10 @@ With `DisplayReactor`, types are automatically transformed:
 
 <Aside type="note">
   The hex string a blob decodes to is a plain `string` with no `0x` prefix,
-  regardless of the blob's size. (In 3.10 and earlier, blobs longer than 512
-  bytes were left as `Uint8Array`; the representation no longer switches with
-  payload size. Use the exported `hexToUint8Array` to get bytes back.)
+  regardless of the blob's size. (Releases up to and including v3.10.0 left
+  blobs longer than 512 bytes as `Uint8Array`; every release after v3.10.0
+  no longer switches representation with payload size. Use the exported
+  `hexToUint8Array` to get bytes back.)
 </Aside>
 
 ### Using DisplayReactor
