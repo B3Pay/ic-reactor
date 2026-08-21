@@ -11,6 +11,7 @@ import {
   getProcessEnvNetwork,
   isDev,
   isMainnetHost,
+  allowsEnvRootKey,
 } from "./utils/helper.js"
 
 /**
@@ -64,7 +65,11 @@ export class ClientManager {
    *
    * @param parameters - Configuration options for the agent and network environment.
    */
-  constructor({ agentOptions = {}, queryClient }: ClientManagerParameters) {
+  constructor({
+    agentOptions = {},
+    queryClient,
+    allowEnvRootKey,
+  }: ClientManagerParameters) {
     this.queryClient = queryClient
 
     this.agentState = {
@@ -113,10 +118,18 @@ export class ClientManager {
       }
     }
 
-    // For security reasons, the root key from the ic_env cookie is only accepted
-    // on non-mainnet environments (e.g. local replicas or custom testnets).
-    // On the mainnet ("ic"), we must use the pinned root key inside the agent.
-    if (!isMainnetHost(agentOptions.host) && canisterEnv?.IC_ROOT_KEY) {
+    // The root key is what certificate verification is checked against, and the
+    // ic_env cookie is not origin-isolated -- any sibling subdomain of the
+    // registrable domain can write it. So this is a POSITIVE allowlist.
+    //
+    // It used to read `!isMainnetHost(host)`, which fails OPEN: isMainnetHost
+    // recognises exactly three boundary domains, so a production dapp served
+    // from an ic-domains custom domain fell through it and took its root key
+    // from a cookie. allowsEnvRootKey instead accepts only hosts that are
+    // unambiguously a local replica; anything else must pass allowEnvRootKey.
+    const acceptEnvRootKey =
+      allowEnvRootKey ?? allowsEnvRootKey(agentOptions.host)
+    if (acceptEnvRootKey && canisterEnv?.IC_ROOT_KEY) {
       agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
     }
 

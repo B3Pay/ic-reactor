@@ -109,6 +109,7 @@ const RUNTIME_EXPORTS: Record<string, "function" | "string" | "object"> = {
   isDev: "function",
   isInLocalOrDevelopment: "function",
   isMainnetHost: "function",
+  allowsEnvRootKey: "function",
   getNetworkByHostname: "function",
   getProcessEnvNetwork: "function",
   IC_HOST_NETWORK_URI: "string",

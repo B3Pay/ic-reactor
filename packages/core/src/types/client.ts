@@ -16,6 +16,16 @@ export interface ClientManagerParameters {
    * Optional configuration for the underlying HttpAgent.
    */
   agentOptions?: HttpAgentOptions
+  /**
+   * Whether to adopt the agent root key from the `ic_env` cookie.
+   *
+   * Defaults to `true` only for hosts that are unambiguously a local replica
+   * (loopback, `localhost`, and the dev-container domains that tunnel one).
+   * The root key is what certificate verification is checked against, and
+   * cookies are not origin-isolated, so any other host must opt in — set this
+   * when you run a custom testnet on a real domain and trust its `ic_env`.
+   */
+  allowEnvRootKey?: boolean
 }
 
 /**

@@ -6,7 +6,7 @@ import type {
   AuthenticationClientOptions,
   AuthenticationSignInOptions,
 } from "./types.js"
-import { ClientManager, isDev, isMainnetHost } from "@ic-reactor/core"
+import { ClientManager, isDev, allowsEnvRootKey } from "@ic-reactor/core"
 
 import { Principal } from "@icp-sdk/core/principal"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
@@ -651,16 +651,21 @@ function acceptEnvIdentityProvider(
     return url.toString()
   }
 
-  // `isMainnetHost` matches only the real boundary domains and defaults to true
-  // for an unknown host, so custom testnets keep working while anything that
-  // looks like mainnet fails closed. `clientManager.isLocal` would be wrong
-  // here: it treats every unrecognized hostname as "ic".
-  if (isMainnetHost(clientManager.agentHost?.toString())) {
+  // Positive allowlist, not `!isMainnetHost(...)`.
+  //
+  // The old comment here claimed this defaulted to true for an unknown host so
+  // that "anything that looks like mainnet fails closed". It did not:
+  // isMainnetHost defaults to true only for `undefined`, and returns false for
+  // every unrecognised host — so a dapp on a custom domain accepted an identity
+  // provider chosen by a cookie, and the ic_env cookie is writable by any
+  // sibling subdomain. Redirecting the Internet Identity flow is as severe as
+  // substituting the root key, so both now use the same test.
+  if (!allowsEnvRootKey(clientManager.agentHost?.toString())) {
     console.warn(
       `[ic-reactor] Ignoring the Internet Identity provider from the ic_env cookie ` +
-        `("${url.origin}") because this reactor targets mainnet, where the provider ` +
-        `is taken from configuration rather than the environment. Pass ` +
-        `\`identityProvider\` to AuthenticationManager to use a custom provider on mainnet.`
+        `("${url.origin}") because this reactor does not target a local replica, where ` +
+        `the provider is taken from configuration rather than the environment. Pass ` +
+        `\`identityProvider\` to AuthenticationManager to use a custom provider.`
     )
     return undefined
   }
