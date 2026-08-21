@@ -631,7 +631,12 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
                                 .map(|(index, arg)| {
                                     type_to_schema(
                                         arg,
-                                        syntax_func.and_then(|func| func.args.get(index)),
+                                        // candid_parser 0.4 wraps these in IDLArgType to carry
+                                        // Candid's optional argument labels; the schema
+                                        // builder wants the bare type.
+                                        syntax_func
+                                            .and_then(|func| func.args.get(index))
+                                            .map(|arg| &arg.typ),
                                     )
                                 })
                                 .collect(),
@@ -642,7 +647,12 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
                                 .map(|(index, ret)| {
                                     type_to_schema(
                                         ret,
-                                        syntax_func.and_then(|func| func.rets.get(index)),
+                                        // candid_parser 0.4 wraps these in IDLArgType to carry
+                                        // Candid's optional argument labels; the schema
+                                        // builder wants the bare type.
+                                        syntax_func
+                                            .and_then(|func| func.rets.get(index))
+                                            .map(|arg| &arg.typ),
                                     )
                                 })
                                 .collect(),
