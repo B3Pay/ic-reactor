@@ -245,7 +245,11 @@ export function assertContainedPath(
     realpathAllowingMissing(resolved)
   )
 
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+  // Test for a real ".." *segment*, not a ".." prefix: a directory legitimately
+  // named "..generated" relativizes to "..generated", which is inside the root.
+  const [firstSegment] = relative.split(/[\\/]/)
+
+  if (firstSegment === ".." || path.isAbsolute(relative)) {
     throw new CodegenConfigError(
       `Invalid ${label} ${JSON.stringify(original)}: resolves to ${JSON.stringify(resolved)}, ` +
         `which is outside the project root ${JSON.stringify(path.resolve(projectRoot))}. ` +
@@ -349,6 +353,17 @@ export function assertSafeCanisterConfig(
           resolveContainedOutDir("outDir", globalOutDir, projectRoot),
           name
         )
+
+  // Re-assert on the FINAL path. In the global-outDir branch the canister name
+  // is appended after that directory was checked, and the canister directory can
+  // itself be a symlink pointing out of the project — checking only the parent
+  // leaves the whole traversal open. Whatever this function returns has been
+  // containment-checked as a complete path.
+  assertContainedPath(
+    `output directory for canister ${JSON.stringify(name)}`,
+    outDir,
+    projectRoot
+  )
 
   return { name, outDir, clientManagerPath }
 }

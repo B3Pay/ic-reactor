@@ -209,6 +209,43 @@ describe("bypasses found by adversarial review", () => {
     ).toBe(true)
   })
 
+  it("refuses a symlinked canister directory under the global outDir", async () => {
+    // The global-outDir branch appends the canister name AFTER resolving the
+    // parent, so checking only the parent leaves the final segment free to be a
+    // symlink out of the project.
+    const victim = path.join(tmpRoot, "victim")
+    fs.mkdirSync(path.join(victim, "declarations"), { recursive: true })
+    fs.writeFileSync(
+      path.join(victim, "declarations", "IRREPLACEABLE.txt"),
+      "keep me"
+    )
+
+    const declarations = path.join(projectRoot, "src", "declarations")
+    fs.mkdirSync(declarations, { recursive: true })
+    fs.symlinkSync(victim, path.join(declarations, "backend"))
+
+    const result = await run(
+      { name: "backend" },
+      { outDir: "src/declarations" }
+    )
+
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/outside the project root/)
+    expect(
+      fs.existsSync(path.join(victim, "declarations", "IRREPLACEABLE.txt"))
+    ).toBe(true)
+  })
+
+  it("accepts a contained directory whose name merely begins with dots", async () => {
+    // "..generated" relativizes to "..generated", which a naive `..` prefix
+    // test rejects even though it is inside the project.
+    for (const outDir of ["..generated", "..secret/gen", "..a/b"]) {
+      const result = await run({ name: "backend" }, { outDir })
+      expect(result.error).toBeUndefined()
+      expect(result.success).toBe(true)
+    }
+  })
+
   it("refuses an unknown mode instead of interpolating it into an import", async () => {
     const result = await run({
       name: "backend",
