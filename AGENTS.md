@@ -12,9 +12,9 @@ Treat the published documentation and package manifests as the v3 release line.
 - `@ic-reactor/react` (`packages/react`, `3.11.0`) — React bindings, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks.
 - `@ic-reactor/candid` (`packages/candid`, `3.11.0`) — dynamic Candid adapter/reactors and metadata reactors.
 - `@ic-reactor/parser` (`packages/parser`, `0.4.7`) — Rust/WASM Candid parser.
-- `@ic-reactor/codegen` (`packages/codegen`, `0.12.0`) — shared generation pipeline used by CLI and Vite plugin.
-- `@ic-reactor/cli` (`packages/cli`, `0.12.0`) — `ic-reactor` CLI for explicit declaration/reactor generation.
-- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `0.12.0`) — Vite plugin for watch-mode generation and local `ic_env` injection.
+- `@ic-reactor/codegen` (`packages/codegen`, `0.12.1`) — shared generation pipeline used by CLI and Vite plugin.
+- `@ic-reactor/cli` (`packages/cli`, `0.12.1`) — `ic-reactor` CLI for explicit declaration/reactor generation.
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `0.12.1`) — Vite plugin for watch-mode generation and local `ic_env` injection.
 
 ### Package alignment rules
 
