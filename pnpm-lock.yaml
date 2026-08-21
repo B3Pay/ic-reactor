@@ -1288,9 +1288,6 @@ importers:
         specifier: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
         version: 8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
     devDependencies:
-      '@icp-sdk/bindgen':
-        specifier: ^0.4.0
-        version: 0.4.0
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0

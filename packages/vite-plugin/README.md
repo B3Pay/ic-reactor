@@ -69,8 +69,20 @@ icReactor({
   clientManagerPath: "../../clients",
   target: "react",
   injectEnvironment: true,
+  failOnError: true,
 })
 ```
+
+Relative paths — `didFile`, `outDir` — resolve against Vite's resolved
+`config.root`, not the directory vite was started from. If you set
+`root: "frontend"`, or run `vite build --config apps/web/vite.config.ts` from a
+monorepo root, write the paths as the project itself sees them.
+
+`failOnError` decides what a failed canister does to the run. It defaults to
+`true` under `vite build` and `false` under `vite dev`: a build that quietly
+ships the bindings left over from the last successful run is worse than no
+build at all, while a dev server has to survive the broken intermediate states
+of a `.did` file being edited.
 
 ### Per-canister options
 
@@ -112,7 +124,10 @@ Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 (defaults to `"local"`).
 
 If environment detection fails, the plugin still falls back to proxying `/api`
-to `http://127.0.0.1:4943`, but it will not inject canister metadata.
+to `http://127.0.0.1:4943`, but it will not inject canister metadata. It warns
+when that happens with canisters configured, because the failure is otherwise
+indistinguishable from success until the app breaks on an undefined canister
+id. Run with `DEBUG=ic-reactor` to see the `icp` output behind the warning.
 
 ## File Regeneration
 
@@ -121,7 +136,11 @@ the managed `index.generated.ts` implementation. The user-facing `index.ts`
 entry is created once, then preserved unless it still matches the default
 wrapper or a legacy generated scaffold that can be migrated automatically.
 When a watched `.did` file changes, the plugin sends a full browser reload so
-the new declarations are picked up.
+the new declarations are picked up. Regeneration is serialized per canister —
+saves that land while a run is in flight collapse into a single rerun — so two
+rapid saves cannot interleave inside the pipeline's delete-then-write sequence.
+A regeneration that fails is reported to the terminal and to the browser error
+overlay rather than leaving the page on stale bindings.
 
 ## When To Use It
 

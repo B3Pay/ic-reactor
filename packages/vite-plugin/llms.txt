@@ -24,11 +24,18 @@ icReactor({
 - Runs codegen on startup and `.did` changes
 - Regenerates declarations + `index.generated.ts`
 - Preserves user-facing `index.ts` wrapper after initial creation
+- Relative paths (`didFile`, `outDir`) resolve against Vite's `config.root`
+- A failed canister fails `vite build`; in `vite dev` it goes to the terminal
+  and the browser error overlay instead
 
 ## Key Options
 
-- `canisters`, `outDir`, `clientManagerPath`, `target`, `mode`, `canisterId`
+- Plugin level: `canisters`, `outDir`, `clientManagerPath`, `target`,
+  `injectEnvironment`, `failOnError`
+- Per canister (inside `canisters[]`): `name`, `didFile`, `outDir`,
+  `clientManagerPath`, `target`, `mode`, `canisterId`
 - `injectEnvironment` for local `ic_env` cookie + `/api` proxy behavior
+- `failOnError` overrides the default (`true` for build, `false` for dev)
 
 ## Best Practices
 

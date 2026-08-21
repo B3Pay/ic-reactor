@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import * as vitePluginModule from "./index.js"
 import type { IcReactorPluginOptions } from "./index.js"
-import path from "path"
+import path from "node:path"
 import { execFileSync } from "child_process"
 import { runCanisterPipeline } from "@ic-reactor/codegen"
 
@@ -19,22 +19,33 @@ vi.mock("child_process", () => ({
   execFileSync: vi.fn(),
 }))
 
-// Mock fs
-vi.mock("fs", () => ({
-  default: {
-    existsSync: vi.fn(() => true),
-    readFileSync: vi.fn(),
-    mkdirSync: vi.fn(),
-    writeFileSync: vi.fn(),
-  },
-}))
+/**
+ * A Vite root that is deliberately not the process cwd, so every path
+ * assertion below fails if the plugin falls back to `process.cwd()`.
+ */
+const VITE_ROOT = path.resolve("/vite/root")
+const DID_RELATIVE = "src/declarations/test.did"
+const DID_IN_VITE_ROOT = path.resolve(VITE_ROOT, DID_RELATIVE)
+const DID_IN_CWD = path.resolve(process.cwd(), DID_RELATIVE)
+
+/**
+ * Rollup's `this.error()` throws, which is what turns a generation failure into
+ * a non-zero `vite build` exit. Model that faithfully — a context whose `error`
+ * only records the call would let a regression through.
+ */
+function buildContext() {
+  const error = vi.fn((reason: string | Error) => {
+    throw reason instanceof Error ? reason : new Error(reason)
+  })
+  return { error }
+}
 
 describe("icReactor", () => {
   const mockOptions: IcReactorPluginOptions = {
     canisters: [
       {
         name: "test_canister",
-        didFile: "src/declarations/test.did",
+        didFile: DID_RELATIVE,
         outDir: "src/declarations/test_canister",
       },
     ],
@@ -43,7 +54,7 @@ describe("icReactor", () => {
 
   const mockServer: any = {
     config: {
-      root: "/mock/root",
+      root: VITE_ROOT,
       logger: {
         info: vi.fn(),
       },
@@ -60,6 +71,17 @@ describe("icReactor", () => {
     },
   }
 
+  /**
+   * Drive the plugin through the hooks Vite runs before `buildStart`.
+   *
+   * Called optionally on purpose: the structure test above is what asserts the
+   * hook exists, and without the `?.` a plugin that lost `configResolved` would
+   * make every test below fail with a TypeError instead of failing on the path
+   * it actually resolved.
+   */
+  const resolveConfig = (plugin: any, command: "build" | "serve" = "build") =>
+    plugin.configResolved?.({ root: VITE_ROOT, command })
+
   beforeEach(() => {
     vi.resetAllMocks()
     ;(runCanisterPipeline as any).mockResolvedValue({
@@ -67,11 +89,16 @@ describe("icReactor", () => {
     })
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it("should return correct plugin structure", () => {
     const plugin = createVitePlugin(mockOptions)
     expect(plugin.name).toBe("ic-reactor-plugin")
     expect(plugin.buildStart).toBeDefined()
     expect(plugin.handleHotUpdate).toBeDefined()
+    expect(plugin.configResolved).toBeDefined()
     expect((plugin as any).config).toBeDefined()
   })
 
@@ -187,6 +214,9 @@ describe("icReactor", () => {
     })
 
     it("should fallback to default proxy when icp-cli fails", () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {})
       ;(execFileSync as any).mockImplementation(() => {
         throw new Error("Command not found")
       })
@@ -196,6 +226,47 @@ describe("icReactor", () => {
 
       expect(config.server.headers).toBeUndefined()
       expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
+      // Silent detection failure is indistinguishable from a working setup
+      // until the app blows up on an undefined canister id at runtime.
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Could not detect the local IC environment")
+      )
+    })
+
+    it("should stay quiet about failed detection when no canisters are configured", () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {})
+      ;(execFileSync as any).mockImplementation(() => {
+        throw new Error("project manifest not found")
+      })
+
+      const plugin = createVitePlugin({ canisters: [] })
+      ;(plugin as any).config({}, { command: "serve" })
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled()
+    })
+
+    it("should surface the icp stderr at debug level", () => {
+      const consoleDebugSpy = vi
+        .spyOn(console, "debug")
+        .mockImplementation(() => {})
+      vi.spyOn(console, "warn").mockImplementation(() => {})
+      vi.stubEnv("DEBUG", "ic-reactor")
+      ;(execFileSync as any).mockImplementation(() => {
+        const error: any = new Error("Command failed: icp network status")
+        error.stderr = Buffer.from("error: no local network is running\n")
+        throw error
+      })
+
+      const plugin = createVitePlugin(mockOptions)
+      ;(plugin as any).config({}, { command: "serve" })
+
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("no local network is running")
+      )
+
+      vi.unstubAllEnvs()
     })
 
     it("should inject default local II provider in env-only mode when icp-cli project detection fails", () => {
@@ -223,11 +294,12 @@ describe("icReactor", () => {
   describe("buildStart", () => {
     it("should generate declarations and reactor file", async () => {
       const plugin = createVitePlugin(mockOptions)
-      await (plugin.buildStart as any)()
+      resolveConfig(plugin)
+      await (plugin.buildStart as any).call(buildContext())
 
       expect(runCanisterPipeline).toHaveBeenCalledWith({
         canisterConfig: mockOptions.canisters[0],
-        projectRoot: expect.any(String),
+        projectRoot: VITE_ROOT,
         globalConfig: {
           outDir: "src/declarations",
           clientManagerPath: "../../clients",
@@ -236,24 +308,133 @@ describe("icReactor", () => {
       })
     })
 
-    it("should handle generation errors", async () => {
+    it("should resolve the project root from the Vite config, not the cwd", async () => {
+      const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin)
+      await (plugin.buildStart as any).call(buildContext())
+
+      const { projectRoot } = (runCanisterPipeline as any).mock.calls[0][0]
+      expect(projectRoot).toBe(VITE_ROOT)
+      expect(projectRoot).not.toBe(process.cwd())
+    })
+
+    it("should fail the build when a canister fails to generate", async () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockResolvedValue({
+        success: false,
+        error: "DID file not found",
+      })
 
+      const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin, "build")
+      const context = buildContext()
+
+      // `vite build` used to exit 0 here and ship whatever stale bindings were
+      // left on disk from the previous successful run.
+      await expect(
+        (plugin.buildStart as any).call(context)
+      ).rejects.toThrowError(/test_canister: DID file not found/)
+      expect(context.error).toHaveBeenCalledOnce()
+
+      consoleErrorSpy.mockRestore()
+    })
+
+    it("should fail the build when the pipeline throws", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockRejectedValue(
+        new Error("Unexpected token at line 3")
+      )
+
+      const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin, "build")
+
+      await expect(
+        (plugin.buildStart as any).call(buildContext())
+      ).rejects.toThrowError(/test_canister: Unexpected token at line 3/)
+    })
+
+    it("should name every failing canister in one build error", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockImplementation(
+        async ({ canisterConfig }: any) => ({
+          success: false,
+          error: `${canisterConfig.name} is broken`,
+        })
+      )
+
+      const plugin = createVitePlugin({
+        canisters: [
+          { name: "alpha", didFile: "alpha.did" },
+          { name: "beta", didFile: "beta.did" },
+        ],
+      })
+      resolveConfig(plugin, "build")
+
+      await expect(
+        (plugin.buildStart as any).call(buildContext())
+      ).rejects.toThrowError(/alpha is broken[\s\S]*beta is broken/)
+    })
+
+    it("should keep the dev server alive on failure and report to the overlay", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {})
       ;(runCanisterPipeline as any).mockResolvedValue({
         success: false,
         error: "Failed to generate",
       })
 
       const plugin = createVitePlugin(mockOptions)
-      await (plugin.buildStart as any)()
+      resolveConfig(plugin, "serve")
+      ;(plugin.configureServer as any)(mockServer)
+      const context = buildContext()
 
+      await (plugin.buildStart as any).call(context)
+
+      expect(context.error).not.toHaveBeenCalled()
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to generate test_canister")
+        expect.stringContaining("test_canister: Failed to generate")
       )
+      expect(mockServer.ws.send).toHaveBeenCalledWith({
+        type: "error",
+        err: expect.objectContaining({
+          message: expect.stringContaining("test_canister: Failed to generate"),
+          plugin: "ic-reactor-plugin",
+        }),
+      })
+    })
 
-      consoleErrorSpy.mockRestore()
+    it("should honour an explicit failOnError override in dev", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockResolvedValue({
+        success: false,
+        error: "Failed to generate",
+      })
+
+      const plugin = createVitePlugin({ ...mockOptions, failOnError: true })
+      resolveConfig(plugin, "serve")
+
+      await expect(
+        (plugin.buildStart as any).call(buildContext())
+      ).rejects.toThrowError(/Failed to generate/)
+    })
+
+    it("should not fail the build when failOnError is disabled", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockResolvedValue({
+        success: false,
+        error: "Failed to generate",
+      })
+
+      const plugin = createVitePlugin({ ...mockOptions, failOnError: false })
+      resolveConfig(plugin, "build")
+      const context = buildContext()
+
+      await (plugin.buildStart as any).call(context)
+
+      expect(context.error).not.toHaveBeenCalled()
     })
 
     it("should pass canister mode through to codegen via canister config", async () => {
@@ -266,15 +447,16 @@ describe("icReactor", () => {
         ],
         outDir: mockOptions.outDir,
       })
+      resolveConfig(plugin)
 
-      await (plugin.buildStart as any)()
+      await (plugin.buildStart as any).call(buildContext())
 
       expect(runCanisterPipeline).toHaveBeenCalledWith({
         canisterConfig: {
           ...mockOptions.canisters[0],
           mode: "Reactor",
         },
-        projectRoot: expect.any(String),
+        projectRoot: VITE_ROOT,
         globalConfig: {
           outDir: "src/declarations",
           clientManagerPath: "../../clients",
@@ -288,12 +470,13 @@ describe("icReactor", () => {
         ...mockOptions,
         target: "core",
       })
+      resolveConfig(plugin)
 
-      await (plugin.buildStart as any)()
+      await (plugin.buildStart as any).call(buildContext())
 
       expect(runCanisterPipeline).toHaveBeenCalledWith({
         canisterConfig: mockOptions.canisters[0],
-        projectRoot: expect.any(String),
+        projectRoot: VITE_ROOT,
         globalConfig: {
           outDir: "src/declarations",
           clientManagerPath: "../../clients",
@@ -304,46 +487,156 @@ describe("icReactor", () => {
   })
 
   describe("handleHotUpdate", () => {
-    it("should register configured .did files with the watcher", () => {
+    it("should register configured .did files against the Vite root", () => {
       const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin, "serve")
       ;(plugin.configureServer as any)(mockServer)
 
-      expect(mockServer.watcher.add).toHaveBeenCalledWith([
-        expect.stringContaining("src/declarations/test.did"),
-      ])
+      expect(mockServer.watcher.add).toHaveBeenCalledWith([DID_IN_VITE_ROOT])
     })
 
-    it("should restart server when .did file changes", async () => {
+    it("should regenerate for a .did file resolved against the Vite root", async () => {
       const plugin = createVitePlugin(mockOptions)
-      const ctx = {
-        file: "/absolute/path/to/src/declarations/test.did",
-        server: mockServer,
-      }
+      resolveConfig(plugin, "serve")
 
-      // Mock path.resolve to match the test case
-      const originalResolve = path.resolve
-      vi.spyOn(path, "resolve").mockImplementation((...args) => {
-        if (args.some((a) => a && a.includes("test.did"))) {
-          return "/absolute/path/to/src/declarations/test.did"
-        }
-        return originalResolve(...args)
+      await (plugin.handleHotUpdate as any)({
+        file: DID_IN_VITE_ROOT,
+        server: mockServer,
       })
 
-      await (plugin.handleHotUpdate as any)(ctx)
-
+      expect(runCanisterPipeline).toHaveBeenCalledOnce()
       expect(mockServer.ws.send).toHaveBeenCalledWith({ type: "full-reload" })
     })
 
-    it("should ignore other files", () => {
+    it("should ignore a same-named .did file under the process cwd", async () => {
+      // Skipped when the cwd happens to be the mocked Vite root; the two paths
+      // are meant to differ, which is the whole point of the assertion.
+      if (DID_IN_CWD === DID_IN_VITE_ROOT) return
+
       const plugin = createVitePlugin(mockOptions)
-      const ctx = {
+      resolveConfig(plugin, "serve")
+
+      await (plugin.handleHotUpdate as any)({
+        file: DID_IN_CWD,
+        server: mockServer,
+      })
+
+      expect(runCanisterPipeline).not.toHaveBeenCalled()
+      expect(mockServer.ws.send).not.toHaveBeenCalled()
+    })
+
+    it("should ignore other files", async () => {
+      const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin, "serve")
+
+      await (plugin.handleHotUpdate as any)({
         file: "/some/other/file.ts",
         server: mockServer,
-      }
-
-      ;(plugin.handleHotUpdate as any)(ctx)
+      })
 
       expect(mockServer.ws.send).not.toHaveBeenCalled()
+    })
+
+    it("should send a regeneration failure to the browser overlay", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockResolvedValue({
+        success: false,
+        error: "Unexpected token 'srevice'",
+      })
+
+      const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin, "serve")
+
+      await (plugin.handleHotUpdate as any)({
+        file: DID_IN_VITE_ROOT,
+        server: mockServer,
+      })
+
+      expect(mockServer.ws.send).toHaveBeenCalledWith({
+        type: "error",
+        err: expect.objectContaining({
+          message: expect.stringContaining("Unexpected token 'srevice'"),
+          plugin: "ic-reactor-plugin",
+        }),
+      })
+      expect(mockServer.ws.send).not.toHaveBeenCalledWith({
+        type: "full-reload",
+      })
+    })
+
+    it("should send a thrown regeneration error to the browser overlay", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockRejectedValue(
+        new Error("parser panicked")
+      )
+
+      const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin, "serve")
+
+      await (plugin.handleHotUpdate as any)({
+        file: DID_IN_VITE_ROOT,
+        server: mockServer,
+      })
+
+      expect(mockServer.ws.send).toHaveBeenCalledWith({
+        type: "error",
+        err: expect.objectContaining({
+          message: expect.stringContaining("parser panicked"),
+        }),
+      })
+    })
+
+    it("should serialize regeneration for rapid saves of the same .did file", async () => {
+      let releaseFirstRun: (result: unknown) => void = () => {}
+      ;(runCanisterPipeline as any).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseFirstRun = resolve
+          })
+      )
+
+      const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin, "serve")
+      const ctx = { file: DID_IN_VITE_ROOT, server: mockServer }
+
+      const first = (plugin.handleHotUpdate as any)(ctx)
+      const second = (plugin.handleHotUpdate as any)(ctx)
+
+      // The second save must not enter the pipeline's delete-then-write
+      // sequence while the first one is still inside it.
+      expect(runCanisterPipeline).toHaveBeenCalledOnce()
+
+      releaseFirstRun({ success: true })
+      await Promise.all([first, second])
+
+      // ...but it must not be dropped either: the last saved .did has to win.
+      expect(runCanisterPipeline).toHaveBeenCalledTimes(2)
+    })
+
+    it("should collapse a burst of saves into a single trailing rerun", async () => {
+      let releaseFirstRun: (result: unknown) => void = () => {}
+      ;(runCanisterPipeline as any).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseFirstRun = resolve
+          })
+      )
+
+      const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin, "serve")
+      const ctx = { file: DID_IN_VITE_ROOT, server: mockServer }
+
+      const pending = [
+        (plugin.handleHotUpdate as any)(ctx),
+        (plugin.handleHotUpdate as any)(ctx),
+        (plugin.handleHotUpdate as any)(ctx),
+        (plugin.handleHotUpdate as any)(ctx),
+      ]
+
+      releaseFirstRun({ success: true })
+      await Promise.all(pending)
+
+      expect(runCanisterPipeline).toHaveBeenCalledTimes(2)
     })
   })
 })

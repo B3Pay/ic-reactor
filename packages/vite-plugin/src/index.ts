@@ -7,7 +7,7 @@
  * 3. Hot-reloads when .did files change
  */
 
-import type { Plugin } from "vite"
+import type { Plugin, ResolvedConfig, ViteDevServer } from "vite"
 import path from "node:path"
 import {
   runCanisterPipeline,
@@ -17,6 +17,9 @@ import {
 } from "@ic-reactor/codegen"
 import { getIcEnvironmentInfo, buildIcEnvCookie } from "./env.js"
 
+const PLUGIN_NAME = "ic-reactor-plugin"
+const DEFAULT_LOCAL_REPLICA = "http://127.0.0.1:4943"
+
 export interface IcReactorPluginOptions {
   /**
    * Canister configurations.
@@ -24,7 +27,7 @@ export interface IcReactorPluginOptions {
    */
   canisters: CanisterConfig[]
   /**
-   * Default output directory (relative to project root).
+   * Default output directory (relative to the Vite project root).
    * Default: "src/declarations"
    */
   outDir?: string
@@ -43,15 +46,26 @@ export interface IcReactorPluginOptions {
    * Default: true
    */
   injectEnvironment?: boolean
+  /**
+   * Abort the Vite run when a canister fails to generate.
+   *
+   * Default: `true` under `vite build`, `false` under `vite dev`. A build that
+   * silently ships the bindings left over from the last successful run is worse
+   * than no build at all, while a dev server has to survive the broken
+   * intermediate states of a `.did` file being edited — there the failure is
+   * reported to the terminal and the browser error overlay instead.
+   */
+  failOnError?: boolean
 }
 
-export function icReactor(options: IcReactorPluginOptions): any {
+export function icReactor(options: IcReactorPluginOptions): Plugin {
   const {
     canisters,
     outDir = "src/declarations",
     clientManagerPath = "../../clients",
     target = "react",
     injectEnvironment = true,
+    failOnError,
   } = options
 
   // Construct a partial CodegenConfig to pass to the pipeline
@@ -63,7 +77,26 @@ export function icReactor(options: IcReactorPluginOptions): any {
     clientManagerPath,
     target,
   }
-  const projectRoot = process.cwd()
+
+  // Vite resolves relative project paths against the resolved `config.root`,
+  // which only equals the process cwd when vite happens to be started from the
+  // project directory — not for `root: "frontend"`, and not for a monorepo
+  // running `vite build --config apps/web/vite.config.ts` from the repo root.
+  // `configResolved` overwrites this before any hook that resolves a path runs;
+  // the cwd is only the pre-resolution default, which is also Vite's own
+  // default root.
+  let projectRoot = process.cwd()
+
+  // `vite build` and `vite dev` want opposite failure behaviour, so remember
+  // which one we are in. Both `config` and `configResolved` carry the command;
+  // build is the safer default for the case where neither has run.
+  let command: ResolvedConfig["command"] = "build"
+
+  // Set once the dev server exists, so a `buildStart` failure in dev can reach
+  // the browser overlay too — in dev, `configureServer` runs before Vite calls
+  // `buildStart` on the plugin container.
+  let devServer: ViteDevServer | null = null
+
   const resolveDidPath = (didFile: string) =>
     path.normalize(
       path.isAbsolute(didFile) ? didFile : path.resolve(projectRoot, didFile)
@@ -74,12 +107,95 @@ export function icReactor(options: IcReactorPluginOptions): any {
       .map((canister) => [canister.name, canister.canisterId as string])
   )
 
+  /**
+   * Report a generation failure everywhere a developer might be looking.
+   *
+   * Terminal output scrolls away behind request logs and HMR chatter, so in dev
+   * the browser error overlay is the signal that actually gets noticed.
+   */
+  const reportFailure = (
+    server: ViteDevServer | null,
+    message: string,
+    cause?: unknown
+  ) => {
+    console.error(`[ic-reactor] ${message}`)
+
+    server?.ws.send({
+      type: "error",
+      err: {
+        message: `[ic-reactor] ${message}`,
+        stack: cause instanceof Error && cause.stack ? cause.stack : "",
+        plugin: PLUGIN_NAME,
+      },
+    })
+  }
+
+  // A `.did` save can land while the previous regeneration is still inside the
+  // pipeline's delete-then-write sequence, and the second run would wipe the
+  // directory the first one is writing into. Keep at most one run per canister
+  // in flight and collapse every save that arrives meanwhile into a single
+  // trailing rerun, so the last saved `.did` still wins without the races.
+  const inFlight = new Map<string, Promise<void>>()
+  const rerunQueued = new Set<string>()
+
+  const regenerate = (
+    canisterConfig: CanisterConfig,
+    server: ViteDevServer
+  ): Promise<void> => {
+    const { name } = canisterConfig
+    const running = inFlight.get(name)
+
+    if (running) {
+      rerunQueued.add(name)
+      return running
+    }
+
+    const run = runCanisterPipeline({
+      canisterConfig,
+      projectRoot,
+      globalConfig,
+    })
+      .then((result) => {
+        if (result.success) {
+          // Reload page to reflect new types/hooks
+          server.ws.send({ type: "full-reload" })
+        } else {
+          reportFailure(
+            server,
+            `Regeneration failed for ${name}: ${result.error ?? "unknown error"}`
+          )
+        }
+      })
+      // A throw from the pipeline (a malformed `.did` makes the parser throw
+      // rather than return a failed result) would otherwise be an unhandled
+      // rejection: invisible in the browser and, depending on the Node version,
+      // fatal to the dev server.
+      .catch((error: unknown) => {
+        reportFailure(
+          server,
+          `Regeneration failed for ${name}: ${describeError(error)}`,
+          error
+        )
+      })
+      .finally(() => {
+        inFlight.delete(name)
+        if (rerunQueued.delete(name)) {
+          void regenerate(canisterConfig, server)
+        }
+      })
+
+    inFlight.set(name, run)
+    return run
+  }
+
   const plugin: Plugin = {
-    name: "ic-reactor-plugin",
+    name: PLUGIN_NAME,
     enforce: "pre", // Run before other plugins
 
-    config(_config, { command }) {
-      if (command !== "serve" || !injectEnvironment) {
+    config(_config, { command: viteCommand }) {
+      command = viteCommand
+
+      if (viteCommand !== "serve" || !injectEnvironment) {
         return {}
       }
 
@@ -93,9 +209,26 @@ export function icReactor(options: IcReactorPluginOptions): any {
         canisterNames.push("internet_identity")
       }
 
-      const icEnv = getIcEnvironmentInfo(canisterNames)
+      const { environment: icEnv, diagnostics } =
+        getIcEnvironmentInfo(canisterNames)
 
       if (!icEnv) {
+        // Failing detection used to be indistinguishable from success: no
+        // cookie was set, no warning was printed, and the app only broke much
+        // later on an undefined canister id. Stay quiet in env-only mode
+        // (no canisters configured), where there is nothing to inject anyway.
+        if (canisters.length > 0) {
+          console.warn(
+            `[ic-reactor] Could not detect the local IC environment, falling back to ${DEFAULT_LOCAL_REPLICA}. ` +
+              `Canister IDs and the root key will not be injected — is the local replica running? ` +
+              `Re-run with DEBUG=ic-reactor to see the \`icp\` output.`
+          )
+        }
+
+        for (const diagnostic of diagnostics) {
+          debugLog(diagnostic)
+        }
+
         const envOnlyCookie =
           canisters.length === 0
             ? buildIcEnvCookie(
@@ -116,12 +249,16 @@ export function icReactor(options: IcReactorPluginOptions): any {
               : undefined,
             proxy: {
               "/api": {
-                target: "http://127.0.0.1:4943",
+                target: DEFAULT_LOCAL_REPLICA,
                 changeOrigin: true,
               },
             },
           },
         }
+      }
+
+      for (const diagnostic of diagnostics) {
+        debugLog(diagnostic)
       }
 
       const cookieValue = buildIcEnvCookie(
@@ -148,7 +285,17 @@ export function icReactor(options: IcReactorPluginOptions): any {
       }
     },
 
+    configResolved(config) {
+      // Everything the plugin resolves — `didFile`, `outDir`,
+      // `clientManagerPath` — is documented as relative to the project root, so
+      // it has to be Vite's resolved root and not wherever the process started.
+      projectRoot = config.root
+      command = config.command
+    },
+
     configureServer(server) {
+      devServer = server
+
       // Explicitly watch configured DID files so HMR works even when they are not in the module graph.
       const didFiles = canisters.map((c) => resolveDidPath(c.didFile))
       server.watcher.add(didFiles)
@@ -161,66 +308,98 @@ export function icReactor(options: IcReactorPluginOptions): any {
         `[ic-reactor] Generating canister bindings for ${canisters.length} canisters...`
       )
 
-      await Promise.allSettled(
-        canisters.map(async (canisterConfig) => {
-          try {
-            // If .did file is missing, we might want to attempt pulling it?
-            // For now, pipeline fails if missing. The old plugin logic to "download"
-            // is omitted for simplicity unless requested, to keep "codegen" pure.
-
-            const result = await runCanisterPipeline({
-              canisterConfig,
-              projectRoot,
-              globalConfig,
-            })
-
-            if (!result.success) {
-              console.error(
-                `[ic-reactor] Failed to generate ${canisterConfig.name}: ${result.error}`
-              )
-            }
-          } catch (err) {
-            console.error(
-              `[ic-reactor] Error generating ${canisterConfig.name}:`,
-              err
-            )
-          }
-        })
+      const outcomes = await Promise.allSettled(
+        canisters.map((canisterConfig) =>
+          runCanisterPipeline({
+            canisterConfig,
+            projectRoot,
+            globalConfig,
+          })
+        )
       )
+
+      // Collect every failure before reporting one: a canister failing must not
+      // hide what the others did, and the error should name all of them so a CI
+      // log shows the whole picture in one go.
+      const failures = outcomes.flatMap((outcome, index) => {
+        const name = canisters[index]?.name ?? `canister #${index}`
+
+        if (outcome.status === "rejected") {
+          return [`${name}: ${describeError(outcome.reason)}`]
+        }
+        if (!outcome.value.success) {
+          return [`${name}: ${outcome.value.error ?? "unknown error"}`]
+        }
+        return []
+      })
+
+      if (failures.length === 0) {
+        return
+      }
+
+      const message =
+        `Failed to generate ${failures.length} of ${canisters.length} canisters:\n` +
+        failures.map((failure) => `  - ${failure}`).join("\n")
+
+      // Previously every failure here was a `console.error` and nothing more,
+      // so `vite build` exited 0 and CI shipped whatever stale bindings were
+      // still on disk — bindings that no longer match the deployed canister.
+      if (failOnError ?? command === "build") {
+        this.error(`[ic-reactor] ${message}`)
+      }
+
+      reportFailure(devServer, message)
     },
 
     handleHotUpdate({ file, server }) {
       // ── Hot Reload on .did changes ───────────────────────────────────────
-      if (file.endsWith(".did")) {
-        const affectedCanister = canisters.find((c) => {
-          // Check if changed file matches configured didFile
-          // Cast is safe because didFile is required in CanisterConfig
-          const configPath = resolveDidPath(c.didFile)
-          return configPath === path.normalize(file)
-        })
-
-        if (affectedCanister) {
-          console.log(
-            `[ic-reactor] .did file changed: ${affectedCanister.name}. Regenerating...`
-          )
-
-          // Re-run pipeline for this canister
-          runCanisterPipeline({
-            canisterConfig: affectedCanister,
-            projectRoot,
-            globalConfig,
-          }).then((result: import("@ic-reactor/codegen").PipelineResult) => {
-            if (result.success) {
-              // Reload page to reflect new types/hooks
-              server.ws.send({ type: "full-reload" })
-            } else {
-              console.error(`[ic-reactor] Regeneration failed: ${result.error}`)
-            }
-          })
-        }
+      if (!file.endsWith(".did")) {
+        return
       }
+
+      const changedPath = path.normalize(file)
+      const affectedCanister = canisters.find(
+        // Check if changed file matches configured didFile
+        (canister) => resolveDidPath(canister.didFile) === changedPath
+      )
+
+      if (!affectedCanister) {
+        return
+      }
+
+      console.log(
+        `[ic-reactor] .did file changed: ${affectedCanister.name}. Regenerating...`
+      )
+
+      // Returned so Vite waits for the write to finish before applying the
+      // update; it resolves to `undefined`, which leaves the affected module
+      // list untouched.
+      return regenerate(affectedCanister, server)
     },
   }
 
   return plugin
+}
+
+/** One readable line for whatever the pipeline threw. */
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * `icp` failing to answer is routine — no local replica, or a canister that has
+ * never been deployed — so its stderr is noise until someone is actually
+ * debugging. Gate it the way Vite gates its own debug output.
+ */
+function debugLog(message: string): void {
+  const enabled = (process.env.DEBUG ?? "").split(",").some((entry) => {
+    const scope = entry.trim()
+    return (
+      scope === "*" || scope === "ic-reactor" || scope.startsWith("ic-reactor:")
+    )
+  })
+
+  if (enabled) {
+    console.debug(`[ic-reactor:debug] ${message}`)
+  }
 }
