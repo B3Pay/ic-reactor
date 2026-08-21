@@ -22,8 +22,40 @@ updates:
           - "*"
         update-types:
           - "major"
+    ignore:
+      # TypeScript 7 is the native Go port, and its npm package does not ship the
+      # compiler API (`exports["."]` is `lib/version.cjs`; `ts.createProgram` is
+      # undefined). `tsup --dts` crashes inside rollup-plugin-dts, which breaks the
+      # cli, codegen and vite-plugin builds. The type system itself is ready --
+      # tsc 7 checks every package with zero errors -- so this unblocks once those
+      # three move off `tsup --dts`, or tsup gains TS7 support. See #225.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
+    labels:
+      - "dependencies"
+      - "automated"
+
+  # Rust crates behind @ic-reactor/parser. This ecosystem had no coverage at all:
+  # candid_parser, wasm-bindgen and serde received neither update PRs nor advisory
+  # alerts, and packages/parser is the one component that parses untrusted .did
+  # input.
+  - package-ecosystem: "cargo"
+    directory: "/packages/parser"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      cargo:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "deps(parser)"
     labels:
       - "dependencies"
       - "automated"
