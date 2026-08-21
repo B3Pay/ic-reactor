@@ -21,6 +21,25 @@ export type { PipelineOptions, PipelineResult } from "./pipeline.js"
 // Utilities
 export { toPascalCase, getReactorName, getServiceTypeName } from "./naming.js"
 
+// Config validation (run by the pipeline; exported for callers that want to
+// validate a config before invoking generation)
+export {
+  assertSafeCanisterConfig,
+  assertSafeCanisterName,
+  assertSafeModuleSpecifier,
+  assertContainedPath,
+  assertOneOf,
+  resolveContainedOutDir,
+  CodegenConfigError,
+  CANISTER_NAME_PATTERN,
+  REACTOR_CLASS_NAMES,
+  CODEGEN_TARGETS,
+} from "./validate.js"
+export type {
+  ValidatedCanisterPaths,
+  ValidateCanisterConfigOptions,
+} from "./validate.js"
+
 export { parseDIDFile, extractMethods } from "./parser.js"
 export type { MethodInfo, MethodType } from "./parser.js"
 

@@ -60,6 +60,14 @@ function getReactorClassImportSource(
     case "CandidDisplayReactor":
     case "MetadataDisplayReactor":
       return "@ic-reactor/candid"
+    default:
+      // The pipeline validates `mode` against a closed set before we are
+      // reached. Failing closed here means a caller that skips validation gets
+      // an error rather than an unknown class name interpolated into source.
+      throw new Error(
+        `Unknown reactor class ${JSON.stringify(reactorClass)}. Expected one of: ` +
+          `Reactor, DisplayReactor, CandidReactor, CandidDisplayReactor, MetadataDisplayReactor.`
+      )
   }
 }
 
@@ -105,9 +113,12 @@ export const {
 `
       : ""
 
-  return `${runtimeTarget === "react" ? 'import { createActorHooks } from "@ic-reactor/react"\n' : ""}import { ${reactorClass} } from "${reactorImportSource}"
-import { clientManager } from "${clientManagerPath}"
-import { idlFactory, type _SERVICE } from "${declarationsPath}"
+  // Every interpolation into emitted source is JSON.stringify'd. The pipeline
+  // validates these values before we are called; quoting them here as well
+  // means a future caller that skips validation cannot inject source text.
+  return `${runtimeTarget === "react" ? 'import { createActorHooks } from "@ic-reactor/react"\n' : ""}import { ${reactorClass} } from ${JSON.stringify(reactorImportSource)}
+import { clientManager } from ${JSON.stringify(clientManagerPath)}
+import { idlFactory, type _SERVICE } from ${JSON.stringify(declarationsPath)}
 
 export type ${serviceName} = _SERVICE
 
@@ -123,7 +134,7 @@ export type ${serviceName} = _SERVICE
 export const ${reactorName} = new ${reactorClass}<${serviceName}>({
   clientManager,
   idlFactory,
-${canisterIdLine}  name: "${canisterName}",
+${canisterIdLine}  name: ${JSON.stringify(canisterName)},
 })${hookExports || "\n"}`
 }
 

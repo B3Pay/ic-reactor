@@ -25,6 +25,7 @@ import {
   generateReactorEntryFile,
   generateReactorFile,
 } from "./generators/reactor.js"
+import { assertSafeCanisterConfig, CodegenConfigError } from "./validate.js"
 
 export interface PipelineOptions {
   /** Canister name and config */
@@ -102,6 +103,37 @@ export async function runCanisterPipeline(
 
   const files: GeneratorResult[] = []
 
+  // ── Validate config ────────────────────────────────────────────────────────
+  //
+  // Runs before any filesystem work. `name`, `outDir` and `clientManagerPath`
+  // come from a checked-in config file, and downstream they become a directory
+  // this pipeline recursively deletes and source text it writes into the user's
+  // bundle — so they are validated here, at the choke point every entry path
+  // (CLI, vite plugin, direct API) goes through.
+  let validated: ReturnType<typeof assertSafeCanisterConfig>
+  try {
+    validated = assertSafeCanisterConfig({
+      name,
+      canisterOutDir: canisterConfig.outDir,
+      globalOutDir: globalConfig.outDir,
+      clientManagerPath:
+        clientManagerPath ?? globalConfig.clientManagerPath ?? "../../clients",
+      projectRoot,
+      mode: canisterConfig.mode,
+      target: canisterConfig.target ?? globalConfig.target,
+    })
+  } catch (err) {
+    if (err instanceof CodegenConfigError) {
+      return {
+        canisterName: typeof name === "string" ? name : String(name),
+        success: false,
+        files,
+        error: err.message,
+      }
+    }
+    throw err
+  }
+
   // ── Resolve paths ──────────────────────────────────────────────────────────
 
   const resolvedDidFile = path.isAbsolute(didFile)
@@ -117,17 +149,12 @@ export async function runCanisterPipeline(
     }
   }
 
-  // Per-canister outDir overrides global outDir
-  const canisterOutDir =
-    canisterConfig.outDir != null
-      ? path.isAbsolute(canisterConfig.outDir)
-        ? canisterConfig.outDir
-        : path.resolve(projectRoot, canisterConfig.outDir)
-      : path.resolve(projectRoot, globalConfig.outDir, name)
+  // Per-canister outDir overrides global outDir; both are resolved and
+  // containment-checked by assertSafeCanisterConfig above.
+  const canisterOutDir = validated.outDir
 
   // clientManagerPath falls back to global, then a safe default
-  const resolvedClientManagerPath =
-    clientManagerPath ?? globalConfig.clientManagerPath ?? "../../clients"
+  const resolvedClientManagerPath = validated.clientManagerPath
 
   // ── Step 1: Declarations ───────────────────────────────────────────────────
 
