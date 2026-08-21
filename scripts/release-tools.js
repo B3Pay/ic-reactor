@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 import { execFileSync } from "child_process"
+import { AI_CONTEXT_FILES } from "./ai-context-files.js"
+import { syncAiContextVersions } from "./sync-ai-context-versions.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
@@ -67,7 +69,20 @@ const packages = [
   "packages/cli/package.json",
 ]
 
+// Read the outgoing version before any manifest is rewritten, so prose mentions
+// of it can be swept afterwards.
+const previousVersion = JSON.parse(
+  readFileSync(join(rootDir, packages[0]), "utf-8")
+).version
+
 packages.forEach((pkg) => updatePackageJson(pkg, version))
+
+const syncedFiles = syncAiContextVersions(rootDir, previousVersion, version, [
+  "@ic-reactor/codegen",
+  "@ic-reactor/vite-plugin",
+  "@ic-reactor/cli",
+])
+syncedFiles.forEach((f) => console.log(`✅ Synced ${f} to ${version}`))
 
 // 2. Update library lockfile
 console.log("\n🔗 Updating lockfile (pnpm install)...")
@@ -80,9 +95,10 @@ try {
 }
 
 const RELEASE_PATHS = [
-  // updateLlmsVersion() rewrites the root manifest; without it here the bump
-  // is left unstaged and check:ai-context fails on the released commit.
-  "llms.txt",
+  // updateLlmsVersion() and syncAiContextVersions() rewrite these; without them
+  // here the bump is left unstaged and check:ai-context fails on the released
+  // commit.
+  ...AI_CONTEXT_FILES,
   "pnpm-lock.yaml",
   "packages/codegen/package.json",
   "packages/vite-plugin/package.json",
