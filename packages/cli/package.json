@@ -39,12 +39,12 @@
     "@clack/prompts": "^1.7.0",
     "@ic-reactor/codegen": "workspace:*",
     "@icp-sdk/bindgen": "^0.4.0",
-    "@icp-sdk/core": "^6.0.0",
+    "@icp-sdk/core": "^6.1.0",
     "commander": "^15.0.0",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.2.0",
     "tsup": "^8.5.1",
     "typescript": "~6.0.3"
   },
