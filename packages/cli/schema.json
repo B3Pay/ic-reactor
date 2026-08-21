@@ -32,7 +32,9 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Canister name (required)"
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "maxLength": 64,
+            "description": "Canister name (required). May contain only letters, digits, '_', '.' and '-' — it becomes a directory name. It must also derive a valid TypeScript identifier, so a name beginning with a digit (e.g. '2048_game') is rejected at generation time."
           },
           "didFile": {
             "type": "string",

@@ -17,7 +17,11 @@ import {
   ensureDir,
 } from "../utils/config.js"
 import type { CodegenConfig, CanisterConfig } from "../types.js"
-import { generateClientFile } from "@ic-reactor/codegen"
+import {
+  generateClientFile,
+  assertContainedPath,
+  CodegenConfigError,
+} from "@ic-reactor/codegen"
 
 interface InitOptions {
   yes?: boolean
@@ -98,7 +102,18 @@ export async function initCommand(options: InitOptions) {
   ensureDir(path.join(projectRoot, config.outDir))
 
   // Create default Client Manager
-  const clientManagerFile = resolveClientManagerFilePath(projectRoot, config)
+  let clientManagerFile: string
+  try {
+    clientManagerFile = resolveClientManagerFilePath(projectRoot, config)
+  } catch (err) {
+    if (err instanceof CodegenConfigError) {
+      p.log.error(err.message)
+      p.outro(pc.red("✗ Setup failed"))
+      process.exitCode = 1
+      return
+    }
+    throw err
+  }
 
   if (!fs.existsSync(clientManagerFile)) {
     const displayedPath = path.relative(projectRoot, clientManagerFile)
@@ -144,8 +159,21 @@ function resolveClientManagerFilePath(
   const clientManagerPath = config.clientManagerPath ?? "../../clients"
   const generatedEntryDir = path.join(projectRoot, config.outDir, canisterName)
   const resolvedPath = path.resolve(generatedEntryDir, clientManagerPath)
+  const filePath = path.extname(resolvedPath)
+    ? resolvedPath
+    : `${resolvedPath}.ts`
 
-  return path.extname(resolvedPath) ? resolvedPath : `${resolvedPath}.ts`
+  // `clientManagerPath` is an import specifier in generated code, but here it is
+  // also a WRITE target — init creates the file. A config-supplied value must
+  // not be able to place that file outside the project.
+  assertContainedPath(
+    "clientManagerPath",
+    filePath,
+    projectRoot,
+    clientManagerPath
+  )
+
+  return filePath
 }
 
 async function promptForCanister(
