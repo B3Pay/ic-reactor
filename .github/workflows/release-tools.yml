@@ -32,6 +32,8 @@ jobs:
     timeout-minutes: 10
     outputs:
       workspaces: ${{ steps.resolve.outputs.workspaces }}
+      assert: ${{ steps.resolve.outputs.assert }}
+      version: ${{ steps.resolve.outputs.version }}
     steps:
       - id: resolve
         run: |
@@ -40,21 +42,107 @@ jobs:
           case "$REF" in
             parser-v*)
               # parser only.
-              WS='["packages/parser"]' ;;
+              WS='["packages/parser"]'
+              ASSERT='packages/parser'
+              VERSION="${REF#parser-v}" ;;
             tools-v*)
               # parser first: @ic-reactor/codegen pins it exactly, so it must exist on
               # the registry before codegen publishes. Already-published versions are
               # skipped by the guard in the publish step.
-              WS='["packages/parser","packages/codegen","packages/vite-plugin","packages/cli"]' ;;
+              WS='["packages/parser","packages/codegen","packages/vite-plugin","packages/cli"]'
+              # parser is deliberately NOT asserted here: it rides a tools tag only so
+              # codegen's exact pin resolves, and it carries its own version line.
+              ASSERT='packages/codegen packages/vite-plugin packages/cli'
+              VERSION="${REF#tools-v}" ;;
             *)
               echo "::error::Unrecognized release tag: $REF"; exit 1 ;;
           esac
-          echo "Tag $REF -> $WS"
+          echo "Tag $REF -> $WS (assert $ASSERT at $VERSION)"
           echo "workspaces=$WS" >> "$GITHUB_OUTPUT"
+          echo "assert=$ASSERT" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  # The tools lane published with no verification at all: ci.yml and e2e.yml have no
+  # `tags:` trigger, so a `tools-v*` or `parser-v*` tag pushed at any commit shipped
+  # straight to npm with valid provenance. This mirrors release.yml's preflight so
+  # both lanes are gated the same way.
+  #
+  # LIMITATION: Actions loads the workflow file from the revision the tag points at,
+  # so this job runs only for tags on commits that already contain it. Tagging a
+  # commit from before this landed runs THAT commit's workflow, which has no
+  # preflight. release.yml has the same property, and no in-workflow check can close
+  # it -- whoever chooses the commit also chooses the workflow that runs.
+  #
+  # The durable control is a repository ruleset restricting who may create `v*`,
+  # `tools-v*` and `parser-v*` tags. Rulesets are enforced from repository settings
+  # regardless of what any workflow file at any revision says. Treat this job as
+  # defence against mistakes, and the ruleset as the boundary against a hostile tag.
+  preflight:
+    name: Preflight
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+
+      - name: Tag must be an ancestor of main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_SHA is not an ancestor of origin/main. Refusing to publish."
+            exit 1
+          fi
+
+      - name: Tag version must match package manifests
+        env:
+          ASSERT_PACKAGES: ${{ needs.setup.outputs.assert }}
+          EXPECTED: ${{ needs.setup.outputs.version }}
+        run: |
+          set -euo pipefail
+          echo "Tag version: $EXPECTED"
+          for pkg in $ASSERT_PACKAGES; do
+            ACTUAL="$(node -p "require('./$pkg/package.json').version")"
+            if [ "$ACTUAL" != "$EXPECTED" ]; then
+              echo "::error::$pkg is at $ACTUAL but the tag says $EXPECTED."
+              exit 1
+            fi
+          done
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Build, type check and test
+        run: |
+          set -euo pipefail
+          pnpm build
+          pnpm typecheck
+          pnpm test
+
+      - name: Verify published artifacts
+        run: pnpm verify:packages
 
   release:
     name: Release to npm
-    needs: setup
+    needs: [setup, preflight]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
