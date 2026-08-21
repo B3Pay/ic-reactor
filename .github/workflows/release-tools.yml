@@ -66,6 +66,17 @@ jobs:
   # `tags:` trigger, so a `tools-v*` or `parser-v*` tag pushed at any commit shipped
   # straight to npm with valid provenance. This mirrors release.yml's preflight so
   # both lanes are gated the same way.
+  #
+  # LIMITATION: Actions loads the workflow file from the revision the tag points at,
+  # so this job runs only for tags on commits that already contain it. Tagging a
+  # commit from before this landed runs THAT commit's workflow, which has no
+  # preflight. release.yml has the same property, and no in-workflow check can close
+  # it -- whoever chooses the commit also chooses the workflow that runs.
+  #
+  # The durable control is a repository ruleset restricting who may create `v*`,
+  # `tools-v*` and `parser-v*` tags. Rulesets are enforced from repository settings
+  # regardless of what any workflow file at any revision says. Treat this job as
+  # defence against mistakes, and the ruleset as the boundary against a hostile tag.
   preflight:
     name: Preflight
     needs: setup
