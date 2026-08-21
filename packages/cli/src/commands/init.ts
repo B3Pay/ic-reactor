@@ -10,92 +10,79 @@ import path from "node:path"
 import pc from "picocolors"
 import {
   CONFIG_FILE_NAME,
-  DEFAULT_CONFIG,
+  createDefaultConfig,
   findConfigFile,
   saveConfig,
-  getProjectRoot,
   ensureDir,
 } from "../utils/config.js"
-import type { CodegenConfig, CanisterConfig } from "../types.js"
+import { CliError } from "../utils/errors.js"
+import type { CodegenConfig, CanisterConfig, InitOptions } from "../types.js"
 import {
   generateClientFile,
   assertContainedPath,
   CodegenConfigError,
 } from "@ic-reactor/codegen"
 
-interface InitOptions {
-  yes?: boolean
-  outDir?: string
-}
-
 export async function initCommand(options: InitOptions) {
   console.log()
   p.intro(pc.cyan("🔧 ic-reactor CLI Setup"))
 
-  // Check if config already exists
-  const existingConfig = findConfigFile()
-  if (existingConfig) {
+  // `init` writes to the current directory and nowhere else.
+  //
+  // It used to take its target from `getProjectRoot()`, which walks *up* to the
+  // nearest ic-reactor.json — so running it in a monorepo package resolved to
+  // the repository-root config and replaced it with defaults, wiping that
+  // project's `canisters` map while creating nothing in the directory the user
+  // was standing in.
+  const projectRoot = process.cwd()
+  const configPath = path.join(projectRoot, CONFIG_FILE_NAME)
+
+  if (fs.existsSync(configPath)) {
+    if (options.yes) {
+      // `-y` means "do not ask me", not "overwrite whatever is there". A CI step
+      // running `init -y && generate` against a checked-in config must not have
+      // that config replaced by defaults.
+      p.log.warn(
+        `${pc.yellow(CONFIG_FILE_NAME)} already exists at ${configPath} — leaving it as it is.\n` +
+          `Delete it, or run ${pc.cyan("ic-reactor init")} without ${pc.cyan("-y")}, to reconfigure.`
+      )
+      p.outro(pc.green("✓ Nothing to do."))
+      return
+    }
+
     const shouldOverwrite = await p.confirm({
-      message: `Config file already exists at ${pc.yellow(existingConfig)}. Overwrite?`,
+      message: `Config file already exists at ${pc.yellow(configPath)}. Overwrite?`,
       initialValue: false,
     })
 
     if (p.isCancel(shouldOverwrite) || !shouldOverwrite) {
       p.cancel("Setup cancelled.")
-      process.exit(0)
-    }
-  }
-
-  const projectRoot = getProjectRoot()
-  let config: CodegenConfig
-
-  if (options.yes) {
-    config = { ...DEFAULT_CONFIG }
-    if (options.outDir) {
-      config.outDir = options.outDir
+      return
     }
   } else {
-    // Interactive Setup
-
-    // Output Directory
-    const outDir = await p.text({
-      message: "Where should generated files be placed?",
-      placeholder: "src/declarations",
-      defaultValue: "src/declarations",
-    })
-    if (p.isCancel(outDir)) process.exit(0)
-
-    // Client Manager Path
-    const clientManagerPath = await p.text({
-      message: "Relative path for the client manager import?",
-      placeholder: "../../clients",
-      defaultValue: "../../clients",
-    })
-    if (p.isCancel(clientManagerPath)) process.exit(0)
-
-    config = {
-      ...DEFAULT_CONFIG,
-      outDir: outDir as string,
-      clientManagerPath: clientManagerPath as string,
-    }
-
-    // Add initial canister?
-    const addCanister = await p.confirm({
-      message: "Would you like to configure a canister now?",
-      initialValue: true,
-    })
-    if (p.isCancel(addCanister)) process.exit(0)
-
-    if (addCanister) {
-      const canister = await promptForCanister(projectRoot)
-      if (canister) {
-        config.canisters[canister.name] = canister
-      }
+    // A config in a parent directory is a different project. Say so, because the
+    // generated files land here and `generate` run from here will now find this
+    // config rather than that one.
+    const ancestorConfig = findConfigFile(path.dirname(projectRoot))
+    if (ancestorConfig) {
+      p.log.warn(
+        `An ${pc.yellow(CONFIG_FILE_NAME)} already exists in a parent directory:\n` +
+          `${ancestorConfig}\n` +
+          `It is left untouched — this creates a separate config in ${projectRoot}.`
+      )
     }
   }
 
-  // Save config
-  const configPath = path.join(projectRoot, CONFIG_FILE_NAME)
+  const config = await buildConfig(options, projectRoot)
+  if (!config) {
+    // A cancelled prompt. Nothing has been written yet, and nothing will be:
+    // Ctrl+C part-way through the canister questions used to fall through to
+    // `saveConfig` and leave a half-answered config behind.
+    p.cancel("Setup cancelled.")
+    return
+  }
+
+  // Everything below this line writes to disk.
   saveConfig(config, configPath)
 
   // Ensure directories exist
@@ -107,10 +94,7 @@ export async function initCommand(options: InitOptions) {
     clientManagerFile = resolveClientManagerFilePath(projectRoot, config)
   } catch (err) {
     if (err instanceof CodegenConfigError) {
-      p.log.error(err.message)
-      p.outro(pc.red("✗ Setup failed"))
-      process.exitCode = 1
-      return
+      throw new CliError(err.message)
     }
     throw err
   }
@@ -147,6 +131,61 @@ export async function initCommand(options: InitOptions) {
   p.outro(pc.green("✓ Setup complete!"))
 }
 
+/**
+ * Assemble the config, either from defaults or from the interactive questions.
+ *
+ * @returns the config, or `null` if the user cancelled a prompt.
+ */
+async function buildConfig(
+  options: InitOptions,
+  projectRoot: string
+): Promise<CodegenConfig | null> {
+  const config = createDefaultConfig()
+
+  if (options.yes) {
+    if (options.outDir) {
+      config.outDir = options.outDir
+    }
+    return config
+  }
+
+  // Interactive Setup
+
+  // Output Directory
+  const outDir = await p.text({
+    message: "Where should generated files be placed?",
+    placeholder: "src/declarations",
+    defaultValue: "src/declarations",
+  })
+  if (p.isCancel(outDir)) return null
+
+  // Client Manager Path
+  const clientManagerPath = await p.text({
+    message: "Relative path for the client manager import?",
+    placeholder: "../../clients",
+    defaultValue: "../../clients",
+  })
+  if (p.isCancel(clientManagerPath)) return null
+
+  config.outDir = outDir
+  config.clientManagerPath = clientManagerPath
+
+  // Add initial canister?
+  const addCanister = await p.confirm({
+    message: "Would you like to configure a canister now?",
+    initialValue: true,
+  })
+  if (p.isCancel(addCanister)) return null
+
+  if (addCanister) {
+    const canister = await promptForCanister(projectRoot)
+    if (!canister) return null
+    config.canisters[canister.name] = canister
+  }
+
+  return config
+}
+
 function resolveClientManagerFilePath(
   projectRoot: string,
   config: CodegenConfig
@@ -176,6 +215,9 @@ function resolveClientManagerFilePath(
   return filePath
 }
 
+/**
+ * @returns the canister, or `null` if the user cancelled a prompt.
+ */
 async function promptForCanister(
   projectRoot: string
 ): Promise<CanisterConfig | null> {
@@ -201,7 +243,7 @@ async function promptForCanister(
   if (p.isCancel(didFile)) return null
 
   return {
-    name: name as string,
-    didFile: didFile as string,
+    name,
+    didFile,
   }
 }

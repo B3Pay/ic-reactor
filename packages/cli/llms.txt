@@ -10,6 +10,12 @@ pnpm exec ic-reactor init
 pnpm exec ic-reactor generate
 ```
 
+Requires Node.js 22.12+ (`commander@15`).
+
+`init` writes to the current directory only; a config in a parent directory is
+never modified. `init -y` is fully non-interactive and keeps an existing config
+rather than replacing it.
+
 ## Configuration
 
 - Primary config file: `ic-reactor.json`
@@ -27,6 +33,10 @@ pnpm exec ic-reactor generate
 - Stable wrapper: `index.ts` (safe to customize)
 
 Do not hand-edit `index.generated.ts`.
+
+`generate --clean` removes the output directories of canisters that are no
+longer in the config (the renamed-canister case). Configured canisters are left
+alone — their files are rewritten by the run itself.
 
 ## CLI vs Vite Plugin
 

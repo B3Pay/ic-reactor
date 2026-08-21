@@ -3,4 +3,5 @@
  */
 
 export * from "./config.js"
-export * from "./network.js"
+export * from "./clean.js"
+export * from "./errors.js"

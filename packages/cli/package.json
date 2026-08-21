@@ -3,14 +3,14 @@
   "version": "0.12.1",
   "type": "module",
   "description": "CLI tool to generate shadcn-style React hooks for ICP canisters",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "bin": {
     "ic-reactor": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean --no-splitting",
+    "build": "tsup src/index.ts --format esm --clean --no-splitting",
     "dev": "tsup src/index.ts --format esm --watch --no-splitting",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },
   "keywords": [
@@ -38,22 +38,23 @@
   "dependencies": {
     "@clack/prompts": "^1.7.0",
     "@ic-reactor/codegen": "workspace:*",
-    "@icp-sdk/bindgen": "^0.4.0",
-    "@icp-sdk/core": "^6.1.0",
     "commander": "^15.0.0",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
     "tsup": "^8.5.1",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12.0"
   },
   "files": [
     "dist",
     "src",
+    "!src/**/*.test.ts",
+    "!src/**/__snapshots__",
     "schema.json",
     "README.md",
     "llms.txt"

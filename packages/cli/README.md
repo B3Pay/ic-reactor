@@ -31,6 +31,10 @@ pnpm dlx @ic-reactor/cli generate
 - an `ic-reactor.json` config file
 - an optional shared `ClientManager` helper resolved from `clientManagerPath`
 
+`init` always writes to the current directory. A config in a parent directory
+belongs to a different project and is never modified — running `init` in a
+monorepo package creates that package's own config.
+
 ## Example Config
 
 ```json
@@ -61,6 +65,13 @@ Options:
                          the interactive flow prompts for it instead)
 ```
 
+`-y` is fully non-interactive: it asks nothing, so it is safe to run with stdin
+closed in CI. If `ic-reactor.json` already exists in the current directory, `-y`
+leaves it exactly as it is and exits 0 — delete the file, or run `init` without
+`-y` and confirm the overwrite, to reconfigure.
+
+Cancelling any prompt (Ctrl+C) aborts before anything is written.
+
 ### `generate` / `g`
 
 ```bash
@@ -68,14 +79,22 @@ pnpm exec ic-reactor generate [options]
 
 Options:
   -c, --canister <name>  Generate only one configured canister
+  --clean                Remove generated output for canisters that are no
+                         longer configured
   --bindgen-only         Generate only the declarations/ files
 ```
 
-The `declarations/` directory is removed and rewritten on every run, so there is
-no separate clean step.
+The `declarations/` directory is removed and rewritten on every run, so
+configured canisters never need cleaning. What no run rewrites is the directory
+of a canister that was renamed or dropped from the config: `--clean` removes
+those, and only those. It leaves the output of configured canisters alone —
+including the `index.ts` you own — and never deletes a directory that carries no
+generated file, since `outDir` usually holds hand-written code as well. It is
+skipped for `--canister <name>` runs, which cannot tell stale output from
+another canister's current output.
 
-Malformed `ic-reactor.json` files now fail with a parse error instead of being
-silently ignored.
+A malformed `ic-reactor.json` fails the command with an error naming the file
+and the offending field, rather than a stack trace or a silent skip.
 
 ## Generated Output
 
@@ -127,7 +146,7 @@ inside a Vite app.
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 22.12+ (the floor `commander@15` requires; `@clack/prompts` requires 20.12+)
 - TypeScript 5+
 - `@ic-reactor/react` in the consuming app if you use `target: "react"` with
   `Reactor` or `DisplayReactor`

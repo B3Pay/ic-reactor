@@ -1,0 +1,141 @@
+/**
+ * `generate --clean`
+ *
+ * The pipeline rewrites `<canisterOutDir>/declarations` and
+ * `index.generated.ts` on every run, so current canisters need no cleaning. What
+ * nothing rewrites is the directory of a canister that was renamed or dropped
+ * from the config: no run regenerates it and no run deletes it, so the old
+ * module tree stays on disk and stays importable. Removing those is the whole
+ * job of `--clean`.
+ *
+ * It deliberately does not delete the output directories of canisters this run
+ * regenerates. Those contain `index.ts`, the one file the pipeline goes out of
+ * its way to preserve because the user owns it, and "clean before generating"
+ * must not be a way to lose it.
+ *
+ * Every path deleted here is resolved through `@ic-reactor/codegen`'s
+ * containment helpers first. `outDir` comes from a checked-in config file — from
+ * a repository the user may have merely cloned — so a recursive delete driven by
+ * it must not be able to reach outside the project root.
+ */
+
+import fs from "node:fs"
+import path from "node:path"
+import {
+  assertContainedPath,
+  assertSafeCanisterConfig,
+  CodegenConfigError,
+  resolveContainedOutDir,
+} from "@ic-reactor/codegen"
+import type { CodegenConfig } from "../types.js"
+
+export interface CleanOptions {
+  config: CodegenConfig
+  /** Absolute path to the project root (the directory holding the config). */
+  projectRoot: string
+}
+
+/**
+ * Remove stale generated canister directories, returning the ones deleted.
+ *
+ * Only directories carrying a generation marker are removed. Projects point
+ * `outDir` at directories that also hold hand-written code — the default
+ * `src/declarations` sits beside `src/clients.ts` — so cleaning must never
+ * delete something this CLI did not write.
+ */
+export function cleanStaleOutput(options: CleanOptions): string[] {
+  const { config, projectRoot } = options
+
+  const globalOutDir = resolveContainedOutDir(
+    "outDir",
+    config.outDir,
+    projectRoot
+  )
+  if (!fs.existsSync(globalOutDir)) return []
+
+  const keep = resolveConfiguredOutput(config, projectRoot)
+  const removed: string[] = []
+
+  for (const entry of fs.readdirSync(globalOutDir, { withFileTypes: true })) {
+    // `isDirectory()` is false for a symlink, which is the behaviour we want: a
+    // symlinked canister directory points out of the project and `rmSync` would
+    // follow it. Those are left for the user to remove by hand.
+    if (!entry.isDirectory()) continue
+    if (keep.names.has(entry.name)) continue
+
+    const staleDir = path.join(globalOutDir, entry.name)
+    if (keep.directories.has(staleDir)) continue
+
+    assertContainedPath(
+      "stale output directory",
+      staleDir,
+      projectRoot,
+      path.relative(projectRoot, staleDir)
+    )
+
+    if (!isGeneratedOutputDir(staleDir)) continue
+
+    fs.rmSync(staleDir, { recursive: true, force: true })
+    removed.push(staleDir)
+  }
+
+  return removed
+}
+
+/**
+ * The names and resolved output directories that are still configured.
+ *
+ * The resolved directories matter as much as the names: a canister with its own
+ * `outDir` writes to a directory that is not named after it, and sweeping by
+ * name alone would delete that canister's current output as though it were
+ * stale.
+ */
+function resolveConfiguredOutput(
+  config: CodegenConfig,
+  projectRoot: string
+): { names: Set<string>; directories: Set<string> } {
+  const names = new Set<string>()
+  const directories = new Set<string>()
+
+  for (const [key, canisterConfig] of Object.entries(config.canisters)) {
+    names.add(key)
+    if (typeof canisterConfig?.name === "string") names.add(canisterConfig.name)
+
+    try {
+      const { outDir } = assertSafeCanisterConfig({
+        name: canisterConfig.name,
+        canisterOutDir: canisterConfig.outDir,
+        globalOutDir: config.outDir,
+        clientManagerPath:
+          canisterConfig.clientManagerPath ??
+          config.clientManagerPath ??
+          "../../clients",
+        projectRoot,
+        mode: canisterConfig.mode,
+        target: canisterConfig.target ?? config.target,
+      })
+      directories.add(outDir)
+    } catch (error) {
+      // A canister the pipeline itself will reject. Its output directory cannot
+      // be resolved, so nothing about it can be judged stale — skip it and let
+      // generation report the config error.
+      if (error instanceof CodegenConfigError) continue
+      throw error
+    }
+  }
+
+  return { names, directories }
+}
+
+/**
+ * Whether a directory looks like something this CLI generated.
+ *
+ * `index.generated.ts` is written by a full run and `declarations/` by a
+ * `--bindgen-only` one, so output from either mode is recognized.
+ */
+function isGeneratedOutputDir(dir: string): boolean {
+  return (
+    fs.existsSync(path.join(dir, "index.generated.ts")) ||
+    fs.existsSync(path.join(dir, "declarations"))
+  )
+}

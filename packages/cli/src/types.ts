@@ -15,7 +15,6 @@ export type { CodegenConfig, CanisterConfig }
 export interface InitOptions {
   yes?: boolean
   outDir?: string
-  dryRun?: boolean
 }
 
 /**
