@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 import { execFileSync } from "child_process"
+import { AI_CONTEXT_FILES } from "./ai-context-files.js"
+import { syncAiContextVersions } from "./sync-ai-context-versions.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
@@ -42,54 +44,6 @@ function updateLlmsVersion(packageName, newVersion) {
   }
 }
 
-// Every file `scripts/check-ai-context.js` verifies. `updateLlmsVersion` only
-// rewrites the backticked version table in the root llms.txt, so prose mentions
-// elsewhere (the package tables in AGENTS.md/CLAUDE.md, the lane lines in
-// .cursorrules and skill-packages/README.md, ...) were left behind and failed
-// the check:ai-context CI gate on the release commit itself.
-//
-// `scripts/release.js` has carried this fix for the runtime lane for a while;
-// this lane never got it, so every tools release broke the gate on main.
-const AI_CONTEXT_FILES = [
-  "llms.txt",
-  "llms-full.txt",
-  "AGENTS.md",
-  "CLAUDE.md",
-  ".cursorrules",
-  ".github/copilot-instructions.md",
-  "skill-packages/README.md",
-  "skill-packages/ic-reactor-hooks/SKILL.md",
-  "skill-packages/ic-reactor-packages/SKILL.md",
-  "skill-packages/ic-reactor-packages/references/package-map.md",
-  "packages/codegen/llms.txt",
-  "packages/cli/llms.txt",
-  "packages/vite-plugin/llms.txt",
-]
-
-function syncAiContextVersions(oldVersion, newVersion) {
-  if (oldVersion === newVersion) return
-  // Same boundaries as check-ai-context.js's SEMVER, so `0.12.0` inside
-  // `0.12.01` or a longer dotted string is not touched. Matches an optional
-  // leading `v`.
-  const escaped = oldVersion.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
-  const pattern = new RegExp(`(?<![\\d.])(v?)${escaped}(?![\\d.]\\d)`, "g")
-
-  for (const relativePath of AI_CONTEXT_FILES) {
-    const fullPath = join(rootDir, relativePath)
-    let text
-    try {
-      text = readFileSync(fullPath, "utf-8")
-    } catch {
-      continue // optional file
-    }
-    const updated = text.replace(pattern, `$1${newVersion}`)
-    if (updated !== text) {
-      writeFileSync(fullPath, updated, "utf-8")
-      console.log(`✅ Synced ${relativePath} to ${newVersion}`)
-    }
-  }
-}
-
 function updatePackageJson(filePath, newVersion) {
   try {
     const fullPath = join(rootDir, filePath)
@@ -123,7 +77,12 @@ const previousVersion = JSON.parse(
 
 packages.forEach((pkg) => updatePackageJson(pkg, version))
 
-syncAiContextVersions(previousVersion, version)
+const syncedFiles = syncAiContextVersions(rootDir, previousVersion, version, [
+  "@ic-reactor/codegen",
+  "@ic-reactor/vite-plugin",
+  "@ic-reactor/cli",
+])
+syncedFiles.forEach((f) => console.log(`✅ Synced ${f} to ${version}`))
 
 // 2. Update library lockfile
 console.log("\n🔗 Updating lockfile (pnpm install)...")

@@ -2,6 +2,7 @@
 
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { AI_CONTEXT_FILES } from "./ai-context-files.js"
 
 const rootDir = process.cwd()
 
@@ -33,19 +34,7 @@ const requiredPackageLlms = [
  * validated, so a release could bump every manifest and leave all of these
  * claiming the previous version with the gate still green.
  */
-const aiContextFiles = [
-  "llms.txt",
-  "llms-full.txt",
-  "AGENTS.md",
-  "CLAUDE.md",
-  ".cursorrules",
-  ".github/copilot-instructions.md",
-  "skill-packages/README.md",
-  "skill-packages/ic-reactor-hooks/SKILL.md",
-  "skill-packages/ic-reactor-packages/SKILL.md",
-  "skill-packages/ic-reactor-packages/references/package-map.md",
-  ...requiredPackageLlms.map((dir) => `packages/${dir}/llms.txt`),
-]
+const aiContextFiles = AI_CONTEXT_FILES
 
 /** The docs site is served under this base; see docs/astro.config.mjs. */
 const DOCS_BASE = "/v3/"

@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 import { execFileSync } from "child_process"
+import { AI_CONTEXT_FILES } from "./ai-context-files.js"
+import { syncAiContextVersions } from "./sync-ai-context-versions.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
@@ -39,50 +41,6 @@ function updateLlmsVersion(packageName, newVersion) {
     console.error(
       `❌ Failed to update llms.txt for ${packageName}: ${err.message}`
     )
-  }
-}
-
-// Every file `scripts/check-ai-context.js` verifies. `updateLlmsVersion` only
-// rewrites the backticked version table in the root llms.txt, so prose mentions
-// elsewhere ("targets the stable v3.8.0 runtime release", the package tables in
-// AGENTS.md/CLAUDE.md, ...) were left behind and failed the check:ai-context CI
-// gate on the release commit itself.
-const AI_CONTEXT_FILES = [
-  "llms.txt",
-  "llms-full.txt",
-  "AGENTS.md",
-  "CLAUDE.md",
-  ".cursorrules",
-  ".github/copilot-instructions.md",
-  "skill-packages/README.md",
-  "skill-packages/ic-reactor-hooks/SKILL.md",
-  "skill-packages/ic-reactor-packages/SKILL.md",
-  "skill-packages/ic-reactor-packages/references/package-map.md",
-  "packages/core/llms.txt",
-  "packages/react/llms.txt",
-  "packages/candid/llms.txt",
-]
-
-function syncAiContextVersions(oldVersion, newVersion) {
-  if (oldVersion === newVersion) return
-  // Same boundaries as check-ai-context.js's SEMVER, so `3.9.0` inside `3.9.01`
-  // or a longer dotted string is not touched. Matches an optional leading `v`.
-  const escaped = oldVersion.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
-  const pattern = new RegExp(`(?<![\\d.])(v?)${escaped}(?![\\d.]\\d)`, "g")
-
-  for (const relativePath of AI_CONTEXT_FILES) {
-    const fullPath = join(rootDir, relativePath)
-    let text
-    try {
-      text = readFileSync(fullPath, "utf-8")
-    } catch {
-      continue // optional file
-    }
-    const updated = text.replace(pattern, `$1${newVersion}`)
-    if (updated !== text) {
-      writeFileSync(fullPath, updated, "utf-8")
-      console.log(`✅ Synced ${relativePath} to ${newVersion}`)
-    }
   }
 }
 
@@ -131,7 +89,12 @@ try {
 
 // 3. Sync every AI-context file the check:ai-context gate reads
 console.log("\n🧠 Syncing AI-context versions...")
-syncAiContextVersions(previousVersion, version)
+const syncedFiles = syncAiContextVersions(rootDir, previousVersion, version, [
+  "@ic-reactor/core",
+  "@ic-reactor/react",
+  "@ic-reactor/candid",
+])
+syncedFiles.forEach((f) => console.log(`✅ Synced ${f} to ${version}`))
 
 // 4. Sync examples to literal version for the Git Commit (StackBlitz support)
 try {
