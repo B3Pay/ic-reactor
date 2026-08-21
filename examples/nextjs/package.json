@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@ic-reactor/react": "^3.11.0",
-    "@icp-sdk/auth": "^7.1.0",
+    "@icp-sdk/auth": "^8.0.3",
     "@icp-sdk/core": "^6.1.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@tanstack/react-query": "^5.101.4",

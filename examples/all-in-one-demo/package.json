@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@ic-reactor/react": "^3.11.0",
-    "@icp-sdk/auth": "^7.1.0",
+    "@icp-sdk/auth": "^8.0.3",
     "@icp-sdk/core": "^6.1.0",
     "@radix-ui/react-scroll-area": "^1.2.18",
     "@radix-ui/react-separator": "^1.1.15",
