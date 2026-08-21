@@ -129,7 +129,9 @@ describe("Bindgen", () => {
 
     // No staging directory is left behind for the next run to trip over.
     expect(
-      fs.readdirSync(outDir).filter((entry) => entry !== "declarations")
+      fs
+        .readdirSync(outDir)
+        .filter((entry) => entry.startsWith(".declarations.tmp-"))
     ).toEqual([])
   })
 
@@ -147,8 +149,40 @@ describe("Bindgen", () => {
     expect(result.success).toBe(false)
     expect(result.error).toContain(canisterName)
     expect(result.error).toContain(didFile)
-    expect(result.error).toContain("declares no Candid service")
+    expect(result.error).toContain("produces no idlFactory")
     expect(fs.existsSync(path.join(outDir, "declarations"))).toBe(false)
+  })
+
+  // The service-detection gate tests the GENERATED OUTPUT, not
+  // `parseDid(...).service`. That AST field is populated only for an inline
+  // body and is null for every alias form below, all of which the parser
+  // compiles to a complete idlFactory. An earlier version of this gate read the
+  // AST field and rejected these valid files outright.
+  it.each([
+    [
+      "service : S",
+      "type Ledger = service { balance_of : (nat) -> (nat) query; };\nservice : Ledger;",
+    ],
+    [
+      "service : (args) -> S",
+      "type S = service { f : () -> (nat); };\nservice : (nat) -> S;",
+    ],
+    [
+      "service name : S",
+      "type S = service { f : () -> (nat); };\nservice ic : S;",
+    ],
+  ])("accepts a .did whose actor is declared as %s", async (_label, source) => {
+    const root = createTempProject()
+    const didFile = writeDid(root, "aliased.did", source)
+    const outDir = path.join(root, "output")
+
+    const result = await generateDeclarations({ didFile, outDir, canisterName })
+
+    expect(result.error).toBeUndefined()
+    expect(result.success).toBe(true)
+    expect(
+      fs.readFileSync(path.join(outDir, "declarations", "aliased.js"), "utf-8")
+    ).toContain("export const idlFactory")
   })
 
   it("rejects a didFile whose basename is a directory reference", async () => {

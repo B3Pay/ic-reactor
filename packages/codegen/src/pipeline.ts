@@ -20,7 +20,7 @@ import type {
   GeneratorResult,
   ReactorClassName,
 } from "./types.js"
-import { generateDeclarations } from "./generators/declarations.js"
+import { generateDeclarations, OWNER_FILE } from "./generators/declarations.js"
 import {
   generateReactorEntryFile,
   generateReactorFile,
@@ -150,6 +150,18 @@ function backUpFile(filePath: string): string {
  * canister can be stopped before it destroys the first one's output.
  */
 function findOutDirOwner(outDir: string): string | undefined {
+  // Written by generateDeclarations, so it is present for `--bindgen-only`
+  // runs too — those skip index.generated.ts but still replace declarations/,
+  // which is the step that destroys the other canister's output.
+  try {
+    const owner = fs.readFileSync(path.join(outDir, OWNER_FILE), "utf-8").trim()
+    if (owner) return owner
+  } catch {
+    // fall through to the legacy marker
+  }
+
+  // Directories generated before the marker existed only carry the canister
+  // name inside index.generated.ts.
   let content: string
   try {
     content = fs.readFileSync(path.join(outDir, "index.generated.ts"), "utf-8")

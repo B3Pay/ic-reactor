@@ -383,6 +383,57 @@ export const customBackendIndex = true
     ).toContain('name: "backend"')
   })
 
+  // `--bindgen-only` sets generateReactor:false, so index.generated.ts is never
+  // written. An ownership guard that keyed off that file therefore had nothing
+  // to read on exactly the path that still replaces declarations/ — both runs
+  // reported success and the first canister's output vanished.
+  it("refuses a shared outDir on the bindgen-only path too", async () => {
+    const projectRoot = createTempProject()
+    writeDid(projectRoot, "backend.did")
+    writeDid(projectRoot, "ledger.did")
+
+    const sharedOutDir = "src/declarations/shared"
+    const globalConfig = {
+      outDir: "src/declarations",
+      clientManagerPath: "../../clients",
+    }
+
+    const first = await runCanisterPipeline({
+      canisterConfig: {
+        name: "backend",
+        didFile: "backend.did",
+        outDir: sharedOutDir,
+      },
+      projectRoot,
+      globalConfig,
+      generateReactor: false,
+    })
+    expect(first.success).toBe(true)
+
+    const declarationsDir = path.join(projectRoot, sharedOutDir, "declarations")
+    const before = fs.readdirSync(declarationsDir).sort()
+    expect(before).toContain("backend.js")
+    // The guard cannot rely on this file existing here.
+    expect(
+      fs.existsSync(path.join(projectRoot, sharedOutDir, "index.generated.ts"))
+    ).toBe(false)
+
+    const second = await runCanisterPipeline({
+      canisterConfig: {
+        name: "ledger",
+        didFile: "ledger.did",
+        outDir: sharedOutDir,
+      },
+      projectRoot,
+      globalConfig,
+      generateReactor: false,
+    })
+
+    expect(second.success).toBe(false)
+    expect(second.error).toContain("backend")
+    expect(fs.readdirSync(declarationsDir).sort()).toEqual(before)
+  })
+
   it("preserves an index.ts that kept the generated header but grew its own exports", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "backend.did")

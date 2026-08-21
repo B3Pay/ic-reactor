@@ -10,7 +10,7 @@
  *   <outDir>/declarations/<name>.did      — Copy of the source .did file
  */
 
-import { didToJs, didToTs, parseDid } from "@ic-reactor/parser"
+import { didToJs, didToTs } from "@ic-reactor/parser"
 import path from "node:path"
 import fs from "node:fs"
 import type { GeneratorResult } from "../types.js"
@@ -46,8 +46,14 @@ function replaceDirectory(from: string, to: string): void {
     return
   }
 
-  // Same parent as `to`, so this is a rename within one filesystem.
-  const displaced = fs.mkdtempSync(`${to}.old-`)
+  // Same parent as `to`, so this is a rename within one filesystem. Dot-prefixed
+  // because a crash between the two renames below strands this directory next
+  // to the real one: `declarations.old-XYZ` sits inside the project's source
+  // tree and TypeScript would compile it, producing duplicate declarations on
+  // top of whatever the crash already caused.
+  const displaced = fs.mkdtempSync(
+    path.join(path.dirname(to), `.${path.basename(to)}.old-`)
+  )
   // mkdtemp created the directory; rename needs the name to be free.
   fs.rmdirSync(displaced)
   fs.renameSync(to, displaced)
@@ -73,6 +79,19 @@ function replaceDirectory(from: string, to: string): void {
  * build with no declarations at all. A failure now leaves the previous
  * declarations byte-identical.
  */
+/**
+ * The export the generated reactor imports. Its presence in `didToJs` output is
+ * the authoritative "this .did describes a service" test — see the note in
+ * generateDeclarations.
+ */
+const HAS_IDL_FACTORY = /\bexport\s+const\s+idlFactory\b/
+
+/**
+ * Marker naming the canister an output directory belongs to. Dot-prefixed so
+ * it stays out of the generated surface consumers import.
+ */
+export const OWNER_FILE = ".ic-reactor-owner"
+
 export async function generateDeclarations(
   options: DeclarationsGeneratorOptions
 ): Promise<DeclarationsGeneratorResult> {
@@ -127,20 +146,29 @@ export async function generateDeclarations(
     // Read the DID content before any directory manipulation
     const didContent = fs.readFileSync(didFile, "utf-8")
 
-    // A .did that parses but declares no `service` is a normal thing to have —
-    // a shared types file, say — but it compiles to a module with no
-    // `idlFactory` and no `_SERVICE`, which is exactly what the generated
-    // reactor imports. Caught here, the caller gets the .did path; not caught,
-    // the consumer's build fails on a file we just reported as generated.
-    if (parseDid(didContent).service == null) {
+    const jsContent = didToJs(didContent)
+    const tsContent = didToTs(didContent)
+
+    // A .did that parses but declares no service is a normal thing to have — a
+    // shared types file, say — but it compiles to a module with no `idlFactory`
+    // and no `_SERVICE`, which is exactly what the generated reactor imports.
+    // Caught here the caller gets the .did path; not caught, the consumer's
+    // build fails on a file we just reported as generated.
+    //
+    // The test is on the GENERATED OUTPUT, not on `parseDid(...).service`. That
+    // AST field is only populated for an inline body; it is null for every
+    // alias form — `service : S;`, `service : (args) -> S;`, `service name : S;`
+    // — which the parser nonetheless compiles to a complete idlFactory. Gating
+    // on the AST field rejected those valid files outright.
+    if (!HAS_IDL_FACTORY.test(jsContent)) {
       return {
         success: false,
         declarationsDir,
         files: [],
         error:
-          `[${canisterName}] ${didFile} declares no Candid service, so it produces no ` +
-          `idlFactory and no _SERVICE to generate against. Point this canister at the ` +
-          `.did file that contains its \`service : { … }\` definition.`,
+          `[${canisterName}] ${didFile} produces no idlFactory, so there is no service ` +
+          `to generate against. Point this canister at the .did file that declares its ` +
+          `service.`,
       }
     }
 
@@ -148,10 +176,14 @@ export async function generateDeclarations(
     // the swap below stays a same-filesystem rename.
     fs.mkdirSync(outDir, { recursive: true })
 
-    staging = fs.mkdtempSync(path.join(outDir, ".declarations.tmp-"))
+    // Record which canister owns this directory. The pipeline reads it to stop
+    // a second canister generating into the same outDir and wiping the first
+    // one's declarations. It lives here rather than in index.generated.ts
+    // because `--bindgen-only` never writes that file, and the declarations
+    // replacement it skips past is exactly the destructive step.
+    fs.writeFileSync(path.join(outDir, OWNER_FILE), `${canisterName}\n`)
 
-    const jsContent = didToJs(didContent)
-    const tsContent = didToTs(didContent)
+    staging = fs.mkdtempSync(path.join(outDir, ".declarations.tmp-"))
 
     const jsPath = path.join(declarationsDir, `${baseName}.js`)
     const dtsPath = path.join(declarationsDir, `${baseName}.d.ts`)
