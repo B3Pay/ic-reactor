@@ -64,7 +64,7 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@icp-sdk/core": "^6.0.0",
+    "@icp-sdk/core": "^6.1.0",
     "@tanstack/query-core": "^5.0.0",
     "zod": "^4.3.5"
   },
@@ -74,10 +74,10 @@
     }
   },
   "devDependencies": {
-    "@icp-sdk/core": "^6.0.0",
+    "@icp-sdk/core": "^6.1.0",
     "@size-limit/preset-small-lib": "^12.1.0",
     "@tanstack/query-core": "^5.101.4",
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.2.0",
     "fake-indexeddb": "^6.2.5",
     "size-limit": "^12.1.0",
     "vitest": "^4.1.10"

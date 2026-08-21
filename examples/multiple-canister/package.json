@@ -6,12 +6,12 @@
   "dependencies": {
     "@ic-reactor/react": "^3.11.0",
     "@icp-sdk/auth": "^7.1.0",
-    "@icp-sdk/core": "^6.0.0",
+    "@icp-sdk/core": "^6.1.0",
     "@tanstack/react-query": "^5.101.4",
-    "@types/node": "26.1.1",
+    "@types/node": "26.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-hook-form": "^7.83.0",
+    "react-hook-form": "^7.85.0",
     "typescript": "^6.0.3"
   },
   "scripts": {
@@ -38,10 +38,10 @@
     ]
   },
   "devDependencies": {
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.4",
-    "vite": "^8.1.5"
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "vite": "^8.2.1"
   },
   "overrides": {
     "picomatch": "4.0.4",

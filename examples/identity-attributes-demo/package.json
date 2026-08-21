@@ -11,18 +11,18 @@
   "dependencies": {
     "@ic-reactor/react": "^3.11.0",
     "@icp-sdk/auth": "^7.1.0",
-    "@icp-sdk/core": "^6.0.0",
+    "@icp-sdk/core": "^6.1.0",
     "@tanstack/react-query": "^5.101.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@ic-reactor/vite-plugin": "^0.12.0",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.4",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
     "typescript": "^6.0.3",
-    "vite": "^8.1.5"
+    "vite": "^8.2.1"
   },
   "overrides": {
     "picomatch": "4.0.4",
