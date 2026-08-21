@@ -74,7 +74,7 @@
   "devDependencies": {
     "@ic-reactor/candid": "workspace:*",
     "@ic-reactor/core": "workspace:*",
-    "@icp-sdk/auth": "^7.1.0",
+    "@icp-sdk/auth": "^8.0.3",
     "@icp-sdk/core": "^6.1.0",
     "@size-limit/preset-small-lib": "^13.0.3",
     "@tanstack/query-core": "^5.101.4",

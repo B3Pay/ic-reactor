@@ -1,6 +1,9 @@
 /**
- * Compatibility guarantees across `@icp-sdk/auth` versions and the AuthClient
- * options IC Reactor forwards.
+ * The `@icp-sdk/auth` nonce contract and the AuthClient options IC Reactor
+ * forwards.
+ *
+ * The peer range narrowed to `^8.0.0` in 3.12.0, so the v7 cases that used to
+ * live here are gone along with the runtime probe they covered.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { QueryClient } from "@tanstack/react-query"
@@ -17,11 +20,7 @@ vi.mock("@icp-sdk/auth/client", () => ({ AuthClient: authClientMocks.factory }))
 
 const identity = { getPrincipal: () => Principal.fromText("aaaaa-aa") } as never
 
-/**
- * @param version `7` keeps the v7 surface; `8` adds `memoize`, which is how the
- * v8 nonce contract is detected.
- */
-function createAuthClientStub(version: 7 | 8) {
+function createAuthClientStub() {
   const client = {
     getIdentity: vi.fn(() => identity),
     isAuthenticated: vi.fn(() => true),
@@ -31,9 +30,7 @@ function createAuthClientStub(version: 7 | 8) {
       data: new Uint8Array(),
       signature: new Uint8Array(),
     })),
-    ...(version === 8
-      ? { memoize: vi.fn(async (produce: () => unknown) => produce()) }
-      : {}),
+    memoize: vi.fn(async (produce: () => unknown) => produce()),
   }
   return client as typeof client & Record<string, unknown>
 }
@@ -57,24 +54,8 @@ beforeEach(() => {
 })
 
 describe("@icp-sdk/auth nonce contract", () => {
-  it("passes a promise to v7 clients", async () => {
-    const authClient = createAuthClientStub(7)
-    const { authentication } = createManager({}, authClient)
-    const attributes = new IdentityAttributesManager(authentication)
-
-    await attributes.request({ keys: ["email"], nonce: new Uint8Array([4, 2]) })
-
-    const [request] = authClient.requestAttributes.mock.calls[0] as unknown as [
-      { nonce: unknown },
-    ]
-    expect(typeof request.nonce).not.toBe("function")
-    await expect(request.nonce as Promise<Uint8Array>).resolves.toEqual(
-      new Uint8Array([4, 2])
-    )
-  })
-
-  it("passes a nonce callback to v8 clients", async () => {
-    const authClient = createAuthClientStub(8)
+  it("always hands the client a nonce thunk", async () => {
+    const authClient = createAuthClientStub()
     const { authentication } = createManager({}, authClient)
     const attributes = new IdentityAttributesManager(authentication)
 
@@ -91,7 +72,7 @@ describe("@icp-sdk/auth nonce contract", () => {
   })
 
   it("defers a lazily produced nonce until the client asks for it", async () => {
-    const authClient = createAuthClientStub(8)
+    const authClient = createAuthClientStub()
     const { authentication } = createManager({}, authClient)
     const attributes = new IdentityAttributesManager(authentication)
 
@@ -107,24 +88,8 @@ describe("@icp-sdk/auth nonce contract", () => {
     expect(produce).toHaveBeenCalledTimes(1)
   })
 
-  it("resolves a lazily produced nonce eagerly for v7 clients", async () => {
-    const authClient = createAuthClientStub(7)
-    const { authentication } = createManager({}, authClient)
-    const attributes = new IdentityAttributesManager(authentication)
-
-    const produce = vi.fn(async () => new Uint8Array([7]))
-    await attributes.request({ keys: ["email"], nonce: produce })
-
-    // v7 has no thunk support, so the callback is invoked for it.
-    expect(produce).toHaveBeenCalledTimes(1)
-    const [request] = authClient.requestAttributes.mock.calls[0] as unknown as [
-      { nonce: Promise<Uint8Array> },
-    ]
-    await expect(request.nonce).resolves.toEqual(new Uint8Array([7]))
-  })
-
-  it("accepts a promise nonce", async () => {
-    const authClient = createAuthClientStub(7)
+  it("accepts a promise nonce and still passes a thunk", async () => {
+    const authClient = createAuthClientStub()
     const { authentication } = createManager({}, authClient)
     const attributes = new IdentityAttributesManager(authentication)
 
@@ -134,9 +99,10 @@ describe("@icp-sdk/auth nonce contract", () => {
     })
 
     const [request] = authClient.requestAttributes.mock.calls[0] as unknown as [
-      { nonce: Promise<Uint8Array> },
+      { nonce: () => Promise<Uint8Array> },
     ]
-    await expect(request.nonce).resolves.toEqual(new Uint8Array([1]))
+    expect(typeof request.nonce).toBe("function")
+    await expect(request.nonce()).resolves.toEqual(new Uint8Array([1]))
   })
 })
 
@@ -170,7 +136,7 @@ describe("AuthClient option pass-through", () => {
 
   it("lets a login call override constructor defaults", async () => {
     authClientMocks.factory.mockImplementation(function () {
-      return createAuthClientStub(7)
+      return createAuthClientStub()
     })
     const { authentication } = createManager({
       derivationOrigin: "https://app.example.com",
@@ -191,7 +157,7 @@ describe("AuthClient option pass-through", () => {
 describe("AuthClient reuse", () => {
   it("reuses the prepared client instead of rebuilding it on every call", async () => {
     authClientMocks.factory.mockImplementation(function () {
-      return createAuthClientStub(7)
+      return createAuthClientStub()
     })
     const { authentication } = createManager()
 
@@ -207,7 +173,7 @@ describe("AuthClient reuse", () => {
 
   it("rebuilds only when the effective options change", async () => {
     authClientMocks.factory.mockImplementation(function () {
-      return createAuthClientStub(7)
+      return createAuthClientStub()
     })
     const { authentication } = createManager()
 
@@ -219,7 +185,7 @@ describe("AuthClient reuse", () => {
   })
 
   it("never rebuilds a caller-supplied client", async () => {
-    const authClient = createAuthClientStub(7)
+    const authClient = createAuthClientStub()
     const { authentication } = createManager(
       { identityProvider: "https://id.ai/authorize" },
       authClient

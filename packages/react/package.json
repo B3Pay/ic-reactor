@@ -63,14 +63,14 @@
     "@ic-reactor/core": "workspace:^"
   },
   "peerDependencies": {
-    "@icp-sdk/auth": "^7.1.0 || ^8.0.0",
+    "@icp-sdk/auth": "^8.0.0",
     "@icp-sdk/core": "^6.1.0",
     "@tanstack/react-query": "^5.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
   },
   "devDependencies": {
-    "@icp-sdk/auth": "^8.0.0",
+    "@icp-sdk/auth": "^8.0.3",
     "@icp-sdk/core": "^6.1.0",
     "@size-limit/preset-small-lib": "^13.0.3",
     "@tanstack/react-query": "^5.101.4",

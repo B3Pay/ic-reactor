@@ -1,5 +1,4 @@
 import type {
-  AuthClientLike,
   IdentityAttributeNonce,
   IdentityAttributeResult,
   RequestIdentityAttributesParameters,
@@ -51,7 +50,7 @@ export class IdentityAttributesManager {
 
     if (!authClient) {
       throw new Error(
-        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth v7 or later, or provide a compatible authClient."
+        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth v8, or provide a compatible authClient."
       )
     }
 
@@ -68,7 +67,7 @@ export class IdentityAttributesManager {
         : Promise.resolve(authClient.getIdentity())
       const requestPromise = authClient.requestAttributes({
         keys,
-        nonce: toAuthClientNonce(authClient, nonce),
+        nonce: toAuthClientNonce(nonce),
       })
 
       const [signedAttributes, identity] = await Promise.all([
@@ -114,23 +113,19 @@ export class IdentityAttributesManager {
 }
 
 /**
- * Bridges the two `@icp-sdk/auth` nonce contracts.
+ * Adapts our nonce input to the `@icp-sdk/auth` nonce contract.
  *
- * v8 takes `() => Promise<Uint8Array>` (it journals the value so a redirect
- * flow replays the same bytes); v7 takes `Uint8Array | Promise<Uint8Array>`.
- * Both open the transport channel synchronously for the deferred forms, so we
- * always hand over the deferred shape the installed client understands.
- * `memoize` only exists from v8 onwards, which makes it a reliable marker.
+ * v8 takes `() => Promise<Uint8Array>` — a thunk, so it can journal the value
+ * and replay the same bytes through a redirect flow. The thunk form also opens
+ * the transport channel synchronously, which is what preserves the user
+ * gesture.
+ *
+ * Until 3.12.0 this probed `typeof authClient.memoize === "function"` to detect
+ * v8 and fell back to a bare promise for v7. The peer range is now `^8.0.0`, so
+ * the probe would only ever take one branch.
  */
 function toAuthClientNonce(
-  authClient: AuthClientLike,
   nonce: IdentityAttributeNonce
-): Uint8Array | Promise<Uint8Array> | (() => Promise<Uint8Array>) {
-  const supportsNonceThunk = typeof authClient.memoize === "function"
-
-  if (supportsNonceThunk) {
-    return () => Promise.resolve(typeof nonce === "function" ? nonce() : nonce)
-  }
-
-  return Promise.resolve(typeof nonce === "function" ? nonce() : nonce)
+): () => Promise<Uint8Array> {
+  return () => Promise.resolve(typeof nonce === "function" ? nonce() : nonce)
 }
