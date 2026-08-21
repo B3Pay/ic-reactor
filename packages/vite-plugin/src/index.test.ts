@@ -233,6 +233,46 @@ describe("icReactor", () => {
       )
     })
 
+    // The replica being UP while a configured canister is simply not deployed is
+    // the common case, and it takes the success branch: icEnv is truthy, so the
+    // "could not detect" warning never fires. Without a second check the cookie
+    // goes out with a root key and no PUBLIC_CANISTER_ID, which is exactly the
+    // silent failure the warning above exists to prevent.
+    it("should warn when the replica is up but a configured canister has no id", () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {})
+      ;(execFileSync as any).mockImplementation(
+        (command: string, args: string[]) => {
+          if (
+            command === "icp" &&
+            args.includes("network") &&
+            args.includes("status")
+          ) {
+            return JSON.stringify({ root_key: "mock-root-key", port: 4943 })
+          }
+          // Never deployed: every canister status fails.
+          if (args.includes("canister") && args.includes("status")) {
+            throw new Error("canister not found")
+          }
+          return ""
+        }
+      )
+
+      const plugin = createVitePlugin(mockOptions)
+      const result = (plugin as any).config({}, { command: "serve" })
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("no canister ID could be resolved")
+      )
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("test")
+      )
+      // The cookie still went out, which is why the warning is the only signal.
+      const cookie = result?.server?.headers?.["Set-Cookie"] ?? ""
+      expect(cookie).not.toContain("PUBLIC_CANISTER_ID")
+    })
+
     it("should stay quiet about failed detection when no canisters are configured", () => {
       const consoleWarnSpy = vi
         .spyOn(console, "warn")

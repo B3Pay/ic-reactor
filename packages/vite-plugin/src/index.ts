@@ -130,11 +130,22 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     })
   }
 
-  // A `.did` save can land while the previous regeneration is still inside the
-  // pipeline's delete-then-write sequence, and the second run would wipe the
-  // directory the first one is writing into. Keep at most one run per canister
-  // in flight and collapse every save that arrives meanwhile into a single
-  // trailing rerun, so the last saved `.did` still wins without the races.
+  // Keep at most one regeneration per canister in flight and collapse every save
+  // that arrives meanwhile into a single trailing rerun, so the last saved
+  // `.did` still wins without piling up concurrent runs.
+  //
+  // Scope, precisely: this covers the watcher path only. `buildStart` calls the
+  // pipeline directly and does not register here, so a save landing during the
+  // initial generation can still run concurrently with it. That is deliberate
+  // rather than an oversight -- since @ic-reactor/codegen generates into a
+  // staging directory and swaps atomically, concurrent runs for one canister no
+  // longer interleave inside a delete-then-write sequence; the loser is simply
+  // overwritten. What this buys is ordering and wasted work, not integrity.
+  //
+  // Note the coalesced promise resolves when the RUNNING pass finishes, not the
+  // trailing rerun, so `handleHotUpdate` can return before the newest `.did` has
+  // been written. The trailing run sends its own full-reload, so the browser
+  // still converges.
   const inFlight = new Map<string, Promise<void>>()
   const rerunQueued = new Set<string>()
 
@@ -255,6 +266,32 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
             },
           },
         }
+      }
+
+      // The replica can be UP -- `icp network status` succeeds, so icEnv is
+      // truthy and the check above never fires -- while a configured canister
+      // has never been deployed. Every `icp canister status <name>` then fails
+      // and that id is simply absent, so the cookie goes out carrying a root key
+      // and no PUBLIC_CANISTER_ID for it. That is the same "indistinguishable
+      // from success until the app breaks on an undefined canister id" failure
+      // the branch above exists to prevent, and it is the more common one.
+      //
+      // Only configured canisters are reported: `internet_identity` is appended
+      // to canisterNames for convenience and is routinely not deployed.
+      const missingCanisterIds = canisters
+        .map((canister) => canister.name)
+        .filter((name): name is string => !!name)
+        .filter((name) => !icEnv.canisterIds[name])
+
+      if (missingCanisterIds.length > 0) {
+        const names = missingCanisterIds.map((name) => `"${name}"`).join(", ")
+        const it = missingCanisterIds.length === 1 ? "it" : "them"
+        console.warn(
+          `[ic-reactor] The local replica is running, but no canister ID could be resolved for ${names}. ` +
+            `Deploy ${it} (\`icp deploy\`) — until then the injected ic_env carries no PUBLIC_CANISTER_ID ` +
+            `for ${it} and the app will see an undefined canister id. ` +
+            `Re-run with DEBUG=ic-reactor to see the \`icp\` output.`
+        )
       }
 
       for (const diagnostic of diagnostics) {
