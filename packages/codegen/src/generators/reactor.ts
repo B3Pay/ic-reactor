@@ -20,9 +20,9 @@
  *   } = createActorHooks(backendReactor)
  */
 
-import path from "node:path"
 import { toPascalCase, getReactorName, getServiceTypeName } from "../naming.js"
 import type { CodegenTarget, ReactorClassName } from "../types.js"
+import { resolveDeclarationsBaseName } from "../validate.js"
 
 export interface ReactorGeneratorOptions {
   /** Canister name (e.g. "backend") */
@@ -88,8 +88,10 @@ export function generateReactorFile(options: ReactorGeneratorOptions): string {
   const reactorName = getReactorName(canisterName)
   const serviceName = getServiceTypeName(canisterName)
 
-  // Derive the declarations import path from the .did filename
-  const baseName = path.basename(didFile, ".did")
+  // Derive the declarations import path from the .did filename. The helper
+  // rejects stems like "." and ".." rather than emitting an import of a
+  // directory — this runs even for callers that bypass the pipeline.
+  const baseName = resolveDeclarationsBaseName(didFile)
   const declarationsPath = `./declarations/${baseName}`
   const reactorImportSource = getReactorClassImportSource(
     reactorClass,
