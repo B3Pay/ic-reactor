@@ -1,4 +1,4 @@
-import { useQueryTodo } from "service/todo"
+import { useQueryTodo } from "service/provider"
 import RenderTodo from "./Todo"
 
 const Todos = () => {

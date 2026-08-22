@@ -46,42 +46,96 @@ npm run dev
 
 ## Key Integration
 
-```ts
-// src/service/client.ts
-import { AuthenticationManager, ClientManager } from "@ic-reactor/react"
-import { createAuthHooks } from "@ic-reactor/react"
-import { QueryClient } from "@tanstack/react-query"
-
-export const queryClient = new QueryClient()
-
-export const clientManager = new ClientManager({
-  queryClient,
-  agentOptions: {
-    host: process.env.NEXT_PUBLIC_IC_HOST || "http://127.0.0.1:4943",
-  },
-})
-export const authentication = new AuthenticationManager({ clientManager })
-
-export const { useAuth, useAgentState, useUserPrincipal } =
-  createAuthHooks(authentication)
-```
-
-```ts
-// src/service/todo.ts
-import { Reactor, createActorHooks } from "@ic-reactor/react"
+```tsx
+// src/service/provider.tsx
+import { createContext, useContext, useState } from "react"
+import type { ReactNode } from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import {
+  ClientManager,
+  AuthenticationManager,
+  Reactor,
+  createActorHooks,
+  createAuthHooks,
+} from "@ic-reactor/react"
 import { canisterId, idlFactory } from "declarations/todo"
 import type { _SERVICE } from "declarations/todo/todo.did"
-import { clientManager } from "./client"
 
-export const todoReactor = new Reactor<_SERVICE>({
-  name: "todo",
-  clientManager,
-  canisterId,
-  idlFactory,
-})
+function createReactorContext() {
+  const queryClient = new QueryClient()
 
-export const { useActorQuery: useQueryTodo, useActorMutation: useMutateTodo } =
-  createActorHooks(todoReactor)
+  const clientManager = new ClientManager({
+    queryClient,
+    agentOptions: {
+      host: process.env.NEXT_PUBLIC_IC_HOST || "http://127.0.0.1:4943",
+    },
+  })
+  const authentication = new AuthenticationManager({ clientManager })
+  const todoReactor = new Reactor<_SERVICE>({
+    name: "todo",
+    clientManager,
+    canisterId,
+    idlFactory,
+  })
+
+  return {
+    queryClient,
+    clientManager,
+    authentication,
+    todoReactor,
+    auth: createAuthHooks(authentication),
+    todo: createActorHooks(todoReactor),
+  }
+}
+
+type ReactorContextValue = ReturnType<typeof createReactorContext>
+
+const ReactorContext = createContext<ReactorContextValue | null>(null)
+
+export function ICReactorProvider({ children }: { children: ReactNode }) {
+  // Runs once per mounted tree — and a server render is its own tree, so each
+  // request gets its own managers and its own cache.
+  const [value] = useState(createReactorContext)
+
+  return (
+    <QueryClientProvider client={value.queryClient}>
+      <ReactorContext.Provider value={value}>
+        {children}
+      </ReactorContext.Provider>
+    </QueryClientProvider>
+  )
+}
+
+export function useICReactor() {
+  const context = useContext(ReactorContext)
+  if (!context) {
+    throw new Error("useICReactor must be used inside <ICReactorProvider>")
+  }
+  return context
+}
+```
+
+Bind the hooks with the hook's **own** function type rather than a
+`Parameters<...>` wrapper — `useActorQuery` is generic over the method name, and
+a rest-args wrapper collapses it to the base signature, degrading `data` to
+`unknown` at every call site:
+
+```tsx
+type TodoHooks = ReturnType<typeof createReactorContext>["todo"]
+
+export const useQueryTodo: TodoHooks["useActorQuery"] = (...args: any[]) =>
+  (useICReactor().todo.useActorQuery as any)(...args)
+```
+
+Then wrap the app once, and keep anything that touches the reactor below it:
+
+```tsx
+// src/pages/_app.tsx
+const App: React.FC<AppProps> = (props) => (
+  <ICReactorProvider>
+    <AppShell {...props} />
+  </ICReactorProvider>
+)
 ```
 
 <Aside type="note">
@@ -90,12 +144,17 @@ export const { useActorQuery: useQueryTodo, useActorMutation: useMutateTodo } =
   instead.
 </Aside>
 
-<Aside type="caution">
-  These module-scope reactors are for the client bundle. On the server —
-  `getServerSideProps` or the App Router — do not call canisters through a
-  module-scope reactor: it is reused by every request served by the same server
-  module graph, and query keys carry no caller principal, so one user's
-  caller-scoped data can be served to another request. Build the reactor (with
-  its own `QueryClient`) inside the request instead — see
-  [Server-Side Rendering](/v3/framework/react-setup#server-side-rendering).
+<Aside type="caution" title="Why this is a provider and not a module-scope singleton">
+  Building the `ClientManager`, `Reactor` and `QueryClient` at module scope is
+  the one thing not to do in an app that server-renders. A module-scope reactor
+  is reused by every request served by the same server module graph, and query
+  keys carry no caller principal — so one visitor's caller-scoped result
+  (`balanceOf(self)`, `myProfile`) can be served to the next.
+  `AuthenticationManager` is worse: it holds mutable identity state, and
+  `createAuthHooks`' `useSyncExternalStore` server snapshot reads whatever
+  identity that shared manager happens to hold at the moment of the render.
+
+  Constructing inside a `useState` initializer gives each render tree its own
+  set. See [Server-Side
+  Rendering](/v3/framework/react-setup#server-side-rendering).
 </Aside>
