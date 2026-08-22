@@ -185,7 +185,7 @@ importers:
   examples/all-in-one-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -231,8 +231,8 @@ importers:
         version: 3.6.0
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.12.0
-        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.13.0
+        version: link:../../packages/vite-plugin
       '@icp-sdk/bindgen':
         specifier: ^0.4.0
         version: 0.4.0
@@ -267,10 +267,10 @@ importers:
   examples/candid-parser:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@microlink/react-json-view':
         specifier: ^1.31.28
@@ -304,7 +304,7 @@ importers:
   examples/ckbtc-wallet:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -341,7 +341,7 @@ importers:
   examples/codec-demo:
     dependencies:
       '@ic-reactor/core':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -360,7 +360,7 @@ importers:
   examples/codegen-in-action:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -376,11 +376,11 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/cli':
-        specifier: ^0.12.0
-        version: 0.12.1
+        specifier: ^0.13.0
+        version: link:../../packages/cli
       '@ic-reactor/vite-plugin':
-        specifier: ^0.12.0
-        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.13.0
+        version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -400,7 +400,7 @@ importers:
   examples/custom-provider:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -422,8 +422,8 @@ importers:
         version: 6.0.3
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.12.0
-        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.13.0
+        version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -446,7 +446,7 @@ importers:
   examples/icp-reactor-demo/frontend:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -468,8 +468,8 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.12.0
-        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.13.0
+        version: link:../../../packages/vite-plugin
       '@icp-sdk/bindgen':
         specifier: ^0.4.0
         version: 0.4.0
@@ -492,7 +492,7 @@ importers:
   examples/identity-attributes-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -511,8 +511,8 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.12.0
-        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.13.0
+        version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -532,10 +532,10 @@ importers:
   examples/metadata-reactor-capabilities-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/candid
       '@ic-reactor/core':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -554,10 +554,10 @@ importers:
   examples/metadata-reactor-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/candid
       '@ic-reactor/core':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -576,7 +576,7 @@ importers:
   examples/multiple-canister:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -619,7 +619,7 @@ importers:
   examples/nextjs:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -671,7 +671,7 @@ importers:
   examples/nextjs-app-router:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -720,7 +720,7 @@ importers:
   examples/query-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -760,10 +760,10 @@ importers:
   examples/result-types-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -794,11 +794,11 @@ importers:
   examples/suspense-infinite-query-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@ic-reactor/vite-plugin':
-        specifier: ^0.12.0
-        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.13.0
+        version: link:../../packages/vite-plugin
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
@@ -837,10 +837,10 @@ importers:
   examples/tanstack-form-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -877,7 +877,7 @@ importers:
   examples/tanstack-router:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -929,8 +929,8 @@ importers:
         version: 1.4.0
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.12.0
-        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.13.0
+        version: link:../../packages/vite-plugin
       '@tanstack/devtools-vite':
         specifier: ^0.8
         version: 0.8.3(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
@@ -971,7 +971,7 @@ importers:
   examples/typescript-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -996,7 +996,7 @@ importers:
   examples/vite-environment-variables/frontend:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -1012,8 +1012,8 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.12.0
-        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.13.0
+        version: link:../../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -1048,7 +1048,7 @@ importers:
   examples/vite-plugin-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.11.0
+        specifier: ^3.12.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -1064,8 +1064,8 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.12.0
-        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.13.0
+        version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -2689,22 +2689,6 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
-
-  '@ic-reactor/cli@0.12.1':
-    resolution: {integrity: sha512-/lxqkOSbEiurBVKv/ON7KPTHAMuwV/kEYR6di1viajTMW86WKn06yyWyxAdCW2YVUQDyluUkYMGjEOMkwzUA3A==}
-    engines: {node: '>=18'}
-    hasBin: true
-
-  '@ic-reactor/codegen@0.12.1':
-    resolution: {integrity: sha512-4HyB8zQkv4mYAxFnWuj7mGvk9foAkiErnQgNm+ATXYb6dSGCTuA2WuJuo+1LVZxTDvcyU8IOZy0CsoNfAACbbg==}
-
-  '@ic-reactor/parser@0.4.7':
-    resolution: {integrity: sha512-hdEoXzU7P8op5dqznpwXgafZF8tEnvRFcbMnoO7Zd1PptiihAsfxs31NzbnG7R+9n8zTHlX+4ysyS47sLFrGQw==}
-
-  '@ic-reactor/vite-plugin@0.12.1':
-    resolution: {integrity: sha512-yqDD9uoewUuebIBvNRl6OQcE6ppRQM07EKAPA7W/eNtcNs0XBGZzQidL1Gc88uOGqT+itaXtxEizbUwPhVL3LA==}
-    peerDependencies:
-      vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
 
   '@icp-sdk/auth@8.0.3':
     resolution: {integrity: sha512-HXndLoKt22+KTBye6l9wblMSqArhAALnPWfR8Zqv9h8UNLSznjtXYMDbQT4A0qd5xa5hEMfg1TCu5iQkMxyW1w==}
@@ -9833,27 +9817,6 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
-
-  '@ic-reactor/cli@0.12.1':
-    dependencies:
-      '@clack/prompts': 1.7.0
-      '@ic-reactor/codegen': 0.12.1
-      '@icp-sdk/bindgen': 0.4.0
-      '@icp-sdk/core': 6.1.0
-      commander: 15.0.0
-      picocolors: 1.1.1
-
-  '@ic-reactor/codegen@0.12.1':
-    dependencies:
-      '@ic-reactor/parser': 0.4.7
-      change-case: 5.4.4
-
-  '@ic-reactor/parser@0.4.7': {}
-
-  '@ic-reactor/vite-plugin@0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))':
-    dependencies:
-      '@ic-reactor/codegen': 0.12.1
-      vite: 8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
 
   '@icp-sdk/auth@8.0.3(@icp-sdk/core@6.1.0)':
     dependencies:

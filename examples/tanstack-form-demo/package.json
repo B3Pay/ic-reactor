@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/candid": "^3.11.0",
-    "@ic-reactor/react": "^3.11.0",
+    "@ic-reactor/candid": "^3.12.0",
+    "@ic-reactor/react": "^3.12.0",
     "@icp-sdk/core": "^6.1.0",
     "@tanstack/react-form": "^1.33.5",
     "react": "^19.2.8",
