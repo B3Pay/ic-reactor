@@ -20,6 +20,7 @@ import type { CodegenConfig, CanisterConfig, InitOptions } from "../types.js"
 import {
   generateClientFile,
   assertContainedPath,
+  resolveContainedOutDir,
   CodegenConfigError,
 } from "@ic-reactor/codegen"
 
@@ -82,15 +83,18 @@ export async function initCommand(options: InitOptions) {
     return
   }
 
-  // Everything below this line writes to disk.
-  saveConfig(config, configPath)
-
-  // Ensure directories exist
-  ensureDir(path.join(projectRoot, config.outDir))
-
-  // Create default Client Manager
+  // Resolve and containment-check every path BEFORE anything is written. Both
+  // values come from `--out-dir` or a free-text prompt, and both are turned into
+  // directories we create; validating after `saveConfig` meant a rejected path
+  // still left a written — or overwritten — config on disk.
+  let resolvedOutDir: string
   let clientManagerFile: string
   try {
+    resolvedOutDir = resolveContainedOutDir(
+      "outDir",
+      config.outDir,
+      projectRoot
+    )
     clientManagerFile = resolveClientManagerFilePath(projectRoot, config)
   } catch (err) {
     if (err instanceof CodegenConfigError) {
@@ -98,6 +102,12 @@ export async function initCommand(options: InitOptions) {
     }
     throw err
   }
+
+  // Everything below this line writes to disk.
+  saveConfig(config, configPath)
+
+  // Ensure directories exist
+  ensureDir(resolvedOutDir)
 
   if (!fs.existsSync(clientManagerFile)) {
     const displayedPath = path.relative(projectRoot, clientManagerFile)

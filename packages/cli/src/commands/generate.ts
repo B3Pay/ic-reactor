@@ -61,7 +61,19 @@ export async function generateCommand(options: GenerateOptions) {
     canistersToProcess = canisterNames
   }
 
-  if (options.clean) {
+  // Deliberately skipped for `--canister <name>`. cleanStaleOutput decides what
+  // is stale by comparing the directories on disk against the FULL configured
+  // set, and a single-canister run says nothing about whether the others are
+  // current. The README and the docs page both promise this skip; until this
+  // guard existed they described a safety property the code did not have.
+  if (options.clean && options.canister) {
+    p.log.warn(
+      "--clean was ignored: it needs the full canister set to tell stale output " +
+        "from another canister's current output. Re-run without --canister to clean."
+    )
+  }
+
+  if (options.clean && !options.canister) {
     try {
       const removed = cleanStaleOutput({ config, projectRoot })
       for (const dir of removed) {
