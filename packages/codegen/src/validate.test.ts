@@ -8,6 +8,7 @@ import {
   assertSafeModuleSpecifier,
   assertOneOf,
   resolveContainedOutDir,
+  resolveDeclarationsBaseName,
   CodegenConfigError,
   REACTOR_CLASS_NAMES,
 } from "./validate.js"
@@ -389,5 +390,31 @@ describe("unit-level assertions", () => {
     expect(() =>
       resolveContainedOutDir("outDir", "../root-evil", root)
     ).toThrow(CodegenConfigError)
+  })
+
+  it("derives the declarations stem from the .did basename", () => {
+    expect(resolveDeclarationsBaseName("/canisters/backend.did")).toBe(
+      "backend"
+    )
+    expect(resolveDeclarationsBaseName("backend.did")).toBe("backend")
+    // No extension is still a usable stem.
+    expect(resolveDeclarationsBaseName("/canisters/backend")).toBe("backend")
+  })
+
+  it("rejects a didFile whose basename is a directory reference", () => {
+    // `import { idlFactory } from "./declarations/.."` compiles to nothing
+    // useful — it imports a directory.
+    for (const didFile of ["/canisters/..", "/canisters/.", "..", "."]) {
+      expect(() => resolveDeclarationsBaseName(didFile)).toThrow(
+        CodegenConfigError
+      )
+    }
+  })
+
+  it("rejects a didFile stem that would break out of the import specifier", () => {
+    for (const didFile of ["", '/canisters/ev"il.did', "/canisters/ev\nil.did"])
+      expect(() => resolveDeclarationsBaseName(didFile)).toThrow(
+        CodegenConfigError
+      )
   })
 })

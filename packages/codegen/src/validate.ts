@@ -167,6 +167,44 @@ export function assertSafeModuleSpecifier(
   }
 }
 
+/**
+ * Derive the declarations file stem from a `.did` path and assert it is usable
+ * both as a file name and as the tail of the import specifier we emit.
+ *
+ * `path.basename` is happy to hand back `"."` or `".."`: a `didFile` of
+ * `"canisters/.."` makes the generated reactor `import … from
+ * "./declarations/.."`, a *directory* reference — reported as a successful
+ * generation, rejected by the consumer's bundler. Validating the derived
+ * specifier here is the same treatment `clientManagerPath` gets, for the same
+ * reason: it is config-supplied text that ends up inside an `import`.
+ */
+export function resolveDeclarationsBaseName(didFile: unknown): string {
+  if (typeof didFile !== "string" || didFile.length === 0) {
+    throw new CodegenConfigError(
+      `Invalid didFile: expected a non-empty string, received ${
+        didFile === undefined ? "undefined" : JSON.stringify(didFile)
+      }.`
+    )
+  }
+
+  const baseName = path.basename(didFile, ".did")
+
+  if (baseName === "" || baseName === "." || baseName === "..") {
+    throw new CodegenConfigError(
+      `Invalid didFile ${JSON.stringify(didFile)}: its file name ${JSON.stringify(baseName)} ` +
+        `refers to a directory, not a Candid file. Generated declarations are named after the ` +
+        `.did file, so this would emit an import of a directory.`
+    )
+  }
+
+  assertSafeModuleSpecifier(
+    `declarations import derived from didFile ${JSON.stringify(didFile)}`,
+    `./declarations/${baseName}`
+  )
+
+  return baseName
+}
+
 /** Reactor classes the generator knows how to emit an import for. */
 export const REACTOR_CLASS_NAMES: readonly ReactorClassName[] = [
   "Reactor",

@@ -59,7 +59,13 @@ describe("generate", () => {
     return projectRoot
   }
 
-  /** Everything the CLI writes for one canister, relative to the project root. */
+  /**
+   * The generated surface for one canister, relative to the project root.
+   *
+   * Dotfiles are excluded: codegen writes `.ic-reactor-owner` to record which
+   * canister owns an output directory, and that is internal bookkeeping rather
+   * than something a consumer imports — which is exactly why it is dot-prefixed.
+   */
   function generatedFiles(projectRoot: string, canister = "backend"): string[] {
     const dir = path.join(projectRoot, "src/declarations", canister)
     if (!fs.existsSync(dir)) return []
@@ -68,6 +74,7 @@ describe("generate", () => {
     const walk = (current: string) => {
       for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
         const full = path.join(current, entry.name)
+        if (entry.name.startsWith(".")) continue
         if (entry.isDirectory()) walk(full)
         else found.push(path.relative(projectRoot, full))
       }

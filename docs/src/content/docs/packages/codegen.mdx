@@ -51,7 +51,6 @@ await runCanisterPipeline({
 
 - `runCanisterPipeline` for full end-to-end generation.
 - Naming helpers like `toPascalCase`, `getReactorName`, and `getServiceTypeName`.
-- Parser helpers like `parseDIDFile` and `extractMethods`.
 - Lower-level generators when you need declarations, reactor files, or client files separately.
 
 For each canister, the pipeline writes into `<outDir>/<name>/`:
@@ -61,11 +60,15 @@ For each canister, the pipeline writes into `<outDir>/<name>/`:
 - `declarations/<did-basename>.did`: a copy of the source `.did`
 - `index.generated.ts`: managed implementation, always regenerated
 - `index.ts`: stable entry wrapper, preserved unless it still matches the
-  default wrapper or an older generated scaffold that can be migrated
+  default wrapper or an older generated scaffold that can be migrated — a
+  migrated file is copied to `index.ts.bak` first, and one carrying any export
+  the old generator never wrote is left alone
 
 The declaration filenames come from the `.did` file's basename, not the
-canister name, and the whole `declarations/` directory is recreated on every
-run. With `target: "react"`, `index.generated.ts` also exports the hooks bound
+canister name. The whole `declarations/` directory is recreated on every run,
+but the new files are staged first and swapped in only once all of them are
+written, so a `.did` that fails to parse leaves the previous declarations in
+place instead of deleting them. With `target: "react"`, `index.generated.ts` also exports the hooks bound
 to the generated reactor — `use<Pascal>Query`, `use<Pascal>SuspenseQuery`,
 `use<Pascal>InfiniteQuery`, `use<Pascal>SuspenseInfiniteQuery`,
 `use<Pascal>Mutation`, and `use<Pascal>Method`. No `createQuery` or
