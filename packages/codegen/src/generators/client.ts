@@ -10,6 +10,8 @@
  * - Query client options
  */
 
+import { assertSafeModuleSpecifier } from "../validate.js"
+
 export interface ClientGeneratorOptions {
   /**
    * Import path to an existing `queryClient` instance.
@@ -26,11 +28,25 @@ export function generateClientFile(
 ): string {
   const { queryClientPath } = options
 
-  const queryClientImport = queryClientPath
-    ? `import { queryClient } from "${queryClientPath}"`
-    : `import { QueryClient } from "@tanstack/react-query"
+  let queryClientImport: string
+
+  if (queryClientPath) {
+    // `queryClientPath` is interpolated into an `import` statement in a file
+    // written into the consumer's bundle, so it gets the same two-layer
+    // treatment as `clientManagerPath` in the reactor generator: validated,
+    // then quoted with JSON.stringify rather than pasted between literal
+    // quotes. The quoting is not redundant here. Unlike every other generator,
+    // this one is reachable directly from the package's public API
+    // (`export * from "./generators/index.js"`) without passing through the
+    // pipeline, so a caller that skips validation must still be unable to
+    // close the string literal and append statements of its own.
+    assertSafeModuleSpecifier("queryClientPath", queryClientPath)
+    queryClientImport = `import { queryClient } from ${JSON.stringify(queryClientPath)}`
+  } else {
+    queryClientImport = `import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient()`
+  }
 
   return `import { ClientManager } from "@ic-reactor/react"
 ${queryClientImport}
