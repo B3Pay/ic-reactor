@@ -996,7 +996,7 @@ importers:
   examples/vite-environment-variables/frontend:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.6.0
+        specifier: ^3.11.0
         version: link:../../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -1012,8 +1012,8 @@ importers:
         version: 19.2.8(react@19.2.8)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.11.1
-        version: 0.11.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        specifier: ^0.12.0
+        version: link:../../../packages/vite-plugin
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -2692,17 +2692,6 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
-
-  '@ic-reactor/codegen@0.11.1':
-    resolution: {integrity: sha512-VEfRi5xPQj7K9QLPSxy+HLPeeIdkiazIDITLPal7+BpKMnw27vFbsKAa+r+PPOMbEWCA0ft1VgrBwzc0ZuWWGA==}
-
-  '@ic-reactor/parser@0.4.6':
-    resolution: {integrity: sha512-ZhGJaNh9str/zLflTTfngytru7utNML6wXkGlmcupJk88L+BJXay9ZQ2jnkXJRFvtNKa+0cLoHeMUtDfjDI7IQ==}
-
-  '@ic-reactor/vite-plugin@0.11.1':
-    resolution: {integrity: sha512-up+zqGdaNeI6MWBKAobitJZMxXMKo8eAfTrQ8CG+SecOcP/aowBkAkoYHS5WFpCcYdUmVZ4LwNeMd0yN3T5Mhw==}
-    peerDependencies:
-      vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
 
   '@icp-sdk/auth@7.1.0':
     resolution: {integrity: sha512-WpJiSN6E90kQlpumA835O8GO4A397tbkbikeJayumpO8BqePuwcXRvuV/Lc8pStmNbFmrBacDrWbHCRhKOzg1g==}
@@ -9836,18 +9825,6 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
-
-  '@ic-reactor/codegen@0.11.1':
-    dependencies:
-      '@ic-reactor/parser': 0.4.6
-      change-case: 5.4.4
-
-  '@ic-reactor/parser@0.4.6': {}
-
-  '@ic-reactor/vite-plugin@0.11.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))':
-    dependencies:
-      '@ic-reactor/codegen': 0.11.1
-      vite: 8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
 
   '@icp-sdk/auth@7.1.0(@icp-sdk/core@6.1.0)':
     dependencies:

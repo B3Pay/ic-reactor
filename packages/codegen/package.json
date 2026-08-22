@@ -22,6 +22,10 @@
   "files": [
     "dist",
     "src",
+    "!src/**/*.test.*",
+    "!src/**/*.spec.*",
+    "!src/**/__snapshots__/**",
+    "!**/*.tsbuildinfo",
     "README.md",
     "llms.txt"
   ],
