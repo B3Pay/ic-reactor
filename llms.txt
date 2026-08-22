@@ -31,7 +31,7 @@ Codegen lane:
 
 Parser lane:
 
-- `@ic-reactor/parser`: `0.4.7`
+- `@ic-reactor/parser`: `0.4.8`
 
 ## Canonical AI Entrypoints
 
