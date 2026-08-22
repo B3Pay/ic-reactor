@@ -32,7 +32,7 @@ its output stays aligned with the Vite plugin.
 
 ### `init`
 
-Initialize the configuration file (`ic-reactor.json`) in your project root.
+Initialize the configuration file (`ic-reactor.json`) in the current directory.
 
 ```bash
 npx ic-reactor init
@@ -42,6 +42,15 @@ Options:
 
 - `-y, --yes`: Skip prompts and use defaults.
 - `-o, --out-dir <path>`: Output directory for generated files (default: `src/declarations`). Only applied together with `-y`; the interactive flow prompts for it instead.
+
+`init` writes to the current directory and nowhere else. A config in a parent
+directory belongs to a different project and is never modified, so running
+`init` inside a monorepo package creates that package's own config.
+
+`-y` is fully non-interactive and safe to run with stdin closed in CI. When
+`ic-reactor.json` already exists in the current directory it is left exactly as
+it is; delete it, or run `init` without `-y` and confirm the overwrite, to
+reconfigure. Cancelling a prompt aborts before anything is written.
 
 ### `generate`
 
@@ -55,6 +64,7 @@ npx ic-reactor generate
 Options:
 
 - `-c, --canister <name>`: Generate only for a specific canister.
+- `--clean`: Remove generated output for canisters that are no longer configured.
 - `--bindgen-only`: Generate only the files under `declarations/`.
 
 For each canister, the CLI writes into `<outDir>/<canister>/`:
@@ -67,6 +77,13 @@ For each canister, the CLI writes into `<outDir>/<canister>/`:
 
 Declaration filenames follow the `.did` file's basename, not the canister name,
 and `declarations/` is recreated from scratch on every run.
+
+Because every run rewrites the output of the canisters it generates, the only
+output that can go stale is the directory of a canister that was renamed or
+removed from the config. `--clean` removes those, and only those: it leaves
+configured canisters (including the `index.ts` you own) alone, never deletes a
+directory holding no generated file, and is skipped for `--canister <name>`
+runs.
 
 The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
 once, then preserves it unless the file is still the default wrapper or an

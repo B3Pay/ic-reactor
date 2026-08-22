@@ -48,6 +48,16 @@ const PEERS = [
   "react-dom@^19",
 ]
 
+/**
+ * A package whose entire published surface is its executable: it declares `bin`
+ * and deliberately declares no module entry at all. @ic-reactor/cli is one — it
+ * used to point `main`/`types` at the shebang file (and at a 20-byte d.ts built
+ * from it), which advertised a module surface that does not exist. There is
+ * nothing here for the import check or attw to look at.
+ */
+const isBinOnly = (m) =>
+  Boolean(m.bin) && !m.exports && !m.main && !m.module && !m.types && !m.typings
+
 const failures = []
 function fail(pkg, what, detail) {
   failures.push({ pkg, what, detail })
@@ -109,10 +119,16 @@ try {
   for (const { name, manifest } of tarballs) {
     console.log(`${name}`)
 
+    if (isBinOnly(manifest)) {
+      ok(`skip import ${name} (bin-only package — the executable is the whole surface)`)
+    }
+
     // Derive the public subpaths from the exports map (skip ./package.json).
     const subpaths = manifest.exports
       ? Object.keys(manifest.exports).filter((k) => k !== "./package.json")
-      : ["."]
+      : isBinOnly(manifest)
+        ? []
+        : ["."]
 
     // A bin package's entry *is* the executable, so importing it runs the program
     // rather than exposing a module surface. Only its declarations are checked.
@@ -200,7 +216,11 @@ try {
   // ── 5. Are The Types Wrong ──────────────────────────────────────────────────
   if (!SKIP_ATTW) {
     console.log("\nattw")
-    for (const { name, file } of tarballs) {
+    for (const { name, file, manifest } of tarballs) {
+      if (isBinOnly(manifest)) {
+        ok(`skip attw ${name} (bin-only package ships no types)`)
+        continue
+      }
       try {
         // --profile node16: these packages are ESM-first and target Node 16+ /
         // modern bundler resolution. node10 is TypeScript's pre-`exports` algorithm,
