@@ -31,15 +31,42 @@ export type FunctionType = "query" | "update"
 
 export type CanisterId = string | Principal
 
-// Extracts the argument types of an ActorMethod
+/**
+ * Extract the argument tuple of a service method.
+ *
+ * `ActorMethod` carries a `withOptions` member as well as a call signature, so a
+ * service written with plain function types — `claim: (id: Uint8Array) =>
+ * Promise<Result>` instead of `ActorMethod<[Uint8Array], Result>` — does not
+ * match it. That used to fall through to `never`, which compiles at the
+ * declaration site and then fails at every hook call site with
+ * "Type 'Uint8Array[]' is not assignable to type 'undefined'". didc/dfx output
+ * always uses `ActorMethod`, so only hand-written or third-party service types
+ * hit it, and the error never pointed at the cause.
+ *
+ * The plain-function fallback below makes both shapes infer identically.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ActorMethodParameters<T> =
-  T extends ActorMethod<infer Args, any> ? Args : never
+  T extends ActorMethod<infer Args, any>
+    ? Args
+    : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      T extends (...args: infer Args) => Promise<any>
+      ? Args
+      : never
 
-// Extracts the return type of an ActorMethod
+/**
+ * Extract the resolved return type of a service method.
+ *
+ * Same two shapes as {@link ActorMethodParameters}.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ActorMethodReturnType<T> =
-  T extends ActorMethod<any, infer Ret> ? Ret : never
+  T extends ActorMethod<any, infer Ret>
+    ? Ret
+    : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      T extends (...args: any[]) => Promise<infer Ret>
+      ? Ret
+      : never
 
 export interface ReactorParameters {
   clientManager: ClientManager

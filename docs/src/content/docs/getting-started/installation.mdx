@@ -126,6 +126,42 @@ not work until you install it:
 pnpm add @icp-sdk/auth
 ```
 
+<Aside type="caution" title="npm cannot resolve this set on its own">
+  Every published `@icp-sdk/auth` — 7.0.0 through 8.0.3, checked 2026-08-22 —
+  declares `peerDependencies: { "@icp-sdk/core": "^5" }`, while
+  `@ic-reactor/react` needs `@icp-sdk/core@^6`. A strict `npm install` of the
+  advertised set therefore fails:
+
+  ```
+  npm error ERESOLVE unable to resolve dependency tree
+  npm error Found: @icp-sdk/core@5.4.0
+  npm error   peer @icp-sdk/core@"^5" from @icp-sdk/auth@8.0.3
+  npm error Could not resolve dependency:
+  npm error   peer @icp-sdk/core@"^6.0.0" from @ic-reactor/react
+  ```
+
+  This is stale metadata upstream, not an actual incompatibility: auth v8 works
+  against core v6, and IC Reactor's own suite runs that combination. `pnpm` and
+  `yarn` install it without complaint. For npm, tell it to use your `core` for
+  auth as well:
+
+  ```json
+  // package.json
+  {
+    "overrides": {
+      "@icp-sdk/auth": {
+        "@icp-sdk/core": "$@icp-sdk/core"
+      }
+    }
+  }
+  ```
+
+  That resolves to a single `@icp-sdk/core` with no duplication.
+  `legacy-peer-deps=true` in `.npmrc` also works but disables peer checking
+  everywhere, so prefer the scoped override. This note goes away once
+  `@icp-sdk/auth` publishes a `core@^6` peer.
+</Aside>
+
 Bundlers still **resolve** that specifier while building the module graph,
 which happens before any tree-shaking — so a missing peer cannot simply be
 optimized away. The import sits inside a `try` block, which **webpack-family
