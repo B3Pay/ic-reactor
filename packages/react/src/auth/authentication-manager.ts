@@ -11,8 +11,14 @@ import { ClientManager, isDev, allowsEnvRootKey } from "@ic-reactor/core"
 import { Principal } from "@icp-sdk/core/principal"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import {
+  probeLocalInternetIdentity,
+  localInternetIdentityUnavailableError,
+  type AuthorizePath,
+} from "./local-ii-probe.js"
+import {
   IC_INTERNET_IDENTITY_PROVIDER,
   INTERNET_IDENTITY_PROVIDER_ENV_KEY,
+  LOCAL_INTERNET_IDENTITY_CANISTER_ID,
   localInternetIdentityProvider,
 } from "./constants.js"
 
@@ -61,6 +67,13 @@ export class AuthenticationManager {
   }
   private readonly identityProvider?: string | URL
   private readonly internetIdentityId?: string
+  /**
+   * Which authorize path the locally deployed Internet Identity serves, once
+   * probed. `undefined` means not probed yet; `null` means it serves no sign-in
+   * UI and login should fail with an explanation rather than open a popup onto
+   * a gateway error page.
+   */
+  private localAuthorizePath?: AuthorizePath | null
   private readonly defaultClientOptions: AuthenticationClientOptions
   public readonly clientManager: ClientManager
 
@@ -131,6 +144,11 @@ export class AuthenticationManager {
    * what browser popup blockers and the ICRC-29 transport require.
    */
   public async prepareClient(options?: AuthenticationClientOptions) {
+    // Before resolving options, because resolving them is what picks the
+    // provider URL. This is the last async point before `login()` has to stay
+    // inside the user gesture, so the answer has to be cached by now.
+    await this.ensureLocalAuthorizePath()
+
     const clientOptions = this.resolveClientOptions(options)
 
     if (this.authClient && !this.shouldRecreateClient(clientOptions)) {
@@ -138,6 +156,40 @@ export class AuthenticationManager {
     }
 
     return this.initializeClient(clientOptions)
+  }
+
+  /**
+   * Probe the local Internet Identity canister once, and remember what it
+   * serves.
+   *
+   * Only for the derived local provider: an explicitly configured
+   * `identityProvider` is the caller's business, and mainnet is fixed.
+   */
+  private async ensureLocalAuthorizePath(): Promise<void> {
+    if (this.localAuthorizePath !== undefined) return
+    if (this.identityProvider) return
+    if (!this.clientManager.isLocal) return
+
+    const canisterId =
+      this.internetIdentityId ?? LOCAL_INTERNET_IDENTITY_CANISTER_ID
+
+    const { path, inconclusive } = await probeLocalInternetIdentity(
+      this.clientManager.agent,
+      canisterId
+    )
+
+    // An inconclusive probe must not change behaviour: the canister may be
+    // fine and merely unreachable from here, and a diagnostic that blocks a
+    // working login is worse than the failure it explains.
+    this.localAuthorizePath = inconclusive ? "/authorize" : path
+
+    if (path === "/#authorize" && !inconclusive) {
+      console.warn(
+        `[ic-reactor] Internet Identity canister ${canisterId} serves its sign-in UI at ` +
+          `"/" rather than "/authorize" — using the legacy #authorize flow. This is a ` +
+          `pre-2026 build; newer ones through release-2026-03-16 serve /authorize directly.`
+      )
+    }
   }
 
   /**
@@ -467,12 +519,26 @@ export class AuthenticationManager {
     if (this.identityProvider) {
       return this.identityProvider
     }
-    return this.clientManager.isLocal
-      ? localInternetIdentityProvider(
-          Number(this.clientManager.agentHost?.port) || 4943,
-          this.internetIdentityId
-        )
-      : IC_INTERNET_IDENTITY_PROVIDER
+    if (!this.clientManager.isLocal) {
+      return IC_INTERNET_IDENTITY_PROVIDER
+    }
+
+    const canisterId =
+      this.internetIdentityId ?? LOCAL_INTERNET_IDENTITY_CANISTER_ID
+
+    // `null` is the probe's positive finding that this build serves no sign-in
+    // UI. Throwing here surfaces an actionable message where the caller can see
+    // it, instead of opening a popup onto the gateway's verification-error page
+    // and leaving the app waiting until the user closes it.
+    if (this.localAuthorizePath === null) {
+      throw localInternetIdentityUnavailableError(canisterId)
+    }
+
+    return localInternetIdentityProvider(
+      Number(this.clientManager.agentHost?.port) || 4943,
+      this.internetIdentityId,
+      this.localAuthorizePath
+    )
   }
 
   private updateState(newState: Partial<AuthState>) {

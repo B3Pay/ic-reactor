@@ -114,6 +114,23 @@ constructor, or per call to `login()` — the per-call value wins.
 `clientManager` (required), `authClient` (bring your own client instance), and
 `internetIdentityId` (canister ID of a locally deployed Internet Identity).
 
+<Aside type="caution" title="Local Internet Identity needs a pinned build">
+  Only a narrow range of Internet Identity releases can be used locally at all.
+  Builds from **`release-2026-03-23`** onward moved their frontend out of the
+  canister (the id.ai split), so the canister serves no sign-in UI and the login
+  popup lands on the gateway's *"Response Verification Error"* page. Builds
+  before 2026 serve the SPA at `/` behind a `#authorize` fragment instead of at
+  `/authorize`.
+
+  **`release-2026-03-16` is the newest `internet_identity_dev.wasm` that works.**
+
+  `AuthenticationManager` probes the canister during `prepareClient()` and adapts:
+  it uses `/authorize` when that is served, falls back to the legacy
+  `#authorize` flow with a warning for pre-2026 builds, and rejects `login()`
+  with an explanation naming this release when the build serves neither — rather
+  than opening a popup the app cannot see into.
+</Aside>
+
 <Aside type="caution">
   Set `derivationOrigin` whenever your app is served from more than one origin
   (a custom domain plus `<canisterId>.icp0.io`, say) — without it each origin
