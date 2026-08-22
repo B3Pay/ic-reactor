@@ -159,7 +159,23 @@ export function installFakeIdentityProvider(
         })
 
         const sessionKeyDer = fromBase64(params.publicKey)
-        const expiration = new Date(Date.now() + delegationLifetimeMs)
+
+        // Honour the requested lifetime. A real identity provider never issues a
+        // delegation that outlives `maxTimeToLive`, and from @icp-sdk/auth v8 the
+        // signer validates exactly that — a fixture that always returned its own
+        // fixed lifetime made every maxTimeToLive test fail with "Returned
+        // delegation expires later than the requested maxTimeToLive".
+        // The parameter is nanoseconds, per ICRC-34.
+        const requestedLifetimeMs = params.maxTimeToLive
+          ? Number(BigInt(params.maxTimeToLive) / 1_000_000n)
+          : undefined
+        const expiration = new Date(
+          Date.now() +
+            Math.min(
+              delegationLifetimeMs,
+              requestedLifetimeMs ?? delegationLifetimeMs
+            )
+        )
         const targets = params.targets?.map((text) => Principal.fromText(text))
 
         const chain = await DelegationChain.create(

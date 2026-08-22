@@ -65,7 +65,7 @@ describe("IdentityAttributesManager", () => {
     // the identity provider window inside the user gesture.
     const [request] = authClient.requestAttributes.mock.calls[0]
     expect(request.keys).toEqual(["openid:https://issuer.example.com:email"])
-    await expect(request.nonce).resolves.toEqual(new Uint8Array([9, 9]))
+    await expect(request.nonce()).resolves.toEqual(new Uint8Array([9, 9]))
     expect(result.principal).toBe("aaaaa-aa")
     expect(authentication.authState.isAuthenticated).toBe(true)
   })
@@ -83,7 +83,7 @@ describe("IdentityAttributesManager", () => {
     expect(request.keys).toEqual([
       "openid:https://login.microsoftonline.com/{tid}/v2.0:email",
     ])
-    await expect(request.nonce).resolves.toEqual(new Uint8Array([9]))
+    await expect(request.nonce()).resolves.toEqual(new Uint8Array([9]))
     expect(result.requestedKeys).toEqual([
       "openid:https://login.microsoftonline.com/{tid}/v2.0:email",
     ])

@@ -91,7 +91,72 @@ export const isDev = (): boolean => {
 }
 
 /**
+ * Extract the hostname from a host string that may or may not carry a scheme.
+ *
+ * @returns the hostname, or `undefined` when the value cannot be parsed.
+ */
+const parseHostname = (host: string): string | undefined => {
+  try {
+    return new URL(
+      host.startsWith("http")
+        ? host
+        : `${typeof window !== "undefined" ? window.location.protocol : "https:"}//${host}`
+    ).hostname
+  } catch {
+    return undefined
+  }
+}
+
+/** 127.0.0.0/8 — the entire IPv4 loopback range, not just 127.0.0.1. */
+const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
+
+/**
+ * Whether the root key carried by the `ic_env` cookie may be adopted for a host.
+ *
+ * This is a POSITIVE allowlist, and deliberately not `!isMainnetHost(host)`.
+ * `isMainnetHost` recognises exactly three mainnet domains, so every other host
+ * — including a production dapp served from an `ic-domains` custom domain —
+ * fell through it and accepted a root key supplied by a cookie. Cookies are not
+ * origin-isolated, so any sibling subdomain of the registrable domain could
+ * substitute the key that certificate verification is checked against.
+ *
+ * Accepted: loopback, `localhost` and its subdomains, and the dev-container
+ * domains that tunnel a local replica. Everything else must opt in explicitly
+ * through `allowEnvRootKey`.
+ *
+ * @param host - The host URL to evaluate.
+ * @returns `true` only for hosts that are unambiguously a local replica.
+ */
+export const allowsEnvRootKey = (host?: string): boolean => {
+  if (!host) return false
+
+  const hostname = parseHostname(host)
+  if (!hostname) return false
+
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) return true
+  // The whole of 127.0.0.0/8 is loopback, not just 127.0.0.1 — a replica bound
+  // to 127.0.0.2 is exactly as local, and rejecting it here would leave the
+  // agent on the pinned mainnet key (getNetworkByHostname also classifies it as
+  // "ic", so nothing else would fetch the replica's key either) and every
+  // certified call to it would fail.
+  if (
+    IPV4_LOOPBACK.test(hostname) ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  ) {
+    return true
+  }
+
+  // Codespaces / Gitpod forward a local replica over a generated domain.
+  return getNetworkByHostname(hostname) === "remote"
+}
+
+/**
  * Checks if a given host URL is a mainnet Internet Computer boundary node host.
+ *
+ * Note this recognises only the canonical boundary domains: a mainnet dapp on a
+ * custom domain returns `false`. Do not use it as a "safe to trust local
+ * configuration" test — see {@link allowsEnvRootKey}.
  *
  * @param host - The host URL to evaluate.
  * @returns `true` if the host is a mainnet host, default to true if host is undefined, otherwise `false`.
@@ -100,12 +165,8 @@ export const isMainnetHost = (host?: string): boolean => {
   if (!host) return true
 
   try {
-    const url = new URL(
-      host.startsWith("http")
-        ? host
-        : `${typeof window !== "undefined" ? window.location.protocol : "https:"}//${host}`
-    )
-    const hostname = url.hostname
+    const hostname = parseHostname(host)
+    if (!hostname) return false
     return (
       hostname === "ic0.app" ||
       hostname.endsWith(".ic0.app") ||

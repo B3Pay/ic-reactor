@@ -190,10 +190,8 @@ export interface AuthClientLike {
     // Widened across `@icp-sdk/auth` v7 (value or promise) and v8 (thunk).
     // Method-shorthand parameters are bivariant, so both real signatures are
     // assignable to this one.
-    nonce: Uint8Array | Promise<Uint8Array> | (() => Promise<Uint8Array>)
+    nonce: () => Promise<Uint8Array>
   }): Promise<SignedIdentityAttributes>
-  /** Present from `@icp-sdk/auth` v8; used to detect the nonce contract. */
-  memoize?<T>(produce: () => T | Promise<T>): Promise<T>
 }
 
 export interface AuthState {
