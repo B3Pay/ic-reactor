@@ -13,6 +13,17 @@ pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 pnpm add @icp-sdk/auth
 ```
 
+> **npm needs an override to install this set.** Every published
+> `@icp-sdk/auth` peers `@icp-sdk/core@^5`, while this package needs `^6`, so a
+> strict `npm install` fails with `ERESOLVE`. The metadata is stale rather than
+> the versions being incompatible — auth v8 runs against core v6, and this
+> repository's own suite exercises that combination. pnpm and yarn install it
+> as-is; for npm, add:
+>
+> ```json
+> { "overrides": { "@icp-sdk/auth": { "@icp-sdk/core": "$@icp-sdk/core" } } }
+> ```
+
 `@icp-sdk/auth` is an optional peer. `AuthenticationManager` reaches it through a
 literal `import("@icp-sdk/auth/client")`, so Vite, Rollup and webpack code-split
 it into its own async chunk. That chunk is never fetched unless something

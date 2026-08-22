@@ -107,6 +107,42 @@ function UserProfile({ userId }: { userId: string }) {
 
 TypeScript will also narrow the type of `data` correctly if you've checked for `pending` and `error` before accessing it.
 
+## Candid `Result` variants are unwrapped
+
+A method returning the common `variant { Ok : T; Err : E }` shape does **not**
+hand you the raw variant. The Reactor's default `transformResult` unwraps it, so:
+
+- **`data` is `T`** — the `Ok` payload directly, never `{ Ok: T }`.
+- **an `Err` is thrown**, as a `CanisterError` carrying the `Err` payload, and
+  surfaces through the query's `error` channel like any other failure.
+
+Both Rust (`Ok`/`Err`) and Motoko (`ok`/`err`) casings are recognised. A return
+value that is not a result variant passes through untouched.
+
+```tsx
+// Candid: claim : (blob) -> (variant { Ok : nat; Err : ClaimError })
+const { data, error } = useActorQuery({ functionName: "claim", args: [id] })
+
+// data  -> bigint | undefined      (the Ok payload, already unwrapped)
+// error -> CanisterError | null    (.err is the Err payload)
+```
+
+This happens at the **candid-decoded layer**, after the call has succeeded at
+the transport level. A rejected call or a network failure is a `CallError`
+instead, so the two failure kinds stay distinguishable — see
+[Error Handling](/v3/guides/error-handling/).
+
+Declare the service type with the raw candid shape (`Result<T, E>`); the
+unwrapping is applied on top of it, and `ReactorReturnOk` is the type the hook
+actually gives you. You do not need an `unwrap()` helper of your own.
+
+<Aside type="tip">
+  If you want the raw variant — to branch on `Err` without a `try`/`catch` —
+  override `transformResult` on a Reactor subclass. That is the only way:
+  `callMethod()` runs the decoded response through `transformResult` too, so it
+  unwraps and throws exactly like the hooks do.
+</Aside>
+
 ## Conditional Queries
 
 You can use the `enabled` option to conditionally execute a query:
