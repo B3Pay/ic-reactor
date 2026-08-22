@@ -107,6 +107,9 @@ const parseHostname = (host: string): string | undefined => {
   }
 }
 
+/** 127.0.0.0/8 — the entire IPv4 loopback range, not just 127.0.0.1. */
+const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
+
 /**
  * Whether the root key carried by the `ic_env` cookie may be adopted for a host.
  *
@@ -131,7 +134,16 @@ export const allowsEnvRootKey = (host?: string): boolean => {
   if (!hostname) return false
 
   if (hostname === "localhost" || hostname.endsWith(".localhost")) return true
-  if (hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]") {
+  // The whole of 127.0.0.0/8 is loopback, not just 127.0.0.1 — a replica bound
+  // to 127.0.0.2 is exactly as local, and rejecting it here would leave the
+  // agent on the pinned mainnet key (getNetworkByHostname also classifies it as
+  // "ic", so nothing else would fetch the replica's key either) and every
+  // certified call to it would fail.
+  if (
+    IPV4_LOOPBACK.test(hostname) ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  ) {
     return true
   }
 

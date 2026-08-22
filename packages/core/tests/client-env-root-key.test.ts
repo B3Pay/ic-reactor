@@ -61,6 +61,9 @@ describe("allowsEnvRootKey", () => {
   it("accepts hosts that are unambiguously a local replica", () => {
     for (const host of [
       "http://127.0.0.1:4943",
+      // All of 127.0.0.0/8 is loopback; a replica bound to .2 is as local as .1.
+      "http://127.0.0.2:4943",
+      "http://127.255.255.255:4943",
       "http://localhost:4943",
       "http://backend.localhost:4943",
       "http://[::1]:4943",
@@ -93,6 +96,7 @@ describe("allowsEnvRootKey", () => {
   })
 
   it("refuses an unparseable or absent host rather than defaulting open", () => {
+    expect(allowsEnvRootKey("http://128.0.0.1:4943")).toBe(false)
     expect(allowsEnvRootKey("not a url")).toBe(false)
     expect(allowsEnvRootKey(undefined)).toBe(false)
     expect(allowsEnvRootKey("")).toBe(false)
