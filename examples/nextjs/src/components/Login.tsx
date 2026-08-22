@@ -1,4 +1,4 @@
-import { useAuth } from "../service/client"
+import { useAuth } from "../service/provider"
 
 const Login = () => {
   const { login, logout, identity, isAuthenticating, isAuthenticated, error } =
