@@ -81,8 +81,6 @@ export default defineConfig({
           name: "backend",
           didFile: "./declarations/backend.did",
           clientManagerPath: "../../clients",
-          // Optional fixed override for this canister in dev and generated output
-          canisterId: "yq4ns-hyaaa-aaaap-akbna-cai",
         },
       ],
       // Enabled by default
@@ -91,6 +89,16 @@ export default defineConfig({
   ],
 })
 ```
+
+<Aside type="note" title="Pinning a canister ID">
+  A per-canister `canisterId` overrides whatever the local `icp deploy`
+  discovered, and is baked into the generated reactor. That is what you want for
+  a mainnet canister the app should always talk to — and what you do not want in
+  a local-development config, where it silently points the app at someone else's
+  canister instead of the one you just deployed. The example above deliberately
+  omits it, matching the checked-in
+  `examples/vite-environment-variables/frontend/vite.config.ts`.
+</Aside>
 
 <Aside type="caution" title="Keep outDir and clientManagerPath in step">
   `clientManagerPath` is resolved from the *generated* file, so moving `outDir`
