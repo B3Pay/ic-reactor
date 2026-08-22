@@ -65,6 +65,7 @@ describe("icReactor", () => {
     restart: vi.fn(),
     ws: {
       send: vi.fn(),
+      on: vi.fn(),
     },
     watcher: {
       add: vi.fn(),

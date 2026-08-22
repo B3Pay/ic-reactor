@@ -80,8 +80,9 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 
   // Vite resolves relative project paths against the resolved `config.root`,
   // which only equals the process cwd when vite happens to be started from the
-  // project directory — not for `root: "frontend"`, and not for a monorepo
-  // running `vite build --config apps/web/vite.config.ts` from the repo root.
+  // project directory — not for `root: "frontend"`, and not when the root is
+  // passed positionally (`vite build apps/web`). Note `--config` on its own does
+  // NOT move the root; it only selects the config file.
   // `configResolved` overwrites this before any hook that resolves a path runs;
   // the cwd is only the pre-resolution default, which is also Vite's own
   // default root.
@@ -113,6 +114,18 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
    * Terminal output scrolls away behind request logs and HMR chatter, so in dev
    * the browser error overlay is the signal that actually gets noticed.
    */
+  /**
+   * The last failure, kept so a browser that was not connected when it happened
+   * still gets the overlay.
+   *
+   * Vite awaits the plugin container's `buildStart` before the HTTP server
+   * starts listening, so a generation failure during `vite dev` startup is
+   * broadcast when there are no WebSocket clients at all and the payload is
+   * simply dropped. The terminal shows it; the overlay never appears — for
+   * precisely the failures a developer is most likely to hit.
+   */
+  let pendingFailure: { message: string; stack: string } | null = null
+
   const reportFailure = (
     server: ViteDevServer | null,
     message: string,
@@ -120,14 +133,14 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
   ) => {
     console.error(`[ic-reactor] ${message}`)
 
-    server?.ws.send({
-      type: "error",
-      err: {
-        message: `[ic-reactor] ${message}`,
-        stack: cause instanceof Error && cause.stack ? cause.stack : "",
-        plugin: PLUGIN_NAME,
-      },
-    })
+    const err = {
+      message: `[ic-reactor] ${message}`,
+      stack: cause instanceof Error && cause.stack ? cause.stack : "",
+      plugin: PLUGIN_NAME,
+    }
+
+    pendingFailure = { message: err.message, stack: err.stack }
+    server?.ws.send({ type: "error", err })
   }
 
   // Keep at most one regeneration per canister in flight and collapse every save
@@ -168,6 +181,9 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     })
       .then((result) => {
         if (result.success) {
+          // A later connection must not be handed a failure that has since been
+          // fixed.
+          pendingFailure = null
           // Reload page to reflect new types/hooks
           server.ws.send({ type: "full-reload" })
         } else {
@@ -278,10 +294,16 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       //
       // Only configured canisters are reported: `internet_identity` is appended
       // to canisterNames for convenience and is routinely not deployed.
+      // An explicitly configured `canisterId` counts as resolved: the cookie
+      // below merges configuredCanisterIds over the detected ones, so the app
+      // does receive a valid PUBLIC_CANISTER_ID. Warning on those told the user
+      // to deploy a canister whose id they had already supplied.
       const missingCanisterIds = canisters
         .map((canister) => canister.name)
         .filter((name): name is string => !!name)
-        .filter((name) => !icEnv.canisterIds[name])
+        .filter(
+          (name) => !icEnv.canisterIds[name] && !configuredCanisterIds[name]
+        )
 
       if (missingCanisterIds.length > 0) {
         const names = missingCanisterIds.map((name) => `"${name}"`).join(", ")
@@ -332,6 +354,19 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 
     configureServer(server) {
       devServer = server
+
+      // Replay a startup failure to the first client that connects — see
+      // pendingFailure. Cleared once generation succeeds.
+      // Guarded: the peer range spans several Vite majors and `ws.on` is not
+      // present on every one of them. Losing the replay is acceptable; throwing
+      // out of configureServer is not.
+      server.ws.on?.("connection", () => {
+        if (!pendingFailure) return
+        server.ws.send({
+          type: "error",
+          err: { ...pendingFailure, plugin: PLUGIN_NAME },
+        })
+      })
 
       // Explicitly watch configured DID files so HMR works even when they are not in the module graph.
       const didFiles = canisters.map((c) => resolveDidPath(c.didFile))

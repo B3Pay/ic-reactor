@@ -75,8 +75,13 @@ icReactor({
 
 Relative paths — `didFile`, `outDir` — resolve against Vite's resolved
 `config.root`, not the directory vite was started from. If you set
-`root: "frontend"`, or run `vite build --config apps/web/vite.config.ts` from a
-monorepo root, write the paths as the project itself sees them.
+`root: "frontend"`, write the paths as the project itself sees them.
+
+Note `--config` alone does **not** change the root: `vite build --config
+apps/web/vite.config.ts` still leaves `root` at the directory vite was started
+from, so app-relative paths resolve against the monorepo root. Set `root` in the
+config file, or pass it positionally (`vite build apps/web --config …`), for
+those paths to mean what the app expects.
 
 `failOnError` decides what a failed canister does to the run. It defaults to
 `true` under `vite build` and `false` under `vite dev`: a build that quietly
