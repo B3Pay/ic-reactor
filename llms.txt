@@ -25,9 +25,9 @@ Runtime lane:
 
 Codegen lane:
 
-- `@ic-reactor/codegen`: `0.12.1`
-- `@ic-reactor/cli`: `0.12.1`
-- `@ic-reactor/vite-plugin`: `0.12.1`
+- `@ic-reactor/codegen`: `0.13.0`
+- `@ic-reactor/cli`: `0.13.0`
+- `@ic-reactor/vite-plugin`: `0.13.0`
 
 Parser lane:
 

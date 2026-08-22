@@ -232,7 +232,7 @@ importers:
     devDependencies:
       '@ic-reactor/vite-plugin':
         specifier: ^0.12.0
-        version: link:../../packages/vite-plugin
+        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@icp-sdk/bindgen':
         specifier: ^0.4.0
         version: 0.4.0
@@ -377,10 +377,10 @@ importers:
     devDependencies:
       '@ic-reactor/cli':
         specifier: ^0.12.0
-        version: link:../../packages/cli
+        version: 0.12.1
       '@ic-reactor/vite-plugin':
         specifier: ^0.12.0
-        version: link:../../packages/vite-plugin
+        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -423,7 +423,7 @@ importers:
     devDependencies:
       '@ic-reactor/vite-plugin':
         specifier: ^0.12.0
-        version: link:../../packages/vite-plugin
+        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -469,7 +469,7 @@ importers:
     devDependencies:
       '@ic-reactor/vite-plugin':
         specifier: ^0.12.0
-        version: link:../../../packages/vite-plugin
+        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@icp-sdk/bindgen':
         specifier: ^0.4.0
         version: 0.4.0
@@ -512,7 +512,7 @@ importers:
     devDependencies:
       '@ic-reactor/vite-plugin':
         specifier: ^0.12.0
-        version: link:../../packages/vite-plugin
+        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -798,7 +798,7 @@ importers:
         version: link:../../packages/react
       '@ic-reactor/vite-plugin':
         specifier: ^0.12.0
-        version: link:../../packages/vite-plugin
+        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
@@ -930,7 +930,7 @@ importers:
     devDependencies:
       '@ic-reactor/vite-plugin':
         specifier: ^0.12.0
-        version: link:../../packages/vite-plugin
+        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@tanstack/devtools-vite':
         specifier: ^0.8
         version: 0.8.3(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
@@ -1013,7 +1013,7 @@ importers:
     devDependencies:
       '@ic-reactor/vite-plugin':
         specifier: ^0.12.0
-        version: link:../../../packages/vite-plugin
+        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -1065,7 +1065,7 @@ importers:
     devDependencies:
       '@ic-reactor/vite-plugin':
         specifier: ^0.12.0
-        version: link:../../packages/vite-plugin
+        version: 0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -2689,6 +2689,22 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
+
+  '@ic-reactor/cli@0.12.1':
+    resolution: {integrity: sha512-/lxqkOSbEiurBVKv/ON7KPTHAMuwV/kEYR6di1viajTMW86WKn06yyWyxAdCW2YVUQDyluUkYMGjEOMkwzUA3A==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  '@ic-reactor/codegen@0.12.1':
+    resolution: {integrity: sha512-4HyB8zQkv4mYAxFnWuj7mGvk9foAkiErnQgNm+ATXYb6dSGCTuA2WuJuo+1LVZxTDvcyU8IOZy0CsoNfAACbbg==}
+
+  '@ic-reactor/parser@0.4.7':
+    resolution: {integrity: sha512-hdEoXzU7P8op5dqznpwXgafZF8tEnvRFcbMnoO7Zd1PptiihAsfxs31NzbnG7R+9n8zTHlX+4ysyS47sLFrGQw==}
+
+  '@ic-reactor/vite-plugin@0.12.1':
+    resolution: {integrity: sha512-yqDD9uoewUuebIBvNRl6OQcE6ppRQM07EKAPA7W/eNtcNs0XBGZzQidL1Gc88uOGqT+itaXtxEizbUwPhVL3LA==}
+    peerDependencies:
+      vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
 
   '@icp-sdk/auth@8.0.3':
     resolution: {integrity: sha512-HXndLoKt22+KTBye6l9wblMSqArhAALnPWfR8Zqv9h8UNLSznjtXYMDbQT4A0qd5xa5hEMfg1TCu5iQkMxyW1w==}
@@ -9817,6 +9833,27 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
+
+  '@ic-reactor/cli@0.12.1':
+    dependencies:
+      '@clack/prompts': 1.7.0
+      '@ic-reactor/codegen': 0.12.1
+      '@icp-sdk/bindgen': 0.4.0
+      '@icp-sdk/core': 6.1.0
+      commander: 15.0.0
+      picocolors: 1.1.1
+
+  '@ic-reactor/codegen@0.12.1':
+    dependencies:
+      '@ic-reactor/parser': 0.4.7
+      change-case: 5.4.4
+
+  '@ic-reactor/parser@0.4.7': {}
+
+  '@ic-reactor/vite-plugin@0.12.1(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))':
+    dependencies:
+      '@ic-reactor/codegen': 0.12.1
+      vite: 8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
 
   '@icp-sdk/auth@8.0.3(@icp-sdk/core@6.1.0)':
     dependencies:
