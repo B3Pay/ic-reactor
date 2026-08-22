@@ -115,6 +115,13 @@ jobs:
       - name: Type check examples
         run: pnpm typecheck:examples
 
+      # `tsc` never loads a bundler, so a broken Vite/Next config type-checks
+      # clean. examples/nextjs (Turbopack workspace root) and
+      # examples/nextjs-app-router (Tailwind v4 PostCSS plugin) were both
+      # unbuildable while this job stayed green -- issue #224.
+      - name: Build examples
+        run: pnpm build:examples
+
   test:
     name: Test
     runs-on: ubuntu-latest
