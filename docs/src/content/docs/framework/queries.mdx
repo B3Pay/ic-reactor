@@ -124,7 +124,7 @@ value that is not a result variant passes through untouched.
 const { data, error } = useActorQuery({ functionName: "claim", args: [id] })
 
 // data  -> bigint | undefined      (the Ok payload, already unwrapped)
-// error -> CanisterError | null    (.detail is the Err payload)
+// error -> CanisterError | null    (.err is the Err payload)
 ```
 
 This happens at the **candid-decoded layer**, after the call has succeeded at
@@ -138,8 +138,9 @@ actually gives you. You do not need an `unwrap()` helper of your own.
 
 <Aside type="tip">
   If you want the raw variant — to branch on `Err` without a `try`/`catch` —
-  override `transformResult` on your Reactor subclass, or read the untransformed
-  value through `reactor.callMethod()`.
+  override `transformResult` on a Reactor subclass. That is the only way:
+  `callMethod()` runs the decoded response through `transformResult` too, so it
+  unwraps and throws exactly like the hooks do.
 </Aside>
 
 ## Conditional Queries

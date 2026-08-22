@@ -414,9 +414,12 @@ transport level, so a canister-level `Err` stays distinguishable from a
 `CallError`.
 
 Declare the service with the raw candid shape; the unwrapping applies on top of
-it, and `ReactorReturnOk` is the type the hooks actually give you. To keep the
-raw variant instead, override `transformResult` or read through
-`reactor.callMethod()`.
+it, and `ReactorReturnOk` is the type the hooks actually give you. The thrown
+`CanisterError` carries the raw payload on `.err`.
+
+To keep the raw variant instead, override `transformResult` on a Reactor
+subclass — that is the only way, since `callMethod()` passes its decoded
+response through `transformResult` as well.
 
 The same logic is exported as `extractOkResult`, which handles both uppercase
 (`Ok`/`Err`) and lowercase (`ok`/`err`) variants:
