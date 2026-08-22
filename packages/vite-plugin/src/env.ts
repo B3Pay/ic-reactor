@@ -15,19 +15,35 @@ export interface IcEnvironment {
   internetIdentityProvider?: string
 }
 
+export interface IcEnvironmentDetection {
+  /** The detected environment, or `null` when `icp` could not answer. */
+  environment: IcEnvironment | null
+  /**
+   * Why detection came back empty or partial — the `icp` stderr where we have
+   * it. Detection failing is routine on a machine with no local replica, so
+   * these are handed back for the caller to log at its own level rather than
+   * printed here.
+   */
+  diagnostics: string[]
+}
+
 /**
  * Detect the IC environment using the `icp` CLI.
  */
 export function getIcEnvironmentInfo(
   canisterNames: string[]
-): IcEnvironment | null {
-  const environment = process.env.ICP_ENVIRONMENT || "local"
+): IcEnvironmentDetection {
+  const networkName = process.env.ICP_ENVIRONMENT || "local"
+  const diagnostics: string[] = []
 
   try {
     const networkStatus = JSON.parse(
-      execFileSync("icp", ["network", "status", "-e", environment, "--json"], {
+      execFileSync("icp", ["network", "status", "-e", networkName, "--json"], {
         encoding: "utf-8",
-        stdio: ["ignore", "pipe", "ignore"], // suppress stderr
+        // stderr is piped rather than ignored so a failure can explain itself.
+        // Piping still keeps it off the terminal — it only reaches the user if
+        // the caller decides to print the diagnostics we collect below.
+        stdio: ["ignore", "pipe", "pipe"],
       })
     )
 
@@ -40,7 +56,10 @@ export function getIcEnvironmentInfo(
         : undefined)
 
     if (!proxyTarget) {
-      return null
+      diagnostics.push(
+        `\`icp network status -e ${networkName}\` reported no api_url, gateway_url or port`
+      )
+      return { environment: null, diagnostics }
     }
 
     const canisterIds: Record<string, string> = {}
@@ -49,35 +68,45 @@ export function getIcEnvironmentInfo(
       try {
         const canisterId = execFileSync(
           "icp",
-          ["canister", "status", name, "-e", environment, "-i"],
-          { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }
+          ["canister", "status", name, "-e", networkName, "-i"],
+          { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }
         ).trim()
 
         if (canisterId) {
           canisterIds[name] = canisterId
         }
-      } catch {
-        // Canister might not exist or be deployed yet
+      } catch (error) {
+        // Canister might not exist or be deployed yet — expected for
+        // internet_identity, which is added to the lookup list unconditionally.
+        diagnostics.push(
+          `\`icp canister status ${name} -e ${networkName}\` failed: ${describeExecError(error)}`
+        )
       }
     }
 
     const internetIdentityProvider =
       !canisterIds.internet_identity &&
       isLocalhostGateway(proxyTarget) &&
-      environment !== "ic"
+      networkName !== "ic"
         ? localInternetIdentityProvider(proxyTarget)
         : undefined
 
     return {
-      environment,
-      rootKey,
-      proxyTarget,
-      canisterIds,
-      internetIdentityProvider,
+      environment: {
+        environment: networkName,
+        rootKey,
+        proxyTarget,
+        canisterIds,
+        internetIdentityProvider,
+      },
+      diagnostics,
     }
   } catch (error) {
     // CLI not found or failed
-    return null
+    diagnostics.push(
+      `\`icp network status -e ${networkName}\` failed: ${describeExecError(error)}`
+    )
+    return { environment: null, diagnostics }
   }
 }
 
@@ -101,6 +130,25 @@ export function buildIcEnvCookie(
   }
 
   return encodeURIComponent(parts.join("&"))
+}
+
+/**
+ * Turn whatever `execFileSync` threw into one readable line.
+ *
+ * The interesting part is almost always the captured stderr — the thrown
+ * Error's own message is just "Command failed: icp ..." — but stderr is absent
+ * when the binary itself is missing (ENOENT), so fall back to the message.
+ */
+function describeExecError(error: unknown): string {
+  const stderr = (error as { stderr?: Buffer | string } | undefined)?.stderr
+  const text = typeof stderr === "string" ? stderr : stderr?.toString("utf-8")
+  const trimmed = text?.trim()
+
+  if (trimmed) {
+    return trimmed
+  }
+
+  return error instanceof Error ? error.message : String(error)
 }
 
 function isLocalhostGateway(proxyTarget: string): boolean {

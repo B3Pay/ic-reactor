@@ -31,6 +31,44 @@ function run(cmd, args, cwd) {
   return spawnSync(cmd, args, { cwd, stdio: "inherit", shell: false })
 }
 
+/**
+ * Parse a tsconfig. They are JSONC -- Vite's React template ships `/* Bundler
+ * mode *\/` section headers -- so comments and trailing commas are stripped
+ * before JSON.parse. String literals are matched first so a `//` inside a path
+ * survives.
+ *
+ * @param {string} file
+ */
+function readTsconfig(file) {
+  const withoutComments = readFileSync(file, "utf8").replace(
+    /"(?:\\.|[^"\\])*"|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+    (match) => (match.startsWith('"') ? match : " ")
+  )
+  return JSON.parse(withoutComments.replace(/,(\s*[}\]])/g, "$1"))
+}
+
+/**
+ * A "solution" tsconfig -- `files: []` plus `references` -- delegates all its
+ * inputs to the referenced projects. `tsc -p` does NOT follow references, and
+ * the empty `files` list suppresses the TS18002/TS18003 "no inputs" errors that
+ * would otherwise make an empty project fail loudly, so `tsc --noEmit -p` on
+ * one type-checks ZERO files and exits 0 no matter how broken the app is. That
+ * is exactly how examples/vite-environment-variables sat in CI for months with
+ * generated bindings importing a module that does not exist. Solution files go
+ * through `tsc -b`, which does follow references.
+ *
+ * @param {string} project
+ */
+function isSolutionTsconfig(project) {
+  const config = readTsconfig(join(project, "tsconfig.json"))
+  return (
+    Array.isArray(config.references) &&
+    config.references.length > 0 &&
+    Array.isArray(config.files) &&
+    config.files.length === 0
+  )
+}
+
 const entries = execFileSync("git", ["-C", examplesDir, "ls-files", "-z"], {
   encoding: "utf8",
 })
@@ -91,12 +129,23 @@ for (const name of dirs) {
     if (!existsSync(nextEnv)) writeFileSync(nextEnv, NEXT_ENV)
   }
 
-  console.log(`\n\u25b6  Type-checking ${name}`)
-  const result = run(
-    "pnpm",
-    ["exec", "tsc", "--noEmit", "-p", "tsconfig.json"],
-    project
-  )
+  let solution
+  try {
+    solution = isSolutionTsconfig(project)
+  } catch (err) {
+    console.error(
+      `\u274c ${name}: could not parse tsconfig.json: ${err instanceof Error ? err.message : err}`
+    )
+    skipped.push(name)
+    continue
+  }
+
+  console.log(`\n\u25b6  Type-checking ${name}${solution ? " (tsc -b)" : ""}`)
+  // `--force` because `tsc -b` trusts an existing .tsbuildinfo and would report
+  // success without re-reading a single file on a repeat local run.
+  const result = solution
+    ? run("pnpm", ["exec", "tsc", "-b", "--force", "tsconfig.json"], project)
+    : run("pnpm", ["exec", "tsc", "--noEmit", "-p", "tsconfig.json"], project)
   if (result.status !== 0) failures.push(name)
 }
 

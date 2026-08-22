@@ -15,6 +15,12 @@ The frontend uses `@ic-reactor/vite-plugin` to:
 - [frontend](./frontend/) contains the React/Vite app and generated canister
   bindings.
 
+`frontend/declarations/backend.did` is the input. The plugin regenerates
+`frontend/src/lib/canisters/backend/` from it, and that is the directory
+`src/App.tsx` imports its hooks from — the app has no second, hand-copied set
+that could drift. `index.generated.ts` is overwritten on every run;
+`index.ts` beside it is created once and is yours to customize.
+
 ## Run Locally
 
 Start the local ICP CLI network and deploy the backend:

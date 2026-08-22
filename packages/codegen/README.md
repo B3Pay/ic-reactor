@@ -45,7 +45,9 @@ Set `target` to control whether generated files include React hooks:
 - `react` (default): generates the reactor plus bound `createActorHooks` exports
 - `core`: generates only the typed reactor exports with no `@ic-reactor/react` dependency
 
-Codegen now writes two files per canister: a managed `index.generated.ts` implementation that is regenerated on every run, and an `index.ts` entry wrapper. The wrapper is created once, then preserved unless it still matches the default generated wrapper or an older generated scaffold that can be migrated automatically.
+Codegen now writes two files per canister: a managed `index.generated.ts` implementation that is regenerated on every run, and an `index.ts` entry wrapper. The wrapper is created once, then preserved unless it still matches the default generated wrapper or an older generated scaffold that can be migrated automatically. A scaffold that carries any export the old generator never wrote counts as user-owned and is left alone; one that is migrated is copied to `index.ts.bak` first.
+
+Each canister needs its own `outDir`. Generating into a directory that already holds another canister's `index.generated.ts` fails rather than overwriting it, because every run replaces `declarations/` wholesale.
 
 Set `generateReactor: false` if you only want the bindgen/declaration output and
 need to skip `index.generated.ts` and `index.ts`.
@@ -54,7 +56,7 @@ need to skip `index.generated.ts` and `index.ts`.
 
 You can also use individual generators if you need more granular control:
 
-- **`generateDeclarations`**: Writes `declarations/<did-basename>.js` (factory), `.d.ts` (types), and a `.did` copy. The `declarations/` directory is wiped and recreated on every run.
+- **`generateDeclarations`**: Writes `declarations/<did-basename>.js` (factory), `.d.ts` (types), and a `.did` copy. Generation runs in a staging directory that replaces `declarations/` only once every file is written, so a `.did` that fails to parse leaves the previous declarations untouched. A `.did` that parses but declares no `service` is rejected — it would produce no `idlFactory` and no `_SERVICE`.
 - **`generateReactorFile`**: Generates the managed `index.generated.ts` implementation using any `ReactorClassName` — `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, or `MetadataDisplayReactor`. With `target: "react"` it also emits the six `createActorHooks` exports (`use<Canister>Query`, `use<Canister>SuspenseQuery`, `use<Canister>InfiniteQuery`, `use<Canister>SuspenseInfiniteQuery`, `use<Canister>Mutation`, `use<Canister>Method`). No `createQuery` / `createMutation` objects are generated.
 - **`generateReactorEntryFile`**: Generates the stable `index.ts` wrapper that re-exports from `index.generated.ts`.
 - **`generateClientFile`**: Generates a `ClientManager` boilerplate file that
@@ -62,8 +64,17 @@ You can also use individual generators if you need more granular control:
 
 ## Utilities
 
-- **`parseDIDFile` / `extractMethods`**: Parse a `.did` file and extract method signatures.
 - **`toPascalCase` / `getReactorName` / `getServiceTypeName`**: Naming helpers.
+- **`assertSafeCanisterConfig` and friends**: Validate a canister config before generating; the pipeline runs these itself.
+
+`parseDIDFile` / `extractMethods` (and the `MethodInfo` / `MethodType` types)
+have been removed. They regex-scraped the pretty-printed JS from
+`didToJs`, which silently returned no methods for any service whose first
+method took an inline record, dropped every method whose signature wrapped over
+80 columns, and reported `composite_query` as a mutation. Read a `.did` with
+[`parseDid()`](https://ic-reactor.b3pay.net/v3/packages/parser) from
+`@ic-reactor/parser` instead — it returns `{ name, mode, args, returns }` per
+method, straight from the Rust parser.
 
 ## License
 

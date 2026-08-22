@@ -30,6 +30,7 @@ export {
   assertContainedPath,
   assertOneOf,
   resolveContainedOutDir,
+  resolveDeclarationsBaseName,
   CodegenConfigError,
   CANISTER_NAME_PATTERN,
   REACTOR_CLASS_NAMES,
@@ -39,9 +40,6 @@ export type {
   ValidatedCanisterPaths,
   ValidateCanisterConfigOptions,
 } from "./validate.js"
-
-export { parseDIDFile, extractMethods } from "./parser.js"
-export type { MethodInfo, MethodType } from "./parser.js"
 
 // Individual Generators (Advanced Usage)
 export * from "./generators/index.js"
