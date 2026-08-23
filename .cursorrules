@@ -17,6 +17,7 @@ It leverages **TanStack Query** for state management and caching, and the repo u
 - **DisplayReactor**: Prefer `DisplayReactor` over standard `Reactor` for UI components to handle BigInt serialization automatically.
 - **Setup Pattern**: Prefer `defineReactor(...)` for one-call React setup; fall back to `ClientManager`, `Reactor`, and `createActorHooks` when construction order must be explicit.
 - **Factory Pattern**: Use `createActorHooks`, `createQuery`, `createSuspenseQuery`, `createInfiniteQuery`, `createSuspenseInfiniteQuery`, and `createMutation` factories instead of manual hook implementations.
+- **SSR**: on a server (SSR/RSC) construct the reactor, `ClientManager`, and `AuthenticationManager` per request — never at module scope. A reactor owns its `QueryClient` and query keys carry no caller principal, so a module-scope reactor serves one user's caller-scoped data to the next; `AuthenticationManager` additionally holds mutable identity state that the auth hooks' server snapshot reads at render time. Build them in a `useState` initializer inside a provider — see `examples/nextjs/src/service/provider.tsx`. Module scope is fine in client-only SPAs.
 
 ## Preferred Patterns
 

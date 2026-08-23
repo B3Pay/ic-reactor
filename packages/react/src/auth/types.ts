@@ -12,9 +12,8 @@ export interface SignedIdentityAttributes {
  *
  * A function (or promise) lets the Internet Identity window open while the
  * nonce is still being fetched, so the popup is opened inside the user gesture
- * instead of after it. `@icp-sdk/auth` v8 requires the function form; v7
- * accepts the promise form. IC Reactor normalizes whichever you pass to the
- * shape the installed client expects.
+ * instead of after it. `@icp-sdk/auth` v8 requires the function form, and
+ * IC Reactor normalizes whichever of these you pass into that thunk.
  */
 export type IdentityAttributeNonce =
   Uint8Array | Promise<Uint8Array> | (() => Uint8Array | Promise<Uint8Array>)
@@ -187,9 +186,8 @@ export interface AuthClientLike {
   signOut(options?: { returnTo?: string }): Promise<void>
   requestAttributes(params: {
     keys: string[]
-    // Widened across `@icp-sdk/auth` v7 (value or promise) and v8 (thunk).
-    // Method-shorthand parameters are bivariant, so both real signatures are
-    // assignable to this one.
+    // `@icp-sdk/auth` v8 takes a thunk, so it can journal the value and replay
+    // the same bytes through a redirect flow.
     nonce: () => Promise<Uint8Array>
   }): Promise<SignedIdentityAttributes>
 }

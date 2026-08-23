@@ -19,8 +19,9 @@ pnpm install
 pnpm dev
 ```
 
-The example uses `@icp-sdk/auth` v7 because identity attribute requests depend
-on the current `signIn()` / `requestAttributes()` API.
+The example uses `@icp-sdk/auth` v8, which is what `@ic-reactor/react` requires
+from 3.12.0 onward — identity attribute requests go through its `signIn()` /
+`requestAttributes()` API.
 
 The app uses package-level auth defaults:
 

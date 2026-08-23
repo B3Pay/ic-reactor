@@ -84,8 +84,9 @@ const clientManager = new ClientManager({
 | -------------- | ------------------ | -------- | ------------------------------------------------------------------------------ |
 | `queryClient`  | `QueryClient`      | Required | TanStack Query client instance                                                 |
 | `agentOptions` | `HttpAgentOptions` | `{}`     | Options forwarded to the `HttpAgent` (`host`, `identity`, `rootKey`, `retryTimes`, `verifyQuerySignatures`, …) |
+| `allowEnvRootKey` | `boolean` | host-dependent | Whether to adopt the agent root key from the `ic_env` cookie. Defaults to `true` only for hosts that are unambiguously a local replica (loopback, `localhost` and its subdomains, dev-container tunnel domains); every other host must opt in. |
 
-These are the only two members of `ClientManagerParameters`. Network detection needs no flag — see [Network Configuration](#network-configuration).
+Network detection needs no flag — see [Network Configuration](#network-configuration).
 
 ## Properties
 
@@ -269,11 +270,11 @@ const clientManager = new ClientManager({
 
 ### Canister Environment
 
-When your app is served by the `@icp-sdk` toolchain (e.g., `icp-cli`) or by [`@ic-reactor/vite-plugin`](/v3/packages/vite-plugin), the dev server injects an `ic_env` cookie carrying the local canister IDs and root key. `ClientManager` reads that cookie **automatically** in the browser — there is no option to enable:
+When your app is served by the `@icp-sdk` toolchain (e.g., `icp-cli`) or by [`@ic-reactor/vite-plugin`](/v3/packages/vite-plugin), the dev server injects an `ic_env` cookie carrying the local canister IDs and root key. `ClientManager` reads that cookie **automatically** in the browser — canister IDs and host detection need no option to enable, and only the root key is gated (see `allowEnvRootKey`):
 
 - Agent host taken from `window.location.origin` when the page is served from a local or IC boundary host
 - Query signature verification disabled in development for performance
-- Root key from the cookie, accepted only on non-mainnet hosts
+- Root key from the cookie, accepted only on hosts that are unambiguously a local replica — loopback (the whole of 127.0.0.0/8, plus `::1`), `localhost` and its subdomains, and the dev-container domains that tunnel a local replica. Cookies are not origin-isolated and the root key is what certificate verification is checked against, so any other host — including a custom domain — must opt in with `allowEnvRootKey: true`.
 
 ### Subscribing to State Changes
 

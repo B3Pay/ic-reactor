@@ -96,7 +96,7 @@ declarations, and generated hook files. For codegen behavior, edit
 | Codegen/CLI/Vite output    | `pnpm --filter @ic-reactor/codegen test` plus affected CLI/Vite checks                           |
 | Broad package change       | `pnpm typecheck`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`                                  |
 | Package exports/build output/module format | `pnpm verify:packages`                                                           |
-| Examples                   | `pnpm typecheck:examples`                                                                        |
+| Examples                   | `pnpm typecheck:examples`, `pnpm build:examples`                                                 |
 
 Notes:
 
@@ -111,6 +111,9 @@ Notes:
   outside the workspace, imports/requires each entry point in real Node, and
   runs `publint` + `attw`. In-repo consumers resolve through workspace symlinks,
   so this is the only check that sees the published artifact.
+- `pnpm build:examples` is a CI gate alongside `pnpm typecheck:examples`. `tsc`
+  never loads a bundler, so a broken Vite/Next config type-checks clean; both
+  Next.js examples were unbuildable while the type-check job stayed green.
 
 ## Inside React vs Outside React
 

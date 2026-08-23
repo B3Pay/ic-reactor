@@ -12,7 +12,7 @@ Load this file when you need concrete examples, exact return methods, or repo fi
 | `createInfiniteQuery(...)`  | `.useInfiniteQuery()` | `.fetch()`, `.invalidate()`, `.getCacheData()` | Uses `getArgs(pageParam)`                                   |
 | `createMutation(...)`       | `.useMutation()`      | `.execute(args)`                               | Supports `onCanisterError` and invalidation                 |
 | `useActorMethod(...)`       | Yes                   | No                                             | Unified query/update hook                                   |
-| `reactor.callMethod(...)`   | Indirectly            | Yes                                            | Lowest-level imperative call                                |
+| `reactor.callMethod(...)`   | Indirectly            | Yes                                            | Lowest-level imperative call — still unwraps `Ok`/`Err`     |
 
 ## Returned Methods (Important)
 
@@ -83,6 +83,18 @@ Returns an object with:
 
 Source: `packages/react/src/createMutation.ts`
 
+### Result unwrapping
+
+A method returning `variant { Ok : T; Err : E }` never hands you the raw
+variant. The Reactor's default `transformResult` unwraps it, so `data` — and the
+value from `.fetch()`, `.execute()`, and `reactor.callMethod()` — is `T`, while
+an `Err` is thrown as a `CanisterError` carrying the raw payload on `.err`,
+reaching the `error` channel rather than `data`. Do not write
+`if ("Ok" in data)`. `callMethod()` is not an escape hatch; the only way to keep
+the raw variant is overriding `transformResult` on a `Reactor` subclass.
+
+Source: `packages/core/src/reactor.ts`, `packages/core/src/errors/index.ts`
+
 ## Inside React: Recommended Patterns
 
 ### A. Generic hooks from `createActorHooks`
@@ -114,7 +126,7 @@ function Profile({ userId }: { userId: string }) {
 
 ### B. Factory objects reused across components
 
-Define once at module scope (repo example: `examples/all-in-one-demo/src/lib/factories.ts`):
+Define once at module scope in a client-only app (repo example: `examples/all-in-one-demo/src/lib/factories.ts`). In a server-rendered app these belong to a per-request provider instead — see Common Mistakes below:
 
 ```ts
 export const getLikes = createQuery(backendReactor, {
@@ -241,7 +253,11 @@ References:
 ## Common Mistakes To Prevent
 
 - Calling React hooks outside React. Use `.fetch()` or `.execute()` instead.
-- Recreating factory instances inside components. Define them at module scope.
+- Recreating factory instances on every render. Define them at module scope —
+  except in server-rendered apps, where the reactor and its factories belong to
+  a per-request provider built once in a `useState` initializer (see
+  `examples/nextjs/src/service/provider.tsx`); there the mistake is the
+  module-scope singleton, not the in-component construction.
 - Hardcoding invalidation keys manually. Prefer `query.getQueryKey()`.
 - Editing generated hook files directly. Regeneration will overwrite them.
 - Mixing `DisplayReactor` and `Reactor` expectations. Confirm transformed return and arg types first.

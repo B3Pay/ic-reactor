@@ -34,7 +34,11 @@ icReactor({
   `injectEnvironment`, `failOnError`
 - Per canister (inside `canisters[]`): `name`, `didFile`, `outDir`,
   `clientManagerPath`, `target`, `mode`, `canisterId`
-- `injectEnvironment` for local `ic_env` cookie + `/api` proxy behavior
+- `injectEnvironment` for local `ic_env` cookie + `/api` proxy behavior. The
+  consumer side is a positive allowlist: `ClientManager` adopts the cookie's root
+  key only for loopback, `localhost`, and dev-container hosts. Serving a dev build
+  over a tunnel or custom domain needs `allowEnvRootKey: true` — see
+  `packages/core/llms.txt`
 - `failOnError` overrides the default (`true` for build, `false` for dev)
 
 ## Best Practices

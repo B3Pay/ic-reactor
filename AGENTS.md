@@ -56,6 +56,7 @@ Use this map before editing so you can start in the package that owns the behavi
 - Package tests: `pnpm test`
 - Published-artifact verification: `pnpm verify:packages` — packs every publishable package, installs the tarballs outside the workspace, imports/requires each entry point in real Node, and runs `publint` + `attw`. Run it after any change to `exports`, `files`, build output, or module format; in-repo consumers resolve through workspace symlinks, so nothing else catches a broken published artifact.
 - Example type checks: `pnpm typecheck:examples`
+- Example builds (CI gate): `pnpm build:examples` — `tsc` never loads a bundler, so a broken Vite/Next config type-checks clean. Both Next.js examples were unbuildable while the type-check job stayed green.
 - Docs build: `pnpm docs:build`
 - Dependency audit: `corepack pnpm audit --audit-level moderate`
 

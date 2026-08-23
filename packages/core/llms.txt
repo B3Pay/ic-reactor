@@ -26,6 +26,20 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 - Choose `DisplayReactor` when users type/read principals and numbers in forms
 - Validation can run on display values before calls
 
+## Local Environment Root Key
+
+The root key from the `ic_env` cookie is adopted only for hosts that
+`allowsEnvRootKey(host)` accepts: loopback (all of 127.0.0.0/8 and `::1`),
+`localhost` and its subdomains, and the dev-container domains that tunnel a local
+replica. Cookies are not origin-isolated, so this is a positive allowlist — any
+other host (custom domain, tunnel, staging) must opt in with
+`allowEnvRootKey: true` on `ClientManagerParameters`, or every certified call
+fails against the pinned mainnet key.
+
+`isMainnetHost` is a boundary-node check only; it recognises three canonical
+domains and returns `false` for a mainnet dapp on a custom domain. Never use it
+as a "safe to trust local configuration" test.
+
 ## Error Types
 
 - `CanisterError`: canister `Result.Err`

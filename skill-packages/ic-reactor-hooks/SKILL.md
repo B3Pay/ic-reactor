@@ -33,7 +33,14 @@ This skill should match requests about:
 
 1. Identify the target integration style.
 2. Prefer generated hooks for canister-heavy app code.
-3. Reuse singleton `QueryClient`, `ClientManager`, and reactor instances.
+3. Reuse singleton `QueryClient`, `ClientManager`, and reactor instances **in
+   client-only apps**. On a server (SSR/RSC/Next.js), build one set per request
+   instead — inside a `useState` initializer in a provider component, so it is
+   created once per render tree rather than on every render — because a reactor
+   owns its `QueryClient`, query keys carry no caller principal, and
+   `AuthenticationManager` holds mutable identity state, so a module-scope set
+   serves one visitor's caller-scoped data to the next. See
+   `examples/nextjs/src/service/provider.tsx`.
 4. Choose the smallest abstraction that fits:
    - `defineReactor(...)` for one-call setup (reactor + hooks + shared infra)
    - `createActorHooks(...)` for generic hook access
@@ -59,11 +66,15 @@ This skill should match requests about:
 
 ## Apply Repo Conventions
 
-- Keep `queryClient`, `clientManager`, and reactors as module-level singletons.
+- Keep `queryClient`, `clientManager`, and reactors as module-level singletons
+  in client-rendered apps; in server-rendered apps create one set per request
+  inside a provider's `useState` initializer
+  (`examples/nextjs/src/service/provider.tsx`) so no cache or identity state is
+  shared across requests.
 - Give each reactor an explicit `name`.
 - Use `DisplayReactor` for UI-friendly string transforms and forms.
 - Use `Reactor` for raw Candid types (`bigint`, `Principal`, etc.).
-- Define reusable query and mutation instances in shared modules (for example `factories.ts`) instead of inside components.
+- Define reusable query and mutation instances in shared modules (for example `factories.ts`) instead of inside components — **in client-only apps**. In a server-rendered app the module-scope singleton is itself the mistake; build them per request instead (see Common Mistakes in `references/patterns.md`).
 - Call React hooks only inside React components or custom hooks.
 - Use factory imperative methods (`fetch`, `execute`, `invalidate`, `getCacheData`) outside React.
 - Prefer `query.getQueryKey()` when wiring invalidation to avoid key drift.
@@ -189,6 +200,18 @@ Use these instead:
 - `query.invalidate()` for targeted invalidation
 - `mutation.execute(args)` for imperative updates
 - `reactor.fetchQuery(...)` / `reactor.getQueryData(...)` / `reactor.invalidateQueries(...)` / `reactor.callMethod(...)` for advanced control
+
+The three that actually **call** the canister — `query.fetch()`,
+`mutation.execute(args)`, and `reactor.fetchQuery(...)` / `reactor.callMethod(...)`
+— unwrap candid `variant { Ok; Err }`: the resolved value is the `Ok` payload,
+and an `Err` rejects with a `CanisterError` carrying the raw payload on `.err`.
+`callMethod()` is included in that: it is not an escape hatch. Overriding
+`transformResult` on a `Reactor` subclass is the only way to keep the raw variant.
+
+The others do not unwrap anything, because they never make a call:
+`getCacheData()` and `reactor.getQueryData(...)` read an already-transformed
+cache entry synchronously and return `undefined` on a miss — they cannot throw a
+`CanisterError`. `invalidate()` and `reactor.invalidateQueries(...)` return void.
 
 ## Inspect These Files First
 

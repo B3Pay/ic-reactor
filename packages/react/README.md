@@ -10,7 +10,7 @@ and reusable query or mutation factories built around TanStack Query.
 pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 
 # Optional: Internet Identity login helpers
-pnpm add @icp-sdk/auth
+pnpm add @icp-sdk/auth@^8
 ```
 
 > **npm needs an override to install this set.** Every published
@@ -256,12 +256,32 @@ const authentication = new AuthenticationManager({
 })
 ```
 
+### Local Internet Identity
+
+On a local replica the provider URL is resolved for you. `prepareClient()`
+queries the local Internet Identity canister's `http_request` to see what the
+installed build actually serves, then targets `/authorize` (release-2026-01-05 …
+release-2026-03-16) or the legacy `/#authorize` (up to release-2025-03-07, which
+also logs a console warning). If the build serves neither, `login()` throws an
+actionable error rather than opening a popup onto the gateway's
+verification-error page. From `release-2026-03-23` the II frontend moved out of
+the canister, so no local build past that point can be used for sign-in — pin an
+older release in `dfx.json`.
+
+An inconclusive probe — the canister unreachable, or answering no `http_request`
+— does not throw: it keeps `/authorize`, because a diagnostic that blocks a
+login that might have worked is worse than the failure it explains. To override
+the URL yourself, `localInternetIdentityProvider(port, canisterId?, authorizePath?)`
+takes the path as its third argument.
+
 ## Identity Attributes / OpenID email and profile values
 
 Identity attributes use a dedicated `IdentityAttributesManager`, with React
-bindings created by `createIdentityAttributeHooks`. Works with `@icp-sdk/auth`
-v7 and v8; the two versions disagree on the nonce contract and IC Reactor
-normalizes whichever form you pass.
+bindings created by `createIdentityAttributeHooks`. Requires `@icp-sdk/auth` v8 —
+the peer range is `^8.0.0`, and the v7 compatibility path was removed in 3.12.0.
+v8 takes the nonce as a thunk (`() => Promise<Uint8Array>`); IC Reactor accepts
+either a value or a callback and adapts it, but the callback form is what
+preserves the user gesture (see below).
 
 **Pass the nonce as a callback.** Awaiting your backend before calling
 `requestOpenIdAttributes` ends the user gesture, and the browser then blocks

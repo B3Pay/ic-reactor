@@ -62,11 +62,18 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 ```bash
 # Internet Identity auth helpers
-pnpm add @icp-sdk/auth
+pnpm add @icp-sdk/auth@^8 # v8 only; v7 is not supported
 
 # Dynamic Candid support (explorers/dev tools)
 pnpm add @ic-reactor/candid @ic-reactor/parser
 ```
+
+> **npm needs an override for `@icp-sdk/auth`.** Every published
+> `@icp-sdk/auth` peers `@icp-sdk/core@^5` while IC Reactor needs `^6`, so a
+> strict `npm install` fails with `ERESOLVE`. Add
+> `{ "overrides": { "@icp-sdk/auth": { "@icp-sdk/core": "$@icp-sdk/core" } } }`
+> to your `package.json`. pnpm and yarn install the set as-is. See
+> [`@ic-reactor/react`](./packages/react/README.md) for detail.
 
 ## Quick Start (React)
 

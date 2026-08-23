@@ -51,6 +51,20 @@ entry points, verification commands, or known failure modes.
 | Declaration/reactor/client generation                     | `packages/codegen`                                                                                       |
 | `ic-reactor` executable and config schema                 | `packages/cli`                                                                                           |
 | Vite `.did` watching and environment injection            | `packages/vite-plugin`                                                                                   |
+| Local Internet Identity `/authorize` detection            | `packages/react/src/auth/local-ii-probe.ts`, `packages/react/src/auth/constants.ts`                      |
+| `ic_env` root-key trust (`allowEnvRootKey`)               | `packages/core/src/client.ts`, `packages/core/src/utils/helper.ts`                                       |
+
+`AuthenticationManager.prepareClient()` probes the locally deployed Internet
+Identity canister and picks `/authorize` or the legacy `/#authorize`, or refuses
+login when the build serves neither — from `release-2026-03-23` the II frontend
+left the canister entirely, so newer builds cannot sign anyone in locally.
+`localInternetIdentityProvider(port, canisterId?, authorizePath?)` takes the
+path the probe chose.
+
+Root-key questions belong to `core`, not the Vite plugin. `allowsEnvRootKey` is
+a positive allowlist of hosts that are unambiguously a local replica;
+`isMainnetHost` is not a "safe to trust local config" test, because a mainnet
+dapp on a custom domain falls through it.
 
 ## Verification
 
@@ -64,12 +78,18 @@ Use CI-aligned commands:
 - Package tests: `pnpm test`
 - Published-artifact verification (pack + publint + attw + real Node import): `pnpm verify:packages`
 - Example type checks: `pnpm typecheck:examples`
+- Example builds (CI gate — `tsc` never loads a bundler, so a broken Vite or Next config type-checks clean): `pnpm build:examples`
 - Docs build: `pnpm docs:build`
 - Dependency audit: `corepack pnpm audit --audit-level moderate`
 
 Run `pnpm verify:packages` after any change to a package's `exports`, `files`,
 build output, or module format — in-repo consumers resolve through workspace
 symlinks, so nothing else catches a broken published artifact.
+
+When the change fixes a bug, run `pnpm verify:test-fails <test-file> --package <pkg>`
+on the new test before opening the PR. It re-runs the tests against a base
+revision and reports which ones flipped — a test that passes with and without
+the fix proves nothing about it.
 
 For focused work, prefer filters such as:
 
@@ -100,6 +120,12 @@ Normally ignore or regenerate these instead of hand-editing:
 - `.next/`, `.astro/`
 - `*.tsbuildinfo`
 - generated canister declarations and generated hook files
+- `.ic-reactor-owner` — codegen's ownership marker inside each generated
+  `outDir`, recording which canister owns it so a second canister is refused
+  before it replaces the first one's declarations. Never point two canisters at
+  one `outDir`. Deleting the whole output directory and regenerating is the
+  documented recovery after a canister rename — that is what the pipeline's own
+  error tells you to do — so do not describe the marker as undeletable.
 
 For codegen behavior, edit `packages/codegen/src/` and verify both
 `@ic-reactor/codegen` tests and the affected CLI/Vite example.
