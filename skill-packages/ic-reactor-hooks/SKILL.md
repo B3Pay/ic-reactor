@@ -33,7 +33,14 @@ This skill should match requests about:
 
 1. Identify the target integration style.
 2. Prefer generated hooks for canister-heavy app code.
-3. Reuse singleton `QueryClient`, `ClientManager`, and reactor instances.
+3. Reuse singleton `QueryClient`, `ClientManager`, and reactor instances **in
+   client-only apps**. On a server (SSR/RSC/Next.js), build one set per request
+   instead — inside a `useState` initializer in a provider component, so it is
+   created once per render tree rather than on every render — because a reactor
+   owns its `QueryClient`, query keys carry no caller principal, and
+   `AuthenticationManager` holds mutable identity state, so a module-scope set
+   serves one visitor's caller-scoped data to the next. See
+   `examples/nextjs/src/service/provider.tsx`.
 4. Choose the smallest abstraction that fits:
    - `defineReactor(...)` for one-call setup (reactor + hooks + shared infra)
    - `createActorHooks(...)` for generic hook access
@@ -59,7 +66,11 @@ This skill should match requests about:
 
 ## Apply Repo Conventions
 
-- Keep `queryClient`, `clientManager`, and reactors as module-level singletons.
+- Keep `queryClient`, `clientManager`, and reactors as module-level singletons
+  in client-rendered apps; in server-rendered apps create one set per request
+  inside a provider's `useState` initializer
+  (`examples/nextjs/src/service/provider.tsx`) so no cache or identity state is
+  shared across requests.
 - Give each reactor an explicit `name`.
 - Use `DisplayReactor` for UI-friendly string transforms and forms.
 - Use `Reactor` for raw Candid types (`bigint`, `Principal`, etc.).
@@ -189,6 +200,11 @@ Use these instead:
 - `query.invalidate()` for targeted invalidation
 - `mutation.execute(args)` for imperative updates
 - `reactor.fetchQuery(...)` / `reactor.getQueryData(...)` / `reactor.invalidateQueries(...)` / `reactor.callMethod(...)` for advanced control
+
+All of these unwrap candid `variant { Ok; Err }`: the value is the `Ok` payload,
+and an `Err` throws a `CanisterError` carrying the raw payload on `.err`.
+`callMethod()` included — it is not an escape hatch. The only way to keep the
+raw variant is overriding `transformResult` on a `Reactor` subclass.
 
 ## Inspect These Files First
 
