@@ -94,9 +94,12 @@ If you're not using the Vite plugin, you can still configure everything manually
 
 ### 1. Setup ClientManager
 
-`ClientManagerParameters` has exactly two members: the required `queryClient`
-and an optional `agentOptions` (the `HttpAgentOptions` handed to the underlying
-`HttpAgent`). There is no flag to turn network detection on — it always runs.
+`ClientManagerParameters` has three members: the required `queryClient`, an
+optional `agentOptions` (the `HttpAgentOptions` handed to the underlying
+`HttpAgent`), and an optional `allowEnvRootKey`. Network detection needs no flag
+— it always runs. `allowEnvRootKey` controls only whether the root key carried
+by the `ic_env` cookie is adopted; it defaults to `true` for hosts that are
+unambiguously a local replica and `false` everywhere else.
 
 ```typescript
 import { ClientManager } from "@ic-reactor/react"
@@ -212,13 +215,21 @@ Internet Identity canister.
        //...
        "internet_identity": {
          "type": "custom",
-         "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
-         "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
+         "candid": "https://github.com/dfinity/internet-identity/releases/download/release-2026-03-16/internet_identity.did",
+         "wasm": "https://github.com/dfinity/internet-identity/releases/download/release-2026-03-16/internet_identity_dev.wasm.gz",
          "specified_id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
        }
      }
    }
    ```
+
+   <Aside type="caution" title="Pin this release">
+     `release-2026-03-23` and later moved the Internet Identity frontend out of
+     the canister, so a local deployment of them serves no sign-in UI and
+     `login()` is rejected. `release-2026-03-16` is the newest
+     `internet_identity_dev.wasm` that works locally — see
+     [Authentication](/v3/guides/authentication#client-options).
+   </Aside>
 
 2. Deploy it:
 
