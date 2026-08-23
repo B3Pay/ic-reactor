@@ -68,6 +68,13 @@ pnpm add @icp-sdk/auth
 pnpm add @ic-reactor/candid @ic-reactor/parser
 ```
 
+> **npm needs an override for `@icp-sdk/auth`.** Every published
+> `@icp-sdk/auth` peers `@icp-sdk/core@^5` while IC Reactor needs `^6`, so a
+> strict `npm install` fails with `ERESOLVE`. Add
+> `{ "overrides": { "@icp-sdk/auth": { "@icp-sdk/core": "$@icp-sdk/core" } } }`
+> to your `package.json`. pnpm and yarn install the set as-is. See
+> [`@ic-reactor/react`](./packages/react/README.md) for detail.
+
 ## Quick Start (React)
 
 ### 0. Fastest path: `defineReactor`

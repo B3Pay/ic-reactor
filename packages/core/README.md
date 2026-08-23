@@ -128,8 +128,19 @@ backend.invalidateQueries({ functionName: "greet" })
 interface ClientManagerParameters {
   queryClient: QueryClient // TanStack Query client (required)
   agentOptions?: HttpAgentOptions // Custom HttpAgent options (host, identity, rootKey, ...)
+  allowEnvRootKey?: boolean // Trust the ic_env cookie's root key on this host (default: local replicas only)
 }
 ```
+
+The `ic_env` cookie can carry an `IC_ROOT_KEY`. Since the root key is what
+certificate verification is checked against, and cookies are not
+origin-isolated, it is adopted only for hosts that are unambiguously a local
+replica — loopback (all of 127.0.0.0/8), `localhost` and its subdomains, and the
+dev-container domains that tunnel one. The exported `allowsEnvRootKey(host)` is
+that test. Any other host must opt in with `allowEnvRootKey: true`. Do not use
+`isMainnetHost` as a "safe to trust local config" test: it recognises only the
+three canonical boundary domain families, so a mainnet dapp on a custom domain
+falls through it.
 
 ### Authentication
 
