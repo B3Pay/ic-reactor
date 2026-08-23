@@ -27,7 +27,7 @@ The more of this you can provide, the faster a fix lands:
 | Package                                 | Supported |
 | --------------------------------------- | --------- |
 | `@ic-reactor/{core,react,candid}`       | `3.x`     |
-| `@ic-reactor/{codegen,cli,vite-plugin}` | `0.12.x`  |
+| `@ic-reactor/{codegen,cli,vite-plugin}` | `0.13.x`  |
 | `@ic-reactor/parser`                    | `0.4.x`   |
 
 Fixes land on the latest minor of each supported line. Older minors are not backported.
