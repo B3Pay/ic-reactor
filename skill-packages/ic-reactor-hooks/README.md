@@ -70,6 +70,27 @@ Install the skill from github.com/B3Pay/ic-reactor path skill-packages/ic-reacto
 Use `/llms-full.txt` alongside this skill when the assistant needs a broader
 package map, install commands, auth guidance, or verification matrix.
 
+#### Dependency note
+
+`@ic-reactor/react` requires `@icp-sdk/auth@^8` for Internet Identity; v7 is no
+longer supported. On npm the advertised peer set is unresolvable — every
+published `@icp-sdk/auth` peers `@icp-sdk/core@^5` while IC Reactor needs `^6`,
+so a strict `npm install` fails with `ERESOLVE`. The metadata is stale upstream,
+not an actual incompatibility; point auth at your own `core` with a scoped
+override:
+
+```json
+{
+  "overrides": {
+    "@icp-sdk/auth": {
+      "@icp-sdk/core": "$@icp-sdk/core"
+    }
+  }
+}
+```
+
+pnpm and yarn install the same set without complaint.
+
 ### Example Prompt
 
 ```text
