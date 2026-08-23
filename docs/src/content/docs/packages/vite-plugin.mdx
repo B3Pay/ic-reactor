@@ -43,6 +43,12 @@ export default defineConfig({
 By default, generated files go to `src/declarations/<canister>/`, and the
 plugin imports `clientManager` from `../../clients`.
 
+Relative `outDir` and `didFile` paths resolve against Vite's resolved
+`config.root`, not the directory you ran `vite` from. If you set
+`root: "frontend"` or pass the root positionally (`vite build apps/web`), paths
+are relative to that directory. Note that `--config` on its own only selects the
+config file — it does not change the root.
+
 For each canister, generation produces:
 
 - `declarations/<did-basename>.js`, `.d.ts`, and a `.did` copy
@@ -64,6 +70,7 @@ plus hooks named after the canister — for a canister named `backend`:
 | `clientManagerPath`   | `string`         | `"../../clients"`    | Default client manager import path (relative from generated files). |
 | `target`              | `"react" \| "core"` | `"react"`         | Default generated runtime target.                           |
 | `injectEnvironment`   | `boolean`        | `true`               | Inject `ic_env` cookie and proxy during `vite dev`.         |
+| `failOnError`         | `boolean`        | `true` on `vite build`, `false` on `vite dev` | Abort the Vite run when a canister fails to generate. |
 
 ### Per-canister options
 
@@ -135,6 +142,13 @@ When a watched `.did` file changes, the plugin:
 3. preserves custom `index.ts` files, while updating the default wrapper or
    migrating older generated entrypoints to the wrapper model
 4. triggers a full browser reload
+
+A generation failure aborts `vite build` by default — a build that silently
+ships the bindings from the last successful run is worse than no build. Under
+`vite dev` the default is the opposite, because the dev server has to survive
+the broken intermediate states of a `.did` being edited; there the failure is
+reported to the terminal and to the browser error overlay instead. Set
+`failOnError` explicitly to override either default.
 
 <Aside type="tip">
   Use the Vite plugin when you want the fastest `.did` edit loop. Use the

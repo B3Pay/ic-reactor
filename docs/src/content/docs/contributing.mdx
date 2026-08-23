@@ -30,6 +30,9 @@ Thanks for your interest in contributing to IC Reactor! This guide covers the de
    ```bash
    pnpm build
    pnpm test
+   pnpm typecheck            # type-checks every package, including tests
+   pnpm format:check
+   pnpm check:ai-context
    ```
 
 </Steps>
@@ -61,6 +64,13 @@ pnpm test-e2e
 ```
 
 If you are adding a feature, include tests and documentation where applicable.
+
+## Before Opening a PR
+
+CI also builds and type-checks every example app. Run `pnpm typecheck:examples`
+and `pnpm build:examples` locally if you touched anything under `packages/` or
+`examples/` — the examples are now built in CI, not merely type-checked, so a
+change that compiles against the workspace can still fail there.
 
 ## Commits and Pull Requests
 
