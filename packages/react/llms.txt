@@ -7,8 +7,14 @@ accurate integration guidance.
 
 ```bash
 pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
-pnpm add @icp-sdk/auth # optional auth helpers
+pnpm add @icp-sdk/auth@^8 # optional auth helpers; v8 only, v7 is not supported
 ```
+
+npm cannot resolve this set on its own: every published `@icp-sdk/auth` still
+peers `@icp-sdk/core@^5` while this package needs `^6`, so a strict
+`npm install` fails with `ERESOLVE`. Add
+`{"overrides":{"@icp-sdk/auth":{"@icp-sdk/core":"$@icp-sdk/core"}}}` to
+`package.json`. pnpm and yarn do not need it.
 
 ## Start Here
 

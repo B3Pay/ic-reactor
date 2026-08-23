@@ -98,6 +98,7 @@ pnpm build              # Build all packages
 pnpm test               # Run all tests
 pnpm typecheck          # Type-check every package incl. tests (CI gate)
 pnpm typecheck:examples # Type-check example apps
+pnpm build:examples     # Build every example app (CI gate)
 pnpm format             # Format code with Prettier (packages/** only)
 pnpm format:check       # Verify formatting without writing (CI gate, packages/** only)
 pnpm check:ai-context   # Verify llms.txt versions match package.json (CI gate)
@@ -109,6 +110,11 @@ pnpm docs:build         # Build docs site
 `pnpm typecheck` runs each package's own `typecheck` script. The root
 `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root
 type-checks nothing.
+
+After editing an example, run `pnpm build:examples` as well as
+`pnpm typecheck:examples`. `tsc` never loads a bundler, so a broken Vite/Next
+config type-checks clean — both Next.js examples were unbuildable while the
+type-check job stayed green. CI runs both.
 
 When a change fixes a bug, run `pnpm verify:test-fails` on the new test file
 before opening the PR. It reverts `packages/*/src` to a base revision, re-runs

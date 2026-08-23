@@ -41,7 +41,7 @@ Follow these repository-specific patterns when suggesting code:
   - `createInfiniteQuery`
   - `createSuspenseInfiniteQuery`
   - `createMutation`
-- Define reusable query/mutation objects at module scope (not inside components).
+- Define reusable query/mutation objects at module scope (not inside components) in client-only apps. In a server-rendered app, see "SSR / Server Rendering" below — module scope is a cross-request leak there.
 - Use `useActorMethod` only when a unified query/update hook is specifically helpful.
 - Build auth hooks with `createAuthHooks(authentication)` where `authentication = new AuthenticationManager({ clientManager })` — it never takes a `ClientManager`.
 - `useIdentityAttributes` comes from `createIdentityAttributeHooks(identityAttributes)`, not from `createAuthHooks`.
@@ -55,6 +55,14 @@ Follow these repository-specific patterns when suggesting code:
   - query `.getCacheData()`
   - mutation `.execute()`
   - reactor `.fetchQuery()`, `.getQueryData()`, `.invalidateQueries()`, `.callMethod()`
+
+## SSR / Server Rendering
+
+- On a server (SSR/RSC), build the reactor, `ClientManager`, `AuthenticationManager`, and the query/mutation objects inside the request — never at module scope.
+- A reactor owns its `QueryClient`, and query keys are `[canisterId, functionName, args]` with no caller principal. A module-scope reactor on a server is one cache shared by every request, so a caller-scoped result (`balanceOf(self)`, `myProfile`) is served to the next visitor.
+- `AuthenticationManager` is worse: it holds mutable identity state, and the auth hooks' `useSyncExternalStore` server snapshot reads whatever identity the shared manager happens to hold at render time.
+- A bare `defineReactor(...)` call in a module body is still module scope. Hang construction off a per-render `useState` initializer inside a provider — the reference implementation is `examples/nextjs/src/service/provider.tsx`.
+- Module scope stays correct for client-only SPAs.
 
 ## Reactor Choice
 
@@ -101,3 +109,4 @@ Follow these repository-specific patterns when suggesting code:
 - Package tests: `pnpm test`
 - Published-artifact verification: `pnpm verify:packages` (pack + publint + attw + real Node import; run it after `exports`/`files`/build-output changes)
 - Example type checks: `pnpm typecheck:examples`
+- Example builds (CI gate): `pnpm build:examples` — `tsc` never loads a bundler, so a broken Vite/Next config type-checks clean; both Next.js examples were unbuildable while the type-check job stayed green

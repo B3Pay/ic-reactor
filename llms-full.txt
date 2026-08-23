@@ -45,6 +45,16 @@ Auth helpers:
 pnpm add @ic-reactor/react @icp-sdk/auth
 ```
 
+The `@icp-sdk/auth` peer is `^8`; v7 is no longer supported. pnpm and yarn
+install this set as published. A strict `npm install` fails with `ERESOLVE`,
+because every published `@icp-sdk/auth` still peers `@icp-sdk/core@^5` while
+`@ic-reactor/react` needs `^6` — stale metadata rather than an actual
+incompatibility. For npm, add to `package.json`:
+
+```json
+{ "overrides": { "@icp-sdk/auth": { "@icp-sdk/core": "$@icp-sdk/core" } } }
+```
+
 Dynamic Candid:
 
 ```bash
@@ -230,6 +240,21 @@ Pass identity-attribute nonces as a callback
 Awaiting the nonce before the call ends the user gesture and the browser blocks
 the Internet Identity window.
 
+### Local Internet Identity
+
+`localInternetIdentityProvider(port, canisterId?, authorizePath?)` builds
+`http://<canisterId>.localhost:<port>/authorize`. Which path works depends on the
+installed II build, so `AuthenticationManager.prepareClient()` probes the
+canister over the agent and selects `/authorize` or the legacy `/#authorize`, and
+rejects login outright when the build serves neither.
+
+Only builds up to `release-2026-03-16` work locally: `release-2025-03-07` and
+earlier serve the SPA at `/` with a `#authorize` fragment, `release-2026-01-05`
+through `release-2026-03-16` serve `/authorize`, and from `release-2026-03-23` the
+frontend left the canister entirely (the id.ai split). A local login that hangs on
+the gateway's "Response Verification Error" page is an unsupported II build —
+install `internet_identity_dev.wasm` from `release-2026-03-16`.
+
 ## Error Handling (Important)
 
 IC Reactor distinguishes canister business errors from transport/runtime errors.
@@ -239,6 +264,11 @@ IC Reactor distinguishes canister business errors from transport/runtime errors.
 | `CanisterError` | `Result.Err` returned by canister methods | `onCanisterError` (for hooks/factories), or `isCanisterError(...)` in try/catch |
 | `CallError` | network/agent issues (timeouts, unreachable canister, etc.) | `onError` or `isCallError(...)` |
 | `ValidationError` | `DisplayReactor` argument validators | `isValidationError(...)` and show field errors |
+
+`CanisterError` carries the raw canister error value on `.err` — not `.detail`,
+`.data`, or `.message`. `.code` is the variant key, or the `code` field when the
+payload follows the ApiError shape, and `.details` is the optional `Map`. Always
+read the payload from `.err`.
 
 When using mutations, prefer:
 
@@ -296,7 +326,11 @@ resolves to `dist/nodejs`. Do not deep-import `dist/`.
 
 Agents should account for these patterns in generated TypeScript:
 
-- `Result` variants (`Ok`/`Err` and `ok`/`err`) should be unwrapped through IC Reactor helpers
+- `Result` variants (`Ok`/`Err`, `ok`/`err`) are already unwrapped by the Reactor: `data` is the
+  Ok payload, and an `Err` throws a `CanisterError` instead of ever reaching `data`. Do not write
+  `"Ok" in data` guards — they can never be true. `callMethod()` unwraps too, so it is not an
+  escape hatch; overriding `transformResult` on a Reactor subclass is the only way to receive the
+  raw variant
 - numeric Candid values (`nat`, `int`, etc.) are usually `bigint` in raw mode and strings in display mode
 - `principal` values are `Principal` in raw mode and strings in display mode
 - `opt T` often appears as tuples/options in raw actor shapes; UI flows should normalize these carefully
@@ -325,15 +359,47 @@ A reactor owns its `QueryClient`, and query keys are
 `[canisterId, functionName, args]` with no caller principal. A module-scope
 reactor on a server is therefore shared by every request, so a cached
 caller-scoped result (`get_my_balance`, deposit address, `my_profile`) is served
-to the next request. Under SSR/RSC, construct the reactor inside the request:
+to the next request. `AuthenticationManager` is worse: it holds mutable identity
+state, and `createAuthHooks`' `useSyncExternalStore` server snapshot reads
+whatever identity the shared manager happens to hold at render time.
 
-```ts
-const app = defineReactor<_SERVICE>({
-  name: "backend",
-  idlFactory,
-  canisterId,
-  queryClient: new QueryClient(),
-})
+Under SSR/RSC, construct the reactor, `ClientManager`, and
+`AuthenticationManager` inside the request. A bare call in a module body is still
+module scope, so the construction has to hang off something per-render — a
+`useState` initializer inside a provider, which is what
+`examples/nextjs/src/service/provider.tsx` does:
+
+```tsx
+function createReactorContext() {
+  const queryClient = new QueryClient()
+  const clientManager = new ClientManager({ queryClient })
+  const authentication = new AuthenticationManager({ clientManager })
+  const reactor = new Reactor<_SERVICE>({
+    name: "backend",
+    clientManager,
+    canisterId,
+    idlFactory,
+  })
+  return {
+    queryClient,
+    auth: createAuthHooks(authentication),
+    todo: createActorHooks(reactor),
+  }
+}
+
+const ReactorContext =
+  createContext<ReturnType<typeof createReactorContext> | null>(null)
+
+export function ICReactorProvider({ children }: { children: ReactNode }) {
+  // The initializer runs once per mounted tree, and a server render is its own
+  // tree, so each request gets its own managers and its own cache.
+  const [value] = useState(createReactorContext)
+  return (
+    <QueryClientProvider client={value.queryClient}>
+      <ReactorContext.Provider value={value}>{children}</ReactorContext.Provider>
+    </QueryClientProvider>
+  )
+}
 ```
 
 Module scope stays correct for client-only SPAs. Hooks are client-only; they
@@ -368,7 +434,7 @@ verify the affected CLI/Vite consumer.
 | Codegen               | `pnpm --filter @ic-reactor/codegen test` plus affected CLI/Vite checks             |
 | Broad package change  | `pnpm typecheck`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`                    |
 | Package exports/build/module format | `pnpm verify:packages`                                               |
-| Examples              | `pnpm typecheck:examples`                                                          |
+| Examples              | `pnpm typecheck:examples`, `pnpm build:examples`                                   |
 | Docs site             | `pnpm docs:build`                                                                  |
 
 Do not run package build and package test concurrently when parser/candid tests
@@ -386,3 +452,6 @@ Script notes:
 - `pnpm verify:packages` packs every publishable package, installs the tarballs
   outside the workspace, imports/requires each entry point in real Node, and
   runs `publint` + `attw`. It is the only check that sees what consumers get.
+- `pnpm build:examples` is a CI gate alongside `pnpm typecheck:examples`. `tsc`
+  never loads a bundler, so a broken Vite/Next config type-checks clean; both
+  Next.js examples were unbuildable while the type-check job stayed green.

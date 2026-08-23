@@ -22,6 +22,25 @@ tooling/automation.
 - `index.ts` is a stable wrapper
 - app-specific logic should live in wrappers or adjacent modules
 
+## Validation
+
+The pipeline validates the config before generating anything and throws
+`CodegenConfigError`. The same checks are exported for callers that want to
+validate first: `assertSafeCanisterConfig`, `assertSafeCanisterName`,
+`assertSafeModuleSpecifier`, `assertContainedPath`, `assertOneOf`,
+`resolveContainedOutDir`, and `resolveDeclarationsBaseName`, plus the constants
+`CANISTER_NAME_PATTERN`, `REACTOR_CLASS_NAMES`, and `CODEGEN_TARGETS`.
+
+## Generation Failure Modes
+
+- `outDir` must resolve inside the project root
+- canister names must match `CANISTER_NAME_PATTERN`
+- a `.did` that compiles to a module with no `idlFactory` is rejected — there is
+  no service to generate against
+- each `outDir` carries a `.ic-reactor-owner` marker, so two canisters cannot
+  write to the same directory. Without it both runs report success while the
+  second replaces the first one's declarations.
+
 ## Full References
 
 - Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
