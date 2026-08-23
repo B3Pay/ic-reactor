@@ -16,6 +16,7 @@
     "prepublish:check": "pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid build && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid test && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid size",
     "sync:examples": "node scripts/sync-example-versions.js",
     "typecheck:examples": "node scripts/typecheck-examples.js",
+    "build:examples": "node scripts/build-examples.js",
     "check:ai-context": "node scripts/check-ai-context.js",
     "verify:test-fails": "node scripts/verify-test-fails.js",
     "release": "node scripts/release.js",
