@@ -9,3 +9,11 @@ target
 .astro
 **/*.tsbuildinfo
 docs/src/content/docs/libs/
+
+# Bookkeeping written by @ic-reactor/codegen into each output directory to record
+# which canister owns it, so a second canister generating into the same outDir is
+# stopped before it replaces the first one's declarations. It is not part of the
+# generated surface consumers import — which is why it is dot-prefixed — and the
+# examples commit their generated output, so without this every contributor sees
+# six untracked files after a build.
+**/.ic-reactor-owner
