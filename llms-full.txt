@@ -371,8 +371,18 @@ module scope, so the construction has to hang off something per-render — a
 
 ```tsx
 import { createContext, useContext, useState } from "react"
+import type { ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { ClientManager, AuthenticationManager } from "@ic-reactor/react"
+import {
+  ClientManager,
+  AuthenticationManager,
+  Reactor,
+  createActorHooks,
+  createAuthHooks,
+} from "@ic-reactor/react"
+// Generated for your canister — from `ic-reactor generate` or the Vite plugin.
+import { canisterId, idlFactory } from "declarations/backend"
+import type { _SERVICE } from "declarations/backend/backend.did"
 
 function createReactorContext() {
   const queryClient = new QueryClient()
