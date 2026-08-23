@@ -126,7 +126,7 @@ function Profile({ userId }: { userId: string }) {
 
 ### B. Factory objects reused across components
 
-Define once at module scope (repo example: `examples/all-in-one-demo/src/lib/factories.ts`):
+Define once at module scope in a client-only app (repo example: `examples/all-in-one-demo/src/lib/factories.ts`). In a server-rendered app these belong to a per-request provider instead — see Common Mistakes below:
 
 ```ts
 export const getLikes = createQuery(backendReactor, {

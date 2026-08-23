@@ -370,6 +370,10 @@ module scope, so the construction has to hang off something per-render — a
 `examples/nextjs/src/service/provider.tsx` does:
 
 ```tsx
+import { createContext, useContext, useState } from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { ClientManager, AuthenticationManager } from "@ic-reactor/react"
+
 function createReactorContext() {
   const queryClient = new QueryClient()
   const clientManager = new ClientManager({ queryClient })

@@ -62,7 +62,7 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
   - `createQueryFactory` / `createSuspenseQueryFactory` when args are supplied later
   - `createInfiniteQuery` / `createSuspenseInfiniteQuery`
   - `createMutation`
-- Define reusable query/mutation objects at module scope (not inside components).
+- Define reusable query/mutation objects at module scope (not inside components) **in client-only apps**. In a server-rendered app they belong to a per-request provider — see Inside React vs Outside React below.
 - Use `useActorMethod` only when a unified query/update hook is specifically helpful.
 - For Internet Identity, use `createAuthHooks(authentication)` where `authentication` is an `AuthenticationManager` — never a `ClientManager`. `useIdentityAttributes` comes from `createIdentityAttributeHooks(identityAttributes)`, not `createAuthHooks`.
 
@@ -73,10 +73,18 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
   - query `.fetch()` / `.invalidate()` / `.getCacheData()`
   - mutation `.execute()`
   - reactor `.fetchQuery()` / `.getQueryData()` / `.invalidateQueries()` / `.callMethod()`
-- On a server (SSR/RSC), build the reactor inside the request rather than at
-  module scope. A reactor owns its `QueryClient` and query keys carry no caller
+- On a server (SSR/RSC), build the reactor, `ClientManager`, `AuthenticationManager`
+  and any query/mutation objects **inside the request** rather than at module
+  scope. A reactor owns its `QueryClient` and query keys carry no caller
   principal, so a module-scope reactor shares one cache across all requests and
-  can serve one user's caller-scoped data to another.
+  can serve one user's caller-scoped data to another. `AuthenticationManager` is
+  worse: it holds mutable identity state, and `createAuthHooks`'
+  `useSyncExternalStore` server snapshot reads whatever identity the shared
+  manager happens to hold at render time.
+  A bare `defineReactor(...)` in a module body is still module scope. Construct
+  in a `useState` initializer inside a provider, which runs once per mounted
+  tree — and a server render is its own tree. Reference implementation:
+  `examples/nextjs/src/service/provider.tsx`.
 
 ## Cache Invalidation
 

@@ -74,7 +74,7 @@ This skill should match requests about:
 - Give each reactor an explicit `name`.
 - Use `DisplayReactor` for UI-friendly string transforms and forms.
 - Use `Reactor` for raw Candid types (`bigint`, `Principal`, etc.).
-- Define reusable query and mutation instances in shared modules (for example `factories.ts`) instead of inside components.
+- Define reusable query and mutation instances in shared modules (for example `factories.ts`) instead of inside components — **in client-only apps**. In a server-rendered app the module-scope singleton is itself the mistake; build them per request instead (see Common Mistakes in `references/patterns.md`).
 - Call React hooks only inside React components or custom hooks.
 - Use factory imperative methods (`fetch`, `execute`, `invalidate`, `getCacheData`) outside React.
 - Prefer `query.getQueryKey()` when wiring invalidation to avoid key drift.
@@ -201,10 +201,17 @@ Use these instead:
 - `mutation.execute(args)` for imperative updates
 - `reactor.fetchQuery(...)` / `reactor.getQueryData(...)` / `reactor.invalidateQueries(...)` / `reactor.callMethod(...)` for advanced control
 
-All of these unwrap candid `variant { Ok; Err }`: the value is the `Ok` payload,
-and an `Err` throws a `CanisterError` carrying the raw payload on `.err`.
-`callMethod()` included — it is not an escape hatch. The only way to keep the
-raw variant is overriding `transformResult` on a `Reactor` subclass.
+The three that actually **call** the canister — `query.fetch()`,
+`mutation.execute(args)`, and `reactor.fetchQuery(...)` / `reactor.callMethod(...)`
+— unwrap candid `variant { Ok; Err }`: the resolved value is the `Ok` payload,
+and an `Err` rejects with a `CanisterError` carrying the raw payload on `.err`.
+`callMethod()` is included in that: it is not an escape hatch. Overriding
+`transformResult` on a `Reactor` subclass is the only way to keep the raw variant.
+
+The others do not unwrap anything, because they never make a call:
+`getCacheData()` and `reactor.getQueryData(...)` read an already-transformed
+cache entry synchronously and return `undefined` on a miss — they cannot throw a
+`CanisterError`. `invalidate()` and `reactor.invalidateQueries(...)` return void.
 
 ## Inspect These Files First
 

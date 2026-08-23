@@ -62,7 +62,7 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 ```bash
 # Internet Identity auth helpers
-pnpm add @icp-sdk/auth
+pnpm add @icp-sdk/auth@^8 # v8 only; v7 is not supported
 
 # Dynamic Candid support (explorers/dev tools)
 pnpm add @ic-reactor/candid @ic-reactor/parser

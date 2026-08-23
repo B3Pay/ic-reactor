@@ -91,8 +91,11 @@ Generated or transient outputs are usually not source of truth:
 - app build outputs: `.next/`, `.astro/`, `dist/`
 - generated canister declarations and generated hook files
 - `.ic-reactor-owner` — codegen's ownership marker inside each generated
-  `outDir`; regenerate rather than edit or delete it, and never point two
-  canisters at one `outDir` (the pipeline rejects it)
+  `outDir`, recording which canister owns it so a second canister is refused
+  before it replaces the first one's declarations. Never point two canisters at
+  one `outDir`. Deleting the whole output directory and regenerating is the
+  documented recovery after a canister rename — that is what the pipeline's own
+  error tells you to do — so do not describe the marker as undeletable.
 
 If generated files are wrong:
 
