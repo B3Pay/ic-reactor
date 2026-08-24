@@ -80,7 +80,7 @@
     "@types/node": "^26.2.0",
     "fake-indexeddb": "^6.2.5",
     "size-limit": "^13.0.3",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "size-limit": [
     {

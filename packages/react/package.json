@@ -84,7 +84,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "size-limit": "^13.0.3",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "size-limit": [
     {
