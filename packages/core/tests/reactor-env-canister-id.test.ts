@@ -48,8 +48,13 @@ function withBrowser(origin: string) {
  */
 function resolveCanisterId(
   host: string,
-  options?: { allowEnvConfig?: boolean; allowEnvRootKey?: boolean }
+  options?: { allowEnvConfig?: boolean; allowEnvRootKey?: boolean },
+  page?: string
 ) {
+  // The page decides who can write the cookie, so it is part of the fixture and
+  // not a detail: a "local replica" case served from a real domain is a
+  // different situation, and has its own test below.
+  if (page) withBrowser(page)
   const clientManager = new ClientManager({
     queryClient: new QueryClient(),
     agentOptions: { host },
@@ -129,8 +134,38 @@ describe("Reactor canister ID from ic_env", () => {
   it("still takes it on a local replica, which is the generated dev workflow", () => {
     // The vite plugin injects this cookie on the dev server, and generated
     // reactors omit `canisterId` when none is configured. That path has to keep
-    // working, or the guard breaks every local project.
-    expect(resolveCanisterId("http://127.0.0.1:4943")).toBe(ENV_CANISTER_ID)
+    // working, or the guard breaks every local project. The page is the dev
+    // server, which is the whole reason the cookie can be believed here.
+    expect(
+      resolveCanisterId(
+        "http://127.0.0.1:4943",
+        undefined,
+        "http://127.0.0.1:4943"
+      )
+    ).toBe(ENV_CANISTER_ID)
+  })
+
+  it("refuses it when the page is on a real domain, whatever the agent host", () => {
+    // Reported by Codex on this PR, and correct: keying only on the agent host
+    // let a document on app.example.com pointed at a loopback replica keep
+    // trusting a cookie every sibling of example.com can write. The agent host
+    // says nothing about who owns the cookie jar.
+    expect(() =>
+      resolveCanisterId(
+        "http://127.0.0.1:4943",
+        undefined,
+        "https://app.example.com"
+      )
+    ).toThrow(/not trusted for this agent's host/)
+    // Same for a dev-container tunnel, whose registrable domain is shared with
+    // every other user of the platform.
+    expect(() =>
+      resolveCanisterId(
+        "https://foo-4943.app.github.dev",
+        undefined,
+        "https://app.example.com"
+      )
+    ).toThrow(/not trusted for this agent's host/)
   })
 
   it("takes it on a custom domain when the caller opts in", () => {
@@ -214,9 +249,10 @@ describe("Reactor canister ID from ic_env", () => {
     expect(() => resolveCanisterId("https://app.example.com")).toThrow(
       /allowEnvConfig: true/
     )
+    withBrowser("http://127.0.0.1:4943")
     expect(
       () =>
-        // Trusted host, but nothing in the cookie under this name.
+        // Trusted page and host, but nothing in the cookie under this name.
         new Reactor({
           clientManager: new ClientManager({
             queryClient: new QueryClient(),
@@ -232,8 +268,10 @@ describe("Reactor canister ID from ic_env", () => {
 describe("ClientManager.trustsEnvConfig", () => {
   function trusts(
     host: string,
-    options?: { allowEnvConfig?: boolean; allowEnvRootKey?: boolean }
+    options?: { allowEnvConfig?: boolean; allowEnvRootKey?: boolean },
+    page = "http://localhost:4943"
   ) {
+    withBrowser(page)
     return new ClientManager({
       queryClient: new QueryClient(),
       agentOptions: { host },
@@ -244,12 +282,25 @@ describe("ClientManager.trustsEnvConfig", () => {
   // NOT interchangeable with the root-key gate: that one also honours the
   // deprecated `allowEnvRootKey`, which this deliberately does not. Collapsing
   // the two would silently restore the widening this change exists to avoid.
-  it("uses the same host allowlist the root key does", () => {
+  it("uses the same host allowlist the root key does, on both sides", () => {
     expect(trusts("http://127.0.0.1:4943")).toBe(true)
     expect(trusts("http://localhost:4943")).toBe(true)
-    expect(trusts("https://foo-4943.app.github.dev")).toBe(true)
+    expect(
+      trusts(
+        "https://foo-4943.app.github.dev",
+        undefined,
+        "https://foo-4943.app.github.dev"
+      )
+    ).toBe(true)
     expect(trusts("https://app.example.com")).toBe(false)
     expect(trusts("https://icp-api.io")).toBe(false)
+    // Either side failing is enough to refuse.
+    expect(
+      trusts("http://127.0.0.1:4943", undefined, "https://app.example.com")
+    ).toBe(false)
+    expect(
+      trusts("https://icp-api.io", undefined, "http://localhost:4943")
+    ).toBe(false)
   })
 
   it("takes allowEnvConfig, and only allowEnvConfig", () => {

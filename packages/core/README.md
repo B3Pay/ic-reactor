@@ -137,13 +137,17 @@ The `ic_env` cookie can carry three things the library would otherwise have to
 be told: an `IC_ROOT_KEY`, an Internet Identity provider, and the
 `PUBLIC_CANISTER_ID:<name>` entries a reactor resolves when no `canisterId` is
 configured. Cookies are not origin-isolated — any sibling subdomain of the
-registrable domain can write `ic_env` — so all three are trusted only for hosts
-that are unambiguously a local replica: loopback (all of 127.0.0.0/8),
-`localhost` and its subdomains, and the dev-container domains that tunnel one.
-The exported `allowsEnvRootKey(host)` is that test, and `ClientManager` resolves
-it once into the `trustsEnvConfig` getter that every consumer reads.
+registrable domain can write `ic_env` — so all three are trusted only when the
+agent host and the page origin are both unambiguously a local replica: loopback
+(all of 127.0.0.0/8), `localhost` and its subdomains, and the dev-container
+domains that tunnel one. The page counts because the page is what decides who
+the siblings are: a document served from `app.example.com` shares its cookie jar
+with every other `*.example.com`, whatever host its agent talks to. The exported
+`allowsEnvRootKey(host)` answers this for one host, and `ClientManager` asks it
+of both and resolves the pair once into the `trustsEnvConfig` getter that every
+consumer reads.
 
-Any other host must opt in with `allowEnvConfig: true`. Without it a reactor
+Anything else must opt in with `allowEnvConfig: true`. Without it a reactor
 with no configured `canisterId` throws on such a host rather than taking one
 from the cookie, because a substituted canister ID is not something certificate
 verification can catch: the attacker names a real canister, whose responses

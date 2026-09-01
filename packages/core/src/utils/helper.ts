@@ -129,9 +129,13 @@ const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
  *
  * Accepted: loopback, `localhost` and its subdomains, and the dev-container
  * domains that tunnel a local replica. Everything else must opt in explicitly
- * through `allowEnvConfig`. `ClientManager` resolves this once into
- * `trustsEnvConfig`; prefer reading that over calling this again, so every
- * consumer of the cookie agrees.
+ * through `allowEnvConfig`.
+ *
+ * This answers the question for ONE host. `ClientManager` asks it of both the
+ * agent host and the page origin — the page being what decides who can write
+ * the cookie — and resolves the pair once into `trustsEnvConfig`. Prefer
+ * reading that over calling this again, so every consumer of the cookie
+ * agrees.
  *
  * @param host - The host URL to evaluate.
  * @returns `true` only for hosts that are unambiguously a local replica.

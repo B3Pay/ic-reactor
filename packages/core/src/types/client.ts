@@ -24,11 +24,14 @@ export interface ClientManagerParameters {
    * Internet Identity provider, and the canister ID a reactor resolves by name
    * when none is configured.
    *
-   * Defaults to `true` only for hosts that are unambiguously a local replica
-   * (loopback, `localhost`, and the dev-container domains that tunnel one).
-   * Cookies are not origin-isolated — any sibling subdomain of the registrable
-   * domain can write `ic_env` — so every other host must opt in. Set this when
-   * you run a custom testnet on a real domain and trust its `ic_env`.
+   * Defaults to `true` only when the agent host AND the page the code is
+   * running on are both unambiguously a local replica (loopback, `localhost`,
+   * and the dev-container domains that tunnel one). Cookies are not
+   * origin-isolated — any sibling subdomain of the registrable domain can write
+   * `ic_env` — and it is the PAGE that decides who those siblings are, so a
+   * document on a real domain is not trusted even when it points its agent at
+   * a loopback replica. Anything else must opt in: set this when you run a
+   * custom testnet on a real domain and trust its `ic_env`.
    */
   allowEnvConfig?: boolean
   /**

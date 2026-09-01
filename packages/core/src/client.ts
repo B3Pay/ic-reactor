@@ -144,11 +144,23 @@ export class ClientManager {
     // canister IDs from the same cookie. A rename must not widen a grant that
     // is already out there, so the old spelling keeps its old reach below and
     // `allowEnvConfig` is what opts into the whole cookie.
-    this.#trustsEnvConfig =
-      allowEnvConfig ?? allowsEnvRootKey(agentOptions.host)
+    //
+    // The PAGE has to clear the bar as well as the agent host, because the page
+    // is what decides who can write the cookie: a document on
+    // app.example.com pointed at a loopback replica shares its cookie jar with
+    // every sibling of example.com, and the agent host says nothing about that.
+    // Both sides are required, so the automatic grant only covers the case
+    // where the cookie is as trustworthy as the replica it describes. Off the
+    // browser there is no cookie to trust at all.
+    const hostIsLocal = allowsEnvRootKey(agentOptions.host)
+    const pageIsLocal =
+      typeof window !== "undefined" && allowsEnvRootKey(window.location?.origin)
+    this.#trustsEnvConfig = allowEnvConfig ?? (hostIsLocal && pageIsLocal)
 
-    const acceptEnvRootKey =
-      allowEnvConfig ?? allowEnvRootKey ?? allowsEnvRootKey(agentOptions.host)
+    // The root key keeps the keying it shipped with in 3.12.0 — agent host
+    // only. Tightening it here would revert a reviewed decision and break the
+    // test that pins it, so it is left to the maintainer; see the pull request.
+    const acceptEnvRootKey = allowEnvConfig ?? allowEnvRootKey ?? hostIsLocal
     if (acceptEnvRootKey && canisterEnv?.IC_ROOT_KEY) {
       agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
     }
@@ -242,7 +254,9 @@ export class ClientManager {
    * Whether the configuration carried by the `ic_env` cookie may be trusted for
    * this agent's host.
    *
-   * `true` for a local replica, or when the caller passed `allowEnvConfig`.
+   * `true` when BOTH the agent host and the page origin are unambiguously a
+   * local replica, or when the caller passed `allowEnvConfig`. The page counts
+   * because the page is what decides who can write the cookie.
    * Every consumer of that cookie reads this one decision, so the root key, the
    * Internet Identity provider and a reactor's canister ID cannot disagree
    * about whether the environment is trustworthy.
