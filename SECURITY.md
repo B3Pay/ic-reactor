@@ -42,6 +42,7 @@ These run in the user's browser or on their server. In scope:
 
 - Anything that causes one principal's canister data to be served to another (cache-key scoping, identity-switch handling, SSR request isolation)
 - Anything that weakens certificate verification — in particular how the agent's root key is chosen
+- Anything that lets untrusted input choose which canister a call is routed to. Certificate verification does not cover this: a substituted canister ID names a real canister, whose responses verify against the real root key
 - Anything that mishandles delegations or identity material
 - Candid decoding of hostile canister responses
 

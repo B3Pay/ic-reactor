@@ -94,12 +94,15 @@ If you're not using the Vite plugin, you can still configure everything manually
 
 ### 1. Setup ClientManager
 
-`ClientManagerParameters` has three members: the required `queryClient`, an
+`ClientManagerParameters` has four members: the required `queryClient`, an
 optional `agentOptions` (the `HttpAgentOptions` handed to the underlying
-`HttpAgent`), and an optional `allowEnvRootKey`. Network detection needs no flag
-— it always runs. `allowEnvRootKey` controls only whether the root key carried
-by the `ic_env` cookie is adopted; it defaults to `true` for hosts that are
-unambiguously a local replica and `false` everywhere else.
+`HttpAgent`), an optional `allowEnvConfig`, and `allowEnvRootKey` — the former
+name of that option, still honoured. Network detection needs no flag — it always
+runs. `allowEnvConfig` controls whether the `ic_env` cookie is trusted at all:
+its root key, its Internet Identity provider, and the canister IDs a reactor
+resolves by name. It defaults to `true` for hosts that are unambiguously a local
+replica and `false` everywhere else, so a reactor with no configured
+`canisterId` works on `localhost` and throws on a real domain.
 
 ```typescript
 import { ClientManager } from "@ic-reactor/react"

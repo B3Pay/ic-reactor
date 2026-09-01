@@ -44,8 +44,10 @@ This example showcases how IC Reactor integrates with Vite's environment variabl
 
 The `ClientManager` needs no extra configuration — in the browser it reads the
 `ic_env` cookie for canister IDs on every construction, and adopts the root key
-it carries because the dev server is served from a local host. On any other host
-the cookie's root key is ignored unless you pass `allowEnvRootKey: true`:
+it carries, because the dev server is served from a local host. On any other
+host the cookie is ignored entirely — root key and canister IDs alike — unless
+you pass `allowEnvConfig: true`, and a reactor with no configured `canisterId`
+throws there rather than trusting it:
 
 ```typescript
 // frontend/src/lib/clients.ts

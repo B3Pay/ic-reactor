@@ -84,7 +84,8 @@ const clientManager = new ClientManager({
 | -------------- | ------------------ | -------- | ------------------------------------------------------------------------------ |
 | `queryClient`  | `QueryClient`      | Required | TanStack Query client instance                                                 |
 | `agentOptions` | `HttpAgentOptions` | `{}`     | Options forwarded to the `HttpAgent` (`host`, `identity`, `rootKey`, `retryTimes`, `verifyQuerySignatures`, …) |
-| `allowEnvRootKey` | `boolean` | host-dependent | Whether to adopt the agent root key from the `ic_env` cookie. Defaults to `true` only for hosts that are unambiguously a local replica (loopback, `localhost` and its subdomains, dev-container tunnel domains); every other host must opt in. |
+| `allowEnvConfig` | `boolean` | host-dependent | Whether to trust the `ic_env` cookie: its root key, its Internet Identity provider, and the canister IDs a reactor resolves by name. Defaults to `true` only for hosts that are unambiguously a local replica (loopback, `localhost` and its subdomains, dev-container tunnel domains); every other host must opt in. |
+| `allowEnvRootKey` | `boolean` | — | **Deprecated.** The former name of `allowEnvConfig`, renamed because it governs more than the root key. Still honoured. |
 
 Network detection needs no flag — see [Network Configuration](#network-configuration).
 
@@ -98,6 +99,7 @@ Network detection needs no flag — see [Network Configuration](#network-configu
 | `agentHost`   | `URL \| undefined`            | The host URL of the agent          |
 | `network`     | `"ic" \| "local" \| "remote"` | Current network type               |
 | `isLocal`     | `boolean`                     | Whether connected to local replica |
+| `trustsEnvConfig` | `boolean`                 | Whether the `ic_env` cookie is trusted for this host (getter) |
 
 ### AgentState Type
 
@@ -270,11 +272,12 @@ const clientManager = new ClientManager({
 
 ### Canister Environment
 
-When your app is served by the `@icp-sdk` toolchain (e.g., `icp-cli`) or by [`@ic-reactor/vite-plugin`](/v3/packages/vite-plugin), the dev server injects an `ic_env` cookie carrying the local canister IDs and root key. `ClientManager` reads that cookie **automatically** in the browser — canister IDs and host detection need no option to enable, and only the root key is gated (see `allowEnvRootKey`):
+When your app is served by the `@icp-sdk` toolchain (e.g., `icp-cli`) or by [`@ic-reactor/vite-plugin`](/v3/packages/vite-plugin), the dev server injects an `ic_env` cookie carrying the local canister IDs and root key. `ClientManager` reads that cookie **automatically** in the browser. Host detection needs no option to enable; everything the cookie *carries* is gated on one decision, exposed as the `trustsEnvConfig` getter and controlled by `allowEnvConfig`:
 
 - Agent host taken from `window.location.origin` when the page is served from a local or IC boundary host
 - Query signature verification disabled in development for performance
-- Root key from the cookie, accepted only on hosts that are unambiguously a local replica — loopback (the whole of 127.0.0.0/8, plus `::1`), `localhost` and its subdomains, and the dev-container domains that tunnel a local replica. Cookies are not origin-isolated and the root key is what certificate verification is checked against, so any other host — including a custom domain — must opt in with `allowEnvRootKey: true`.
+- Root key from the cookie, accepted only on hosts that are unambiguously a local replica — loopback (the whole of 127.0.0.0/8, plus `::1`), `localhost` and its subdomains, and the dev-container domains that tunnel a local replica. Cookies are not origin-isolated and the root key is what certificate verification is checked against, so any other host — including a custom domain — must opt in with `allowEnvConfig: true`.
+- Canister IDs from the cookie (`PUBLIC_CANISTER_ID:<name>`), used when a reactor is constructed without an explicit `canisterId`, and accepted on exactly the same hosts. On any other host the reactor throws instead, naming the option to set. A substituted canister ID is not something certificate verification can catch — the attacker names a real canister, and its responses verify against the real mainnet root key — so it fails closed rather than silently talking to someone else's canister.
 
 ### Subscribing to State Changes
 

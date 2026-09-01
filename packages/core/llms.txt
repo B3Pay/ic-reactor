@@ -28,13 +28,21 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 ## Local Environment Root Key
 
-The root key from the `ic_env` cookie is adopted only for hosts that
-`allowsEnvRootKey(host)` accepts: loopback (all of 127.0.0.0/8 and `::1`),
-`localhost` and its subdomains, and the dev-container domains that tunnel a local
-replica. Cookies are not origin-isolated, so this is a positive allowlist — any
-other host (custom domain, tunnel, staging) must opt in with
-`allowEnvRootKey: true` on `ClientManagerParameters`, or every certified call
-fails against the pinned mainnet key.
+The `ic_env` cookie is trusted only for hosts that `allowsEnvRootKey(host)`
+accepts: loopback (all of 127.0.0.0/8 and `::1`), `localhost` and its subdomains,
+and the dev-container domains that tunnel a local replica. Cookies are not
+origin-isolated, so this is a positive allowlist — any other host (custom domain,
+tunnel, staging) must opt in with `allowEnvConfig: true` on
+`ClientManagerParameters` (`allowEnvRootKey` is the deprecated former name).
+
+That one decision is resolved once in the constructor and exposed as
+`clientManager.trustsEnvConfig`. It governs all three values the cookie carries:
+the root key (without it, every certified call fails against the pinned mainnet
+key), the Internet Identity provider, and the `PUBLIC_CANISTER_ID:<name>` entry
+a `Reactor` resolves when no `canisterId` is configured. On an untrusted host a
+reactor with no configured id throws rather than reading the cookie — a
+substituted canister id still verifies against the real mainnet root key, so
+certificate verification cannot catch it.
 
 `isMainnetHost` is a boundary-node check only; it recognises three canonical
 domains and returns `false` for a mainnet dapp on a custom domain. Never use it
