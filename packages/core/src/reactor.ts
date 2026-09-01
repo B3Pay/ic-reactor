@@ -84,19 +84,26 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       // mainnet root key. The root key and the Internet Identity provider are
       // read from this cookie too and were already guarded; this is the third
       // value, and it was the unguarded one (#348).
-      const trusted =
-        typeof window !== "undefined" && this.clientManager.trustsEnvConfig
-      canisterId = trusted ? safeGetCanisterEnv()?.[key] : undefined
+      const inBrowser = typeof window !== "undefined"
+      const hostTrusted = this.clientManager.trustsEnvConfig
+      canisterId =
+        inBrowser && hostTrusted ? safeGetCanisterEnv()?.[key] : undefined
 
       if (!canisterId) {
+        // Three different problems with three different fixes. Reporting a
+        // refused cookie as an absent one sends the reader hunting for a cookie
+        // that is sitting right there, and reporting a server render as a
+        // refused host blames the host for having no cookie jar.
         throw new Error(
           `[ic-reactor] canisterId is required for "${this.name}" but was not provided ` +
-            (trusted
-              ? `and could not be resolved from the ic_env cookie (key: "${key}"). `
-              : `and the ic_env cookie is not trusted for this agent's host ` +
-                `(${this.clientManager.agentHost?.toString() ?? "unknown"}), so it was not read. ` +
-                `The cookie is only trusted for a local replica, because any sibling subdomain can write it; ` +
-                `bake the id in at build time, or pass \`allowEnvConfig: true\` to ClientManager if you trust every subdomain of this domain. `) +
+            (!inBrowser
+              ? `and there is no ic_env cookie to read outside a browser. `
+              : !hostTrusted
+                ? `and the ic_env cookie is not trusted for this agent's host ` +
+                  `(${this.clientManager.agentHost?.toString() ?? "unknown"}), so it was not read. ` +
+                  `The cookie is only trusted for a local replica, because any sibling subdomain can write it; ` +
+                  `bake the id in at build time, or pass \`allowEnvConfig: true\` to ClientManager if you trust every subdomain of this domain. `
+                : `and could not be resolved from the ic_env cookie (key: "${key}"). `) +
             `Pass canisterId explicitly in the reactor configuration.`
         )
       }

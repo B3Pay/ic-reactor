@@ -140,6 +140,16 @@ describe("Reactor canister ID from ic_env", () => {
     }
   })
 
+  it("names the server render rather than blaming the host, with no window", () => {
+    // A trusted host with no browser is not a refused cookie: there is no
+    // cookie jar at all. Saying the host is untrusted would send a Next.js
+    // reader off to configure an option that would change nothing.
+    vi.unstubAllGlobals()
+    expect(() => resolveCanisterId("http://127.0.0.1:4943")).toThrow(
+      /no ic_env cookie to read outside a browser/
+    )
+  })
+
   it("says which failure it was, so the message is actionable", () => {
     // A refused cookie and an absent one are different problems with different
     // fixes, and reporting the first as the second sends the reader looking for
