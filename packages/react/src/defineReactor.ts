@@ -87,7 +87,8 @@ export interface DefineReactorSharedParameters
    * When omitted, a ClientManager is created from the agent options below.
    *
    * A supplied or adopted manager brings its own agent and QueryClient, so
-   * `agentOptions` and `queryClient` apply only when this call creates one.
+   * `agentOptions`, `queryClient` and `allowEnvConfig` apply only when this
+   * call creates one.
    */
   clientManager?: ClientManager
   /**
@@ -183,6 +184,8 @@ export function defineReactor<Service = BaseActor>(
     auth,
     display,
     agentOptions,
+    allowEnvConfig,
+    allowEnvRootKey,
     name,
     idlFactory,
     canisterId,
@@ -221,6 +224,11 @@ export function defineReactor<Service = BaseActor>(
     new ClientManager({
       queryClient: providedQueryClient ?? createDefaultQueryClient(),
       agentOptions,
+      // Forwarded, not dropped: the type has always accepted these (it extends
+      // ClientManagerParameters) while the call ignored them, so the one
+      // documented setup path silently discarded the ic_env opt-in it advertised.
+      allowEnvConfig,
+      allowEnvRootKey,
     })
 
   // Always report the QueryClient actually in use: when a ClientManager is

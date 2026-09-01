@@ -17,13 +17,25 @@ export interface ClientManagerParameters {
    */
   agentOptions?: HttpAgentOptions
   /**
-   * Whether to adopt the agent root key from the `ic_env` cookie.
+   * Whether to trust the configuration carried by the `ic_env` cookie.
+   *
+   * Three values are read from that cookie, and this flag governs all of them:
+   * the agent root key certificate verification is checked against, the
+   * Internet Identity provider, and the canister ID a reactor resolves by name
+   * when none is configured.
    *
    * Defaults to `true` only for hosts that are unambiguously a local replica
    * (loopback, `localhost`, and the dev-container domains that tunnel one).
-   * The root key is what certificate verification is checked against, and
-   * cookies are not origin-isolated, so any other host must opt in — set this
-   * when you run a custom testnet on a real domain and trust its `ic_env`.
+   * Cookies are not origin-isolated — any sibling subdomain of the registrable
+   * domain can write `ic_env` — so every other host must opt in. Set this when
+   * you run a custom testnet on a real domain and trust its `ic_env`.
+   */
+  allowEnvConfig?: boolean
+  /**
+   * @deprecated Renamed to {@link allowEnvConfig}. The flag governs every value
+   * read from the `ic_env` cookie rather than the root key alone, and the old
+   * name understated what opting in accepts. This spelling still works, and is
+   * used when `allowEnvConfig` is not set.
    */
   allowEnvRootKey?: boolean
 }

@@ -73,14 +73,30 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     let canisterId = config.canisterId
 
     if (!canisterId) {
-      const env = safeGetCanisterEnv()
       const key = `PUBLIC_CANISTER_ID:${this.name}`
-      canisterId = env?.[key]
+      // The ic_env cookie is not origin-isolated: any sibling subdomain of the
+      // registrable domain can write it. Taking the canister ID from it
+      // unconditionally let such a subdomain substitute the canister every
+      // read and every authenticated update call is routed to -- fake balances
+      // and deposit addresses on the way out, the user's signed calls on the
+      // way in -- and certificate verification cannot notice, because the
+      // attacker names a real canister whose responses verify against the same
+      // mainnet root key. The root key and the Internet Identity provider are
+      // read from this cookie too and were already guarded; this is the third
+      // value, and it was the unguarded one (#348).
+      const trusted =
+        typeof window !== "undefined" && this.clientManager.trustsEnvConfig
+      canisterId = trusted ? safeGetCanisterEnv()?.[key] : undefined
 
       if (!canisterId) {
         throw new Error(
           `[ic-reactor] canisterId is required for "${this.name}" but was not provided ` +
-            `and could not be resolved from the ic_env cookie (key: "${key}"). ` +
+            (trusted
+              ? `and could not be resolved from the ic_env cookie (key: "${key}"). `
+              : `and the ic_env cookie is not trusted for this agent's host ` +
+                `(${this.clientManager.agentHost?.toString() ?? "unknown"}), so it was not read. ` +
+                `The cookie is only trusted for a local replica, because any sibling subdomain can write it; ` +
+                `bake the id in at build time, or pass \`allowEnvConfig: true\` to ClientManager if you trust every subdomain of this domain. `) +
             `Pass canisterId explicitly in the reactor configuration.`
         )
       }
