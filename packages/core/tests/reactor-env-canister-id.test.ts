@@ -62,6 +62,22 @@ function resolveCanisterId(
   }).canisterId.toString()
 }
 
+/**
+ * The shape #348 actually describes: a deployed dapp that configures no host at
+ * all, so `ClientManager` infers one from the page. Nothing in the generated
+ * setup passes `agentOptions`, so this is the path that matters most and the
+ * one an explicit-host test never reaches.
+ */
+function resolveFromPage(origin: string) {
+  withBrowser(origin)
+  const clientManager = new ClientManager({ queryClient: new QueryClient() })
+  return new Reactor({
+    clientManager,
+    idlFactory,
+    name: "backend",
+  }).canisterId.toString()
+}
+
 beforeEach(() => {
   withBrowser("https://app.example.com")
 })
@@ -78,6 +94,30 @@ describe("Reactor canister ID from ic_env", () => {
     expect(() => resolveCanisterId("https://app.example.com")).toThrow(
       /not trusted for this agent's host/
     )
+  })
+
+  it("refuses the cookie for a dapp that configures no host at all", () => {
+    // The generated setup passes no `agentOptions`, so the host comes from the
+    // page. A custom domain is not recognised as an origin worth adopting, so
+    // the agent falls back to the mainnet API — either way the cookie is out.
+    expect(() => resolveFromPage("https://app.example.com")).toThrow(
+      /not trusted for this agent's host/
+    )
+  })
+
+  it("refuses it for a dapp served from its own mainnet asset canister", () => {
+    // Here the page origin IS adopted as the host, so this exercises the other
+    // branch of the host inference and still has to fail closed.
+    expect(() => resolveFromPage("https://abcde-aaaaa.icp0.io")).toThrow(
+      /not trusted for this agent's host/
+    )
+  })
+
+  it("still resolves it for a dapp served from a local replica", () => {
+    // Same no-agentOptions path, on the host where the cookie is trusted. This
+    // is the local `icp deploy` flow, and it must not have been broken by the
+    // two cases above.
+    expect(resolveFromPage("http://localhost:4943")).toBe(ENV_CANISTER_ID)
   })
 
   it("refuses the cookie on mainnet", () => {
@@ -114,6 +154,10 @@ describe("Reactor canister ID from ic_env", () => {
   })
 
   it("lets allowEnvConfig win over the deprecated spelling", () => {
+    // For the canister ID the deprecated name is not consulted at all, so this
+    // pair only says something once the root key is watched too — see the
+    // precedence case in "ClientManager root key" below, which is where the two
+    // options genuinely compete.
     expect(() =>
       resolveCanisterId("http://127.0.0.1:4943", {
         allowEnvConfig: false,
@@ -197,7 +241,10 @@ describe("ClientManager.trustsEnvConfig", () => {
     }).trustsEnvConfig
   }
 
-  it("is the same decision the root key already used", () => {
+  // NOT interchangeable with the root-key gate: that one also honours the
+  // deprecated `allowEnvRootKey`, which this deliberately does not. Collapsing
+  // the two would silently restore the widening this change exists to avoid.
+  it("uses the same host allowlist the root key does", () => {
     expect(trusts("http://127.0.0.1:4943")).toBe(true)
     expect(trusts("http://localhost:4943")).toBe(true)
     expect(trusts("https://foo-4943.app.github.dev")).toBe(true)
@@ -216,5 +263,57 @@ describe("ClientManager.trustsEnvConfig", () => {
     expect(trusts("http://127.0.0.1:4943", { allowEnvConfig: false })).toBe(
       false
     )
+  })
+})
+
+describe("ClientManager root key", () => {
+  /** The mocked cookie root key, so an adopted one is distinguishable. */
+  function adoptedEnvRootKey(
+    host: string,
+    options?: { allowEnvConfig?: boolean; allowEnvRootKey?: boolean }
+  ) {
+    const manager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host },
+      ...options,
+    })
+    const rootKey = manager.agent.rootKey
+    if (!rootKey) return false
+    const bytes =
+      rootKey instanceof Uint8Array
+        ? rootKey
+        : new Uint8Array(rootKey as ArrayBuffer)
+    return bytes.length === 133 && bytes.every((b) => b === 7)
+  }
+
+  it("is granted by the new option, not only the deprecated one", () => {
+    // Without this, dropping `allowEnvConfig` from the root-key term would go
+    // unnoticed, and a caller migrating off the old spelling would silently
+    // lose the root key their custom testnet needs.
+    expect(adoptedEnvRootKey("https://testnet.example.com")).toBe(false)
+    expect(
+      adoptedEnvRootKey("https://testnet.example.com", {
+        allowEnvConfig: true,
+      })
+    ).toBe(true)
+  })
+
+  it("is still granted by the deprecated spelling", () => {
+    expect(
+      adoptedEnvRootKey("https://testnet.example.com", {
+        allowEnvRootKey: true,
+      })
+    ).toBe(true)
+  })
+
+  it("lets allowEnvConfig override the deprecated spelling, not the reverse", () => {
+    // The one place the two options actually compete. Inverting the precedence
+    // would let a stale `allowEnvRootKey: true` defeat an explicit opt-out.
+    expect(
+      adoptedEnvRootKey("https://testnet.example.com", {
+        allowEnvConfig: false,
+        allowEnvRootKey: true,
+      })
+    ).toBe(false)
   })
 })

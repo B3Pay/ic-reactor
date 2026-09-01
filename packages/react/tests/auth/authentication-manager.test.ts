@@ -352,6 +352,75 @@ describe("AuthenticationManager", () => {
       warn.mockRestore()
     })
 
+    it("accepts a cross-origin provider once the caller opts in", async () => {
+      // The behaviour the repoint exists for. `allowsEnvRootKey(agentHost)`
+      // recomputed the host test and so ignored the opt-in: a caller who set
+      // the flag got the cookie's root key and then had its identity provider —
+      // same cookie, same host — silently dropped. Reading the ClientManager's
+      // one resolved decision is what fixes that, and this is the only case
+      // where the old and new implementations disagree.
+      vi.stubGlobal("window", {
+        location: { origin: "https://app.example.com" },
+      })
+      vi.stubGlobal("document", {
+        cookie:
+          "ic_env=INTERNET_IDENTITY_PROVIDER%3Dhttps%3A%2F%2Ftestnet-ii.example%2Fauthorize",
+      })
+      const authClient = createAuthClient()
+      const AuthClient = mockAuthClientModule(authClient)
+
+      const optedIn = new ClientManager({
+        queryClient: new QueryClient(),
+        agentOptions: { host: "https://icp-api.io" },
+        allowEnvConfig: true,
+      })
+      vi.spyOn(optedIn, "initializeAgent").mockResolvedValue()
+
+      const authentication = new AuthenticationManager({
+        clientManager: optedIn,
+      })
+      await authentication.login()
+
+      expect(AuthClient).toHaveBeenCalledWith({
+        identityProvider: "https://testnet-ii.example/authorize",
+        windowOpenerFeatures: undefined,
+        openIdProvider: undefined,
+      })
+    })
+
+    it("ignores the cookie's II canister id when the caller opts out", async () => {
+      // The fourth value read from this cookie. It only ever reaches a local
+      // provider URL, but `allowEnvConfig: false` has to mean the cookie is not
+      // consulted rather than mostly not consulted.
+      vi.stubGlobal("window", {
+        location: { origin: "http://127.0.0.1:8000" },
+      })
+      ;(safeGetCanisterEnv as any).mockReturnValue({
+        "PUBLIC_CANISTER_ID:internet_identity": "aaaaa-aa",
+      })
+      const authClient = createAuthClient()
+      const AuthClient = mockAuthClientModule(authClient)
+
+      const optedOut = new ClientManager({
+        queryClient: new QueryClient(),
+        agentOptions: { host: "http://127.0.0.1:8000" },
+        allowEnvConfig: false,
+      })
+      vi.spyOn(optedOut, "initializeAgent").mockResolvedValue()
+
+      const authentication = new AuthenticationManager({
+        clientManager: optedOut,
+      })
+      await authentication.login()
+
+      // Falls back to the pinned local II canister, not the cookie's. Before
+      // the guard, `acceptEnvCanisterId` was unconditional and this would read
+      // `http://aaaaa-aa.localhost:8000/authorize`.
+      expect(AuthClient.mock.calls[0][0].identityProvider).toBe(
+        "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:8000/authorize"
+      )
+    })
+
     it("still accepts a same-origin provider from the ic_env cookie", async () => {
       vi.stubGlobal("window", {
         location: { origin: "https://app.example.com" },

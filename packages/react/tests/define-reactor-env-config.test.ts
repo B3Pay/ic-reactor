@@ -10,6 +10,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { IDL } from "@icp-sdk/core/candid"
 import { defineReactor } from "../src/defineReactor.js"
 
+// A recognisable DER-shaped key, so a root key taken from the cookie is
+// distinguishable from the mainnet key the agent pins by default.
+const ENV_ROOT_KEY = new Uint8Array(133).fill(7)
+
+vi.mock("@icp-sdk/core/agent/canister-env", () => ({
+  safeGetCanisterEnv: () => ({ IC_ROOT_KEY: ENV_ROOT_KEY }),
+}))
+
 const idlFactory: IDL.InterfaceFactory = ({ IDL }) =>
   IDL.Service({ get: IDL.Func([], [IDL.Text], ["query"]) })
 
@@ -48,10 +56,27 @@ describe("defineReactor forwards the ic_env opt-in", () => {
     expect(trustsEnvConfig({ allowEnvConfig: true })).toBe(true)
   })
 
-  it("does not let the deprecated spelling grant the wider trust", () => {
-    // Forwarded, but `allowEnvRootKey` only ever granted the root key; see
-    // packages/core/tests/reactor-env-canister-id.test.ts.
-    expect(trustsEnvConfig({ allowEnvRootKey: true })).toBe(false)
+  it("forwards the deprecated spelling, scoped to the root key", () => {
+    // Two halves, and the first alone would be vacuous: `trustsEnvConfig` is
+    // false both when the option is correctly forwarded-but-narrow and when it
+    // is dropped on the floor. The root key is the only thing that flag grants,
+    // so it is the only place forwarding is observable.
+    const { clientManager } = defineReactor({
+      name: "backend",
+      idlFactory,
+      canisterId: CANISTER_ID,
+      agentOptions: { host: "https://testnet.example.com" },
+      allowEnvRootKey: true,
+    })
+    expect(clientManager.trustsEnvConfig).toBe(false)
+
+    const rootKey = clientManager.agent.rootKey
+    const bytes =
+      rootKey instanceof Uint8Array
+        ? rootKey
+        : new Uint8Array((rootKey ?? new ArrayBuffer(0)) as ArrayBuffer)
+    expect(bytes.length).toBe(ENV_ROOT_KEY.length)
+    expect(bytes.every((b) => b === 7)).toBe(true)
   })
 
   it("refuses the option when a supplied ClientManager would ignore it", () => {
