@@ -97,7 +97,7 @@ If you're not using the Vite plugin, you can still configure everything manually
 `ClientManagerParameters` has four members: the required `queryClient`, an
 optional `agentOptions` (the `HttpAgentOptions` handed to the underlying
 `HttpAgent`), an optional `allowEnvConfig`, and `allowEnvRootKey` — the former
-name of that option, still honoured. Network detection needs no flag — it always
+name of that option, still honoured for the root key alone. Network detection needs no flag — it always
 runs. `allowEnvConfig` controls whether the `ic_env` cookie is trusted at all:
 its root key, its Internet Identity provider, and the canister IDs a reactor
 resolves by name. It defaults to `true` for hosts that are unambiguously a local

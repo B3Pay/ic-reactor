@@ -85,7 +85,7 @@ const clientManager = new ClientManager({
 | `queryClient`  | `QueryClient`      | Required | TanStack Query client instance                                                 |
 | `agentOptions` | `HttpAgentOptions` | `{}`     | Options forwarded to the `HttpAgent` (`host`, `identity`, `rootKey`, `retryTimes`, `verifyQuerySignatures`, …) |
 | `allowEnvConfig` | `boolean` | host-dependent | Whether to trust the `ic_env` cookie: its root key, its Internet Identity provider, and the canister IDs a reactor resolves by name. Defaults to `true` only for hosts that are unambiguously a local replica (loopback, `localhost` and its subdomains, dev-container tunnel domains); every other host must opt in. |
-| `allowEnvRootKey` | `boolean` | — | **Deprecated.** The former name of `allowEnvConfig`, renamed because it governs more than the root key. Still honoured. |
+| `allowEnvRootKey` | `boolean` | — | **Deprecated.** The former name of `allowEnvConfig`. Still honoured, and still scoped to what it always granted: the root key alone, not the identity provider or the canister ID. |
 
 Network detection needs no flag — see [Network Configuration](#network-configuration).
 

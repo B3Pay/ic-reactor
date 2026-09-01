@@ -218,6 +218,27 @@ export function defineReactor<Service = BaseActor>(
     )
   }
 
+  // Same reasoning as `auth`, and it matters more here: an ignored
+  // `allowEnvConfig: false` reads as "I locked the cookie out" while the
+  // supplied manager carries whatever decision it was built with.
+  if (
+    (providedClientManager || providedAuthentication) &&
+    (allowEnvConfig !== undefined || allowEnvRootKey !== undefined)
+  ) {
+    const passed = [
+      allowEnvConfig !== undefined && "allowEnvConfig",
+      allowEnvRootKey !== undefined && "allowEnvRootKey",
+    ]
+      .filter(Boolean)
+      .join(", ")
+    throw new Error(
+      `[ic-reactor] defineReactor("${name}") received both a ClientManager and \`${passed}\`. ` +
+        `That option is resolved when a ClientManager is constructed, so the supplied one already carries its own ` +
+        `decision and this would be ignored — silently changing nothing about whether the ic_env cookie is trusted. ` +
+        `Pass it where that ClientManager is created, or drop \`clientManager\` to build one here.`
+    )
+  }
+
   const clientManager =
     providedClientManager ??
     providedAuthentication?.clientManager ??

@@ -33,7 +33,9 @@ accepts: loopback (all of 127.0.0.0/8 and `::1`), `localhost` and its subdomains
 and the dev-container domains that tunnel a local replica. Cookies are not
 origin-isolated, so this is a positive allowlist — any other host (custom domain,
 tunnel, staging) must opt in with `allowEnvConfig: true` on
-`ClientManagerParameters` (`allowEnvRootKey` is the deprecated former name).
+`ClientManagerParameters`. The deprecated `allowEnvRootKey` still works but is
+scoped to what it always granted — the root key alone — so it does not make
+`trustsEnvConfig` true.
 
 That one decision is resolved once in the constructor and exposed as
 `clientManager.trustsEnvConfig`. It governs all three values the cookie carries:

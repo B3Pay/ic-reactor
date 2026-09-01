@@ -32,10 +32,13 @@ export interface ClientManagerParameters {
    */
   allowEnvConfig?: boolean
   /**
-   * @deprecated Renamed to {@link allowEnvConfig}. The flag governs every value
-   * read from the `ic_env` cookie rather than the root key alone, and the old
-   * name understated what opting in accepts. This spelling still works, and is
-   * used when `allowEnvConfig` is not set.
+   * @deprecated Superseded by {@link allowEnvConfig}, which governs every value
+   * read from the `ic_env` cookie rather than the root key alone.
+   *
+   * Still honoured, and still scoped to what it always granted: the root key.
+   * It deliberately does not extend to the Internet Identity provider or to a
+   * reactor's canister ID — setting it for a custom testnet was not an
+   * agreement to take those from a cookie too. Use `allowEnvConfig` for that.
    */
   allowEnvRootKey?: boolean
 }

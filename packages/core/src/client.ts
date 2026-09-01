@@ -137,9 +137,19 @@ export class ClientManager {
     // key was guarded here, the Internet Identity provider recomputed the host
     // test (and so ignored an explicit opt-in), and the canister ID Reactor
     // resolves by name was not guarded at all (#348).
+    //
+    // `allowEnvRootKey` is deliberately NOT part of this decision. It granted
+    // the root key and only the root key, and a caller who set it for a custom
+    // testnet did not thereby agree to take their login redirect and their
+    // canister IDs from the same cookie. A rename must not widen a grant that
+    // is already out there, so the old spelling keeps its old reach below and
+    // `allowEnvConfig` is what opts into the whole cookie.
     this.#trustsEnvConfig =
+      allowEnvConfig ?? allowsEnvRootKey(agentOptions.host)
+
+    const acceptEnvRootKey =
       allowEnvConfig ?? allowEnvRootKey ?? allowsEnvRootKey(agentOptions.host)
-    if (this.#trustsEnvConfig && canisterEnv?.IC_ROOT_KEY) {
+    if (acceptEnvRootKey && canisterEnv?.IC_ROOT_KEY) {
       agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
     }
 
@@ -232,11 +242,13 @@ export class ClientManager {
    * Whether the configuration carried by the `ic_env` cookie may be trusted for
    * this agent's host.
    *
-   * `true` for a local replica, or when the caller passed `allowEnvConfig`
-   * (or the deprecated `allowEnvRootKey`). Every consumer of that cookie reads
-   * this one decision, so the root key, the Internet Identity provider and a
-   * reactor's canister ID cannot disagree about whether the environment is
-   * trustworthy.
+   * `true` for a local replica, or when the caller passed `allowEnvConfig`.
+   * Every consumer of that cookie reads this one decision, so the root key, the
+   * Internet Identity provider and a reactor's canister ID cannot disagree
+   * about whether the environment is trustworthy.
+   *
+   * The deprecated `allowEnvRootKey` is not enough on its own: it granted the
+   * root key alone, and is honoured for the root key alone.
    */
   get trustsEnvConfig(): boolean {
     return this.#trustsEnvConfig

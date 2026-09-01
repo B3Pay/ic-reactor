@@ -99,14 +99,18 @@ describe("Reactor canister ID from ic_env", () => {
     ).toBe(ENV_CANISTER_ID)
   })
 
-  it("honours the deprecated allowEnvRootKey spelling as an alias", () => {
-    // The option was renamed because it governs all three cookie-derived
-    // values, but the old name is public API and still has to work.
-    expect(
+  it("does not let the deprecated spelling widen into canister IDs", () => {
+    // `allowEnvRootKey` granted the root key and nothing else. Someone who set
+    // it for a custom testnet did not thereby agree to take their canister IDs
+    // from the same cookie, and a rename must not widen a grant already in the
+    // wild — so the old name keeps its old reach and `allowEnvConfig` is the
+    // one that opts into the whole cookie. (The root key it does still grant is
+    // pinned in client-env-root-key.test.ts.)
+    expect(() =>
       resolveCanisterId("https://testnet.example.com", {
         allowEnvRootKey: true,
       })
-    ).toBe(ENV_CANISTER_ID)
+    ).toThrow(/not trusted for this agent's host/)
   })
 
   it("lets allowEnvConfig win over the deprecated spelling", () => {
@@ -116,6 +120,15 @@ describe("Reactor canister ID from ic_env", () => {
         allowEnvRootKey: true,
       })
     ).toThrow(/not trusted for this agent's host/)
+  })
+
+  it("names the page origin as well as the agent host", () => {
+    // On a custom domain with no explicit host the agent falls back to the
+    // mainnet API, so the agent host alone names somewhere the reader has never
+    // heard of while their address bar says something else.
+    expect(() => resolveCanisterId("https://icp-api.io")).toThrow(
+      /page https:\/\/app\.example\.com/
+    )
   })
 
   it("refuses it on a local replica when the caller opts out", () => {
@@ -192,12 +205,13 @@ describe("ClientManager.trustsEnvConfig", () => {
     expect(trusts("https://icp-api.io")).toBe(false)
   })
 
-  it("takes the explicit opt-in under either spelling", () => {
+  it("takes allowEnvConfig, and only allowEnvConfig", () => {
     expect(trusts("https://app.example.com", { allowEnvConfig: true })).toBe(
       true
     )
+    // Not the deprecated spelling: that grant was about the root key.
     expect(trusts("https://app.example.com", { allowEnvRootKey: true })).toBe(
-      true
+      false
     )
     expect(trusts("http://127.0.0.1:4943", { allowEnvConfig: false })).toBe(
       false

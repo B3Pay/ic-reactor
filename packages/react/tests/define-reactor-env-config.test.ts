@@ -48,8 +48,30 @@ describe("defineReactor forwards the ic_env opt-in", () => {
     expect(trustsEnvConfig({ allowEnvConfig: true })).toBe(true)
   })
 
-  it("forwards the deprecated allowEnvRootKey spelling too", () => {
-    expect(trustsEnvConfig({ allowEnvRootKey: true })).toBe(true)
+  it("does not let the deprecated spelling grant the wider trust", () => {
+    // Forwarded, but `allowEnvRootKey` only ever granted the root key; see
+    // packages/core/tests/reactor-env-canister-id.test.ts.
+    expect(trustsEnvConfig({ allowEnvRootKey: true })).toBe(false)
+  })
+
+  it("refuses the option when a supplied ClientManager would ignore it", () => {
+    // Silently dropping `allowEnvConfig: false` is the worst shape of this: the
+    // caller reads it as having locked the cookie out.
+    const { clientManager } = defineReactor({
+      name: "backend",
+      idlFactory,
+      canisterId: CANISTER_ID,
+      agentOptions: { host: "http://127.0.0.1:4943" },
+    })
+    expect(() =>
+      defineReactor({
+        name: "other",
+        idlFactory,
+        canisterId: CANISTER_ID,
+        clientManager,
+        allowEnvConfig: false,
+      })
+    ).toThrow(/already carries its own/)
   })
 
   it("forwards an explicit opt-out on a local replica", () => {

@@ -149,8 +149,10 @@ from the cookie, because a substituted canister ID is not something certificate
 verification can catch: the attacker names a real canister, whose responses
 verify against the same mainnet root key.
 
-`allowEnvRootKey` is the former name of this option, kept working; it was
-renamed because it governs more than the root key. Do not use `isMainnetHost`
+`allowEnvRootKey` is the former name of this option and still works, but only
+for what it always granted — the root key. It does not extend to the identity
+provider or the canister ID: setting it for a custom testnet was not an
+agreement to take those from a cookie too. Do not use `isMainnetHost`
 as a "safe to trust local config" test: it recognises only the three canonical
 boundary domain families, so a mainnet dapp on a custom domain falls through
 it.

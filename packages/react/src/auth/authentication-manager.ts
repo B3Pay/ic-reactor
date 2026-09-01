@@ -99,13 +99,18 @@ export class AuthenticationManager {
           canisterEnv?.["PUBLIC_INTERNET_IDENTITY_PROVIDER"],
         clientManager
       )
+    // Same cookie, same decision. This one only ever reaches a local provider
+    // URL, but `allowEnvConfig: false` has to mean the cookie is not consulted
+    // rather than mostly not consulted.
     this.internetIdentityId =
       internetIdentityId ||
-      acceptEnvCanisterId(
-        canisterEnv?.["internet_identity"] ||
-          canisterEnv?.["PUBLIC_CANISTER_ID:internet_identity"] ||
-          canisterEnv?.["CANISTER_ID_INTERNET_IDENTITY"]
-      )
+      (clientManager.trustsEnvConfig
+        ? acceptEnvCanisterId(
+            canisterEnv?.["internet_identity"] ||
+              canisterEnv?.["PUBLIC_CANISTER_ID:internet_identity"] ||
+              canisterEnv?.["CANISTER_ID_INTERNET_IDENTITY"]
+          )
+        : undefined)
     this.defaultClientOptions = clientOptions
 
     if (authClient) {

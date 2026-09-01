@@ -100,9 +100,14 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
               ? `and there is no ic_env cookie to read outside a browser. `
               : !hostTrusted
                 ? `and the ic_env cookie is not trusted for this agent's host ` +
-                  `(${this.clientManager.agentHost?.toString() ?? "unknown"}), so it was not read. ` +
+                  `(${this.clientManager.agentHost?.toString() ?? "unknown"}` +
+                  // The agent host is often the library's mainnet fallback rather
+                  // than anywhere the reader recognises, so name the page too.
+                  `${window.location?.origin ? `, page ${window.location.origin}` : ""}), ` +
+                  `so it was not read. ` +
                   `The cookie is only trusted for a local replica, because any sibling subdomain can write it; ` +
-                  `bake the id in at build time, or pass \`allowEnvConfig: true\` to ClientManager if you trust every subdomain of this domain. `
+                  `Bake the id in at build time (the codegen \`canisterId\` option), or, only if you trust every subdomain of ` +
+                  `this domain, pass \`allowEnvConfig: true\` to ClientManager — that trusts the whole cookie, its root key included. `
                 : `and could not be resolved from the ic_env cookie (key: "${key}"). `) +
             `Pass canisterId explicitly in the reactor configuration.`
         )
