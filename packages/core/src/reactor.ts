@@ -105,7 +105,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
                   // than anywhere the reader recognises, so name the page too.
                   `${window.location?.origin ? `, page ${window.location.origin}` : ""}), ` +
                   `so it was not read. ` +
-                  `The cookie is only trusted for a local replica, because any sibling subdomain can write it; ` +
+                  `The cookie is only trusted for a local replica, because any sibling subdomain can write it. ` +
                   `Bake the id in at build time (the codegen \`canisterId\` option), or, only if you trust every subdomain of ` +
                   `this domain, pass \`allowEnvConfig: true\` to ClientManager — that trusts the whole cookie, its root key included. `
                 : `and could not be resolved from the ic_env cookie (key: "${key}"). `) +
