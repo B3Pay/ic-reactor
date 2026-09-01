@@ -13,7 +13,7 @@ This example showcases how IC Reactor integrates with Vite's environment variabl
 - **Automatic Injection**: Canister IDs are automatically detected from the local environment and injected into the frontend.
 - **Fixed Overrides**: Use `canisterId` in the Vite plugin config when you want a specific canister ID to override the auto-detected development value.
 - **Seamless Local Dev**: Run `icp deploy` and your frontend immediately knows where to find the canisters.
-- **Client Configuration**: `ClientManager` reads the plugin's `ic_env` cookie automatically — canister IDs need no option to switch on, and the root key is adopted without configuration because the dev server is a local host.
+- **Client Configuration**: `ClientManager` reads the plugin's `ic_env` cookie automatically here — canister IDs and root key alike need no option to switch on, because the dev server is a local host and that is where the cookie is trusted. On a custom domain or mainnet it is not read at all.
 
 ## Links
 

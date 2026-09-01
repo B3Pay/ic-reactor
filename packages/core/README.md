@@ -91,7 +91,7 @@ const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend", // Required: explicit name
-  // canisterId: "...", // Optional: omitted if using environment variables
+  // canisterId: "...", // Optional: resolved from the ic_env cookie on a trusted host
 })
 ```
 
@@ -216,6 +216,7 @@ clientManager.agentState // { isInitialized, isInitializing, error, network, isL
 clientManager.queryClient // TanStack QueryClient
 clientManager.network // "local" | "remote" | "ic"
 clientManager.isLocal // boolean — true whenever network !== "ic"
+clientManager.trustsEnvConfig // boolean — whether the ic_env cookie is trusted here
 
 // Async: forwards HttpAgent.getPrincipal()
 const principal = await clientManager.getUserPrincipal()

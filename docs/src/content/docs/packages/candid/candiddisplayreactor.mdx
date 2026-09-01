@@ -55,7 +55,7 @@ new CandidDisplayReactor<A = BaseActor, T extends TransformKey = "display">(
 | ---------------- | ------------------------------------------------------- | -------- | ---------------------------------------------------- |
 | `clientManager`  | `ClientManager`                                          | Yes      | Client manager from `@ic-reactor/core`               |
 | `name`           | `string`                                                 | Yes      | Required for logging & environment lookup            |
-| `canisterId`     | `CanisterId`                                             | No       | Optional if defined in environment                   |
+| `canisterId`     | `CanisterId`                                             | No       | Resolved from the `ic_env` cookie when omitted, on a trusted host only |
 | `candid`         | `string`                                                 | No       | Candid service definition (avoids network fetch)     |
 | `idlFactory`     | `InterfaceFactory`                                       | No       | IDL factory (if already available)                   |
 | `adapter`        | `CandidAdapter`                                          | No       | Reuse an existing `CandidAdapter` instance           |

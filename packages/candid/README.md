@@ -351,15 +351,15 @@ Extends `Reactor` from `@ic-reactor/core`.
 new CandidReactor(config: CandidReactorParameters)
 ```
 
-| Parameter        | Type               | Required | Description                                       |
-| ---------------- | ------------------ | -------- | ------------------------------------------------- |
-| `name`           | `string`           | Yes      | Name of the canister/reactor                      |
-| `clientManager`  | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`            |
-| `canisterId`     | `CanisterId`       | No       | The canister ID (optional if using env vars)      |
-| `candid`         | `string`           | No       | Candid service definition (avoids network fetch)  |
-| `idlFactory`     | `InterfaceFactory` | No       | IDL factory (if already available)                |
-| `adapter`        | `CandidAdapter`    | No       | Reuse an existing adapter instead of creating one |
-| `pollingOptions` | `PollingOptions`   | No       | Polling configuration for update calls            |
+| Parameter        | Type               | Required | Description                                                            |
+| ---------------- | ------------------ | -------- | ---------------------------------------------------------------------- |
+| `name`           | `string`           | Yes      | Name of the canister/reactor                                           |
+| `clientManager`  | `ClientManager`    | Yes      | Client manager from `@ic-reactor/core`                                 |
+| `canisterId`     | `CanisterId`       | No       | Resolved from the `ic_env` cookie when omitted, on a trusted host only |
+| `candid`         | `string`           | No       | Candid service definition (avoids network fetch)                       |
+| `idlFactory`     | `InterfaceFactory` | No       | IDL factory (if already available)                                     |
+| `adapter`        | `CandidAdapter`    | No       | Reuse an existing adapter instead of creating one                      |
+| `pollingOptions` | `PollingOptions`   | No       | Polling configuration for update calls                                 |
 
 #### Methods
 
