@@ -39,9 +39,17 @@ export function createIdentityAttributeHooks(
     /**
      * A request started before a sign-out or an account switch resolves after
      * it, and publishing that result would put the previous user's decoded PII
-     * back on screen with no further auth event to clear it again. Results are
-     * therefore only committed while the principal that asked for them is still
-     * the one signed in.
+     * back on screen with no further auth event to clear it again. So a result
+     * is committed only when it is the signed-in user's own: it carries the
+     * principal that is current when it resolves, or the session has not
+     * changed since it was asked for.
+     *
+     * The first test is the one the default flow needs. With `signIn: true`
+     * the request itself signs the user in, so the principal seen before the
+     * request (none, for a first sign-in; the old account, for a switch made
+     * inside the provider window) is never the one the result belongs to.
+     * Comparing against the pre-request principal alone left the hook's
+     * `attributes` null after every successful first-time sign-in.
      */
     const isCurrent = useCallback(
       (requestedFor: string | undefined) => requestedFor === currentPrincipal(),
@@ -50,11 +58,14 @@ export function createIdentityAttributeHooks(
 
     const publishIfCurrent = useCallback(
       (requestedFor: string | undefined, result: IdentityAttributeResult) => {
-        if (!isCurrent(requestedFor)) return false
+        const current = currentPrincipal()
+        if (result.principal !== current && requestedFor !== current) {
+          return false
+        }
         setAttributes(result)
         return true
       },
-      [isCurrent]
+      [currentPrincipal]
     )
 
     const requestAttributes = useCallback(
