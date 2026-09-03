@@ -243,6 +243,24 @@ export function extractOkResult<T>(result: T): OkResult<T> {
     throw new CanisterError(result.err)
   }
 
+  // The display codec renders a variant as { _type: key, [key]: payload } and
+  // drops the payload key when the arm is `null`. So by the time a
+  // DisplayReactor result reaches here, { Ok: null } is { _type: "Ok" } and
+  // { Err: null } is { _type: "Err" } -- Result<(), E> and Result<T, ()> --
+  // and neither matched above. They unwrap the way their raw shapes do: an
+  // empty Ok is null, an empty Err throws. Arms with a payload keep the key
+  // and were caught above.
+  if ("_type" in result) {
+    switch (result._type) {
+      case "Ok":
+      case "ok":
+        return null as OkResult<T>
+      case "Err":
+      case "err":
+        throw new CanisterError(null)
+    }
+  }
+
   // Non-Result type, return as-is
   return result as OkResult<T>
 }
