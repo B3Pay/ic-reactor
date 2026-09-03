@@ -24,6 +24,7 @@ import {
   ReactorQueryData,
   BaseActor,
   FunctionName,
+  ReactorArgs,
   TransformKey,
 } from "@ic-reactor/core"
 import {
@@ -115,7 +116,10 @@ export type ActorHooks<Service, Transform extends TransformKey> = {
     config: MutationConfig<Service, Method, Transform>
   ) => UseMutationResult<
     ReactorReturnOk<Service, Method, Transform>,
-    ReactorReturnErr<Service, Method, Transform>
+    ReactorReturnErr<Service, Method, Transform>,
+    // Without this TVariables defaults to `unknown` and mutate/mutateAsync
+    // accept anything; the standalone hook and createMutation both pass it.
+    ReactorArgs<Service, Method, Transform>
   >
 
   useActorMethod: <Method extends FunctionName<Service>>(
