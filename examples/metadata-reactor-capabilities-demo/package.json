@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ic-reactor/candid": "^3.12.1",
-    "@ic-reactor/core": "^3.12.1",
+    "@ic-reactor/candid": "^3.12.2",
+    "@ic-reactor/core": "^3.12.2",
     "@icp-sdk/core": "^6.1.0",
     "@tanstack/query-core": "^5.102.8"
   },
