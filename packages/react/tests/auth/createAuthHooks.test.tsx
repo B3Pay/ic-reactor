@@ -591,12 +591,12 @@ describe("useIdentityAttributes — the request itself signs the user in", () =>
 
   /** A request that, like the real one, commits the identity before resolving. */
   const requestThatSignsInAs = (principal: string, email: string) =>
-    vi.spyOn(identityAttributes, "requestOpenId").mockImplementation(
-      (async () => {
+    vi
+      .spyOn(identityAttributes, "requestOpenId")
+      .mockImplementation((async () => {
         signInAs(principal)
         return attributesOf(principal, email)
-      }) as never
-    )
+      }) as never)
 
   const request = async (result: { current: any }) => {
     await act(async () => {
