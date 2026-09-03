@@ -39,20 +39,20 @@ entry points, verification commands, or known failure modes.
 
 ## Package Routing
 
-| Task                                                      | Start here                                                                                               |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Agent/query runtime, canister calls, display transforms   | `packages/core`                                                                                          |
-| React hooks, factories, `defineReactor`, `useActorMethod` | `packages/react` and `ic-reactor-hooks`                                                                  |
-| Internet Identity login and auth state                    | `packages/react/src/auth/authentication-manager.ts`                                                      |
-| Signed OpenID identity attributes                         | `packages/react/src/auth/identity-attributes-manager.ts`                                                 |
-| React auth and identity-attribute hooks                   | `packages/react/src/hooks/createAuthHooks.ts`, `packages/react/src/auth/createIdentityAttributeHooks.ts` |
-| Dynamic Candid fetch/parse, metadata reactors             | `packages/candid`                                                                                        |
-| Rust/WASM Candid parsing                                  | `packages/parser`                                                                                        |
-| Declaration/reactor/client generation                     | `packages/codegen`                                                                                       |
-| `ic-reactor` executable and config schema                 | `packages/cli`                                                                                           |
-| Vite `.did` watching and environment injection            | `packages/vite-plugin`                                                                                   |
-| Local Internet Identity `/authorize` detection            | `packages/react/src/auth/local-ii-probe.ts`, `packages/react/src/auth/constants.ts`                      |
-| `ic_env` root-key trust (`allowEnvRootKey`)               | `packages/core/src/client.ts`, `packages/core/src/utils/helper.ts`                                       |
+| Task                                                          | Start here                                                                                               |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Agent/query runtime, canister calls, display transforms       | `packages/core`                                                                                          |
+| React hooks, factories, `defineReactor`, `useActorMethod`     | `packages/react` and `ic-reactor-hooks`                                                                  |
+| Internet Identity login and auth state                        | `packages/react/src/auth/authentication-manager.ts`                                                      |
+| Signed OpenID identity attributes                             | `packages/react/src/auth/identity-attributes-manager.ts`                                                 |
+| React auth and identity-attribute hooks                       | `packages/react/src/hooks/createAuthHooks.ts`, `packages/react/src/auth/createIdentityAttributeHooks.ts` |
+| Dynamic Candid fetch/parse, metadata reactors                 | `packages/candid`                                                                                        |
+| Rust/WASM Candid parsing                                      | `packages/parser`                                                                                        |
+| Declaration/reactor/client generation                         | `packages/codegen`                                                                                       |
+| `ic-reactor` executable and config schema                     | `packages/cli`                                                                                           |
+| Vite `.did` watching and environment injection                | `packages/vite-plugin`                                                                                   |
+| Local Internet Identity `/authorize` detection                | `packages/react/src/auth/local-ii-probe.ts`, `packages/react/src/auth/constants.ts`                      |
+| `ic_env` trust decision (`allowEnvConfig`, `trustsEnvConfig`) | `packages/core/src/client.ts`, `packages/core/src/utils/helper.ts`, `packages/core/src/reactor.ts`       |
 
 `AuthenticationManager.prepareClient()` probes the locally deployed Internet
 Identity canister and picks `/authorize` or the legacy `/#authorize`, or refuses

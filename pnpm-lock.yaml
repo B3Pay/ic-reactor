@@ -185,7 +185,7 @@ importers:
   examples/all-in-one-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -267,10 +267,10 @@ importers:
   examples/candid-parser:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@microlink/react-json-view':
         specifier: ^1.31.30
@@ -304,7 +304,7 @@ importers:
   examples/ckbtc-wallet:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -341,7 +341,7 @@ importers:
   examples/codec-demo:
     dependencies:
       '@ic-reactor/core':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -360,7 +360,7 @@ importers:
   examples/codegen-in-action:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -400,7 +400,7 @@ importers:
   examples/custom-provider:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -446,7 +446,7 @@ importers:
   examples/icp-reactor-demo/frontend:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -492,7 +492,7 @@ importers:
   examples/identity-attributes-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -532,10 +532,10 @@ importers:
   examples/metadata-reactor-capabilities-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/candid
       '@ic-reactor/core':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -554,10 +554,10 @@ importers:
   examples/metadata-reactor-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/candid
       '@ic-reactor/core':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -576,7 +576,7 @@ importers:
   examples/multiple-canister:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -619,7 +619,7 @@ importers:
   examples/nextjs:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -671,7 +671,7 @@ importers:
   examples/nextjs-app-router:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -720,7 +720,7 @@ importers:
   examples/query-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -760,10 +760,10 @@ importers:
   examples/result-types-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -794,7 +794,7 @@ importers:
   examples/suspense-infinite-query-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@ic-reactor/vite-plugin':
         specifier: ^0.13.0
@@ -837,10 +837,10 @@ importers:
   examples/tanstack-form-demo:
     dependencies:
       '@ic-reactor/candid':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/candid
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -877,7 +877,7 @@ importers:
   examples/tanstack-router:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -971,7 +971,7 @@ importers:
   examples/typescript-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^8.0.3
@@ -996,7 +996,7 @@ importers:
   examples/vite-environment-variables/frontend:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -1048,7 +1048,7 @@ importers:
   examples/vite-plugin-demo:
     dependencies:
       '@ic-reactor/react':
-        specifier: ^3.12.0
+        specifier: ^3.12.1
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0

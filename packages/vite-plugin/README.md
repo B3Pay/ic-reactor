@@ -40,8 +40,14 @@ export const clientManager = new ClientManager({
 })
 ```
 
-No opt-in flag is needed to pick up the plugin's environment: the plugin sets
-the `ic_env` cookie and `ClientManager` reads it automatically in the browser.
+No opt-in flag is needed to pick up the plugin's environment in development:
+the plugin sets the `ic_env` cookie and `ClientManager` reads it automatically
+in the browser. That trust stops at the local replica — cookies are not
+origin-isolated, so on a custom domain or mainnet the cookie is ignored and a
+reactor with no `canisterId` throws. Set the per-canister `canisterId` in the
+plugin config to bake it into the generated output for those builds, or pass
+`allowEnvConfig: true` to `ClientManager` if you trust every subdomain of the
+domain you serve from.
 
 The plugin generates files under `src/declarations/<canister>/` by default —
 `declarations/<did-basename>.{js,d.ts,did}` plus a managed `index.generated.ts`

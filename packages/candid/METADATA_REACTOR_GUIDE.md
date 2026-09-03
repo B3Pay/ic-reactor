@@ -738,7 +738,7 @@ await reactor.initialize()
 interface CandidDisplayReactorParameters<A> {
   clientManager: ClientManager
   name: string // Required — also the ic_env lookup key
-  canisterId?: CanisterId // Optional if resolvable from the ic_env cookie
+  canisterId?: CanisterId // Optional where the ic_env cookie is trusted (local replica)
   candid?: string // Optional: provide Candid source directly
   idlFactory?: (IDL: any) => any // Optional: skip fetching/parsing entirely
   adapter?: CandidAdapter // Optional: reuse an existing adapter
