@@ -203,6 +203,23 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   /**
+   * Execute function with the name stack replaced by one absolute path, then
+   * restore whatever was there. For closures that run after traversal has
+   * unwound — or, on a shared visitor, in the middle of someone else's — so
+   * the path they build is the one captured, not one relative to the stack
+   * they happen to find.
+   */
+  private atName<T>(name: string, fn: () => T): T {
+    const saved = this.nameStack
+    this.nameStack = name ? [name] : []
+    try {
+      return fn()
+    } finally {
+      this.nameStack = saved
+    }
+  }
+
+  /**
    * Get the current full name path for form binding.
    * Returns empty string for root level.
    */
@@ -544,13 +561,21 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       index: number,
       overrides?: { label?: string }
     ): FieldNode => {
-      // Replace [0] in template with actual index
       const itemName = name ? `${name}[${index}]` : `[${index}]`
       const itemLabel = overrides?.label ?? `Item ${index}`
 
+      // Re-run the visitor at the item's own path. Every nested node bakes its
+      // absolute name at visit time, so spreading the `[0]` template would
+      // hand item N children still named for item 0 — and the same child
+      // objects, shared across every item. The template's label is kept for
+      // the visit so text-format inference matches the template; only the
+      // item's own label is replaced.
+      const item = this.atName(itemName, () =>
+        ty.accept(this, `${label}_item`)
+      ) as FieldNode
+
       return {
-        ...itemField,
-        name: itemName,
+        ...item,
         label: itemLabel,
         displayLabel: formatLabel(itemLabel),
       }
@@ -589,9 +614,10 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       this.recursiveSchemas.set(typeName, schema)
     }
 
-    // Lazy extraction to prevent infinite loops
+    // Lazy extraction to prevent infinite loops. `name` is already absolute,
+    // so it replaces the stack rather than extending it.
     const extract = (): FieldNode =>
-      this.withName(name, () => ty.accept(this, label)) as FieldNode
+      this.atName(name, () => ty.accept(this, label)) as FieldNode
 
     // Helper to get inner default (evaluates lazily)
     const getInnerDefault = (): unknown => extract().defaultValue
