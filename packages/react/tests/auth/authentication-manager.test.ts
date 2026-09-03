@@ -536,6 +536,83 @@ describe("AuthenticationManager session hygiene", () => {
     expect(authentication.authState.isAuthenticated).toBe(false)
   })
 
+  it("resets the agent to anonymous when a delegation lapses mid-session", async () => {
+    // The v8 client keeps returning the lapsed delegation from getIdentity()
+    // until signOut() runs; only a fresh page load purges it. Re-deriving
+    // state from the client therefore put the expired identity straight back
+    // on the agent, every refetch was signed with it and failed, and
+    // getUserPrincipal() kept naming the signed-out user.
+    const authClient = createAuthClient()
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+    const updateAgent = vi.spyOn(clientManager, "updateAgent")
+
+    // The delegation lapses. The client says so, but still hands it out.
+    authClient.isAuthenticated.mockResolvedValue(false)
+    const lapsed = identity("aaaaa-aa")
+    authClient.getIdentity.mockReturnValue(lapsed)
+
+    const result = await authentication.authenticate()
+
+    expect(result).toBeUndefined()
+    expect(authClient.signOut).toHaveBeenCalledTimes(1)
+    expect(updateAgent).toHaveBeenCalledTimes(1)
+    expect(updateAgent.mock.calls[0][0].getPrincipal().isAnonymous()).toBe(true)
+    expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(
+      authentication.authState.identity?.getPrincipal().isAnonymous()
+    ).toBe(true)
+  })
+
+  it("still drops the lapsed delegation when signOut fails", async () => {
+    // The delegation is already unusable; a storage error while forgetting it
+    // is no reason to keep signing with it.
+    const authClient = createAuthClient()
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+
+    authClient.isAuthenticated.mockResolvedValue(false)
+    authClient.signOut.mockRejectedValue(new Error("storage unavailable"))
+
+    await expect(authentication.authenticate()).resolves.toBeUndefined()
+
+    expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(authentication.authState.error).toBeUndefined()
+  })
+
+  it("does not install an identity the client will not vouch for", async () => {
+    // Same shape on the main path: a client that reports not authenticated
+    // while still handing out a non-anonymous identity is holding a
+    // delegation it no longer stands behind.
+    const authClient = createAuthClient()
+    authClient.getIdentity.mockReturnValue(identity("aaaaa-aa"))
+    authClient.isAuthenticated.mockResolvedValue(false)
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    const updateAgent = vi.spyOn(clientManager, "updateAgent")
+
+    const result = await authentication.authenticate()
+
+    expect(result?.getPrincipal().isAnonymous()).toBe(true)
+    for (const [installed] of updateAgent.mock.calls) {
+      expect(installed.getPrincipal().isAnonymous()).toBe(true)
+    }
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(
+      authentication.authState.identity?.getPrincipal().isAnonymous()
+    ).toBe(true)
+  })
+
   it("keeps the session when the expiry check itself fails", async () => {
     // A transient failure must not sign anyone out.
     const authClient = createAuthClient()

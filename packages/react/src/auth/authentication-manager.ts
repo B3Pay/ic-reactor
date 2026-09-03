@@ -1,4 +1,5 @@
 import type { Identity } from "@icp-sdk/core/agent"
+import { AnonymousIdentity } from "@icp-sdk/core/agent"
 import type {
   AuthClientLike,
   AuthClientSignInOptions,
@@ -228,9 +229,13 @@ export class AuthenticationManager {
       if (stillValid) {
         return this.authState.identity || undefined
       }
-      // Expired — drop the stale flag and fall through to re-derive state,
-      // which resets the agent to the anonymous identity.
-      this.updateState({ isAuthenticated: false })
+      // Expired. Re-deriving state from the client will not help: the v8
+      // client keeps handing out the lapsed delegation from getIdentity()
+      // until signOut() runs (only a fresh page load purges it), so the
+      // expired identity would go straight back on the agent and every
+      // refetch would be signed with it. End the session explicitly.
+      await this.expireSession()
+      return undefined
     }
     if (this.authPromise) {
       return this.authPromise
@@ -267,17 +272,29 @@ export class AuthenticationManager {
             return undefined
           }
         }
-        const identity = await this.authClient!.getIdentity()
+        const clientIdentity = await this.authClient!.getIdentity()
         const isAuthenticated = await this.authClient!.isAuthenticated()
 
         if (revision !== this.authStateRevision) {
           // Superseded — leave whatever ran in the meantime in place.
           return this.authState.identity || undefined
         }
+        // A client that says it is not authenticated but still hands out a
+        // non-anonymous identity is holding a delegation it will no longer
+        // vouch for (expired, mid-session). Nothing may be signed with it.
+        const identity =
+          isAuthenticated || clientIdentity.getPrincipal().isAnonymous()
+            ? clientIdentity
+            : new AnonymousIdentity()
         // Restoring an anonymous session is the common first-load case; pushing
         // it through updateAgent would invalidate the whole query cache on
-        // every mount for nothing.
-        if (isAuthenticated || !identity.getPrincipal().isAnonymous()) {
+        // every mount for nothing. It is only skipped while the agent is
+        // anonymous too, so a lapsed delegation still gets replaced.
+        if (
+          isAuthenticated ||
+          !identity.getPrincipal().isAnonymous() ||
+          !this.agentIsAnonymous()
+        ) {
           this.clientManager.updateAgent(identity)
         }
         this.updateState({
@@ -471,6 +488,35 @@ export class AuthenticationManager {
       identityProvider:
         merged?.identityProvider ?? this.getDefaultIdentityProvider(),
     }
+  }
+
+  /** Whether the shared agent currently signs as the anonymous principal. */
+  private agentIsAnonymous(): boolean {
+    const installed = this.clientManager.identity
+    return installed === undefined || installed.getPrincipal().isAnonymous()
+  }
+
+  /**
+   * End a session whose delegation has lapsed: ask the client to forget it,
+   * put the anonymous identity on the agent -- which also sweeps the previous
+   * user's caller-scoped cache entries and refetches the rest anonymously --
+   * and publish the signed-out state. `signOut` failing changes nothing here:
+   * the delegation is already unusable, and the agent must not keep it.
+   */
+  private async expireSession() {
+    try {
+      await this.authClient?.signOut()
+    } catch {
+      // Nothing to keep; fall through to anonymous either way.
+    }
+    const identity = new AnonymousIdentity()
+    this.clientManager.updateAgent(identity)
+    this.updateState({
+      identity,
+      isAuthenticated: false,
+      isAuthenticating: false,
+      error: undefined,
+    })
   }
 
   private async syncStateFromClient(revision = this.authStateRevision) {
