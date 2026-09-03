@@ -73,14 +73,42 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     let canisterId = config.canisterId
 
     if (!canisterId) {
-      const env = safeGetCanisterEnv()
       const key = `PUBLIC_CANISTER_ID:${this.name}`
-      canisterId = env?.[key]
+      // The ic_env cookie is not origin-isolated: any sibling subdomain of the
+      // registrable domain can write it. Taking the canister ID from it
+      // unconditionally let such a subdomain substitute the canister every
+      // read and every authenticated update call is routed to -- fake balances
+      // and deposit addresses on the way out, the user's signed calls on the
+      // way in -- and certificate verification cannot notice, because the
+      // attacker names a real canister whose responses verify against the same
+      // mainnet root key. The root key and the Internet Identity provider are
+      // read from this cookie too and were already guarded; this is the third
+      // value, and it was the unguarded one (#348).
+      const inBrowser = typeof window !== "undefined"
+      const hostTrusted = this.clientManager.trustsEnvConfig
+      canisterId =
+        inBrowser && hostTrusted ? safeGetCanisterEnv()?.[key] : undefined
 
       if (!canisterId) {
+        // Three different problems with three different fixes. Reporting a
+        // refused cookie as an absent one sends the reader hunting for a cookie
+        // that is sitting right there, and reporting a server render as a
+        // refused host blames the host for having no cookie jar.
         throw new Error(
           `[ic-reactor] canisterId is required for "${this.name}" but was not provided ` +
-            `and could not be resolved from the ic_env cookie (key: "${key}"). ` +
+            (!inBrowser
+              ? `and there is no ic_env cookie to read outside a browser. `
+              : !hostTrusted
+                ? `and the ic_env cookie is not trusted for this agent's host ` +
+                  `(${this.clientManager.agentHost?.toString() ?? "unknown"}` +
+                  // The agent host is often the library's mainnet fallback rather
+                  // than anywhere the reader recognises, so name the page too.
+                  `${window.location?.origin ? `, page ${window.location.origin}` : ""}), ` +
+                  `so it was not read. ` +
+                  `The cookie is only trusted for a local replica, because any sibling subdomain can write it. ` +
+                  `Bake the id in at build time (the codegen \`canisterId\` option), or, only if you trust every subdomain of ` +
+                  `this domain, pass \`allowEnvConfig: true\` to ClientManager — that trusts the whole cookie, its root key included. `
+                : `and could not be resolved from the ic_env cookie (key: "${key}"). `) +
             `Pass canisterId explicitly in the reactor configuration.`
         )
       }

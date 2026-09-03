@@ -111,7 +111,9 @@ const parseHostname = (host: string): string | undefined => {
 const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
 
 /**
- * Whether the root key carried by the `ic_env` cookie may be adopted for a host.
+ * Whether the configuration carried by the `ic_env` cookie may be trusted for a
+ * host: its root key, its Internet Identity provider, and the canister IDs a
+ * reactor resolves by name.
  *
  * This is a POSITIVE allowlist, and deliberately not `!isMainnetHost(host)`.
  * `isMainnetHost` recognises exactly three mainnet domains, so every other host
@@ -120,9 +122,20 @@ const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
  * origin-isolated, so any sibling subdomain of the registrable domain could
  * substitute the key that certificate verification is checked against.
  *
+ * The same reasoning covers the canister ID a `Reactor` resolves when none is
+ * configured: a substituted ID is not something certificate verification can
+ * catch, because the attacker names a real canister whose responses verify
+ * against the real root key.
+ *
  * Accepted: loopback, `localhost` and its subdomains, and the dev-container
  * domains that tunnel a local replica. Everything else must opt in explicitly
- * through `allowEnvRootKey`.
+ * through `allowEnvConfig`.
+ *
+ * This answers the question for ONE host. `ClientManager` asks it of both the
+ * agent host and the page origin — the page being what decides who can write
+ * the cookie — and resolves the pair once into `trustsEnvConfig`. Prefer
+ * reading that over calling this again, so every consumer of the cookie
+ * agrees.
  *
  * @param host - The host URL to evaluate.
  * @returns `true` only for hosts that are unambiguously a local replica.

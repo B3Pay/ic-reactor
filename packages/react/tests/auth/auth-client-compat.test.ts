@@ -18,6 +18,22 @@ const authClientMocks = vi.hoisted(() => ({ factory: vi.fn() }))
 
 vi.mock("@icp-sdk/auth/client", () => ({ AuthClient: authClientMocks.factory }))
 
+// `probeLocalInternetIdentity` asks the replica, over the real agent, whether
+// the local Internet Identity canister serves `/authorize`. There is no replica
+// here, so every construction in this file waited out an HTTP failure — several
+// cases landed between 2.7s and 5.0s against vitest's 5000ms default, and "rebuilds
+// only when the effective options change" tipped over it on a loaded CI runner.
+// Nothing in this file is about the probe: it is testing when the AuthClient is
+// rebuilt. Stubbing it removes the network from a unit test rather than papering
+// over a slow one, and the probe keeps its own coverage in local-ii-probe tests.
+vi.mock("../../src/auth/local-ii-probe.js", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  probeLocalInternetIdentity: vi.fn(async () => ({
+    path: "/authorize" as const,
+    inconclusive: false,
+  })),
+}))
+
 const identity = { getPrincipal: () => Principal.fromText("aaaaa-aa") } as never
 
 function createAuthClientStub() {

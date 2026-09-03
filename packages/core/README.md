@@ -91,7 +91,7 @@ const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend", // Required: explicit name
-  // canisterId: "...", // Optional: omitted if using environment variables
+  // canisterId: "...", // Optional: resolved from the ic_env cookie on a trusted host
 })
 ```
 
@@ -128,19 +128,38 @@ backend.invalidateQueries({ functionName: "greet" })
 interface ClientManagerParameters {
   queryClient: QueryClient // TanStack Query client (required)
   agentOptions?: HttpAgentOptions // Custom HttpAgent options (host, identity, rootKey, ...)
-  allowEnvRootKey?: boolean // Trust the ic_env cookie's root key on this host (default: local replicas only)
+  allowEnvConfig?: boolean // Trust the ic_env cookie on this host (default: local replicas only)
+  allowEnvRootKey?: boolean // Deprecated alias for allowEnvConfig
 }
 ```
 
-The `ic_env` cookie can carry an `IC_ROOT_KEY`. Since the root key is what
-certificate verification is checked against, and cookies are not
-origin-isolated, it is adopted only for hosts that are unambiguously a local
-replica — loopback (all of 127.0.0.0/8), `localhost` and its subdomains, and the
-dev-container domains that tunnel one. The exported `allowsEnvRootKey(host)` is
-that test. Any other host must opt in with `allowEnvRootKey: true`. Do not use
-`isMainnetHost` as a "safe to trust local config" test: it recognises only the
-three canonical boundary domain families, so a mainnet dapp on a custom domain
-falls through it.
+The `ic_env` cookie can carry three things the library would otherwise have to
+be told: an `IC_ROOT_KEY`, an Internet Identity provider, and the
+`PUBLIC_CANISTER_ID:<name>` entries a reactor resolves when no `canisterId` is
+configured. Cookies are not origin-isolated — any sibling subdomain of the
+registrable domain can write `ic_env` — so all three are trusted only when the
+agent host and the page origin are both unambiguously a local replica: loopback
+(all of 127.0.0.0/8), `localhost` and its subdomains, and the dev-container
+domains that tunnel one. The page counts because the page is what decides who
+the siblings are: a document served from `app.example.com` shares its cookie jar
+with every other `*.example.com`, whatever host its agent talks to. The exported
+`allowsEnvRootKey(host)` answers this for one host, and `ClientManager` asks it
+of both and resolves the pair once into the `trustsEnvConfig` getter that every
+consumer reads.
+
+Anything else must opt in with `allowEnvConfig: true`. Without it a reactor
+with no configured `canisterId` throws on such a host rather than taking one
+from the cookie, because a substituted canister ID is not something certificate
+verification can catch: the attacker names a real canister, whose responses
+verify against the same mainnet root key.
+
+`allowEnvRootKey` is the former name of this option and still works, but only
+for what it always granted — the root key. It does not extend to the identity
+provider or the canister ID: setting it for a custom testnet was not an
+agreement to take those from a cookie too. Do not use `isMainnetHost`
+as a "safe to trust local config" test: it recognises only the three canonical
+boundary domain families, so a mainnet dapp on a custom domain falls through
+it.
 
 ### Authentication
 
@@ -203,6 +222,7 @@ clientManager.agentState // { isInitialized, isInitializing, error, network, isL
 clientManager.queryClient // TanStack QueryClient
 clientManager.network // "local" | "remote" | "ic"
 clientManager.isLocal // boolean — true whenever network !== "ic"
+clientManager.trustsEnvConfig // boolean — whether the ic_env cookie is trusted here
 
 // Async: forwards HttpAgent.getPrincipal()
 const principal = await clientManager.getUserPrincipal()

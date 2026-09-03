@@ -6,7 +6,7 @@ import type {
   AuthenticationClientOptions,
   AuthenticationSignInOptions,
 } from "./types.js"
-import { ClientManager, isDev, allowsEnvRootKey } from "@ic-reactor/core"
+import { ClientManager, isDev } from "@ic-reactor/core"
 
 import { Principal } from "@icp-sdk/core/principal"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
@@ -99,13 +99,18 @@ export class AuthenticationManager {
           canisterEnv?.["PUBLIC_INTERNET_IDENTITY_PROVIDER"],
         clientManager
       )
+    // Same cookie, same decision. This one only ever reaches a local provider
+    // URL, but `allowEnvConfig: false` has to mean the cookie is not consulted
+    // rather than mostly not consulted.
     this.internetIdentityId =
       internetIdentityId ||
-      acceptEnvCanisterId(
-        canisterEnv?.["internet_identity"] ||
-          canisterEnv?.["PUBLIC_CANISTER_ID:internet_identity"] ||
-          canisterEnv?.["CANISTER_ID_INTERNET_IDENTITY"]
-      )
+      (clientManager.trustsEnvConfig
+        ? acceptEnvCanisterId(
+            canisterEnv?.["internet_identity"] ||
+              canisterEnv?.["PUBLIC_CANISTER_ID:internet_identity"] ||
+              canisterEnv?.["CANISTER_ID_INTERNET_IDENTITY"]
+          )
+        : undefined)
     this.defaultClientOptions = clientOptions
 
     if (authClient) {
@@ -726,7 +731,13 @@ function acceptEnvIdentityProvider(
   // provider chosen by a cookie, and the ic_env cookie is writable by any
   // sibling subdomain. Redirecting the Internet Identity flow is as severe as
   // substituting the root key, so both now use the same test.
-  if (!allowsEnvRootKey(clientManager.agentHost?.toString())) {
+  //
+  // That test is the ClientManager's single resolved decision rather than a
+  // recomputed host test, which silently ignored a caller
+  // who had opted in: `allowEnvConfig: true` accepted the cookie's root key and
+  // then discarded its identity provider, from the same cookie, on the same
+  // host.
+  if (!clientManager.trustsEnvConfig) {
     console.warn(
       `[ic-reactor] Ignoring the Internet Identity provider from the ic_env cookie ` +
         `("${url.origin}") because this reactor does not target a local replica, where ` +

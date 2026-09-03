@@ -85,7 +85,10 @@ This tutorial walks you through creating your first IC Reactor integration with 
 
    <Aside type="note">
      `ClientManager` reads the plugin's `ic_env` cookie in the browser on its
-     own — there is no flag to enable it.
+     own — no flag to enable it while you are developing against a local
+     replica, which is the only place the cookie is trusted. Deploying to a real
+     domain needs the canister IDs baked in at build time, or an explicit
+     `allowEnvConfig: true`; see [ClientManager](/v3/reference/clientmanager).
    </Aside>
 
 4. ## Fetch data with Generated Hooks

@@ -27,7 +27,7 @@ const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend", // Required: Used for logging and environment lookup
-  canisterId, // Optional: Can be omitted if defined in environment
+  canisterId, // Optional: omitted only where the ic_env cookie is trusted
 })
 
 // Data flows reactively: cache → components → automatic updates
@@ -93,7 +93,7 @@ const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend", // Required: Used for logging and environment lookup
-  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai", // Optional: Can be omitted if defined in environment
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai", // Optional: omitted only where the ic_env cookie is trusted
 })
 ```
 
@@ -109,7 +109,7 @@ const backend = new Reactor<_SERVICE>({
 
 ### Why is `name` required?
 
-The `name` parameter is required for **environment-based resolution**. When `canisterId` is omitted, the Reactor uses this name to look up the canister ID from the environment (e.g., `PUBLIC_CANISTER_ID_<NAME>`).
+The `name` parameter is required for **environment-based resolution**. When `canisterId` is omitted, the Reactor uses this name to look up the canister ID in the `ic_env` cookie (`PUBLIC_CANISTER_ID:<name>`) — but only where that cookie is trusted; see below.
 
 For more details, see the [Canister Environment](https://js.icp.build/core/latest/canister-environment) documentation.
 
@@ -120,11 +120,11 @@ It also serves as a unique identifier for:
 
 ### Why is `canisterId` optional?
 
-The `canisterId` is optional because it can be automatically resolved using the `name`.
+The `canisterId` is optional because it can be automatically resolved using the `name` — on a host where the `ic_env` cookie is trusted.
 
-- **Automatic Resolution**: If omitted, the Reactor attempts to find the ID in the environment using the `name`.
+- **Automatic Resolution**: If omitted, the Reactor looks the ID up in the `ic_env` cookie using the `name`.
 - **Dynamic Usage**: useful when the canister ID is not known at build time or varies by environment.
-- **Flexibility**: Can be omitted if you rely on the standard `ic-reactor` environment lookup logic.
+- **Only where the cookie is trusted**: a local replica, or a host you opted in with `allowEnvConfig`. Cookies are not origin-isolated, so on any other host — a custom domain or mainnet — the cookie is not read and the constructor throws instead, naming the option to set. Bake the ID in at build time for those, which is what the codegen `canisterId` option does. A substituted canister ID cannot be caught by certificate verification: the attacker names a real canister, and its responses verify against the real root key.
 
 ## Properties
 

@@ -157,7 +157,10 @@ The `AuthenticationManager` automatically selects the correct Internet Identity 
 
 The local URL uses the replica port from the agent host and the
 `internet_identity` canister ID from the `ic_env` cookie when one is present.
-You can override the whole thing by passing `identityProvider`.
+A provider named by that cookie is honoured only where the cookie is trusted —
+a local replica, or a host you opted in with `allowEnvConfig` — since any
+sibling subdomain can write it; the mainnet provider is fixed regardless. You
+can override the whole thing by passing `identityProvider`.
 
 ## Identity Attributes
 

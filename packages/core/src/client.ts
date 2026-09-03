@@ -49,6 +49,8 @@ export class ClientManager {
   #identity?: Identity
   #agentStateSubscribers: Array<(state: AgentState) => void> = []
   #targetCanisterIds: Set<string> = new Set()
+  /** Resolved once in the constructor; see {@link trustsEnvConfig}. */
+  #trustsEnvConfig: boolean
 
   /**
    * The TanStack QueryClient used for managing cached canister data and invalidating queries on identity changes.
@@ -68,6 +70,7 @@ export class ClientManager {
   constructor({
     agentOptions = {},
     queryClient,
+    allowEnvConfig,
     allowEnvRootKey,
   }: ClientManagerParameters) {
     this.queryClient = queryClient
@@ -118,17 +121,46 @@ export class ClientManager {
       }
     }
 
-    // The root key is what certificate verification is checked against, and the
-    // ic_env cookie is not origin-isolated -- any sibling subdomain of the
-    // registrable domain can write it. So this is a POSITIVE allowlist.
+    // The ic_env cookie is not origin-isolated -- any sibling subdomain of the
+    // registrable domain can write it -- so what it carries is trusted only
+    // where the cookie is as trustworthy as the replica. This is a POSITIVE
+    // allowlist.
     //
     // It used to read `!isMainnetHost(host)`, which fails OPEN: isMainnetHost
     // recognises exactly three boundary domains, so a production dapp served
     // from an ic-domains custom domain fell through it and took its root key
     // from a cookie. allowsEnvRootKey instead accepts only hosts that are
-    // unambiguously a local replica; anything else must pass allowEnvRootKey.
-    const acceptEnvRootKey =
-      allowEnvRootKey ?? allowsEnvRootKey(agentOptions.host)
+    // unambiguously a local replica; anything else must pass allowEnvConfig.
+    //
+    // Resolved ONCE here and read back through `trustsEnvConfig`, because the
+    // cookie carries three values and each was deciding for itself: the root
+    // key was guarded here, the Internet Identity provider recomputed the host
+    // test (and so ignored an explicit opt-in), and the canister ID Reactor
+    // resolves by name was not guarded at all (#348).
+    //
+    // `allowEnvRootKey` is deliberately NOT part of this decision. It granted
+    // the root key and only the root key, and a caller who set it for a custom
+    // testnet did not thereby agree to take their login redirect and their
+    // canister IDs from the same cookie. A rename must not widen a grant that
+    // is already out there, so the old spelling keeps its old reach below and
+    // `allowEnvConfig` is what opts into the whole cookie.
+    //
+    // The PAGE has to clear the bar as well as the agent host, because the page
+    // is what decides who can write the cookie: a document on
+    // app.example.com pointed at a loopback replica shares its cookie jar with
+    // every sibling of example.com, and the agent host says nothing about that.
+    // Both sides are required, so the automatic grant only covers the case
+    // where the cookie is as trustworthy as the replica it describes. Off the
+    // browser there is no cookie to trust at all.
+    const hostIsLocal = allowsEnvRootKey(agentOptions.host)
+    const pageIsLocal =
+      typeof window !== "undefined" && allowsEnvRootKey(window.location?.origin)
+    this.#trustsEnvConfig = allowEnvConfig ?? (hostIsLocal && pageIsLocal)
+
+    // The root key keeps the keying it shipped with in 3.12.0 — agent host
+    // only. Tightening it here would revert a reviewed decision and break the
+    // test that pins it, so it is left to the maintainer; see the pull request.
+    const acceptEnvRootKey = allowEnvConfig ?? allowEnvRootKey ?? hostIsLocal
     if (acceptEnvRootKey && canisterEnv?.IC_ROOT_KEY) {
       agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
     }
@@ -216,6 +248,24 @@ export class ClientManager {
    */
   get agentHostName() {
     return this.agentHost?.hostname || ""
+  }
+
+  /**
+   * Whether the configuration carried by the `ic_env` cookie may be trusted for
+   * this agent's host.
+   *
+   * `true` when BOTH the agent host and the page origin are unambiguously a
+   * local replica, or when the caller passed `allowEnvConfig`. The page counts
+   * because the page is what decides who can write the cookie.
+   * Every consumer of that cookie reads this one decision, so the root key, the
+   * Internet Identity provider and a reactor's canister ID cannot disagree
+   * about whether the environment is trustworthy.
+   *
+   * The deprecated `allowEnvRootKey` is not enough on its own: it granted the
+   * root key alone, and is honoured for the root key alone.
+   */
+  get trustsEnvConfig(): boolean {
+    return this.#trustsEnvConfig
   }
 
   /**
