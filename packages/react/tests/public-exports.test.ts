@@ -78,6 +78,7 @@ const RUNTIME_EXPORTS: Record<string, "function" | "string" | "object"> = {
   toReactorQueryData: "function",
   processQueryCallResponse: "function",
   processUpdateCallResponse: "function",
+  pinPollingIdentity: "function",
   createPollingStrategy: "function",
   generateKey: "function",
   toHashableKeySegment: "function",
