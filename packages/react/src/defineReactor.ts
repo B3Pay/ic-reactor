@@ -276,7 +276,9 @@ export function defineReactor<Service = BaseActor>(
       })
     : new Reactor<Service>(reactorConfig)
 
-  const hooks = createActorHooks(reactor)
+  // `reactor` is `any` above, which would let the overloads infer `Service`
+  // as `unknown` and type every hook's arguments as `never`.
+  const hooks = createActorHooks<Service, any>(reactor)
 
   // Auth is built on first use. `AuthenticationManager` dynamically imports the
   // optional `@icp-sdk/auth` peer as soon as it is constructed, and reactors
