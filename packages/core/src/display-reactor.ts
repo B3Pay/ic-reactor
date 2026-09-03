@@ -17,7 +17,7 @@ import {
   TransformKey,
 } from "./types/reactor.js"
 import { extractOkResult } from "./utils/helper.js"
-import { ValidationError } from "./errors/index.js"
+import { CanisterError, ValidationError } from "./errors/index.js"
 import {
   DisplayReactorParameters,
   DisplayValidator,
@@ -364,6 +364,19 @@ export class DisplayReactor<
     if (this.codecs.has(methodName)) {
       const codec = this.codecs.get(methodName)!
       transformedResult = transformResultWithCodec(codec.result, result)
+
+      // The display codec renders a null variant arm as `{ _type: key }` with
+      // no payload key, so Result<(), E>'s Ok and Result<T, ()>'s Err arrive
+      // here without the key extractOkResult looks for: an empty Err would be
+      // returned as the success value, an empty Ok as a truthy object where
+      // the declared display type is null. Unwrap those two shapes the way
+      // their raw forms unwrap. Arms with a payload keep their key.
+      if (isEmptyDisplayArm(transformedResult, OK_TAGS)) {
+        return null as ReactorReturnOk<A, M, T>
+      }
+      if (isEmptyDisplayArm(transformedResult, ERR_TAGS)) {
+        throw new CanisterError(null)
+      }
     }
 
     // 2. Extract Ok value from the TRANSFORMED (or raw) result
@@ -374,4 +387,24 @@ export class DisplayReactor<
       T
     >
   }
+}
+
+const OK_TAGS = ["Ok", "ok"]
+const ERR_TAGS = ["Err", "err"]
+
+/**
+ * A display-transformed variant arm with no payload is exactly `{ _type: key }`
+ * and nothing else. The key count is what separates it from a record that
+ * happens to carry a text field called `_type`, which keeps its other fields.
+ */
+function isEmptyDisplayArm(value: unknown, tags: readonly string[]): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false
+  }
+  const keys = Object.keys(value)
+  return (
+    keys.length === 1 &&
+    keys[0] === "_type" &&
+    tags.includes((value as { _type: unknown })._type as string)
+  )
 }
