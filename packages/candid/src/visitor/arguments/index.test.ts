@@ -1451,10 +1451,7 @@ describe("ArgumentFieldVisitor", () => {
       vecField.createItemField(7)
 
       // A later traversal on the same visitor starts from a clean stack.
-      const later = visitor.visitFunc(
-        IDL.Func([IDL.Text], [], []),
-        "greet"
-      )
+      const later = visitor.visitFunc(IDL.Func([IDL.Text], [], []), "greet")
       expect(later.args[0].name).toBe("[0]")
     })
   })
