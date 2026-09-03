@@ -557,6 +557,145 @@ describe("useIdentityAttributes — PII is dropped when the principal changes", 
   })
 })
 
+describe("useIdentityAttributes — the request itself signs the user in", () => {
+  // With the default `signIn: true`, `request()` signs the user in and commits
+  // the new identity before it resolves. The principal seen before the request
+  // is therefore never the one the result belongs to: none for a first
+  // sign-in, the old account for a switch made inside the provider window.
+  // Every other test mocks the request at the manager level, so auth state
+  // never moves mid-request and this path stayed invisible.
+  let queryClient: QueryClient
+  let clientManager: ClientManager
+  let authentication: ReturnType<typeof makeAuthentication>
+  let identityAttributes: IdentityAttributesManager
+
+  const ADA = "aaaaa-aa"
+  const GRACE = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+  const attributesOf = (principal: string, email: string) => ({
+    principal,
+    requestedKeys: ["openid:https://issuer.example.com:email"],
+    signedAttributes: {
+      data: new Uint8Array([1]),
+      signature: new Uint8Array([2]),
+    },
+    decodedAttributes: { email },
+    completedAt: new Date().toISOString(),
+  })
+
+  const signInAs = (principal: string) =>
+    (authentication as any).updateState({
+      identity: { getPrincipal: () => Principal.fromText(principal) },
+      isAuthenticated: true,
+    })
+
+  /** A request that, like the real one, commits the identity before resolving. */
+  const requestThatSignsInAs = (principal: string, email: string) =>
+    vi
+      .spyOn(identityAttributes, "requestOpenId")
+      .mockImplementation((async () => {
+        signInAs(principal)
+        return attributesOf(principal, email)
+      }) as never)
+
+  const request = async (result: { current: any }) => {
+    await act(async () => {
+      await result.current.requestOpenIdAttributes({
+        openIdProvider: "https://issuer.example.com",
+        keys: ["email"],
+        nonce: new Uint8Array([1, 2, 3]),
+      })
+    })
+  }
+
+  beforeEach(() => {
+    queryClient = makeQueryClient()
+    clientManager = makeClientManager(queryClient)
+    authentication = makeAuthentication(clientManager)
+    identityAttributes = new IdentityAttributesManager(authentication)
+    vi.spyOn(clientManager, "initialize").mockResolvedValue(clientManager)
+  })
+
+  it("publishes the result of a first-time sign-in-plus-attributes request", async () => {
+    // Signed out, then one click signs in and grants attributes: the
+    // documented "Continue with provider" flow.
+    requestThatSignsInAs(ADA, "ada@example.com")
+
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    await request(result)
+
+    expect(result.current.attributes?.principal).toBe(ADA)
+    expect(result.current.attributes?.decodedAttributes).toEqual({
+      email: "ada@example.com",
+    })
+    expect(result.current.attributeError).toBeNull()
+  })
+
+  it("publishes the result when the user switched accounts inside the provider window", async () => {
+    signInAs(ADA)
+    requestThatSignsInAs(GRACE, "grace@example.com")
+
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    await request(result)
+
+    // The result is the now-signed-in user's own.
+    expect(result.current.attributes?.principal).toBe(GRACE)
+    expect(result.current.attributes?.decodedAttributes).toEqual({
+      email: "grace@example.com",
+    })
+  })
+
+  it("still drops a result that belongs to a user who has since been switched away from", async () => {
+    // Guards the other direction: the account switched by some other path
+    // while the request was outstanding, and the result is the previous
+    // user's. Same shape as the sign-out race, with a different principal
+    // instead of none.
+    signInAs(ADA)
+    let release: (v: unknown) => void = () => {}
+    vi.spyOn(identityAttributes, "requestOpenId").mockImplementation(
+      () => new Promise((resolve) => (release = resolve)) as never
+    )
+
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    let pending!: Promise<unknown>
+    act(() => {
+      pending = result.current
+        .requestOpenIdAttributes({
+          openIdProvider: "https://issuer.example.com",
+          keys: ["email"],
+          nonce: new Uint8Array([1, 2, 3]),
+        })
+        .catch(() => undefined)
+    })
+
+    await act(async () => {
+      signInAs(GRACE)
+    })
+
+    await act(async () => {
+      release(attributesOf(ADA, "ada@example.com"))
+      await pending
+    })
+
+    expect(result.current.attributes).toBeNull()
+  })
+})
+
 describe("createAuthHooks — argument guard", () => {
   it("rejects a ClientManager with a message that names the mistake", () => {
     // TypeScript catches this; a JS caller used to get no error until render,
