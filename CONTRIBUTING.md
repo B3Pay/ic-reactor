@@ -81,6 +81,17 @@ If your CI needs to install private dependencies, create a **read-only** granula
 
 The release workflow also auto-selects a publish tag from the git tag name: prerelease tags containing a hyphen (e.g., `v3.0.0-beta.1`) are published with the `beta` tag; stable tags publish to `latest`.
 
+### Approving a release
+
+Pushing a release tag no longer publishes unattended. Both publish jobs (`release.yml` for `v*`, `release-tools.yml` for `tools-v*` and `parser-v*`) deploy to the `npm-publish` environment, which requires a reviewer to approve the run before any package is published. Preflight still runs first, so by the time the run pauses the tag has been checked against `main`, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
+
+The environment lives in repository settings (Settings → Environments → `npm-publish`) and carries:
+
+- a required reviewer (self-approval allowed, so for a solo maintainer this is a confirmation step, not a second-person requirement);
+- a deployment tag policy limited to `v*`, `tools-v*` and `parser-v*`, so a run from any other ref cannot deploy to it at all.
+
+The `environment:` key is read from the tagged revision, like the preflight, so a tag pointing at a commit that predates it would skip the pause. The tag policy is settings-enforced and holds regardless. The `Release tags` ruleset, which limits who can create those tags, is the third leg; none of the three is sufficient alone.
+
 ## Commits & PRs
 
 - Use clear, descriptive commit messages.

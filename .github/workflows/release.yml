@@ -91,6 +91,15 @@ jobs:
     name: Release to npm
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Every publish leg deploys to the `npm-publish` environment, which carries a
+    # required reviewer and a deployment tag policy (v*, tools-v*, parser-v*) in
+    # repo settings. Preflight gates correctness and the `Release tags` ruleset
+    # gates who can create the tag; this is the only gate on the publish itself.
+    # npm versions are immutable, so a wrong publish can only be superseded.
+    # Self-approval is allowed, so for a solo maintainer it is a confirmation
+    # step, not a second-person requirement. Like preflight, it is read from the
+    # tagged revision: the tag policy is the part that holds regardless.
+    environment: npm-publish
     permissions:
       contents: write
       id-token: write
