@@ -6,7 +6,6 @@ import { ClientManager } from "../src/client.js"
 import { DisplayReactor } from "../src/display-reactor.js"
 import { Reactor } from "../src/reactor.js"
 import { CanisterError } from "../src/errors/index.js"
-import { extractOkResult } from "../src/utils/helper.js"
 
 /**
  * The display codec renders a variant as `{ _type: key, [key]: payload }` and
@@ -25,17 +24,21 @@ interface TestActor {
   unitErr: ActorMethod<[], { Ok: bigint } | { Err: null }>
   /** Motoko spelling of Result<(), ()> */
   motoko: ActorMethod<[], { ok: null } | { err: null }>
+  /** Not a Result: a record that happens to carry a text field named _type */
+  tagged: ActorMethod<[], { _type: string; value: bigint }>
 }
 
 const UnitOk = IDL.Variant({ Ok: IDL.Null, Err: IDL.Text })
 const UnitErr = IDL.Variant({ Ok: IDL.Nat, Err: IDL.Null })
 const Motoko = IDL.Variant({ ok: IDL.Null, err: IDL.Null })
+const Tagged = IDL.Record({ _type: IDL.Text, value: IDL.Nat })
 
 const idlFactory: IDL.InterfaceFactory = ({ IDL }) =>
   IDL.Service({
     unitOk: IDL.Func([], [UnitOk], ["query"]),
     unitErr: IDL.Func([], [UnitErr], ["query"]),
     motoko: IDL.Func([], [Motoko], ["query"]),
+    tagged: IDL.Func([], [Tagged], ["query"]),
   })
 
 const CANISTER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"
@@ -126,19 +129,33 @@ describe("DisplayReactor unwraps Result arms that carry no payload", () => {
       )
     expect(error?.err).toBe("boom")
   })
-})
 
-describe("extractOkResult on the display variant shape", () => {
-  it("treats a tag with no payload key as an empty arm", () => {
-    expect(extractOkResult({ _type: "Ok" })).toBeNull()
-    expect(extractOkResult({ _type: "ok" })).toBeNull()
-    expect(() => extractOkResult({ _type: "Err" })).toThrow(CanisterError)
-    expect(() => extractOkResult({ _type: "err" })).toThrow(CanisterError)
+  it("leaves a record with a text field named _type alone", async () => {
+    // Guards against over-reach: only the codec's `{ _type: key }` shape, with
+    // no other key, is an empty arm. A record keeps its other fields.
+    const display = makeDisplay()
+    replyWith(display, Tagged, { _type: "Ok", value: 7n })
+
+    await expect(
+      display.callMethod({ functionName: "tagged" })
+    ).resolves.toEqual({ _type: "Ok", value: "7" })
+
+    const errLike = makeDisplay()
+    replyWith(errLike, Tagged, { _type: "Err", value: 7n })
+    await expect(
+      errLike.callMethod({ functionName: "tagged" })
+    ).resolves.toEqual({ _type: "Err", value: "7" })
   })
 
-  it("leaves other display variants alone", () => {
-    // A plain variant that is not a Result is still returned as-is.
-    const active = { _type: "Active" }
-    expect(extractOkResult(active)).toBe(active)
+  it("leaves the raw Reactor path untouched", async () => {
+    // The base Reactor never display-transforms, so a raw record with a
+    // `_type` field is returned exactly as decoded.
+    const raw = makeRaw()
+    replyWith(raw, Tagged, { _type: "Err", value: 7n })
+
+    await expect(raw.callMethod({ functionName: "tagged" })).resolves.toEqual({
+      _type: "Err",
+      value: 7n,
+    })
   })
 })
