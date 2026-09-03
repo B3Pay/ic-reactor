@@ -1344,6 +1344,119 @@ describe("ArgumentFieldVisitor", () => {
       expect(item.label).toBe("Item 2")
       expect(item.displayLabel).toBe("Item 2")
     })
+
+    // Every nested node bakes its absolute name at visit time, so an item has
+    // to be a fresh visit at its own path, not the `[0]` template with the
+    // top-level name swapped: that hands item N children still bound to item 0.
+
+    it("names an item's nested fields under the item, not under [0]", () => {
+      const funcType = IDL.Func(
+        [IDL.Vec(IDL.Record({ name: IDL.Text, age: IDL.Nat }))],
+        [],
+        []
+      )
+      const meta = visitor.visitFunc(funcType, "addPeople")
+      const vecField = meta.args[0] as VectorField
+
+      const item = vecField.createItemField(3) as RecordField
+      expect(item.name).toBe("[0][3]")
+      expect(item.fields.map((f) => f.name).sort()).toEqual([
+        "[0][3].age",
+        "[0][3].name",
+      ])
+    })
+
+    it("gives every item its own child nodes", () => {
+      const funcType = IDL.Func(
+        [IDL.Vec(IDL.Record({ name: IDL.Text }))],
+        [],
+        []
+      )
+      const meta = visitor.visitFunc(funcType, "addPeople")
+      const vecField = meta.args[0] as VectorField
+
+      const third = vecField.createItemField(3) as RecordField
+      const fifth = vecField.createItemField(5) as RecordField
+      expect(third.fields).not.toBe(fifth.fields)
+      expect(third.fields[0]).not.toBe(fifth.fields[0])
+      expect(third.fields[0]).not.toBe(
+        (vecField.itemField as RecordField).fields[0]
+      )
+    })
+
+    it("keeps the vector's own path for a vector nested in a record", () => {
+      const funcType = IDL.Func(
+        [IDL.Record({ tags: IDL.Vec(IDL.Text) })],
+        [],
+        []
+      )
+      const meta = visitor.visitFunc(funcType, "update")
+      const record = meta.args[0] as RecordField
+      const vecField = record.fields[0] as VectorField
+
+      expect(vecField.name).toBe("[0].tags")
+      expect(vecField.createItemField(2).name).toBe("[0].tags[2]")
+    })
+
+    it("binds an optional inside an item to that item", () => {
+      const funcType = IDL.Func(
+        [IDL.Vec(IDL.Record({ memo: IDL.Opt(IDL.Text) }))],
+        [],
+        []
+      )
+      const meta = visitor.visitFunc(funcType, "transferBatch")
+      const vecField = meta.args[0] as VectorField
+
+      const item = vecField.createItemField(2) as RecordField
+      const memo = item.fields[0] as OptionalField
+      expect(memo.name).toBe("[0][2].memo")
+      expect(memo.innerField.name).toBe("[0][2].memo")
+    })
+
+    it("chains through a vector of vectors", () => {
+      const funcType = IDL.Func([IDL.Vec(IDL.Vec(IDL.Nat))], [], [])
+      const meta = visitor.visitFunc(funcType, "matrix")
+      const rows = meta.args[0] as VectorField
+
+      const row = rows.createItemField(1) as VectorField
+      expect(row.name).toBe("[0][1]")
+      expect(row.createItemField(2).name).toBe("[0][1][2]")
+    })
+
+    it("infers the item's text format the same way the template does", () => {
+      // The visit runs under the template's label, so a `vec text` called
+      // "emails" still yields email inputs; only the item's own label is
+      // replaced.
+      const funcType = IDL.Func([IDL.Vec(IDL.Text)], [], [])
+      const meta = visitor.visitFunc(funcType, "emails")
+      const vecField = meta.args[0] as VectorField
+      const item = vecField.createItemField(1)
+
+      expect(item.type).toBe("text")
+      if (item.type === "text" && vecField.itemField.type === "text") {
+        expect(item.format).toBe(vecField.itemField.format)
+        expect(item.inputProps).toEqual(vecField.itemField.inputProps)
+      }
+      expect(item.label).toBe("Item 1")
+    })
+
+    it("leaves the visitor's name stack as it found it", () => {
+      const funcType = IDL.Func(
+        [IDL.Record({ tags: IDL.Vec(IDL.Text) })],
+        [],
+        []
+      )
+      const meta = visitor.visitFunc(funcType, "update")
+      const vecField = (meta.args[0] as RecordField).fields[0] as VectorField
+      vecField.createItemField(7)
+
+      // A later traversal on the same visitor starts from a clean stack.
+      const later = visitor.visitFunc(
+        IDL.Func([IDL.Text], [], []),
+        "greet"
+      )
+      expect(later.args[0].name).toBe("[0]")
+    })
   })
 
   // ════════════════════════════════════════════════════════════════════════

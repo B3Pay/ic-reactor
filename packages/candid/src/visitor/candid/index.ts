@@ -74,6 +74,22 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     return this.nameStack.join("")
   }
 
+  /**
+   * Run `fn` with the name stack replaced by one absolute path, then restore
+   * it. For closures that run after traversal has unwound — or, on the shared
+   * `MetadataReactor` instance, in the middle of someone else's — so the path
+   * they build is the one captured, not one relative to the stack they find.
+   */
+  private atName<T>(name: string, fn: () => T): T {
+    const saved = this.nameStack
+    this.nameStack = name ? [name] : []
+    try {
+      return fn()
+    } finally {
+      this.nameStack = saved
+    }
+  }
+
   public visitService(t: IDL.ServiceClass): FormServiceMeta<A> {
     const result = {} as FormServiceMeta<A>
     for (const [functionName, func] of t._fields) {
@@ -415,8 +431,12 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       ty.accept(this, `${label}_item`)
     ) as FormFieldNode
 
+    // Runs after traversal, when the stack is empty, so the vector's own path
+    // has to be re-seeded: pushing `[index]` alone named every item as if it
+    // sat at the root, `[2]` for a vector at `[0].tags`.
     const createItemField = (index: number, overrides?: { label?: string }) => {
-      return this.withName(`[${index}]`, () =>
+      const itemName = name ? `${name}[${index}]` : `[${index}]`
+      return this.atName(itemName, () =>
         ty.accept(this, overrides?.label ?? String(index))
       ) as FormFieldNode
     }
@@ -468,8 +488,9 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       defaultValue: undefined,
       schema,
       typeName: ty.name,
+      // `name` is already absolute, so it replaces the stack, not extends it.
       extract: () =>
-        this.withName(name, () => ty.accept(this, label)) as FormFieldNode,
+        this.atName(name, () => ty.accept(this, label)) as FormFieldNode,
     }
 
     this.recCache.set(t, node)
