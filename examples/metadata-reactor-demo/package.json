@@ -10,13 +10,13 @@
   },
   "devDependencies": {
     "typescript": "^6.0.3",
-    "vite": "^8.2.1"
+    "vite": "^8.2.2"
   },
   "dependencies": {
     "@ic-reactor/candid": "^3.12.1",
     "@ic-reactor/core": "^3.12.1",
     "@icp-sdk/core": "^6.1.0",
-    "@tanstack/query-core": "^5.101.4"
+    "@tanstack/query-core": "^5.102.8"
   },
   "overrides": {
     "picomatch": "4.0.4",
