@@ -83,7 +83,7 @@ The release workflow also auto-selects a publish tag from the git tag name: prer
 
 ### Approving a release
 
-Pushing a release tag no longer publishes unattended. Both publish jobs (`release.yml` for `v*`, `release-tools.yml` for `tools-v*` and `parser-v*`) deploy to the `npm-publish` environment, which requires a reviewer to approve the run before any package is published. Preflight still runs first, so by the time the run pauses the tag has been checked against `main`, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
+Pushing a release tag no longer publishes unattended. Both release workflows (`release.yml` for `v*`, `release-tools.yml` for `tools-v*` and `parser-v*`) run an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against `main`, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
 
 The environment lives in repository settings (Settings → Environments → `npm-publish`) and carries:
 
