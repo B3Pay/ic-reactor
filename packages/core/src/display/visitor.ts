@@ -106,8 +106,37 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     )
   }
 
-  visitFloat(_t: IDL.FloatClass, _data: unknown): z.ZodTypeAny {
-    return z.number()
+  visitFloat(t: IDL.FloatClass, _data: unknown): z.ZodTypeAny {
+    // Floats display as numbers, but form metadata holds every numeric field
+    // as a string (the visitors in @ic-reactor/candid emit "" and a string
+    // schema for float32/float64), so a value that passed the form's own
+    // validation must encode here too. Same contract as the ≤32-bit integers.
+    const typeName = `float${t._bits}`
+    return z.codec(
+      z.number(), // Candid format
+      z.union([z.number(), z.string()]), // Display format
+      {
+        decode: (val) => val,
+        encode: (val) => {
+          const num = typeof val === "string" ? Number(val.trim()) : val
+          if (typeof val === "string" && val.trim() === "") {
+            throw new TypeError(
+              `[ic-reactor] Invalid ${typeName} display value: expected a number, got ""`
+            )
+          }
+          // A finite double can still overflow float32: IDL.encode narrows
+          // 3.4028236e38 to Infinity and sends that, so check the narrowed
+          // value for float32, not just the double.
+          const narrowed = t._bits === 32 ? Math.fround(num) : num
+          if (!Number.isFinite(narrowed)) {
+            throw new TypeError(
+              `[ic-reactor] Invalid ${typeName} display value: expected a finite ${typeName}, got ${String(val)}`
+            )
+          }
+          return num
+        },
+      }
+    )
   }
 
   visitFixedInt(t: IDL.FixedIntClass, _data: unknown): z.ZodTypeAny {

@@ -2,7 +2,7 @@ import { ClientManager } from "@ic-reactor/core"
 import { ActorMethod, ActorSubclass, HttpAgent } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import { beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { MetadataDisplayReactor } from "../../src/metadata-display-reactor.js"
 import {
   MethodMeta,
@@ -1220,5 +1220,48 @@ describe("Complex Result Handling (Mocked)", () => {
     expect((errInner as any).selected).toBe("InsufficientFunds")
     const innerRecord = (errInner as any).selectedValue as RecordNode
     expect((innerRecord.fields as any).balance.value).toBe("50")
+  })
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Float arguments
+  // ══════════════════════════════════════════════════════════════════════════
+
+  describe("Float arguments", () => {
+    // The field schema holds floats as strings and accepted "3.14", but the
+    // display codec used at call time accepted only numbers, so no value
+    // satisfied both sides and any method with a float argument was
+    // uncallable through the form flow.
+    const FLOAT_CANDID = `
+      service : {
+        price_of : (float64) -> (float64) query;
+      }
+    `
+
+    it("calls a method with the string its own field schema accepted", async () => {
+      const reactor = new MetadataDisplayReactor({
+        name: "floats",
+        canisterId: "aaaaa-aa",
+        clientManager: createMockClientManager(),
+        candid: FLOAT_CANDID,
+      })
+      await reactor.initialize()
+
+      const meta = reactor.getInputMeta("price_of")
+      if (!meta) throw new Error("Metadata not found")
+      expect(meta.args[0].schema.safeParse("3.14").success).toBe(true)
+
+      const executeQuery = vi
+        .spyOn(reactor as any, "executeQuery")
+        .mockResolvedValue(IDL.encode([IDL.Float64], [6.28]))
+
+      // MetadataDisplayReactor wraps results in their metadata; the raw value
+      // is the decoded float.
+      await expect(
+        reactor.callMethod({ functionName: "price_of", args: ["3.14"] })
+      ).resolves.toMatchObject({ raw: 6.28 })
+
+      const [, argBytes] = executeQuery.mock.calls[0]
+      expect(IDL.decode([IDL.Float64], argBytes as Uint8Array)).toEqual([3.14])
+    })
   })
 })
