@@ -318,7 +318,8 @@ function RegisterWithOpenIdProvider() {
       nonce: () => backend.callMethod({ functionName: "register_begin" }),
       openIdProvider: "microsoft",
       keys: ["email", "name"],
-      windowOpenerFeatures: popupCenter(),
+      // Optional: any window.open() features string, e.g. to size the popup
+      windowOpenerFeatures: "width=500,height=640",
     })
 
     console.log(result.decodedAttributes.email)
