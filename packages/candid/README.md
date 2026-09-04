@@ -6,7 +6,7 @@ Lightweight adapter for fetching and parsing Candid definitions from Internet Co
 
 - **Fetch Candid Definitions**: Retrieve Candid interface definitions from any canister
 - **Multiple Retrieval Methods**: Supports both canister metadata and the temporary hack method
-- **Local Parsing**: Use the optional WASM-based parser for fast, offline Candid compilation
+- **Local Parsing**: Ships with the WASM-based `@ic-reactor/parser` for fast, offline Candid compilation, loaded on first use
 - **Remote Fallback**: Falls back to the didjs canister for Candid-to-JavaScript compilation
 - **Dynamic Reactor**: Includes `CandidReactor` for dynamic IDL fetching and interaction
 - **Dynamic Forms**: Generate rich form metadata with validation schemas using `MetadataReactor` and `CandidFormVisitor`
@@ -16,19 +16,19 @@ Lightweight adapter for fetching and parsing Candid definitions from Internet Co
 ## Installation
 
 ```bash
-npm install @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core zod
+npm install @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core
 ```
 
 `ClientManager` requires a TanStack `QueryClient`, so `@tanstack/query-core` is
 needed even when you only use the adapter.
 
-### Optional: Local Parser
+### Local parser
 
-For faster Candid parsing without network requests:
-
-```bash
-npm install @ic-reactor/parser
-```
+`@ic-reactor/parser` is a dependency of this package, so nothing extra is
+installed for local, offline Candid parsing. The adapter imports it on the
+first parse, and bundlers emit it as its own chunk, so an app that never
+parses Candid never loads the WASM. If it cannot be loaded at runtime, the
+adapter falls back to remote compilation through the didjs canister.
 
 ## Usage
 

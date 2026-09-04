@@ -68,6 +68,20 @@ jobs:
             fi
           done
 
+      # @ic-reactor/candid depends on @ic-reactor/parser at `workspace:^`, which
+      # pnpm pack rewrites to a caret on the parser's *local* version. A parser
+      # bumped in the tree but not yet published as parser-v* would leave the
+      # published candid unresolvable for every consumer.
+      - name: Candid's parser dependency must exist on npm
+        run: |
+          set -euo pipefail
+          PARSER="$(node -p "require('./packages/parser/package.json').version")"
+          if ! npm view "@ic-reactor/parser@${PARSER}" version >/dev/null 2>&1; then
+            echo "::error::@ic-reactor/candid depends on @ic-reactor/parser@^${PARSER}, which is not on npm. Publish parser-v${PARSER} first."
+            exit 1
+          fi
+          echo "@ic-reactor/parser@${PARSER} is on npm"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --filter '!./examples/**'
 

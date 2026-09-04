@@ -19,7 +19,7 @@ Fetching the Candid source and compiling it to JavaScript are two separate steps
 
 **Compiling to JavaScript:**
 
-1. **Local parser** (preferred) — the optional [`@ic-reactor/parser`](/v3/packages/parser) WASM module, auto-loaded when installed
+1. **Local parser** (preferred) — the [`@ic-reactor/parser`](/v3/packages/parser) WASM module, a dependency of this package, loaded on first use
 2. **didjs canister** (fallback) — remote `did_to_js` call
 
 ```typescript
@@ -100,8 +100,8 @@ console.log(candidSource)
 
 <Aside type="note">
   This method queries the canister's `candid` metadata first, then falls back to
-  the `__get_candid_interface_tmp_hack` query method. It doesn't parse or compile
-  the Candid.
+  the `__get_candid_interface_tmp_hack` query method. It doesn't parse or
+  compile the Candid.
 </Aside>
 
 ---
@@ -122,7 +122,7 @@ const { idlFactory } = await adapter.parseCandidSource(candidSource)
 
 This method:
 
-1. Tries the local parser first, auto-loading `@ic-reactor/parser` if it is installed
+1. Tries the local parser first, loading `@ic-reactor/parser` on first use
 2. Falls back to remote compilation via the didjs canister
 
 It is the only method that returns a `CandidDefinition` — `compileLocal` and
@@ -136,11 +136,12 @@ Load the local WASM parser for offline compilation.
 
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
-import "@ic-reactor/parser" // Required peer dependency
 
 const adapter = new CandidAdapter({ clientManager })
 
-// Load the parser (only needed once)
+// Load the parser (only needed once). It imports @ic-reactor/parser itself:
+// the package is a dependency of @ic-reactor/candid, so do not import it
+// from your app unless you also install it directly.
 await adapter.loadParser()
 
 // Now compileLocal works
@@ -241,7 +242,6 @@ for (const [name, func] of service._fields) {
 
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
-import "@ic-reactor/parser"
 
 const adapter = new CandidAdapter({ clientManager })
 
