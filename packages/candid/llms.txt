@@ -7,7 +7,7 @@ interaction, and metadata-driven form generation.
 
 ```bash
 pnpm add @ic-reactor/candid @icp-sdk/core
-pnpm add @ic-reactor/parser # optional local parser
+# @ic-reactor/parser comes with it: local WASM parsing, loaded on first parse
 ```
 
 ## When To Use
@@ -24,8 +24,8 @@ pnpm add @ic-reactor/parser # optional local parser
 
 ## Parser Strategy
 
-- Prefer local parser (`@ic-reactor/parser`) for speed and offline usage
-- Fallback uses remote didjs compilation when parser is unavailable
+- The local parser (`@ic-reactor/parser`) is a dependency, loaded on first parse; bundlers emit it as its own chunk
+- Fallback uses remote didjs compilation when the parser cannot be loaded at runtime
 
 ## Best Practices
 

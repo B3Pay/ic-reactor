@@ -1087,6 +1087,9 @@ importers:
       '@ic-reactor/core':
         specifier: workspace:^
         version: link:../core
+      '@ic-reactor/parser':
+        specifier: workspace:^
+        version: link:../parser
       '@noble/hashes':
         specifier: ^2.4.0
         version: 2.4.0
@@ -1094,9 +1097,6 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@ic-reactor/parser':
-        specifier: workspace:^
-        version: link:../parser
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0

@@ -152,7 +152,9 @@ export class CandidAdapter {
         await (this.parserModule.default as () => Promise<void>)()
       }
     } catch {
-      // Silently fail - parser is optional
+      // The package is a dependency, so the specifier resolves; what can still
+      // fail is instantiating the WASM in this runtime. Remote compilation
+      // through the didjs canister covers that case.
       this.parserModule = undefined
     }
   }

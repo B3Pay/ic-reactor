@@ -65,8 +65,7 @@
   },
   "peerDependencies": {
     "@icp-sdk/core": "^6.1.0",
-    "@tanstack/query-core": "^5.0.0",
-    "zod": "^4.3.5"
+    "@tanstack/query-core": "^5.0.0"
   },
   "peerDependenciesMeta": {
     "@tanstack/query-core": {

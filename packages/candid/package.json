@@ -61,17 +61,16 @@
   "license": "MIT",
   "dependencies": {
     "@ic-reactor/core": "workspace:^",
+    "@ic-reactor/parser": "workspace:^",
     "@noble/hashes": "^2.4.0",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
     "@icp-sdk/core": "^6.1.0",
-    "@noble/hashes": "^2.0.0",
-    "zod": "^4.3.5"
+    "@noble/hashes": "^2.0.0"
   },
   "peerDependenciesMeta": {},
   "devDependencies": {
-    "@ic-reactor/parser": "workspace:^",
     "@icp-sdk/core": "^6.1.0",
     "@size-limit/preset-small-lib": "^13.0.3",
     "@types/node": "^26.4.0",
