@@ -6,7 +6,7 @@ Follow these repository-specific patterns when suggesting code:
 
 - This branch publishes the IC Reactor v3 documentation and release line.
 - Runtime packages are `@ic-reactor/core`, `@ic-reactor/react`, and `@ic-reactor/candid` at `3.12.3`.
-- Code generation packages are `@ic-reactor/codegen`, `@ic-reactor/cli`, and `@ic-reactor/vite-plugin` at `0.13.0`.
+- Code generation packages are `@ic-reactor/codegen`, `@ic-reactor/cli`, and `@ic-reactor/vite-plugin` at `0.13.1`.
 - The WASM parser package is `@ic-reactor/parser` at `0.4.9`.
 - Prefer `@icp-sdk/*` dependencies in examples and docs.
 
