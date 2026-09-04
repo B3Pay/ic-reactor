@@ -9,7 +9,7 @@ It leverages **TanStack Query** for state management and caching, and the repo u
 
 - Runtime lane (`3.12.2`): `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/candid`. Internet Identity auth ships inside `@ic-reactor/react` (`packages/react/src/auth/`); there is no separate auth package.
 - Codegen lane (`0.13.0`): `@ic-reactor/codegen`, `@ic-reactor/cli`, `@ic-reactor/vite-plugin`.
-- Parser lane (`0.4.8`): `@ic-reactor/parser`.
+- Parser lane (`0.4.9`): `@ic-reactor/parser`.
 
 ## Core Principles
 
