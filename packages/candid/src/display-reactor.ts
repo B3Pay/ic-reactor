@@ -140,15 +140,24 @@ export class CandidDisplayReactor<
 
     this.service = idlFactory({ IDL })
 
-    // Re-initialize codecs after service is updated
-    this.reinitializeCodecs()
+    // The service was replaced wholesale, and a codec is a snapshot of one
+    // signature: it has to be rebuilt for every method, or a method that
+    // changed shape — a `funcClass` that disagrees with the fetched interface,
+    // a `registerMethod` guess corrected here, a canister upgraded between two
+    // calls to initialize() — keeps transforming args and results against the
+    // old signature while getServiceInterface() reports the new one.
+    this.reinitializeCodecs({ rebuild: true })
   }
 
   /**
    * Re-initialize the display codecs after the service has been updated.
    * This is called automatically after initialize() or registerMethod().
+   *
+   * By default only methods without a codec get one, which is what the
+   * additive `registerMethod` path needs. `rebuild` drops every existing codec
+   * first, for when the whole service has been replaced.
    */
-  private reinitializeCodecs(): void {
+  private reinitializeCodecs({ rebuild = false } = {}): void {
     const fields = this.getServiceInterface()?._fields
     if (!fields) return
 
@@ -157,6 +166,8 @@ export class CandidDisplayReactor<
       string,
       { args: any; result: any }
     >
+
+    if (rebuild) codecs.clear()
 
     for (const [methodName, funcType] of fields) {
       // Skip if already exists
