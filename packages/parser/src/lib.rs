@@ -265,22 +265,10 @@ fn validation_from_docs(docs: &[String]) -> Option<CandidValidationMetadata> {
 }
 
 fn apply_default_validation_messages(validation: &mut CandidValidationMetadata) {
-    validation.minimum = with_default_bound_message(
-        validation.minimum.take(),
-        "minimum",
-    );
-    validation.maximum = with_default_bound_message(
-        validation.maximum.take(),
-        "maximum",
-    );
-    validation.min_length = with_default_bound_message(
-        validation.min_length.take(),
-        "minLength",
-    );
-    validation.max_length = with_default_bound_message(
-        validation.max_length.take(),
-        "maxLength",
-    );
+    validation.minimum = with_default_bound_message(validation.minimum.take(), "minimum");
+    validation.maximum = with_default_bound_message(validation.maximum.take(), "maximum");
+    validation.min_length = with_default_bound_message(validation.min_length.take(), "minLength");
+    validation.max_length = with_default_bound_message(validation.max_length.take(), "maxLength");
     validation.format = with_default_format_message(validation.format.take());
 }
 
@@ -578,6 +566,22 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
     let type_bindings = type_bindings_by_name(&ast);
     let method_bindings = service_method_bindings_from_actor(ast.actor.as_ref(), &type_bindings);
 
+    // `check_prog` validates the actor but hands back its *declared* type: for
+    // `service : S` that is `Var("S")`, for `service : (args) -> S` it is
+    // `Class(args, Var("S"))`. Both are how real ledgers spell their service
+    // (ICRC ledgers declare `service : (ledger_arg) -> Service`). Unwrap the
+    // class and chase aliases through the environment until the service body
+    // itself is in hand; anything else is not a service.
+    let service_ty = actor.and_then(|mut ty| loop {
+        ty = match ty.as_ref() {
+            candid_parser::candid::types::TypeInner::Class(_, inner) => inner.clone(),
+            candid_parser::candid::types::TypeInner::Var(_)
+            | candid_parser::candid::types::TypeInner::Knot(_) => env.trace_type(&ty).ok()?,
+            candid_parser::candid::types::TypeInner::Service(_) => break Some(ty),
+            _ => break None,
+        };
+    });
+
     let types = env
         .0
         .into_iter()
@@ -591,12 +595,7 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
         })
         .collect();
 
-    let service = actor.and_then(|actor_ty| {
-        let service_ty = match actor_ty.as_ref() {
-            candid_parser::candid::types::TypeInner::Class(_, inner) => inner.clone(),
-            _ => actor_ty,
-        };
-
+    let service = service_ty.and_then(|service_ty| {
         if let candid_parser::candid::types::TypeInner::Service(methods) = service_ty.as_ref() {
             let methods = methods
                 .iter()
@@ -607,11 +606,19 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
                             .find(|binding| binding.id == *name)
                             .copied();
                         let syntax_func = syntax_func_for_method(binding);
+                        // `composite_query` is its own mode, not an update: the IC
+                        // rejects a replicated call to one. `didToJs` already emits
+                        // the `composite_query` annotation for the same method.
                         let mode = if func
                             .modes
                             .contains(&candid_parser::candid::types::FuncMode::Oneway)
                         {
                             "oneway"
+                        } else if func
+                            .modes
+                            .contains(&candid_parser::candid::types::FuncMode::CompositeQuery)
+                        {
+                            "composite_query"
                         } else if func
                             .modes
                             .contains(&candid_parser::candid::types::FuncMode::Query)
