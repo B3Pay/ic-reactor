@@ -136,11 +136,12 @@ Load the local WASM parser for offline compilation.
 
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
-import "@ic-reactor/parser" // Required peer dependency
 
 const adapter = new CandidAdapter({ clientManager })
 
-// Load the parser (only needed once)
+// Load the parser (only needed once). It imports @ic-reactor/parser itself:
+// the package is a dependency of @ic-reactor/candid, so do not import it
+// from your app unless you also install it directly.
 await adapter.loadParser()
 
 // Now compileLocal works
@@ -241,7 +242,6 @@ for (const [name, func] of service._fields) {
 
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
-import "@ic-reactor/parser"
 
 const adapter = new CandidAdapter({ clientManager })
 
