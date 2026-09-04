@@ -122,3 +122,80 @@ describe("CandidFormVisitor createItemField", () => {
     expect(item.name).toBe("[0][2]")
   })
 })
+
+/**
+ * A recursive type's node bakes in the path and label of the place it was
+ * met. It used to be cached per RecClass, so every later occurrence — a
+ * second argument, another method, and on the shared MetadataReactor visitor
+ * another service — got the first one's path, and the same object.
+ */
+describe("CandidFormVisitor recursive types", () => {
+  const visitor = new CandidFormVisitor()
+
+  const list = () => {
+    const List = IDL.Rec()
+    List.fill(IDL.Opt(IDL.Record({ head: IDL.Nat, tail: List })))
+    return List
+  }
+
+  const meta = (service: IDL.ServiceClass) =>
+    visitor.visitService(service) as unknown as Record<
+      string,
+      { args: FormFieldNode[] }
+    >
+
+  it("names each occurrence by its own path", () => {
+    const List = list()
+    const m = meta(
+      IDL.Service({
+        a: IDL.Func([List], [], []),
+        b: IDL.Func([IDL.Text, List], [], []),
+      })
+    )
+
+    expect(m.a.args[0].name).toBe("[0]")
+    expect(m.b.args[1].name).toBe("[1]")
+    expect(m.b.args[1]).not.toBe(m.a.args[0])
+  })
+
+  it("extracts the inner type under the occurrence's own path", () => {
+    const List = list()
+    const m = meta(IDL.Service({ b: IDL.Func([IDL.Text, List], [], []) }))
+    const rec = m.b.args[1]
+    if (rec.type !== "recursive") throw new Error("expected a recursive node")
+
+    const inner = rec.extract()
+    expect(inner.name).toBe("[1]")
+    if (inner.type !== "optional") throw new Error("expected an optional")
+    const record = inner.innerField
+    if (record.type !== "record") throw new Error("expected a record")
+    expect(record.fields.map((f) => f.name).sort()).toEqual([
+      "[1].head",
+      "[1].tail",
+    ])
+  })
+
+  it("does not hand a later service the earlier one's node", () => {
+    const List = list()
+    const first = meta(IDL.Service({ a: IDL.Func([List], [], []) }))
+    const second = meta(
+      IDL.Service({ c: IDL.Func([IDL.Text, IDL.Text, List], [], []) })
+    )
+
+    expect(second.c.args[2].name).toBe("[2]")
+    expect(second.c.args[2]).not.toBe(first.a.args[0])
+  })
+
+  it("shares one validation schema per recursive type", () => {
+    // Guards the part that is meant to be shared.
+    const List = list()
+    const m = meta(
+      IDL.Service({
+        a: IDL.Func([List], [], []),
+        b: IDL.Func([IDL.Text, List], [], []),
+      })
+    )
+
+    expect(m.b.args[1].schema).toBe(m.a.args[0].schema)
+  })
+})

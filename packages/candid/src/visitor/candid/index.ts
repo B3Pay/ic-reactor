@@ -57,7 +57,6 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
   string,
   FormFieldNode | FormArgumentsMeta | FormServiceMeta<A>
 > {
-  private recCache = new Map<IDL.RecClass<any>, FormFieldNode>()
   private recursiveSchemas: Map<string, z.ZodTypeAny> = new Map()
   private nameStack: string[] = []
 
@@ -458,7 +457,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitRec<T>(
-    t: IDL.RecClass<T>,
+    _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     label: string
   ): FormFieldNode {
@@ -466,10 +465,11 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     const typeName = ty.name || "RecursiveType"
     let schema: z.ZodTypeAny
 
-    if (this.recCache.has(t)) {
-      return this.recCache.get(t)!
-    }
-
+    // Only the schema is shared between occurrences. The node itself bakes in
+    // the path and label of the place it was met, so caching it per RecClass
+    // handed every later occurrence — a second argument, another method, and
+    // on the MetadataReactor instance every reactor shares, another service —
+    // the first one's path, and the same object.
     if (this.recursiveSchemas.has(typeName)) {
       schema = this.recursiveSchemas.get(typeName)!
     } else {
@@ -493,7 +493,6 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
         this.atName(name, () => ty.accept(this, label)) as FormFieldNode,
     }
 
-    this.recCache.set(t, node)
     return node
   }
 
