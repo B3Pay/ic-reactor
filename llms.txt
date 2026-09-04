@@ -13,15 +13,15 @@ Repository: `https://github.com/B3Pay/ic-reactor`
 Docs: `https://ic-reactor.b3pay.net/v3/`
 
 Release posture: the published documentation and package manifests target the
-stable `@ic-reactor/core` v3.12.2 runtime release.
+stable `@ic-reactor/core` v3.12.3 runtime release.
 
 ## Package Versions
 
 Runtime lane:
 
-- `@ic-reactor/core`: `3.12.2`
-- `@ic-reactor/react`: `3.12.2`
-- `@ic-reactor/candid`: `3.12.2`
+- `@ic-reactor/core`: `3.12.3`
+- `@ic-reactor/react`: `3.12.3`
+- `@ic-reactor/candid`: `3.12.3`
 
 Codegen lane:
 
