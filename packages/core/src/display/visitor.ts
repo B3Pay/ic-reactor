@@ -124,9 +124,13 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
               `[ic-reactor] Invalid ${typeName} display value: expected a number, got ""`
             )
           }
-          if (!Number.isFinite(num)) {
+          // A finite double can still overflow float32: IDL.encode narrows
+          // 3.4028236e38 to Infinity and sends that, so check the narrowed
+          // value for float32, not just the double.
+          const narrowed = t._bits === 32 ? Math.fround(num) : num
+          if (!Number.isFinite(narrowed)) {
             throw new TypeError(
-              `[ic-reactor] Invalid ${typeName} display value: expected a finite number, got ${String(val)}`
+              `[ic-reactor] Invalid ${typeName} display value: expected a finite ${typeName}, got ${String(val)}`
             )
           }
           return num

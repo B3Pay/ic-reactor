@@ -174,6 +174,19 @@ describe("Display Codec - didToDisplayCodec", () => {
       expect(() => codec.asCandid("")).toThrow(/float64/)
       expect(() => codec.asCandid("Infinity")).toThrow(/finite/)
     })
+
+    it("rejects a value that overflows float32 even though it is a finite double", () => {
+      // IDL.encode narrows to float32 and would send Infinity for this.
+      const codec = didToDisplayCodec(IDL.Float32)
+
+      expect(() => codec.asCandid("3.4028236e38")).toThrow(/finite float32/)
+      expect(() => codec.asCandid(3.4028236e38)).toThrow(/finite float32/)
+      // The largest float32 still passes, as does the same value in float64.
+      expect(codec.asCandid("3.4028234e38")).toBe(3.4028234e38)
+      expect(didToDisplayCodec(IDL.Float64).asCandid("3.4028236e38")).toBe(
+        3.4028236e38
+      )
+    })
   })
 
   describe("Principal Type", () => {
