@@ -84,7 +84,8 @@
       "limit": "30 KB",
       "gzip": true,
       "ignore": [
-        "@ic-reactor/parser"
+        "@ic-reactor/parser",
+        "zod"
       ]
     }
   ]
