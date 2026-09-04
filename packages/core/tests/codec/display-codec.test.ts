@@ -151,6 +151,29 @@ describe("Display Codec - didToDisplayCodec", () => {
       expect(codec.asDisplay(3.14)).toBe(3.14)
       expect(codec.asCandid(3.14)).toBe(3.14)
     })
+
+    it("accepts the numeric string a form holds a float as", () => {
+      // Form metadata keeps every numeric field as a string, and its own
+      // schema for float32/float64 accepts "3.14". The codec has to as well,
+      // or a value that passed validation throws at call time. Same contract
+      // as the <=32-bit integers.
+      const codec = didToDisplayCodec(IDL.Float64)
+
+      expect(codec.asCandid("3.14")).toBe(3.14)
+      expect(codec.asCandid("-0.5")).toBe(-0.5)
+      expect(codec.asCandid("1e3")).toBe(1000)
+      expect(didToDisplayCodec(IDL.Float32).asCandid("2.5")).toBe(2.5)
+      // Display side is unchanged: numbers stay numbers.
+      expect(codec.asDisplay(3.14)).toBe(3.14)
+    })
+
+    it("rejects a string that is not a finite number", () => {
+      const codec = didToDisplayCodec(IDL.Float64)
+
+      expect(() => codec.asCandid("abc")).toThrow(/float64/)
+      expect(() => codec.asCandid("")).toThrow(/float64/)
+      expect(() => codec.asCandid("Infinity")).toThrow(/finite/)
+    })
   })
 
   describe("Principal Type", () => {
