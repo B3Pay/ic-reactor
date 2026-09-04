@@ -36,6 +36,77 @@ describe("Candid Schema Parser (parseDid)", () => {
     })
   })
 
+  it("reports composite_query as its own mode", () => {
+    // ICRC-3 and index canisters use it. It used to fall through to "update",
+    // while didToJs on the same source emitted the composite_query annotation.
+    const candid = `
+      service : {
+        get_blocks : (nat) -> (vec nat) composite_query;
+        get_tip : () -> (nat) query;
+        append : (nat) -> ();
+        notify : (nat) -> () oneway;
+      }
+    `
+    const parsed = parser.parseDid(candid)
+
+    // Methods come back in Candid's canonical (sorted) order.
+    expect(
+      parsed.service?.methods.map(({ name, mode }) => [name, mode])
+    ).toEqual([
+      ["append", "update"],
+      ["get_blocks", "composite_query"],
+      ["get_tip", "query"],
+      ["notify", "oneway"],
+    ])
+  })
+
+  it("resolves a service declared through a type alias", () => {
+    // `check_prog` hands back the declared type, Var("S"), not the service
+    // body; the alias has to be chased through the type environment.
+    const candid = `
+      type S = service { greet : (text) -> (text) query; };
+      service : S;
+    `
+    const parsed = parser.parseDid(candid)
+
+    expect(parsed.service?.methods.map((m) => m.name)).toEqual(["greet"])
+    expect(parsed.service?.methods[0].mode).toBe("query")
+  })
+
+  it("resolves a service class whose body is a type alias", () => {
+    // The shape of real ledger files: `service : (ledger_arg) -> Service`.
+    const candid = `
+      type Account = record { owner : principal };
+      type Service = service {
+        icrc1_balance_of : (Account) -> (nat) query;
+        icrc1_transfer : (Account, nat) -> (variant { Ok : nat; Err : text });
+      };
+      service : (opt nat) -> Service;
+    `
+    const parsed = parser.parseDid(candid)
+
+    expect(parsed.service?.methods.map((m) => m.name)).toEqual([
+      "icrc1_balance_of",
+      "icrc1_transfer",
+    ])
+    // Argument metadata still resolves through the alias to the declared type.
+    expect(parsed.service?.methods[0].args[0]).toEqual({
+      kind: "reference",
+      name: "Account",
+    })
+  })
+
+  it("chases an alias of an alias", () => {
+    const candid = `
+      type Inner = service { ping : () -> () query; };
+      type Outer = Inner;
+      service : Outer;
+    `
+    const parsed = parser.parseDid(candid)
+
+    expect(parsed.service?.methods.map((m) => m.name)).toEqual(["ping"])
+  })
+
   it("should parse custom type declarations", () => {
     const candid = `
       type Profile = record {

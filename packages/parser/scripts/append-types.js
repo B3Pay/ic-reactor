@@ -96,7 +96,7 @@ export interface CandidServiceDeclaration {
 
 export interface CandidMethodDeclaration {
   name: string;
-  mode: "query" | "update" | "oneway";
+  mode: "query" | "composite_query" | "update" | "oneway";
   args: CandidType[];
   returns: CandidType[];
   metadata?: CandidMetadata;
