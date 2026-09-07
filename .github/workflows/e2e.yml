@@ -52,21 +52,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            packages/parser/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/parser/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+      - name: Setup Rust for the parser wasm build
+        uses: ./.github/actions/setup-rust-wasm
 
       - name: Install icp-cli and ic-wasm
         run: npm install -g @icp-sdk/icp-cli@${{ env.ICP_CLI_VERSION }} @icp-sdk/ic-wasm@${{ env.IC_WASM_VERSION }}
@@ -79,7 +66,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages (excluding parser)
+      - name: Build packages
         run: pnpm build
 
       - name: Run e2e tests

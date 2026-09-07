@@ -31,7 +31,6 @@
     "build": "rm -rf dist tsconfig.tsbuildinfo && tsc",
     "test": "vitest run",
     "size": "size-limit",
-    "analyze": "size-limit",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },
   "repository": {

@@ -110,6 +110,7 @@ pnpm build:examples     # Build every example app (CI gate)
 pnpm format             # Format the whole repo with Prettier
 pnpm format:check       # Verify formatting without writing (CI gate, whole repo)
 pnpm check:ai-context   # Verify llms.txt versions match package.json (CI gate)
+pnpm size               # size-limit gate for core/react/candid/parser (CI gate)
 pnpm verify:packages    # Pack + publint + attw + real-Node import of published artifacts
 pnpm verify:test-fails <file> --package <pkg>  # Check a new test actually fails without the fix
 pnpm docs:build         # Build docs site
