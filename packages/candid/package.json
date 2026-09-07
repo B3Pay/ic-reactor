@@ -62,7 +62,7 @@
     "@ic-reactor/core": "workspace:^",
     "@ic-reactor/parser": "workspace:^",
     "@noble/hashes": "^2.4.0",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "peerDependencies": {
     "@icp-sdk/core": "^6.1.0",
@@ -72,7 +72,7 @@
   "devDependencies": {
     "@icp-sdk/core": "^6.1.0",
     "@size-limit/preset-small-lib": "^13.0.3",
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.4.1",
     "size-limit": "^13.0.3",
     "vitest": "^4.1.11"
   },

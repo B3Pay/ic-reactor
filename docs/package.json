@@ -15,8 +15,8 @@
     "check:links": "node scripts/check-links.mjs"
   },
   "devDependencies": {
-    "@astrojs/starlight": "^0.41.9",
-    "astro": "^7.2.9",
+    "@astrojs/starlight": "^0.42.0",
+    "astro": "^7.3.1",
     "remark-cli": "^12.0.1",
     "remark-lint": "^10.0.1",
     "remark-mdx": "^3.1.1",
