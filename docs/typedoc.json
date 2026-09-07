@@ -1,9 +1,6 @@
 {
   "$schema": "https://typedoc-plugin-markdown.org/schema.json",
-  "entryPoints": [
-    "../packages/core/src/index.ts",
-    "../packages/react/src/index.ts"
-  ],
+  "entryPoints": ["../packages/core/src/index.ts"],
   "tsconfig": "../packages/core/tsconfig.json",
   "readme": "none",
   "out": "src/content/docs/libs",
@@ -30,5 +27,17 @@
   "categorizeByGroup": true,
   "categoryOrder": ["Classes", "Functions", "Interfaces", "Type Aliases", "*"],
   "sort": ["source-order"],
-  "name": "IC Reactor API"
+  "name": "IC Reactor API",
+  "treatWarningsAsErrors": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "intentionallyNotExported": [
+    "AsObject",
+    "AsOptional",
+    "Last",
+    "VariantUnionOf"
+  ]
 }
