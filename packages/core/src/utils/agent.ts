@@ -254,7 +254,6 @@ export async function processUpdateCallResponse(
       result.requestId,
       pollingOptions
     )
-    certificate = response.certificate
     reply = response.reply
   }
 

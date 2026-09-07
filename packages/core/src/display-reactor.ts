@@ -288,7 +288,6 @@ export class DisplayReactor<
 
     let pending: Promise<ReactorReturnOk<A, M, T>>
     try {
-      // @ts-ignore
       pending = this.callMethod(params)
     } finally {
       if (validator) {

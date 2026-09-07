@@ -34,14 +34,12 @@ function run(
   globalConfig: Record<string, unknown> = {}
 ) {
   return runCanisterPipeline({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     canisterConfig: { didFile: "./backend.did", ...canisterConfig } as any,
     projectRoot,
     globalConfig: {
       outDir: "./src/declarations",
       clientManagerPath: "../../clients",
       ...globalConfig,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any,
   })
 }

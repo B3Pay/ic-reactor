@@ -561,11 +561,10 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       return this.recCache.get(t)! as ResultNode<"recursive">
     }
 
-    const self = this
     // Lazy extraction to prevent infinite loops
     let innerSchema: ResultNode | null = null
     const getInner = () =>
-      (innerSchema ??= ty.accept(self, label) as ResultNode)
+      (innerSchema ??= ty.accept(this, label) as ResultNode)
 
     const node: ResultNode<"recursive"> = {
       type: "recursive",

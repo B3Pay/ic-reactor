@@ -45,6 +45,7 @@ CI gate operate on exactly the same set of files.
 
 ```bash
 pnpm check:ai-context  # llms.txt versions match every package.json
+pnpm lint              # ESLint over packages/*/src and packages/*/tests
 pnpm typecheck         # every package and e2e/, including their tests
 ```
 

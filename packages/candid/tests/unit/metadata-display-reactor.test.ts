@@ -10,8 +10,6 @@ import {
   OptionalNode,
   RecordNode,
   ResolvedNode,
-  TextNode,
-  TupleNode,
   VariantNode,
   VectorNode,
 } from "../../src/visitor/returns/index.js"

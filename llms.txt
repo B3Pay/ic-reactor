@@ -104,6 +104,10 @@ Notes:
   place, `.prettierignore`, which the pre-commit hook honours too.
 - `pnpm check:ai-context` is a CI gate: it asserts the package versions listed
   above match each `package.json` and that every `packages/*/llms.txt` exists.
+- `pnpm lint` is a CI gate. Run `pnpm build` first: the type-aware rules read
+  core's emitted `.d.ts` through the workspace symlinks, and without a build
+  they degrade to `any` and stop reporting. A new package needs a
+  `tsconfig.typecheck.json` and an entry in `TYPECHECK_PROJECTS`.
 - `pnpm typecheck` runs each package's own `typecheck` script plus `e2e/`'s, so `src` **and**
   tests are covered. The root `tsconfig.json` is references-only, so
   `pnpm exec tsc --noEmit` at the root checks nothing.

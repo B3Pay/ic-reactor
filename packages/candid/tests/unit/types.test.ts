@@ -143,7 +143,6 @@ describe("Types", () => {
         return IDL.Service({})
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockInit = (args: { IDL: any }) => {
         return [args.IDL.Text]
       }

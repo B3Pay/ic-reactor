@@ -26,9 +26,15 @@ importers:
 
   .:
     devDependencies:
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@10.9.1(jiti@2.7.0))
       '@types/node':
         specifier: ^26.4.0
         version: 26.4.0
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -41,6 +47,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      typescript-eslint:
+        specifier: ^8.68.0
+        version: 8.68.0(eslint@10.9.1(jiti@2.7.0))(typescript@6.0.3)
 
   docs:
     dependencies:
@@ -1139,7 +1148,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(happy-dom@20.11.12)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.9.0))
+        version: 4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(happy-dom@20.11.12)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
 
   packages/codegen:
     dependencies:
@@ -1161,7 +1170,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(happy-dom@20.11.12)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+        version: 4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(happy-dom@20.11.12)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.9.0))
 
   packages/core:
     dependencies:
@@ -2682,6 +2691,15 @@ packages:
   '@eslint/core@1.2.1':
     resolution: {integrity: sha512-MwcE1P+AZ4C6DWlpin/OmOA54mmIZ/+xZuJiQd4SyB29oAJjN30UW9wkKNptW2ctp4cEsvhlLY/CsQ1uoHDloQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@eslint/js@10.0.1':
+    resolution: {integrity: sha512-zeR9k5pd4gxjZ0abRoIaxdc7I3nDktoXZk2qOv9gCNWx3mVwEn32VRhyLaRsDiJjTs0xq/T8mfPtyuXu7GWBcA==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+    peerDependencies:
+      eslint: ^10.0.0
+    peerDependenciesMeta:
+      eslint:
+        optional: true
 
   '@eslint/object-schema@3.0.5':
     resolution: {integrity: sha512-vqTaUEgxzm+YDSdElad6PiRoX4t8VGDjCtt05zn4nU810UIx/uNEV7/lZJ6KwFThKZOzOxzXy48da+No7HZaMw==}
@@ -9936,6 +9954,10 @@ snapshots:
   '@eslint/core@1.2.1':
     dependencies:
       '@types/json-schema': 7.0.15
+
+  '@eslint/js@10.0.1(eslint@10.9.1(jiti@2.7.0))':
+    optionalDependencies:
+      eslint: 10.9.1(jiti@2.7.0)
 
   '@eslint/object-schema@3.0.5': {}
 

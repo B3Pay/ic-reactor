@@ -61,6 +61,11 @@ import {
  * })
  * ```
  */
+/* eslint-disable @typescript-eslint/no-unused-vars -- the type parameter is
+   not referenced by this declaration, but TypeScript requires every
+   declaration of an augmented interface to carry identical type parameters
+   (TS2428), so it cannot be renamed to the `_`-prefixed form the rule
+   accepts. Verified: renaming yields TS2428 plus TS2304. */
 declare module "@ic-reactor/core" {
   interface TransformArgsRegistry<T> {
     metadataDisplay: TransformArgsRegistry<T>["display"]
@@ -69,6 +74,7 @@ declare module "@ic-reactor/core" {
     metadataDisplay: MethodResult<A>
   }
 }
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   A,

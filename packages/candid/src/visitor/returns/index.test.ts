@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest"
 import { ResultFieldVisitor } from "./index.js"
 import { MetadataError } from "../arguments/types.js"
 import type {
-  ResultNode,
   ResolvedNode,
   RecordNode,
   FuncRecordNode,
@@ -10,16 +9,9 @@ import type {
   TupleNode,
   OptionalNode,
   VectorNode,
-  BlobNode,
   RecursiveNode,
   NumberNode,
-  TextNode,
-  PrincipalNode,
-  BooleanNode,
-  NullNode,
   FuncNode,
-  MethodMeta,
-  ServiceMeta,
 } from "./types.js"
 import { IDL } from "@icp-sdk/core/candid"
 
@@ -88,7 +80,6 @@ describe("ResultFieldVisitor", () => {
     })
 
     it("should handle principal type", () => {
-      const principalType = IDL.Principal
       const field = visitor.visitPrincipal(IDL.Principal, "owner")
 
       expect(field.type).toBe("principal")
@@ -1969,11 +1960,6 @@ describe("ResultFieldVisitor", () => {
     })
 
     it("should generate metadata for complex ICRC-1 like response", () => {
-      const Account = IDL.Record({
-        owner: IDL.Principal,
-        subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
-      })
-
       const TransferResult = IDL.Variant({
         Ok: IDL.Nat,
         Err: IDL.Variant({

@@ -104,6 +104,7 @@ Follow these repository-specific patterns when suggesting code:
 
 - Format check (CI gate; covers the whole repo): `pnpm format:check`
 - AI context check (CI gate): `pnpm check:ai-context`
+- Lint used by CI: `pnpm lint` (ESLint flat config over `packages/*/src` and `packages/*/tests`; run `pnpm build` first or the type-aware rules degrade to `any` and stop reporting)
 - Type check used by CI: `pnpm typecheck` (every package plus `e2e/`, `src` and tests; the root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing)
 - Package builds: `pnpm build`
 - Package tests: `pnpm test`

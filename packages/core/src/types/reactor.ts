@@ -45,12 +45,11 @@ export type CanisterId = string | Principal
  *
  * The plain-function fallback below makes both shapes infer identically.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export type ActorMethodParameters<T> =
   T extends ActorMethod<infer Args, any>
     ? Args
-    : // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      T extends (...args: infer Args) => Promise<any>
+    : T extends (...args: infer Args) => Promise<any>
       ? Args
       : never
 
@@ -59,12 +58,11 @@ export type ActorMethodParameters<T> =
  *
  * Same two shapes as {@link ActorMethodParameters}.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export type ActorMethodReturnType<T> =
   T extends ActorMethod<any, infer Ret>
     ? Ret
-    : // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      T extends (...args: any[]) => Promise<infer Ret>
+    : T extends (...args: any[]) => Promise<infer Ret>
       ? Ret
       : never
 
@@ -126,6 +124,11 @@ export interface TransformArgsRegistry<T> {
  * }
  * ```
  */
+/* eslint-disable @typescript-eslint/no-unused-vars -- the type parameter is
+   not referenced by this declaration, but TypeScript requires every
+   declaration of an augmented interface to carry identical type parameters
+   (TS2428), so it cannot be renamed to the `_`-prefixed form the rule
+   accepts. Verified: renaming yields TS2428 plus TS2304. */
 // @ts-expect-error - A is used in module augmentation
 export interface TransformReturnRegistry<T, A = BaseActor> {
   candid: T
@@ -133,6 +136,7 @@ export interface TransformReturnRegistry<T, A = BaseActor> {
   // union stays on the args side, where encode accepts all three forms.
   display: DisplayResultOf<T>
 }
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 /**
  * Helper type to transform args array elements using ToDisplay

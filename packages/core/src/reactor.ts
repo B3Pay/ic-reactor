@@ -344,7 +344,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
         )
       : [this.canisterId.toString()]
 
-    this.queryClient.invalidateQueries({
+    void this.queryClient.invalidateQueries({
       queryKey,
     })
   }

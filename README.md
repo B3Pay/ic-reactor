@@ -386,7 +386,10 @@ pnpm build
 # Run package tests
 pnpm test
 
-# Type-check every package, including its tests (CI gate)
+# Lint packages/*/src and packages/*/tests (CI gate; run after pnpm build)
+pnpm lint
+
+# Type-check every package and e2e/, including their tests (CI gate)
 pnpm typecheck
 
 # Check formatting (CI gate; covers the whole repo)

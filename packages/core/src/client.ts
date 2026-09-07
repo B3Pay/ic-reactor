@@ -397,7 +397,7 @@ export class ClientManager {
     // queries on every sign-in and sign-out.
     const canisterIds = this.connectedCanisterIds()
     canisterIds.forEach((canisterId) => {
-      this.queryClient.cancelQueries({ queryKey: [canisterId] })
+      void this.queryClient.cancelQueries({ queryKey: [canisterId] })
     })
 
     // The agent is mutated in place, so anything holding a reference to
@@ -431,7 +431,7 @@ export class ClientManager {
       // observers reliably refetch. They still show the previous identity's
       // data for the length of that refetch; closing that window needs the
       // principal in the key itself.
-      this.queryClient.invalidateQueries({ queryKey: [canisterId] })
+      void this.queryClient.invalidateQueries({ queryKey: [canisterId] })
     })
 
     this.notifySubscribers(identity)
