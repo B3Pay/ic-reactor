@@ -125,10 +125,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --filter '!./examples/**'
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
-        with:
-          targets: wasm32-unknown-unknown
+      - name: Setup Rust for the parser wasm build
+        uses: ./.github/actions/setup-rust-wasm
 
       - name: Build, type check and test
         run: |
@@ -215,7 +213,13 @@ jobs:
         run: pnpm install --frozen-lockfile --filter "./packages/**..."
 
       # Build the selected package and its dependency graph.
-      - name: Build packages
+      # Every workspace in this matrix reaches the parser: the shortest leg,
+      # `{./packages/parser}...`, is core + parser + candid, and the others add
+      # codegen / cli / vite-plugin on top. So all four run the wasm-pack build.
+      - name: Setup Rust for the parser wasm build
+        uses: ./.github/actions/setup-rust-wasm
+
+      - name: Build package dependency graph
         run: pnpm -r --filter "{./${{ matrix.workspace }}}..." build
 
       - name: Run tests

@@ -85,10 +85,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --filter '!./examples/**'
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
-        with:
-          targets: wasm32-unknown-unknown
+      - name: Setup Rust for the parser wasm build
+        uses: ./.github/actions/setup-rust-wasm
 
       - name: Build, type check and test
         run: |
@@ -176,19 +174,14 @@ jobs:
         # unreleased workspaces out of v3 tags.
         run: pnpm install --frozen-lockfile --filter "{./${{ matrix.workspace }}}..."
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            packages/parser/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('packages/parser/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      # parser is released separately via the release-tools workflow, so we don't need to
-      # build it here. keeping this step slows down the job.
+      # Only the candid leg reaches the parser: `{./packages/candid}...` expands
+      # to core + candid + parser, so that leg runs the wasm-pack build and needs
+      # the toolchain and the cargo cache. The core and react legs expand to
+      # core and core + react, so they skip this entirely. (The comment this
+      # replaces claimed the parser was never built here, which was false.)
+      - name: Setup Rust for the parser wasm build
+        if: matrix.workspace == 'packages/candid'
+        uses: ./.github/actions/setup-rust-wasm
 
       # Build this publishable package and the workspace packages it depends on.
       - name: Build package dependency graph
