@@ -78,7 +78,7 @@
     "@icp-sdk/core": "^6.1.0",
     "@size-limit/preset-small-lib": "^13.0.3",
     "@tanstack/query-core": "^5.102.8",
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.4.1",
     "size-limit": "^13.0.3",
     "vitest": "^4.1.11",
     "wasm-pack": "0.15.0"
