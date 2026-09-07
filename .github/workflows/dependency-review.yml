@@ -1,0 +1,68 @@
+name: Dependency Review
+
+# PR-only. dependency-review-action diffs the dependency graph between a base
+# ref and a head ref, so it has nothing to compare against on a push to main --
+# which is also why this cannot live in ci.yml, which runs on both.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5
+        with:
+          fail-on-severity: high
+          # The lockfile entries GitHub reports carry scope "runtime" regardless
+          # of whether the importer is a devDependency, so the default scope
+          # filter would not hide them. Manifest entries for devDependencies do
+          # come through as "development" and would be filtered, so both scopes
+          # are named explicitly rather than relying on that asymmetry.
+          fail-on-scopes: runtime, development
+
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Deliberately install-free: `pnpm audit` resolves the whole workspace from
+    # pnpm-lock.yaml and never reads node_modules, so this job needs no pnpm
+    # store cache and no Rust toolchain, unlike every other job in this repo.
+    #
+    # dependency-review-action alone would not have caught what motivated this
+    # gate. It diffs base against head, so it only reports dependencies a PR
+    # introduces or upgrades into a vulnerable version -- it is blind to a
+    # dependency that was already on main and became vulnerable later, when a new
+    # advisory was published against a version the lockfile had pinned all along.
+    # That is exactly how four high-severity fast-uri advisories went unnoticed.
+    # This job re-audits the whole tree on every PR, so decay surfaces.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
+
+      - name: Audit the workspace
+        run: pnpm verify:audit

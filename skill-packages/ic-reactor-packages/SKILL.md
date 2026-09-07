@@ -80,7 +80,7 @@ Use CI-aligned commands:
 - Example type checks: `pnpm typecheck:examples`
 - Example builds (CI gate — `tsc` never loads a bundler, so a broken Vite or Next config type-checks clean): `pnpm build:examples`
 - Docs build: `pnpm docs:build`
-- Dependency audit: `corepack pnpm audit --audit-level moderate`
+- Dependency audit (CI gate on every PR): `pnpm verify:audit`
 
 Run `pnpm verify:packages` after any change to a package's `exports`, `files`,
 build output, or module format — in-repo consumers resolve through workspace

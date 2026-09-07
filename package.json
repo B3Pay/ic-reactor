@@ -25,7 +25,8 @@
     "format:check": "prettier --check .",
     "prepare": "husky",
     "typecheck": "pnpm -r --filter \"./packages/**\" typecheck",
-    "verify:packages": "node scripts/verify-package-artifacts.mjs"
+    "verify:packages": "node scripts/verify-package-artifacts.mjs",
+    "verify:audit": "pnpm audit --audit-level=high"
   },
   "lint-staged": {
     "*": [
@@ -58,7 +59,7 @@
       "axios": "^1.16.0",
       "brace-expansion": "^5.0.9",
       "devalue": "^5.8.1",
-      "fast-uri": "^3.1.5",
+      "fast-uri": "^3.1.6",
       "h3": "^1.15.9",
       "picomatch": "^4.0.4",
       "postcss": "^8.5.26",
