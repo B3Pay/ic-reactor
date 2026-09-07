@@ -107,8 +107,8 @@ pnpm test               # Run all tests
 pnpm typecheck          # Type-check every package incl. tests (CI gate)
 pnpm typecheck:examples # Type-check example apps
 pnpm build:examples     # Build every example app (CI gate)
-pnpm format             # Format code with Prettier (packages/** only)
-pnpm format:check       # Verify formatting without writing (CI gate, packages/** only)
+pnpm format             # Format the whole repo with Prettier
+pnpm format:check       # Verify formatting without writing (CI gate, whole repo)
 pnpm check:ai-context   # Verify llms.txt versions match package.json (CI gate)
 pnpm verify:packages    # Pack + publint + attw + real-Node import of published artifacts
 pnpm verify:test-fails <file> --package <pkg>  # Check a new test actually fails without the fix

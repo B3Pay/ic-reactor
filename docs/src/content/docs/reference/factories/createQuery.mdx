@@ -41,15 +41,15 @@ const userProfileQuery = createQuery(backend, {
 
 The factory returns an object with these utilities:
 
-| Property       | Type                                     | Description                              |
-| -------------- | ---------------------------------------- | ---------------------------------------- |
-| `fetch`        | `() => Promise<T>`                       | Cache-first fetch — use in route loaders |
-| `prefetch`     | `() => Promise<void>`                    | Fire-and-forget cache warm-up            |
-| `useQuery`     | `(options?) => UseQueryResult`           | React hook for components                |
-| `invalidate`   | `() => Promise<void>`                    | Invalidate cache (refetches if active)   |
-| `getQueryKey`  | `() => QueryKey`                         | Get the TanStack Query key               |
-| `getCacheData` | `(select?) => T`                         | Read from cache without fetching         |
-| `setData`      | `(updater) => T \| undefined`            | Write raw data into cache                |
+| Property       | Type                           | Description                              |
+| -------------- | ------------------------------ | ---------------------------------------- |
+| `fetch`        | `() => Promise<T>`             | Cache-first fetch — use in route loaders |
+| `prefetch`     | `() => Promise<void>`          | Fire-and-forget cache warm-up            |
+| `useQuery`     | `(options?) => UseQueryResult` | React hook for components                |
+| `invalidate`   | `() => Promise<void>`          | Invalidate cache (refetches if active)   |
+| `getQueryKey`  | `() => QueryKey`               | Get the TanStack Query key               |
+| `getCacheData` | `(select?) => T`               | Read from cache without fetching         |
+| `setData`      | `(updater) => T \| undefined`  | Write raw data into cache                |
 
 ---
 
@@ -335,7 +335,7 @@ oldest entries rather than grow without bound.
 Eviction costs memoization, not correctness: a query object is a closure over
 the reactor and its config, so one rebuilt after eviction behaves identically
 and only its reference identity differs. It matters only if you compare
-instances or put one in a dependency array *and* cycle through more than 256
+instances or put one in a dependency array _and_ cycle through more than 256
 distinct argument sets.
 
 ---

@@ -252,10 +252,10 @@ The types are automatically inferred from your actor interface, so you typically
 
 <Aside type="note">
   The query key is automatically generated as `[canisterId, functionName,
-  JSON.stringify(args), ...queryKey]`, with an extra `{ effectiveTarget }`
-  segment inserted after `functionName` when `callConfig` targets a different
-  canister or subnet. Arguments are one single serialized segment, so queries
-  with different arguments are cached separately.
+  JSON.stringify(args), ...queryKey]`, with an extra `{effectiveTarget}` segment
+  inserted after `functionName` when `callConfig` targets a different canister
+  or subnet. Arguments are one single serialized segment, so queries with
+  different arguments are cached separately.
 </Aside>
 
 <Aside type="tip">

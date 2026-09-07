@@ -70,7 +70,7 @@ dapp on a custom domain falls through it.
 
 Use CI-aligned commands:
 
-- Format check (CI gate, covers `packages/**` only): `pnpm format:check`
+- Format check (CI gate, covers the whole repo): `pnpm format:check`
 - AI context check (CI gate): `pnpm check:ai-context`
 - Type check every package including tests (CI gate): `pnpm typecheck`
 - Strict project-reference sanity: `pnpm exec tsc -b`

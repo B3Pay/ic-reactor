@@ -22,16 +22,15 @@
     "release": "node scripts/release.js",
     "release:tools": "node scripts/release-tools.js",
     "clean": "node scripts/clean-node-modules.js",
-    "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
-    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,jsx,json,md,mdx,css,scss,html}\"",
-    "format:staged": "pnpm -r --filter './packages/**' exec prettier --write",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "prepare": "husky",
     "typecheck": "pnpm -r --filter \"./packages/**\" typecheck",
     "verify:packages": "node scripts/verify-package-artifacts.mjs"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,json,md,css,scss,html}": [
-      "prettier --write"
+    "*": [
+      "prettier --write --ignore-unknown"
     ]
   },
   "keywords": [

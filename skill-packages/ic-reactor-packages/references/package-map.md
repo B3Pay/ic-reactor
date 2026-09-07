@@ -70,8 +70,8 @@ re-runs the tests against a base revision, and a test that passes with and
 without the fix proves nothing about it.
 
 `pnpm typecheck` runs each package's own `typecheck` script, so it covers tests
-as well as `src`. `pnpm format:check` only globs `packages/**`, so Prettier
-never sees root markdown, `docs/`, `examples/`, or `skill-packages/`.
+as well as `src`. `pnpm format:check` covers the whole repo, with
+exclusions declared in one place, `.prettierignore`.
 
 Add `pnpm typecheck:examples` **and `pnpm build:examples`** when example
 compatibility may be affected — the type check never loads a bundler, so a

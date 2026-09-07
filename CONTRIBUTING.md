@@ -37,8 +37,9 @@ You can check formatting without modifying files:
 pnpm format:check
 ```
 
-Both scripts glob `packages/**` only, so root markdown, `docs/`, `examples/`,
-and `skill-packages/` are not formatted or checked by them.
+Both scripts cover the whole repo. Exclusions live in one place,
+`.prettierignore`, which the pre-commit hook honours too, so the hook and the
+CI gate operate on exactly the same set of files.
 
 5. Run the remaining CI gates before opening a PR:
 

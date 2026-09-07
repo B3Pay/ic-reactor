@@ -122,13 +122,14 @@ constructor, or per call to `login()` — the per-call value wins.
   before 2026 serve the SPA at `/` behind a `#authorize` fragment instead of at
   `/authorize`.
 
-  **`release-2026-03-16` is the newest `internet_identity_dev.wasm` that works.**
+**`release-2026-03-16` is the newest `internet_identity_dev.wasm` that works.**
 
-  `AuthenticationManager` probes the canister during `prepareClient()` and adapts:
-  it uses `/authorize` when that is served, falls back to the legacy
-  `#authorize` flow with a warning for pre-2026 builds, and rejects `login()`
-  with an explanation naming this release when the build serves neither — rather
-  than opening a popup the app cannot see into.
+`AuthenticationManager` probes the canister during `prepareClient()` and adapts:
+it uses `/authorize` when that is served, falls back to the legacy
+`#authorize` flow with a warning for pre-2026 builds, and rejects `login()`
+with an explanation naming this release when the build serves neither — rather
+than opening a popup the app cannot see into.
+
 </Aside>
 
 <Aside type="caution">

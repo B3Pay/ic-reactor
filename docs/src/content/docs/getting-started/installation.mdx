@@ -51,8 +51,8 @@ Most users will want the React package, which includes everything you need:
 
 <Aside type="note">
   `react` is the only required React peer. `react-dom` is declared as an
-  **optional** peer — the package never imports it — so renderers without a
-  DOM (React Native, custom hosts) work without installing it.
+  **optional** peer — the package never imports it — so renderers without a DOM
+  (React Native, custom hosts) work without installing it.
 </Aside>
 
 ### Non-React Projects (Node.js, Svelte, Vue, etc.)
@@ -136,34 +136,35 @@ pnpm add @icp-sdk/auth@^8
   `@ic-reactor/react` needs `@icp-sdk/core@^6`. A strict `npm install` of the
   advertised set therefore fails:
 
-  ```
-  npm error ERESOLVE unable to resolve dependency tree
-  npm error Found: @icp-sdk/core@5.4.0
-  npm error   peer @icp-sdk/core@"^5" from @icp-sdk/auth@8.0.3
-  npm error Could not resolve dependency:
-  npm error   peer @icp-sdk/core@"^6.0.0" from @ic-reactor/react
-  ```
+```
+npm error ERESOLVE unable to resolve dependency tree
+npm error Found: @icp-sdk/core@5.4.0
+npm error   peer @icp-sdk/core@"^5" from @icp-sdk/auth@8.0.3
+npm error Could not resolve dependency:
+npm error   peer @icp-sdk/core@"^6.0.0" from @ic-reactor/react
+```
 
-  This is stale metadata upstream, not an actual incompatibility: auth v8 works
-  against core v6, and IC Reactor's own suite runs that combination. `pnpm` and
-  `yarn` install it without complaint. For npm, tell it to use your `core` for
-  auth as well:
+This is stale metadata upstream, not an actual incompatibility: auth v8 works
+against core v6, and IC Reactor's own suite runs that combination. `pnpm` and
+`yarn` install it without complaint. For npm, tell it to use your `core` for
+auth as well:
 
-  ```json
-  // package.json
-  {
-    "overrides": {
-      "@icp-sdk/auth": {
-        "@icp-sdk/core": "$@icp-sdk/core"
-      }
+```json
+// package.json
+{
+  "overrides": {
+    "@icp-sdk/auth": {
+      "@icp-sdk/core": "$@icp-sdk/core"
     }
   }
-  ```
+}
+```
 
-  That resolves to a single `@icp-sdk/core` with no duplication.
-  `legacy-peer-deps=true` in `.npmrc` also works but disables peer checking
-  everywhere, so prefer the scoped override. This note goes away once
-  `@icp-sdk/auth` publishes a `core@^6` peer.
+That resolves to a single `@icp-sdk/core` with no duplication.
+`legacy-peer-deps=true` in `.npmrc` also works but disables peer checking
+everywhere, so prefer the scoped override. This note goes away once
+`@icp-sdk/auth` publishes a `core@^6` peer.
+
 </Aside>
 
 Bundlers still **resolve** that specifier while building the module graph,
