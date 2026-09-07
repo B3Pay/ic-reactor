@@ -28,10 +28,10 @@ In the rapidly evolving landscape of Internet Computer development, choosing the
 
 ### Our Packages Are Tiny
 
-| Package               | Minified + Gzipped | What's Included                                     |
-| --------------------- | ------------------ | --------------------------------------------------- |
-| **@ic-reactor/core**  | **~8 KB**          | Reactor, caching, transformations, validation       |
-| **@ic-reactor/react** | **~8 KB**          | React hooks (excludes core, React, TanStack Query)  |
+| Package               | Minified + Gzipped | What's Included                                    |
+| --------------------- | ------------------ | -------------------------------------------------- |
+| **@ic-reactor/core**  | **~8 KB**          | Reactor, caching, transformations, validation      |
+| **@ic-reactor/react** | **~8 KB**          | React hooks (excludes core, React, TanStack Query) |
 
 That's it. **~16 KB total** for a complete, production-ready data layer.
 
@@ -206,6 +206,7 @@ One of IC Reactor's most elegant features:
 
 <Tabs>
   <TabItem label="With IC Reactor">
+
 ```typescript
 // Your Candid method returns: variant { Ok: nat; Err: text }
 
@@ -221,8 +222,10 @@ const { mutate } = useActorMutation({
   },
 })
 ```
+
   </TabItem>
   <TabItem label="Without IC Reactor">
+
 ```typescript
 // Manual approach - tedious and error-prone
 const result = await actor.transfer({ to: recipient, amount })
@@ -236,6 +239,7 @@ if ("Ok" in result) {
   throw new Error("Unexpected result shape")
 }
 ```
+
   </TabItem>
 </Tabs>
 

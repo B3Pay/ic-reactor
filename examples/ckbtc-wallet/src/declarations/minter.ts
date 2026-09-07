@@ -13,9 +13,7 @@ export type BitcoinAddress =
   | { p2wpkh_v0: Uint8Array | number[] }
   | { p2pkh: Uint8Array | number[] }
 export type BtcNetwork =
-  | { Mainnet: null }
-  | { Regtest: null }
-  | { Testnet: null }
+  { Mainnet: null } | { Regtest: null } | { Testnet: null }
 export interface CanisterStatusResponse {
   status: CanisterStatusType
   memory_size: bigint
@@ -26,9 +24,7 @@ export interface CanisterStatusResponse {
   module_hash: [] | [Uint8Array | number[]]
 }
 export type CanisterStatusType =
-  | { stopped: null }
-  | { stopping: null }
-  | { running: null }
+  { stopped: null } | { stopping: null } | { running: null }
 export interface DefiniteCanisterSettings {
   freezing_threshold: bigint
   controllers: Array<Principal>

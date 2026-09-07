@@ -64,8 +64,8 @@ mutate([Principal.fromText("aaaaa-aa"), BigInt(1000000)])
 <Aside type="note">
   Argument types follow the reactor the hooks were built from. A plain `Reactor`
   expects Candid values (`Principal`, `bigint`), while a `DisplayReactor`
-  expects their display forms — the same call becomes
-  `mutate(["aaaaa-aa", "1000000"])`.
+  expects their display forms — the same call becomes `mutate(["aaaaa-aa",
+  "1000000"])`.
 </Aside>
 
 ## Side Effects
@@ -341,9 +341,7 @@ import { backend } from "../reactor"
 // Define mutation once
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  invalidateQueries: [
-    backend.generateQueryKey({ functionName: "getPosts" }),
-  ],
+  invalidateQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
 })
 
 // Use in components

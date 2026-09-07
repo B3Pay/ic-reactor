@@ -9,7 +9,7 @@ coverage/
 **/target
 docs/dist
 .e2e/
-public/
+docs/public/
 .husky/
 .pnpm-debug.log
 .env
@@ -19,3 +19,51 @@ public/
 # strips the semicolons Next writes, so formatting it means a one-line diff
 # after every build.
 **/next-env.d.ts
+
+# `pnpm format:check` now walks the whole repo, and Prettier reads only the root
+# .gitignore plus this file -- never a nested .gitignore. Every build directory
+# that only a nested .gitignore covers has to be repeated here, or the check
+# fails in any working tree that has been built: `.next/` and `examples/*/out/`
+# alone accounted for 205 of the 249 files a repo-wide check flagged.
+.next/
+examples/*/out/
+dist-ssr/
+.tanstack/
+.nitro/
+.wrangler/
+.yarn/
+canister_ids.json
+
+# Editor state. Listed in several nested .gitignore files, which Prettier does
+# not read, so an untracked settings file would otherwise be rewritten in place.
+.vscode/
+.idea/
+
+# Claude Code worktrees and machine-local settings. Not covered by the root
+# .gitignore, so a repo-wide walk would format files on other agents' branches.
+.claude/
+
+# Written by `dfx generate` / the vite plugin into the e2e project.
+e2e/src/declarations/
+
+# TypeDoc output, rewritten by `pnpm docs:build`. Also in the root .gitignore;
+# repeated here so the Prettier set does not silently depend on it.
+docs/src/content/docs/libs/
+
+# Rewritten by the TanStack Router plugin on every dev/build run; its own header
+# tells you to exclude it from linters and formatters.
+examples/tanstack-router/src/routeTree.gen.ts
+
+# pnpm rewrites the lockfile on every install.
+pnpm-lock.yaml
+
+# Rewritten by @ic-reactor/vite-plugin's codegen on every `pnpm build:examples`.
+# These are tracked but generator-owned: the committed copies are Prettier-
+# formatted while the generator emits its own style, so a repo-wide check goes
+# red in any tree that has been built. Same reasoning as **/next-env.d.ts above.
+# (The generator emitting unformatted output is tracked separately.)
+examples/all-in-one-demo/src/declarations/backend/declarations/backend.*
+examples/codegen-in-action/src/canisters-vite/backend/declarations/backend.*
+examples/suspense-infinite-query-demo/src/declarations/backend/declarations/backend.*
+examples/vite-environment-variables/frontend/src/lib/canisters/backend/declarations/backend.*
+examples/vite-plugin-demo/frontend/lib/canisters/backend/declarations/backend.*

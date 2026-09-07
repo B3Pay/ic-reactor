@@ -75,10 +75,7 @@ export interface UpgradeArgs {
  * The value returned from the [icrc1_metadata] endpoint.
  */
 export type Value =
-  | { Int: bigint }
-  | { Nat: bigint }
-  | { Blob: Uint8Array }
-  | { Text: string }
+  { Int: bigint } | { Nat: bigint } | { Blob: Uint8Array } | { Text: string }
 export interface _SERVICE {
   icrc1_balance_of: ActorMethod<[Account], Tokens>
   icrc1_decimals: ActorMethod<[], number>

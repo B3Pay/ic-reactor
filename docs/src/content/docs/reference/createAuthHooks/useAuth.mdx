@@ -73,16 +73,16 @@ const identity = await authenticate()
 
 ## Return Value
 
-| Property           | Type                          | Description                                            |
-| ------------------ | ----------------------------- | ------------------------------------------------------ |
-| `login`            | `(options?) => Promise<void>` | Triggers the login flow                                |
-| `logout`           | `(options?: { returnTo?: string }) => Promise<void>` | Logs the user out               |
-| `authenticate`     | `() => Promise<Identity \| undefined>` | Restores an existing session without a popup  |
-| `isAuthenticated`  | `boolean`                     | Whether the user is currently authenticated            |
-| `isAuthenticating` | `boolean`                     | Whether an authentication process is in progress       |
-| `identity`         | `Identity \| null`            | The current user's `@icp-sdk/core/agent` Identity      |
-| `principal`        | `Principal \| null`           | The current user's `@icp-sdk/core/principal` Principal |
-| `error`            | `Error \| undefined`          | Last authentication error                              |
+| Property           | Type                                                 | Description                                            |
+| ------------------ | ---------------------------------------------------- | ------------------------------------------------------ |
+| `login`            | `(options?) => Promise<void>`                        | Triggers the login flow                                |
+| `logout`           | `(options?: { returnTo?: string }) => Promise<void>` | Logs the user out                                      |
+| `authenticate`     | `() => Promise<Identity \| undefined>`               | Restores an existing session without a popup           |
+| `isAuthenticated`  | `boolean`                                            | Whether the user is currently authenticated            |
+| `isAuthenticating` | `boolean`                                            | Whether an authentication process is in progress       |
+| `identity`         | `Identity \| null`                                   | The current user's `@icp-sdk/core/agent` Identity      |
+| `principal`        | `Principal \| null`                                  | The current user's `@icp-sdk/core/principal` Principal |
+| `error`            | `Error \| undefined`                                 | Last authentication error                              |
 
 ## Protected Routes Pattern
 

@@ -105,21 +105,21 @@ All react-query options are available:
 
 ## Return Value
 
-| Property         | Type                                    | Description                                                        |
-| :--------------- | :-------------------------------------- | :----------------------------------------------------------------- |
-| `data`           | `ReactorReturnOk<A, M, T> \| undefined` | The returned data from the method call.                            |
-| `call`           | `(args?) => Promise<data>`              | Function to trigger the method call manually.                      |
-| `isLoading`      | `boolean`                               | Whether the method is currently executing (alias for `isPending`). |
-| `isPending`      | `boolean`                               | Whether the method is currently executing.                         |
-| `isError`        | `boolean`                               | Whether the last call resulted in an error.                        |
-| `isSuccess`      | `boolean`                               | Whether the method has completed successfully.                     |
-| `error`          | `ReactorReturnErr<A, M, T> \| null`     | The error object if one occurred.                                  |
-| `isQuery`        | `boolean`                               | `true` if it's a query method, `false` otherwise.                  |
+| Property         | Type                                    | Description                                                                 |
+| :--------------- | :-------------------------------------- | :-------------------------------------------------------------------------- |
+| `data`           | `ReactorReturnOk<A, M, T> \| undefined` | The returned data from the method call.                                     |
+| `call`           | `(args?) => Promise<data>`              | Function to trigger the method call manually.                               |
+| `isLoading`      | `boolean`                               | Whether the method is currently executing (alias for `isPending`).          |
+| `isPending`      | `boolean`                               | Whether the method is currently executing.                                  |
+| `isError`        | `boolean`                               | Whether the last call resulted in an error.                                 |
+| `isSuccess`      | `boolean`                               | Whether the method has completed successfully.                              |
+| `error`          | `ReactorReturnErr<A, M, T> \| null`     | The error object if one occurred.                                           |
+| `isQuery`        | `boolean`                               | `true` if it's a query method, `false` otherwise.                           |
 | `functionType`   | `FunctionType`                          | `"query"` or `"update"`. Candid `composite_query` methods report `"query"`. |
-| `reset`          | `() => void`                            | Clears the state (data and error).                                 |
-| `refetch`        | `() => Promise`                         | For queries: manually refetches the data.                          |
-| `queryResult`    | `UseQueryResult`                        | The raw result if it's a query.                                    |
-| `mutationResult` | `UseMutationResult`                     | The raw result if it's a mutation.                                 |
+| `reset`          | `() => void`                            | Clears the state (data and error).                                          |
+| `refetch`        | `() => Promise`                         | For queries: manually refetches the data.                                   |
+| `queryResult`    | `UseQueryResult`                        | The raw result if it's a query.                                             |
+| `mutationResult` | `UseMutationResult`                     | The raw result if it's a mutation.                                          |
 
 ## See Also
 

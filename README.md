@@ -389,7 +389,7 @@ pnpm test
 # Type-check every package, including its tests (CI gate)
 pnpm typecheck
 
-# Check formatting (CI gate; globs packages/** only)
+# Check formatting (CI gate; covers the whole repo)
 pnpm format:check
 
 # Check llms.txt versions against every package.json (CI gate)

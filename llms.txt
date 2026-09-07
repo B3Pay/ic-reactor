@@ -100,8 +100,8 @@ declarations, and generated hook files. For codegen behavior, edit
 
 Notes:
 
-- `pnpm format:check` globs `packages/**` only. Root markdown, `docs/`,
-  `examples/`, and `skill-packages/` are outside Prettier's reach.
+- `pnpm format:check` covers the whole repo. Exclusions are declared in one
+  place, `.prettierignore`, which the pre-commit hook honours too.
 - `pnpm check:ai-context` is a CI gate: it asserts the package versions listed
   above match each `package.json` and that every `packages/*/llms.txt` exists.
 - `pnpm typecheck` runs each package's own `typecheck` script, so `src` **and**

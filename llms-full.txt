@@ -456,8 +456,8 @@ depend on parser `dist`; parser builds remove and recreate `dist`.
 
 Script notes:
 
-- `pnpm format:check` globs `packages/**` only; root markdown, `docs/`,
-  `examples/`, and `skill-packages/` are not covered by Prettier.
+- `pnpm format:check` covers the whole repo; exclusions are declared in one
+  place, `.prettierignore`, which the pre-commit hook honours too.
 - `pnpm check:ai-context` is a CI gate asserting `llms.txt` package versions
   match each `package.json` and that every `packages/*/llms.txt` exists.
 - `pnpm typecheck` runs each package's own `typecheck` script and covers tests

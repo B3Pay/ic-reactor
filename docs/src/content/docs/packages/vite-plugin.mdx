@@ -63,26 +63,26 @@ plus hooks named after the canister — for a canister named `backend`:
 
 ## Plugin Options
 
-| Option                | Type             | Default              | Description                                                 |
-| :-------------------- | :--------------- | :------------------- | :---------------------------------------------------------- |
-| `canisters`           | `CanisterConfig[]` | —                  | Canister configurations (required).                         |
-| `outDir`              | `string`         | `"src/declarations"` | Base output directory for generated files.                  |
-| `clientManagerPath`   | `string`         | `"../../clients"`    | Default client manager import path (relative from generated files). |
-| `target`              | `"react" \| "core"` | `"react"`         | Default generated runtime target.                           |
-| `injectEnvironment`   | `boolean`        | `true`               | Inject `ic_env` cookie and proxy during `vite dev`.         |
-| `failOnError`         | `boolean`        | `true` on `vite build`, `false` on `vite dev` | Abort the Vite run when a canister fails to generate. |
+| Option              | Type                | Default                                       | Description                                                         |
+| :------------------ | :------------------ | :-------------------------------------------- | :------------------------------------------------------------------ |
+| `canisters`         | `CanisterConfig[]`  | —                                             | Canister configurations (required).                                 |
+| `outDir`            | `string`            | `"src/declarations"`                          | Base output directory for generated files.                          |
+| `clientManagerPath` | `string`            | `"../../clients"`                             | Default client manager import path (relative from generated files). |
+| `target`            | `"react" \| "core"` | `"react"`                                     | Default generated runtime target.                                   |
+| `injectEnvironment` | `boolean`           | `true`                                        | Inject `ic_env` cookie and proxy during `vite dev`.                 |
+| `failOnError`       | `boolean`           | `true` on `vite build`, `false` on `vite dev` | Abort the Vite run when a canister fails to generate.               |
 
 ### Per-canister options
 
-| Option              | Type     | Description                                                                                                       |
-| :------------------ | :------- | :---------------------------------------------------------------------------------------------------------------- |
-| `name`              | `string` | Canister name (required).                                                                                         |
-| `didFile`           | `string` | Path to the `.did` file (required).                                                                               |
+| Option              | Type     | Description                                                                                                              |
+| :------------------ | :------- | :----------------------------------------------------------------------------------------------------------------------- |
+| `name`              | `string` | Canister name (required).                                                                                                |
+| `didFile`           | `string` | Path to the `.did` file (required).                                                                                      |
 | `mode`              | `string` | Reactor class: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`. |
-| `outDir`            | `string` | Override output directory for this canister.                                                                      |
-| `clientManagerPath` | `string` | Override client manager path for this canister.                                                                   |
-| `target`            | `string` | Override runtime target for this canister.                                                                        |
-| `canisterId`        | `string` | Fixed canister ID (overrides auto-detected value during local dev).                                               |
+| `outDir`            | `string` | Override output directory for this canister.                                                                             |
+| `clientManagerPath` | `string` | Override client manager path for this canister.                                                                          |
+| `target`            | `string` | Override runtime target for this canister.                                                                               |
+| `canisterId`        | `string` | Fixed canister ID (overrides auto-detected value during local dev).                                                      |
 
 ## Reactor Mode
 

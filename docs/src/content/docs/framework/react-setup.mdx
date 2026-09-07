@@ -69,11 +69,8 @@ This guide covers the complete setup of IC Reactor in a React application, inclu
    // Auth hooks are bound to an AuthenticationManager, not the ClientManager
    export const authentication = new AuthenticationManager({ clientManager })
 
-   export const {
-     useAuth,
-     useUserPrincipal,
-     useAgentState,
-   } = createAuthHooks(authentication)
+   export const { useAuth, useUserPrincipal, useAgentState } =
+     createAuthHooks(authentication)
    ```
 
 3. ### Setup Provider (Optional)

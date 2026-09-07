@@ -49,7 +49,7 @@ Use this map before editing so you can start in the package that owns the behavi
 
 ## Verification commands
 
-- Format check (CI gate; globs `packages/**` only, so root markdown, `docs/`, `examples/`, and `skill-packages/` are not covered): `pnpm format:check`
+- Format check (CI gate; covers the whole repo, with exclusions declared in `.prettierignore`): `pnpm format:check`
 - AI context check (CI gate; asserts `llms.txt` versions match every `package.json` and each `packages/*/llms.txt` exists): `pnpm check:ai-context`
 - Type check used by CI: `pnpm typecheck` — runs each package's own `typecheck` script, covering `src` and tests. The root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing.
 - Package builds: `pnpm build`

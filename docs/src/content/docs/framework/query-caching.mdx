@@ -64,13 +64,16 @@ Use `generateQueryKey` to get the cache key for any query:
 ```typescript
 import { backend } from "./reactor"
 
-const queryKey = backend.generateQueryKey({
-  functionName: "getUser",
-  args: ["user-123"],
-}, {
-  canisterId: otherCanisterId,
-  effectiveCanisterId: managementCanisterId,
-})
+const queryKey = backend.generateQueryKey(
+  {
+    functionName: "getUser",
+    args: ["user-123"],
+  },
+  {
+    canisterId: otherCanisterId,
+    effectiveCanisterId: managementCanisterId,
+  }
+)
 // [otherCanisterId, 'getUser', { effectiveTarget: { canisterId: 'aaaaa-aa' } }, '["user-123"]']
 ```
 
@@ -230,12 +233,15 @@ backend.invalidateQueries(
 
 ```typescript
 // Invalidate getUser query for specific user
-backend.invalidateQueries({
-  functionName: "getUser",
-  args: ["user-123"],
-}, {
-  canisterId: otherCanisterId,
-})
+backend.invalidateQueries(
+  {
+    functionName: "getUser",
+    args: ["user-123"],
+  },
+  {
+    canisterId: otherCanisterId,
+  }
+)
 ```
 
 ### Invalidate by Custom Query Key

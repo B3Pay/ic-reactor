@@ -18,7 +18,13 @@
  * Usage: node scripts/verify-package-artifacts.mjs [--skip-attw] [--keep]
  */
 import { execFileSync } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, readdirSync } from "node:fs"
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+  readdirSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 
@@ -61,7 +67,13 @@ const isBinOnly = (m) =>
 const failures = []
 function fail(pkg, what, detail) {
   failures.push({ pkg, what, detail })
-  console.error(`  ✗ ${what}\n${String(detail).split("\n").slice(0, 12).map((l) => `      ${l}`).join("\n")}`)
+  console.error(
+    `  ✗ ${what}\n${String(detail)
+      .split("\n")
+      .slice(0, 12)
+      .map((l) => `      ${l}`)
+      .join("\n")}`
+  )
 }
 function ok(what) {
   console.log(`  ✓ ${what}`)
@@ -99,18 +111,41 @@ try {
   // ── 2. Install them into a scratch project outside the workspace ─────────────
   writeFileSync(
     join(scratch, "package.json"),
-    JSON.stringify({ name: "verify-esm", private: true, version: "1.0.0", type: "module" }, null, 2)
+    JSON.stringify(
+      { name: "verify-esm", private: true, version: "1.0.0", type: "module" },
+      null,
+      2
+    )
   )
-  console.log(`\ninstalling ${tarballs.length} tarballs + peers into scratch project...`)
+  console.log(
+    `\ninstalling ${tarballs.length} tarballs + peers into scratch project...`
+  )
   try {
     // --legacy-peer-deps: @icp-sdk/auth@8 still declares a peer of @icp-sdk/core@^5,
     // which npm refuses to resolve against the v6 we use. That is an upstream
     // manifest bug and is not what this script is checking.
-    run("npm", ["install", "--no-audit", "--no-fund", "--legacy-peer-deps",
-      "--loglevel", "error", ...tarballs.map((t) => `./${t.file}`), ...PEERS], { cwd: scratch })
+    run(
+      "npm",
+      [
+        "install",
+        "--no-audit",
+        "--no-fund",
+        "--legacy-peer-deps",
+        "--loglevel",
+        "error",
+        ...tarballs.map((t) => `./${t.file}`),
+        ...PEERS,
+      ],
+      { cwd: scratch }
+    )
   } catch (e) {
     console.error("install into scratch project failed:")
-    console.error(String(e.stderr || e.stdout || e.message).split("\n").slice(0, 25).join("\n"))
+    console.error(
+      String(e.stderr || e.stdout || e.message)
+        .split("\n")
+        .slice(0, 25)
+        .join("\n")
+    )
     process.exit(1)
   }
   console.log("installed\n")
@@ -120,7 +155,9 @@ try {
     console.log(`${name}`)
 
     if (isBinOnly(manifest)) {
-      ok(`skip import ${name} (bin-only package — the executable is the whole surface)`)
+      ok(
+        `skip import ${name} (bin-only package — the executable is the whole surface)`
+      )
     }
 
     // Derive the public subpaths from the exports map (skip ./package.json).
@@ -134,7 +171,9 @@ try {
     // rather than exposing a module surface. Only its declarations are checked.
     const binTargets = new Set(
       Object.values(
-        typeof manifest.bin === "string" ? { [name]: manifest.bin } : manifest.bin || {}
+        typeof manifest.bin === "string"
+          ? { [name]: manifest.bin }
+          : manifest.bin || {}
       ).map((p) => String(p).replace(/^\.\//, ""))
     )
     const isBinEntry = (target) =>
@@ -145,10 +184,10 @@ try {
 
       const entryTarget =
         sub === "."
-          ? manifest.exports?.["."]?.import?.default ??
+          ? (manifest.exports?.["."]?.import?.default ??
             manifest.exports?.["."]?.import ??
             manifest.exports?.["."]?.default ??
-            manifest.main
+            manifest.main)
           : undefined
       if (isBinEntry(entryTarget)) {
         ok(`skip import ${spec} (bin entry — importing would run the CLI)`)
@@ -157,13 +196,18 @@ try {
 
       // ESM import
       try {
-        const out = run(process.execPath, ["-e",
-          `import(${JSON.stringify(spec)}).then(m=>{
+        const out = run(
+          process.execPath,
+          [
+            "-e",
+            `import(${JSON.stringify(spec)}).then(m=>{
              const n=Object.keys(m).length;
              if(n===0) { console.error("no exports"); process.exit(1) }
              console.log("exports:"+n)
            }).catch(e=>{ console.error(e.code||"", e.message); process.exit(1) })`,
-        ], { cwd: scratch })
+          ],
+          { cwd: scratch }
+        )
         ok(`import ${spec} (${out.trim()})`)
       } catch (e) {
         fail(name, `import ${spec}`, e.stderr || e.stdout || e.message)
@@ -174,10 +218,15 @@ try {
       const hasRequire = cond && typeof cond === "object" && "require" in cond
       if (hasRequire) {
         try {
-          run(process.execPath, ["-e",
-            `const m=require(${JSON.stringify(spec)});
+          run(
+            process.execPath,
+            [
+              "-e",
+              `const m=require(${JSON.stringify(spec)});
              if(!m||Object.keys(m).length===0){console.error("no exports");process.exit(1)}`,
-          ], { cwd: scratch, env: { ...process.env } })
+            ],
+            { cwd: scratch, env: { ...process.env } }
+          )
           ok(`require ${spec}`)
         } catch (e) {
           fail(name, `require ${spec}`, e.stderr || e.stdout || e.message)
@@ -189,15 +238,23 @@ try {
     if (manifest.types || manifest.typings) {
       const declared = manifest.types || manifest.typings
       try {
-        run(process.execPath, ["-e",
-          `require("node:fs").accessSync(require("node:path").join(
+        run(
+          process.execPath,
+          [
+            "-e",
+            `require("node:fs").accessSync(require("node:path").join(
              require("node:path").dirname(require.resolve(${JSON.stringify(name + "/package.json")})),
              ${JSON.stringify(declared)}))`,
-        ], { cwd: scratch })
+          ],
+          { cwd: scratch }
+        )
         ok(`ships declared types (${declared})`)
       } catch {
-        fail(name, `declared types missing: ${declared}`,
-          "package.json advertises this file but the tarball does not contain it")
+        fail(
+          name,
+          `declared types missing: ${declared}`,
+          "package.json advertises this file but the tarball does not contain it"
+        )
       }
     }
   }
@@ -206,7 +263,9 @@ try {
   console.log("\npublint")
   for (const { name, file } of tarballs) {
     try {
-      run("npx", ["--yes", "publint@latest", join(scratch, file)], { cwd: ROOT })
+      run("npx", ["--yes", "publint@latest", join(scratch, file)], {
+        cwd: ROOT,
+      })
       ok(`publint ${name}`)
     } catch (e) {
       fail(name, `publint ${name}`, e.stdout || e.stderr || e.message)
@@ -228,8 +287,20 @@ try {
         // root-level shim files.
         // cjs-resolves-to-esm: core/react/candid/cli are deliberately ESM-only
         //   ("type": "module", no require condition); CJS consumers use dynamic import.
-        run("npx", ["--yes", "@arethetypeswrong/cli@latest", "--pack", join(scratch, file),
-          "--profile", "node16", "--ignore-rules", "cjs-resolves-to-esm"], { cwd: ROOT })
+        run(
+          "npx",
+          [
+            "--yes",
+            "@arethetypeswrong/cli@latest",
+            "--pack",
+            join(scratch, file),
+            "--profile",
+            "node16",
+            "--ignore-rules",
+            "cjs-resolves-to-esm",
+          ],
+          { cwd: ROOT }
+        )
         ok(`attw ${name}`)
       } catch (e) {
         fail(name, `attw ${name}`, e.stdout || e.stderr || e.message)
