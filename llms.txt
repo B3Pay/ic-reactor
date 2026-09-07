@@ -87,7 +87,7 @@ declarations, and generated hook files. For codegen behavior, edit
 
 | Change                     | Minimum verification                                                                             |
 | -------------------------- | ------------------------------------------------------------------------------------------------ |
-| Docs only                  | `pnpm format:check`, `pnpm check:ai-context`, `pnpm docs:build`                                  |
+| Docs only                  | `pnpm format:check`, `pnpm check:ai-context`, `pnpm docs:build`, `pnpm docs:check-links`                                  |
 | Skill/frontmatter/metadata | YAML/frontmatter parse check plus `pnpm format:check`                                            |
 | AI context files           | `pnpm check:ai-context`                                                                          |
 | React hooks/factories      | `pnpm --filter @ic-reactor/react test`                                                           |

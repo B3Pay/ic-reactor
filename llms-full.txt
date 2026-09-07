@@ -439,7 +439,7 @@ verify the affected CLI/Vite consumer.
 
 | Change type           | Commands                                                                           |
 | --------------------- | ---------------------------------------------------------------------------------- |
-| Docs only             | `pnpm format:check`, `pnpm check:ai-context`, `pnpm docs:build`                    |
+| Docs only             | `pnpm format:check`, `pnpm check:ai-context`, `pnpm docs:build`, `pnpm docs:check-links`                    |
 | AI context files      | `pnpm check:ai-context`                                                            |
 | React hooks/factories | `pnpm --filter @ic-reactor/react test`                                             |
 | Core runtime          | `pnpm --filter @ic-reactor/core test`                                              |
@@ -449,7 +449,7 @@ verify the affected CLI/Vite consumer.
 | Broad package change  | `pnpm typecheck`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`                    |
 | Package exports/build/module format | `pnpm verify:packages`                                               |
 | Examples              | `pnpm typecheck:examples`, `pnpm build:examples`                                   |
-| Docs site             | `pnpm docs:build`                                                                  |
+| Docs site             | `pnpm docs:build`, `pnpm docs:check-links`                                                                  |
 
 Do not run package build and package test concurrently when parser/candid tests
 depend on parser `dist`; parser builds remove and recreate `dist`.

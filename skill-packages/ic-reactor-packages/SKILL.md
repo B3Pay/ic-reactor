@@ -80,7 +80,8 @@ Use CI-aligned commands:
 - Published-artifact verification (pack + publint + attw + real Node import): `pnpm verify:packages`
 - Example type checks: `pnpm typecheck:examples`
 - Example builds (CI gate — `tsc` never loads a bundler, so a broken Vite or Next config type-checks clean): `pnpm build:examples`
-- Docs build: `pnpm docs:build`
+- Docs build (TypeDoc warnings are errors): `pnpm docs:build`
+- Docs link check (CI gate): `pnpm docs:check-links`
 - Dependency audit (CI gate on every PR): `pnpm verify:audit`
 
 Run `pnpm verify:packages` after any change to a package's `exports`, `files`,

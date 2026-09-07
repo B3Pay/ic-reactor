@@ -51,17 +51,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Setup Rust for the parser wasm build
-        uses: ./.github/actions/setup-rust-wasm
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build packages
-        run: pnpm build
-
       - name: Build documentation (Astro)
         run: pnpm docs:build
+
+      # Advisory here, not blocking: `deploy` has `needs: build`, so failing
+      # would stop the site updating at all rather than publishing one dead
+      # link. The PR gate in docs-check.yml is the hard one.
+      - name: Check links
+        continue-on-error: true
+        run: pnpm docs:check-links
 
       # docs/dist should be Astro static output
 
