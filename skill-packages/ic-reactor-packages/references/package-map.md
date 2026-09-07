@@ -51,7 +51,7 @@ For each package touched:
 | CLI                            | `pnpm --filter @ic-reactor/cli test`, `pnpm --filter @ic-reactor/cli build`; add a focused manual run for behaviour the suite does not cover |
 | Vite plugin                    | `pnpm --filter @ic-reactor/vite-plugin test`, affected Vite example build/run                                                                |
 | Package metadata or references | `pnpm typecheck`, `pnpm exec tsc -b`, `pnpm build`, `pnpm verify:packages`                                                                   |
-| Dependency/security work       | `corepack pnpm audit --audit-level moderate`, affected package builds/tests                                                                  |
+| Dependency/security work       | `pnpm verify:audit`, affected package builds/tests                                                                                           |
 
 Before finishing broad PR work, prefer:
 

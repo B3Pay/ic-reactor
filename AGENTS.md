@@ -58,7 +58,7 @@ Use this map before editing so you can start in the package that owns the behavi
 - Example type checks: `pnpm typecheck:examples`
 - Example builds (CI gate): `pnpm build:examples` — `tsc` never loads a bundler, so a broken Vite/Next config type-checks clean. Both Next.js examples were unbuildable while the type-check job stayed green.
 - Docs build: `pnpm docs:build`
-- Dependency audit: `corepack pnpm audit --audit-level moderate`
+- Dependency audit (CI gate on every PR): `pnpm verify:audit`
 
 Generated outputs under `dist`, `.dfx`, `.icp`, `.mops`, `target`, `.next`, `.astro`, and `*.tsbuildinfo` are normally build artifacts. Do not hand-edit generated hook files; change the generator, wrapper, or source `.did` instead.
 
