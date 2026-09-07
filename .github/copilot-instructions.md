@@ -104,7 +104,7 @@ Follow these repository-specific patterns when suggesting code:
 
 - Format check (CI gate; covers the whole repo): `pnpm format:check`
 - AI context check (CI gate): `pnpm check:ai-context`
-- Type check used by CI: `pnpm typecheck` (every package, `src` and tests; the root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing)
+- Type check used by CI: `pnpm typecheck` (every package plus `e2e/`, `src` and tests; the root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing)
 - Package builds: `pnpm build`
 - Package tests: `pnpm test`
 - Published-artifact verification: `pnpm verify:packages` (pack + publint + attw + real Node import; run it after `exports`/`files`/build-output changes)

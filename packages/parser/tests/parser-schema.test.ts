@@ -349,7 +349,11 @@ describe("Candid Schema Parser (parseDid)", () => {
       docs: ["Save succeeded."],
     })
 
-    const idField = okField?.type.fields.find((f: any) => f.name === "id")
+    if (okField?.type.kind !== "record") {
+      throw new Error("Expected the Ok variant field to carry an inline record")
+    }
+
+    const idField = okField.type.fields.find((f: any) => f.name === "id")
     expect(idField?.metadata).toEqual({
       description: "Stored profile identifier.",
       docs: ["Stored profile identifier.", "@minLength 2"],

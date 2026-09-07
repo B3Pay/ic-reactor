@@ -69,7 +69,7 @@ When the change fixes a bug, also run
 re-runs the tests against a base revision, and a test that passes with and
 without the fix proves nothing about it.
 
-`pnpm typecheck` runs each package's own `typecheck` script, so it covers tests
+`pnpm typecheck` runs each package's own `typecheck` script plus `e2e/`'s, so it covers tests
 as well as `src`. `pnpm format:check` covers the whole repo, with
 exclusions declared in one place, `.prettierignore`.
 

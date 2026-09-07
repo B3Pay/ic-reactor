@@ -6,7 +6,8 @@
   "scripts": {
     "start": "bash ./test.sh",
     "test": "bash ./test.sh",
-    "test:vitest": "vitest run"
+    "test:vitest": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },
   "dependencies": {
     "@ic-reactor/core": "workspace:*",

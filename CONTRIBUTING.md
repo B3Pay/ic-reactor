@@ -45,7 +45,7 @@ CI gate operate on exactly the same set of files.
 
 ```bash
 pnpm check:ai-context  # llms.txt versions match every package.json
-pnpm typecheck         # every package, including its tests
+pnpm typecheck         # every package and e2e/, including their tests
 ```
 
 If you changed a package's `exports`, `files`, build output, or module format,

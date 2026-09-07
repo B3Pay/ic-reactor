@@ -460,7 +460,7 @@ Script notes:
   place, `.prettierignore`, which the pre-commit hook honours too.
 - `pnpm check:ai-context` is a CI gate asserting `llms.txt` package versions
   match each `package.json` and that every `packages/*/llms.txt` exists.
-- `pnpm typecheck` runs each package's own `typecheck` script and covers tests
+- `pnpm typecheck` runs each package's own `typecheck` script plus `e2e/`'s and covers tests
   as well as `src`. The root `tsconfig.json` is references-only, so
   `pnpm exec tsc --noEmit` at the root type-checks nothing.
 - `pnpm verify:packages` packs every publishable package, installs the tarballs
