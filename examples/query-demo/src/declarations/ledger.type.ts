@@ -121,8 +121,7 @@ export interface ConsentInfo {
   consent_message: ConsentMessage
 }
 export type ConsentMessage =
-  | { FieldsDisplayMessage: FieldsDisplay }
-  | { GenericDisplayMessage: string }
+  { FieldsDisplayMessage: FieldsDisplay } | { GenericDisplayMessage: string }
 export interface ConsentMessageMetadata {
   utc_offset_minutes: [] | [number]
   language: string
@@ -140,8 +139,7 @@ export interface Decimals {
   decimals: number
 }
 export type DisplayMessageType =
-  | { GenericDisplay: null }
-  | { FieldsDisplay: null }
+  { GenericDisplay: null } | { FieldsDisplay: null }
 export interface Duration {
   secs: bigint
   nanos: number
@@ -194,8 +192,7 @@ export interface InitArgs {
   feature_flags: [] | [FeatureFlags]
 }
 export type LedgerCanisterPayload =
-  | { Upgrade: [] | [UpgradeArgs] }
-  | { Init: InitArgs }
+  { Upgrade: [] | [UpgradeArgs] } | { Init: InitArgs }
 export type MetadataValue =
   | { Int: bigint }
   | { Nat: bigint }
@@ -229,8 +226,7 @@ export type Result_2 = { Ok: bigint } | { Err: ApproveError }
 export type Result_3 = { Ok: bigint } | { Err: TransferFromError }
 export type Result_4 = { Ok: BlockRange } | { Err: GetBlocksError }
 export type Result_5 =
-  | { Ok: Array<Uint8Array | number[]> }
-  | { Err: GetBlocksError }
+  { Ok: Array<Uint8Array | number[]> } | { Err: GetBlocksError }
 export type Result_6 = { Ok: bigint } | { Err: TransferError_1 }
 export interface SendArgs {
   to: string

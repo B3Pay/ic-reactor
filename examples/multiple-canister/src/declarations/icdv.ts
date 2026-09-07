@@ -40,8 +40,7 @@ export interface AllowanceDetail {
   expires_at: [] | [bigint]
 }
 export type AllowanceResult =
-  | { Ok: Array<AllowanceDetail> }
-  | { Err: GetAllowancesError }
+  { Ok: Array<AllowanceDetail> } | { Err: GetAllowancesError }
 export interface ApprovalInfo {
   from_subaccount: [] | [Uint8Array | number[]]
   amount: bigint
@@ -176,9 +175,7 @@ export type Icrc106Error =
     }
   | { IndexPrincipalNotSet: null }
 export type IndexType =
-  | { Stable: null }
-  | { StableTyped: null }
-  | { Managed: null }
+  { Stable: null } | { StableTyped: null } | { Managed: null }
 export interface InitArgs {
   fee: [] | [Fee]
   advanced_settings: [] | [AdvancedSettings]
@@ -360,9 +357,7 @@ export interface Transfer__1 {
 }
 export type TxIndex = bigint
 export type UpdateLedgerInfoRequest =
-  | { Fee: Fee__1 }
-  | { MaxBalances: bigint }
-  | { MaxTransfers: bigint }
+  { Fee: Fee__1 } | { MaxBalances: bigint } | { MaxTransfers: bigint }
 export type UpdateLedgerInfoRequest__1 =
   | { Fee: Fee__1 }
   | { MaxAllowance: [] | [MaxAllowance] }

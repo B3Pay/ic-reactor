@@ -111,8 +111,7 @@ export interface ConsentInfo {
   consent_message: ConsentMessage
 }
 export type ConsentMessage =
-  | { FieldsDisplayMessage: FieldsDisplay }
-  | { GenericDisplayMessage: string }
+  { FieldsDisplayMessage: FieldsDisplay } | { GenericDisplayMessage: string }
 export interface ConsentMessageMetadata {
   utc_offset_minutes: [] | [number]
   language: string
@@ -131,8 +130,7 @@ export interface DataCertificate {
   hash_tree: Uint8Array | number[]
 }
 export type DisplayMessageType =
-  | { GenericDisplay: null }
-  | { FieldsDisplay: null }
+  { GenericDisplay: null } | { FieldsDisplay: null }
 export interface ErrorInfo {
   description: string
 }
@@ -221,8 +219,7 @@ export interface InitArgs {
   feature_flags: [] | [FeatureFlags]
 }
 export type LedgerArgument =
-  | { Upgrade: [] | [UpgradeArgs] }
-  | { Init: InitArgs }
+  { Upgrade: [] | [UpgradeArgs] } | { Init: InitArgs }
 export type MetadataValue =
   | { Int: bigint }
   | { Nat: bigint }
