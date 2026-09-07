@@ -12,8 +12,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -23,6 +21,8 @@ jobs:
   build:
     name: Build Documentation
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -50,6 +50,9 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
+
+      - name: Setup Rust for the parser wasm build
+        uses: ./.github/actions/setup-rust-wasm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -250,6 +253,12 @@ jobs:
     name: Deploy
     needs: build
     runs-on: ubuntu-latest
+    # The only job that needs the Pages OIDC token; its sole step is
+    # actions/deploy-pages.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

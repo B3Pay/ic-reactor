@@ -72,3 +72,20 @@ updates:
     labels:
       - "ci"
       - "automated"
+
+  # The `github-actions` entry above uses `directory: "/"`, which covers
+  # `.github/workflows/**` but does NOT descend into `.github/actions/**`.
+  # Without this entry the two SHAs inside the setup-rust-wasm composite would be
+  # the only unmaintained action pins in a repo whose convention is that every
+  # action is SHA-pinned.
+  - package-ecosystem: "github-actions"
+    directory: "/.github/actions/setup-rust-wasm"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "ci"
+      - "automated"

@@ -68,8 +68,7 @@
     "start": "tsc --watch",
     "test": "vitest run",
     "clean": "rm -rf dist tsconfig.tsbuildinfo && tsc -b",
-    "size": "size-limit",
-    "analyze": "size-limit"
+    "size": "size-limit"
   },
   "devDependencies": {
     "@ic-reactor/candid": "workspace:*",

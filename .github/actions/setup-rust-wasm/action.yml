@@ -1,0 +1,26 @@
+name: "Setup Rust for the parser wasm build"
+description: >-
+  Installs the stable Rust toolchain with the wasm32-unknown-unknown target and
+  restores the cargo cache that packages/parser's wasm-pack build depends on.
+  Every job that runs `pnpm build` builds the parser, so every such job needs
+  both halves -- before this action they were copy-pasted per job and the cache
+  half was missing from most of them.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      with:
+        targets: wasm32-unknown-unknown
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          packages/parser/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('packages/parser/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
