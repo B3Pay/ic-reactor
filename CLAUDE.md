@@ -104,7 +104,7 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
 pnpm install            # Install dependencies
 pnpm build              # Build all packages
 pnpm test               # Run all tests
-pnpm typecheck          # Type-check every package incl. tests (CI gate)
+pnpm typecheck          # Type-check every package + e2e/, incl. tests (CI gate)
 pnpm typecheck:examples # Type-check example apps
 pnpm build:examples     # Build every example app (CI gate)
 pnpm format             # Format the whole repo with Prettier

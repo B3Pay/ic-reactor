@@ -1,0 +1,4 @@
+service : {
+    "greet" : (text) -> (text) query;
+    "greet_update" : (text) -> (text)
+}

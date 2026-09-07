@@ -24,7 +24,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "typecheck": "pnpm -r --filter \"./packages/**\" typecheck",
+    "typecheck": "pnpm -r --filter \"./packages/**\" --filter \"./e2e\" typecheck",
     "verify:packages": "node scripts/verify-package-artifacts.mjs",
     "verify:audit": "pnpm audit --audit-level=high"
   },

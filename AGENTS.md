@@ -51,7 +51,7 @@ Use this map before editing so you can start in the package that owns the behavi
 
 - Format check (CI gate; covers the whole repo, with exclusions declared in `.prettierignore`): `pnpm format:check`
 - AI context check (CI gate; asserts `llms.txt` versions match every `package.json` and each `packages/*/llms.txt` exists): `pnpm check:ai-context`
-- Type check used by CI: `pnpm typecheck` — runs each package's own `typecheck` script, covering `src` and tests. The root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing.
+- Type check used by CI: `pnpm typecheck` — runs each package's own `typecheck` script plus `e2e/`'s, covering `src` and tests. The root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing.
 - Package builds: `pnpm build`
 - Package tests: `pnpm test`
 - Published-artifact verification: `pnpm verify:packages` — packs every publishable package, installs the tarballs outside the workspace, imports/requires each entry point in real Node, and runs `publint` + `attw`. Run it after any change to `exports`, `files`, build output, or module format; in-repo consumers resolve through workspace symlinks, so nothing else catches a broken published artifact.
