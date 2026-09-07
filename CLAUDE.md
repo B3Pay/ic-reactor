@@ -107,6 +107,7 @@ pnpm test               # Run all tests
 pnpm typecheck          # Type-check every package + e2e/, incl. tests (CI gate)
 pnpm typecheck:examples # Type-check example apps
 pnpm build:examples     # Build every example app (CI gate)
+pnpm lint               # ESLint over packages/*/src and packages/*/tests (CI gate)
 pnpm format             # Format the whole repo with Prettier
 pnpm format:check       # Verify formatting without writing (CI gate, whole repo)
 pnpm check:ai-context   # Verify llms.txt versions match package.json (CI gate)
@@ -120,6 +121,18 @@ pnpm docs:build         # Build docs site
 `pnpm typecheck` runs each package's own `typecheck` script. The root
 `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root
 type-checks nothing.
+
+**Run `pnpm build` before `pnpm lint`.** The type-aware ESLint rules read
+`@ic-reactor/core`'s emitted `.d.ts` through the workspace symlinks. Without a
+build those types degrade to `any`, `no-floating-promises` silently stops
+reporting, and lint exits 0 on code it should reject. CI is safe because the
+build precedes the lint step; a fresh clone is not.
+
+A new package must ship a `tsconfig.typecheck.json` with
+`include: ["src/**/*", "tests/**/*"]` and be added to `TYPECHECK_PROJECTS` in
+`eslint.config.mjs`. Skipping this makes `pnpm lint` fail with
+`Parsing error: "parserOptions.project" has been provided ... The file was not
+found in any of the provided project(s)`, a message that names no fix.
 
 After editing an example, run `pnpm build:examples` as well as
 `pnpm typecheck:examples`. `tsc` never loads a bundler, so a broken Vite/Next

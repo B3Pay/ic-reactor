@@ -48,7 +48,7 @@ export async function generateCommand(options: GenerateOptions) {
   }
 
   // Determine which canisters to process
-  let canistersToProcess: string[] = []
+  let canistersToProcess: string[]
 
   if (options.canister) {
     if (!config.canisters[options.canister]) {

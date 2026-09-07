@@ -301,7 +301,7 @@ export function useActorMethod<
         // Invalidate specified queries after successful mutation
         if (invalidateQueries && invalidateQueries.length > 0) {
           invalidateQueries.forEach((key) => {
-            reactor.queryClient.invalidateQueries({ queryKey: key })
+            void reactor.queryClient.invalidateQueries({ queryKey: key })
           })
         }
       },

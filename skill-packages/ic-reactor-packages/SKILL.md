@@ -72,6 +72,7 @@ Use CI-aligned commands:
 
 - Format check (CI gate, covers the whole repo): `pnpm format:check`
 - AI context check (CI gate): `pnpm check:ai-context`
+- Lint (CI gate; run after `pnpm build`): `pnpm lint`
 - Type check every package and `e2e/`, including tests (CI gate): `pnpm typecheck`
 - Strict project-reference sanity: `pnpm exec tsc -b`
 - Package builds: `pnpm build`

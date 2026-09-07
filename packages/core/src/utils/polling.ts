@@ -229,7 +229,7 @@ export function createPollingStrategy(cfg: PollingConfig = {}): PollStrategy {
     }
 
     lastLog = now
-    // eslint-disable-next-line no-console
+
     console.info(
       `${logPrefix} ${context} attempt=${attempt} elapsed=${now - start}ms status=${statusKind} phase=${phase} nextDelay=${Math.round(nextDelay)}ms`
     )

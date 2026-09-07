@@ -41,7 +41,6 @@ function canisterUnreachable() {
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const agent = {} as any
 
 beforeEach(() => {

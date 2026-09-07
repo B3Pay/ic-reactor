@@ -66,6 +66,14 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
+      # Type-aware rules read @ic-reactor/core's emitted .d.ts through the
+      # workspace symlinks, so this must run after `pnpm build` -- without a
+      # build those types degrade to `any` and no-floating-promises silently
+      # stops reporting. Placed after Type check so a type error surfaces as
+      # tsc's message rather than an ESLint parse error.
+      - name: Lint
+        run: pnpm lint
+
   typecheck-examples:
     name: Type Check Examples
     runs-on: ubuntu-latest

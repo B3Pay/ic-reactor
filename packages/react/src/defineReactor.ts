@@ -175,7 +175,6 @@ export function defineReactor<Service = BaseActor>(
 
 export function defineReactor<Service = BaseActor>(
   params: DefineReactorParameters | DefineDisplayReactorParameters<Service>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): DefineReactorResult<Service, any, any> {
   const {
     clientManager: providedClientManager,
@@ -267,7 +266,7 @@ export function defineReactor<Service = BaseActor>(
   // The Reactor / DisplayReactor union cannot be expressed through the shared
   // implementation signature, so the body is intentionally untyped here; the
   // public overloads above carry the precise types for callers.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const reactor: any = display
     ? new DisplayReactor<Service>({
         ...reactorConfig,

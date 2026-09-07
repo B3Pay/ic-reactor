@@ -29,6 +29,11 @@ import {
   ServiceMeta,
 } from "./visitor/returns/index.js"
 
+/* eslint-disable @typescript-eslint/no-unused-vars -- the type parameter is
+   not referenced by this declaration, but TypeScript requires every
+   declaration of an augmented interface to carry identical type parameters
+   (TS2428), so it cannot be renamed to the `_`-prefixed form the rule
+   accepts. Verified: renaming yields TS2428 plus TS2304. */
 declare module "@ic-reactor/core" {
   interface TransformArgsRegistry<T> {
     metadata: TransformArgsRegistry<T>["candid"]
@@ -37,6 +42,7 @@ declare module "@ic-reactor/core" {
     metadata: MethodResult<A>
   }
 }
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 /**
  * Runtime form metadata reactor for Candid interfaces.
@@ -123,12 +129,12 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
   ): Promise<CandidFormMetadata> {
     const method = this.findMethod(String(methodName))
     if (!method) {
-      throw new Error(`Method \"${String(methodName)}\" not found`)
+      throw new Error(`Method "${String(methodName)}" not found`)
     }
 
     const meta = this.getInputMeta(methodName)
     if (!meta) {
-      throw new Error(`Method \"${String(methodName)}\" metadata not found`)
+      throw new Error(`Method "${String(methodName)}" metadata not found`)
     }
     const hydration = this.hydrateValues(method.func.argTypes ?? [], options)
     return { meta, hydration }
@@ -243,7 +249,7 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     if (skipToken && candidArgsHex.includes(skipToken)) {
       return {
         status: "skipped",
-        reason: `Input contains \"${skipToken}\". Using schema defaults.`,
+        reason: `Input contains "${skipToken}". Using schema defaults.`,
       }
     }
 

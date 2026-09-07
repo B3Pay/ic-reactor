@@ -51,6 +51,7 @@ Use this map before editing so you can start in the package that owns the behavi
 
 - Format check (CI gate; covers the whole repo, with exclusions declared in `.prettierignore`): `pnpm format:check`
 - AI context check (CI gate; asserts `llms.txt` versions match every `package.json` and each `packages/*/llms.txt` exists): `pnpm check:ai-context`
+- Lint used by CI: `pnpm lint` — ESLint flat config over `packages/*/src` and `packages/*/tests`. Run `pnpm build` first: the type-aware rules read core's emitted `.d.ts`, and without a build they degrade to `any` and stop reporting. A new package needs a `tsconfig.typecheck.json` and an entry in `TYPECHECK_PROJECTS`.
 - Type check used by CI: `pnpm typecheck` — runs each package's own `typecheck` script plus `e2e/`'s, covering `src` and tests. The root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing.
 - Package builds: `pnpm build`
 - Package tests: `pnpm test`
