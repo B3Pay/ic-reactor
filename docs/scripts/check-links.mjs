@@ -34,7 +34,13 @@ try {
 
   const checker = new LinkChecker()
   const result = await checker.check({
-    path: `${base}/index.html`,
+    // The crawl root must be the DIRECTORY, not index.html. linkinator sets
+    // `rootPath` to the full starting URL and only recurses into links whose
+    // href string-prefixes it (build/src/index.js:271 and :892). With
+    // `${base}/index.html` nothing on the site starts with that string, so the
+    // crawl never leaves the home page: it reported "Checked 191 internal
+    // links" for a 180-page site while visiting exactly one page.
+    path: `${base}/`,
     serverRoot: staging,
     recurse: true,
     linksToSkip: [
