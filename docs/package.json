@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "typedoc --options ./typedoc.json && node scripts/split-index.js && astro build",
+    "build": "typedoc --options ./typedoc.json && node scripts/split-index.js && node scripts/rewrite-typedoc-links.js && astro build && node scripts/fix-dist-links.js",
     "postbuild": "mkdir -p ./dist/${DOCS_VERSION:-local}/ && cp -r ./src/content/docs/* ./dist/${DOCS_VERSION:-local}/",
     "preview": "pnpm build && npx serve dist/local -p 3000",
     "lint:mdx": "remark 'src/content/docs/**/*.mdx' -q --frail",

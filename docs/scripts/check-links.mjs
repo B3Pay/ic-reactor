@@ -13,9 +13,9 @@
  * The base is read from astro.config.mjs rather than hardcoded, so the two
  * cannot drift.
  */
-import { mkdtemp, readFile, rm, symlink } from "node:fs/promises"
+import { mkdtemp, readFile, readdir, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { join, posix, resolve } from "node:path"
 import { LinkChecker } from "linkinator"
 
 const docsRoot = resolve(import.meta.dirname, "..")
@@ -58,14 +58,55 @@ try {
       // binds 127.0.0.1 -- so this must exempt the local host explicitly or it
       // skips the entire site and the gate silently checks nothing.
       "^https?://(?!(localhost|127\\.0\\.0\\.1)[:/])",
-      // Scope limit, not noise suppression. typedoc-plugin-markdown emits
-      // relative `../type-aliases/X.md` cross-links while Starlight nests the
-      // route one level deeper, so these 404 for real. They are tracked
-      // separately; this gate covers the rendered routes, which is what a page
-      // rename breaks.
-      "\\.md$",
     ],
   })
+
+  // Case-sensitivity pass. linkinator serves the built site from the local
+  // filesystem, so on macOS every href resolves case-insensitively and a link
+  // that is a hard 404 on the Linux host comes back 200. That is not a
+  // hypothetical: `starlight-page-actions` writes each page's `.md` companion
+  // at the SOURCE-cased path while building the href from the lowercased route,
+  // and the mismatch is invisible here without this check. Compare exact
+  // strings against the real file set rather than asking the filesystem.
+  const realFiles = new Set()
+  const walk = async (dir, rel = "") => {
+    for (const e of await readdir(dir, { withFileTypes: true })) {
+      const r = rel ? `${rel}/${e.name}` : e.name
+      if (e.isDirectory()) await walk(join(dir, e.name), r)
+      else realFiles.add(r)
+    }
+  }
+  await walk(join(docsRoot, "dist"))
+
+  const caseBroken = []
+  for (const page of [...realFiles].filter((f) => f.endsWith(".html"))) {
+    const html = await readFile(join(docsRoot, "dist", page), "utf8")
+    const route = `/${base}/${page.replace(/index\.html$/, "")}`
+    for (const [, href] of html.matchAll(/href="([^"]+)"/g)) {
+      if (/^(https?:|mailto:|#|\/\/)/.test(href)) continue
+      const clean = href.split("#")[0].split("?")[0]
+      if (!clean) continue
+      const abs = clean.startsWith("/")
+        ? clean
+        : posix.normalize(posix.join(route, clean))
+      if (!abs.startsWith(`/${base}/`)) continue
+      let f = abs.slice(base.length + 2)
+      if (f === "") f = "index.html"
+      else if (f.endsWith("/")) f += "index.html"
+      else if (!/\.[a-z0-9]+$/i.test(f)) f += "/index.html"
+      if (!realFiles.has(f)) caseBroken.push(`${href}\n      <- ${route}`)
+    }
+  }
+  if (caseBroken.length > 0) {
+    console.error(
+      `\n${caseBroken.length} link(s) resolve only on a case-insensitive filesystem ` +
+        `- these are 404s on the Linux host that serves the site:\n`
+    )
+    for (const b of caseBroken.slice(0, 20)) console.error(`  ${b}`)
+    if (caseBroken.length > 20)
+      console.error(`  ... and ${caseBroken.length - 20} more`)
+    process.exit(1)
+  }
 
   const broken = result.links.filter((l) => l.state === "BROKEN")
   const checked = result.links.filter((l) => l.state !== "SKIPPED").length
