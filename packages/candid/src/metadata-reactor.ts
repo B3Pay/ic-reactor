@@ -29,20 +29,20 @@ import {
   ServiceMeta,
 } from "./visitor/returns/index.js"
 
-/* eslint-disable @typescript-eslint/no-unused-vars -- the type parameter is
-   not referenced by this declaration, but TypeScript requires every
-   declaration of an augmented interface to carry identical type parameters
-   (TS2428), so it cannot be renamed to the `_`-prefixed form the rule
-   accepts. Verified: renaming yields TS2428 plus TS2304. */
 declare module "@ic-reactor/core" {
+  /* eslint-disable @typescript-eslint/no-unused-vars -- the type parameter is
+     not referenced by this declaration, but TypeScript requires every
+     declaration of an augmented interface to carry identical type parameters
+     (TS2428), so it cannot be renamed to the `_`-prefixed form the rule
+     accepts. Verified: renaming yields TS2428 plus TS2304. */
   interface TransformArgsRegistry<T> {
     metadata: TransformArgsRegistry<T>["candid"]
   }
   interface TransformReturnRegistry<T, A = BaseActor> {
     metadata: MethodResult<A>
   }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 }
-/* eslint-enable @typescript-eslint/no-unused-vars */
 
 /**
  * Runtime form metadata reactor for Candid interfaces.
