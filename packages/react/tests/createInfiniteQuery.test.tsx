@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -28,6 +28,19 @@ type TestActor = {
     { messages: string[]; hasMore: boolean }
   >
 }
+
+/**
+ * The real signature of the method being mocked.
+ *
+ * `CallMethodMock` used to stand here. `ReturnType` instantiates a
+ * generic signature at its CONSTRAINT rather than its default, so that cast
+ * resolved to `Mock<Procedure | Constructable>` — whose `Constructable` branch
+ * contributes a `void`-returning call signature (which made
+ * `no-misused-promises` flag every async implementation) and whose
+ * `(...args: any[]) => any` branch silently typed every mock body's
+ * parameters as `any`, even under `strict`.
+ */
+type CallMethodMock = Mock<Reactor<TestActor>["callMethod"]>
 
 // Mock data generator
 const generatePosts = (
@@ -428,14 +441,13 @@ describe("createInfiniteQuery", () => {
         expect(result.current.isSuccess).toBe(true)
       })
 
-      const initialCallCount = (
-        mockReactor.callMethod as ReturnType<typeof vi.fn>
-      ).mock.calls.length
+      const initialCallCount = (mockReactor.callMethod as CallMethodMock).mock
+        .calls.length
 
       await postsQuery.invalidate()
 
       expect(
-        (mockReactor.callMethod as ReturnType<typeof vi.fn>).mock.calls.length
+        (mockReactor.callMethod as CallMethodMock).mock.calls.length
       ).toBeGreaterThan(initialCallCount)
     })
   })
@@ -727,15 +739,14 @@ describe("createInfiniteQueryFactory", () => {
     const allQueryRerun = makeList((cursor) => [
       { cursor, limit: 5, filter: "all", q: "" },
     ])
-    const callCountBeforeRerun = (
-      mockReactor.callMethod as ReturnType<typeof vi.fn>
-    ).mock.calls.length
+    const callCountBeforeRerun = (mockReactor.callMethod as CallMethodMock).mock
+      .calls.length
     const rerunData = await allQueryRerun.fetch()
 
     expect(rerunData.pages[0].posts[0]).toContain("filter=all;q=;sort=")
-    expect(
-      (mockReactor.callMethod as ReturnType<typeof vi.fn>).mock.calls.length
-    ).toBe(callCountBeforeRerun)
+    expect((mockReactor.callMethod as CallMethodMock).mock.calls.length).toBe(
+      callCountBeforeRerun
+    )
 
     expect(queryClient.getQueryData(allQuery.getQueryKey())).toBeDefined()
     expect(queryClient.getQueryData(completedQuery.getQueryKey())).toBeDefined()

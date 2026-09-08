@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -18,6 +18,19 @@ type TestActor = {
     { messages: string[]; nextToken: string | null }
   >
 }
+
+/**
+ * The real signature of the method being mocked.
+ *
+ * `CallMethodMock` used to stand here. `ReturnType` instantiates a
+ * generic signature at its CONSTRAINT rather than its default, so that cast
+ * resolved to `Mock<Procedure | Constructable>` — whose `Constructable` branch
+ * contributes a `void`-returning call signature (which made
+ * `no-misused-promises` flag every async implementation) and whose
+ * `(...args: any[]) => any` branch silently typed every mock body's
+ * parameters as `any`, even under `strict`.
+ */
+type CallMethodMock = Mock<Reactor<TestActor>["callMethod"]>
 
 // Mock data generators
 const generatePosts = (page: number, limit: number): string[] => {
@@ -207,11 +220,11 @@ describe("useActorInfiniteQuery", () => {
     it("should determine hasNextPage based on getNextPageParam", async () => {
       // Create a mock that returns null nextCursor to indicate no more pages
       const noMorePagesMock = createMockReactor(queryClient)
-      ;(
-        noMorePagesMock.callMethod as ReturnType<typeof vi.fn>
-      ).mockImplementation(async () => {
-        return { items: ["Last Item"], nextCursor: null }
-      })
+      ;(noMorePagesMock.callMethod as CallMethodMock).mockImplementation(
+        async () => {
+          return { items: ["Last Item"], nextCursor: null }
+        }
+      )
 
       const { result } = renderHook(
         () =>
@@ -375,16 +388,15 @@ describe("useActorInfiniteQuery", () => {
         expect(result.current.isSuccess).toBe(true)
       })
 
-      const initialCallCount = (
-        mockReactor.callMethod as ReturnType<typeof vi.fn>
-      ).mock.calls.length
+      const initialCallCount = (mockReactor.callMethod as CallMethodMock).mock
+        .calls.length
 
       await act(async () => {
         await result.current.refetch()
       })
 
       expect(
-        (mockReactor.callMethod as ReturnType<typeof vi.fn>).mock.calls.length
+        (mockReactor.callMethod as CallMethodMock).mock.calls.length
       ).toBeGreaterThan(initialCallCount)
     })
   })
