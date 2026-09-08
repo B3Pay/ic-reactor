@@ -43,6 +43,15 @@ try {
     path: `${base}/`,
     serverRoot: staging,
     recurse: true,
+    // linkinator's default concurrency (100) overwhelms its own static server
+    // once the crawl is a few hundred links: requests come back with status 0
+    // (connection dropped, not a 404) and the gate fails intermittently on
+    // whichever page lost the race. Capping concurrency and retrying transport
+    // errors makes it deterministic -- a flaky gate gets ignored, which is the
+    // failure mode this whole gate exists to avoid.
+    concurrency: 25,
+    retryErrors: true,
+    retryErrorsCount: 3,
     linksToSkip: [
       // External links are someone else's uptime, not this repo's correctness.
       // linkinator resolves every internal link against its own server, which
