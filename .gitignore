@@ -17,3 +17,9 @@ docs/src/content/docs/libs/
 # examples commit their generated output, so without this every contributor sees
 # six untracked files after a build.
 **/.ic-reactor-owner
+
+# vitest 5 writes run artifacts here (JSON reports, attachments -- its
+# `attachmentsDir` default moved to `.vitest/attachments/` in v5). Prettier
+# reads this file, so ignoring it here also keeps the repo-wide
+# `format:check` from tripping on an artifact after a local test run.
+.vitest/
