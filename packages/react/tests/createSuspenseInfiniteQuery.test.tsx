@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import React, { Suspense } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -8,6 +8,7 @@ import {
 } from "../src/createSuspenseInfiniteQuery.js"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { Reactor } from "@ic-reactor/core"
+import type { ReactorCallParams, ReactorReturnOk } from "@ic-reactor/core"
 
 // Define a test actor type with paginated methods
 type TestActor = {
@@ -28,6 +29,33 @@ type TestActor = {
     { messages: string[]; hasMore: boolean }
   >
 }
+
+/**
+ * The real signature of the method being mocked.
+ *
+ * `CallMethodMock` used to stand here. `ReturnType` instantiates a
+ * generic signature at its CONSTRAINT rather than its default, so that cast
+ * resolved to `Mock<Procedure | Constructable>` — whose `Constructable` branch
+ * contributes a `void`-returning call signature (which made
+ * `no-misused-promises` flag every async implementation) and whose
+ * `(...args: any[]) => any` branch silently typed every mock body's parameters
+ * as `any`, even under `strict`.
+ */
+type CallMethodMock = Mock<Reactor<TestActor>["callMethod"]>
+
+/**
+ * Pinned to the one method the fetch-count test exercises.
+ *
+ * `CallMethodMock` instantiates `M` at its constraint `keyof TestActor`, so
+ * `params.args` is the union of every method's argument tuple and
+ * `functionName === "getPosts"` narrows nothing from inside the callback. This
+ * alias fixes `M`, which is what makes `args[0]` a real typed tuple.
+ */
+type CallGetPosts = Mock<
+  (
+    params: Omit<ReactorCallParams<TestActor, "getPosts">, "queryKey">
+  ) => Promise<ReactorReturnOk<TestActor, "getPosts">>
+>
 
 // Mock data generator
 const generatePosts = (
@@ -325,14 +353,13 @@ describe("createSuspenseInfiniteQuery", () => {
         expect(result.current.isSuccess).toBe(true)
       })
 
-      const initialCallCount = (
-        mockReactor.callMethod as ReturnType<typeof vi.fn>
-      ).mock.calls.length
+      const initialCallCount = (mockReactor.callMethod as CallMethodMock).mock
+        .calls.length
 
       await postsQuery.invalidate()
 
       expect(
-        (mockReactor.callMethod as ReturnType<typeof vi.fn>).mock.calls.length
+        (mockReactor.callMethod as CallMethodMock).mock.calls.length
       ).toBeGreaterThan(initialCallCount)
     })
   })
@@ -643,21 +670,18 @@ describe("refetching behavior with infinite queries", () => {
     mockReactor = createMockReactor(queryClient)
 
     // Override callMethod to track fetch count and return dynamic data
-    ;(mockReactor.callMethod as ReturnType<typeof vi.fn>).mockImplementation(
-      async ({ functionName, args }) => {
+    ;(mockReactor.callMethod as CallGetPosts).mockImplementation(
+      async ({ args }) => {
         fetchCount++
-        if (functionName === "getPosts") {
-          const { cursor, limit } = args[0]
-          // Return different data on each fetch to verify refetching works
-          return {
-            posts: Array.from(
-              { length: limit },
-              (_, i) => `Post ${cursor + i + 1} (fetch #${fetchCount})`
-            ),
-            nextCursor: cursor + limit < 50 ? cursor + limit : null,
-          }
+        const { cursor, limit } = args![0]
+        // Return different data on each fetch to verify refetching works
+        return {
+          posts: Array.from(
+            { length: limit },
+            (_, i) => `Post ${cursor + i + 1} (fetch #${fetchCount})`
+          ),
+          nextCursor: cursor + limit < 50 ? cursor + limit : null,
         }
-        return null
       }
     )
   })

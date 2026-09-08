@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import React, { Suspense } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -24,6 +24,13 @@ interface TestActor {
   get_item: ActorMethod<[string], [] | [Item]>
   list_items: ActorMethod<[], string[]>
 }
+
+/**
+ * The real signature of the method being mocked. See the note in
+ * useActorInfiniteQuery.test.tsx: `CallMethodMock` resolves to
+ * `Mock<Procedure | Constructable>`, which types every mock body as `any`.
+ */
+type CallMethodMock = Mock<Reactor<TestActor>["callMethod"]>
 
 // Mock data
 const mockUser: User = { name: "Alice", age: 30n }
@@ -231,7 +238,7 @@ describe("createQuery", () => {
       await userQuery.fetch()
 
       // Reset mock to check if called again
-      ;(mockReactor.callMethod as ReturnType<typeof vi.fn>).mockClear()
+      ;(mockReactor.callMethod as CallMethodMock).mockClear()
 
       // Get from cache (should use cached value due to staleTime default behavior if implemented?
       // Actually default staleTime in createActorQuery might be 0 unless configured or defaulted in QueryClient?
