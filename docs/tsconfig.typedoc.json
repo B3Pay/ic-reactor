@@ -1,0 +1,25 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2020", "DOM"],
+    "types": ["node"],
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "allowImportingTsExtensions": false,
+    // No `baseUrl`: it is a hard error under this repo's TypeScript
+    // (TS5101, deprecated and removed in TS 7). Without it, `paths` resolves
+    // relative to this file, which is what we want.
+    "paths": {
+      "@ic-reactor/core": ["../packages/core/src/index.ts"]
+    }
+  },
+  "include": [
+    "typedoc-entry.ts",
+    "../packages/core/src/**/*",
+    "../packages/react/src/**/*"
+  ]
+}

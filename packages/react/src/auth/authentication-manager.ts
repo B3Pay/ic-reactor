@@ -203,7 +203,7 @@ export class AuthenticationManager {
    * module has not been loaded yet.
    *
    * Callers that must stay inside a user gesture use this instead of
-   * {@link ensureClient}; awaiting anything before opening the identity
+   * `ensureClient`; awaiting anything before opening the identity
    * provider window loses the gesture.
    */
   public getPreparedClient(
