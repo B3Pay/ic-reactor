@@ -29,7 +29,6 @@
     "@types/jest": "^30.0.0",
     "@types/node-fetch": "3.0.2",
     "@types/react": "^19.2.18",
-    "@vitest/coverage-v8": "^4.1.11",
     "babel-jest": "^30.5.1",
     "dotenv": "^17.4.2",
     "fake-indexeddb": "^6.2.5",
@@ -43,7 +42,7 @@
     "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.0",
     "whatwg-fetch": "^3.6.20"
   }
 }

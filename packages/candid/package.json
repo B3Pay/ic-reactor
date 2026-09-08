@@ -74,7 +74,7 @@
     "@size-limit/preset-small-lib": "^13.0.3",
     "@types/node": "^26.4.1",
     "size-limit": "^13.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   },
   "size-limit": [
     {

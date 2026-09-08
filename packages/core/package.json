@@ -78,7 +78,7 @@
     "@types/node": "^26.4.1",
     "fake-indexeddb": "^6.2.5",
     "size-limit": "^13.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   },
   "size-limit": [
     {
