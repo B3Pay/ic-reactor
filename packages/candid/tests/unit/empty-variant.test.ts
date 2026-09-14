@@ -19,6 +19,9 @@ const CANDID = `
     settle : (variant { Ok : nat; Err : Never }) -> ();
     close : (record { reason : Never }) -> ();
     forbid : (Never) -> ();
+    pick : (variant { Never : Never; Value : nat }) -> ();
+    guard : (variant { Blocked : record { reason : Never }; Open : nat }) -> ();
+    doomed : (variant { Gone : Never; Lost : Never }) -> ();
   }
 `
 
@@ -98,5 +101,54 @@ describe.each(reactors)("%s with a variant {} argument", (_name, Reactor) => {
     if (record?.type !== "record") throw new Error("expected a record field")
 
     expect(record.defaultValue).toEqual({ reason: {} })
+  })
+
+  // Options are ordered by label hash, and these labels put the arm that can
+  // hold no value first. Defaulting to it gave forms a value their own schema
+  // rejects.
+  it.each([
+    ["pick", "Never", "Value"],
+    ["guard", "Blocked", "Open"],
+  ])(
+    "defaults %s to the first option that can hold a value",
+    async (method, emptyArm, valueArm) => {
+      const reactor = await initialized()
+      const meta = reactor.getInputMeta(method)
+      const [field] = meta?.args ?? []
+      if (field?.type !== "variant") throw new Error("expected a variant field")
+
+      expect(field.options[0]?.label).toBe(emptyArm)
+      expect(field.defaultOption).toBe(valueArm)
+      expect(field.defaultValue).toEqual({ _type: valueArm, [valueArm]: "" })
+      expect(meta?.defaults).toEqual([field.defaultValue])
+      expect(
+        meta?.schema.safeParse([{ _type: valueArm, [valueArm]: "7" }]).success
+      ).toBe(true)
+    }
+  )
+
+  it("falls back to the first option when none can hold a value", async () => {
+    const reactor = await initialized()
+    const meta = reactor.getInputMeta("doomed")
+    const [field] = meta?.args ?? []
+    if (field?.type !== "variant") throw new Error("expected a variant field")
+
+    expect(field.defaultOption).toBe(field.options[0]?.label)
+    expect(meta?.schema.safeParse(meta?.defaults).success).toBe(false)
+    expect(() => field.getSelectedOption(field.defaultValue)).not.toThrow()
+  })
+
+  it("gives a renderer a hidden null node for the empty variant's payload", async () => {
+    // A renderer asks for the selected option on every render, starting from
+    // the default value. For variant {} that used to throw.
+    const reactor = await initialized()
+    const [never] = reactor.getInputMeta("forbid")?.args ?? []
+    if (never?.type !== "variant") throw new Error("expected a variant field")
+
+    expect(never.getSelectedKey(never.defaultValue)).toBe("")
+    const payload = never.getSelectedOption(never.defaultValue)
+    expect(payload.type).toBe("null")
+    expect(payload.component).toBe("null-hidden")
+    expect(never.options).toEqual([])
   })
 })

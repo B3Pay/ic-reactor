@@ -129,6 +129,33 @@ function validateBlobInput(
   return { valid: true }
 }
 
+/** Why a `variant {}` field accepts nothing. */
+const EMPTY_VARIANT_MESSAGE = "variant {} has no values, so no value is valid"
+
+/**
+ * Whether no value of this field's type exists: `variant {}`, a variant none of
+ * whose options can hold a value, or a record or tuple containing such a field.
+ * A recursive field is assumed to have values.
+ */
+function hasNoValue(field: FieldNode): boolean {
+  switch (field.type) {
+    case "variant":
+      return field.options.every(hasNoValue)
+    case "record":
+    case "tuple":
+      return field.fields.some(hasNoValue)
+    default:
+      return false
+  }
+}
+
+/** The option labels an error message can offer, or a note that there are none. */
+function availableOptions(options: Array<{ label: string }>): string {
+  return options.length > 0
+    ? options.map((o) => o.label).join(", ")
+    : "none, because the type is variant {}"
+}
+
 /**
  * FieldVisitor generates metadata for form input fields from Candid IDL types.
  *
@@ -181,16 +208,6 @@ function validateBlobInput(
  * ))
  * ```
  */
-/** Why a `variant {}` field accepts nothing. */
-const EMPTY_VARIANT_MESSAGE = "variant {} has no values, so no value is valid"
-
-/** The option labels an error message can offer, or a note that there are none. */
-function availableOptions(options: Array<{ label: string }>): string {
-  return options.length > 0
-    ? options.map((o) => o.label).join(", ")
-    : "none, because the type is variant {}"
-}
-
 export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   string,
   FieldNode | ArgumentsMeta<A> | ArgumentsServiceMeta<A>
@@ -367,7 +384,14 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     // it). It gets no options, an empty `defaultOption`, and a schema that
     // rejects everything, since no value of the type would encode. Reading
     // `options[0].label` here made `initialize()` throw for the whole service.
-    const firstOption: FieldNode | undefined = options[0]
+    //
+    // The default is the first option that can hold a value. Options are
+    // ordered by label hash, so one carrying `variant {}` can come first, and
+    // defaulting to it gave the form a value its own schema rejects. When no
+    // option can hold a value, the first one stands in, and the schema rejects
+    // every value anyway.
+    const firstOption: FieldNode | undefined =
+      options.find((option) => !hasNoValue(option)) ?? options[0]
     const defaultOption = firstOption?.label ?? ""
 
     const defaultValue = !firstOption
@@ -423,8 +447,15 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       return validKeys[0] ?? defaultOption
     }
 
+    // `variant {}` has nothing to select, and a renderer asks for the selected
+    // option on every render. It gets a hidden null node, meaning "no
+    // payload", instead of an exception. The node is not one of `options`, and
+    // the schema still rejects every value.
+    const noPayload = this.visitNull(IDL.Null, "")
+
     // Helper to get the field for the currently selected option
     const getSelectedOption = (value: Record<string, unknown>): FieldNode => {
+      if (options.length === 0) return noPayload
       const selectedKey = getSelectedKey(value)
       return getOption(selectedKey)
     }

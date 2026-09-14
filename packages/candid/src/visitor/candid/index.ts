@@ -46,6 +46,23 @@ const FILE_RENDER_HINT: FormRenderHint = {
 }
 
 /**
+ * Whether no value of this field's type exists: `variant {}`, a variant none of
+ * whose options can hold a value, or a record or tuple containing such a field.
+ * A recursive field is assumed to have values.
+ */
+function hasNoValue(field: FormFieldNode): boolean {
+  switch (field.type) {
+    case "variant":
+      return field.options.every(hasNoValue)
+    case "record":
+    case "tuple":
+      return field.fields.some(hasNoValue)
+    default:
+      return false
+  }
+}
+
+/**
  * Visitor that generates form-oriented metadata from Candid IDL types.
  *
  * Each generated field includes:
@@ -322,7 +339,12 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     // so initialize() threw, and the `{ _type: "null" }` its schema accepted
     // would not have encoded anyway. It now gets no options, an empty
     // `defaultOption`, and a schema that rejects everything.
-    const defaultOption = options[0]?.label ?? ""
+    //
+    // The default is the first option that can hold a value, for the reason
+    // FieldVisitor gives: options are ordered by label hash, and one carrying
+    // `variant {}` can come first. With no such option the first stands in.
+    const defaultOption =
+      (options.find((option) => !hasNoValue(option)) ?? options[0])?.label ?? ""
     const variantSchemas = options.map((option) =>
       option.type === "null"
         ? z.object({ _type: z.literal(option.label) })
@@ -355,8 +377,14 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       return firstPresent ?? defaultOption
     }
 
-    const getSelectedOption = (value: Record<string, unknown>): FormFieldNode =>
-      getOption(getSelectedKey(value))
+    // A hidden null node for `variant {}`, which has nothing to select, so a
+    // renderer asking for the selected option does not throw. Not listed in
+    // `options`, and the schema still rejects every value.
+    const noPayload = this.primitive("null", "", name, "null", null, z.null())
+    const getSelectedOption = (
+      value: Record<string, unknown>
+    ): FormFieldNode =>
+      options.length === 0 ? noPayload : getOption(getSelectedKey(value))
 
     return {
       type: "variant",
