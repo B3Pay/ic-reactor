@@ -233,6 +233,24 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         if (k !== funcFieldKey) argFields[k] = v
       }
 
+      // defaultArgs are built from the other fields, and each value goes
+      // through the display codec for its field's type, because a resolved
+      // node carries a display `value` only for primitives. Two layouts are in
+      // use. In the ICP ledger's ArchivedBlocksRange the callback takes
+      // `{ start; length }` and the fields beside it are start and length, so
+      // together they make the one record argument. In ICRC-3's
+      // archived_blocks the callback takes exactly the type of the `args`
+      // field, and a streaming strategy's callback takes its `token` field, so
+      // that single field is the argument.
+      const argEntries = fields_.filter(([k]) => k !== funcFieldKey)
+      const argCodecs = Object.fromEntries(
+        argEntries.map(([k, type]) => [k, this.getCodec(type)])
+      )
+      const argIsField =
+        funcType.argTypes.length === 1 &&
+        argEntries.length === 1 &&
+        argEntries[0][1].display() === funcType.argTypes[0].display()
+
       const node: ResultNode<"funcRecord"> = {
         type: "funcRecord",
         label,
@@ -280,10 +298,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           const argRecord = Object.fromEntries(
             Object.entries(resolvedArgFields).map(([k, v]) => [
               k,
-              v.value ?? v.raw,
+              argCodecs[k].decode(v.raw),
             ])
           )
-          const defaultArgs = funcType.argTypes.length > 0 ? [argRecord] : []
+          const defaultArgs =
+            funcType.argTypes.length === 0
+              ? []
+              : argIsField
+                ? Object.values(argRecord)
+                : [argRecord]
 
           return {
             ...node,
