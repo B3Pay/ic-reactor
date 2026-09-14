@@ -10,10 +10,6 @@ import { CONFIG_FILE_NAME } from "../utils/config.js"
 // non-interactive run must never reach one. With stdin closed — CI — a real
 // prompt resolves as a cancel, which is how `init -y` used to exit 0 having
 // written nothing at all.
-const { cancelSymbol } = vi.hoisted(() => ({
-  cancelSymbol: Symbol("clack:cancel"),
-}))
-
 vi.mock("@clack/prompts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@clack/prompts")>()
   const refuse = (kind: string) =>
@@ -21,12 +17,10 @@ vi.mock("@clack/prompts", async (importOriginal) => {
       throw new Error(`unexpected ${kind} prompt in a non-interactive test`)
     })
 
+  // `CANCEL_SYMBOL` and `isCancel` come through `actual` untouched, so a test
+  // signals Ctrl+C by resolving a prompt with the real cancel value.
   return {
     ...actual,
-    // The real cancel value is a module-private symbol, so tests signal a cancel
-    // with their own and teach `isCancel` to recognize it.
-    isCancel: (value: unknown) =>
-      value === cancelSymbol || actual.isCancel(value),
     confirm: refuse("confirm"),
     text: refuse("text"),
     select: refuse("select"),
@@ -154,7 +148,7 @@ describe("init", () => {
       .mockResolvedValueOnce("src/declarations") // outDir
       .mockResolvedValueOnce("../../clients") // clientManagerPath
       .mockResolvedValueOnce("backend") // canister name
-      .mockResolvedValueOnce(cancelSymbol) // Ctrl+C on the .did path
+      .mockResolvedValueOnce(p.CANCEL_SYMBOL) // Ctrl+C on the .did path
     vi.mocked(p.confirm).mockResolvedValueOnce(true) // configure a canister now?
 
     expect(await runCli(["init"])).toBe(0)
