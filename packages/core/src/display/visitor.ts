@@ -49,6 +49,31 @@ function createFixedNumberCodec(bits: number, signed: boolean): z.ZodTypeAny {
   )
 }
 
+/**
+ * `nat`, `int`, `nat64` and `int64` display as decimal text and encode through
+ * `BigInt`. `BigInt("")` and `BigInt("   ")` both return `0n`, so a blank
+ * string has to be refused here or an empty amount field encodes as zero.
+ * Any other string still goes to `BigInt`, which throws on non-integer text.
+ */
+function createBigIntCodec(typeName: string): z.ZodTypeAny {
+  return z.codec(
+    z.bigint(), // Candid format
+    z.string(), // Display format
+    {
+      decode: (val) => (typeof val === "bigint" ? val.toString() : val),
+      encode: (val) => {
+        if (typeof val !== "string") return val
+        if (val.trim() === "") {
+          throw new TypeError(
+            `[ic-reactor] Invalid ${typeName} display value: expected an integer string, got "${val}"`
+          )
+        }
+        return BigInt(val)
+      },
+    }
+  )
+}
+
 export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   private _recCache = new Map<IDL.RecClass, z.ZodTypeAny>()
 
@@ -85,25 +110,11 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   }
 
   visitInt(_t: IDL.IntClass, _data: unknown): z.ZodTypeAny {
-    return z.codec(
-      z.bigint(), // Candid format
-      z.string(), // Display format
-      {
-        decode: (val) => (typeof val === "bigint" ? val.toString() : val),
-        encode: (val) => (typeof val === "string" ? BigInt(val) : val),
-      }
-    )
+    return createBigIntCodec("int")
   }
 
   visitNat(_t: IDL.NatClass, _data: unknown): z.ZodTypeAny {
-    return z.codec(
-      z.bigint(), // Candid format
-      z.string(), // Display format
-      {
-        decode: (val) => (typeof val === "bigint" ? val.toString() : val),
-        encode: (val) => (typeof val === "string" ? BigInt(val) : val),
-      }
-    )
+    return createBigIntCodec("nat")
   }
 
   visitFloat(t: IDL.FloatClass, _data: unknown): z.ZodTypeAny {
@@ -148,14 +159,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
       return createFixedNumberCodec(bits, true)
     } else {
       // 64-bit integers: bigint ↔ string
-      return z.codec(
-        z.bigint(), // Candid format
-        z.string(), // Display format
-        {
-          decode: (val) => (typeof val === "bigint" ? val.toString() : val),
-          encode: (val) => (typeof val === "string" ? BigInt(val) : val),
-        }
-      )
+      return createBigIntCodec(`int${bits}`)
     }
   }
 
@@ -165,14 +169,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     if (bits <= 32) {
       return createFixedNumberCodec(bits, false)
     } else {
-      return z.codec(
-        z.bigint(), // Candid format
-        z.string(), // Display format
-        {
-          decode: (val) => (typeof val === "bigint" ? val.toString() : val),
-          encode: (val) => (typeof val === "string" ? BigInt(val) : val),
-        }
-      )
+      return createBigIntCodec(`nat${bits}`)
     }
   }
 
