@@ -72,6 +72,34 @@ describe("createMutation execute() passes TanStack's mutation context", () => {
     expect(fromExecute?.mutationKey).toEqual(fromHook.mutationKey)
   })
 
+  it("includes the QueryClient's mutation defaults, as the hook path does", async () => {
+    // TanStack resolves client-level defaults before it builds the context, so
+    // a factory without its own meta still sees them through useMutation().
+    queryClient.setDefaultOptions({
+      mutations: { retry: false, meta: { source: "client default" } },
+    })
+    queryClient.setMutationDefaults(MUTATION_KEY, {
+      meta: { source: "key default" },
+    })
+    const contexts: MutationFunctionContext[] = []
+    const mutation = createMutation(reactor, {
+      functionName: "transfer",
+      onSuccess: (_data, _variables, _onMutateResult, context) => {
+        contexts.push(context)
+      },
+    })
+
+    const { result } = renderHook(() => mutation.useMutation(), { wrapper })
+    await act(async () => {
+      await result.current.mutateAsync(["alice"])
+    })
+    await mutation.execute(["alice"])
+
+    const [fromHook, fromExecute] = contexts
+    expect(fromHook.meta).toEqual({ source: "key default" })
+    expect(fromExecute?.meta).toEqual(fromHook.meta)
+  })
+
   it("resolves a successful call when onSuccess reads context.client", async () => {
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
     const mutation = createMutation(reactor, {

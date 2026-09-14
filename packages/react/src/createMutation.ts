@@ -117,12 +117,19 @@ const createMutationImpl = <
     // declare it as always present. None of it is mutation state, so this path
     // builds the same object. Passing `undefined` made a callback that reads
     // `context.client` throw here and nowhere else.
+    //
+    // The hook path takes `meta` and `mutationKey` from the client's defaulted
+    // options, so this runs the same spread through `defaultMutationOptions`.
+    // Reading `factoryOptions` alone dropped mutation defaults registered on
+    // the QueryClient (`defaultOptions.mutations`, `setMutationDefaults`).
+    const effectiveOptions = reactor.queryClient.defaultMutationOptions({
+      mutationKey: reactor.getQueryOptions({ functionName }).queryKey,
+      ...factoryOptions,
+    })
     const context: MutationFunctionContext = {
       client: reactor.queryClient,
-      meta: factoryOptions.meta,
-      mutationKey:
-        factoryOptions.mutationKey ??
-        reactor.getQueryOptions({ functionName }).queryKey,
+      meta: effectiveOptions.meta,
+      mutationKey: effectiveOptions.mutationKey,
     }
 
     let result: ReactorReturnOk<Service, Method, Transform>
