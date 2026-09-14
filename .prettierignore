@@ -43,9 +43,6 @@ canister_ids.json
 # .gitignore, so a repo-wide walk would format files on other agents' branches.
 .claude/
 
-# Written by `dfx generate` / the vite plugin into the e2e project.
-e2e/src/declarations/
-
 # TypeDoc output, rewritten by `pnpm docs:build`. Also in the root .gitignore;
 # repeated here so the Prettier set does not silently depend on it.
 docs/src/content/docs/libs/
@@ -56,14 +53,3 @@ examples/tanstack-router/src/routeTree.gen.ts
 
 # pnpm rewrites the lockfile on every install.
 pnpm-lock.yaml
-
-# Rewritten by @ic-reactor/vite-plugin's codegen on every `pnpm build:examples`.
-# These are tracked but generator-owned: the committed copies are Prettier-
-# formatted while the generator emits its own style, so a repo-wide check goes
-# red in any tree that has been built. Same reasoning as **/next-env.d.ts above.
-# (The generator emitting unformatted output is tracked separately.)
-examples/all-in-one-demo/src/declarations/backend/declarations/backend.*
-examples/codegen-in-action/src/canisters-vite/backend/declarations/backend.*
-examples/suspense-infinite-query-demo/src/declarations/backend/declarations/backend.*
-examples/vite-environment-variables/frontend/src/lib/canisters/backend/declarations/backend.*
-examples/vite-plugin-demo/frontend/lib/canisters/backend/declarations/backend.*

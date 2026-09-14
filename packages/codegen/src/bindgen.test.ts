@@ -1,5 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest"
+import { didToJs, didToTs } from "@ic-reactor/parser"
 import fs from "node:fs"
+import { createRequire } from "node:module"
 import os from "node:os"
 import path from "node:path"
 import { declarationsExist, generateDeclarations } from "./generators/index.js"
@@ -230,5 +232,216 @@ describe("Bindgen", () => {
     expect(declarationsExist(outDir, canisterName)).toBe(true)
     expect(declarationsExist(outDir, canisterName, didFile)).toBe(true)
     expect(declarationsExist(outDir, canisterName, "other.did")).toBe(false)
+  })
+
+  describe("formatting", () => {
+    // Linked into a fixture's node_modules, so it resolves from the fixture's
+    // projectRoot the way a consumer's own install does.
+    const prettierDir = path.dirname(
+      createRequire(import.meta.url).resolve("prettier/package.json")
+    )
+
+    function linkPrettier(root: string) {
+      fs.mkdirSync(path.join(root, "node_modules"))
+      fs.symlinkSync(
+        prettierDir,
+        path.join(root, "node_modules", "prettier"),
+        "junction"
+      )
+    }
+
+    function readOutput(outDir: string) {
+      const dir = path.join(outDir, "declarations")
+      return {
+        js: fs.readFileSync(path.join(dir, "test.js"), "utf-8"),
+        dts: fs.readFileSync(path.join(dir, "test.d.ts"), "utf-8"),
+      }
+    }
+
+    it("formats with the project's Prettier, under the config for each file's final path", async () => {
+      const root = createTempProject()
+      linkPrettier(root)
+      fs.writeFileSync(
+        path.join(root, ".prettierrc"),
+        JSON.stringify({
+          semi: false,
+          // Matches where the .d.ts ends up and not the staging directory the
+          // generator writes it to first, so it applies only if the generator
+          // resolves the config for the final path.
+          overrides: [
+            { files: "output/declarations/*.d.ts", options: { semi: true } },
+          ],
+        })
+      )
+      const didFile = writeDid(root, "test.did", validDidContent)
+      const outDir = path.join(root, "output")
+
+      const result = await generateDeclarations({
+        didFile,
+        outDir,
+        canisterName,
+        projectRoot: root,
+      })
+
+      expect(result.error).toBeUndefined()
+      const { js, dts } = readOutput(outDir)
+      expect(js).toBe(
+        [
+          "export const idlFactory = ({ IDL }) => {",
+          '  return IDL.Service({ greet: IDL.Func([IDL.Text], [IDL.Text], ["query"]) })',
+          "}",
+          "export const init = ({ IDL }) => {",
+          "  return []",
+          "}",
+          "",
+        ].join("\n")
+      )
+      expect(dts).toBe(
+        [
+          'import type { Principal } from "@icp-sdk/core/principal";',
+          'import type { ActorMethod } from "@icp-sdk/core/agent";',
+          'import type { IDL } from "@icp-sdk/core/candid";',
+          "",
+          "export interface _SERVICE {",
+          "  greet: ActorMethod<[string], string>;",
+          "}",
+          "export declare const idlFactory: IDL.InterfaceFactory;",
+          "export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];",
+          "",
+        ].join("\n")
+      )
+      // The .did copy stays byte-identical to its source.
+      expect(
+        fs.readFileSync(path.join(outDir, "declarations", "test.did"), "utf-8")
+      ).toBe(validDidContent)
+    })
+
+    it("writes the parser output when Prettier does not resolve from projectRoot", async () => {
+      const root = createTempProject()
+      // A config but no Prettier to apply it, which is the common case.
+      fs.writeFileSync(
+        path.join(root, ".prettierrc"),
+        JSON.stringify({ semi: false })
+      )
+      expect(() =>
+        createRequire(path.join(root, "noop.js")).resolve("prettier")
+      ).toThrow()
+      const didFile = writeDid(root, "test.did", validDidContent)
+      const outDir = path.join(root, "output")
+
+      const result = await generateDeclarations({
+        didFile,
+        outDir,
+        canisterName,
+        projectRoot: root,
+      })
+
+      expect(result.success).toBe(true)
+      expect(readOutput(outDir)).toEqual({
+        js: `${didToJs(validDidContent)}\n`,
+        dts: `${didToTs(validDidContent)}\n`,
+      })
+    })
+
+    // Real Prettier failures rather than stand-ins. The first throws from
+    // resolveConfig, the second from format.
+    it.each([
+      ["the config does not parse", "{ semi: false,,"],
+      [
+        "the config names a plugin that is not installed",
+        JSON.stringify({ plugins: ["prettier-plugin-not-installed"] }),
+      ],
+    ])(
+      "writes the parser output when Prettier throws because %s",
+      async (_label, prettierrc) => {
+        const root = createTempProject()
+        linkPrettier(root)
+        fs.writeFileSync(path.join(root, ".prettierrc"), prettierrc)
+        const didFile = writeDid(root, "test.did", validDidContent)
+        const outDir = path.join(root, "output")
+
+        const result = await generateDeclarations({
+          didFile,
+          outDir,
+          canisterName,
+          projectRoot: root,
+        })
+
+        expect(result.error).toBeUndefined()
+        expect(result.success).toBe(true)
+        expect(readOutput(outDir)).toEqual({
+          js: `${didToJs(validDidContent)}\n`,
+          dts: `${didToTs(validDidContent)}\n`,
+        })
+      }
+    )
+
+    it("resolves a plugin the config names from projectRoot, not the working directory", async () => {
+      const root = createTempProject()
+      linkPrettier(root)
+      // Installed in the project only. The test runs with its working directory
+      // in packages/codegen, where Prettier would look for it by name.
+      const pluginDir = path.join(root, "node_modules", "prettier-plugin-local")
+      fs.mkdirSync(pluginDir)
+      fs.writeFileSync(
+        path.join(pluginDir, "package.json"),
+        JSON.stringify({ name: "prettier-plugin-local", main: "index.js" })
+      )
+      fs.writeFileSync(
+        path.join(pluginDir, "index.js"),
+        "module.exports = {}\n"
+      )
+      expect(() =>
+        createRequire(import.meta.url).resolve("prettier-plugin-local")
+      ).toThrow()
+      fs.writeFileSync(
+        path.join(root, ".prettierrc"),
+        JSON.stringify({ semi: false, plugins: ["prettier-plugin-local"] })
+      )
+      const didFile = writeDid(root, "test.did", validDidContent)
+      const outDir = path.join(root, "output")
+
+      await generateDeclarations({
+        didFile,
+        outDir,
+        canisterName,
+        projectRoot: root,
+      })
+
+      expect(readOutput(outDir).js).toBe(
+        [
+          "export const idlFactory = ({ IDL }) => {",
+          '  return IDL.Service({ greet: IDL.Func([IDL.Text], [IDL.Text], ["query"]) })',
+          "}",
+          "export const init = ({ IDL }) => {",
+          "  return []",
+          "}",
+          "",
+        ].join("\n")
+      )
+    })
+
+    it("keeps the TypeScript parser for the .d.ts when the config sets a parser", async () => {
+      const root = createTempProject()
+      linkPrettier(root)
+      fs.writeFileSync(
+        path.join(root, ".prettierrc"),
+        JSON.stringify({ semi: false, parser: "babel" })
+      )
+      const didFile = writeDid(root, "test.did", validDidContent)
+      const outDir = path.join(root, "output")
+
+      await generateDeclarations({
+        didFile,
+        outDir,
+        canisterName,
+        projectRoot: root,
+      })
+
+      const { dts } = readOutput(outDir)
+      expect(dts).not.toBe(`${didToTs(validDidContent)}\n`)
+      expect(dts).toContain("export interface _SERVICE {\n")
+      expect(dts).toContain("  greet: ActorMethod<[string], string>\n")
+    })
   })
 })

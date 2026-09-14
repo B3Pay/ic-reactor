@@ -109,6 +109,11 @@ For each canister, the CLI writes into `<outDir>/<canister>/`:
 `<did-basename>` is the file name of the `.did` source without its extension —
 it matches the canister name only when the two happen to be the same.
 
+If Prettier resolves from the directory holding `ic-reactor.json`, the CLI
+formats the `.js` and `.d.ts` with it and your Prettier config, so regenerating
+leaves formatted, committed declarations unchanged. Without Prettier they hold
+the Candid parser's output followed by a newline.
+
 With `target: "react"`, `index.generated.ts` exports the reactor plus six hooks
 named after the canister — `use<Canister>Query`, `use<Canister>SuspenseQuery`,
 `use<Canister>InfiniteQuery`, `use<Canister>SuspenseInfiniteQuery`,
