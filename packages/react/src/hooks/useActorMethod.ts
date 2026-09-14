@@ -62,12 +62,11 @@ export interface UseActorMethodParameters<
    * Callback when the method call succeeds.
    * Works for both query and mutation methods.
    *
-   * A query method's `undefined` result arrives as `null`, as in `useActorQuery`.
+   * A method's `undefined` result arrives as `null`, as in `useActorQuery`,
+   * for query and update methods alike.
    */
   onSuccess?: (
-    data:
-      | ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
-      | ReactorReturnOk<Service, Method, Transform>
+    data: ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
   ) => void
 
   /**
@@ -103,8 +102,9 @@ export interface UseActorMethodResult<
   Transform extends TransformKey = "candid",
 > {
   /**
-   * The returned data from the method call. A query method's `undefined`
-   * result is `null` here, as in `useActorQuery`.
+   * The returned data from the method call. A method's `undefined` result is
+   * `null` here, as in `useActorQuery`, so `undefined` only means no call has
+   * settled yet.
    */
   data:
     ReactorQueryData<ReactorReturnOk<Service, Method, Transform>> | undefined
@@ -164,7 +164,7 @@ export interface UseActorMethodResult<
 
   /** The raw mutation result (only available for mutation methods) */
   mutationResult?: UseMutationResult<
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     ReactorReturnErr<Service, Method, Transform>,
     ReactorArgs<Service, Method, Transform>
   >
@@ -306,20 +306,24 @@ export function useActorMethod<
   // ============================================================================
 
   const mutationResult = useMutation<
-    ReactorReturnOk<Service, Method, Transform>,
+    TQueryData,
     ReactorReturnErr<Service, Method, Transform>,
     ReactorArgs<Service, Method, Transform>
   >(
     {
       mutationKey: queryKey,
-      mutationFn: async (mutationArgs) => {
-        const result = await reactor.callMethod({
-          functionName,
-          args: mutationArgs ?? args,
-          callConfig,
-        })
-        return result
-      },
+      // Normalized like the query branch, so `data`, `call()` and `onSuccess`
+      // mean the same thing for both kinds of method. The hook cannot type the
+      // two branches apart: a Candid service type does not say which methods
+      // are queries.
+      mutationFn: async (mutationArgs) =>
+        normalizeQueryData<TData>(
+          (await reactor.callMethod({
+            functionName,
+            args: mutationArgs ?? args,
+            callConfig,
+          })) as TData
+        ),
       onSuccess: (data) => {
         onSuccessRef.current?.(data)
         // Invalidate specified queries after successful mutation
@@ -343,7 +347,7 @@ export function useActorMethod<
   const call = useCallback(
     async (
       callArgs?: ReactorArgs<Service, Method, Transform>
-    ): Promise<TQueryData | TData | undefined> => {
+    ): Promise<TQueryData | undefined> => {
       if (isQuery) {
         // For queries, refetch with new args if provided
         if (callArgs !== undefined) {

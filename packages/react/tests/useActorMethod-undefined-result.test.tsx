@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, expectTypeOf, vi, beforeEach } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -20,11 +20,13 @@ import { useActorQuery } from "../src/hooks/useActorQuery.js"
 
 interface TestActor {
   find_profile: ActorMethod<[string], [] | [string]>
+  clear_profile: ActorMethod<[string], undefined>
 }
 
 const idlFactory: IDL.InterfaceFactory = ({ IDL }) =>
   IDL.Service({
     find_profile: IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ["query"]),
+    clear_profile: IDL.Func([IDL.Text], [], []),
   })
 
 describe("useActorMethod with a query that successfully returns None", () => {
@@ -117,5 +119,45 @@ describe("useActorMethod with a query that successfully returns None", () => {
 
     expect(onError).not.toHaveBeenCalled()
     expect(returned).toBeNull()
+  })
+
+  it("gives an update method's empty reply the same null", async () => {
+    // One contract for both branches. The hook cannot type queries and
+    // updates apart, so an update returning `undefined` while the types say
+    // `null` would make the declared type wrong for one of them.
+    vi.spyOn(reactor as any, "executeCall").mockResolvedValue(
+      IDL.encode([], [])
+    )
+    const onSuccess = vi.fn()
+    const onError = vi.fn()
+
+    const { result } = renderHook(
+      () =>
+        useActorMethod({
+          reactor,
+          functionName: "clear_profile",
+          onSuccess,
+          onError,
+        }),
+      { wrapper }
+    )
+
+    let returned: unknown = "not called"
+    await act(async () => {
+      returned = await result.current.call(["alice"])
+    })
+
+    expect(returned).toBeNull()
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toBeNull()
+    expect(onSuccess).toHaveBeenCalledWith(null)
+    expect(onError).not.toHaveBeenCalled()
+
+    // The declared types match what both branches return: no `undefined`
+    // result, and no widening of the update API beyond `null`.
+    expectTypeOf(result.current.data).toEqualTypeOf<null | undefined>()
+    expectTypeOf(result.current.call).returns.resolves.toEqualTypeOf<
+      null | undefined
+    >()
   })
 })
