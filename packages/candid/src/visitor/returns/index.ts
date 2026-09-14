@@ -75,6 +75,22 @@ function primitiveNode<T extends VisitorDataType>(
 }
 
 /**
+ * A vector's elements, or `undefined` when `data` is not a vector.
+ *
+ * `IDL.decode` returns a typed array, not an Array, for every fixed-width
+ * integer vector other than blob: `vec nat64` is a `BigUint64Array` and
+ * `vec int8` an `Int8Array`. Accepting only arrays made the metadata reactors
+ * throw "Expected vector" on any method returning one.
+ */
+function vectorElements(data: unknown): unknown[] | undefined {
+  if (Array.isArray(data)) return data
+  if (ArrayBuffer.isView(data) && !(data instanceof DataView)) {
+    return Array.from(data as unknown as ArrayLike<unknown>)
+  }
+  return undefined
+}
+
+/**
  * The Candid value a resolved node stands for, read back from the tree.
  *
  * `resolve()` takes a value in its Candid form or already display-transformed,
@@ -621,14 +637,14 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "array",
       items: [], // empty schema placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"vector"> {
-        if (data === null || data === undefined || !Array.isArray(data)) {
+        const vectorData = vectorElements(data)
+        if (!vectorData) {
           throw new MetadataError(
             `Expected vector, but got ${data === null ? "null" : typeof data}, raw: ${data}`,
             label,
             "vec"
           )
         }
-        const vectorData = data as unknown[]
         return {
           ...node,
           items: vectorData.map((v) => itemSchema.resolve(v)),

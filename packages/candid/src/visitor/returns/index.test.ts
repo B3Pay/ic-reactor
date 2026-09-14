@@ -666,6 +666,30 @@ describe("ResultFieldVisitor", () => {
       expect(blobResolved.length).toBe(513)
     })
 
+    it("resolves the typed array IDL.decode returns for an integer vector", () => {
+      const [ids, deltas] = IDL.decode(
+        [IDL.Vec(IDL.Nat64), IDL.Vec(IDL.Int8)],
+        IDL.encode(
+          [IDL.Vec(IDL.Nat64), IDL.Vec(IDL.Int8)],
+          [
+            [BigInt(1), BigInt(2)],
+            [-1, 5],
+          ]
+        )
+      )
+      expect(ids).toBeInstanceOf(BigUint64Array)
+
+      const idsNode = visitor
+        .visitVec(IDL.Vec(IDL.Nat64), IDL.Nat64, "ids")
+        .resolve(ids) as VectorNode
+      expect(idsNode.items.map((item) => item.value)).toEqual(["1", "2"])
+
+      const deltasNode = visitor
+        .visitVec(IDL.Vec(IDL.Int8), IDL.Int8, "deltas")
+        .resolve(deltas) as VectorNode
+      expect(deltasNode.items.map((item) => item.value)).toEqual([-1, 5])
+    })
+
     it("should handle nested vectors", () => {
       const innerVec = IDL.Vec(IDL.Nat)
       const nestedVecType = IDL.Vec(innerVec)
