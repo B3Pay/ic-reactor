@@ -826,11 +826,17 @@ describe("MetadataDisplayReactor", () => {
         functionName: "get-config",
         candid: "() -> (text) query",
       })
+      // A comment the parser ignores, holding an unmatched delimiter.
+      await reactor.registerMethod({
+        functionName: "echo",
+        candid: "// accepts (text\n(text) -> (text) query",
+      })
 
       const process = reactor.getInputMeta("submit_process")
       expect(process?.args[0].type).toBe("record")
       expect(reactor.getOutputMeta("icrc1_symbol")?.functionType).toBe("query")
       expect(reactor.hasMethod("get-config")).toBe(true)
+      expect(reactor.hasMethod("echo")).toBe(true)
     })
   })
 
