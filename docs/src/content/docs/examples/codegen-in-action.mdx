@@ -12,7 +12,6 @@ This example provides a side-by-side comparison of how `@ic-reactor/codegen` is 
 
 - **Shared Core**: Understand how both tools use the same underlying codegen logic.
 - **Consistent Output**: Verify that hooks generated via CLI match those from the Vite plugin.
-- **Flexibility**: See how to use codegen utilities in custom build scripts.
 - **Project Structure**: Best practices for organizing generated declarations.
 
 ## Links
@@ -42,7 +41,7 @@ This example provides a side-by-side comparison of how `@ic-reactor/codegen` is 
 
 ## Implementation
 
-The example contains two sub-projects: one using the Vite plugin and one using the CLI. Both target the same canister and produce identical hook interfaces, demonstrating the reliability of the shared codegen.
+The example is a single Vite app with one Candid file, `backend/backend.did`, generated twice. The Vite plugin writes `src/canisters-vite/backend` on every `vite` run, and `pnpm codegen:cli` writes `src/canisters-cli/backend` from `ic-reactor.json`. The two directories sit side by side so you can diff them. Both come out of the same `@ic-reactor/codegen` pipeline, and the app imports the Vite plugin's copy.
 
 ### CLI vs Vite Plugin
 

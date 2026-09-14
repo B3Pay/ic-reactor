@@ -1,7 +1,7 @@
 # Identity Attributes Demo
 
-A focused React example for the IC Reactor v4 Internet Identity attributes
-feature.
+A focused React example for requesting Internet Identity attributes with
+IC Reactor.
 
 It demonstrates:
 
@@ -62,7 +62,10 @@ that will verify and store user information should create it.
 1. Call a backend `registerBegin` / `profileLinkBegin` endpoint.
 2. Backend creates a fresh 32-byte nonce, stores a hash of it with expected
    keys, action, origin, principal scope if known, and a short expiry.
-3. Frontend passes that nonce to `requestOpenIdAttributes()`.
+3. Frontend gives `requestOpenIdAttributes()` a `nonce` callback that makes
+   the `registerBegin` call. Fetching the nonce first and passing the value
+   would end the click's user gesture before the Internet Identity window
+   opens, and the browser blocks the window.
 4. Frontend sends `signedAttributes.data`, `signedAttributes.signature`,
    `requestedKeys`, and `principal` to `registerFinish`.
 5. Backend verifies the signed attributes, checks the nonce is unused and
@@ -73,12 +76,15 @@ that will verify and store user information should create it.
 const { requestOpenIdAttributes } = useIdentityAttributes()
 
 async function registerWithAttributes() {
-  const { nonce } = await api.registerBegin({
-    expectedKeys: ["email", "name"],
-  })
-
   const result = await requestOpenIdAttributes({
-    nonce,
+    // Opens the Internet Identity window right away and fetches the nonce
+    // while it loads.
+    nonce: async () => {
+      const { nonce } = await api.registerBegin({
+        expectedKeys: ["email", "name"],
+      })
+      return nonce
+    },
     openIdProvider: "google",
     keys: ["email", "name"],
   })
