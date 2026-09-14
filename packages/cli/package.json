@@ -36,13 +36,13 @@
   },
   "homepage": "https://ic-reactor.b3pay.net/v3/packages/cli",
   "dependencies": {
-    "@clack/prompts": "^1.7.0",
+    "@clack/prompts": "^1.8.0",
     "@ic-reactor/codegen": "workspace:*",
     "commander": "^15.0.0",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^26.4.1",
+    "@types/node": "^26.5.1",
     "tsup": "^8.5.1",
     "typescript": "~6.0.3",
     "vitest": "^5.0.0"
