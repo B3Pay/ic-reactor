@@ -72,13 +72,15 @@ and `pnpm build:examples` locally if you touched anything under `packages/` or
 `examples/` — the examples are now built in CI, not merely type-checked, so a
 change that compiles against the workspace can still fail there.
 
-A PR that touches `docs/` or `packages/` also runs the docs gate. CI lints the
-MDX, builds this site and crawls it for broken links. The API reference is
+A PR that touches `docs/`, `packages/` or `examples/` also runs the docs gate.
+CI lints the MDX, checks the example pages against `examples/`, builds this
+site and crawls it for broken links. The API reference is
 generated from package sources, so a source change can break the docs build
 too. Run the same checks locally:
 
 ```bash
 pnpm --dir docs run lint:mdx
+pnpm docs:check-examples   # sandbox links, file= targets and index cards
 pnpm docs:build
 pnpm docs:check-links   # crawls docs/dist, so run it after docs:build
 ```
