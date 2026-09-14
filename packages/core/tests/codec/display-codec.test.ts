@@ -603,6 +603,42 @@ describe("Display Codec - didToDisplayCodec", () => {
       expect((encoded as any).Ok.to.toText()).toBe(principalText)
       expect((encoded as any).Ok.amount).toBe(1000000n)
     })
+
+    it("encodes an arm whose optional payload is none", () => {
+      // The EVM RPC canister's RpcServices has `EthMainnet : opt vec ...`,
+      // where none selects the default providers. A display value says none
+      // by leaving the payload null or undefined, which is what form
+      // metadata defaults it to and what decoding `{ EthMainnet: [] }` gives.
+      const List = IDL.Rec()
+      List.fill(IDL.Opt(IDL.Record({ head: IDL.Nat, tail: List })))
+      const Services = IDL.Variant({
+        EthMainnet: IDL.Opt(IDL.Vec(IDL.Text)),
+        Custom: IDL.Record({ url: IDL.Text }),
+        Chain: List,
+      })
+      const codec = didToDisplayCodec(Services)
+
+      expect(codec.asCandid({ _type: "EthMainnet", EthMainnet: null })).toEqual(
+        { EthMainnet: [] }
+      )
+      expect(codec.asCandid({ _type: "EthMainnet" })).toEqual({
+        EthMainnet: [],
+      })
+      expect(codec.asCandid({ EthMainnet: null })).toEqual({ EthMainnet: [] })
+      // A recursive type that is an optional underneath is still optional.
+      expect(codec.asCandid({ _type: "Chain", Chain: null })).toEqual({
+        Chain: [],
+      })
+
+      const roundTrip = codec.asCandid(codec.asDisplay({ EthMainnet: [] }))
+      expect(roundTrip).toEqual({ EthMainnet: [] })
+      expect(() => IDL.encode([Services], [roundTrip])).not.toThrow()
+
+      // An arm that has no none keeps reporting the missing payload.
+      expect(codec.asCandid({ _type: "Custom", Custom: null })).toEqual({
+        Custom: null,
+      })
+    })
   })
 
   describe("Tuple Types", () => {

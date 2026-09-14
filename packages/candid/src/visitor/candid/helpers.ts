@@ -49,8 +49,15 @@ export function toFormValue(field: FormFieldNode, raw: unknown): unknown {
       return toFormValue(field.innerField, raw)
     }
     case "vector": {
-      if (!Array.isArray(raw)) return []
-      return raw.map((v, idx) => toFormValue(field.createItemField(idx), v))
+      // IDL.decode returns a typed array for a fixed-width integer vector
+      // (`vec nat64` is a BigUint64Array), which is not an Array, so hydrating
+      // one used to drop every element.
+      const items = Array.isArray(raw)
+        ? raw
+        : ArrayBuffer.isView(raw) && !(raw instanceof DataView)
+          ? Array.from(raw as unknown as ArrayLike<unknown>)
+          : []
+      return items.map((v, idx) => toFormValue(field.createItemField(idx), v))
     }
     case "blob": {
       if (raw instanceof Uint8Array) {
@@ -82,7 +89,14 @@ export function toFormValue(field: FormFieldNode, raw: unknown): unknown {
     case "null":
       return null
     case "recursive":
-      return raw
+      // The node is a lazy handle on its inner type at the same path, so its
+      // form value is the inner type's. Returning `raw` handed the form
+      // decoded Candid, with bigints, `[]` and `[x]` options and variants
+      // without `_type`, which the field's own schema rejects. extract()
+      // builds one level, so this recurses only as deep as the data. Missing
+      // data stays as it is, because there is nothing to follow and a
+      // variant's default option could be this same type again.
+      return raw == null ? raw : toFormValue(field.extract(), raw)
     case "unknown":
       return raw ?? null
   }

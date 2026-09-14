@@ -514,7 +514,10 @@ describe("ArgumentFieldVisitor", () => {
       expect(field.label).toBe("data")
       expect(field.defaultValue).toBe("")
       if (field.type === "blob") {
-        expect(field.acceptedFormats).toEqual(["hex", "base64", "file"])
+        // It lists only what validateInput accepts. A base64 string fails it.
+        expect(field.acceptedFormats).toEqual(["hex", "file"])
+        expect(field.validateInput("aGVsbG8=").valid).toBe(false)
+        expect(field.validateInput("0x68656c6c6f").valid).toBe(true)
       }
     })
 

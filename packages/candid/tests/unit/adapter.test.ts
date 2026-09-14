@@ -510,6 +510,49 @@ describe("CandidAdapter", () => {
       expect(result.idlFactory).toBeDefined()
     })
 
+    it("keeps the local parser's error when the didjs canister returns none", async () => {
+      const parser = await import("@ic-reactor/parser")
+      const invalid = "service : { greet : (text) -> }"
+      // The real parser's message for this input, not a stand-in.
+      let parserMessage = ""
+      try {
+        parser.didToJs(invalid)
+      } catch (error) {
+        parserMessage = error instanceof Error ? error.message : String(error)
+      }
+      expect(parserMessage).not.toBe("")
+
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
+      await adapter.loadParser(parser as unknown as ReactorParser)
+      mockAgent.query.mockResolvedValue({
+        reply: { arg: IDL.encode([IDL.Opt(IDL.Text)], [[]]) },
+      })
+
+      const error = await adapter.parseCandidSource(invalid).then(
+        () => undefined,
+        (e: unknown) => e as Error
+      )
+
+      expect(mockAgent.query).toHaveBeenCalled()
+      expect(error?.message).toContain("Failed to compile Candid to JavaScript")
+      expect(error?.message).toContain(parserMessage)
+    })
+
+    it("names both failures when the didjs call fails as well", async () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
+      await adapter.loadParser({
+        didToJs: vi.fn(() => {
+          throw "Unexpected token at 1:30"
+        }),
+        validateIDL: vi.fn(),
+      })
+      mockAgent.query.mockRejectedValue(new Error("network down"))
+
+      await expect(adapter.parseCandidSource("service : {")).rejects.toThrow(
+        /Unexpected token at 1:30.*network down/
+      )
+    })
+
     it("should throw if compilation returns empty string", async () => {
       const adapter = new CandidAdapter({ clientManager: mockClientManager })
 

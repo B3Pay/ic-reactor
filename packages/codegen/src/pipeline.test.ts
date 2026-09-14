@@ -1,4 +1,5 @@
 import fs from "node:fs"
+import { createRequire } from "node:module"
 import os from "node:os"
 import path from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
@@ -151,6 +152,51 @@ describe("Codegen pipeline", () => {
     expect(
       result.files.some((file) => file.filePath.endsWith("index.ts"))
     ).toBe(false)
+  })
+
+  it("formats declarations with the Prettier installed at projectRoot", async () => {
+    const projectRoot = createTempProject()
+    writeDid(projectRoot, "backend.did")
+    fs.mkdirSync(path.join(projectRoot, "node_modules"))
+    fs.symlinkSync(
+      path.dirname(
+        createRequire(import.meta.url).resolve("prettier/package.json")
+      ),
+      path.join(projectRoot, "node_modules", "prettier"),
+      "junction"
+    )
+    fs.writeFileSync(
+      path.join(projectRoot, ".prettierrc"),
+      JSON.stringify({ semi: false })
+    )
+
+    const result = await runCanisterPipeline({
+      canisterConfig: { name: "backend", didFile: "backend.did" },
+      projectRoot,
+      globalConfig: { outDir: "src/declarations" },
+      generateReactor: false,
+    })
+
+    expect(result.error).toBeUndefined()
+    expect(
+      fs.readFileSync(
+        path.join(
+          projectRoot,
+          "src/declarations/backend/declarations/backend.js"
+        ),
+        "utf-8"
+      )
+    ).toBe(
+      [
+        "export const idlFactory = ({ IDL }) => {",
+        '  return IDL.Service({ greet: IDL.Func([IDL.Text], [IDL.Text], ["query"]) })',
+        "}",
+        "export const init = ({ IDL }) => {",
+        "  return []",
+        "}",
+        "",
+      ].join("\n")
+    )
   })
 
   it("leaves existing reactor files untouched when reactor generation is disabled", async () => {

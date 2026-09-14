@@ -49,6 +49,31 @@ function createFixedNumberCodec(bits: number, signed: boolean): z.ZodTypeAny {
   )
 }
 
+/**
+ * `nat`, `int`, `nat64` and `int64` display as decimal text and encode through
+ * `BigInt`. `BigInt("")` and `BigInt("   ")` both return `0n`, so a blank
+ * string has to be refused here or an empty amount field encodes as zero.
+ * Any other string still goes to `BigInt`, which throws on non-integer text.
+ */
+function createBigIntCodec(typeName: string): z.ZodTypeAny {
+  return z.codec(
+    z.bigint(), // Candid format
+    z.string(), // Display format
+    {
+      decode: (val) => (typeof val === "bigint" ? val.toString() : val),
+      encode: (val) => {
+        if (typeof val !== "string") return val
+        if (val.trim() === "") {
+          throw new TypeError(
+            `[ic-reactor] Invalid ${typeName} display value: expected an integer string, got "${val}"`
+          )
+        }
+        return BigInt(val)
+      },
+    }
+  )
+}
+
 export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   private _recCache = new Map<IDL.RecClass, z.ZodTypeAny>()
 
@@ -85,25 +110,11 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   }
 
   visitInt(_t: IDL.IntClass, _data: unknown): z.ZodTypeAny {
-    return z.codec(
-      z.bigint(), // Candid format
-      z.string(), // Display format
-      {
-        decode: (val) => (typeof val === "bigint" ? val.toString() : val),
-        encode: (val) => (typeof val === "string" ? BigInt(val) : val),
-      }
-    )
+    return createBigIntCodec("int")
   }
 
   visitNat(_t: IDL.NatClass, _data: unknown): z.ZodTypeAny {
-    return z.codec(
-      z.bigint(), // Candid format
-      z.string(), // Display format
-      {
-        decode: (val) => (typeof val === "bigint" ? val.toString() : val),
-        encode: (val) => (typeof val === "string" ? BigInt(val) : val),
-      }
-    )
+    return createBigIntCodec("nat")
   }
 
   visitFloat(t: IDL.FloatClass, _data: unknown): z.ZodTypeAny {
@@ -112,9 +123,15 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     // schema for float32/float64), so a value that passed the form's own
     // validation must encode here too. Same contract as the ≤32-bit integers.
     const typeName = `float${t._bits}`
+    // NaN, Infinity and -Infinity are valid float32/float64 values, and
+    // IDL.decode returns them as numbers. Zod 4's z.number() rejects all three,
+    // so one of them in a result failed the decode of the whole response and
+    // DisplayReactor fell back to the raw Candid value. Both schemas accept any
+    // number. Encode below still refuses non-finite input with its own error.
+    const anyNumber = z.custom<number>((val) => typeof val === "number")
     return z.codec(
-      z.number(), // Candid format
-      z.union([z.number(), z.string()]), // Display format
+      anyNumber, // Candid format
+      z.union([anyNumber, z.string()]), // Display format
       {
         decode: (val) => val,
         encode: (val) => {
@@ -148,14 +165,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
       return createFixedNumberCodec(bits, true)
     } else {
       // 64-bit integers: bigint ↔ string
-      return z.codec(
-        z.bigint(), // Candid format
-        z.string(), // Display format
-        {
-          decode: (val) => (typeof val === "bigint" ? val.toString() : val),
-          encode: (val) => (typeof val === "string" ? BigInt(val) : val),
-        }
-      )
+      return createBigIntCodec(`int${bits}`)
     }
   }
 
@@ -165,14 +175,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     if (bits <= 32) {
       return createFixedNumberCodec(bits, false)
     } else {
-      return z.codec(
-        z.bigint(), // Candid format
-        z.string(), // Display format
-        {
-          decode: (val) => (typeof val === "bigint" ? val.toString() : val),
-          encode: (val) => (typeof val === "string" ? BigInt(val) : val),
-        }
-      )
+      return createBigIntCodec(`nat${bits}`)
     }
   }
 
@@ -295,8 +298,19 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
 
     return z.codec(z.any(), z.any(), {
       decode: (val) => {
-        if (!Array.isArray(val)) return val
-        return val.map((elem) => elemCodec.decode(elem))
+        // `IDL.decode` returns a typed array, not an Array, for every
+        // fixed-width integer vector except blob. `vec nat64` arrives as a
+        // BigUint64Array and `vec int32` as an Int32Array. Checking only
+        // `Array.isArray` let those through untransformed, so a `vec nat64`
+        // result kept its bigints and the narrower ones stayed typed arrays,
+        // which JSON-serialise as index-keyed objects.
+        const elements = Array.isArray(val)
+          ? val
+          : ArrayBuffer.isView(val) && !(val instanceof DataView)
+            ? Array.from(val as unknown as ArrayLike<unknown>)
+            : undefined
+        if (!elements) return val
+        return elements.map((elem) => elemCodec.decode(elem))
       },
       encode: (val) => {
         if (!Array.isArray(val)) return val
@@ -430,6 +444,18 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     const encode = (codec: any, val: any) =>
       codec.encode ? codec.encode(val) : val
 
+    // A missing payload is a value only when the arm's type is `opt T`,
+    // directly or behind a recursive type, and Candid sends that none as `[]`.
+    // Decoding `{ A: [] }` yields `{ _type: "A", A: undefined }`, and form
+    // metadata defaults an optional payload to null, so for these arms a
+    // nullish payload still goes through the arm's codec. Any other arm keeps
+    // `{ A: null }`, which IDL.encode rejects by naming the arm.
+    const isOptional = (type: IDL.Type | undefined): boolean =>
+      type instanceof IDL.OptClass ||
+      (type instanceof IDL.RecClass && isOptional(type.getType()))
+    const encodesPayload = (type: IDL.Type | undefined, payload: unknown) =>
+      nonNullish(payload) || isOptional(type)
+
     return z.codec(z.any(), z.any(), {
       decode: (val: any) => {
         if (
@@ -472,37 +498,40 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           return val
         }
 
-        try {
-          // Format 1: With _type property (from decode output)
-          if ("_type" in val) {
-            const key = val._type
-            const fieldType = fields.find(([n]) => n === key)?.[1]
-            if (fieldType?.name === "null") return { [key]: null }
+        // No try/catch here. A payload codec throws when the payload is
+        // invalid, and returning the untransformed value instead skipped every
+        // check it makes. IDL.encode then accepted what the float codec
+        // refuses (NaN, Infinity, a float32 that overflows when narrowed) and
+        // replaced every other codec error with a generic "Invalid variant".
+        // transformArgsWithCodec wraps the error with the argument context.
 
-            if (key in variantCodecs && nonNullish(val[key])) {
-              return { [key]: encode(variantCodecs[key], val[key]) }
-            }
-            return { [key]: null }
+        // Format 1: With _type property (from decode output)
+        if ("_type" in val) {
+          const key = val._type
+          const fieldType = fields.find(([n]) => n === key)?.[1]
+          if (fieldType?.name === "null") return { [key]: null }
+
+          if (key in variantCodecs && encodesPayload(fieldType, val[key])) {
+            return { [key]: encode(variantCodecs[key], val[key]) }
           }
-
-          // Format 2: Without _type (direct variant format from forms: { Add: value })
-          const keys = Object.keys(val)
-          if (keys.length === 1) {
-            const key = keys[0]
-            const fieldType = fields.find(([n]) => n === key)?.[1]
-            if (fieldType?.name === "null") return { [key]: null }
-
-            if (key in variantCodecs && nonNullish(val[key])) {
-              return { [key]: encode(variantCodecs[key], val[key]) }
-            }
-            return { [key]: null }
-          }
-
-          // Unknown format - return as-is
-          return val
-        } catch {
-          return val
+          return { [key]: null }
         }
+
+        // Format 2: Without _type (direct variant format from forms: { Add: value })
+        const keys = Object.keys(val)
+        if (keys.length === 1) {
+          const key = keys[0]
+          const fieldType = fields.find(([n]) => n === key)?.[1]
+          if (fieldType?.name === "null") return { [key]: null }
+
+          if (key in variantCodecs && encodesPayload(fieldType, val[key])) {
+            return { [key]: encode(variantCodecs[key], val[key]) }
+          }
+          return { [key]: null }
+        }
+
+        // Unknown format - return as-is
+        return val
       },
     })
   }

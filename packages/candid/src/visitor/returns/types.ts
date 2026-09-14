@@ -172,6 +172,9 @@ interface FuncRecordNodeExtras {
    *
    * For a func that takes `(record { start: nat; length: nat })`, this would
    * be `[{ start: "100", length: "50" }]` (display strings for BigInt fields).
+   * When the func takes exactly the type of the one non-func field, that
+   * field is the argument: ICRC-3's `{ args; callback }` gives
+   * `[[{ start: "0", length: "2" }]]`.
    *
    * `undefined` before resolve.
    */

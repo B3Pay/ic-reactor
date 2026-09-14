@@ -304,6 +304,7 @@ export async function runCanisterPipeline(
       didFile: resolvedDidFile,
       outDir: canisterOutDir,
       canisterName: name,
+      projectRoot,
     })
 
     if (!declResult.success) {

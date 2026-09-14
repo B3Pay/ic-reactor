@@ -74,6 +74,57 @@ function primitiveNode<T extends VisitorDataType>(
   return node
 }
 
+/**
+ * A vector's elements, or `undefined` when `data` is not a vector.
+ *
+ * `IDL.decode` returns a typed array, not an Array, for every fixed-width
+ * integer vector other than blob: `vec nat64` is a `BigUint64Array` and
+ * `vec int8` an `Int8Array`. Accepting only arrays made the metadata reactors
+ * throw "Expected vector" on any method returning one.
+ */
+function vectorElements(data: unknown): unknown[] | undefined {
+  if (Array.isArray(data)) return data
+  if (ArrayBuffer.isView(data) && !(data instanceof DataView)) {
+    return Array.from(data as unknown as ArrayLike<unknown>)
+  }
+  return undefined
+}
+
+/**
+ * The Candid value a resolved node stands for, read back from the tree.
+ *
+ * `resolve()` takes a value in its Candid form or already display-transformed,
+ * such as an unwrapped `opt` or a record given as a tuple, and builds the same
+ * tree from either. Compound values are rebuilt from that tree so the display
+ * codec always decodes the Candid shape. Primitives keep `raw`, because their
+ * codecs decode both forms.
+ */
+function candidValueOf(node: ResultNode): unknown {
+  switch (node.type) {
+    case "optional":
+      return node.value ? [candidValueOf(node.value)] : []
+    case "record":
+    case "funcRecord":
+      return Object.fromEntries(
+        Object.entries(node.fields).map(([key, field]) => [
+          key,
+          candidValueOf(field),
+        ])
+      )
+    case "tuple":
+    case "vector":
+      return node.items.map(candidValueOf)
+    case "variant":
+      return node.selected === undefined
+        ? node.raw
+        : { [node.selected]: candidValueOf(node.selectedValue) }
+    case "recursive":
+      return candidValueOf(node.inner)
+    default:
+      return node.raw
+  }
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Simplified Result Field Visitor
 // ════════════════════════════════════════════════════════════════════════════
@@ -83,8 +134,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   ResultNode | MethodMeta<A> | ServiceMeta<A>
 > {
   private codec = new DisplayCodecVisitor()
-
-  private recCache = new Map<IDL.RecClass<any>, ResultNode<"recursive">>()
 
   private getCodec(t: IDL.Type): Codec {
     const codec = t.accept(this.codec, null) as any
@@ -103,7 +152,36 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   // Service & Function
   // ══════════════════════════════════════════════════════════════════════════
 
-  public visitService(t: IDL.ServiceClass): ServiceMeta<A> {
+  /**
+   * A service type is visited in two places. As the canister's own interface,
+   * reached with no label, it yields metadata for each method. As a value, a
+   * reference to another canister returned by a method, `accept` passes the
+   * field's label, and the value is a principal. That case used to get the
+   * method map too, which has no `resolve`, so resolving the result threw
+   * "node.resolve is not a function".
+   */
+  public visitService(t: IDL.ServiceClass): ServiceMeta<A>
+  public visitService(
+    t: IDL.ServiceClass,
+    label: string
+  ): ResultNode<"principal">
+  public visitService(
+    t: IDL.ServiceClass,
+    label?: string | null
+  ): ServiceMeta<A> | ResultNode<"principal"> {
+    if (typeof label === "string") {
+      // A service reference is a principal, so it takes the principal codec,
+      // which also reads a Principal from another copy of @icp-sdk/core.
+      return primitiveNode(
+        "principal",
+        label,
+        "service",
+        "string",
+        this.getCodec(IDL.Principal),
+        { format: checkTextFormat(label) as TextFormat }
+      )
+    }
+
     const result = {} as ServiceMeta<A>
     for (const [name, func] of t._fields) {
       // Process each service method using dedicated method handler
@@ -233,6 +311,26 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         if (k !== funcFieldKey) argFields[k] = v
       }
 
+      // defaultArgs are built from the other fields, and each value goes
+      // through the display codec for its field's type, because a resolved
+      // node carries a display `value` only for primitives. The codec decodes
+      // the Candid value read back from the resolved field, so an already
+      // transformed input gives the same result. Two layouts are in
+      // use. In the ICP ledger's ArchivedBlocksRange the callback takes
+      // `{ start; length }` and the fields beside it are start and length, so
+      // together they make the one record argument. In ICRC-3's
+      // archived_blocks the callback takes exactly the type of the `args`
+      // field, and a streaming strategy's callback takes its `token` field, so
+      // that single field is the argument.
+      const argEntries = fields_.filter(([k]) => k !== funcFieldKey)
+      const argCodecs = Object.fromEntries(
+        argEntries.map(([k, type]) => [k, this.getCodec(type)])
+      )
+      const argIsField =
+        funcType.argTypes.length === 1 &&
+        argEntries.length === 1 &&
+        argEntries[0][1].display() === funcType.argTypes[0].display()
+
       const node: ResultNode<"funcRecord"> = {
         type: "funcRecord",
         label,
@@ -280,10 +378,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           const argRecord = Object.fromEntries(
             Object.entries(resolvedArgFields).map(([k, v]) => [
               k,
-              v.value ?? v.raw,
+              argCodecs[k].decode(candidValueOf(v)),
             ])
           )
-          const defaultArgs = funcType.argTypes.length > 0 ? [argRecord] : []
+          const defaultArgs =
+            funcType.argTypes.length === 0
+              ? []
+              : argIsField
+                ? Object.values(argRecord)
+                : [argRecord]
 
           return {
             ...node,
@@ -534,14 +637,14 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "array",
       items: [], // empty schema placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"vector"> {
-        if (data === null || data === undefined || !Array.isArray(data)) {
+        const vectorData = vectorElements(data)
+        if (!vectorData) {
           throw new MetadataError(
             `Expected vector, but got ${data === null ? "null" : typeof data}, raw: ${data}`,
             label,
             "vec"
           )
         }
-        const vectorData = data as unknown[]
         return {
           ...node,
           items: vectorData.map((v) => itemSchema.resolve(v)),
@@ -553,14 +656,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitRec<T>(
-    t: IDL.RecClass<T>,
+    _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     label: string
   ): ResultNode<"recursive"> {
-    if (this.recCache.has(t)) {
-      return this.recCache.get(t)! as ResultNode<"recursive">
-    }
-
+    // A node per occurrence, as the form visitor builds since #385. Caching it
+    // per RecClass gave every later occurrence the first one's label, so both
+    // subtrees of a binary tree read "__ret0". Building the inner node lazily
+    // is what stops the recursion, not the cache.
+    //
     // Lazy extraction to prevent infinite loops
     let innerSchema: ResultNode | null = null
     const getInner = () =>
@@ -578,7 +682,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       },
     }
 
-    this.recCache.set(t, node)
     return node
   }
 

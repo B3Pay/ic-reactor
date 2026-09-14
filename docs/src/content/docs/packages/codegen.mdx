@@ -68,7 +68,16 @@ The declaration filenames come from the `.did` file's basename, not the
 canister name. The whole `declarations/` directory is recreated on every run,
 but the new files are staged first and swapped in only once all of them are
 written, so a `.did` that fails to parse leaves the previous declarations in
-place instead of deleting them. With `target: "react"`, `index.generated.ts` also exports the hooks bound
+place instead of deleting them.
+
+If Prettier resolves from the project root, the pipeline formats the `.js` and
+`.d.ts` with it, using the config Prettier finds for each file's final path.
+Declarations you commit after running Prettier then come out byte-identical
+when you regenerate. Without Prettier, or if formatting fails, the files hold
+the Candid parser's output followed by a newline. The `.did` copy is a byte copy
+of the source and is never formatted.
+
+With `target: "react"`, `index.generated.ts` also exports the hooks bound
 to the generated reactor — `use<Pascal>Query`, `use<Pascal>SuspenseQuery`,
 `use<Pascal>InfiniteQuery`, `use<Pascal>SuspenseInfiniteQuery`,
 `use<Pascal>Mutation`, and `use<Pascal>Method`. No `createQuery` or

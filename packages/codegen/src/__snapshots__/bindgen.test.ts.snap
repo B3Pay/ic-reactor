@@ -4,7 +4,8 @@ exports[`Bindgen > generateDeclarations creates correct files > js-declarations 
 "export const idlFactory = ({ IDL }) => {
   return IDL.Service({ 'greet' : IDL.Func([IDL.Text], [IDL.Text], ['query']) });
 };
-export const init = ({ IDL }) => { return []; };"
+export const init = ({ IDL }) => { return []; };
+"
 `;
 
 exports[`Bindgen > generateDeclarations creates correct files > ts-declarations 1`] = `
@@ -14,5 +15,6 @@ import type { IDL } from '@icp-sdk/core/candid';
 
 export interface _SERVICE { 'greet' : ActorMethod<[string], string> }
 export declare const idlFactory: IDL.InterfaceFactory;
-export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];"
+export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];
+"
 `;

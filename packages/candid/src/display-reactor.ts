@@ -3,6 +3,7 @@ import type {
   DynamicMethodOptions,
 } from "./types.js"
 import { CandidAdapter } from "./adapter.js"
+import { normalizeCandidInterface } from "./utils.js"
 
 import {
   BaseActor,
@@ -216,10 +217,12 @@ export class CandidDisplayReactor<
     )
     if (existing) return
 
-    // Parse the Candid signature
+    // Build the service source the way CandidReactor does. Both take the same
+    // options, so type definitions ahead of the signature, a trailing
+    // semicolon and a method name that needs quoting work here too.
     const serviceSource = candid.includes("service :")
       ? candid
-      : `service : { ${functionName} : ${candid}; }`
+      : normalizeCandidInterface(candid, functionName)
 
     const { idlFactory } = await this.adapter.parseCandidSource(serviceSource)
     const parsedService = idlFactory({ IDL })
@@ -232,6 +235,12 @@ export class CandidDisplayReactor<
         `Method "${functionName}" not found in the provided Candid signature`
       )
     }
+
+    // Checked again after the await. registerMethods() runs its calls in
+    // parallel, so two registrations of one name both passed the check above
+    // and both pushed, leaving the name twice in getMethodNames(). The first to
+    // finish wins, as the first call does for a sequential repeat.
+    if (this.hasMethod(functionName)) return
 
     // Inject into our service
     this.service._fields.push(funcField)

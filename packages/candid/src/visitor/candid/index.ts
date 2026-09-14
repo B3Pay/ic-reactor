@@ -3,6 +3,7 @@ import { Principal } from "@icp-sdk/core/principal"
 import type { BaseActor, FunctionName } from "@ic-reactor/core"
 import * as z from "zod"
 import { isQuery } from "../helpers.js"
+import { withIntegerBounds } from "../integer-bounds.js"
 import { formatLabel } from "../arguments/helpers.js"
 import type {
   FormServiceMeta,
@@ -43,6 +44,23 @@ const FILE_RENDER_HINT: FormRenderHint = {
   isCompound: false,
   isPrimitive: true,
   inputType: "file",
+}
+
+/**
+ * Whether no value of this field's type exists: `variant {}`, a variant none of
+ * whose options can hold a value, or a record or tuple containing such a field.
+ * A recursive field is assumed to have values.
+ */
+function hasNoValue(field: FormFieldNode): boolean {
+  switch (field.type) {
+    case "variant":
+      return field.options.every(hasNoValue)
+    case "record":
+    case "tuple":
+      return field.fields.some(hasNoValue)
+    default:
+      return false
+  }
 }
 
 /**
@@ -317,10 +335,17 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
         ) as FormFieldNode
     )
 
-    const first =
-      options[0] ??
-      this.primitive("null", "null", `${name}.null`, "null", null, z.null())
-    const defaultOption = first.label
+    // `variant {}` has no values. It used to borrow a made-up `null` option as
+    // its default, which getOptionDefault could not find among the options,
+    // so initialize() threw, and the `{ _type: "null" }` its schema accepted
+    // would not have encoded anyway. It now gets no options, an empty
+    // `defaultOption`, and a schema that rejects everything.
+    //
+    // The default is the first option that can hold a value, for the reason
+    // FieldVisitor gives: options are ordered by label hash, and one carrying
+    // `variant {}` can come first. With no such option the first stands in.
+    const defaultOption =
+      (options.find((option) => !hasNoValue(option)) ?? options[0])?.label ?? ""
     const variantSchemas = options.map((option) =>
       option.type === "null"
         ? z.object({ _type: z.literal(option.label) })
@@ -353,8 +378,14 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       return firstPresent ?? defaultOption
     }
 
-    const getSelectedOption = (value: Record<string, unknown>): FormFieldNode =>
-      getOption(getSelectedKey(value))
+    // A hidden null node for `variant {}`, which has nothing to select, so a
+    // renderer asking for the selected option does not throw. Not listed in
+    // `options`, and the schema still rejects every value.
+    const noPayload = this.primitive("null", "", name, "null", null, z.null())
+    const getSelectedOption = (
+      value: Record<string, unknown>
+    ): FormFieldNode =>
+      options.length === 0 ? noPayload : getOption(getSelectedKey(value))
 
     return {
       type: "variant",
@@ -366,10 +397,10 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: t.display?.() ?? t.name ?? "variant",
       options,
       defaultOption,
-      defaultValue: getOptionDefault(defaultOption),
+      defaultValue: options.length === 0 ? {} : getOptionDefault(defaultOption),
       schema:
         variantSchemas.length === 0
-          ? z.object({ _type: z.literal(defaultOption) })
+          ? z.never("variant {} has no values, so no value is valid")
           : z.union(
               variantSchemas as unknown as [z.ZodTypeAny, ...z.ZodTypeAny[]]
             ),
@@ -602,10 +633,14 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       this.currentName(),
       `int${t._bits}`,
       "",
-      z
-        .string()
-        .min(1, "Required")
-        .regex(/^-?\d+$/, "Must be an integer")
+      withIntegerBounds(
+        z
+          .string()
+          .min(1, "Required")
+          .regex(/^-?\d+$/, "Must be an integer"),
+        t._bits,
+        true
+      )
     )
   }
 
@@ -616,7 +651,11 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       this.currentName(),
       `nat${t._bits}`,
       "",
-      z.string().regex(/^\d+$/, "Must be a positive number")
+      withIntegerBounds(
+        z.string().regex(/^\d+$/, "Must be a positive number"),
+        t._bits,
+        false
+      )
     )
   }
 

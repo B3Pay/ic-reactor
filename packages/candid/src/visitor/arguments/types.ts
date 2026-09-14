@@ -132,11 +132,14 @@ interface RecordExtras {
 }
 
 interface VariantExtras {
-  /** All variant options as fields */
+  /** All variant options as fields. Empty for `variant {}`. */
   options: FieldNode[]
-  /** The default selected option key */
+  /** The default selected option key. `""` for `variant {}`, which has none. */
   defaultOption: string
-  /** Default value with the first option selected */
+  /**
+   * Default value with the first option selected. `{}` for `variant {}`, whose
+   * schema rejects every value because the type has none.
+   */
   defaultValue: Record<string, unknown>
   /** Get default value for a specific option */
   getOptionDefault: (option: string) => Record<string, unknown>
@@ -180,7 +183,11 @@ interface VectorExtras {
 interface BlobExtras {
   /** Template field for blob bytes */
   itemField: FieldNode
-  /** Accepted input formats */
+  /**
+   * Accepted input formats: `["hex", "file"]`. A string is read as hex.
+   * `"base64"` stays in the type for compatibility but is never listed,
+   * because nothing decodes it.
+   */
   acceptedFormats: ("hex" | "base64" | "file")[]
   /** Upload limits */
   limits: BlobLimits

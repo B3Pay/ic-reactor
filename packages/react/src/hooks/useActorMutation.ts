@@ -153,7 +153,7 @@ export const useActorMutation = <
   )
 
   const handleError = useCallback(
-    (
+    async (
       error: ReactorReturnErr<Service, Method, Transform>,
       variables: ReactorArgs<Service, Method, Transform>,
       context: unknown,
@@ -162,7 +162,10 @@ export const useActorMutation = <
       if (isCanisterError(error)) {
         onCanisterError?.(error as any, variables)
       }
-      onError?.(error, variables, context as any, mutation as any)
+      // Awaited like `onSuccess` above. TanStack Query waits for the promise
+      // `onError` returns before it runs `onSettled` and settles the mutation,
+      // and it can only wait for a promise this wrapper passes back.
+      await onError?.(error, variables, context as any, mutation as any)
     },
     [onCanisterError, onError]
   )

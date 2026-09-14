@@ -91,8 +91,11 @@ interface FormTupleExtras {
 }
 
 interface FormVariantExtras {
+  /** Empty for `variant {}`. */
   options: FormFieldNode[]
+  /** `""` for `variant {}`, which has no options. */
   defaultOption: string
+  /** `{}` for `variant {}`, whose schema rejects every value. */
   defaultValue: Record<string, unknown>
   getOptionDefault: (option: string) => Record<string, unknown>
   getOption: (option: string) => FormFieldNode

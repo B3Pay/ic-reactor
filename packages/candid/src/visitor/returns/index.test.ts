@@ -666,6 +666,30 @@ describe("ResultFieldVisitor", () => {
       expect(blobResolved.length).toBe(513)
     })
 
+    it("resolves the typed array IDL.decode returns for an integer vector", () => {
+      const [ids, deltas] = IDL.decode(
+        [IDL.Vec(IDL.Nat64), IDL.Vec(IDL.Int8)],
+        IDL.encode(
+          [IDL.Vec(IDL.Nat64), IDL.Vec(IDL.Int8)],
+          [
+            [BigInt(1), BigInt(2)],
+            [-1, 5],
+          ]
+        )
+      )
+      expect(ids).toBeInstanceOf(BigUint64Array)
+
+      const idsNode = visitor
+        .visitVec(IDL.Vec(IDL.Nat64), IDL.Nat64, "ids")
+        .resolve(ids) as VectorNode
+      expect(idsNode.items.map((item) => item.value)).toEqual(["1", "2"])
+
+      const deltasNode = visitor
+        .visitVec(IDL.Vec(IDL.Int8), IDL.Int8, "deltas")
+        .resolve(deltas) as VectorNode
+      expect(deltasNode.items.map((item) => item.value)).toEqual([-1, 5])
+    })
+
     it("should handle nested vectors", () => {
       const innerVec = IDL.Vec(IDL.Nat)
       const nestedVecType = IDL.Vec(innerVec)
@@ -731,6 +755,33 @@ describe("ResultFieldVisitor", () => {
       const treeResolved = field.resolve({ Leaf: BigInt(1) }) as RecursiveNode
       expect(treeResolved.inner.type).toBe("variant")
       expect((treeResolved.inner as VariantNode).selected).toBe("Leaf")
+    })
+
+    it("labels each occurrence of a recursive type with its own field name", () => {
+      const Tree = IDL.Rec()
+      Tree.fill(
+        IDL.Variant({
+          Leaf: IDL.Nat,
+          Node: IDL.Record({ left: Tree, right: Tree }),
+        })
+      )
+      const service = IDL.Service({
+        tree: IDL.Func([], [Tree], ["query"]),
+        pair: IDL.Func([], [IDL.Record({ first: Tree })], ["query"]),
+      })
+      const meta = visitor.visitService(service)
+
+      const tree = meta.tree.resolve({
+        Node: { left: { Leaf: BigInt(1) }, right: { Leaf: BigInt(2) } },
+      }).results[0] as RecursiveNode
+      const node = (tree.inner as VariantNode).selectedValue as RecordNode
+      expect(node.fields.left.label).toBe("left")
+      expect(node.fields.right.label).toBe("right")
+
+      // The same RecClass met again, in another method.
+      const pair = meta.pair.resolve({ first: { Leaf: BigInt(3) } })
+        .results[0] as RecordNode
+      expect(pair.fields.first.label).toBe("first")
     })
 
     it("should handle recursive linked list", () => {
@@ -1050,6 +1101,104 @@ describe("ResultFieldVisitor", () => {
         expect(resolved.defaultArgs).toEqual([{ start: "100", length: "50" }])
       })
 
+      it("should pass a callback the one field that has its argument type", () => {
+        const { Principal } = require("@icp-sdk/core/principal")
+        const archive = Principal.fromText("nbsys-saaaa-aaaar-qaaga-cai")
+
+        // ICRC-3 ledgers such as ckBTC, the cycles ledger and SNS ledgers
+        // return this, and the callback takes `args` itself, not a record
+        // holding it.
+        //   archived_blocks : vec record {
+        //     args : vec GetBlocksArgs;
+        //     callback : func (vec GetBlocksArgs) -> (GetBlocksResult) query;
+        //   }
+        const GetBlocksArgs = IDL.Record({ start: IDL.Nat, length: IDL.Nat })
+        const ArchivedBlocks = IDL.Record({
+          args: IDL.Vec(GetBlocksArgs),
+          callback: IDL.Func([IDL.Vec(GetBlocksArgs)], [IDL.Nat], ["query"]),
+        })
+        const icrc3 = (
+          ArchivedBlocks.accept(visitor, "archived") as FuncRecordNode
+        ).resolve({
+          args: [{ start: BigInt(0), length: BigInt(2) }],
+          callback: [archive, "icrc3_get_blocks"],
+        })
+        expect(icrc3.defaultArgs).toEqual([[{ start: "0", length: "2" }]])
+
+        // An asset canister's streaming callback takes the token, and the
+        // token's nat and opt blob have display forms of their own.
+        const Token = IDL.Record({
+          key: IDL.Text,
+          content_encoding: IDL.Text,
+          index: IDL.Nat,
+          sha256: IDL.Opt(IDL.Vec(IDL.Nat8)),
+        })
+        const Callback = IDL.Record({
+          callback: IDL.Func(
+            [Token],
+            [IDL.Record({ body: IDL.Vec(IDL.Nat8), token: IDL.Opt(Token) })],
+            ["query"]
+          ),
+          token: Token,
+        })
+        const streaming = (
+          Callback.accept(visitor, "Callback") as FuncRecordNode
+        ).resolve({
+          callback: [archive, "http_request_streaming_callback"],
+          token: {
+            key: "/index.js",
+            content_encoding: "gzip",
+            index: BigInt(1),
+            sha256: [new Uint8Array([0xab, 0xcd])],
+          },
+        })
+        expect(streaming.defaultArgs).toEqual([
+          {
+            key: "/index.js",
+            content_encoding: "gzip",
+            index: "1",
+            sha256: "abcd",
+          },
+        ])
+      })
+
+      it("should build the same defaultArgs from Candid or already transformed data", () => {
+        const { Principal } = require("@icp-sdk/core/principal")
+        const canister = Principal.fromText("nbsys-saaaa-aaaar-qaaga-cai")
+
+        // resolve() also accepts display-shaped data: an unwrapped opt, and a
+        // record given as a tuple. defaultArgs must not depend on which.
+        const OptCursor = IDL.Opt(IDL.Text)
+        const optPage = IDL.Record({
+          next: IDL.Func([OptCursor], [IDL.Nat], ["query"]),
+          cursor: OptCursor,
+        }).accept(visitor, "page") as FuncRecordNode
+        const callback = [canister, "next_page"]
+        expect(
+          optPage.resolve({ next: callback, cursor: ["c1"] }).defaultArgs
+        ).toEqual(["c1"])
+        expect(
+          optPage.resolve({ next: callback, cursor: "c1" }).defaultArgs
+        ).toEqual(["c1"])
+
+        const Token = IDL.Record({ key: IDL.Text, index: IDL.Nat })
+        const stream = IDL.Record({
+          callback: IDL.Func([Token], [IDL.Nat], ["query"]),
+          token: Token,
+        }).accept(visitor, "stream") as FuncRecordNode
+        const expected = [{ key: "/app.js", index: "3" }]
+        expect(
+          stream.resolve({
+            callback,
+            token: { key: "/app.js", index: BigInt(3) },
+          }).defaultArgs
+        ).toEqual(expected)
+        expect(
+          stream.resolve({ callback, token: ["/app.js", BigInt(3)] })
+            .defaultArgs
+        ).toEqual(expected)
+      })
+
       it("should keep record with multiple func fields as plain record", () => {
         const funcA = IDL.Func([IDL.Nat], [IDL.Nat], ["query"])
         const funcB = IDL.Func([IDL.Text], [IDL.Text], [])
@@ -1089,6 +1238,25 @@ describe("ResultFieldVisitor", () => {
   // ════════════════════════════════════════════════════════════════════════
 
   describe("Service Types", () => {
+    it("resolves a service reference returned as a value", () => {
+      const { Principal } = require("@icp-sdk/core/principal")
+      const service = IDL.Service({
+        create: IDL.Func(
+          [],
+          [IDL.Service({ ping: IDL.Func([], [], ["query"]) })],
+          []
+        ),
+      })
+      const meta = visitor.visitService(service)
+
+      const [ref] = meta.create.resolve(
+        Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai")
+      ).results
+      expect(ref.type).toBe("principal")
+      expect(ref.candidType).toBe("service")
+      expect(ref.value).toBe("ryjl3-tyaaa-aaaaa-aaaba-cai")
+    })
+
     it("should handle complete service", () => {
       const serviceType = IDL.Service({
         get_balance: IDL.Func([IDL.Principal], [IDL.Nat], ["query"]),

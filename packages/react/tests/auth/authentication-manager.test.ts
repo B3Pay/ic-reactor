@@ -17,6 +17,22 @@ vi.mock("@icp-sdk/auth/client", () => ({
   AuthClient: authClientMocks.factory,
 }))
 
+// A local-host manager probes the local Internet Identity canister over the
+// real agent before it builds the AuthClient. There is no replica under vitest,
+// so "prepares the auth client with the default local II provider" waited out an
+// HTTP failure: 3.5s locally, and past vitest's 5000ms default on a loaded CI
+// runner. auth-client-compat.test.ts stubs the probe for the same reason
+// (800344d28). No case here asserts what the probe finds, and the stub answers
+// "/authorize", the path an unreachable probe falls back to. The probe keeps its
+// own coverage in local-ii-probe.test.ts.
+vi.mock("../../src/auth/local-ii-probe.js", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  probeLocalInternetIdentity: vi.fn(async () => ({
+    path: "/authorize" as const,
+    inconclusive: false,
+  })),
+}))
+
 function identity(text: string) {
   const principal = Principal.fromText(text)
   return { getPrincipal: () => principal } as any

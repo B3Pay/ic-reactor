@@ -11,6 +11,11 @@ export interface UseAuthReturn {
   logout: (options?: { returnTo?: string }) => Promise<void>
   isAuthenticated: boolean
   isAuthenticating: boolean
+  /**
+   * The signed-in user's principal, or `null` while signed out. A signed-out
+   * session still holds an anonymous `identity`, and its principal is not
+   * returned here.
+   */
   principal: Principal | null
   identity: Identity | null
   error: Error | undefined
@@ -20,6 +25,26 @@ export interface CreateAuthHooksReturn {
   useAgentState: () => AgentState
   useUserPrincipal: () => Principal | null
   useAuth: () => UseAuthReturn
+}
+
+/**
+ * The principal both hooks return.
+ *
+ * `authenticate()` and `logout()` leave the client's anonymous identity in
+ * `authState.identity` with `isAuthenticated: false`, so deriving the principal
+ * from the identity alone reported `2vxsx-fae` for a signed-out user, and
+ * `principal ? <SignedIn /> : <SignedOut />` rendered the signed-in branch.
+ * Memoized on the identity, because `getPrincipal()` may build a new object on
+ * each call and the result is often a hook dependency.
+ */
+function usePrincipal(
+  isAuthenticated: boolean,
+  identity: Identity | null
+): Principal | null {
+  return useMemo(
+    () => (isAuthenticated && identity ? identity.getPrincipal() : null),
+    [isAuthenticated, identity]
+  )
 }
 
 /**
@@ -125,10 +150,7 @@ export const createAuthHooks = (
       }
     }, [])
 
-    const principal = useMemo(
-      () => (identity ? identity.getPrincipal() : null),
-      [identity]
-    )
+    const principal = usePrincipal(isAuthenticated, identity)
 
     return {
       authenticate,
@@ -144,7 +166,8 @@ export const createAuthHooks = (
 
   /**
    * Get the current user's Principal.
-   * Returns null if not authenticated.
+   * Returns null if not authenticated, including while the signed-out session
+   * holds the anonymous identity.
    *
    * @example
    * function UserInfo() {
@@ -154,8 +177,8 @@ export const createAuthHooks = (
    * }
    */
   const useUserPrincipal = (): Principal | null => {
-    const { identity } = useAuthState()
-    return identity ? identity.getPrincipal() : null
+    const { isAuthenticated, identity } = useAuthState()
+    return usePrincipal(isAuthenticated, identity)
   }
 
   return {

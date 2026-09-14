@@ -51,6 +51,36 @@ type AsOptional<T, TBlob> = T extends [infer U]
   : never
 
 /**
+ * Generated declarations type a fixed-width integer vector (anything but blob)
+ * as a typed array OR a plain array, because `IDL.decode` returns the typed
+ * array. `vec nat32` is `Uint32Array | number[]` and `vec nat64` is
+ * `BigUint64Array | bigint[]`. The display codec returns a plain array of
+ * display elements. Without this branch the union reaches the variant check
+ * below, which treats any union as a variant and maps it to an unusable object.
+ */
+type NumericTypedArray =
+  | Int8Array
+  | Uint16Array
+  | Int16Array
+  | Uint32Array
+  | Int32Array
+  | BigUint64Array
+  | BigInt64Array
+  | Float32Array
+  | Float64Array
+
+type IsTypedArrayVector<T> = [Extract<T, NumericTypedArray>] extends [never]
+  ? false
+  : true
+
+// Maps the element type directly. Sending `number[]` back through DisplayOf
+// would match IsBlobType, which treats a bare `number[]` as a blob.
+type AsTypedArrayVector<T, TBlob> =
+  Exclude<T, NumericTypedArray> extends Array<infer E>
+    ? Array<DisplayOf<E, TBlob>>
+    : never
+
+/**
  * The display-side forms a blob ARGUMENT may take: the codec's encode accepts
  * a hex string, raw bytes, or a plain byte array. Decode is narrower — every
  * blob RESULT is a hex string, which is what {@link DisplayResultOf} maps to.
@@ -74,19 +104,21 @@ export type DisplayOf<T, TBlob = BlobType> =
     ? AsOptional<T, TBlob>
     : IsBlobType<T> extends true
       ? TBlob
-      : IsCandidVariant<T> extends true
-        ? VariantUnionOf<T, TBlob>
-        : T extends Array<[string, infer B]>
-          ? Record<string, DisplayOf<B, TBlob>>
-          : T extends any[]
-            ? { [K in keyof T]: DisplayOf<T[K], TBlob> }
-            : T extends null
-              ? null
-              : T extends Principal
-                ? string
-                : T extends object
-                  ? AsObject<T, TBlob>
-                  : DisplayCommonType<T>
+      : IsTypedArrayVector<T> extends true
+        ? AsTypedArrayVector<T, TBlob>
+        : IsCandidVariant<T> extends true
+          ? VariantUnionOf<T, TBlob>
+          : T extends Array<[string, infer B]>
+            ? Record<string, DisplayOf<B, TBlob>>
+            : T extends any[]
+              ? { [K in keyof T]: DisplayOf<T[K], TBlob> }
+              : T extends null
+                ? null
+                : T extends Principal
+                  ? string
+                  : T extends object
+                    ? AsObject<T, TBlob>
+                    : DisplayCommonType<T>
 
 /**
  * Display mapping for RESULT position. Identical to {@link DisplayOf} except

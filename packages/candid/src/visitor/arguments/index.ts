@@ -1,4 +1,5 @@
 import { isQuery } from "../helpers.js"
+import { withIntegerBounds } from "../integer-bounds.js"
 import { checkTextFormat, checkNumberFormat } from "../constants.js"
 import { MetadataError } from "./types.js"
 import type {
@@ -127,6 +128,33 @@ function validateBlobInput(
   }
 
   return { valid: true }
+}
+
+/** Why a `variant {}` field accepts nothing. */
+const EMPTY_VARIANT_MESSAGE = "variant {} has no values, so no value is valid"
+
+/**
+ * Whether no value of this field's type exists: `variant {}`, a variant none of
+ * whose options can hold a value, or a record or tuple containing such a field.
+ * A recursive field is assumed to have values.
+ */
+function hasNoValue(field: FieldNode): boolean {
+  switch (field.type) {
+    case "variant":
+      return field.options.every(hasNoValue)
+    case "record":
+    case "tuple":
+      return field.fields.some(hasNoValue)
+    default:
+      return false
+  }
+}
+
+/** The option labels an error message can offer, or a note that there are none. */
+function availableOptions(options: Array<{ label: string }>): string {
+  return options.length > 0
+    ? options.map((o) => o.label).join(", ")
+    : "none, because the type is variant {}"
 }
 
 /**
@@ -353,25 +381,40 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       }
     }
 
-    const firstOption = options[0]
-    const defaultOption = firstOption.label
+    // `variant {}` is valid Candid with no values (Rust's `enum Never {}` derives
+    // it). It gets no options, an empty `defaultOption`, and a schema that
+    // rejects everything, since no value of the type would encode. Reading
+    // `options[0].label` here made `initialize()` throw for the whole service.
+    //
+    // The default is the first option that can hold a value. Options are
+    // ordered by label hash, so one carrying `variant {}` can come first, and
+    // defaulting to it gave the form a value its own schema rejects. When no
+    // option can hold a value, the first one stands in, and the schema rejects
+    // every value anyway.
+    const firstOption: FieldNode | undefined =
+      options.find((option) => !hasNoValue(option)) ?? options[0]
+    const defaultOption = firstOption?.label ?? ""
 
-    const defaultValue =
-      firstOption.type === "null"
+    const defaultValue = !firstOption
+      ? {}
+      : firstOption.type === "null"
         ? { _type: defaultOption }
         : {
             _type: defaultOption,
             [defaultOption]: firstOption.defaultValue,
           }
 
-    const schema = z.union(variantSchemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
+    const schema =
+      variantSchemas.length === 0
+        ? z.never(EMPTY_VARIANT_MESSAGE)
+        : z.union(variantSchemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
 
     // Helper to get default value for any option
     const getOptionDefault = (option: string): Record<string, unknown> => {
       const optField = options.find((f) => f.label === option)
       if (!optField) {
         throw new MetadataError(
-          `Unknown variant option: "${option}". Available: ${options.map((o) => o.label).join(", ")}`,
+          `Unknown variant option: "${option}". Available: ${availableOptions(options)}`,
           name,
           "variant"
         )
@@ -386,7 +429,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       const optField = options.find((f) => f.label === option)
       if (!optField) {
         throw new MetadataError(
-          `Unknown variant option: "${option}". Available: ${options.map((o) => o.label).join(", ")}`,
+          `Unknown variant option: "${option}". Available: ${availableOptions(options)}`,
           name,
           "variant"
         )
@@ -405,8 +448,15 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       return validKeys[0] ?? defaultOption
     }
 
+    // `variant {}` has nothing to select, and a renderer asks for the selected
+    // option on every render. It gets a hidden null node, meaning "no
+    // payload", instead of an exception. The node is not one of `options`, and
+    // the schema still rejects every value.
+    const noPayload = this.visitNull(IDL.Null, "")
+
     // Helper to get the field for the currently selected option
     const getSelectedOption = (value: Record<string, unknown>): FieldNode => {
+      if (options.length === 0) return noPayload
       const selectedKey = getSelectedKey(value)
       return getOption(selectedKey)
     }
@@ -542,7 +592,10 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
         itemField,
         defaultValue: "",
         schema,
-        acceptedFormats: ["hex", "base64", "file"],
+        // No "base64": validateInput and the display codec read a string as
+        // hex only, and a base64 form could not be told apart from hex anyway,
+        // since text such as "abcd" is valid in both.
+        acceptedFormats: ["hex", "file"],
         limits,
         normalizeHex,
         validateInput: (value: string | Uint8Array) =>
@@ -868,6 +921,12 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       schema = schema.regex(/^\d+$/, "Must be a positive number")
     } else {
       schema = schema.regex(/^-?\d+$/, "Must be a number")
+    }
+
+    // `bits` is set only for the fixed-width integers. nat and int are
+    // unbounded.
+    if (!options.isFloat && options.bits) {
+      schema = withIntegerBounds(schema, options.bits, !options.unsigned)
     }
 
     // Use "text" type for large numbers (BigInt) to ensure precision and better UI handling

@@ -5,6 +5,7 @@ import { Principal } from "@icp-sdk/core/principal"
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { MetadataDisplayReactor } from "../../src/metadata-display-reactor.js"
 import {
+  FuncRecordNode,
   MethodMeta,
   NumberNode,
   OptionalNode,
@@ -798,6 +799,46 @@ describe("MetadataDisplayReactor", () => {
         })
       ).rejects.toThrow('Method "wrong_name" not found')
     })
+
+    it("should accept the signatures CandidReactor.registerMethod accepts", async () => {
+      // Both reactors take DynamicMethodOptions. CandidReactor runs the
+      // signature through normalizeCandidInterface, and this one pasted it
+      // into `service : { name : ... }` verbatim. Type definitions ahead of
+      // the signature, which the README documents for registerMethod and
+      // callDynamic, a trailing semicolon, or a method name that needs quoting
+      // then made a service that does not parse.
+      // The adapter falls back to the didjs canister for what the local
+      // parser rejects, and didjs answers invalid Candid with none. The stub
+      // gives that answer without the network.
+      vi.spyOn(reactor.adapter, "compileRemote").mockResolvedValue(undefined)
+
+      await reactor.registerMethod({
+        functionName: "submit_process",
+        candid: `
+          type ProcessBlock = record { title : text; body : text };
+          (ProcessBlock) -> (variant { Ok : nat; Err : text })
+        `,
+      })
+      await reactor.registerMethod({
+        functionName: "icrc1_symbol",
+        candid: "() -> (text) query;",
+      })
+      await reactor.registerMethod({
+        functionName: "get-config",
+        candid: "() -> (text) query",
+      })
+      // A comment the parser ignores, holding an unmatched delimiter.
+      await reactor.registerMethod({
+        functionName: "echo",
+        candid: "// accepts (text\n(text) -> (text) query",
+      })
+
+      const process = reactor.getInputMeta("submit_process")
+      expect(process?.args[0].type).toBe("record")
+      expect(reactor.getOutputMeta("icrc1_symbol")?.functionType).toBe("query")
+      expect(reactor.hasMethod("get-config")).toBe(true)
+      expect(reactor.hasMethod("echo")).toBe(true)
+    })
   })
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1021,6 +1062,85 @@ describe("MetadataDisplayReactor display argument encoding", () => {
 
     const func = (reactor as any).getFuncClass(methodName) as IDL.FuncClass
     expect(() => IDL.encode(func.argTypes, transformedArgs)).not.toThrow()
+  })
+
+  describe("Variant arm with an optional payload", () => {
+    // The shape of the EVM RPC canister's RpcServices, where
+    // `EthMainnet = null` means "use the default providers". The form
+    // defaults the optional payload to null, the arm's schema accepts that,
+    // and the display codec turned it into `{ EthMainnet: null }`, which
+    // IDL.encode rejects. No form could send none for this arm.
+    const RPC_CANDID = `
+      type RpcServices = variant {
+        EthMainnet : opt vec text;
+        Custom : record { chainId : nat64; url : text };
+      };
+      service : {
+        eth_blockNumber : (RpcServices) -> (nat) query;
+      }
+    `
+    const RpcServices = IDL.Variant({
+      EthMainnet: IDL.Opt(IDL.Vec(IDL.Text)),
+      Custom: IDL.Record({ chainId: IDL.Nat64, url: IDL.Text }),
+    })
+
+    it("sends the arm's form default as none", async () => {
+      const reactor = new MetadataDisplayReactor({
+        name: "evm-rpc",
+        canisterId: "aaaaa-aa",
+        clientManager: createMockClientManager(),
+        candid: RPC_CANDID,
+      })
+      await reactor.initialize()
+
+      const meta = reactor.getInputMeta("eth_blockNumber")
+      if (!meta) throw new Error("Metadata not found")
+      const services = meta.args[0]
+      if (services.type !== "variant") throw new Error("expected a variant")
+
+      const args = [services.getOptionDefault("EthMainnet")]
+      expect(args).toEqual([{ _type: "EthMainnet", EthMainnet: null }])
+      expect(meta.schema.safeParse(args).success).toBe(true)
+
+      const executeQuery = vi
+        .spyOn(reactor as any, "executeQuery")
+        .mockResolvedValue(IDL.encode([IDL.Nat], [21_000_000n]))
+
+      await expect(
+        reactor.callMethod({ functionName: "eth_blockNumber", args })
+      ).resolves.toMatchObject({ raw: 21_000_000n })
+
+      const [, argBytes] = executeQuery.mock.calls[0]
+      expect(IDL.decode([RpcServices], argBytes as Uint8Array)).toEqual([
+        { EthMainnet: [] },
+      ])
+    })
+  })
+})
+
+describe("MetadataDisplayReactor integer vector results", () => {
+  it("returns a vec nat64 result instead of throwing", async () => {
+    // Before, any method returning a fixed-width integer vector failed with
+    // "Expected vector, but got object", because IDL.decode hands back a
+    // typed array. NNS governance's get_neuron_ids returns one.
+    const reactor = new MetadataDisplayReactor({
+      name: "governance",
+      canisterId: "aaaaa-aa",
+      clientManager: createMockClientManager(),
+      candid: "service : { get_neuron_ids : () -> (vec nat64) query }",
+    })
+    await reactor.initialize()
+    vi.spyOn(reactor as any, "executeQuery").mockResolvedValue(
+      IDL.encode([IDL.Vec(IDL.Nat64)], [[7n, 18446744073709551615n]])
+    )
+
+    const result = await reactor.callMethod({ functionName: "get_neuron_ids" })
+
+    const ids = result.results[0] as VectorNode
+    expect(ids.items.map((item) => item.value)).toEqual([
+      "7",
+      "18446744073709551615",
+    ])
   })
 })
 
@@ -1260,6 +1380,96 @@ describe("Complex Result Handling (Mocked)", () => {
 
       const [, argBytes] = executeQuery.mock.calls[0]
       expect(IDL.decode([IDL.Float64], argBytes as Uint8Array)).toEqual([3.14])
+    })
+  })
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Archive callbacks
+  // ══════════════════════════════════════════════════════════════════════════
+
+  describe("Archive callbacks", () => {
+    // icrc3_get_blocks as ICRC-3 ledgers such as ckBTC and the cycles ledger
+    // declare it. Blocks that moved to an archive come back as a func record
+    // whose callback takes `vec GetBlocksArgs`, the type of its `args` field.
+    const ICRC3_CANDID = `
+      type GetBlocksArgs = record { start : nat; length : nat };
+      type Value = variant { Nat : nat; Text : text; Array : vec Value };
+      type GetBlocksResult = record {
+        log_length : nat;
+        blocks : vec record { id : nat; block : Value };
+        archived_blocks : vec record {
+          args : vec GetBlocksArgs;
+          callback : func (vec GetBlocksArgs) -> (GetBlocksResult) query;
+        };
+      };
+      service : {
+        icrc3_get_blocks : (vec GetBlocksArgs) -> (GetBlocksResult) query;
+      }
+    `
+
+    it("calls the archive with the defaultArgs of the func record", async () => {
+      const ledger = new MetadataDisplayReactor({
+        name: "ckbtc-ledger",
+        canisterId: "mxzaz-hqaaa-aaaar-qaada-cai",
+        clientManager: createMockClientManager(),
+        candid: ICRC3_CANDID,
+      })
+      await ledger.initialize()
+
+      const getBlocks = (ledger as any).getFuncClass(
+        "icrc3_get_blocks"
+      ) as IDL.FuncClass
+      const archiveId = Principal.fromText("nbsys-saaaa-aaaar-qaaga-cai")
+      vi.spyOn(ledger as any, "executeQuery").mockResolvedValue(
+        IDL.encode(getBlocks.retTypes, [
+          {
+            log_length: 10n,
+            blocks: [],
+            archived_blocks: [
+              {
+                args: [{ start: 0n, length: 2n }],
+                callback: [archiveId, "icrc3_get_blocks"],
+              },
+            ],
+          },
+        ])
+      )
+
+      const result = await ledger.callMethod({
+        functionName: "icrc3_get_blocks",
+        args: [[{ start: "0", length: "2" }]],
+      })
+      const blocks = (result.results[0] as any).inner as RecordNode
+      const archived = (blocks.fields.archived_blocks as VectorNode)
+        .items[0] as FuncRecordNode
+      expect(archived.type).toBe("funcRecord")
+
+      const archive = new MetadataDisplayReactor({
+        name: "ckbtc-archive",
+        canisterId: archived.canisterId,
+        clientManager: createMockClientManager(),
+        funcClass: {
+          methodName: archived.methodName,
+          func: archived.funcClass,
+        },
+      })
+      const archiveQuery = vi
+        .spyOn(archive as any, "executeQuery")
+        .mockResolvedValue(
+          IDL.encode(archived.funcClass.retTypes, [
+            { log_length: 10n, blocks: [], archived_blocks: [] },
+          ])
+        )
+
+      await archive.callMethod({
+        functionName: archived.methodName,
+        args: archived.defaultArgs as never,
+      })
+
+      const [, argBytes] = archiveQuery.mock.calls[0]
+      expect(
+        IDL.decode(archived.funcClass.argTypes, argBytes as Uint8Array)
+      ).toEqual([[{ start: 0n, length: 2n }]])
     })
   })
 })

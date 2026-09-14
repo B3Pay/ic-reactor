@@ -11,6 +11,7 @@
     "test-e2e": "cd e2e && bash ./test.sh",
     "docs:build": "cd docs && pnpm build",
     "docs:check-links": "cd docs && pnpm check:links",
+    "docs:check-examples": "cd docs && pnpm check:examples",
     "docs:preview": "cd docs && pnpm preview",
     "size": "pnpm -r --filter \"./packages/**\" run size",
     "prepublish:check": "pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid build && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid test && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid size",
