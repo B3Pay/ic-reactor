@@ -295,8 +295,19 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
 
     return z.codec(z.any(), z.any(), {
       decode: (val) => {
-        if (!Array.isArray(val)) return val
-        return val.map((elem) => elemCodec.decode(elem))
+        // `IDL.decode` returns a typed array, not an Array, for every
+        // fixed-width integer vector except blob. `vec nat64` arrives as a
+        // BigUint64Array and `vec int32` as an Int32Array. Checking only
+        // `Array.isArray` let those through untransformed, so a `vec nat64`
+        // result kept its bigints and the narrower ones stayed typed arrays,
+        // which JSON-serialise as index-keyed objects.
+        const elements = Array.isArray(val)
+          ? val
+          : ArrayBuffer.isView(val) && !(val instanceof DataView)
+            ? Array.from(val as unknown as ArrayLike<unknown>)
+            : undefined
+        if (!elements) return val
+        return elements.map((elem) => elemCodec.decode(elem))
       },
       encode: (val) => {
         if (!Array.isArray(val)) return val
