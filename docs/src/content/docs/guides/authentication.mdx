@@ -252,7 +252,7 @@ import { useUserPrincipal } from "../reactor/hooks"
 function UserBadge() {
   const principal = useUserPrincipal()
 
-  if (!principal || principal.isAnonymous()) {
+  if (!principal) {
     return <span>Anonymous User</span>
   }
 
