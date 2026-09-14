@@ -128,9 +128,11 @@ export interface UseActorMethodResult<
   ) => Promise<ReactorReturnOk<Service, Method, Transform> | undefined>
 
   /**
-   * Reset the state (clear data and error).
-   * For queries: resets this hook's cache entry to its initial state, which
-   * refetches it if the hook is enabled
+   * Reset the state (data and error).
+   * For queries: resets this hook's own cache entry to its initial state, so
+   * `data` goes back to `initialData` when one was given and is cleared
+   * otherwise. An enabled hook then refetches. Other args of the same method
+   * are left alone.
    * For mutations: resets the mutation state
    */
   reset: () => void
