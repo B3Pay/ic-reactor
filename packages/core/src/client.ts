@@ -200,8 +200,8 @@ export class ClientManager {
 
     this.initPromise = (async () => {
       // A failed attempt leaves its error here and clears initPromise so the
-      // caller can retry. Each attempt starts clean, or a retry that succeeds
-      // reports isInitialized next to the previous attempt's error.
+      // caller can retry. Clearing it as each attempt starts means a retry that
+      // succeeds reports the initialized state without the old error.
       this.updateAgentState({ isInitializing: true, error: undefined })
       if (isDev() && typeof window !== "undefined") {
         console.info(
