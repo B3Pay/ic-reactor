@@ -1050,6 +1050,104 @@ describe("ResultFieldVisitor", () => {
         expect(resolved.defaultArgs).toEqual([{ start: "100", length: "50" }])
       })
 
+      it("should pass a callback the one field that has its argument type", () => {
+        const { Principal } = require("@icp-sdk/core/principal")
+        const archive = Principal.fromText("nbsys-saaaa-aaaar-qaaga-cai")
+
+        // ICRC-3 ledgers such as ckBTC, the cycles ledger and SNS ledgers
+        // return this, and the callback takes `args` itself, not a record
+        // holding it.
+        //   archived_blocks : vec record {
+        //     args : vec GetBlocksArgs;
+        //     callback : func (vec GetBlocksArgs) -> (GetBlocksResult) query;
+        //   }
+        const GetBlocksArgs = IDL.Record({ start: IDL.Nat, length: IDL.Nat })
+        const ArchivedBlocks = IDL.Record({
+          args: IDL.Vec(GetBlocksArgs),
+          callback: IDL.Func([IDL.Vec(GetBlocksArgs)], [IDL.Nat], ["query"]),
+        })
+        const icrc3 = (
+          ArchivedBlocks.accept(visitor, "archived") as FuncRecordNode
+        ).resolve({
+          args: [{ start: BigInt(0), length: BigInt(2) }],
+          callback: [archive, "icrc3_get_blocks"],
+        })
+        expect(icrc3.defaultArgs).toEqual([[{ start: "0", length: "2" }]])
+
+        // An asset canister's streaming callback takes the token, and the
+        // token's nat and opt blob have display forms of their own.
+        const Token = IDL.Record({
+          key: IDL.Text,
+          content_encoding: IDL.Text,
+          index: IDL.Nat,
+          sha256: IDL.Opt(IDL.Vec(IDL.Nat8)),
+        })
+        const Callback = IDL.Record({
+          callback: IDL.Func(
+            [Token],
+            [IDL.Record({ body: IDL.Vec(IDL.Nat8), token: IDL.Opt(Token) })],
+            ["query"]
+          ),
+          token: Token,
+        })
+        const streaming = (
+          Callback.accept(visitor, "Callback") as FuncRecordNode
+        ).resolve({
+          callback: [archive, "http_request_streaming_callback"],
+          token: {
+            key: "/index.js",
+            content_encoding: "gzip",
+            index: BigInt(1),
+            sha256: [new Uint8Array([0xab, 0xcd])],
+          },
+        })
+        expect(streaming.defaultArgs).toEqual([
+          {
+            key: "/index.js",
+            content_encoding: "gzip",
+            index: "1",
+            sha256: "abcd",
+          },
+        ])
+      })
+
+      it("should build the same defaultArgs from Candid or already transformed data", () => {
+        const { Principal } = require("@icp-sdk/core/principal")
+        const canister = Principal.fromText("nbsys-saaaa-aaaar-qaaga-cai")
+
+        // resolve() also accepts display-shaped data: an unwrapped opt, and a
+        // record given as a tuple. defaultArgs must not depend on which.
+        const OptCursor = IDL.Opt(IDL.Text)
+        const optPage = IDL.Record({
+          next: IDL.Func([OptCursor], [IDL.Nat], ["query"]),
+          cursor: OptCursor,
+        }).accept(visitor, "page") as FuncRecordNode
+        const callback = [canister, "next_page"]
+        expect(
+          optPage.resolve({ next: callback, cursor: ["c1"] }).defaultArgs
+        ).toEqual(["c1"])
+        expect(
+          optPage.resolve({ next: callback, cursor: "c1" }).defaultArgs
+        ).toEqual(["c1"])
+
+        const Token = IDL.Record({ key: IDL.Text, index: IDL.Nat })
+        const stream = IDL.Record({
+          callback: IDL.Func([Token], [IDL.Nat], ["query"]),
+          token: Token,
+        }).accept(visitor, "stream") as FuncRecordNode
+        const expected = [{ key: "/app.js", index: "3" }]
+        expect(
+          stream.resolve({
+            callback,
+            token: { key: "/app.js", index: BigInt(3) },
+          }).defaultArgs
+        ).toEqual(expected)
+        expect(
+          stream.resolve({ callback, token: ["/app.js", BigInt(3)] })
+            .defaultArgs
+        ).toEqual(expected)
+      })
+
       it("should keep record with multiple func fields as plain record", () => {
         const funcA = IDL.Func([IDL.Nat], [IDL.Nat], ["query"])
         const funcB = IDL.Func([IDL.Text], [IDL.Text], [])

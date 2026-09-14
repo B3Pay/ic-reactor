@@ -5,6 +5,7 @@ import { Principal } from "@icp-sdk/core/principal"
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { MetadataDisplayReactor } from "../../src/metadata-display-reactor.js"
 import {
+  FuncRecordNode,
   MethodMeta,
   NumberNode,
   OptionalNode,
@@ -1353,6 +1354,96 @@ describe("Complex Result Handling (Mocked)", () => {
 
       const [, argBytes] = executeQuery.mock.calls[0]
       expect(IDL.decode([IDL.Float64], argBytes as Uint8Array)).toEqual([3.14])
+    })
+  })
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Archive callbacks
+  // ══════════════════════════════════════════════════════════════════════════
+
+  describe("Archive callbacks", () => {
+    // icrc3_get_blocks as ICRC-3 ledgers such as ckBTC and the cycles ledger
+    // declare it. Blocks that moved to an archive come back as a func record
+    // whose callback takes `vec GetBlocksArgs`, the type of its `args` field.
+    const ICRC3_CANDID = `
+      type GetBlocksArgs = record { start : nat; length : nat };
+      type Value = variant { Nat : nat; Text : text; Array : vec Value };
+      type GetBlocksResult = record {
+        log_length : nat;
+        blocks : vec record { id : nat; block : Value };
+        archived_blocks : vec record {
+          args : vec GetBlocksArgs;
+          callback : func (vec GetBlocksArgs) -> (GetBlocksResult) query;
+        };
+      };
+      service : {
+        icrc3_get_blocks : (vec GetBlocksArgs) -> (GetBlocksResult) query;
+      }
+    `
+
+    it("calls the archive with the defaultArgs of the func record", async () => {
+      const ledger = new MetadataDisplayReactor({
+        name: "ckbtc-ledger",
+        canisterId: "mxzaz-hqaaa-aaaar-qaada-cai",
+        clientManager: createMockClientManager(),
+        candid: ICRC3_CANDID,
+      })
+      await ledger.initialize()
+
+      const getBlocks = (ledger as any).getFuncClass(
+        "icrc3_get_blocks"
+      ) as IDL.FuncClass
+      const archiveId = Principal.fromText("nbsys-saaaa-aaaar-qaaga-cai")
+      vi.spyOn(ledger as any, "executeQuery").mockResolvedValue(
+        IDL.encode(getBlocks.retTypes, [
+          {
+            log_length: 10n,
+            blocks: [],
+            archived_blocks: [
+              {
+                args: [{ start: 0n, length: 2n }],
+                callback: [archiveId, "icrc3_get_blocks"],
+              },
+            ],
+          },
+        ])
+      )
+
+      const result = await ledger.callMethod({
+        functionName: "icrc3_get_blocks",
+        args: [[{ start: "0", length: "2" }]],
+      })
+      const blocks = (result.results[0] as any).inner as RecordNode
+      const archived = (blocks.fields.archived_blocks as VectorNode)
+        .items[0] as FuncRecordNode
+      expect(archived.type).toBe("funcRecord")
+
+      const archive = new MetadataDisplayReactor({
+        name: "ckbtc-archive",
+        canisterId: archived.canisterId,
+        clientManager: createMockClientManager(),
+        funcClass: {
+          methodName: archived.methodName,
+          func: archived.funcClass,
+        },
+      })
+      const archiveQuery = vi
+        .spyOn(archive as any, "executeQuery")
+        .mockResolvedValue(
+          IDL.encode(archived.funcClass.retTypes, [
+            { log_length: 10n, blocks: [], archived_blocks: [] },
+          ])
+        )
+
+      await archive.callMethod({
+        functionName: archived.methodName,
+        args: archived.defaultArgs as never,
+      })
+
+      const [, argBytes] = archiveQuery.mock.calls[0]
+      expect(
+        IDL.decode(archived.funcClass.argTypes, argBytes as Uint8Array)
+      ).toEqual([[{ start: 0n, length: 2n }]])
     })
   })
 })
