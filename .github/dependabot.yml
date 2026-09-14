@@ -67,6 +67,15 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    groups:
+      # CodeQL's init, autobuild and analyze steps must run the same release.
+      # Dependabot names each path as its own dependency, so without this group
+      # it opens three PRs, and each one fails its CodeQL check with "Loaded a
+      # configuration file for version X, but running version Y". #323 and #375
+      # had to replace such a trio by hand.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     commit-message:
       prefix: "ci"
     labels:
