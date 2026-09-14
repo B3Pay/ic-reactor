@@ -96,8 +96,10 @@ pnpm prepare
 
 A `node_modules` installed before a dependency bump and then updated in place
 can lose its link to a native optional package while the package itself stays
-on disk. Running `pnpm install` again does not restore the link, with or
-without `--frozen-lockfile`. Relink every package instead:
+on disk. Run `pnpm install` first. For satteri's binding, which the workspace
+hoists (see below), that is enough. If the error remains, the lost link is one
+a plain install does not recreate, with or without `--frozen-lockfile`. Relink
+every package instead:
 
 ```bash
 pnpm install --force

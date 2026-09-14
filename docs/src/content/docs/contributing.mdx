@@ -84,8 +84,9 @@ pnpm docs:check-links   # crawls docs/dist, so run it after docs:build
 ```
 
 If `pnpm docs:build` fails with `Cannot find native binding`, your install is
-stale from a dependency bump, and a plain `pnpm install` will not fix it. Run
-`pnpm install --force`. The
+stale from a dependency bump. Run `pnpm install` first, and if the error
+remains, `pnpm install --force`, because a plain install does not recreate the
+link that was lost. The
 [troubleshooting note](https://github.com/B3Pay/ic-reactor/blob/main/CONTRIBUTING.md#cannot-find-native-binding-after-a-dependency-bump)
 in `CONTRIBUTING.md` has the details.
 
