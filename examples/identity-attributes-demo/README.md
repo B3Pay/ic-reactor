@@ -59,13 +59,15 @@ requested keys before trusting the attribute values.
 Do not generate the production nonce in the browser. The backend or canister
 that will verify and store user information should create it.
 
-1. Call a backend `registerBegin` / `profileLinkBegin` endpoint.
-2. Backend creates a fresh 32-byte nonce, stores a hash of it with expected
-   keys, action, origin, principal scope if known, and a short expiry.
-3. Frontend gives `requestOpenIdAttributes()` a `nonce` callback that makes
-   the `registerBegin` call. Fetching the nonce first and passing the value
-   would end the click's user gesture before the Internet Identity window
-   opens, and the browser blocks the window.
+1. In the click handler, frontend calls `requestOpenIdAttributes()` right away
+   and passes a `nonce` callback. Do not call the backend before this: awaiting
+   it first ends the click's user gesture, and the browser then blocks the
+   Internet Identity window.
+2. Inside that callback, frontend calls the backend's `registerBegin` /
+   `profileLinkBegin` endpoint, which is the only call to it in the flow.
+3. Backend creates a fresh 32-byte nonce, stores a hash of it with expected
+   keys, action, origin, principal scope if known, and a short expiry, and
+   returns it for the callback to resolve with.
 4. Frontend sends `signedAttributes.data`, `signedAttributes.signature`,
    `requestedKeys`, and `principal` to `registerFinish`.
 5. Backend verifies the signed attributes, checks the nonce is unused and
