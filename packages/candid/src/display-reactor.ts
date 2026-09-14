@@ -236,6 +236,12 @@ export class CandidDisplayReactor<
       )
     }
 
+    // Checked again after the await. registerMethods() runs its calls in
+    // parallel, so two registrations of one name both passed the check above
+    // and both pushed, leaving the name twice in getMethodNames(). The first to
+    // finish wins, as the first call does for a sequential repeat.
+    if (this.hasMethod(functionName)) return
+
     // Inject into our service
     this.service._fields.push(funcField)
 
