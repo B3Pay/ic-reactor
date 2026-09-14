@@ -14,10 +14,12 @@ import {
   TransformKey,
   ReactorArgs,
   ReactorReturnOk,
+  ReactorQueryData,
   ReactorReturnErr,
   FunctionType,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
+import { normalizeQueryData } from "../utils.js"
 
 /**
  * Configuration for useActorMethod hook.
@@ -33,10 +35,10 @@ export interface UseActorMethodParameters<
   Transform extends TransformKey = "candid",
 > extends Omit<
   QueryObserverOptions<
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     ReactorReturnErr<Service, Method, Transform>,
-    ReactorReturnOk<Service, Method, Transform>,
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     QueryKey
   >,
   "queryKey" | "queryFn"
@@ -59,8 +61,13 @@ export interface UseActorMethodParameters<
   /**
    * Callback when the method call succeeds.
    * Works for both query and mutation methods.
+   *
+   * A method's `undefined` result arrives as `null`, as in `useActorQuery`,
+   * for query and update methods alike.
    */
-  onSuccess?: (data: ReactorReturnOk<Service, Method, Transform>) => void
+  onSuccess?: (
+    data: ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
+  ) => void
 
   /**
    * Callback when the method call fails.
@@ -94,8 +101,13 @@ export interface UseActorMethodResult<
   Method extends FunctionName<Service> = FunctionName<Service>,
   Transform extends TransformKey = "candid",
 > {
-  /** The returned data from the method call */
-  data: ReactorReturnOk<Service, Method, Transform> | undefined
+  /**
+   * The returned data from the method call. A method's `undefined` result is
+   * `null` here, as in `useActorQuery`, so `undefined` only means no call has
+   * settled yet.
+   */
+  data:
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>> | undefined
 
   /** Whether the method is currently executing */
   isLoading: boolean
@@ -125,7 +137,9 @@ export interface UseActorMethodResult<
    */
   call: (
     args?: ReactorArgs<Service, Method, Transform>
-  ) => Promise<ReactorReturnOk<Service, Method, Transform> | undefined>
+  ) => Promise<
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>> | undefined
+  >
 
   /**
    * Reset the state (clear data and error).
@@ -138,19 +152,19 @@ export interface UseActorMethodResult<
    * For queries only: Refetch the query
    */
   refetch: () => Promise<
-    ReactorReturnOk<Service, Method, Transform> | undefined
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>> | undefined
   >
 
   // Expose underlying results for advanced use cases
   /** The raw query result (only available for query methods) */
   queryResult?: UseQueryResult<
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     ReactorReturnErr<Service, Method, Transform>
   >
 
   /** The raw mutation result (only available for mutation methods) */
   mutationResult?: UseMutationResult<
-    ReactorReturnOk<Service, Method, Transform>,
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     ReactorReturnErr<Service, Method, Transform>,
     ReactorArgs<Service, Method, Transform>
   >
@@ -180,6 +194,9 @@ export function useActorMethod<
   Method,
   Transform
 > {
+  type TData = ReactorReturnOk<Service, Method, Transform>
+  type TQueryData = ReactorQueryData<TData>
+
   // Determine if this is a query method by checking the IDL
   const isQuery = useMemo(() => {
     if (!reactor) throw new Error("Reactor instance is required")
@@ -227,7 +244,7 @@ export function useActorMethod<
   // ============================================================================
 
   const queryResult = useQuery<
-    ReactorReturnOk<Service, Method, Transform>,
+    TQueryData,
     ReactorReturnErr<Service, Method, Transform>
   >(
     {
@@ -237,12 +254,19 @@ export function useActorMethod<
       // QueryClient) and `onSuccess` never fired when data came from the cache
       // or a deduped sibling. They are dispatched from the settled observer
       // result below instead.
-      queryFn: () =>
-        reactor.callMethod({
-          functionName,
-          args,
-          callConfig,
-        }),
+      //
+      // TanStack Query fails a query whose queryFn resolves `undefined`, with
+      // "data is undefined", and a successful call can resolve it. A
+      // DisplayReactor decodes an `opt` None to `undefined`, and a `()` query
+      // returns nothing. Every other query path normalizes the value to `null`.
+      queryFn: async () =>
+        normalizeQueryData<TData>(
+          (await reactor.callMethod({
+            functionName,
+            args,
+            callConfig,
+          })) as TData
+        ),
       enabled: isQuery && enabled,
       ...queryOptions,
     },
@@ -282,20 +306,24 @@ export function useActorMethod<
   // ============================================================================
 
   const mutationResult = useMutation<
-    ReactorReturnOk<Service, Method, Transform>,
+    TQueryData,
     ReactorReturnErr<Service, Method, Transform>,
     ReactorArgs<Service, Method, Transform>
   >(
     {
       mutationKey: queryKey,
-      mutationFn: async (mutationArgs) => {
-        const result = await reactor.callMethod({
-          functionName,
-          args: mutationArgs ?? args,
-          callConfig,
-        })
-        return result
-      },
+      // Normalized like the query branch, so `data`, `call()` and `onSuccess`
+      // mean the same thing for both kinds of method. The hook cannot type the
+      // two branches apart: a Candid service type does not say which methods
+      // are queries.
+      mutationFn: async (mutationArgs) =>
+        normalizeQueryData<TData>(
+          (await reactor.callMethod({
+            functionName,
+            args: mutationArgs ?? args,
+            callConfig,
+          })) as TData
+        ),
       onSuccess: (data) => {
         onSuccessRef.current?.(data)
         // Invalidate specified queries after successful mutation
@@ -319,7 +347,7 @@ export function useActorMethod<
   const call = useCallback(
     async (
       callArgs?: ReactorArgs<Service, Method, Transform>
-    ): Promise<ReactorReturnOk<Service, Method, Transform> | undefined> => {
+    ): Promise<TQueryData | undefined> => {
       if (isQuery) {
         // For queries, refetch with new args if provided
         if (callArgs !== undefined) {
@@ -329,14 +357,17 @@ export function useActorMethod<
           // dedupe onto an in-flight request for the old args, returning that
           // response as though it answered this one.
           try {
-            const result = await reactor.queryClient.fetchQuery({
+            const result = await reactor.queryClient.fetchQuery<TQueryData>({
               queryKey: buildQueryKey(callArgs),
-              queryFn: () =>
-                reactor.callMethod({
-                  functionName,
-                  args: callArgs,
-                  callConfig,
-                }),
+              // Normalize for the same reason as the observer's queryFn.
+              queryFn: async () =>
+                normalizeQueryData<TData>(
+                  (await reactor.callMethod({
+                    functionName,
+                    args: callArgs,
+                    callConfig,
+                  })) as TData
+                ),
               staleTime: 0,
             })
             // Dispatched here rather than by the observer effect: this result
