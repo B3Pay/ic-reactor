@@ -1214,6 +1214,25 @@ describe("ResultFieldVisitor", () => {
   // ════════════════════════════════════════════════════════════════════════
 
   describe("Service Types", () => {
+    it("resolves a service reference returned as a value", () => {
+      const { Principal } = require("@icp-sdk/core/principal")
+      const service = IDL.Service({
+        create: IDL.Func(
+          [],
+          [IDL.Service({ ping: IDL.Func([], [], ["query"]) })],
+          []
+        ),
+      })
+      const meta = visitor.visitService(service)
+
+      const [ref] = meta.create.resolve(
+        Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai")
+      ).results
+      expect(ref.type).toBe("principal")
+      expect(ref.candidType).toBe("service")
+      expect(ref.value).toBe("ryjl3-tyaaa-aaaaa-aaaba-cai")
+    })
+
     it("should handle complete service", () => {
       const serviceType = IDL.Service({
         get_balance: IDL.Func([IDL.Principal], [IDL.Nat], ["query"]),

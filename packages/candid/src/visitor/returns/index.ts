@@ -136,7 +136,36 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   // Service & Function
   // ══════════════════════════════════════════════════════════════════════════
 
-  public visitService(t: IDL.ServiceClass): ServiceMeta<A> {
+  /**
+   * A service type is visited in two places. As the canister's own interface,
+   * reached with no label, it yields metadata for each method. As a value, a
+   * reference to another canister returned by a method, `accept` passes the
+   * field's label, and the value is a principal. That case used to get the
+   * method map too, which has no `resolve`, so resolving the result threw
+   * "node.resolve is not a function".
+   */
+  public visitService(t: IDL.ServiceClass): ServiceMeta<A>
+  public visitService(
+    t: IDL.ServiceClass,
+    label: string
+  ): ResultNode<"principal">
+  public visitService(
+    t: IDL.ServiceClass,
+    label?: string | null
+  ): ServiceMeta<A> | ResultNode<"principal"> {
+    if (typeof label === "string") {
+      // A service reference is a principal, so it takes the principal codec,
+      // which also reads a Principal from another copy of @icp-sdk/core.
+      return primitiveNode(
+        "principal",
+        label,
+        "service",
+        "string",
+        this.getCodec(IDL.Principal),
+        { format: checkTextFormat(label) as TextFormat }
+      )
+    }
+
     const result = {} as ServiceMeta<A>
     for (const [name, func] of t._fields) {
       // Process each service method using dedicated method handler
