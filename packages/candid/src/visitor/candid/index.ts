@@ -317,10 +317,12 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
         ) as FormFieldNode
     )
 
-    const first =
-      options[0] ??
-      this.primitive("null", "null", `${name}.null`, "null", null, z.null())
-    const defaultOption = first.label
+    // `variant {}` has no values. It used to borrow a made-up `null` option as
+    // its default, which getOptionDefault could not find among the options,
+    // so initialize() threw, and the `{ _type: "null" }` its schema accepted
+    // would not have encoded anyway. It now gets no options, an empty
+    // `defaultOption`, and a schema that rejects everything.
+    const defaultOption = options[0]?.label ?? ""
     const variantSchemas = options.map((option) =>
       option.type === "null"
         ? z.object({ _type: z.literal(option.label) })
@@ -366,10 +368,10 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       candidType: t.display?.() ?? t.name ?? "variant",
       options,
       defaultOption,
-      defaultValue: getOptionDefault(defaultOption),
+      defaultValue: options.length === 0 ? {} : getOptionDefault(defaultOption),
       schema:
         variantSchemas.length === 0
-          ? z.object({ _type: z.literal(defaultOption) })
+          ? z.never("variant {} has no values, so no value is valid")
           : z.union(
               variantSchemas as unknown as [z.ZodTypeAny, ...z.ZodTypeAny[]]
             ),

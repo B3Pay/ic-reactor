@@ -181,6 +181,16 @@ function validateBlobInput(
  * ))
  * ```
  */
+/** Why a `variant {}` field accepts nothing. */
+const EMPTY_VARIANT_MESSAGE = "variant {} has no values, so no value is valid"
+
+/** The option labels an error message can offer, or a note that there are none. */
+function availableOptions(options: Array<{ label: string }>): string {
+  return options.length > 0
+    ? options.map((o) => o.label).join(", ")
+    : "none, because the type is variant {}"
+}
+
 export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   string,
   FieldNode | ArgumentsMeta<A> | ArgumentsServiceMeta<A>
@@ -353,25 +363,33 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       }
     }
 
-    const firstOption = options[0]
-    const defaultOption = firstOption.label
+    // `variant {}` is valid Candid with no values (Rust's `enum Never {}` derives
+    // it). It gets no options, an empty `defaultOption`, and a schema that
+    // rejects everything, since no value of the type would encode. Reading
+    // `options[0].label` here made `initialize()` throw for the whole service.
+    const firstOption: FieldNode | undefined = options[0]
+    const defaultOption = firstOption?.label ?? ""
 
-    const defaultValue =
-      firstOption.type === "null"
+    const defaultValue = !firstOption
+      ? {}
+      : firstOption.type === "null"
         ? { _type: defaultOption }
         : {
             _type: defaultOption,
             [defaultOption]: firstOption.defaultValue,
           }
 
-    const schema = z.union(variantSchemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
+    const schema =
+      variantSchemas.length === 0
+        ? z.never(EMPTY_VARIANT_MESSAGE)
+        : z.union(variantSchemas as [z.ZodTypeAny, ...z.ZodTypeAny[]])
 
     // Helper to get default value for any option
     const getOptionDefault = (option: string): Record<string, unknown> => {
       const optField = options.find((f) => f.label === option)
       if (!optField) {
         throw new MetadataError(
-          `Unknown variant option: "${option}". Available: ${options.map((o) => o.label).join(", ")}`,
+          `Unknown variant option: "${option}". Available: ${availableOptions(options)}`,
           name,
           "variant"
         )
@@ -386,7 +404,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       const optField = options.find((f) => f.label === option)
       if (!optField) {
         throw new MetadataError(
-          `Unknown variant option: "${option}". Available: ${options.map((o) => o.label).join(", ")}`,
+          `Unknown variant option: "${option}". Available: ${availableOptions(options)}`,
           name,
           "variant"
         )
