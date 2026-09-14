@@ -13,6 +13,11 @@ import { DEFAULT_IC_DIDJS_ID, DEFAULT_LOCAL_DIDJS_ID } from "./constants.js"
 import { importCandidDefinition } from "./utils.js"
 import { CanisterId } from "@ic-reactor/core"
 
+/** An error's message. The WASM parser throws plain strings. */
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 /**
  * CandidAdapter provides functionality to fetch and parse Candid definitions
  * from Internet Computer canisters.
@@ -247,23 +252,40 @@ export class CandidAdapter {
     await this.tryLoadParser()
 
     let compiledJs: string | undefined
+    // Kept for the error below. The remote fallback answers invalid Candid with
+    // none, so without this a typo in hand-written Candid was reported as a
+    // bare "Failed to compile" and the parser's line and column were lost.
+    let localError: unknown
 
     // First attempt: Try local parser (faster, no network)
     if (this.parserModule) {
       try {
         compiledJs = this.compileLocal(candidSource)
-      } catch {
+      } catch (error) {
         // Fall through to remote compilation
+        localError = error
       }
     }
 
     // Second attempt: Try remote didjs canister
     if (!compiledJs) {
-      compiledJs = await this.compileRemote(candidSource)
+      try {
+        compiledJs = await this.compileRemote(candidSource)
+      } catch (remoteError) {
+        if (localError === undefined) throw remoteError
+        throw new Error(
+          `Failed to compile Candid to JavaScript: ${describeError(localError)} ` +
+            `(the didjs canister also failed: ${describeError(remoteError)})`
+        )
+      }
     }
 
     if (!compiledJs) {
-      throw new Error("Failed to compile Candid to JavaScript")
+      throw new Error(
+        localError === undefined
+          ? "Failed to compile Candid to JavaScript"
+          : `Failed to compile Candid to JavaScript: ${describeError(localError)}`
+      )
     }
 
     return importCandidDefinition(compiledJs)

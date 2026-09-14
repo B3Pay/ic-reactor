@@ -49,8 +49,15 @@ export function toFormValue(field: FormFieldNode, raw: unknown): unknown {
       return toFormValue(field.innerField, raw)
     }
     case "vector": {
-      if (!Array.isArray(raw)) return []
-      return raw.map((v, idx) => toFormValue(field.createItemField(idx), v))
+      // IDL.decode returns a typed array for a fixed-width integer vector
+      // (`vec nat64` is a BigUint64Array), which is not an Array, so hydrating
+      // one used to drop every element.
+      const items = Array.isArray(raw)
+        ? raw
+        : ArrayBuffer.isView(raw) && !(raw instanceof DataView)
+          ? Array.from(raw as unknown as ArrayLike<unknown>)
+          : []
+      return items.map((v, idx) => toFormValue(field.createItemField(idx), v))
     }
     case "blob": {
       if (raw instanceof Uint8Array) {

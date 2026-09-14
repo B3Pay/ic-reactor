@@ -71,6 +71,37 @@ describe("CandidMetadataReactor", () => {
     }
   })
 
+  it("hydrates integer vectors that decode to typed arrays", async () => {
+    // IDL.decode gives vec nat64 as a BigUint64Array and vec int8 as an
+    // Int8Array. Hydration read only arrays and returned [] for both.
+    const reactor = new MetadataReactor({
+      name: "ids",
+      canisterId: "aaaaa-aa",
+      clientManager,
+      candid: "service : { list : (vec nat64, vec int8) -> () }",
+    })
+    await reactor.initialize()
+
+    const encoded = IDL.encode(
+      [IDL.Vec(IDL.Nat64), IDL.Vec(IDL.Int8)],
+      [
+        [1n, 2n],
+        [-1, 5],
+      ]
+    )
+    const metadata = await reactor.buildForMethod("list", {
+      candidArgsHex: uint8ArrayToHex(new Uint8Array(encoded)),
+    })
+
+    expect(metadata.hydration).toEqual({
+      status: "hydrated",
+      values: [
+        ["1", "2"],
+        ["-1", "5"],
+      ],
+    })
+  })
+
   it("hydrates a recursive argument into form values", async () => {
     // Internet Identity's MetadataMapV2. NNS governance's ManageNeuron is
     // recursive too, and for such an argument the whole field is a recursive

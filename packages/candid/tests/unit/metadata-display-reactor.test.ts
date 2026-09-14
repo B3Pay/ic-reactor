@@ -1118,6 +1118,32 @@ describe("MetadataDisplayReactor display argument encoding", () => {
   })
 })
 
+describe("MetadataDisplayReactor integer vector results", () => {
+  it("returns a vec nat64 result instead of throwing", async () => {
+    // Before, any method returning a fixed-width integer vector failed with
+    // "Expected vector, but got object", because IDL.decode hands back a
+    // typed array. NNS governance's get_neuron_ids returns one.
+    const reactor = new MetadataDisplayReactor({
+      name: "governance",
+      canisterId: "aaaaa-aa",
+      clientManager: createMockClientManager(),
+      candid: "service : { get_neuron_ids : () -> (vec nat64) query }",
+    })
+    await reactor.initialize()
+    vi.spyOn(reactor as any, "executeQuery").mockResolvedValue(
+      IDL.encode([IDL.Vec(IDL.Nat64)], [[7n, 18446744073709551615n]])
+    )
+
+    const result = await reactor.callMethod({ functionName: "get_neuron_ids" })
+
+    const ids = result.results[0] as VectorNode
+    expect(ids.items.map((item) => item.value)).toEqual([
+      "7",
+      "18446744073709551615",
+    ])
+  })
+})
+
 describe("MetadataDisplayReactor E2E", () => {
   let reactor: MetadataDisplayReactor<TestActor>
   let clientManager: ClientManager
