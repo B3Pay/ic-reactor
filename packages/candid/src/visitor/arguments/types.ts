@@ -180,7 +180,11 @@ interface VectorExtras {
 interface BlobExtras {
   /** Template field for blob bytes */
   itemField: FieldNode
-  /** Accepted input formats */
+  /**
+   * Accepted input formats: `["hex", "file"]`. A string is read as hex.
+   * `"base64"` stays in the type for compatibility but is never listed,
+   * because nothing decodes it.
+   */
   acceptedFormats: ("hex" | "base64" | "file")[]
   /** Upload limits */
   limits: BlobLimits

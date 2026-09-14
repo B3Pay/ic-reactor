@@ -543,7 +543,10 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
         itemField,
         defaultValue: "",
         schema,
-        acceptedFormats: ["hex", "base64", "file"],
+        // No "base64": validateInput and the display codec read a string as
+        // hex only, and a base64 form could not be told apart from hex anyway,
+        // since text such as "abcd" is valid in both.
+        acceptedFormats: ["hex", "file"],
         limits,
         normalizeHex,
         validateInput: (value: string | Uint8Array) =>
