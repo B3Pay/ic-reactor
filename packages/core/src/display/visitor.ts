@@ -472,37 +472,40 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           return val
         }
 
-        try {
-          // Format 1: With _type property (from decode output)
-          if ("_type" in val) {
-            const key = val._type
-            const fieldType = fields.find(([n]) => n === key)?.[1]
-            if (fieldType?.name === "null") return { [key]: null }
+        // No try/catch here. A payload codec throws when the payload is
+        // invalid, and returning the untransformed value instead skipped every
+        // check it makes. IDL.encode then accepted what the float codec
+        // refuses (NaN, Infinity, a float32 that overflows when narrowed) and
+        // replaced every other codec error with a generic "Invalid variant".
+        // transformArgsWithCodec wraps the error with the argument context.
 
-            if (key in variantCodecs && nonNullish(val[key])) {
-              return { [key]: encode(variantCodecs[key], val[key]) }
-            }
-            return { [key]: null }
+        // Format 1: With _type property (from decode output)
+        if ("_type" in val) {
+          const key = val._type
+          const fieldType = fields.find(([n]) => n === key)?.[1]
+          if (fieldType?.name === "null") return { [key]: null }
+
+          if (key in variantCodecs && nonNullish(val[key])) {
+            return { [key]: encode(variantCodecs[key], val[key]) }
           }
-
-          // Format 2: Without _type (direct variant format from forms: { Add: value })
-          const keys = Object.keys(val)
-          if (keys.length === 1) {
-            const key = keys[0]
-            const fieldType = fields.find(([n]) => n === key)?.[1]
-            if (fieldType?.name === "null") return { [key]: null }
-
-            if (key in variantCodecs && nonNullish(val[key])) {
-              return { [key]: encode(variantCodecs[key], val[key]) }
-            }
-            return { [key]: null }
-          }
-
-          // Unknown format - return as-is
-          return val
-        } catch {
-          return val
+          return { [key]: null }
         }
+
+        // Format 2: Without _type (direct variant format from forms: { Add: value })
+        const keys = Object.keys(val)
+        if (keys.length === 1) {
+          const key = keys[0]
+          const fieldType = fields.find(([n]) => n === key)?.[1]
+          if (fieldType?.name === "null") return { [key]: null }
+
+          if (key in variantCodecs && nonNullish(val[key])) {
+            return { [key]: encode(variantCodecs[key], val[key]) }
+          }
+          return { [key]: null }
+        }
+
+        // Unknown format - return as-is
+        return val
       },
     })
   }
