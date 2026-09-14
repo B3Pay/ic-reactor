@@ -142,8 +142,11 @@ export interface UseActorMethodResult<
   >
 
   /**
-   * Reset the state (clear data and error).
-   * For queries: removes the query from cache
+   * Reset the state (data and error).
+   * For queries: resets this hook's own cache entry to its initial state, so
+   * `data` goes back to `initialData` when one was given and is cleared
+   * otherwise. An enabled hook then refetches. Other args of the same method
+   * are left alone.
    * For mutations: resets the mutation state
    */
   reset: () => void
@@ -411,7 +414,14 @@ export function useActorMethod<
 
   const reset = useCallback(() => {
     if (isQuery) {
-      reactor.queryClient.removeQueries({ queryKey })
+      // Reset, not remove. `removeQueries` drops the entry without notifying
+      // its observers, so this hook kept rendering the old data while bound to
+      // a query that was no longer in the cache. No later invalidation reached
+      // it, including the one an identity switch runs. `resetQueries` notifies
+      // the observer and refetches the entry when the hook is enabled. It is
+      // `exact` because only this hook's entry should reset. A prefix match on
+      // a no-args key would also reset every args variant other hooks render.
+      void reactor.queryClient.resetQueries({ queryKey, exact: true })
     } else {
       mutationResult.reset()
     }
