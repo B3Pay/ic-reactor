@@ -13,6 +13,11 @@ import { DEFAULT_IC_DIDJS_ID, DEFAULT_LOCAL_DIDJS_ID } from "./constants.js"
 import { importCandidDefinition } from "./utils.js"
 import { CanisterId } from "@ic-reactor/core"
 
+/** An error's message. The WASM parser throws plain strings. */
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 /**
  * CandidAdapter provides functionality to fetch and parse Candid definitions
  * from Internet Computer canisters.
@@ -44,11 +49,6 @@ import { CanisterId } from "@ic-reactor/core"
  * const { idlFactory } = await adapter.getCandidDefinition("ryjl3-tyaaa-aaaaa-aaaba-cai")
  * ```
  */
-/** An error's message. The WASM parser throws plain strings. */
-function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
 export class CandidAdapter {
   /** The client manager providing agent and identity access. */
   public clientManager: CandidClientManager
