@@ -49,6 +49,25 @@ pnpm lint              # ESLint over packages/*/src and packages/*/tests
 pnpm typecheck         # every package and e2e/, including their tests
 ```
 
+If you touched `packages/` or `examples/`, also type-check and build every
+example app. `tsc` never loads a bundler, so an example can type-check cleanly
+and still fail to build:
+
+```bash
+pnpm typecheck:examples
+pnpm build:examples
+```
+
+If you touched `docs/` or `packages/`, run the docs gate. CI lints the MDX,
+builds the site and crawls it for broken links. The API reference is generated
+from package sources, so a source change can break the docs build too:
+
+```bash
+pnpm --dir docs run lint:mdx
+pnpm docs:build
+pnpm docs:check-links   # crawls docs/dist, so run it after docs:build
+```
+
 If you changed a package's `exports`, `files`, build output, or module format,
 also run:
 
@@ -70,6 +89,36 @@ If you need to re-install hooks manually:
 ```bash
 pnpm prepare
 ```
+
+## Troubleshooting
+
+### `Cannot find native binding` after a dependency bump
+
+A `node_modules` installed before a dependency bump and then updated in place
+can lose its link to a native optional package while the package itself stays
+on disk. Running `pnpm install` again does not restore the link, with or
+without `--frozen-lockfile`. Relink every package instead:
+
+```bash
+pnpm install --force
+```
+
+If that is not enough, delete every `node_modules` in the workspace and
+install from scratch:
+
+```bash
+pnpm clean && pnpm install
+```
+
+The error blames an npm bug and tells you to delete `package-lock.json` and
+run `npm i` again. That text comes from the native package's loader. This repo
+uses pnpm and has no `package-lock.json`, so the advice does not apply.
+
+The Astro 7.3 bump did this to satteri's binding, and `pnpm docs:build` failed
+with `Cannot find module '@bruits/satteri-<platform>'` (issue #408).
+`pnpm-workspace.yaml` now hoists that binding to the root `node_modules`, so
+the docs build no longer depends on the lost link. A future bump can still
+strand a different native package the same way.
 
 ## Publishing (trusted publishing / tokens)
 
