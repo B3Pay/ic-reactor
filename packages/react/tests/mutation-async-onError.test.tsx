@@ -123,4 +123,24 @@ describe("mutation hooks await an async onError", () => {
       "mutateAsync rejected",
     ])
   })
+
+  it("createMutation's execute(), for the factory onError", async () => {
+    // execute() runs the factory callbacks without a hook, and it rejects for
+    // the caller once they are done, just as mutateAsync does.
+    const order: string[] = []
+    const mutation = createMutation(reactor, {
+      functionName: "transfer",
+      onError: async () => {
+        await later()
+        order.push("factory onError finished")
+      },
+    })
+
+    await mutation.execute(["alice"]).catch((error: unknown) => {
+      expect(error).toBeInstanceOf(CanisterError)
+      order.push("execute rejected")
+    })
+
+    expect(order).toEqual(["factory onError finished", "execute rejected"])
+  })
 })

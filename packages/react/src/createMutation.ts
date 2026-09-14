@@ -140,7 +140,9 @@ const createMutationImpl = <
         factoryOnCanisterError?.(error, args)
       }
       // `onMutate` does not run on this path, so there is no result to pass.
-      factoryOnError?.(
+      // Awaited like `onSuccess` below and like the hook path, so an async
+      // rollback or report finishes before `execute()` rejects.
+      await factoryOnError?.(
         error as Parameters<NonNullable<typeof factoryOnError>>[0],
         args,
         undefined,
