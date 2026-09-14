@@ -123,9 +123,15 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     // schema for float32/float64), so a value that passed the form's own
     // validation must encode here too. Same contract as the ≤32-bit integers.
     const typeName = `float${t._bits}`
+    // NaN, Infinity and -Infinity are valid float32/float64 values, and
+    // IDL.decode returns them as numbers. Zod 4's z.number() rejects all three,
+    // so one of them in a result failed the decode of the whole response and
+    // DisplayReactor fell back to the raw Candid value. Both schemas accept any
+    // number. Encode below still refuses non-finite input with its own error.
+    const anyNumber = z.custom<number>((val) => typeof val === "number")
     return z.codec(
-      z.number(), // Candid format
-      z.union([z.number(), z.string()]), // Display format
+      anyNumber, // Candid format
+      z.union([anyNumber, z.string()]), // Display format
       {
         decode: (val) => val,
         encode: (val) => {
