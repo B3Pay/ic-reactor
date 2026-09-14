@@ -3,6 +3,7 @@ import { Principal } from "@icp-sdk/core/principal"
 import type { BaseActor, FunctionName } from "@ic-reactor/core"
 import * as z from "zod"
 import { isQuery } from "../helpers.js"
+import { withIntegerBounds } from "../integer-bounds.js"
 import { formatLabel } from "../arguments/helpers.js"
 import type {
   FormServiceMeta,
@@ -602,10 +603,14 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       this.currentName(),
       `int${t._bits}`,
       "",
-      z
-        .string()
-        .min(1, "Required")
-        .regex(/^-?\d+$/, "Must be an integer")
+      withIntegerBounds(
+        z
+          .string()
+          .min(1, "Required")
+          .regex(/^-?\d+$/, "Must be an integer"),
+        t._bits,
+        true
+      )
     )
   }
 
@@ -616,7 +621,11 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       this.currentName(),
       `nat${t._bits}`,
       "",
-      z.string().regex(/^\d+$/, "Must be a positive number")
+      withIntegerBounds(
+        z.string().regex(/^\d+$/, "Must be a positive number"),
+        t._bits,
+        false
+      )
     )
   }
 

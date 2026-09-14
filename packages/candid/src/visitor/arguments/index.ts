@@ -1,4 +1,5 @@
 import { isQuery } from "../helpers.js"
+import { withIntegerBounds } from "../integer-bounds.js"
 import { checkTextFormat, checkNumberFormat } from "../constants.js"
 import { MetadataError } from "./types.js"
 import type {
@@ -868,6 +869,12 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       schema = schema.regex(/^\d+$/, "Must be a positive number")
     } else {
       schema = schema.regex(/^-?\d+$/, "Must be a number")
+    }
+
+    // `bits` is set only for the fixed-width integers. nat and int are
+    // unbounded.
+    if (!options.isFloat && options.bits) {
+      schema = withIntegerBounds(schema, options.bits, !options.unsigned)
     }
 
     // Use "text" type for large numbers (BigInt) to ensure precision and better UI handling
