@@ -169,13 +169,16 @@ const createMutationImpl = <
           // 4. Hook onSuccess
           await restOptions.onSuccess?.(...args)
         },
-        onError: (error, variables, context, mutation) => {
+        onError: async (error, variables, context, mutation) => {
           if (isCanisterError(error)) {
             factoryOnCanisterError?.(error, variables)
             hookOnCanisterError?.(error, variables)
           }
-          factoryOnError?.(error, variables, context, mutation)
-          restOptions.onError?.(error, variables, context, mutation)
+          // Awaited in order, like `onSuccess`. TanStack Query holds
+          // `onSettled` and the settled state until this promise resolves, so
+          // an async `onError` must be part of it.
+          await factoryOnError?.(error, variables, context, mutation)
+          await restOptions.onError?.(error, variables, context, mutation)
         },
         // `onMutate` and `onSettled` are composed like `onSuccess`/`onError`
         // above. They used to arrive through the `...restOptions` spread, so a
