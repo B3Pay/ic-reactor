@@ -119,8 +119,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 > {
   private codec = new DisplayCodecVisitor()
 
-  private recCache = new Map<IDL.RecClass<any>, ResultNode<"recursive">>()
-
   private getCodec(t: IDL.Type): Codec {
     const codec = t.accept(this.codec, null) as any
     return {
@@ -613,14 +611,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitRec<T>(
-    t: IDL.RecClass<T>,
+    _t: IDL.RecClass<T>,
     ty: IDL.ConstructType<T>,
     label: string
   ): ResultNode<"recursive"> {
-    if (this.recCache.has(t)) {
-      return this.recCache.get(t)! as ResultNode<"recursive">
-    }
-
+    // A node per occurrence, as the form visitor builds since #385. Caching it
+    // per RecClass gave every later occurrence the first one's label, so both
+    // subtrees of a binary tree read "__ret0". Building the inner node lazily
+    // is what stops the recursion, not the cache.
+    //
     // Lazy extraction to prevent infinite loops
     let innerSchema: ResultNode | null = null
     const getInner = () =>
@@ -638,7 +637,6 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       },
     }
 
-    this.recCache.set(t, node)
     return node
   }
 

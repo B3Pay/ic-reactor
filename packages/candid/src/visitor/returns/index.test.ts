@@ -733,6 +733,33 @@ describe("ResultFieldVisitor", () => {
       expect((treeResolved.inner as VariantNode).selected).toBe("Leaf")
     })
 
+    it("labels each occurrence of a recursive type with its own field name", () => {
+      const Tree = IDL.Rec()
+      Tree.fill(
+        IDL.Variant({
+          Leaf: IDL.Nat,
+          Node: IDL.Record({ left: Tree, right: Tree }),
+        })
+      )
+      const service = IDL.Service({
+        tree: IDL.Func([], [Tree], ["query"]),
+        pair: IDL.Func([], [IDL.Record({ first: Tree })], ["query"]),
+      })
+      const meta = visitor.visitService(service)
+
+      const tree = meta.tree.resolve({
+        Node: { left: { Leaf: BigInt(1) }, right: { Leaf: BigInt(2) } },
+      }).results[0] as RecursiveNode
+      const node = (tree.inner as VariantNode).selectedValue as RecordNode
+      expect(node.fields.left.label).toBe("left")
+      expect(node.fields.right.label).toBe("right")
+
+      // The same RecClass met again, in another method.
+      const pair = meta.pair.resolve({ first: { Leaf: BigInt(3) } })
+        .results[0] as RecordNode
+      expect(pair.fields.first.label).toBe("first")
+    })
+
     it("should handle recursive linked list", () => {
       const List = IDL.Rec()
       List.fill(
