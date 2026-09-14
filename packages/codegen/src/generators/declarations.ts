@@ -8,11 +8,16 @@
  *   <outDir>/declarations/<name>.js       — IDL factory
  *   <outDir>/declarations/<name>.d.ts     — TypeScript types
  *   <outDir>/declarations/<name>.did      — Copy of the source .did file
+ *
+ * When Prettier resolves from `projectRoot`, it formats the `.js` and `.d.ts`.
+ * See `formatGenerated`.
  */
 
 import { didToJs, didToTs } from "@ic-reactor/parser"
+import { createRequire } from "node:module"
 import path from "node:path"
 import fs from "node:fs"
+import { pathToFileURL } from "node:url"
 import type { GeneratorResult } from "../types.js"
 import { CodegenConfigError, resolveDeclarationsBaseName } from "../validate.js"
 
@@ -23,6 +28,12 @@ export interface DeclarationsGeneratorOptions {
   outDir: string
   /** Canister name (used only for error messages) */
   canisterName: string
+  /**
+   * Project whose Prettier formats the generated `.js` and `.d.ts`, using the
+   * config it resolves for each file's final path. When this is omitted, or no
+   * Prettier resolves from it, the generator writes the parser's output as-is.
+   */
+  projectRoot?: string
 }
 
 export interface DeclarationsGeneratorResult {
@@ -68,17 +79,88 @@ function replaceDirectory(from: string, to: string): void {
   fs.rmSync(displaced, { recursive: true, force: true })
 }
 
+/** The part of Prettier's API used here, in the shape v2 and v3 share. */
+interface Prettier {
+  format(
+    source: string,
+    options: Record<string, unknown>
+  ): string | Promise<string>
+  resolveConfig(
+    filePath: string,
+    options: Record<string, unknown>
+  ): Promise<Record<string, unknown> | null>
+}
+
 /**
- * Generate TypeScript declarations from a Candid file.
+ * Load the Prettier installed in the project at `projectRoot`, if any.
  *
- * Generation happens in a staging directory that is swapped over the existing
- * `declarations/` only after every file has been written. The parser runs on
- * user-authored Candid and throws on a syntax error — under the vite plugin
- * that is a *normal* watch-mode event, one keystroke in a .did file — so
- * deleting the previous output before parsing turned every typo into a broken
- * build with no declarations at all. A failure now leaves the previous
- * declarations byte-identical.
+ * Resolving it from the project, instead of bundling Prettier or declaring it
+ * as a dependency, means the install that runs the project's own
+ * `prettier --check` is the one that formats the output.
  */
+async function loadPrettier(
+  projectRoot: string
+): Promise<Prettier | undefined> {
+  try {
+    // createRequire needs a file to resolve relative to; it need not exist.
+    const entry = createRequire(path.resolve(projectRoot, "noop.js")).resolve(
+      "prettier"
+    )
+    const loaded = (await import(pathToFileURL(entry).href)) as {
+      default?: Prettier
+    } & Partial<Prettier>
+    // Prettier 3's CommonJS entry comes back with its API under `default` only.
+    const api = typeof loaded.format === "function" ? loaded : loaded.default
+    return typeof api?.format === "function" &&
+      typeof api.resolveConfig === "function"
+      ? (api as Prettier)
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Format one generated file with the options `prettier --check` would apply.
+ *
+ * The config is resolved for `finalPath`, where the file ends up, and not for
+ * the staging directory it is first written to. `overrides` keyed on the output
+ * location only match the final path.
+ *
+ * Any failure returns the parser's output instead, whether the config does not
+ * parse or names a plugin that is not installed. Generation has to work without
+ * Prettier, and in watch mode a formatting error would break the rebuild.
+ *
+ * Either way the result ends in a newline. The parser emits none.
+ */
+async function formatGenerated(
+  prettier: Prettier | undefined,
+  source: string,
+  finalPath: string,
+  parser: "babel" | "typescript"
+): Promise<string> {
+  let output = source
+  if (prettier) {
+    try {
+      const config = await prettier.resolveConfig(finalPath, {
+        // What the Prettier CLI does by default.
+        editorconfig: true,
+        // A long-lived dev server would otherwise keep formatting with a
+        // config the user has since edited.
+        useCache: false,
+      })
+      output = await prettier.format(source, {
+        parser,
+        ...config,
+        filepath: finalPath,
+      })
+    } catch {
+      // Keep the parser's output, as above.
+    }
+  }
+  return output.endsWith("\n") ? output : `${output}\n`
+}
+
 /**
  * The export the generated reactor imports. Its presence in `didToJs` output is
  * the authoritative "this .did describes a service" test — see the note in
@@ -92,10 +174,24 @@ const HAS_IDL_FACTORY = /\bexport\s+const\s+idlFactory\b/
  */
 export const OWNER_FILE = ".ic-reactor-owner"
 
+/**
+ * Generate TypeScript declarations from a Candid file.
+ *
+ * Generation happens in a staging directory that is swapped over the existing
+ * `declarations/` only after every file has been written. The parser runs on
+ * user-authored Candid and throws on a syntax error — under the vite plugin
+ * that is a *normal* watch-mode event, one keystroke in a .did file — so
+ * deleting the previous output before parsing turned every typo into a broken
+ * build with no declarations at all. A failure now leaves the previous
+ * declarations byte-identical.
+ *
+ * The parser emits candid's house style. Committed declarations are usually
+ * formatted, so writing that style back turned every regeneration into a diff.
+ */
 export async function generateDeclarations(
   options: DeclarationsGeneratorOptions
 ): Promise<DeclarationsGeneratorResult> {
-  const { didFile, outDir, canisterName } = options
+  const { didFile, outDir, canisterName, projectRoot } = options
 
   const declarationsDir = path.join(outDir, "declarations")
 
@@ -172,6 +268,19 @@ export async function generateDeclarations(
       }
     }
 
+    const jsPath = path.join(declarationsDir, `${baseName}.js`)
+    const dtsPath = path.join(declarationsDir, `${baseName}.d.ts`)
+    const didCopyPath = path.join(declarationsDir, `${baseName}.did`)
+
+    const prettier = projectRoot ? await loadPrettier(projectRoot) : undefined
+    const jsOutput = await formatGenerated(prettier, jsContent, jsPath, "babel")
+    const tsOutput = await formatGenerated(
+      prettier,
+      tsContent,
+      dtsPath,
+      "typescript"
+    )
+
     // Ensure output dir exists — it is also the staging directory's parent, so
     // the swap below stays a same-filesystem rename.
     fs.mkdirSync(outDir, { recursive: true })
@@ -185,12 +294,9 @@ export async function generateDeclarations(
 
     staging = fs.mkdtempSync(path.join(outDir, ".declarations.tmp-"))
 
-    const jsPath = path.join(declarationsDir, `${baseName}.js`)
-    const dtsPath = path.join(declarationsDir, `${baseName}.d.ts`)
-    const didCopyPath = path.join(declarationsDir, `${baseName}.did`)
-
-    fs.writeFileSync(path.join(staging, `${baseName}.js`), jsContent)
-    fs.writeFileSync(path.join(staging, `${baseName}.d.ts`), tsContent)
+    fs.writeFileSync(path.join(staging, `${baseName}.js`), jsOutput)
+    fs.writeFileSync(path.join(staging, `${baseName}.d.ts`), tsOutput)
+    // A byte copy of the source, so never formatted.
     fs.writeFileSync(path.join(staging, `${baseName}.did`), didContent)
 
     replaceDirectory(staging, declarationsDir)

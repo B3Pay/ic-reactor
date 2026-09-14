@@ -80,6 +80,12 @@ For each canister, the CLI writes into `<outDir>/<canister>/`:
 Declaration filenames follow the `.did` file's basename, not the canister name,
 and `declarations/` is recreated from scratch on every run.
 
+If Prettier resolves from the directory holding `ic-reactor.json`, installed
+by that project or by a parent workspace, the CLI formats the `.js` and `.d.ts`
+with it and your Prettier config. Regenerating then leaves formatted, committed
+declarations unchanged. Without Prettier they hold the Candid parser's output
+as-is.
+
 Because every run rewrites the output of the canisters it generates, the only
 output that can go stale is the directory of a canister that was renamed or
 removed from the config. `--clean` removes those, and only those: it leaves

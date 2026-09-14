@@ -1163,6 +1163,9 @@ importers:
       '@types/node':
         specifier: ^26.4.1
         version: 26.4.1
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.28)(typescript@6.0.3)(yaml@2.9.0)
