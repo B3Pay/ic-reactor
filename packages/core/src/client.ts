@@ -199,7 +199,10 @@ export class ClientManager {
     }
 
     this.initPromise = (async () => {
-      this.updateAgentState({ isInitializing: true })
+      // A failed attempt leaves its error here and clears initPromise so the
+      // caller can retry. Each attempt starts clean, or a retry that succeeds
+      // reports isInitialized next to the previous attempt's error.
+      this.updateAgentState({ isInitializing: true, error: undefined })
       if (isDev() && typeof window !== "undefined") {
         console.info(
           `%cic-reactor:%c Initializing agent for ${this.network} network`,
