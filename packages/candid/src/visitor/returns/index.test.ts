@@ -1111,6 +1111,43 @@ describe("ResultFieldVisitor", () => {
         ])
       })
 
+      it("should build the same defaultArgs from Candid or already transformed data", () => {
+        const { Principal } = require("@icp-sdk/core/principal")
+        const canister = Principal.fromText("nbsys-saaaa-aaaar-qaaga-cai")
+
+        // resolve() also accepts display-shaped data: an unwrapped opt, and a
+        // record given as a tuple. defaultArgs must not depend on which.
+        const OptCursor = IDL.Opt(IDL.Text)
+        const optPage = IDL.Record({
+          next: IDL.Func([OptCursor], [IDL.Nat], ["query"]),
+          cursor: OptCursor,
+        }).accept(visitor, "page") as FuncRecordNode
+        const callback = [canister, "next_page"]
+        expect(
+          optPage.resolve({ next: callback, cursor: ["c1"] }).defaultArgs
+        ).toEqual(["c1"])
+        expect(
+          optPage.resolve({ next: callback, cursor: "c1" }).defaultArgs
+        ).toEqual(["c1"])
+
+        const Token = IDL.Record({ key: IDL.Text, index: IDL.Nat })
+        const stream = IDL.Record({
+          callback: IDL.Func([Token], [IDL.Nat], ["query"]),
+          token: Token,
+        }).accept(visitor, "stream") as FuncRecordNode
+        const expected = [{ key: "/app.js", index: "3" }]
+        expect(
+          stream.resolve({
+            callback,
+            token: { key: "/app.js", index: BigInt(3) },
+          }).defaultArgs
+        ).toEqual(expected)
+        expect(
+          stream.resolve({ callback, token: ["/app.js", BigInt(3)] })
+            .defaultArgs
+        ).toEqual(expected)
+      })
+
       it("should keep record with multiple func fields as plain record", () => {
         const funcA = IDL.Func([IDL.Nat], [IDL.Nat], ["query"])
         const funcB = IDL.Func([IDL.Text], [IDL.Text], [])

@@ -74,6 +74,41 @@ function primitiveNode<T extends VisitorDataType>(
   return node
 }
 
+/**
+ * The Candid value a resolved node stands for, read back from the tree.
+ *
+ * `resolve()` takes a value in its Candid form or already display-transformed,
+ * such as an unwrapped `opt` or a record given as a tuple, and builds the same
+ * tree from either. Compound values are rebuilt from that tree so the display
+ * codec always decodes the Candid shape. Primitives keep `raw`, because their
+ * codecs decode both forms.
+ */
+function candidValueOf(node: ResultNode): unknown {
+  switch (node.type) {
+    case "optional":
+      return node.value ? [candidValueOf(node.value)] : []
+    case "record":
+    case "funcRecord":
+      return Object.fromEntries(
+        Object.entries(node.fields).map(([key, field]) => [
+          key,
+          candidValueOf(field),
+        ])
+      )
+    case "tuple":
+    case "vector":
+      return node.items.map(candidValueOf)
+    case "variant":
+      return node.selected === undefined
+        ? node.raw
+        : { [node.selected]: candidValueOf(node.selectedValue) }
+    case "recursive":
+      return candidValueOf(node.inner)
+    default:
+      return node.raw
+  }
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Simplified Result Field Visitor
 // ════════════════════════════════════════════════════════════════════════════
@@ -235,7 +270,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
       // defaultArgs are built from the other fields, and each value goes
       // through the display codec for its field's type, because a resolved
-      // node carries a display `value` only for primitives. Two layouts are in
+      // node carries a display `value` only for primitives. The codec decodes
+      // the Candid value read back from the resolved field, so an already
+      // transformed input gives the same result. Two layouts are in
       // use. In the ICP ledger's ArchivedBlocksRange the callback takes
       // `{ start; length }` and the fields beside it are start and length, so
       // together they make the one record argument. In ICRC-3's
@@ -298,7 +335,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           const argRecord = Object.fromEntries(
             Object.entries(resolvedArgFields).map(([k, v]) => [
               k,
-              argCodecs[k].decode(v.raw),
+              argCodecs[k].decode(candidValueOf(v)),
             ])
           )
           const defaultArgs =
