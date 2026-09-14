@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { renderHook, waitFor } from "@testing-library/react"
+import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
 import { ClientManager, Reactor, CallError } from "@ic-reactor/core"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -273,7 +273,17 @@ describe("useActorMethod - Query Method Options", () => {
   })
 
   it("should support reset for query methods", async () => {
-    vi.spyOn(reactor, "callMethod").mockResolvedValue("Hello!")
+    // The mock holds the refetch that follows the reset open, so the test can
+    // see the cleared state before new data replaces it.
+    let resolveRefetch!: (value: string) => void
+    vi.spyOn(reactor, "callMethod")
+      .mockResolvedValueOnce("Hello!")
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveRefetch = resolve
+          })
+      )
 
     const { result } = renderHook(
       () =>
@@ -289,15 +299,14 @@ describe("useActorMethod - Query Method Options", () => {
     expect(result.current.data).toBe("Hello!")
 
     // Reset the query
-    result.current.reset()
+    act(() => result.current.reset())
 
-    // Data should be undefined after reset
-    await waitFor(() => {
-      const queryState = queryClient.getQueryState(
-        reactor.generateQueryKey({ functionName: "greet", args: ["world"] })
-      )
-      expect(queryState).toBeUndefined()
-    })
+    // Data should be undefined after reset, and the enabled query refetches
+    await waitFor(() => expect(result.current.data).toBeUndefined())
+    expect(result.current.isLoading).toBe(true)
+
+    await act(async () => resolveRefetch("Hello again!"))
+    await waitFor(() => expect(result.current.data).toBe("Hello again!"))
   })
 
   it("should expose queryResult for query methods", async () => {
