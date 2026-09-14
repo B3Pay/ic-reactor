@@ -60,7 +60,8 @@ exports the reactor and six hooks named after the canister
 If Prettier resolves from Vite's `config.root`, the plugin formats the
 generated `.js` and `.d.ts` with it and your Prettier config, so a rebuild
 leaves formatted, committed declarations unchanged. Without Prettier they hold
-the Candid parser's output as-is, and a formatting error never fails the build.
+the Candid parser's output followed by a newline, and a formatting error never
+fails the build.
 
 If you want non-React output, set `target: "core"` and install the matching
 runtime package instead of `@ic-reactor/react`.

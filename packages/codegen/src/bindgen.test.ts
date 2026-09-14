@@ -375,5 +375,73 @@ describe("Bindgen", () => {
         })
       }
     )
+
+    it("resolves a plugin the config names from projectRoot, not the working directory", async () => {
+      const root = createTempProject()
+      linkPrettier(root)
+      // Installed in the project only. The test runs with its working directory
+      // in packages/codegen, where Prettier would look for it by name.
+      const pluginDir = path.join(root, "node_modules", "prettier-plugin-local")
+      fs.mkdirSync(pluginDir)
+      fs.writeFileSync(
+        path.join(pluginDir, "package.json"),
+        JSON.stringify({ name: "prettier-plugin-local", main: "index.js" })
+      )
+      fs.writeFileSync(
+        path.join(pluginDir, "index.js"),
+        "module.exports = {}\n"
+      )
+      expect(() =>
+        createRequire(import.meta.url).resolve("prettier-plugin-local")
+      ).toThrow()
+      fs.writeFileSync(
+        path.join(root, ".prettierrc"),
+        JSON.stringify({ semi: false, plugins: ["prettier-plugin-local"] })
+      )
+      const didFile = writeDid(root, "test.did", validDidContent)
+      const outDir = path.join(root, "output")
+
+      await generateDeclarations({
+        didFile,
+        outDir,
+        canisterName,
+        projectRoot: root,
+      })
+
+      expect(readOutput(outDir).js).toBe(
+        [
+          "export const idlFactory = ({ IDL }) => {",
+          '  return IDL.Service({ greet: IDL.Func([IDL.Text], [IDL.Text], ["query"]) })',
+          "}",
+          "export const init = ({ IDL }) => {",
+          "  return []",
+          "}",
+          "",
+        ].join("\n")
+      )
+    })
+
+    it("keeps the TypeScript parser for the .d.ts when the config sets a parser", async () => {
+      const root = createTempProject()
+      linkPrettier(root)
+      fs.writeFileSync(
+        path.join(root, ".prettierrc"),
+        JSON.stringify({ semi: false, parser: "babel" })
+      )
+      const didFile = writeDid(root, "test.did", validDidContent)
+      const outDir = path.join(root, "output")
+
+      await generateDeclarations({
+        didFile,
+        outDir,
+        canisterName,
+        projectRoot: root,
+      })
+
+      const { dts } = readOutput(outDir)
+      expect(dts).not.toBe(`${didToTs(validDidContent)}\n`)
+      expect(dts).toContain("export interface _SERVICE {\n")
+      expect(dts).toContain("  greet: ActorMethod<[string], string>\n")
+    })
   })
 })

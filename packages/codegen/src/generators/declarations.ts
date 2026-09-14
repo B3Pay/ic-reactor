@@ -31,7 +31,8 @@ export interface DeclarationsGeneratorOptions {
   /**
    * Project whose Prettier formats the generated `.js` and `.d.ts`, using the
    * config it resolves for each file's final path. When this is omitted, or no
-   * Prettier resolves from it, the generator writes the parser's output as-is.
+   * Prettier resolves from it, the generator writes the parser's output
+   * followed by a newline.
    */
   projectRoot?: string
 }
@@ -121,6 +122,37 @@ async function loadPrettier(
 }
 
 /**
+ * Resolve the config's plugin package names from the project.
+ *
+ * `resolveConfig` makes a relative plugin path absolute against the config file
+ * but leaves a package name as written, and `format` then imports that name
+ * from `process.cwd()`. Vite started from a monorepo root with `root` pointing
+ * at a nested app has its working directory at the monorepo root, where the
+ * app's plugins may not be installed, and formatting failed. A name that does
+ * not resolve from the project is left for Prettier to try.
+ */
+function resolvePluginNames(
+  plugins: unknown[],
+  projectRoot: string
+): unknown[] {
+  const require = createRequire(path.resolve(projectRoot, "noop.js"))
+  return plugins.map((plugin) => {
+    if (
+      typeof plugin !== "string" ||
+      plugin.startsWith(".") ||
+      path.isAbsolute(plugin)
+    ) {
+      return plugin
+    }
+    try {
+      return require.resolve(plugin)
+    } catch {
+      return plugin
+    }
+  })
+}
+
+/**
  * Format one generated file with the options `prettier --check` would apply.
  *
  * The config is resolved for `finalPath`, where the file ends up, and not for
@@ -135,12 +167,13 @@ async function loadPrettier(
  */
 async function formatGenerated(
   prettier: Prettier | undefined,
+  projectRoot: string | undefined,
   source: string,
   finalPath: string,
   parser: "babel" | "typescript"
 ): Promise<string> {
   let output = source
-  if (prettier) {
+  if (prettier && projectRoot) {
     try {
       const config = await prettier.resolveConfig(finalPath, {
         // What the Prettier CLI does by default.
@@ -149,11 +182,17 @@ async function formatGenerated(
         // config the user has since edited.
         useCache: false,
       })
-      output = await prettier.format(source, {
-        parser,
+      const options: Record<string, unknown> = {
         ...config,
+        // Set after the config. The generated file's language is known, and a
+        // project-wide `parser` such as "babel" would fail on the .d.ts.
+        parser,
         filepath: finalPath,
-      })
+      }
+      if (Array.isArray(options.plugins)) {
+        options.plugins = resolvePluginNames(options.plugins, projectRoot)
+      }
+      output = await prettier.format(source, options)
     } catch {
       // Keep the parser's output, as above.
     }
@@ -273,9 +312,16 @@ export async function generateDeclarations(
     const didCopyPath = path.join(declarationsDir, `${baseName}.did`)
 
     const prettier = projectRoot ? await loadPrettier(projectRoot) : undefined
-    const jsOutput = await formatGenerated(prettier, jsContent, jsPath, "babel")
+    const jsOutput = await formatGenerated(
+      prettier,
+      projectRoot,
+      jsContent,
+      jsPath,
+      "babel"
+    )
     const tsOutput = await formatGenerated(
       prettier,
+      projectRoot,
       tsContent,
       dtsPath,
       "typescript"
