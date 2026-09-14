@@ -1,0 +1,67 @@
+---
+title: "Next.js App Router"
+description: Hydration-safe IC Reactor setup for Next.js App Router
+editUrl: false
+---
+
+import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
+
+This example demonstrates a hydration-safe IC Reactor setup in a Next.js App
+Router application. Browser-only IC Reactor state stays inside client
+providers, while one `ClientManager` is shared by authentication and a dynamic
+ledger reactor.
+
+## Features Demonstrated
+
+- Next.js App Router with client-side IC Reactor providers
+- Stable `QueryClient` creation across server and client rendering
+- Internet Identity authentication through `AuthenticationManager`
+- Dynamic ICRC ledger queries against live mainnet canisters
+- Shared `ClientManager` between auth and canister interaction
+
+## Links
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/nextjs-app-router?embed=1&theme=dark&file=src/app/page.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/nextjs-app-router"
+  />
+</CardGrid>
+
+## Key Code
+
+```tsx
+"use client"
+
+export function ICReactorProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = getQueryClient()
+
+  const [authContext] = useState(() => {
+    const clientManager = new ClientManager({
+      queryClient,
+      agentOptions: { host: "https://ic0.app" },
+    })
+    const authentication = new AuthenticationManager({ clientManager })
+    return { clientManager, authentication }
+  })
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthContext.Provider value={authContext}>
+        {children}
+      </AuthContext.Provider>
+    </QueryClientProvider>
+  )
+}
+```
+
+<Aside type="note">
+  This demo targets mainnet canisters through `https://ic0.app`. It does not
+  rely on local `ic_env` injection or a local Internet Identity canister.
+</Aside>

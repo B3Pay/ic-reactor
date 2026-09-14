@@ -58,12 +58,14 @@ pnpm typecheck:examples
 pnpm build:examples
 ```
 
-If you touched `docs/` or `packages/`, run the docs gate. CI lints the MDX,
-builds the site and crawls it for broken links. The API reference is generated
-from package sources, so a source change can break the docs build too:
+If you touched `docs/`, `packages/` or `examples/`, run the docs gate. CI lints
+the MDX, checks the example pages against `examples/`, builds the site and
+crawls it for broken links. The API reference is generated from package
+sources, so a source change can break the docs build too:
 
 ```bash
 pnpm --dir docs run lint:mdx
+pnpm docs:check-examples   # sandbox links, file= targets and index cards
 pnpm docs:build
 pnpm docs:check-links   # crawls docs/dist, so run it after docs:build
 ```

@@ -6,6 +6,9 @@ on:
       - "docs/**"
       - "packages/**"
       - "packages/**/src/content/**"
+      # check-example-docs.mjs validates the docs against the examples/ tree, so
+      # renaming an example file can break a page without touching docs/.
+      - "examples/**"
 
 permissions:
   contents: read
@@ -41,6 +44,10 @@ jobs:
       - name: MDX lint
         working-directory: ./docs
         run: pnpm run lint:mdx
+      # Needs no build. Running it first fails a broken example link in seconds
+      # rather than after the full docs build.
+      - name: Check example docs
+        run: pnpm docs:check-examples
       - name: Build docs
         run: pnpm docs:build
 
