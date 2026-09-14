@@ -75,7 +75,10 @@ export function normalizeCandidInterface(
     return rawInput
   }
 
-  const trimmed = rawInput.trim()
+  // Comments are dropped first. Every scan below reads delimiters, semicolons
+  // and `type` as code, and a trailing `// note` would otherwise comment out the
+  // closing brace of the service built from the signature.
+  const trimmed = stripCandidComments(rawInput).trim()
 
   assertBalancedCandidInterface(trimmed)
 
@@ -147,6 +150,57 @@ export function normalizeCandidInterface(
   }
 
   return `${typeDefinitions}\nservice : { "${functionName}": ${methodSignature}; }`
+}
+
+/**
+ * Candid source with its `//` and `/* *\/` comments removed. Quoted names are
+ * copied as they are, so a `//` inside one survives. Block comments may nest.
+ */
+function stripCandidComments(source: string): string {
+  let out = ""
+  let inString = false
+
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i]
+
+    if (inString) {
+      out += char
+      if (char === "\\") {
+        out += source[++i] ?? ""
+      } else if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      out += char
+    } else if (char === "/" && source[i + 1] === "/") {
+      while (i + 1 < source.length && source[i + 1] !== "\n") i++
+    } else if (char === "/" && source[i + 1] === "*") {
+      let depth = 1
+      i += 2
+      for (; i < source.length && depth > 0; i++) {
+        if (source[i] === "/" && source[i + 1] === "*") {
+          depth++
+          i++
+        } else if (source[i] === "*" && source[i + 1] === "/") {
+          depth--
+          i++
+        }
+      }
+      if (depth > 0) {
+        throw new Error("Malformed candid interface: unterminated comment")
+      }
+      i--
+      out += " "
+    } else {
+      out += char
+    }
+  }
+
+  return out
 }
 
 function assertBalancedCandidInterface(source: string) {

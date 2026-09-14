@@ -61,4 +61,56 @@ describe("normalizeCandidInterface", () => {
       normalizeCandidInterface(invalidInput)
     }).toThrow("Malformed candid interface")
   })
+
+  describe("comments", () => {
+    // Candid allows `//` and `/* */` comments anywhere, and the parser ignores
+    // them. The scans here did not, so delimiters, semicolons or `type` inside
+    // a comment were read as code.
+    it("ignores delimiters inside a comment", () => {
+      expect(
+        normalizeCandidInterface("// accepts (text\n(text) -> (text) query")
+      ).toBe('service : { "dynamic_method": (text) -> (text) query; }')
+      expect(
+        normalizeCandidInterface("/* { unclosed */ (text) -> (text) query")
+      ).toBe('service : { "dynamic_method": (text) -> (text) query; }')
+    })
+
+    it("drops a trailing line comment instead of commenting out the service", () => {
+      expect(
+        normalizeCandidInterface("(text) -> (text) query; // the symbol")
+      ).toBe('service : { "dynamic_method": (text) -> (text) query; }')
+    })
+
+    it("does not read a commented-out type as a declaration", () => {
+      expect(normalizeCandidInterface("// type Old = nat;\n(text) -> ()")).toBe(
+        'service : { "dynamic_method": (text) -> (); }'
+      )
+    })
+
+    it("finds the end of a type whose body holds a comment", () => {
+      const result = normalizeCandidInterface(
+        "type A = record { /* ; } */ x : nat };\n(A) -> ()"
+      )
+      expect(result).toMatch(/^type A = record \{\s+x : nat \};\n/)
+      expect(result).toMatch(
+        /service : \{ "dynamic_method": \(A\) -> \(\); \}$/
+      )
+    })
+
+    it("keeps comment markers inside a quoted name", () => {
+      expect(
+        normalizeCandidInterface(
+          'type R = record { "http://x" : text };\n(R) -> ()'
+        )
+      ).toBe(
+        'type R = record { "http://x" : text };\nservice : { "dynamic_method": (R) -> (); }'
+      )
+    })
+
+    it("rejects an unterminated block comment", () => {
+      expect(() =>
+        normalizeCandidInterface("(text) -> (text) /* query")
+      ).toThrow("Malformed candid interface")
+    })
+  })
 })

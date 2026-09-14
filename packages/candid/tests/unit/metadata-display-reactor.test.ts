@@ -798,6 +798,46 @@ describe("MetadataDisplayReactor", () => {
         })
       ).rejects.toThrow('Method "wrong_name" not found')
     })
+
+    it("should accept the signatures CandidReactor.registerMethod accepts", async () => {
+      // Both reactors take DynamicMethodOptions. CandidReactor runs the
+      // signature through normalizeCandidInterface, and this one pasted it
+      // into `service : { name : ... }` verbatim. Type definitions ahead of
+      // the signature, which the README documents for registerMethod and
+      // callDynamic, a trailing semicolon, or a method name that needs quoting
+      // then made a service that does not parse.
+      // The adapter falls back to the didjs canister for what the local
+      // parser rejects, and didjs answers invalid Candid with none. The stub
+      // gives that answer without the network.
+      vi.spyOn(reactor.adapter, "compileRemote").mockResolvedValue(undefined)
+
+      await reactor.registerMethod({
+        functionName: "submit_process",
+        candid: `
+          type ProcessBlock = record { title : text; body : text };
+          (ProcessBlock) -> (variant { Ok : nat; Err : text })
+        `,
+      })
+      await reactor.registerMethod({
+        functionName: "icrc1_symbol",
+        candid: "() -> (text) query;",
+      })
+      await reactor.registerMethod({
+        functionName: "get-config",
+        candid: "() -> (text) query",
+      })
+      // A comment the parser ignores, holding an unmatched delimiter.
+      await reactor.registerMethod({
+        functionName: "echo",
+        candid: "// accepts (text\n(text) -> (text) query",
+      })
+
+      const process = reactor.getInputMeta("submit_process")
+      expect(process?.args[0].type).toBe("record")
+      expect(reactor.getOutputMeta("icrc1_symbol")?.functionType).toBe("query")
+      expect(reactor.hasMethod("get-config")).toBe(true)
+      expect(reactor.hasMethod("echo")).toBe(true)
+    })
   })
 
   // ══════════════════════════════════════════════════════════════════════════
