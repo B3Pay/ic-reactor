@@ -132,11 +132,14 @@ interface RecordExtras {
 }
 
 interface VariantExtras {
-  /** All variant options as fields */
+  /** All variant options as fields. Empty for `variant {}`. */
   options: FieldNode[]
-  /** The default selected option key */
+  /** The default selected option key. `""` for `variant {}`, which has none. */
   defaultOption: string
-  /** Default value with the first option selected */
+  /**
+   * Default value with the first option selected. `{}` for `variant {}`, whose
+   * schema rejects every value because the type has none.
+   */
   defaultValue: Record<string, unknown>
   /** Get default value for a specific option */
   getOptionDefault: (option: string) => Record<string, unknown>
