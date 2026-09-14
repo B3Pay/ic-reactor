@@ -5,6 +5,15 @@ nodeVersion: "22.22.2"
 # packages from the npm registry. StackBlitz/CodeSandbox run a plain install
 # outside this workspace, so they still use the pinned npm versions.
 linkWorkspacePackages: true
+# Astro renders Markdown with satteri, whose prerender bundle loads the native
+# binding `@bruits/satteri-<platform>` by bare name. pnpm links that optional
+# package only in the hidden hoist under node_modules/.pnpm, and an in-place
+# install across an Astro bump can drop that one link while the package stays
+# on disk. `pnpm docs:build` then fails with "Cannot find native binding" and a
+# plain `pnpm install` does not relink it (issue #408). Public hoisting puts the
+# binding in the root node_modules, where the bundle resolves it either way.
+publicHoistPattern:
+  - "@bruits/*"
 packages:
   - "packages/*"
   - "e2e"
