@@ -430,6 +430,18 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     const encode = (codec: any, val: any) =>
       codec.encode ? codec.encode(val) : val
 
+    // A missing payload is a value only when the arm's type is `opt T`,
+    // directly or behind a recursive type, and Candid sends that none as `[]`.
+    // Decoding `{ A: [] }` yields `{ _type: "A", A: undefined }`, and form
+    // metadata defaults an optional payload to null, so for these arms a
+    // nullish payload still goes through the arm's codec. Any other arm keeps
+    // `{ A: null }`, which IDL.encode rejects by naming the arm.
+    const isOptional = (type: IDL.Type | undefined): boolean =>
+      type instanceof IDL.OptClass ||
+      (type instanceof IDL.RecClass && isOptional(type.getType()))
+    const encodesPayload = (type: IDL.Type | undefined, payload: unknown) =>
+      nonNullish(payload) || isOptional(type)
+
     return z.codec(z.any(), z.any(), {
       decode: (val: any) => {
         if (
@@ -485,7 +497,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           const fieldType = fields.find(([n]) => n === key)?.[1]
           if (fieldType?.name === "null") return { [key]: null }
 
-          if (key in variantCodecs && nonNullish(val[key])) {
+          if (key in variantCodecs && encodesPayload(fieldType, val[key])) {
             return { [key]: encode(variantCodecs[key], val[key]) }
           }
           return { [key]: null }
@@ -498,7 +510,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           const fieldType = fields.find(([n]) => n === key)?.[1]
           if (fieldType?.name === "null") return { [key]: null }
 
-          if (key in variantCodecs && nonNullish(val[key])) {
+          if (key in variantCodecs && encodesPayload(fieldType, val[key])) {
             return { [key]: encode(variantCodecs[key], val[key]) }
           }
           return { [key]: null }

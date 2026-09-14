@@ -1022,6 +1022,59 @@ describe("MetadataDisplayReactor display argument encoding", () => {
     const func = (reactor as any).getFuncClass(methodName) as IDL.FuncClass
     expect(() => IDL.encode(func.argTypes, transformedArgs)).not.toThrow()
   })
+
+  describe("Variant arm with an optional payload", () => {
+    // The shape of the EVM RPC canister's RpcServices, where
+    // `EthMainnet = null` means "use the default providers". The form
+    // defaults the optional payload to null, the arm's schema accepts that,
+    // and the display codec turned it into `{ EthMainnet: null }`, which
+    // IDL.encode rejects. No form could send none for this arm.
+    const RPC_CANDID = `
+      type RpcServices = variant {
+        EthMainnet : opt vec text;
+        Custom : record { chainId : nat64; url : text };
+      };
+      service : {
+        eth_blockNumber : (RpcServices) -> (nat) query;
+      }
+    `
+    const RpcServices = IDL.Variant({
+      EthMainnet: IDL.Opt(IDL.Vec(IDL.Text)),
+      Custom: IDL.Record({ chainId: IDL.Nat64, url: IDL.Text }),
+    })
+
+    it("sends the arm's form default as none", async () => {
+      const reactor = new MetadataDisplayReactor({
+        name: "evm-rpc",
+        canisterId: "aaaaa-aa",
+        clientManager: createMockClientManager(),
+        candid: RPC_CANDID,
+      })
+      await reactor.initialize()
+
+      const meta = reactor.getInputMeta("eth_blockNumber")
+      if (!meta) throw new Error("Metadata not found")
+      const services = meta.args[0]
+      if (services.type !== "variant") throw new Error("expected a variant")
+
+      const args = [services.getOptionDefault("EthMainnet")]
+      expect(args).toEqual([{ _type: "EthMainnet", EthMainnet: null }])
+      expect(meta.schema.safeParse(args).success).toBe(true)
+
+      const executeQuery = vi
+        .spyOn(reactor as any, "executeQuery")
+        .mockResolvedValue(IDL.encode([IDL.Nat], [21_000_000n]))
+
+      await expect(
+        reactor.callMethod({ functionName: "eth_blockNumber", args })
+      ).resolves.toMatchObject({ raw: 21_000_000n })
+
+      const [, argBytes] = executeQuery.mock.calls[0]
+      expect(IDL.decode([RpcServices], argBytes as Uint8Array)).toEqual([
+        { EthMainnet: [] },
+      ])
+    })
+  })
 })
 
 describe("MetadataDisplayReactor E2E", () => {
