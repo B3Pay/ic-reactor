@@ -120,10 +120,19 @@ describe("float display codec", () => {
   })
 
   it("still refuses non-finite input on the way to Candid", () => {
-    // Guards the deliberate encode rule, which this change leaves alone.
-    const codec = didToDisplayCodec(IDL.Float64)
-    expect(() => codec.asCandid(Infinity)).toThrow()
-    expect(() => codec.asCandid(NaN)).toThrow()
-    expect(() => codec.asCandid("Infinity")).toThrow(/finite/)
+    // Guards the deliberate encode rule, which this change leaves alone. The
+    // codec's own message is asserted, so a schema error standing in for it
+    // would fail here.
+    for (const [bits, type] of [
+      [32, IDL.Float32],
+      [64, IDL.Float64],
+    ] as const) {
+      const codec = didToDisplayCodec(type)
+      for (const value of [Infinity, -Infinity, NaN, "Infinity", "NaN"]) {
+        expect(() => codec.asCandid(value as never)).toThrow(
+          `expected a finite float${bits}`
+        )
+      }
+    }
   })
 })
