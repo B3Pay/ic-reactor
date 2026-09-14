@@ -4,7 +4,9 @@ description: Hook to get the current user's Principal.
 editUrl: false
 ---
 
-`useUserPrincipal` is a convenience hook that returns the current user's Principal or null.
+`useUserPrincipal` is a convenience hook that returns the signed-in user's
+Principal, or `null` while signed out. A signed-out session still holds an
+anonymous identity, and the hook does not return its principal.
 
 ## Usage
 
@@ -14,8 +16,7 @@ import { useUserPrincipal } from "./reactor/hooks"
 function UserBadge() {
   const principal = useUserPrincipal()
 
-  if (!principal) return null
-  if (principal.isAnonymous()) return <span>Anonymous</span>
+  if (!principal) return <span>Signed out</span>
 
   return <span>{principal.toText().slice(0, 12)}...</span>
 }
@@ -23,9 +24,9 @@ function UserBadge() {
 
 ## Return Value
 
-| Type                | Description                                                   |
-| ------------------- | ------------------------------------------------------------- |
-| `Principal \| null` | The current user's Principal, or `null` if not authenticated. |
+| Type                | Description                                                 |
+| ------------------- | ----------------------------------------------------------- |
+| `Principal \| null` | The signed-in user's Principal, or `null` while signed out. |
 
 ## See Also
 

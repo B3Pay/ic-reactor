@@ -141,6 +141,96 @@ describe("createAuthHooks - useUserPrincipal", () => {
 })
 
 // ============================================================================
+// createAuthHooks - the principal of a signed-out session
+// ============================================================================
+
+describe("createAuthHooks - principal while signed out", () => {
+  // A signed-out session does not hold `identity: null`. `authenticate()` and
+  // `logout()` store the client's anonymous identity with
+  // `isAuthenticated: false`. The tests above only cover the moment before
+  // authenticate() runs, when identity is still null.
+  //
+  // Each getPrincipal() call builds a new Principal, as AnonymousIdentity's
+  // does, so a hook that is not memoized hands back a new object per render.
+  const identityOf = (text: string) =>
+    ({ getPrincipal: () => Principal.fromText(text) }) as never
+
+  function fakeAuthClient(signedIn: boolean) {
+    let current = identityOf(signedIn ? "aaaaa-aa" : "2vxsx-fae")
+    let authenticated = signedIn
+    return {
+      getIdentity: vi.fn(() => current),
+      isAuthenticated: vi.fn(() => authenticated),
+      signIn: vi.fn(),
+      signOut: vi.fn(async () => {
+        current = identityOf("2vxsx-fae")
+        authenticated = false
+      }),
+      requestAttributes: vi.fn(),
+    }
+  }
+
+  function setup(signedIn: boolean) {
+    const queryClient = makeQueryClient()
+    const clientManager = makeClientManager(queryClient)
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient: fakeAuthClient(signedIn) as never,
+    })
+    const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
+    const rendered = renderHook(
+      () => ({ auth: useAuth(), principal: useUserPrincipal() }),
+      { wrapper: wrapper(queryClient) }
+    )
+    return { authentication, ...rendered }
+  }
+
+  it("returns null for the anonymous identity a signed-out session holds", async () => {
+    const { authentication, result } = setup(false)
+
+    await act(async () => {
+      await authentication.authenticate()
+    })
+
+    // The precondition #249 was about: an identity is present.
+    expect(authentication.authState.identity).not.toBeNull()
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(result.current.principal).toBeNull()
+    expect(result.current.auth.principal).toBeNull()
+  })
+
+  it("returns the principal for a restored session and null after logout", async () => {
+    const { authentication, result } = setup(true)
+
+    await act(async () => {
+      await authentication.authenticate()
+    })
+    expect(result.current.principal?.toText()).toBe("aaaaa-aa")
+    expect(result.current.auth.principal?.toText()).toBe("aaaaa-aa")
+
+    await act(async () => {
+      await authentication.logout()
+    })
+    expect(result.current.principal).toBeNull()
+    expect(result.current.auth.principal).toBeNull()
+  })
+
+  it("keeps the same Principal object across re-renders", async () => {
+    const { authentication, result, rerender } = setup(true)
+    await act(async () => {
+      await authentication.authenticate()
+    })
+
+    const first = result.current
+    rerender()
+
+    expect(result.current.principal).not.toBeNull()
+    expect(result.current.principal).toBe(first.principal)
+    expect(result.current.auth.principal).toBe(first.auth.principal)
+  })
+})
+
+// ============================================================================
 // createAuthHooks - useAuth
 // ============================================================================
 
