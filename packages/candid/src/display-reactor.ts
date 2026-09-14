@@ -3,6 +3,7 @@ import type {
   DynamicMethodOptions,
 } from "./types.js"
 import { CandidAdapter } from "./adapter.js"
+import { normalizeCandidInterface } from "./utils.js"
 
 import {
   BaseActor,
@@ -216,10 +217,12 @@ export class CandidDisplayReactor<
     )
     if (existing) return
 
-    // Parse the Candid signature
+    // Build the service source the way CandidReactor does. Both take the same
+    // options, so type definitions ahead of the signature, a trailing
+    // semicolon and a method name that needs quoting work here too.
     const serviceSource = candid.includes("service :")
       ? candid
-      : `service : { ${functionName} : ${candid}; }`
+      : normalizeCandidInterface(candid, functionName)
 
     const { idlFactory } = await this.adapter.parseCandidSource(serviceSource)
     const parsedService = idlFactory({ IDL })
