@@ -82,7 +82,14 @@ export function toFormValue(field: FormFieldNode, raw: unknown): unknown {
     case "null":
       return null
     case "recursive":
-      return raw
+      // The node is a lazy handle on its inner type at the same path, so its
+      // form value is the inner type's. Returning `raw` handed the form
+      // decoded Candid, with bigints, `[]` and `[x]` options and variants
+      // without `_type`, which the field's own schema rejects. extract()
+      // builds one level, so this recurses only as deep as the data. Missing
+      // data stays as it is, because there is nothing to follow and a
+      // variant's default option could be this same type again.
+      return raw == null ? raw : toFormValue(field.extract(), raw)
     case "unknown":
       return raw ?? null
   }

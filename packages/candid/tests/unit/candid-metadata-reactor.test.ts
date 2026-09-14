@@ -71,6 +71,76 @@ describe("CandidMetadataReactor", () => {
     }
   })
 
+  it("hydrates a recursive argument into form values", async () => {
+    // Internet Identity's MetadataMapV2. NNS governance's ManageNeuron is
+    // recursive too, and for such an argument the whole field is a recursive
+    // node. Its hydrated value used to be the raw decoded Candid, which the
+    // argument's own schema rejects.
+    const reactor = new MetadataReactor({
+      name: "ii",
+      canisterId: "aaaaa-aa",
+      clientManager,
+      candid: `
+        type MetadataMapV2 = vec record {
+          text;
+          variant { map : MetadataMapV2; string : text; bytes : vec nat8 };
+        };
+        service : {
+          metadata_replace : (MetadataMapV2) -> ();
+        }
+      `,
+    })
+
+    await reactor.initialize()
+
+    const MetadataMapV2 = IDL.Rec()
+    MetadataMapV2.fill(
+      IDL.Vec(
+        IDL.Tuple(
+          IDL.Text,
+          IDL.Variant({
+            map: MetadataMapV2,
+            string: IDL.Text,
+            bytes: IDL.Vec(IDL.Nat8),
+          })
+        )
+      )
+    )
+    const encoded = IDL.encode(
+      [MetadataMapV2],
+      [
+        [
+          ["origin", { string: "https://example.org" }],
+          ["usage", { map: [["count", { bytes: new Uint8Array([1, 2]) }]] }],
+        ],
+      ]
+    )
+    const candidArgsHex = uint8ArrayToHex(new Uint8Array(encoded))
+
+    const metadata = await reactor.buildForMethod("metadata_replace", {
+      candidArgsHex,
+    })
+    expect(metadata.hydration).toEqual({
+      status: "hydrated",
+      values: [
+        [
+          ["origin", { _type: "string", string: "https://example.org" }],
+          [
+            "usage",
+            {
+              _type: "map",
+              map: [["count", { _type: "bytes", bytes: "0102" }]],
+            },
+          ],
+        ],
+      ],
+    })
+    if (metadata.hydration.status !== "hydrated") return
+    expect(
+      metadata.meta.schema.safeParse(metadata.hydration.values).success
+    ).toBe(true)
+  })
+
   it("builds variable candidates for method args and returns", async () => {
     const reactor = new MetadataReactor({
       name: "simple",
