@@ -25,7 +25,10 @@
  * await transferMutation.execute([{ to: "aaaaa-aa", amount: "1000" }])
  */
 
-import { useMutation } from "@tanstack/react-query"
+import {
+  useMutation,
+  type MutationFunctionContext,
+} from "@tanstack/react-query"
 import type {
   Reactor,
   FunctionName,
@@ -99,6 +102,9 @@ const createMutationImpl = <
    * object behaves the same through both call paths. Only hook-level callbacks
    * are absent, because there is no hook here to supply them.
    *
+   * The callbacks get the same `{ client, meta, mutationKey }` context
+   * TanStack Query passes them on the hook path.
+   *
    * The error is rethrown after the callbacks run, so `await execute(...)`
    * still rejects for the caller.
    *
@@ -107,6 +113,25 @@ const createMutationImpl = <
   const execute = async (
     args: ReactorArgs<Service, Method, Transform>
   ): Promise<ReactorReturnOk<Service, Method, Transform>> => {
+    // TanStack Query builds this for the hook path, and the callback types
+    // declare it as always present. None of it is mutation state, so this path
+    // builds the same object. Passing `undefined` made a callback that reads
+    // `context.client` throw here and nowhere else.
+    //
+    // The hook path takes `meta` and `mutationKey` from the client's defaulted
+    // options, so this runs the same spread through `defaultMutationOptions`.
+    // Reading `factoryOptions` alone dropped mutation defaults registered on
+    // the QueryClient (`defaultOptions.mutations`, `setMutationDefaults`).
+    const effectiveOptions = reactor.queryClient.defaultMutationOptions({
+      mutationKey: reactor.getQueryOptions({ functionName }).queryKey,
+      ...factoryOptions,
+    })
+    const context: MutationFunctionContext = {
+      client: reactor.queryClient,
+      meta: effectiveOptions.meta,
+      mutationKey: effectiveOptions.mutationKey,
+    }
+
     let result: ReactorReturnOk<Service, Method, Transform>
     try {
       result = await callFn(args)
@@ -114,12 +139,12 @@ const createMutationImpl = <
       if (isCanisterError(error)) {
         factoryOnCanisterError?.(error, args)
       }
-      // No mutation context or instance exists on the imperative path.
+      // `onMutate` does not run on this path, so there is no result to pass.
       factoryOnError?.(
         error as Parameters<NonNullable<typeof factoryOnError>>[0],
         args,
-        undefined as never,
-        undefined as never
+        undefined,
+        context
       )
       throw error
     }
@@ -127,12 +152,7 @@ const createMutationImpl = <
     if (factoryInvalidateQueries) {
       await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
     }
-    await factoryOnSuccess?.(
-      result,
-      args,
-      undefined as never,
-      undefined as never
-    )
+    await factoryOnSuccess?.(result, args, undefined, context)
     return result
   }
 
