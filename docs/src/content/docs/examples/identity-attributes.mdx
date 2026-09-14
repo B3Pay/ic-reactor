@@ -46,26 +46,28 @@ hooks.
 ## Key Code
 
 ```tsx
-// Pass the nonce as a callback, not an awaited value: awaiting the backend
-// first would end the click's user gesture and the browser would block the
-// Internet Identity window. The callback lets the window open immediately
-// while the nonce is still being fetched.
-const result = await requestOpenIdAttributes({
-  nonce: async () => {
-    const { nonce } = await api.registerBegin({
-      expectedKeys: ["email", "name"],
-    })
-    return nonce
-  },
-  openIdProvider: "google",
-  keys: ["email", "name"],
-})
+async function registerWithAttributes() {
+  // Pass the nonce as a callback, not an awaited value: awaiting the backend
+  // first would end the click's user gesture and the browser would block the
+  // Internet Identity window. The callback lets the window open immediately
+  // while the nonce is still being fetched.
+  const result = await requestOpenIdAttributes({
+    nonce: async () => {
+      const { nonce } = await api.registerBegin({
+        expectedKeys: ["email", "name"],
+      })
+      return nonce
+    },
+    openIdProvider: "google",
+    keys: ["email", "name"],
+  })
 
-await api.registerFinish({
-  principal: result.principal,
-  requestedKeys: result.requestedKeys,
-  signedAttributes: result.signedAttributes,
-})
+  await api.registerFinish({
+    principal: result.principal,
+    requestedKeys: result.requestedKeys,
+    signedAttributes: result.signedAttributes,
+  })
+}
 ```
 
 <Aside type="caution">

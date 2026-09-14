@@ -34,6 +34,23 @@ const examplesDir = path.join(repoRoot, "examples")
 const providerPattern =
   /https:\/\/(?:stackblitz\.com\/github|codesandbox\.io\/p\/github)\/b3pay\/ic-reactor\/(?:tree\/)?main(?:\/examples)?\/([^?"\s)]+)[^"\s)]*/g
 
+/**
+ * `target` resolved under `root`, or `undefined` when it leaves `root` or names
+ * `root` itself. Sandbox paths and `file=` parameters are free text in the
+ * pages, and a `../` in either would check a file outside the example the link
+ * actually opens.
+ */
+function resolveInside(root, target) {
+  const resolved = path.resolve(root, target)
+  const relative = path.relative(root, resolved)
+  const escapes =
+    relative === "" ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  return escapes ? undefined : resolved
+}
+
 function hasPackageJson(dir) {
   return fs.existsSync(path.join(dir, "package.json"))
 }
@@ -86,11 +103,27 @@ for (const file of pages) {
 
   for (const match of matches) {
     const url = match[0]
-    const examplePath = match[1]
-    const exampleDir = examplePath.split("/")[0]
-    documentedExamples.add(exampleDir)
+    let examplePath
+    try {
+      examplePath = decodeURIComponent(match[1]).replace(/\/+$/, "")
+    } catch {
+      errors.add(`${file} has a sandbox path that is not valid: ${match[1]}`)
+      continue
+    }
 
-    const sandboxRoot = path.join(examplesDir, examplePath)
+    // The documented example is read from the normalized path, so a link to
+    // `new-example/../existing-example` cannot mark new-example as covered.
+    const sandboxRoot = resolveInside(examplesDir, examplePath)
+    const normalized =
+      sandboxRoot && path.relative(examplesDir, sandboxRoot).split(path.sep)
+    if (!normalized || normalized.join("/") !== examplePath) {
+      errors.add(
+        `${file} sandbox root is not a plain path inside examples/: ${examplePath}`
+      )
+      continue
+    }
+    documentedExamples.add(normalized[0])
+
     if (!fs.existsSync(sandboxRoot)) {
       errors.add(
         `${file} links to missing sandbox root: examples/${examplePath}`
@@ -106,10 +139,17 @@ for (const file of pages) {
 
     const parsedUrl = new URL(url)
     const focusedFile = parsedUrl.searchParams.get("file")
-    if (focusedFile && !fs.existsSync(path.join(sandboxRoot, focusedFile))) {
-      errors.add(
-        `${file} focuses missing file: examples/${examplePath}/${focusedFile}`
-      )
+    if (focusedFile) {
+      const target = resolveInside(sandboxRoot, focusedFile)
+      if (!target) {
+        errors.add(
+          `${file} focuses a file outside its sandbox root: examples/${examplePath} file=${focusedFile}`
+        )
+      } else if (!fs.existsSync(target) || !fs.statSync(target).isFile()) {
+        errors.add(
+          `${file} focuses missing file: examples/${examplePath}/${focusedFile}`
+        )
+      }
     }
   }
 }
