@@ -551,10 +551,19 @@ fn service_method_bindings_from_actor<'a>(
         .unwrap_or_default()
 }
 
-fn syntax_func_for_method(binding: Option<&Binding>) -> Option<&candid_parser::syntax::FuncType> {
-    match binding.map(|binding| &binding.typ) {
-        Some(IDLType::FuncT(func)) => Some(func),
-        _ => None,
+fn syntax_func_for_method<'a>(
+    binding: Option<&'a Binding>,
+    type_bindings: &HashMap<String, &'a Binding>,
+) -> Option<&'a candid_parser::syntax::FuncType> {
+    let mut ty = &binding?.typ;
+    // A method can name a func type (`greet : Greet`), possibly through more
+    // aliases. `check_prog` has already rejected alias cycles.
+    loop {
+        match ty {
+            IDLType::FuncT(func) => return Some(func),
+            IDLType::VarT(name) => ty = &type_bindings.get(name).copied()?.typ,
+            _ => return None,
+        }
     }
 }
 
@@ -584,12 +593,12 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
 
     let types = env
         .0
-        .into_iter()
+        .iter()
         .map(|(name, ty)| {
-            let binding = type_bindings.get(&name).copied();
+            let binding = type_bindings.get(name).copied();
             CandidTypeDeclaration {
-                name,
-                ty: type_to_schema(&ty, binding.map(|binding| &binding.typ)),
+                name: name.clone(),
+                ty: type_to_schema(ty, binding.map(|binding| &binding.typ)),
                 metadata: binding.and_then(|binding| metadata_from_docs(&binding.docs)),
             }
         })
@@ -600,12 +609,14 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
             let methods = methods
                 .iter()
                 .filter_map(|(name, ty)| {
-                    if let candid_parser::candid::types::TypeInner::Func(func) = ty.as_ref() {
+                    // A method may name a func type instead of spelling out its
+                    // signature, so resolve the alias before reading it.
+                    if let Ok(func) = env.as_func(ty) {
                         let binding = method_bindings
                             .iter()
                             .find(|binding| binding.id == *name)
                             .copied();
-                        let syntax_func = syntax_func_for_method(binding);
+                        let syntax_func = syntax_func_for_method(binding, &type_bindings);
                         // `composite_query` is its own mode, not an update: the IC
                         // rejects a replicated call to one. `didToJs` already emits
                         // the `composite_query` annotation for the same method.

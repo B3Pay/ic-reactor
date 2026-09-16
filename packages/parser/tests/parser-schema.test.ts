@@ -107,6 +107,65 @@ describe("Candid Schema Parser (parseDid)", () => {
     expect(parsed.service?.methods.map((m) => m.name)).toEqual(["ping"])
   })
 
+  it("keeps methods whose type is a func type alias", () => {
+    // Candid lets a method name a func type (`greet : Greet`) instead of
+    // spelling out the signature. The method's type is then Var("Greet"), not
+    // a Func, and it used to be dropped while didToJs kept it.
+    const candid = `
+      type Greet = func (record {
+        /// @minLength 1
+        name : text;
+      }) -> (text) query;
+      type Find = func (nat) -> (opt text) composite_query;
+      type Lookup = Find;
+
+      service : {
+        /// Say hello.
+        greet : Greet;
+        lookup : Lookup;
+        ping : () -> ();
+      }
+    `
+    const parsed = parser.parseDid(candid)
+
+    expect(parsed.service?.methods).toEqual([
+      {
+        name: "greet",
+        mode: "query",
+        args: [
+          {
+            kind: "record",
+            fields: [
+              {
+                name: "name",
+                type: { kind: "text" },
+                // Field metadata still comes from the aliased signature.
+                metadata: {
+                  docs: ["@minLength 1"],
+                  validation: {
+                    minLength: {
+                      value: "1",
+                      message: "Must be at least 1 character",
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+        returns: [{ kind: "text" }],
+        metadata: { description: "Say hello.", docs: ["Say hello."] },
+      },
+      {
+        name: "lookup",
+        mode: "composite_query",
+        args: [{ kind: "nat" }],
+        returns: [{ kind: "opt", type: { kind: "text" } }],
+      },
+      { name: "ping", mode: "update", args: [], returns: [] },
+    ])
+  })
+
   it("should parse custom type declarations", () => {
     const candid = `
       type Profile = record {
