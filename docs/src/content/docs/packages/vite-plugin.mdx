@@ -133,6 +133,9 @@ local network details from the `icp` CLI, then:
 If `icp` CLI environment detection is unavailable, the plugin still falls back
 to proxying `/api` to `http://127.0.0.1:4943`, but it skips cookie injection.
 
+If your Vite config already sets `server.proxy["/api"]`, the plugin leaves that
+entry alone, whether detection succeeds or not.
+
 If you provide `canisterId` in the plugin config, that fixed ID overrides the
 auto-detected development value for that canister.
 

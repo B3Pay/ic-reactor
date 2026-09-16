@@ -146,6 +146,9 @@ when that happens with canisters configured, because the failure is otherwise
 indistinguishable from success until the app breaks on an undefined canister
 id. Run with `DEBUG=ic-reactor` to see the `icp` output behind the warning.
 
+If your Vite config already sets `server.proxy["/api"]`, the plugin leaves that
+entry alone, whether detection succeeds or not.
+
 ## File Regeneration
 
 On startup and on `.did` file changes, the plugin regenerates declarations and

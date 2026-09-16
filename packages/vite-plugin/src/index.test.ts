@@ -4,6 +4,7 @@ import type { IcReactorPluginOptions } from "./index.js"
 import path from "node:path"
 import { execFileSync } from "child_process"
 import { runCanisterPipeline } from "@ic-reactor/codegen"
+import { resolveConfig as resolveViteConfig } from "vite"
 
 const createVitePlugin =
   (vitePluginModule as any).icReactor ??
@@ -343,6 +344,99 @@ describe("icReactor", () => {
         "INTERNET_IDENTITY_PROVIDER%3Dhttp%3A%2F%2Fid.ai.localhost%3A8000%2Fauthorize"
       )
       expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
+    })
+
+    // Vite deep-merges what a plugin's config hook returns over the user's
+    // config, so the /api entry the plugin returned replaced the user's own.
+    // examples/codegen-in-action proxies /api to icp-cli's port 8000 and got
+    // 4943. These run Vite's real resolveConfig, which does that merge.
+    describe("with a Vite config that already proxies /api", () => {
+      const userApiProxy = {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      }
+
+      const resolveWithUserProxy = (plugin: any) =>
+        resolveViteConfig(
+          {
+            configFile: false,
+            logLevel: "silent",
+            plugins: [plugin],
+            server: { proxy: { "/api": userApiProxy } },
+          },
+          "serve"
+        )
+
+      afterEach(() => {
+        vi.unstubAllEnvs()
+      })
+
+      it("should keep the user's proxy when icp detection succeeds", async () => {
+        const consoleDebugSpy = vi
+          .spyOn(console, "debug")
+          .mockImplementation(() => {})
+        vi.stubEnv("DEBUG", "ic-reactor")
+        ;(execFileSync as any).mockImplementation(
+          (command: string, args: string[]) => {
+            if (command === "icp" && args.includes("network")) {
+              return JSON.stringify({ root_key: "mock-root-key", port: 4943 })
+            }
+            return "mock-canister-id"
+          }
+        )
+
+        const resolved = await resolveWithUserProxy(
+          createVitePlugin(mockOptions)
+        )
+
+        expect(resolved.server.proxy?.["/api"]).toEqual(userApiProxy)
+        // Everything else the plugin injects still arrives.
+        expect(resolved.server.headers?.["Set-Cookie"]).toContain(
+          "ic_root_key%3Dmock-root-key"
+        )
+        expect(consoleDebugSpy).toHaveBeenCalledWith(
+          expect.stringContaining("already proxies /api")
+        )
+      })
+
+      it.each([
+        ["with canisters configured", mockOptions],
+        ["in env-only mode", { canisters: [] }],
+      ])(
+        "should keep the user's proxy when detection fails %s",
+        async (_label, options) => {
+          vi.spyOn(console, "warn").mockImplementation(() => {})
+          ;(execFileSync as any).mockImplementation(() => {
+            throw new Error("project manifest not found")
+          })
+
+          const resolved = await resolveWithUserProxy(createVitePlugin(options))
+
+          expect(resolved.server.proxy?.["/api"]).toEqual(userApiProxy)
+        }
+      )
+    })
+
+    it("should still proxy /api when the Vite config proxies only other paths", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {})
+      ;(execFileSync as any).mockImplementation(() => {
+        throw new Error("project manifest not found")
+      })
+
+      const resolved = await resolveViteConfig(
+        {
+          configFile: false,
+          logLevel: "silent",
+          plugins: [createVitePlugin(mockOptions)],
+          server: { proxy: { "/assets": "http://127.0.0.1:9000" } },
+        },
+        "serve"
+      )
+
+      expect(resolved.server.proxy).toEqual({
+        "/assets": "http://127.0.0.1:9000",
+        "/api": { target: "http://127.0.0.1:4943", changeOrigin: true },
+      })
     })
 
     it("should return empty config for build command", () => {
