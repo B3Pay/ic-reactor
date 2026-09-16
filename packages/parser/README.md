@@ -80,6 +80,12 @@ let that package load the parser when needed.
   fallback resolve to the web build, which needs `await init()` first. The
   `node` condition resolves to the Node build, which self-initializes.
   Calling a function on the web build before `init()` throws.
+- Invalid Candid throws the parser's message as a string. When the parser
+  itself fails on an input (a Rust panic, or input nested or repeated deeply
+  enough to exhaust the stack), the function throws an `Error` that says the
+  input could not be parsed, with the original error as its `cause`. The parser
+  replaces its WebAssembly instance before throwing, so later calls keep
+  working.
 
 ## See Also
 
