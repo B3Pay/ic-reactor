@@ -723,6 +723,45 @@ describe("icReactor", () => {
       expect(mockServer.ws.send).not.toHaveBeenCalled()
     })
 
+    // A shared .did file regenerates several canisters at once, and each
+    // success sends a full reload. A failure in one of them has to survive that
+    // reload, so the reconnecting tab still shows it.
+    it("should keep a failure from a canister that shares the changed .did file after another succeeds", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockImplementation(
+        async ({ canisterConfig }: any) =>
+          canisterConfig.name === "token_a"
+            ? { success: false, error: "test.did: Unexpected token" }
+            : { success: true }
+      )
+
+      const plugin = createVitePlugin({
+        canisters: [
+          { name: "token_a", didFile: DID_RELATIVE },
+          { name: "token_b", didFile: DID_RELATIVE },
+        ],
+      })
+      resolveConfig(plugin, "serve")
+      ;(plugin.configureServer as any)(mockServer)
+
+      await (plugin.handleHotUpdate as any)({
+        file: DID_IN_VITE_ROOT,
+        server: mockServer,
+      })
+      expect(mockServer.ws.send).toHaveBeenCalledWith({ type: "full-reload" })
+
+      mockServer.ws.send.mockClear()
+      connectionListener()()
+
+      expect(mockServer.ws.send).toHaveBeenCalledWith({
+        type: "error",
+        err: expect.objectContaining({
+          message: expect.stringContaining("test.did: Unexpected token"),
+          plugin: "ic-reactor-plugin",
+        }),
+      })
+    })
+
     it("should serialize regeneration for rapid saves of the same .did file", async () => {
       let releaseFirstRun: (result: unknown) => void = () => {}
       ;(runCanisterPipeline as any).mockImplementationOnce(
