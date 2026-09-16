@@ -37,6 +37,38 @@ pub fn validate_idl(prog: String) -> Result<bool, String> {
     Ok(true)
 }
 
+/// Returns whether `newDid` is a compatible upgrade of `oldDid`, so every
+/// client of the old interface can keep calling the new one. Returns `false`
+/// when it is not. Throws when either source does not parse or type-check, or
+/// declares no service.
+#[wasm_bindgen(js_name = verifyCompatibility)]
+pub fn verify_compatibility(
+    #[wasm_bindgen(js_name = oldDid)] old_did: String,
+    #[wasm_bindgen(js_name = newDid)] new_did: String,
+) -> Result<bool, String> {
+    // service_compatible fails the same way for an incompatible upgrade and for
+    // a source it cannot load. Check both sources first, so only an
+    // incompatible upgrade turns into `false`.
+    for (did, label) in [(&old_did, "old"), (&new_did, "new")] {
+        validate_idl(did.clone())?;
+        let (_, service) = candid_parser::utils::CandidSource::Text(did)
+            .load()
+            .map_err(|e| e.to_string())?;
+        if service.is_none() {
+            return Err(format!("The {label} interface declares no service."));
+        }
+    }
+
+    Ok(candid_parser::utils::service_compatible(
+        candid_parser::utils::CandidSource::Text(&new_did),
+        candid_parser::utils::CandidSource::Text(&old_did),
+    )
+    .is_ok())
+}
+
+/// @deprecated Use `verifyCompatibility(oldDid, newDid)`. This function takes
+/// the new interface first, as `verifyCompatability(newDid, oldDid)`, and throws
+/// instead of returning `false` when the upgrade is not compatible.
 #[wasm_bindgen(js_name = verifyCompatability)]
 pub fn verify_compatability(a: String, b: String) -> Result<bool, String> {
     let a = candid_parser::utils::CandidSource::Text(&a);

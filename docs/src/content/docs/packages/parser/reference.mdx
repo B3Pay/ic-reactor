@@ -8,9 +8,9 @@ import { Aside } from "@astrojs/starlight/components"
 
 ## Exports
 
-The package exports five functions plus a default WASM initializer:
-`didToJs`, `didToTs`, `parseDid`, `validateIDL`, `verifyCompatability`, and the
-default `init` (with a synchronous `initSync` companion).
+The package exports `didToJs`, `didToTs`, `parseDid`, `validateIDL`,
+`verifyCompatibility`, the deprecated `verifyCompatability`, and a default WASM
+initializer, `init`, with a synchronous `initSync` companion.
 
 <Aside type="caution" title="Initialize the WASM module first">
   In browsers and bundlers the package resolves to `dist/web`, where the WASM
@@ -106,16 +106,30 @@ Returns `true` when the Candid source parses and type-checks. This is what
 const isValid = validateIDL("service : { greet : (text) -> (text) query }")
 ```
 
-### `verifyCompatability`
+### `verifyCompatibility`
+
+`verifyCompatibility(oldDid: string, newDid: string): boolean`
+
+Returns `true` when `newDid` is a compatible upgrade of `oldDid`, so every
+client of the old interface can keep calling the new one, and `false` when it
+is not. Use it to guard canister upgrades against breaking interface changes.
+
+Throws when either source does not parse or type-check, or declares no service.
+
+```typescript
+if (!verifyCompatibility(oldDid, newDid)) {
+  throw new Error("The new interface breaks existing clients")
+}
+```
+
+### `verifyCompatability` (deprecated)
 
 `verifyCompatability(a: string, b: string): boolean`
 
-Checks whether interface `b` is a compatible upgrade of interface `a` — useful
-for guarding canister upgrades against breaking interface changes.
-
-```typescript
-const compatible = verifyCompatability(oldDid, newDid)
-```
+Use `verifyCompatibility(oldDid, newDid)` instead. This older export returns
+`true` when `a` is a compatible upgrade of `b`, so it takes the new interface
+first, and it throws instead of returning `false` when the upgrade is not
+compatible.
 
 ### `default` (`init`)
 
