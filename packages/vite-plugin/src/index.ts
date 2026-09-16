@@ -7,7 +7,7 @@
  * 3. Hot-reloads when .did files change
  */
 
-import type { Plugin, ResolvedConfig, ViteDevServer } from "vite"
+import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite"
 import path from "node:path"
 import {
   runCanisterPipeline,
@@ -219,7 +219,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     name: PLUGIN_NAME,
     enforce: "pre", // Run before other plugins
 
-    config(_config, { command: viteCommand }) {
+    config(userConfig, { command: viteCommand }) {
       command = viteCommand
 
       if (viteCommand !== "serve" || !injectEnvironment) {
@@ -274,12 +274,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
                   "Set-Cookie": `ic_env=${envOnlyCookie}; Path=/; SameSite=Lax;`,
                 }
               : undefined,
-            proxy: {
-              "/api": {
-                target: DEFAULT_LOCAL_REPLICA,
-                changeOrigin: true,
-              },
-            },
+            proxy: apiProxy(userConfig, DEFAULT_LOCAL_REPLICA),
           },
         }
       }
@@ -334,12 +329,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
           headers: {
             "Set-Cookie": `ic_env=${cookieValue}; Path=/; SameSite=Lax;`,
           },
-          proxy: {
-            "/api": {
-              target: icEnv.proxyTarget,
-              changeOrigin: true,
-            },
-          },
+          proxy: apiProxy(userConfig, icEnv.proxyTarget),
         },
       }
     },
@@ -456,6 +446,27 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 /** One readable line for whatever the pipeline threw. */
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * The `server.proxy` entry that sends `/api` to `target`, or nothing when the
+ * user's Vite config already proxies `/api`.
+ *
+ * Vite deep-merges the object a `config` hook returns over the user's config,
+ * so an `/api` entry returned here replaced the user's own. A project that
+ * pointed `/api` at icp-cli's port 8000 got 4943 instead, and nothing reported
+ * the swap. Vite's merge skips an undefined value, so returning nothing leaves
+ * the user's entry in place.
+ */
+function apiProxy(userConfig: UserConfig, target: string) {
+  if (userConfig.server?.proxy?.["/api"]) {
+    debugLog(
+      `The Vite config already proxies /api, so the plugin keeps that proxy instead of sending /api to ${target}.`
+    )
+    return undefined
+  }
+
+  return { "/api": { target, changeOrigin: true } }
 }
 
 /**
