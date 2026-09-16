@@ -131,6 +131,21 @@ import init, { initSync } from "@ic-reactor/parser"
 await init()
 ```
 
+## Errors
+
+Invalid Candid makes a function throw the parser's message as a string, such as
+`Candid parser error: Unrecognized EOF found at 11`.
+
+Some inputs make the parser itself fail, through a Rust panic or input nested or
+repeated deeply enough to exhaust the stack. The function then throws an `Error`
+whose message says the input could not be parsed, with the original
+`WebAssembly.RuntimeError` or `RangeError` as its `cause`. Before it throws, the
+parser replaces its WebAssembly instance with a new one built from the module it
+already compiled, so later calls work normally and nothing is fetched again.
+
+The web and Node builds behave this way. `dist/bundler`, which no export
+condition selects, keeps wasm-bindgen's generated loader and does not restart.
+
 ## Module Formats
 
 The package builds for multiple targets to ensure compatibility across environments.
