@@ -15,8 +15,10 @@ pnpm add @ic-reactor/parser
 ### `default init(module_or_path?): Promise<InitOutput>`
 
 Instantiates the WebAssembly module. **Required before any other export on the
-web build** — that is the build bundlers and browsers resolve. The Node build
-instantiates itself at import time, so `init()` is a no-op there.
+web build**, which is the build bundlers and browsers resolve. The Node build
+instantiates itself when it loads, so on Node `init()` and `initSync()` do
+nothing. They are exported to ES module imports, so code written for the web
+build runs there unchanged.
 
 ### `initSync(module): InitOutput`
 
@@ -78,7 +80,9 @@ let that package load the parser when needed.
 - There is a single `.` entry point; the right WASM build is picked through
   `package.json` export conditions. `browser`, `workerd` and the `default`
   fallback resolve to the web build, which needs `await init()` first. The
-  `node` condition resolves to the Node build, which self-initializes.
+  `node` condition resolves to the Node build, which self-initializes. On
+  Node, `import` loads its ES module entry and `require` loads its CommonJS
+  entry, and both share one WebAssembly instance.
   Calling a function on the web build before `init()` throws.
 - Invalid Candid throws the parser's message as a string. When the parser
   itself fails on an input (a Rust panic, or input nested or repeated deeply
