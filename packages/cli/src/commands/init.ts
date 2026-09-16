@@ -95,7 +95,11 @@ export async function initCommand(options: InitOptions) {
       config.outDir,
       projectRoot
     )
-    clientManagerFile = resolveClientManagerFilePath(projectRoot, config)
+    clientManagerFile = resolveClientManagerFilePath(
+      projectRoot,
+      resolvedOutDir,
+      config
+    )
   } catch (err) {
     if (err instanceof CodegenConfigError) {
       throw new CliError(err.message)
@@ -196,8 +200,14 @@ async function buildConfig(
   return config
 }
 
+/**
+ * @param outDir - `config.outDir` already resolved against the project root.
+ * Joining the raw value onto the root turned an absolute outDir into a path
+ * nested inside the project, which the pipeline never writes to.
+ */
 function resolveClientManagerFilePath(
   projectRoot: string,
+  outDir: string,
   config: CodegenConfig
 ): string {
   const canisterName = Object.keys(config.canisters)[0]
@@ -206,7 +216,7 @@ function resolveClientManagerFilePath(
   }
 
   const clientManagerPath = config.clientManagerPath ?? "../../clients"
-  const generatedEntryDir = path.join(projectRoot, config.outDir, canisterName)
+  const generatedEntryDir = path.join(outDir, canisterName)
   const resolvedPath = path.resolve(generatedEntryDir, clientManagerPath)
   const filePath = path.extname(resolvedPath)
     ? resolvedPath
