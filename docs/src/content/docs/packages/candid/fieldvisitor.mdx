@@ -26,7 +26,7 @@ import { IDL } from "@icp-sdk/core/candid"
 const visitor = new CandidFormVisitor()
 const service = idlFactory({ IDL })
 
-const serviceMeta = service.accept(visitor, null)
+const serviceMeta = visitor.visitService(service)
 const methodMeta = serviceMeta["icrc1_transfer"]
 
 console.log(methodMeta?.schema) // Zod tuple schema for all args
