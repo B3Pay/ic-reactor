@@ -31,6 +31,7 @@ import {
   resolveDeclarationsBaseName,
 } from "./validate.js"
 import { getReactorName, getServiceTypeName } from "./naming.js"
+import { copyToNewFile, createFile, replaceFile } from "./write.js"
 
 export interface PipelineOptions {
   /** Canister name and config */
@@ -129,13 +130,15 @@ function isLegacyGeneratedIndexFile(
  * inference can be wrong for an edit that adds no export, and the file being
  * replaced may be the only copy of work the user has not committed, so the
  * original is kept rather than deleted. An existing backup is never clobbered.
+ * A dangling link at the chosen name passes the `existsSync` check, so the copy
+ * itself refuses any existing entry.
  */
 function backUpFile(filePath: string): string {
   let backupPath = `${filePath}.bak`
   for (let n = 2; fs.existsSync(backupPath); n += 1) {
     backupPath = `${filePath}.bak.${n}`
   }
-  fs.copyFileSync(filePath, backupPath)
+  copyToNewFile(filePath, backupPath)
   return backupPath
 }
 
@@ -354,24 +357,28 @@ export async function runCanisterPipeline(
     })
     const entryContent = generateReactorEntryFile()
 
+    // Every write below either replaces the entry at its path or creates a new
+    // one, so a symbolic link committed into the output directory cannot
+    // redirect it. See write.ts.
     fs.mkdirSync(canisterOutDir, { recursive: true })
-    fs.writeFileSync(reactorPath, reactorContent)
+    replaceFile(reactorPath, reactorContent)
     files.push({ success: true, filePath: reactorPath })
 
     if (!fs.existsSync(entryPath)) {
-      fs.writeFileSync(entryPath, entryContent)
+      // A dangling link also lands here, and createFile fails on it.
+      createFile(entryPath, entryContent)
       files.push({ success: true, filePath: entryPath })
     } else {
       const existingEntryContent = fs.readFileSync(entryPath, "utf-8")
 
       if (isManagedEntryWrapper(existingEntryContent, entryContent)) {
-        fs.writeFileSync(entryPath, entryContent)
+        replaceFile(entryPath, entryContent)
         files.push({ success: true, filePath: entryPath })
       } else if (isLegacyGeneratedIndexFile(existingEntryContent, name)) {
         // Migration replaces a file the user owns, on the strength of a
         // content match. Keep the original so a wrong match is recoverable.
         const backupPath = backUpFile(entryPath)
-        fs.writeFileSync(entryPath, entryContent)
+        replaceFile(entryPath, entryContent)
         files.push({ success: true, filePath: backupPath })
         files.push({ success: true, filePath: entryPath })
       } else {
