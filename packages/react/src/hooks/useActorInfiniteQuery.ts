@@ -67,8 +67,18 @@ export type UseActorInfiniteQueryConfig<
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
   TPageParam = unknown,
+  Selected = InfiniteData<
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+    TPageParam
+  >,
 > = Omit<
-  UseActorInfiniteQueryParameters<Service, Method, Transform, TPageParam>,
+  UseActorInfiniteQueryParameters<
+    Service,
+    Method,
+    Transform,
+    TPageParam,
+    Selected
+  >,
   "reactor"
 >
 
@@ -77,11 +87,12 @@ export type UseActorInfiniteQueryResult<
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
   TPageParam = unknown,
-> = UseInfiniteQueryResult<
-  InfiniteData<
+  Selected = InfiniteData<
     ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     TPageParam
   >,
+> = UseInfiniteQueryResult<
+  Selected,
   ReactorReturnErr<Service, Method, Transform>
 >
 
@@ -102,6 +113,10 @@ export const useActorInfiniteQuery = <
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
   TPageParam = unknown,
+  Selected = InfiniteData<
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+    TPageParam
+  >,
 >({
   reactor,
   functionName,
@@ -113,8 +128,15 @@ export const useActorInfiniteQuery = <
   Service,
   Method,
   Transform,
-  TPageParam
->): UseActorInfiniteQueryResult<Service, Method, Transform, TPageParam> => {
+  TPageParam,
+  Selected
+>): UseActorInfiniteQueryResult<
+  Service,
+  Method,
+  Transform,
+  TPageParam,
+  Selected
+> => {
   // Always pass queryKey through generateQueryKey so it is merged with the
   // reactor/function identity. Using the custom key verbatim would cause cache
   // collisions if two different actors or methods share the same key string.
@@ -173,5 +195,11 @@ export const useActorInfiniteQuery = <
       ...options,
     } as any,
     reactor.queryClient
-  ) as UseActorInfiniteQueryResult<Service, Method, Transform, TPageParam>
+  ) as UseActorInfiniteQueryResult<
+    Service,
+    Method,
+    Transform,
+    TPageParam,
+    Selected
+  >
 }

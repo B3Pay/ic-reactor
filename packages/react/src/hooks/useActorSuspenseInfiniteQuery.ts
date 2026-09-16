@@ -67,12 +67,17 @@ export type UseActorSuspenseInfiniteQueryConfig<
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
   TPageParam = unknown,
+  Selected = InfiniteData<
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+    TPageParam
+  >,
 > = Omit<
   UseActorSuspenseInfiniteQueryParameters<
     Service,
     Method,
     Transform,
-    TPageParam
+    TPageParam,
+    Selected
   >,
   "reactor"
 >
@@ -82,11 +87,12 @@ export type UseActorSuspenseInfiniteQueryResult<
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
   TPageParam = unknown,
-> = UseSuspenseInfiniteQueryResult<
-  InfiniteData<
+  Selected = InfiniteData<
     ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
     TPageParam
   >,
+> = UseSuspenseInfiniteQueryResult<
+  Selected,
   ReactorReturnErr<Service, Method, Transform>
 >
 
@@ -107,6 +113,10 @@ export const useActorSuspenseInfiniteQuery = <
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
   TPageParam = unknown,
+  Selected = InfiniteData<
+    ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+    TPageParam
+  >,
 >({
   reactor,
   functionName,
@@ -118,12 +128,14 @@ export const useActorSuspenseInfiniteQuery = <
   Service,
   Method,
   Transform,
-  TPageParam
+  TPageParam,
+  Selected
 >): UseActorSuspenseInfiniteQueryResult<
   Service,
   Method,
   Transform,
-  TPageParam
+  TPageParam,
+  Selected
 > => {
   // Always pass queryKey through generateQueryKey so it is merged with the
   // reactor/function identity. Using the custom key verbatim would cause cache
@@ -187,6 +199,7 @@ export const useActorSuspenseInfiniteQuery = <
     Service,
     Method,
     Transform,
-    TPageParam
+    TPageParam,
+    Selected
   >
 }

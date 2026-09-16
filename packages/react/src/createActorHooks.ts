@@ -103,29 +103,45 @@ export type ActorHooks<Service, Transform extends TransformKey> = {
     >
   }
 
+  // `Selected` is what `select` returns, so `select` can reshape the pages the
+  // way `createInfiniteQuery` allows. Without `select` it stays `InfiniteData`.
   useActorInfiniteQuery: <
     Method extends FunctionName<Service>,
     TPageParam = unknown,
-  >(
-    config: InfiniteQueryConfig<Service, Method, Transform, TPageParam>
-  ) => UseInfiniteQueryResult<
-    InfiniteData<
+    Selected = InfiniteData<
       ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
       TPageParam
     >,
+  >(
+    config: InfiniteQueryConfig<
+      Service,
+      Method,
+      Transform,
+      TPageParam,
+      Selected
+    >
+  ) => UseInfiniteQueryResult<
+    Selected,
     ReactorReturnErr<Service, Method, Transform>
   >
 
   useActorSuspenseInfiniteQuery: <
     Method extends FunctionName<Service>,
     TPageParam = unknown,
-  >(
-    config: SuspenseInfiniteQueryConfig<Service, Method, Transform, TPageParam>
-  ) => UseSuspenseInfiniteQueryResult<
-    InfiniteData<
+    Selected = InfiniteData<
       ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
       TPageParam
     >,
+  >(
+    config: SuspenseInfiniteQueryConfig<
+      Service,
+      Method,
+      Transform,
+      TPageParam,
+      Selected
+    >
+  ) => UseSuspenseInfiniteQueryResult<
+    Selected,
     ReactorReturnErr<Service, Method, Transform>
   >
 
