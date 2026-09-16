@@ -480,6 +480,57 @@ export const customBackendIndex = true
     expect(fs.readdirSync(declarationsDir).sort()).toEqual(before)
   })
 
+  // The vite plugin starts every canister's pipeline at once. Formatting added
+  // awaits between the ownership check and the marker write, so on a fresh
+  // outDir both runs found no owner, both wrote, and both reported success.
+  it("refuses a shared outDir when two canisters generate concurrently", async () => {
+    const projectRoot = createTempProject()
+    writeDid(projectRoot, "backend.did")
+    writeDid(projectRoot, "ledger.did")
+
+    const sharedOutDir = "src/declarations/shared"
+    const globalConfig = {
+      outDir: "src/declarations",
+      clientManagerPath: "../../clients",
+    }
+
+    const [first, second] = await Promise.all([
+      runCanisterPipeline({
+        canisterConfig: {
+          name: "backend",
+          didFile: "backend.did",
+          outDir: sharedOutDir,
+        },
+        projectRoot,
+        globalConfig,
+      }),
+      runCanisterPipeline({
+        canisterConfig: {
+          name: "ledger",
+          didFile: "ledger.did",
+          outDir: sharedOutDir,
+        },
+        projectRoot,
+        globalConfig,
+      }),
+    ])
+
+    expect(first.success).toBe(true)
+    expect(second.success).toBe(false)
+    expect(second.error).toContain("backend")
+    expect(
+      fs
+        .readdirSync(path.join(projectRoot, sharedOutDir, "declarations"))
+        .sort()
+    ).toEqual(["backend.d.ts", "backend.did", "backend.js"])
+    expect(
+      fs.readFileSync(
+        path.join(projectRoot, sharedOutDir, "index.generated.ts"),
+        "utf-8"
+      )
+    ).toContain('name: "backend"')
+  })
+
   it("preserves an index.ts that kept the generated header but grew its own exports", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "backend.did")
