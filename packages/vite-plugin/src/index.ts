@@ -468,23 +468,29 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       }
 
       const changedPath = path.normalize(file)
-      const affectedCanister = canisters.find(
-        // Check if changed file matches configured didFile
+      // Every canister, not only the first match. Deployed instances of one
+      // canister, such as two ledgers, share a .did file. Stopping at the first
+      // match left the others on stale bindings, and the full reload hid that.
+      const affectedCanisters = canisters.filter(
         (canister) => resolveDidPath(canister.didFile) === changedPath
       )
 
-      if (!affectedCanister) {
+      if (affectedCanisters.length === 0) {
         return
       }
 
       console.log(
-        `[ic-reactor] .did file changed: ${affectedCanister.name}. Regenerating...`
+        `[ic-reactor] .did file changed: ${affectedCanisters
+          .map((canister) => canister.name)
+          .join(", ")}. Regenerating...`
       )
 
       // Returned so Vite waits for the write to finish before applying the
       // update; it resolves to `undefined`, which leaves the affected module
       // list untouched.
-      return regenerate(affectedCanister, server)
+      return Promise.all(
+        affectedCanisters.map((canister) => regenerate(canister, server))
+      ).then(() => undefined)
     },
   }
 
