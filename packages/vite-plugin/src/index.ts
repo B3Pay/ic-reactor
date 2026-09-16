@@ -219,7 +219,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     name: PLUGIN_NAME,
     enforce: "pre", // Run before other plugins
 
-    config(_config, { command: viteCommand }) {
+    config(userConfig, { command: viteCommand }) {
       command = viteCommand
 
       if (viteCommand !== "serve" || !injectEnvironment) {
@@ -236,8 +236,13 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         canisterNames.push("internet_identity")
       }
 
-      const { environment: icEnv, diagnostics } =
-        getIcEnvironmentInfo(canisterNames)
+      // `configResolved` has not run yet, so resolve the root the way Vite
+      // will. icp finds the project from the directory it starts in, and with
+      // `vite apps/web` or a `root` option that is not the process cwd.
+      const { environment: icEnv, diagnostics } = getIcEnvironmentInfo(
+        canisterNames,
+        path.resolve(userConfig.root ?? process.cwd())
+      )
 
       if (!icEnv) {
         // Failing detection used to be indistinguishable from success: no
