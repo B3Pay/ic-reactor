@@ -79,7 +79,7 @@ export const Route = createFileRoute("/users/$userId")({
     const user = await getUserQuery([params.userId]).fetch()
 
     if (!user) {
-      throw redirect("/404")
+      throw redirect({ to: "/404" })
     }
 
     return { user }

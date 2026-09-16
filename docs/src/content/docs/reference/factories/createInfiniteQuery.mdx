@@ -327,6 +327,8 @@ function PostList() {
   // data is already flattened
   const { data } = postsQuery.useInfiniteQuery()
 
+  if (!data) return <div>Loading...</div>
+
   return (
     <div>
       <span>{data.pageCount} pages loaded</span>
