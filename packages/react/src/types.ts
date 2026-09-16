@@ -389,7 +389,8 @@ export interface MutationConfig<
   onCanisterError?: (
     error: CanisterError<
       TransformReturnRegistry<
-        ErrResult<ActorMethodReturnType<Service[Method]>>
+        ErrResult<ActorMethodReturnType<Service[Method]>>,
+        Service
       >[Transform]
     >,
     variables: ReactorArgs<Service, Method, Transform>
@@ -442,7 +443,8 @@ export interface MutationHookOptions<
   onCanisterError?: (
     error: CanisterError<
       TransformReturnRegistry<
-        ErrResult<ActorMethodReturnType<Service[Method]>>
+        ErrResult<ActorMethodReturnType<Service[Method]>>,
+        Service
       >[Transform]
     >,
     variables: ReactorArgs<Service, Method, Transform>
