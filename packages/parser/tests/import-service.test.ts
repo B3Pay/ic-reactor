@@ -33,6 +33,33 @@ describe("import service", () => {
       parser.verifyCompatability("service : {", IMPORTS_SERVICE)
     ).toThrow(/^Candid parser error/)
   })
+
+  it("still reports an unbound type in the first interface first", () => {
+    expect(() =>
+      parser.verifyCompatability(
+        "service : { transfer : (Account) -> (bool) };",
+        IMPORTS_SERVICE
+      )
+    ).toThrow("Unbound type identifier Account")
+  })
+
+  it("still reports a missing service in the first interface first", () => {
+    expect(() =>
+      parser.verifyCompatability("type Account = nat;", IMPORTS_SERVICE)
+    ).toThrow("new interface has no main service type")
+  })
+
+  it("reports import service before a type error in the same interface", () => {
+    // Account would come from base.did, so the import is the real problem.
+    const importsAccount = `import service "base.did";\nservice : { transfer : (Account) -> (bool) };`
+
+    expect(() => parser.verifyCompatability(importsAccount, SERVICE)).toThrow(
+      NOT_SUPPORTED
+    )
+    expect(() => parser.verifyCompatability(SERVICE, importsAccount)).toThrow(
+      NOT_SUPPORTED
+    )
+  })
 })
 
 describe("plain import", () => {

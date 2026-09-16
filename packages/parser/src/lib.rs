@@ -65,13 +65,21 @@ pub fn validate_idl(prog: String) -> Result<bool, String> {
 
 #[wasm_bindgen(js_name = verifyCompatability)]
 pub fn verify_compatability(a: String, b: String) -> Result<bool, String> {
-    // Check the sources in the order service_compatible loads them. A source
-    // that does not parse ends the check, so service_compatible reports its
-    // parse error.
+    // service_compatible loads a completely before it reads b, and returns the
+    // first error it finds. Check each source the same way and in the same
+    // order, and stop at the first one that does not parse, type-check or
+    // declare a service, so service_compatible still reports that error. The
+    // import check runs before the type check, because a type that only the
+    // imported file declares is unbound here.
     for source in [&a, &b] {
-        match source.parse::<IDLProg>() {
-            Ok(ast) => reject_service_imports(&ast)?,
+        let ast = match source.parse::<IDLProg>() {
+            Ok(ast) => ast,
             Err(_) => break,
+        };
+        reject_service_imports(&ast)?;
+        match check_prog(&mut TypeEnv::new(), &ast) {
+            Ok(Some(_)) => {}
+            _ => break,
         }
     }
 
