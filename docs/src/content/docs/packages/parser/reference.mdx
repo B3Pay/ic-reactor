@@ -27,6 +27,13 @@ const js = didToJs("service:{}")
 
 </Aside>
 
+<Aside type="note" title="Candid imports">
+  Every function throws for `import service` declarations, because a source
+  string cannot load the imported file and its methods would be missing from the
+  result. A plain `import` is ignored, so a type that only the imported file
+  declares is reported as unbound.
+</Aside>
+
 ### `didToJs`
 
 `didToJs(candid: string): string`
