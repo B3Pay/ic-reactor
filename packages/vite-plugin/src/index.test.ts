@@ -549,6 +549,29 @@ describe("icReactor", () => {
       expect(mockServer.ws.send).toHaveBeenCalledWith({ type: "full-reload" })
     })
 
+    // A project that deploys one canister several times, such as ICRC ledgers,
+    // lists each instance as its own canister and points them all at one .did
+    // file. A save has to regenerate every one of them.
+    it("should regenerate every canister that shares the changed .did file", async () => {
+      const plugin = createVitePlugin({
+        canisters: [
+          { name: "token_a", didFile: DID_RELATIVE },
+          { name: "token_b", didFile: DID_RELATIVE },
+        ],
+      })
+      resolveConfig(plugin, "serve")
+
+      await (plugin.handleHotUpdate as any)({
+        file: DID_IN_VITE_ROOT,
+        server: mockServer,
+      })
+
+      const regenerated = (runCanisterPipeline as any).mock.calls.map(
+        ([options]: any) => options.canisterConfig.name
+      )
+      expect(regenerated).toEqual(["token_a", "token_b"])
+    })
+
     it("should ignore a same-named .did file under the process cwd", async () => {
       // Skipped when the cwd happens to be the mocked Vite root; the two paths
       // are meant to differ, which is the whole point of the assertion.
