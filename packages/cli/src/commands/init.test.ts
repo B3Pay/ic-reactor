@@ -184,6 +184,34 @@ describe("init", () => {
     })
   })
 
+  // The prompt accepts an absolute outDir, and the pipeline resolves one as
+  // it stands. init joined it onto the project root instead, so the client
+  // manager landed under a copy of the absolute path inside the project, where
+  // the generated `../../clients` import never looks.
+  it("creates the client manager next to an absolute outDir", async () => {
+    const projectRoot = createTempDir()
+    fs.writeFileSync(path.join(projectRoot, "backend.did"), "service : {}")
+    process.chdir(projectRoot)
+
+    vi.mocked(p.text)
+      .mockResolvedValueOnce(path.join(projectRoot, "src/declarations"))
+      .mockResolvedValueOnce("../../clients")
+      .mockResolvedValueOnce("backend")
+      .mockResolvedValueOnce("./backend.did")
+    vi.mocked(p.confirm)
+      .mockResolvedValueOnce(true) // configure a canister now?
+      .mockResolvedValueOnce(true) // create the client manager?
+
+    expect(await runCli(["init"])).toBe(0)
+
+    expect(fs.readdirSync(projectRoot).sort()).toEqual([
+      "backend.did",
+      CONFIG_FILE_NAME,
+      "src",
+    ])
+    expect(fs.existsSync(path.join(projectRoot, "src/clients.ts"))).toBe(true)
+  })
+
   it("does not carry a canister from one run into the next", async () => {
     // `DEFAULT_CONFIG` was a shared object, so `{ ...DEFAULT_CONFIG }` handed
     // every run the same `canisters` map and one run's canister showed up in
