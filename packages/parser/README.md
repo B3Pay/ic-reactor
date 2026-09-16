@@ -42,9 +42,18 @@ service — instead of generated source.
 
 Returns whether the Candid source parses. Backs `CandidAdapter.validateCandid`.
 
-### `verifyCompatability(a: string, b: string): boolean`
+### `verifyCompatibility(oldDid: string, newDid: string): boolean`
 
-Returns whether two Candid interfaces are upgrade-compatible.
+Returns whether `newDid` is a compatible upgrade of `oldDid`, so clients of the
+old interface can keep calling the new one. Returns `false` when it is not.
+Throws when either source does not parse or type-check, or declares no service.
+
+### `verifyCompatability(a: string, b: string): boolean` (deprecated)
+
+Use `verifyCompatibility(oldDid, newDid)` instead. This older export returns
+`true` when `a` is a compatible upgrade of `b`, so it takes the new interface
+first, and it throws instead of returning `false` when the upgrade is not
+compatible.
 
 ## Example
 
