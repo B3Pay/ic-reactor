@@ -137,7 +137,12 @@ const createMutationImpl = <
       result = await callFn(args)
     } catch (error) {
       if (isCanisterError(error)) {
-        factoryOnCanisterError?.(error, args)
+        // `catch` drops the type. `callMethod` rejects with this method's
+        // CanisterError, the one the hook path narrows to.
+        factoryOnCanisterError?.(
+          error as Parameters<NonNullable<typeof factoryOnCanisterError>>[0],
+          args
+        )
       }
       // `onMutate` does not run on this path, so there is no result to pass.
       // Awaited like `onSuccess` below and like the hook path, so an async

@@ -387,7 +387,11 @@ export interface MutationConfig<
    * ```
    */
   onCanisterError?: (
-    error: CanisterError<unknown>,
+    error: CanisterError<
+      TransformReturnRegistry<
+        ErrResult<ActorMethodReturnType<Service[Method]>>
+      >[Transform]
+    >,
     variables: ReactorArgs<Service, Method, Transform>
   ) => void
 }
