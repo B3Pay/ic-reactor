@@ -133,7 +133,9 @@ export interface ReactorParser {
   /**
    * Validates the Candid (IDL) source.
    * @param candidSource - The Candid source code.
-   * @returns True if valid, false otherwise.
+   * @returns True if valid. For invalid source an implementation may return
+   * false or throw, and `CandidAdapter.validateCandid` answers false for both.
+   * `@ic-reactor/parser` throws.
    */
   validateIDL(candidSource: string): boolean
 }

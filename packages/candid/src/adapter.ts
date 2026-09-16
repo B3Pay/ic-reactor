@@ -400,7 +400,13 @@ export class CandidAdapter {
       throw new Error("Parser not loaded. Call loadParser() first.")
     }
 
-    return this.parserModule.validateIDL(candidSource)
+    // @ic-reactor/parser reports source that does not parse by throwing a plain
+    // string, not by returning false.
+    try {
+      return this.parserModule.validateIDL(candidSource)
+    } catch {
+      return false
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

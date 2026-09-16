@@ -395,6 +395,20 @@ describe("CandidAdapter", () => {
 
       expect(result).toBe(false)
     })
+
+    // The mock above returns false, but @ic-reactor/parser reports source that
+    // does not parse by throwing a plain string. This loads the real parser.
+    it("returns false instead of throwing when the real parser rejects the source", async () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
+      await adapter.loadParser()
+
+      expect(
+        adapter.validateCandid("service : { greet : (text) -> (text) query; }")
+      ).toBe(true)
+      expect(
+        adapter.validateCandid("service {\n  greet: (text) -> (text) query;\n}")
+      ).toBe(false)
+    })
   })
 
   describe("compileRemote", () => {
