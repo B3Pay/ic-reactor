@@ -395,6 +395,40 @@ describe("CandidAdapter", () => {
 
       expect(result).toBe(false)
     })
+
+    // The mock above returns false, but @ic-reactor/parser reports source that
+    // does not parse by throwing a plain string. This loads the real parser.
+    it("returns false instead of throwing when the real parser rejects the source", async () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
+      await adapter.loadParser()
+
+      expect(
+        adapter.validateCandid("service : { greet : (text) -> (text) query; }")
+      ).toBe(true)
+      expect(
+        adapter.validateCandid("service {\n  greet: (text) -> (text) query;\n}")
+      ).toBe(false)
+    })
+
+    // Only a string throw is the parser rejecting the source. A web build used
+    // before init() throws a TypeError, and turning that into false reported
+    // valid Candid as invalid.
+    it("rethrows a parser failure that is not a rejection of the source", async () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
+      const notInitialized = new TypeError(
+        "Cannot read properties of undefined (reading 'validateidl')"
+      )
+      await adapter.loadParser({
+        didToJs: vi.fn(),
+        validateIDL: vi.fn(() => {
+          throw notInitialized
+        }),
+      })
+
+      expect(() =>
+        adapter.validateCandid("service : { greet : (text) -> (text) query; }")
+      ).toThrow(notInitialized)
+    })
   })
 
   describe("compileRemote", () => {

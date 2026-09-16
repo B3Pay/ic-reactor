@@ -394,13 +394,24 @@ export class CandidAdapter {
    * @param candidSource - The Candid source to validate.
    * @returns True if the source is valid, false otherwise.
    * @throws Error if the parser is not loaded.
+   * @throws Any error the parser throws other than rejecting the source, such
+   * as the web build's error when it is called before `init()`.
    */
   public validateCandid(candidSource: string): boolean {
     if (!this.parserModule) {
       throw new Error("Parser not loaded. Call loadParser() first.")
     }
 
-    return this.parserModule.validateIDL(candidSource)
+    // @ic-reactor/parser reports source that does not parse by throwing a plain
+    // string, not by returning false. Any other throw means the parser could
+    // not run, for example a web build nobody initialized, and answering false
+    // there would report valid Candid as invalid.
+    try {
+      return this.parserModule.validateIDL(candidSource)
+    } catch (error) {
+      if (typeof error === "string") return false
+      throw error
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -258,8 +258,8 @@ console.log(candidSource)
 await adapter.loadParser()
 
 const isValid = adapter.validateCandid(`
-  service {
-    greet: (text) -> (text) query;
+  service : {
+    greet : (text) -> (text) query;
   }
 `)
 console.log(isValid) // true
