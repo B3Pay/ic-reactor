@@ -475,4 +475,92 @@ describe("createMutation - every lifecycle callback composes", () => {
       "hook.onSettled",
     ])
   })
+
+  it("hands each level's callbacks the result of its own onMutate", async () => {
+    // TanStack Query keeps one onMutate result per mutation, and the composed
+    // onMutate returned only the hook's. The factory's callbacks received the
+    // hook's value, not the result of the onMutate their type now describes.
+    const received: Record<string, unknown> = {}
+    const mutation = createMutation(mockReactor, {
+      functionName: "updateUser",
+      onMutate: () => ({ from: "factory" }),
+      onSuccess: (_data, _variables, onMutateResult) => {
+        received["factory.onSuccess"] = onMutateResult
+      },
+      onSettled: (_data, _error, _variables, onMutateResult) => {
+        received["factory.onSettled"] = onMutateResult
+      },
+    })
+
+    const { result } = renderHook(
+      () =>
+        mutation.useMutation({
+          onMutate: () => ({ from: "hook" }),
+          onSuccess: (_data, _variables, onMutateResult) => {
+            received["hook.onSuccess"] = onMutateResult
+          },
+          onSettled: (_data, _error, _variables, onMutateResult) => {
+            received["hook.onSettled"] = onMutateResult
+          },
+        }),
+      { wrapper }
+    )
+
+    await act(async () => {
+      await result.current.mutateAsync([{ name: "Alice", age: 30 }])
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(received).toEqual({
+      "factory.onSuccess": { from: "factory" },
+      "factory.onSettled": { from: "factory" },
+      "hook.onSuccess": { from: "hook" },
+      "hook.onSettled": { from: "hook" },
+    })
+    // The value TanStack Query stores, and returns as `context`, is unchanged.
+    expect(result.current.context).toEqual({ from: "hook" })
+  })
+
+  it("rolls back from a factory-level onMutate when the hook has none", async () => {
+    vi.spyOn(mockReactor, "callMethod").mockRejectedValue(new Error("boom"))
+    let rollback: unknown
+    const mutation = createMutation(mockReactor, {
+      functionName: "updateUser",
+      onMutate: () => ({ previous: "snapshot" }),
+      onError: (_error, _variables, onMutateResult) => {
+        rollback = onMutateResult
+      },
+    })
+
+    const { result } = renderHook(() => mutation.useMutation(), { wrapper })
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync([{ name: "Alice", age: 30 }])
+      ).rejects.toThrow("boom")
+    })
+
+    expect(rollback).toEqual({ previous: "snapshot" })
+  })
+
+  it("still hands a factory without its own onMutate the hook's result", async () => {
+    let received: unknown
+    const mutation = createMutation(mockReactor, {
+      functionName: "updateUser",
+      onSuccess: (_data, _variables, onMutateResult) => {
+        received = onMutateResult
+      },
+    })
+
+    const { result } = renderHook(
+      () => mutation.useMutation({ onMutate: () => ({ from: "hook" }) }),
+      { wrapper }
+    )
+
+    await act(async () => {
+      await result.current.mutateAsync([{ name: "Alice", age: 30 }])
+    })
+
+    expect(received).toEqual({ from: "hook" })
+  })
 })

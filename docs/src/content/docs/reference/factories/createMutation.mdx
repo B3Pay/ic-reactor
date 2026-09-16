@@ -142,10 +142,9 @@ function NewPostPage() {
 
 ### Optimistic Updates
 
-Update UI immediately before the canister responds. Pass `onMutate` to
-`useMutation()`, not to the factory: the context handed to `onError` is the
-return value of the **hook-level** `onMutate` — a factory-level `onMutate` runs,
-but its return value is not kept, so a snapshot taken there is lost:
+Update UI immediately before the canister responds. The value `onMutate`
+returns reaches the `onError` defined at the same level, so the snapshot and
+the rollback stay together. This example keeps both in `useMutation()`:
 
 ```typescript
 const likePostMutation = createMutation(backend, {
@@ -368,11 +367,17 @@ const { mutate } = updateProfileMutation.useMutation({
 })
 ```
 
-One asymmetry to know about: the mutation's **context** — the value handed to
-`onSuccess`, `onError`, and `onSettled` — is the return value of the
-**hook-level** `onMutate`. A factory-level `onMutate` runs first but its return
-value is not kept, so snapshot rollback state (as in the optimistic-update
-example above) belongs in the `onMutate` you pass to `useMutation()`.
+Each level's callbacks receive the return value of that level's own `onMutate`.
+`onSuccess` and `onError` get it as their third argument, and `onSettled` gets
+it as its fourth, after `data`, `error` and `variables`. Factory callbacks get
+the factory's result and hook callbacks get the hook's, so rollback state can
+live at either level. A factory without its own `onMutate` hands its callbacks the
+hook's result.
+
+Factory callbacks need `@tanstack/react-query` 5.89 or later to get the
+factory's result. On older versions they receive the hook's result instead.
+`execute()` does not run `onMutate`, so factory callbacks called through it
+receive `undefined` there.
 
 ### With Loading State UI
 

@@ -339,16 +339,21 @@ export interface SuspenseQueryResult<
 
 /**
  * Configuration for createMutation and useActorMutation.
+ *
+ * @template TOnMutateResult - The value `onMutate` returns, which `onSuccess`,
+ * `onError` and `onSettled` receive. TypeScript infers it from `onMutate`.
  */
 export interface MutationConfig<
   Service = BaseActor,
   Method extends FunctionName<Service> = FunctionName<Service>,
   Transform extends TransformKey = "candid",
+  TOnMutateResult = unknown,
 > extends Omit<
   UseMutationOptions<
     ReactorReturnOk<Service, Method, Transform>,
     ReactorReturnErr<Service, Method, Transform>,
-    ReactorArgs<Service, Method, Transform>
+    ReactorArgs<Service, Method, Transform>,
+    TOnMutateResult
   >,
   "mutationFn"
 > {
@@ -404,21 +409,30 @@ export type MutationFactoryConfig<
   Service = BaseActor,
   Method extends FunctionName<Service> = FunctionName<Service>,
   Transform extends TransformKey = "candid",
-> = Omit<MutationConfig<Service, Method, Transform>, "onSuccess">
+  TOnMutateResult = unknown,
+> = Omit<
+  MutationConfig<Service, Method, Transform, TOnMutateResult>,
+  "onSuccess"
+>
 
 /**
  * Options for useMutation hook.
  * Extends React Query's UseMutationOptions with invalidateQueries support.
+ *
+ * @template TOnMutateResult - The value `onMutate` returns, which `onSuccess`,
+ * `onError` and `onSettled` receive. TypeScript infers it from `onMutate`.
  */
 export interface MutationHookOptions<
   Service = BaseActor,
   Method extends FunctionName<Service> = FunctionName<Service>,
   Transform extends TransformKey = "candid",
+  TOnMutateResult = unknown,
 > extends Omit<
   UseMutationOptions<
     ReactorReturnOk<Service, Method, Transform>,
     ReactorReturnErr<Service, Method, Transform>,
-    ReactorArgs<Service, Method, Transform>
+    ReactorArgs<Service, Method, Transform>,
+    TOnMutateResult
   >,
   "mutationFn"
 > {
@@ -469,12 +483,13 @@ export interface MutationResult<
    *   invalidateQueries: [userBalanceQuery], // Auto-invalidate after success!
    * })
    */
-  useMutation: (
-    options?: MutationHookOptions<Service, Method, Transform>
+  useMutation: <TOnMutateResult = unknown>(
+    options?: MutationHookOptions<Service, Method, Transform, TOnMutateResult>
   ) => UseMutationResult<
     ReactorReturnOk<Service, Method, Transform>,
     ReactorReturnErr<Service, Method, Transform>,
-    ReactorArgs<Service, Method, Transform>
+    ReactorArgs<Service, Method, Transform>,
+    TOnMutateResult
   >
 
   /** Execute the update call directly (outside of React) */

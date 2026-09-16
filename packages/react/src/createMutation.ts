@@ -35,6 +35,7 @@ import type {
   ReactorArgs,
   TransformKey,
   ReactorReturnOk,
+  ReactorReturnErr,
 } from "@ic-reactor/core"
 import { isCanisterError } from "@ic-reactor/core"
 import type {
@@ -68,9 +69,15 @@ const createMutationImpl = <
   Service,
   Method extends FunctionName<Service> = FunctionName<Service>,
   Transform extends TransformKey = "candid",
+  TOnMutateResult = unknown,
 >(
   reactor: Reactor<Service, Transform>,
-  config: MutationConfig<Service, Method, Transform>
+  config: MutationConfig<
+    Service,
+    Method,
+    Transform,
+    TOnMutateResult | undefined
+  >
 ): MutationResult<Service, Method, Transform> => {
   const {
     functionName,
@@ -93,6 +100,34 @@ const createMutationImpl = <
     args: ReactorArgs<Service, Method, Transform>
   ): Promise<ReactorReturnOk<Service, Method, Transform>> =>
     reactor.callMethod({ functionName, args, callConfig })
+
+  /**
+   * The factory's own `onMutate` result for each call through the hook.
+   *
+   * TanStack Query stores one `onMutate` result per mutation and hands it to
+   * every callback. That slot holds the hook's result, which the mutation also
+   * exposes as `context`, so this map holds the factory's. Each key is the
+   * context object TanStack Query creates for a call and passes to every
+   * callback of that call.
+   */
+  const factoryOnMutateResults = new WeakMap<
+    MutationFunctionContext,
+    TOnMutateResult | undefined
+  >()
+
+  /**
+   * The `onMutate` result a factory callback receives. A factory without its
+   * own `onMutate` gets the hook's, as it always has. TanStack Query before
+   * 5.89 passes no context, so there a factory callback gets the hook's result
+   * too.
+   */
+  const factoryOnMutateResult = (
+    onMutateResult: unknown,
+    context: MutationFunctionContext | undefined
+  ) =>
+    (factoryOnMutate && context
+      ? factoryOnMutateResults.get(context)
+      : onMutateResult) as TOnMutateResult | undefined
 
   /**
    * Imperative execution for non-React usage.
@@ -164,8 +199,13 @@ const createMutationImpl = <
   }
 
   // Hook implementation
-  const useMutationHook = (
-    options?: MutationHookOptions<Service, Method, Transform>
+  const useMutationHook = <THookOnMutateResult = unknown>(
+    options?: MutationHookOptions<
+      Service,
+      Method,
+      Transform,
+      THookOnMutateResult
+    >
   ) => {
     const baseOptions = reactor.getQueryOptions({ functionName })
     const {
@@ -174,7 +214,12 @@ const createMutationImpl = <
       ...restOptions
     } = options ?? {}
 
-    return useMutation(
+    return useMutation<
+      ReactorReturnOk<Service, Method, Transform>,
+      ReactorReturnErr<Service, Method, Transform>,
+      ReactorArgs<Service, Method, Transform>,
+      THookOnMutateResult
+    >(
       {
         mutationKey: baseOptions.queryKey,
         ...factoryOptions,
@@ -182,7 +227,7 @@ const createMutationImpl = <
         // Use callFn (not execute) to avoid double-invalidation:
         // factoryInvalidateQueries are handled in onSuccess below.
         mutationFn: callFn,
-        onSuccess: async (...args) => {
+        onSuccess: async (data, variables, onMutateResult, context) => {
           // 1. Factory-level invalidation
           if (factoryInvalidateQueries) {
             await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
@@ -192,11 +237,21 @@ const createMutationImpl = <
             await invalidateAll(reactor.queryClient, hookInvalidateQueries)
           }
           // 3. Factory onSuccess
-          await factoryOnSuccess?.(...args)
+          await factoryOnSuccess?.(
+            data,
+            variables,
+            factoryOnMutateResult(onMutateResult, context),
+            context
+          )
           // 4. Hook onSuccess
-          await restOptions.onSuccess?.(...args)
+          await restOptions.onSuccess?.(
+            data,
+            variables,
+            onMutateResult,
+            context
+          )
         },
-        onError: async (error, variables, context, mutation) => {
+        onError: async (error, variables, onMutateResult, context) => {
           if (isCanisterError(error)) {
             factoryOnCanisterError?.(error, variables)
             hookOnCanisterError?.(error, variables)
@@ -204,8 +259,13 @@ const createMutationImpl = <
           // Awaited in order, like `onSuccess`. TanStack Query holds
           // `onSettled` and the settled state until this promise resolves, so
           // an async `onError` must be part of it.
-          await factoryOnError?.(error, variables, context, mutation)
-          await restOptions.onError?.(error, variables, context, mutation)
+          await factoryOnError?.(
+            error,
+            variables,
+            factoryOnMutateResult(onMutateResult, context),
+            context
+          )
+          await restOptions.onError?.(error, variables, onMutateResult, context)
         },
         // `onMutate` and `onSettled` are composed like `onSuccess`/`onError`
         // above. They used to arrive through the `...restOptions` spread, so a
@@ -213,13 +273,33 @@ const createMutationImpl = <
         // telemetry or logging simply vanished the moment any call site passed
         // its own, with no warning and no type error. Chaining is what a
         // reader who has seen `onSuccess` chain already expects.
-        onMutate: async (...params) => {
-          await factoryOnMutate?.(...params)
-          return await restOptions.onMutate?.(...params)
+        onMutate: async (variables, context) => {
+          if (factoryOnMutate) {
+            const result = await factoryOnMutate(variables, context)
+            if (context) factoryOnMutateResults.set(context, result)
+          }
+          // Without a hook-level `onMutate` this is `undefined`, and
+          // THookOnMutateResult is then `unknown`.
+          return (await restOptions.onMutate?.(
+            variables,
+            context
+          )) as THookOnMutateResult
         },
-        onSettled: async (...params) => {
-          await factoryOnSettled?.(...params)
-          await restOptions.onSettled?.(...params)
+        onSettled: async (data, error, variables, onMutateResult, context) => {
+          await factoryOnSettled?.(
+            data,
+            error,
+            variables,
+            factoryOnMutateResult(onMutateResult, context),
+            context
+          )
+          await restOptions.onSettled?.(
+            data,
+            error,
+            variables,
+            onMutateResult,
+            context
+          )
         },
       },
       reactor.queryClient
@@ -237,12 +317,25 @@ export function createMutation<
   Service,
   Transform extends TransformKey,
   Method extends FunctionName<Service> = FunctionName<Service>,
+  TOnMutateResult = unknown,
 >(
   reactor: Reactor<Service, Transform>,
-  config: MutationConfig<NoInfer<Service>, Method, Transform>
+  // `execute()` runs the factory's `onSuccess` and `onError` without running
+  // its `onMutate`, so their `onMutate` result can also be `undefined`.
+  config: MutationConfig<
+    NoInfer<Service>,
+    Method,
+    Transform,
+    TOnMutateResult | undefined
+  >
 ): MutationResult<Service, Method, Transform> {
   return createMutationImpl(
     reactor,
-    config as MutationConfig<Service, Method, Transform>
+    config as MutationConfig<
+      Service,
+      Method,
+      Transform,
+      TOnMutateResult | undefined
+    >
   )
 }
