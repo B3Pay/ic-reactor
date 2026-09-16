@@ -65,8 +65,9 @@ pub fn validate_idl(prog: String) -> Result<bool, String> {
 
 /// Returns whether `newDid` is a compatible upgrade of `oldDid`, so every
 /// client of the old interface can keep calling the new one. Returns `false`
-/// when it is not. Throws when either source does not parse or type-check, or
-/// declares no service.
+/// when it is not. Throws when either source does not parse or type-check,
+/// declares no service, or uses `import service`, which cannot be resolved from
+/// a source string.
 #[wasm_bindgen(js_name = verifyCompatibility)]
 pub fn verify_compatibility(
     #[wasm_bindgen(js_name = oldDid)] old_did: String,
