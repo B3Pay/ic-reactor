@@ -14,8 +14,12 @@ import {
 } from "../utils/config.js"
 import { cleanStaleOutput } from "../utils/clean.js"
 import { CliError, errorMessage } from "../utils/errors.js"
-import { CodegenConfigError, runCanisterPipeline } from "@ic-reactor/codegen"
-import type { GenerateOptions } from "../types.js"
+import {
+  assertSafeCanisterConfig,
+  CodegenConfigError,
+  runCanisterPipeline,
+} from "@ic-reactor/codegen"
+import type { CodegenConfig, GenerateOptions } from "../types.js"
 
 export async function generateCommand(options: GenerateOptions) {
   console.log()
@@ -101,11 +105,27 @@ export async function generateCommand(options: GenerateOptions) {
   let errorCount = 0
   const errorMessages: string[] = []
 
+  // The check covers every configured canister, including ones this run skips,
+  // so a `--canister <name>` run cannot overwrite another entry's output.
+  const sharedOutDirs = findSharedOutDirs(config, projectRoot)
+
   // Run pipeline for each canister
   for (const name of canistersToProcess) {
     const canisterConfig = config.canisters[name]
 
     spinner.message(`Processing ${pc.cyan(name)}...`)
+
+    const firstUser = sharedOutDirs.get(name)
+    if (firstUser !== undefined) {
+      errorCount++
+      errorMessages.push(
+        `${name}: generates into the same output directory as canister ` +
+          `"${firstUser}". Each run replaces that directory's declarations and ` +
+          `index.generated.ts, so the two would overwrite each other. Give each ` +
+          `canister its own "outDir", or its own "name" if it uses the global outDir.`
+      )
+      continue
+    }
 
     try {
       const result = await runCanisterPipeline({
@@ -150,4 +170,53 @@ export async function generateCommand(options: GenerateOptions) {
   }
 
   p.outro(pc.green(`✓ All ${generationSummary} generated successfully!`))
+}
+
+/**
+ * Find config entries that generate into a directory an earlier entry already
+ * uses. The result maps each such key to the key of the earlier entry.
+ *
+ * The pipeline's `.ic-reactor-owner` marker stops a second canister from
+ * generating over the first one, but it records the canister name. Two entries
+ * with the same `name` both resolve to `<outDir>/<name>` and pass that check.
+ * Copying an entry and changing only its key produces that config, and the
+ * later entry then replaced the earlier one's output on every run.
+ */
+function findSharedOutDirs(
+  config: CodegenConfig,
+  projectRoot: string
+): Map<string, string> {
+  const firstByOutDir = new Map<string, string>()
+  const shared = new Map<string, string>()
+
+  for (const [key, canisterConfig] of Object.entries(config.canisters)) {
+    let outDir: string
+    try {
+      outDir = assertSafeCanisterConfig({
+        name: canisterConfig.name,
+        canisterOutDir: canisterConfig.outDir,
+        globalOutDir: config.outDir,
+        clientManagerPath:
+          canisterConfig.clientManagerPath ??
+          config.clientManagerPath ??
+          "../../clients",
+        projectRoot,
+        mode: canisterConfig.mode,
+        target: canisterConfig.target ?? config.target,
+      }).outDir
+    } catch (error) {
+      // The pipeline rejects this canister and reports why.
+      if (error instanceof CodegenConfigError) continue
+      throw error
+    }
+
+    const first = firstByOutDir.get(outDir)
+    if (first === undefined) {
+      firstByOutDir.set(outDir, key)
+    } else {
+      shared.set(key, first)
+    }
+  }
+
+  return shared
 }

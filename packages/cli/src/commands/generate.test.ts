@@ -175,6 +175,34 @@ describe("generate", () => {
     )
   })
 
+  // An entry copied from another one keeps its `name`, so both generate into
+  // <outDir>/<name>. The owner marker records a name and cannot tell the two
+  // apart, so the second entry replaced the first one's output while the run
+  // reported success.
+  it("fails when two canister entries share an output directory", async () => {
+    const projectRoot = createProject({
+      canisters: {
+        backend: { name: "backend", didFile: "./backend.did" },
+        ledger: { name: "backend", didFile: "./ledger.did" },
+      },
+    })
+    fs.writeFileSync(
+      path.join(projectRoot, "ledger.did"),
+      "service : { balance : () -> (nat) query; }\n"
+    )
+
+    expect(await runCli(["generate"])).toBe(1)
+    expect(await runCli(["generate", "--canister", "ledger"])).toBe(1)
+
+    expect(generatedFiles(projectRoot)).toEqual([
+      "src/declarations/backend/declarations/backend.d.ts",
+      "src/declarations/backend/declarations/backend.did",
+      "src/declarations/backend/declarations/backend.js",
+      "src/declarations/backend/index.generated.ts",
+      "src/declarations/backend/index.ts",
+    ])
+  })
+
   it("fails when the named canister is not configured", async () => {
     createProject()
 
