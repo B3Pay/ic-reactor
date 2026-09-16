@@ -367,10 +367,11 @@ const { mutate } = updateProfileMutation.useMutation({
 })
 ```
 
-Each level's `onSuccess`, `onError` and `onSettled` receive the return value of
-that level's own `onMutate` as their third argument. Factory callbacks get the
-factory's result and hook callbacks get the hook's, so rollback state can live
-at either level. A factory without its own `onMutate` hands its callbacks the
+Each level's callbacks receive the return value of that level's own `onMutate`.
+`onSuccess` and `onError` get it as their third argument, and `onSettled` gets
+it as its fourth, after `data`, `error` and `variables`. Factory callbacks get
+the factory's result and hook callbacks get the hook's, so rollback state can
+live at either level. A factory without its own `onMutate` hands its callbacks the
 hook's result.
 
 Factory callbacks need `@tanstack/react-query` 5.89 or later to get the
