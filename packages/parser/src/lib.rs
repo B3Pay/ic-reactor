@@ -6,9 +6,35 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
+/// Parses Candid source and rejects `import service`.
+///
+/// `import service "base.did"` merges the service in base.did into this one.
+/// A source string cannot load base.did, and `check_prog` skips imports, so the
+/// result would silently lack every imported method. A plain `import` only
+/// brings in types, and using a type that only the imported file declares
+/// already fails type checking, so plain imports stay allowed.
+fn parse_prog(prog: &str) -> Result<IDLProg, String> {
+    let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
+    reject_service_imports(&ast)?;
+    Ok(ast)
+}
+
+fn reject_service_imports(ast: &IDLProg) -> Result<(), String> {
+    for dec in &ast.decs {
+        if let Dec::ImportServ(path) = dec {
+            return Err(format!(
+                "import service \"{path}\" is not supported. Imports cannot be resolved \
+                 from a single Candid source string, so the methods of the imported \
+                 service would be missing. Copy those methods into this service instead."
+            ));
+        }
+    }
+    Ok(())
+}
+
 #[wasm_bindgen(js_name = didToJs)]
 pub fn did_to_js(prog: String) -> Result<String, String> {
-    let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
+    let ast = parse_prog(&prog)?;
     let mut env = TypeEnv::new();
     let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
 
@@ -19,7 +45,7 @@ pub fn did_to_js(prog: String) -> Result<String, String> {
 
 #[wasm_bindgen(js_name = didToTs)]
 pub fn did_to_ts(prog: String) -> Result<String, String> {
-    let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
+    let ast = parse_prog(&prog)?;
     let mut env = TypeEnv::new();
     let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
 
@@ -31,7 +57,7 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
 
 #[wasm_bindgen(js_name = validateIDL)]
 pub fn validate_idl(prog: String) -> Result<bool, String> {
-    let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
+    let ast = parse_prog(&prog)?;
     let mut env = TypeEnv::new();
     check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     Ok(true)
@@ -39,6 +65,16 @@ pub fn validate_idl(prog: String) -> Result<bool, String> {
 
 #[wasm_bindgen(js_name = verifyCompatability)]
 pub fn verify_compatability(a: String, b: String) -> Result<bool, String> {
+    // Check the sources in the order service_compatible loads them. A source
+    // that does not parse ends the check, so service_compatible reports its
+    // parse error.
+    for source in [&a, &b] {
+        match source.parse::<IDLProg>() {
+            Ok(ast) => reject_service_imports(&ast)?,
+            Err(_) => break,
+        }
+    }
+
     let a = candid_parser::utils::CandidSource::Text(&a);
     let b = candid_parser::utils::CandidSource::Text(&b);
 
@@ -560,7 +596,7 @@ fn syntax_func_for_method(binding: Option<&Binding>) -> Option<&candid_parser::s
 
 #[wasm_bindgen(js_name = parseDid)]
 pub fn parse_did(prog: String) -> Result<JsValue, String> {
-    let ast = prog.parse::<IDLProg>().map_err(|e| e.to_string())?;
+    let ast = parse_prog(&prog)?;
     let mut env = TypeEnv::new();
     let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     let type_bindings = type_bindings_by_name(&ast);

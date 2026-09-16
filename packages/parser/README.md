@@ -75,6 +75,11 @@ let that package load the parser when needed.
 
 - The package is compiled from Rust to WebAssembly.
 - `didToJs` / `didToTs` return source strings rather than ready-made JS objects.
+- Candid imports cannot be resolved from a single source string. Every function
+  throws for `import service "file.did"`, because the methods of the imported
+  service would be missing from the result. A plain `import "file.did"` is
+  ignored, so a type that only the imported file declares is reported as
+  unbound.
 - There is a single `.` entry point; the right WASM build is picked through
   `package.json` export conditions. `browser`, `workerd` and the `default`
   fallback resolve to the web build, which needs `await init()` first. The
