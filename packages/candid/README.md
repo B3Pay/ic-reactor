@@ -219,7 +219,7 @@ Use `CandidFormVisitor` when you already have an `IDL.ServiceClass` and want dir
 import { CandidFormVisitor } from "@ic-reactor/candid"
 
 const visitor = new CandidFormVisitor()
-const serviceMeta = service.accept(visitor, null)
+const serviceMeta = visitor.visitService(service)
 
 // Access method metadata
 const methodMeta = serviceMeta["icrc1_transfer"]
