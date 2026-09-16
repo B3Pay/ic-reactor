@@ -20,6 +20,7 @@ import fs from "node:fs"
 import { pathToFileURL } from "node:url"
 import type { GeneratorResult } from "../types.js"
 import { CodegenConfigError, resolveDeclarationsBaseName } from "../validate.js"
+import { replaceFile } from "../write.js"
 
 export interface DeclarationsGeneratorOptions {
   /** Absolute path to the .did file */
@@ -326,7 +327,10 @@ export async function generateDeclarations(
     // as one synchronous step. The vite plugin starts every canister's pipeline
     // at once, and when Prettier loading came first, a second canister read the
     // directory as unowned and generated over the first one.
-    fs.writeFileSync(path.join(outDir, OWNER_FILE), `${canisterName}\n`)
+    //
+    // replaceFile is synchronous, so it keeps that property, and it replaces a
+    // link at the marker's path instead of writing through it.
+    replaceFile(path.join(outDir, OWNER_FILE), `${canisterName}\n`)
 
     const prettier = projectRoot ? await loadPrettier(projectRoot) : undefined
     const jsOutput = await formatGenerated(
