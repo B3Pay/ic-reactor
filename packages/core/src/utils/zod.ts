@@ -30,7 +30,8 @@ export function fromZodSchema<T>(schema: {
     success: boolean
     error?: {
       issues: Array<{
-        path: (string | number)[]
+        // zod 4 types a path as PropertyKey[], zod 3 as (string | number)[].
+        path: PropertyKey[]
         message: string
         code?: string
       }>
@@ -46,7 +47,11 @@ export function fromZodSchema<T>(schema: {
     }
 
     const issues: ValidationIssue[] = result.error!.issues.map((issue) => ({
-      path: issue.path,
+      // ValidationIssue paths hold strings and numbers, so a symbol key is
+      // stored by its description text.
+      path: issue.path.map((key) =>
+        typeof key === "symbol" ? key.toString() : key
+      ),
       message: issue.message,
       code: issue.code,
     }))

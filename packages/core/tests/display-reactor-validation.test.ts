@@ -9,6 +9,7 @@ import { IDL } from "@icp-sdk/core/candid"
 import { QueryClient } from "@tanstack/query-core"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { Principal } from "@icp-sdk/core/principal"
+import { z } from "zod"
 import { ValidationResult } from "../src/types/display-reactor.js"
 
 // Define test actor type - these are CANDID types
@@ -334,6 +335,52 @@ describe("DisplayReactor with Validation", () => {
       if (!invalidResult.success) {
         expect(invalidResult.issues).toHaveLength(2)
       }
+    })
+
+    // This is the helper's own JSDoc example. zod 4 types an issue path as
+    // PropertyKey[], which the parameter type rejected, so passing a real
+    // schema failed `pnpm typecheck` even though it ran.
+    it("accepts a real zod schema and reports its issues", () => {
+      const transferSchema = z.object({
+        to: z.string().min(1, "Recipient is required"),
+        amount: z.string().regex(/^\d+$/, "Must be a valid number"),
+      })
+
+      const validator = fromZodSchema<{ to: string; amount: string }>(
+        transferSchema
+      )
+
+      expect(validator([{ to: "aaaaa-aa", amount: "100" }])).toEqual({
+        success: true,
+      })
+      expect(validator([{ to: "", amount: "1.5" }])).toEqual({
+        success: false,
+        issues: [
+          { path: ["to"], message: "Recipient is required", code: "too_small" },
+          {
+            path: ["amount"],
+            message: "Must be a valid number",
+            code: "invalid_format",
+          },
+        ],
+      })
+    })
+
+    // ValidationIssue paths hold strings and numbers, but zod 4 can report a
+    // symbol key.
+    it("stores a symbol path key as a string", () => {
+      const meta = Symbol("meta")
+      const validator = fromZodSchema({
+        safeParse: () => ({
+          success: false,
+          error: { issues: [{ path: [meta, 0], message: "Invalid" }] },
+        }),
+      })
+
+      expect(validator([{}])).toEqual({
+        success: false,
+        issues: [{ path: ["Symbol(meta)", 0], message: "Invalid" }],
+      })
     })
   })
 
