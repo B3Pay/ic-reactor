@@ -24,7 +24,7 @@ function AuthButton() {
   } = useAuth()
 
   return isAuthenticated ? (
-    <button onClick={logout}>Logout {principal?.toText()}</button>
+    <button onClick={() => logout()}>Logout {principal?.toText()}</button>
   ) : (
     <button onClick={() => login()}>Login</button>
   )
@@ -49,7 +49,7 @@ login({
   onSuccess?: () => void,
 
   // Callback on login error
-  onError?: (error: string) => void,
+  onError?: (error?: string) => void,
 })
 ```
 

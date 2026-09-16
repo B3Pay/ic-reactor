@@ -115,7 +115,7 @@ function LoginButton() {
   }
 
   return isAuthenticated ? (
-    <button onClick={logout}>Logout</button>
+    <button onClick={() => logout()}>Logout</button>
   ) : (
     <button onClick={() => login()}>Login with Internet Identity</button>
   )
@@ -178,7 +178,7 @@ function AuthSection() {
       {isAuthenticated ? (
         <>
           <span>Welcome, {principal?.toText().slice(0, 12)}...</span>
-          <button onClick={logout}>Logout</button>
+          <button onClick={() => logout()}>Logout</button>
         </>
       ) : (
         <button onClick={() => login()}>Login with Internet Identity</button>

@@ -57,8 +57,8 @@ function usePrincipal(
  *   const { login, logout, principal, isAuthenticated } = useAuth()
  *
  *   return isAuthenticated
- *     ? <button onClick={logout}>Logout {principal?.toText()}</button>
- *     : <button onClick={login}>Login with II</button>
+ *     ? <button onClick={() => logout()}>Logout {principal?.toText()}</button>
+ *     : <button onClick={() => login()}>Login with II</button>
  * }
  */
 export const createAuthHooks = (
@@ -116,10 +116,10 @@ export const createAuthHooks = (
    *   const { login, logout, isAuthenticated, isAuthenticating } = useAuth()
    *
    *   if (isAuthenticated) {
-   *     return <button onClick={logout}>Logout</button>
+   *     return <button onClick={() => logout()}>Logout</button>
    *   }
    *   return (
-   *     <button onClick={login} disabled={isAuthenticating}>
+   *     <button onClick={() => login()} disabled={isAuthenticating}>
    *       {isAuthenticating ? "Connecting..." : "Login"}
    *     </button>
    *   )

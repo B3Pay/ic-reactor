@@ -57,7 +57,7 @@ function AuthButton() {
   }
 
   return isAuthenticated ? (
-    <button onClick={logout}>
+    <button onClick={() => logout()}>
       Logout {principal?.toText().slice(0, 8)}...
     </button>
   ) : (
