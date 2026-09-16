@@ -24,11 +24,13 @@ export interface UseActorMutationParameters<
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
+  TOnMutateResult = unknown,
 > extends Omit<
   UseMutationOptions<
     ReactorReturnOk<Service, Method, Transform>,
     ReactorReturnErr<Service, Method, Transform>,
-    ReactorArgs<Service, Method, Transform>
+    ReactorArgs<Service, Method, Transform>,
+    TOnMutateResult
   >,
   "mutationFn"
 > {
@@ -62,16 +64,22 @@ export type UseActorMutationConfig<
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
-> = Omit<UseActorMutationParameters<Service, Method, Transform>, "reactor">
+  TOnMutateResult = unknown,
+> = Omit<
+  UseActorMutationParameters<Service, Method, Transform, TOnMutateResult>,
+  "reactor"
+>
 
 export type UseActorMutationResult<
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
+  TOnMutateResult = unknown,
 > = UseMutationResult<
   ReactorReturnOk<Service, Method, Transform>,
   ReactorReturnErr<Service, Method, Transform>,
-  ReactorArgs<Service, Method, Transform>
+  ReactorArgs<Service, Method, Transform>,
+  TOnMutateResult
 >
 
 /**
@@ -100,6 +108,7 @@ export const useActorMutation = <
   Service,
   Method extends FunctionName<Service>,
   Transform extends TransformKey = "candid",
+  TOnMutateResult = unknown,
 >({
   reactor,
   functionName,
@@ -112,8 +121,9 @@ export const useActorMutation = <
 }: UseActorMutationParameters<
   Service,
   Method,
-  Transform
->): UseActorMutationResult<Service, Method, Transform> => {
+  Transform,
+  TOnMutateResult
+>): UseActorMutationResult<Service, Method, Transform, TOnMutateResult> => {
   const mutationFn = useCallback(
     async (args: ReactorArgs<Service, Method, Transform>) =>
       reactor.callMethod({ functionName, callConfig, args }),
@@ -127,7 +137,8 @@ export const useActorMutation = <
           UseMutationOptions<
             ReactorReturnOk<Service, Method, Transform>,
             ReactorReturnErr<Service, Method, Transform>,
-            ReactorArgs<Service, Method, Transform>
+            ReactorArgs<Service, Method, Transform>,
+            TOnMutateResult
           >["onSuccess"]
         >
       >

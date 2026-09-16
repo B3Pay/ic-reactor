@@ -129,14 +129,18 @@ export type ActorHooks<Service, Transform extends TransformKey> = {
     ReactorReturnErr<Service, Method, Transform>
   >
 
-  useActorMutation: <Method extends FunctionName<Service>>(
-    config: MutationConfig<Service, Method, Transform>
+  useActorMutation: <
+    Method extends FunctionName<Service>,
+    TOnMutateResult = unknown,
+  >(
+    config: MutationConfig<Service, Method, Transform, TOnMutateResult>
   ) => UseMutationResult<
     ReactorReturnOk<Service, Method, Transform>,
     ReactorReturnErr<Service, Method, Transform>,
     // Without this TVariables defaults to `unknown` and mutate/mutateAsync
     // accept anything; the standalone hook and createMutation both pass it.
-    ReactorArgs<Service, Method, Transform>
+    ReactorArgs<Service, Method, Transform>,
+    TOnMutateResult
   >
 
   useActorMethod: <Method extends FunctionName<Service>>(
