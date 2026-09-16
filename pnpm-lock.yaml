@@ -241,7 +241,7 @@ importers:
         version: 3.6.0
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../packages/vite-plugin
       '@icp-sdk/bindgen':
         specifier: ^0.4.0
@@ -386,10 +386,10 @@ importers:
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@ic-reactor/cli':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../packages/cli
       '@ic-reactor/vite-plugin':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.3.0
@@ -432,7 +432,7 @@ importers:
         version: 6.0.3
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.3.0
@@ -478,7 +478,7 @@ importers:
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../../packages/vite-plugin
       '@icp-sdk/bindgen':
         specifier: ^0.4.0
@@ -521,7 +521,7 @@ importers:
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.3.0
@@ -807,7 +807,7 @@ importers:
         specifier: ^3.12.4
         version: link:../../packages/react
       '@ic-reactor/vite-plugin':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../packages/vite-plugin
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -939,7 +939,7 @@ importers:
         version: 1.4.0
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../packages/vite-plugin
       '@tanstack/devtools-vite':
         specifier: ^0.8
@@ -1022,7 +1022,7 @@ importers:
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../../packages/vite-plugin
       '@types/react':
         specifier: ^19.3.0
@@ -1074,7 +1074,7 @@ importers:
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^0.13.1
+        specifier: ^0.14.0
         version: link:../../packages/vite-plugin
       '@types/react':
         specifier: ^19.3.0
