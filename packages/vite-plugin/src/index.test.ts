@@ -138,6 +138,27 @@ describe("icReactor", () => {
       expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
     })
 
+    // icp looks for icp.yaml in its working directory and the directories above
+    // it. `vite apps/web` from a monorepo root, or `root` in the config, leaves
+    // the process cwd outside the app, so icp has to start from Vite's root.
+    it("should run icp from the Vite root rather than the process cwd", () => {
+      ;(execFileSync as any).mockImplementation(
+        (_command: string, args: string[]) =>
+          args[0] === "network"
+            ? JSON.stringify({ root_key: "mock-root-key", port: 4943 })
+            : "mock-canister-id"
+      )
+
+      const plugin = createVitePlugin(mockOptions)
+      ;(plugin as any).config({ root: "apps/web" }, { command: "serve" })
+
+      const workingDirs = (execFileSync as any).mock.calls.map(
+        ([, , options]: any) => options?.cwd
+      )
+      expect(workingDirs.length).toBeGreaterThan(1)
+      expect(new Set(workingDirs)).toEqual(new Set([path.resolve("apps/web")]))
+    })
+
     it("should prefer configured canisterId over CLI-discovered env values", () => {
       ;(execFileSync as any).mockImplementation(
         (command: string, args: string[], _options: any) => {

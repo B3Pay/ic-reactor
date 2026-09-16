@@ -29,9 +29,14 @@ export interface IcEnvironmentDetection {
 
 /**
  * Detect the IC environment using the `icp` CLI.
+ *
+ * @param projectRoot - Directory `icp` runs in. `icp` finds its project by
+ * looking for `icp.yaml` there and in each parent directory, so this has to be
+ * the app's root and not wherever the process happened to start.
  */
 export function getIcEnvironmentInfo(
-  canisterNames: string[]
+  canisterNames: string[],
+  projectRoot: string = process.cwd()
 ): IcEnvironmentDetection {
   const networkName = process.env.ICP_ENVIRONMENT || "local"
   const diagnostics: string[] = []
@@ -39,6 +44,7 @@ export function getIcEnvironmentInfo(
   try {
     const networkStatus = JSON.parse(
       execFileSync("icp", ["network", "status", "-e", networkName, "--json"], {
+        cwd: projectRoot,
         encoding: "utf-8",
         // stderr is piped rather than ignored so a failure can explain itself.
         // Piping still keeps it off the terminal — it only reaches the user if
@@ -69,7 +75,11 @@ export function getIcEnvironmentInfo(
         const canisterId = execFileSync(
           "icp",
           ["canister", "status", name, "-e", networkName, "-i"],
-          { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }
+          {
+            cwd: projectRoot,
+            encoding: "utf-8",
+            stdio: ["ignore", "pipe", "pipe"],
+          }
         ).trim()
 
         if (canisterId) {
