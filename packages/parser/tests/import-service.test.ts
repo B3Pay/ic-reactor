@@ -62,6 +62,32 @@ describe("import service", () => {
   })
 })
 
+describe("verifyCompatibility with import service", () => {
+  it("throws when either interface imports a service", () => {
+    expect(() => parser.verifyCompatibility(IMPORTS_SERVICE, SERVICE)).toThrow(
+      NOT_SUPPORTED
+    )
+    expect(() => parser.verifyCompatibility(SERVICE, IMPORTS_SERVICE)).toThrow(
+      NOT_SUPPORTED
+    )
+  })
+
+  it("still reports an unbound type in the old interface first", () => {
+    expect(() =>
+      parser.verifyCompatibility(
+        "service : { transfer : (Account) -> (bool) };",
+        IMPORTS_SERVICE
+      )
+    ).toThrow("Unbound type identifier Account")
+  })
+
+  it("still reports a missing service in the old interface first", () => {
+    expect(() =>
+      parser.verifyCompatibility("type Account = nat;", IMPORTS_SERVICE)
+    ).toThrow("The old interface declares no service.")
+  })
+})
+
 describe("plain import", () => {
   const IMPORTS_TYPES = `import "types.did";\n${SERVICE}`
 
