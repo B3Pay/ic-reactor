@@ -279,6 +279,8 @@ export async function runCanisterPipeline(
   // Refuse to generate into a directory another canister already owns. This has
   // to happen before the declarations step, which replaces `declarations/`
   // wholesale and would otherwise take the other canister's output with it.
+  // generateDeclarations claims the directory before its first await, so no
+  // await may come between this check and that call. Concurrent runs rely on it.
   const owner = findOutDirOwner(canisterOutDir)
   if (owner !== undefined && owner !== name) {
     return {

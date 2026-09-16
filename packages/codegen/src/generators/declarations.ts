@@ -311,6 +311,23 @@ export async function generateDeclarations(
     const dtsPath = path.join(declarationsDir, `${baseName}.d.ts`)
     const didCopyPath = path.join(declarationsDir, `${baseName}.did`)
 
+    // Ensure output dir exists — it is also the staging directory's parent, so
+    // the swap below stays a same-filesystem rename.
+    fs.mkdirSync(outDir, { recursive: true })
+
+    // Record which canister owns this directory. The pipeline reads it to stop
+    // a second canister generating into the same outDir and wiping the first
+    // one's declarations. It lives here rather than in index.generated.ts
+    // because `--bindgen-only` never writes that file, and the declarations
+    // replacement it skips past is exactly the destructive step.
+    //
+    // The write comes before the first await. The pipeline reads the marker
+    // and calls this function without yielding, so the check and the claim run
+    // as one synchronous step. The vite plugin starts every canister's pipeline
+    // at once, and when Prettier loading came first, a second canister read the
+    // directory as unowned and generated over the first one.
+    fs.writeFileSync(path.join(outDir, OWNER_FILE), `${canisterName}\n`)
+
     const prettier = projectRoot ? await loadPrettier(projectRoot) : undefined
     const jsOutput = await formatGenerated(
       prettier,
@@ -326,17 +343,6 @@ export async function generateDeclarations(
       dtsPath,
       "typescript"
     )
-
-    // Ensure output dir exists — it is also the staging directory's parent, so
-    // the swap below stays a same-filesystem rename.
-    fs.mkdirSync(outDir, { recursive: true })
-
-    // Record which canister owns this directory. The pipeline reads it to stop
-    // a second canister generating into the same outDir and wiping the first
-    // one's declarations. It lives here rather than in index.generated.ts
-    // because `--bindgen-only` never writes that file, and the declarations
-    // replacement it skips past is exactly the destructive step.
-    fs.writeFileSync(path.join(outDir, OWNER_FILE), `${canisterName}\n`)
 
     staging = fs.mkdtempSync(path.join(outDir, ".declarations.tmp-"))
 
