@@ -5,6 +5,7 @@
  */
 
 import * as p from "@clack/prompts"
+import fs from "node:fs"
 import path from "node:path"
 import pc from "picocolors"
 import {
@@ -15,11 +16,17 @@ import {
 import { cleanStaleOutput } from "../utils/clean.js"
 import { CliError, errorMessage } from "../utils/errors.js"
 import {
-  assertSafeCanisterConfig,
+  assertContainedPath,
+  assertSafeCanisterName,
   CodegenConfigError,
+  resolveContainedOutDir,
   runCanisterPipeline,
 } from "@ic-reactor/codegen"
-import type { CodegenConfig, GenerateOptions } from "../types.js"
+import type {
+  CanisterConfig,
+  CodegenConfig,
+  GenerateOptions,
+} from "../types.js"
 
 export async function generateCommand(options: GenerateOptions) {
   console.log()
@@ -105,17 +112,18 @@ export async function generateCommand(options: GenerateOptions) {
   let errorCount = 0
   const errorMessages: string[] = []
 
-  // The check covers every configured canister, including ones this run skips,
-  // so a `--canister <name>` run cannot overwrite another entry's output.
-  const sharedOutDirs = findSharedOutDirs(config, projectRoot)
-
   // Run pipeline for each canister
   for (const name of canistersToProcess) {
     const canisterConfig = config.canisters[name]
 
     spinner.message(`Processing ${pc.cyan(name)}...`)
 
-    const firstUser = sharedOutDirs.get(name)
+    // The check covers every configured canister, including ones this run
+    // skips, so a `--canister <name>` run cannot overwrite another entry's
+    // output. It runs again before each canister because an earlier canister
+    // in this run can create the directory that a later entry reaches through
+    // a symlink or a path written in a different case.
+    const firstUser = findSharedOutDirs(config, projectRoot).get(name)
     if (firstUser !== undefined) {
       errorCount++
       errorMessages.push(
@@ -181,6 +189,10 @@ export async function generateCommand(options: GenerateOptions) {
  * with the same `name` both resolve to `<outDir>/<name>` and pass that check.
  * Copying an entry and changing only its key produces that config, and the
  * later entry then replaced the earlier one's output on every run.
+ *
+ * The check compares directories by where they really are on disk, so a symlink
+ * to another entry's directory, or a spelling of it that differs only in case,
+ * counts as the same directory.
  */
 function findSharedOutDirs(
   config: CodegenConfig,
@@ -190,33 +202,87 @@ function findSharedOutDirs(
   const shared = new Map<string, string>()
 
   for (const [key, canisterConfig] of Object.entries(config.canisters)) {
-    let outDir: string
-    try {
-      outDir = assertSafeCanisterConfig({
-        name: canisterConfig.name,
-        canisterOutDir: canisterConfig.outDir,
-        globalOutDir: config.outDir,
-        clientManagerPath:
-          canisterConfig.clientManagerPath ??
-          config.clientManagerPath ??
-          "../../clients",
-        projectRoot,
-        mode: canisterConfig.mode,
-        target: canisterConfig.target ?? config.target,
-      }).outDir
-    } catch (error) {
-      // The pipeline rejects this canister and reports why.
-      if (error instanceof CodegenConfigError) continue
-      throw error
-    }
+    const outDir = resolveOutDir(canisterConfig, config.outDir, projectRoot)
+    // The pipeline rejects this canister's output fields and reports why.
+    if (outDir === undefined) continue
 
-    const first = firstByOutDir.get(outDir)
+    const realOutDir = realpathAllowingMissing(outDir)
+    const first = firstByOutDir.get(realOutDir)
     if (first === undefined) {
-      firstByOutDir.set(outDir, key)
+      firstByOutDir.set(realOutDir, key)
     } else {
       shared.set(key, first)
     }
   }
 
   return shared
+}
+
+/**
+ * The directory the pipeline generates a canister into, or `undefined` when the
+ * pipeline rejects the fields that decide it.
+ *
+ * Only `name`, the canister's own `outDir`, the global `outDir` and the project
+ * root decide the directory, so this reads nothing else and applies the checks
+ * `assertSafeCanisterConfig` runs on those fields. An error in another field,
+ * such as a URL in `clientManagerPath`, fails that canister's own run. Its
+ * earlier output still sits in the directory, so the error must not hide the
+ * directory from the overlap check.
+ */
+function resolveOutDir(
+  canisterConfig: CanisterConfig,
+  globalOutDir: string,
+  projectRoot: string
+): string | undefined {
+  const { name } = canisterConfig
+
+  try {
+    assertSafeCanisterName(name)
+
+    const outDir =
+      canisterConfig.outDir != null
+        ? resolveContainedOutDir("outDir", canisterConfig.outDir, projectRoot)
+        : path.join(
+            resolveContainedOutDir("outDir", globalOutDir, projectRoot),
+            name
+          )
+
+    assertContainedPath("output directory", outDir, projectRoot)
+    return outDir
+  } catch (error) {
+    if (error instanceof CodegenConfigError) return undefined
+    throw error
+  }
+}
+
+/**
+ * Resolve a directory to its real location on disk, so two paths to the same
+ * directory compare equal.
+ *
+ * The directory often does not exist yet, so this resolves the longest part of
+ * the path that does and appends the rest unchanged, as codegen's private helper
+ * of the same name does. It calls `fs.realpathSync.native`, which follows
+ * symlinks and, on a case-insensitive macOS volume, returns each existing part
+ * in the case stored on disk. `fs.realpathSync` keeps the case the caller wrote.
+ *
+ * The appended parts keep the case the config wrote, so two different
+ * directories on a case-sensitive volume never match. It also means the check
+ * catches a difference only in case once the directory exists, including a
+ * directory an earlier canister created in the same run.
+ */
+function realpathAllowingMissing(target: string): string {
+  const missing: string[] = []
+  let current = target
+
+  for (;;) {
+    try {
+      return path.join(fs.realpathSync.native(current), ...missing)
+    } catch {
+      const parent = path.dirname(current)
+      // Reached the filesystem root without finding anything that exists.
+      if (parent === current) return target
+      missing.unshift(path.basename(current))
+      current = parent
+    }
+  }
 }
