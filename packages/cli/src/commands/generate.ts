@@ -5,6 +5,7 @@
  */
 
 import * as p from "@clack/prompts"
+import fs from "node:fs"
 import path from "node:path"
 import pc from "picocolors"
 import {
@@ -14,8 +15,18 @@ import {
 } from "../utils/config.js"
 import { cleanStaleOutput } from "../utils/clean.js"
 import { CliError, errorMessage } from "../utils/errors.js"
-import { CodegenConfigError, runCanisterPipeline } from "@ic-reactor/codegen"
-import type { GenerateOptions } from "../types.js"
+import {
+  assertContainedPath,
+  assertSafeCanisterName,
+  CodegenConfigError,
+  resolveContainedOutDir,
+  runCanisterPipeline,
+} from "@ic-reactor/codegen"
+import type {
+  CanisterConfig,
+  CodegenConfig,
+  GenerateOptions,
+} from "../types.js"
 
 export async function generateCommand(options: GenerateOptions) {
   console.log()
@@ -107,6 +118,23 @@ export async function generateCommand(options: GenerateOptions) {
 
     spinner.message(`Processing ${pc.cyan(name)}...`)
 
+    // The check covers every configured canister, including ones this run
+    // skips, so a `--canister <name>` run cannot overwrite another entry's
+    // output. It runs again before each canister because an earlier canister
+    // in this run can create the directory that a later entry reaches through
+    // a symlink or a path written in a different case.
+    const firstUser = findSharedOutDirs(config, projectRoot).get(name)
+    if (firstUser !== undefined) {
+      errorCount++
+      errorMessages.push(
+        `${name}: generates into the same output directory as canister ` +
+          `"${firstUser}". Each run replaces that directory's declarations and ` +
+          `index.generated.ts, so the two would overwrite each other. Give each ` +
+          `canister its own "outDir", or its own "name" if it uses the global outDir.`
+      )
+      continue
+    }
+
     try {
       const result = await runCanisterPipeline({
         canisterConfig,
@@ -150,4 +178,111 @@ export async function generateCommand(options: GenerateOptions) {
   }
 
   p.outro(pc.green(`✓ All ${generationSummary} generated successfully!`))
+}
+
+/**
+ * Find config entries that generate into a directory an earlier entry already
+ * uses. The result maps each such key to the key of the earlier entry.
+ *
+ * The pipeline's `.ic-reactor-owner` marker stops a second canister from
+ * generating over the first one, but it records the canister name. Two entries
+ * with the same `name` both resolve to `<outDir>/<name>` and pass that check.
+ * Copying an entry and changing only its key produces that config, and the
+ * later entry then replaced the earlier one's output on every run.
+ *
+ * The check compares directories by where they really are on disk, so a symlink
+ * to another entry's directory, or a spelling of it that differs only in case,
+ * counts as the same directory.
+ */
+function findSharedOutDirs(
+  config: CodegenConfig,
+  projectRoot: string
+): Map<string, string> {
+  const firstByOutDir = new Map<string, string>()
+  const shared = new Map<string, string>()
+
+  for (const [key, canisterConfig] of Object.entries(config.canisters)) {
+    const outDir = resolveOutDir(canisterConfig, config.outDir, projectRoot)
+    // The pipeline rejects this canister's output fields and reports why.
+    if (outDir === undefined) continue
+
+    const realOutDir = realpathAllowingMissing(outDir)
+    const first = firstByOutDir.get(realOutDir)
+    if (first === undefined) {
+      firstByOutDir.set(realOutDir, key)
+    } else {
+      shared.set(key, first)
+    }
+  }
+
+  return shared
+}
+
+/**
+ * The directory the pipeline generates a canister into, or `undefined` when the
+ * pipeline rejects the fields that decide it.
+ *
+ * Only `name`, the canister's own `outDir`, the global `outDir` and the project
+ * root decide the directory, so this reads nothing else and applies the checks
+ * `assertSafeCanisterConfig` runs on those fields. An error in another field,
+ * such as a URL in `clientManagerPath`, fails that canister's own run. Its
+ * earlier output still sits in the directory, so the error must not hide the
+ * directory from the overlap check.
+ */
+function resolveOutDir(
+  canisterConfig: CanisterConfig,
+  globalOutDir: string,
+  projectRoot: string
+): string | undefined {
+  const { name } = canisterConfig
+
+  try {
+    assertSafeCanisterName(name)
+
+    const outDir =
+      canisterConfig.outDir != null
+        ? resolveContainedOutDir("outDir", canisterConfig.outDir, projectRoot)
+        : path.join(
+            resolveContainedOutDir("outDir", globalOutDir, projectRoot),
+            name
+          )
+
+    assertContainedPath("output directory", outDir, projectRoot)
+    return outDir
+  } catch (error) {
+    if (error instanceof CodegenConfigError) return undefined
+    throw error
+  }
+}
+
+/**
+ * Resolve a directory to its real location on disk, so two paths to the same
+ * directory compare equal.
+ *
+ * The directory often does not exist yet, so this resolves the longest part of
+ * the path that does and appends the rest unchanged, as codegen's private helper
+ * of the same name does. It calls `fs.realpathSync.native`, which follows
+ * symlinks and, on a case-insensitive macOS volume, returns each existing part
+ * in the case stored on disk. `fs.realpathSync` keeps the case the caller wrote.
+ *
+ * The appended parts keep the case the config wrote, so two different
+ * directories on a case-sensitive volume never match. It also means the check
+ * catches a difference only in case once the directory exists, including a
+ * directory an earlier canister created in the same run.
+ */
+function realpathAllowingMissing(target: string): string {
+  const missing: string[] = []
+  let current = target
+
+  for (;;) {
+    try {
+      return path.join(fs.realpathSync.native(current), ...missing)
+    } catch {
+      const parent = path.dirname(current)
+      // Reached the filesystem root without finding anything that exists.
+      if (parent === current) return target
+      missing.unshift(path.basename(current))
+      current = parent
+    }
+  }
 }

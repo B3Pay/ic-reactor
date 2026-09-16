@@ -13,6 +13,18 @@ const DID = `service : {
 }
 `
 
+/** A second service, so output generated from it differs from backend's. */
+const LEDGER_DID = "service : { balance : () -> (nat) query; }\n"
+
+/** What `generate` writes for the default `backend` canister. */
+const BACKEND_OUTPUT = [
+  "src/declarations/backend/declarations/backend.d.ts",
+  "src/declarations/backend/declarations/backend.did",
+  "src/declarations/backend/declarations/backend.js",
+  "src/declarations/backend/index.generated.ts",
+  "src/declarations/backend/index.ts",
+]
+
 describe("generate", () => {
   const tempDirs: string[] = []
   let originalCwd: string
@@ -173,6 +185,109 @@ describe("generate", () => {
     await expect(generateCommand({})).rejects.toThrow(
       new RegExp(`No ${CONFIG_FILE_NAME} found`)
     )
+  })
+
+  // An entry copied from another one keeps its `name`, so both generate into
+  // <outDir>/<name>. The owner marker records a name and cannot tell the two
+  // apart, so the second entry replaced the first one's output while the run
+  // reported success.
+  it("fails when two canister entries share an output directory", async () => {
+    const projectRoot = createProject({
+      canisters: {
+        backend: { name: "backend", didFile: "./backend.did" },
+        ledger: { name: "backend", didFile: "./ledger.did" },
+      },
+    })
+    fs.writeFileSync(path.join(projectRoot, "ledger.did"), LEDGER_DID)
+
+    expect(await runCli(["generate"])).toBe(1)
+    expect(await runCli(["generate", "--canister", "ledger"])).toBe(1)
+
+    expect(generatedFiles(projectRoot)).toEqual(BACKEND_OUTPUT)
+  })
+
+  // The two paths differ as written, so only the real location on disk shows
+  // that ledger's outDir is backend's directory. The link dangles until backend
+  // generates, as a committed link beside ignored output does in a new clone.
+  it("fails when an entry's outDir is a symlink to another entry's output directory", async () => {
+    const projectRoot = createProject({
+      canisters: {
+        backend: { name: "backend", didFile: "./backend.did" },
+        ledger: {
+          name: "backend",
+          didFile: "./ledger.did",
+          outDir: "src/ledger",
+        },
+      },
+    })
+    fs.writeFileSync(path.join(projectRoot, "ledger.did"), LEDGER_DID)
+    fs.mkdirSync(path.join(projectRoot, "src"))
+    fs.symlinkSync(
+      path.join(projectRoot, "src/declarations/backend"),
+      path.join(projectRoot, "src/ledger"),
+      "junction"
+    )
+
+    expect(await runCli(["generate"])).toBe(1)
+    expect(await runCli(["generate", "--canister", "ledger"])).toBe(1)
+
+    expect(generatedFiles(projectRoot)).toEqual(BACKEND_OUTPUT)
+  })
+
+  // On a case-insensitive filesystem both spellings open the same directory,
+  // and the owner marker read through either one names "backend".
+  it("fails when two entries' outDir values differ only by case on a case-insensitive filesystem", async ({
+    skip,
+  }) => {
+    const projectRoot = createProject({
+      canisters: {
+        backend: { name: "backend", didFile: "./backend.did" },
+        ledger: {
+          name: "backend",
+          didFile: "./ledger.did",
+          outDir: "src/Declarations/Backend",
+        },
+      },
+    })
+    skip(
+      !fs.existsSync(path.join(projectRoot, CONFIG_FILE_NAME.toUpperCase())),
+      "the temp directory is on a case-sensitive filesystem"
+    )
+    fs.writeFileSync(path.join(projectRoot, "ledger.did"), LEDGER_DID)
+
+    expect(await runCli(["generate"])).toBe(1)
+    expect(await runCli(["generate", "--canister", "ledger"])).toBe(1)
+
+    expect(generatedFiles(projectRoot)).toEqual(BACKEND_OUTPUT)
+  })
+
+  // `clientManagerPath` plays no part in where an entry generates. A URL there
+  // fails backend's own run, but backend's earlier output still fills the
+  // directory, so ledger must not generate over it.
+  it("fails when an entry with an unrelated config error shares the output directory", async () => {
+    const projectRoot = createProject()
+    expect(await runCli(["generate"])).toBe(0)
+
+    fs.writeFileSync(path.join(projectRoot, "ledger.did"), LEDGER_DID)
+    fs.writeFileSync(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      JSON.stringify({
+        outDir: "src/declarations",
+        canisters: {
+          backend: {
+            name: "backend",
+            didFile: "./backend.did",
+            clientManagerPath: "https://example.com/x",
+          },
+          ledger: { name: "backend", didFile: "./ledger.did" },
+        },
+      })
+    )
+
+    expect(await runCli(["generate", "--canister", "ledger"])).toBe(1)
+    expect(await runCli(["generate"])).toBe(1)
+
+    expect(generatedFiles(projectRoot)).toEqual(BACKEND_OUTPUT)
   })
 
   it("fails when the named canister is not configured", async () => {
