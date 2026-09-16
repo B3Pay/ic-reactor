@@ -409,6 +409,26 @@ describe("CandidAdapter", () => {
         adapter.validateCandid("service {\n  greet: (text) -> (text) query;\n}")
       ).toBe(false)
     })
+
+    // Only a string throw is the parser rejecting the source. A web build used
+    // before init() throws a TypeError, and turning that into false reported
+    // valid Candid as invalid.
+    it("rethrows a parser failure that is not a rejection of the source", async () => {
+      const adapter = new CandidAdapter({ clientManager: mockClientManager })
+      const notInitialized = new TypeError(
+        "Cannot read properties of undefined (reading 'validateidl')"
+      )
+      await adapter.loadParser({
+        didToJs: vi.fn(),
+        validateIDL: vi.fn(() => {
+          throw notInitialized
+        }),
+      })
+
+      expect(() =>
+        adapter.validateCandid("service : { greet : (text) -> (text) query; }")
+      ).toThrow(notInitialized)
+    })
   })
 
   describe("compileRemote", () => {
