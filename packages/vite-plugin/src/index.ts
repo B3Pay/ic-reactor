@@ -115,16 +115,21 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
    * the browser error overlay is the signal that actually gets noticed.
    */
   /**
-   * The last failure, kept so a browser that was not connected when it happened
-   * still gets the overlay.
+   * The failures that are still unfixed, one per canister, kept so a browser
+   * that was not connected when one happened still gets the overlay.
    *
    * Vite awaits the plugin container's `buildStart` before the HTTP server
    * starts listening, so a generation failure during `vite dev` startup is
    * broadcast when there are no WebSocket clients at all and the payload is
    * simply dropped. The terminal shows it; the overlay never appears — for
    * precisely the failures a developer is most likely to hit.
+   *
+   * A success only proves that the canister which regenerated is fixed. This
+   * used to be one slot that any success emptied, so a canister that was still
+   * broken vanished from the overlay as soon as another canister regenerated
+   * and its reload reconnected every tab.
    */
-  let pendingFailure: { message: string; stack: string } | null = null
+  const pendingFailures = new Map<string, { message: string; stack: string }>()
 
   const reportFailure = (
     server: ViteDevServer | null,
@@ -139,8 +144,8 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       plugin: PLUGIN_NAME,
     }
 
-    pendingFailure = { message: err.message, stack: err.stack }
     server?.ws.send({ type: "error", err })
+    return { message: err.message, stack: err.stack }
   }
 
   // Keep at most one regeneration per canister in flight and collapse every save
@@ -183,13 +188,16 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         if (result.success) {
           // A later connection must not be handed a failure that has since been
           // fixed.
-          pendingFailure = null
+          pendingFailures.delete(name)
           // Reload page to reflect new types/hooks
           server.ws.send({ type: "full-reload" })
         } else {
-          reportFailure(
-            server,
-            `Regeneration failed for ${name}: ${result.error ?? "unknown error"}`
+          pendingFailures.set(
+            name,
+            reportFailure(
+              server,
+              `Regeneration failed for ${name}: ${result.error ?? "unknown error"}`
+            )
           )
         }
       })
@@ -198,10 +206,13 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       // rejection: invisible in the browser and, depending on the Node version,
       // fatal to the dev server.
       .catch((error: unknown) => {
-        reportFailure(
-          server,
-          `Regeneration failed for ${name}: ${describeError(error)}`,
-          error
+        pendingFailures.set(
+          name,
+          reportFailure(
+            server,
+            `Regeneration failed for ${name}: ${describeError(error)}`,
+            error
+          )
         )
       })
       .finally(() => {
@@ -360,16 +371,24 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     configureServer(server) {
       devServer = server
 
-      // Replay a startup failure to the first client that connects — see
-      // pendingFailure. Cleared once generation succeeds.
+      // Replay the unfixed failures described at pendingFailures to each client
+      // that connects. A canister leaves the replay once it regenerates.
       // Guarded: the peer range spans several Vite majors and `ws.on` is not
       // present on every one of them. Losing the replay is acceptable; throwing
       // out of configureServer is not.
       server.ws.on?.("connection", () => {
-        if (!pendingFailure) return
+        if (pendingFailures.size === 0) return
+        const failures = [...pendingFailures.values()]
         server.ws.send({
           type: "error",
-          err: { ...pendingFailure, plugin: PLUGIN_NAME },
+          err: {
+            message: failures.map((failure) => failure.message).join("\n"),
+            stack: failures
+              .map((failure) => failure.stack)
+              .filter(Boolean)
+              .join("\n"),
+            plugin: PLUGIN_NAME,
+          },
         })
       })
 
@@ -402,10 +421,15 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         const name = canisters[index]?.name ?? `canister #${index}`
 
         if (outcome.status === "rejected") {
-          return [`${name}: ${describeError(outcome.reason)}`]
+          return [{ name, detail: `${name}: ${describeError(outcome.reason)}` }]
         }
         if (!outcome.value.success) {
-          return [`${name}: ${outcome.value.error ?? "unknown error"}`]
+          return [
+            {
+              name,
+              detail: `${name}: ${outcome.value.error ?? "unknown error"}`,
+            },
+          ]
         }
         return []
       })
@@ -416,7 +440,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 
       const message =
         `Failed to generate ${failures.length} of ${canisters.length} canisters:\n` +
-        failures.map((failure) => `  - ${failure}`).join("\n")
+        failures.map(({ detail }) => `  - ${detail}`).join("\n")
 
       // Previously every failure here was a `console.error` and nothing more,
       // so `vite build` exited 0 and CI shipped whatever stale bindings were
@@ -426,6 +450,15 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       }
 
       reportFailure(devServer, message)
+
+      // One entry per canister, so fixing one of them removes only its own line
+      // from the replay.
+      for (const { name, detail } of failures) {
+        pendingFailures.set(name, {
+          message: `[ic-reactor] Failed to generate ${detail}`,
+          stack: "",
+        })
+      }
     },
 
     handleHotUpdate({ file, server }) {

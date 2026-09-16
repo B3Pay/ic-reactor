@@ -648,6 +648,79 @@ describe("icReactor", () => {
       })
     })
 
+    /** The listener the plugin registered for new browser connections. */
+    const connectionListener = () =>
+      mockServer.ws.on.mock.calls.find(
+        ([event]: [string]) => event === "connection"
+      )?.[1] as () => void
+
+    const twoCanisters = {
+      canisters: [
+        { name: "alpha", didFile: "alpha.did" },
+        { name: "beta", didFile: "beta.did" },
+      ],
+    }
+
+    // A success proves only that the canister which regenerated is fixed. The
+    // reload it sends brings every open tab back through a new connection, and
+    // that connection still has to show the canister that is broken.
+    it("should keep replaying a failure that another canister's success did not fix", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockImplementation(
+        async ({ canisterConfig }: any) =>
+          canisterConfig.name === "alpha"
+            ? { success: false, error: "alpha.did: Unexpected token" }
+            : { success: true }
+      )
+
+      const plugin = createVitePlugin(twoCanisters)
+      resolveConfig(plugin, "serve")
+      ;(plugin.configureServer as any)(mockServer)
+
+      await (plugin.buildStart as any).call(buildContext())
+      await (plugin.handleHotUpdate as any)({
+        file: path.resolve(VITE_ROOT, "beta.did"),
+        server: mockServer,
+      })
+
+      mockServer.ws.send.mockClear()
+      connectionListener()()
+
+      expect(mockServer.ws.send).toHaveBeenCalledWith({
+        type: "error",
+        err: expect.objectContaining({
+          message: expect.stringContaining("alpha.did: Unexpected token"),
+          plugin: "ic-reactor-plugin",
+        }),
+      })
+    })
+
+    it("should stop replaying a failure once that canister regenerates", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      ;(runCanisterPipeline as any).mockResolvedValueOnce({
+        success: false,
+        error: "alpha.did: Unexpected token",
+      })
+
+      const plugin = createVitePlugin(twoCanisters)
+      resolveConfig(plugin, "serve")
+      ;(plugin.configureServer as any)(mockServer)
+
+      await (plugin.handleHotUpdate as any)({
+        file: path.resolve(VITE_ROOT, "alpha.did"),
+        server: mockServer,
+      })
+      await (plugin.handleHotUpdate as any)({
+        file: path.resolve(VITE_ROOT, "alpha.did"),
+        server: mockServer,
+      })
+
+      mockServer.ws.send.mockClear()
+      connectionListener()()
+
+      expect(mockServer.ws.send).not.toHaveBeenCalled()
+    })
+
     it("should serialize regeneration for rapid saves of the same .did file", async () => {
       let releaseFirstRun: (result: unknown) => void = () => {}
       ;(runCanisterPipeline as any).mockImplementationOnce(
