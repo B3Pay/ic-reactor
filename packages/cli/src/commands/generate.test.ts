@@ -302,6 +302,43 @@ describe("generate", () => {
       ).toBe(true)
     })
 
+    // The sweep used to skip a canister the pipeline rejects when it collected
+    // the directories to keep. The rejection here comes from clientManagerPath,
+    // not from outDir, so the canister's own output looked stale and --clean
+    // deleted it, index.ts included, before generation reported the error.
+    it("keeps the output of a canister whose config the pipeline rejects", async () => {
+      const backend = {
+        name: "backend",
+        didFile: "./backend.did",
+        outDir: "src/declarations/be",
+      }
+      const projectRoot = createProject({ canisters: { backend } })
+      expect(await runCli(["generate"])).toBe(0)
+
+      const entryPath = path.join(projectRoot, "src/declarations/be/index.ts")
+      fs.writeFileSync(
+        entryPath,
+        "// hand-written entry\nexport const mine = 1\n"
+      )
+
+      // A Windows-style specifier, which the pipeline refuses.
+      fs.writeFileSync(
+        path.join(projectRoot, CONFIG_FILE_NAME),
+        JSON.stringify({
+          outDir: "src/declarations",
+          canisters: {
+            backend: { ...backend, clientManagerPath: "..\\..\\clients" },
+          },
+        })
+      )
+
+      expect(await runCli(["generate", "--clean"])).toBe(1)
+
+      expect(fs.readFileSync(entryPath, "utf-8")).toContain(
+        "hand-written entry"
+      )
+    })
+
     it("never deletes a directory this CLI did not generate", async () => {
       const projectRoot = createProject()
       const handWritten = path.join(projectRoot, "src/declarations/shared")

@@ -119,11 +119,16 @@ function resolveConfiguredOutput(
       })
       directories.add(outDir)
     } catch (error) {
-      // A canister the pipeline itself will reject. Its output directory cannot
-      // be resolved, so nothing about it can be judged stale — skip it and let
-      // generation report the config error.
-      if (error instanceof CodegenConfigError) continue
-      throw error
+      if (!(error instanceof CodegenConfigError)) throw error
+      // A canister the pipeline itself will reject, and generation reports why.
+      // The rejection can come from a field other than outDir, such as a
+      // clientManagerPath written with backslashes, and then the directory the
+      // canister generated into on earlier runs is still its current output.
+      // Leaving it out of this set made that directory look stale. The path
+      // only keeps a directory, so resolving it without the checks is safe.
+      if (typeof canisterConfig.outDir === "string" && canisterConfig.outDir) {
+        directories.add(path.resolve(projectRoot, canisterConfig.outDir))
+      }
     }
   }
 
