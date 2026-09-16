@@ -26,8 +26,14 @@
         "default": "./dist/web/index.js"
       },
       "node": {
-        "types": "./dist/nodejs/index.d.ts",
-        "default": "./dist/nodejs/index.js"
+        "import": {
+          "types": "./dist/nodejs/index.d.mts",
+          "default": "./dist/nodejs/index.mjs"
+        },
+        "default": {
+          "types": "./dist/nodejs/index.d.ts",
+          "default": "./dist/nodejs/index.js"
+        }
       },
       "default": {
         "types": "./dist/web/index.d.ts",

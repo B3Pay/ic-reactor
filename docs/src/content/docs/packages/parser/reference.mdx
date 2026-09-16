@@ -16,7 +16,7 @@ default `init` (with a synchronous `initSync` companion).
   In browsers and bundlers the package resolves to `dist/web`, where the WASM
   module is only instantiated by `await init()`. Calling any function before
   that throws. The Node build (`dist/nodejs`) instantiates itself at import
-  time, so no `init()` call is needed there.
+  time, so no `init()` call is needed there, and calling it does nothing.
 
 ```typescript
 import init, { didToJs } from "@ic-reactor/parser"
@@ -125,6 +125,10 @@ Instantiates the WASM module. Required once before any other function on the
 web build. A synchronous `initSync(module)` variant is also exported for
 environments where the WASM bytes are already available.
 
+On Node both exist for ES module imports and do nothing, because the Node build
+instantiates the module when it loads. `require` returns only the parser
+functions.
+
 ```typescript
 import init, { initSync } from "@ic-reactor/parser"
 
@@ -150,11 +154,11 @@ condition selects, keeps wasm-bindgen's generated loader and does not restart.
 
 The package builds for multiple targets to ensure compatibility across environments.
 
-| Folder         | Format     | Resolved by                                      |
-| :------------- | :--------- | :----------------------------------------------- |
-| `dist/web`     | ES Modules | `browser`, `workerd` and `default` conditions    |
-| `dist/nodejs`  | CommonJS   | `node` condition                                 |
-| `dist/bundler` | ES Modules | Built and shipped, but not reachable via exports |
+| Folder         | Format                                          | Resolved by                                      |
+| :------------- | :---------------------------------------------- | :----------------------------------------------- |
+| `dist/web`     | ES Modules                                      | `browser`, `workerd` and `default` conditions    |
+| `dist/nodejs`  | ES Modules (`index.mjs`), CommonJS (`index.js`) | `node` condition, for `import` and `require`     |
+| `dist/bundler` | ES Modules                                      | Built and shipped, but not reachable via exports |
 
 There is no `./web`, `./nodejs` or `./bundler` subpath — the package has a
 single `.` entry and the right build is picked by export conditions. Bundlers

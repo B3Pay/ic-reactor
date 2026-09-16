@@ -6,10 +6,14 @@ import { describe, it, expect } from "vitest"
 // When a wasm-bindgen upgrade changes that output in a way the script does not
 // handle, the build has to stop with a message, not ship a broken entry.
 
-const { wrapGlue } = createRequire(import.meta.url)(
+const { wrapGlue: wrap } = createRequire(import.meta.url)(
   "../scripts/wrap-glue.js"
 ) as {
-  wrapGlue: (sources: { entry: string; glue: string }) => Record<string, string>
+  wrapGlue: (sources: {
+    entry: string
+    glue: string
+    nodeTypes: string
+  }) => Record<string, string>
 }
 
 const entry = readFileSync(
@@ -20,6 +24,14 @@ const glue = readFileSync(
   new URL("../dist/bundler/index_bg.js", import.meta.url),
   "utf-8"
 )
+const nodeTypes = readFileSync(
+  new URL("../dist/nodejs/index.d.ts", import.meta.url),
+  "utf-8"
+)
+
+function wrapGlue(sources: { entry: string; glue: string }) {
+  return wrap({ ...sources, nodeTypes })
+}
 
 describe("wrap-glue", () => {
   it("wraps every function the bundler entry exports", () => {
@@ -33,6 +45,7 @@ describe("wrap-glue", () => {
     for (const name of names ?? []) {
       expect(files["web/index.js"]).toContain(`export function ${name}(`)
       expect(files["nodejs/index.js"]).toContain(`exports.${name} = ${name};`)
+      expect(files["nodejs/index.mjs"]).toContain(`export const ${name} = `)
     }
   })
 

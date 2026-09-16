@@ -24,6 +24,11 @@
  * `dist/bundler` keeps wasm-bindgen's own output. The bundler instantiates that
  * build from its `.wasm` import and never exposes the compiled module, so it
  * cannot be re-instantiated without fetching the file again.
+ *
+ * The script also writes `dist/nodejs/index.mjs`, the entry Node's `import`
+ * resolves to. It re-exports the CommonJS entry and adds `init` and `initSync`,
+ * which have nothing to do on Node but let code written for the web build run
+ * unchanged.
  */
 const { readFileSync, writeFileSync } = require("node:fs")
 const { join, resolve } = require("node:path")
@@ -278,10 +283,51 @@ export { initSync, __wbg_init as default };
 `
 
 /**
- * Returns the files to write, keyed by path relative to `dist`, for
- * wasm-bindgen's bundler entry (`entry`) and glue (`glue`) sources.
+ * The ES module entry for Node. Node's `import` of the package resolves here,
+ * and `require` still resolves to `index.js`, so both share one instance.
  */
-function wrapGlue({ entry, glue }) {
+function nodeModuleEntry(names) {
+  return [
+    HEADER,
+    'import parser from "./index.js";',
+    "",
+    ...names.map((name) => `export const ${name} = parser.${name};`),
+    "",
+    "// index.js instantiates the module when it loads, so these have nothing to",
+    "// do. They let code written for the web build, which has to call init",
+    "// first, run unchanged on Node.",
+    "export default async function init() {}",
+    "",
+    "export function initSync() {}",
+    "",
+  ].join("\n")
+}
+
+/** Declarations for `index.mjs`, built from the CommonJS entry's `index.d.ts`. */
+function nodeModuleTypes(nodeTypes) {
+  return `${nodeTypes.trimEnd()}
+
+/**
+ * Does nothing and resolves. The Node build instantiates its WebAssembly module
+ * when it is imported, so code written for the web build can keep calling
+ * \`await init()\`.
+ */
+export default function init(module_or_path?: unknown): Promise<void>;
+
+/**
+ * Does nothing. The Node build instantiates its WebAssembly module when it is
+ * imported.
+ */
+export function initSync(module?: unknown): void;
+`
+}
+
+/**
+ * Returns the files to write, keyed by path relative to `dist`, for
+ * wasm-bindgen's bundler entry (`entry`) and glue (`glue`) sources and the
+ * Node build's declarations (`nodeTypes`).
+ */
+function wrapGlue({ entry, glue, nodeTypes }) {
   const names = publicExports(entry)
   const functions = readGlue(glue)
   return {
@@ -307,6 +353,8 @@ function wrapGlue({ entry, glue }) {
       "",
     ].join("\n"),
     "nodejs/index_bg.js": factory(glue, functions, "cjs"),
+    "nodejs/index.mjs": nodeModuleEntry(names),
+    "nodejs/index.d.mts": nodeModuleTypes(nodeTypes),
   }
 }
 
@@ -315,6 +363,8 @@ function main() {
   const files = wrapGlue({
     entry: readFileSync(join(dist, "bundler", "index.js"), "utf-8"),
     glue: readFileSync(join(dist, "bundler", "index_bg.js"), "utf-8"),
+    // append-types.js has already added the schema types to this file.
+    nodeTypes: readFileSync(join(dist, "nodejs", "index.d.ts"), "utf-8"),
   })
   for (const [path, content] of Object.entries(files)) {
     writeFileSync(join(dist, path), content, "utf-8")
