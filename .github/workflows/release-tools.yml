@@ -261,7 +261,23 @@ jobs:
           "); do
             DEP_DIR="${DEP#@ic-reactor/}"
             DEP_VERSION=$(node -p "require('${GITHUB_WORKSPACE}/packages/${DEP_DIR}/package.json').version")
-            if ! npm view "${DEP}@${DEP_VERSION}" version > /dev/null 2>&1; then
+            # A dependency this run published moments ago can still be missing
+            # from the registry. In tools-v0.14.0 vite-plugin checked
+            # codegen@0.14.0 about 100 seconds after codegen published, found
+            # nothing and failed, and codegen appeared about four minutes after
+            # its publish. Poll for up to ten minutes before calling it missing.
+            FOUND=""
+            for ATTEMPT in $(seq 1 20); do
+              if npm view "${DEP}@${DEP_VERSION}" version > /dev/null 2>&1; then
+                FOUND=1
+                break
+              fi
+              if [ "$ATTEMPT" -lt 20 ]; then
+                echo "${DEP}@${DEP_VERSION} is not on npm yet (check ${ATTEMPT} of 20), retrying in 30s"
+                sleep 30
+              fi
+            done
+            if [ -z "$FOUND" ]; then
               echo "::error::$PACKAGE_NAME depends on ${DEP}@${DEP_VERSION}, which is not on npm."
               echo "::error::Publishing now would ship a package nobody can install. Release ${DEP} first."
               exit 1
