@@ -34,7 +34,12 @@ than the versions being incompatible — auth v8 runs against core v6:
 
 IC Reactor keeps one options contract across both majors and translates at the
 boundary, so `identityProvider`, `derivationOrigin`, `windowOpenerFeatures`,
-`transport` and `openIdProvider` are written the same way either way. Four
+`transport` and `openIdProvider` are written the same way either way. One
+difference in `identityProvider`: v10 names a provider by its authorize URL
+and the canister that mints its delegations, so a URL you set yourself needs
+`internetIdentityId` on v10 as well. IC Reactor pairs the mainnet URL and its
+own local default with the right canister, and throws for any other URL that
+has none, instead of guessing one. Four
 things genuinely have no v10 equivalent, and IC Reactor warns once on each
 rather than forwarding an option the client ignores:
 
@@ -233,8 +238,11 @@ export const { useActorQuery, useAuth, useIdentityAttributes, authentication } =
 
 Auth options are forwarded to the underlying `@icp-sdk/auth` client:
 `identityProvider`, `derivationOrigin`, `windowOpenerFeatures`,
-`openIdProvider`, `storage`, `keyType`, `idleOptions`, `identity`, and
-`transport`. Only the `"google" | "apple" | "microsoft"` aliases are accepted
+`openIdProvider` and `transport` on either major, `storage`, `keyType`,
+`idleOptions` and `identity` on v8 only, and `disableBrowserActivity` on v10
+only. An option the installed major lacks is dropped with a one-time warning
+(see [Which `@icp-sdk/auth` to install](#which-icp-sdkauth-to-install)). Only
+the `"google" | "apple" | "microsoft"` aliases are accepted
 for `openIdProvider`; any other value is dropped, since raw issuer URLs are
 only meaningful on `requestOpenIdAttributes`, where they scope the keys.
 
