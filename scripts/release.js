@@ -101,7 +101,10 @@ try {
   console.log("\n📦 Syncing examples to literal version for StackBlitz...")
   run("node", ["scripts/sync-example-versions.js", version])
 } catch (error) {
-  console.error("❌ Failed to sync example versions")
+  // An example the sync could not update keeps the previous release's ranges,
+  // and the commit below would ship them, so stop here as release-tools.js does.
+  console.error("❌ Failed to sync example versions.")
+  process.exit(1)
 }
 
 // 5. Update the lockfile LAST. Running it before the example sync leaves the
