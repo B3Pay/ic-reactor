@@ -45,6 +45,10 @@ rather than forwarding an option the client ignores:
 | `idleOptions` | Dropped. The idle timeout belongs to the identity provider canister; pass `maxTimeToIdle` to `login()` instead.                                                                                                                                     |
 | `identity`    | Dropped from constructor options. The agent signs as the session.                                                                                                                                                                                   |
 
+Two options exist only on v10: `maxTimeToIdle` on `login()` and
+`disableBrowserActivity` on the client. IC Reactor forwards them to a v10 client
+and drops them on v8 with a one-time warning, since v8 has no equivalent.
+
 One difference is security-relevant and warns unconditionally: **`targets` on
 `login()` is ignored by v10.** v8 forwards it to restrict the delegation to named
 canisters; v10 removed it and scopes a session at the identity provider instead.
@@ -310,9 +314,9 @@ takes the path as its third argument.
 ## Identity Attributes / OpenID email and profile values
 
 Identity attributes use a dedicated `IdentityAttributesManager`, with React
-bindings created by `createIdentityAttributeHooks`. Requires `@icp-sdk/auth` v8 —
-the peer range is `^8.0.0`, and the v7 compatibility path was removed in 3.12.0.
-v8 takes the nonce as a thunk (`() => Promise<Uint8Array>`); IC Reactor accepts
+bindings created by `createIdentityAttributeHooks`. Requires `@icp-sdk/auth` v8
+or v10. The peer range is `^8.0.0 || ^10.0.0`, and the v7 compatibility path was
+removed in 3.12.0. Both take the nonce as a thunk (`() => Promise<Uint8Array>`); IC Reactor accepts
 either a value or a callback and adapts it, but the callback form is what
 preserves the user gesture (see below).
 

@@ -97,20 +97,26 @@ login({
 Every option below can be passed either once, on the `AuthenticationManager`
 constructor, or per call to `login()` — the per-call value wins.
 
-| Option                 | Type                                 | Default                    | Description                                                                               |
-| ---------------------- | ------------------------------------ | -------------------------- | ----------------------------------------------------------------------------------------- |
-| `identityProvider`     | `string \| URL`                      | auto-detected              | Identity provider URL                                                                     |
-| `derivationOrigin`     | `string \| URL`                      | –                          | Origin the principal is derived from — see the callout below                              |
-| `idleOptions`          | `AuthClientIdleOptions`              | 10 min → sign out + reload | Idle detection and what happens on timeout                                                |
-| `storage`              | `AuthClientStorageLike`              | IndexedDB                  | Persistent storage backend for the session key and delegation                             |
-| `keyType`              | `"ECDSA" \| "Ed25519"`               | `"ECDSA"`                  | Session key algorithm; use `"Ed25519"` when the storage backend cannot hold a `CryptoKey` |
-| `windowOpenerFeatures` | `string`                             | –                          | `window.open` features string for the identity provider popup                             |
-| `openIdProvider`       | `"google" \| "apple" \| "microsoft"` | –                          | One-click sign-in through that provider                                                   |
-| `transport`            | `"window" \| "redirect"`             | `"window"`                 | How the client talks to the provider; `"redirect"` needs `@icp-sdk/auth` v8+              |
-| `identity`             | `SignIdentity \| PartialIdentity`    | –                          | An existing identity to authenticate via delegation                                       |
+| Option                   | Type                                 | Default                    | Description                                                                                                        |
+| ------------------------ | ------------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `identityProvider`       | `string \| URL`                      | auto-detected              | Identity provider URL                                                                                              |
+| `derivationOrigin`       | `string \| URL`                      | –                          | Origin the principal is derived from — see the callout below                                                       |
+| `idleOptions`            | `AuthClientIdleOptions`              | 10 min → sign out + reload | Idle detection and what happens on timeout                                                                         |
+| `storage`                | `AuthClientStorageLike`              | IndexedDB                  | Persistent storage backend for the session key and delegation                                                      |
+| `keyType`                | `"ECDSA" \| "Ed25519"`               | `"ECDSA"`                  | Session key algorithm; use `"Ed25519"` when the storage backend cannot hold a `CryptoKey`                          |
+| `windowOpenerFeatures`   | `string`                             | –                          | `window.open` features string for the identity provider popup                                                      |
+| `openIdProvider`         | `"google" \| "apple" \| "microsoft"` | –                          | One-click sign-in through that provider                                                                            |
+| `transport`              | `"window" \| "redirect"`             | `"window"`                 | How the client talks to the provider; `"redirect"` needs `@icp-sdk/auth` v8+                                       |
+| `identity`               | `SignIdentity \| PartialIdentity`    | –                          | An existing identity to authenticate via delegation                                                                |
+| `disableBrowserActivity` | `boolean`                            | `false`                    | `@icp-sdk/auth` v10 only. Stop the client watching the page for activity, so only requests keep the session in use |
 
-`login()` additionally accepts `maxTimeToLive`, `targets`, `onSuccess`, and
-`onError`. The `AuthenticationManager` constructor additionally accepts
+`login()` additionally accepts `maxTimeToLive`, `maxTimeToIdle`, `targets`,
+`onSuccess`, and `onError`.
+
+`@icp-sdk/auth` v10 has no equivalent for `idleOptions`, `storage`, `keyType`,
+`identity` or `targets`, so IC Reactor drops them on v10 with a one-time
+warning. `maxTimeToIdle` and `disableBrowserActivity` exist only on v10 and are
+dropped on v8 the same way. The `AuthenticationManager` constructor additionally accepts
 `clientManager` (required), `authClient` (bring your own client instance), and
 `internetIdentityId` (canister ID of a locally deployed Internet Identity).
 

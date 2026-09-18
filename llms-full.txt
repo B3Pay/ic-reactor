@@ -63,6 +63,9 @@ boundary. On v10 four constructor options are dropped with a warning because
 they have no equivalent: `storage`, `keyType`, `idleOptions`, `identity`. And
 `targets` on `login()` is ignored by v10 — the delegation is NOT restricted to
 those canisters. Pin `^8` if you depend on canister-scoped delegations.
+`maxTimeToIdle` on `login()` and `disableBrowserActivity` on the client exist
+only on v10, so IC Reactor forwards them to v10 and drops them on v8 with a
+warning.
 
 Dynamic Candid:
 
