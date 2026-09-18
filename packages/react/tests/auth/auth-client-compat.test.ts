@@ -533,6 +533,62 @@ describe("constructor options across auth majors", () => {
     }
   })
 
+  // A v9+ client mints delegations through an agent of its own. Off mainnet
+  // that agent needs the network's root key, or every certificate from the
+  // local replica fails verification against mainnet's.
+  it("hands a v9+ client the local replica and its root key off mainnet", async () => {
+    const factory = useSessionEraClient()
+    const clientManager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "http://127.0.0.1:8000" },
+    })
+    vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+    const authentication = new AuthenticationManager({ clientManager })
+
+    await authentication.prepareClient()
+
+    expect(factory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentOptions: {
+          host: "http://127.0.0.1:8000/",
+          shouldFetchRootKey: true,
+        },
+      })
+    )
+  })
+
+  it("leaves a v9+ client's agent at its defaults on mainnet", async () => {
+    const factory = useSessionEraClient()
+    // An explicit mainnet host: under jsdom the default agent host is the
+    // page's `localhost`, which counts as a local network.
+    const clientManager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "https://icp-api.io" },
+    })
+    vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+    const authentication = new AuthenticationManager({ clientManager })
+
+    await authentication.prepareClient()
+
+    const [options] = factory.mock.calls[0] as [Record<string, unknown>]
+    expect(options).not.toHaveProperty("agentOptions")
+  })
+
+  it("gives a v8 client no agent options, since it has no such agent", async () => {
+    const factory = useLegacyClient()
+    const clientManager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "http://127.0.0.1:8000" },
+    })
+    vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+    const authentication = new AuthenticationManager({ clientManager })
+
+    await authentication.prepareClient()
+
+    const [options] = factory.mock.calls[0] as [Record<string, unknown>]
+    expect(options).not.toHaveProperty("agentOptions")
+  })
+
   it("does not rebuild a v9+ client for an option v9+ drops", async () => {
     const factory = useSessionEraClient()
     const { authentication } = createManager()

@@ -155,11 +155,14 @@ export function resetAuthCompatWarnings() {
  * @param options - IC Reactor's resolved options, in the v8-shaped contract.
  * @param flavor - The contract the installed client accepts.
  * @param pairing - Which canister goes with `options.identityProvider`.
+ * @param agentOptions - Options for the agent a v9+ client mints delegations
+ *   with. v8 has no such agent, so a `legacy` client never receives them.
  */
 export function toAuthClientConstructorOptions(
   options: AuthenticationClientOptions | undefined,
   flavor: AuthClientFlavor,
-  pairing: IdentityProviderPairing = { kind: "unknown" }
+  pairing: IdentityProviderPairing = { kind: "unknown" },
+  agentOptions?: Record<string, unknown>
 ): AuthenticationClientOptions | Record<string, unknown> | undefined {
   if (!options) {
     return options
@@ -198,6 +201,10 @@ export function toAuthClientConstructorOptions(
     }
   }
   const translated: Record<string, unknown> = { ...carried }
+
+  if (agentOptions !== undefined) {
+    translated.agentOptions = agentOptions
+  }
 
   if (identityProvider !== undefined) {
     if (pairing.kind === "unknown") {

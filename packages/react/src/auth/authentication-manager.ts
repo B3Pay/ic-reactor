@@ -494,8 +494,31 @@ export class AuthenticationManager {
     return toAuthClientConstructorOptions(
       options,
       this.authClientFlavor,
-      this.identityProviderPairing(options?.identityProvider)
+      this.identityProviderPairing(options?.identityProvider),
+      this.sessionAgentOptions()
     )
+  }
+
+  /**
+   * Options for the agent a v9+ client mints delegations with, off mainnet.
+   *
+   * That client makes its own calls to the Internet Identity canister, through
+   * an agent built from these options alone. Without a root key it checks every
+   * certificate against mainnet's, which a local replica or testnet cannot
+   * satisfy, so sign-in would fail at the first mint. Off mainnet it gets the
+   * replica this app already talks to and fetches that network's root key, the
+   * same trust the app's own agent needs there. On mainnet nothing is passed,
+   * and the client keeps its defaults.
+   */
+  private sessionAgentOptions(): Record<string, unknown> | undefined {
+    if (!this.clientManager.isLocal) {
+      return undefined
+    }
+    const host = this.clientManager.agentHost
+    return {
+      ...(host ? { host: host.toString() } : {}),
+      shouldFetchRootKey: true,
+    }
   }
 
   /**

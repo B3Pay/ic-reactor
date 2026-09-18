@@ -65,6 +65,12 @@ Pin `@icp-sdk/auth` to `^8` if you depend on canister-scoped delegations.
 > end-to-end suite that drives a fake Internet Identity still speaks v8's
 > ICRC-34 protocol; v10 signs in over `ii_session_delegation` and mints app
 > delegations at the II canister, which that harness does not yet emulate.
+>
+> v10 makes those mint calls through an agent of its own. Off mainnet, IC
+> Reactor gives that agent the replica your app already uses and has it fetch
+> the network's root key, since certificates from a local replica or testnet
+> cannot be checked against mainnet's. That path has unit tests only, and local
+> sign-in with v10 has not been run end to end yet.
 
 `@icp-sdk/auth` is an optional peer. `AuthenticationManager` reaches it through a
 literal `import("@icp-sdk/auth/client")`, so Vite, Rollup and webpack code-split

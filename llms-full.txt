@@ -66,7 +66,10 @@ those canisters. Pin `^8` if you depend on canister-scoped delegations.
 `maxTimeToIdle` on `login()` and `disableBrowserActivity` on the client exist
 only on v10, so IC Reactor forwards them to v10 and drops them on v8 with a
 warning. On v10 a custom `identityProvider` also needs `internetIdentityId`,
-because v10 names a provider by its authorize URL and its canister.
+because v10 names a provider by its authorize URL and its canister. Off
+mainnet, IC Reactor points v10's own minting agent at the app's replica and has
+it fetch that network's root key. Local v10 sign-in is not verified end to end
+yet.
 
 Dynamic Candid:
 
