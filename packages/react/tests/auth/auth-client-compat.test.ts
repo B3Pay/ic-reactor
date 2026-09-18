@@ -469,6 +469,90 @@ describe("constructor options across auth majors", () => {
     expect(warningText()).toContain("disableBrowserActivity")
   })
 
+  // A guessed canister sends the delegation calls to a different deployment
+  // than the one the user signs in at, so an unknown pairing has to fail here,
+  // where the message can name the missing option.
+  it("refuses a caller-set provider with no canister on a v9+ client", async () => {
+    const factory = useSessionEraClient()
+    const { authentication } = createManager({
+      identityProvider: "https://id.example.com/authorize",
+    })
+
+    await expect(authentication.prepareClient()).rejects.toThrow(
+      /internetIdentityId/
+    )
+    expect(factory).not.toHaveBeenCalled()
+  })
+
+  it("pairs IC Reactor's own local provider with the well-known canister", async () => {
+    const factory = useSessionEraClient()
+    const clientManager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "http://127.0.0.1:8000" },
+    })
+    vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+    const authentication = new AuthenticationManager({ clientManager })
+
+    await authentication.prepareClient()
+
+    expect(factory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identityProvider: {
+          authorizeUrl:
+            "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:8000/authorize",
+          canisterId: "rdmx6-jaaaa-aaaaa-aaadq-cai",
+        },
+      })
+    )
+  })
+
+  // The cookie describes a local deployment. Pairing its canister with the
+  // mainnet URL names a deployment that does not exist.
+  it("keeps a canister from ic_env away from an explicit mainnet URL", async () => {
+    const factory = useSessionEraClient()
+    vi.stubGlobal("document", {
+      cookie: "ic_env=internet_identity%3Drrkah-fqaaa-aaaaa-aaaaq-cai",
+    })
+    try {
+      const clientManager = new ClientManager({
+        queryClient: new QueryClient(),
+        agentOptions: { host: "http://127.0.0.1:8000" },
+      })
+      vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+      const authentication = new AuthenticationManager({
+        clientManager,
+        identityProvider: "https://id.ai/authorize",
+      })
+
+      await authentication.prepareClient()
+
+      const [options] = factory.mock.calls[0] as [Record<string, unknown>]
+      expect(options).not.toHaveProperty("identityProvider")
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("does not rebuild a v9+ client for an option v9+ drops", async () => {
+    const factory = useSessionEraClient()
+    const { authentication } = createManager()
+
+    await authentication.prepareClient()
+    await authentication.prepareClient({ keyType: "Ed25519" })
+
+    expect(factory).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not rebuild a v8 client for disableBrowserActivity", async () => {
+    const factory = useLegacyClient()
+    const { authentication } = createManager()
+
+    await authentication.prepareClient()
+    await authentication.prepareClient({ disableBrowserActivity: true })
+
+    expect(factory).toHaveBeenCalledTimes(1)
+  })
+
   it("rebuilds the client when disableBrowserActivity changes", async () => {
     const factory = useSessionEraClient()
     const { authentication } = createManager()
@@ -631,5 +715,27 @@ describe("signIn options across auth majors", () => {
     expect(stub.signIn).toHaveBeenCalledWith(
       expect.objectContaining({ maxTimeToIdle: 60_000_000_000n })
     )
+  })
+
+  // Each sign-in that passes `targets` gets a broader delegation than it asked
+  // for, so a warning spent on an earlier one says nothing about the next.
+  it("warns about targets on every v9+ sign-in", async () => {
+    const stub = Object.assign(createAuthClientStub(), {
+      getStatus: vi.fn(),
+      getPrincipal: vi.fn(),
+    })
+    const { authentication } = createManager(
+      { identityProvider: "https://id.ai/authorize" },
+      stub
+    )
+    const targets = [Principal.fromText("aaaaa-aa")]
+
+    await authentication.login({ targets })
+    await authentication.login({ targets })
+
+    const targetWarnings = (
+      console.warn as unknown as { mock: { calls: string[][] } }
+    ).mock.calls.filter(([message]) => message.includes("targets"))
+    expect(targetWarnings).toHaveLength(2)
   })
 })

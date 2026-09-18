@@ -23,7 +23,6 @@ import type {
   AuthClientSignInOptions,
   AuthenticationClientOptions,
 } from "./types.js"
-import { LOCAL_INTERNET_IDENTITY_CANISTER_ID } from "./constants.js"
 
 /**
  * Which options contract the installed `AuthClient` accepts.
@@ -42,6 +41,21 @@ export interface SessionIdentityProvider {
   authorizeUrl: string | URL
   canisterId: string
 }
+
+/**
+ * Which canister a v9+ client should pair with the configured
+ * `identityProvider` URL, as `AuthenticationManager` works it out.
+ *
+ * - `mainnet`: the URL is mainnet's and nothing overrides the canister, so the
+ *   option is omitted and the client uses mainnet for both halves.
+ * - `pair`: the canister is known, from `internetIdentityId` or because the URL
+ *   is one IC Reactor derived for a local deployment.
+ * - `unknown`: a URL the caller configured with no canister to go with it.
+ */
+export type IdentityProviderPairing =
+  | { kind: "mainnet" }
+  | { kind: "pair"; canisterId: string }
+  | { kind: "unknown" }
 
 /**
  * Detects the contract from the constructor itself rather than from the
@@ -131,25 +145,21 @@ export function resetAuthCompatWarnings() {
  * ignores it.
  *
  * On `session` the identity provider becomes a pair. The canister is not
- * derived from the URL -- v9+ is explicit that the origin serving a ceremony is
- * not a promise about which canister mints there -- so it comes from the
- * `internetIdentityId` the manager already tracks, falling back to the
- * well-known Internet Identity id that both mainnet and a conventional local
- * deployment use.
+ * derived from the URL, because v9+ is explicit that the origin serving a
+ * ceremony is not a promise about which canister mints there. `pairing` says
+ * which canister goes with the URL. When nothing does, this throws rather than
+ * guessing: a guessed canister sends the delegation calls to a different
+ * deployment than the one the user signs in at, and sign-in fails later with an
+ * error that names neither.
  *
  * @param options - IC Reactor's resolved options, in the v8-shaped contract.
  * @param flavor - The contract the installed client accepts.
- * @param internetIdentityId - Canister that mints this app's delegations.
- * @param isDefaultProvider - Whether `identityProvider` is the untouched
- *   mainnet default. When it is and no canister was configured, the option is
- *   omitted entirely: v9+ reads an absent `identityProvider` as "both values
- *   are mainnet's", which is more accurate than restating them.
+ * @param pairing - Which canister goes with `options.identityProvider`.
  */
 export function toAuthClientConstructorOptions(
   options: AuthenticationClientOptions | undefined,
   flavor: AuthClientFlavor,
-  internetIdentityId?: string,
-  isDefaultProvider = false
+  pairing: IdentityProviderPairing = { kind: "unknown" }
 ): AuthenticationClientOptions | Record<string, unknown> | undefined {
   if (!options) {
     return options
@@ -190,12 +200,16 @@ export function toAuthClientConstructorOptions(
   const translated: Record<string, unknown> = { ...carried }
 
   if (identityProvider !== undefined) {
-    const shouldOmit = isDefaultProvider && internetIdentityId === undefined
-
-    if (!shouldOmit) {
+    if (pairing.kind === "unknown") {
+      throw new Error(
+        `[ic-reactor] identityProvider ${String(identityProvider)} needs internetIdentityId with @icp-sdk/auth v10, which names a provider by its authorize URL and the canister that mints its delegations. Set internetIdentityId to the canister that serves that URL.`
+      )
+    }
+    // An absent option is how v9+ says "both values are mainnet's".
+    if (pairing.kind === "pair") {
       translated.identityProvider = {
         authorizeUrl: identityProvider,
-        canisterId: internetIdentityId ?? LOCAL_INTERNET_IDENTITY_CANISTER_ID,
+        canisterId: pairing.canisterId,
       } satisfies SessionIdentityProvider
     }
   }
@@ -240,9 +254,11 @@ export function toAuthClientSignInOptions(
   const { targets, ...carried } = options
 
   if (targets !== undefined) {
-    warnOnce(
-      "signIn:targets",
-      "`targets` was removed in @icp-sdk/auth v9+ and is ignored: the delegation you receive is NOT restricted to those canisters. The identity provider scopes a session to the application canister instead. Remove `targets`, or pin @icp-sdk/auth to ^8 if you depend on canister-scoped delegations."
+    // Every time, not once: each sign-in that passes `targets` receives a
+    // delegation broader than it asked for, and a warning spent on an earlier
+    // one says nothing about this one.
+    console.warn(
+      "[ic-reactor] `targets` was removed in @icp-sdk/auth v9+ and is ignored: the delegation you receive is NOT restricted to those canisters. The identity provider scopes a session to the application canister instead. Remove `targets`, or pin @icp-sdk/auth to ^8 if you depend on canister-scoped delegations."
     )
   }
 

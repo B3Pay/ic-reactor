@@ -28,6 +28,7 @@ import {
   toAuthClientConstructorOptions,
   toAuthClientSignInOptions,
   type AuthClientFlavor,
+  type IdentityProviderPairing,
 } from "./auth-client-compat.js"
 
 export interface AuthenticationManagerParameters extends AuthenticationClientOptions {
@@ -78,7 +79,11 @@ export class AuthenticationManager {
     error: undefined,
   }
   private readonly identityProvider?: string | URL
+  /** The provider taken from the `ic_env` cookie, when no caller set one. */
+  private readonly envIdentityProvider?: string | URL
   private readonly internetIdentityId?: string
+  /** Whether `internetIdentityId` came from the caller rather than the cookie. */
+  private readonly internetIdentityIdIsExplicit: boolean
   /**
    * Which authorize path the locally deployed Internet Identity serves, once
    * probed. `undefined` means not probed yet; `null` means it serves no sign-in
@@ -104,13 +109,14 @@ export class AuthenticationManager {
     this.clientManager = clientManager
     const canisterEnv =
       typeof window !== "undefined" ? getAuthenticationCanisterEnv() : undefined
-    this.identityProvider =
-      identityProvider ||
-      acceptEnvIdentityProvider(
-        canisterEnv?.[INTERNET_IDENTITY_PROVIDER_ENV_KEY] ||
-          canisterEnv?.["PUBLIC_INTERNET_IDENTITY_PROVIDER"],
-        clientManager
-      )
+    this.envIdentityProvider = identityProvider
+      ? undefined
+      : acceptEnvIdentityProvider(
+          canisterEnv?.[INTERNET_IDENTITY_PROVIDER_ENV_KEY] ||
+            canisterEnv?.["PUBLIC_INTERNET_IDENTITY_PROVIDER"],
+          clientManager
+        )
+    this.identityProvider = identityProvider || this.envIdentityProvider
     // Same cookie, same decision. This one only ever reaches a local provider
     // URL, but `allowEnvConfig: false` has to mean the cookie is not consulted
     // rather than mostly not consulted.
@@ -123,6 +129,7 @@ export class AuthenticationManager {
               canisterEnv?.["CANISTER_ID_INTERNET_IDENTITY"]
           )
         : undefined)
+    this.internetIdentityIdIsExplicit = Boolean(internetIdentityId)
     this.defaultClientOptions = clientOptions
 
     if (authClient) {
@@ -478,17 +485,73 @@ export class AuthenticationManager {
   /**
    * Hands the installed client the option shape it actually accepts.
    *
-   * `authClientOptions` keeps the untranslated values, because that is what
-   * `shouldRecreateClient` compares: two calls that differ only in a key a v9+
-   * client drops must still count as the same options, or the client would be
-   * rebuilt on every call.
+   * `authClientOptions` keeps the untranslated values, and `shouldRecreateClient`
+   * compares them with the installed major in mind: two calls that differ only
+   * in a key that major drops count as the same options, so the client is not
+   * rebuilt for them.
    */
   private toClientOptions(options?: AuthenticationClientOptions): unknown {
     return toAuthClientConstructorOptions(
       options,
       this.authClientFlavor,
-      this.internetIdentityId,
-      options?.identityProvider === IC_INTERNET_IDENTITY_PROVIDER
+      this.identityProviderPairing(options?.identityProvider)
+    )
+  }
+
+  /**
+   * Which canister a v9+ client should pair with `identityProvider`.
+   *
+   * v9+ names a provider by its authorize URL and the canister that mints its
+   * delegations, and nothing about the canister follows from the URL. The
+   * mainnet URL goes with mainnet's canister unless the caller named another.
+   * A canister read from the `ic_env` cookie belongs to a local deployment, so
+   * it never overrides that. Any other URL takes `internetIdentityId`, or the
+   * well-known local canister when the URL is one IC Reactor derived for a
+   * local deployment. A URL the caller set with no canister stays `unknown`.
+   */
+  private identityProviderPairing(
+    identityProvider?: string | URL
+  ): IdentityProviderPairing {
+    if (String(identityProvider) === IC_INTERNET_IDENTITY_PROVIDER) {
+      return this.internetIdentityIdIsExplicit && this.internetIdentityId
+        ? { kind: "pair", canisterId: this.internetIdentityId }
+        : { kind: "mainnet" }
+    }
+    if (this.internetIdentityId) {
+      return { kind: "pair", canisterId: this.internetIdentityId }
+    }
+    if (
+      identityProvider !== undefined &&
+      this.isDerivedLocalProvider(identityProvider)
+    ) {
+      return { kind: "pair", canisterId: LOCAL_INTERNET_IDENTITY_CANISTER_ID }
+    }
+    return { kind: "unknown" }
+  }
+
+  /**
+   * Whether `identityProvider` is a local provider IC Reactor chose, from the
+   * `ic_env` cookie or built for the local replica, rather than one a caller
+   * configured.
+   */
+  private isDerivedLocalProvider(identityProvider: string | URL): boolean {
+    if (this.envIdentityProvider !== undefined) {
+      return String(identityProvider) === String(this.envIdentityProvider)
+    }
+    if (
+      this.identityProvider !== undefined ||
+      !this.clientManager.isLocal ||
+      this.localAuthorizePath === null
+    ) {
+      return false
+    }
+    return (
+      String(identityProvider) ===
+      localInternetIdentityProvider(
+        Number(this.clientManager.agentHost?.port) || 4943,
+        this.internetIdentityId,
+        this.localAuthorizePath
+      )
     )
   }
 
@@ -503,7 +566,11 @@ export class AuthenticationManager {
     if (this.authClientWasProvided) {
       return false
     }
-    return !isSameAuthClientOptions(this.authClientOptions, options)
+    return !isSameAuthClientOptions(
+      this.authClientOptions,
+      options,
+      this.authClientFlavor
+    )
   }
 
   /**
@@ -740,9 +807,18 @@ function getAuthClientOpenIdProvider(
  * options (`storage`, `identity`, `idleOptions`) are compared by reference,
  * which is what module-scoped configuration produces.
  */
+/**
+ * Whether two option sets build the same client on the installed major.
+ *
+ * A key that major drops cannot change the client it builds, so a difference
+ * there must not cause a rebuild, which would throw away the prepared client:
+ * the v8-only `storage`, `keyType`, `idleOptions` and `identity` on v10, and the
+ * v10-only `disableBrowserActivity` on v8.
+ */
 function isSameAuthClientOptions(
-  current?: AuthenticationClientOptions,
-  next?: AuthenticationClientOptions
+  current: AuthenticationClientOptions | undefined,
+  next: AuthenticationClientOptions | undefined,
+  flavor: AuthClientFlavor
 ): boolean {
   if (current === next) {
     return true
@@ -751,20 +827,24 @@ function isSameAuthClientOptions(
     return false
   }
 
-  return (
+  const sameShared =
     String(current.identityProvider ?? "") ===
       String(next.identityProvider ?? "") &&
     current.windowOpenerFeatures === next.windowOpenerFeatures &&
     current.openIdProvider === next.openIdProvider &&
     String(current.derivationOrigin ?? "") ===
       String(next.derivationOrigin ?? "") &&
-    current.storage === next.storage &&
-    current.keyType === next.keyType &&
-    current.idleOptions === next.idleOptions &&
-    current.identity === next.identity &&
-    current.transport === next.transport &&
-    current.disableBrowserActivity === next.disableBrowserActivity
-  )
+    current.transport === next.transport
+
+  const sameForFlavor =
+    flavor === "session"
+      ? current.disableBrowserActivity === next.disableBrowserActivity
+      : current.storage === next.storage &&
+        current.keyType === next.keyType &&
+        current.idleOptions === next.idleOptions &&
+        current.identity === next.identity
+
+  return sameShared && sameForFlavor
 }
 
 /**
