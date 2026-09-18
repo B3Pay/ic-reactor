@@ -22,6 +22,12 @@ import {
   LOCAL_INTERNET_IDENTITY_CANISTER_ID,
   localInternetIdentityProvider,
 } from "./constants.js"
+import {
+  detectAuthClientFlavor,
+  toAuthClientConstructorOptions,
+  toAuthClientSignInOptions,
+  type AuthClientFlavor,
+} from "./auth-client-compat.js"
 
 export interface AuthenticationManagerParameters extends AuthenticationClientOptions {
   clientManager: ClientManager
@@ -35,7 +41,10 @@ export interface AuthenticationManagerParameters extends AuthenticationClientOpt
 }
 
 type AuthClientConstructor = {
-  new (options?: AuthenticationClientOptions): AuthClientLike
+  // The translated options are the installed client's shape, not IC Reactor's:
+  // `toAuthClientConstructorOptions` rewrites them per detected flavor, so this
+  // stays deliberately open rather than asserting a contract that varies.
+  new (options?: unknown): AuthClientLike
 }
 
 /**
@@ -59,6 +68,7 @@ export class AuthenticationManager {
     AuthClientConstructor | undefined
   >
   private authModuleMissing = false
+  private authClientFlavor: AuthClientFlavor = "legacy"
   private authClientOptions?: AuthenticationClientOptions
   private authStateValue: AuthState = {
     identity: null,
@@ -407,7 +417,7 @@ export class AuthenticationManager {
       return undefined
     }
 
-    this.authClient = new AuthClient(options)
+    this.authClient = new AuthClient(this.toClientOptions(options))
     this.authClientOptions = options
     return this.authClient
   }
@@ -423,7 +433,9 @@ export class AuthenticationManager {
     }
 
     try {
-      return await this.authClient.signIn(options)
+      return await this.authClient.signIn(
+        toAuthClientSignInOptions(options, this.authClientFlavor)
+      )
     } catch (error) {
       const identity = await Promise.resolve(
         this.authClient.getIdentity()
@@ -452,9 +464,26 @@ export class AuthenticationManager {
       return undefined
     }
 
-    this.authClient = new AuthClient(options)
+    this.authClient = new AuthClient(this.toClientOptions(options))
     this.authClientOptions = options
     return this.authClient
+  }
+
+  /**
+   * Hands the installed client the option shape it actually accepts.
+   *
+   * `authClientOptions` keeps the untranslated values, because that is what
+   * `shouldRecreateClient` compares: two calls that differ only in a key a v9+
+   * client drops must still count as the same options, or the client would be
+   * rebuilt on every call.
+   */
+  private toClientOptions(options?: AuthenticationClientOptions): unknown {
+    return toAuthClientConstructorOptions(
+      options,
+      this.authClientFlavor,
+      this.internetIdentityId,
+      options?.identityProvider === IC_INTERNET_IDENTITY_PROVIDER
+    )
   }
 
   /**
@@ -618,6 +647,7 @@ export class AuthenticationManager {
           }
 
           this.authClientConstructor = AuthClient
+          this.authClientFlavor = detectAuthClientFlavor(AuthClient)
           return AuthClient
         })
         .catch((error) => {

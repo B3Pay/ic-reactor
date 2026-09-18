@@ -50,7 +50,7 @@ export class IdentityAttributesManager {
 
     if (!authClient) {
       throw new Error(
-        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth v8, or provide a compatible authClient."
+        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth (v8 or v10), or provide a compatible authClient."
       )
     }
 

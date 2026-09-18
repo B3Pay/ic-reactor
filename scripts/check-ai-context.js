@@ -47,7 +47,14 @@ const DOCS_BASE = "/v3/"
  * @ic-reactor version, so anything else is drift until someone says otherwise.
  * Adding an entry here is the explicit way to say "this one is not ours".
  */
-const ALLOWED_EXTERNAL_VERSIONS = new Set([])
+const ALLOWED_EXTERNAL_VERSIONS = new Set([
+  // `@icp-sdk/auth` peer majors named in llms-full.txt's install guidance.
+  // v10 is the first to peer `@icp-sdk/core@^6`, which is what removes the
+  // npm ERESOLVE; v8 is still supported. v9 is deliberately absent -- it peers
+  // `@icp-sdk/core@^5` and is not a supported peer.
+  "8.0.0",
+  "10.0.0",
+])
 
 const llmsPath = join(rootDir, "llms.txt")
 const llmsText = readFileSync(llmsPath, "utf8")

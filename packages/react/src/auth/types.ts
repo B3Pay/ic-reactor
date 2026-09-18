@@ -12,7 +12,7 @@ export interface SignedIdentityAttributes {
  *
  * A function (or promise) lets the Internet Identity window open while the
  * nonce is still being fetched, so the popup is opened inside the user gesture
- * instead of after it. `@icp-sdk/auth` v8 requires the function form, and
+ * instead of after it. Every supported `@icp-sdk/auth` requires the function form, and
  * IC Reactor normalizes whichever of these you pass into that thunk.
  */
 export type IdentityAttributeNonce =
@@ -178,6 +178,11 @@ export interface RequestOpenIdIdentityAttributesParameters extends Omit<
 /**
  * Structural subset of `@icp-sdk/auth`'s `AuthClient` that IC Reactor relies
  * on. Declared locally so `@icp-sdk/auth` stays an optional peer dependency.
+ *
+ * Every method here is identical across the supported majors (v8 and v10) --
+ * only the option objects handed to the constructor and to `signIn` diverge,
+ * and `auth-client-compat.ts` translates those. That is what lets one interface
+ * describe both.
  */
 export interface AuthClientLike {
   getIdentity(): Promise<Identity> | Identity
@@ -186,7 +191,7 @@ export interface AuthClientLike {
   signOut(options?: { returnTo?: string }): Promise<void>
   requestAttributes(params: {
     keys: string[]
-    // `@icp-sdk/auth` v8 takes a thunk, so it can journal the value and replay
+    // Every supported `@icp-sdk/auth` takes a thunk, so it can journal the value and replay
     // the same bytes through a redirect flow.
     nonce: () => Promise<Uint8Array>
   }): Promise<SignedIdentityAttributes>

@@ -10,19 +10,52 @@ and reusable query or mutation factories built around TanStack Query.
 pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 
 # Optional: Internet Identity login helpers
-pnpm add @icp-sdk/auth@^8
+pnpm add @icp-sdk/auth@^10
 ```
 
-> **npm needs an override to install this set.** Every published
-> `@icp-sdk/auth` peers `@icp-sdk/core@^5`, while this package needs `^6`, so a
-> strict `npm install` fails with `ERESOLVE`. The metadata is stale rather than
-> the versions being incompatible — auth v8 runs against core v6, and this
-> repository's own suite exercises that combination. pnpm and yarn install it
-> as-is; for npm, add:
->
-> ```json
-> { "overrides": { "@icp-sdk/auth": { "@icp-sdk/core": "$@icp-sdk/core" } } }
-> ```
+## Which `@icp-sdk/auth` to install
+
+The peer range is `^8.0.0 || ^10.0.0`. **v10 is the one to install.** It is the
+first release whose peer is `@icp-sdk/core@^6` — the version this package needs —
+so a strict `npm install` resolves it with no `overrides` block.
+
+**v9 is deliberately excluded.** It peers `@icp-sdk/core@^5`, so it reintroduces
+the resolution failure v10 fixes.
+
+**v8 still works**, and is what this repository's end-to-end suite runs against.
+On npm it still needs the override, because its peer metadata is stale rather
+than the versions being incompatible — auth v8 runs against core v6:
+
+```json
+{ "overrides": { "@icp-sdk/auth": { "@icp-sdk/core": "$@icp-sdk/core" } } }
+```
+
+### What changes if you move from v8 to v10
+
+IC Reactor keeps one options contract across both majors and translates at the
+boundary, so `identityProvider`, `derivationOrigin`, `windowOpenerFeatures`,
+`transport` and `openIdProvider` are written the same way either way. Four
+things genuinely have no v10 equivalent, and IC Reactor warns once on each
+rather than forwarding an option the client ignores:
+
+| Option        | On v10                                                                                                                                                                                                                                              |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `storage`     | Dropped. Credentials moved behind `credentialStorage`, whose store also generates identities and holds a delegation alongside each key, so an `AuthClientStorage` cannot be adapted into one. Pass a pre-built `authClient` to keep a custom store. |
+| `keyType`     | Dropped. The credential store decides the key type.                                                                                                                                                                                                 |
+| `idleOptions` | Dropped. The idle timeout belongs to the identity provider canister; pass `maxTimeToIdle` to `login()` instead.                                                                                                                                     |
+| `identity`    | Dropped from constructor options. The agent signs as the session.                                                                                                                                                                                   |
+
+One difference is security-relevant and warns unconditionally: **`targets` on
+`login()` is ignored by v10.** v8 forwards it to restrict the delegation to named
+canisters; v10 removed it and scopes a session at the identity provider instead.
+A v10 client will hand you a delegation broader than a `targets` list asks for.
+Pin `@icp-sdk/auth` to `^8` if you depend on canister-scoped delegations.
+
+> **Support scope.** v10 is verified at the API-contract level — option
+> translation, version detection and `signIn` handling all have tests. The
+> end-to-end suite that drives a fake Internet Identity still speaks v8's
+> ICRC-34 protocol; v10 signs in over `ii_session_delegation` and mints app
+> delegations at the II canister, which that harness does not yet emulate.
 
 `@icp-sdk/auth` is an optional peer. `AuthenticationManager` reaches it through a
 literal `import("@icp-sdk/auth/client")`, so Vite, Rollup and webpack code-split

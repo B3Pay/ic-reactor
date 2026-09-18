@@ -106,7 +106,7 @@ constructor, or per call to `login()` — the per-call value wins.
 | `keyType`              | `"ECDSA" \| "Ed25519"`               | `"ECDSA"`                  | Session key algorithm; use `"Ed25519"` when the storage backend cannot hold a `CryptoKey` |
 | `windowOpenerFeatures` | `string`                             | –                          | `window.open` features string for the identity provider popup                             |
 | `openIdProvider`       | `"google" \| "apple" \| "microsoft"` | –                          | One-click sign-in through that provider                                                   |
-| `transport`            | `"window" \| "redirect"`             | `"window"`                 | How the client talks to the provider; `"redirect"` needs `@icp-sdk/auth` v8               |
+| `transport`            | `"window" \| "redirect"`             | `"window"`                 | How the client talks to the provider; `"redirect"` needs `@icp-sdk/auth` v8+              |
 | `identity`             | `SignIdentity \| PartialIdentity`    | –                          | An existing identity to authenticate via delegation                                       |
 
 `login()` additionally accepts `maxTimeToLive`, `targets`, `onSuccess`, and
@@ -165,8 +165,9 @@ can override the whole thing by passing `identityProvider`.
 
 ## Identity Attributes
 
-IC Reactor can request signed identity attributes from `@icp-sdk/auth` v8
-for OpenID email and profile flows. Use `useIdentityAttributes()` when a React
+IC Reactor can request signed identity attributes from `@icp-sdk/auth` v8 or
+v10 for OpenID email and profile flows. `requestAttributes` is unchanged between
+the two majors, so this works identically on either. Use `useIdentityAttributes()` when a React
 component needs to request attributes and send the signed payload to a backend or
 canister for verification.
 
@@ -221,9 +222,9 @@ function RegisterWithOpenIdProvider() {
   Pass `nonce` as a function, never an already-awaited value. Awaiting the nonce
   before calling `requestOpenIdAttributes` ends the browser's user gesture, so
   the Internet Identity window is blocked. The callback form lets the window
-  open first and the nonce resolve behind it. (`@icp-sdk/auth` v8 requires the
-  function form outright; IC Reactor normalizes whichever form you pass to what
-  the installed client expects.)
+  open first and the nonce resolve behind it. (Every supported `@icp-sdk/auth`
+  requires the function form outright; IC Reactor normalizes whichever form you
+  pass to what the installed client expects.)
 </Aside>
 
 Pass a documented auth provider alias (`"google"`, `"apple"`, or

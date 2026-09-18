@@ -13,6 +13,10 @@ import {
   AuthenticationManager,
   IdentityAttributesManager,
 } from "../../src/auth/index.js"
+import {
+  detectAuthClientFlavor,
+  resetAuthCompatWarnings,
+} from "../../src/auth/auth-client-compat.js"
 
 const authClientMocks = vi.hoisted(() => ({ factory: vi.fn() }))
 
@@ -236,5 +240,259 @@ describe("session restore", () => {
 
     expect(authentication.authState.isAuthenticated).toBe(false)
     expect(invalidate).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * `@icp-sdk/auth` v9 reshaped the AuthClient constructor and v10 moved its
+ * `@icp-sdk/core` peer to `^6`. IC Reactor supports both majors, so the option
+ * objects have to be translated per installed client while
+ * `AuthenticationClientOptions` -- IC Reactor's own contract -- stays put.
+ */
+describe("auth peer major detection", () => {
+  it("reads a v9+ client off the prototype, not the module namespace", () => {
+    class SessionEraClient {
+      getIdentity() {}
+      isAuthenticated() {}
+      signIn() {}
+      signOut() {}
+      requestAttributes() {}
+      // Added in v9; no v8 counterpart.
+      getStatus() {}
+      getPrincipal() {}
+    }
+
+    expect(detectAuthClientFlavor(SessionEraClient)).toBe("session")
+  })
+
+  it("treats a v8 client as legacy", () => {
+    class LegacyClient {
+      getIdentity() {}
+      isAuthenticated() {}
+      signIn() {}
+      signOut() {}
+      requestAttributes() {}
+    }
+
+    expect(detectAuthClientFlavor(LegacyClient)).toBe("legacy")
+  })
+
+  it("requires both markers, so one coincidental name is not enough", () => {
+    class HalfMatch {
+      getStatus() {}
+    }
+
+    expect(detectAuthClientFlavor(HalfMatch)).toBe("legacy")
+  })
+
+  it("falls back to legacy for something with no prototype at all", () => {
+    // Guessing `session` here would rewrite options into a shape a v8 client
+    // cannot read; guessing `legacy` passes them through untouched.
+    expect(detectAuthClientFlavor(undefined)).toBe("legacy")
+    expect(detectAuthClientFlavor({})).toBe("legacy")
+  })
+})
+
+describe("constructor options across auth majors", () => {
+  beforeEach(() => {
+    resetAuthCompatWarnings()
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+  })
+
+  /** Marks the mocked constructor as the v9+ shape. */
+  function useSessionEraClient() {
+    const factory = authClientMocks.factory
+    factory.mockImplementation(function () {
+      return createAuthClientStub()
+    })
+    Object.assign(factory.prototype as object, {
+      getStatus: () => {},
+      getPrincipal: () => {},
+    })
+    return factory
+  }
+
+  function useLegacyClient() {
+    const factory = authClientMocks.factory
+    factory.mockImplementation(function () {
+      return createAuthClientStub()
+    })
+    delete (factory.prototype as Record<string, unknown>).getStatus
+    delete (factory.prototype as Record<string, unknown>).getPrincipal
+    return factory
+  }
+
+  it("names the identity provider as a pair for a v9+ client", async () => {
+    const factory = useSessionEraClient()
+    const { authentication } = createManager({
+      identityProvider: "https://id.example.com/authorize",
+      internetIdentityId: "rdmx6-jaaaa-aaaaa-aaadq-cai",
+    })
+
+    await authentication.prepareClient()
+
+    // v9+ derives nothing from the URL: the origin serving a ceremony is not a
+    // promise about which canister mints there, so both halves are named.
+    expect(factory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identityProvider: {
+          authorizeUrl: "https://id.example.com/authorize",
+          canisterId: "rdmx6-jaaaa-aaaaa-aaadq-cai",
+        },
+      })
+    )
+  })
+
+  it("omits the identity provider entirely on mainnet defaults", async () => {
+    const factory = useSessionEraClient()
+    const { authentication } = createManager({
+      identityProvider: "https://id.ai/authorize",
+    })
+
+    await authentication.prepareClient()
+
+    // An absent `identityProvider` is v9+'s way of saying "both values are
+    // mainnet's", which is more accurate than restating them.
+    const [options] = factory.mock.calls[0] as [Record<string, unknown>]
+    expect(options).not.toHaveProperty("identityProvider")
+  })
+
+  it("leaves a v8 client's identity provider as a plain URL", async () => {
+    const factory = useLegacyClient()
+    const { authentication } = createManager({
+      identityProvider: "https://id.example.com/authorize",
+    })
+
+    await authentication.prepareClient()
+
+    expect(factory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identityProvider: "https://id.example.com/authorize",
+      })
+    )
+  })
+
+  it("drops v8-only options a v9+ client cannot accept, and says so", async () => {
+    const factory = useSessionEraClient()
+    const storage = {
+      get: async () => null,
+      set: async () => {},
+      remove: async () => {},
+    }
+    const { authentication } = createManager({
+      identityProvider: "https://id.example.com/authorize",
+      internetIdentityId: "rdmx6-jaaaa-aaaaa-aaadq-cai",
+      derivationOrigin: "https://app.example.com",
+      keyType: "Ed25519",
+      storage,
+      idleOptions: { disableIdle: true },
+    })
+
+    await authentication.prepareClient()
+
+    const [options] = factory.mock.calls[0] as [Record<string, unknown>]
+    // Each of these is a real v8 capability with no v9+ constructor
+    // equivalent. Forwarding a key that is silently ignored would be worse
+    // than dropping it loudly.
+    expect(options).not.toHaveProperty("storage")
+    expect(options).not.toHaveProperty("keyType")
+    expect(options).not.toHaveProperty("idleOptions")
+    // Options that still exist must survive the translation.
+    expect(options.derivationOrigin).toBe("https://app.example.com")
+
+    const warnings = (
+      console.warn as unknown as { mock: { calls: string[][] } }
+    ).mock.calls
+      .map(([message]) => message)
+      .join("\n")
+    expect(warnings).toContain("storage")
+    expect(warnings).toContain("keyType")
+    expect(warnings).toContain("idleOptions")
+  })
+
+  it("still forwards every v8-only option to a v8 client", async () => {
+    const factory = useLegacyClient()
+    const storage = {
+      get: async () => null,
+      set: async () => {},
+      remove: async () => {},
+    }
+    const idleOptions = { disableIdle: true }
+    const { authentication } = createManager({
+      keyType: "Ed25519",
+      storage,
+      idleOptions,
+    })
+
+    await authentication.prepareClient()
+
+    expect(factory).toHaveBeenCalledWith(
+      expect.objectContaining({ keyType: "Ed25519", storage, idleOptions })
+    )
+    expect(console.warn).not.toHaveBeenCalled()
+  })
+})
+
+describe("signIn options across auth majors", () => {
+  beforeEach(() => {
+    resetAuthCompatWarnings()
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+  })
+
+  it("strips targets for a v9+ client and warns that the scope is lost", async () => {
+    const stub = createAuthClientStub()
+    authClientMocks.factory.mockImplementation(function () {
+      return stub
+    })
+    Object.assign(authClientMocks.factory.prototype as object, {
+      getStatus: () => {},
+      getPrincipal: () => {},
+    })
+    const { authentication } = createManager({
+      identityProvider: "https://id.ai/authorize",
+    })
+
+    await authentication.login({
+      maxTimeToLive: 123n,
+      targets: [Principal.fromText("aaaaa-aa")],
+    })
+
+    // `as unknown as` because the stub's signIn is typed with no parameters,
+    // matching how the rest of this file reads mock call arguments.
+    const [signInOptions] = stub.signIn.mock.calls[0] as unknown as [
+      Record<string, unknown>,
+    ]
+    // v9+ ignores `targets` rather than rejecting it, so the delegation that
+    // comes back is broader than the caller asked for. Silence here would hand
+    // an app a wider delegation than it requested.
+    expect(signInOptions).not.toHaveProperty("targets")
+    expect(signInOptions.maxTimeToLive).toBe(123n)
+    expect(
+      (console.warn as unknown as { mock: { calls: string[][] } }).mock.calls
+        .map(([message]) => message)
+        .join("\n")
+    ).toContain("targets")
+  })
+
+  it("keeps targets for a v8 client, which still honours them", async () => {
+    const stub = createAuthClientStub()
+    authClientMocks.factory.mockImplementation(function () {
+      return stub
+    })
+    delete (authClientMocks.factory.prototype as Record<string, unknown>)
+      .getStatus
+    delete (authClientMocks.factory.prototype as Record<string, unknown>)
+      .getPrincipal
+    const targets = [Principal.fromText("aaaaa-aa")]
+    const { authentication } = createManager({
+      identityProvider: "https://id.ai/authorize",
+    })
+
+    await authentication.login({ targets })
+
+    expect(stub.signIn).toHaveBeenCalledWith(
+      expect.objectContaining({ targets })
+    )
+    expect(console.warn).not.toHaveBeenCalled()
   })
 })
