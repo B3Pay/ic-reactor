@@ -37,6 +37,7 @@ export class IdentityAttributesManager {
     nonce,
     signIn = true,
     maxTimeToLive,
+    maxTimeToIdle,
     targets,
     ...clientOptions
   }: RequestIdentityAttributesParameters): Promise<IdentityAttributeResult> => {
@@ -62,6 +63,7 @@ export class IdentityAttributesManager {
       const identityPromise = signIn
         ? this.authentication.signInOrRecoverIdentity({
             maxTimeToLive,
+            maxTimeToIdle,
             targets,
           })
         : Promise.resolve(authClient.getIdentity())

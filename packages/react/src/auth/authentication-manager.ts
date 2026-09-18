@@ -24,6 +24,7 @@ import {
 } from "./constants.js"
 import {
   detectAuthClientFlavor,
+  detectAuthClientInstanceFlavor,
   toAuthClientConstructorOptions,
   toAuthClientSignInOptions,
   type AuthClientFlavor,
@@ -127,6 +128,11 @@ export class AuthenticationManager {
     if (authClient) {
       this.authClientWasProvided = true
       this.authClient = authClient
+      // A caller-built client never goes through the module loader that
+      // detects the flavor, so read it off the instance. Without this a v10
+      // client handed in here was treated as v8, and `targets` reached it
+      // without the warning that it is ignored.
+      this.authClientFlavor = detectAuthClientInstanceFlavor(authClient)
       this.syncStateFromClient(this.authStateRevision).catch((error) => {
         this.updateState({ error: error as Error, isAuthenticating: false })
       })
@@ -715,6 +721,7 @@ function getAuthClientOptions(
     idleOptions: options.idleOptions,
     identity: options.identity,
     transport: options.transport,
+    disableBrowserActivity: options.disableBrowserActivity,
   }
 }
 
@@ -755,7 +762,8 @@ function isSameAuthClientOptions(
     current.keyType === next.keyType &&
     current.idleOptions === next.idleOptions &&
     current.identity === next.identity &&
-    current.transport === next.transport
+    current.transport === next.transport &&
+    current.disableBrowserActivity === next.disableBrowserActivity
   )
 }
 
@@ -885,6 +893,7 @@ function getSignInOptions(
 
   return {
     maxTimeToLive: options.maxTimeToLive,
+    maxTimeToIdle: options.maxTimeToIdle,
     targets: options.targets,
   }
 }

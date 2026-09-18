@@ -74,6 +74,24 @@ export function detectAuthClientFlavor(AuthClient: unknown): AuthClientFlavor {
 }
 
 /**
+ * Detects the contract of a client the caller built and passed in.
+ *
+ * Such a client never goes through the module loader, so there is no
+ * constructor to hand {@link detectAuthClientFlavor}. The markers are the same
+ * two methods, reached through the instance instead of the prototype.
+ */
+export function detectAuthClientInstanceFlavor(
+  client: unknown
+): AuthClientFlavor {
+  const instance = client as Record<string, unknown> | undefined
+
+  return typeof instance?.getStatus === "function" &&
+    typeof instance?.getPrincipal === "function"
+    ? "session"
+    : "legacy"
+}
+
+/**
  * Options a `session`-era client drops on the floor, and what replaced them.
  *
  * Each is a real capability in v8 with no v9+ constructor equivalent, so the
@@ -85,7 +103,7 @@ const DROPPED_CONSTRUCTOR_OPTIONS: Record<string, string> = {
   keyType:
     "`keyType` was removed in v9+: the credential store decides the key type, because a store that has to serialise needs an extractable key and one that does not should not hold one.",
   idleOptions:
-    "`idleOptions` was removed in v9+: the idle timeout belongs to the identity provider canister. Pass `maxTimeToIdle` to `login()` instead, and use `disableBrowserActivity` to stop the client watching the browser.",
+    "`idleOptions` was removed in v9+: the idle timeout belongs to the identity provider canister. Pass `maxTimeToIdle` to `login()` instead, and set `disableBrowserActivity` in the AuthenticationManager options to stop the client watching the browser.",
   identity:
     "`identity` was removed from v9+ constructor options: the agent signs as the session rather than as an identity handed in at construction.",
 }
@@ -107,7 +125,10 @@ export function resetAuthCompatWarnings() {
 /**
  * Translates IC Reactor's constructor options into the installed client's shape.
  *
- * On `legacy` the object is already the right shape and is returned as-is.
+ * On `legacy` the object is already the right shape and is returned as-is,
+ * except for `disableBrowserActivity`. That option exists only on v10, so it is
+ * dropped with a one-time warning rather than handed to a v8 client that
+ * ignores it.
  *
  * On `session` the identity provider becomes a pair. The canister is not
  * derived from the URL -- v9+ is explicit that the origin serving a ceremony is
@@ -130,8 +151,21 @@ export function toAuthClientConstructorOptions(
   internetIdentityId?: string,
   isDefaultProvider = false
 ): AuthenticationClientOptions | Record<string, unknown> | undefined {
-  if (flavor === "legacy" || !options) {
+  if (!options) {
     return options
+  }
+
+  if (flavor === "legacy") {
+    if (options.disableBrowserActivity === undefined) {
+      return options
+    }
+    warnOnce(
+      "constructor:disableBrowserActivity",
+      "`disableBrowserActivity` needs @icp-sdk/auth v10 and is ignored by v8, which has no equivalent. On v8, `idleOptions` controls idle handling."
+    )
+    const { disableBrowserActivity: _disableBrowserActivity, ...legacy } =
+      options
+    return legacy
   }
 
   // Prefixed with `_` because they are destructured only to keep them out of
@@ -178,13 +212,29 @@ export function toAuthClientConstructorOptions(
  * fail -- it is simply ignored, and the delegation that comes back is broader
  * than the caller asked for. That is a security-relevant difference, so it
  * warns unconditionally rather than only in development.
+ *
+ * `maxTimeToIdle` goes the other way. It exists only on v10, so a v10 client
+ * receives it, and a v8 client, whose sign-in has no idle limit, gets it
+ * dropped with a one-time warning.
  */
 export function toAuthClientSignInOptions(
   options: AuthClientSignInOptions | undefined,
   flavor: AuthClientFlavor
 ): AuthClientSignInOptions | undefined {
-  if (flavor === "legacy" || !options) {
+  if (!options) {
     return options
+  }
+
+  if (flavor === "legacy") {
+    if (options.maxTimeToIdle === undefined) {
+      return options
+    }
+    warnOnce(
+      "signIn:maxTimeToIdle",
+      "`maxTimeToIdle` needs @icp-sdk/auth v10 and is ignored by v8, whose sign-in has no idle limit. On v8, set `idleOptions` instead."
+    )
+    const { maxTimeToIdle: _maxTimeToIdle, ...legacy } = options
+    return legacy
   }
 
   const { targets, ...carried } = options

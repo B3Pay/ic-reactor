@@ -134,10 +134,32 @@ export interface AuthenticationClientOptions {
    * @default "window"
    */
   transport?: "window" | "redirect"
+  /**
+   * Stops a v10 client from watching the page for signs of activity, so only
+   * requests keep the session in use.
+   *
+   * `@icp-sdk/auth` v10 only. v8 has no equivalent, so IC Reactor drops it
+   * there with a one-time warning. On v8, `idleOptions` controls idle handling.
+   * @default false
+   */
+  disableBrowserActivity?: boolean
 }
 
 export interface AuthClientSignInOptions {
+  /** The longest the delegation may last, in nanoseconds. */
   maxTimeToLive?: bigint
+  /**
+   * How long a signed-in user may be idle before the sign-in ends, in
+   * nanoseconds.
+   *
+   * `@icp-sdk/auth` v10 only. v8's sign-in has no idle limit, so IC Reactor
+   * drops it there with a one-time warning. On v8, set `idleOptions` instead.
+   */
+  maxTimeToIdle?: bigint
+  /**
+   * Canisters the delegation is restricted to. `@icp-sdk/auth` v8 only: v10
+   * ignores it, and IC Reactor warns when it is set for a v10 client.
+   */
   targets?: Principal[]
 }
 
@@ -156,6 +178,7 @@ export interface RequestIdentityAttributesParameters extends AuthenticationClien
    */
   signIn?: boolean
   maxTimeToLive?: bigint
+  maxTimeToIdle?: bigint
   targets?: Principal[]
 }
 

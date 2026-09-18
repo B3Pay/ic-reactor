@@ -73,6 +73,13 @@ beforeEach(() => {
   authClientMocks.factory.mockReset()
 })
 
+/** Every console.warn message so far, joined, for `toContain` checks. */
+function warningText() {
+  return (console.warn as unknown as { mock: { calls: string[][] } }).mock.calls
+    .map(([message]) => message)
+    .join("\n")
+}
+
 describe("@icp-sdk/auth nonce contract", () => {
   it("always hands the client a nonce thunk", async () => {
     const authClient = createAuthClientStub()
@@ -431,6 +438,49 @@ describe("constructor options across auth majors", () => {
     )
     expect(console.warn).not.toHaveBeenCalled()
   })
+
+  // The `idleOptions` warning tells a v10 user to set `disableBrowserActivity`,
+  // so the option has to reach a v10 client rather than stop at IC Reactor's
+  // own option handling.
+  it("forwards disableBrowserActivity to a v9+ client", async () => {
+    const factory = useSessionEraClient()
+    const { authentication } = createManager({
+      identityProvider: "https://id.example.com/authorize",
+      internetIdentityId: "rdmx6-jaaaa-aaaaa-aaadq-cai",
+      disableBrowserActivity: true,
+    })
+
+    await authentication.prepareClient()
+
+    expect(factory).toHaveBeenCalledWith(
+      expect.objectContaining({ disableBrowserActivity: true })
+    )
+    expect(console.warn).not.toHaveBeenCalled()
+  })
+
+  it("drops disableBrowserActivity for a v8 client, and says so", async () => {
+    const factory = useLegacyClient()
+    const { authentication } = createManager({ disableBrowserActivity: true })
+
+    await authentication.prepareClient()
+
+    const [options] = factory.mock.calls[0] as [Record<string, unknown>]
+    expect(options).not.toHaveProperty("disableBrowserActivity")
+    expect(warningText()).toContain("disableBrowserActivity")
+  })
+
+  it("rebuilds the client when disableBrowserActivity changes", async () => {
+    const factory = useSessionEraClient()
+    const { authentication } = createManager()
+
+    await authentication.prepareClient()
+    await authentication.prepareClient({ disableBrowserActivity: true })
+    await authentication.prepareClient({ disableBrowserActivity: true })
+
+    // The option comparison names each field it checks, so a field missing
+    // from it could never change after the first build.
+    expect(factory).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe("signIn options across auth majors", () => {
@@ -494,5 +544,92 @@ describe("signIn options across auth majors", () => {
       expect.objectContaining({ targets })
     )
     expect(console.warn).not.toHaveBeenCalled()
+  })
+
+  // The idle limit moved from the client to the sign-in in v10, and the
+  // `idleOptions` warning points there, so `login()` has to pass it on.
+  it("forwards maxTimeToIdle to a v9+ client", async () => {
+    const stub = createAuthClientStub()
+    authClientMocks.factory.mockImplementation(function () {
+      return stub
+    })
+    Object.assign(authClientMocks.factory.prototype as object, {
+      getStatus: () => {},
+      getPrincipal: () => {},
+    })
+    const { authentication } = createManager({
+      identityProvider: "https://id.ai/authorize",
+    })
+
+    await authentication.login({ maxTimeToIdle: 3_600_000_000_000n })
+
+    expect(stub.signIn).toHaveBeenCalledWith(
+      expect.objectContaining({ maxTimeToIdle: 3_600_000_000_000n })
+    )
+    expect(console.warn).not.toHaveBeenCalled()
+  })
+
+  it("drops maxTimeToIdle for a v8 client, and says so", async () => {
+    const stub = createAuthClientStub()
+    authClientMocks.factory.mockImplementation(function () {
+      return stub
+    })
+    delete (authClientMocks.factory.prototype as Record<string, unknown>)
+      .getStatus
+    delete (authClientMocks.factory.prototype as Record<string, unknown>)
+      .getPrincipal
+    const { authentication } = createManager({
+      identityProvider: "https://id.ai/authorize",
+    })
+
+    await authentication.login({ maxTimeToIdle: 3_600_000_000_000n })
+
+    const [signInOptions] = stub.signIn.mock.calls[0] as unknown as [
+      Record<string, unknown>,
+    ]
+    expect(signInOptions).not.toHaveProperty("maxTimeToIdle")
+    expect(warningText()).toContain("maxTimeToIdle")
+  })
+
+  // The error messages send a caller whose bundler cannot resolve the auth
+  // module to this path, and so does the `storage` warning. A client built
+  // there never passes the module loader, where the flavor is otherwise read.
+  it("detects a pre-built v9+ client, so targets still warns", async () => {
+    const stub = Object.assign(createAuthClientStub(), {
+      getStatus: vi.fn(),
+      getPrincipal: vi.fn(),
+    })
+    const { authentication } = createManager(
+      { identityProvider: "https://id.ai/authorize" },
+      stub
+    )
+
+    await authentication.login({ targets: [Principal.fromText("aaaaa-aa")] })
+
+    const [signInOptions] = stub.signIn.mock.calls[0] as unknown as [
+      Record<string, unknown>,
+    ]
+    expect(signInOptions).not.toHaveProperty("targets")
+    expect(warningText()).toContain("targets")
+    expect(authClientMocks.factory).not.toHaveBeenCalled()
+  })
+
+  it("forwards maxTimeToIdle when requestAttributes signs in", async () => {
+    const stub = Object.assign(createAuthClientStub(), {
+      getStatus: vi.fn(),
+      getPrincipal: vi.fn(),
+    })
+    const { authentication } = createManager({}, stub)
+    const attributes = new IdentityAttributesManager(authentication)
+
+    await attributes.request({
+      keys: ["email"],
+      nonce: new Uint8Array([1]),
+      maxTimeToIdle: 60_000_000_000n,
+    })
+
+    expect(stub.signIn).toHaveBeenCalledWith(
+      expect.objectContaining({ maxTimeToIdle: 60_000_000_000n })
+    )
   })
 })
