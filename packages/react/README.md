@@ -10,19 +10,67 @@ and reusable query or mutation factories built around TanStack Query.
 pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 
 # Optional: Internet Identity login helpers
-pnpm add @icp-sdk/auth@^8
+pnpm add @icp-sdk/auth@^10
 ```
 
-> **npm needs an override to install this set.** Every published
-> `@icp-sdk/auth` peers `@icp-sdk/core@^5`, while this package needs `^6`, so a
-> strict `npm install` fails with `ERESOLVE`. The metadata is stale rather than
-> the versions being incompatible — auth v8 runs against core v6, and this
-> repository's own suite exercises that combination. pnpm and yarn install it
-> as-is; for npm, add:
+## Which `@icp-sdk/auth` to install
+
+The peer range is `^8.0.0 || ^10.0.0`. **v10 is the one to install.** It is the
+first release whose peer is `@icp-sdk/core@^6` — the version this package needs —
+so a strict `npm install` resolves it with no `overrides` block.
+
+**v9 is deliberately excluded.** It peers `@icp-sdk/core@^5`, so it reintroduces
+the resolution failure v10 fixes.
+
+**v8 still works**, and is what this repository's end-to-end suite runs against.
+On npm it still needs the override, because its peer metadata is stale rather
+than the versions being incompatible — auth v8 runs against core v6:
+
+```json
+{ "overrides": { "@icp-sdk/auth": { "@icp-sdk/core": "$@icp-sdk/core" } } }
+```
+
+### What changes if you move from v8 to v10
+
+IC Reactor keeps one options contract across both majors and translates at the
+boundary, so `identityProvider`, `derivationOrigin`, `windowOpenerFeatures`,
+`transport` and `openIdProvider` are written the same way either way. One
+difference in `identityProvider`: v10 names a provider by its authorize URL
+and the canister that mints its delegations, so a URL you set yourself needs
+`internetIdentityId` on v10 as well. IC Reactor pairs the mainnet URL and its
+own local default with the right canister, and throws for any other URL that
+has none, instead of guessing one. Four
+things genuinely have no v10 equivalent, and IC Reactor warns once on each
+rather than forwarding an option the client ignores:
+
+| Option        | On v10                                                                                                                                                                                                                                              |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `storage`     | Dropped. Credentials moved behind `credentialStorage`, whose store also generates identities and holds a delegation alongside each key, so an `AuthClientStorage` cannot be adapted into one. Pass a pre-built `authClient` to keep a custom store. |
+| `keyType`     | Dropped. The credential store decides the key type.                                                                                                                                                                                                 |
+| `idleOptions` | Dropped. The idle timeout belongs to the identity provider canister; pass `maxTimeToIdle` to `login()` instead.                                                                                                                                     |
+| `identity`    | Dropped from constructor options. The agent signs as the session.                                                                                                                                                                                   |
+
+Two options exist only on v10: `maxTimeToIdle` on `login()` and
+`disableBrowserActivity` on the client. IC Reactor forwards them to a v10 client
+and drops them on v8 with a one-time warning, since v8 has no equivalent.
+
+One difference is security-relevant and warns unconditionally: **`targets` on
+`login()` is ignored by v10.** v8 forwards it to restrict the delegation to named
+canisters; v10 removed it and scopes a session at the identity provider instead.
+A v10 client will hand you a delegation broader than a `targets` list asks for.
+Pin `@icp-sdk/auth` to `^8` if you depend on canister-scoped delegations.
+
+> **Support scope.** v10 is verified at the API-contract level — option
+> translation, version detection and `signIn` handling all have tests. The
+> end-to-end suite that drives a fake Internet Identity still speaks v8's
+> ICRC-34 protocol; v10 signs in over `ii_session_delegation` and mints app
+> delegations at the II canister, which that harness does not yet emulate.
 >
-> ```json
-> { "overrides": { "@icp-sdk/auth": { "@icp-sdk/core": "$@icp-sdk/core" } } }
-> ```
+> v10 makes those mint calls through an agent of its own. Off mainnet, IC
+> Reactor gives that agent the replica your app already uses and has it fetch
+> the network's root key, since certificates from a local replica or testnet
+> cannot be checked against mainnet's. That path has unit tests only, and local
+> sign-in with v10 has not been run end to end yet.
 
 `@icp-sdk/auth` is an optional peer. `AuthenticationManager` reaches it through a
 literal `import("@icp-sdk/auth/client")`, so Vite, Rollup and webpack code-split
@@ -196,8 +244,11 @@ export const { useActorQuery, useAuth, useIdentityAttributes, authentication } =
 
 Auth options are forwarded to the underlying `@icp-sdk/auth` client:
 `identityProvider`, `derivationOrigin`, `windowOpenerFeatures`,
-`openIdProvider`, `storage`, `keyType`, `idleOptions`, `identity`, and
-`transport`. Only the `"google" | "apple" | "microsoft"` aliases are accepted
+`openIdProvider` and `transport` on either major, `storage`, `keyType`,
+`idleOptions` and `identity` on v8 only, and `disableBrowserActivity` on v10
+only. An option the installed major lacks is dropped with a one-time warning
+(see [Which `@icp-sdk/auth` to install](#which-icp-sdkauth-to-install)). Only
+the `"google" | "apple" | "microsoft"` aliases are accepted
 for `openIdProvider`; any other value is dropped, since raw issuer URLs are
 only meaningful on `requestOpenIdAttributes`, where they scope the keys.
 
@@ -277,9 +328,9 @@ takes the path as its third argument.
 ## Identity Attributes / OpenID email and profile values
 
 Identity attributes use a dedicated `IdentityAttributesManager`, with React
-bindings created by `createIdentityAttributeHooks`. Requires `@icp-sdk/auth` v8 —
-the peer range is `^8.0.0`, and the v7 compatibility path was removed in 3.12.0.
-v8 takes the nonce as a thunk (`() => Promise<Uint8Array>`); IC Reactor accepts
+bindings created by `createIdentityAttributeHooks`. Requires `@icp-sdk/auth` v8
+or v10. The peer range is `^8.0.0 || ^10.0.0`, and the v7 compatibility path was
+removed in 3.12.0. Both take the nonce as a thunk (`() => Promise<Uint8Array>`); IC Reactor accepts
 either a value or a callback and adapts it, but the callback form is what
 preserves the user gesture (see below).
 

@@ -62,7 +62,7 @@
     "@ic-reactor/core": "workspace:^"
   },
   "peerDependencies": {
-    "@icp-sdk/auth": "^8.0.0",
+    "@icp-sdk/auth": "^8.0.0 || ^10.0.0",
     "@icp-sdk/core": "^6.1.0",
     "@tanstack/react-query": "^5.0.0",
     "react": ">=18.0.0",

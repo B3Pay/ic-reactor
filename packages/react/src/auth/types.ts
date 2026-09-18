@@ -12,7 +12,7 @@ export interface SignedIdentityAttributes {
  *
  * A function (or promise) lets the Internet Identity window open while the
  * nonce is still being fetched, so the popup is opened inside the user gesture
- * instead of after it. `@icp-sdk/auth` v8 requires the function form, and
+ * instead of after it. Every supported `@icp-sdk/auth` requires the function form, and
  * IC Reactor normalizes whichever of these you pass into that thunk.
  */
 export type IdentityAttributeNonce =
@@ -134,10 +134,32 @@ export interface AuthenticationClientOptions {
    * @default "window"
    */
   transport?: "window" | "redirect"
+  /**
+   * Stops a v10 client from watching the page for signs of activity, so only
+   * requests keep the session in use.
+   *
+   * `@icp-sdk/auth` v10 only. v8 has no equivalent, so IC Reactor drops it
+   * there with a one-time warning. On v8, `idleOptions` controls idle handling.
+   * @default false
+   */
+  disableBrowserActivity?: boolean
 }
 
 export interface AuthClientSignInOptions {
+  /** The longest the delegation may last, in nanoseconds. */
   maxTimeToLive?: bigint
+  /**
+   * How long a signed-in user may be idle before the sign-in ends, in
+   * nanoseconds.
+   *
+   * `@icp-sdk/auth` v10 only. v8's sign-in has no idle limit, so IC Reactor
+   * drops it there with a one-time warning. On v8, set `idleOptions` instead.
+   */
+  maxTimeToIdle?: bigint
+  /**
+   * Canisters the delegation is restricted to. `@icp-sdk/auth` v8 only: v10
+   * ignores it, and IC Reactor warns when it is set for a v10 client.
+   */
   targets?: Principal[]
 }
 
@@ -156,6 +178,7 @@ export interface RequestIdentityAttributesParameters extends AuthenticationClien
    */
   signIn?: boolean
   maxTimeToLive?: bigint
+  maxTimeToIdle?: bigint
   targets?: Principal[]
 }
 
@@ -178,6 +201,11 @@ export interface RequestOpenIdIdentityAttributesParameters extends Omit<
 /**
  * Structural subset of `@icp-sdk/auth`'s `AuthClient` that IC Reactor relies
  * on. Declared locally so `@icp-sdk/auth` stays an optional peer dependency.
+ *
+ * Every method here is identical across the supported majors (v8 and v10) --
+ * only the option objects handed to the constructor and to `signIn` diverge,
+ * and `auth-client-compat.ts` translates those. That is what lets one interface
+ * describe both.
  */
 export interface AuthClientLike {
   getIdentity(): Promise<Identity> | Identity
@@ -186,7 +214,7 @@ export interface AuthClientLike {
   signOut(options?: { returnTo?: string }): Promise<void>
   requestAttributes(params: {
     keys: string[]
-    // `@icp-sdk/auth` v8 takes a thunk, so it can journal the value and replay
+    // Every supported `@icp-sdk/auth` takes a thunk, so it can journal the value and replay
     // the same bytes through a redirect flow.
     nonce: () => Promise<Uint8Array>
   }): Promise<SignedIdentityAttributes>

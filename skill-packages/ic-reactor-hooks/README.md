@@ -72,12 +72,12 @@ package map, install commands, auth guidance, or verification matrix.
 
 #### Dependency note
 
-`@ic-reactor/react` requires `@icp-sdk/auth@^8` for Internet Identity; v7 is no
-longer supported. On npm the advertised peer set is unresolvable — every
-published `@icp-sdk/auth` peers `@icp-sdk/core@^5` while IC Reactor needs `^6`,
-so a strict `npm install` fails with `ERESOLVE`. The metadata is stale upstream,
-not an actual incompatibility; point auth at your own `core` with a scoped
-override:
+`@ic-reactor/react` supports `@icp-sdk/auth` v10 and v8 for Internet Identity.
+Install v10, the first release that peers `@icp-sdk/core@^6`, which IC Reactor
+needs, so npm installs the set without help. v7 and v9 are not supported. Every
+v8 release peers `@icp-sdk/core@^5`, so a strict `npm install` of v8 fails with
+`ERESOLVE`. That metadata is stale upstream, not an actual incompatibility, so on
+v8 point auth at your own `core` with a scoped override:
 
 ```json
 {

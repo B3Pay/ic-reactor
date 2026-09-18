@@ -42,18 +42,34 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 Auth helpers:
 
 ```bash
-pnpm add @ic-reactor/react @icp-sdk/auth
+pnpm add @ic-reactor/react @icp-sdk/auth@^10
 ```
 
-The `@icp-sdk/auth` peer is `^8`; v7 is no longer supported. pnpm and yarn
-install this set as published. A strict `npm install` fails with `ERESOLVE`,
-because every published `@icp-sdk/auth` still peers `@icp-sdk/core@^5` while
-`@ic-reactor/react` needs `^6` — stale metadata rather than an actual
-incompatibility. For npm, add to `package.json`:
+The `@icp-sdk/auth` peer is `^8.0.0 || ^10.0.0`. Install v10: it is the first
+release to peer `@icp-sdk/core@^6`, so a strict `npm install` resolves the set
+with no `overrides`. v7 and v9 are not supported — v9 still peers
+`@icp-sdk/core@^5`.
+
+On v8, a strict `npm install` fails with `ERESOLVE` (stale metadata rather than
+an actual incompatibility — auth v8 runs against core v6). For npm on v8, add to
+`package.json`:
 
 ```json
 { "overrides": { "@icp-sdk/auth": { "@icp-sdk/core": "$@icp-sdk/core" } } }
 ```
+
+IC Reactor keeps one options contract across both majors and translates at the
+boundary. On v10 four constructor options are dropped with a warning because
+they have no equivalent: `storage`, `keyType`, `idleOptions`, `identity`. And
+`targets` on `login()` is ignored by v10 — the delegation is NOT restricted to
+those canisters. Pin `^8` if you depend on canister-scoped delegations.
+`maxTimeToIdle` on `login()` and `disableBrowserActivity` on the client exist
+only on v10, so IC Reactor forwards them to v10 and drops them on v8 with a
+warning. On v10 a custom `identityProvider` also needs `internetIdentityId`,
+because v10 names a provider by its authorize URL and its canister. Off
+mainnet, IC Reactor points v10's own minting agent at the app's replica and has
+it fetch that network's root key. Local v10 sign-in is not verified end to end
+yet.
 
 Dynamic Candid:
 

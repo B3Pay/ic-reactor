@@ -37,6 +37,7 @@ export class IdentityAttributesManager {
     nonce,
     signIn = true,
     maxTimeToLive,
+    maxTimeToIdle,
     targets,
     ...clientOptions
   }: RequestIdentityAttributesParameters): Promise<IdentityAttributeResult> => {
@@ -50,7 +51,7 @@ export class IdentityAttributesManager {
 
     if (!authClient) {
       throw new Error(
-        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth v8, or provide a compatible authClient."
+        "Authentication module is missing or failed to initialize. To request identity attributes, please install @icp-sdk/auth (v8 or v10), or provide a compatible authClient."
       )
     }
 
@@ -62,6 +63,7 @@ export class IdentityAttributesManager {
       const identityPromise = signIn
         ? this.authentication.signInOrRecoverIdentity({
             maxTimeToLive,
+            maxTimeToIdle,
             targets,
           })
         : Promise.resolve(authClient.getIdentity())
