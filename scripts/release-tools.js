@@ -84,7 +84,23 @@ const syncedFiles = syncAiContextVersions(rootDir, previousVersion, version, [
 ])
 syncedFiles.forEach((f) => console.log(`✅ Synced ${f} to ${version}`))
 
-// 2. Update library lockfile
+// 2. Sync example dependency ranges to the new tool versions, before the
+//    lockfile update. Examples pin @ic-reactor/* with caret ranges, and pnpm
+//    links a workspace package only while its version satisfies that range. A
+//    minor bump such as 0.13.1 to 0.14.0 leaves `^0.13.1` unsatisfied, so the
+//    install below replaced every example's workspace link with the last
+//    published copy and the examples built against the previous release. The
+//    tools-v0.13.0 release commit shipped that lockfile. release.js syncs the
+//    examples before installing for the same reason.
+console.log("\n📦 Syncing examples to the new tool versions...")
+try {
+  run("node", ["scripts/sync-example-versions.js"])
+} catch (error) {
+  console.error("❌ Failed to sync example versions.")
+  process.exit(1)
+}
+
+// 3. Update library lockfile
 console.log("\n🔗 Updating lockfile (pnpm install)...")
 try {
   // We need to update the lockfile because versions changed
@@ -110,7 +126,7 @@ const RELEASE_PATHS = [
   "examples",
 ]
 
-// 3. Git Commit and Tag
+// 4. Git Commit and Tag
 console.log("\n📂 Creating release commit and tag...")
 const tagName = `tools-v${version}`
 
@@ -136,7 +152,7 @@ try {
   process.exit(1)
 }
 
-// 4. Publish to npm
+// 5. Publish to npm
 if (shouldPublish || dryRun) {
   console.log(`\n📤 Publishing tools to npm${dryRun ? " (DRY RUN)" : ""}...`)
   try {

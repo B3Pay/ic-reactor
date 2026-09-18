@@ -99,6 +99,7 @@ function findExamplePackageJsonFiles(dir) {
 const packageJsonFiles = findExamplePackageJsonFiles(examplesDir)
 
 let updatedCount = 0
+const failedExamples = []
 
 for (const pkgPath of packageJsonFiles) {
   const example = dirname(relative(examplesDir, pkgPath))
@@ -157,10 +158,22 @@ for (const pkgPath of packageJsonFiles) {
     }
   } catch (err) {
     console.error(`  ✗ ${example}: ${err.message}`)
+    failedExamples.push(example)
   }
 }
 
 console.log(`\n✅ Updated ${updatedCount} example(s)\n`)
+
+// Every example is attempted first, so one run names all the failures. The
+// non-zero exit is what lets a release script stop: a manifest this run could
+// not read or write keeps its old ranges, and a release committed on top of it
+// ships those stale ranges.
+if (failedExamples.length > 0) {
+  console.error(
+    `❌ Could not sync ${failedExamples.length} example(s): ${failedExamples.join(", ")}\n`
+  )
+  process.exitCode = 1
+}
 
 if (updatedCount > 0) {
   console.log("Next steps:")
