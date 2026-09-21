@@ -11,7 +11,7 @@
   "dependencies": {
     "@ic-reactor/core": "^3.12.5",
     "@icp-sdk/core": "^6.1.0",
-    "@tanstack/query-core": "^5.102"
+    "@tanstack/query-core": "^5.103"
   },
   "devDependencies": {
     "typescript": "~6.0.3",
