@@ -141,7 +141,8 @@ export function pinPollingIdentity(agent: Agent, identity: Identity): Agent {
  * This handles:
  * - V4 responses with embedded certificate (sync call response)
  * - V2 responses with immediate rejection
- * - 202 responses that require polling
+ * - 202 responses that require polling, and V4 certificates that carry no
+ *   status for the request, which are polled the same way
  *
  * @param result - The submit response from agent.call()
  * @param canisterId - The target canister ID
@@ -164,6 +165,9 @@ export async function processUpdateCallResponse(
 ): Promise<Uint8Array> {
   let reply: Uint8Array | undefined
   let certificate: Certificate | undefined
+  // A 202 means the outcome has to be read back with read_state; so does a
+  // certified response that turns out not to name this request (below).
+  let mustPoll = result.response.status === 202
 
   if (isV4ResponseBody(result.response.body)) {
     if (agent.rootKey == null) {
@@ -178,11 +182,24 @@ export async function processUpdateCallResponse(
     })
 
     const path = [new TextEncoder().encode("request_status"), result.requestId]
-    const status = new TextDecoder().decode(
-      lookupResultToBuffer(certificate.lookup_path([...path, "status"]))
+    const statusBytes = lookupResultToBuffer(
+      certificate.lookup_path([...path, "status"])
     )
+    const status =
+      statusBytes === undefined
+        ? undefined
+        : new TextDecoder().decode(statusBytes)
 
     switch (status) {
+      case undefined:
+        // The certificate is valid but carries no status for this request: a
+        // boundary node answered the sync call without it (queue full, not yet
+        // processed). The call can still execute, so its outcome is unknown,
+        // not failed — and reporting it as failed invites a retry that runs a
+        // transfer twice. Poll for it exactly as for a 202, which is what
+        // @icp-sdk/core's own `update` does (icp-js-core#1330).
+        mustPoll = true
+        break
       case "replied":
         reply = lookupResultToBuffer(
           certificate.lookup_path([...path, "reply"])
@@ -240,8 +257,9 @@ export async function processUpdateCallResponse(
     throw RejectError.fromCode(errorCode)
   }
 
-  // Fall back to polling if we receive an Accepted response code
-  if (result.response.status === 202) {
+  // Fall back to polling if we receive an Accepted response code, or a
+  // certified response that does not yet know about this request.
+  if (mustPoll) {
     // `pollForResponse` signs its read_state through the agent it is handed,
     // which reads whatever identity the shared agent holds at that moment. Pin
     // it to the one that submitted, or a sign-in/sign-out mid-poll makes the
