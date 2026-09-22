@@ -1,4 +1,6 @@
+import type { Identity } from "@icp-sdk/core/agent"
 import type {
+  AuthClientLike,
   IdentityAttributeNonce,
   IdentityAttributeResult,
   RequestIdentityAttributesParameters,
@@ -57,16 +59,20 @@ export class IdentityAttributesManager {
 
     this.authentication.setAuthenticating()
 
+    let signInPromise: Promise<Identity> | undefined
+    let committed = false
     try {
       // `signIn` first: it opens the transport channel synchronously, and the
       // attribute request then reuses that same channel and window.
-      const identityPromise = signIn
+      signInPromise = signIn
         ? this.authentication.signInOrRecoverIdentity({
             maxTimeToLive,
             maxTimeToIdle,
             targets,
           })
-        : Promise.resolve(authClient.getIdentity())
+        : undefined
+      const identityPromise =
+        signInPromise ?? Promise.resolve(authClient.getIdentity())
       const requestPromise = authClient.requestAttributes({
         keys,
         nonce: toAuthClientNonce(nonce),
@@ -79,6 +85,7 @@ export class IdentityAttributesManager {
 
       const finalIdentity = identity ?? (await authClient.getIdentity())
       const isAuthenticated = await authClient.isAuthenticated()
+      committed = true
       await this.authentication.commitIdentity(finalIdentity, isAuthenticated)
 
       const normalizedSignedAttributes =
@@ -95,9 +102,45 @@ export class IdentityAttributesManager {
         completedAt: new Date().toISOString(),
       }
     } catch (error) {
+      // The sign-in and the attribute request share one provider window and
+      // can end differently. When the attribute side failed (the app's nonce
+      // call rejected, or the provider could not certify a key) but the user
+      // went on to finish signing in, the client held a session nothing had
+      // committed: the app showed the user signed out until a reload restored
+      // it. So a sign-in this request started is waited for, and kept when the
+      // client vouches for it, before the failure is reported.
+      if (signInPromise && !committed) {
+        await this.keepCompletedSignIn(signInPromise, authClient)
+      }
       this.authentication.setAuthenticationError(error as Error)
       throw error
     }
+  }
+
+  private async keepCompletedSignIn(
+    signInPromise: Promise<Identity>,
+    authClient: AuthClientLike
+  ) {
+    const identity = await signInPromise.catch(() => undefined)
+    if (!identity) return
+    const isAuthenticated = await Promise.resolve()
+      .then(() => authClient.isAuthenticated())
+      .catch(() => false)
+    if (!isAuthenticated) return
+    // The session the client holds now must be the one this request opened.
+    // Another login can switch the shared client to a different account while
+    // the attribute side is still pending, and committing this identity then
+    // would put back the account the user switched away from.
+    const current = await Promise.resolve()
+      .then(() => authClient.getIdentity())
+      .catch(() => undefined)
+    if (current?.getPrincipal().toText() !== identity.getPrincipal().toText()) {
+      return
+    }
+    // The attribute failure is the one to report, so a failure here is not.
+    await this.authentication
+      .commitIdentity(identity, true)
+      .catch(() => undefined)
   }
 
   public requestOpenId = ({

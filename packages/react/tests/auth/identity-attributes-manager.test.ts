@@ -184,4 +184,140 @@ describe("IdentityAttributesManager", () => {
     expect(result.principal).toBe("aaaaa-aa")
     expect(authentication.authState.isAuthenticated).toBe(true)
   })
+
+  it("keeps a sign-in that completed when the attribute request fails", async () => {
+    // Sign-in and the attribute request run in one provider window and can end
+    // differently. Here the app's nonce call rejects while the user is still in
+    // the window, and the user then finishes signing in. The client held that
+    // session, and a reload restored it, but the request had already failed
+    // and nothing committed it: the app showed the user signed out.
+    const { authClient, authentication, identityAttributes } = makeManagers()
+    const signedIn = { getPrincipal: () => Principal.fromText("aaaaa-aa") }
+    let holdsSession = false
+    let finishSignIn: () => void = () => {}
+    authClient.isAuthenticated.mockImplementation(() => holdsSession)
+    authClient.getIdentity.mockImplementation(() =>
+      holdsSession ? signedIn : { getPrincipal: () => Principal.anonymous() }
+    )
+    authClient.signIn.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishSignIn = () => {
+            holdsSession = true
+            resolve(signedIn)
+          }
+        })
+    )
+    // Both supported clients await the nonce before sending the request, so
+    // its rejection is the request's.
+    authClient.requestAttributes.mockImplementation(
+      async ({ nonce }: { nonce: () => Promise<Uint8Array> }) => {
+        await nonce()
+        return { data: new Uint8Array(), signature: new Uint8Array() }
+      }
+    )
+    const nonceFailed = new Error("register_begin rejected the caller")
+
+    const request = identityAttributes.request({
+      keys: ["openid:https://accounts.google.com:email"],
+      nonce: () => Promise.reject(nonceFailed),
+    })
+    const settled = request.catch((error: unknown) => error)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    finishSignIn()
+
+    await expect(settled).resolves.toBe(nonceFailed)
+    expect(authentication.authState.isAuthenticated).toBe(true)
+    expect(authentication.authState.identity?.getPrincipal().toText()).toBe(
+      "aaaaa-aa"
+    )
+    expect(authentication.clientManager.identity?.getPrincipal().toText()).toBe(
+      "aaaaa-aa"
+    )
+    // The attribute failure is still reported.
+    expect(authentication.authState.error).toBe(nonceFailed)
+    expect(authentication.authState.isAuthenticating).toBe(false)
+  })
+
+  it("does not commit a sign-in the client has since replaced with another account", async () => {
+    // Sign-in A completes while the attribute side is still pending; another
+    // login then switches the shared client to account B; only after that does
+    // the attribute request fail. Committing A then would replace B with the
+    // account the user switched away from.
+    const { authClient, authentication, identityAttributes } = makeManagers()
+    const accountA = { getPrincipal: () => Principal.fromText("aaaaa-aa") }
+    const accountB = {
+      getPrincipal: () => Principal.fromText("rrkah-fqaaa-aaaaa-aaaaq-cai"),
+    }
+    let held: { getPrincipal: () => Principal } | undefined
+    let finishSignIn: () => void = () => {}
+    authClient.isAuthenticated.mockImplementation(() => held !== undefined)
+    authClient.getIdentity.mockImplementation(
+      () => held ?? { getPrincipal: () => Principal.anonymous() }
+    )
+    authClient.signIn.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishSignIn = () => {
+            held = accountA
+            resolve(accountA)
+          }
+        })
+    )
+    authClient.requestAttributes.mockImplementation(
+      async ({ nonce }: { nonce: () => Promise<Uint8Array> }) => {
+        await nonce()
+        return { data: new Uint8Array(), signature: new Uint8Array() }
+      }
+    )
+    let rejectNonce: (error: Error) => void = () => {}
+    const nonceFailed = new Error("register_begin rejected the caller")
+
+    const request = identityAttributes.request({
+      keys: ["openid:https://accounts.google.com:email"],
+      nonce: () =>
+        new Promise<Uint8Array>((_, reject) => {
+          rejectNonce = reject
+        }),
+    })
+    const settled = request.catch((error: unknown) => error)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    finishSignIn()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // Another login moves the shared client, and the manager, to account B.
+    held = accountB
+    await authentication.commitIdentity(accountB as never, true)
+    rejectNonce(nonceFailed)
+
+    await expect(settled).resolves.toBe(nonceFailed)
+    expect(authentication.authState.identity?.getPrincipal().toText()).toBe(
+      "rrkah-fqaaa-aaaaa-aaaaq-cai"
+    )
+    expect(authentication.clientManager.identity?.getPrincipal().toText()).toBe(
+      "rrkah-fqaaa-aaaaa-aaaaq-cai"
+    )
+  })
+
+  it("stays signed out when neither the sign-in nor the request succeeds", async () => {
+    const { authClient, authentication, identityAttributes } = makeManagers()
+    const closed = new Error("UserInterrupt")
+    authClient.isAuthenticated.mockReturnValue(false)
+    authClient.getIdentity.mockReturnValue({
+      getPrincipal: () => Principal.anonymous(),
+    })
+    authClient.signIn.mockRejectedValue(closed)
+    authClient.requestAttributes.mockRejectedValue(closed)
+
+    await expect(
+      identityAttributes.request({
+        keys: ["openid:https://accounts.google.com:email"],
+        nonce: new Uint8Array(32),
+      })
+    ).rejects.toBe(closed)
+
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(authentication.authState.error).toBe(closed)
+    expect(authentication.authState.isAuthenticating).toBe(false)
+  })
 })
