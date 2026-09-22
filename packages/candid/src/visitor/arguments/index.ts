@@ -255,6 +255,56 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     return this.nameStack.join("")
   }
 
+  /**
+   * Visit a type that holds a value. A func or service type there is a
+   * reference, to a method of some canister or to a canister, and must not go
+   * through `accept`: that calls `visitFunc` and `visitService`, which describe
+   * a method's arguments and a whole service. The field got no label, schema
+   * or default, so a record holding a service reference made `initialize()`
+   * throw, and a func reference's schema asked for the func's own arguments.
+   */
+  private acceptValue(type: IDL.Type, label: string): FieldNode {
+    if (type instanceof IDL.FuncClass) return this.visitFuncReference(label)
+    if (type instanceof IDL.ServiceClass)
+      return this.visitServiceReference(label)
+    return type.accept(this, label) as FieldNode
+  }
+
+  /**
+   * A func reference, the `[canister, method]` pair the display codec turns
+   * into `[Principal, method]`.
+   */
+  private visitFuncReference(label: string): TupleField {
+    const name = this.currentName()
+    const canister = this.withName("[0]", () =>
+      this.visitPrincipal(IDL.Principal, "canisterId")
+    )
+    const method = this.withName("[1]", () =>
+      this.visitText(IDL.Text, "methodName")
+    )
+
+    return {
+      type: "tuple",
+      label,
+      displayLabel: formatLabel(label),
+      name,
+      component: "tuple-container",
+      renderHint: COMPOUND_RENDER_HINT,
+      fields: [canister, method],
+      defaultValue: [canister.defaultValue, method.defaultValue],
+      schema: z.tuple([canister.schema, method.schema]),
+      candidType: "func",
+    }
+  }
+
+  /** A service reference, which is the canister's principal. */
+  private visitServiceReference(label: string): PrincipalField {
+    return {
+      ...this.visitPrincipal(IDL.Principal, label),
+      candidType: "service",
+    }
+  }
+
   // ════════════════════════════════════════════════════════════════════════
   // Service & Function Level
   // ════════════════════════════════════════════════════════════════════════
@@ -281,8 +331,8 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
 
     const args = t.argTypes.map((arg, index) => {
       return this.withName(`[${index}]`, () =>
-        arg.accept(this, `__arg${index}`)
-      ) as FieldNode
+        this.acceptValue(arg, `__arg${index}`)
+      )
     })
 
     const defaults = args.map((field) => field.defaultValue)
@@ -329,8 +379,8 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
 
     for (const [key, type] of fields_) {
       const field = this.withName(name ? `.${key}` : key, () =>
-        type.accept(this, key)
-      ) as FieldNode
+        this.acceptValue(type, key)
+      )
 
       fields.push(field)
       defaultValue[key] = field.defaultValue
@@ -363,9 +413,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     const variantSchemas: z.ZodTypeAny[] = []
 
     for (const [key, type] of fields_) {
-      const field = this.withName(`.${key}`, () =>
-        type.accept(this, key)
-      ) as FieldNode
+      const field = this.withName(`.${key}`, () => this.acceptValue(type, key))
 
       options.push(field)
 
@@ -493,8 +541,8 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     for (let index = 0; index < components.length; index++) {
       const type = components[index]
       const field = this.withName(`[${index}]`, () =>
-        type.accept(this, `_${index}_`)
-      ) as FieldNode
+        this.acceptValue(type, `_${index}_`)
+      )
 
       fields.push(field)
       defaultValue.push(field.defaultValue)
@@ -526,7 +574,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
 
     // For optional, the inner field keeps the same name path
     // because the value replaces null directly (not nested)
-    const innerField = ty.accept(this, label) as FieldNode
+    const innerField = this.acceptValue(ty, label)
 
     const schema = z.union([
       innerField.schema,
@@ -570,8 +618,8 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
 
     // Item field uses [0] as template path
     const itemField = this.withName("[0]", () =>
-      ty.accept(this, `${label}_item`)
-    ) as FieldNode
+      this.acceptValue(ty, `${label}_item`)
+    )
 
     if (isBlob) {
       const schema = z.union([
@@ -624,8 +672,8 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       // the visit so text-format inference matches the template; only the
       // item's own label is replaced.
       const item = this.atName(itemName, () =>
-        ty.accept(this, `${label}_item`)
-      ) as FieldNode
+        this.acceptValue(ty, `${label}_item`)
+      )
 
       return {
         ...item,
@@ -663,14 +711,14 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     if (this.recursiveSchemas.has(typeName)) {
       schema = this.recursiveSchemas.get(typeName)!
     } else {
-      schema = z.lazy(() => (ty.accept(this, label) as FieldNode).schema)
+      schema = z.lazy(() => this.acceptValue(ty, label).schema)
       this.recursiveSchemas.set(typeName, schema)
     }
 
     // Lazy extraction to prevent infinite loops. `name` is already absolute,
     // so it replaces the stack rather than extending it.
     const extract = (): FieldNode =>
-      this.atName(name, () => ty.accept(this, label)) as FieldNode
+      this.atName(name, () => this.acceptValue(ty, label))
 
     // Helper to get inner default (evaluates lazily)
     const getInnerDefault = (): unknown => extract().defaultValue

@@ -107,6 +107,53 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     }
   }
 
+  /**
+   * Visit a type that holds a value. A func or service type there is a
+   * reference, to a method of some canister or to a canister, and must not go
+   * through `accept`: that calls `visitFunc` and `visitService`, which describe
+   * a method's arguments and a whole service. The field got no label, so a
+   * variant whose default option held one made `initialize()` throw with
+   * "Unknown variant option".
+   */
+  private acceptValue(type: IDL.Type, label: string): FormFieldNode {
+    if (type instanceof IDL.FuncClass) return this.visitFuncReference(label)
+    if (type instanceof IDL.ServiceClass)
+      return this.visitServiceReference(label)
+    return type.accept(this, label) as FormFieldNode
+  }
+
+  /** A func reference, the `[canister, method]` pair Candid sends. */
+  private visitFuncReference(label: string): FormFieldNode {
+    const name = this.currentName()
+    const canister = this.withName("[0]", () =>
+      this.visitPrincipal(IDL.Principal, "canisterId")
+    )
+    const method = this.withName("[1]", () =>
+      this.visitText(IDL.Text, "methodName")
+    )
+
+    return {
+      type: "tuple",
+      label,
+      displayLabel: formatLabel(label),
+      name,
+      component: "tuple-container",
+      renderHint: COMPOUND_RENDER_HINT,
+      candidType: "func",
+      fields: [canister, method],
+      defaultValue: [canister.defaultValue, method.defaultValue],
+      schema: z.tuple([canister.schema, method.schema]),
+    }
+  }
+
+  /** A service reference, which is the canister's principal. */
+  private visitServiceReference(label: string): FormFieldNode {
+    return {
+      ...this.visitPrincipal(IDL.Principal, label),
+      candidType: "service",
+    }
+  }
+
   public visitService(t: IDL.ServiceClass): FormServiceMeta<A> {
     const result = {} as FormServiceMeta<A>
     for (const [functionName, func] of t._fields) {
@@ -120,11 +167,10 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
 
   public visitFunc(t: IDL.FuncClass, functionName: string): FormArgumentsMeta {
     const functionType = isQuery(t) ? "query" : "update"
-    const args = t.argTypes.map(
-      (argType, index) =>
-        this.withName(`[${index}]`, () =>
-          argType.accept(this, `__arg${index}`)
-        ) as FormFieldNode
+    const args = t.argTypes.map((argType, index) =>
+      this.withName(`[${index}]`, () =>
+        this.acceptValue(argType, `__arg${index}`)
+      )
     )
     const argCount = args.length
     const schema =
@@ -163,8 +209,8 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     functionName = "__value"
   ): FormArgumentsMeta {
     const valueField = this.withName("[0]", () =>
-      valueType.accept(this, "__arg0")
-    ) as FormFieldNode
+      this.acceptValue(valueType, "__arg0")
+    )
 
     return {
       candidType: valueType.display?.() ?? valueType.name ?? "value",
@@ -238,7 +284,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     label: string,
     path: string
   ): FormFieldNode {
-    return this.withName(path, () => type.accept(this, label)) as FormFieldNode
+    return this.withName(path, () => this.acceptValue(type, label))
   }
 
   public buildTupleFieldForTypes(
@@ -258,11 +304,10 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): FormFieldNode {
     const name = this.currentName()
-    const fields = fields_.map(
-      ([key, childType]) =>
-        this.withName(name ? `.${key}` : key, () =>
-          childType.accept(this, key)
-        ) as FormFieldNode
+    const fields = fields_.map(([key, childType]) =>
+      this.withName(name ? `.${key}` : key, () =>
+        this.acceptValue(childType, key)
+      )
     )
     const schema = z.object(
       Object.fromEntries(fields.map((field) => [field.label, field.schema]))
@@ -290,11 +335,10 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): FormFieldNode {
     const name = this.currentName()
-    const fields = components.map(
-      (childType, index) =>
-        this.withName(`[${index}]`, () =>
-          childType.accept(this, String(index))
-        ) as FormFieldNode
+    const fields = components.map((childType, index) =>
+      this.withName(`[${index}]`, () =>
+        this.acceptValue(childType, String(index))
+      )
     )
     const schema =
       fields.length === 0
@@ -328,11 +372,8 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): FormFieldNode {
     const name = this.currentName()
-    const options = fields_.map(
-      ([key, childType]) =>
-        this.withName(`.${key}`, () =>
-          childType.accept(this, key)
-        ) as FormFieldNode
+    const options = fields_.map(([key, childType]) =>
+      this.withName(`.${key}`, () => this.acceptValue(childType, key))
     )
 
     // `variant {}` has no values. It used to borrow a made-up `null` option as
@@ -417,7 +458,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     label: string
   ): FormFieldNode {
     const name = this.currentName()
-    const innerField = ty.accept(this, label) as FormFieldNode
+    const innerField = this.acceptValue(ty, label)
 
     return {
       type: "optional",
@@ -458,8 +499,8 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     }
 
     const itemFieldTemplate = this.withName("[0]", () =>
-      ty.accept(this, `${label}_item`)
-    ) as FormFieldNode
+      this.acceptValue(ty, `${label}_item`)
+    )
 
     // Runs after traversal, when the stack is empty, so the vector's own path
     // has to be re-seeded: pushing `[index]` alone named every item as if it
@@ -467,8 +508,8 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     const createItemField = (index: number, overrides?: { label?: string }) => {
       const itemName = name ? `${name}[${index}]` : `[${index}]`
       return this.atName(itemName, () =>
-        ty.accept(this, overrides?.label ?? String(index))
-      ) as FormFieldNode
+        this.acceptValue(ty, overrides?.label ?? String(index))
+      )
     }
 
     return {
@@ -504,7 +545,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     if (this.recursiveSchemas.has(typeName)) {
       schema = this.recursiveSchemas.get(typeName)!
     } else {
-      schema = z.lazy(() => (ty.accept(this, label) as FormFieldNode).schema)
+      schema = z.lazy(() => this.acceptValue(ty, label).schema)
       this.recursiveSchemas.set(typeName, schema)
     }
 
@@ -520,8 +561,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       schema,
       typeName: ty.name,
       // `name` is already absolute, so it replaces the stack, not extends it.
-      extract: () =>
-        this.atName(name, () => ty.accept(this, label)) as FormFieldNode,
+      extract: () => this.atName(name, () => this.acceptValue(ty, label)),
     }
 
     return node
