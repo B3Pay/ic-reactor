@@ -65,7 +65,11 @@ export interface AttributesRequestRecord {
 export interface FakeIdentityProviderOptions {
   /** Identity used as the delegation root (the "user" in Internet Identity). */
   rootIdentity?: Ed25519KeyIdentity
-  /** Payload returned for `ii-icrc3-attributes`. Defaults to a Candid map. */
+  /**
+   * Payload returned for `ii-icrc3-attributes`. By default the fake certifies
+   * the requested keys it holds a value for, as Internet Identity does: see
+   * {@link encodeAttributes}.
+   */
   attributesResponse?: { data: Uint8Array; signature: Uint8Array }
   /** Force `ii-icrc3-attributes` to answer with a JSON-RPC error. */
   attributesError?: JsonRpcError
@@ -174,8 +178,7 @@ export function installFakeIdentityProvider(
     options.delegationLifetimeMs ?? 8 * 60 * 60 * 1000
   const canisterId = options.canisterId ?? LOCAL_INTERNET_IDENTITY_CANISTER_ID
 
-  let attributesResponse =
-    options.attributesResponse ?? defaultAttributesResponse()
+  let attributesResponse = options.attributesResponse ?? null
   let attributesError = options.attributesError ?? null
   let signInError: JsonRpcError | null = null
   let revokeError: string | null = null
@@ -391,12 +394,27 @@ export function installFakeIdentityProvider(
           return
         }
 
+        const payload = attributesResponse ?? {
+          data: encodeAttributes(
+            params.keys
+              .filter((key) =>
+                Object.prototype.hasOwnProperty.call(PROFILE, key)
+              )
+              .map((key) => [key, PROFILE[key]]),
+            {
+              nonce: fromBase64(params.nonce),
+              origin: params.icrc95DerivationOrigin ?? window.location.origin,
+            }
+          ),
+          signature: DEFAULT_ATTRIBUTES_SIGNATURE,
+        }
+
         respond(source, {
           jsonrpc: "2.0",
           id: request.id,
           result: {
-            data: toBase64(attributesResponse.data),
-            signature: toBase64(attributesResponse.signature),
+            data: toBase64(payload.data),
+            signature: toBase64(payload.signature),
           },
         })
         return
@@ -564,21 +582,53 @@ export async function withUserGesture<T>(fn: () => Promise<T>): Promise<T> {
   return started
 }
 
-/** Candid-encoded `vec { record { text; text } }` attribute payload. */
-export function encodeAttributes(entries: Array<[string, string]>): Uint8Array {
-  return new Uint8Array(
-    IDL.encode([IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], [entries])
-  )
+/** The account's attribute values, by the key they are requested under. */
+const PROFILE: Record<string, string> = {
+  "openid:https://accounts.google.com:email": "user@example.com",
+  "openid:https://accounts.google.com:name": "Test User",
+  email: "user@example.com",
+  name: "Test User",
 }
 
-function defaultAttributesResponse() {
-  return {
-    data: encodeAttributes([
-      ["openid:https://accounts.google.com:email", "user@example.com"],
-      ["openid:https://accounts.google.com:name", "Test User"],
-    ]),
-    signature: new Uint8Array([1, 2, 3, 4]),
-  }
+const DEFAULT_ATTRIBUTES_SIGNATURE = new Uint8Array([1, 2, 3, 4])
+
+/** The ICRC-3 `Value` Internet Identity encodes attributes with. */
+const Icrc3Value = IDL.Rec()
+Icrc3Value.fill(
+  IDL.Variant({
+    Nat: IDL.Nat,
+    Int: IDL.Int,
+    Blob: IDL.Vec(IDL.Nat8),
+    Text: IDL.Text,
+    Array: IDL.Vec(Icrc3Value),
+    Map: IDL.Vec(IDL.Tuple(IDL.Text, Icrc3Value)),
+  })
+)
+
+/**
+ * An attribute message as Internet Identity certifies it
+ * (`icrc3_attribute_message` in the II canister): a Candid ICRC-3
+ * `Value::Map` of the attributes as `Text`, next to `implicit:nonce`,
+ * `implicit:origin` and `implicit:issued_at_timestamp_ns`, in key order.
+ */
+export function encodeAttributes(
+  entries: Array<[string, string]>,
+  {
+    nonce = new Uint8Array(32),
+    origin = "http://localhost:3000",
+  }: { nonce?: Uint8Array; origin?: string } = {}
+): Uint8Array {
+  const map: Array<[string, unknown]> = [
+    [
+      "implicit:issued_at_timestamp_ns",
+      { Nat: BigInt(Date.now()) * 1_000_000n },
+    ],
+    ["implicit:nonce", { Blob: nonce }],
+    ["implicit:origin", { Text: origin }],
+    ...entries.map(([key, value]): [string, unknown] => [key, { Text: value }]),
+  ]
+  map.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return new Uint8Array(IDL.encode([Icrc3Value], [{ Map: map }]))
 }
 
 export function toBase64(bytes: Uint8Array): string {

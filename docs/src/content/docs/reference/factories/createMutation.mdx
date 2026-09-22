@@ -374,8 +374,6 @@ the factory's result and hook callbacks get the hook's, so rollback state can
 live at either level. A factory without its own `onMutate` hands its callbacks the
 hook's result.
 
-Factory callbacks need `@tanstack/react-query` 5.89 or later to get the
-factory's result. On older versions they receive the hook's result instead.
 `execute()` does not run `onMutate`, so factory callbacks called through it
 receive `undefined` there.
 

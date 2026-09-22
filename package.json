@@ -30,6 +30,7 @@
     "prepare": "husky",
     "typecheck": "pnpm -r --filter \"./packages/**\" --filter \"./e2e\" typecheck",
     "verify:packages": "node scripts/verify-package-artifacts.mjs",
+    "verify:peer-floors": "node scripts/verify-peer-floors.js",
     "verify:audit": "pnpm audit --audit-level=high"
   },
   "lint-staged": {

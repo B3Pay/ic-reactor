@@ -463,6 +463,17 @@ export class AuthenticationManager {
       return undefined
     }
 
+    // Every mounted `useAuth()` prepares the client at the same moment, and
+    // each call arrives here after the same await. Building one per caller
+    // left all but the last running with nothing able to reach them: on v8
+    // each registered the app's `onIdle` on the shared IdleManager again, so it
+    // fired once per consumer, and on v10 each kept its browser listeners and
+    // its session's refresh timer. Take the client an earlier caller built for
+    // the same options instead.
+    if (this.authClient && !this.shouldRecreateClient(options)) {
+      return this.authClient
+    }
+
     this.authClient = new AuthClient(this.toClientOptions(options))
     this.authClientOptions = options
     return this.authClient

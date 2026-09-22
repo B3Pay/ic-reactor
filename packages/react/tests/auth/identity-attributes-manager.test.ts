@@ -145,6 +145,33 @@ describe("IdentityAttributesManager", () => {
     })
   })
 
+  it("decodes the message Internet Identity certifies for a one-click Google request", async () => {
+    // The canister's `message_hex` for the "Email and name with scoped keys"
+    // vector in dfinity/internet-identity `docs/icrc3-test-vectors.json`
+    // (c153a486b). `decodedAttributes.email` used to come back with a trailing
+    // apostrophe, the name key's length prefix.
+    const message =
+      "4449444c056b06cf89df017cfc84eb0101c189ee017dfdd2c9df0203cdf1cbbe0371f9baf3c50b046d026c02007101006d7b6d00010001051f696d706c696369743a6973737565645f61745f74696d657374616d705f6e730280bcf6ceebcfb8fd180e696d706c696369743a6e6f6e6365032000000000000000000000000000000000000000000000000000000000000000000f696d706c696369743a6f726967696e041568747470733a2f2f736f6d652d646170702e636f6d286f70656e69643a68747470733a2f2f6163636f756e74732e676f6f676c652e636f6d3a656d61696c0420616c6963652e6578616d706c654069637263332d746573742e696e76616c6964276f70656e69643a68747470733a2f2f6163636f756e74732e676f6f676c652e636f6d3a6e616d65040d416c696365204578616d706c65"
+    const { authClient, identityAttributes } = makeManagers()
+    authClient.requestAttributes.mockResolvedValue({
+      data: Uint8Array.from(message.match(/../g) ?? [], (byte) =>
+        parseInt(byte, 16)
+      ),
+      signature: new Uint8Array([1, 2, 3]),
+    })
+
+    const result = await identityAttributes.requestOpenId({
+      openIdProvider: "google",
+      keys: ["email", "name"],
+      nonce: new Uint8Array(32),
+    })
+
+    expect(result.decodedAttributes).toEqual({
+      email: "alice.example@icrc3-test.invalid",
+      name: "Alice Example",
+    })
+  })
+
   it("recovers requests when sign-in errors after identity authentication", async () => {
     const { authClient, authentication, identityAttributes } = makeManagers()
     authClient.signIn.mockRejectedValue(new Error("sign-in timed out"))
