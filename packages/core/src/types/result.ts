@@ -1,14 +1,16 @@
 /**
  * Whether T is the variant arm tagged K: K is its only key besides the `_type`
- * discriminant a display-transformed variant carries.
+ * discriminant a display-transformed variant carries, which is typed as the
+ * literal K (`{ _type: "Ok"; Ok: U }`).
  *
  * A Result is a variant, so only an arm counts as one. A record that merely has
  * a field named Ok/ok/Err/err next to other fields is a value like any other,
- * and must not be unwrapped — `extractOkResult` applies the same rule at
- * runtime.
+ * and must not be unwrapped. That includes a record's own `_type` field, typed
+ * `string` rather than the literal K. `extractOkResult` applies the same rule
+ * at runtime.
  */
 type IsVariantArm<T, K extends PropertyKey> = [
-  Exclude<keyof T, K | "_type">,
+  Exclude<keyof T, K | (T extends { _type: K } ? "_type" : never)>,
 ] extends [never]
   ? true
   : false

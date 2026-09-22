@@ -217,8 +217,9 @@ export function getNetworkByHostname(
  *
  * A Result is a variant, so only a variant arm is unwrapped: an object whose
  * one key is the tag, besides the `_type` discriminant a display-transformed
- * variant carries. A record that merely has a field named `ok` or `err` next
- * to others is a value like any other, and is returned whole.
+ * variant carries, which names that tag. A record that merely has a field named
+ * `ok` or `err` next to others is a value like any other, and is returned
+ * whole, also when that other field is a `_type` naming something else.
  *
  * @param result - The compiled result to extract from.
  * @returns The extracted value from the compiled result.
@@ -230,12 +231,18 @@ export function extractOkResult<T>(result: T): OkResult<T> {
     return result as OkResult<T>
   }
 
-  const tags = Object.keys(result).filter((key) => key !== "_type")
-  if (tags.length !== 1) {
+  const arm = result as Record<string, unknown>
+  const keys = Object.keys(arm)
+  const tags = keys.filter((key) => key !== "_type")
+  // `{ [tag]: payload }`, or `{ _type: tag, [tag]: payload }` from the display
+  // codec. A `_type` naming anything else is a record's own field:
+  // `{ _type: "health", ok: true }` is a two-field record, not an `ok` arm.
+  const isArm =
+    tags.length === 1 && (keys.length === 1 || arm._type === tags[0])
+  if (!isArm) {
     // Not a variant arm (a record, a tuple, ...): not a Result.
     return result as OkResult<T>
   }
-  const arm = result as Record<string, unknown>
 
   switch (tags[0]) {
     // { Ok: T } (Rust convention) and { ok: T } (Motoko convention)
