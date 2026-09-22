@@ -11,9 +11,10 @@
  * This checks the promise. For each package below it adds a throwaway git
  * worktree of HEAD, pins the package's peers to the lowest version each range
  * accepts (through pnpm overrides, so every copy in the graph follows), installs,
- * and runs the package's typecheck and tests there. The worktree is removed
- * afterwards, so your checkout is never touched; uncommitted changes are not
- * part of the run.
+ * and runs the package's typecheck and tests there. A range that joins majors,
+ * like `@icp-sdk/auth ^8.0.0 || ^10.0.0`, is tested at each major's floor. The
+ * worktree is removed afterwards, so your checkout is never touched;
+ * uncommitted changes are not part of the run.
  *
  * Usage
  *   node scripts/verify-peer-floors.js [--keep]
@@ -30,13 +31,18 @@ const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
 const keep = process.argv.includes("--keep")
 
 /**
- * Peers that are not pinned, and why. Anything else in a checked package's
- * `peerDependencies` is pinned to its floor.
+ * Peers whose range joins majors that behave differently, per package. Each
+ * major's floor is installed under the devDependency named here, and the
+ * package's tests run every copy: react's `react` vitest project resolves
+ * `@icp-sdk/auth` and its `auth-v8` project aliases it to `@icp-sdk/auth-v8`.
+ * These are pinned through devDependencies only, because an override keyed by
+ * the package name would move both copies to one version. A major the range
+ * accepts but no devDependency installs fails the check.
  */
-const NOT_PINNED = {
-  // Two majors with different protocols; react's `auth-v8` vitest project runs
-  // the real-client suite against v8 already, so a floor pin adds nothing.
-  "@icp-sdk/auth": "both supported majors run in react's own test projects",
+const PER_MAJOR = {
+  react: {
+    "@icp-sdk/auth": { 8: "@icp-sdk/auth-v8", 10: "@icp-sdk/auth" },
+  },
 }
 
 /**
@@ -72,14 +78,14 @@ function compareVersions(a, b) {
 }
 
 /**
- * The lowest version a peer range accepts.
+ * The lowest version each `||` alternative of a peer range accepts.
  *
  * Supports the shapes this repo writes (`^X.Y.Z`, `~X.Y.Z`, `>=X.Y.Z`,
  * `X.Y.Z`, and `||` between them) and refuses anything else, so a new kind of
  * range fails here loudly instead of being pinned to a guess.
  */
-function lowestVersion(range) {
-  const floors = range.split("||").map((part) => {
+function alternativeFloors(range) {
+  return range.split("||").map((part) => {
     const text = part.trim()
     const match = /^(\^|~|>=)?(\d+\.\d+\.\d+)$/.exec(text)
     if (!match) {
@@ -87,7 +93,11 @@ function lowestVersion(range) {
     }
     return match[2]
   })
-  return floors.sort(compareVersions)[0]
+}
+
+/** The lowest version a peer range accepts. */
+function lowestVersion(range) {
+  return alternativeFloors(range).sort(compareVersions)[0]
 }
 
 function readJson(path) {
@@ -107,30 +117,51 @@ function run(command, args, cwd) {
   return result.status === 0
 }
 
-/** The pins for one check, from the package's own peer ranges. */
+/**
+ * The pins for one check, from the package's own peer ranges: `overrides` for
+ * every copy in the graph, and `devDependencies` for the per-major installs.
+ */
 function pinsFor(check) {
   const manifest = readJson(
     join(rootDir, "packages", check.pkg, "package.json")
   )
-  const pins = {}
+  const perMajor = PER_MAJOR[check.pkg] ?? {}
+  const overrides = {}
+  const devDependencies = {}
+
   for (const [name, range] of Object.entries(manifest.peerDependencies ?? {})) {
-    if (name in NOT_PINNED) continue
-    pins[name] = lowestVersion(range)
+    if (!(name in perMajor)) {
+      overrides[name] = lowestVersion(range)
+      continue
+    }
+    for (const floor of alternativeFloors(range)) {
+      const [major] = parseVersion(floor)
+      const installAs = perMajor[name][major]
+      if (!installAs) {
+        throw new Error(
+          `${check.pkg} accepts ${name} ${major}.x, but no devDependency installs that major for its tests (PER_MAJOR in ${fileURLToPath(import.meta.url)})`
+        )
+      }
+      devDependencies[installAs] =
+        installAs === name ? floor : `npm:${name}@${floor}`
+    }
   }
   for (const [name, peer] of Object.entries(check.follows ?? {})) {
-    pins[name] = pins[peer]
+    overrides[name] = overrides[peer]
   }
   for (const name of check.typesFor ?? []) {
-    const [major] = parseVersion(pins[name])
-    pins[`@types/${name}`] = `^${major}.0.0`
+    const [major] = parseVersion(overrides[name])
+    overrides[`@types/${name}`] = `^${major}.0.0`
   }
-  return pins
+  return { overrides, devDependencies }
 }
 
 function verify(check) {
-  const pins = pinsFor(check)
+  const { overrides, devDependencies } = pinsFor(check)
   const worktree = mkdtempSync(join(tmpdir(), `peer-floor-${check.pkg}-`))
-  console.log(`\n▶ ${check.pkg}: ${JSON.stringify(pins)}`)
+  console.log(
+    `\n▶ ${check.pkg}: ${JSON.stringify({ ...overrides, ...devDependencies })}`
+  )
 
   execFileSync("git", ["worktree", "add", "--detach", worktree, "HEAD"], {
     cwd: rootDir,
@@ -138,20 +169,31 @@ function verify(check) {
   })
 
   try {
-    // Pinned twice: as an override, so transitive copies follow, and as the
-    // package's own devDependency, so its tests import the pinned release.
+    // Overrides pinned twice: in `pnpm.overrides`, so transitive copies follow,
+    // and as the package's own devDependency, so its tests import the pinned
+    // release. Per-major pins go to their devDependencies alone.
     const rootManifestPath = join(worktree, "package.json")
     const rootManifest = readJson(rootManifestPath)
     rootManifest.pnpm = rootManifest.pnpm ?? {}
-    rootManifest.pnpm.overrides = { ...rootManifest.pnpm.overrides, ...pins }
+    rootManifest.pnpm.overrides = {
+      ...rootManifest.pnpm.overrides,
+      ...overrides,
+    }
     writeJson(rootManifestPath, rootManifest)
 
     const manifestPath = join(worktree, "packages", check.pkg, "package.json")
     const manifest = readJson(manifestPath)
-    for (const name of Object.keys(pins)) {
-      if (manifest.devDependencies?.[name] !== undefined) {
-        manifest.devDependencies[name] = pins[name]
+    for (const [name, version] of Object.entries({
+      ...overrides,
+      ...devDependencies,
+    })) {
+      if (manifest.devDependencies?.[name] === undefined) {
+        if (name in devDependencies) {
+          throw new Error(`${check.pkg} has no devDependency named ${name}`)
+        }
+        continue
       }
+      manifest.devDependencies[name] = version
     }
     writeJson(manifestPath, manifest)
 
