@@ -188,6 +188,33 @@ describe("AuthenticationManager", () => {
     expect(authentication.authState.error).toBe(error)
   })
 
+  it("does not strand isAuthenticating when a failed sign-in's onError rejects", async () => {
+    // login() recorded a failed sign-in only after awaiting onError, so an
+    // onError that rejected (an async error reporter whose request failed, or
+    // a callback that rethrows) skipped the update. isAuthenticating stayed
+    // true with no error recorded, and a login button disabled on it never
+    // came back.
+    const authClient = createAuthClient()
+    const popupClosed = new Error("UserInterrupt")
+    authClient.signIn.mockRejectedValue(popupClosed)
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+
+    await expect(
+      authentication.login({
+        onError: async () => {
+          throw new Error("error reporter unreachable")
+        },
+      })
+    ).rejects.toThrow()
+
+    expect(authentication.authState.isAuthenticating).toBe(false)
+    expect(authentication.authState.error).toBe(popupClosed)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+  })
+
   it("logs out and restores an anonymous agent identity", async () => {
     const authClient = createAuthClient()
     const authentication = new AuthenticationManager({

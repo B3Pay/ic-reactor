@@ -386,11 +386,14 @@ export class AuthenticationManager {
       }
     } catch (error) {
       if (!didCompleteSignIn) {
-        await loginOptions?.onError?.((error as Error).message)
+        // Recorded before the callback runs, as on success: an onError that
+        // rejected used to skip this and strand `isAuthenticating: true` with
+        // no error on record.
         this.updateState({
           error: error as Error,
           isAuthenticating: false,
         })
+        await loginOptions?.onError?.((error as Error).message)
       }
       throw error
     }
