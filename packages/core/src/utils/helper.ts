@@ -2,16 +2,47 @@ import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants.js"
 import { CanisterError } from "../errors/index.js"
 import { OkResult } from "../types/index.js"
 
-export const generateKey = (args: any[]) => {
-  return JSON.stringify(args, (_, v) =>
-    typeof v === "bigint" ? v.toString() : v
-  )
-}
-
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   if (typeof value !== "object" || value === null) return false
   const proto = Object.getPrototypeOf(value)
   return proto === Object.prototype || proto === null
+}
+
+/**
+ * Serialise call arguments into the query-key segment that identifies them.
+ *
+ * Equal Candid values must give equal keys, and different values different
+ * ones, which plain `JSON.stringify` does not ensure:
+ *
+ * - Record fields are unordered in Candid, and TanStack Query hashes object
+ *   keys order-independently, so plain objects are written with their keys
+ *   sorted. Otherwise `{ owner, subaccount }` and `{ subaccount, owner }` —
+ *   the same record, the same bytes on the wire — got separate cache entries,
+ *   and `getQueryData` / `invalidateQueries` spelled one way missed the other.
+ * - JSON writes NaN, Infinity and -Infinity all as `null`, and -0 as `0`, so a
+ *   query for one float was answered from another's cache entry. They are
+ *   written as the strings `"NaN"`, `"Infinity"`, `"-Infinity"` and `"-0"`.
+ *
+ * BigInts are written as decimal strings. Everything else — including an
+ * object whose keys are already in sorted order — serialises exactly as before.
+ */
+export const generateKey = (args: any[]) => {
+  return JSON.stringify(args, (_, v: unknown) => {
+    if (typeof v === "bigint") return v.toString()
+    if (typeof v === "number") {
+      if (!Number.isFinite(v)) return String(v)
+      if (Object.is(v, -0)) return "-0"
+      return v
+    }
+    if (isPlainObject(v)) {
+      return Object.fromEntries(
+        Object.keys(v)
+          .sort()
+          .map((key) => [key, v[key]])
+      )
+    }
+    return v
+  })
 }
 
 /**
