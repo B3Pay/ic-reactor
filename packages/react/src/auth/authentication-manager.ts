@@ -421,9 +421,18 @@ export class AuthenticationManager {
       // nothing may sign with it, which is the rule `authenticate()` applies
       // too. A v8 client that failed before forgetting anything still vouches
       // for its session and keeps it. A check that throws keeps it as well.
+      //
+      // Anything that changes auth state while that check is in flight, such
+      // as a login that finishes meanwhile, bumps this. The check then
+      // describes a client that has been used since, and its answer must not
+      // replace the newer state, as in `authenticate()`.
+      const revision = this.authStateRevision
       const stillSignedIn = await Promise.resolve()
         .then(() => this.authClient?.isAuthenticated() ?? false)
         .catch(() => true)
+      if (revision !== this.authStateRevision) {
+        throw error
+      }
       if (stillSignedIn) {
         // Without this the manager was left with `isAuthenticating: true` and
         // no recorded error, so a button disabled on `isAuthenticating` stayed

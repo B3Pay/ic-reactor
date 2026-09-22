@@ -699,6 +699,40 @@ describe("AuthenticationManager session hygiene", () => {
     expect(authentication.authState.isAuthenticating).toBe(false)
   })
 
+  it("leaves a login that finishes during a failed logout's check in place", async () => {
+    // After a failed signOut the manager asks the client whether it still
+    // holds the session. A login that completes while that answer is pending
+    // is newer, and a stale "signed out" must not replace it.
+    const authClient = Object.assign(createAuthClient(), {
+      getStatus: vi.fn(),
+      getPrincipal: vi.fn(),
+    })
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+    authClient.signOut.mockRejectedValue(new Error("revoke failed"))
+    let answer: (value: boolean) => void = () => {}
+    let asked = false
+    authClient.isAuthenticated.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          asked = true
+          answer = resolve
+        })
+    )
+
+    const loggingOut = authentication.logout()
+    await vi.waitFor(() => expect(asked).toBe(true))
+    await authentication.login()
+    answer(false)
+
+    await expect(loggingOut).rejects.toThrow("revoke failed")
+    expect(authentication.authState.isAuthenticated).toBe(true)
+    expect(clientManager.identity?.getPrincipal().toText()).toBe("aaaaa-aa")
+  })
+
   it("keeps the session when signOut fails before the client lets go of it", async () => {
     // The other side of the case above: v8 throws from its storage wipe before
     // it drops the identity, and a reload would restore the session, so the
