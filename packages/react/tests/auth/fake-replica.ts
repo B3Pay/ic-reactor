@@ -16,13 +16,22 @@
  * `/api/v2/status`, `/api/v3/canister/<id>/query`,
  * `/api/v3/canister/<id>/read_state` (the subnet's node keys and canister
  * ranges, which is all an agent reads before a query) and
- * `/api/v4/canister/<id>/call`, which always answers synchronously. Request
- * signatures are not checked.
+ * `/api/v4/canister/<id>/call`, which always answers synchronously.
+ *
+ * Like a replica, it checks who sent each request before any canister sees it:
+ * the sender must be the principal of `sender_pubkey`, every delegation must be
+ * signed by the key before it, unexpired and aimed at the canister, and
+ * `sender_sig` must be the last key's signature over the request id. A request
+ * that fails is refused with HTTP 400, so a client that signs with the wrong key
+ * fails here as it would against a replica. Ed25519 and ECDSA P-256 keys are
+ * supported, which are the ones these tests sign with.
  */
 import { bls12_381 } from "@noble/curves/bls12-381.js"
 import {
   BLS12_381_G2_OID,
   Cbor,
+  IC_REQUEST_AUTH_DELEGATION_DOMAIN_SEPARATOR,
+  IC_REQUEST_DOMAIN_SEPARATOR,
   IC_RESPONSE_DOMAIN_SEPARATOR,
   IC_STATE_ROOT_DOMAIN_SEPARATOR,
   NodeType,
@@ -62,6 +71,8 @@ export interface ReplicaRequest {
   canisterId?: string
   methodName?: string
   caller?: string
+  /** Why the request was refused, when it was. */
+  refused?: string
 }
 
 export interface FakeReplica {
@@ -164,6 +175,67 @@ interface Envelope {
     arg?: Uint8Array
     sender: Uint8Array
   }
+  sender_pubkey?: Uint8Array
+  sender_sig?: Uint8Array
+  sender_delegation?: Array<{
+    delegation: {
+      pubkey: Uint8Array
+      expiration: bigint | number
+      targets?: Uint8Array[]
+    }
+    signature: Uint8Array
+  }>
+}
+
+// How a DER public key names its algorithm: the whole prefix of an Ed25519
+// key, and the id-ecPublicKey + prime256v1 identifiers of a P-256 one.
+const ED25519_SPKI_PREFIX = Uint8Array.from([
+  0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+])
+const P256_ALGORITHM = Uint8Array.from([
+  0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86,
+  0x48, 0xce, 0x3d, 0x03, 0x01, 0x07,
+])
+
+function indexOfBytes(haystack: Uint8Array, needle: Uint8Array): number {
+  outer: for (let i = 0; i + needle.length <= haystack.length; i += 1) {
+    for (let j = 0; j < needle.length; j += 1) {
+      if (haystack[i + j] !== needle[j]) continue outer
+    }
+    return i
+  }
+  return -1
+}
+
+/** Verifies `signature` over `message` with a DER-encoded public key. */
+async function verifySignature(
+  publicKey: Uint8Array,
+  signature: Uint8Array,
+  message: Uint8Array
+): Promise<boolean> {
+  const [importAs, verifyAs] =
+    indexOfBytes(publicKey, ED25519_SPKI_PREFIX) === 0
+      ? [{ name: "Ed25519" }, { name: "Ed25519" }]
+      : indexOfBytes(publicKey, P256_ALGORITHM) !== -1
+        ? [
+            { name: "ECDSA", namedCurve: "P-256" },
+            { name: "ECDSA", hash: "SHA-256" },
+          ]
+        : [undefined, undefined]
+  if (!importAs || !verifyAs) return false
+  const key = await crypto.subtle.importKey(
+    "spki",
+    publicKey as BufferSource,
+    importAs,
+    false,
+    ["verify"]
+  )
+  return crypto.subtle.verify(
+    verifyAs,
+    key,
+    signature as BufferSource,
+    message as BufferSource
+  )
 }
 
 /**
@@ -203,6 +275,64 @@ export function installFakeReplica(options: FakeReplicaOptions): FakeReplica {
     return Cbor.encode({ tree, signature: signature.toBytes() })
   }
 
+  /**
+   * Who sent `envelope`, checked as a replica checks it, or why it is refused.
+   */
+  async function authenticate(
+    envelope: Envelope,
+    canisterId: string
+  ): Promise<Principal | string> {
+    const sender = Principal.fromUint8Array(envelope.content.sender)
+    const { sender_pubkey, sender_sig, sender_delegation = [] } = envelope
+
+    if (sender.isAnonymous()) {
+      return sender_pubkey || sender_sig
+        ? "an anonymous request carries a signature"
+        : sender
+    }
+    if (!sender_pubkey || !sender_sig) {
+      return "the request is not signed"
+    }
+    if (
+      Principal.selfAuthenticating(sender_pubkey).toText() !== sender.toText()
+    ) {
+      return "the sender is not the principal of sender_pubkey"
+    }
+
+    const now = nowNanos()
+    let signer = sender_pubkey
+    for (const { delegation, signature } of sender_delegation) {
+      const challenge = concat(
+        IC_REQUEST_AUTH_DELEGATION_DOMAIN_SEPARATOR,
+        requestIdOf(delegation)
+      )
+      if (!(await verifySignature(signer, signature, challenge))) {
+        return "a delegation is not signed by the key before it"
+      }
+      if (BigInt(delegation.expiration) <= now) {
+        return "a delegation has expired"
+      }
+      if (
+        delegation.targets &&
+        !delegation.targets.some(
+          (target) => Principal.fromUint8Array(target).toText() === canisterId
+        )
+      ) {
+        return `a delegation does not allow calls to ${canisterId}`
+      }
+      signer = delegation.pubkey
+    }
+
+    const message = concat(
+      IC_REQUEST_DOMAIN_SEPARATOR,
+      requestIdOf(envelope.content)
+    )
+    if (!(await verifySignature(signer, sender_sig, message))) {
+      return "sender_sig is not the signing key's signature over the request"
+    }
+    return sender
+  }
+
   function canisterFor(canisterId: string): FakeCanister {
     const canister = options.canisters[canisterId]
     if (!canister) {
@@ -211,13 +341,12 @@ export function installFakeReplica(options: FakeReplicaOptions): FakeReplica {
     return canister
   }
 
-  async function handleQuery(canisterId: string, envelope: Envelope) {
-    const {
-      method_name = "",
-      arg = new Uint8Array(),
-      sender,
-    } = envelope.content
-    const caller = Principal.fromUint8Array(sender)
+  async function handleQuery(
+    canisterId: string,
+    envelope: Envelope,
+    caller: Principal
+  ) {
+    const { method_name = "", arg = new Uint8Array() } = envelope.content
     requests.push({
       endpoint: "query",
       canisterId,
@@ -253,13 +382,12 @@ export function installFakeReplica(options: FakeReplicaOptions): FakeReplica {
     })
   }
 
-  async function handleCall(canisterId: string, envelope: Envelope) {
-    const {
-      method_name = "",
-      arg = new Uint8Array(),
-      sender,
-    } = envelope.content
-    const caller = Principal.fromUint8Array(sender)
+  async function handleCall(
+    canisterId: string,
+    envelope: Envelope,
+    caller: Principal
+  ) {
+    const { method_name = "", arg = new Uint8Array() } = envelope.content
     requests.push({
       endpoint: "call",
       canisterId,
@@ -345,14 +473,32 @@ export function installFakeReplica(options: FakeReplicaOptions): FakeReplica {
     )
     const envelope = Cbor.decode(body) as Envelope
 
+    const caller = await authenticate(envelope, canisterId)
+    if (typeof caller === "string") {
+      requests.push({
+        endpoint: endpoint as ReplicaRequest["endpoint"],
+        canisterId,
+        methodName: envelope.content.method_name,
+        refused: caller,
+      })
+      return new Response(`fake replica: ${caller}`, { status: 400 })
+    }
+
     try {
-      if (endpoint === "query") return await handleQuery(canisterId, envelope)
-      if (endpoint === "call") return await handleCall(canisterId, envelope)
+      if (endpoint === "query") {
+        return await handleQuery(canisterId, envelope, caller)
+      }
+      if (endpoint === "call") {
+        return await handleCall(canisterId, envelope, caller)
+      }
       return await handleReadState(canisterId)
     } catch (error) {
-      // Transport-level failure: surfaces in the agent as an HTTP error, which
-      // is enough for a test to see that something went wrong.
-      return new Response(String(error), { status: 500 })
+      // A bug in the fake or in a canister handler. The agent sees an HTTP
+      // error, which fails the test; the details go to the test output.
+      console.error("fake replica:", error)
+      return new Response("fake replica: the request handler threw", {
+        status: 500,
+      })
     }
   }
 
