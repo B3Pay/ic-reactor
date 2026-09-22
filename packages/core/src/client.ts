@@ -199,32 +199,37 @@ export class ClientManager {
     }
 
     this.initPromise = (async () => {
-      // A failed attempt leaves its error here and clears initPromise so the
-      // caller can retry. Clearing it as each attempt starts means a retry that
-      // succeeds reports the initialized state without the old error.
-      this.updateAgentState({ isInitializing: true, error: undefined })
-      if (isDev() && typeof window !== "undefined") {
-        console.info(
-          `%cic-reactor:%c Initializing agent for ${this.network} network`,
-          "color: #3b82f6; font-weight: bold",
-          "color: inherit",
-          {
-            host: this.agentHost?.toString(),
-            isLocal: this.isLocal,
-          }
-        )
-      }
       try {
+        // A failed attempt leaves its error here and clears initPromise so the
+        // caller can retry. Clearing it as each attempt starts means a retry
+        // that succeeds reports the initialized state without the old error.
+        //
+        // This runs inside the try because it notifies subscribers
+        // synchronously: one that throws has to fail this attempt like any
+        // other error, not reject it with `isInitializing` still set — which
+        // made every later call return the same rejected promise, forever.
+        this.updateAgentState({ isInitializing: true, error: undefined })
+        if (isDev() && typeof window !== "undefined") {
+          console.info(
+            `%cic-reactor:%c Initializing agent for ${this.network} network`,
+            "color: #3b82f6; font-weight: bold",
+            "color: inherit",
+            {
+              host: this.agentHost?.toString(),
+              isLocal: this.isLocal,
+            }
+          )
+        }
         if (this.isLocal) {
           await this.#agent.fetchRootKey()
         }
         this.updateAgentState({ isInitialized: true, isInitializing: false })
       } catch (error) {
+        this.initPromise = undefined
         this.updateAgentState({
           error: error as Error,
           isInitializing: false,
         })
-        this.initPromise = undefined
         throw error
       }
     })()

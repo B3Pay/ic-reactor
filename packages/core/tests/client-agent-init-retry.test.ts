@@ -66,6 +66,51 @@ describe("ClientManager.initializeAgent retry", () => {
     })
   })
 
+  describe("when an agent-state subscriber throws", () => {
+    // The attempt announced itself (`isInitializing: true`) before entering
+    // its try block, so a subscriber that threw on that notification rejected
+    // the attempt with `isInitializing` left true and the rejected promise
+    // kept. Every later call returned that same rejected promise, so one
+    // exception from app code left the manager uninitializable for good, the
+    // root key was never fetched, and a UI gated on `isInitializing` spun
+    // forever.
+    const throwingOnce = () => {
+      let thrown = false
+      return () => {
+        if (thrown) return
+        thrown = true
+        throw new Error("subscriber failed")
+      }
+    }
+
+    it("reports the failure without leaving the attempt in progress", async () => {
+      const { manager } = makeLocalManager()
+      manager.subscribeAgentState(throwingOnce())
+
+      await expect(manager.initializeAgent()).rejects.toThrow(
+        "subscriber failed"
+      )
+
+      expect(manager.agentState.isInitializing).toBe(false)
+    })
+
+    it("lets a later attempt initialize the agent", async () => {
+      const { manager, fetchRootKey } = makeLocalManager()
+      fetchRootKey.mockResolvedValue(new Uint8Array(133))
+      manager.subscribeAgentState(throwingOnce())
+
+      await manager.initializeAgent().catch(() => undefined)
+      await manager.initializeAgent()
+
+      expect(fetchRootKey).toHaveBeenCalledTimes(1)
+      expect(manager.agentState).toMatchObject({
+        isInitialized: true,
+        isInitializing: false,
+        error: undefined,
+      })
+    })
+  })
+
   it("still reports the error of an attempt that fails", async () => {
     // Guards against over-reach: clearing must not hide a real failure.
     const { manager, fetchRootKey } = makeLocalManager()
