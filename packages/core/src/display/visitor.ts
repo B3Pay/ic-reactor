@@ -347,7 +347,14 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     return z.codec(z.any(), z.any(), {
       decode: (val) => {
         if (!Array.isArray(val) || val.length === 0) return undefined
-        return elemCodec.decode(val[0])
+        const value = elemCodec.decode(val[0])
+        // Only a nested optional decodes a some to `undefined` — its own
+        // none. Left as is, `opt opt T`'s some(none) displayed exactly like
+        // none, although canisters use them for different things (Internet
+        // Identity's config: none keeps a setting, `opt null` clears it). It
+        // displays as `null`, as `opt null`'s some(null) already does.
+        // Encoding is unchanged: a nullish value is none.
+        return value === undefined ? null : value
       },
       encode: (val) => {
         if (isNullish(val)) return [] as []
