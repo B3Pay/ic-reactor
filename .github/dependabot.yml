@@ -31,6 +31,12 @@ updates:
       # three move off `tsup --dts`, or tsup gains TS7 support. See #225.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # An npm alias that keeps @icp-sdk/auth v8 installed next to the v10
+      # devDependency, so react's real-AuthClient suite runs against both
+      # supported majors (packages/react/vitest.config.ts). Moving it to v10
+      # would silently drop the v8 run.
+      - dependency-name: "@icp-sdk/auth-v8"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
     labels:

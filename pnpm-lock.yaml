@@ -1244,11 +1244,17 @@ importers:
         version: link:../core
     devDependencies:
       '@icp-sdk/auth':
-        specifier: ^8.0.3
-        version: 8.0.3(@icp-sdk/core@6.1.0)
+        specifier: ^10.0.0
+        version: 10.0.0(@icp-sdk/core@6.1.0)
+      '@icp-sdk/auth-v8':
+        specifier: npm:@icp-sdk/auth@^8.0.3
+        version: '@icp-sdk/auth@8.0.3(@icp-sdk/core@6.1.0)'
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@noble/curves':
+        specifier: ^2.2.0
+        version: 2.3.0
       '@size-limit/preset-small-lib':
         specifier: ^13.0.3
         version: 13.0.3(size-limit@13.0.3)
@@ -2733,6 +2739,11 @@ packages:
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
 
+  '@icp-sdk/auth@10.0.0':
+    resolution: {integrity: sha512-lAjoTb7z9oIeTkvl4nGaja4Bxajuo4sLbXPxH3LGF8zVX36vfkLgAvrWYnV9s3XwJFQ6o1YZuk3ib1Y7sVinfg==}
+    peerDependencies:
+      '@icp-sdk/core': ^6
+
   '@icp-sdk/auth@8.0.3':
     resolution: {integrity: sha512-HXndLoKt22+KTBye6l9wblMSqArhAALnPWfR8Zqv9h8UNLSznjtXYMDbQT4A0qd5xa5hEMfg1TCu5iQkMxyW1w==}
     peerDependencies:
@@ -2749,6 +2760,11 @@ packages:
     resolution: {integrity: sha512-QYqArHpe+uTHMEEoj7w/ET2hKSarsCBbvcQEs+GJrdIcMIm/gNIsFIrJVRB6YIPlgROYNkiK4ZjfNHMZsK5CyQ==}
     peerDependencies:
       '@icp-sdk/core': ^5
+
+  '@icp-sdk/signer@6.0.0':
+    resolution: {integrity: sha512-P+ltVK1uV/CT8UiakoYCm3+F/e5+Jj53BaicZ0sgXphcwsWSEy93xeur3XRicBqUtMHGlYi062DEpve+tfe4pg==}
+    peerDependencies:
+      '@icp-sdk/core': ^6.0.0
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -9851,6 +9867,12 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
+  '@icp-sdk/auth@10.0.0(@icp-sdk/core@6.1.0)':
+    dependencies:
+      '@icp-sdk/core': 6.1.0
+      '@icp-sdk/signer': 6.0.0(@icp-sdk/core@6.1.0)
+      idb: 7.1.1
+
   '@icp-sdk/auth@8.0.3(@icp-sdk/core@6.1.0)':
     dependencies:
       '@icp-sdk/core': 6.1.0
@@ -9871,6 +9893,10 @@ snapshots:
       asn1js: 3.0.10
 
   '@icp-sdk/signer@5.6.2(@icp-sdk/core@6.1.0)':
+    dependencies:
+      '@icp-sdk/core': 6.1.0
+
+  '@icp-sdk/signer@6.0.0(@icp-sdk/core@6.1.0)':
     dependencies:
       '@icp-sdk/core': 6.1.0
 
