@@ -1,4 +1,4 @@
-import type { Identity } from "@icp-sdk/core/agent"
+import type { HttpAgentOptions, Identity } from "@icp-sdk/core/agent"
 import type { ClientManagerParameters, AgentState } from "./types/client.js"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryClient } from "@tanstack/query-core"
@@ -68,12 +68,18 @@ export class ClientManager {
    * @param parameters - Configuration options for the agent and network environment.
    */
   constructor({
-    agentOptions = {},
+    agentOptions: givenAgentOptions = {},
     queryClient,
     allowEnvConfig,
     allowEnvRootKey,
   }: ClientManagerParameters) {
     this.queryClient = queryClient
+
+    // Everything below resolves into this copy, never into the caller's
+    // object: that one may be frozen, or shared with another manager that must
+    // not inherit the host, the verification setting, or a root key this one
+    // took from the `ic_env` cookie under its own trust decision.
+    const agentOptions: HttpAgentOptions = { ...givenAgentOptions }
 
     this.agentState = {
       isInitialized: false,
