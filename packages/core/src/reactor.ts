@@ -315,7 +315,10 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * Invalidate cached queries for this canister.
    * This will mark matching queries as stale and trigger a refetch for any active queries.
    *
-   * @param params - Optional parameters to filter the invalidation
+   * @param params - Optional parameters to filter the invalidation. Without a
+   * `functionName`, every query of the canister is invalidated.
+   * @param callConfig - Optional call configuration. Its `canisterId` selects
+   * which canister's queries are invalidated, as it does for the calls.
    *
    * @example
    * ```typescript
@@ -327,22 +330,34 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    *
    * // Invalidate 'getUser' query for specific user
    * reactor.invalidateQueries({ functionName: 'getUser', args: ['user-1'] })
+   *
+   * // Invalidate all queries of a canister reached through an override
+   * reactor.invalidateQueries(undefined, { canisterId: otherLedgerId })
    * ```
    */
   public invalidateQueries<M extends FunctionName<A>>(
     params?: Partial<ReactorQueryParams<A, M, T>>,
     callConfig?: CallConfig
   ) {
-    const queryKey = params
-      ? this.generateQueryKey(
-          {
-            functionName: params.functionName as M,
-            args: params.args,
-            queryKey: params.queryKey,
-          },
-          callConfig
-        )
-      : [this.canisterId.toString()]
+    // Without a method there is nothing narrower than the canister to match
+    // on: a key built with an undefined functionName matches no entry at all,
+    // since TanStack compares prefix segments one by one. The canister is the
+    // one `callConfig` names, exactly as in `generateQueryKey`.
+    const queryKey =
+      params?.functionName !== undefined
+        ? this.generateQueryKey(
+            {
+              functionName: params.functionName,
+              args: params.args,
+              queryKey: params.queryKey,
+            },
+            callConfig
+          )
+        : [
+            callConfig?.canisterId
+              ? Principal.from(callConfig.canisterId).toString()
+              : this.canisterId.toString(),
+          ]
 
     void this.queryClient.invalidateQueries({
       queryKey,
