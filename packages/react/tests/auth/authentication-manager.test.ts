@@ -485,6 +485,34 @@ describe("AuthenticationManager", () => {
     })
   })
 
+  it("ignores an ic_env cookie it cannot decode instead of throwing", async () => {
+    // Nothing isolates this cookie: a sibling subdomain can write it, and on
+    // localhost so can an app on any other port. `safeGetCanisterEnv` returns
+    // undefined for a value that is not valid percent-encoding, but the
+    // fallback parser here then threw `URIError: URI malformed` from the
+    // constructor. `new AuthenticationManager()` failed, and so did every
+    // render of a defineReactor `useAuth()`, which builds the manager lazily.
+    vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:8000" } })
+    vi.stubGlobal("document", { cookie: "ic_env=%E0%A4%A" })
+    const authClient = createAuthClient()
+    const AuthClient = mockAuthClientModule(authClient)
+    const localClientManager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "http://127.0.0.1:8000" },
+    })
+    vi.spyOn(localClientManager, "initializeAgent").mockResolvedValue()
+
+    const authentication = new AuthenticationManager({
+      clientManager: localClientManager,
+    })
+    await authentication.login()
+
+    // Treated as no cookie at all: the default local provider.
+    expect(AuthClient.mock.calls[0][0].identityProvider).toBe(
+      "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:8000/authorize"
+    )
+  })
+
   it("ignores an ic_env internet_identity id that is not a principal", async () => {
     // Interpolated into `http://<id>.localhost:<port>/authorize`, so only a
     // bare principal can be substituted in safely.

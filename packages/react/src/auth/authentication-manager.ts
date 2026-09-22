@@ -973,15 +973,24 @@ function getAuthenticationCanisterEnv(): Record<string, string> | undefined {
     return undefined
   }
 
+  // Anything able to set a cookie here can write this one, a sibling subdomain
+  // or, on localhost, an app on another port. A value that is not valid
+  // percent-encoding is ignored, as `safeGetCanisterEnv` ignores it: throwing
+  // would fail the constructor, and every `useAuth()` render with it.
+  let decodedValue: string
+  try {
+    decodedValue = decodeURIComponent(encodedValue)
+  } catch {
+    return undefined
+  }
+
   const env = Object.fromEntries(
-    decodeURIComponent(encodedValue)
-      .split("&")
-      .map((entry) => {
-        const separatorIndex = entry.indexOf("=")
-        return separatorIndex === -1
-          ? [entry, ""]
-          : [entry.slice(0, separatorIndex), entry.slice(separatorIndex + 1)]
-      })
+    decodedValue.split("&").map((entry) => {
+      const separatorIndex = entry.indexOf("=")
+      return separatorIndex === -1
+        ? [entry, ""]
+        : [entry.slice(0, separatorIndex), entry.slice(separatorIndex + 1)]
+    })
   )
 
   return Object.keys(env).length ? env : undefined
