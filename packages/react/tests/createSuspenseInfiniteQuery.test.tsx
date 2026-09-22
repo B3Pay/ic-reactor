@@ -533,7 +533,8 @@ describe("createSuspenseInfiniteQueryFactory", () => {
     expect(mockReactor.callMethod).toHaveBeenCalledWith({
       functionName: "getPosts",
       args: [{ cursor: 0, limit: 5 }],
-      callConfig: undefined,
+      // Aimed at the canister its query key names (#558).
+      callConfig: { canisterId: "test-canister" },
     })
   })
 

@@ -3,6 +3,7 @@
  */
 
 import type { QueryKey } from "@tanstack/react-query"
+import type { CallConfig } from "@icp-sdk/core/agent"
 import type { ReactorQueryData } from "@ic-reactor/core"
 import { generateKey } from "@ic-reactor/core"
 
@@ -11,6 +12,29 @@ import { generateKey } from "@ic-reactor/core"
  * from the base query key. Not part of the public API.
  */
 export const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
+
+/**
+ * The call config an infinite query's function fetches with: the caller's,
+ * aimed at the canister its query key names unless the caller named one.
+ *
+ * The key is built from the reactor's canister when the query is set up, but
+ * the query function reached `callMethod`, which reads `reactor.canisterId`
+ * again whenever it runs. After a `setCanisterId`, a retry or a refetch by an
+ * observer that had not re-rendered then fetched the new canister's pages and
+ * cached them under the old canister's key. `generateQueryKey` always roots a
+ * key at the canister it resolved, so the key says where its pages come from.
+ * `Reactor.getQueryOptions` pins its query function the same way.
+ */
+export function callConfigForKey(
+  queryKey: QueryKey,
+  callConfig: CallConfig | undefined
+): CallConfig | undefined {
+  const keyedCanister = queryKey[0]
+  if (callConfig?.canisterId || typeof keyedCanister !== "string") {
+    return callConfig
+  }
+  return { ...callConfig, canisterId: keyedCanister }
+}
 
 /** Convert a direct reactor result into a value TanStack Query can cache. */
 export const normalizeQueryData = <T>(value: T): ReactorQueryData<T> =>

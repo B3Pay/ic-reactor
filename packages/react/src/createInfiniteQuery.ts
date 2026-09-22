@@ -47,6 +47,7 @@ import { CallConfig } from "@icp-sdk/core/agent"
 import { NoInfer } from "./types.js"
 import {
   buildChainedSelect,
+  callConfigForKey,
   mergeFactoryQueryKey,
   normalizeQueryData,
   pickFetchOptions,
@@ -343,7 +344,7 @@ const createInfiniteQueryImpl = <
     const result = await reactor.callMethod({
       functionName,
       args,
-      callConfig,
+      callConfig: callConfigForKey(context.queryKey, callConfig),
     })
     return normalizeQueryData<ReactorReturnOk<Service, Method, Transform>>(
       result as ReactorReturnOk<Service, Method, Transform>
