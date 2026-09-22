@@ -72,6 +72,42 @@ function getReactorClassImportSource(
 }
 
 /**
+ * The type arguments the generated `createActorHooks` call passes, or an empty
+ * string when TypeScript should infer them.
+ *
+ * `createActorHooks` has one overload for `DisplayReactor<Service>` and one for
+ * `Reactor<Service, Transform>`. For those two classes TypeScript reads the type
+ * arguments off the reactor's type. The @ic-reactor/candid classes extend them,
+ * so TypeScript can only infer `Service` by comparing every member of the
+ * subclass with the base class. For a service as large as Internet Identity's,
+ * or one with a recursive type such as Motoko's `List`, that comparison passes
+ * TypeScript's instantiation limit, and the generated file fails to compile with
+ * TS2589. Passing the service and the class's transform skips the inference and
+ * produces the same hooks.
+ *
+ * The core classes keep the inferred call, so their output does not change.
+ */
+function getHookTypeArguments(
+  reactorClass: ReactorClassName,
+  serviceName: string
+): string {
+  switch (reactorClass) {
+    case "Reactor":
+    case "DisplayReactor":
+      return ""
+    case "CandidReactor":
+      return `<${serviceName}, "candid">`
+    case "CandidDisplayReactor":
+      return `<${serviceName}, "display">`
+    case "MetadataDisplayReactor":
+      return `<${serviceName}, "metadataDisplay">`
+    default:
+      // getReactorClassImportSource has already rejected any other value.
+      throw new Error(`Unknown reactor class ${JSON.stringify(reactorClass)}.`)
+  }
+}
+
+/**
  * Generate the content of a canister's managed implementation file.
  */
 export function generateReactorFile(options: ReactorGeneratorOptions): string {
@@ -111,7 +147,7 @@ export const {
   useActorSuspenseInfiniteQuery: use${pascalName}SuspenseInfiniteQuery,
   useActorMutation: use${pascalName}Mutation,
   useActorMethod: use${pascalName}Method,
-} = createActorHooks(${reactorName})
+} = createActorHooks${getHookTypeArguments(reactorClass, serviceName)}(${reactorName})
 `
       : ""
 
