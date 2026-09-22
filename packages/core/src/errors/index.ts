@@ -1,6 +1,24 @@
 import { NullishType } from "../display/types.js"
 
 /**
+ * What `JSON.stringify` makes of an error's own enumerable properties, with
+ * every BigInt written as its decimal string instead of throwing.
+ *
+ * These errors carry what the canister and the agent reported, and both
+ * routinely hold BigInts — every ICRC-1 transfer error has a `nat` in it, and a
+ * rejected query's cause carries node-signature timestamps — so serialising one
+ * (a log record, an API response) threw "Do not know how to serialize a
+ * BigInt", usually from inside the catch block handling it. Everything else
+ * serialises exactly as it did.
+ */
+const toJsonWithoutBigInts = (error: object): unknown =>
+  JSON.parse(
+    JSON.stringify({ ...error }, (_, value: unknown) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  )
+
+/**
  * Interface representing the generic shape of an API error.
  */
 export interface ApiError {
@@ -25,6 +43,11 @@ export class CallError extends Error {
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, CallError)
     }
+  }
+
+  /** JSON form, with any BigInt in the cause written as a string. */
+  toJSON(): unknown {
+    return toJsonWithoutBigInts(this)
   }
 }
 
@@ -104,6 +127,14 @@ export class CanisterError<E = unknown> extends Error {
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, CanisterError)
     }
+  }
+
+  /**
+   * JSON form, with any BigInt in `err` written as a string. `err` itself
+   * keeps its typed value.
+   */
+  toJSON(): unknown {
+    return toJsonWithoutBigInts(this)
   }
 
   /**
@@ -228,6 +259,11 @@ export class ValidationError extends Error {
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, ValidationError)
     }
+  }
+
+  /** JSON form, with any BigInt in the issues written as a string. */
+  toJSON(): unknown {
+    return toJsonWithoutBigInts(this)
   }
 
   /**
