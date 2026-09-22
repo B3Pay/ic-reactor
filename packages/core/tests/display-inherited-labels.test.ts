@@ -1,3 +1,4 @@
+import { runInNewContext } from "node:vm"
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
 import { IDL } from "@icp-sdk/core/candid"
@@ -128,6 +129,36 @@ describe("display codec — labels named after Object.prototype members", () => 
       memo: ["rent"],
       amount: 5n,
     })
+  })
+
+  it("ignores what another realm's Object.prototype supplies", () => {
+    // A value built in an iframe or a `vm` context inherits that realm's
+    // `constructor` and `toString`, not this realm's, so comparing with this
+    // realm's Object.prototype read them as fields the caller had given.
+    const RecordType = IDL.Record({
+      constructor: IDL.Opt(IDL.Text),
+      toString: IDL.Opt(IDL.Nat),
+      other: IDL.Nat,
+    })
+    const codec = didToDisplayCodec(RecordType)
+    const foreign = runInNewContext('({ other: "5" })') as object
+
+    expect(
+      hex(IDL.encode([RecordType], [codec.asCandid(foreign as never)]))
+    ).toBe(
+      hex(
+        IDL.encode(
+          [RecordType],
+          [
+            withOwn([
+              ["constructor", []],
+              ["toString", []],
+              ["other", 5n],
+            ]),
+          ]
+        )
+      )
+    )
   })
 
   it("sends a decoded record back after a JSON round trip", () => {

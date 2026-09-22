@@ -13,7 +13,21 @@
 export function hasLabel(value: object, label: string): boolean {
   if (Object.prototype.hasOwnProperty.call(value, label)) return true
   // `__proto__` names the prototype itself, never an inherited field.
-  if (label === "__proto__" || !(label in value)) return false
-  const inherited = Object.prototype as unknown as Record<string, unknown>
-  return (value as Record<string, unknown>)[label] !== inherited[label]
+  if (label === "__proto__") return false
+  // Find the prototype that holds the label. The root of the chain is the
+  // Object.prototype of the realm the value was made in, which is not always
+  // this one: a value from an iframe or a `vm` context inherits that realm's
+  // `constructor` and `toString`, different functions from this realm's. So
+  // what the root holds is inherited whatever its identity, and anything a
+  // prototype before it holds, such as a class's getter, is data.
+  for (
+    let proto: object | null = Object.getPrototypeOf(value);
+    proto !== null;
+    proto = Object.getPrototypeOf(proto) as object | null
+  ) {
+    if (Object.prototype.hasOwnProperty.call(proto, label)) {
+      return Object.getPrototypeOf(proto) !== null
+    }
+  }
+  return false
 }
