@@ -37,7 +37,8 @@ const postsQuery = createInfiniteQuery(backend, {
 `createInfiniteQuery` accepts standard TanStack Query infinite-query options at
 the create level (for example `refetchInterval`, `refetchOnMount`,
 `refetchOnWindowFocus`, `retry`, `gcTime`, and `networkMode`) in addition to the
-IC Reactor-specific options below.
+IC Reactor-specific options below. `networkMode`, `retry`, `retryDelay` and
+`meta` also apply to `fetch()`; the rest apply to the hook only.
 
 | Option                 | Type                  | Description                                  |
 | ---------------------- | --------------------- | -------------------------------------------- |
