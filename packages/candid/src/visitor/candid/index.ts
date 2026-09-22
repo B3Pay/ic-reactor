@@ -49,9 +49,9 @@ const FILE_RENDER_HINT: FormRenderHint = {
 }
 
 /**
- * Whether no value of this field's type exists: `variant {}`, a variant none of
- * whose options can hold a value, or a record or tuple containing such a field.
- * A recursive field is assumed to have values.
+ * Whether no value of this field's type exists: `empty`, `variant {}`, a
+ * variant none of whose options can hold a value, or a record or tuple
+ * containing such a field. A recursive field is assumed to have values.
  */
 function hasNoValue(field: FormFieldNode): boolean {
   switch (field.type) {
@@ -60,6 +60,8 @@ function hasNoValue(field: FormFieldNode): boolean {
     case "record":
     case "tuple":
       return field.fields.some(hasNoValue)
+    case "unknown":
+      return field.candidType === "empty"
     default:
       return false
   }
@@ -650,6 +652,22 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
         t._bits,
         false
       )
+    )
+  }
+
+  /**
+   * `empty` has no values, like `variant {}`. It was described by `visitType`
+   * with `z.any()`, so the form accepted anything for it, and a variant could
+   * default to an option holding it. Neither could be sent.
+   */
+  public visitEmpty(_t: IDL.EmptyClass, label: string): FormFieldNode {
+    return this.primitive(
+      "unknown",
+      label,
+      this.currentName(),
+      "empty",
+      null,
+      z.never("empty has no values, so no value is valid")
     )
   }
 
