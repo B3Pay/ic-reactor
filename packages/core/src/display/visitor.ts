@@ -1,6 +1,7 @@
 import * as z from "zod"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
+import { hasLabel } from "../utils/label.js"
 import {
   createVariant,
   nonNullish,
@@ -73,6 +74,10 @@ function createBigIntCodec(typeName: string): z.ZodTypeAny {
     }
   )
 }
+
+/** A label's value, or `undefined` for one the display value does not hold. */
+const labelValue = (value: object, label: string): unknown =>
+  hasLabel(value, label) ? (value as Record<string, unknown>)[label] : undefined
 
 export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   private _recCache = new Map<IDL.RecClass, z.ZodTypeAny>()
@@ -385,6 +390,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     return z.codec(z.any(), z.any(), {
       decode: (val) => {
         if (!val || typeof val !== "object") return val
+        // A plain read is right here: IDL.decode sets every field of the
+        // record it returns. (It assigns `x[key] = value`, so a `__proto__`
+        // field lands on the prototype, where only this read still finds it.)
         return Object.fromEntries(
           fieldEntries.map(({ fieldName, codec }) => [
             fieldName,
@@ -397,7 +405,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
         return Object.fromEntries(
           fieldEntries.map(({ fieldName, codec }) => [
             fieldName,
-            codec.encode(val[fieldName]),
+            codec.encode(labelValue(val, fieldName)),
           ])
         )
       },
@@ -434,7 +442,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     fields: Array<[string, IDL.Type]>,
     _data: unknown
   ): z.ZodTypeAny {
-    const variantCodecs: Record<string, any> = {}
+    // No prototype: `key in variantCodecs` must not find `toString` or
+    // `constructor` for a variant that has no such arm.
+    const variantCodecs: Record<string, any> = Object.create(null)
     for (const [variantName, variantType] of fields) {
       variantCodecs[variantName] = variantType.accept(this, null)
     }
@@ -477,10 +487,11 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           const fieldType = fields.find(([n]) => n === key)?.[1]
           if (fieldType?.name === "null") return { _type: key }
 
-          if (key in variantCodecs && nonNullish(extracted[key])) {
+          const payload = labelValue(extracted, key)
+          if (key in variantCodecs && nonNullish(payload)) {
             return {
               _type: key,
-              [key]: decode(variantCodecs[key], extracted[key]),
+              [key]: decode(variantCodecs[key], payload),
             }
           }
           return extracted
@@ -511,8 +522,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           const fieldType = fields.find(([n]) => n === key)?.[1]
           if (fieldType?.name === "null") return { [key]: null }
 
-          if (key in variantCodecs && encodesPayload(fieldType, val[key])) {
-            return { [key]: encode(variantCodecs[key], val[key]) }
+          const payload = labelValue(val, key)
+          if (key in variantCodecs && encodesPayload(fieldType, payload)) {
+            return { [key]: encode(variantCodecs[key], payload) }
           }
           return { [key]: null }
         }
