@@ -347,72 +347,61 @@ export function useActorMethod<
   // Unified Call Function
   // ============================================================================
 
-  const call = useCallback(
-    async (
-      callArgs?: ReactorArgs<Service, Method, Transform>
-    ): Promise<TQueryData | undefined> => {
-      if (isQuery) {
-        // For queries, refetch with new args if provided
-        if (callArgs !== undefined) {
-          // Key on the args actually being called. Reusing the hook's
-          // mount-time key would store this result under the previous args'
-          // entry — poisoning it for every other reader — and let fetchQuery
-          // dedupe onto an in-flight request for the old args, returning that
-          // response as though it answered this one.
-          try {
-            const result = await reactor.queryClient.fetchQuery<TQueryData>({
-              queryKey: buildQueryKey(callArgs),
-              // Normalize for the same reason as the observer's queryFn.
-              queryFn: async () =>
-                normalizeQueryData<TData>(
-                  (await reactor.callMethod({
-                    functionName,
-                    args: callArgs,
-                    callConfig,
-                  })) as TData
-                ),
-              staleTime: 0,
-            })
-            // Dispatched here rather than by the observer effect: this result
-            // lands under the called args' key, which the mounted observer (bound
-            // to the hook's own args) does not watch. That separation is also why
-            // this can no longer double-fire the way it did when both wrote to
-            // the same key.
-            onSuccessRef.current?.(result)
-            return result
-          } catch (error) {
-            onErrorRef.current?.(
-              error as ReactorReturnErr<Service, Method, Transform>
-            )
-            return undefined
-          }
+  const callLatest = async (
+    callArgs?: ReactorArgs<Service, Method, Transform>
+  ): Promise<TQueryData | undefined> => {
+    if (isQuery) {
+      // For queries, refetch with new args if provided
+      if (callArgs !== undefined) {
+        // Key on the args actually being called. Reusing the hook's
+        // mount-time key would store this result under the previous args'
+        // entry — poisoning it for every other reader — and let fetchQuery
+        // dedupe onto an in-flight request for the old args, returning that
+        // response as though it answered this one.
+        try {
+          const result = await reactor.queryClient.fetchQuery<TQueryData>({
+            queryKey: buildQueryKey(callArgs),
+            // Normalize for the same reason as the observer's queryFn.
+            queryFn: async () =>
+              normalizeQueryData<TData>(
+                (await reactor.callMethod({
+                  functionName,
+                  args: callArgs,
+                  callConfig,
+                })) as TData
+              ),
+            staleTime: 0,
+          })
+          // Dispatched here rather than by the observer effect: this result
+          // lands under the called args' key, which the mounted observer (bound
+          // to the hook's own args) does not watch. That separation is also why
+          // this can no longer double-fire the way it did when both wrote to
+          // the same key.
+          onSuccessRef.current?.(result)
+          return result
+        } catch (error) {
+          onErrorRef.current?.(
+            error as ReactorReturnErr<Service, Method, Transform>
+          )
+          return undefined
         }
-        // Otherwise just refetch
-        const { data } = await queryResult.refetch()
-        return data
-      } else {
-        // For mutations, execute with provided args
-        return mutationResult
-          .mutateAsync(callArgs as ReactorArgs<Service, Method, Transform>)
-          .catch(() => undefined)
       }
-    },
-    [
-      isQuery,
-      reactor,
-      functionName,
-      callConfig,
-      buildQueryKey,
-      queryResult,
-      mutationResult,
-    ]
-  )
+      // Otherwise just refetch
+      const { data } = await queryResult.refetch()
+      return data
+    } else {
+      // For mutations, execute with provided args
+      return mutationResult
+        .mutateAsync(callArgs as ReactorArgs<Service, Method, Transform>)
+        .catch(() => undefined)
+    }
+  }
 
   // ============================================================================
   // Reset Function
   // ============================================================================
 
-  const reset = useCallback(() => {
+  const resetLatest = () => {
     if (isQuery) {
       // Reset, not remove. `removeQueries` drops the entry without notifying
       // its observers, so this hook kept rendering the old data while bound to
@@ -425,19 +414,43 @@ export function useActorMethod<
     } else {
       mutationResult.reset()
     }
-  }, [isQuery, reactor, queryKey, mutationResult])
+  }
 
   // ============================================================================
   // Refetch Function
   // ============================================================================
 
-  const refetch = useCallback(async () => {
+  const refetchLatest = async () => {
     if (isQuery) {
       const result = await queryResult.refetch()
       return result.data
     }
     return undefined
-  }, [isQuery, queryResult])
+  }
+
+  // `call`, `reset` and `refetch` keep one identity for the life of the
+  // component, as TanStack's own `refetch`, `mutate` and `reset` do, and run
+  // the latest render's implementation above when invoked. They used to be
+  // `useCallback`s listing the query and mutation results, which TanStack Query
+  // returns fresh every render, so they changed every render too. An effect
+  // that lists one — `react-hooks/exhaustive-deps` requires it as soon as the
+  // effect calls it — then re-ran after every render its own call caused: an
+  // unbounded loop of canister calls, state-changing ones for an update method.
+  const implementations = {
+    call: callLatest,
+    reset: resetLatest,
+    refetch: refetchLatest,
+  }
+  const latest = useRef(implementations)
+  latest.current = implementations
+
+  const call = useCallback(
+    (callArgs?: ReactorArgs<Service, Method, Transform>) =>
+      latest.current.call(callArgs),
+    []
+  )
+  const reset = useCallback(() => latest.current.reset(), [])
+  const refetch = useCallback(() => latest.current.refetch(), [])
 
   // ============================================================================
   // Return Unified Result
