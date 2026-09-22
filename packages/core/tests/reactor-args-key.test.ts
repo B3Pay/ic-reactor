@@ -143,6 +143,40 @@ describe("the args segment of a query key", () => {
       ).resolves.toBe("quote for NaN")
       expect(query).toHaveBeenCalledTimes(2)
     })
+
+    // NaN, ±Infinity and -0 have no JSON number form, so they are written as a
+    // tag. `generateKey` is public, and an infinite query's `getKeyArgs` may
+    // return any value, so a tag that another value can also produce lets two
+    // inputs share a cache entry: with the bare string "Infinity" as the tag,
+    // `[Infinity]` and `["Infinity"]` would.
+    const SPELLED = ["NaN", "Infinity", "-Infinity", "-0"]
+
+    it.each(SPELLED)("is distinct from the string %j", (text) => {
+      expect(generateKey([Number(text)])).not.toBe(generateKey([text]))
+    })
+
+    it.each(SPELLED)(
+      "is not reproduced by passing the key of %s back in as a value",
+      (text) => {
+        // Whatever shape the tag has, it parses back to a JSON value a caller
+        // could pass. That value, and the value its own key parses back to,
+        // and so on, must each get a key of their own.
+        const keys = [generateKey([Number(text)])]
+        for (let i = 0; i < 3; i++) {
+          const [value] = JSON.parse(keys[i]) as unknown[]
+          keys.push(generateKey([value]))
+        }
+        expect(new Set(keys).size).toBe(keys.length)
+      }
+    )
+
+    it("tags them with a leading U+0000, and adds another to a string that starts with one", () => {
+      // Pinned because `generateKey` is public and its keys may be persisted.
+      expect(generateKey([NaN, Infinity, -Infinity, -0, "\u0000x"])).toBe(
+        '["\\u0000NaN","\\u0000Infinity","\\u0000-Infinity","\\u0000-0",' +
+          '"\\u0000\\u0000x"]'
+      )
+    })
   })
 
   it("keeps the existing encoding for everything else", () => {
