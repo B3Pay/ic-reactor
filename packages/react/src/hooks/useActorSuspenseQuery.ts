@@ -16,6 +16,7 @@ import {
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
+import { useMountQueryClient } from "../utils.js"
 
 export interface UseActorSuspenseQueryParameters<
   Service,
@@ -95,6 +96,8 @@ export const useActorSuspenseQuery = <
   Transform,
   Selected
 >): UseActorSuspenseQueryResult<Service, Method, Transform, Selected> => {
+  useMountQueryClient(reactor.queryClient)
+
   // Memoize query options to prevent unnecessary re-computations
   const { queryKey, queryFn } = useMemo(
     () =>

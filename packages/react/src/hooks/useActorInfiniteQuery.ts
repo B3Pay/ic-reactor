@@ -16,7 +16,11 @@ import {
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { mergeFactoryQueryKey, normalizeQueryData } from "../utils.js"
+import {
+  mergeFactoryQueryKey,
+  normalizeQueryData,
+  useMountQueryClient,
+} from "../utils.js"
 
 /**
  * Parameters for useActorInfiniteQuery hook.
@@ -137,6 +141,8 @@ export const useActorInfiniteQuery = <
   TPageParam,
   Selected
 > => {
+  useMountQueryClient(reactor.queryClient)
+
   // Always pass queryKey through generateQueryKey so it is merged with the
   // reactor/function identity. Using the custom key verbatim would cause cache
   // collisions if two different actors or methods share the same key string.

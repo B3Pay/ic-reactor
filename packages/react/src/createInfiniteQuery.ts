@@ -49,6 +49,7 @@ import {
   buildChainedSelect,
   mergeFactoryQueryKey,
   normalizeQueryData,
+  useMountQueryClient,
 } from "./utils.js"
 
 type InfiniteQueryFactoryFn<
@@ -389,6 +390,8 @@ const createInfiniteQueryImpl = <
     Selected,
     TError
   > = (options: any): any => {
+    useMountQueryClient(reactor.queryClient)
+
     // Memoized and identity-preserving; see buildChainedSelect for why the
     // function identity matters to the observer's select-result cache.
     const chainedSelect = useMemo(

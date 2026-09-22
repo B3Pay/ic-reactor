@@ -19,7 +19,7 @@ import {
   FunctionType,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { normalizeQueryData } from "../utils.js"
+import { normalizeQueryData, useMountQueryClient } from "../utils.js"
 
 /**
  * Configuration for useActorMethod hook.
@@ -207,6 +207,8 @@ export function useActorMethod<
   }, [reactor, functionName])
 
   const functionType: FunctionType = isQuery ? "query" : "update"
+
+  useMountQueryClient(reactor.queryClient)
 
   // Latest callbacks, read at dispatch time: this keeps a rerendered closure
   // from being ignored, and keeps callback identity out of the effect deps.
