@@ -137,6 +137,65 @@ describe("display codec — opt of an element whose values are arrays", () => {
     expect(nat64s.asCandid([bigs] as never)).toEqual([bigs])
   })
 
+  describe("a typed array is a vector only of numbers of its width", () => {
+    // IDL.encode takes a typed array as a vector only when the elements are
+    // numbers of the array's width, so a `Uint8Array` is one blob and never a
+    // `vec blob`. Any typed array used to count as a possible value of any
+    // vector: `[bytes]` for `opt vec blob`, a one-element vector holding one
+    // blob, was read as the wrapper around a `vec blob`, and IDL.encode then
+    // took each byte for a blob and rejected the call.
+    const bytes = Uint8Array.of(1, 2)
+    const words = Uint32Array.of(7, 8)
+
+    const BARE_VALUES: Array<[string, IDL.Type, unknown, unknown]> = [
+      [
+        "opt vec blob given [bytes]",
+        IDL.Opt(IDL.Vec(IDL.Vec(IDL.Nat8))),
+        [bytes],
+        [[bytes]],
+      ],
+      [
+        "opt vec vec nat32 given [Uint32Array]",
+        IDL.Opt(IDL.Vec(IDL.Vec(IDL.Nat32))),
+        [words],
+        [[words]],
+      ],
+      [
+        // The same question, asked of a tuple's component.
+        "opt record { vec blob } given [[bytes]]",
+        IDL.Opt(IDL.Tuple(IDL.Vec(IDL.Vec(IDL.Nat8)))),
+        [[bytes]],
+        [[[bytes]]],
+      ],
+    ]
+
+    it.each(BARE_VALUES)(
+      "%s reads the array as the value",
+      (_name, type, given, candid) => {
+        const sent = didToDisplayCodec(type).asCandid(given as never)
+
+        expect(sent).toEqual(candid)
+        expect(hex(IDL.encode([type], [sent]))).toBe(
+          hex(IDL.encode([type], [candid]))
+        )
+      }
+    )
+
+    it("still reads the wrapper around a blob or a vector of its width", () => {
+      const optBlob = didToDisplayCodec(IDL.Opt(IDL.Vec(IDL.Nat8)))
+      expect(optBlob.asCandid([bytes] as never)).toEqual([bytes])
+
+      const int16s = didToDisplayCodec(IDL.Opt(IDL.Vec(IDL.Int16)))
+      const halves = Int16Array.of(-1, 1)
+      expect(int16s.asCandid([halves] as never)).toEqual([halves])
+
+      // `opt vec blob` in wrapper form, and bare with the blob as hex text.
+      const blobs = didToDisplayCodec(IDL.Opt(IDL.Vec(IDL.Vec(IDL.Nat8))))
+      expect(blobs.asCandid([[bytes]] as never)).toEqual([[bytes]])
+      expect(blobs.asCandid(["0102"] as never)).toEqual([[bytes]])
+    })
+  })
+
   it("keeps [[]] as some(empty) where both readings are possible", () => {
     // `[]` is a valid `vec vec text` and a valid element list alike; the
     // wrapper reading wins, as it always has.

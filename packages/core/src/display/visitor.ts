@@ -65,9 +65,19 @@ function couldBeDisplayOf(type: IDL.Type, value: unknown, depth = 0): boolean {
     if (Array.isArray(value)) {
       return value.every((item) => couldBeDisplayOf(elem, item, depth + 1))
     }
-    // A typed array passes through to IDL.encode, which takes one of the
-    // element's width.
-    return ArrayBuffer.isView(value)
+    // A typed array passes through to IDL.encode, which takes one only for a
+    // vector of numbers of the array's width. A `Uint32Array` can be a
+    // `vec nat32`, but a `Uint8Array` is never a `vec blob`: it is one blob.
+    const isNumber =
+      elem instanceof IDL.FixedNatClass ||
+      elem instanceof IDL.FixedIntClass ||
+      elem instanceof IDL.FloatClass
+    return (
+      isNumber &&
+      ArrayBuffer.isView(value) &&
+      (value as { BYTES_PER_ELEMENT?: number }).BYTES_PER_ELEMENT ===
+        elem._bits / 8
+    )
   }
   if (type instanceof IDL.TupleClass) {
     const components = type._fields.map(([, component]) => component)
