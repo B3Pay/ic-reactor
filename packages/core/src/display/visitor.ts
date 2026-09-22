@@ -543,13 +543,21 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   ): z.ZodTypeAny {
     if (this._recCache.has(t)) return this._recCache.get(t)!
 
+    // Built on first use rather than here, since `ty` refers back to `t` —
+    // but built once. Rebuilding it on every call visited the whole type
+    // and constructed fresh codecs for each node of a recursive value, which
+    // made a page of ICRC-3 blocks an order of magnitude slower to display
+    // than to decode.
+    let inner: z.ZodTypeAny | undefined
+    const innerCodec = () => (inner ??= ty.accept(this, data))
+
     const lazyCodec = z.codec(z.any(), z.any(), {
       decode: (val: any) => {
-        const codec = ty.accept(this, data)
+        const codec = innerCodec()
         return codec.decode ? codec.decode(val) : val
       },
       encode: (val: any) => {
-        const codec = ty.accept(this, data)
+        const codec = innerCodec()
         return codec.encode ? codec.encode(val) : val
       },
     })
