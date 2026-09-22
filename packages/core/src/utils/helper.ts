@@ -111,6 +111,13 @@ const parseHostname = (host: string): string | undefined => {
 const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
 
 /**
+ * A loopback address: all of 127.0.0.0/8, and the IPv6 `::1` with or without
+ * the brackets a URL's `hostname` keeps around it.
+ */
+const isLoopbackAddress = (hostname: string): boolean =>
+  IPV4_LOOPBACK.test(hostname) || hostname === "::1" || hostname === "[::1]"
+
+/**
  * Whether the configuration carried by the `ic_env` cookie may be trusted for a
  * host: its root key, its Internet Identity provider, and the canister IDs a
  * reactor resolves by name.
@@ -148,17 +155,8 @@ export const allowsEnvRootKey = (host?: string): boolean => {
 
   if (hostname === "localhost" || hostname.endsWith(".localhost")) return true
   // The whole of 127.0.0.0/8 is loopback, not just 127.0.0.1 — a replica bound
-  // to 127.0.0.2 is exactly as local, and rejecting it here would leave the
-  // agent on the pinned mainnet key (getNetworkByHostname also classifies it as
-  // "ic", so nothing else would fetch the replica's key either) and every
-  // certified call to it would fail.
-  if (
-    IPV4_LOOPBACK.test(hostname) ||
-    hostname === "::1" ||
-    hostname === "[::1]"
-  ) {
-    return true
-  }
+  // to 127.0.0.2 is exactly as local as one on 127.0.0.1, and so is ::1.
+  if (isLoopbackAddress(hostname)) return true
 
   // Codespaces / Gitpod forward a local replica over a generated domain.
   return getNetworkByHostname(hostname) === "remote"
@@ -196,13 +194,21 @@ export const isMainnetHost = (host?: string): boolean => {
 /**
  * Determines the network type based on the provided hostname.
  *
+ * Every loopback address is local, not only the literal `127.0.0.1`: a replica
+ * on `[::1]` or `127.0.0.2` classified as "ic" was never asked for its root
+ * key, so each certified response from it failed verification against the
+ * pinned mainnet key.
+ *
  * @param hostname - The hostname to evaluate.
  * @returns A string indicating the network type: "local", "remote", or "ic".
  */
 export function getNetworkByHostname(
   hostname: string
 ): "local" | "remote" | "ic" {
-  if (LOCAL_HOSTS.some((host) => hostname.endsWith(host))) {
+  if (
+    LOCAL_HOSTS.some((host) => hostname.endsWith(host)) ||
+    isLoopbackAddress(hostname)
+  ) {
     return "local"
   } else if (REMOTE_HOSTS.some((host) => hostname.endsWith(host))) {
     return "remote"
