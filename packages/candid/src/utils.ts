@@ -80,6 +80,14 @@ export function normalizeCandidInterface(
   // closing brace of the service built from the signature.
   const trimmed = stripCandidComments(rawInput).trim()
 
+  // A whole service definition is already what this builds. The reactors
+  // recognized one only by the text "service :", so `service:`, a line break
+  // before the colon or a named service was wrapped in a second service and
+  // failed to parse. The parser reports a malformed one.
+  if (SERVICE_DEFINITION.test(trimmed.replace(/"(?:[^"\\]|\\.)*"/g, '""'))) {
+    return rawInput
+  }
+
   assertBalancedCandidInterface(trimmed)
 
   // Match all type declarations to find the last one
@@ -151,6 +159,12 @@ export function normalizeCandidInterface(
 
   return `${typeDefinitions}\nservice : { "${functionName}": ${methodSignature}; }`
 }
+
+/**
+ * The start of a service definition: `service`, an optional name, then `:`.
+ * Tested with quoted names blanked out, so a label cannot match.
+ */
+const SERVICE_DEFINITION = /(^|[\s;])service(\s+[a-zA-Z0-9_]+)?\s*:/
 
 /**
  * Candid source with its `//` and `/* *\/` comments removed. Quoted names are
