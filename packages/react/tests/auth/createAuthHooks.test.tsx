@@ -786,6 +786,120 @@ describe("useIdentityAttributes — the request itself signs the user in", () =>
   })
 })
 
+describe("useIdentityAttributes — the request signs in, then its attribute side fails", () => {
+  // The provider window runs the sign-in and the attribute request together,
+  // and they can end differently: the app's nonce call rejects while the user
+  // goes on to finish signing in. The session is then the signed-in user's,
+  // and so is the failure. Both have to show: signed in, with the error.
+  it("shows the failure to the user the request signed in", async () => {
+    const queryClient = makeQueryClient()
+    const clientManager = new ClientManager({
+      queryClient,
+      agentOptions: { host: "https://icp-api.io" },
+    })
+    vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+    const signedIn = { getPrincipal: () => Principal.fromText("aaaaa-aa") }
+    let holdsSession = false
+    let finishSignIn: () => void = () => {}
+    const authClient = {
+      getIdentity: vi.fn(() =>
+        holdsSession ? signedIn : { getPrincipal: () => Principal.anonymous() }
+      ),
+      isAuthenticated: vi.fn(() => holdsSession),
+      signIn: vi.fn(
+        () =>
+          new Promise((resolve) => {
+            finishSignIn = () => {
+              holdsSession = true
+              resolve(signedIn)
+            }
+          })
+      ),
+      signOut: vi.fn(),
+      requestAttributes: vi.fn(
+        async ({ nonce }: { nonce: () => Promise<Uint8Array> }) => {
+          await nonce()
+          return { data: new Uint8Array(), signature: new Uint8Array() }
+        }
+      ),
+    }
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient: authClient as never,
+    })
+    const { useIdentityAttributes } = createIdentityAttributeHooks(
+      new IdentityAttributesManager(authentication)
+    )
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+    const nonceFailed = new Error("register_begin rejected the caller")
+
+    let settled!: Promise<unknown>
+    act(() => {
+      settled = result.current
+        .requestOpenIdAttributes({
+          openIdProvider: "google",
+          keys: ["email"],
+          nonce: () => Promise.reject(nonceFailed),
+        })
+        .catch((error: unknown) => error)
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      finishSignIn()
+      await settled
+    })
+
+    expect(authentication.authState.isAuthenticated).toBe(true)
+    expect(result.current.attributeError).toBe(nonceFailed)
+    expect(result.current.attributes).toBeNull()
+    expect(result.current.isRequestingAttributes).toBe(false)
+  })
+
+  it("still drops a failure that lands after the user signed out", async () => {
+    const queryClient = makeQueryClient()
+    const authentication = makeAuthentication(makeClientManager(queryClient))
+    const identityAttributes = new IdentityAttributesManager(authentication)
+    ;(authentication as any).updateState({
+      identity: { getPrincipal: () => Principal.fromText("aaaaa-aa") },
+      isAuthenticated: true,
+    })
+    let reject: (error: unknown) => void = () => {}
+    vi.spyOn(identityAttributes, "requestOpenId").mockImplementation(
+      () => new Promise((_, fail) => (reject = fail)) as never
+    )
+    const { useIdentityAttributes } =
+      createIdentityAttributeHooks(identityAttributes)
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+
+    let settled!: Promise<unknown>
+    act(() => {
+      settled = result.current
+        .requestOpenIdAttributes({
+          openIdProvider: "google",
+          keys: ["email"],
+          nonce: new Uint8Array(32),
+        })
+        .catch(() => undefined)
+    })
+    await act(async () => {
+      ;(authentication as any).updateState({
+        identity: null,
+        isAuthenticated: false,
+      })
+    })
+    await act(async () => {
+      reject(new Error("attribute request failed"))
+      await settled
+    })
+
+    expect(result.current.attributeError).toBeNull()
+  })
+})
+
 describe("createAuthHooks — argument guard", () => {
   it("rejects a ClientManager with a message that names the mistake", () => {
     // TypeScript catches this; a JS caller used to get no error until render,
