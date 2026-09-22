@@ -127,6 +127,16 @@ export class IdentityAttributesManager {
       .then(() => authClient.isAuthenticated())
       .catch(() => false)
     if (!isAuthenticated) return
+    // The session the client holds now must be the one this request opened.
+    // Another login can switch the shared client to a different account while
+    // the attribute side is still pending, and committing this identity then
+    // would put back the account the user switched away from.
+    const current = await Promise.resolve()
+      .then(() => authClient.getIdentity())
+      .catch(() => undefined)
+    if (current?.getPrincipal().toText() !== identity.getPrincipal().toText()) {
+      return
+    }
     // The attribute failure is the one to report, so a failure here is not.
     await this.authentication
       .commitIdentity(identity, true)
