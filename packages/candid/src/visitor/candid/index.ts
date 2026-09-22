@@ -15,6 +15,7 @@ import type {
   VariableRefCandidate,
 } from "./types.js"
 import { cloneField, toFormValue } from "./helpers.js"
+import { blobSchema } from "../blob-schema.js"
 
 export * from "./types.js"
 
@@ -448,14 +449,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     const name = this.currentName()
 
     if (ty instanceof IDL.FixedNatClass && ty._bits === 8) {
-      return this.primitive(
-        "blob",
-        label,
-        name,
-        "blob",
-        "",
-        z.union([z.string(), z.array(z.number()), z.instanceof(Uint8Array)])
-      )
+      return this.primitive("blob", label, name, "blob", "", blobSchema())
     }
 
     const itemFieldTemplate = this.withName("[0]", () =>

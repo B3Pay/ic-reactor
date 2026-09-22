@@ -33,6 +33,7 @@ import { Principal } from "@icp-sdk/core/principal"
 import { BaseActor, FunctionName } from "@ic-reactor/core"
 import * as z from "zod"
 import { formatLabel } from "./helpers.js"
+import { blobSchema } from "../blob-schema.js"
 
 export * from "./types.js"
 export * from "./helpers.js"
@@ -575,11 +576,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     ) as FieldNode
 
     if (isBlob) {
-      const schema = z.union([
-        z.string(),
-        z.array(z.number()),
-        z.instanceof(Uint8Array),
-      ])
+      const schema = blobSchema()
 
       const limits = { ...DEFAULT_BLOB_LIMITS }
 
