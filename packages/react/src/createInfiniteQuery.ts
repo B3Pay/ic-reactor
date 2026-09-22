@@ -49,6 +49,7 @@ import {
   buildChainedSelect,
   mergeFactoryQueryKey,
   normalizeQueryData,
+  pickFetchOptions,
 } from "./utils.js"
 
 type InfiniteQueryFactoryFn<
@@ -357,6 +358,8 @@ const createInfiniteQueryImpl = <
     QueryKey,
     TPageParam
   > => ({
+    // How the query function runs, shared with the hook; see pickFetchOptions.
+    ...pickFetchOptions(rest),
     queryKey: getQueryKey(),
     queryFn,
     initialPageParam,

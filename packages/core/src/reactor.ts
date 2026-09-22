@@ -14,6 +14,7 @@ import type {
   TransformKey,
   ReactorArgs,
   ReactorReturnOk,
+  ReactorReturnErr,
   ReactorQueryData,
   ReactorQueryParams,
   ReactorCallParams,
@@ -445,14 +446,29 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   /**
    * Fetch data from the canister and cache it using React Query.
    * This method ensures the data is in the cache and returns it.
+   *
+   * @param options - Further TanStack Query options for the fetch, such as
+   * `retry`, `networkMode` or `meta`. The query key and function always come
+   * from `params`. The query factories pass their config's options through
+   * here, so a subclass that overrides this method still sees their fetches.
    */
   public async fetchQuery<M extends FunctionName<A>>(
-    params: ReactorCallParams<A, M, T>
+    params: ReactorCallParams<A, M, T>,
+    options?: Omit<
+      FetchQueryOptions<
+        ReactorQueryData<ReactorReturnOk<A, M, T>>,
+        ReactorReturnErr<A, M, T>
+      >,
+      "queryKey" | "queryFn"
+    >
   ): Promise<ReactorQueryData<ReactorReturnOk<A, M, T>>> {
-    const options = this.getQueryOptions(params)
     return this.queryClient.ensureQueryData<
-      ReactorQueryData<ReactorReturnOk<A, M, T>>
-    >(options)
+      ReactorQueryData<ReactorReturnOk<A, M, T>>,
+      ReactorReturnErr<A, M, T>
+    >({
+      ...options,
+      ...this.getQueryOptions(params),
+    })
   }
 
   /**

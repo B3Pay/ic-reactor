@@ -16,6 +16,42 @@ export const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
 export const normalizeQueryData = <T>(value: T): ReactorQueryData<T> =>
   (value === undefined ? null : value) as ReactorQueryData<T>
 
+/** Config options that decide how a query's function runs. */
+const FETCH_OPTION_KEYS = [
+  "networkMode",
+  "retry",
+  "retryDelay",
+  "meta",
+] as const
+
+type FetchOptionKey = (typeof FETCH_OPTION_KEYS)[number]
+
+/**
+ * The part of a factory config that `fetch()` and `prefetch()` pass on.
+ *
+ * A factory's hook hands its whole config to TanStack Query, but the
+ * imperative path used to pass only the key and query function. So a config's
+ * `networkMode: "always"` let the hook fetch while `fetch()` stayed paused
+ * offline, its `retry` retried in the hook and not in a loader, and its `meta`
+ * never reached the QueryCache callbacks for a `fetch()` failure. These four
+ * say how the query function runs, so they now apply to both paths.
+ *
+ * Options that decide what the cache keeps (`gcTime`, `initialData`) or how an
+ * observer renders (`select`, `placeholderData`, `enabled`, …) stay with the
+ * hook. Unset options are left out rather than passed as `undefined`, which
+ * would override the QueryClient's own defaults.
+ */
+export function pickFetchOptions<Config extends object>(
+  config: Config
+): Partial<Pick<Config, Extract<keyof Config, FetchOptionKey>>> {
+  const picked: Partial<Record<FetchOptionKey, unknown>> = {}
+  for (const key of FETCH_OPTION_KEYS) {
+    const value = (config as Partial<Record<FetchOptionKey, unknown>>)[key]
+    if (value !== undefined) picked[key] = value
+  }
+  return picked as Partial<Pick<Config, Extract<keyof Config, FetchOptionKey>>>
+}
+
 /**
  * Merge a base query key, optional per-call query key, and optional key-args
  * into a single query key array.
