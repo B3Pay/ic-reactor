@@ -370,10 +370,14 @@ export class ClientManager {
    * @returns An unsubscribe function.
    */
   public subscribe(callback: (identity: Identity) => void) {
-    this.#identitySubscribers.push(callback)
+    // Each subscription gets an entry of its own, so the unsubscribe it returns
+    // removes that one registration and no other. Filtering on the callback
+    // itself removed every registration of a function subscribed twice.
+    const subscription = (identity: Identity) => callback(identity)
+    this.#identitySubscribers.push(subscription)
     return () => {
       this.#identitySubscribers = this.#identitySubscribers.filter(
-        (sub) => sub !== callback
+        (sub) => sub !== subscription
       )
     }
   }
@@ -384,10 +388,12 @@ export class ClientManager {
    * @returns An unsubscribe function.
    */
   public subscribeAgentState(callback: (state: AgentState) => void) {
-    this.#agentStateSubscribers.push(callback)
+    // One entry per subscription, as in `subscribe`.
+    const subscription = (state: AgentState) => callback(state)
+    this.#agentStateSubscribers.push(subscription)
     return () => {
       this.#agentStateSubscribers = this.#agentStateSubscribers.filter(
-        (sub) => sub !== callback
+        (sub) => sub !== subscription
       )
     }
   }
