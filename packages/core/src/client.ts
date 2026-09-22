@@ -198,43 +198,71 @@ export class ClientManager {
       return this.initPromise
     }
 
-    this.initPromise = (async () => {
-      try {
-        // A failed attempt leaves its error here and clears initPromise so the
-        // caller can retry. Clearing it as each attempt starts means a retry
-        // that succeeds reports the initialized state without the old error.
-        //
-        // This runs inside the try because it notifies subscribers
-        // synchronously: one that throws has to fail this attempt like any
-        // other error, not reject it with `isInitializing` still set — which
-        // made every later call return the same rejected promise, forever.
-        this.updateAgentState({ isInitializing: true, error: undefined })
-        if (isDev() && typeof window !== "undefined") {
-          console.info(
-            `%cic-reactor:%c Initializing agent for ${this.network} network`,
-            "color: #3b82f6; font-weight: bold",
-            "color: inherit",
-            {
-              host: this.agentHost?.toString(),
-              isLocal: this.isLocal,
-            }
-          )
-        }
-        if (this.isLocal) {
-          await this.#agent.fetchRootKey()
-        }
-        this.updateAgentState({ isInitialized: true, isInitializing: false })
-      } catch (error) {
-        this.initPromise = undefined
-        this.updateAgentState({
-          error: error as Error,
-          isInitializing: false,
-        })
-        throw error
-      }
-    })()
+    // The attempt's promise is stored BEFORE the attempt runs. Running it
+    // notifies subscribers synchronously, and a subscriber may call back in
+    // from there: on "initializing" it has to join this attempt, and on the
+    // error of an attempt that failed synchronously it starts a retry, which
+    // stores a promise of its own. An async function runs up to its first
+    // `await` before its caller can store the promise it returns, so storing
+    // it on return left the "initializing" subscriber nothing to join, and
+    // let a failed attempt overwrite its retry's promise with its own
+    // rejection, which every later caller received while the retry ran.
+    let settle!: {
+      resolve: () => void
+      reject: (reason: unknown) => void
+    }
+    const attempt = new Promise<void>((resolve, reject) => {
+      settle = { resolve, reject }
+    })
+    this.initPromise = attempt
+    this.runAgentInitialization(attempt).then(settle.resolve, settle.reject)
 
-    return this.initPromise
+    return attempt
+  }
+
+  /**
+   * Runs one `initializeAgent` attempt. `attempt` is the promise its callers
+   * were given.
+   */
+  private async runAgentInitialization(attempt: Promise<void>) {
+    try {
+      // A failed attempt leaves its error here and clears initPromise so the
+      // caller can retry. Clearing it as each attempt starts means a retry
+      // that succeeds reports the initialized state without the old error.
+      //
+      // This runs inside the try because it notifies subscribers
+      // synchronously: one that throws has to fail this attempt like any
+      // other error, not reject it with `isInitializing` still set — which
+      // made every later call return the same rejected promise, forever.
+      this.updateAgentState({ isInitializing: true, error: undefined })
+      if (isDev() && typeof window !== "undefined") {
+        console.info(
+          `%cic-reactor:%c Initializing agent for ${this.network} network`,
+          "color: #3b82f6; font-weight: bold",
+          "color: inherit",
+          {
+            host: this.agentHost?.toString(),
+            isLocal: this.isLocal,
+          }
+        )
+      }
+      if (this.isLocal) {
+        await this.#agent.fetchRootKey()
+      }
+      this.updateAgentState({ isInitialized: true, isInitializing: false })
+    } catch (error) {
+      // Only the attempt that owns initPromise clears it, and it does so
+      // before announcing the failure: a subscriber may retry from that
+      // announcement, and the retry's promise has to outlive this attempt.
+      if (this.initPromise === attempt) {
+        this.initPromise = undefined
+      }
+      this.updateAgentState({
+        error: error as Error,
+        isInitializing: false,
+      })
+      throw error
+    }
   }
 
   /**
