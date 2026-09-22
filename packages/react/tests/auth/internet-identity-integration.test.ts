@@ -255,6 +255,33 @@ describe("Internet Identity sign-in (real AuthClient)", () => {
     }
   )
 
+  it.runIf(isV10)(
+    "signs out here even when revoking the session at the canister fails",
+    async () => {
+      // v10 wipes the device and drops to an anonymous identity before it
+      // rethrows a revoke the canister refused. IC Reactor has to follow it
+      // rather than keep signing as the account the user just left (#478).
+      const { authentication, clientManager } = createManager()
+      await authentication.prepareClient()
+      await withUserGesture(() => authentication.login())
+      provider.setRevokeError("stable memory is full")
+
+      await expect(authentication.logout()).rejects.toThrow(
+        "stable memory is full"
+      )
+
+      expect(authentication.authState.isAuthenticated).toBe(false)
+      expect((await clientManager.getUserPrincipal()).isAnonymous()).toBe(true)
+      expect(authentication.authState.error?.message).toContain(
+        "stable memory is full"
+      )
+      // The device holds nothing any more: a fresh manager stays anonymous.
+      const next = createManager()
+      const identity = await next.authentication.authenticate()
+      expect(identity?.getPrincipal().isAnonymous()).toBe(true)
+    }
+  )
+
   it("reports sign-in failures through authState and onError", async () => {
     const { authentication } = createManager()
     await authentication.prepareClient()
