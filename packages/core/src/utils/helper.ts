@@ -215,6 +215,11 @@ export function getNetworkByHostname(
  * Helper function for extracting the value from a compiled result { Ok: T } or throw a CanisterError if { Err: E }
  * Supports both uppercase (Ok/Err - Rust) and lowercase (ok/err - Motoko) conventions.
  *
+ * A Result is a variant, so only a variant arm is unwrapped: an object whose
+ * one key is the tag, besides the `_type` discriminant a display-transformed
+ * variant carries. A record that merely has a field named `ok` or `err` next
+ * to others is a value like any other, and is returned whole.
+ *
  * @param result - The compiled result to extract from.
  * @returns The extracted value from the compiled result.
  * @throws CanisterError with the typed error value if result is { Err: E } or { err: E }
@@ -225,26 +230,26 @@ export function extractOkResult<T>(result: T): OkResult<T> {
     return result as OkResult<T>
   }
 
-  // Handle { Ok: T } (Rust convention)
-  if ("Ok" in result) {
-    return result.Ok as OkResult<T>
+  const tags = Object.keys(result).filter((key) => key !== "_type")
+  if (tags.length !== 1) {
+    // Not a variant arm (a record, a tuple, ...): not a Result.
+    return result as OkResult<T>
   }
-  // Handle { ok: T } (Motoko convention)
-  if ("ok" in result) {
-    return result.ok as OkResult<T>
-  }
+  const arm = result as Record<string, unknown>
 
-  // Handle { Err: E } (Rust convention) - throw CanisterError
-  if ("Err" in result) {
-    throw new CanisterError(result.Err)
+  switch (tags[0]) {
+    // { Ok: T } (Rust convention) and { ok: T } (Motoko convention)
+    case "Ok":
+    case "ok":
+      return arm[tags[0]] as OkResult<T>
+    // { Err: E } and { err: E } - throw CanisterError
+    case "Err":
+    case "err":
+      throw new CanisterError(arm[tags[0]])
+    default:
+      // Non-Result type, return as-is
+      return result as OkResult<T>
   }
-  // Handle { err: E } (Motoko convention) - throw CanisterError
-  if ("err" in result) {
-    throw new CanisterError(result.err)
-  }
-
-  // Non-Result type, return as-is
-  return result as OkResult<T>
 }
 
 export const isNullish = (value: unknown): value is null | undefined =>
