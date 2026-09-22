@@ -14,6 +14,16 @@ import {
   allowsEnvRootKey,
 } from "./utils/helper.js"
 
+/** The hostname of a page origin, or `undefined` when it is not a URL. */
+const hostnameOf = (origin: string | undefined): string | undefined => {
+  if (!origin) return undefined
+  try {
+    return new URL(origin).hostname
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * ClientManager is a central class for managing the Internet Computer (IC) agent.
  *
@@ -89,11 +99,16 @@ export class ClientManager {
     // Locally deployed asset-canister pages and IC boundary domains can route
     // agent traffic through their serving origin. Ordinary web hosts (Vercel,
     // Cloudflare, etc.) cannot, so they retain the default IC API fallback.
-    if (typeof window !== "undefined") {
-      const browserOrigin = window.location.origin
-      const browserNetwork = getNetworkByHostname(
-        new URL(browserOrigin).hostname
-      )
+    //
+    // A page with no usable origin is skipped rather than parsed: React Native
+    // defines `window` without a `location`, and an opaque origin (a file://
+    // page in Firefox, an about:blank or srcdoc frame) reads as the string
+    // "null", which `new URL` rejects. Neither can route agent traffic.
+    const browserOrigin =
+      typeof window !== "undefined" ? window.location?.origin : undefined
+    const browserHostname = hostnameOf(browserOrigin)
+    if (browserOrigin && browserHostname !== undefined) {
+      const browserNetwork = getNetworkByHostname(browserHostname)
       if (browserNetwork === "local" || isMainnetHost(browserOrigin)) {
         agentOptions.host = agentOptions.host ?? browserOrigin
       }
