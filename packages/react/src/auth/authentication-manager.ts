@@ -413,10 +413,43 @@ export class AuthenticationManager {
         isAuthenticating: false,
       })
     } catch (error) {
-      // Without this the manager was left with `isAuthenticating: true` and no
-      // recorded error, so a button disabled on `isAuthenticating` stayed stuck
-      // and nothing told the app why.
-      this.updateState({ error: error as Error, isAuthenticating: false })
+      // A failed signOut does not always mean the session survived. v10 wipes
+      // the device and drops to an anonymous identity before it raises a revoke
+      // the canister did not answer, so keeping the session here left the app
+      // signed in and the agent signing as the user who had just signed out.
+      // Follow the client instead: once it no longer vouches for the session,
+      // nothing may sign with it, which is the rule `authenticate()` applies
+      // too. A v8 client that failed before forgetting anything still vouches
+      // for its session and keeps it. A check that throws keeps it as well.
+      //
+      // Anything that changes auth state while that check is in flight, such
+      // as a login that finishes meanwhile, bumps this. The check then
+      // describes a client that has been used since, and its answer must not
+      // replace the newer state, as in `authenticate()`.
+      const revision = this.authStateRevision
+      const stillSignedIn = await Promise.resolve()
+        .then(() => this.authClient?.isAuthenticated() ?? false)
+        .catch(() => true)
+      if (revision !== this.authStateRevision) {
+        throw error
+      }
+      if (stillSignedIn) {
+        // Without this the manager was left with `isAuthenticating: true` and
+        // no recorded error, so a button disabled on `isAuthenticating` stayed
+        // stuck and nothing told the app why.
+        this.updateState({ error: error as Error, isAuthenticating: false })
+      } else {
+        const identity = new AnonymousIdentity()
+        this.clientManager.updateAgent(identity)
+        // The error stays recorded: the device is signed out, but the session
+        // may still be live at the identity provider.
+        this.updateState({
+          identity,
+          isAuthenticated: false,
+          isAuthenticating: false,
+          error: error as Error,
+        })
+      }
       throw error
     }
   }

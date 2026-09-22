@@ -106,6 +106,11 @@ export interface FakeIdentityProvider {
   setAttributesError(error: JsonRpcError | null): void
   /** Make sign-in requests of either protocol answer with this error. */
   setSignInError(error: JsonRpcError | null): void
+  /**
+   * Make `app_revoke_session` answer `Err InternalCanisterError` with this
+   * text and keep the session, as the canister does when it fails to write.
+   */
+  setRevokeError(message: string | null): void
   restore(): void
 }
 
@@ -176,6 +181,7 @@ export function installFakeIdentityProvider(
   let attributesResponse = options.attributesResponse ?? null
   let attributesError = options.attributesError ?? null
   let signInError: JsonRpcError | null = null
+  let revokeError: string | null = null
 
   const openedUrls: string[] = []
   const windows: FakeSignerWindow[] = []
@@ -455,6 +461,11 @@ export function installFakeIdentityProvider(
           })
         }
         case "app_revoke_session": {
+          if (revokeError !== null) {
+            return encodeOne(RevokeResult, {
+              Err: { InternalCanisterError: revokeError },
+            })
+          }
           // Idempotent, as the canister is: a session already gone is `Ok`.
           sessions.delete(caller.toText())
           revokedSessions.push(caller.toText())
@@ -536,6 +547,9 @@ export function installFakeIdentityProvider(
     },
     setSignInError(error) {
       signInError = error
+    },
+    setRevokeError(message) {
+      revokeError = message
     },
     restore() {
       window.open = originalOpen
