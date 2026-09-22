@@ -4,6 +4,7 @@ import type { BaseActor, FunctionName } from "@ic-reactor/core"
 import * as z from "zod"
 import { isQuery } from "../helpers.js"
 import { withIntegerBounds } from "../integer-bounds.js"
+import { withFloatBounds } from "../float-bounds.js"
 import { formatLabel } from "../arguments/helpers.js"
 import type {
   FormServiceMeta,
@@ -617,12 +618,11 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       this.currentName(),
       `float${t._bits}`,
       "",
-      z
-        .string()
-        .min(1, "Required")
-        .refine((val) => !isNaN(Number(val)) && isFinite(Number(val)), {
-          message: "Must be a valid number",
-        })
+      withFloatBounds(
+        z.string().min(1, "Required"),
+        t._bits,
+        "Must be a valid number"
+      )
     )
   }
 

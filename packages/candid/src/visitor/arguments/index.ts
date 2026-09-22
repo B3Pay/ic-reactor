@@ -1,5 +1,6 @@
 import { isQuery } from "../helpers.js"
 import { withIntegerBounds } from "../integer-bounds.js"
+import { withFloatBounds } from "../float-bounds.js"
 import { checkTextFormat, checkNumberFormat } from "../constants.js"
 import { MetadataError } from "./types.js"
 import type {
@@ -916,7 +917,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     let schema = z.string().min(1, "Required")
 
     if (options.isFloat) {
-      schema = schema.refine((val) => !isNaN(Number(val)), "Must be a number")
+      schema = withFloatBounds(schema, options.bits ?? 64, "Must be a number")
     } else if (options.unsigned) {
       schema = schema.regex(/^\d+$/, "Must be a positive number")
     } else {
