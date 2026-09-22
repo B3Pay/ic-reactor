@@ -231,6 +231,97 @@ describe("func and service references in arguments", () => {
   })
 })
 
+/**
+ * Follows `expr` into `value`, the value of its first segment `root`: each
+ * further segment names a record field, a variant option, or a tuple member or
+ * vector item by its index.
+ */
+function resolveExpr(expr: string, root: string, value: unknown): unknown {
+  if (expr === root) return value
+  if (!expr.startsWith(`${root}.`)) throw new Error(`${expr} is not in ${root}`)
+  return expr
+    .slice(root.length + 1)
+    .split(".")
+    .reduce<unknown>(
+      (current, segment) =>
+        current == null
+          ? undefined
+          : (current as Record<string, unknown>)[segment],
+      value
+    )
+}
+
+describe("func references in variable candidates", () => {
+  // buildMethodVariableCandidates walks a method's return type with the form
+  // visitor, which describes a func reference as the [canister, method] tuple
+  // its value is. The walk built a tuple member's expression from its label,
+  // and those two are labelled canisterId and methodName, so it offered
+  // `$get_callback.canisterId`: a property that [principal, method] value does
+  // not have, so choosing the candidate resolved to undefined.
+  const CALLBACK = "func (nat) -> (text) query"
+  const callback = [archive, "get_blocks"]
+  const cases = [
+    {
+      method: "get_callback",
+      returns: CALLBACK,
+      value: callback,
+      at: "$get_callback",
+    },
+    {
+      method: "get_archive",
+      returns: `record { start : nat; callback : ${CALLBACK} }`,
+      value: { start: 0n, callback },
+      at: "$get_archive.callback",
+    },
+    {
+      method: "get_route",
+      returns: `variant { unset; callback : ${CALLBACK} }`,
+      value: { callback },
+      at: "$get_route.callback",
+    },
+  ]
+  const SERVICE = `service : { ${cases
+    .map(({ method, returns }) => `${method} : () -> (${returns}) query;`)
+    .join(" ")} }`
+
+  it.each(cases)(
+    "$method offers the reference's members by index",
+    async ({ method, returns, value, at }) => {
+      const reactor = await metadataReactor(SERVICE)
+      const members = reactor
+        .buildMethodVariableCandidates(method as never)
+        .filter((candidate) => candidate.expr.startsWith(`${at}.`))
+
+      expect(members).toMatchObject([
+        { expr: `${at}.0`, label: `${at}.canisterId`, candidType: "principal" },
+        { expr: `${at}.1`, label: `${at}.methodName`, candidType: "text" },
+      ])
+
+      // The method's return value as the agent decodes it, and as the reactor
+      // hydrates it into a form value.
+      const func = reactor
+        .getServiceInterface()
+        ._fields.find(([name]) => name === method)![1] as IDL.FuncClass
+      const bytes = IDL.encode(func.retTypes, [value])
+      const [decoded] = IDL.decode(func.retTypes, bytes)
+      const { hydration } = await reactor.buildForValueType(returns, {
+        candidArgsHex: uint8ArrayToHex(new Uint8Array(bytes)),
+      })
+      if (hydration.status !== "hydrated") throw new Error(hydration.status)
+      const [hydrated] = hydration.values
+
+      const [canisterId, methodName] = members.map(({ expr }) => expr)
+      const root = `$${method}`
+      expect(String(resolveExpr(canisterId, root, decoded))).toBe(
+        archive.toText()
+      )
+      expect(resolveExpr(methodName, root, decoded)).toBe("get_blocks")
+      expect(resolveExpr(canisterId, root, hydrated)).toBe(archive.toText())
+      expect(resolveExpr(methodName, root, hydrated)).toBe("get_blocks")
+    }
+  )
+})
+
 // ════════════════════════════════════════════════════════════════════════════
 // Generated: references at random positions in argument types
 // ════════════════════════════════════════════════════════════════════════════

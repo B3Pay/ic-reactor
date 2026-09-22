@@ -249,10 +249,19 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
 
       switch (field.type) {
         case "record":
-        case "tuple":
           for (const child of field.fields) {
             walk(child, `${expr}.${child.label}`, `${label}.${child.label}`)
           }
+          break
+        case "tuple":
+          // A tuple's value is an array, so a member's expression is its
+          // index. Most tuples label members by index anyway, but a func
+          // reference names its two canisterId and methodName for display,
+          // and `$get_callback.canisterId` is not in the [principal, method]
+          // pair it resolves against. The candidate's label keeps the name.
+          field.fields.forEach((child, index) => {
+            walk(child, `${expr}.${index}`, `${label}.${child.label}`)
+          })
           break
         case "variant":
           for (const child of field.options) {
