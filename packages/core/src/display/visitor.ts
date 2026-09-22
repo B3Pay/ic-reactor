@@ -35,8 +35,21 @@ function couldBeDisplayOf(type: IDL.Type, value: unknown, depth = 0): boolean {
     const inner = type.getType()
     return inner ? couldBeDisplayOf(inner, value, depth + 1) : true
   }
-  if (type instanceof IDL.OptClass || type instanceof IDL.ReservedClass) {
-    return true
+  if (type instanceof IDL.ReservedClass) return true
+  if (type instanceof IDL.OptClass) {
+    // What the optional codec takes: none, the wrapper around one value, or
+    // the value itself.
+    if (value === undefined || value === null) return true
+    if (Array.isArray(value)) {
+      if (value.length === 0) return true
+      if (
+        value.length === 1 &&
+        couldBeDisplayOf(type._type, value[0], depth + 1)
+      ) {
+        return true
+      }
+    }
+    return couldBeDisplayOf(type._type, value, depth + 1)
   }
   if (type instanceof IDL.VecClass) {
     const elem = type._type
@@ -98,6 +111,26 @@ function couldBeDisplayOf(type: IDL.Type, value: unknown, depth = 0): boolean {
     return typeof value === "number" || typeof value === "string"
   }
   return true
+}
+
+/**
+ * Does a value of `type` display as an array? A vector, a tuple and a func
+ * reference do, and so does an optional of one, since an optional displays as
+ * its value.
+ */
+function displaysAsArray(type: IDL.Type, depth = 0): boolean {
+  if (depth > 32) return false
+  if (type instanceof IDL.RecClass) {
+    const inner = type.getType()
+    return inner ? displaysAsArray(inner, depth + 1) : false
+  }
+  if (type instanceof IDL.OptClass)
+    return displaysAsArray(type._type, depth + 1)
+  return (
+    type instanceof IDL.VecClass ||
+    type instanceof IDL.TupleClass ||
+    type instanceof IDL.FuncClass
+  )
 }
 
 function createFixedNumberCodec(bits: number, signed: boolean): z.ZodTypeAny {
@@ -412,18 +445,13 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   ): z.ZodTypeAny {
     const elemCodec = elemType.accept(this, null)
 
-    // Only an element whose own values are arrays — a vector, a tuple or a
-    // func reference — can be confused with the Candid optional wrapper,
-    // since both are arrays. Decide from the element TYPE rather than by
-    // probing the codec: element codecs are built on `z.any()` and pass
-    // unknown shapes straight through, so a probe reports success for values
-    // the element cannot actually represent.
-    let resolved: IDL.Type | undefined = elemType
-    while (resolved instanceof IDL.RecClass) resolved = resolved.getType()
-    const elemIsArrayValued =
-      resolved instanceof IDL.VecClass ||
-      resolved instanceof IDL.TupleClass ||
-      resolved instanceof IDL.FuncClass
+    // Only an element whose own values are arrays — a vector, a tuple, a
+    // func reference, or an optional of one — can be confused with the Candid
+    // optional wrapper, since both are arrays. Decide from the element TYPE
+    // rather than by probing the codec: element codecs are built on `z.any()`
+    // and pass unknown shapes straight through, so a probe reports success for
+    // values the element cannot actually represent.
+    const elemIsArrayValued = displaysAsArray(elemType)
 
     /**
      * Is `[inner]` the wrapper? Checking only that `inner` is an array is not
