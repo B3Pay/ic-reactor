@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react"
 import {
   useQuery,
   useMutation,
+  hashKey,
   type UseQueryResult,
   type UseMutationResult,
   type QueryKey,
@@ -304,6 +305,30 @@ export function useActorMethod<
     }
   }, [isQuery, status, error, errorUpdatedAt])
 
+  // `call(args)` reports its own settle, because the args it fetched usually
+  // key an entry this observer does not watch. When they are the hook's own
+  // args, though, the effects above report the same settle too, and each
+  // callback used to fire twice for one call. Both sides now claim the settle
+  // by its timestamp before reporting it, so whichever runs second skips it.
+  const queryKeyRef = useRef(queryKey)
+  queryKeyRef.current = queryKey
+  const claimCallSettle = useCallback(
+    (calledKey: QueryKey, outcome: "success" | "error"): boolean => {
+      if (hashKey(calledKey) !== hashKey(queryKeyRef.current)) return true
+      const state = reactor.queryClient.getQueryState(calledKey)
+      const settledAt =
+        outcome === "success" ? state?.dataUpdatedAt : state?.errorUpdatedAt
+      const notifiedAt =
+        outcome === "success" ? notifiedSuccessAt : notifiedErrorAt
+      if (settledAt !== undefined && notifiedAt.current === settledAt) {
+        return false
+      }
+      notifiedAt.current = settledAt
+      return true
+    },
+    [reactor]
+  )
+
   // ============================================================================
   // Mutation Implementation
   // ============================================================================
@@ -358,9 +383,10 @@ export function useActorMethod<
         // entry — poisoning it for every other reader — and let fetchQuery
         // dedupe onto an in-flight request for the old args, returning that
         // response as though it answered this one.
+        const calledKey = buildQueryKey(callArgs)
         try {
           const result = await reactor.queryClient.fetchQuery<TQueryData>({
-            queryKey: buildQueryKey(callArgs),
+            queryKey: calledKey,
             // Normalize for the same reason as the observer's queryFn.
             queryFn: async () =>
               normalizeQueryData<TData>(
@@ -373,16 +399,19 @@ export function useActorMethod<
             staleTime: 0,
           })
           // Dispatched here rather than by the observer effect: this result
-          // lands under the called args' key, which the mounted observer (bound
-          // to the hook's own args) does not watch. That separation is also why
-          // this can no longer double-fire the way it did when both wrote to
-          // the same key.
-          onSuccessRef.current?.(result)
+          // usually lands under a key the mounted observer (bound to the
+          // hook's own args) does not watch. When it is that key, the effect
+          // reports it as well, and `claimCallSettle` keeps it to one report.
+          if (claimCallSettle(calledKey, "success")) {
+            onSuccessRef.current?.(result)
+          }
           return result
         } catch (error) {
-          onErrorRef.current?.(
-            error as ReactorReturnErr<Service, Method, Transform>
-          )
+          if (claimCallSettle(calledKey, "error")) {
+            onErrorRef.current?.(
+              error as ReactorReturnErr<Service, Method, Transform>
+            )
+          }
           return undefined
         }
       }
