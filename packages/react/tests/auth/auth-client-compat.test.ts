@@ -6,12 +6,15 @@
  * live here are gone along with the runtime probe they covered.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { createElement, Fragment } from "react"
+import { render, waitFor } from "@testing-library/react"
 import { QueryClient } from "@tanstack/react-query"
 import { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "@ic-reactor/core"
 import {
   AuthenticationManager,
   IdentityAttributesManager,
+  createAuthHooks,
 } from "../../src/auth/index.js"
 import {
   detectAuthClientFlavor,
@@ -209,6 +212,59 @@ describe("AuthClient reuse", () => {
     await authentication.prepareClient({ openIdProvider: "google" })
 
     expect(authClientMocks.factory).toHaveBeenCalledTimes(2)
+  })
+
+  it("builds one client when several callers prepare it at once", async () => {
+    authClientMocks.factory.mockImplementation(function () {
+      return createAuthClientStub()
+    })
+    const { authentication } = createManager()
+
+    const clients = await Promise.all([
+      authentication.prepareClient(),
+      authentication.prepareClient(),
+      authentication.prepareClient(),
+    ])
+
+    // Each call awaited the auth module before building, so each built its
+    // own, and every client but the last stayed alive with nothing left to
+    // reach it.
+    expect(authClientMocks.factory).toHaveBeenCalledTimes(1)
+    expect(new Set(clients).size).toBe(1)
+    expect(authentication.client).toBe(clients[0])
+  })
+
+  it("builds one client however many components call useAuth", async () => {
+    // Every mounted useAuth() prepares the client from its own effect, and
+    // sibling effects run together. Against the real v8 client and a restored
+    // session, three consumers left three clients that had each registered the
+    // app's `idleOptions.onIdle` on v8's shared IdleManager, so one idle
+    // timeout called it three times. A v10 client left behind keeps its
+    // browser listeners and its session's refresh timer instead.
+    authClientMocks.factory.mockImplementation(function () {
+      return createAuthClientStub()
+    })
+    const { authentication } = createManager()
+    const { useAuth } = createAuthHooks(authentication)
+    function Consumer() {
+      useAuth()
+      return null
+    }
+
+    render(
+      createElement(
+        Fragment,
+        null,
+        createElement(Consumer),
+        createElement(Consumer),
+        createElement(Consumer)
+      )
+    )
+    await waitFor(() =>
+      expect(authentication.authState.isAuthenticated).toBe(true)
+    )
+
+    expect(authClientMocks.factory).toHaveBeenCalledTimes(1)
   })
 
   it("never rebuilds a caller-supplied client", async () => {
