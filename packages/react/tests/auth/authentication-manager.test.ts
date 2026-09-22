@@ -659,6 +659,63 @@ describe("AuthenticationManager session hygiene", () => {
     expect(authentication.authState.isAuthenticating).toBe(false)
     expect(authentication.authState.error).toBeInstanceOf(Error)
   })
+
+  it("signs out here when signOut fails after the client has let go of the session", async () => {
+    // @icp-sdk/auth v10's signOut revokes the session at the Internet Identity
+    // canister and wipes the device together, installs an anonymous identity,
+    // and only then throws a failed revoke: "The device is signed out whatever
+    // happened at the canister". Run against the real v10 client, a revoke that
+    // could not reach the canister left IC Reactor reporting
+    // isAuthenticated: true, with the agent still signing as the user who had
+    // just pressed sign out.
+    const authClient = Object.assign(createAuthClient(), {
+      // The two methods that mark a v10 client.
+      getStatus: vi.fn(),
+      getPrincipal: vi.fn(),
+    })
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+    const clearSession = authClient.signOut.getMockImplementation()
+    const revokeFailed = new Error("TransportError: Failed to fetch")
+    authClient.signOut.mockImplementation(async () => {
+      await clearSession()
+      throw revokeFailed
+    })
+
+    await expect(authentication.logout()).rejects.toBe(revokeFailed)
+
+    expect(authClient.isAuthenticated()).toBe(false)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(
+      authentication.authState.identity?.getPrincipal().isAnonymous()
+    ).toBe(true)
+    expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+    // The failure is still reported, so an app can say the session may still
+    // be live at the identity provider.
+    expect(authentication.authState.error).toBe(revokeFailed)
+    expect(authentication.authState.isAuthenticating).toBe(false)
+  })
+
+  it("keeps the session when signOut fails before the client lets go of it", async () => {
+    // The other side of the case above: v8 throws from its storage wipe before
+    // it drops the identity, and a reload would restore the session, so the
+    // manager keeps reporting what the client still holds.
+    const authClient = createAuthClient()
+    authClient.signOut.mockRejectedValue(new Error("storage unavailable"))
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+
+    await expect(authentication.logout()).rejects.toThrow("storage unavailable")
+
+    expect(authentication.authState.isAuthenticated).toBe(true)
+    expect(clientManager.identity?.getPrincipal().toText()).toBe("aaaaa-aa")
+  })
 })
 
 describe("AuthenticationManager logout/authenticate race", () => {
