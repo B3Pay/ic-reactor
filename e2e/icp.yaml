@@ -7,3 +7,13 @@ canisters:
       configuration:
         package: hello_actor
         candid: src/actor/hello_actor.did
+
+networks:
+  # The implicit `local` network, with its network launcher pinned. Left at
+  # "latest", `icp network start` asks the GitHub API which release that is,
+  # unauthenticated, and E2E failed with "403 rate limit exceeded" whenever many
+  # runs started at once (#555). An exact version is downloaded straight from
+  # its release. Bump it deliberately, like ICP_CLI_VERSION in e2e.yml.
+  - name: local
+    mode: managed
+    version: v16.0.0-2026-09-18-03-28
