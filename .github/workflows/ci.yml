@@ -169,6 +169,14 @@ jobs:
       - name: Run tests
         run: pnpm test
 
+      # Everything above runs against the lockfile, which holds the newest
+      # release of each peer. This pins core's and react's peers to the lowest
+      # versions their ranges accept and runs typecheck and tests there, in a
+      # throwaway worktree. react once declared @tanstack/react-query ^5.0.0
+      # while it did not compile below 5.89 (#475).
+      - name: Test at the oldest supported peers
+        run: pnpm verify:peer-floors
+
   build:
     name: Build
     runs-on: ubuntu-latest

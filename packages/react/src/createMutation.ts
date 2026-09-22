@@ -117,9 +117,7 @@ const createMutationImpl = <
 
   /**
    * The `onMutate` result a factory callback receives. A factory without its
-   * own `onMutate` gets the hook's, as it always has. TanStack Query before
-   * 5.89 passes no context, so there a factory callback gets the hook's result
-   * too.
+   * own `onMutate` gets the hook's, as it always has.
    */
   const factoryOnMutateResult = (
     onMutateResult: unknown,
