@@ -300,10 +300,22 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public getQueryOptions<M extends FunctionName<A>>(
     params: ReactorCallParams<A, M, T>
   ): FetchQueryOptions<ReactorQueryData<ReactorReturnOk<A, M, T>>> {
+    // The key names the canister `this.canisterId` holds right now, so the
+    // query function has to fetch from that same canister rather than read
+    // `this.canisterId` again whenever it runs. After a `setCanisterId`, a
+    // TanStack retry or a refetch of an observer that has not been re-keyed
+    // re-runs this function, and it used to fetch the new canister and cache
+    // its answer under the old canister's key. An explicit override wins, as
+    // it does in `generateQueryKey`.
+    const callConfig: CallConfig = {
+      ...params.callConfig,
+      canisterId: params.callConfig?.canisterId || this.canisterId,
+    }
+
     return {
       queryKey: this.generateQueryKey(params, params.callConfig),
       queryFn: async () => {
-        const result = await this.callMethod(params)
+        const result = await this.callMethod({ ...params, callConfig })
         return toReactorQueryData<ReactorReturnOk<A, M, T>>(
           result as ReactorReturnOk<A, M, T>
         )
