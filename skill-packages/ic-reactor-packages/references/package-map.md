@@ -108,7 +108,8 @@ If generated files are wrong:
 - Vite plugin generation: `examples/vite-plugin-demo`
 - Vite environment cookie injection: `examples/vite-environment-variables`
 - Reusable factory patterns: `examples/all-in-one-demo/src/lib/factories.ts`
-- Generated TanStack Router hooks: `examples/tanstack-router/src/canisters/ledger/hooks/`
+- Current codegen output, CLI and Vite plugin side by side: `examples/codegen-in-action/`
+- TanStack Router loaders over hand-maintained query/mutation factories (not codegen output): `examples/tanstack-router/src/canisters/ledger/hooks/`
 - Auth and identity attributes: `examples/identity-attributes-demo`
 - Dynamic metadata/candid behavior: `examples/metadata-reactor-demo`,
   `examples/metadata-reactor-capabilities-demo`

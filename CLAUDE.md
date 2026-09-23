@@ -85,6 +85,9 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
   in a `useState` initializer inside a provider, which runs once per mounted
   tree — and a server render is its own tree. Reference implementation:
   `examples/nextjs/src/service/provider.tsx`.
+  A React Server Component cannot import from `@ic-reactor/react` at all (its
+  entry loads the hooks, so `next build` fails); server components import
+  `Reactor` / `ClientManager` from `@ic-reactor/core`.
 
 ## Cache Invalidation
 
@@ -167,4 +170,5 @@ through workspace symlinks, so nothing else sees the published artifact.
 - `packages/candid/README.md` — Dynamic Candid and metadata reactor docs
 - `packages/cli/README.md`, `packages/codegen/README.md`, and `packages/vite-plugin/README.md` — Codegen docs
 - `examples/all-in-one-demo/src/lib/factories.ts` — Factory pattern examples
-- `examples/tanstack-router/src/canisters/ledger/hooks/` — Generated hooks examples
+- `examples/codegen-in-action/` — Current CLI and Vite plugin output (`index.generated.ts` with the six bound hooks)
+- `examples/tanstack-router/src/canisters/ledger/hooks/` — Hand-maintained query/mutation factory modules used by router loaders (not codegen output)

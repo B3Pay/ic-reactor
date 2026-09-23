@@ -91,7 +91,7 @@ together. Set `display: true` for UI-friendly values instead of choosing between
 
 ```ts
 import { defineReactor } from "@ic-reactor/react"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 export const {
   reactor: backend,
@@ -103,6 +103,10 @@ export const {
 } = defineReactor<_SERVICE>({
   name: "backend",
   idlFactory,
+  // Required unless the Vite plugin injects an `ic_env` cookie for this
+  // canister on a local replica. Without it the reactor constructor throws
+  // on a server and on any deployed origin.
+  canisterId,
   display: true,
 })
 ```
@@ -112,11 +116,16 @@ the returned `clientManager` **and** `authentication` into the next
 `defineReactor` call:
 
 ```ts
-const ledger = defineReactor<_LEDGER>({ name: "ledger", idlFactory: ledgerIdl })
+const ledger = defineReactor<_LEDGER>({
+  name: "ledger",
+  idlFactory: ledgerIdl,
+  canisterId: ledgerCanisterId,
+})
 
 const index = defineReactor<_INDEX>({
   name: "index",
   idlFactory: indexIdl,
+  canisterId: indexCanisterId,
   clientManager: ledger.clientManager,
   authentication: ledger.authentication, // one Internet Identity session
 })
@@ -208,10 +217,12 @@ and an `Err` rejects with a `CanisterError` carrying the raw payload on `.err`.
 `callMethod()` is included in that: it is not an escape hatch. Overriding
 `transformResult` on a `Reactor` subclass is the only way to keep the raw variant.
 
-The others do not unwrap anything, because they never make a call:
+The others return no canister result, so there is nothing for them to unwrap:
 `getCacheData()` and `reactor.getQueryData(...)` read an already-transformed
 cache entry synchronously and return `undefined` on a miss — they cannot throw a
-`CanisterError`. `invalidate()` and `reactor.invalidateQueries(...)` return void.
+`CanisterError`. `query.invalidate()` returns a `Promise<void>` that resolves
+once the active queries it matched have refetched; `reactor.invalidateQueries(...)`
+returns `void` and does not wait, so awaiting it waits for nothing.
 
 ## Inspect These Files First
 

@@ -102,8 +102,11 @@ Notes:
 
 - `pnpm format:check` covers the whole repo. Exclusions are declared in one
   place, `.prettierignore`, which the pre-commit hook honours too.
-- `pnpm check:ai-context` is a CI gate: it asserts the package versions listed
-  above match each `package.json` and that every `packages/*/llms.txt` exists.
+- `pnpm check:ai-context` is a CI gate: it asserts that the package versions
+  listed above match each `package.json`, that every package but the parser
+  ships a `packages/<name>/llms.txt`, and that no file listed in
+  `scripts/ai-context-files.js` names a version no package is at or a docs path
+  other than `/v3/`.
 - `pnpm lint` is a CI gate. Run `pnpm build` first: the type-aware rules read
   core's emitted `.d.ts` through the workspace symlinks, and without a build
   they degrade to `any` and stop reporting. A new package needs a
