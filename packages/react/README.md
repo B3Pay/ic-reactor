@@ -13,6 +13,9 @@ pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 pnpm add @icp-sdk/auth@^10
 ```
 
+It needs `@tanstack/react-query` 5.90.2 or later and React 18 or later. CI runs
+this package's tests at those minimums (`pnpm verify:peer-floors`).
+
 ## Which `@icp-sdk/auth` to install
 
 The peer range is `^8.0.0 || ^10.0.0`. **v10 is the one to install.** It is the
@@ -22,8 +25,8 @@ so a strict `npm install` resolves it with no `overrides` block.
 **v9 is deliberately excluded.** It peers `@icp-sdk/core@^5`, so it reintroduces
 the resolution failure v10 fixes.
 
-**v8 still works**, and is what this repository's end-to-end suite runs against.
-On npm it still needs the override, because its peer metadata is stale rather
+**v8 still works**, and this repository's real-client suite runs against both
+majors. On npm it still needs the override, because its peer metadata is stale rather
 than the versions being incompatible — auth v8 runs against core v6:
 
 ```json
@@ -60,17 +63,20 @@ canisters; v10 removed it and scopes a session at the identity provider instead.
 A v10 client will hand you a delegation broader than a `targets` list asks for.
 Pin `@icp-sdk/auth` to `^8` if you depend on canister-scoped delegations.
 
-> **Support scope.** v10 is verified at the API-contract level — option
-> translation, version detection and `signIn` handling all have tests. The
-> end-to-end suite that drives a fake Internet Identity still speaks v8's
-> ICRC-34 protocol; v10 signs in over `ii_session_delegation` and mints app
-> delegations at the II canister, which that harness does not yet emulate.
+> **Support scope.** The real-client suite
+> (`tests/auth/internet-identity-integration.test.ts`) runs the actual
+> `AuthClient` under v10 and under v8. A fake Internet Identity answers both
+> sign-in protocols (`icrc34_delegation` and `ii_session_delegation`). A fake
+> replica certifies v10's mint and revoke calls
+> (`app_prepare_delegation`, `app_get_delegation`, `app_revoke_session`) and
+> checks request signatures the way a replica does, so v10's own minting agent
+> verifies them unchanged.
 >
-> v10 makes those mint calls through an agent of its own. Off mainnet, IC
-> Reactor gives that agent the replica your app already uses and has it fetch
-> the network's root key, since certificates from a local replica or testnet
-> cannot be checked against mainnet's. That path has unit tests only, and local
-> sign-in with v10 has not been run end to end yet.
+> v10 makes those calls through an agent of its own. Off mainnet, IC Reactor
+> gives that agent the replica your app already uses and has it fetch the
+> network's root key, since certificates from a local replica or testnet cannot
+> be checked against mainnet's. The suite covers that path. What it does not
+> cover is a deployed Internet Identity canister.
 
 `@icp-sdk/auth` is an optional peer. `AuthenticationManager` reaches it through a
 literal `import("@icp-sdk/auth/client")`, so Vite, Rollup and webpack code-split
