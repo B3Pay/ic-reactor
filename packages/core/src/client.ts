@@ -156,15 +156,6 @@ export class ClientManager {
       }
     }
 
-    if (isDev() && typeof window !== "undefined") {
-      if (agentOptions.verifyQuerySignatures == null) {
-        agentOptions.verifyQuerySignatures = false
-      }
-    } else {
-      agentOptions.verifyQuerySignatures =
-        agentOptions.verifyQuerySignatures ?? true
-    }
-
     if (!agentOptions.host) {
       const processNetwork = getProcessEnvNetwork()
       if (processNetwork === "local") {
@@ -176,6 +167,23 @@ export class ClientManager {
       } else {
         agentOptions.host = IC_HOST_NETWORK_URI
       }
+    }
+
+    const hostNetwork = getNetworkByHostname(
+      hostnameOf(agentOptions.host) ?? ""
+    )
+
+    // A subnet's nodes sign every query response, and checking those
+    // signatures is what stops anything between the agent and the subnet from
+    // answering a query in its name. A development build in the browser skips
+    // the check by default only for a local replica: the agent fetches that
+    // replica's root key from the replica itself, so signatures checked under
+    // it prove little. It used to skip it for every host, so a dev server page
+    // pointed at mainnet accepted unsigned answers. An explicit setting wins.
+    if (isDev() && typeof window !== "undefined" && hostNetwork !== "ic") {
+      agentOptions.verifyQuerySignatures ??= false
+    } else {
+      agentOptions.verifyQuerySignatures ??= true
     }
 
     // The ic_env cookie is not origin-isolated -- any sibling subdomain of the
@@ -232,7 +240,7 @@ export class ClientManager {
     // shares one fetch between its requests and `initializeAgent`, and a root
     // key given explicitly or taken from the `ic_env` cookie is used as is
     // until `initializeAgent` replaces it with the fetched one.
-    if (getNetworkByHostname(hostnameOf(agentOptions.host) ?? "") !== "ic") {
+    if (hostNetwork !== "ic") {
       agentOptions.shouldFetchRootKey ??= true
     }
 
