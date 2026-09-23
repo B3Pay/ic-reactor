@@ -147,6 +147,9 @@ returns reaches the `onError` defined at the same level, so the snapshot and
 the rollback stay together. This example keeps both in `useMutation()`:
 
 ```typescript
+import { createMutation, createQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const likePostMutation = createMutation(backend, {
   functionName: "likePost",
 })
