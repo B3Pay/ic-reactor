@@ -14,6 +14,29 @@ import {
   allowsEnvRootKey,
 } from "./utils/helper.js"
 
+/**
+ * The origin of the page this code runs for. A web worker has no `window`,
+ * but its global scope has a `location` (the worker script's URL), whose
+ * origin is that of the page that started it: a blob: worker reports its
+ * creator's origin too. Node has neither. Deno 2 has no `window`, and reading
+ * its `location` throws unless it was started with `--location`.
+ */
+const pageOrigin = (): string | undefined => {
+  if (typeof window !== "undefined") return window.location?.origin
+  try {
+    return (globalThis as { location?: { origin?: string } }).location?.origin
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Whether this code runs in a browser: on a page, or in a web worker, which
+ * has no `window` but has the `location` that `pageOrigin` reads.
+ */
+const inBrowser = (): boolean =>
+  typeof window !== "undefined" || pageOrigin() !== undefined
+
 /** The hostname of a page origin, or `undefined` when it is not a URL. */
 const hostnameOf = (origin: string | undefined): string | undefined => {
   if (!origin) return undefined
@@ -168,8 +191,11 @@ export class ClientManager {
     // defines `window` without a `location`, and an opaque origin (a file://
     // page in Firefox, an about:blank or srcdoc frame) reads as the string
     // "null", which `new URL` rejects. Neither can route agent traffic.
-    const browserOrigin =
-      typeof window !== "undefined" ? window.location?.origin : undefined
+    //
+    // A web worker the page started routes like the page. The origin used to
+    // come from `window` alone, so a worker fell back to mainnet: a local dev
+    // page's worker sent its calls, with local canister IDs, to ic0.app.
+    const browserOrigin = pageOrigin()
     const browserHostname = hostnameOf(browserOrigin)
     if (browserOrigin && browserHostname !== undefined) {
       const browserNetwork = getNetworkByHostname(browserHostname)
@@ -205,7 +231,11 @@ export class ClientManager {
     // replica's root key from the replica itself, so signatures checked under
     // it prove little. It used to skip it for every host, so a dev server page
     // pointed at mainnet accepted unsigned answers. An explicit setting wins.
-    if (isDev() && typeof window !== "undefined" && hostNetwork !== "ic") {
+    //
+    // A web worker is in the browser too and decides as its page does. The
+    // test read `window` alone, so a development build's worker checked a
+    // local replica's signatures while its page did not.
+    if (isDev() && inBrowser() && hostNetwork !== "ic") {
       agentOptions.verifyQuerySignatures ??= false
     } else {
       agentOptions.verifyQuerySignatures ??= true
