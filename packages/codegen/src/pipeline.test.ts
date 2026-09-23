@@ -547,6 +547,107 @@ export const customBackendIndex = true
     expect(result.error).toContain("refers to a directory")
   })
 
+  describe("a didFile inside the canister's own declarations directory", () => {
+    const globalConfig = {
+      outDir: "src/declarations",
+      clientManagerPath: "../../clients",
+    }
+    const source = "service : { greet : (text) -> (text) query }\n"
+
+    function writeDidAt(projectRoot: string, didFile: string) {
+      const didPath = path.join(projectRoot, didFile)
+      fs.mkdirSync(path.dirname(didPath), { recursive: true })
+      fs.writeFileSync(didPath, source)
+      return didPath
+    }
+
+    // declarations/ is generated output. A run that did not find exactly its
+    // own files there replaced the whole directory, so this .did was read and
+    // then deleted with its folder, and the next run failed with "DID file not
+    // found".
+    it("is refused, and the .did and its folder are left in place", async () => {
+      const projectRoot = createTempProject()
+      const didFile = "src/declarations/backend/declarations/candid/backend.did"
+      const didPath = writeDidAt(projectRoot, didFile)
+      const notes = path.join(path.dirname(didPath), "notes.md")
+      fs.writeFileSync(notes, "kept by the user\n")
+
+      const result = await runCanisterPipeline({
+        canisterConfig: { name: "backend", didFile },
+        projectRoot,
+        globalConfig,
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("is inside")
+      expect(result.error).toContain("Move the .did file out")
+      expect(fs.readFileSync(didPath, "utf-8")).toBe(source)
+      expect(fs.readFileSync(notes, "utf-8")).toBe("kept by the user\n")
+    })
+
+    it("is refused when it sits directly in the directory", async () => {
+      const projectRoot = createTempProject()
+      const didFile = "src/declarations/backend/declarations/backend.did"
+      const didPath = writeDidAt(projectRoot, didFile)
+
+      const result = await runCanisterPipeline({
+        canisterConfig: { name: "backend", didFile },
+        projectRoot,
+        globalConfig,
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("is inside")
+      expect(fs.readFileSync(didPath, "utf-8")).toBe(source)
+    })
+
+    it("is refused when the outDir reaches the directory through a link", async () => {
+      const projectRoot = createTempProject()
+      const didFile = "src/declarations/backend/declarations/candid/backend.did"
+      const didPath = writeDidAt(projectRoot, didFile)
+      fs.symlinkSync(
+        path.join(projectRoot, "src"),
+        path.join(projectRoot, "linked"),
+        "junction"
+      )
+
+      const result = await runCanisterPipeline({
+        canisterConfig: {
+          name: "backend",
+          didFile,
+          outDir: "linked/declarations/backend",
+        },
+        projectRoot,
+        globalConfig,
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("is inside")
+      expect(fs.readFileSync(didPath, "utf-8")).toBe(source)
+    })
+
+    it.each([
+      // dfx generate leaves a copy at src/declarations/<canister>/<canister>.did,
+      // in the canister's outDir but not in its declarations directory.
+      "src/declarations/backend/backend.did",
+      // A sibling whose name only starts like the declarations directory.
+      "src/declarations/backend/declarations2/backend.did",
+    ])("still generates from %s", async (didFile) => {
+      const projectRoot = createTempProject()
+      const didPath = writeDidAt(projectRoot, didFile)
+
+      const result = await runCanisterPipeline({
+        canisterConfig: { name: "backend", didFile },
+        projectRoot,
+        globalConfig,
+      })
+
+      expect(result.error).toBeUndefined()
+      expect(result.success).toBe(true)
+      expect(fs.readFileSync(didPath, "utf-8")).toBe(source)
+    })
+  })
+
   it("refuses to generate into an outDir another canister already owns", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "backend.did")

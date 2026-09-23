@@ -19,7 +19,11 @@ import path from "node:path"
 import fs from "node:fs"
 import { pathToFileURL } from "node:url"
 import type { GeneratorResult } from "../types.js"
-import { CodegenConfigError, resolveDeclarationsBaseName } from "../validate.js"
+import {
+  assertDidFileOutsideDeclarations,
+  CodegenConfigError,
+  resolveDeclarationsBaseName,
+} from "../validate.js"
 import { replaceFile, replaceFiles } from "../write.js"
 
 export interface DeclarationsGeneratorOptions {
@@ -303,6 +307,22 @@ export async function generateDeclarations(
       files: [],
       error: `[${canisterName}] DID path is not a regular file: ${didFile}`,
     }
+  }
+
+  // Checked before anything is written. The replacement below would delete a
+  // .did kept inside the directory it replaces.
+  try {
+    assertDidFileOutsideDeclarations(didFile, outDir)
+  } catch (error) {
+    if (error instanceof CodegenConfigError) {
+      return {
+        success: false,
+        declarationsDir: "",
+        files: [],
+        error: `[${canisterName}] ${error.message}`,
+      }
+    }
+    throw error
   }
 
   let staging: string | undefined
