@@ -48,6 +48,29 @@ function usePrincipal(
 }
 
 /**
+ * The auth state a server render shows, and so the one hydration shows.
+ *
+ * `useSyncExternalStore` renders `getServerSnapshot` on the server and again
+ * while hydrating, and both renders have to produce the HTML the server sent.
+ * The hooks passed the live state for both. A server holds no session, so its
+ * HTML is signed out. A component that hydrates after the session is restored,
+ * such as one inside a Suspense boundary whose code arrives later, read the
+ * restored state and no longer matched that HTML. React then reported a
+ * hydration error and threw the boundary's server HTML away to render it again
+ * on the client. A constant also keeps a server render from showing whatever a
+ * manager shared across requests happens to hold.
+ *
+ * It is the state an `AuthenticationManager` starts in. Once hydrated, React
+ * compares it with the live state and renders again with that.
+ */
+const SERVER_AUTH_STATE: AuthState = Object.freeze({
+  identity: null,
+  isAuthenticating: false,
+  isAuthenticated: false,
+  error: undefined,
+})
+
+/**
  * Create authentication hooks for managing user sessions with Internet Identity.
  *
  * @example
@@ -83,6 +106,20 @@ export const createAuthHooks = (
   }
 
   const { clientManager } = authentication
+
+  // The agent state a manager starts in, for the reason given at
+  // SERVER_AUTH_STATE: `useAuth()` initializes the agent once hydrated, so a
+  // component hydrating later read `isInitialized: true` against server HTML
+  // rendered before any initialization. The network is kept: it comes from the
+  // agent's host, which initialization does not change.
+  const serverAgentState: AgentState = Object.freeze({
+    isInitialized: false,
+    isInitializing: false,
+    error: undefined,
+    network: clientManager.network,
+    isLocalhost: clientManager.isLocal,
+  })
+
   /**
    * Subscribe to agent state changes.
    * Returns the current agent state (agent, isInitialized, etc.)
@@ -91,8 +128,7 @@ export const createAuthHooks = (
     useSyncExternalStore(
       (callback) => clientManager.subscribeAgentState(callback),
       () => clientManager.agentState,
-      // Server snapshot - provide initial state for SSR
-      () => clientManager.agentState
+      () => serverAgentState
     )
 
   /**
@@ -103,8 +139,7 @@ export const createAuthHooks = (
     useSyncExternalStore(
       (callback) => authentication.subscribeAuthState(callback),
       () => authentication.authState,
-      // Server snapshot - provide initial state for SSR
-      () => authentication.authState
+      () => SERVER_AUTH_STATE
     )
 
   /**
