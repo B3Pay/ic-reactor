@@ -34,7 +34,12 @@ export interface CanisterConfig {
    * `react` emits bound React hooks, `core` emits only the typed reactor exports.
    */
   target?: CodegenTarget
-  /** Optional fixed canister ID */
+  /**
+   * Canister ID written into `index.generated.ts`. Set it for any build not
+   * served from a local replica: without it the generated reactor reads the id
+   * from the `ic_env` cookie, and importing it throws in Node, during SSR and
+   * on a deployed origin.
+   */
   canisterId?: string
 }
 
