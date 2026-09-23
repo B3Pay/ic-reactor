@@ -62,6 +62,30 @@ const toJsonWithoutBigInts = (error: object): unknown =>
   withBigIntsAsStrings({ ...error })
 
 /**
+ * Brands for the error classes, taken from the global symbol registry.
+ *
+ * An app can load two copies of this package: a version range the package
+ * manager cannot dedupe, or a bundler that pre-bundles one importer and not
+ * another. Each copy has its own classes, so `instanceof` against one copy's
+ * class is false for an error the other copy threw, and the type guards below
+ * said "not a CanisterError" about a canister's `Err`. `Symbol.for` returns the
+ * same symbol in every copy, so a brand set on each class's prototype is
+ * something both copies can check. It is not enumerable, so it changes no
+ * serialised or compared form of an error.
+ */
+const CALL_ERROR = Symbol.for("@ic-reactor/core/CallError")
+const CANISTER_ERROR = Symbol.for("@ic-reactor/core/CanisterError")
+const VALIDATION_ERROR = Symbol.for("@ic-reactor/core/ValidationError")
+
+const brand = (errorClass: { prototype: object }, symbol: symbol) =>
+  Object.defineProperty(errorClass.prototype, symbol, { value: true })
+
+const hasBrand = (value: unknown, symbol: symbol): boolean =>
+  typeof value === "object" &&
+  value !== null &&
+  (value as Record<symbol, unknown>)[symbol] === true
+
+/**
  * Interface representing the generic shape of an API error.
  */
 export interface ApiError {
@@ -93,6 +117,7 @@ export class CallError extends Error {
     return toJsonWithoutBigInts(this)
   }
 }
+brand(CallError, CALL_ERROR)
 
 /**
  * Error thrown when the canister returns an Err result.
@@ -198,7 +223,7 @@ export class CanisterError<E = unknown> extends Error {
    * Otherwise, it creates a new CanisterError with an "UNKNOWN_ERROR" code.
    */
   static create(error: unknown, message?: string): CanisterError {
-    if (error instanceof CanisterError) {
+    if (isCanisterError(error)) {
       return error
     }
 
@@ -216,10 +241,13 @@ export class CanisterError<E = unknown> extends Error {
     } as any)
   }
 }
+brand(CanisterError, CANISTER_ERROR)
 
 /**
  * Type guard to check if an error is a CanisterError.
  * Preserves the generic type E from the input when used in type narrowing.
+ *
+ * It also recognises a CanisterError thrown by another copy of this package.
  *
  * @example
  * ```typescript
@@ -237,14 +265,15 @@ export function isCanisterError(error: unknown): error is CanisterError<unknown>
 export function isCanisterError(
   error: unknown
 ): error is CanisterError<unknown> {
-  return error instanceof CanisterError
+  return error instanceof CanisterError || hasBrand(error, CANISTER_ERROR)
 }
 
 /**
- * Type guard to check if an error is a CallError
+ * Type guard to check if an error is a CallError, including one thrown by
+ * another copy of this package.
  */
 export function isCallError(error: unknown): error is CallError {
-  return error instanceof CallError
+  return error instanceof CallError || hasBrand(error, CALL_ERROR)
 }
 
 // ============================================================================
@@ -326,6 +355,7 @@ export class ValidationError extends Error {
     return this.issues.some((issue) => pathHasSegment(issue.path, path))
   }
 }
+brand(ValidationError, VALIDATION_ERROR)
 
 /**
  * Compares segments as strings: a path stores an array index as a number, but
@@ -341,10 +371,11 @@ function pathHasSegment(
 }
 
 /**
- * Type guard to check if an error is a ValidationError
+ * Type guard to check if an error is a ValidationError, including one thrown
+ * by another copy of this package.
  */
 export function isValidationError(error: unknown): error is ValidationError {
-  return error instanceof ValidationError
+  return error instanceof ValidationError || hasBrand(error, VALIDATION_ERROR)
 }
 
 /**
