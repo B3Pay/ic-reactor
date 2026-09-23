@@ -168,9 +168,8 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
   // overwritten. What this buys is ordering and wasted work, not integrity.
   //
   // Note the coalesced promise resolves when the RUNNING pass finishes, not the
-  // trailing rerun, so `handleHotUpdate` can return before the newest `.did` has
-  // been written. The trailing run sends its own full-reload, so the browser
-  // still converges.
+  // trailing rerun, so it can settle before the newest `.did` has been written.
+  // The trailing run sends its own full-reload, so the browser still converges.
   //
   // Both maps are keyed by the configured entry, not by its `name`. Two entries
   // can share a name, for one canister generated twice into different outDirs,
@@ -237,6 +236,40 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 
     inFlight.set(canisterConfig, run)
     return run
+  }
+
+  /**
+   * Regenerate every entry whose `.did` is `file`, and do nothing for any
+   * other file.
+   *
+   * Every entry, not only the first match. Deployed instances of one canister,
+   * such as two ledgers, share a .did file. Stopping at the first match left
+   * the others on stale bindings, and the full reload hid that.
+   */
+  const regenerateForDid = (file: string, server: ViteDevServer): void => {
+    if (!file.endsWith(".did")) {
+      return
+    }
+
+    const changedPath = path.normalize(file)
+    const affectedCanisters = canisters.filter(
+      (canister) => resolveDidPath(canister.didFile) === changedPath
+    )
+
+    if (affectedCanisters.length === 0) {
+      return
+    }
+
+    console.log(
+      `[ic-reactor] .did file changed: ${affectedCanisters
+        .map((canister) => canister.name)
+        .join(", ")}. Regenerating...`
+    )
+
+    // `regenerate` reports its own failures and never rejects.
+    for (const canister of affectedCanisters) {
+      void regenerate(canister, server)
+    }
   }
 
   const plugin: Plugin = {
@@ -395,9 +428,19 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         })
       })
 
-      // Explicitly watch configured DID files so HMR works even when they are not in the module graph.
+      // Explicitly watch configured DID files, since they are not in the module graph.
       const didFiles = canisters.map((c) => resolveDidPath(c.didFile))
       server.watcher.add(didFiles)
+
+      // Regenerate from the watcher's own events, not from `handleHotUpdate`.
+      // Vite calls that hook only for a file changed in place, and only while
+      // HMR is on. A .did created after startup, or deleted and written again
+      // by a build tool or `git checkout`, arrives as an `add` event, which is
+      // all Vite 4 to 7 report for it, so its bindings stayed missing or stale.
+      // With `server.hmr: false`, no save regenerated at all.
+      const onDidEvent = (file: string) => regenerateForDid(file, server)
+      server.watcher.on("change", onDidEvent)
+      server.watcher.on("add", onDidEvent)
     },
 
     async buildStart() {
@@ -465,38 +508,6 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
           stack: "",
         })
       }
-    },
-
-    handleHotUpdate({ file, server }) {
-      // ── Hot Reload on .did changes ───────────────────────────────────────
-      if (!file.endsWith(".did")) {
-        return
-      }
-
-      const changedPath = path.normalize(file)
-      // Every canister, not only the first match. Deployed instances of one
-      // canister, such as two ledgers, share a .did file. Stopping at the first
-      // match left the others on stale bindings, and the full reload hid that.
-      const affectedCanisters = canisters.filter(
-        (canister) => resolveDidPath(canister.didFile) === changedPath
-      )
-
-      if (affectedCanisters.length === 0) {
-        return
-      }
-
-      console.log(
-        `[ic-reactor] .did file changed: ${affectedCanisters
-          .map((canister) => canister.name)
-          .join(", ")}. Regenerating...`
-      )
-
-      // Returned so Vite waits for the write to finish before applying the
-      // update; it resolves to `undefined`, which leaves the affected module
-      // list untouched.
-      return Promise.all(
-        affectedCanisters.map((canister) => regenerate(canister, server))
-      ).then(() => undefined)
     },
   }
 

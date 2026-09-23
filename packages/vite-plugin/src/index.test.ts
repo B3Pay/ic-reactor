@@ -70,6 +70,7 @@ describe("icReactor", () => {
     },
     watcher: {
       add: vi.fn(),
+      on: vi.fn(),
     },
   }
 
@@ -99,7 +100,7 @@ describe("icReactor", () => {
     const plugin = createVitePlugin(mockOptions)
     expect(plugin.name).toBe("ic-reactor-plugin")
     expect(plugin.buildStart).toBeDefined()
-    expect(plugin.handleHotUpdate).toBeDefined()
+    expect(plugin.configureServer).toBeDefined()
     expect(plugin.configResolved).toBeDefined()
     expect((plugin as any).config).toBeDefined()
   })
@@ -642,23 +643,69 @@ describe("icReactor", () => {
     })
   })
 
-  describe("handleHotUpdate", () => {
-    it("should register configured .did files against the Vite root", () => {
-      const plugin = createVitePlugin(mockOptions)
+  describe("watching .did files", () => {
+    /** Start the plugin the way `vite dev` does. */
+    const serve = (plugin: any) => {
       resolveConfig(plugin, "serve")
       ;(plugin.configureServer as any)(mockServer)
+    }
+
+    /**
+     * Wait for every regeneration that is not held on a promise the test
+     * controls. The mocked pipeline settles in microtasks, and a timer runs
+     * after all of them.
+     */
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+    /**
+     * Report `file` to the listeners the plugin put on the dev server's
+     * watcher, the way chokidar reports a file saved in place ("change") or a
+     * file that appeared ("add"). The listeners run before this returns.
+     */
+    const emit = (event: "add" | "change", file: string) => {
+      for (const [name, listener] of mockServer.watcher.on.mock.calls) {
+        if (name === event) listener(file)
+      }
+      return settle()
+    }
+
+    it("should register configured .did files against the Vite root", () => {
+      const plugin = createVitePlugin(mockOptions)
+      serve(plugin)
 
       expect(mockServer.watcher.add).toHaveBeenCalledWith([DID_IN_VITE_ROOT])
     })
 
+    // Vite calls `handleHotUpdate` only for a file changed in place. A .did
+    // that did not exist at startup, or that a build tool or `git checkout`
+    // deleted and wrote again, is an `add` event, and Vite 4 to 7 report
+    // nothing else for it.
+    it("should regenerate a .did file that appears while the server runs", async () => {
+      const plugin = createVitePlugin(mockOptions)
+      serve(plugin)
+
+      await emit("add", DID_IN_VITE_ROOT)
+
+      expect(runCanisterPipeline).toHaveBeenCalledOnce()
+      expect(mockServer.ws.send).toHaveBeenCalledWith({ type: "full-reload" })
+    })
+
+    // With `server.hmr: false`, Vite never calls `handleHotUpdate`, so no save
+    // regenerated. The watcher still reports the save.
+    it("should regenerate from the watcher, whatever the HMR settings", async () => {
+      const plugin = createVitePlugin(mockOptions)
+      serve(plugin)
+
+      await emit("change", DID_IN_VITE_ROOT)
+
+      expect(runCanisterPipeline).toHaveBeenCalledOnce()
+    })
+
     it("should regenerate for a .did file resolved against the Vite root", async () => {
       const plugin = createVitePlugin(mockOptions)
-      resolveConfig(plugin, "serve")
+      serve(plugin)
 
-      await (plugin.handleHotUpdate as any)({
-        file: DID_IN_VITE_ROOT,
-        server: mockServer,
-      })
+      await emit("change", DID_IN_VITE_ROOT)
 
       expect(runCanisterPipeline).toHaveBeenCalledOnce()
       expect(mockServer.ws.send).toHaveBeenCalledWith({ type: "full-reload" })
@@ -674,12 +721,9 @@ describe("icReactor", () => {
           { name: "token_b", didFile: DID_RELATIVE },
         ],
       })
-      resolveConfig(plugin, "serve")
+      serve(plugin)
 
-      await (plugin.handleHotUpdate as any)({
-        file: DID_IN_VITE_ROOT,
-        server: mockServer,
-      })
+      await emit("change", DID_IN_VITE_ROOT)
 
       const regenerated = (runCanisterPipeline as any).mock.calls.map(
         ([options]: any) => options.canisterConfig.name
@@ -693,12 +737,9 @@ describe("icReactor", () => {
       if (DID_IN_CWD === DID_IN_VITE_ROOT) return
 
       const plugin = createVitePlugin(mockOptions)
-      resolveConfig(plugin, "serve")
+      serve(plugin)
 
-      await (plugin.handleHotUpdate as any)({
-        file: DID_IN_CWD,
-        server: mockServer,
-      })
+      await emit("change", DID_IN_CWD)
 
       expect(runCanisterPipeline).not.toHaveBeenCalled()
       expect(mockServer.ws.send).not.toHaveBeenCalled()
@@ -706,12 +747,9 @@ describe("icReactor", () => {
 
     it("should ignore other files", async () => {
       const plugin = createVitePlugin(mockOptions)
-      resolveConfig(plugin, "serve")
+      serve(plugin)
 
-      await (plugin.handleHotUpdate as any)({
-        file: "/some/other/file.ts",
-        server: mockServer,
-      })
+      await emit("change", "/some/other/file.ts")
 
       expect(mockServer.ws.send).not.toHaveBeenCalled()
     })
@@ -724,12 +762,9 @@ describe("icReactor", () => {
       })
 
       const plugin = createVitePlugin(mockOptions)
-      resolveConfig(plugin, "serve")
+      serve(plugin)
 
-      await (plugin.handleHotUpdate as any)({
-        file: DID_IN_VITE_ROOT,
-        server: mockServer,
-      })
+      await emit("change", DID_IN_VITE_ROOT)
 
       expect(mockServer.ws.send).toHaveBeenCalledWith({
         type: "error",
@@ -750,12 +785,9 @@ describe("icReactor", () => {
       )
 
       const plugin = createVitePlugin(mockOptions)
-      resolveConfig(plugin, "serve")
+      serve(plugin)
 
-      await (plugin.handleHotUpdate as any)({
-        file: DID_IN_VITE_ROOT,
-        server: mockServer,
-      })
+      await emit("change", DID_IN_VITE_ROOT)
 
       expect(mockServer.ws.send).toHaveBeenCalledWith({
         type: "error",
@@ -791,14 +823,10 @@ describe("icReactor", () => {
       )
 
       const plugin = createVitePlugin(twoCanisters)
-      resolveConfig(plugin, "serve")
-      ;(plugin.configureServer as any)(mockServer)
+      serve(plugin)
 
       await (plugin.buildStart as any).call(buildContext())
-      await (plugin.handleHotUpdate as any)({
-        file: path.resolve(VITE_ROOT, "beta.did"),
-        server: mockServer,
-      })
+      await emit("change", path.resolve(VITE_ROOT, "beta.did"))
 
       mockServer.ws.send.mockClear()
       connectionListener()()
@@ -820,17 +848,10 @@ describe("icReactor", () => {
       })
 
       const plugin = createVitePlugin(twoCanisters)
-      resolveConfig(plugin, "serve")
-      ;(plugin.configureServer as any)(mockServer)
+      serve(plugin)
 
-      await (plugin.handleHotUpdate as any)({
-        file: path.resolve(VITE_ROOT, "alpha.did"),
-        server: mockServer,
-      })
-      await (plugin.handleHotUpdate as any)({
-        file: path.resolve(VITE_ROOT, "alpha.did"),
-        server: mockServer,
-      })
+      await emit("change", path.resolve(VITE_ROOT, "alpha.did"))
+      await emit("change", path.resolve(VITE_ROOT, "alpha.did"))
 
       mockServer.ws.send.mockClear()
       connectionListener()()
@@ -856,13 +877,9 @@ describe("icReactor", () => {
           { name: "token_b", didFile: DID_RELATIVE },
         ],
       })
-      resolveConfig(plugin, "serve")
-      ;(plugin.configureServer as any)(mockServer)
+      serve(plugin)
 
-      await (plugin.handleHotUpdate as any)({
-        file: DID_IN_VITE_ROOT,
-        server: mockServer,
-      })
+      await emit("change", DID_IN_VITE_ROOT)
       expect(mockServer.ws.send).toHaveBeenCalledWith({ type: "full-reload" })
 
       mockServer.ws.send.mockClear()
@@ -900,12 +917,9 @@ describe("icReactor", () => {
 
     it("should regenerate every entry that shares a name and the changed .did file", async () => {
       const plugin = createVitePlugin(sameNameEntries)
-      resolveConfig(plugin, "serve")
+      serve(plugin)
 
-      await (plugin.handleHotUpdate as any)({
-        file: DID_IN_VITE_ROOT,
-        server: mockServer,
-      })
+      await emit("change", DID_IN_VITE_ROOT)
 
       const regenerated = (runCanisterPipeline as any).mock.calls.map(
         ([options]: any) => options.canisterConfig.outDir
@@ -926,21 +940,16 @@ describe("icReactor", () => {
       )
 
       const plugin = createVitePlugin(sameNameEntries)
-      resolveConfig(plugin, "serve")
-      ;(plugin.configureServer as any)(mockServer)
+      serve(plugin)
 
-      const update = (plugin.handleHotUpdate as any)({
-        file: DID_IN_VITE_ROOT,
-        server: mockServer,
-      })
+      await emit("change", DID_IN_VITE_ROOT)
       // The Reactor entry fails first, then the DisplayReactor entry succeeds.
-      await vi.waitFor(() =>
-        expect(mockServer.ws.send).toHaveBeenCalledWith(
-          expect.objectContaining({ type: "error" })
-        )
+      expect(mockServer.ws.send).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "error" })
       )
       finishDisplay({ success: true })
-      await update
+      await settle()
+      expect(mockServer.ws.send).toHaveBeenCalledWith({ type: "full-reload" })
 
       mockServer.ws.send.mockClear()
       connectionListener()()
@@ -964,18 +973,17 @@ describe("icReactor", () => {
       )
 
       const plugin = createVitePlugin(mockOptions)
-      resolveConfig(plugin, "serve")
-      const ctx = { file: DID_IN_VITE_ROOT, server: mockServer }
+      serve(plugin)
 
-      const first = (plugin.handleHotUpdate as any)(ctx)
-      const second = (plugin.handleHotUpdate as any)(ctx)
+      await emit("change", DID_IN_VITE_ROOT)
+      await emit("change", DID_IN_VITE_ROOT)
 
       // The second save must not enter the pipeline's delete-then-write
       // sequence while the first one is still inside it.
       expect(runCanisterPipeline).toHaveBeenCalledOnce()
 
       releaseFirstRun({ success: true })
-      await Promise.all([first, second])
+      await settle()
 
       // ...but it must not be dropped either: the last saved .did has to win.
       expect(runCanisterPipeline).toHaveBeenCalledTimes(2)
@@ -991,18 +999,14 @@ describe("icReactor", () => {
       )
 
       const plugin = createVitePlugin(mockOptions)
-      resolveConfig(plugin, "serve")
-      const ctx = { file: DID_IN_VITE_ROOT, server: mockServer }
+      serve(plugin)
 
-      const pending = [
-        (plugin.handleHotUpdate as any)(ctx),
-        (plugin.handleHotUpdate as any)(ctx),
-        (plugin.handleHotUpdate as any)(ctx),
-        (plugin.handleHotUpdate as any)(ctx),
-      ]
+      for (let save = 0; save < 4; save++) {
+        await emit("change", DID_IN_VITE_ROOT)
+      }
 
       releaseFirstRun({ success: true })
-      await Promise.all(pending)
+      await settle()
 
       expect(runCanisterPipeline).toHaveBeenCalledTimes(2)
     })
