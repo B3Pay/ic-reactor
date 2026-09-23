@@ -2,6 +2,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import * as p from "@clack/prompts"
+import ts from "typescript"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { runCli } from "../program.js"
 import { CONFIG_FILE_NAME } from "../utils/config.js"
@@ -27,6 +28,30 @@ vi.mock("@clack/prompts", async (importOriginal) => {
   }
 })
 
+/**
+ * The file tsc resolves a generated reactor's `clientManager` import to, or
+ * `undefined` where tsc reports TS2307 "Cannot find module".
+ */
+function resolveClientManagerImport(reactorFile: string): string | undefined {
+  const source = fs.readFileSync(reactorFile, "utf-8")
+  const specifier = /^import \{ clientManager \} from "([^"]+)"$/m.exec(
+    source
+  )?.[1]
+  if (specifier === undefined) {
+    throw new Error(`${reactorFile} has no clientManager import`)
+  }
+
+  return ts.resolveModuleName(
+    specifier,
+    reactorFile,
+    {
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+    },
+    ts.sys
+  ).resolvedModule?.resolvedFileName
+}
+
 describe("init", () => {
   const tempDirs: string[] = []
   let originalCwd: string
@@ -49,6 +74,18 @@ describe("init", () => {
     )
     tempDirs.push(dir)
     return dir
+  }
+
+  /** Configure a canister, as a user does between `init` and `generate`. */
+  function addCanister(projectRoot: string): void {
+    fs.writeFileSync(
+      path.join(projectRoot, "backend.did"),
+      "service : { greet : (text) -> (text) query }\n"
+    )
+    const configPath = path.join(projectRoot, CONFIG_FILE_NAME)
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
+    config.canisters.backend = { name: "backend", didFile: "./backend.did" }
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
   }
 
   const existingConfig = `${JSON.stringify(
@@ -91,6 +128,59 @@ describe("init", () => {
     )
     expect(config.outDir).toBe("generated")
     expect(fs.existsSync(path.join(projectRoot, "generated"))).toBe(true)
+  })
+
+  // `generate` imports the client manager through `clientManagerPath` from
+  // `<outDir>/<canister>/`, and that setting defaults to "../../clients".
+  // `init -y` wrote the helper to src/clients.ts and left the setting unset, so
+  // the import reached the helper only when outDir sat directly inside src/.
+  // With any other --out-dir the first `generate` emitted an import tsc could
+  // not resolve (TS2307).
+  it.each(["src/declarations", "lib/canisters", "generated", "."])(
+    "writes a client manager that generate imports, with --out-dir %s",
+    async (outDir) => {
+      const projectRoot = createTempDir()
+      process.chdir(projectRoot)
+
+      expect(await runCli(["init", "-y", "--out-dir", outDir])).toBe(0)
+      addCanister(projectRoot)
+      expect(await runCli(["generate"])).toBe(0)
+
+      const reactorFile = path.join(
+        projectRoot,
+        outDir,
+        "backend",
+        "index.generated.ts"
+      )
+      expect(resolveClientManagerImport(reactorFile)).toBe(
+        path.join(projectRoot, "src/clients.ts")
+      )
+    }
+  )
+
+  // The import is worked out between real paths. Between the paths as written,
+  // an absolute --out-dir that reaches the project through a symlink (such as
+  // "$PWD/…" in a symlinked checkout) gives an import that climbs out of the
+  // real directory tree, which is where tsc resolves it from.
+  it("writes a client manager that generate imports, with an absolute --out-dir through a symlink", async () => {
+    const projectRoot = createTempDir()
+    const link = path.join(createTempDir(), "nested", "project")
+    fs.mkdirSync(path.dirname(link))
+    fs.symlinkSync(projectRoot, link, "junction")
+    process.chdir(projectRoot)
+
+    const outDir = path.join(link, "lib", "canisters")
+    expect(await runCli(["init", "-y", "--out-dir", outDir])).toBe(0)
+    addCanister(projectRoot)
+    expect(await runCli(["generate"])).toBe(0)
+
+    const reactorFile = path.join(
+      projectRoot,
+      "lib/canisters/backend/index.generated.ts"
+    )
+    expect(resolveClientManagerImport(reactorFile)).toBe(
+      path.join(projectRoot, "src/clients.ts")
+    )
   })
 
   it("writes into the current directory, never into an ancestor project", async () => {
