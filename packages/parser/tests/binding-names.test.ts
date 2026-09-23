@@ -260,3 +260,175 @@ export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`)
 export const init = ({ IDL }) => { return []; };`)
   })
 })
+
+// candid_parser prints a type named like a JavaScript keyword with a `_`
+// appended (`class_`) wherever it declares or refers to it, but wrote the line
+// that names the actor's type with the bare name: `return class;` in didToJs
+// and `export interface _SERVICE extends class {}` in didToTs. Neither parses,
+// so codegen's module did not load, its declarations did not compile, and
+// importCandidDefinition threw.
+describe("a service type named like a JavaScript keyword", () => {
+  const CASES = {
+    keyword: {
+      did: `
+        type class = service { greet : (text) -> (text) query };
+        service : class
+      `,
+      consumer: `
+        import type { _SERVICE, class_ } from "./keyword.js"
+
+        declare const service: _SERVICE
+        export const greeting: Promise<string> = service.greet("world")
+        export const same: class_ = service
+      `,
+      methods: { greet: IDL.Func([IDL.Text], [IDL.Text], ["query"]) },
+      init: [] as IDL.Type[],
+    },
+    // A recursive service is returned through `.getType()`.
+    recursive: {
+      did: `
+        type class = service { next : () -> (class) query };
+        service : class
+      `,
+      consumer: `
+        import type { Principal } from "@icp-sdk/core/principal"
+        import type { _SERVICE } from "./recursive.js"
+
+        declare const service: _SERVICE
+        export const next: Promise<Principal> = service.next()
+      `,
+      methods: {},
+      init: [] as IDL.Type[],
+    },
+    // `service : (…) -> T` names its service type the same way.
+    classActor: {
+      did: `
+        type default = service { set : (nat) -> () };
+        service : (nat) -> default
+      `,
+      consumer: `
+        import type { _SERVICE, default_ } from "./classActor.js"
+
+        declare const service: _SERVICE
+        export const set: Promise<undefined> = service.set(1n)
+        export const same: default_ = service
+      `,
+      methods: { set: IDL.Func([IDL.Nat], [], []) },
+      init: [IDL.Nat],
+    },
+    // When another type already has the name, it takes the next free one.
+    taken: {
+      did: `
+        type class = service { put : (class_) -> () };
+        type class_ = text;
+        service : class
+      `,
+      consumer: `
+        import type { _SERVICE, class_, class__ } from "./taken.js"
+
+        declare const service: _SERVICE
+        const text: class_ = "text"
+        export const put: Promise<undefined> = service.put(text)
+        export const same: class__ = service
+      `,
+      methods: { put: IDL.Func([IDL.Text], [], []) },
+      init: [] as IDL.Type[],
+    },
+  }
+
+  it("keeps the name candid_parser declares it under, and the actor line refers to it", () => {
+    const { did } = CASES.keyword
+
+    expect(parser.didToJs(did)).toBe(`export const idlFactory = ({ IDL }) => {
+  const class_ = IDL.Service({
+    'greet' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
+  });
+  return class_;
+};
+export const init = ({ IDL }) => { return []; };`)
+    expect(parser.didToTs(did))
+      .toBe(`import type { Principal } from '@icp-sdk/core/principal';
+import type { ActorMethod } from '@icp-sdk/core/agent';
+import type { IDL } from '@icp-sdk/core/candid';
+
+export interface class_ { 'greet' : ActorMethod<[string], string> }
+export interface _SERVICE extends class_ {}
+export declare const idlFactory: IDL.InterfaceFactory;
+export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`)
+  })
+
+  it("gives didToJs output that loads, with the service the Candid declares", async () => {
+    for (const { did, methods, init: initTypes } of Object.values(CASES)) {
+      const js = parser.didToJs(did)
+      for (const { idlFactory, init } of [
+        loadStrict(js),
+        await importCandidDefinition(js),
+      ]) {
+        const service = idlFactory({ IDL })
+        for (const [name, func] of Object.entries(methods)) {
+          expect(method(service, name).display()).toBe(func.display())
+        }
+        expect(init?.({ IDL }).map((type) => type.display())).toEqual(
+          initTypes.map((type) => type.display())
+        )
+      }
+    }
+
+    // The recursive service's method returns the service itself.
+    const service = loadStrict(parser.didToJs(CASES.recursive.did)).idlFactory({
+      IDL,
+    })
+    const next = method(service, "next")
+    expect(next.annotations).toEqual(["query"])
+    expect((next.retTypes[0] as IDL.RecClass).getType()).toBe(service)
+  })
+
+  it("gives didToTs output that type-checks with skipLibCheck off", () => {
+    const files: Record<string, string> = {}
+    for (const [name, { did, consumer }] of Object.entries(CASES)) {
+      files[`${name}.d.ts`] = parser.didToTs(did)
+      files[`${name}.js`] = parser.didToJs(did)
+      files[`${name}-consumer.ts`] = consumer
+    }
+
+    expect(typeErrors(files)).toEqual([])
+    // A full TypeScript program is checked here; on a busy CI runner that can
+    // take longer than vitest's 5 s default.
+  }, 30_000)
+
+  // Only the actor's type is renamed. Other types named like a keyword, and
+  // fields, methods and comments that are, print what they always printed.
+  it("changes nothing when the actor's type is not named like a keyword", () => {
+    const source = `
+      // class, default and delete, in a comment.
+      type class = record { default : text };
+      type delete = variant { this; that };
+      type classic = service { new : (class) -> (delete) };
+      service : classic
+    `
+
+    expect(parser.didToJs(source))
+      .toBe(`export const idlFactory = ({ IDL }) => {
+  const class_ = IDL.Record({ 'default' : IDL.Text });
+  const delete_ = IDL.Variant({ 'that' : IDL.Null, 'this' : IDL.Null });
+  const classic = IDL.Service({ 'new' : IDL.Func([class_], [delete_], []) });
+  return classic;
+};
+export const init = ({ IDL }) => { return []; };`)
+    expect(parser.didToTs(source))
+      .toBe(`import type { Principal } from '@icp-sdk/core/principal';
+import type { ActorMethod } from '@icp-sdk/core/agent';
+import type { IDL } from '@icp-sdk/core/candid';
+
+/**
+ * class, default and delete, in a comment.
+ */
+export interface class_ { 'default' : string }
+export interface classic { 'new' : ActorMethod<[class_], delete_> }
+export type delete_ = { 'that' : null } |
+  { 'this' : null };
+export interface _SERVICE extends classic {}
+export declare const idlFactory: IDL.InterfaceFactory;
+export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`)
+  })
+})
