@@ -62,8 +62,12 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
 
   private methodMeta: FormServiceMeta<A> | null = null
   private resultMeta: ServiceMeta<A> | null = null
-  private static formVisitor = new CandidFormVisitor()
-  private static resultVisitor = new ResultFieldVisitor()
+  // One pair of visitors per reactor. The form visitor caches a schema per
+  // recursive type, keyed by a name no other type shares, and each schema
+  // holds its type. Shared by every instance, the cache kept every service
+  // any reactor had described alive for good.
+  private formVisitor = new CandidFormVisitor()
+  private resultVisitor = new ResultFieldVisitor()
 
   constructor(config: MetadataReactorParameters) {
     const superConfig = { ...config }
@@ -89,11 +93,11 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     const service = this.getServiceInterface()
     if (!service) return
     this.methodMeta = service.accept(
-      MetadataReactor.formVisitor,
+      this.formVisitor,
       null as any
     ) as FormServiceMeta<A>
     this.resultMeta = service.accept(
-      MetadataReactor.resultVisitor,
+      this.resultVisitor,
       null as any
     ) as ServiceMeta<A>
   }
@@ -146,7 +150,7 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     options: MethodMetadataOptions = {}
   ): Promise<CandidFormMetadata> {
     const parsed = await this.parseValueType(valueType)
-    const meta = MetadataReactor.formVisitor.buildValueMeta(parsed.type)
+    const meta = this.formVisitor.buildValueMeta(parsed.type)
     const hydration = this.hydrateValues([parsed.type], options)
     return { meta, hydration }
   }
@@ -197,7 +201,46 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     options: DynamicMethodOptions
   ): Promise<void> {
     await super.registerMethod(options)
-    this.generateMetadata()
+    this.addMethodMetadata(options.functionName)
+  }
+
+  /**
+   * Describe a method registered after the rest of the metadata was built.
+   *
+   * Only that method is visited. Rebuilding the metadata of the whole service
+   * made each registration cost as much as the service was large, registering
+   * n methods one at a time cost n², and a repeat registration, which every
+   * callDynamic and fetchQueryDynamic makes, replaced the metadata objects of
+   * every method without changing any of them.
+   */
+  private addMethodMetadata(methodName: string): void {
+    if (!this.methodMeta || !this.resultMeta) {
+      this.generateMetadata()
+      return
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(this.methodMeta, methodName) &&
+      Object.prototype.hasOwnProperty.call(this.resultMeta, methodName)
+    ) {
+      return
+    }
+
+    const method = this.getServiceInterface()._fields.find(
+      ([name]) => name === methodName
+    )
+    if (!method) return
+
+    // Visited as a service of its own, so the method is described exactly
+    // as generateMetadata() describes it.
+    const service = IDL.Service({ [method[0]]: method[1] })
+    this.methodMeta = {
+      ...this.methodMeta,
+      ...(service.accept(this.formVisitor, null as any) as FormServiceMeta<A>),
+    }
+    this.resultMeta = {
+      ...this.resultMeta,
+      ...(service.accept(this.resultVisitor, null as any) as ServiceMeta<A>),
+    }
   }
 
   private findMethod(

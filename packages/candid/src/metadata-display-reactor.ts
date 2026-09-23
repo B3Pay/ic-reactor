@@ -3,6 +3,7 @@ import type {
   BaseActor,
   FunctionName,
 } from "@ic-reactor/core"
+import { IDL } from "@icp-sdk/core/candid"
 import { CandidDisplayReactor } from "./display-reactor.js"
 import type {
   CandidDisplayReactorParameters,
@@ -86,9 +87,12 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   private argumentMeta: ArgumentsServiceMeta<A> | null = null
   private resultMeta: ServiceMeta<A> | null = null
 
-  // Visitors (stateless, can be reused)
-  private static argVisitor = new FieldVisitor()
-  private static resultVisitor = new ResultFieldVisitor()
+  // One pair of visitors per reactor. They are not stateless: the argument
+  // visitor caches a schema per recursive type, keyed by a name no other type
+  // shares, and each schema holds its type. Shared by every instance, the
+  // cache kept every service any reactor had described alive for good.
+  private argVisitor = new FieldVisitor()
+  private resultVisitor = new ResultFieldVisitor()
 
   constructor(config: CandidDisplayReactorParameters<A>) {
     super(config)
@@ -122,13 +126,13 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
 
     // Generate argument metadata
     this.argumentMeta = service.accept(
-      MetadataDisplayReactor.argVisitor,
+      this.argVisitor,
       null as any
     ) as ArgumentsServiceMeta<A>
 
     // Generate result metadata
     this.resultMeta = service.accept(
-      MetadataDisplayReactor.resultVisitor,
+      this.resultVisitor,
       null as any
     ) as ServiceMeta<A>
   }
@@ -189,8 +193,49 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   ): Promise<void> {
     await super.registerMethod(options)
 
-    // Regenerate metadata
-    this.generateMetadata()
+    this.addMethodMetadata(options.functionName)
+  }
+
+  /**
+   * Describe a method registered after the rest of the metadata was built.
+   *
+   * Only that method is visited. Rebuilding the metadata of the whole service
+   * made each registration cost as much as the service was large, registering
+   * n methods one at a time cost n², and a repeat registration, which every
+   * callDynamic and fetchQueryDynamic makes, replaced the metadata objects of
+   * every method without changing any of them.
+   */
+  private addMethodMetadata(methodName: string): void {
+    if (!this.argumentMeta || !this.resultMeta) {
+      this.generateMetadata()
+      return
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(this.argumentMeta, methodName) &&
+      Object.prototype.hasOwnProperty.call(this.resultMeta, methodName)
+    ) {
+      return
+    }
+
+    const method = this.getServiceInterface()._fields.find(
+      ([name]) => name === methodName
+    )
+    if (!method) return
+
+    // Visited as a service of its own, so the method is described exactly
+    // as generateMetadata() describes it.
+    const service = IDL.Service({ [method[0]]: method[1] })
+    this.argumentMeta = {
+      ...this.argumentMeta,
+      ...(service.accept(
+        this.argVisitor,
+        null as any
+      ) as ArgumentsServiceMeta<A>),
+    }
+    this.resultMeta = {
+      ...this.resultMeta,
+      ...(service.accept(this.resultVisitor, null as any) as ServiceMeta<A>),
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════
