@@ -489,12 +489,18 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       "queryKey" | "queryFn"
     >
   ): Promise<ReactorQueryData<ReactorReturnOk<A, M, T>>> {
+    // Only the key and the function come from `getQueryOptions`. Spreading
+    // its whole return type mixed in option types keyed to TanStack's default
+    // `Error` rather than this method's error type, which stops type-checking
+    // as soon as the reactor's error classes grow a member.
+    const { queryKey, queryFn } = this.getQueryOptions(params)
     return this.queryClient.ensureQueryData<
       ReactorQueryData<ReactorReturnOk<A, M, T>>,
       ReactorReturnErr<A, M, T>
     >({
       ...options,
-      ...this.getQueryOptions(params),
+      queryKey,
+      queryFn,
     })
   }
 
