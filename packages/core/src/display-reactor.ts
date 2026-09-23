@@ -267,9 +267,7 @@ export class DisplayReactor<
     args: ReactorArgs<A, M, T> | undefined
   ): ReactorArgs<A, M, T> | undefined {
     if (args) return args
-    // A method typed by a recursive func alias is an `IDL.Rec`, which has no
-    // `argTypes` of its own.
-    return this.getFuncClass(methodName)?.argTypes?.length === 0
+    return this.getFuncClass(methodName)?.argTypes.length === 0
       ? ([] as unknown as ReactorArgs<A, M, T>)
       : undefined
   }
