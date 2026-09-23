@@ -107,6 +107,12 @@ export interface FakeIdentityProvider {
   /** Make sign-in requests of either protocol answer with this error. */
   setSignInError(error: JsonRpcError | null): void
   /**
+   * Leave sign-in requests of either protocol unanswered, as while the user is
+   * still going through the identity provider, until the returned function is
+   * called.
+   */
+  holdSignIn(): () => void
+  /**
    * Make `app_revoke_session` answer `Err InternalCanisterError` with this
    * text and keep the session, as the canister does when it fails to write.
    */
@@ -186,6 +192,8 @@ export function installFakeIdentityProvider(
   let attributesResponse = options.attributesResponse ?? null
   let attributesError = options.attributesError ?? null
   let signInError: JsonRpcError | null = null
+  /** Settles when a held sign-in may be answered; see `holdSignIn`. */
+  let signInHeld: Promise<void> | null = null
   let revokeError: string | null = null
   let signInPageServed = true
 
@@ -341,6 +349,7 @@ export function installFakeIdentityProvider(
           maxTimeToLive: params.maxTimeToLive,
           icrc95DerivationOrigin: params.icrc95DerivationOrigin,
         })
+        if (signInHeld) await signInHeld
 
         if (signInError) {
           respond(source, {
@@ -381,6 +390,7 @@ export function installFakeIdentityProvider(
           maxTimeToIdle: params.maxTimeToIdle,
           icrc95DerivationOrigin: params.icrc95DerivationOrigin,
         })
+        if (signInHeld) await signInHeld
 
         if (signInError) {
           respond(source, {
@@ -587,6 +597,17 @@ export function installFakeIdentityProvider(
     },
     setSignInError(error) {
       signInError = error
+    },
+    holdSignIn() {
+      let release: () => void = () => {}
+      const held = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      signInHeld = held
+      return () => {
+        if (signInHeld === held) signInHeld = null
+        release()
+      }
     },
     setRevokeError(message) {
       revokeError = message
