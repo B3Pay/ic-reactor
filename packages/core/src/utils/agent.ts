@@ -178,6 +178,10 @@ export async function processUpdateCallResponse(
       certificate: cert,
       rootKey: agent.rootKey,
       principal: effectiveTarget,
+      // The polling path hands `pollingOptions` to `pollForResponse`, which
+      // verifies with this; the synchronous path has to as well, or a
+      // caller's verifier applies only to calls that fell back to polling.
+      blsVerify: pollingOptions.blsVerify,
       agent,
     })
 
