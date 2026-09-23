@@ -157,9 +157,15 @@ the managed `index.generated.ts` implementation. The user-facing `index.ts`
 entry is created once, then preserved unless it still matches the default
 wrapper or a legacy generated scaffold that can be migrated automatically.
 When a watched `.did` file changes, the plugin sends a full browser reload so
-the new declarations are picked up. Regeneration is serialized per canister —
-saves that land while a run is in flight collapse into a single rerun — so two
-rapid saves cannot interleave inside the pipeline's delete-then-write sequence.
+the new declarations are picked up.
+
+The plugin follows the dev server's file watcher itself, so a `.did` file that
+appears after the server started, or that a build tool deletes and writes
+again, is generated too, and saves regenerate even with `server.hmr: false`.
+
+Regeneration is serialized per canister — saves that land while a run is in
+flight collapse into a single rerun — so two rapid saves cannot interleave
+inside the pipeline's delete-then-write sequence.
 A regeneration that fails is reported to the terminal and to the browser error
 overlay rather than leaving the page on stale bindings.
 

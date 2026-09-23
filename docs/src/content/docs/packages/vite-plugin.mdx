@@ -163,6 +163,10 @@ the broken intermediate states of a `.did` being edited; there the failure is
 reported to the terminal and to the browser error overlay instead. Set
 `failOnError` explicitly to override either default.
 
+The plugin follows the dev server's file watcher itself, so a `.did` file that
+appears after the server started, or that a build tool deletes and writes
+again, is generated too, and saves regenerate even with `server.hmr: false`.
+
 <Aside type="tip">
   Use the Vite plugin when you want the fastest `.did` edit loop. Use the
   [CLI](/v3/packages/cli) when you want explicit generation in non-Vite or CI
