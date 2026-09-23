@@ -32,15 +32,142 @@ fn reject_service_imports(ast: &IDLProg) -> Result<(), String> {
     Ok(())
 }
 
+/// The parameter `didToJs`'s `idlFactory` and `init` take the IDL namespace as.
+const JS_IDL_PARAMETER: &str = "IDL";
+
+/// The names `didToTs` output imports, each with its module.
+const TS_IMPORTS: [(&str, &str); 2] = [
+    ("Principal", "@icp-sdk/core/principal"),
+    ("ActorMethod", "@icp-sdk/core/agent"),
+];
+
+/// The global types `didToTs` output names: `Array<T>` for a `vec`, and a
+/// typed array for a `vec` of fixed-size numbers.
+const TS_GLOBALS: [&str; 9] = [
+    "Array",
+    "Uint8Array",
+    "Uint16Array",
+    "Uint32Array",
+    "BigUint64Array",
+    "Int8Array",
+    "Int16Array",
+    "Int32Array",
+    "BigInt64Array",
+];
+
 #[wasm_bindgen(js_name = didToJs)]
 pub fn did_to_js(prog: String) -> Result<String, String> {
-    let ast = parse_prog(&prog)?;
+    let mut ast = parse_prog(&prog)?;
     let mut env = TypeEnv::new();
-    let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    let mut actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+
+    // Each type is a `const` of its own name inside `({ IDL }) => { … }`, so a
+    // type named `IDL` redeclared the parameter: a SyntaxError, and the module
+    // did not load. The const is local to the factories, so it takes another
+    // name there, the way candid_parser appends `_` to a keyword.
+    if env.0.contains_key(JS_IDL_PARAMETER) {
+        let local = unused_type_name(&env, &format!("{JS_IDL_PARAMETER}_"));
+        rename_type(&mut ast, JS_IDL_PARAMETER, &local);
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
 
     let res = candid_parser::bindings::javascript::compile(&env, &actor);
 
     Ok(hex_nul_escapes(&computed_proto_keys(&res)))
+}
+
+/// `candidate`, or `candidate` followed by as many `_` as it takes to name no
+/// type in `env`.
+fn unused_type_name(env: &TypeEnv, candidate: &str) -> String {
+    let mut name = candidate.to_string();
+    while env.0.contains_key(&name) {
+        name.push('_');
+    }
+    name
+}
+
+/// Renames the type `from` to `to` in `ast`: its declaration and every
+/// reference to it. Field labels and method names are not type names and stay.
+fn rename_type(ast: &mut IDLProg, from: &str, to: &str) {
+    fn rename_in(ty: &mut IDLType, from: &str, to: &str) {
+        match ty {
+            IDLType::VarT(id) => {
+                if id == from {
+                    *id = to.to_string();
+                }
+            }
+            IDLType::FuncT(func) => {
+                for arg in func.args.iter_mut().chain(func.rets.iter_mut()) {
+                    rename_in(&mut arg.typ, from, to);
+                }
+            }
+            IDLType::OptT(inner) | IDLType::VecT(inner) => rename_in(inner, from, to),
+            IDLType::RecordT(fields) | IDLType::VariantT(fields) => {
+                for field in fields {
+                    rename_in(&mut field.typ, from, to);
+                }
+            }
+            IDLType::ServT(methods) => {
+                for method in methods {
+                    rename_in(&mut method.typ, from, to);
+                }
+            }
+            IDLType::ClassT(args, inner) => {
+                for arg in args {
+                    rename_in(&mut arg.typ, from, to);
+                }
+                rename_in(inner, from, to);
+            }
+            IDLType::PrimT(_) | IDLType::PrincipalT => {}
+        }
+    }
+
+    for dec in &mut ast.decs {
+        if let Dec::TypD(binding) = dec {
+            if binding.id == from {
+                binding.id = to.to_string();
+            }
+            rename_in(&mut binding.typ, from, to);
+        }
+    }
+    if let Some(actor) = &mut ast.actor {
+        rename_in(&mut actor.typ, from, to);
+    }
+}
+
+/// Replaces each identifier in `code` that `names` maps, outside quoted
+/// strings and comments.
+///
+/// `names` holds type names and the binding's own names. candid_parser prints
+/// field labels and method names as quoted strings and docs as comments, so
+/// outside those such a name always refers to the type or to the binding.
+fn rename_identifiers(code: &str, names: &HashMap<String, String>) -> String {
+    let is_identifier = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '$';
+    let mut out = String::with_capacity(code.len());
+    let mut rest = code;
+    while let Some(c) = rest.chars().next() {
+        let len = if c == '\'' {
+            quoted_len(rest)
+        } else if let Some(comment) = rest.strip_prefix("/*") {
+            comment.find("*/").map_or(rest.len(), |end| end + 4)
+        } else if rest.starts_with("//") {
+            rest.find('\n').unwrap_or(rest.len())
+        } else if is_identifier(c) {
+            let len = rest.find(|c: char| !is_identifier(c)).unwrap_or(rest.len());
+            if let Some(name) = names.get(&rest[..len]) {
+                out.push_str(name);
+                rest = &rest[len..];
+                continue;
+            }
+            len
+        } else {
+            c.len_utf8()
+        };
+        out.push_str(&rest[..len]);
+        rest = &rest[len..];
+    }
+    out
 }
 
 /// Rewrites each `\0` escape inside a single-quoted string of `didToJs` or
@@ -157,12 +284,60 @@ fn quoted_len(s: &str) -> usize {
 
 #[wasm_bindgen(js_name = didToTs)]
 pub fn did_to_ts(prog: String) -> Result<String, String> {
-    let ast = parse_prog(&prog)?;
+    let mut ast = parse_prog(&prog)?;
     let mut env = TypeEnv::new();
-    let actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    let mut actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+
+    // The output exports each type under its own name, and also names the
+    // imports `Principal` and `ActorMethod`, and the global `Array` and typed
+    // arrays. A type with one of those names conflicted with the import
+    // (TS2440) or hid the global, and the file's references to the name meant
+    // the other one: a method taking the Candid type was typed as taking the
+    // SDK's class, and `Array<string>` was not generic (TS2315). The type's
+    // name is public, so it stays, and the output reaches the import through
+    // an alias and the global through `globalThis`.
+    //
+    // The printer writes both as the same identifier. To tell them apart,
+    // such a type is printed with a `$` after its name, which no Candid name
+    // can contain, and renamed back afterwards. `Principal$` sorts where
+    // `Principal` does, so the declarations keep their order.
+    let mut renames = HashMap::new();
+    let mut imports = Vec::new();
+    for (name, module) in TS_IMPORTS {
+        if env.0.contains_key(name) {
+            let alias = unused_type_name(&env, &format!("__{name}"));
+            imports.push((
+                format!("import type {{ {alias} }} from '{module}';"),
+                format!("import type {{ {name} as {alias} }} from '{module}';"),
+            ));
+            renames.insert(name.to_string(), alias);
+        }
+    }
+    for name in TS_GLOBALS {
+        if env.0.contains_key(name) {
+            renames.insert(name.to_string(), format!("globalThis.{name}"));
+        }
+    }
+    if !renames.is_empty() {
+        let clashing: Vec<String> = renames.keys().cloned().collect();
+        for name in clashing {
+            let placeholder = format!("{name}$");
+            rename_type(&mut ast, &name, &placeholder);
+            renames.insert(placeholder, name);
+        }
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
 
     let merged = IDLMergedProg::new(ast);
-    let res = candid_parser::bindings::typescript::compile(&env, &actor, &merged);
+    let mut res = candid_parser::bindings::typescript::compile(&env, &actor, &merged);
+
+    if !renames.is_empty() {
+        res = rename_identifiers(&res, &renames);
+        for (renamed, aliased) in &imports {
+            res = res.replacen(renamed, aliased, 1);
+        }
+    }
 
     Ok(hex_nul_escapes(&res))
 }
