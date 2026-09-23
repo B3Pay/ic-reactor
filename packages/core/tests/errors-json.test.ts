@@ -24,6 +24,26 @@ const idlFactory: IDL.InterfaceFactory = ({ IDL }) =>
   })
 
 /**
+ * A rejected query. The agent's error keeps every node signature, each with
+ * a `bigint` timestamp beside its byte arrays.
+ */
+const rejectedQuery = {
+  status: QueryResponseStatus.Rejected,
+  reject_code: 5,
+  reject_message: "canister trapped",
+  error_code: "IC0503",
+  requestId: new Uint8Array(32),
+  signatures: [
+    {
+      timestamp: 1_700_000_000_000_000_000n,
+      signature: new Uint8Array(64),
+      identity: new Uint8Array(29),
+    },
+  ],
+  httpDetails: { ok: true, status: 200, statusText: "OK", headers: [] },
+}
+
+/**
  * Reactor's errors carry what the canister and the agent reported, and both
  * routinely hold BigInts: every ICRC-1 transfer error has a `nat` in it
  * (`InsufficientFunds { balance }`, `BadFee { expected_fee }`), and a rejected
@@ -76,21 +96,7 @@ describe("JSON serialisation of reactor errors", () => {
   })
 
   it("serialises a call error for a rejected query", async () => {
-    query.mockResolvedValue({
-      status: QueryResponseStatus.Rejected,
-      reject_code: 5,
-      reject_message: "canister trapped",
-      error_code: "IC0503",
-      requestId: new Uint8Array(32),
-      signatures: [
-        {
-          timestamp: 1_700_000_000_000_000_000n,
-          signature: new Uint8Array(64),
-          identity: new Uint8Array(29),
-        },
-      ],
-      httpDetails: { ok: true, status: 200, statusText: "OK", headers: [] },
-    })
+    query.mockResolvedValue(rejectedQuery)
 
     const error = await reactor
       .callMethod({ functionName: "icrc1_name" })
@@ -127,5 +133,100 @@ describe("JSON serialisation of reactor errors", () => {
       BadFee: { expected_fee: "10000" },
     })
     expect(error.err).toEqual({ BadFee: { expected_fee: 10_000n } })
+  })
+
+  /**
+   * `JSON.stringify` calls `toJSON` before the caller's replacer, so the
+   * replacer sees what `toJSON` returned, all the way down. That has to be the
+   * error's own values, with only the BigInts swapped out. A JSON round trip
+   * made inside `toJSON` handed the replacer `{}` for every `Map`, `{"0": …}`
+   * for every byte array and `{}` for a nested error, and it threw on a cycle
+   * that the replacer existed to break.
+   */
+  describe("with a replacer", () => {
+    it("still receives a Map as a Map, in an error that needs converting", () => {
+      const details = new Map([["retry_after_seconds", "30"]])
+      const error = new CanisterError({
+        code: "RateLimited",
+        message: "Too many requests",
+        details,
+        retry_at: 1_700_000_000n,
+      })
+
+      const json = JSON.parse(
+        JSON.stringify(error, (_, value: unknown) =>
+          value instanceof Map ? Object.fromEntries(value) : value
+        )
+      )
+
+      expect(json.details).toEqual({ retry_after_seconds: "30" })
+      expect(json.err).toEqual({
+        code: "RateLimited",
+        message: "Too many requests",
+        details: { retry_after_seconds: "30" },
+        retry_at: "1700000000",
+      })
+    })
+
+    it("still receives the byte arrays beside a rejected query's BigInts", async () => {
+      query.mockResolvedValue(rejectedQuery)
+
+      const error = await reactor
+        .callMethod({ functionName: "icrc1_name" })
+        .catch((e: unknown) => e)
+      expect(error).toBeInstanceOf(CallError)
+
+      const json = JSON.stringify(error, (_, value: unknown) =>
+        value instanceof Uint8Array ? `${value.length} bytes` : value
+      )
+
+      // Both sit in the same object as the timestamp that gets converted.
+      expect(json).toContain('"timestamp":"1700000000000000000"')
+      expect(json).toContain('"signature":"64 bytes"')
+      expect(json).toContain('"identity":"29 bytes"')
+    })
+
+    it("still receives the error a call error wraps as an Error", async () => {
+      // A reply that is not Candid: decoding it throws, and callMethod wraps
+      // what it threw.
+      query.mockResolvedValue({
+        status: QueryResponseStatus.Replied,
+        reply: { arg: new Uint8Array([1, 2, 3]) },
+      })
+
+      const error = await reactor
+        .callMethod({ functionName: "icrc1_name" })
+        .catch((e: unknown) => e)
+      expect(error).toBeInstanceOf(CallError)
+      const cause = (error as CallError).cause as Error
+      expect(cause).toBeInstanceOf(Error)
+
+      const json = JSON.parse(
+        JSON.stringify(error, (_, value: unknown) =>
+          value instanceof Error
+            ? { name: value.name, message: value.message }
+            : value
+        )
+      )
+
+      expect(json.cause).toEqual({ name: cause.name, message: cause.message })
+    })
+
+    it("leaves a cycle for the replacer to break", () => {
+      const cause: Record<string, unknown> = { reason: "retrying" }
+      cause.previous = cause
+      const seen = new WeakSet<object>()
+
+      const json = JSON.parse(
+        JSON.stringify(new CallError("failed", cause), (_, value: unknown) => {
+          if (typeof value !== "object" || value === null) return value
+          if (seen.has(value)) return "[Circular]"
+          seen.add(value)
+          return value
+        })
+      )
+
+      expect(json.cause).toEqual({ reason: "retrying", previous: "[Circular]" })
+    })
   })
 })
