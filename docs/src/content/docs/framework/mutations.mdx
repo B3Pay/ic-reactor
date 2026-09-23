@@ -124,7 +124,7 @@ const { mutate } = useActorMutation({
 })
 
 // In your component
-mutate([{ title: "New Post" }], {
+mutate([{ title: "New Post", content: "Hello world!" }], {
   onSuccess: () => {
     // This fires second (from mutate call)
     navigate("/posts")
@@ -272,7 +272,9 @@ return (
         <button onClick={reset}>Clear error</button>
       </div>
     )}
-    <button onClick={() => mutate([{ title: "Test" }])}>Create Post</button>
+    <button onClick={() => mutate([{ title: "Test", content: "Test post" }])}>
+      Create Post
+    </button>
   </div>
 )
 ```

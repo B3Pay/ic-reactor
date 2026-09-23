@@ -423,18 +423,20 @@ function CreateForm() {
 
 ### Fallback Data
 
-Provide fallback data when queries fail:
+Provide fallback data when queries fail. `placeholderData` is not that: it is
+shown only while the query is pending, and `data` is `undefined` again once the
+query fails. Fall back explicitly instead:
 
 ```tsx
+const DEFAULT_CONFIG = { theme: "light", language: "en" }
+
 const { data } = useActorQuery({
   functionName: "getConfig",
   args: [],
-  // Show default config if query fails
-  placeholderData: {
-    theme: "light",
-    language: "en",
-  },
 })
+
+// Default config while loading and after a failure
+const config = data ?? DEFAULT_CONFIG
 ```
 
 ## Logging and Monitoring
