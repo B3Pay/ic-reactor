@@ -82,7 +82,7 @@ function replaceDirectory(from: string, to: string): void {
 }
 
 /** The part of Prettier's API used here, in the shape v2 and v3 share. */
-interface Prettier {
+export interface Prettier {
   format(
     source: string,
     options: Record<string, unknown>
@@ -100,7 +100,7 @@ interface Prettier {
  * as a dependency, means the install that runs the project's own
  * `prettier --check` is the one that formats the output.
  */
-async function loadPrettier(
+export async function loadPrettier(
   projectRoot: string
 ): Promise<Prettier | undefined> {
   try {
@@ -166,7 +166,7 @@ function resolvePluginNames(
  *
  * Either way the result ends in a newline. The parser emits none.
  */
-async function formatGenerated(
+export async function formatGenerated(
   prettier: Prettier | undefined,
   projectRoot: string | undefined,
   source: string,
