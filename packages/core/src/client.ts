@@ -281,6 +281,10 @@ export class ClientManager {
       this.updateAgentState({
         error: error as Error,
         isInitializing: false,
+        // A subscriber that throws on the "initialized" notification fails the
+        // attempt after `isInitialized` was recorded. Left standing, it made
+        // every later call return at once, so the error was never cleared.
+        isInitialized: false,
       })
       throw error
     }
