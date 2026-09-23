@@ -71,6 +71,15 @@ export interface ReactorParameters {
   name: string
   idlFactory: (IDL: any) => any
   canisterId?: CanisterId
+  /**
+   * How update calls poll read_state for their result. The reactor passes
+   * this one object to every update call, so a `strategy` here is shared by
+   * all of them. Use `createPollingStrategy`, which keeps each request's
+   * state apart, or leave `strategy` out to get a fresh `defaultStrategy()`
+   * per request. A strategy from `@icp-sdk/core/agent` such as
+   * `defaultStrategy()` serves a single request: pass it per call through
+   * `callConfig.pollingOptions` instead.
+   */
   pollingOptions?: PollingOptions
 }
 
