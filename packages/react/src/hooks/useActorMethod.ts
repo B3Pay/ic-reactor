@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import {
+  useCallback,
+  useEffect,
+  useInsertionEffect,
+  useMemo,
+  useRef,
+} from "react"
 import {
   useQuery,
   useMutation,
+  hashKey,
   type UseQueryResult,
   type UseMutationResult,
   type QueryKey,
@@ -174,6 +181,29 @@ export interface UseActorMethodResult<
 }
 
 /**
+ * A ref to `value` as of the last committed render, for code that runs outside
+ * render: event handlers, timers, effects and TanStack callbacks.
+ *
+ * Assigning the ref during render would also publish renders that React throws
+ * away, such as a transition that suspends or one that a more urgent update
+ * interrupts. The tree still on screen would then act on props it never showed,
+ * like calling a method it does not render. An insertion effect runs only when
+ * its render commits, and before every layout and passive effect of that
+ * commit, so no effect anywhere in the tree reads the previous commit's value.
+ * React's own `useEffectEvent` also swaps in its new function during the
+ * commit, ahead of layout effects. Unlike `useLayoutEffect`, an insertion
+ * effect does not warn in a React 18 server render. The initial value serves
+ * anything that runs before the first commit.
+ */
+function useCommittedRef<T>(value: T): { readonly current: T } {
+  const ref = useRef(value)
+  useInsertionEffect(() => {
+    ref.current = value
+  })
+  return ref
+}
+
+/**
  * A unified hook for calling canister methods that automatically handles
  * both query and mutation methods based on the Candid interface.
  */
@@ -210,12 +240,11 @@ export function useActorMethod<
 
   useMountQueryClient(reactor.queryClient)
 
-  // Latest callbacks, read at dispatch time: this keeps a rerendered closure
-  // from being ignored, and keeps callback identity out of the effect deps.
-  const onSuccessRef = useRef(onSuccess)
-  const onErrorRef = useRef(onError)
-  onSuccessRef.current = onSuccess
-  onErrorRef.current = onError
+  // The committed render's callbacks, read at dispatch time: this keeps a
+  // rerendered closure from being ignored, and keeps callback identity out of
+  // the effect deps.
+  const onSuccessRef = useCommittedRef(onSuccess)
+  const onErrorRef = useCommittedRef(onError)
 
   // Build the key for a given set of call arguments.
   //
@@ -317,6 +346,50 @@ export function useActorMethod<
     }
   }, [isQuery, status, error, errorUpdatedAt])
 
+  // `call(args)` reports its own outcome, once per call, because the args it
+  // fetched usually key an entry this observer does not watch. When they key
+  // the entry it does watch, the effects above see the same settle, and each
+  // callback used to fire twice for one call. So the settle that ends a call's
+  // fetch is marked as notified when it lands in the observed entry, and the
+  // effects skip it.
+  //
+  // A query cache listener sets that mark while TanStack dispatches the
+  // settle, before any render can show it. Matching a settle up by its
+  // timestamp afterwards could not tell settles apart: two in one millisecond
+  // share a timestamp. And a call that an identity switch cancels settles
+  // nothing: TanStack reverts the entry to its previous result, timestamp
+  // included, so the call's outcome looked reported already, and neither the
+  // call nor the effects reported it.
+  const observedKeyRef = useCommittedRef(queryKey)
+  const markCallSettle = (calledKey: QueryKey): (() => void) => {
+    const { queryClient } = reactor
+    // The hash TanStack files the called entry under, worked out the way
+    // `fetchQuery` does. The listener compares it with hashes TanStack has
+    // already computed rather than hashing keys itself: the QueryClient may be
+    // shared with the app, whose keys a custom `queryKeyHashFn` can let hold
+    // values that `hashKey` throws on, inside TanStack's dispatch.
+    const calledHash = queryClient.defaultQueryOptions({
+      queryKey: calledKey,
+    }).queryHash
+    let settled = false
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (settled || event.type !== "updated") return
+      const { action, query } = event
+      // A fetch settles with one of these. `setQueryData` dispatches a
+      // success too, flagged manual, and it does not end this call's fetch.
+      const isSettle =
+        action.type === "error" || (action.type === "success" && !action.manual)
+      if (!isSettle || query.queryHash !== calledHash) return
+      settled = true
+      if (hashKey(calledKey) !== hashKey(observedKeyRef.current)) return
+      if (action.type === "success") {
+        notifiedSuccessAt.current = query.state.dataUpdatedAt
+      } else {
+        notifiedErrorAt.current = query.state.errorUpdatedAt
+      }
+    })
+  }
+
   // ============================================================================
   // Mutation Implementation
   // ============================================================================
@@ -360,72 +433,67 @@ export function useActorMethod<
   // Unified Call Function
   // ============================================================================
 
-  const call = useCallback(
-    async (
-      callArgs?: ReactorArgs<Service, Method, Transform>
-    ): Promise<TQueryData | undefined> => {
-      if (isQuery) {
-        // For queries, refetch with new args if provided
-        if (callArgs !== undefined) {
-          // Key on the args actually being called. Reusing the hook's
-          // mount-time key would store this result under the previous args'
-          // entry — poisoning it for every other reader — and let fetchQuery
-          // dedupe onto an in-flight request for the old args, returning that
-          // response as though it answered this one.
-          try {
-            const result = await reactor.queryClient.fetchQuery<TQueryData>({
-              queryKey: buildQueryKey(callArgs),
-              // Normalize for the same reason as the observer's queryFn.
-              queryFn: async () =>
-                normalizeQueryData<TData>(
-                  (await reactor.callMethod({
-                    functionName,
-                    args: callArgs,
-                    callConfig,
-                  })) as TData
-                ),
-              staleTime: 0,
-            })
-            // Dispatched here rather than by the observer effect: this result
-            // lands under the called args' key, which the mounted observer (bound
-            // to the hook's own args) does not watch. That separation is also why
-            // this can no longer double-fire the way it did when both wrote to
-            // the same key.
-            onSuccessRef.current?.(result)
-            return result
-          } catch (error) {
-            onErrorRef.current?.(
-              error as ReactorReturnErr<Service, Method, Transform>
-            )
-            return undefined
-          }
+  const callLatest = async (
+    callArgs?: ReactorArgs<Service, Method, Transform>
+  ): Promise<TQueryData | undefined> => {
+    if (isQuery) {
+      // For queries, refetch with new args if provided
+      if (callArgs !== undefined) {
+        // Key on the args actually being called. Reusing the hook's
+        // mount-time key would store this result under the previous args'
+        // entry — poisoning it for every other reader — and let fetchQuery
+        // dedupe onto an in-flight request for the old args, returning that
+        // response as though it answered this one.
+        const calledKey = buildQueryKey(callArgs)
+        const stopMarking = markCallSettle(calledKey)
+        // Reported here rather than by the observer effects: this result
+        // usually lands under a key the mounted observer (bound to the hook's
+        // own args) does not watch. When it is that key, `markCallSettle` has
+        // already kept the effects from reporting it as well. Either way the
+        // callbacks get what the call settles with. For a cancelled call that
+        // is TanStack's `CancelledError`, or, when the entry had data, the
+        // data it reverted to, which `fetchQuery` resolves with instead.
+        try {
+          const result = await reactor.queryClient.fetchQuery<TQueryData>({
+            queryKey: calledKey,
+            // Normalize for the same reason as the observer's queryFn.
+            queryFn: async () =>
+              normalizeQueryData<TData>(
+                (await reactor.callMethod({
+                  functionName,
+                  args: callArgs,
+                  callConfig,
+                })) as TData
+              ),
+            staleTime: 0,
+          })
+          onSuccessRef.current?.(result)
+          return result
+        } catch (error) {
+          onErrorRef.current?.(
+            error as ReactorReturnErr<Service, Method, Transform>
+          )
+          return undefined
+        } finally {
+          stopMarking()
         }
-        // Otherwise just refetch
-        const { data } = await queryResult.refetch()
-        return data
-      } else {
-        // For mutations, execute with provided args
-        return mutationResult
-          .mutateAsync(callArgs as ReactorArgs<Service, Method, Transform>)
-          .catch(() => undefined)
       }
-    },
-    [
-      isQuery,
-      reactor,
-      functionName,
-      callConfig,
-      buildQueryKey,
-      queryResult,
-      mutationResult,
-    ]
-  )
+      // Otherwise just refetch
+      const { data } = await queryResult.refetch()
+      return data
+    } else {
+      // For mutations, execute with provided args
+      return mutationResult
+        .mutateAsync(callArgs as ReactorArgs<Service, Method, Transform>)
+        .catch(() => undefined)
+    }
+  }
 
   // ============================================================================
   // Reset Function
   // ============================================================================
 
-  const reset = useCallback(() => {
+  const resetLatest = () => {
     if (isQuery) {
       // Reset, not remove. `removeQueries` drops the entry without notifying
       // its observers, so this hook kept rendering the old data while bound to
@@ -438,19 +506,42 @@ export function useActorMethod<
     } else {
       mutationResult.reset()
     }
-  }, [isQuery, reactor, queryKey, mutationResult])
+  }
 
   // ============================================================================
   // Refetch Function
   // ============================================================================
 
-  const refetch = useCallback(async () => {
+  const refetchLatest = async () => {
     if (isQuery) {
       const result = await queryResult.refetch()
       return result.data
     }
     return undefined
-  }, [isQuery, queryResult])
+  }
+
+  // `call`, `reset` and `refetch` keep one identity for the life of the
+  // component, as TanStack's own `refetch`, `mutate` and `reset` do, and run
+  // the latest committed render's implementation above when invoked. They used
+  // to be `useCallback`s listing the query and mutation results, which TanStack
+  // Query returns fresh every render, so they changed every render too. An
+  // effect that lists one — `react-hooks/exhaustive-deps` requires it as soon
+  // as the effect calls it — then re-ran after every render its own call
+  // caused: an unbounded loop of canister calls, state-changing ones for an
+  // update method.
+  const latest = useCommittedRef({
+    call: callLatest,
+    reset: resetLatest,
+    refetch: refetchLatest,
+  })
+
+  const call = useCallback(
+    (callArgs?: ReactorArgs<Service, Method, Transform>) =>
+      latest.current.call(callArgs),
+    []
+  )
+  const reset = useCallback(() => latest.current.reset(), [])
+  const refetch = useCallback(() => latest.current.refetch(), [])
 
   // ============================================================================
   // Return Unified Result
