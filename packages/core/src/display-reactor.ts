@@ -253,6 +253,28 @@ export class DisplayReactor<
   }
 
   /**
+   * The argument list a call's validator checks.
+   *
+   * A method that takes no arguments is called without `args` — as the query
+   * hooks and `createQuery` call one — and `[]` is what gets encoded for it, so
+   * `[]` is what its validator checks. Validating only when `args` was present
+   * let every such call reach the canister without its validator ever running.
+   * Omitting `args` for a method that takes some cannot encode, so that call is
+   * left to fail as it always has.
+   */
+  private argsToValidate<M extends FunctionName<A>>(
+    methodName: M,
+    args: ReactorArgs<A, M, T> | undefined
+  ): ReactorArgs<A, M, T> | undefined {
+    if (args) return args
+    // A method typed by a recursive func alias is an `IDL.Rec`, which has no
+    // `argTypes` of its own.
+    return this.getFuncClass(methodName)?.argTypes?.length === 0
+      ? ([] as unknown as ReactorArgs<A, M, T>)
+      : undefined
+  }
+
+  /**
    * Call a method with async validation support.
    * Use this instead of callMethod() when you have async validators.
    *
@@ -284,8 +306,9 @@ export class DisplayReactor<
     >[0]["callConfig"]
   }): Promise<ReactorReturnOk<A, M, T>> {
     // Run async validation first (on display types)
-    if (params.args) {
-      const result = await this.validate(params.functionName, params.args)
+    const argsToValidate = this.argsToValidate(params.functionName, params.args)
+    if (argsToValidate) {
+      const result = await this.validate(params.functionName, argsToValidate)
       if (!result.success) {
         throw new ValidationError(String(params.functionName), result.issues)
       }
@@ -336,9 +359,10 @@ export class DisplayReactor<
     // 1. Validate FIRST (on display types)
     const validator = this.validators.get(methodName)
     const displayArgs = args as unknown as ReactorArgs<A, M, "display">
+    const argsToValidate = validator && this.argsToValidate(methodName, args)
 
-    if (validator && displayArgs) {
-      const result = validator(displayArgs)
+    if (validator && argsToValidate) {
+      const result = validator(argsToValidate)
 
       // Handle Promise (async validator)
       if (
