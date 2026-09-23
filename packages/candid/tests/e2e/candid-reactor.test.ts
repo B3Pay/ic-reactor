@@ -8,7 +8,10 @@ interface TestActor {
   icrc1_symbol: ActorMethod<[], string>
 }
 
-describe("CandidReactor E2E", () => {
+// These tests call canisters on mainnet through a boundary node, and a slow or
+// dropped response is not a failure of this package. Retrying keeps one such
+// response from failing CI's Test job (seen on main, run 35804622116).
+describe("CandidReactor E2E", { retry: 2 }, () => {
   let reactor: CandidReactor<TestActor>
   let agent: HttpAgent
 
