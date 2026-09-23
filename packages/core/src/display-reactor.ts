@@ -1,3 +1,4 @@
+import { IDL } from "@icp-sdk/core/candid"
 import { Reactor } from "./reactor.js"
 import {
   didToDisplayCodec,
@@ -24,6 +25,28 @@ import {
   ValidationResult,
   Validator,
 } from "./types/display-reactor.js"
+
+/**
+ * The display codecs for a method's arguments and result.
+ *
+ * A method typed by a recursive func alias (`type f = func (f) -> (f)`) is an
+ * `IDL.Rec` wrapping the func, with no `argTypes` or `retTypes` of its own, so
+ * the func is resolved first.
+ */
+function methodDisplayCodecs(methodType: IDL.Type): {
+  args: ActorDisplayCodec
+  result: ActorDisplayCodec
+} {
+  let funcType: IDL.Type | undefined = methodType
+  while (funcType instanceof IDL.RecClass) funcType = funcType.getType()
+  if (!(funcType instanceof IDL.FuncClass)) {
+    throw new Error(`${methodType.display()} is not a function type`)
+  }
+  return {
+    args: didToDisplayCodec(didTypeFromArray(funcType.argTypes)),
+    result: didToDisplayCodec(didTypeFromArray(funcType.retTypes)),
+  }
+}
 
 // ============================================================================
 // DisplayReactor
@@ -106,24 +129,22 @@ export class DisplayReactor<
    * Initialize codecs from IDL factory for automatic type transformations
    */
   private initializeCodecs() {
-    try {
-      const fields = this.getServiceInterface()?._fields
-      if (!fields) {
-        throw new Error("No fields found")
+    const fields = this.getServiceInterface()?._fields
+    if (!fields) {
+      console.error(
+        "Failed to initialize codecs:",
+        new Error("No fields found")
+      )
+      return
+    }
+    // Each method on its own: one codec that cannot be built used to abort the
+    // loop, and every method after it then ran without display transforms.
+    for (const [methodName, methodType] of fields) {
+      try {
+        this.codecs.set(methodName, methodDisplayCodecs(methodType))
+      } catch (error) {
+        console.error(`Failed to initialize codecs for ${methodName}:`, error)
       }
-      for (const [methodName, funcType] of fields) {
-        // Generate args codec
-        const argsIdlType = didTypeFromArray(funcType.argTypes)
-        // Generate result codec
-        const retIdlType = didTypeFromArray(funcType.retTypes)
-        // Set codec in map
-        this.codecs.set(methodName, {
-          args: didToDisplayCodec(argsIdlType),
-          result: didToDisplayCodec(retIdlType),
-        })
-      }
-    } catch (error) {
-      console.error("Failed to initialize codecs:", error)
     }
   }
 
