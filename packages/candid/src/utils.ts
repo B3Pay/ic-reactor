@@ -117,7 +117,7 @@ export function normalizeCandidInterface(
     if (methodSignature.endsWith(";")) {
       methodSignature = methodSignature.slice(0, -1)
     }
-    return `service : { "${functionName}": ${methodSignature}; }`
+    return `service : { ${quoteCandidName(functionName)}: ${methodSignature}; }`
   }
 
   // If we couldn't properly find the end of the type, fallback to assuming it's the last line (old behavior)
@@ -139,7 +139,7 @@ export function normalizeCandidInterface(
     }
 
     const typeDefinitions = typeLines.join("\n")
-    return `${typeDefinitions}\nservice : { "${functionName}": ${methodSignature}; }`
+    return `${typeDefinitions}\nservice : { ${quoteCandidName(functionName)}: ${methodSignature}; }`
   }
 
   const typeDefinitions = trimmed.slice(0, signatureStartIndex).trim()
@@ -148,7 +148,27 @@ export function normalizeCandidInterface(
     methodSignature = methodSignature.slice(0, -1)
   }
 
-  return `${typeDefinitions}\nservice : { "${functionName}": ${methodSignature}; }`
+  return `${typeDefinitions}\nservice : { ${quoteCandidName(functionName)}: ${methodSignature}; }`
+}
+
+/**
+ * `name` as a quoted Candid name. A method name may be any text, and one
+ * holding a quote, a backslash or a control character was pasted in as it
+ * was, so the service built around it did not parse, or named another method.
+ */
+function quoteCandidName(name: string): string {
+  let quoted = '"'
+  for (const char of name) {
+    const code = char.codePointAt(0)!
+    if (char === '"' || char === "\\") {
+      quoted += "\\" + char
+    } else if (code < 0x20 || code === 0x7f) {
+      quoted += `\\u{${code.toString(16)}}`
+    } else {
+      quoted += char
+    }
+  }
+  return quoted + '"'
 }
 
 /** The start of a type declaration, `type Name =`. */
