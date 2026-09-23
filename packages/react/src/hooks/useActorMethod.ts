@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import {
+  useCallback,
+  useEffect,
+  useInsertionEffect,
+  useMemo,
+  useRef,
+} from "react"
 import {
   useQuery,
   useMutation,
@@ -175,6 +181,29 @@ export interface UseActorMethodResult<
 }
 
 /**
+ * A ref to `value` as of the last committed render, for code that runs outside
+ * render: event handlers, timers, effects and TanStack callbacks.
+ *
+ * Assigning the ref during render would also publish renders that React throws
+ * away, such as a transition that suspends or one that a more urgent update
+ * interrupts. The tree still on screen would then act on props it never showed,
+ * like calling a method it does not render. An insertion effect runs only when
+ * its render commits, and before every layout and passive effect of that
+ * commit, so no effect anywhere in the tree reads the previous commit's value.
+ * React's own `useEffectEvent` also swaps in its new function during the
+ * commit, ahead of layout effects. Unlike `useLayoutEffect`, an insertion
+ * effect does not warn in a React 18 server render. The initial value serves
+ * anything that runs before the first commit.
+ */
+function useCommittedRef<T>(value: T): { readonly current: T } {
+  const ref = useRef(value)
+  useInsertionEffect(() => {
+    ref.current = value
+  })
+  return ref
+}
+
+/**
  * A unified hook for calling canister methods that automatically handles
  * both query and mutation methods based on the Candid interface.
  */
@@ -209,12 +238,11 @@ export function useActorMethod<
 
   const functionType: FunctionType = isQuery ? "query" : "update"
 
-  // Latest callbacks, read at dispatch time: this keeps a rerendered closure
-  // from being ignored, and keeps callback identity out of the effect deps.
-  const onSuccessRef = useRef(onSuccess)
-  const onErrorRef = useRef(onError)
-  onSuccessRef.current = onSuccess
-  onErrorRef.current = onError
+  // The committed render's callbacks, read at dispatch time: this keeps a
+  // rerendered closure from being ignored, and keeps callback identity out of
+  // the effect deps.
+  const onSuccessRef = useCommittedRef(onSuccess)
+  const onErrorRef = useCommittedRef(onError)
 
   // Build the key for a given set of call arguments.
   //
@@ -310,8 +338,7 @@ export function useActorMethod<
   // args, though, the effects above report the same settle too, and each
   // callback used to fire twice for one call. Both sides now claim the settle
   // by its timestamp before reporting it, so whichever runs second skips it.
-  const queryKeyRef = useRef(queryKey)
-  queryKeyRef.current = queryKey
+  const queryKeyRef = useCommittedRef(queryKey)
   const claimCallSettle = useCallback(
     (calledKey: QueryKey, outcome: "success" | "error"): boolean => {
       if (hashKey(calledKey) !== hashKey(queryKeyRef.current)) return true
@@ -459,19 +486,18 @@ export function useActorMethod<
 
   // `call`, `reset` and `refetch` keep one identity for the life of the
   // component, as TanStack's own `refetch`, `mutate` and `reset` do, and run
-  // the latest render's implementation above when invoked. They used to be
-  // `useCallback`s listing the query and mutation results, which TanStack Query
-  // returns fresh every render, so they changed every render too. An effect
-  // that lists one — `react-hooks/exhaustive-deps` requires it as soon as the
-  // effect calls it — then re-ran after every render its own call caused: an
-  // unbounded loop of canister calls, state-changing ones for an update method.
-  const implementations = {
+  // the latest committed render's implementation above when invoked. They used
+  // to be `useCallback`s listing the query and mutation results, which TanStack
+  // Query returns fresh every render, so they changed every render too. An
+  // effect that lists one — `react-hooks/exhaustive-deps` requires it as soon
+  // as the effect calls it — then re-ran after every render its own call
+  // caused: an unbounded loop of canister calls, state-changing ones for an
+  // update method.
+  const latest = useCommittedRef({
     call: callLatest,
     reset: resetLatest,
     refetch: refetchLatest,
-  }
-  const latest = useRef(implementations)
-  latest.current = implementations
+  })
 
   const call = useCallback(
     (callArgs?: ReactorArgs<Service, Method, Transform>) =>
