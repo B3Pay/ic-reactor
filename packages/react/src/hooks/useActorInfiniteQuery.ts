@@ -119,7 +119,7 @@ export type UseActorInfiniteQueryResult<
  * const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
  *   reactor,
  *   functionName: "getItems",
- *   getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }],
+ *   getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }] as const,
  *   initialPageParam: 0,
  *   getNextPageParam: (lastPage) => lastPage.nextOffset,
  * })
