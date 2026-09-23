@@ -34,11 +34,15 @@ function mapValidationErrors(
 ): Record<string, string | string[]>
 ```
 
+An issue about the whole argument rather than one field (an empty `path`, as zod reports for an object-level `.refine()`) is filed under the key `""`.
+
 **Usage:**
+
+Call `mutateAsync` here: it returns a promise that rejects with the error. `mutate` returns nothing and reports errors only through `onError`, so a `catch` around it never runs.
 
 ```tsx
 try {
-  await mutate([data])
+  await mutateAsync([data])
 } catch (error) {
   if (isValidationError(error)) {
     const errors = mapValidationErrors(error)
@@ -74,7 +78,7 @@ const { mutate } = useReactorMutation({
 
 ### getFieldError
 
-Extracts the first error message for a specific field.
+Extracts the first error message for a specific field. Pass `""` for an issue about the whole argument.
 
 ```typescript
 function getFieldError(

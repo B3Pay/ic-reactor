@@ -310,18 +310,34 @@ export class ValidationError extends Error {
   }
 
   /**
-   * Get issues for a specific field path
+   * Get the issues whose path contains the given segment: a field name, or an
+   * array index. zod reports an index as a number, and `1` and `"1"` both
+   * match it.
    */
-  getIssuesForPath(path: string): ValidationIssue[] {
-    return this.issues.filter((issue) => issue.path.includes(path))
+  getIssuesForPath(path: string | number): ValidationIssue[] {
+    return this.issues.filter((issue) => pathHasSegment(issue.path, path))
   }
 
   /**
-   * Check if a specific field has errors
+   * Check whether any issue's path contains the given segment, matched the
+   * same way as `getIssuesForPath`.
    */
-  hasErrorForPath(path: string): boolean {
-    return this.issues.some((issue) => issue.path.includes(path))
+  hasErrorForPath(path: string | number): boolean {
+    return this.issues.some((issue) => pathHasSegment(issue.path, path))
   }
+}
+
+/**
+ * Compares segments as strings: a path stores an array index as a number, but
+ * a caller often holds it as a string, such as one part of a form field name
+ * like `items.1.amount`.
+ */
+function pathHasSegment(
+  path: ValidationIssue["path"],
+  segment: string | number
+): boolean {
+  const key = String(segment)
+  return path.some((part) => String(part) === key)
 }
 
 /**
