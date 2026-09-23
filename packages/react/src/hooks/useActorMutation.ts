@@ -90,7 +90,7 @@ export type UseActorMutationResult<
  * For non-React usage, prefer `createMutation(...).execute(args)`.
  *
  * @example
- * const { mutate, isPending } = useActorMutation({
+ * const { mutate, isPending } = useReactorMutation({
  *   reactor,
  *   functionName: "transfer",
  *   onSuccess: () => console.log("Success!"),

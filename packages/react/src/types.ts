@@ -1,5 +1,5 @@
 /**
- * Shared type definitions for query factories (createActorQuery, createActorSuspenseQuery, etc.)
+ * Shared type definitions for query factories (createQuery, createSuspenseQuery, etc.)
  */
 
 import type {
@@ -451,7 +451,7 @@ export interface MutationHookOptions<
    * Use query.getQueryKey() to get the key from a query result.
    *
    * @example
-   * const balanceQuery = getIcpBalance(account)
+   * const balanceQuery = getIcpBalance([account])
    * useMutation({
    *   invalidateQueries: [balanceQuery.getQueryKey()],
    * })

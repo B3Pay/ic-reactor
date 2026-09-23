@@ -117,7 +117,7 @@ export type UseActorInfiniteQueryResult<
  * Hook for executing infinite/paginated query calls on a canister.
  *
  * @example
- * const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
+ * const { data, fetchNextPage, hasNextPage } = useReactorInfiniteQuery({
  *   reactor,
  *   functionName: "getItems",
  *   getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }] as const,

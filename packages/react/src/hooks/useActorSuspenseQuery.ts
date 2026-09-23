@@ -64,14 +64,14 @@ export type UseActorSuspenseQueryResult<
  * Hook for executing suspense-enabled query calls on a canister.
  *
  * @example
- * const { data } = useActorSuspenseQuery({
+ * const { data } = useReactorSuspenseQuery({
  *   reactor,
  *   functionName: "getUser",
  *   args: ["user-123"],
  * })
  *
  * // With select transformation
- * const { data } = useActorSuspenseQuery({
+ * const { data } = useReactorSuspenseQuery({
  *   reactor,
  *   functionName: "getUser",
  *   args: ["user-123"],

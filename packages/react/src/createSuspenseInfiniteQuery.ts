@@ -13,7 +13,7 @@
  * const postsQuery = createSuspenseInfiniteQuery(reactor, {
  *   functionName: "get_posts",
  *   initialPageParam: 0,
- *   getArgs: (cursor) => [{ cursor, limit: 10 }],
+ *   getArgs: (cursor) => [{ cursor, limit: 10 }] as const,
  *   getNextPageParam: (lastPage) => lastPage.nextCursor,
  * })
  *
@@ -110,7 +110,7 @@ export type SuspenseInfiniteQueryError<
 // ============================================================================
 
 /**
- * Configuration for createActorSuspenseInfiniteQuery.
+ * Configuration for createSuspenseInfiniteQuery.
  * Extends InfiniteQueryObserverOptions to accept all React Query options at the create level.
  *
  * @template Service - The actor interface type
@@ -158,7 +158,7 @@ export interface SuspenseInfiniteQueryConfig<
 }
 
 /**
- * Configuration for createActorSuspenseInfiniteQueryFactory (without getArgs; provided at call time).
+ * Configuration for createSuspenseInfiniteQueryFactory (without getArgs; provided at call time).
  */
 export type SuspenseInfiniteQueryFactoryConfig<
   Service = BaseActor,
@@ -235,7 +235,7 @@ export interface UseSuspenseInfiniteQueryWithSelect<
 // ============================================================================
 
 /**
- * Result from createActorSuspenseInfiniteQuery
+ * Result from createSuspenseInfiniteQuery
  *
  * @template TPageData - The raw page data type
  * @template TPageParam - The page parameter type
@@ -517,10 +517,10 @@ export function createSuspenseInfiniteQuery<
  *
  * @param reactor - The Reactor instance
  * @param config - Suspense infinite query configuration (without getArgs)
- * @returns A function that accepts getArgs and returns an SuspenseActorInfiniteQueryResult
+ * @returns A function that accepts getArgs and returns a SuspenseInfiniteQueryResult
  *
  * @example
- * const getPostsQuery = createActorSuspenseInfiniteQueryFactory(reactor, {
+ * const getPostsQuery = createSuspenseInfiniteQueryFactory(reactor, {
  *   functionName: "get_posts",
  *   initialPageParam: 0,
  *   getKeyArgs: (args) => {

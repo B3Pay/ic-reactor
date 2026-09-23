@@ -8,7 +8,7 @@
  * const postsQuery = createInfiniteQuery(reactor, {
  *   functionName: "get_posts",
  *   initialPageParam: 0,
- *   getArgs: (cursor) => [{ cursor, limit: 10 }],
+ *   getArgs: (cursor) => [{ cursor, limit: 10 }] as const,
  *   getNextPageParam: (lastPage) => lastPage.nextCursor,
  * })
  *
@@ -94,7 +94,7 @@ export type InfiniteQueryError<
 // ============================================================================
 
 /**
- * Configuration for createActorInfiniteQuery.
+ * Configuration for createInfiniteQuery.
  * Extends InfiniteQueryObserverOptions to accept standard TanStack Query
  * infinite-query options at the create level (e.g. refetchInterval,
  * refetchOnMount, refetchOnWindowFocus, retry, gcTime, networkMode).
@@ -161,7 +161,7 @@ export interface InfiniteQueryConfig<
 }
 
 /**
- * Configuration for createActorInfiniteQueryFactory (without initialPageParam, getArgs determined at call time).
+ * Configuration for createInfiniteQueryFactory (without getArgs; provided at call time).
  */
 export type InfiniteQueryFactoryConfig<
   Service = BaseActor,
@@ -233,7 +233,7 @@ export interface UseInfiniteQueryWithSelect<
 // ============================================================================
 
 /**
- * Result from createActorInfiniteQuery
+ * Result from createInfiniteQuery
  *
  * @template TPageData - The raw page data type
  * @template TPageParam - The page parameter type
@@ -515,10 +515,10 @@ export function createInfiniteQuery<
  *
  * @param reactor - The Reactor instance
  * @param config - Infinite query configuration (without getArgs)
- * @returns A function that accepts getArgs and returns an ActorInfiniteQueryResult
+ * @returns A function that accepts getArgs and returns an InfiniteQueryResult
  *
  * @example
- * const getPostsQuery = createActorInfiniteQueryFactory(reactor, {
+ * const getPostsQuery = createInfiniteQueryFactory(reactor, {
  *   functionName: "get_posts",
  *   initialPageParam: 0,
  *   getKeyArgs: (args) => {

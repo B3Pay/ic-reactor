@@ -79,6 +79,7 @@ function methodDisplayCodecs(methodType: IDL.Type): {
  *
  * const reactor = new DisplayReactor<_SERVICE>({
  *   clientManager,
+ *   name: "backend",
  *   canisterId: "...",
  *   idlFactory,
  * })
