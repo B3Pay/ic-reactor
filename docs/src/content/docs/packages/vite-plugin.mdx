@@ -152,6 +152,10 @@ When a watched `.did` file changes, the plugin:
    migrating older generated entrypoints to the wrapper model
 4. triggers a full browser reload
 
+`vite build --watch` watches the configured `.did` files as well. Saving one
+starts a rebuild that regenerates that canister's bindings. A rebuild that any
+other file starts leaves the generated files alone.
+
 A generation failure aborts `vite build` by default — a build that silently
 ships the bindings from the last successful run is worse than no build. Under
 `vite dev` the default is the opposite, because the dev server has to survive
