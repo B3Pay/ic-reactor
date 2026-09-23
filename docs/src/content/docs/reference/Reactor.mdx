@@ -83,7 +83,7 @@ import { Reactor } from "@ic-reactor/core"
 
 ```typescript
 import { Reactor, ClientManager } from "@ic-reactor/react"
-import { QueryClient } from "@tanstack/query-core"
+import { QueryClient } from "@tanstack/react-query"
 import { idlFactory, type _SERVICE } from "./declarations/backend"
 
 const queryClient = new QueryClient()
@@ -186,12 +186,13 @@ const queryKey = backend.generateQueryKey(
 The key is composed as:
 
 ```
-[resolvedCanisterId, functionName, { effectiveTarget }?, argKey?, ...queryKey]
+[resolvedCanisterId, functionName, { transform }?, { effectiveTarget }?, argKey?, ...queryKey]
 ```
 
 - **`resolvedCanisterId`** — `callConfig.canisterId` when supplied (normalized via `Principal.from(...).toString()`), otherwise the reactor's own canister ID.
+- **`{ transform }`** — present whenever the reactor's transform is not `"candid"`, so a `Reactor` key has none and a `DisplayReactor` key carries `{ transform: "display" }`. The two never share a cache entry.
 - **`{ effectiveTarget }`** — a wrapper object holding either `{ canisterId }` or `{ subnetId }`, built from `callConfig.effectiveTarget` or from `callConfig.effectiveCanisterId`. A `canisterId`-shaped target is **omitted** when it equals `resolvedCanisterId`, so the common case produces no such segment.
-- **`argKey`** — args are **one single string segment**, `JSON.stringify(args)` with BigInt values rendered as decimal strings. They are not spread into separate elements, and `args: []` still produces the literal `"[]"`.
+- **`argKey`** — args are **one single string segment**: JSON with BigInt values rendered as decimal strings and the keys of every plain object sorted, so `{ b, a }` and `{ a, b }` give the same key. A bare `JSON.stringify(args)` does not match it once a record's fields are out of alphabetical order. Args are not spread into separate elements, and `args: []` still produces the literal `"[]"`.
 - **`...queryKey`** — a custom `queryKey` is spread onto the end; it never replaces the identity prefix.
 
 Use this for:
@@ -305,7 +306,7 @@ ledgerReactor.setCanisterId(Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"))
 ```typescript
 // src/reactor/index.ts
 import { ClientManager, Reactor } from "@ic-reactor/react"
-import { QueryClient } from "@tanstack/query-core"
+import { QueryClient } from "@tanstack/react-query"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
 export const queryClient = new QueryClient({

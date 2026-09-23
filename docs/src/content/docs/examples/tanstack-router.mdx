@@ -11,7 +11,7 @@ A full-featured application demonstrating IC Reactor with TanStack Router for na
 ## Features Demonstrated
 
 - Retargeting one reactor per route with `setCanisterId()` in a `loader`
-- Generated `createQuery` / `createSuspenseQuery` / `createSuspenseQueryFactory` / `createMutation` modules, one per method
+- Hand-maintained `createQuery` / `createSuspenseQuery` / `createSuspenseQueryFactory` / `createMutation` modules, one per method
 - Suspense-based data fetching with `<Suspense>` boundaries
 - Query invalidation after mutations with `reactor.invalidateQueries()`
 - Authentication with `createAuthHooks`
@@ -47,7 +47,7 @@ A full-featured application demonstrating IC Reactor with TanStack Router for na
 ### One Shared Reactor
 
 A single `DisplayReactor` is defined once and retargeted per route, so every
-generated query object keeps working when the user switches tokens:
+query object built on it keeps working when the user switches tokens:
 
 ```typescript
 // src/canisters/ledger/reactor.ts
@@ -102,8 +102,12 @@ function TokenWallet() {
 
 ### Per-Method Query Modules
 
-Generated hook modules wrap the reactor in reusable query objects, usable both
-inside components and in loaders:
+The modules in `src/canisters/ledger/hooks/` wrap the reactor in reusable query
+objects, usable both inside components and in loaders. They are hand-maintained,
+not codegen output: `ic-reactor generate` and the Vite plugin write only
+`index.generated.ts` (the reactor plus six bound hooks, as in
+[Codegen in Action](/v3/examples/codegen-in-action)) and never emit
+`createQuery` / `createMutation` objects.
 
 ```typescript
 // src/canisters/ledger/hooks/icrc1NameQuery.ts

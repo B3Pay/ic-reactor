@@ -72,7 +72,10 @@ export interface AuthClientStorageLike {
   remove(key: string): Promise<void>
 }
 
-/** Idle-session configuration forwarded to the underlying AuthClient. */
+/**
+ * Idle-session configuration forwarded to the underlying AuthClient.
+ * `@icp-sdk/auth` v8 only; see {@link AuthenticationClientOptions.idleOptions}.
+ */
 export interface AuthClientIdleOptions {
   /** Called once the user has been idle for `idleTimeout` ms. */
   onIdle?: () => unknown
@@ -114,19 +117,31 @@ export interface AuthenticationClientOptions {
    * @see https://github.com/dfinity/internet-identity/blob/main/docs/internet-identity-spec.adoc
    */
   derivationOrigin?: string | URL
-  /** Persistent storage backend. @default IndexedDB */
+  /**
+   * Persistent storage backend. `@icp-sdk/auth` v8 only: v10 drops it with a
+   * one-time warning. @default IndexedDB
+   */
   storage?: AuthClientStorageLike
   /**
    * Session key algorithm. Use `"Ed25519"` when the storage backend cannot
-   * hold a `CryptoKey`. @default "ECDSA"
+   * hold a `CryptoKey`. `@icp-sdk/auth` v8 only: v10 drops it with a one-time
+   * warning. @default "ECDSA"
    */
   keyType?: AuthClientKeyType
   /**
    * Idle timeout configuration. Pass `{ disableIdle: true }` to opt out of the
    * default behaviour, which signs the user out and reloads after 10 minutes.
+   *
+   * `@icp-sdk/auth` v8 only. v10 has no equivalent, so IC Reactor drops it
+   * there with a one-time warning: on v10 the identity provider enforces the
+   * idle limit, so pass `maxTimeToIdle` to `login()` and set
+   * `disableBrowserActivity` instead.
    */
   idleOptions?: AuthClientIdleOptions
-  /** An existing identity to authenticate via delegation. */
+  /**
+   * An existing identity to authenticate via delegation. `@icp-sdk/auth` v8
+   * only: v10 drops it with a one-time warning.
+   */
   identity?: SignIdentity | PartialIdentity
   /**
    * How the client talks to the identity provider. `"redirect"` requires

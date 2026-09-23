@@ -252,10 +252,13 @@ The types are automatically inferred from your actor interface, so you typically
 
 <Aside type="note">
   The query key is automatically generated as `[canisterId, functionName,
-  JSON.stringify(args), ...queryKey]`, with an extra `{effectiveTarget}` segment
-  inserted after `functionName` when `callConfig` targets a different canister
-  or subnet. Arguments are one single serialized segment, so queries with
-  different arguments are cached separately.
+  argKey, ...queryKey]`. `argKey` is the arguments serialized as one JSON
+  string, with BigInt values as decimal strings and plain-object keys sorted,
+  so queries with different arguments are cached separately. A `DisplayReactor`
+  adds a `{ transform: "display" }` segment after `functionName`, and an
+  `{ effectiveTarget }` segment follows when `callConfig` targets a different
+  canister or subnet. See
+  [generateQueryKey](/v3/reference/reactor#generatequerykey) for the full shape.
 </Aside>
 
 <Aside type="tip">

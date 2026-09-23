@@ -88,7 +88,7 @@ plus hooks named after the canister — for a canister named `backend`:
 | `outDir`            | `string` | Override output directory for this canister.                                                                             |
 | `clientManagerPath` | `string` | Override client manager path for this canister.                                                                          |
 | `target`            | `string` | Override runtime target for this canister.                                                                               |
-| `canisterId`        | `string` | Fixed canister ID (overrides auto-detected value during local dev).                                                      |
+| `canisterId`        | `string` | Canister ID written into `index.generated.ts`. Needed for any build not served from a local replica; see below.          |
 
 ## Reactor Mode
 
@@ -138,6 +138,14 @@ entry alone, whether detection succeeds or not.
 
 If you provide `canisterId` in the plugin config, that fixed ID overrides the
 auto-detected development value for that canister.
+
+`ClientManager` trusts the `ic_env` cookie only on a local replica: cookies are
+not origin-isolated, so on a custom domain or mainnet the cookie is ignored.
+There, and in Node or during SSR where there is no cookie at all, a generated
+reactor with no `canisterId` throws `canisterId is required` as soon as its
+module is imported. Set the per-canister `canisterId` to write the ID into
+`index.generated.ts` for those builds, or pass `allowEnvConfig: true` to
+`ClientManager` if you trust every subdomain of the domain you serve from.
 
 Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 (defaults to `"local"`).

@@ -46,9 +46,8 @@ const { useActorQuery: useBackendQuery } = createActorHooks(backend)
 Using a `Reactor` instance is the only supported way to create actor hooks:
 
 ```typescript
-import { createActorHooks } from "@ic-reactor/react"
+import { Reactor, createActorHooks } from "@ic-reactor/react"
 import { clientManager } from "./reactor"
-import { Reactor } from "@ic-reactor/core"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
 const backend = new Reactor<_SERVICE>({
@@ -66,8 +65,7 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
 To enable automatic display transformations (BigInt → string, Principal → text, etc.), use `DisplayReactor`:
 
 ```typescript
-import { createActorHooks } from "@ic-reactor/react"
-import { DisplayReactor } from "@ic-reactor/core"
+import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
 import { clientManager } from "./reactor"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
@@ -111,8 +109,8 @@ createActorHooks(reactor: Reactor<A, T>)
 
 ```typescript
 // src/reactor/index.ts
-import { ClientManager, Reactor } from "@ic-reactor/core"
-import { QueryClient } from "@tanstack/query-core"
+import { ClientManager, Reactor } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
 export const queryClient = new QueryClient()
@@ -188,11 +186,12 @@ You can define everything in one place:
 // src/reactor/hooks.ts
 import {
   AuthenticationManager,
+  ClientManager,
+  Reactor,
   createActorHooks,
   createAuthHooks,
 } from "@ic-reactor/react"
-import { ClientManager, Reactor } from "@ic-reactor/core"
-import { QueryClient } from "@tanstack/query-core"
+import { QueryClient } from "@tanstack/react-query"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
 const queryClient = new QueryClient()

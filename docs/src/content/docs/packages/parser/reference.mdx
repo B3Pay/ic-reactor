@@ -106,11 +106,19 @@ const schema = parseDid("service:{}")
 
 `validateIDL(candid: string): boolean`
 
-Returns `true` when the Candid source parses and type-checks. This is what
-[`CandidAdapter.validateCandid()`](/v3/packages/candid/candidadapter) calls.
+Returns `true` when the Candid source parses and type-checks. It never returns
+`false`: for invalid Candid it throws the parser's message as a string (a syntax
+error, or a type error such as `Unbound type identifier T`), so call it inside
+`try` / `catch`.
+[`CandidAdapter.validateCandid()`](/v3/packages/candid/candidadapter), which it
+backs, catches that and returns `false`.
 
 ```typescript
-const isValid = validateIDL("service : { greet : (text) -> (text) query }")
+try {
+  validateIDL("service : { greet : (text) -> (text) query }") // true
+} catch (message) {
+  console.error(message) // e.g. "Unbound type identifier T"
+}
 ```
 
 ### `verifyCompatibility`

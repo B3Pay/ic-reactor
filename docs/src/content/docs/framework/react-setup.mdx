@@ -384,7 +384,6 @@ handed to whichever request asks next:
 
 ```tsx
 import { defineReactor } from "@ic-reactor/react"
-import { QueryClient } from "@tanstack/react-query"
 import { canisterId, idlFactory, type _SERVICE } from "../declarations/backend"
 
 // ❌ Shared by every request on the server
@@ -396,16 +395,22 @@ export const app = defineReactor<_SERVICE>({
 ```
 
 ```tsx
-// ✅ Per request: nothing is shared between users
+// ✅ Per request: nothing is shared between users.
+// A server component imports from @ic-reactor/core, not @ic-reactor/react.
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/react-query"
+import { canisterId, idlFactory, type _SERVICE } from "../declarations/backend"
+
 export default async function Page() {
-  const app = defineReactor<_SERVICE>({
+  const clientManager = new ClientManager({ queryClient: new QueryClient() })
+  const reactor = new Reactor<_SERVICE>({
     name: "backend",
+    clientManager,
     idlFactory,
     canisterId,
-    queryClient: new QueryClient(),
   })
 
-  const data = await app.reactor.fetchQuery({ functionName: "get_my_profile" })
+  const data = await reactor.fetchQuery({ functionName: "get_my_profile" })
   return <Profile data={data} />
 }
 ```
@@ -414,13 +419,18 @@ The fresh reactor's agent is **anonymous**. A per-request `QueryClient`
 isolates the cache; it does not carry the caller's identity. For a
 caller-scoped method like `get_my_profile` to answer as the request's user,
 thread that request's identity into the reactor — `agentOptions: { identity }`
-on the `defineReactor` call — however your server derives it.
+on the `ClientManager` — however your server derives it.
 
 Two further constraints on the Next.js App Router specifically:
 
 - Hooks are client-only, like every React hook — call them from a
-  `"use client"` module. A server component may import `Reactor` /
-  `ClientManager` and make imperative calls; that path works.
+  `"use client"` module. A server component cannot import from
+  `@ic-reactor/react` at all, not even `Reactor` or `ClientManager`: its entry
+  point also loads the hooks, and `next build` fails with "You're importing a
+  module that depends on `useSyncExternalStore` into a React Server Component
+  module". Import `Reactor`, `DisplayReactor` and `ClientManager` from
+  `@ic-reactor/core` there, and list it in your own `package.json`, since a
+  transitive dependency does not resolve under pnpm.
 - Hooks bind to their reactor's own `QueryClient` rather than to a
   `QueryClientProvider`, so `HydrationBoundary` prefetch does not feed them
   unless the provider's client _is_ that reactor's client. Next.js also
