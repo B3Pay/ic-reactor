@@ -213,6 +213,55 @@ function createBigIntCodec(typeName: string): z.ZodTypeAny {
 const labelValue = (value: object, label: string): unknown =>
   hasLabel(value, label) ? (value as Record<string, unknown>)[label] : undefined
 
+/** One direction of a codec, as a plain function. */
+type Transform = (value: any) => unknown
+
+/** The functions a pass-through codec runs. */
+interface Transforms {
+  decode: Transform
+  encode: Transform
+}
+
+/**
+ * The functions of every pass-through codec: those built on `z.any()` at both
+ * ends, which is every compound codec (record, variant, vector, optional,
+ * tuple, recursive, func and service). zod checks nothing around them and
+ * only calls their functions.
+ *
+ * A compound codec used to reach its children through `codec.decode()` and
+ * `codec.encode()`, which enter zod's parse pipeline: about five more stack
+ * frames and a new parse context for every child. A Motoko `List<Nat>` is three
+ * codecs per element, so displaying one ran out of stack at 586 elements, where
+ * IDL.decode decodes about 1,400. DisplayReactor then fell back to the raw
+ * Candid value. Children now call these functions directly. What each visit
+ * returns is still a zod codec, for callers of `codec.decode()`.
+ */
+const passThroughTransforms = new WeakMap<z.ZodTypeAny, Transforms>()
+
+/** A codec that changes the value and checks nothing itself. */
+function passThroughCodec(transforms: Transforms): z.ZodTypeAny {
+  const codec = z.codec(z.any(), z.any(), transforms)
+  passThroughTransforms.set(codec, transforms)
+  return codec
+}
+
+/**
+ * How a parent decodes a value of `codec`: the function itself for a
+ * pass-through codec, and zod, with its checks, for any other.
+ */
+function decoderOf(codec: z.ZodTypeAny): Transform {
+  return (
+    passThroughTransforms.get(codec)?.decode ?? ((value) => codec.decode(value))
+  )
+}
+
+/** How a parent encodes a value of `codec`. See {@link decoderOf}. */
+function encoderOf(codec: z.ZodTypeAny): Transform {
+  return (
+    passThroughTransforms.get(codec)?.encode ?? ((value) => codec.encode(value))
+  )
+}
+
 export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   private _recCache = new Map<IDL.RecClass, z.ZodTypeAny>()
 
@@ -398,6 +447,8 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     }
     // Regular array: codec each element
     const elemCodec = elemType.accept(this, null)
+    const decodeElem = decoderOf(elemCodec)
+    const encodeElem = encoderOf(elemCodec)
 
     // Special case: Vec<Tuple(Text, Value)> → object keyed by the text.
     //
@@ -410,27 +461,27 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     // tuple vector as an array, so the runtime was returning an object where
     // the types promised a list.
     if (isTextKeyedPair(elemType)) {
-      return z.codec(z.any(), z.any(), {
+      return passThroughCodec({
         decode: (val) => {
           if (!Array.isArray(val)) return val
           return Object.fromEntries(
-            val.map((elem) => elemCodec.decode(elem)) as [string, any][]
+            val.map((elem) => decodeElem(elem)) as [string, any][]
           )
         },
         encode: (val) => {
           // If already array, encode elements directly
           if (Array.isArray(val)) {
-            return val.map((elem) => elemCodec.encode(elem))
+            return val.map((elem) => encodeElem(elem))
           }
           const entries =
             val && typeof val === "object" ? Object.entries(val) : val
           if (!Array.isArray(entries)) return entries
-          return entries.map((elem) => elemCodec.encode(elem))
+          return entries.map((elem) => encodeElem(elem))
         },
       })
     }
 
-    return z.codec(z.any(), z.any(), {
+    return passThroughCodec({
       decode: (val) => {
         // `IDL.decode` returns a typed array, not an Array, for every
         // fixed-width integer vector except blob. `vec nat64` arrives as a
@@ -444,11 +495,11 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
             ? Array.from(val as unknown as ArrayLike<unknown>)
             : undefined
         if (!elements) return val
-        return elements.map((elem) => elemCodec.decode(elem))
+        return elements.map((elem) => decodeElem(elem))
       },
       encode: (val) => {
         if (!Array.isArray(val)) return val
-        return val.map((elem) => elemCodec.encode(elem))
+        return val.map((elem) => encodeElem(elem))
       },
     })
   }
@@ -459,6 +510,8 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     _data: unknown
   ): z.ZodTypeAny {
     const elemCodec = elemType.accept(this, null)
+    const decodeElem = decoderOf(elemCodec)
+    const encodeElem = encoderOf(elemCodec)
 
     // Only an element whose own values are arrays — a vector, a tuple, a
     // func reference, or an optional of one — can be confused with the Candid
@@ -480,10 +533,10 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     const isWrappedValue = (inner: unknown): boolean =>
       !elemIsArrayValued || couldBeDisplayOf(elemType, inner)
 
-    return z.codec(z.any(), z.any(), {
+    return passThroughCodec({
       decode: (val) => {
         if (!Array.isArray(val) || val.length === 0) return undefined
-        const value = elemCodec.decode(val[0])
+        const value = decodeElem(val[0])
         // Only a nested optional decodes a some to `undefined` — its own
         // none. Left as is, `opt opt T`'s some(none) displayed exactly like
         // none, although canisters use them for different things (Internet
@@ -504,13 +557,13 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           // is written `[[]]`, which the branch below handles.
           if (val.length === 0) return [] as []
           if (val.length === 1 && isWrappedValue(val[0])) {
-            return [elemCodec.encode(val[0])] as [any]
+            return [encodeElem(val[0])] as [any]
           }
           // Otherwise the array IS the value — e.g. `opt vec text` given
           // `["only"]`, a bare one-element vector.
         }
 
-        return [elemCodec.encode(val)] as [any]
+        return [encodeElem(val)] as [any]
       },
     })
   }
@@ -520,30 +573,30 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     fields: Array<[string, IDL.Type]>,
     _data: unknown
   ): z.ZodTypeAny {
-    const fieldEntries = fields.map(([fieldName, fieldType]) => ({
-      fieldName,
-      codec: fieldType.accept(this, null),
-    }))
+    const fieldEntries = fields.map(([fieldName, fieldType]) => {
+      const codec = fieldType.accept(this, null)
+      return { fieldName, decode: decoderOf(codec), encode: encoderOf(codec) }
+    })
 
-    return z.codec(z.any(), z.any(), {
+    return passThroughCodec({
       decode: (val) => {
         if (!val || typeof val !== "object") return val
         // A plain read is right here: IDL.decode sets every field of the
         // record it returns. (It assigns `x[key] = value`, so a `__proto__`
         // field lands on the prototype, where only this read still finds it.)
         return Object.fromEntries(
-          fieldEntries.map(({ fieldName, codec }) => [
+          fieldEntries.map(({ fieldName, decode }) => [
             fieldName,
-            codec.decode(val[fieldName]),
+            decode(val[fieldName]),
           ])
         )
       },
       encode: (val) => {
         if (!val || typeof val !== "object") return val
         return Object.fromEntries(
-          fieldEntries.map(({ fieldName, codec }) => [
+          fieldEntries.map(({ fieldName, encode }) => [
             fieldName,
-            codec.encode(labelValue(val, fieldName)),
+            encode(labelValue(val, fieldName)),
           ])
         )
       },
@@ -555,22 +608,20 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     components: IDL.Type[],
     _data: unknown
   ): z.ZodTypeAny {
-    const componentCodecs: any = components.map((component) =>
+    const componentCodecs = components.map((component) =>
       component.accept(this, null)
     )
+    const decoders = componentCodecs.map(decoderOf)
+    const encoders = componentCodecs.map(encoderOf)
 
-    return z.codec(z.any(), z.any(), {
+    return passThroughCodec({
       decode: (val) => {
         if (!Array.isArray(val)) return val
-        return val.map((elem: any, idx: number) =>
-          componentCodecs[idx].decode(elem)
-        )
+        return val.map((elem: unknown, idx: number) => decoders[idx](elem))
       },
       encode: (val) => {
         if (!Array.isArray(val)) return val
-        return val.map((elem: any, idx: number) =>
-          componentCodecs[idx].encode(elem)
-        )
+        return val.map((elem: unknown, idx: number) => encoders[idx](elem))
       },
     })
   }
@@ -580,17 +631,15 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     fields: Array<[string, IDL.Type]>,
     _data: unknown
   ): z.ZodTypeAny {
-    // No prototype: `key in variantCodecs` must not find `toString` or
+    // No prototype: `key in decoders` must not find `toString` or
     // `constructor` for a variant that has no such arm.
-    const variantCodecs: Record<string, any> = Object.create(null)
+    const decoders: Record<string, Transform> = Object.create(null)
+    const encoders: Record<string, Transform> = Object.create(null)
     for (const [variantName, variantType] of fields) {
-      variantCodecs[variantName] = variantType.accept(this, null)
+      const codec = variantType.accept(this, null)
+      decoders[variantName] = decoderOf(codec)
+      encoders[variantName] = encoderOf(codec)
     }
-
-    const decode = (codec: any, val: any) =>
-      codec.decode ? codec.decode(val) : val
-    const encode = (codec: any, val: any) =>
-      codec.encode ? codec.encode(val) : val
 
     // A missing payload is a value only when the arm's type is `opt T`,
     // directly or behind a recursive type, and Candid sends that none as `[]`.
@@ -604,7 +653,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     const encodesPayload = (type: IDL.Type | undefined, payload: unknown) =>
       nonNullish(payload) || isOptional(type)
 
-    return z.codec(z.any(), z.any(), {
+    return passThroughCodec({
       decode: (val: any) => {
         if (
           !val ||
@@ -626,10 +675,10 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           if (fieldType?.name === "null") return { _type: key }
 
           const payload = labelValue(extracted, key)
-          if (key in variantCodecs && nonNullish(payload)) {
+          if (key in decoders && nonNullish(payload)) {
             return {
               _type: key,
-              [key]: decode(variantCodecs[key], payload),
+              [key]: decoders[key](payload),
             }
           }
           return extracted
@@ -661,8 +710,8 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           if (fieldType?.name === "null") return { [key]: null }
 
           const payload = labelValue(val, key)
-          if (key in variantCodecs && encodesPayload(fieldType, payload)) {
-            return { [key]: encode(variantCodecs[key], payload) }
+          if (key in encoders && encodesPayload(fieldType, payload)) {
+            return { [key]: encoders[key](payload) }
           }
           return { [key]: null }
         }
@@ -674,8 +723,8 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           const fieldType = fields.find(([n]) => n === key)?.[1]
           if (fieldType?.name === "null") return { [key]: null }
 
-          if (key in variantCodecs && encodesPayload(fieldType, val[key])) {
-            return { [key]: encode(variantCodecs[key], val[key]) }
+          if (key in encoders && encodesPayload(fieldType, val[key])) {
+            return { [key]: encoders[key](val[key]) }
           }
           return { [key]: null }
         }
@@ -698,18 +747,18 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     // and constructed fresh codecs for each node of a recursive value, which
     // made a page of ICRC-3 blocks an order of magnitude slower to display
     // than to decode.
-    let inner: z.ZodTypeAny | undefined
-    const innerCodec = () => (inner ??= ty.accept(this, data))
+    let inner: Transforms | undefined
+    const innerTransforms = (): Transforms => {
+      if (!inner) {
+        const codec = ty.accept(this, data)
+        inner = { decode: decoderOf(codec), encode: encoderOf(codec) }
+      }
+      return inner
+    }
 
-    const lazyCodec = z.codec(z.any(), z.any(), {
-      decode: (val: any) => {
-        const codec = innerCodec()
-        return codec.decode ? codec.decode(val) : val
-      },
-      encode: (val: any) => {
-        const codec = innerCodec()
-        return codec.encode ? codec.encode(val) : val
-      },
+    const lazyCodec = passThroughCodec({
+      decode: (val: any) => innerTransforms().decode(val),
+      encode: (val: any) => innerTransforms().encode(val),
     })
 
     this._recCache.set(t, lazyCodec)
@@ -717,7 +766,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   }
 
   visitFunc(_t: IDL.FuncClass, _data: unknown): z.ZodTypeAny {
-    return z.codec(z.any(), z.any(), {
+    return passThroughCodec({
       decode: (val: any) => {
         if (!Array.isArray(val) || val.length !== 2) return val
         const [principal, method] = val
@@ -740,7 +789,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   }
 
   visitService(_t: IDL.ServiceClass, _data: unknown): z.ZodTypeAny {
-    return z.codec(z.any(), z.any(), {
+    return passThroughCodec({
       decode: (val) => (val instanceof Principal ? val.toText() : val),
       encode: (val) =>
         typeof val === "string" ? Principal.fromText(val) : val,
