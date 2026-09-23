@@ -155,6 +155,17 @@ export class AuthenticationManager {
     return this.authClient
   }
 
+  /**
+   * Subscribes to auth state changes.
+   *
+   * Callbacks run in the order they subscribed, after the state has changed. A
+   * callback that throws does not stop the others; the first error is rethrown
+   * to whatever made the change once they have all run. When a callback itself
+   * changes the state, the newer state is the last each callback hears.
+   *
+   * @param callback - Function called with the new state.
+   * @returns An unsubscribe function.
+   */
   public subscribeAuthState(callback: (state: AuthState) => void) {
     // Each subscription gets an entry of its own, so the unsubscribe it returns
     // removes that one registration and no other. Filtering on the callback
@@ -784,13 +795,37 @@ export class AuthenticationManager {
     )
   }
 
+  /**
+   * Records a change, then tells every subscriber about it.
+   *
+   * Every subscriber is called even when one throws, and the first error is
+   * rethrown once they all have been, so the caller still sees it. A throw
+   * used to end the loop: an app's subscriber registered at module scope comes
+   * before every `useAuth()`, and one that failed on a sign-in left them all
+   * showing `isAuthenticating: true` while the agent signed as the user.
+   *
+   * A subscriber that changes the state again from its callback has told every
+   * subscriber about that newer state, so the loop stops rather than deliver
+   * this older one after it. The list is copied first, so a subscriber added
+   * during the loop is first called for the next change. `ClientManager`
+   * notifies its subscribers the same way.
+   */
   private updateState(newState: Partial<AuthState>) {
     if (isDev()) console.debug("[ic-reactor] Updating Auth State:", newState)
-    this.authStateRevision += 1
-    this.authStateValue = { ...this.authStateValue, ...newState }
-    this.authStateSubscribers.forEach((subscriber) =>
-      subscriber(this.authStateValue)
-    )
+    const revision = ++this.authStateRevision
+    const state = { ...this.authStateValue, ...newState }
+    this.authStateValue = state
+
+    let failure: { error: unknown } | undefined
+    for (const subscriber of [...this.authStateSubscribers]) {
+      if (revision !== this.authStateRevision) break
+      try {
+        subscriber(state)
+      } catch (error) {
+        failure ??= { error }
+      }
+    }
+    if (failure) throw failure.error
   }
 
   private async loadAuthClientConstructor() {
