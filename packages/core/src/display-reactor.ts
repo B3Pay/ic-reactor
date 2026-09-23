@@ -19,7 +19,12 @@ import {
 } from "./types/reactor.js"
 import { extractOkResult } from "./utils/helper.js"
 import { ArgsKeyVisitor } from "./utils/args-key.js"
-import { isOptionalWrapper, isTextKeyedPair } from "./display/visitor.js"
+import {
+  isDisplayPrincipal,
+  isOptionalWrapper,
+  isTextKeyedPair,
+  numberOfText,
+} from "./display/visitor.js"
 import { CanisterError, ValidationError } from "./errors/index.js"
 import {
   DisplayReactorParameters,
@@ -54,6 +59,8 @@ function methodDisplayCodecs(methodType: IDL.Type): {
 const displayArgsKey = new ArgsKeyVisitor({
   isOptionalWrapper,
   isTextKeyedPair,
+  numberOfText,
+  isPrincipal: isDisplayPrincipal,
 })
 
 // ============================================================================
@@ -413,8 +420,11 @@ export class DisplayReactor<
    * bytes, as a Reactor keys it. An opt given bare, wrapped or as any form of
    * none, and a variant with or without its `_type`, are keyed in one form,
    * and a `vec record { text; T }` given as an object by its entries in the
-   * order they are sent. A method without a codec sends its args to IDL.encode
-   * unchanged, so they are read as a Reactor's are.
+   * order they are sent. A float or an integer of 32 bits or fewer given as
+   * text is keyed as its number, and a Principal as its text. A value the
+   * codecs refuse is keyed behind a tag, apart from every value they take. A
+   * method without a codec sends its args to IDL.encode unchanged, so they are
+   * read as a Reactor's are.
    */
   protected argsForQueryKey<M extends FunctionName<A>>(
     functionName: M,

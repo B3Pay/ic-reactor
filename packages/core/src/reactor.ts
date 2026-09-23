@@ -326,8 +326,11 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   /**
    * The args as the query key records them: each blob the method's Candid
    * type declares is keyed by its bytes, so a `Uint8Array` and a `number[]`
-   * holding the same bytes get one key. Every other value is unchanged. A
-   * subclass whose `transformArgs` takes other shapes reads them here too.
+   * holding the same bytes get one key. A record's undeclared fields are left
+   * out and a `reserved` value is keyed as `null`, since neither is sent, and
+   * a value IDL.encode refuses is keyed behind a tag, apart from every value
+   * it takes. Every other value is unchanged. A subclass whose
+   * `transformArgs` takes other shapes reads them here too.
    */
   protected argsForQueryKey<M extends FunctionName<A>>(
     functionName: M,

@@ -526,7 +526,14 @@ bytes give the same key. A `DisplayReactor` writes each `opt` and variant in one
 form, whichever it was given in, so an `opt` given bare or as `[value]`, none
 given as `null`, `undefined` or `[]`, and a variant given with or without
 `_type` give the same key. A `vec record { text; T }` given to it as an object is written as
-its entries in order, since the order is part of what it sends. The
+its entries in order, since the order is part of what it sends. Fields a record
+does not declare are left out and every value of `reserved` is written as
+`null`, since neither is sent, and a `DisplayReactor` writes a float or an
+integer of 32 bits or fewer given as text as its number, and a `Principal` as
+its text. An argument the reactor refuses, such as `undefined` where Candid
+`null` is required or a bigint where a `DisplayReactor` takes text, is written
+behind a tag of its own, so the call fails instead of being answered from the
+cache entry of an argument it takes. The
 `{ effectiveTarget }` segment is dropped when it names
 the same canister the key is already rooted at, and any custom `queryKey` is
 appended element-wise. Build keys with `generateQueryKey` (or a query object's
