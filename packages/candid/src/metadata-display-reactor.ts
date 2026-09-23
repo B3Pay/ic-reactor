@@ -3,6 +3,7 @@ import type {
   BaseActor,
   FunctionName,
 } from "@ic-reactor/core"
+import { IDL } from "@icp-sdk/core/candid"
 import { CandidDisplayReactor } from "./display-reactor.js"
 import type {
   CandidDisplayReactorParameters,
@@ -189,8 +190,52 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   ): Promise<void> {
     await super.registerMethod(options)
 
-    // Regenerate metadata
-    this.generateMetadata()
+    this.addMethodMetadata(options.functionName)
+  }
+
+  /**
+   * Describe a method registered after the rest of the metadata was built.
+   *
+   * Only that method is visited. Rebuilding the metadata of the whole service
+   * made each registration cost as much as the service was large, registering
+   * n methods one at a time cost n², and a repeat registration, which every
+   * callDynamic and fetchQueryDynamic makes, replaced the metadata objects of
+   * every method without changing any of them.
+   */
+  private addMethodMetadata(methodName: string): void {
+    if (!this.argumentMeta || !this.resultMeta) {
+      this.generateMetadata()
+      return
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(this.argumentMeta, methodName) &&
+      Object.prototype.hasOwnProperty.call(this.resultMeta, methodName)
+    ) {
+      return
+    }
+
+    const method = this.getServiceInterface()._fields.find(
+      ([name]) => name === methodName
+    )
+    if (!method) return
+
+    // Visited as a service of its own, so the method is described exactly
+    // as generateMetadata() describes it.
+    const service = IDL.Service({ [method[0]]: method[1] })
+    this.argumentMeta = {
+      ...this.argumentMeta,
+      ...(service.accept(
+        MetadataDisplayReactor.argVisitor,
+        null as any
+      ) as ArgumentsServiceMeta<A>),
+    }
+    this.resultMeta = {
+      ...this.resultMeta,
+      ...(service.accept(
+        MetadataDisplayReactor.resultVisitor,
+        null as any
+      ) as ServiceMeta<A>),
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════

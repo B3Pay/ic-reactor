@@ -196,7 +196,52 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     options: DynamicMethodOptions
   ): Promise<void> {
     await super.registerMethod(options)
-    this.generateMetadata()
+    this.addMethodMetadata(options.functionName)
+  }
+
+  /**
+   * Describe a method registered after the rest of the metadata was built.
+   *
+   * Only that method is visited. Rebuilding the metadata of the whole service
+   * made each registration cost as much as the service was large, registering
+   * n methods one at a time cost n², and a repeat registration, which every
+   * callDynamic and fetchQueryDynamic makes, replaced the metadata objects of
+   * every method without changing any of them.
+   */
+  private addMethodMetadata(methodName: string): void {
+    if (!this.methodMeta || !this.resultMeta) {
+      this.generateMetadata()
+      return
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(this.methodMeta, methodName) &&
+      Object.prototype.hasOwnProperty.call(this.resultMeta, methodName)
+    ) {
+      return
+    }
+
+    const method = this.getServiceInterface()._fields.find(
+      ([name]) => name === methodName
+    )
+    if (!method) return
+
+    // Visited as a service of its own, so the method is described exactly
+    // as generateMetadata() describes it.
+    const service = IDL.Service({ [method[0]]: method[1] })
+    this.methodMeta = {
+      ...this.methodMeta,
+      ...(service.accept(
+        MetadataReactor.formVisitor,
+        null as any
+      ) as FormServiceMeta<A>),
+    }
+    this.resultMeta = {
+      ...this.resultMeta,
+      ...(service.accept(
+        MetadataReactor.resultVisitor,
+        null as any
+      ) as ServiceMeta<A>),
+    }
   }
 
   private findMethod(
