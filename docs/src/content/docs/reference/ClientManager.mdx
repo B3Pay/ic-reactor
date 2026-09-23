@@ -397,10 +397,12 @@ npm install @icp-sdk/auth
 <Aside type="note">
   Calls to a local replica do not wait for `initialize()`: when the agent host
   is local or a dev-container tunnel (`network` is not `"ic"`), `ClientManager`
-  has the agent fetch the root key before its first request. Any other host
-  counts as mainnet and never fetches it. `initialize()` fetches it up front and
-  sets `agentState.isInitialized`, for a loading screen that waits on it. The
-  React auth hooks (`useAuth`) call it automatically.
+  has the agent fetch the root key before its first request, unless a root key
+  was supplied (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env`
+  cookie) or `agentOptions.shouldFetchRootKey` is `false`. Any other host counts
+  as mainnet and never fetches it. `initialize()` fetches it up front and sets
+  `agentState.isInitialized`, for a loading screen that waits on it. The React
+  auth hooks (`useAuth`) call it automatically.
 </Aside>
 
 ## External Authentication
