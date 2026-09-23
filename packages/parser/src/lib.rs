@@ -40,7 +40,57 @@ pub fn did_to_js(prog: String) -> Result<String, String> {
 
     let res = candid_parser::bindings::javascript::compile(&env, &actor);
 
-    Ok(res)
+    Ok(computed_proto_keys(&res))
+}
+
+/// Rewrites each `'__proto__' : …` entry of `didToJs` output as
+/// `['__proto__'] : …`.
+///
+/// candid_parser prints each record field, variant tag and service method as a
+/// quoted key in an object literal, such as `IDL.Record({ 'id' : IDL.Nat })`.
+/// A `'__proto__'` key in an object literal sets the object's prototype instead
+/// of adding a property, so a Candid name spelled `__proto__` vanished from the
+/// IDL type without an error. A computed key adds an ordinary property.
+///
+/// The output is read one quoted string at a time instead of searched for the
+/// text, because another name can end in the same characters: `a'__proto__`
+/// prints as `'a\'__proto__'`.
+fn computed_proto_keys(js: &str) -> String {
+    let mut out = String::with_capacity(js.len());
+    let mut rest = js;
+    while let Some(start) = rest.find('\'') {
+        out.push_str(&rest[..start]);
+        let from_quote = &rest[start..];
+        let (quoted, after) = from_quote.split_at(quoted_len(from_quote));
+        // A key is followed by ` :`. The only other quoted strings are method
+        // annotations, such as `['query']`.
+        if quoted == "'__proto__'" && after.starts_with(" :") {
+            out.push('[');
+            out.push_str(quoted);
+            out.push(']');
+        } else {
+            out.push_str(quoted);
+        }
+        rest = after;
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Length in bytes of the single-quoted string at the start of `s`, both quotes
+/// included. candid_parser escapes a quote inside a name as `\'`.
+fn quoted_len(s: &str) -> usize {
+    let mut escaped = false;
+    for (index, c) in s.char_indices().skip(1) {
+        if escaped {
+            escaped = false;
+        } else if c == '\\' {
+            escaped = true;
+        } else if c == '\'' {
+            return index + 1;
+        }
+    }
+    s.len()
 }
 
 #[wasm_bindgen(js_name = didToTs)]
