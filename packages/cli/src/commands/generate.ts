@@ -62,7 +62,10 @@ export async function generateCommand(options: GenerateOptions) {
   let canistersToProcess: string[]
 
   if (options.canister) {
-    if (!config.canisters[options.canister]) {
+    // An own key only. A lookup by index also finds what every object
+    // inherits, so `--canister toString` ran the pipeline on
+    // Object.prototype.toString and failed with a TypeError about a path.
+    if (!Object.hasOwn(config.canisters, options.canister)) {
       throw new CliError(
         `Canister ${pc.yellow(options.canister)} not found in config.`
       )

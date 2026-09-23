@@ -299,6 +299,22 @@ describe("generate", () => {
     expect(await runCli(["generate", "--canister", "frontend"])).toBe(1)
   })
 
+  // Every object inherits these names. Looked up by index, they were found,
+  // and the pipeline ran on a function: `toString: The "path" argument must
+  // be of type string`, or an invalid canister name for `__proto__`.
+  it.each(["toString", "constructor", "__proto__", "hasOwnProperty"])(
+    "reports --canister %s as not configured",
+    async (name) => {
+      const projectRoot = createProject()
+
+      const run = generateCommand({ canister: name })
+      await expect(run).rejects.toThrow(CliError)
+      await expect(run).rejects.toThrow(/not found in config/)
+      await expect(run).rejects.toThrow(name)
+      expect(generatedFiles(projectRoot)).toEqual([])
+    }
+  )
+
   describe("--clean", () => {
     /**
      * Output left behind by a canister that has since been renamed.
