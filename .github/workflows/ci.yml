@@ -173,8 +173,10 @@ jobs:
       # release of each peer. This pins core's and react's peers to the lowest
       # versions their ranges accept and runs typecheck and tests there, in a
       # throwaway worktree. react once declared @tanstack/react-query ^5.0.0
-      # while it did not compile below 5.89 (#475).
-      - name: Test at the oldest supported peers
+      # while it did not compile below 5.89 (#475). It also compiles the
+      # declarations built above with the oldest supported TypeScript: the docs
+      # said TypeScript 5+ while the declarations needed 5.7 (#591).
+      - name: Test at the oldest supported peers and TypeScript
         run: pnpm verify:peer-floors
 
   build:

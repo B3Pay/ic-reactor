@@ -16,10 +16,19 @@
  * worktree is removed afterwards, so your checkout is never touched;
  * uncommitted changes are not part of the run.
  *
+ * TypeScript has a floor too, and this runs its check first:
+ * verify-typescript-floor.js compiles the declarations of core, react, candid
+ * and parser with the oldest TypeScript the docs name. That check reads the
+ * declarations `pnpm build` wrote to this checkout, not a worktree of HEAD: a
+ * worktree would have to build all four packages again, the parser through Rust
+ * and wasm-pack, and CI has just built them here. Locally, run `pnpm build`
+ * first.
+ *
  * Usage
  *   node scripts/verify-peer-floors.js [--keep]
  *
- *   --keep   leave the worktrees in place (debugging)
+ *   --keep   leave the worktrees and the TypeScript consumer in place
+ *            (debugging)
  */
 import { execFileSync, spawnSync } from "node:child_process"
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
@@ -230,9 +239,23 @@ function verify(check) {
   }
 }
 
-const failed = CHECKS.filter((check) => !verify(check)).map((c) => c.pkg)
+/** Compiles the built declarations with the oldest supported TypeScript. */
+function verifyTypeScriptFloor() {
+  const script = join(rootDir, "scripts", "verify-typescript-floor.js")
+  return run(process.execPath, [script, ...(keep ? ["--keep"] : [])], rootDir)
+}
+
+const failed = []
+if (!verifyTypeScriptFloor()) {
+  failed.push("the declarations at the TypeScript floor")
+}
+for (const check of CHECKS) {
+  if (!verify(check)) failed.push(`${check.pkg} at its peer floors`)
+}
 if (failed.length > 0) {
-  console.error(`\nPeer floors not met by: ${failed.join(", ")}`)
+  console.error(`\nFailed: ${failed.join(", ")}`)
   process.exit(1)
 }
-console.log("\nEvery checked package works at its declared peer floors.")
+console.log(
+  "\nThe declarations compile at the TypeScript floor, and every checked package works at its declared peer floors."
+)

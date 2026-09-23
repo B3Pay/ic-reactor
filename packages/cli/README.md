@@ -156,7 +156,9 @@ inside a Vite app.
 ## Requirements
 
 - Node.js 22.12+ (the floor `commander@15` requires; `@clack/prompts` requires 20.12+)
-- TypeScript 5+
+- TypeScript 5.7+ in the consuming app: the generated code imports IC Reactor,
+  whose declarations use generic typed arrays (`Uint8Array<ArrayBuffer>`), which
+  TypeScript 5.7 introduced
 - `@ic-reactor/react` in the consuming app if you use `target: "react"` with
   `Reactor` or `DisplayReactor`
 - `@ic-reactor/core` in the consuming app if you use `target: "core"` with

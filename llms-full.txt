@@ -34,7 +34,9 @@ pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 ```
 
 `@ic-reactor/react` needs `@tanstack/react-query` 5.90.2 or later and React 18
-or later.
+or later. IC Reactor needs TypeScript 5.7 or later: its declarations, and those
+of `@icp-sdk/core`, use generic typed arrays such as `Uint8Array<ArrayBuffer>`,
+which TypeScript 5.7 introduced.
 
 Non-React apps:
 
