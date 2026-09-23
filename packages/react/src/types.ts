@@ -85,7 +85,17 @@ export interface BaseQueryConfig<
   args?: ReactorArgs<Service, Method, Transform>
   /** The query key to use for this query */
   queryKey?: QueryKey
-  /** How long data stays fresh before refetching (default: 5 min) */
+  /**
+   * How long data stays fresh before refetching, in milliseconds.
+   *
+   * `createQuery`, `createSuspenseQuery` and their factories default to 5
+   * minutes. The bound `useActorQuery` and `useActorSuspenseQuery` hooks (from
+   * `createActorHooks` or `defineReactor`) set no default and leave it to
+   * TanStack Query, which reads the QueryClient's
+   * `defaultOptions.queries.staleTime`. With that unset too, `useActorQuery`
+   * uses 0 and `useActorSuspenseQuery` uses 1 second, TanStack Query's
+   * fallback for suspense queries.
+   */
   staleTime?: number
   /** Transform the raw result before returning */
   select?: (data: QueryFnData<Service, Method, Transform>) => Selected
@@ -480,7 +490,7 @@ export interface MutationResult<
    * @example
    * // With invalidateQueries to auto-update balance after transfer
    * const { mutate } = icpTransferMutation.useMutation({
-   *   invalidateQueries: [userBalanceQuery], // Auto-invalidate after success!
+   *   invalidateQueries: [userBalanceQuery.getQueryKey()], // Auto-invalidate after success!
    * })
    */
   useMutation: <TOnMutateResult = unknown>(

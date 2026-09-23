@@ -26,11 +26,16 @@ import { backend } from "./reactor"
 const postsQuery = createSuspenseInfiniteQuery(backend, {
   functionName: "getPosts",
   initialPageParam: 0,
-  getArgs: (offset) => [{ offset, limit: 20 }],
+  getArgs: (offset) => [{ offset, limit: 20 }] as const,
   getNextPageParam: (lastPage) =>
     lastPage.hasMore ? lastPage.nextOffset : undefined,
 })
 ```
+
+`getArgs` must return the method's argument tuple. Without `as const`,
+TypeScript infers the returned value as an array rather than a tuple and
+reports TS2322. [createInfiniteQuery](/v3/reference/factories/createinfinitequery)
+needs it for the same reason.
 
 ## Key Differences from createInfiniteQuery
 
@@ -88,7 +93,7 @@ import { backend } from "../reactor"
 const feedQuery = createSuspenseInfiniteQuery(backend, {
   functionName: "getFeed",
   initialPageParam: null as string | null,
-  getArgs: (cursor) => [{ cursor, limit: 20 }],
+  getArgs: (cursor) => [{ cursor, limit: 20 }] as const,
   getNextPageParam: (lastPage) => lastPage.nextCursor,
 })
 
@@ -241,7 +246,7 @@ Flatten pages at factory level:
 const productListQuery = createSuspenseInfiniteQuery(backend, {
   functionName: "getProducts",
   initialPageParam: 0,
-  getArgs: (offset) => [{ offset, limit: 24 }],
+  getArgs: (offset) => [{ offset, limit: 24 }] as const,
   getNextPageParam: (lastPage) => lastPage.nextOffset,
 
   // Pre-flatten the data

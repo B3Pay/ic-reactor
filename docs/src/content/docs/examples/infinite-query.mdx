@@ -99,7 +99,7 @@ function InfiniteList() {
     reactor: backendReactor,
     functionName: "get_posts",
     initialPageParam: 0n,
-    getArgs: (cursor) => [[], cursor, 10n],
+    getArgs: (cursor) => [[], cursor, 10n] as const,
     getNextPageParam: (lastPage) =>
       lastPage.next_cursor.length === 0 ? undefined : lastPage.next_cursor[0],
   })
