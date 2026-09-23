@@ -149,8 +149,8 @@ const jsSource = adapter.compileLocal(candidSource)
 ```
 
 <Aside type="tip">
-  Load the parser once at app startup for best performance. It's a ~2MB WASM
-  module.
+  Load the parser once at app startup for best performance. Its WASM module is
+  about 750 KB (about 300 KB gzipped).
 </Aside>
 
 ---
@@ -259,9 +259,11 @@ const jsSource = adapter.compileLocal(candidSource)
 try {
   const definition = await adapter.getCandidDefinition(canisterId)
 } catch (error) {
-  if (error.message.includes("has no query method")) {
-    console.log("Canister doesn't expose Candid metadata")
-  } else if (error.message.includes("compilation failed")) {
+  const message = error instanceof Error ? error.message : String(error)
+  if (message.includes("Failed to retrieve Candid source")) {
+    // Neither the candid:service metadata nor __get_candid_interface_tmp_hack
+    console.log("Canister doesn't expose its Candid")
+  } else if (message.includes("Failed to compile Candid")) {
     console.log("Invalid Candid syntax")
   } else {
     throw error
@@ -283,6 +285,7 @@ const service = idlFactory({ IDL })
 
 // Extract the method's type information
 const funcField = service._fields.find(([name]) => name === "my_method")
+if (!funcField) throw new Error("my_method is not in the service")
 const func = funcField[1]
 
 console.log("Arg types:", func.argTypes)

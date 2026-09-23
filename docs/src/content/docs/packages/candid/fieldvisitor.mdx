@@ -110,8 +110,12 @@ const form = useForm({
   defaultValues: methodMeta.defaults,
   validators: { onBlur: methodMeta.schema },
   onSubmit: async ({ value }) => {
-    // Principal, bigint, [] or [x] for an opt, { Tag: payload } for a variant
-    await actor.icrc1_transfer(...argsCodec.asCandid(value))
+    // Principal, bigint, [] or [x] for an opt, { Tag: payload } for a variant.
+    // An untyped codec returns `unknown`, so name the tuple the actor takes.
+    const args = argsCodec.asCandid(value) as Parameters<
+      typeof actor.icrc1_transfer
+    >
+    await actor.icrc1_transfer(...args)
   },
 })
 ```
